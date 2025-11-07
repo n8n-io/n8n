@@ -1,11 +1,10 @@
 import type { User } from '@n8n/db';
-import { ProjectRepository, SharedCredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
+import { CredentialsRepository, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { RoleService } from '@/services/role.service';
 
 /**
  * Check if a user has the required scopes. The check can be:
@@ -45,40 +44,31 @@ export async function userHasScopes(
 			.getRawMany()
 	).map((row: { id: string }) => row.id);
 
-	// Find which resource roles are defined to contain the required scopes.
-	// Then find at least one of the above qualifying projects having one of
-	// those resource roles over the resource being checked.
-	const roleService = Container.get(RoleService);
-
+	// Check if the user has access through the project
 	if (credentialId) {
-		const credentials = await Container.get(SharedCredentialsRepository).findBy({
-			credentialsId: credentialId,
+		const credential = await Container.get(CredentialsRepository).findOne({
+			where: { id: credentialId },
+			select: ['id', 'projectId'],
 		});
-		if (!credentials.length) {
+
+		if (!credential) {
 			throw new NotFoundError(`Credential with ID "${credentialId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('credential', scopes);
-
-		return credentials.some(
-			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
-		);
+		return userProjectIds.includes(credential.projectId);
 	}
 
 	if (workflowId) {
-		const workflows = await Container.get(SharedWorkflowRepository).findBy({
-			workflowId,
+		const workflow = await Container.get(WorkflowRepository).findOne({
+			where: { id: workflowId },
+			select: ['id', 'projectId'],
 		});
 
-		if (!workflows.length) {
+		if (!workflow) {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" not found.`);
 		}
 
-		const validRoles = await roleService.rolesWithScope('workflow', scopes);
-
-		return workflows.some(
-			(w) => userProjectIds.includes(w.projectId) && validRoles.includes(w.role),
-		);
+		return userProjectIds.includes(workflow.projectId);
 	}
 
 	if (projectId) return userProjectIds.includes(projectId);

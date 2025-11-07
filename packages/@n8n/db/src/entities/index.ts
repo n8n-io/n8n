@@ -12,19 +12,22 @@ import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
 import { InvalidAuthToken } from './invalid-auth-token';
+import { PlatformFeatureConfig } from './platform-feature-config.entity';
+import { PlatformRagService } from './platform-rag-service.entity';
+import { PlatformService } from './platform-service.entity';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
 import { ProjectRelation } from './project-relation';
+import { RechargeRecord } from './recharge-record.entity';
 import { Role } from './role';
 import { Scope } from './scope';
 import { Settings } from './settings';
-import { SharedCredentials } from './shared-credentials';
-import { SharedWorkflow } from './shared-workflow';
 import { TagEntity } from './tag-entity';
 import { TelemetryEvent } from './telemetry-event';
 import { TelemetrySession } from './telemetry-session';
 import { TestCaseExecution } from './test-case-execution.ee';
 import { TestRun } from './test-run.ee';
+import { UsageRecord } from './usage-record.entity';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
@@ -33,10 +36,14 @@ import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
+import { WorkspaceBalance } from './workspace-balance.entity';
 
 export {
 	EventDestinations,
 	InvalidAuthToken,
+	PlatformFeatureConfig,
+	PlatformRagService,
+	PlatformService,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -49,8 +56,6 @@ export {
 	ProjectRelation,
 	Role,
 	Scope,
-	SharedCredentials,
-	SharedWorkflow,
 	TagEntity,
 	TelemetryEvent,
 	TelemetrySession,
@@ -70,11 +75,17 @@ export {
 	TestRun,
 	TestCaseExecution,
 	ExecutionEntity,
+	WorkspaceBalance,
+	UsageRecord,
+	RechargeRecord,
 };
 
 export const entities = {
 	EventDestinations,
 	InvalidAuthToken,
+	PlatformFeatureConfig,
+	PlatformRagService,
+	PlatformService,
 	ProcessedData,
 	Settings,
 	Variables,
@@ -86,8 +97,6 @@ export const entities = {
 	Project,
 	ProjectRelation,
 	Scope,
-	SharedCredentials,
-	SharedWorkflow,
 	TagEntity,
 	TelemetryEvent,
 	TelemetrySession,
@@ -108,4 +117,7 @@ export const entities = {
 	TestCaseExecution,
 	ExecutionEntity,
 	Role,
+	WorkspaceBalance,
+	UsageRecord,
+	RechargeRecord,
 };

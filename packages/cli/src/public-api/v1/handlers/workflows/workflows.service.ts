@@ -1,22 +1,11 @@
 import { GlobalConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
-import {
-	WorkflowEntity,
-	WorkflowTagMapping,
-	SharedWorkflow,
-	TagRepository,
-	SharedWorkflowRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import { WorkflowEntity, WorkflowTagMapping, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { type Scope, type WorkflowSharingRole } from '@n8n/permissions';
 import type { WorkflowId } from 'n8n-workflow';
 
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
-
-function insertIf(condition: boolean, elements: string[]): string[] {
-	return condition ? elements : [];
-}
 
 export async function getSharedWorkflowIds(
 	user: User,
@@ -29,19 +18,24 @@ export async function getSharedWorkflowIds(
 	});
 }
 
-export async function getSharedWorkflow(
+export async function getWorkflowForUser(
 	user: User,
-	workflowId?: string,
-): Promise<SharedWorkflow | null> {
-	return await Container.get(SharedWorkflowRepository).findOne({
-		where: {
-			...(!['global:owner', 'global:admin'].includes(user.role.slug) && { userId: user.id }),
-			...(workflowId && { workflowId }),
-		},
-		relations: [
-			...insertIf(!Container.get(GlobalConfig).tags.disabled, ['workflow.tags']),
-			'workflow',
-		],
+	workflowId: string,
+): Promise<WorkflowEntity | null> {
+	const workflowIds = await getSharedWorkflowIds(user, ['workflow:read']);
+
+	if (!workflowIds.includes(workflowId)) {
+		return null;
+	}
+
+	const relations: string[] = ['project'];
+	if (!Container.get(GlobalConfig).tags.disabled) {
+		relations.push('tags');
+	}
+
+	return await Container.get(WorkflowRepository).findOne({
+		where: { id: workflowId },
+		relations,
 	});
 }
 
@@ -57,20 +51,12 @@ export async function createWorkflow(
 	personalProject: Project,
 	role: WorkflowSharingRole,
 ): Promise<WorkflowEntity> {
-	const { manager: dbManager } = Container.get(SharedWorkflowRepository);
+	const { manager: dbManager } = Container.get(WorkflowRepository);
 	return await dbManager.transaction(async (transactionManager) => {
 		const newWorkflow = new WorkflowEntity();
 		Object.assign(newWorkflow, workflow);
+		newWorkflow.projectId = personalProject.id;
 		const savedWorkflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
-
-		const newSharedWorkflow = new SharedWorkflow();
-		Object.assign(newSharedWorkflow, {
-			role,
-			user,
-			project: personalProject,
-			workflow: savedWorkflow,
-		});
-		await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
 
 		return savedWorkflow;
 	});
@@ -121,7 +107,7 @@ export async function getWorkflowTags(workflowId: string) {
 }
 
 export async function updateTags(workflowId: string, newTags: string[]): Promise<void> {
-	const { manager: dbManager } = Container.get(SharedWorkflowRepository);
+	const { manager: dbManager } = Container.get(WorkflowRepository);
 	await dbManager.transaction(async (transactionManager) => {
 		const oldTags = await transactionManager.findBy(WorkflowTagMapping, { workflowId });
 		if (oldTags.length > 0) {

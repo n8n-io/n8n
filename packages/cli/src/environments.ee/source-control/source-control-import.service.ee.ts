@@ -13,8 +13,6 @@ import {
 	CredentialsRepository,
 	FolderRepository,
 	ProjectRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
 	TagRepository,
 	UserRepository,
 	VariablesRepository,
@@ -139,8 +137,6 @@ export class SourceControlImportService {
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly tagRepository: TagRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly userRepository: UserRepository,
 		private readonly variablesRepository: VariablesRepository,
 		private readonly workflowRepository: WorkflowRepository,
@@ -248,12 +244,10 @@ export class SourceControlImportService {
 		const localWorkflows = await this.workflowRepository.find({
 			relations: {
 				parentFolder: true,
-				shared: {
-					project: {
-						projectRelations: {
-							user: true,
-							role: true,
-						},
+				project: {
+					projectRelations: {
+						user: true,
+						role: true,
 					},
 				},
 			},
@@ -265,23 +259,20 @@ export class SourceControlImportService {
 				parentFolder: {
 					id: true,
 				},
-				shared: {
-					project: {
-						id: true,
-						name: true,
-						type: true,
-						projectRelations: {
-							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
-							userId: true,
-							role: {
-								slug: true,
-							},
-							user: {
-								email: true,
-							},
+				project: {
+					id: true,
+					name: true,
+					type: true,
+					projectRelations: {
+						// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
+						userId: true,
+						role: {
+							slug: true,
+						},
+						user: {
+							email: true,
 						},
 					},
-					role: true,
 				},
 			},
 			where: this.sourceControlScopedService.getWorkflowsInAdminProjectsFromContextFilter(context),
@@ -301,7 +292,7 @@ export class SourceControlImportService {
 				updatedAt = isNaN(Date.parse(local.updatedAt)) ? new Date() : new Date(local.updatedAt);
 			}
 
-			const remoteOwnerProject = local.shared?.find((s) => s.role === 'workflow:owner')?.project;
+			const remoteOwnerProject = local.project;
 
 			return {
 				id: local.id,
@@ -375,12 +366,10 @@ export class SourceControlImportService {
 	): Promise<StatusExportableCredential[]> {
 		const localCredentials = await this.credentialsRepository.find({
 			relations: {
-				shared: {
-					project: {
-						projectRelations: {
-							user: true,
-							role: true,
-						},
+				project: {
+					projectRelations: {
+						user: true,
+						role: true,
 					},
 				},
 			},
@@ -388,30 +377,27 @@ export class SourceControlImportService {
 				id: true,
 				name: true,
 				type: true,
-				shared: {
-					project: {
-						id: true,
-						name: true,
-						type: true,
-						projectRelations: {
-							// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
-							userId: true,
-							role: {
-								slug: true,
-							},
-							user: {
-								email: true,
-							},
+				project: {
+					id: true,
+					name: true,
+					type: true,
+					projectRelations: {
+						// Even if the userId is not used, it seems that this is needed to get the other nested properties populated
+						userId: true,
+						role: {
+							slug: true,
+						},
+						user: {
+							email: true,
 						},
 					},
-					role: true,
 				},
 			},
 			where:
 				this.sourceControlScopedService.getCredentialsInAdminProjectsFromContextFilter(context),
 		});
 		return localCredentials.map((local) => {
-			const remoteOwnerProject = local.shared?.find((s) => s.role === 'credential:owner')?.project;
+			const remoteOwnerProject = local.project;
 			return {
 				id: local.id,
 				name: local.name,
@@ -640,8 +626,9 @@ export class SourceControlImportService {
 		const folders = await this.folderRepository.find({ select: ['id'] });
 		const existingFolderIds = folders.map((f) => f.id);
 
-		const allSharedWorkflows = await this.sharedWorkflowRepository.findWithFields(candidateIds, {
-			select: ['workflowId', 'role', 'projectId'],
+		const allWorkflows = await this.workflowRepository.find({
+			where: { id: In(candidateIds) },
+			select: ['id', 'projectId'],
 		});
 		const importWorkflowsResult = [];
 
@@ -683,16 +670,13 @@ export class SourceControlImportService {
 				});
 			}
 
-			const localOwner = allSharedWorkflows.find(
-				(w) => w.workflowId === importedWorkflow.id && w.role === 'workflow:owner',
-			);
+			const localWorkflow = allWorkflows.find((w) => w.id === importedWorkflow.id);
 
 			await this.syncResourceOwnership({
 				resourceId: importedWorkflow.id,
 				remoteOwner: importedWorkflow.owner,
-				localOwner,
+				localOwner: localWorkflow?.projectId ? { projectId: localWorkflow.projectId } : undefined,
 				fallbackProject: personalProject,
-				repository: this.sharedWorkflowRepository,
 			});
 
 			if (existingWorkflow?.active) {
@@ -757,14 +741,7 @@ export class SourceControlImportService {
 			where: {
 				id: In(candidateIds),
 			},
-			select: ['id', 'name', 'type', 'data'],
-		});
-		const existingSharedCredentials = await this.sharedCredentialsRepository.find({
-			select: ['credentialsId', 'projectId', 'role'],
-			where: {
-				credentialsId: In(candidateIds),
-				role: 'credential:owner',
-			},
+			select: ['id', 'name', 'type', 'data', 'projectId'],
 		});
 
 		let importCredentialsResult: Array<{ id: string; name: string; type: string }> = [];
@@ -794,16 +771,15 @@ export class SourceControlImportService {
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
 				await this.credentialsRepository.upsert(newCredentialObject, ['id']);
 
-				const localOwner = existingSharedCredentials.find(
-					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
-				);
+				const localCredential = existingCredentials.find((c) => c.id === credential.id);
 
 				await this.syncResourceOwnership({
 					resourceId: credential.id,
 					remoteOwner: credential.ownedBy,
-					localOwner,
+					localOwner: localCredential?.projectId
+						? { projectId: localCredential.projectId }
+						: undefined,
 					fallbackProject: personalProject,
-					repository: this.sharedCredentialsRepository,
 				});
 
 				return {
@@ -1132,20 +1108,18 @@ export class SourceControlImportService {
 
 	/**
 	 * Syncs ownership of a resource (workflow or credential) during import.
-	 * Handles ownership transfer by removing old ownership and assigning new ownership.
+	 * Handles ownership transfer by updating the projectId on the resource.
 	 */
 	private async syncResourceOwnership({
 		resourceId,
 		remoteOwner,
 		localOwner,
 		fallbackProject,
-		repository,
 	}: {
 		resourceId: string;
 		remoteOwner: RemoteResourceOwner | null | undefined;
 		localOwner: { projectId: string } | undefined;
 		fallbackProject: Project;
-		repository: SharedWorkflowRepository | SharedCredentialsRepository;
 	}): Promise<void> {
 		let targetOwnerProject = await this.findOwnerProjectInLocalDb(remoteOwner ?? undefined);
 		if (!targetOwnerProject) {
@@ -1157,16 +1131,27 @@ export class SourceControlImportService {
 				: fallbackProject;
 		}
 
-		const trx = this.workflowRepository.manager;
+		// Update ownership if it changed
+		const shouldUpdateOwner = !localOwner || localOwner.projectId !== targetOwnerProject.id;
+		if (shouldUpdateOwner) {
+			// Update the workflow or credential's projectId
+			// We determine the entity type by checking if it exists in workflows or credentials
+			const workflow = await this.workflowRepository.findOne({
+				where: { id: resourceId },
+			});
 
-		// remove old ownership if it changed
-		const shouldRemoveOldOwner = localOwner && localOwner.projectId !== targetOwnerProject.id;
-		if (shouldRemoveOldOwner) {
-			await repository.deleteByIds([resourceId], localOwner.projectId, trx);
+			if (workflow) {
+				await this.workflowRepository.update(
+					{ id: resourceId },
+					{ projectId: targetOwnerProject.id },
+				);
+			} else {
+				await this.credentialsRepository.update(
+					{ id: resourceId },
+					{ projectId: targetOwnerProject.id },
+				);
+			}
 		}
-
-		// Set new ownership
-		await repository.makeOwner([resourceId], targetOwnerProject.id, trx);
 	}
 
 	private async findOwnerProjectInLocalDb(owner: RemoteResourceOwner | IWorkflowToImport['owner']) {

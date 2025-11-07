@@ -3,7 +3,6 @@ import type { TagEntity, ICredentialsDb, IWorkflowDb } from '@n8n/db';
 import {
 	Project,
 	WorkflowEntity,
-	SharedWorkflow,
 	WorkflowTagMapping,
 	CredentialsRepository,
 	TagRepository,
@@ -95,20 +94,15 @@ export class ImportService {
 
 				const exists = workflow.id ? await tx.existsBy(WorkflowEntity, { id: workflow.id }) : false;
 
-				const upsertResult = await tx.upsert(WorkflowEntity, workflow, ['id']);
+				// Set project ownership for the workflow
+				const workflowWithProject = { ...workflow, projectId };
+
+				const upsertResult = await tx.upsert(WorkflowEntity, workflowWithProject, ['id']);
 				const workflowId = upsertResult.identifiers.at(0)?.id as string;
 				insertedWorkflows.push({ ...workflow, id: workflowId }); // Collect inserted workflow with correct ID, for indexing later.
 
-				const personalProject = await tx.findOneByOrFail(Project, { id: projectId });
-
-				// Create relationship if the workflow was inserted instead of updated.
-				if (!exists) {
-					await tx.upsert(
-						SharedWorkflow,
-						{ workflowId, projectId: personalProject.id, role: 'workflow:owner' },
-						['workflowId', 'projectId'],
-					);
-				}
+				// Verify the project exists
+				await tx.findOneByOrFail(Project, { id: projectId });
 
 				if (!workflow.tags?.length) continue;
 

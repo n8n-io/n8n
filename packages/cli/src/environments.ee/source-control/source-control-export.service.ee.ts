@@ -2,10 +2,9 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { IWorkflowDb } from '@n8n/db';
 import {
+	CredentialsRepository,
 	FolderRepository,
 	ProjectRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
 	TagRepository,
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
@@ -65,8 +64,7 @@ export class SourceControlExportService {
 		private readonly variablesService: VariablesService,
 		private readonly tagRepository: TagRepository,
 		private readonly projectRepository: ProjectRepository,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
 		private readonly folderRepository: FolderRepository,
@@ -136,21 +134,24 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.workflowExportFolder]);
 			const workflowIds = candidates.map((e) => e.id);
-			const sharedWorkflows = await this.sharedWorkflowRepository.findByWorkflowIds(workflowIds);
 			const workflows = await this.workflowRepository.find({
 				where: { id: In(workflowIds) },
-				relations: ['parentFolder'],
+				relations: [
+					'parentFolder',
+					'project',
+					'project.projectRelations',
+					'project.projectRelations.role',
+					'project.projectRelations.user',
+				],
 			});
 
 			// determine owner of each workflow to be exported
 			const owners: Record<string, RemoteResourceOwner> = {};
-			sharedWorkflows.forEach((sharedWorkflow) => {
-				const project = sharedWorkflow.project;
+			workflows.forEach((workflow) => {
+				const project = workflow.project;
 
 				if (!project) {
-					throw new UnexpectedError(
-						`Workflow ${formatWorkflow(sharedWorkflow.workflow)} has no owner`,
-					);
+					throw new UnexpectedError(`Workflow ${formatWorkflow(workflow)} has no owner`);
 				}
 
 				if (project.type === 'personal') {
@@ -158,18 +159,16 @@ export class SourceControlExportService {
 						(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
 					);
 					if (!ownerRelation) {
-						throw new UnexpectedError(
-							`Workflow ${formatWorkflow(sharedWorkflow.workflow)} has no owner`,
-						);
+						throw new UnexpectedError(`Workflow ${formatWorkflow(workflow)} has no owner`);
 					}
-					owners[sharedWorkflow.workflowId] = {
+					owners[workflow.id] = {
 						type: 'personal',
 						projectId: project.id,
 						projectName: project.name,
 						personalEmail: ownerRelation.user.email,
 					};
 				} else if (project.type === 'team') {
-					owners[sharedWorkflow.workflowId] = {
+					owners[workflow.id] = {
 						type: 'team',
 						teamId: project.id,
 						teamName: project.name,
@@ -186,7 +185,7 @@ export class SourceControlExportService {
 
 			// await fsWriteFile(ownersFileName, JSON.stringify(owners, null, 2));
 			return {
-				count: sharedWorkflows.length,
+				count: workflows.length,
 				folder: this.workflowExportFolder,
 				files: workflows.map((e) => ({
 					id: e?.id,
@@ -405,40 +404,45 @@ export class SourceControlExportService {
 		try {
 			sourceControlFoldersExistCheck([this.credentialExportFolder]);
 			const credentialIds = candidates.map((e) => e.id);
-			const credentialsToBeExported = await this.sharedCredentialsRepository.findByCredentialIds(
-				credentialIds,
-				'credential:owner',
-			);
+			const credentialsToBeExported = await this.credentialsRepository.find({
+				where: { id: In(credentialIds) },
+				relations: [
+					'project',
+					'project.projectRelations',
+					'project.projectRelations.role',
+					'project.projectRelations.user',
+				],
+			});
 			let missingIds: string[] = [];
 			if (credentialsToBeExported.length !== credentialIds.length) {
-				const foundCredentialIds = credentialsToBeExported.map((e) => e.credentialsId);
+				const foundCredentialIds = credentialsToBeExported.map((e) => e.id);
 				missingIds = credentialIds.filter(
 					(remote) => foundCredentialIds.findIndex((local) => local === remote) === -1,
 				);
 			}
 			await Promise.all(
-				credentialsToBeExported.map(async (sharing) => {
-					const { name, type, data, id } = sharing.credentials;
+				credentialsToBeExported.map(async (credential) => {
+					const { name, type, data, id } = credential;
 					const credentials = new Credentials({ id, name }, type, data);
 
 					let owner: RemoteResourceOwner | null = null;
-					if (sharing.project.type === 'personal') {
-						const ownerRelation = sharing.project.projectRelations.find(
+					if (credential.project.type === 'personal') {
+						const ownerRelation = credential.project.projectRelations.find(
 							(pr) => pr.role.slug === PROJECT_OWNER_ROLE_SLUG,
 						);
 						if (ownerRelation) {
 							owner = {
 								type: 'personal',
-								projectId: sharing.project.id,
-								projectName: sharing.project.name,
+								projectId: credential.project.id,
+								projectName: credential.project.name,
 								personalEmail: ownerRelation.user.email,
 							};
 						}
-					} else if (sharing.project.type === 'team') {
+					} else if (credential.project.type === 'team') {
 						owner = {
 							type: 'team',
-							teamId: sharing.project.id,
-							teamName: sharing.project.name,
+							teamId: credential.project.id,
+							teamName: credential.project.name,
 						};
 					}
 
@@ -468,8 +472,8 @@ export class SourceControlExportService {
 				count: credentialsToBeExported.length,
 				folder: this.credentialExportFolder,
 				files: credentialsToBeExported.map((e) => ({
-					id: e.credentials.id,
-					name: path.join(this.credentialExportFolder, `${e.credentials.name}.json`),
+					id: e.id,
+					name: path.join(this.credentialExportFolder, `${e.name}.json`),
 				})),
 				missingIds,
 			};

@@ -1,8 +1,10 @@
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { SharedWorkflowRepository, WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository, ProjectRelationRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In } from '@n8n/typeorm';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -13,7 +15,7 @@ export class ActiveWorkflowsService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
@@ -33,9 +35,27 @@ export class ActiveWorkflowsService {
 			return activeWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
 		}
 
-		const sharedWorkflowIds =
-			await this.sharedWorkflowRepository.getSharedWorkflowIds(activeWorkflowIds);
-		return sharedWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
+		// Get workflows from projects the user has access to
+		const userProjects = await this.projectRelationRepository.find({
+			where: { userId: user.id },
+			select: ['projectId'],
+		});
+		const userProjectIds = userProjects.map((pr) => pr.projectId);
+
+		if (userProjectIds.length === 0) {
+			return [];
+		}
+
+		const accessibleWorkflows = await this.workflowRepository.find({
+			where: {
+				projectId: In(userProjectIds),
+				id: In(activeWorkflowIds),
+			},
+			select: ['id'],
+		});
+
+		const accessibleWorkflowIds = accessibleWorkflows.map((w) => w.id);
+		return accessibleWorkflowIds.filter((workflowId) => !activationErrors[workflowId]);
 	}
 
 	async getActivationError(workflowId: string, user: User) {

@@ -1,5 +1,5 @@
 import type { Project } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
+import { CredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { INode } from 'n8n-workflow';
@@ -33,7 +33,7 @@ class InaccessibleCredentialError extends UserError {
 @Service()
 export class CredentialsPermissionChecker {
 	constructor(
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly projectService: ProjectService,
 	) {}
@@ -55,20 +55,19 @@ export class CredentialsPermissionChecker {
 			// so all credentials are usable. Skip credential checks.
 			return;
 		}
-		const projectIds = await this.projectService.findProjectsWorkflowIsIn(workflowId);
-		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 
+		const credIdsToNodes = this.mapCredIdsToNodes(nodes);
 		const workflowCredIds = Object.keys(credIdsToNodes);
 
 		if (workflowCredIds.length === 0) return;
 
-		const accessible = await this.sharedCredentialsRepository.getFilteredAccessibleCredentials(
-			projectIds,
-			workflowCredIds,
-		);
+		// Get all credentials that the workflow needs
+		const credentials = await this.credentialsRepository.findAllCredentialsForWorkflow(workflowId);
+		const accessibleCredIds = new Set(credentials.map((c) => c.id));
 
+		// Check if all required credentials are accessible
 		for (const credentialsId of workflowCredIds) {
-			if (!accessible.includes(credentialsId)) {
+			if (!accessibleCredIds.has(credentialsId)) {
 				const nodeToFlag = credIdsToNodes[credentialsId][0];
 				throw new InaccessibleCredentialError(nodeToFlag, homeProject);
 			}

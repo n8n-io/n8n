@@ -44,6 +44,7 @@ import { MigrateIntegerKeysToString1690000000001 } from './1690000000001-Migrate
 import { SeparateExecutionData1690000000030 } from './1690000000030-SeparateExecutionData';
 import { FixExecutionDataType1690000000031 } from './1690000000031-FixExecutionDataType';
 import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActivatedAtUserSetting';
+import { CreateTelemetryEventTable1730804400000 } from './1730804400000-CreateTelemetryEventTable';
 import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
 import { CreateTestMetricTable1732271325258 } from './1732271325258-CreateTestMetricTable';
 import { AddStatsColumnsToTestRun1736172058779 } from './1736172058779-AddStatsColumnsToTestRun';
@@ -51,7 +52,6 @@ import { FixTestDefinitionPrimaryKey1739873751194 } from './1739873751194-FixTes
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
 import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
-import { CreateTelemetryEventTable1730804400000 } from './1730804400000-CreateTelemetryEventTable';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -109,6 +109,10 @@ import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-Cr
 import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
 import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
+import { MultitenantTransformation1762511301780 } from '../common/1762511301780-MultitenantTransformation';
+import { CreateBillingTables1762511302000 } from '../common/1762511302000-CreateBillingTables';
+import { CreatePlatformServiceTables1762511302220 } from '../common/1762511302220-CreatePlatformServiceTables';
+import { CreatePlatformFeatureTables1762511302440 } from '../common/1762511302440-CreatePlatformFeatureTables';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
@@ -227,4 +231,8 @@ export const mysqlMigrations: Migration[] = [
 	ChangeDependencyInfoToJson1761655473000,
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
+	MultitenantTransformation1762511301780,
+	CreateBillingTables1762511302000,
+	CreatePlatformServiceTables1762511302220,
+	CreatePlatformFeatureTables1762511302440,
 ];

@@ -13,7 +13,7 @@ import {
 	createCredential,
 	encryptCredential,
 	getCredentials,
-	getSharedCredentials,
+	getCredentialForUser,
 	removeCredential,
 	sanitizeCredentials,
 	saveCredential,
@@ -73,11 +73,8 @@ export = {
 			let credential: CredentialsEntity | undefined;
 
 			if (!['global:owner', 'global:admin'].includes(req.user.role.slug)) {
-				const shared = await getSharedCredentials(req.user.id, credentialId);
-
-				if (shared?.role === 'credential:owner') {
-					credential = shared.credentials;
-				}
+				// Get credential if user has access via project membership
+				credential = (await getCredentialForUser(req.user.id, credentialId)) ?? undefined;
 			} else {
 				credential = (await getCredentials(credentialId)) as CredentialsEntity;
 			}

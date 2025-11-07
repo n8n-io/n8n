@@ -3,17 +3,14 @@ import type {
 	CredentialsEntity,
 	CredentialUsedByWorkflow,
 	User,
-	WorkflowEntity,
 	WorkflowWithSharingsAndCredentials,
 	WorkflowWithSharingsMetaDataAndCredentials,
 } from '@n8n/db';
 import {
 	Folder,
-	Project,
-	SharedWorkflow,
+	WorkflowEntity,
 	CredentialsRepository,
 	FolderRepository,
-	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -40,7 +37,6 @@ import { ProjectService } from '@/services/project.service.ee';
 export class EnterpriseWorkflowService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly credentialsService: CredentialsService,
@@ -54,37 +50,26 @@ export class EnterpriseWorkflowService {
 		private readonly folderRepository: FolderRepository,
 	) {}
 
+	/**
+	 * @deprecated In the new architecture, workflows belong to a single project.
+	 * Sharing is managed at the project level through project members.
+	 * This method is kept for backward compatibility but should not be used.
+	 */
 	async shareWithProjects(
 		workflowId: WorkflowId,
 		shareWithIds: string[],
-		entityManager: EntityManager,
+		_entityManager: EntityManager,
 	) {
-		const em = entityManager ?? this.sharedWorkflowRepository.manager;
-
-		let projects = await em.find(Project, {
-			where: { id: In(shareWithIds), type: 'personal' },
-			relations: { sharedWorkflows: true },
+		// In the new architecture, workflows cannot be shared with multiple projects.
+		// They belong to one project, and sharing is done by adding users to that project.
+		// This method is deprecated and should be refactored at call sites.
+		this.logger.warn('shareWithProjects called but is deprecated in new architecture', {
+			workflowId,
+			shareWithIds,
 		});
-		// filter out all projects that already own the workflow
-		projects = projects.filter(
-			(p) =>
-				!p.sharedWorkflows.some(
-					(swf) => swf.workflowId === workflowId && swf.role === 'workflow:owner',
-				),
-		);
 
-		const newSharedWorkflows = projects
-			// We filter by role === PROJECT_OWNER_ROLE_SLUG above and there should
-			// always only be one owner.
-			.map((project) =>
-				this.sharedWorkflowRepository.create({
-					workflowId,
-					role: 'workflow:editor',
-					projectId: project.id,
-				}),
-			);
-
-		return await em.save(newSharedWorkflows);
+		// No-op for now to prevent breaking changes
+		return [];
 	}
 
 	addOwnerAndSharings(
@@ -285,15 +270,14 @@ export class EnterpriseWorkflowService {
 			`Could not find workflow with the id "${workflowId}". Make sure you have the permission to move it.`,
 		);
 
-		// 2. get owner-sharing
-		const ownerSharing = workflow.shared.find((s) => s.role === 'workflow:owner')!;
+		// 2. get source project - workflows now directly belong to a project
 		NotFoundError.isDefinedAndNotNull(
-			ownerSharing,
-			`Could not find owner for workflow "${workflow.id}"`,
+			workflow.project,
+			`Could not find project for workflow "${workflow.id}"`,
 		);
 
 		// 3. get source project
-		const sourceProject = ownerSharing.project;
+		const sourceProject = workflow.project;
 
 		// 4. get destination project
 		const destinationProject = await this.projectService.getProjectWithScope(
@@ -395,8 +379,8 @@ export class EnterpriseWorkflowService {
 		// 2. Get all workflows in the nested folders
 
 		const workflows = await this.workflowRepository.find({
-			select: ['id', 'active', 'shared'],
-			relations: ['shared', 'shared.project'],
+			select: ['id', 'active', 'projectId'],
+			relations: ['project'],
 			where: {
 				parentFolder: { id: In([...childrenFolderIds, sourceFolderId]) },
 			},
@@ -427,13 +411,13 @@ export class EnterpriseWorkflowService {
 		await this.folderRepository.findOneOrFailFolderInProject(sourceFolderId, sourceProjectId);
 
 		for (const workflow of workflows) {
-			const ownerSharing = workflow.shared.find((s) => s.role === 'workflow:owner')!;
+			// Check that workflow belongs to source project
 			NotFoundError.isDefinedAndNotNull(
-				ownerSharing,
-				`Could not find owner for workflow "${workflow.id}"`,
+				workflow.project,
+				`Could not find project for workflow "${workflow.id}"`,
 			);
-			const sourceProject = ownerSharing.project;
-			if (sourceProject.id === destinationProject.id) {
+
+			if (workflow.project.id === destinationProject.id) {
 				throw new TransferWorkflowError(
 					"You can't transfer a workflow into the project that's already owning it.",
 				);
@@ -500,17 +484,8 @@ export class EnterpriseWorkflowService {
 	) {
 		await this.workflowRepository.manager.transaction(async (trx) => {
 			for (const workflow of workflows) {
-				// Remove all sharings
-				await trx.remove(workflow.shared);
-
-				// Create new owner-sharing
-				await trx.save(
-					trx.create(SharedWorkflow, {
-						workflowId: workflow.id,
-						projectId: destinationProjectId,
-						role: 'workflow:owner',
-					}),
-				);
+				// In the new architecture, simply update the workflow's projectId
+				await trx.update(WorkflowEntity, { id: workflow.id }, { projectId: destinationProjectId });
 			}
 		});
 	}

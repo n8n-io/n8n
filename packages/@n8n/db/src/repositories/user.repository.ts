@@ -149,7 +149,7 @@ export class UserRepository extends Repository<User> {
 			where: {
 				projectRelations: {
 					role: { slug: PROJECT_OWNER_ROLE_SLUG },
-					project: { sharedWorkflows: { workflowId, role: 'workflow:owner' } },
+					project: { workflows: { id: workflowId } },
 				},
 			},
 			relations: ['role'],

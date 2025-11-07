@@ -14,7 +14,7 @@ import type { INode } from 'n8n-workflow';
 
 import { JsonColumn, WithTimestampsAndStringId, dbType } from './abstract-entity';
 import { type Folder } from './folder';
-import type { SharedWorkflow } from './shared-workflow';
+import type { Project } from './project';
 import type { TagEntity } from './tag-entity';
 import type { TestRun } from './test-run.ee';
 import type { ISimplifiedPinData, IWorkflowDb } from './types-db';
@@ -86,8 +86,12 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@OneToMany('WorkflowTagMapping', 'workflows')
 	tagMappings: WorkflowTagMapping[];
 
-	@OneToMany('SharedWorkflow', 'workflow')
-	shared: SharedWorkflow[];
+	@ManyToOne('Project', 'workflows', { nullable: false })
+	@JoinColumn({ name: 'projectId' })
+	project: Project;
+
+	@Column({ type: 'varchar', length: 36, name: 'projectId' })
+	projectId: string;
 
 	@OneToMany('WorkflowStatistics', 'workflow')
 	@JoinColumn({ referencedColumnName: 'workflow' })

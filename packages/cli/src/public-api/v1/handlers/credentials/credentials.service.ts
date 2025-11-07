@@ -1,11 +1,5 @@
 import type { User, ICredentialsDb } from '@n8n/db';
-import {
-	CredentialsEntity,
-	SharedCredentials,
-	CredentialsRepository,
-	ProjectRepository,
-	SharedCredentialsRepository,
-} from '@n8n/db';
+import { CredentialsEntity, CredentialsRepository, ProjectRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
 import type {
@@ -25,16 +19,16 @@ export async function getCredentials(credentialId: string): Promise<ICredentials
 	return await Container.get(CredentialsRepository).findOneBy({ id: credentialId });
 }
 
-export async function getSharedCredentials(
+export async function getCredentialForUser(
 	userId: string,
 	credentialId: string,
-): Promise<SharedCredentials | null> {
-	return await Container.get(SharedCredentialsRepository).findOne({
+): Promise<CredentialsEntity | null> {
+	return await Container.get(CredentialsRepository).findOne({
 		where: {
+			id: credentialId,
 			project: { projectRelations: { userId } },
-			credentialsId: credentialId,
 		},
-		relations: ['credentials'],
+		relations: ['project', 'project.projectRelations'],
 	});
 }
 
@@ -56,40 +50,35 @@ export async function saveCredential(
 	const projectRepository = Container.get(ProjectRepository);
 	const { manager: dbManager } = projectRepository;
 	const result = await dbManager.transaction(async (transactionManager) => {
-		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
-
-		savedCredential.data = credential.data;
-
-		const newSharedCredential = new SharedCredentials();
-
 		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(
 			user.id,
 			transactionManager,
 		);
 
-		Object.assign(newSharedCredential, {
-			role: 'credential:owner',
-			credentials: savedCredential,
-			projectId: personalProject.id,
-		});
+		// Set the projectId directly on the credential
+		credential.projectId = personalProject.id;
 
-		await transactionManager.save<SharedCredentials>(newSharedCredential);
+		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
+
+		savedCredential.data = credential.data;
 
 		return savedCredential;
 	});
 
 	await Container.get(ExternalHooks).run('credentials.create', [encryptedData]);
 
-	const project = await Container.get(SharedCredentialsRepository).findCredentialOwningProject(
-		credential.id,
-	);
+	// Get the project directly from the saved credential
+	const credentialWithProject = await Container.get(CredentialsRepository).findOne({
+		where: { id: credential.id },
+		relations: ['project'],
+	});
 
 	Container.get(EventService).emit('credentials-created', {
 		user,
 		credentialType: credential.type,
 		credentialId: credential.id,
-		projectId: project?.id,
-		projectType: project?.type,
+		projectId: credentialWithProject?.project?.id,
+		projectType: credentialWithProject?.project?.type,
 		publicApi: true,
 	});
 
@@ -131,7 +120,7 @@ export function sanitizeCredentials(
 	const credentialsList = argIsArray ? credentials : [credentials];
 
 	const sanitizedCredentials = credentialsList.map((credential) => {
-		const { data, shared, ...rest } = credential;
+		const { data, ...rest } = credential;
 		return rest;
 	});
 

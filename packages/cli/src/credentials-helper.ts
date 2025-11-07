@@ -3,16 +3,11 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
-import {
-	CredentialsRepository,
-	GLOBAL_ADMIN_ROLE,
-	GLOBAL_OWNER_ROLE,
-	SharedCredentialsRepository,
-} from '@n8n/db';
+import { CredentialsRepository, GLOBAL_ADMIN_ROLE, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { EntityNotFoundError, In } from '@n8n/typeorm';
+import { EntityNotFoundError } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
 import type {
 	ICredentialDataDecryptedObject,
@@ -89,7 +84,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 		private readonly credentialTypes: CredentialTypes,
 		private readonly credentialsOverwrites: CredentialsOverwrites,
 		private readonly credentialsRepository: CredentialsRepository,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
 		private readonly cacheService: CacheService,
 	) {
 		super();
@@ -520,28 +514,35 @@ export class CredentialsHelper extends ICredentialsHelper {
 		return (
 			(await this.cacheService.get(`credential-can-use-secrets:${nodeCredential.id}`, {
 				refreshFn: async () => {
-					const credential = await this.sharedCredentialsRepository.findOne({
+					// Check if the credential belongs to a project owned by a global owner or admin
+					const credential = await this.credentialsRepository.findOne({
 						where: {
-							role: 'credential:owner',
+							id: nodeCredential.id!,
+						},
+						relations: {
 							project: {
 								projectRelations: {
-									role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]) },
+									role: true,
 									user: {
-										role: { slug: In([GLOBAL_OWNER_ROLE.slug, GLOBAL_ADMIN_ROLE.slug]) },
+										role: true,
 									},
 								},
-							},
-							credentials: {
-								id: nodeCredential.id!,
 							},
 						},
 					});
 
-					if (!credential) {
+					if (!credential || !credential.project) {
 						return false;
 					}
 
-					return true;
+					// Check if any project member is a global owner/admin with project owner/admin role
+					const hasOwnerOrAdmin = credential.project.projectRelations?.some(
+						(pr) =>
+							[PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG].includes(pr.role.slug) &&
+							[GLOBAL_OWNER_ROLE.slug, GLOBAL_ADMIN_ROLE.slug].includes(pr.user.role.slug),
+					);
+
+					return hasOwnerOrAdmin ?? false;
 				},
 			})) ?? false
 		);

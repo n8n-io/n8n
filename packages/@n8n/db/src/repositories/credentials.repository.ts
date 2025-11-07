@@ -37,7 +37,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		type Select = Array<keyof CredentialsEntity>;
 
-		const defaultRelations = ['shared', 'shared.project', 'shared.project.projectRelations'];
+		const defaultRelations = ['project', 'project.projectRelations'];
 		const defaultSelect: Select = ['id', 'name', 'type', 'isManaged', 'createdAt', 'updatedAt'];
 
 		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
@@ -87,17 +87,13 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		const { filter } = listQueryOptions;
 
 		if (typeof filter.projectId === 'string' && filter.projectId !== '') {
-			filter.shared = {
-				projectId: filter.projectId,
-			};
-			delete filter.projectId;
+			// projectId is already a direct field on CredentialsEntity, no need to modify
+			// filter.projectId is already correct
 		}
 
 		if (typeof filter.withRole === 'string' && filter.withRole !== '') {
-			filter.shared = {
-				...(filter?.shared ? filter.shared : {}),
-				role: filter.withRole,
-			};
+			// Role information is no longer part of the credentials model
+			// This filter is deprecated in the new architecture
 			delete filter.withRole;
 		}
 
@@ -107,12 +103,10 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 			'id' in filter.user &&
 			typeof filter.user.id === 'string'
 		) {
-			filter.shared = {
-				...(filter?.shared ? filter.shared : {}),
-				project: {
-					projectRelations: {
-						userId: filter.user.id,
-					},
+			filter.project = {
+				...(filter?.project ? filter.project : {}),
+				projectRelations: {
+					userId: filter.user.id,
 				},
 			};
 			delete filter.user;
@@ -124,9 +118,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 
 		if (withSharings) {
 			findManyOptions.relations = {
-				shared: {
-					project: true,
-				},
+				project: true,
 			};
 		}
 
@@ -137,7 +129,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 * Find all credentials that are owned by a personal project.
 	 */
 	async findAllPersonalCredentials(): Promise<CredentialsEntity[]> {
-		return await this.findBy({ shared: { project: { type: 'personal' } } });
+		return await this.findBy({ project: { type: 'personal' } });
 	}
 
 	/**
@@ -149,7 +141,7 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 */
 	async findAllCredentialsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
 		return await this.findBy({
-			shared: { project: { sharedWorkflows: { workflowId } } },
+			project: { workflows: { id: workflowId } },
 		});
 	}
 
@@ -160,6 +152,6 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	 * are part of this project.
 	 */
 	async findAllCredentialsForProject(projectId: string): Promise<CredentialsEntity[]> {
-		return await this.findBy({ shared: { projectId } });
+		return await this.findBy({ projectId });
 	}
 }

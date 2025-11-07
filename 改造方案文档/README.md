@@ -31,7 +31,7 @@
 | **功能完整性** | 4.5/5 | 90%核心功能已覆盖，少数安全和监控细节需补充 |
 | **契合度** | 5/5 | 100%契合n8n项目，完美利用现有前后端分离架构 |
 | **正确性** | 4.5/5 | 95%设计正确，符合行业最佳实践（AWS推荐） |
-| **可行性** | 5/5 | 100%可实施，时间线合理（15-16周） |
+| **可行性** | 5/5 | 100%可实施，时间线合理（12周，优化后节省3-4周） |
 | **创新性** | 5/5 | 垂直RAG服务是创新点，激进改造策略大胆 |
 
 **关键优势：**
@@ -59,7 +59,7 @@
 | **3** | [03-前后端分离架构说明.md](./03-前后端分离架构说明.md) | **前后端分离适配**：WebSocket、CORS、部署 | ⭐⭐⭐⭐ |
 | **4** | [04-安全与性能优化方案.md](./04-安全与性能优化方案.md) | **安全防护**：并发锁、API限流、XSS/CSRF防护、缓存策略 | ⭐⭐⭐⭐⭐ (P0) |
 | **5** | [05-数据库初始化方案.md](./05-数据库初始化方案.md) | **数据库初始化**：全新项目直接创建新架构（无需迁移） | ⭐⭐⭐⭐⭐ (P0) |
-| **6** | [06-实施计划与里程碑.md](./06-实施计划与里程碑.md) | **实施计划**：15-16周详细时间线、风险管理、资源需求 | ⭐⭐⭐⭐⭐ |
+| **6** | [06-实施计划与里程碑.md](./06-实施计划与里程碑.md) | **实施计划（优化版）**：12周详细时间线（节省3-4周）、风险管理、资源需求 | ⭐⭐⭐⭐⭐ |
 | 7 | [07-品牌替换指南.md](./07-品牌替换指南.md) | 品牌定制化（n8n → 全域阁） | ⭐⭐ |
 
 ### 已废弃文档（仅供参考，不要实施）
@@ -200,10 +200,22 @@ CREATE TABLE platform_service (
   - `POST /rest/billing/recharge` - 发起充值
   - `GET /rest/billing/usage` - 获取消费记录
   - `POST /rest/billing/recharge/callback` - 充值回调
-- [ ] **创建 AdminPlatformServicesController**（见 01 文档第 6.3 节）
-  - `GET /rest/admin/platform-services` - 获取所有平台服务
-  - `POST /rest/admin/platform-services` - 创建平台服务
-  - `PATCH /rest/admin/platform-services/:key` - 更新服务
+- [ ] **创建 AdminPlatformServicesController**（见 01 文档第 6.1.1 节）
+  - `GET /rest/admin/platform-services/ai-models` - 获取所有 AI 模型
+  - `POST /rest/admin/platform-services/ai-models` - 创建 AI 模型
+  - `PATCH /rest/admin/platform-services/ai-models/:key` - 更新 AI 模型
+- [ ] **创建 AdminPluginsController**（见 01 文档第 6.1.4 节）
+  - `GET /rest/admin/plugins` - 获取所有插件
+  - `POST /rest/admin/plugins/platform` - 创建平台插件
+  - `POST /rest/admin/plugins/third-party` - 添加第三方插件
+  - `GET /rest/admin/plugins/submissions` - 获取插件审核列表
+  - `POST /rest/admin/plugins/submissions/:key/review` - 审核插件
+- [ ] **创建 PluginsController**（见 01 文档第 6.1.4 节）
+  - `GET /rest/plugins/available` - 获取可用插件列表
+  - `POST /rest/plugins/custom` - 上传自定义插件
+  - `POST /rest/plugins/:key/submit` - 提交插件审核
+  - `GET /rest/plugins/custom` - 获取自定义插件列表
+  - `DELETE /rest/plugins/custom/:key` - 删除自定义插件
 - [ ] **创建 AdminWorkspacesController**
   - `GET /rest/admin/workspaces` - 搜索所有工作空间
   - `POST /rest/admin/workspaces/:id/recharge` - 管理员充值
@@ -344,9 +356,14 @@ CREATE TABLE platform_service (
 
 - [ ] **创建管理员前端（admin-panel）**
   - Dashboard.vue - 统计面板
-  - PlatformServicesPage.vue - 平台服务管理
+  - PlatformServicesPage.vue - AI 模型管理
+  - AdminPluginsPage.vue - 插件管理（平台插件、第三方插件、审核）
   - WorkspacesManagementPage.vue - 工作空间管理
   - 独立部署到 `admin.example.com`
+- [ ] **创建用户端插件市场**
+  - PluginMarketPage.vue - 插件市场（浏览和使用插件）
+  - CustomPluginsPage.vue - 我的自定义插件管理
+  - PluginUploadDialog.vue - 上传插件对话框
 
 ### 第七阶段：企业版功能管理前端（Week 7-9）
 
@@ -400,10 +417,21 @@ CREATE TABLE platform_service (
   - 低余额告警
 - [ ] **后台管理**
   - 管理员登录
-  - 平台服务管理（创建/编辑/禁用）
+  - 平台服务管理（AI 模型创建/编辑/禁用）
+  - 插件管理（创建平台插件、添加第三方插件）
+  - 插件审核（审核用户提交的自定义插件）
   - 工作空间搜索
   - 管理员充值
   - 统计数据查看
+- [ ] **插件系统**
+  - 用户可查看平台插件（按量计费）
+  - 用户可查看第三方插件并配置 API Key
+  - 用户可上传自定义插件（仅自己工作空间可见）
+  - 用户可提交自定义插件审核
+  - 管理员可审核用户提交的插件
+  - 审核通过的插件对所有用户可见
+  - 插件代码安全验证正常工作
+  - 平台插件调用自动扣费
 - [ ] **企业版功能管理**
   - 平台管理员可查看所有功能配置
   - 平台管理员可启用/禁用功能（LDAP/SAML等禁止启用）
@@ -446,42 +474,35 @@ CREATE TABLE platform_service (
 
 ```mermaid
 gantt
-    title n8n 多租户改造时间线（15-16 周）
-    dateFormat  YYYY-MM-DD
-    section 数据库层
-    数据库迁移脚本        :done,  des1, 2025-11-08, 3d
-    索引优化              :done,  des2, 2025-11-11, 2d
-    section Repository+Service层
-    Repository 重构       :active, des3, 2025-11-13, 5d
-    Service 创建          :        des4, 2025-11-18, 5d
-    section API 层
-    Controller 创建       :        des5, 2025-11-25, 5d
-    中间件和工具          :        des6, 2025-12-02, 3d
-    WebSocket 改造        :        des7, 2025-12-05, 2d
-    section 前端层
-    状态管理              :        des8, 2025-12-09, 3d
-    组件开发              :        des9, 2025-12-12, 4d
-    页面响应              :        des10, 2025-12-16, 3d
-    后台管理前端          :        des11, 2025-12-19, 4d
-    section 计费系统
-    计费表创建            :        des12, 2025-12-23, 2d
-    BillingService        :        des13, 2025-12-25, 3d
-    支付对接              :        des14, 2025-12-30, 3d
-    section 平台服务
-    PlatformService       :        des15, 2026-01-06, 3d
-    RAG 服务集成          :        des16, 2026-01-09, 4d
-    section 后台管理
-    Admin Controller      :        des17, 2026-01-13, 3d
-    Admin 前端            :        des18, 2026-01-16, 4d
-    section 测试上线
-    集成测试              :        des19, 2026-01-20, 5d
-    E2E 测试              :        des20, 2026-01-27, 3d
-    性能优化              :        des21, 2026-01-30, 3d
-    安全审计              :        des22, 2026-02-03, 2d
-    灰度发布              :        des23, 2026-02-05, 3d
+    title n8n 多租户改造时间线（优化版，12周）
+    dateFormat YYYY-MM-DD
+    section Week 0
+    准备阶段 :milestone, m0, 2025-11-08, 3d
+    section Week 1
+    数据库完整改造 :milestone, m1, 2025-11-11, 5d
+    section Week 2
+    Entity+Repository :milestone, m2, 2025-11-18, 5d
+    section Week 3-4
+    Service层（两批） :milestone, m3, 2025-11-25, 10d
+    section Week 5-6
+    Controller+Middleware :milestone, m4, 2025-12-09, 10d
+    section Week 7-9
+    前端改造 :milestone, m5, 2025-12-23, 15d
+    section Week 10
+    支付集成 :milestone, m6, 2026-01-13, 5d
+    section Week 11-12
+    测试+优化 :milestone, m7, 2026-01-20, 10d
 ```
 
-**总工期：** 15-16 周（约 4 个月）
+**总工期：** 12 周（约 3 个月） | **原方案：** 15-16 周 | **节省：** 3-4 周
+
+### ⭐ 优化亮点
+
+1. **Week 1 集中处理**：所有数据库改造（包括计费表）一次完成，避免新旧架构兼容问题
+2. **Week 2 同步修改**：Entity 和 Repository 必须一起改，利用 TypeScript 类型检查
+3. **Week 4 关联开发**：计费和平台服务一起做，保证"调用服务立即扣费"的原子性
+4. **Week 7 延后前端**：等后端 API 稳定后再开始，减少返工
+5. **Week 10 支付不阻塞**：支付集成放最后，不阻塞主流程
 
 ---
 

@@ -1,10 +1,10 @@
 import { Column, Entity, OneToMany } from '@n8n/typeorm';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
+import type { CredentialsEntity } from './credentials-entity';
 import type { ProjectRelation } from './project-relation';
-import type { SharedCredentials } from './shared-credentials';
-import type { SharedWorkflow } from './shared-workflow';
 import type { Variables } from './variables';
+import type { WorkflowEntity } from './workflow-entity';
 
 @Entity()
 export class Project extends WithTimestampsAndStringId {
@@ -23,11 +23,11 @@ export class Project extends WithTimestampsAndStringId {
 	@OneToMany('ProjectRelation', 'project')
 	projectRelations: ProjectRelation[];
 
-	@OneToMany('SharedCredentials', 'project')
-	sharedCredentials: SharedCredentials[];
+	@OneToMany('CredentialsEntity', 'project')
+	credentials: CredentialsEntity[];
 
-	@OneToMany('SharedWorkflow', 'project')
-	sharedWorkflows: SharedWorkflow[];
+	@OneToMany('WorkflowEntity', 'project')
+	workflows: WorkflowEntity[];
 
 	@OneToMany('Variables', 'project')
 	variables: Variables[];

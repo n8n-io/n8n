@@ -1,6 +1,6 @@
 import type { User, ExecutionSummaries } from '@n8n/db';
 import { Get, Patch, Post, RestController } from '@n8n/decorators';
-import { PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
+import type { Scope } from '@n8n/permissions';
 
 import { ExecutionService } from './execution.service';
 import { EnterpriseExecutionsService } from './execution.service.ee';
@@ -22,14 +22,7 @@ export class ExecutionsController {
 	) {}
 
 	private async getAccessibleWorkflowIds(user: User, scope: Scope) {
-		if (true) {
-			return await this.workflowSharingService.getSharedWorkflowIds(user, { scopes: [scope] });
-		} else {
-			return await this.workflowSharingService.getSharedWorkflowIds(user, {
-				workflowRoles: ['workflow:owner'],
-				projectRoles: [PROJECT_OWNER_ROLE_SLUG],
-			});
-		}
+		return await this.workflowSharingService.getSharedWorkflowIds(user, { scopes: [scope] });
 	}
 
 	@Get('/', { middlewares: [parseRangeQuery] })

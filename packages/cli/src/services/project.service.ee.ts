@@ -7,8 +7,8 @@ import {
 	ProjectRelation,
 	ProjectRelationRepository,
 	ProjectRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
+	WorkflowRepository,
+	CredentialsRepository,
 } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import {
@@ -64,11 +64,11 @@ class ProjectNotFoundError extends NotFoundError {
 @Service()
 export class ProjectService {
 	constructor(
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 		private readonly cacheService: CacheService,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly moduleRegistry: ModuleRegistry,
@@ -138,35 +138,40 @@ export class ProjectService {
 		}
 
 		// 1. delete or migrate workflows owned by this project
-		const ownedSharedWorkflows = await this.sharedWorkflowRepository.find({
-			where: { projectId: project.id, role: 'workflow:owner' },
+		const ownedWorkflows = await this.workflowRepository.find({
+			where: { projectId: project.id },
+			select: ['id'],
 		});
 
 		if (targetProject) {
-			await this.sharedWorkflowRepository.makeOwner(
-				ownedSharedWorkflows.map((sw) => sw.workflowId),
-				targetProject.id,
+			// Migrate workflows to target project
+			await this.workflowRepository.update(
+				{ projectId: project.id },
+				{ projectId: targetProject.id },
 			);
 		} else {
-			for (const sharedWorkflow of ownedSharedWorkflows) {
-				await workflowService.delete(user, sharedWorkflow.workflowId, true);
+			// Delete workflows
+			for (const workflow of ownedWorkflows) {
+				await workflowService.delete(user, workflow.id, true);
 			}
 		}
 
-		// 2. delete credentials owned by this project
-		const ownedCredentials = await this.sharedCredentialsRepository.find({
-			where: { projectId: project.id, role: 'credential:owner' },
-			relations: { credentials: true },
+		// 2. delete or migrate credentials owned by this project
+		const ownedCredentials = await this.credentialsRepository.find({
+			where: { projectId: project.id },
+			select: ['id'],
 		});
 
 		if (targetProject) {
-			await this.sharedCredentialsRepository.makeOwner(
-				ownedCredentials.map((sc) => sc.credentialsId),
-				targetProject.id,
+			// Migrate credentials to target project
+			await this.credentialsRepository.update(
+				{ projectId: project.id },
+				{ projectId: targetProject.id },
 			);
 		} else {
-			for (const sharedCredential of ownedCredentials) {
-				await credentialsService.delete(user, sharedCredential.credentials.id);
+			// Delete credentials
+			for (const credential of ownedCredentials) {
+				await credentialsService.delete(user, credential.id);
 			}
 		}
 
@@ -176,11 +181,7 @@ export class ProjectService {
 			await folderService.transferAllFoldersToProject(project.id, targetProject.id);
 		}
 
-		// 4. delete shared credentials into this project
-		// Cascading deletes take care of this.
-
-		// 5. delete shared workflows into this project
-		// Cascading deletes take care of this.
+		// 4. Cascading deletes will handle project relations and other dependencies
 
 		// 6. delete or migrate associated data tables
 		if (this.moduleRegistry.isActive('data-table')) {
@@ -201,11 +202,14 @@ export class ProjectService {
 	}
 
 	/**
-	 * Find all the projects where a workflow is accessible,
-	 * along with the roles of a user in those projects.
+	 * Find the project where a workflow is located.
 	 */
-	async findProjectsWorkflowIsIn(workflowId: string) {
-		return await this.sharedWorkflowRepository.findProjectIds(workflowId);
+	async findProjectsWorkflowIsIn(workflowId: string): Promise<string[]> {
+		const workflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			select: ['projectId'],
+		});
+		return workflow?.projectId ? [workflow.projectId] : [];
 	}
 
 	async getAccessibleProjects(user: User): Promise<Project[]> {
@@ -449,16 +453,13 @@ export class ProjectService {
 	}
 
 	async clearCredentialCanUseExternalSecretsCache(projectId: string) {
-		const shares = await this.sharedCredentialsRepository.find({
-			where: {
-				projectId,
-				role: 'credential:owner',
-			},
-			select: ['credentialsId'],
+		const credentials = await this.credentialsRepository.find({
+			where: { projectId },
+			select: ['id'],
 		});
-		if (shares.length) {
+		if (credentials.length) {
 			await this.cacheService.deleteMany(
-				shares.map((share) => `credential-can-use-secrets:${share.credentialsId}`),
+				credentials.map((cred) => `credential-can-use-secrets:${cred.id}`),
 			);
 		}
 	}
@@ -591,5 +592,62 @@ export class ProjectService {
 
 	async getProjectCounts(): Promise<Record<ProjectType, number>> {
 		return await this.projectRepository.getProjectCounts();
+	}
+
+	/**
+	 * 获取工作空间信息（team 类型的 project）
+	 */
+	async getWorkspaceInfo(workspaceId: string): Promise<Project> {
+		const project = await this.projectRepository.findOne({
+			where: { id: workspaceId },
+			relations: { projectRelations: { role: true, user: true } },
+		});
+
+		if (!project) {
+			throw new NotFoundError(`Project not found: ${workspaceId}`);
+		}
+
+		if (project.type !== 'team') {
+			throw new BadRequestError(`Project ${workspaceId} is not a workspace (team project)`);
+		}
+
+		return project;
+	}
+
+	/**
+	 * 检查项目是否为工作空间
+	 */
+	async isWorkspace(projectId: string): Promise<boolean> {
+		const project = await this.projectRepository.findOne({
+			where: { id: projectId },
+			select: ['type'],
+		});
+		return project?.type === 'team';
+	}
+
+	/**
+	 * 获取用户有权限的所有工作空间
+	 */
+	async getUserWorkspaces(userId: string): Promise<Project[]> {
+		return await this.projectRepository.find({
+			where: {
+				type: 'team',
+				projectRelations: {
+					userId,
+				},
+			},
+			relations: { projectRelations: true },
+		});
+	}
+
+	/**
+	 * 获取工作空间的所有成员
+	 */
+	async getWorkspaceMembers(workspaceId: string) {
+		const project = await this.getWorkspaceInfo(workspaceId);
+		return project.projectRelations.map((pr) => ({
+			user: pr.user,
+			role: pr.role,
+		}));
 	}
 }

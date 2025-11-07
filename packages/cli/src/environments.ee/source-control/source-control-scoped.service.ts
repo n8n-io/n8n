@@ -134,10 +134,7 @@ export class SourceControlScopedService {
 		// We build a filter to only select workflows, that belong to a team project
 		// that the user is an admin off
 		return {
-			shared: {
-				role: 'workflow:owner',
-				project: this.getProjectsWithPushScopeByContextFilter(context),
-			},
+			project: this.getProjectsWithPushScopeByContextFilter(context),
 		};
 	}
 
@@ -149,13 +146,10 @@ export class SourceControlScopedService {
 			return {};
 		}
 
-		// We build a filter to only select workflows, that belong to a team project
+		// We build a filter to only select credentials, that belong to a team project
 		// that the user is an admin off
 		return {
-			shared: {
-				role: 'credential:owner',
-				project: this.getProjectsWithPushScopeByContextFilter(context),
-			},
+			project: this.getProjectsWithPushScopeByContextFilter(context),
 		};
 	}
 
@@ -167,8 +161,8 @@ export class SourceControlScopedService {
 			return {};
 		}
 
-		// We build a filter to only select workflows, that belong to a team project
-		// that the user is an admin off
+		// We build a filter to only select workflow tag mappings for workflows that belong to a team project
+		// that the user is an admin of
 		return {
 			workflows: this.getWorkflowsInAdminProjectsFromContextFilter(context),
 		};

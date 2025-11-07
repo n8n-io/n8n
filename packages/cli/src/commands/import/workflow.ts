@@ -2,7 +2,6 @@ import type { WorkflowEntity } from '@n8n/db';
 import {
 	generateNanoId,
 	ProjectRepository,
-	SharedWorkflowRepository,
 	WorkflowRepository,
 	UserRepository,
 	GLOBAL_OWNER_ROLE,
@@ -160,20 +159,20 @@ export class ImportWorkflowsCommand extends BaseCommand<z.infer<typeof flagsSche
 	}
 
 	private async getWorkflowOwner(workflowId: WorkflowId) {
-		const sharing = await Container.get(SharedWorkflowRepository).findOne({
-			where: { workflowId, role: 'workflow:owner' },
+		const workflow = await Container.get(WorkflowRepository).findOne({
+			where: { id: workflowId },
 			relations: { project: true },
 		});
 
-		if (sharing && sharing.project.type === 'personal') {
+		if (workflow && workflow.project && workflow.project.type === 'personal') {
 			const user = await Container.get(UserRepository).findOneByOrFail({
 				projectRelations: {
 					role: { slug: PROJECT_OWNER_ROLE_SLUG },
-					projectId: sharing.projectId,
+					projectId: workflow.projectId,
 				},
 			});
 
-			return { user, project: sharing.project };
+			return { user, project: workflow.project };
 		}
 
 		return {};

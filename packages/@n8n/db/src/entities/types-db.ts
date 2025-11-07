@@ -21,8 +21,6 @@ import { z } from 'zod';
 import type { CredentialsEntity } from './credentials-entity';
 import type { Folder } from './folder';
 import type { Project } from './project';
-import type { SharedCredentials } from './shared-credentials';
-import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { User } from './user';
 import type { WorkflowEntity } from './workflow-entity';
@@ -84,7 +82,6 @@ export interface IWorkflowDb extends IWorkflowBase {
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
-	shared?: SharedCredentials[];
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -134,14 +131,13 @@ export interface CredentialUsedByWorkflow {
 	sharedWithProjects: SlimProject[];
 }
 
-export interface WorkflowWithSharingsAndCredentials extends Omit<WorkflowEntity, 'shared'> {
+export interface WorkflowWithSharingsAndCredentials extends WorkflowEntity {
 	homeProject?: SlimProject;
 	sharedWithProjects?: SlimProject[];
 	usedCredentials?: CredentialUsedByWorkflow[];
-	shared?: SharedWorkflow[];
 }
 
-export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<WorkflowEntity, 'shared'> {
+export interface WorkflowWithSharingsMetaDataAndCredentials extends WorkflowEntity {
 	homeProject?: SlimProject | null;
 	sharedWithProjects: SlimProject[];
 	usedCredentials?: CredentialUsedByWorkflow[];
@@ -229,8 +225,6 @@ export namespace ListQueryDb {
 		type BaseFields = Pick<WorkflowEntity, 'id'> &
 			Partial<Pick<WorkflowEntity, OptionalBaseFields>>;
 
-		type SharedField = Partial<Pick<WorkflowEntity, 'shared'>>;
-
 		type SortingField = 'createdAt' | 'updatedAt' | 'name';
 
 		export type SortOrder = `${SortingField}:asc` | `${SortingField}:desc`;
@@ -239,35 +233,27 @@ export namespace ListQueryDb {
 
 		export type Plain = BaseFields;
 
-		export type WithSharing = BaseFields & SharedField;
+		export type WithSharing = BaseFields;
 
 		export type WithOwnership = BaseFields & OwnedByField;
 
 		type SharedWithField = { sharedWith: SlimUser[]; sharedWithProjects: SlimProject[] };
 
-		export type WithOwnedByAndSharedWith = BaseFields &
-			OwnedByField &
-			SharedWithField &
-			SharedField;
+		export type WithOwnedByAndSharedWith = BaseFields & OwnedByField & SharedWithField;
 
-		export type WithScopes = BaseFields & ScopesField & SharedField;
+		export type WithScopes = BaseFields & ScopesField;
 	}
 
 	export namespace Credentials {
 		type OwnedByField = { homeProject: SlimProject | null };
 
-		type SharedField = Partial<Pick<CredentialsEntity, 'shared'>>;
-
 		type SharedWithField = { sharedWithProjects: SlimProject[] };
 
-		export type WithSharing = CredentialsEntity & SharedField;
+		export type WithSharing = CredentialsEntity;
 
-		export type WithOwnedByAndSharedWith = CredentialsEntity &
-			OwnedByField &
-			SharedWithField &
-			SharedField;
+		export type WithOwnedByAndSharedWith = CredentialsEntity & OwnedByField & SharedWithField;
 
-		export type WithScopes = CredentialsEntity & ScopesField & SharedField;
+		export type WithScopes = CredentialsEntity & ScopesField;
 	}
 }
 

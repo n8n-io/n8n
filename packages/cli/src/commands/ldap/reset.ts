@@ -6,8 +6,8 @@ import {
 	ProjectRelationRepository,
 	ProjectRepository,
 	SettingsRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
+	WorkflowRepository,
+	CredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
 import { Command } from '@n8n/decorators';
@@ -103,21 +103,19 @@ export class Reset extends BaseCommand<z.infer<typeof flagsSchema>> {
 			});
 		}
 
-		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
-			Container.get(SharedWorkflowRepository).find({
-				select: { workflowId: true },
-				where: { projectId: In(personalProjectIds), role: 'workflow:owner' },
+		const [ownedWorkflows, ownedCredentials] = await Promise.all([
+			Container.get(WorkflowRepository).find({
+				select: { id: true },
+				where: { projectId: In(personalProjectIds) },
 			}),
-			Container.get(SharedCredentialsRepository).find({
-				relations: { credentials: true },
-				where: { projectId: In(personalProjectIds), role: 'credential:owner' },
+			Container.get(CredentialsRepository).find({
+				select: { id: true },
+				where: { projectId: In(personalProjectIds) },
 			}),
 		]);
 
-		const ownedCredentials = ownedSharedCredentials.map(({ credentials }) => credentials);
-
-		for (const { workflowId } of ownedSharedWorkflows) {
-			await Container.get(WorkflowService).delete(owner, workflowId, true);
+		for (const workflow of ownedWorkflows) {
+			await Container.get(WorkflowService).delete(owner, workflow.id, true);
 		}
 
 		for (const credential of ownedCredentials) {

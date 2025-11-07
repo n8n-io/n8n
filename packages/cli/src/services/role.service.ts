@@ -1,8 +1,6 @@
 import { CreateRoleDto, UpdateRoleDto } from '@n8n/api-types';
 import {
 	CredentialsEntity,
-	SharedCredentials,
-	SharedWorkflow,
 	User,
 	ListQueryDb,
 	ScopesField,
@@ -219,7 +217,6 @@ export class RoleService {
 		| (CredentialsEntity & ScopesField)
 		| ListQueryDb.Workflow.WithScopes
 		| ListQueryDb.Credentials.WithScopes {
-		const shared = rawEntity.shared;
 		const entity = rawEntity as
 			| (CredentialsEntity & ScopesField)
 			| ListQueryDb.Workflow.WithScopes
@@ -227,7 +224,24 @@ export class RoleService {
 
 		entity.scopes = [];
 
-		if (shared === undefined) {
+		// In the new model, entities have projectId and optionally sharedWith
+		// Build a "shared" array for compatibility with combineResourceScopes
+		const shared: Array<{ projectId: string; project?: { id: string } }> = [];
+
+		if ('projectId' in entity && entity.projectId) {
+			shared.push({ projectId: entity.projectId });
+		}
+
+		// Add sharedWith projects if available
+		if ('sharedWith' in entity && Array.isArray(entity.sharedWith)) {
+			for (const sw of entity.sharedWith) {
+				if ('projectId' in sw && sw.projectId) {
+					shared.push({ projectId: sw.projectId });
+				}
+			}
+		}
+
+		if (shared.length === 0) {
 			return entity;
 		}
 
@@ -248,26 +262,29 @@ export class RoleService {
 	combineResourceScopes(
 		type: 'workflow' | 'credential',
 		user: User,
-		shared: SharedCredentials[] | SharedWorkflow[],
+		shared: Array<{ projectId: string; project?: { id: string } }>,
 		userProjectRelations: ProjectRelation[],
 	): Scope[] {
 		const globalScopes = getAuthPrincipalScopes(user, [type]);
 		const scopesSet: Set<Scope> = new Set(globalScopes);
+
 		for (const sharedEntity of shared) {
-			const pr = userProjectRelations.find(
-				(p) => p.projectId === (sharedEntity.projectId ?? sharedEntity.project.id),
-			);
+			const projectId = sharedEntity.projectId ?? sharedEntity.project?.id;
+			if (!projectId) continue;
+
+			const pr = userProjectRelations.find((p) => p.projectId === projectId);
 			let projectScopes: Scope[] = [];
 			if (pr) {
 				projectScopes = pr.role.scopes.map((s) => s.slug);
 			}
-			const resourceMask = getRoleScopes(sharedEntity.role);
+
+			// In the new model, all project members have the same base scopes from their project role
 			const mergedScopes = combineScopes(
 				{
 					global: globalScopes,
 					project: projectScopes,
 				},
-				{ sharing: resourceMask },
+				{ sharing: [] }, // No per-resource roles in new model
 			);
 			mergedScopes.forEach((s) => scopesSet.add(s));
 		}

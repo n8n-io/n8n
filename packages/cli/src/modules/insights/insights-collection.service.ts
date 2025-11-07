@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { SharedWorkflowRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
@@ -72,7 +72,7 @@ export class InsightsCollectionService {
 	private flushesInProgress: Set<Promise<void>> = new Set();
 
 	constructor(
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
 		private readonly insightsMetadataRepository: InsightsMetadataRepository,
 		private readonly insightsConfig: InsightsConfig,
@@ -186,26 +186,26 @@ export class InsightsCollectionService {
 			workflowIdNames.set(event.workflowId, event.workflowName);
 		}
 
-		const sharedWorkflows = await this.sharedWorkflowRepository.find({
-			where: { workflowId: In([...workflowIdNames.keys()]), role: 'workflow:owner' },
-			relations: { project: true },
+		const workflows = await this.workflowRepository.find({
+			where: { id: In([...workflowIdNames.keys()]) },
+			relations: ['project'],
 		});
 
 		// Upsert metadata for the workflows that are not already in the cache or have
 		// different project or workflow names
-		const metadataToUpsert = sharedWorkflows.reduce((acc, workflow) => {
-			const cachedMetadata = this.cachedMetadata.get(workflow.workflowId);
+		const metadataToUpsert = workflows.reduce((acc, workflow) => {
+			const cachedMetadata = this.cachedMetadata.get(workflow.id);
 			if (
 				!cachedMetadata ||
 				cachedMetadata.projectId !== workflow.projectId ||
 				cachedMetadata.projectName !== workflow.project.name ||
-				cachedMetadata.workflowName !== workflowIdNames.get(workflow.workflowId)
+				cachedMetadata.workflowName !== workflowIdNames.get(workflow.id)
 			) {
 				const metadata = new InsightsMetadata();
 				metadata.projectId = workflow.projectId;
 				metadata.projectName = workflow.project.name;
-				metadata.workflowId = workflow.workflowId;
-				metadata.workflowName = workflowIdNames.get(workflow.workflowId)!;
+				metadata.workflowId = workflow.id;
+				metadata.workflowName = workflowIdNames.get(workflow.id)!;
 
 				acc.push(metadata);
 			}

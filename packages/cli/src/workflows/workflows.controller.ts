@@ -3,12 +3,10 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
 import {
-	SharedWorkflow,
 	WorkflowEntity,
 	ProjectRelationRepository,
 	ProjectRepository,
 	TagRepository,
-	SharedWorkflowRepository,
 	WorkflowRepository,
 	AuthenticatedRequest,
 } from '@n8n/db';
@@ -72,7 +70,6 @@ export class WorkflowsController {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowService: WorkflowService,
 		private readonly workflowExecutionService: WorkflowExecutionService,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectRepository: ProjectRepository,
@@ -156,6 +153,9 @@ export class WorkflowsController {
 				throw new UnexpectedError('No personal project found');
 			}
 
+			// Set the project before saving
+			newWorkflow.projectId = project.id;
+
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);
 
 			if (parentFolderId) {
@@ -169,13 +169,8 @@ export class WorkflowsController {
 				} catch {}
 			}
 
-			const newSharedWorkflow = this.sharedWorkflowRepository.create({
-				role: 'workflow:owner',
-				projectId: project.id,
-				workflow,
-			});
-
-			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
+			// In the new architecture, workflows belong directly to a project via projectId
+			// No need for SharedWorkflow entity
 
 			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
@@ -283,18 +278,8 @@ export class WorkflowsController {
 		const { workflowId } = req.params;
 
 		if (true) {
-			const relations: FindOptionsRelations<WorkflowEntity> = {
-				shared: {
-					project: {
-						projectRelations: true,
-					},
-				},
-			};
-
-			if (!this.globalConfig.tags.disabled) {
-				relations.tags = true;
-			}
-
+			// In the new architecture, we don't need to specify relations here
+			// The workflowFinderService handles fetching the necessary relations
 			const workflow = await this.workflowFinderService.findWorkflowForUser(
 				workflowId,
 				req.user,
@@ -487,33 +472,19 @@ export class WorkflowsController {
 			throw new ForbiddenError();
 		}
 
-		let newShareeIds: string[] = [];
-		const { manager: dbManager } = this.projectRepository;
-		await dbManager.transaction(async (trx) => {
-			const currentPersonalProjectIDs = workflow.shared
-				.filter((sw) => sw.role === 'workflow:editor')
-				.map((sw) => sw.projectId);
-			const newPersonalProjectIDs = shareWithIds;
-
-			const toShare = utils.rightDiff(
-				[currentPersonalProjectIDs, (id) => id],
-				[newPersonalProjectIDs, (id) => id],
-			);
-
-			const toUnshare = utils.rightDiff(
-				[newPersonalProjectIDs, (id) => id],
-				[currentPersonalProjectIDs, (id) => id],
-			);
-
-			await trx.delete(SharedWorkflow, {
-				workflowId,
-				projectId: In(toUnshare),
-			});
-
-			await this.enterpriseWorkflowService.shareWithProjects(workflow.id, toShare, trx);
-
-			newShareeIds = toShare;
+		/**
+		 * @deprecated In the new architecture, workflows cannot be shared with multiple projects.
+		 * They belong to one project. Sharing is managed at the project level by adding users
+		 * to the project. This endpoint should be refactored or removed.
+		 */
+		this.logger.warn('Workflow share endpoint called but is deprecated in new architecture', {
+			workflowId,
+			shareWithIds,
 		});
+
+		// For backward compatibility, we log a warning but don't do anything
+		// The proper way to share workflows is to add users to the workflow's project
+		const newShareeIds: string[] = [];
 
 		this.eventService.emit('workflow-sharing-updated', {
 			workflowId,

@@ -1,11 +1,9 @@
-import type { CredentialsEntity } from '@n8n/db';
 import {
 	User,
 	CredentialsRepository,
+	WorkflowRepository,
 	ProjectRepository,
 	SettingsRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
 	UserRepository,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
@@ -33,25 +31,14 @@ export class Reset extends BaseCommand {
 			owner.id,
 		);
 
-		await Container.get(SharedWorkflowRepository).makeOwnerOfAllWorkflows(personalProject);
-		await Container.get(SharedCredentialsRepository).makeOwnerOfAllCredentials(personalProject);
+		// Transfer all workflows to owner's personal project
+		await Container.get(WorkflowRepository).update({}, { projectId: personalProject.id });
+
+		// Transfer all credentials to owner's personal project
+		await Container.get(CredentialsRepository).update({}, { projectId: personalProject.id });
 
 		await Container.get(UserRepository).deleteAllExcept(owner);
 		await Container.get(UserRepository).save(Object.assign(owner, defaultUserProps));
-
-		const danglingCredentials: CredentialsEntity[] = await Container.get(CredentialsRepository)
-			.createQueryBuilder('credentials')
-			.leftJoinAndSelect('credentials.shared', 'shared')
-			.where('shared.credentialsId is null')
-			.getMany();
-		const newSharedCredentials = danglingCredentials.map((credentials) =>
-			Container.get(SharedCredentialsRepository).create({
-				credentials,
-				projectId: personalProject.id,
-				role: 'credential:owner',
-			}),
-		);
-		await Container.get(SharedCredentialsRepository).save(newSharedCredentials);
 
 		await Container.get(SettingsRepository).update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },

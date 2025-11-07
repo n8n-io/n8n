@@ -19,8 +19,6 @@ import type { ApiKey } from './api-key';
 import type { AuthIdentity } from './auth-identity';
 import type { ProjectRelation } from './project-relation';
 import { Role } from './role';
-import type { SharedCredentials } from './shared-credentials';
-import type { SharedWorkflow } from './shared-workflow';
 import type { IPersonalizationSurveyAnswers } from './types-db';
 import { GLOBAL_OWNER_ROLE } from '../constants';
 import { isValidEmail } from '../utils/is-valid-email';
@@ -66,12 +64,6 @@ export class User extends WithTimestamps implements IUser, AuthPrincipal {
 
 	@OneToMany('ApiKey', 'user')
 	apiKeys: ApiKey[];
-
-	@OneToMany('SharedWorkflow', 'user')
-	sharedWorkflows: SharedWorkflow[];
-
-	@OneToMany('SharedCredentials', 'user')
-	sharedCredentials: SharedCredentials[];
 
 	@OneToMany('ProjectRelation', 'user')
 	projectRelations: ProjectRelation[];

@@ -1,11 +1,4 @@
-import {
-	CredentialsEntity,
-	Project,
-	User,
-	SharedCredentials,
-	ProjectRepository,
-	GLOBAL_OWNER_ROLE,
-} from '@n8n/db';
+import { CredentialsEntity, Project, User, ProjectRepository, GLOBAL_OWNER_ROLE } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -116,24 +109,13 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	private async storeCredential(credential: Partial<CredentialsEntity>, project: Project) {
-		const result = await this.transactionManager.upsert(CredentialsEntity, credential, ['id']);
+		// Set projectId on the credential directly
+		const credentialData = {
+			...credential,
+			projectId: project.id,
+		};
 
-		const sharingExists = await this.transactionManager.existsBy(SharedCredentials, {
-			credentialsId: credential.id,
-			role: 'credential:owner',
-		});
-
-		if (!sharingExists) {
-			await this.transactionManager.upsert(
-				SharedCredentials,
-				{
-					credentialsId: result.identifiers[0].id as string,
-					role: 'credential:owner',
-					projectId: project.id,
-				},
-				['credentialsId', 'projectId'],
-			);
-		}
+		await this.transactionManager.upsert(CredentialsEntity, credentialData, ['id']);
 	}
 
 	private async checkRelations(
@@ -231,20 +213,20 @@ export class ImportCredentialsCommand extends BaseCommand<z.infer<typeof flagsSc
 	}
 
 	private async getCredentialOwner(credentialsId: string) {
-		const sharedCredential = await this.transactionManager.findOne(SharedCredentials, {
-			where: { credentialsId, role: 'credential:owner' },
+		const credential = await this.transactionManager.findOne(CredentialsEntity, {
+			where: { id: credentialsId },
 			relations: { project: true },
 		});
 
-		if (sharedCredential && sharedCredential.project.type === 'personal') {
+		if (credential && credential.project && credential.project.type === 'personal') {
 			const user = await this.transactionManager.findOneByOrFail(User, {
 				projectRelations: {
 					role: { slug: PROJECT_OWNER_ROLE_SLUG },
-					projectId: sharedCredential.projectId,
+					projectId: credential.projectId,
 				},
 			});
 
-			return { user, project: sharedCredential.project };
+			return { user, project: credential.project };
 		}
 
 		return {};

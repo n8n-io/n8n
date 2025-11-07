@@ -1,12 +1,11 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import type { User, WorkflowEntity, ListQueryDb, WorkflowFolderUnionFull } from '@n8n/db';
+import type { User, ListQueryDb, WorkflowFolderUnionFull } from '@n8n/db';
 import {
-	SharedWorkflow,
+	WorkflowEntity,
 	ExecutionRepository,
 	FolderRepository,
 	WorkflowTagMappingRepository,
-	SharedWorkflowRepository,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -46,7 +45,6 @@ import { WorkflowSharingService } from './workflow-sharing.service';
 export class WorkflowService {
 	constructor(
 		private readonly logger: Logger,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly workflowTagMappingRepository: WorkflowTagMappingRepository,
 		private readonly binaryDataService: BinaryDataService,
@@ -153,11 +151,22 @@ export class WorkflowService {
 	}
 
 	private async addSharedRelation(workflows: ListQueryDb.Workflow.WithSharing[]): Promise<void> {
+		// In the new architecture, workflows have a direct project relation
+		// We need to fetch the full project data including projectRelations
 		const workflowIds = workflows.map((workflow) => workflow.id);
-		const relations = await this.sharedWorkflowRepository.getAllRelationsForWorkflows(workflowIds);
+
+		const workflowsWithProject = await this.workflowRepository.find({
+			where: { id: In(workflowIds) },
+			relations: ['project', 'project.projectRelations'],
+			select: ['id', 'projectId'],
+		});
 
 		workflows.forEach((workflow) => {
-			workflow.shared = relations.filter((relation) => relation.workflowId === workflow.id);
+			const workflowWithProject = workflowsWithProject.find((w) => w.id === workflow.id);
+			if (workflowWithProject) {
+				// @ts-expect-error - Type mismatch due to migration from SharedWorkflow to direct project relation
+				workflow.project = workflowWithProject.project;
+			}
 		});
 	}
 
@@ -181,6 +190,7 @@ export class WorkflowService {
 			though. So to avoid leaking the information we just delete it.
 		*/
 		workflows.forEach((workflow) => {
+			// @ts-expect-error - Type mismatch due to migration from SharedWorkflow to direct project relation
 			delete workflow.shared;
 		});
 	}
@@ -301,13 +311,18 @@ export class WorkflowService {
 		]);
 
 		if (parentFolderId) {
-			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
+			// Get the workflow's project - workflows now have a direct projectId
+			const workflowWithProject = await this.workflowRepository.findOne({
+				where: { id: workflow.id },
+				relations: ['project'],
+				select: ['id', 'projectId'],
+			});
+
+			const projectId = workflowWithProject?.projectId;
+
 			if (parentFolderId !== PROJECT_ROOT) {
 				try {
-					await this.folderRepository.findOneOrFailFolderInProject(
-						parentFolderId,
-						project?.id ?? '',
-					);
+					await this.folderRepository.findOneOrFailFolderInProject(parentFolderId, projectId ?? '');
 				} catch (e) {
 					throw new FolderNotFoundError(parentFolderId);
 				}
@@ -525,13 +540,36 @@ export class WorkflowService {
 
 	async getWorkflowScopes(user: User, workflowId: string): Promise<Scope[]> {
 		const userProjectRelations = await this.projectService.getProjectRelationsForUser(user);
-		const shared = await this.sharedWorkflowRepository.find({
-			where: {
-				projectId: In([...new Set(userProjectRelations.map((pr) => pr.projectId))]),
-				workflowId,
-			},
+
+		// Get the workflow to find its project
+		const workflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			select: ['id', 'projectId'],
 		});
-		return this.roleService.combineResourceScopes('workflow', user, shared, userProjectRelations);
+
+		if (!workflow) {
+			return [];
+		}
+
+		// Check if user has access to this workflow's project
+		const projectRelation = userProjectRelations.find((pr) => pr.projectId === workflow.projectId);
+		if (!projectRelation) {
+			return [];
+		}
+
+		// Create a mock shared workflow object for combineResourceScopes
+		const mockSharedWorkflow = {
+			workflowId: workflow.id,
+			projectId: workflow.projectId,
+			role: 'workflow:owner' as const, // In new architecture, all workflows in a project have same access level
+		};
+
+		return this.roleService.combineResourceScopes(
+			'workflow',
+			user,
+			[mockSharedWorkflow],
+			userProjectRelations,
+		);
 	}
 
 	/**
@@ -542,50 +580,23 @@ export class WorkflowService {
 	async transferAll(fromProjectId: string, toProjectId: string, trx?: EntityManager) {
 		trx = trx ?? this.workflowRepository.manager;
 
-		// Get all shared workflows for both projects.
-		const allSharedWorkflows = await trx.findBy(SharedWorkflow, {
-			projectId: In([fromProjectId, toProjectId]),
+		// In the new architecture, workflows belong directly to a project via projectId
+		// Simply update all workflows from the fromProject to the toProject
+
+		// Get all workflows that belong to the from-project
+		const fromProjectWorkflows = await trx.find(WorkflowEntity, {
+			where: { projectId: fromProjectId },
+			select: ['id'],
 		});
-		const sharedWorkflowsOfFromProject = allSharedWorkflows.filter(
-			(sw) => sw.projectId === fromProjectId,
-		);
 
-		// For all workflows that the from-project owns transfer the ownership to
-		// the to-project.
-		// This will override whatever relationship the to-project already has to
-		// the resources at the moment.
+		const workflowIds = fromProjectWorkflows.map((w) => w.id);
 
-		const ownedWorkflowIds = sharedWorkflowsOfFromProject
-			.filter((sw) => sw.role === 'workflow:owner')
-			.map((sw) => sw.workflowId);
+		if (workflowIds.length === 0) {
+			return;
+		}
 
-		await this.sharedWorkflowRepository.makeOwner(ownedWorkflowIds, toProjectId, trx);
-
-		// Delete the relationship to the from-project.
-		await this.sharedWorkflowRepository.deleteByIds(ownedWorkflowIds, fromProjectId, trx);
-
-		// Transfer relationships that are not `workflow:owner`.
-		// This will NOT override whatever relationship the from-project already
-		// has to the resource at the moment.
-		const sharedWorkflowIdsOfTransferee = allSharedWorkflows
-			.filter((sw) => sw.projectId === toProjectId)
-			.map((sw) => sw.workflowId);
-
-		// All resources that are shared with the from-project, but not with the
-		// to-project.
-		const sharedWorkflowsToTransfer = sharedWorkflowsOfFromProject.filter(
-			(sw) =>
-				sw.role !== 'workflow:owner' && !sharedWorkflowIdsOfTransferee.includes(sw.workflowId),
-		);
-
-		await trx.insert(
-			SharedWorkflow,
-			sharedWorkflowsToTransfer.map((sw) => ({
-				workflowId: sw.workflowId,
-				projectId: toProjectId,
-				role: sw.role,
-			})),
-		);
+		// Transfer ownership by updating the projectId
+		await trx.update(WorkflowEntity, { id: In(workflowIds) }, { projectId: toProjectId });
 	}
 
 	async getWorkflowsWithNodesIncluded(user: User, nodeTypes: string[], includeNodes = false) {

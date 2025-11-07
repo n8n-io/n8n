@@ -225,14 +225,14 @@ export = {
 				'meta',
 				'versionId',
 				'triggerCount',
-				'shared',
+				'projectId',
 			];
 
 			if (!excludePinnedData) {
 				selectFields.push('pinData');
 			}
 
-			const relations = ['shared'];
+			const relations: string[] = ['project'];
 			if (!Container.get(GlobalConfig).tags.disabled) {
 				relations.push('tags');
 			}

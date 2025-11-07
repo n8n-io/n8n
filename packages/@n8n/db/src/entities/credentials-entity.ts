@@ -1,8 +1,8 @@
-import { Column, Entity, Index, OneToMany } from '@n8n/typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
 import { IsObject, IsString, Length } from 'class-validator';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
-import type { SharedCredentials } from './shared-credentials';
+import type { Project } from './project';
 import type { ICredentialsDb } from './types-db';
 
 @Entity()
@@ -25,8 +25,12 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	})
 	type: string;
 
-	@OneToMany('SharedCredentials', 'credentials')
-	shared: SharedCredentials[];
+	@ManyToOne('Project', 'credentials', { nullable: false })
+	@JoinColumn({ name: 'projectId' })
+	project: Project;
+
+	@Column({ type: 'varchar', length: 36, name: 'projectId' })
+	projectId: string;
 
 	/**
 	 * Whether the credential is managed by n8n. We currently use this flag
@@ -35,9 +39,4 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	 */
 	@Column({ default: false })
 	isManaged: boolean;
-
-	toJSON() {
-		const { shared, ...rest } = this;
-		return rest;
-	}
 }

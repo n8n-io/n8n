@@ -4,8 +4,8 @@ import {
 	Project,
 	User,
 	ProjectRelationRepository,
-	SharedWorkflowRepository,
 	UserRepository,
+	WorkflowRepository,
 	Role,
 	Scope,
 } from '@n8n/db';
@@ -19,7 +19,7 @@ export class OwnershipService {
 		private cacheService: CacheService,
 		private userRepository: UserRepository,
 		private projectRelationRepository: ProjectRelationRepository,
-		private sharedWorkflowRepository: SharedWorkflowRepository,
+		private workflowRepository: WorkflowRepository,
 	) {}
 
 	// To make use of the cache service we should store POJOs, these
@@ -82,16 +82,16 @@ export class OwnershipService {
 			if (project) return project;
 		}
 
-		const sharedWorkflow = await this.sharedWorkflowRepository.findOneOrFail({
-			where: { workflowId, role: 'workflow:owner' },
+		const workflow = await this.workflowRepository.findOneOrFail({
+			where: { id: workflowId },
 			relations: ['project'],
 		});
 
 		void this.cacheService.setHash('workflow-project', {
-			[workflowId]: this.copyProject(sharedWorkflow.project),
+			[workflowId]: this.copyProject(workflow.project),
 		});
 
-		return sharedWorkflow.project;
+		return workflow.project;
 	}
 
 	async setWorkflowProjectCacheEntry(workflowId: string, project: Project): Promise<Project> {
@@ -137,39 +137,29 @@ export class OwnershipService {
 	):
 		| ListQueryDb.Workflow.WithOwnedByAndSharedWith
 		| ListQueryDb.Credentials.WithOwnedByAndSharedWith {
-		const shared = rawEntity.shared;
 		const entity = rawEntity as
 			| ListQueryDb.Workflow.WithOwnedByAndSharedWith
 			| ListQueryDb.Credentials.WithOwnedByAndSharedWith;
 
+		// Initialize with defaults
 		Object.assign(entity, {
 			homeProject: null,
 			sharedWithProjects: [],
 		});
 
-		if (shared === undefined) {
-			return entity;
+		// The entity should have a project relation loaded
+		if ('project' in rawEntity && rawEntity.project) {
+			// Set the home project (owner project)
+			entity.homeProject = {
+				id: rawEntity.project.id,
+				type: rawEntity.project.type,
+				name: rawEntity.project.name,
+				icon: rawEntity.project.icon,
+			};
 		}
 
-		for (const sharedEntity of shared) {
-			const { project, role } = sharedEntity;
-
-			if (role === 'credential:owner' || role === 'workflow:owner') {
-				entity.homeProject = {
-					id: project.id,
-					type: project.type,
-					name: project.name,
-					icon: project.icon,
-				};
-			} else {
-				entity.sharedWithProjects.push({
-					id: project.id,
-					type: project.type,
-					name: project.name,
-					icon: project.icon,
-				});
-			}
-		}
+		// Note: sharedWithProjects would need to be populated by a separate query
+		// if we need to show sharing information. For now, we just initialize to empty array.
 
 		return entity;
 	}

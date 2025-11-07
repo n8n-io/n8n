@@ -38,6 +38,7 @@ import { AddActivatedAtUserSetting1717498465931 } from './1717498465931-AddActiv
 import { AddApiKeysTable1724951148974 } from './1724951148974-AddApiKeysTable';
 import { AddMissingPrimaryKeyOnAnnotationTagMapping1728659839644 } from './1728659839644-AddMissingPrimaryKeyOnAnnotationTagMapping';
 import { AddProjectIcons1729607673469 } from './1729607673469-AddProjectIcons';
+import { CreateTelemetryEventTable1730804400000 } from './1730804400000-CreateTelemetryEventTable';
 import { AddDescriptionToTestDefinition1731404028106 } from './1731404028106-AddDescriptionToTestDefinition';
 import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-MigrateTestDefinitionKeyToString';
 import { CreateFolderTable1738709609940 } from './1738709609940-CreateFolderTable';
@@ -45,7 +46,6 @@ import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateP
 import { AddScopesColumnToApiKeys1742918400000 } from './1742918400000-AddScopesColumnToApiKeys';
 import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
 import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
-import { CreateTelemetryEventTable1730804400000 } from './1730804400000-CreateTelemetryEventTable';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -106,6 +106,10 @@ import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-Cr
 import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
+import { MultitenantTransformation1762511301780 } from '../common/1762511301780-MultitenantTransformation';
+import { CreateBillingTables1762511302000 } from '../common/1762511302000-CreateBillingTables';
+import { CreatePlatformServiceTables1762511302220 } from '../common/1762511302220-CreatePlatformServiceTables';
+import { CreatePlatformFeatureTables1762511302440 } from '../common/1762511302440-CreatePlatformFeatureTables';
 import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
 import { AddWorkflowDescriptionColumn1762177736257 } from './../common/1762177736257-AddWorkflowDescriptionColumn';
 
@@ -219,6 +223,10 @@ const sqliteMigrations: Migration[] = [
 	ChangeDependencyInfoToJson1761655473000,
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
+	MultitenantTransformation1762511301780,
+	CreateBillingTables1762511302000,
+	CreatePlatformServiceTables1762511302220,
+	CreatePlatformFeatureTables1762511302440,
 ];
 
 export { sqliteMigrations };

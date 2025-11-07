@@ -72,7 +72,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const result = await this.find({
 			select: { id: true },
 			where: { active: true },
-			relations: { shared: { project: { projectRelations: true } } },
+			relations: { project: { projectRelations: true } },
 		});
 
 		return result.map(({ id }) => id);
@@ -97,7 +97,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },
-			relations: { shared: { project: { projectRelations: true } } },
+			relations: { project: { projectRelations: true } },
 		});
 	}
 
@@ -577,7 +577,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		filter: ListQuery.Options['filter'],
 	): void {
 		if (typeof filter?.projectId === 'string' && filter.projectId !== '') {
-			qb.innerJoin('workflow.shared', 'shared').andWhere('shared.projectId = :projectId', {
+			qb.andWhere('workflow.projectId = :projectId', {
 				projectId: filter.projectId,
 			});
 		}
@@ -600,28 +600,20 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	private applyOwnedByRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
-		// Check if 'shared' join already exists from project filter
-		if (!qb.expressionMap.aliases.find((alias) => alias.name === 'shared')) {
-			qb.leftJoin('workflow.shared', 'shared');
+		// Check if 'project' join already exists
+		if (!qb.expressionMap.aliases.find((alias) => alias.name === 'project')) {
+			qb.leftJoin('workflow.project', 'project');
 		}
 
 		// Add the necessary selects
 		qb.addSelect([
-			'shared.role',
-			'shared.createdAt',
-			'shared.updatedAt',
-			'shared.workflowId',
-			'shared.projectId',
-		])
-			.leftJoin('shared.project', 'project')
-			.addSelect([
-				'project.id',
-				'project.name',
-				'project.type',
-				'project.icon',
-				'project.createdAt',
-				'project.updatedAt',
-			]);
+			'project.id',
+			'project.name',
+			'project.type',
+			'project.icon',
+			'project.createdAt',
+			'project.updatedAt',
+		]);
 	}
 
 	private applySelect(

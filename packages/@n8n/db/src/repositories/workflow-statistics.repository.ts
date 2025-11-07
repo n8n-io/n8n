@@ -121,10 +121,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 		return await this.count({
 			where: {
 				workflow: {
-					shared: {
-						role: 'workflow:owner',
-						project: { projectRelations: { userId, role: { slug: PROJECT_OWNER_ROLE_SLUG } } },
-					},
+					project: { projectRelations: { userId, role: { slug: PROJECT_OWNER_ROLE_SLUG } } },
 					active: true,
 				},
 				name: StatisticsNames.productionSuccess,

@@ -13,8 +13,8 @@ import {
 	User,
 	AuthIdentity,
 	ProjectRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
+	CredentialsRepository,
+	WorkflowRepository,
 	UserRepository,
 	AuthenticatedRequest,
 	GLOBAL_ADMIN_ROLE,
@@ -51,8 +51,8 @@ export class UsersController {
 	constructor(
 		private readonly logger: Logger,
 		private readonly externalHooks: ExternalHooks,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
-		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
+		private readonly credentialsRepository: CredentialsRepository,
+		private readonly workflowRepository: WorkflowRepository,
 		private readonly userRepository: UserRepository,
 		private readonly authService: AuthService,
 		private readonly userService: UserService,
@@ -268,21 +268,19 @@ export class UsersController {
 			await this.projectService.clearCredentialCanUseExternalSecretsCache(transfereeProject.id);
 		}
 
-		const [ownedSharedWorkflows, ownedSharedCredentials] = await Promise.all([
-			this.sharedWorkflowRepository.find({
-				select: { workflowId: true },
-				where: { projectId: personalProjectToDelete.id, role: 'workflow:owner' },
+		const [ownedWorkflows, ownedCredentials] = await Promise.all([
+			this.workflowRepository.find({
+				select: { id: true },
+				where: { projectId: personalProjectToDelete.id },
 			}),
-			this.sharedCredentialsRepository.find({
-				relations: { credentials: true },
-				where: { projectId: personalProjectToDelete.id, role: 'credential:owner' },
+			this.credentialsRepository.find({
+				select: { id: true },
+				where: { projectId: personalProjectToDelete.id },
 			}),
 		]);
 
-		const ownedCredentials = ownedSharedCredentials.map(({ credentials }) => credentials);
-
-		for (const { workflowId } of ownedSharedWorkflows) {
-			await this.workflowService.delete(userToDelete, workflowId, true);
+		for (const workflow of ownedWorkflows) {
+			await this.workflowService.delete(userToDelete, workflow.id, true);
 		}
 
 		for (const credential of ownedCredentials) {

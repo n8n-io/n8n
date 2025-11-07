@@ -1,14 +1,6 @@
-import type { SharedWorkflow, IWorkflowDb } from '@n8n/db';
-import {
-	Project,
-	User,
-	ProjectRepository,
-	SharedWorkflowRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import type { IWorkflowDb } from '@n8n/db';
+import { Project, User, ProjectRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import type { WorkflowSharingRole } from '@n8n/permissions';
-import type { DeepPartial } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -40,38 +32,32 @@ export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb 
 }
 
 /**
- * Store a workflow in the DB (without a trigger) and optionally assign it to a user.
+ * Store a workflow in the DB (without a trigger) and optionally assign it to a project.
  * @param attributes workflow attributes
- * @param user user to assign the workflow to
+ * @param userOrProject user or project to assign the workflow to
  */
 export async function createWorkflow(
 	attributes: Partial<IWorkflowDb> = {},
 	userOrProject?: User | Project,
 ) {
-	const workflow = await Container.get(WorkflowRepository).save(newWorkflow(attributes));
+	let projectId: string | undefined;
 
 	if (userOrProject instanceof User) {
-		const user = userOrProject;
-		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(user.id);
-		await Container.get(SharedWorkflowRepository).save(
-			Container.get(SharedWorkflowRepository).create({
-				project,
-				workflow,
-				role: 'workflow:owner',
-			}),
+		const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
+			userOrProject.id,
 		);
+		projectId = project.id;
+	} else if (userOrProject instanceof Project) {
+		projectId = userOrProject.id;
 	}
 
-	if (userOrProject instanceof Project) {
-		const project = userOrProject;
-		await Container.get(SharedWorkflowRepository).save(
-			Container.get(SharedWorkflowRepository).create({
-				project,
-				workflow,
-				role: 'workflow:owner',
-			}),
-		);
-	}
+	// Set projectId directly on the workflow
+	const workflowData = {
+		...newWorkflow(attributes),
+		...(projectId && { projectId }),
+	};
+
+	const workflow = await Container.get(WorkflowRepository).save(workflowData);
 
 	return workflow;
 }
@@ -88,44 +74,45 @@ export async function createManyWorkflows(
 	return await Promise.all(workflowRequests);
 }
 
-export async function shareWorkflowWithUsers(workflow: IWorkflowBase, users: User[]) {
-	const sharedWorkflows: Array<DeepPartial<SharedWorkflow>> = await Promise.all(
-		users.map(async (user) => {
-			const project = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
-				user.id,
-			);
-			return {
-				projectId: project.id,
-				workflowId: workflow.id,
-				role: 'workflow:editor',
-			};
-		}),
+/**
+ * @deprecated In the new architecture, workflows belong to a single project.
+ * To share access, add users to the project via projectRelations instead.
+ */
+export async function shareWorkflowWithUsers(_workflow: IWorkflowBase, _users: User[]) {
+	// Note: This function is deprecated in the new architecture.
+	// Workflows now belong directly to a project via projectId.
+	// To grant access, use ProjectRepository to add users to the project's projectRelations.
+	console.warn(
+		'shareWorkflowWithUsers is deprecated. Use ProjectRepository to manage project members instead.',
 	);
-	return await Container.get(SharedWorkflowRepository).save(sharedWorkflows);
+	return [];
 }
 
+/**
+ * @deprecated In the new architecture, a workflow can only belong to one project.
+ * Use createWorkflow with the target project instead.
+ */
 export async function shareWorkflowWithProjects(
-	workflow: IWorkflowBase,
-	projectsWithRole: Array<{ project: Project; role?: WorkflowSharingRole }>,
+	_workflow: IWorkflowBase,
+	_projectsWithRole: Array<{ project: Project }>,
 ) {
-	const newSharedWorkflow = await Promise.all(
-		projectsWithRole.map(async ({ project, role }) => {
-			return Container.get(SharedWorkflowRepository).create({
-				workflowId: workflow.id,
-				role: role ?? 'workflow:editor',
-				projectId: project.id,
-			});
-		}),
+	// Note: This function is deprecated in the new architecture.
+	// A workflow can only belong to one project via the projectId field.
+	console.warn(
+		'shareWorkflowWithProjects is deprecated. A workflow belongs to only one project in the new architecture.',
 	);
-
-	return await Container.get(SharedWorkflowRepository).save(newSharedWorkflow);
+	return [];
 }
 
+/**
+ * Get the project that owns this workflow and its members.
+ */
 export async function getWorkflowSharing(workflow: IWorkflowBase) {
-	return await Container.get(SharedWorkflowRepository).find({
-		where: { workflowId: workflow.id },
-		relations: { project: true },
+	const fullWorkflow = await Container.get(WorkflowRepository).findOne({
+		where: { id: workflow.id },
+		relations: { project: { projectRelations: true } },
 	});
+	return fullWorkflow?.project ? [fullWorkflow.project] : [];
 }
 
 /**
@@ -179,8 +166,15 @@ export async function getAllWorkflows() {
 	return await Container.get(WorkflowRepository).find();
 }
 
+/**
+ * @deprecated Use getAllWorkflows() instead. In the new architecture,
+ * all workflows are directly associated with projects via projectId.
+ */
 export async function getAllSharedWorkflows() {
-	return await Container.get(SharedWorkflowRepository).find();
+	console.warn('getAllSharedWorkflows is deprecated. Use getAllWorkflows() instead.');
+	return await Container.get(WorkflowRepository).find({
+		relations: { project: true },
+	});
 }
 
 export const getWorkflowById = async (id: string) =>

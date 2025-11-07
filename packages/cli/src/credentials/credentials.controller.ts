@@ -6,12 +6,8 @@ import {
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import {
-	SharedCredentials,
-	ProjectRelationRepository,
-	SharedCredentialsRepository,
-	AuthenticatedRequest,
-} from '@n8n/db';
+import { ProjectRelationRepository, CredentialsRepository, AuthenticatedRequest } from '@n8n/db';
+import { Container } from '@n8n/di';
 import {
 	Delete,
 	Get,
@@ -54,7 +50,7 @@ export class CredentialsController {
 		private readonly namingService: NamingService,
 		private readonly logger: Logger,
 		private readonly userManagementMailer: UserManagementMailer,
-		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly eventService: EventService,
 		private readonly credentialsFinderService: CredentialsFinderService,
@@ -66,19 +62,12 @@ export class CredentialsController {
 		_res: unknown,
 		@Query query: CredentialsGetManyRequestQuery,
 	) {
-		const credentials = await this.credentialsService.getMany(req.user, {
+		return await this.credentialsService.getMany(req.user, {
 			listQueryOptions: req.listQueryOptions,
 			includeScopes: query.includeScopes,
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
 		});
-		credentials.forEach((c) => {
-			// @ts-expect-error: This is to emulate the old behavior of removing the shared
-			// field as part of `addOwnedByAndSharedWith`. We need this field in `addScopes`
-			// though. So to avoid leaking the information we just delete it.
-			delete c.shared;
-		});
-		return credentials;
 	}
 
 	@Get('/for-workflow')
@@ -110,7 +99,7 @@ export class CredentialsController {
 		@Param('credentialId') credentialId: string,
 		@Query query: CredentialsGetOneRequestQuery,
 	) {
-		const { shared, ...credential } = true
+		const credential = true
 			? await this.enterpriseCredentialsService.getOne(
 					req.user,
 					credentialId,
@@ -179,9 +168,11 @@ export class CredentialsController {
 			req.user,
 		);
 
-		const project = await this.sharedCredentialsRepository.findCredentialOwningProject(
-			newCredential.id,
-		);
+		const credential = await this.credentialsRepository.findOne({
+			where: { id: newCredential.id },
+			relations: ['project'],
+		});
+		const project = credential?.project;
 
 		this.eventService.emit('credentials-created', {
 			user: req.user,
@@ -246,7 +237,7 @@ export class CredentialsController {
 		}
 
 		// Remove the encrypted data as it is not needed in the frontend
-		const { data, shared, ...rest } = responseData;
+		const { data, ...rest } = responseData;
 
 		this.logger.debug('Credential updated', { credentialId });
 
@@ -319,11 +310,17 @@ export class CredentialsController {
 		let amountRemoved: number | null = null;
 		let newShareeIds: string[] = [];
 
-		const { manager: dbManager } = this.sharedCredentialsRepository;
+		// Get current sharing state from database using raw query
+		const { manager: dbManager } = this.credentialsRepository;
+
 		await dbManager.transaction(async (trx) => {
-			const currentProjectIds = credential.shared
-				.filter((sc) => sc.role === 'credential:user')
-				.map((sc) => sc.projectId);
+			// Query current shared projects
+			const currentSharing = (await trx.query(
+				'SELECT projectId FROM credentials_shared_with_projects WHERE credentialsId = ?',
+				[credentialId],
+			)) as Array<{ projectId: string }>;
+
+			const currentProjectIds = currentSharing.map((row) => row.projectId);
 			const newProjectIds = shareWithIds;
 
 			const toShare = utils.rightDiff([currentProjectIds, (id) => id], [newProjectIds, (id) => id]);
@@ -332,20 +329,27 @@ export class CredentialsController {
 				[currentProjectIds, (id) => id],
 			);
 
-			const deleteResult = await trx.delete(SharedCredentials, {
-				credentialsId: credentialId,
-				projectId: In(toUnshare),
-			});
+			// Delete unshared records
+			if (toUnshare.length > 0) {
+				const deleteResult = await trx
+					.createQueryBuilder()
+					.delete()
+					.from('credentials_shared_with_projects')
+					.where('credentialsId = :credentialId', { credentialId })
+					.andWhere('projectId IN (:...projectIds)', { projectIds: toUnshare })
+					.execute();
+
+				if (deleteResult.affected) {
+					amountRemoved = deleteResult.affected;
+				}
+			}
+
 			await this.enterpriseCredentialsService.shareWithProjects(
 				req.user,
 				credential.id,
 				toShare,
 				trx,
 			);
-
-			if (deleteResult.affected) {
-				amountRemoved = deleteResult.affected;
-			}
 
 			newShareeIds = toShare;
 		});
