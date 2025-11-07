@@ -192,6 +192,14 @@ watch(descriptionValue, (newValue) => {
 					</div>
 					<footer :class="$style['popover-footer']">
 						<N8nButton
+							:label="i18n.baseText('generic.cancel')"
+							:size="'small'"
+							:disabled="isSaving"
+							type="tertiary"
+							data-test-id="workflow-description-cancel-button"
+							@click="cancel"
+						/>
+						<N8nButton
 							:label="i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText')"
 							:size="'small'"
 							:loading="isSaving"
@@ -199,14 +207,6 @@ watch(descriptionValue, (newValue) => {
 							type="primary"
 							data-test-id="workflow-description-save-button"
 							@click="save"
-						/>
-						<N8nButton
-							:label="i18n.baseText('generic.cancel')"
-							:size="'small'"
-							:disabled="isSaving"
-							type="tertiary"
-							data-test-id="workflow-description-cancel-button"
-							@click="cancel"
 						/>
 					</footer>
 				</template>
