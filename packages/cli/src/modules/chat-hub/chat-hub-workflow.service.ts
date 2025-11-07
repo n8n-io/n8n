@@ -198,17 +198,24 @@ export class ChatHubWorkflowService {
 		];
 
 		const nodeNames = new Set(nodes.map((node) => node.name));
-
-		tools.forEach((tool, i) => {
-			tool.name = this.getUniqueNodeName(tool.name, nodeNames);
-			tool.position = [
+		const distinctTools = tools.map((tool, i) => {
+			// Spread out the tool nodes so that they don't overlap on the canvas
+			const position = [
 				700 + Math.floor(i / 3) * 60 + (i % 3) * 120,
 				300 + Math.floor(i / 3) * 120 - (i % 3) * 30,
 			];
 
-			nodes.push(tool);
-			nodeNames.add(tool.name);
+			const name = this.getUniqueNodeName(tool.name, nodeNames);
+			nodeNames.add(name);
+
+			return {
+				...tool,
+				name,
+				position,
+			};
 		});
+
+		nodes.push.apply(nodes, distinctTools);
 
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
@@ -246,8 +253,8 @@ export class ChatHubWorkflowService {
 					],
 				],
 			},
-			...tools.reduce<IConnections>((acc, toolNode) => {
-				acc[toolNode.name] = {
+			...distinctTools.reduce<IConnections>((acc, tool) => {
+				acc[tool.name] = {
 					[NodeConnectionTypes.AiTool]: [
 						[
 							{

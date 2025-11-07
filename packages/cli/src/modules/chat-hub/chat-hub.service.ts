@@ -521,7 +521,6 @@ export class ChatHubService {
 			sessionId,
 			messageId,
 			model,
-			provider,
 		);
 	}
 
