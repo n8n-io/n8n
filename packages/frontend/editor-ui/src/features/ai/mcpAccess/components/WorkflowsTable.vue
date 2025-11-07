@@ -156,8 +156,10 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 							:class="$style['parent-folder']"
 							data-test-id="mcp-workflow-grandparent-folder"
 						>
-							<span :class="$style.elipsis">...</span>
-							<span :class="$style.separator">/</span>
+							<span :class="$style.ellipsis">...</span>
+							<span :class="$style.separator" data-test-id="mcp-workflow-ellipsis-separator"
+								>/</span
+							>
 						</span>
 						<span v-if="item.parentFolder" :class="$style['parent-folder']">
 							<N8nLink
@@ -179,7 +181,12 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 								</N8nText>
 							</span>
 						</span>
-						<span v-if="item.parentFolder" :class="$style['separator']">/</span>
+						<span
+							v-if="item.parentFolder"
+							:class="$style['separator']"
+							data-test-id="mcp-workflow-folder-separator"
+							>/</span
+						>
 						<N8nLink
 							data-test-id="mcp-workflow-name-link"
 							:new-window="true"
@@ -279,7 +286,8 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 	align-items: center;
 	gap: var(--spacing--4xs);
 
-	.separator {
+	.separator,
+	.ellipsis {
 		padding-bottom: 1px;
 		color: var(--color--text--tint-1);
 	}

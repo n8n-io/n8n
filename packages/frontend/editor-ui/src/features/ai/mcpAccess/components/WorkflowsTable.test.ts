@@ -141,6 +141,121 @@ describe('WorkflowsTable', () => {
 			);
 		});
 
+		it('should render only workflow link if no parent folder', () => {
+			const workflow = mockWorkflow('1', {
+				parentFolder: undefined,
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				pinia,
+				props: {
+					workflows: [workflow],
+					loading: false,
+				},
+			});
+
+			// Should render workflow link
+			const nameLink = getByTestId('mcp-workflow-name-link');
+			expect(nameLink).toBeInTheDocument();
+			expect(nameLink).toHaveTextContent(workflow.name);
+
+			// Should not render folder elements, separators or ellipsis
+			expect(queryByTestId('mcp-workflow-folder-link')).not.toBeInTheDocument();
+			expect(queryByTestId('mcp-workflow-folder-name')).not.toBeInTheDocument();
+			expect(queryByTestId('mcp-workflow-folder-separator')).not.toBeInTheDocument();
+			expect(queryByTestId('mcp-workflow-ellipsis-separator')).not.toBeInTheDocument();
+			expect(queryByTestId('mcp-workflow-grandparent-folder')).not.toBeInTheDocument();
+		});
+
+		it('should render ellipsis if parent folder has parent', () => {
+			const workflow = mockWorkflow('1', {
+				parentFolder: {
+					id: 'folder-1',
+					name: 'Child Folder',
+					parentFolderId: 'parent-folder-1', // This indicates it has a parent
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				},
+			});
+
+			const { getByTestId } = renderComponent({
+				pinia,
+				props: {
+					workflows: [workflow],
+					loading: false,
+				},
+			});
+
+			// Should render ellipsis for grandparent
+			const grandparentElement = getByTestId('mcp-workflow-grandparent-folder');
+			expect(grandparentElement).toBeInTheDocument();
+
+			const ellipsis = grandparentElement.querySelector('.ellipsis');
+			expect(ellipsis).toBeInTheDocument();
+			expect(ellipsis).toHaveTextContent('...');
+
+			// Check for separator after ellipsis
+			const ellipsisSeparator = getByTestId('mcp-workflow-ellipsis-separator');
+			expect(ellipsisSeparator).toBeInTheDocument();
+			expect(ellipsisSeparator).toHaveTextContent('/');
+
+			// Should still render parent folder
+			const folderLink = getByTestId('mcp-workflow-folder-link');
+			expect(folderLink).toBeInTheDocument();
+			expect(folderLink).toHaveTextContent(workflow.parentFolder?.name ?? '');
+
+			// Should render separator after folder
+			const folderSeparator = getByTestId('mcp-workflow-folder-separator');
+			expect(folderSeparator).toBeInTheDocument();
+			expect(folderSeparator).toHaveTextContent('/');
+
+			// Should render workflow link
+			const nameLink = getByTestId('mcp-workflow-name-link');
+			expect(nameLink).toBeInTheDocument();
+			expect(nameLink).toHaveTextContent(workflow.name);
+		});
+
+		it('should not render ellipsis if parent folder has no parent', () => {
+			const workflow = mockWorkflow('1', {
+				parentFolder: {
+					id: 'folder-1',
+					name: 'Root Folder',
+					parentFolderId: null, // No parent
+					createdAt: '2024-01-01T00:00:00.000Z',
+					updatedAt: '2024-01-01T00:00:00.000Z',
+				},
+			});
+
+			const { getByTestId, queryByTestId } = renderComponent({
+				pinia,
+				props: {
+					workflows: [workflow],
+					loading: false,
+				},
+			});
+
+			// Should NOT render ellipsis for grandparent
+			expect(queryByTestId('mcp-workflow-grandparent-folder')).not.toBeInTheDocument();
+
+			// Should NOT render ellipsis separator
+			expect(queryByTestId('mcp-workflow-ellipsis-separator')).not.toBeInTheDocument();
+
+			// Should render parent folder
+			const folderLink = getByTestId('mcp-workflow-folder-link');
+			expect(folderLink).toBeInTheDocument();
+			expect(folderLink).toHaveTextContent(workflow.parentFolder?.name ?? '');
+
+			// Should render separator after folder
+			const folderSeparator = getByTestId('mcp-workflow-folder-separator');
+			expect(folderSeparator).toBeInTheDocument();
+			expect(folderSeparator).toHaveTextContent('/');
+
+			// Should render workflow link
+			const nameLink = getByTestId('mcp-workflow-name-link');
+			expect(nameLink).toBeInTheDocument();
+			expect(nameLink).toHaveTextContent(workflow.name);
+		});
+
 		it('should display folder without link when homeProject does not exist', () => {
 			const workflow = mockWorkflow('1', {
 				homeProject: undefined,
