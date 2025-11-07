@@ -216,10 +216,19 @@ export default mergeConfig(
 			host: '0.0.0.0',
 			port: 8080,
 			proxy: {
+				// REST API (includes WebSocket for /rest/push)
 				'/rest': {
 					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
 					changeOrigin: true,
+					ws: true,
 				},
+				// WebSocket push for real-time updates
+				'/push': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+					ws: true,
+				},
+				// Webhook endpoints
 				'/webhook': {
 					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
 					changeOrigin: true,
@@ -229,6 +238,47 @@ export default mergeConfig(
 					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
 					changeOrigin: true,
 					ws: true,
+				},
+				'/webhook-waiting': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+					ws: true,
+				},
+				// Form endpoints
+				'/form': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+				},
+				'/form-test': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+				},
+				'/form-waiting': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+				},
+				// MCP (Model Context Protocol) endpoints
+				'/mcp': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+				},
+				'/mcp-test': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+				},
+				// Type definitions
+				'/types': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+				},
+				// Health check and metrics (for development)
+				'/healthz': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
+				},
+				'/metrics': {
+					target: process.env.VITE_API_BASE_URL || 'http://localhost:5678',
+					changeOrigin: true,
 				},
 			},
 		},
