@@ -1,11 +1,13 @@
 import type { Page } from '@playwright/test';
 
 import { AIAssistantPage } from './AIAssistantPage';
+import { AIBuilderPage } from './AIBuilderPage';
 import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
+import { ProjectTabsComponent } from './components/ProjectTabsComponent';
 import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
@@ -58,6 +60,7 @@ export class n8nPage {
 
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
+	readonly aiBuilder: AIBuilderPage;
 	readonly becomeCreatorCTA: BecomeCreatorCTAPage;
 	readonly canvas: CanvasPage;
 	readonly communityNodes: CommunityNodesPage;
@@ -85,6 +88,10 @@ export class n8nPage {
 
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
+
+	// Components
+	readonly projectTabs: ProjectTabsComponent;
+
 	readonly settingsEnvironment: SettingsEnvironmentPage;
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
@@ -119,6 +126,7 @@ export class n8nPage {
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
+		this.aiBuilder = new AIBuilderPage(page);
 		this.becomeCreatorCTA = new BecomeCreatorCTAPage(page);
 		this.canvas = new CanvasPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
@@ -148,6 +156,10 @@ export class n8nPage {
 		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
+
+		// Components
+		this.projectTabs = new ProjectTabsComponent(page);
+
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowCredentialSetupModal = new WorkflowCredentialSetupModal(page);

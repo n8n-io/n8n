@@ -415,7 +415,7 @@ $input-height: 40px;
 $input-border-radius: var(--input--radius, var(--radius));
 $input-border-top-left-radius: var(--input--radius--top-left, var(--input--radius, var(--radius)));
 $input-border-top-right-radius: var(
-	--input-border-top-right-radius,
+	--input-triple--radius--top-right,
 	var(--input--radius, var(--radius)),
 );
 $input-border-bottom-left-radius: var(
@@ -423,7 +423,7 @@ $input-border-bottom-left-radius: var(
 	var(--input--radius, var(--radius)),
 );
 $input-border-bottom-right-radius: var(
-	--input-border-bottom-right-radius,
+	--input-triple--radius--bottom-right,
 	var(--input--radius, var(--radius)),
 );
 $input-border-radius: var(--input--radius, var(--radius));

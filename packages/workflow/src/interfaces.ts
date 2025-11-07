@@ -329,6 +329,12 @@ export interface ICredentialType {
 	icon?: Icon;
 	iconColor?: ThemeIconColor;
 	iconUrl?: Themed<string>;
+	/**
+	 * Base path for resolving file icons from expressions.
+	 * Used when icon is an expression that resolves to `file:filename.svg`
+	 * Format: `icons/${packageName}/${nodeDirPath}`
+	 */
+	iconBasePath?: string;
 	extends?: string[];
 	properties: INodeProperties[];
 	documentationUrl?: string;
@@ -819,6 +825,11 @@ export interface RequestHelperFunctions {
 		requestOptions: IRequestOptions,
 		oAuth2Options?: IOAuth2Options,
 	): Promise<any>;
+	refreshOAuth2Token(
+		this: IAllExecuteFunctions,
+		credentialsType: string,
+		oAuth2Options?: IOAuth2Options,
+	): Promise<any>;
 }
 
 export type SSHCredentials = {
@@ -1071,6 +1082,7 @@ export type ISupplyDataFunctions = ExecuteFunctions.GetNodeParameterFn &
 		getExecutionCancelSignal(): AbortSignal | undefined;
 		onExecutionCancellation(handler: () => unknown): void;
 		logAiEvent(eventName: AiEvent, msg?: string): void;
+		addExecutionHints(...hints: NodeExecutionHint[]): void;
 		cloneWith(replacements: {
 			runIndex: number;
 			inputData: INodeExecutionData[][];
@@ -1711,6 +1723,7 @@ export interface SupplyData {
 	metadata?: IDataObject;
 	response: unknown;
 	closeFunction?: CloseFunction;
+	hints?: NodeExecutionHint[];
 }
 
 export type NodeOutput =
@@ -1947,8 +1960,8 @@ export type ThemeIconColor =
 	| 'crimson';
 export type Themed<T> = T | { light: T; dark: T };
 export type IconRef = `fa:${string}` | `node:${string}.${string}`;
-export type IconFile = `file:${string}.png` | `file:${string}.svg`;
-export type Icon = IconRef | Themed<IconFile>;
+export type IconFile = `file:${string}.png` | `file:${string}.svg` | ExpressionString;
+export type Icon = IconRef | Themed<IconFile> | IconFile;
 
 type NodeGroupType = 'input' | 'output' | 'organization' | 'schedule' | 'transform' | 'trigger';
 
@@ -1958,6 +1971,12 @@ export interface INodeTypeBaseDescription {
 	icon?: Icon;
 	iconColor?: ThemeIconColor;
 	iconUrl?: Themed<string>;
+	/**
+	 * Base path for resolving file icons from expressions.
+	 * Used when icon is an expression that resolves to `file:filename.svg`
+	 * Format: `icons/${packageName}/${nodeDirPath}`
+	 */
+	iconBasePath?: string;
 	badgeIconUrl?: Themed<string>;
 	group: NodeGroupType[];
 	description: string;
@@ -2558,6 +2577,7 @@ export type WorkflowId = IWorkflowBase['id'];
 export interface IWorkflowBase {
 	id: string;
 	name: string;
+	description?: string | null;
 	active: boolean;
 	isArchived: boolean;
 	createdAt: Date;
@@ -2569,6 +2589,8 @@ export interface IWorkflowBase {
 	staticData?: IDataObject;
 	pinData?: IPinData;
 	versionId?: string;
+	versionCounter?: number;
+	meta?: WorkflowFEMeta;
 }
 
 export interface IWorkflowCredentials {
@@ -2708,7 +2730,8 @@ export type WorkflowExecuteMode =
 	| 'retry'
 	| 'trigger'
 	| 'webhook'
-	| 'evaluation';
+	| 'evaluation'
+	| 'chat';
 
 export type WorkflowActivateMode =
 	| 'init'
@@ -2740,6 +2763,9 @@ export interface IWorkflowSettings {
 
 export interface WorkflowFEMeta {
 	onboardingId?: string;
+	templateId?: string;
+	instanceId?: string;
+	templateCredsSetupCompleted?: boolean;
 }
 
 export interface WorkflowTestData {
@@ -2880,6 +2906,7 @@ export interface INodeGraphItem {
 	agent?: string; //@n8n/n8n-nodes-langchain.agent
 	is_streaming?: boolean; //@n8n/n8n-nodes-langchain.agent
 	prompts?: IDataObject[] | IDataObject; //ai node's prompts, cloud only
+	use_responses_api?: boolean; //@n8n/n8n-nodes-langchain.lmChatOpenAi
 	toolSettings?: IDataObject; //various langchain tool's settings
 	sql?: string; //merge node combineBySql, cloud only
 	workflow_id?: string; //@n8n/n8n-nodes-langchain.toolWorkflow and n8n-nodes-base.executeWorkflow
@@ -2890,6 +2917,7 @@ export interface INodeGraphItem {
 	metric_names?: string[];
 	language?: string; // only for Code node: 'javascript' or 'python' or 'pythonNative'
 	package_version?: string; // only for community nodes
+	used_guardrails?: string[]; // only for @n8n/n8n-nodes-langchain.guardrails
 }
 
 export interface INodeNameIndex {

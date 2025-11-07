@@ -6,35 +6,42 @@ import type {
 	RouteLocationNormalized,
 } from 'vue-router';
 import { createRouter, createWebHistory, isNavigationFailure, RouterView } from 'vue-router';
-import { useExternalHooks } from '@/composables/useExternalHooks';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/constants';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { middleware } from '@/utils/rbac/middleware';
-import type { RouterMiddleware } from '@/types/router';
+import {
+	EnterpriseEditionFeature,
+	VIEWS,
+	EDITABLE_CANVAS_VIEWS,
+	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT,
+} from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { middleware } from '@/app/utils/rbac/middleware';
+import type { RouterMiddleware } from '@/app/types/router';
 import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
-import { tryToParseNumber } from '@/utils/typesUtils';
+import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
 import { MfaRequiredError } from '@n8n/rest-api-client';
-import { useCalloutHelpers } from './composables/useCalloutHelpers';
+import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
-import { useEnvFeatureFlag } from './features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { usePostHog } from './app/stores/posthog.store';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
-const ErrorView = async () => await import('./views/ErrorView.vue');
-const EntityNotFound = async () => await import('./views/EntityNotFound.vue');
-const EntityUnAuthorised = async () => await import('./views/EntityUnAuthorised.vue');
+const ErrorView = async () => await import('@/app/views/ErrorView.vue');
+const EntityNotFound = async () => await import('@/app/views/EntityNotFound.vue');
+const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthorised.vue');
+const OAuthConsentView = async () => await import('@/app/views/OAuthConsentView.vue');
 const ForgotMyPasswordView = async () =>
 	await import('@/features/core/auth/views/ForgotMyPasswordView.vue');
-const MainHeader = async () => await import('@/components/MainHeader/MainHeader.vue');
-const MainSidebar = async () => await import('@/components/MainSidebar.vue');
+const MainHeader = async () => await import('@/app/components/MainHeader/MainHeader.vue');
+const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
 const LogsPanel = async () => await import('@/features/execution/logs/components/LogsPanel.vue');
 const DemoFooter = async () => await import('@/features/execution/logs/components/DemoFooter.vue');
-const NodeView = async () => await import('@/views/NodeView.vue');
+const NodeView = async () => await import('@/app/views/NodeView.vue');
 const WorkflowExecutionsView = async () =>
 	await import('@/features/execution/executions/views/WorkflowExecutionsView.vue');
 const WorkflowExecutionsLandingPage = async () =>
@@ -43,7 +50,7 @@ const WorkflowExecutionsLandingPage = async () =>
 	);
 const WorkflowExecutionsPreview = async () =>
 	await import('@/features/execution/executions/components/workflow/WorkflowExecutionsPreview.vue');
-const SettingsView = async () => await import('./views/SettingsView.vue');
+const SettingsView = async () => await import('@/app/views/SettingsView.vue');
 const SettingsLdapView = async () =>
 	await import('@/features/settings/sso/views/SettingsLdapView.vue');
 const SettingsPersonalView = async () =>
@@ -67,8 +74,6 @@ const SetupWorkflowFromTemplateView = async () =>
 	await import('@/features/workflows/templates/views/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () =>
 	await import('@/features/workflows/templates/views/TemplatesSearchView.vue');
-const VariablesView = async () =>
-	await import('@/features/settings/environments.ee/views/VariablesView.vue');
 const SettingsUsageAndPlan = async () =>
 	await import('@/features/settings/usage/views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
@@ -84,7 +89,7 @@ const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
 const WorkflowHistory = async () =>
 	await import('@/features/workflows/workflowHistory/views/WorkflowHistory.vue');
-const WorkflowOnboardingView = async () => await import('@/views/WorkflowOnboardingView.vue');
+const WorkflowOnboardingView = async () => await import('@/app/views/WorkflowOnboardingView.vue');
 const EvaluationsView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsView.vue');
 const TestRunDetailView = async () =>
@@ -92,7 +97,7 @@ const TestRunDetailView = async () =>
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const PrebuiltAgentTemplatesView = async () =>
-	await import('@/views/PrebuiltAgentTemplatesView.vue');
+	await import('@/app/views/PrebuiltAgentTemplatesView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -242,15 +247,6 @@ export const routes: RouteRecordRaw[] = [
 				next();
 			}
 		},
-	},
-	{
-		path: '/variables',
-		name: VIEWS.VARIABLES,
-		components: {
-			default: VariablesView,
-			sidebar: MainSidebar,
-		},
-		meta: { middleware: ['authenticated'] },
 	},
 	{
 		path: '/workflow/:name/debug/:executionId',
@@ -474,6 +470,16 @@ export const routes: RouteRecordRaw[] = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/oauth/consent',
+		name: VIEWS.OAUTH_CONSENT,
+		components: {
+			default: OAuthConsentView,
+		},
+		meta: {
 			middleware: ['authenticated'],
 		},
 	},
@@ -795,13 +801,20 @@ export const routes: RouteRecordRaw[] = [
 					settingsView: SettingsProvisioningView,
 				},
 				meta: {
-					middleware: ['authenticated', 'enterprise', 'rbac'],
+					middleware: ['authenticated', 'rbac', 'custom' /* 'enterprise' */],
 					middlewareOptions: {
+						/*
+						TODO: comment this back in once the custom check using experiment is no longer used
 						enterprise: {
-							feature: 'provisioning',
+							feature: EnterpriseEditionFeature.Provisioning,
 						},
+						*/
 						rbac: {
 							scope: 'provisioning:manage',
+						},
+						custom: () => {
+							const posthogStore = usePostHog();
+							return posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name);
 						},
 					},
 					telemetry: {

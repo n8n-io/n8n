@@ -5,7 +5,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { VARIABLE_MODAL_KEY } from '../environments.constants';
 import { STORES } from '@n8n/stores';
 import userEvent from '@testing-library/user-event';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import useEnvironmentsStore from '../environments.store';
 import type { EnvironmentVariable } from '../environments.types';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';

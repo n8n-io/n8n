@@ -1,4 +1,3 @@
-import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
@@ -45,6 +44,7 @@ import { CreateFolderTable1738709609940 } from './1738709609940-CreateFolderTabl
 import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
 import { AddScopesColumnToApiKeys1742918400000 } from './1742918400000-AddScopesColumnToApiKeys';
 import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
+import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
 import { UpdateWorkflowCredentials1630330987096 } from '../common/1630330987096-UpdateWorkflowCredentials';
 import { AddNodeIds1658930531669 } from '../common/1658930531669-AddNodeIds';
@@ -101,8 +101,12 @@ import type { Migration } from '../migration-types';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
+import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-CreateChatHubAgentTable';
+import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
+import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
+import { AddWorkflowDescriptionColumn1762177736257 } from './../common/1762177736257-AddWorkflowDescriptionColumn';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -205,10 +209,14 @@ const sqliteMigrations: Migration[] = [
 	AddAudienceColumnToApiKeys1758731786132,
 	ChangeValueTypesForInsights1759399811000,
 	CreateChatHubTables1760019379982,
+	CreateChatHubAgentTable1760020000000,
 	UniqueRoleNames1760020838000,
 	CreateWorkflowDependencyTable1760314000000,
 	DropUnusedChatHubColumns1760965142113,
 	AddWorkflowVersionColumn1761047826451,
+	ChangeDependencyInfoToJson1761655473000,
+	AddWorkflowDescriptionColumn1762177736257,
+	CreateOAuthEntities1760116750277,
 ];
 
 export { sqliteMigrations };

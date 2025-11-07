@@ -51,7 +51,7 @@ export function validateAgentPrompt(workflow: SimpleWorkflow): ProgrammaticViola
 
 			// Only check when promptType is 'define' or undefined (default)
 			// 'auto' mode means it uses text from previous node
-			if (promptType !== 'auto') {
+			if (promptType !== 'auto' && promptType !== 'guardrails') {
 				// Check 1: Text parameter should contain expressions for dynamic context
 				if (!textParam || !containsExpression(textParam)) {
 					violations.push({
