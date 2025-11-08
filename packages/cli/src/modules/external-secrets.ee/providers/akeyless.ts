@@ -64,7 +64,7 @@ export class AkeylessProvider implements SecretsProvider {
 			hint: 'Your Akeyless Access ID',
 			default: '',
 			required: false,
-			placeholder: 'e.g. p-mj7bduboclxlam',
+			placeholder: 'Enter your Access ID',
 			noDataExpression: true,
 			displayOptions: {
 				show: {
@@ -79,7 +79,7 @@ export class AkeylessProvider implements SecretsProvider {
 			hint: 'Your Akeyless Access Key',
 			default: '',
 			required: false,
-			placeholder: 'e.g. iYdXDNNUKBDLOlUcVjx+xkxTk1h8YNM61NXIeo9glJE=',
+			placeholder: 'Enter your Access Key',
 			noDataExpression: true,
 			typeOptions: { password: true },
 			displayOptions: {
@@ -95,7 +95,7 @@ export class AkeylessProvider implements SecretsProvider {
 			hint: 'Your Akeyless authentication token (starts with "t-")',
 			default: '',
 			required: false,
-			placeholder: 'e.g. t-1e683c53db38e303678533193f3824cbm',
+			placeholder: 'Enter your token (starts with "t-")',
 			noDataExpression: true,
 			typeOptions: { password: true },
 			displayOptions: {
@@ -111,7 +111,7 @@ export class AkeylessProvider implements SecretsProvider {
 			hint: 'Akeyless server URL. Leave empty for default (https://api.akeyless.io)',
 			default: '',
 			required: false,
-			placeholder: 'https://api.akeyless.io',
+			placeholder: 'Enter server URL (optional)',
 			noDataExpression: true,
 		},
 	];
@@ -457,45 +457,7 @@ export class AkeylessProvider implements SecretsProvider {
 				return { value };
 			}
 
-			const processedData: Record<string, unknown> = { ...dataWithoutError };
-			let allValuesAreSamePlainString = true;
-			let firstPlainStringValue: string | undefined = undefined;
-			let hasJsonObject = false;
-
-			for (const [key, value] of Object.entries(dataWithoutError)) {
-				if (typeof value === 'string') {
-					const parsed = this.parseSecretValue(value);
-					if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-						processedData[key] = parsed;
-						Object.assign(processedData, parsed);
-						hasJsonObject = true;
-						allValuesAreSamePlainString = false;
-					} else {
-						processedData[key] = parsed;
-						if (firstPlainStringValue === undefined) {
-							firstPlainStringValue = parsed as string;
-						} else if (firstPlainStringValue !== parsed) {
-							allValuesAreSamePlainString = false;
-						}
-					}
-				} else {
-					allValuesAreSamePlainString = false;
-				}
-			}
-
-			if (
-				allValuesAreSamePlainString &&
-				firstPlainStringValue !== undefined &&
-				!hasJsonObject &&
-				keys.length > 1
-			) {
-				this.logger.debug(
-					`All ${keys.length} keys have same plain string value, returning string directly`,
-				);
-				return firstPlainStringValue;
-			}
-
-			return processedData;
+			return this.processMultiKeyResponse(dataWithoutError);
 		}
 		const secretValue = this.findSecretInResponse(
 			responseData as AkeylessGetSecretValueResponse,
@@ -524,6 +486,51 @@ export class AkeylessProvider implements SecretsProvider {
 				.join(', ')}. Full response: ${JSON.stringify(responseData)}`,
 		);
 		return undefined;
+	}
+
+	private processMultiKeyResponse(
+		dataWithoutError: Record<string, unknown>,
+	): string | Record<string, unknown> {
+		const keys = Object.keys(dataWithoutError);
+		const processedData: Record<string, unknown> = { ...dataWithoutError };
+		let allValuesAreSamePlainString = true;
+		let firstPlainStringValue: string | undefined = undefined;
+		let hasJsonObject = false;
+
+		for (const [key, value] of Object.entries(dataWithoutError)) {
+			if (typeof value === 'string') {
+				const parsed = this.parseSecretValue(value);
+				if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+					processedData[key] = parsed;
+					Object.assign(processedData, parsed);
+					hasJsonObject = true;
+					allValuesAreSamePlainString = false;
+				} else {
+					processedData[key] = parsed;
+					if (firstPlainStringValue === undefined) {
+						firstPlainStringValue = parsed as string;
+					} else if (firstPlainStringValue !== parsed) {
+						allValuesAreSamePlainString = false;
+					}
+				}
+			} else {
+				allValuesAreSamePlainString = false;
+			}
+		}
+
+		if (
+			allValuesAreSamePlainString &&
+			firstPlainStringValue !== undefined &&
+			!hasJsonObject &&
+			keys.length > 1
+		) {
+			this.logger.debug(
+				`All ${keys.length} keys have same plain string value, returning string directly`,
+			);
+			return firstPlainStringValue;
+		}
+
+		return processedData;
 	}
 
 	private async tryFetchStaticSecret(
@@ -806,7 +813,7 @@ export class AkeylessProvider implements SecretsProvider {
 				});
 			} else {
 				this.logger.debug(`Returning secret "${name}" as object`, {
-					keys: Object.keys(secretValue as object),
+					keys: Object.keys(secretValue),
 				});
 			}
 		}
