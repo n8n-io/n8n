@@ -543,6 +543,7 @@ describe('WorkflowDescriptionPopover', () => {
 		it('should show base tooltip when MCP is disabled', async () => {
 			// Ensure MCP is disabled
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(false);
+			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: false };
 
 			const { getByTestId } = renderComponent({
 				props: {
@@ -564,6 +565,7 @@ describe('WorkflowDescriptionPopover', () => {
 		it('should show MCP tooltip when MCP is enabled', async () => {
 			// Enable MCP module
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true };
 
 			const { getByTestId } = renderComponent({
 				props: {
@@ -587,6 +589,7 @@ describe('WorkflowDescriptionPopover', () => {
 		it('should show webhook notice when workflow has webhooks and MCP is enabled', async () => {
 			// Enable MCP module
 			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
+			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true };
 
 			// Set up workflow with an enabled webhook node
 			workflowsStore.workflow = {
