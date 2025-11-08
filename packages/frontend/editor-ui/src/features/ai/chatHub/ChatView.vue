@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
-import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL, VIEWS } from '@/app/constants';
+import {
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS,
+	VIEWS,
+} from '@/app/constants';
 import { findOneFromModelsResponse, unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
@@ -33,7 +37,7 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import ToolsSelector from './components/ToolsSelector.vue';
-import type { INode } from 'n8n-workflow';
+import { INodesSchema, type INode } from 'n8n-workflow';
 
 const router = useRouter();
 const route = useRoute();
@@ -61,9 +65,6 @@ const currentConversation = computed(() =>
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 const readyToShowMessages = computed(() => chatStore.agentsReady);
 
-const tools = ref<INode[]>([]);
-const selectedTools = computed<INode[]>(() => currentConversation.value?.tools ?? tools.value);
-
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
 	offset: { bottom: 100 },
@@ -87,6 +88,40 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 		},
 	},
 );
+
+const defaultTools = useLocalStorage<INode[] | null>(
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS(usersStore.currentUserId ?? 'anonymous'),
+	null,
+	{
+		writeDefaults: false,
+		shallow: true,
+		serializer: {
+			read: (value) => {
+				try {
+					return INodesSchema.parse(JSON.parse(value));
+				} catch (error) {
+					return null;
+				}
+			},
+			write: (value) => JSON.stringify(value),
+		},
+	},
+);
+
+const toolsSelection = ref<INode[]>([]);
+
+const selectedTools = computed<INode[]>(() => {
+	if (currentConversation.value?.tools) {
+		return currentConversation.value.tools;
+	}
+
+	if (toolsSelection.value) {
+		return toolsSelection.value;
+	}
+
+	return defaultTools.value ?? [];
+});
+
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
 	const workflowId = route.query.workflowId;
@@ -375,7 +410,7 @@ function handleConfigureTools() {
 }
 
 async function onUpdateTools(newTools: INode[]) {
-	tools.value = newTools;
+	toolsSelection.value = newTools;
 
 	if (currentConversation.value) {
 		await chatStore.updateToolsInSession(sessionId.value, newTools);

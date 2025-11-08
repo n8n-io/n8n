@@ -487,3 +487,5 @@ export const INodeSchema: z.ZodType<INode> = z.object({
 		})
 		.optional(),
 });
+
+export const INodesSchema: z.ZodType<INode[]> = z.array(INodeSchema);
