@@ -11,6 +11,8 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	openai: 'OpenAI',
 	anthropic: 'Anthropic',
 	google: 'Google',
+	azureOpenAi: 'Azure OpenAI',
+	ollama: 'Ollama',
 	n8n: 'n8n',
 	'custom-agent': 'Custom Agent',
 };
