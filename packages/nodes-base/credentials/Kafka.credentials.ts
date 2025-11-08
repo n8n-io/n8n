@@ -46,7 +46,10 @@ export class Kafka implements ICredentialType {
 			},
 			default: 'userpass',
 			description: 'Select the authentication mode to use.',
-			options: [{ name: 'Username & Password', value: 'userpass' }],
+			options: [
+				{ name: 'Username & Password', value: 'userpass' },
+				{ name: 'AWS IAM Role', value: 'awsIam' },
+			],
 		},
 		// ───────────── Username/Password (SASL) ─────────────
 		{
@@ -56,6 +59,8 @@ export class Kafka implements ICredentialType {
 			displayOptions: {
 				show: {
 					authentication: [true],
+					// Backward-compatible: show if authMode is 'userpass' or not defined
+					authMode: ['userpass', undefined],
 				},
 			},
 			default: '',
@@ -68,6 +73,7 @@ export class Kafka implements ICredentialType {
 			displayOptions: {
 				show: {
 					authentication: [true],
+					authMode: ['userpass', undefined],
 				},
 			},
 			typeOptions: {
@@ -83,6 +89,7 @@ export class Kafka implements ICredentialType {
 			displayOptions: {
 				show: {
 					authentication: [true],
+					authMode: ['userpass', undefined],
 				},
 			},
 			options: [
