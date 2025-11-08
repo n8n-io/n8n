@@ -130,18 +130,6 @@ const insertFields: INodeProperties[] = [
 				default: false,
 				description: 'Whether to clear all documents in the index before inserting new data',
 			},
-			{
-				displayName: 'Batch Size',
-				name: 'batchSize',
-				type: 'number',
-				default: 100,
-				description:
-					'Number of documents to upload to Azure AI Search in a single batch (not to be confused with embedding batch size)',
-				typeOptions: {
-					minValue: 1,
-					maxValue: 1000,
-				},
-			},
 		],
 	},
 ];
@@ -277,7 +265,7 @@ async function getAzureAISearchClient(
 		}
 
 		// Log the full error for debugging
-		console.error('Azure AI Search connection error:', {
+		context.logger.debug('Azure AI Search connection error:', {
 			message: error.message,
 			code: error.code,
 			statusCode: error.statusCode,
@@ -408,16 +396,11 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 				}
 			}
 
-			const batchSize = getOptionValue<number>('batchSize', context, itemIndex, 100) || 100;
-
-			// Upload documents in batches to Azure AI Search
-			for (let i = 0; i < documents.length; i += batchSize) {
-				const batch = documents.slice(i, i + batchSize);
-				await vectorStore.addDocuments(batch);
-			}
+			// Add documents to Azure AI Search (framework handles batching)
+			await vectorStore.addDocuments(documents);
 		} catch (error) {
 			// Log the full error for debugging
-			console.error('Azure AI Search error details:', {
+			context.logger.debug('Azure AI Search error details:', {
 				message: error.message,
 				code: error.code,
 				statusCode: error.statusCode,

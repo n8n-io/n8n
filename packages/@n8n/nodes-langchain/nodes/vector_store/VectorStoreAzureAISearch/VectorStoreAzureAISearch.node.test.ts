@@ -1,6 +1,6 @@
 import { AzureAISearchVectorStore } from '@langchain/community/vectorstores/azure_aisearch';
 import { DefaultAzureCredential } from '@azure/identity';
-import { SearchClient, AzureKeyCredential } from '@azure/search-documents';
+import { AzureKeyCredential } from '@azure/search-documents';
 import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 
@@ -18,9 +18,6 @@ describe('VectorStoreAzureAISearch', () => {
 	beforeEach(() => {
 		jest.resetAllMocks();
 		executeFunctions.addInputData.mockReturnValue({ index: 0 });
-		(SearchClient as jest.Mock).mockImplementation(() => ({
-			// Mock SearchClient instance
-		}));
 	});
 
 	it('should get vector store client with API key authentication', async () => {
@@ -49,18 +46,16 @@ describe('VectorStoreAzureAISearch', () => {
 		const { response } = await vectorStore.supplyData.call(executeFunctions, 0);
 
 		expect(response).toBeDefined();
-		expect(SearchClient).toHaveBeenCalledWith(
-			'https://test-search.search.windows.net',
-			'test-index',
-			expect.any(AzureKeyCredential),
-			{ userAgentOptions: { userAgentPrefix: 'n8n-azure-ai-search' } },
-		);
 		expect(AzureAISearchVectorStore).toHaveBeenCalledWith(mockEmbeddings, {
+			endpoint: 'https://test-search.search.windows.net',
 			indexName: 'test-index',
+			credentials: expect.any(AzureKeyCredential),
 			search: {
 				type: expect.any(String),
 			},
-			client: expect.any(Object),
+			clientOptions: {
+				userAgentOptions: { userAgentPrefix: 'n8n-azure-ai-search' },
+			},
 		});
 	});
 
@@ -90,18 +85,16 @@ describe('VectorStoreAzureAISearch', () => {
 
 		expect(response).toBeDefined();
 		expect(DefaultAzureCredential).toHaveBeenCalledWith();
-		expect(SearchClient).toHaveBeenCalledWith(
-			'https://test-search.search.windows.net',
-			'test-index',
-			expect.any(DefaultAzureCredential),
-			{ userAgentOptions: { userAgentPrefix: 'n8n-azure-ai-search' } },
-		);
 		expect(AzureAISearchVectorStore).toHaveBeenCalledWith(mockEmbeddings, {
+			endpoint: 'https://test-search.search.windows.net',
 			indexName: 'test-index',
+			credentials: expect.any(DefaultAzureCredential),
 			search: {
 				type: expect.any(String),
 			},
-			client: expect.any(Object),
+			clientOptions: {
+				userAgentOptions: { userAgentPrefix: 'n8n-azure-ai-search' },
+			},
 		});
 	});
 
@@ -134,18 +127,16 @@ describe('VectorStoreAzureAISearch', () => {
 		expect(DefaultAzureCredential).toHaveBeenCalledWith({
 			managedIdentityClientId: 'test-client-id',
 		});
-		expect(SearchClient).toHaveBeenCalledWith(
-			'https://test-search.search.windows.net',
-			'test-index',
-			expect.any(DefaultAzureCredential),
-			{ userAgentOptions: { userAgentPrefix: 'n8n-azure-ai-search' } },
-		);
 		expect(AzureAISearchVectorStore).toHaveBeenCalledWith(mockEmbeddings, {
+			endpoint: 'https://test-search.search.windows.net',
 			indexName: 'test-index',
+			credentials: expect.any(DefaultAzureCredential),
 			search: {
 				type: expect.any(String),
 			},
-			client: expect.any(Object),
+			clientOptions: {
+				userAgentOptions: { userAgentPrefix: 'n8n-azure-ai-search' },
+			},
 		});
 	});
 
@@ -180,20 +171,18 @@ describe('VectorStoreAzureAISearch', () => {
 		const { response } = await vectorStore.supplyData.call(executeFunctions, 0);
 
 		expect(response).toBeDefined();
-		expect(SearchClient).toHaveBeenCalledWith(
-			'https://test-search.search.windows.net',
-			'test-index',
-			expect.any(AzureKeyCredential),
-			{ userAgentOptions: { userAgentPrefix: 'n8n-azure-ai-search' } },
-		);
 		expect(AzureAISearchVectorStore).toHaveBeenCalledWith(mockEmbeddings, {
+			endpoint: 'https://test-search.search.windows.net',
 			indexName: 'test-index',
+			credentials: expect.any(AzureKeyCredential),
 			search: {
 				type: expect.any(String),
 				filter: "category eq 'tech'",
 				semanticConfigurationName: 'test-semantic-config',
 			},
-			client: expect.any(Object),
+			clientOptions: {
+				userAgentOptions: { userAgentPrefix: 'n8n-azure-ai-search' },
+			},
 		});
 	});
 });

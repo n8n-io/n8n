@@ -1,5 +1,6 @@
 import type {
 	ICredentialDataDecryptedObject,
+	ICredentialTestRequest,
 	ICredentialType,
 	IHttpRequestOptions,
 	INodeProperties,
@@ -25,10 +26,12 @@ export class AzureAiSearchApi implements ICredentialType {
 				{
 					name: 'Managed Identity (System-Assigned)',
 					value: 'managedIdentitySystem',
+					description: 'For self-hosted n8n only',
 				},
 				{
 					name: 'Managed Identity (User-Assigned)',
 					value: 'managedIdentityUser',
+					description: 'For self-hosted n8n only',
 				},
 			],
 			default: 'apiKey',
@@ -89,5 +92,19 @@ export class AzureAiSearchApi implements ICredentialType {
 		// For managed identity, don't add any auth headers
 		// The Azure SDK will handle authentication internally
 		return requestOptions;
+	};
+
+	test: ICredentialTestRequest = {
+		request: {
+			baseURL: '={{$credentials.endpoint}}/indexes',
+			url: '',
+			method: 'GET',
+			headers: {
+				accept: 'application/json',
+			},
+			qs: {
+				'api-version': '2024-07-01',
+			},
+		},
 	};
 }
