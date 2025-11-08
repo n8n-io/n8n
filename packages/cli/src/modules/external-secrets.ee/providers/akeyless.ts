@@ -512,7 +512,6 @@ export class AkeylessProvider implements SecretsProvider {
 				const parsed = this.parseSecretValue(value);
 				if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
 					processedData[key] = parsed;
-					Object.assign(processedData, parsed);
 					hasJsonObject = true;
 					allValuesAreSamePlainString = false;
 				} else {
