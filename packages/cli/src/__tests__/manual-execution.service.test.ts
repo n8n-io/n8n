@@ -185,7 +185,7 @@ describe('ManualExecutionService', () => {
 			);
 		});
 
-		it.only('should correctly include destinationNode in executionData when provided', async () => {
+		it('should correctly include destinationNode in executionData when provided', async () => {
 			const mockTriggerData = mock<ITaskData>();
 			const startNodeName = 'startNode';
 			const triggerNodeName = 'triggerNode';
