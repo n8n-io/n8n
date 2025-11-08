@@ -4,7 +4,7 @@ import {
 	AzureAISearchQueryType,
 } from '@langchain/community/vectorstores/azure_aisearch';
 import { DefaultAzureCredential } from '@azure/identity';
-import { SearchClient, AzureKeyCredential } from '@azure/search-documents';
+import { AzureKeyCredential } from '@azure/search-documents';
 import {
 	type IDataObject,
 	type ILoadOptionsFunctions,
@@ -31,8 +31,9 @@ const indexNameField: INodeProperties = {
 	displayName: 'Index Name',
 	name: INDEX_NAME,
 	type: 'string',
-	default: '',
-	description: 'The name of the Azure AI Search index',
+	default: 'n8n-vectorstore',
+	description:
+		'The name of the Azure AI Search index. Will be created automatically if it does not exist.',
 	required: true,
 };
 
@@ -226,15 +227,17 @@ async function getAzureAISearchClient(
 			);
 		}
 
-		// Create a custom SearchClient with our user agent
-		const searchClient = new SearchClient(endpoint, indexName, azureCredentials, {
-			userAgentOptions: { userAgentPrefix: USER_AGENT_PREFIX },
-		});
-
+		// Pass endpoint, indexName, and credentials to enable automatic index creation
+		// LangChain will create the index automatically if it doesn't exist
 		const config: any = {
+			endpoint,
 			indexName,
+			credentials: azureCredentials,
 			search: {},
-			client: searchClient, // Pass our custom client with user agent (includes credentials)
+			// Add custom user agent for usage tracking
+			clientOptions: {
+				userAgentOptions: { userAgentPrefix: USER_AGENT_PREFIX },
+			},
 		};
 
 		// Set search configuration options only for execution contexts
