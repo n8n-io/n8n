@@ -36,6 +36,29 @@ export class Kafka implements ICredentialType {
 			default: false,
 		},
 		{
+			displayName: 'Authentication',
+			name: 'authentication',
+			type: 'boolean',
+			default: false,
+		},
+		{
+			displayName: 'Authentication Mode',
+			name: 'authMode',
+			type: 'options',
+			displayOptions: {
+				show: {
+					authentication: [true],
+				},
+			},
+			default: 'userpass',
+			description: 'Select the authentication mode to use.',
+			options: [
+				{ name: 'Username & Password', value: 'userpass' },
+				{ name: 'AWS IAM Role', value: 'awsIam' },
+			],
+		},
+		// ───────────── Username/Password (SASL) ─────────────
+		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string',
