@@ -379,6 +379,9 @@ export class Supabase implements INodeType {
 
 					try {
 						let responseLength = 0;
+						const userLimit = !returnAll && typeof qs.limit === 'number' ? qs.limit : undefined;
+						qs.offset = 0;
+
 						do {
 							const newRows = await supabaseApiRequest.call(
 								this,
@@ -391,8 +394,20 @@ export class Supabase implements INodeType {
 							);
 							responseLength = newRows.length;
 							rows = rows.concat(newRows);
-							qs.offset = rows.length;
-						} while (responseLength >= 1000);
+
+							if (userLimit && rows.length >= userLimit) {
+								rows = rows.slice(0, userLimit);
+								break;
+							}
+							const shouldContinue =
+								responseLength >= 1000 && (returnAll || (userLimit && rows.length < userLimit));
+
+							if (shouldContinue) {
+								qs.offset = rows.length;
+							} else {
+								break;
+							}
+						} while (true);
 						const executionData = this.helpers.constructExecutionMetaData(
 							this.helpers.returnJsonArray(rows),
 							{ itemData: { item: i } },
