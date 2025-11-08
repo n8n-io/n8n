@@ -8,7 +8,7 @@ import type { IUser } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
-import { NodeTypes } from '@/node-types';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
 
@@ -21,7 +21,7 @@ export class WorkflowBuilderService {
 	private service: AiWorkflowBuilderService | undefined;
 
 	constructor(
-		private readonly nodeTypes: NodeTypes,
+		private readonly loadNodesAndCredentials: LoadNodesAndCredentials,
 		private readonly license: License,
 		private readonly config: GlobalConfig,
 		private readonly logger: Logger,
@@ -61,14 +61,17 @@ export class WorkflowBuilderService {
 				);
 			};
 
+			const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
+
 			this.service = new AiWorkflowBuilderService(
-				this.nodeTypes,
+				nodeTypeDescriptions,
 				client,
 				this.logger,
 				this.urlService.getInstanceBaseUrl(),
 				onCreditsUpdated,
 			);
 		}
+
 		return this.service;
 	}
 

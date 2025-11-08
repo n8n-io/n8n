@@ -4,7 +4,7 @@ import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue';
 import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
-import { isToolMessage } from '../../types/assistant';
+import { isTaskAbortedMessage, isToolMessage } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
@@ -374,11 +374,8 @@ function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number
 }
 
 function getMessageColor(message: ChatUI.AssistantMessage): string | undefined {
-	if (message.type === 'text' && message.role === 'assistant') {
-		const isTaskAbortedMessage = message.content === t('aiAssistant.builder.streamAbortedMessage');
-		if (isTaskAbortedMessage) {
-			return 'var(--color--text)';
-		}
+	if (isTaskAbortedMessage(message)) {
+		return 'var(--color--text)';
 	}
 	return undefined;
 }

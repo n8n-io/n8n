@@ -1,9 +1,7 @@
-import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
-import type { ICredentialsOverwrite } from '@/interfaces';
 import { inDevelopment, inProduction } from '@n8n/backend-common';
-import { SecurityConfig } from '@n8n/config';
+import { DatabaseConfig, SecurityConfig, WorkflowsConfig } from '@n8n/config';
 import { Time } from '@n8n/constants';
-import type { APIRequest } from '@n8n/db';
+import type { APIRequest, AuthenticatedRequest } from '@n8n/db';
 import { Container, Service } from '@n8n/di';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -16,12 +14,13 @@ import { resolve } from 'path';
 
 import { AbstractServer } from '@/abstract-server';
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
+import { CLI_DIR, EDITOR_UI_DIST_DIR, inE2ETests } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { EventService } from '@/events/event.service';
 import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
+import type { ICredentialsOverwrite } from '@/interfaces';
 import { isLdapEnabled } from '@/ldap.ee/helpers.ee';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { handleMfaDisable, isMfaFeatureEnabled } from '@/mfa/helpers';
@@ -245,7 +244,7 @@ export class Server extends AbstractServer {
 			);
 		}
 
-		if (config.getEnv('executions.mode') === 'queue') {
+		if (this.globalConfig.executions.mode === 'queue') {
 			const { ScalingService } = await import('@/scaling/scaling.service');
 			await Container.get(ScalingService).setupQueue();
 		}
@@ -270,17 +269,7 @@ export class Server extends AbstractServer {
 			res.sendFile(tzDataFile, { dotfiles: 'allow' }),
 		);
 
-		// ----------------------------------------
-		// Settings
-		// ----------------------------------------
-
-		if (frontendService) {
-			// Returns the current settings for the UI
-			this.app.get(
-				`/${this.restEndpoint}/settings`,
-				ResponseHelper.send(async () => frontendService.getSettings()),
-			);
-		}
+		this.configureSettingsRoute();
 
 		// ----------------------------------------
 		// EventBus Setup
@@ -288,6 +277,11 @@ export class Server extends AbstractServer {
 		const eventBus = Container.get(MessageEventBus);
 		await eventBus.initialize();
 		Container.get(LogStreamingEventRelay).init();
+
+		// ----------------------------------------
+		// Workflow Indexing Setup
+		// ----------------------------------------
+		await this.initializeWorkflowIndexing();
 
 		if (this.endpointPresetCredentials !== '') {
 			// POST endpoint to set preset credentials
@@ -481,6 +475,37 @@ export class Server extends AbstractServer {
 		}
 
 		installGlobalProxyAgent();
+	}
+
+	private configureSettingsRoute() {
+		const { frontendService } = this;
+		const authService = Container.get(AuthService);
+
+		if (frontendService) {
+			// Returns the current settings for the UI
+			this.app.get(
+				`/${this.restEndpoint}/settings`,
+				authService.createAuthMiddleware({ allowSkipMFA: false, allowUnauthenticated: true }),
+				ResponseHelper.send(async (req: AuthenticatedRequest) => {
+					return req.user ? frontendService.getSettings() : frontendService.getPublicSettings();
+				}),
+			);
+		}
+	}
+
+	private async initializeWorkflowIndexing() {
+		if (Container.get(WorkflowsConfig).indexingEnabled) {
+			if (Container.get(DatabaseConfig).isLegacySqlite) {
+				this.logger.warn(
+					'Workflow indexing is disabled because legacy Sqlite databases are not supported. Please migrate the database to enable workflow indexing.',
+				);
+				return;
+			}
+			const { WorkflowIndexService } = await import(
+				'@/modules/workflow-index/workflow-index.service'
+			);
+			Container.get(WorkflowIndexService).init();
+		}
 	}
 
 	protected setupPushServer(): void {

@@ -16,8 +16,7 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 // Shared MCP tool types
 export type SearchWorkflowsParams = {
 	limit?: number;
-	active?: boolean;
-	name?: string;
+	query?: string;
 	projectId?: string;
 };
 
@@ -67,4 +66,9 @@ export type UserCalledMCPToolEventPayload = {
 	user_id?: string;
 	tool_name: string;
 	parameters?: Record<string, unknown>;
+	results?: {
+		success: boolean;
+		data?: unknown;
+		error?: string;
+	};
 };

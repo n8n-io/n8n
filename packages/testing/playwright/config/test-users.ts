@@ -80,4 +80,10 @@ export const INSTANCE_MEMBER_CREDENTIALS: UserCredentials[] = [
 		firstName: randFirstName(),
 		lastName: randLastName(),
 	},
+	{
+		email: 'member2@n8n.io',
+		password: DEFAULT_USER_PASSWORD,
+		firstName: randFirstName(),
+		lastName: randLastName(),
+	},
 ];

@@ -25,7 +25,7 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_AUTH_TOKEN')
 	authToken: string = '';
 
-	/** IP address task runners broker should listen on */
+	/** Port task runners broker should listen on */
 	@Env('N8N_RUNNERS_BROKER_PORT')
 	port: number = 5679;
 
