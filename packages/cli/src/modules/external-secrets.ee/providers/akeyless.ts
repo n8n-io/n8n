@@ -132,6 +132,16 @@ export class AkeylessProvider implements SecretsProvider {
 
 	private secretFetchPromises = new Map<string, Promise<string | object | undefined>>();
 
+	private fetchGeneration = 0;
+
+	private isRecordOfUnknown(value: unknown): value is Record<string, unknown> {
+		return typeof value === 'object' && value !== null && !Array.isArray(value);
+	}
+
+	private isUnknownArray(value: unknown): value is unknown[] {
+		return Array.isArray(value);
+	}
+
 	constructor(private readonly logger = Container.get(Logger)) {
 		this.logger = this.logger.scoped('external-secrets');
 	}
@@ -161,14 +171,13 @@ export class AkeylessProvider implements SecretsProvider {
 	private parseJsonValue(
 		jsonString: string,
 		source: 'direct' | 'base64' = 'direct',
-	): object | undefined {
+	): object | unknown[] | undefined {
 		try {
 			const parsed: unknown = JSON.parse(jsonString);
 
-			if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
-				const plainObject = parsed as Record<string, unknown>;
+			if (this.isRecordOfUnknown(parsed)) {
 				const sanitizedObject: Record<string, unknown> = {};
-				for (const [key, value] of Object.entries(plainObject)) {
+				for (const [key, value] of Object.entries(parsed)) {
 					if (typeof value === 'string') {
 						sanitizedObject[key] = this.sanitizeString(value);
 					} else {
@@ -185,13 +194,13 @@ export class AkeylessProvider implements SecretsProvider {
 				return sanitizedObject;
 			}
 
-			if (Array.isArray(parsed)) {
+			if (this.isUnknownArray(parsed)) {
 				const logMessage =
 					source === 'base64'
 						? 'Successfully decoded base64 and parsed as JSON array'
 						: 'Successfully parsed secret value as JSON array';
 				this.logger.debug(logMessage);
-				return parsed as unknown[];
+				return parsed;
 			}
 
 			return undefined;
@@ -246,7 +255,13 @@ export class AkeylessProvider implements SecretsProvider {
 	}
 
 	async init(settings: SecretsProviderSettings): Promise<void> {
-		this.settings = (settings.settings as unknown as AkeylessSettings) || {};
+		const raw = settings.settings;
+		const isValid = (v: unknown): v is AkeylessSettings =>
+			this.isRecordOfUnknown(v) &&
+			(['authMethod', 'accessId', 'accessKey', 'token', 'serverUrl'] as const).every(
+				(k) => v[k] === undefined || typeof v[k] === 'string',
+			);
+		this.settings = isValid(raw) ? raw : {};
 		this.baseUrl = (this.settings?.serverUrl?.trim() ?? 'https://api.akeyless.io').replace(
 			/\/$/,
 			'',
@@ -280,8 +295,12 @@ export class AkeylessProvider implements SecretsProvider {
 	}
 
 	async disconnect(): Promise<void> {
+		// Invalidate any pending fetches and prevent stale cache writes
+		this.fetchGeneration++;
+		this.secretFetchPromises.clear();
 		this.cachedSecrets = {};
 		this.httpClient = null;
+		this.state = 'initializing';
 	}
 
 	private initializeHttpClient(): void {
@@ -371,22 +390,18 @@ export class AkeylessProvider implements SecretsProvider {
 	}
 
 	private findSecretInResponse(
-		response: AkeylessGetSecretValueResponse,
+		response: Record<string, unknown> & { error?: string },
 		secretName: string,
 		normalizedName: string,
 	): string | undefined {
-		let secretValue: string | undefined = response[normalizedName];
-		if (secretValue) {
-			return secretValue;
-		}
+		const direct = response[normalizedName];
+		if (typeof direct === 'string') return direct;
 
 		const nameWithoutSlash = normalizedName.startsWith('/')
 			? normalizedName.substring(1)
 			: normalizedName;
-		secretValue = response[nameWithoutSlash];
-		if (secretValue) {
-			return secretValue;
-		}
+		const withoutSlash = response[nameWithoutSlash];
+		if (typeof withoutSlash === 'string') return withoutSlash;
 
 		for (const [key, value] of Object.entries(response)) {
 			if (key === 'error' || typeof value !== 'string') {
@@ -438,7 +453,6 @@ export class AkeylessProvider implements SecretsProvider {
 
 		this.logger.debug(`Secret fetch response for "${secretName}"`, {
 			responseKeys: Object.keys(responseData).filter((k) => k !== 'error'),
-			fullResponse: JSON.stringify(responseData),
 		});
 
 		if (typeof responseData === 'object' && responseData !== null) {
@@ -459,11 +473,7 @@ export class AkeylessProvider implements SecretsProvider {
 
 			return this.processMultiKeyResponse(dataWithoutError);
 		}
-		const secretValue = this.findSecretInResponse(
-			responseData as AkeylessGetSecretValueResponse,
-			secretName,
-			normalizedName,
-		);
+		const secretValue = this.findSecretInResponse(responseData, secretName, normalizedName);
 
 		if (typeof secretValue === 'string') {
 			this.logger.debug(`Raw secret value received for "${secretName}"`, {
@@ -507,8 +517,8 @@ export class AkeylessProvider implements SecretsProvider {
 					allValuesAreSamePlainString = false;
 				} else {
 					processedData[key] = parsed;
-					if (firstPlainStringValue === undefined) {
-						firstPlainStringValue = parsed as string;
+					if (firstPlainStringValue === undefined && typeof parsed === 'string') {
+						firstPlainStringValue = parsed;
 					} else if (firstPlainStringValue !== parsed) {
 						allValuesAreSamePlainString = false;
 					}
@@ -777,15 +787,22 @@ export class AkeylessProvider implements SecretsProvider {
 		}
 
 		if (secretValue === undefined && this.state === 'connected') {
-			let fetchPromise = this.secretFetchPromises.get(name);
+			const canonicalKey = name.startsWith('/') ? name.substring(1) : name;
+			let fetchPromise = this.secretFetchPromises.get(canonicalKey);
 
 			if (!fetchPromise) {
 				fetchPromise = this.fetchSecretByName(name);
-				this.secretFetchPromises.set(name, fetchPromise);
+				this.secretFetchPromises.set(canonicalKey, fetchPromise);
 
+				const generationAtCreation = this.fetchGeneration;
 				fetchPromise
 					.then((value) => {
-						if (value !== undefined) {
+						// Skip cache updates if provider was disconnected/reinitialized
+						if (
+							value !== undefined &&
+							generationAtCreation === this.fetchGeneration &&
+							this.state === 'connected'
+						) {
 							this.cachedSecrets[name] = value;
 							if (name.startsWith('/')) {
 								this.cachedSecrets[name.substring(1)] = value;
@@ -793,10 +810,10 @@ export class AkeylessProvider implements SecretsProvider {
 								this.cachedSecrets[`/${name}`] = value;
 							}
 						}
-						this.secretFetchPromises.delete(name);
+						this.secretFetchPromises.delete(canonicalKey);
 					})
 					.catch(() => {
-						this.secretFetchPromises.delete(name);
+						this.secretFetchPromises.delete(canonicalKey);
 					});
 			}
 
@@ -805,13 +822,7 @@ export class AkeylessProvider implements SecretsProvider {
 		}
 
 		if (secretValue !== undefined) {
-			if (typeof secretValue === 'string') {
-				this.logger.debug(`Returning secret "${name}" as string`, {
-					length: secretValue.length,
-					preview: secretValue.substring(0, 50),
-					hex: Buffer.from(secretValue).toString('hex').substring(0, 100),
-				});
-			} else {
+			if (typeof secretValue !== 'string') {
 				this.logger.debug(`Returning secret "${name}" as object`, {
 					keys: Object.keys(secretValue),
 				});
