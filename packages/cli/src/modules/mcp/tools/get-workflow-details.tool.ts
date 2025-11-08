@@ -2,11 +2,17 @@ import type { User } from '@n8n/db';
 import { UserError, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import z from 'zod';
 
-import type { ToolDefinition, WorkflowDetailsResult } from '../mcp.types';
+import { USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import type {
+	ToolDefinition,
+	WorkflowDetailsResult,
+	UserCalledMCPToolEventPayload,
+} from '../mcp.types';
 import { workflowDetailsOutputSchema } from './schemas';
 import { getWebhookDetails, type WebhookEndpoints } from './webhook-utils';
 
 import type { CredentialsService } from '@/credentials/credentials.service';
+import type { Telemetry } from '@/telemetry';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
 const inputSchema = {
@@ -26,6 +32,7 @@ export const createWorkflowDetailsTool = (
 	workflowFinderService: WorkflowFinderService,
 	credentialsService: CredentialsService,
 	endpoints: WebhookEndpoints,
+	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema> => {
 	return {
 		name: 'get_workflow_details',
@@ -35,19 +42,48 @@ export const createWorkflowDetailsTool = (
 			outputSchema,
 		},
 		handler: async ({ workflowId }) => {
-			const payload = await getWorkflowDetails(
-				user,
-				baseWebhookUrl,
-				workflowFinderService,
-				credentialsService,
-				endpoints,
-				{ workflowId },
-			);
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(payload) }],
-				structuredContent: payload,
+			const parameters = { workflowId };
+			const telemetryPayload: UserCalledMCPToolEventPayload = {
+				user_id: user.id,
+				tool_name: 'get_workflow_details',
+				parameters,
 			};
+
+			try {
+				const payload = await getWorkflowDetails(
+					user,
+					baseWebhookUrl,
+					workflowFinderService,
+					credentialsService,
+					endpoints,
+					{ workflowId },
+				);
+
+				// Track successful execution
+				telemetryPayload.results = {
+					success: true,
+					data: {
+						workflow_id: workflowId,
+						workflow_name: payload.workflow.name,
+						trigger_count: payload.workflow.triggerCount,
+						node_count: payload.workflow.nodes.length,
+					},
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+
+				return {
+					content: [{ type: 'text', text: JSON.stringify(payload) }],
+					structuredContent: payload,
+				};
+			} catch (error) {
+				// Track failed execution
+				telemetryPayload.results = {
+					success: false,
+					error: error instanceof Error ? error.message : String(error),
+				};
+				telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
+				throw error;
+			}
 		},
 	};
 };

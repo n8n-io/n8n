@@ -1,5 +1,5 @@
-ARG NODE_VERSION=22.18.0
-ARG PYTHON_VERSION=3.14
+ARG NODE_VERSION=22.21.0
+ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
@@ -74,7 +74,7 @@ RUN uv pip install -r /app/task-runner-python/extras.txt
 # ==============================================================================
 FROM alpine:3.22.1 AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.0
+ARG LAUNCHER_VERSION=1.4.1
 
 RUN set -e; \
     case "$TARGETPLATFORM" in \

@@ -1,7 +1,6 @@
 import asyncio
 import errno
 import logging
-from typing import Optional
 
 from src.config.health_check_config import HealthCheckConfig
 
@@ -12,7 +11,7 @@ HEALTH_CHECK_RESPONSE = (
 
 class HealthCheckServer:
     def __init__(self):
-        self.server: Optional[asyncio.Server] = None
+        self.server: asyncio.Server | None = None
         self.logger = logging.getLogger(__name__)
 
     async def start(self, config: HealthCheckConfig) -> None:
