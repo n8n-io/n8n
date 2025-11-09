@@ -130,15 +130,31 @@ const plugins: UserConfig['plugins'] = [
 	}),
 	{
 		name: 'Insert config script',
-		transformIndexHtml: (html, ctx) => {
-			// Skip config tags when using Vite dev server. Otherwise the BE
-			// will replace it with the actual config script in cli/src/commands/start.ts.
-			return ctx.server
-				? html
+		transformIndexHtml: {
+			enforce: 'pre',
+			transform(html, ctx) {
+				// Skip config tags when using Vite dev server. Otherwise the BE
+				// will replace it with the actual config script in cli/src/commands/start.ts.
+				if (ctx.server) {
+					html = html
 						.replace('%CONFIG_TAGS%', '')
 						.replaceAll('/{{BASE_PATH}}', '//localhost:5678')
-						.replaceAll('/{{REST_ENDPOINT}}', '/rest')
-				: html;
+						.replaceAll('/{{REST_ENDPOINT}}', '/rest');
+				}
+
+				// These scripts contain template variables and are processed by the backend at runtime
+				// During build, we need to prevent Vite from trying to process them
+				// The backend will inject the actual script tags at runtime
+				if (!ctx.server) {
+					// Remove scripts with template variables during build - backend will add them at runtime
+					html = html.replace(
+						/<script[^>]*src="\/\{\{BASE_PATH\}\}\/static\/(base-path|posthog\.init)\.js"[^>]*><\/script>\s*/g,
+						'',
+					);
+				}
+
+				return html;
+			},
 		},
 	},
 	// For sanitize-html
@@ -210,11 +226,44 @@ export default mergeConfig(
 			minify: !!release,
 			sourcemap: !!release,
 			target,
+			rollupOptions: {
+				onwarn(warning, warn) {
+					// Suppress eval warnings from web-tree-sitter
+					// This package uses eval for WASM compilation, which is expected behavior
+					const warningStr = JSON.stringify(warning).toLowerCase();
+					const isWebTreeSitterEvalWarning =
+						(warning.code === 'EVAL' ||
+							warning.message?.toLowerCase().includes('eval') ||
+							warningStr.includes('eval')) &&
+						(warning.id?.includes('web-tree-sitter') ||
+							warning.id?.includes('tree-sitter.js') ||
+							warning.loc?.file?.includes('web-tree-sitter') ||
+							warning.loc?.file?.includes('tree-sitter.js') ||
+							warning.message?.includes('web-tree-sitter') ||
+							warning.message?.includes('tree-sitter.js') ||
+							warningStr.includes('web-tree-sitter') ||
+							warningStr.includes('tree-sitter.js'));
+
+					if (isWebTreeSitterEvalWarning) {
+						// Silently suppress this warning
+						return;
+					}
+					// Use default warning handler for all other warnings
+					warn(warning);
+				},
+			},
 		},
 		optimizeDeps: {
 			esbuildOptions: {
 				target,
+				// Suppress eval warnings from web-tree-sitter during dependency optimization
+				logOverride: {
+					'this-is-undefined-in-esm': 'silent',
+				},
 			},
+			// Exclude web-tree-sitter from optimization to avoid eval warnings
+			// It's a WASM package that needs special handling
+			exclude: ['web-tree-sitter'],
 		},
 		worker: {
 			format: 'es',

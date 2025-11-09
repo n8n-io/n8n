@@ -43,14 +43,20 @@ export class PostHogClient {
 	async getFeatureFlags(user: Pick<PublicUser, 'id' | 'createdAt'>): Promise<FeatureFlags> {
 		if (!this.postHog) return {};
 
-		const fullId = [this.instanceSettings.instanceId, user.id].join('#');
+		try {
+			const fullId = [this.instanceSettings.instanceId, user.id].join('#');
 
-		// cannot use local evaluation because that requires PostHog personal api key with org-wide
-		// https://github.com/PostHog/posthog/issues/4849
-		return await this.postHog.getAllFlags(fullId, {
-			personProperties: {
-				created_at_timestamp: user.createdAt.getTime().toString(),
-			},
-		});
+			// cannot use local evaluation because that requires PostHog personal api key with org-wide
+			// https://github.com/PostHog/posthog/issues/4849
+			return await this.postHog.getAllFlags(fullId, {
+				personProperties: {
+					created_at_timestamp: user.createdAt.getTime().toString(),
+				},
+			});
+		} catch (error) {
+			// Silently handle network errors (timeout, ENOTFOUND, etc.)
+			// Return empty flags to allow the app to continue functioning
+			return {};
+		}
 	}
 }
