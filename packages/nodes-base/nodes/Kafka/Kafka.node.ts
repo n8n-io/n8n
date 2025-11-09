@@ -252,9 +252,10 @@ export class Kafka implements INodeType {
 							case 'awsIam': {
 								// AWS IAM MSK Auth configuration
 								config.ssl = true; // required for IAM
+								const brokerHost = brokers[0]; // first broker in the array
 								config.sasl = {
 									mechanism: 'aws',
-									authenticationProvider: mskIamAuthProvider(credentials),
+									authenticationProvider: await mskIamAuthProvider(credentials, brokerHost),
 								} as unknown as SASLOptions;
 								break;
 							}
@@ -343,9 +344,10 @@ export class Kafka implements INodeType {
 					case 'awsIam': {
 						// AWS IAM MSK Auth configuration
 						config.ssl = true; // required for IAM
+						const brokerHost = brokers[0]; // first broker in the array
 						config.sasl = {
 							mechanism: 'aws',
-							authenticationProvider: mskIamAuthProvider(credentials),
+							authenticationProvider: await mskIamAuthProvider(credentials, brokerHost),
 						} as unknown as SASLOptions;
 						break;
 					}
