@@ -13,6 +13,7 @@ import type {
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 	INodeExecutionData,
+	DestinationNode,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -190,6 +191,7 @@ describe('ManualExecutionService', () => {
 			const startNodeName = 'startNode';
 			const triggerNodeName = 'triggerNode';
 			const destinationNodeName = 'destinationNode';
+			const destinationNode: DestinationNode = { nodeName: destinationNodeName, mode: 'exclusive' };
 
 			const data = mock<IWorkflowExecutionDataProcess>({
 				triggerToStartFrom: {
@@ -198,7 +200,7 @@ describe('ManualExecutionService', () => {
 				},
 				startNodes: [{ name: startNodeName }],
 				executionMode: 'manual',
-				destinationNode: { nodeName: destinationNodeName, mode: 'exclusive' },
+				destinationNode,
 			});
 
 			const startNode = mock<INode>({ name: startNodeName });
@@ -226,7 +228,7 @@ describe('ManualExecutionService', () => {
 				data.executionMode,
 				expect.objectContaining({
 					startData: {
-						destinationNode: { nodeName: destinationNodeName, mode: 'exclusive' },
+						destinationNode,
 					},
 					resultData: expect.any(Object),
 					executionData: expect.any(Object),
@@ -379,12 +381,13 @@ describe('ManualExecutionService', () => {
 			const mockRunData = { node1: [{ data: { main: [[{ json: {} }]] } }] };
 			const dirtyNodeNames = ['node2', 'node3'];
 			const destinationNodeName = 'destinationNode';
+			const destinationNode: DestinationNode = { nodeName: destinationNodeName, mode: 'exclusive' };
 			const data = mock<IWorkflowExecutionDataProcess>({
 				executionMode: 'manual',
 				runData: mockRunData,
 				startNodes: [{ name: 'node1' }],
 				dirtyNodeNames,
-				destinationNode: { nodeName: destinationNodeName, mode: 'exclusive' },
+				destinationNode,
 			});
 
 			const workflow = mock<Workflow>({
@@ -411,7 +414,7 @@ describe('ManualExecutionService', () => {
 
 			expect(mockRunPartialWorkflow2).toHaveBeenCalled();
 			expect(mockRunPartialWorkflow2.mock.calls[0][0]).toBe(workflow);
-			expect(mockRunPartialWorkflow2.mock.calls[0][4]).toBe(destinationNodeName);
+			expect(mockRunPartialWorkflow2.mock.calls[0][4]).toBe(data.destinationNode);
 		});
 
 		it('should validate nodes exist before execution', async () => {
@@ -489,11 +492,12 @@ describe('ManualExecutionService', () => {
 		it('should call runPartialWorkflow2 with runData and empty startNodes', async () => {
 			const mockRunData = { nodeA: [{ data: { main: [[{ json: { value: 'test' } }]] } }] };
 			const destinationNodeName = 'nodeB';
+			const destinationNode: DestinationNode = { nodeName: destinationNodeName, mode: 'exclusive' };
 			const data = mock<IWorkflowExecutionDataProcess>({
 				executionMode: 'manual',
 				runData: mockRunData,
 				startNodes: [],
-				destinationNode: { nodeName: destinationNodeName, mode: 'exclusive' },
+				destinationNode,
 				pinData: {},
 				dirtyNodeNames: [],
 				agentRequest: undefined,
@@ -526,7 +530,7 @@ describe('ManualExecutionService', () => {
 				mockRunData,
 				data.pinData,
 				data.dirtyNodeNames,
-				destinationNodeName,
+				destinationNode,
 				data.agentRequest,
 			);
 		});

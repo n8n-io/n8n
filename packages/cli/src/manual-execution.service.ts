@@ -94,7 +94,7 @@ export class ManualExecutionService {
 			};
 
 			if (data.destinationNode) {
-				executionData.startData = { destinationNode: { ...data.destinationNode } };
+				executionData.startData = { destinationNode: data.destinationNode };
 			}
 
 			const workflowExecute = new WorkflowExecute(
