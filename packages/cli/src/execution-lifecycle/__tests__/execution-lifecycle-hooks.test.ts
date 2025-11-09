@@ -131,7 +131,7 @@ describe('Execution Lifecycle Hooks', () => {
 		successfulRunWithRewiredDestination.data = {
 			startData: {
 				destinationNode: { nodeName: 'PartialExecutionToolExecutor', mode: 'exclusive' },
-				originalDestinationNode: { nodeName: nodeName, mode: 'exclusive' },
+				originalDestinationNode: { nodeName, mode: 'exclusive' },
 			},
 			resultData: {
 				runData: {},
