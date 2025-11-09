@@ -297,6 +297,7 @@ export class WorkflowService {
 			'staticData',
 			'pinData',
 			'versionId',
+			'description',
 		]);
 
 		if (parentFolderId) {
