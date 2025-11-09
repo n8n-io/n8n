@@ -2,9 +2,9 @@ import { AzureAISearchVectorStore } from '@langchain/community/vectorstores/azur
 import { DefaultAzureCredential } from '@azure/identity';
 import { AzureKeyCredential } from '@azure/search-documents';
 import { mock } from 'jest-mock-extended';
-import type { ISupplyDataFunctions } from 'n8n-workflow';
+import type { ISupplyDataFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
 
-import { VectorStoreAzureAISearch } from './VectorStoreAzureAISearch.node';
+import { VectorStoreAzureAISearch, getIndexName } from './VectorStoreAzureAISearch.node';
 
 jest.mock('@langchain/community/vectorstores/azure_aisearch');
 jest.mock('@azure/identity');
@@ -183,6 +183,27 @@ describe('VectorStoreAzureAISearch', () => {
 			clientOptions: {
 				userAgentOptions: { userAgentPrefix: 'n8n-azure-ai-search' },
 			},
+		});
+	});
+
+	it('should handle ILoadOptionsFunctions context correctly', () => {
+		const loadOptionsFunctions = mock<ILoadOptionsFunctions>();
+		const mockNode = mock<INode>();
+
+		loadOptionsFunctions.getNode.mockReturnValue(mockNode);
+		loadOptionsFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+			if (paramName === 'indexName') {
+				return 'test-load-options-index';
+			}
+			return undefined;
+		});
+
+		const indexName = getIndexName(loadOptionsFunctions, 0);
+
+		expect(indexName).toBe('test-load-options-index');
+		// Verify getNodeParameter was called with correct signature (no itemIndex)
+		expect(loadOptionsFunctions.getNodeParameter).toHaveBeenCalledWith('indexName', '', {
+			extractValue: true,
 		});
 	});
 });

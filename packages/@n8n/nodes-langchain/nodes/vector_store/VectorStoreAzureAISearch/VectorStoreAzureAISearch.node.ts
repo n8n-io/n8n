@@ -140,13 +140,22 @@ type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptions
 function isExecutionContext(
 	context: IFunctionsContext,
 ): context is IExecuteFunctions | ISupplyDataFunctions {
-	return 'getNodeParameter' in context;
+	// IExecuteFunctions and ISupplyDataFunctions have addInputData method
+	// ILoadOptionsFunctions does not
+	return 'addInputData' in context;
 }
 
 function getParameter(key: string, context: IFunctionsContext, itemIndex: number): string {
-	const value = context.getNodeParameter(key, itemIndex, '', {
-		extractValue: true,
-	}) as string;
+	let value: unknown;
+
+	if (isExecutionContext(context)) {
+		// Execution context: includes itemIndex parameter
+		value = context.getNodeParameter(key, itemIndex, '', { extractValue: true });
+	} else {
+		// Load options context: no itemIndex parameter
+		value = (context as ILoadOptionsFunctions).getNodeParameter(key, '', { extractValue: true });
+	}
+
 	if (typeof value !== 'string') {
 		throw new NodeOperationError(context.getNode(), `Parameter ${key} must be a string`);
 	}
@@ -269,10 +278,10 @@ async function getAzureAISearchClient(
 
 		// Log the full error for debugging
 		context.logger.debug('Azure AI Search connection error:', {
-			message: error.message,
-			code: error.code,
-			statusCode: error.statusCode,
-			details: error.details,
+			message: error instanceof Error ? error.message : String(error),
+			code: (error as any).code,
+			statusCode: (error as any).statusCode,
+			details: (error as any).details,
 		});
 
 		// Check for authentication errors
@@ -395,7 +404,8 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 					// Clear all documents in the index using a filter that matches all
 					await vectorStore.delete({ filter: { filterExpression: '1 eq 1' } });
 				} catch (error) {
-					context.logger.warn(`Could not clear index: ${error.message}`);
+					const errorMessage = error instanceof Error ? error.message : String(error);
+					context.logger.warn(`Could not clear index: ${errorMessage}`);
 				}
 			}
 
@@ -404,11 +414,11 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 		} catch (error) {
 			// Log the full error for debugging
 			context.logger.debug('Azure AI Search error details:', {
-				message: error.message,
-				code: error.code,
-				statusCode: error.statusCode,
-				details: error.details,
-				stack: error.stack,
+				message: error instanceof Error ? error.message : String(error),
+				code: (error as any).code,
+				statusCode: (error as any).statusCode,
+				details: (error as any).details,
+				stack: error instanceof Error ? error.stack : undefined,
 			});
 
 			// Check for authentication errors
@@ -436,7 +446,7 @@ Note: Document upload requires write permissions (Search Index Data Contributor 
 			if (
 				error.message?.includes('403') ||
 				error.message?.includes('Forbidden') ||
-				error.statusCode === 403
+				(error as any).statusCode === 403
 			) {
 				throw new NodeOperationError(
 					context.getNode(),
@@ -450,12 +460,13 @@ Note: Document upload requires write permissions (Search Index Data Contributor 
 			}
 
 			// Check for RestError (common Azure SDK error)
-			if (error.name === 'RestError' || error.message?.includes('RestError')) {
-				const statusCode = error.statusCode || 'unknown';
-				const errorCode = error.code || 'unknown';
+			if ((error as any).name === 'RestError' || error.message?.includes('RestError')) {
+				const statusCode = (error as any).statusCode || 'unknown';
+				const errorCode = (error as any).code || 'unknown';
+				const errorMessage = error instanceof Error ? error.message : String(error);
 				throw new NodeOperationError(
 					context.getNode(),
-					`Azure AI Search API error (${statusCode}): ${error.message}`,
+					`Azure AI Search API error (${statusCode}): ${errorMessage}`,
 					{
 						itemIndex,
 						description: `Error code: ${errorCode}\n\nCommon causes:\n- Invalid endpoint URL\n- Index doesn't exist\n- Authentication/authorization issues\n- API version mismatch\n\nCheck the console logs for detailed error information.`,
