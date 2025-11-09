@@ -3044,8 +3044,8 @@ importers:
         specifier: 'catalog:'
         version: 3.4.4
       mailparser:
-        specifier: 3.6.7
-        version: 3.6.7
+        specifier: 3.7.5
+        version: 3.7.5
       minifaker:
         specifier: 1.34.1
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
@@ -3074,8 +3074,8 @@ importers:
         specifier: 13.2.0
         version: 13.2.0
       nodemailer:
-        specifier: 6.9.9
-        version: 6.9.9
+        specifier: 7.0.7
+        version: 7.0.7
       oracledb:
         specifier: 6.9.0
         version: 6.9.0
@@ -11117,8 +11117,8 @@ packages:
     resolution: {integrity: sha512-Q0n9HRi4m6JuGIV1eFlmvJB7ZEVxu93IrMyiMsGC0lrMJMWzRgx6WGquyfQgZVb31vhGgXnfmPNNXmxnOkRBrg==}
     engines: {node: '>= 0.8'}
 
-  encoding-japanese@2.0.0:
-    resolution: {integrity: sha512-++P0RhebUC8MJAwJOsT93dT+5oc5oPImp1HubZpAuCZ5kTLnhuuBhKHj2jJeO/Gj93idPBWmIuQ9QWMe5rX3pQ==}
+  encoding-japanese@2.2.0:
+    resolution: {integrity: sha512-EuJWwlHPZ1LbADuKTClvHtwbaFn4rOD+dRAbWysqEOXRc2Uui0hJInNJrsdH0c+OhJA4nrCBdSkW4DD5YxAo6A==}
     engines: {node: '>=8.10.0'}
 
   encoding-sniffer@0.2.0:
@@ -13585,20 +13585,17 @@ packages:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
 
-  libbase64@1.2.1:
-    resolution: {integrity: sha512-l+nePcPbIG1fNlqMzrh68MLkX/gTxk/+vdvAb388Ssi7UuUN31MI44w4Yf33mM3Cm4xDfw48mdf3rkdHszLNew==}
+  libbase64@1.3.0:
+    resolution: {integrity: sha512-GgOXd0Eo6phYgh0DJtjQ2tO8dc0IVINtZJeARPeiIJqge+HdsWSuaDTe8ztQ7j/cONByDZ3zeB325AHiv5O0dg==}
 
-  libmime@5.2.0:
-    resolution: {integrity: sha512-X2U5Wx0YmK0rXFbk67ASMeqYIkZ6E5vY7pNWRKtnNzqjvdYYG8xtPDpCnuUEnPU9vlgNev+JoSrcaKSUaNvfsw==}
-
-  libmime@5.2.1:
-    resolution: {integrity: sha512-A0z9O4+5q+ZTj7QwNe/Juy1KARNb4WaviO4mYeFC4b8dBT2EEqK2pkM+GC8MVnkOjqhl5nYQxRgnPYRRTNmuSQ==}
+  libmime@5.3.7:
+    resolution: {integrity: sha512-FlDb3Wtha8P01kTL3P9M+ZDNDWPKPmKHWaU/cG/lg5pfuAwdflVpZE+wm9m7pKmC5ww6s+zTxBKS1p6yl3KpSw==}
 
   libphonenumber-js@1.10.14:
     resolution: {integrity: sha512-McGS7GV/WjJ2KjfOGhJU1oJn29RYeo7Q+RpANRbUNMQ9gj5XArpbjurSuyYPTejFwbaUojstQ4XyWCrAzGOUXw==}
 
-  libqp@2.0.1:
-    resolution: {integrity: sha512-Ka0eC5LkF3IPNQHJmYBWljJsw0UvM6j+QdKRbWyCdTmYwvIDE6a7bCm0UkTAL/K+3KXK5qXT/ClcInU01OpdLg==}
+  libqp@2.1.1:
+    resolution: {integrity: sha512-0Wd+GPz1O134cP62YU2GTOPNA7Qgl09XwCqM5zpBv87ERCXdfDtyKXvV7c9U22yWJh44QZqBocFnXN11K96qow==}
 
   license-checker@25.0.1:
     resolution: {integrity: sha512-mET5AIwl7MR2IAKYYoVBBpV0OnkKQ1xGj2IMMeEFIs42QAkEVjRtFZGWmQ28WeU7MP779iAgOaOy93Mn44mn6g==}
@@ -13918,11 +13915,11 @@ packages:
   magicast@0.3.5:
     resolution: {integrity: sha512-L0WhttDl+2BOsybvEOLK7fW3UA0OQ0IQ2d6Zl2x/a6vVRs3bAY0ECOSHHeL5jD+SbOpOCUEi0y1DgHEn9Qn1AQ==}
 
-  mailparser@3.6.7:
-    resolution: {integrity: sha512-/3x8HW70DNehw+3vdOPKdlLuxOHoWcGB5jfx5vJ5XUbY9/2jUJbrrhda5Si8Dj/3w08U0y5uGAkqs5+SPTPKoA==}
+  mailparser@3.7.5:
+    resolution: {integrity: sha512-o59RgZC+4SyCOn4xRH1mtRiZ1PbEmi6si6Ufnd3tbX/V9zmZN1qcqu8xbXY62H6CwIclOT3ppm5u/wV2nujn4g==}
 
-  mailsplit@5.4.0:
-    resolution: {integrity: sha512-wnYxX5D5qymGIPYLwnp6h8n1+6P6vz/MJn5AzGjZ8pwICWssL+CCQjWBIToOVHASmATot4ktvlLo6CyLfOXWYA==}
+  mailsplit@5.4.6:
+    resolution: {integrity: sha512-M+cqmzaPG/mEiCDmqQUz8L177JZLZmXAUpq38owtpq2xlXlTSw+kntnxRt2xsxVFFV6+T8Mj/U0l5s7s6e0rNw==}
     deprecated: This package has been renamed to @zone-eu/mailsplit. Please update your dependencies.
 
   make-dir@3.1.0:
@@ -14638,6 +14635,14 @@ packages:
 
   nodemailer@6.9.9:
     resolution: {integrity: sha512-dexTll8zqQoVJEZPwQAKzxxtFn0qTnjdQTchoU6Re9BUUGBJiOy3YMn/0ShTW6J5M0dfQ1NeDeRTTl4oIWgQMA==}
+    engines: {node: '>=6.0.0'}
+
+  nodemailer@7.0.7:
+    resolution: {integrity: sha512-jGOaRznodf62TVzdyhKt/f1Q/c3kYynk8629sgJHpRzGZj01ezbgMMWJSAjHADcwTKxco3B68/R+KHJY2T5BaA==}
+    engines: {node: '>=6.0.0'}
+
+  nodemailer@7.0.9:
+    resolution: {integrity: sha512-9/Qm0qXIByEP8lEV2qOqcAW7bRpL8CR9jcTwk3NBnHJNmP9fIJ86g2fgmIXqHY+nj55ZEMwWqYAT2QTDpRUYiQ==}
     engines: {node: '>=6.0.0'}
 
   nodemon@3.0.1:
@@ -15620,6 +15625,10 @@ packages:
 
   pump@3.0.0:
     resolution: {integrity: sha512-LwZy+p3SFs1Pytd/jYct4wpv49HiYCqd9Rlc5ZVdk0V+8Yzv6jR5Blk3TRmPL1ft69TxP0IMZGJ+WPFU2BFhww==}
+
+  punycode.js@2.3.1:
+    resolution: {integrity: sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA==}
+    engines: {node: '>=6'}
 
   punycode@1.4.1:
     resolution: {integrity: sha512-jmYNElW7yvO7TV33CjSmvSiE2yco3bV2czu/OzDKdMNVZQWfxCblURLhf+47syQRBntjfLdd/H0egrzIG+oaFQ==}
@@ -17023,8 +17032,8 @@ packages:
   title-case@3.0.3:
     resolution: {integrity: sha512-e1zGYRvbffpcHIrnuqT0Dh+gEJtDaxDSoG4JAIpq4oDFyooziLBIiYQv0GBT4FUAnUop5uZ1hiIAj7oAF6sOCA==}
 
-  tlds@1.248.0:
-    resolution: {integrity: sha512-noj0KdpWTBhwsKxMOXk0rN9otg4kTgLm4WohERRHbJ9IY+kSDKr3RmjitaQ3JFzny+DyvBOQKlFZhp0G0qNSfg==}
+  tlds@1.260.0:
+    resolution: {integrity: sha512-78+28EWBhCEE7qlyaHA9OR3IPvbCLiDh3Ckla593TksfFc9vfTsgvH7eS+dr3o9qr31gwGbogcI16yN91PoRjQ==}
     hasBin: true
 
   tldts-core@6.1.86:
@@ -21077,7 +21086,7 @@ snapshots:
       '@currents/commit-info': 1.0.1-beta.0
       async-retry: 1.3.3
       axios: 1.12.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.12.0)
+      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.1))
       c12: 1.11.2(magicast@0.3.5)
       chalk: 4.1.2
       commander: 12.1.0
@@ -23447,7 +23456,7 @@ snapshots:
   '@rudderstack/rudder-sdk-node@2.1.4(tslib@2.8.1)':
     dependencies:
       axios: 1.12.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.12.0)
+      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.1))
       component-type: 2.0.0
       join-component: 1.1.0
       lodash.clonedeep: 4.5.0
@@ -26315,7 +26324,7 @@ snapshots:
 
   axe-core@4.7.2: {}
 
-  axios-retry@4.5.0(axios@1.12.0):
+  axios-retry@4.5.0(axios@1.12.0(debug@4.4.1)):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
       is-retry-allowed: 2.2.0
@@ -26734,7 +26743,7 @@ snapshots:
   bundlemon@3.1.0(typescript@5.9.2):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
-      axios-retry: 4.5.0(axios@1.12.0)
+      axios-retry: 4.5.0(axios@1.12.0(debug@4.4.1))
       brotli-size: 4.0.0
       bundlemon-utils: 2.0.1
       bytes: 3.1.2
@@ -28194,7 +28203,7 @@ snapshots:
 
   encodeurl@2.0.0: {}
 
-  encoding-japanese@2.0.0: {}
+  encoding-japanese@2.2.0: {}
 
   encoding-sniffer@0.2.0:
     dependencies:
@@ -28569,7 +28578,7 @@ snapshots:
 
   eslint-import-resolver-node@0.3.9:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       is-core-module: 2.16.1
       resolve: 1.22.10
     transitivePeerDependencies:
@@ -28593,7 +28602,7 @@ snapshots:
 
   eslint-module-utils@2.12.1(@typescript-eslint/parser@8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@4.4.3)(eslint@9.29.0(jiti@2.6.1)):
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     optionalDependencies:
       '@typescript-eslint/parser': 8.35.0(eslint@9.29.0(jiti@2.6.1))(typescript@5.9.2)
       eslint: 9.29.0(jiti@2.6.1)
@@ -28638,7 +28647,7 @@ snapshots:
       array.prototype.findlastindex: 1.2.6
       array.prototype.flat: 1.3.3
       array.prototype.flatmap: 1.3.3
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       doctrine: 2.1.0
       eslint: 9.29.0(jiti@2.6.1)
       eslint-import-resolver-node: 0.3.9
@@ -29654,7 +29663,7 @@ snapshots:
       array-parallel: 0.1.3
       array-series: 0.1.5
       cross-spawn: 7.0.6
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
     transitivePeerDependencies:
       - supports-color
 
@@ -31638,30 +31647,23 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
 
-  libbase64@1.2.1: {}
+  libbase64@1.3.0: {}
 
-  libmime@5.2.0:
+  libmime@5.3.7:
     dependencies:
-      encoding-japanese: 2.0.0
+      encoding-japanese: 2.2.0
       iconv-lite: 0.6.3
-      libbase64: 1.2.1
-      libqp: 2.0.1
-
-  libmime@5.2.1:
-    dependencies:
-      encoding-japanese: 2.0.0
-      iconv-lite: 0.6.3
-      libbase64: 1.2.1
-      libqp: 2.0.1
+      libbase64: 1.3.0
+      libqp: 2.1.1
 
   libphonenumber-js@1.10.14: {}
 
-  libqp@2.0.1: {}
+  libqp@2.1.1: {}
 
   license-checker@25.0.1:
     dependencies:
       chalk: 2.4.2
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       mkdirp: 0.5.6
       nopt: 4.0.3
       read-installed: 4.0.3
@@ -31940,23 +31942,24 @@ snapshots:
       '@babel/types': 7.28.4
       source-map-js: 1.2.1
 
-  mailparser@3.6.7:
+  mailparser@3.7.5:
     dependencies:
-      encoding-japanese: 2.0.0
+      encoding-japanese: 2.2.0
       he: 1.2.0
       html-to-text: 9.0.5
-      iconv-lite: 0.6.3
-      libmime: 5.2.1
+      iconv-lite: 0.7.0
+      libmime: 5.3.7
       linkify-it: 5.0.0
-      mailsplit: 5.4.0
-      nodemailer: 6.9.9
-      tlds: 1.248.0
+      mailsplit: 5.4.6
+      nodemailer: 7.0.9
+      punycode.js: 2.3.1
+      tlds: 1.260.0
 
-  mailsplit@5.4.0:
+  mailsplit@5.4.6:
     dependencies:
-      libbase64: 1.2.1
-      libmime: 5.2.0
-      libqp: 2.0.1
+      libbase64: 1.3.0
+      libmime: 5.3.7
+      libqp: 2.1.1
 
   make-dir@3.1.0:
     dependencies:
@@ -32925,6 +32928,10 @@ snapshots:
 
   nodemailer@6.9.9: {}
 
+  nodemailer@7.0.7: {}
+
+  nodemailer@7.0.9: {}
+
   nodemon@3.0.1:
     dependencies:
       chokidar: 4.0.3
@@ -33461,7 +33468,7 @@ snapshots:
 
   pdf-parse@1.1.1:
     dependencies:
-      debug: 3.2.7(supports-color@5.5.0)
+      debug: 3.2.7(supports-color@8.1.1)
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
@@ -34009,6 +34016,8 @@ snapshots:
     dependencies:
       end-of-stream: 1.4.4
       once: 1.4.0
+
+  punycode.js@2.3.1: {}
 
   punycode@1.4.1: {}
 
@@ -35912,7 +35921,7 @@ snapshots:
     dependencies:
       tslib: 2.6.2
 
-  tlds@1.248.0: {}
+  tlds@1.260.0: {}
 
   tldts-core@6.1.86: {}
 
