@@ -10,32 +10,28 @@ import { STSClient, GetCallerIdentityCommand } from '@aws-sdk/client-sts';
 export const mskIamAuthProvider = (credentials: ICredentialDataDecryptedObject) => {
 	const { awsRegion, accessKeyId, secretAccessKey, sessionToken } = credentials;
 
-	if (!awsRegion || !accessKeyId || !secretAccessKey) {
+	const region = String(awsRegion ?? '');
+	if (!region || !accessKeyId || !secretAccessKey) {
 		throw new ApplicationError('Missing AWS IAM credentials');
 	}
 
-	// Create a static credentials provider if keys are provided
 	const staticProvider = async () => ({
 		accessKeyId: String(accessKeyId),
 		secretAccessKey: String(secretAccessKey),
 		sessionToken: sessionToken ? String(sessionToken) : undefined,
 	});
 
-	// Use the Node default provider chain as fallback
 	const provider = fromNodeProviderChain();
 
 	return async () => {
-		// Prefer static credentials first, fallback to provider chain
 		const creds = await staticProvider().catch(() => provider());
 
-		// Validate AWS credentials via STS
 		const sts = new STSClient({
-			region: String(awsRegion),
+			region,
 			credentials: creds,
 		});
 		await sts.send(new GetCallerIdentityCommand({}));
 
-		// Return SASL credentials for KafkaJS
 		return {
 			username: 'AWS_MSK_IAM',
 			password: creds.sessionToken ?? creds.secretAccessKey ?? '',

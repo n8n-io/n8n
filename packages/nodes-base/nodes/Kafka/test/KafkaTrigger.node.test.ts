@@ -18,6 +18,13 @@ import { KafkaTrigger } from '../KafkaTrigger.node';
 
 jest.mock('kafkajs');
 jest.mock('@kafkajs/confluent-schema-registry');
+import { mskIamAuthProvider } from '../mskIamAuthProvider';
+
+jest.mock('kafkajs');
+jest.mock('@kafkajs/confluent-schema-registry');
+jest.mock('../mskIamAuthProvider', () => ({
+	mskIamAuthProvider: jest.fn(() => jest.fn(() => Promise.resolve('mocked-iam-auth'))),
+}));
 
 describe('KafkaTrigger Node', () => {
 	let mockKafka: jest.Mocked<Kafka>;
@@ -184,6 +191,75 @@ describe('KafkaTrigger Node', () => {
 				},
 			}),
 		).rejects.toThrow(NodeOperationError);
+	});
+
+	it('should remain backward compatible when authMode is not provided (defaults to userpass)', async () => {
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: true, // no authMode
+				username: 'legacy-user',
+				password: 'legacy-pass',
+				saslMechanism: 'plain',
+			},
+		});
+
+		expect(Kafka).toHaveBeenCalledWith({
+			clientId: 'n8n-kafka',
+			brokers: ['localhost:9092'],
+			ssl: false,
+			logLevel: logLevel.ERROR,
+			sasl: {
+				username: 'legacy-user',
+				password: 'legacy-pass',
+				mechanism: 'plain',
+			},
+		});
+	});
+
+	it('should configure AWS IAM role authentication when authMode is awsIam', async () => {
+		await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: true,
+				authMode: 'awsIam',
+				awsRegion: 'us-east-1',
+				accessKeyId: 'AKIAEXAMPLE',
+				secretAccessKey: 'SECRETEXAMPLE',
+			},
+		});
+
+		expect(mskIamAuthProvider).toHaveBeenCalled();
+		expect(Kafka).toHaveBeenCalledWith({
+			clientId: 'n8n-kafka',
+			brokers: ['localhost:9092'],
+			ssl: true, // IAM enforces SSL
+			logLevel: logLevel.ERROR,
+			sasl: expect.objectContaining({
+				mechanism: 'aws',
+				authenticationProvider: expect.any(Function),
+			}),
+		});
 	});
 
 	it('should use schema registry when enabled', async () => {

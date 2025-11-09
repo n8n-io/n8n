@@ -100,3 +100,155 @@ describe('Kafka Node', () => {
 		});
 	});
 });
+
+describe('Kafka Node Authentication', () => {
+	let mockProducer: jest.Mocked<Producer>;
+	let mockKafka: jest.Mocked<apacheKafka>;
+	let mockProducerConnect: jest.Mock;
+	let mockProducerSend: jest.Mock;
+	let mockProducerDisconnect: jest.Mock;
+
+	beforeEach(() => {
+		mockProducerConnect = jest.fn();
+		mockProducerSend = jest.fn().mockResolvedValue([{ topicName: 'test-topic', partition: 0 }]);
+		mockProducerDisconnect = jest.fn();
+
+		mockProducer = mock<Producer>({
+			connect: mockProducerConnect,
+			send: mockProducerSend,
+			sendBatch: mockProducerSend,
+			disconnect: mockProducerDisconnect,
+		});
+
+		mockKafka = mock<apacheKafka>({
+			producer: jest.fn().mockReturnValue(mockProducer),
+			admin: jest.fn().mockReturnValue({
+				connect: jest.fn(),
+				disconnect: jest.fn(),
+			}),
+		});
+
+		(apacheKafka as unknown as jest.Mock).mockReturnValue(mockKafka);
+
+		(SchemaRegistry as unknown as jest.Mock).mockImplementation(() => ({
+			encode: jest.fn((_id, input) => Buffer.from(JSON.stringify(input))),
+			getLatestSchemaId: jest.fn().mockResolvedValue(1),
+		}));
+	});
+
+	new NodeTestHarness().setupTests();
+
+	test('should authenticate using legacy credentials (no authMode)', async () => {
+		const credentials = {
+			brokers: 'localhost:9092',
+			clientId: 'test-client',
+			ssl: false,
+			authentication: true,
+			username: 'user',
+			password: 'pass',
+			saslMechanism: 'plain',
+		};
+
+		const kafkaNode = new (require('../Kafka').Kafka)();
+
+		const result = await kafkaNode.methods.credentialTest.kafkaConnectionTest.call(
+			{ helpers: {} } as any,
+			{ data: credentials },
+		);
+
+		expect(result.status).toBe('OK');
+		expect(apacheKafka).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sasl: expect.objectContaining({
+					username: 'user',
+					password: 'pass',
+					mechanism: 'plain',
+				}),
+			}),
+		);
+	});
+
+	test('should authenticate using userpass authMode', async () => {
+		const credentials = {
+			brokers: 'localhost:9092',
+			clientId: 'test-client',
+			ssl: false,
+			authentication: true,
+			authMode: 'userpass',
+			username: 'user',
+			password: 'pass',
+			saslMechanism: 'scram-sha-512',
+		};
+
+		const kafkaNode = new (require('../Kafka').Kafka)();
+
+		const result = await kafkaNode.methods.credentialTest.kafkaConnectionTest.call(
+			{ helpers: {} } as any,
+			{ data: credentials },
+		);
+
+		expect(result.status).toBe('OK');
+		expect(apacheKafka).toHaveBeenCalledWith(
+			expect.objectContaining({
+				sasl: expect.objectContaining({
+					username: 'user',
+					password: 'pass',
+					mechanism: 'scram-sha-512',
+				}),
+			}),
+		);
+	});
+
+	test('should authenticate using awsIam authMode', async () => {
+		const credentials = {
+			brokers: 'localhost:9092',
+			clientId: 'test-client',
+			ssl: false,
+			authentication: true,
+			authMode: 'awsIam',
+			awsRegion: 'us-east-1',
+			accessKeyId: 'AKIAEXAMPLE',
+			secretAccessKey: 'SECRETEXAMPLE',
+		};
+
+		const kafkaNode = new (require('../Kafka').Kafka)();
+
+		const result = await kafkaNode.methods.credentialTest.kafkaConnectionTest.call(
+			{ helpers: {} } as any,
+			{ data: credentials },
+		);
+
+		expect(result.status).toBe('OK');
+		expect(apacheKafka).toHaveBeenCalledWith(
+			expect.objectContaining({
+				ssl: true,
+				sasl: expect.objectContaining({
+					mechanism: 'aws',
+					authenticationProvider: expect.any(Function),
+				}),
+			}),
+		);
+		expect(mskIamAuthProvider).toHaveBeenCalled();
+	});
+
+	test('should throw warning if username/password missing for userpass', async () => {
+		const credentials = {
+			brokers: 'localhost:9092',
+			clientId: 'test-client',
+			ssl: false,
+			authentication: true,
+			authMode: 'userpass',
+			username: '',
+			password: '',
+			saslMechanism: 'plain',
+		};
+
+		const kafkaNode = new (require('../Kafka').Kafka)();
+
+		await expect(
+			kafkaNode.methods.credentialTest.kafkaConnectionTest.call({ helpers: {} } as any, {
+				data: credentials,
+			}),
+		).rejects.toThrow(ApplicationError);
+	});
+});
