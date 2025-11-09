@@ -36,12 +36,31 @@ export class Kafka implements ICredentialType {
 			default: false,
 		},
 		{
+			displayName: 'Authentication Mode',
+			name: 'authMode',
+			type: 'options',
+			displayOptions: {
+				show: {
+					authentication: [true],
+				},
+			},
+			default: 'userpass',
+			description: 'Select the authentication mode to use.',
+			options: [
+				{ name: 'Username & Password', value: 'userpass' },
+				{ name: 'AWS IAM Role', value: 'awsIam' },
+			],
+		},
+		// ───────────── Username/Password (SASL) ─────────────
+		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string',
 			displayOptions: {
 				show: {
 					authentication: [true],
+					// Backward-compatible: show if authMode is 'userpass' or not defined
+					authMode: ['userpass', undefined],
 				},
 			},
 			default: '',
@@ -54,6 +73,7 @@ export class Kafka implements ICredentialType {
 			displayOptions: {
 				show: {
 					authentication: [true],
+					authMode: ['userpass', undefined],
 				},
 			},
 			typeOptions: {
@@ -69,6 +89,7 @@ export class Kafka implements ICredentialType {
 			displayOptions: {
 				show: {
 					authentication: [true],
+					authMode: ['userpass', undefined],
 				},
 			},
 			options: [
@@ -86,6 +107,60 @@ export class Kafka implements ICredentialType {
 				},
 			],
 			default: 'plain',
+		},
+		//───────────── IAM Role ─────────────
+		{
+			displayName: 'AWS Region',
+			name: 'awsRegion',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: [true],
+					authMode: ['awsIam'],
+				},
+			},
+			description: 'AWS region where your MSK cluster is running',
+		},
+		{
+			displayName: 'Access Key ID',
+			name: 'accessKeyId',
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: [true],
+					authMode: ['awsIam'],
+				},
+			},
+		},
+		{
+			displayName: 'Secret Access Key',
+			name: 'secretAccessKey',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: [true],
+					authMode: ['awsIam'],
+				},
+			},
+		},
+		{
+			displayName: 'Session Token (optional)',
+			name: 'sessionToken',
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: [true],
+					authMode: ['awsIam'],
+				},
+			},
 		},
 	];
 }

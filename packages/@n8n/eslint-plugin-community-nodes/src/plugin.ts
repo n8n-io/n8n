@@ -57,3 +57,5 @@ const pluginWithConfigs = { ...plugin, configs } satisfies ESLint.Plugin;
 const n8nCommunityNodesPlugin = pluginWithConfigs;
 export default pluginWithConfigs;
 export { rules, configs, n8nCommunityNodesPlugin };
+export * from './rules';
+export * from './utils';

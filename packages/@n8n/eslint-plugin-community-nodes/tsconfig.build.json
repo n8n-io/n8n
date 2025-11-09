@@ -1,4 +1,15 @@
 {
 	"extends": "./tsconfig.json",
-	"exclude": ["**/*.test.ts", "**/*.spec.ts"]
+	"exclude": ["**/*.test.ts", "**/*.spec.ts"],
+	"compilerOptions": {
+		"noEmit": false,
+		"declaration": true,
+		"emitDeclarationOnly": true,
+		"declarationMap": true,
+		"outDir": "dist",
+		"rootDir": "src",
+		"module": "ESNext",
+		"moduleResolution": "Bundler"
+	},
+	"include": ["src/**/*.ts"]
 }
