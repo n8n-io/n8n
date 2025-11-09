@@ -253,7 +253,7 @@ export class Kafka implements INodeType {
 								config.ssl = true; // required for IAM
 								config.sasl = {
 									mechanism: 'aws',
-									authenticationProvider: mskIamAuthProvider(),
+									authenticationProvider: mskIamAuthProvider(credentials),
 								} as unknown as SASLOptions;
 								break;
 							}
@@ -344,27 +344,13 @@ export class Kafka implements INodeType {
 						config.ssl = true; // required for IAM
 						config.sasl = {
 							mechanism: 'aws',
-							authenticationProvider: mskIamAuthProvider(),
+							authenticationProvider: mskIamAuthProvider(credentials),
 						} as unknown as SASLOptions;
 						break;
 					}
 					default:
 						break;
 				}
-			}
-
-			if (credentials.authentication === true) {
-				if (!(credentials.username && credentials.password)) {
-					throw new NodeOperationError(
-						this.getNode(),
-						'Username and password are required for authentication',
-					);
-				}
-				config.sasl = {
-					username: credentials.username as string,
-					password: credentials.password as string,
-					mechanism: credentials.saslMechanism as string,
-				} as SASLOptions;
 			}
 
 			const kafka = new apacheKafka(config);

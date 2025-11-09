@@ -108,5 +108,59 @@ export class Kafka implements ICredentialType {
 			],
 			default: 'plain',
 		},
+		//───────────── IAM Role ─────────────
+		{
+			displayName: 'AWS Region',
+			name: 'awsRegion',
+			type: 'string',
+			default: '',
+			required: true,
+			displayOptions: {
+				show: {
+					authentication: [true],
+					authMode: ['awsIam'],
+				},
+			},
+			description: 'AWS region where your MSK cluster is running',
+		},
+		{
+			displayName: 'Access Key ID',
+			name: 'accessKeyId',
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: [true],
+					authMode: ['awsIam'],
+				},
+			},
+		},
+		{
+			displayName: 'Secret Access Key',
+			name: 'secretAccessKey',
+			type: 'string',
+			typeOptions: {
+				password: true,
+			},
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: [true],
+					authMode: ['awsIam'],
+				},
+			},
+		},
+		{
+			displayName: 'Session Token (optional)',
+			name: 'sessionToken',
+			type: 'string',
+			default: '',
+			displayOptions: {
+				show: {
+					authentication: [true],
+					authMode: ['awsIam'],
+				},
+			},
+		},
 	];
 }

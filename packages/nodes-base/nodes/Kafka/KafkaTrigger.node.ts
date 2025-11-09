@@ -226,7 +226,7 @@ export class KafkaTrigger implements INodeType {
 					config.ssl = true; // required for IAM
 					config.sasl = {
 						mechanism: 'aws',
-						authenticationProvider: mskIamAuthProvider(),
+						authenticationProvider: mskIamAuthProvider(credentials),
 					} as unknown as SASLOptions;
 					break;
 				}
