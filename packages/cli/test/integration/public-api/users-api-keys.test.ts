@@ -148,8 +148,10 @@ describe('POST /users/:id/api-keys - Create API key for another user', () => {
 			scopes: ['workflow:read'],
 		});
 
-		// Expect either 400 or 404 - depends on validation order
-		expect([400, 404]).toContain(response.status);
+		// Since expiresAt is now optional, this should now return 404 (user not found)
+		// rather than 400 (validation error)
+		expect(response.status).toBe(404);
+		expect(response.body.message).toContain('not found');
 	});
 
 	test('should reject if scopes are invalid for target user role', async () => {
@@ -162,8 +164,7 @@ describe('POST /users/:id/api-keys - Create API key for another user', () => {
 			scopes: ['user:delete'], // Members shouldn't have this scope
 		});
 
-		// Expect either 400 or 404 - depends on validation order
-		expect([400, 404]).toContain(response.status);
+		expect(response.status).toBe(400);
 	});
 
 	test('should create API key with expiration', async () => {
@@ -182,6 +183,35 @@ describe('POST /users/:id/api-keys - Create API key for another user', () => {
 			.expect(201);
 
 		expect(response.body.expiresAt).toBe(expiresAt);
+	});
+
+	test('should create API key without expiration when expiresAt is omitted', async () => {
+		const owner = await createOwnerWithApiKey();
+		const member = await createMember();
+		const authOwnerAgent = testServer.publicApiAgentFor(owner);
+
+		const response = await authOwnerAgent
+			.post(`/users/${member.id}/api-keys`)
+			.send({
+				label: 'Non-Expiring Key',
+				scopes: ['workflow:read'],
+			})
+			.expect(201);
+
+		expect(response.body).toBeDefined();
+		expect(response.body.rawApiKey).toBeDefined();
+		expect(response.body.label).toBe('Non-Expiring Key');
+		expect(response.body.scopes).toEqual(['workflow:read']);
+		expect(response.body.expiresAt).toBeUndefined();
+
+		// Verify the API key was created for the member
+		const storedApiKey = await Container.get(ApiKeyRepository).findOneBy({
+			userId: member.id,
+			label: 'Non-Expiring Key',
+		});
+
+		expect(storedApiKey).toBeDefined();
+		expect(storedApiKey?.apiKey).toBe(response.body.rawApiKey);
 	});
 
 	test('should reject if label is missing', async () => {

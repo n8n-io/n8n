@@ -163,7 +163,9 @@ export = {
 			});
 
 			if (!targetUser) {
-				throw new NotFoundError(`User with id ${targetUserId} not found`);
+				return res.status(404).json({
+					message: `User with id ${targetUserId} not found`,
+				});
 			}
 
 			// Validate that the API key scopes are valid for the target user's role
