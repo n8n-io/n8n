@@ -14,4 +14,4 @@ export { executeBatch } from './executeBatch';
 
 export { checkMaxIterations } from './checkMaxIterations';
 
-export { buildMetadata as buildIterationMetadata } from './buildIterationMetadata';
+export { buildResponseMetadata } from './buildResponseMetadata';

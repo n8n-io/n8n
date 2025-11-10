@@ -1,4 +1,4 @@
-import { NodeOperationError, sleep } from 'n8n-workflow';
+import { sleep } from 'n8n-workflow';
 import type {
 	EngineRequest,
 	IExecuteFunctions,

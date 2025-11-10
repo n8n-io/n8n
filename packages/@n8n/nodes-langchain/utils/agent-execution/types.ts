@@ -1,3 +1,4 @@
+import type { AIMessage } from '@langchain/core/messages';
 import type { IDataObject, GenericValue } from 'n8n-workflow';
 
 /**
@@ -28,6 +29,7 @@ export type ToolCallData = {
 		tool: string;
 		toolInput: Record<string, unknown>;
 		log: string | number | true | object;
+		messageLog?: AIMessage[];
 		toolCallId: IDataObject | GenericValue | GenericValue[] | IDataObject[];
 		type: string | number | true | object;
 	};
@@ -43,17 +45,7 @@ export type AgentResult = {
 	/** Tool calls that need to be executed */
 	toolCalls?: ToolCallRequest[];
 	/** Intermediate steps showing the agent's reasoning */
-	intermediateSteps?: Array<{
-		action: {
-			tool: string;
-			toolInput: Record<string, unknown>;
-			log: string;
-			messageLog?: unknown[];
-			toolCallId: string;
-			type: string;
-		};
-		observation?: string;
-	}>;
+	intermediateSteps?: ToolCallData[];
 };
 
 /**

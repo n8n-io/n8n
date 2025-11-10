@@ -1,7 +1,6 @@
 import type { StreamEvent } from '@langchain/core/dist/tracers/event_stream';
 import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
-import type { ToolCall } from '@langchain/core/messages/tool';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
@@ -67,9 +66,7 @@ export async function processEventStream(
 			case 'on_chat_model_end':
 				// Capture full LLM response with tool calls for intermediate steps
 				if (event.data) {
-					const chatModelData = event.data as {
-						output?: { tool_calls?: ToolCall[]; content?: string };
-					};
+					const chatModelData = event.data;
 					const output = chatModelData.output;
 
 					// Check if this LLM response contains tool calls
@@ -91,7 +88,7 @@ export async function processEventStream(
 						// Also add to intermediate steps if needed
 						if (returnIntermediateSteps) {
 							for (const toolCall of output.tool_calls) {
-								agentResult.intermediateSteps!.push({
+								agentResult.intermediateSteps?.push({
 									action: {
 										tool: toolCall.name,
 										toolInput: toolCall.args,
@@ -102,6 +99,7 @@ export async function processEventStream(
 										toolCallId: toolCall.id || 'unknown',
 										type: toolCall.type || 'tool_call',
 									},
+									observation: '',
 								});
 							}
 						}
@@ -113,7 +111,7 @@ export async function processEventStream(
 				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
 					const toolData = event.data as { output?: string };
 					// Find the matching intermediate step for this tool call
-					const matchingStep = agentResult.intermediateSteps!.find(
+					const matchingStep = agentResult.intermediateSteps?.find(
 						(step) => !step.observation && step.action.tool === event.name,
 					);
 					if (matchingStep) {

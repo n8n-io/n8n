@@ -6,7 +6,7 @@ import { buildResponseMetadata } from '../buildResponseMetadata';
 
 // Mock the buildSteps function from agent-execution
 jest.mock('@utils/agent-execution', () => ({
-	buildSteps: jest.fn((response, itemIndex) => {
+	buildSteps: jest.fn((response) => {
 		// Mock implementation: return previous requests if they exist
 		if (response?.actionResponses) {
 			return response.actionResponses.map((ar: any) => ({
@@ -39,10 +39,9 @@ describe('buildIterationMetadata', () => {
 	});
 
 	it('should return metadata with iterationCount 1 when response has no metadata', () => {
-		const response: EngineResponse<RequestResponseMetadata> = {
+		const response = {
 			actionResponses: [],
-			metadata: undefined,
-		};
+		} as unknown as EngineResponse<RequestResponseMetadata>;
 
 		const result = buildResponseMetadata(response, 0);
 
@@ -112,7 +111,7 @@ describe('buildIterationMetadata', () => {
 
 		expect(result.iterationCount).toBe(2);
 		expect(result.previousRequests).toHaveLength(1);
-		expect(result.previousRequests[0]).toMatchObject({
+		expect(result.previousRequests?.[0]).toMatchObject({
 			action: {
 				tool: 'TestTool',
 				toolCallId: 'call_123',

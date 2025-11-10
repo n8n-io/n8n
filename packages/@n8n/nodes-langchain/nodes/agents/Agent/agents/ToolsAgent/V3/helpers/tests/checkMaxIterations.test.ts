@@ -19,10 +19,9 @@ describe('checkMaxIterations', () => {
 	});
 
 	it('should not throw when response metadata is undefined', () => {
-		const response: EngineResponse<RequestResponseMetadata> = {
+		const response = {
 			actionResponses: [],
-			metadata: undefined,
-		};
+		} as unknown as EngineResponse<RequestResponseMetadata>;
 
 		expect(() => {
 			checkMaxIterations(response, 10, mockNode);

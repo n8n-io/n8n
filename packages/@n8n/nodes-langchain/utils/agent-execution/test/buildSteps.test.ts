@@ -35,6 +35,10 @@ describe('buildSteps', () => {
 							data: {
 								ai_tool: [[{ json: { result: '4' } }]],
 							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
 						},
 					},
 				],
@@ -76,6 +80,10 @@ describe('buildSteps', () => {
 							data: {
 								ai_tool: [[{ json: { result: '4' } }]],
 							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
 						},
 					},
 					{
@@ -96,6 +104,10 @@ describe('buildSteps', () => {
 							data: {
 								ai_tool: [[{ json: { results: ['result1', 'result2'] } }]],
 							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
 						},
 					},
 				],
@@ -130,6 +142,10 @@ describe('buildSteps', () => {
 							data: {
 								ai_tool: [[{ json: { result: '4' } }]],
 							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
 						},
 					},
 					{
@@ -150,6 +166,10 @@ describe('buildSteps', () => {
 							data: {
 								ai_tool: [[{ json: { results: ['result1', 'result2'] } }]],
 							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
 						},
 					},
 				],
@@ -183,6 +203,10 @@ describe('buildSteps', () => {
 							data: {
 								ai_tool: [[{ json: { result: '4' } }]],
 							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
 						},
 					},
 				],
@@ -196,244 +220,236 @@ describe('buildSteps', () => {
 			expect(result[0].action.toolInput).toEqual({});
 		});
 
-		it('should skip responses with missing data', () => {
-			const response: EngineResponse<RequestResponseMetadata> = {
-				actionResponses: [
+		describe('Previous requests handling', () => {
+			it('should include previous requests from metadata', () => {
+				const previousRequests = [
 					{
 						action: {
-							actionType: 'ExecutionNodeAction',
-							nodeName: 'Calculator',
-							input: {
+							tool: 'previous_tool',
+							toolInput: { input: 'previous' },
+							log: 'Previous log',
+							toolCallId: 'call_prev',
+							type: 'tool_call',
+						},
+						observation: 'previous result',
+					},
+				];
+
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [
+						{
+							action: {
+								actionType: 'ExecutionNodeAction',
+								nodeName: 'Calculator',
+								input: {
+									id: 'call_123',
+									input: { expression: '2+2' },
+								},
+								type: NodeConnectionTypes.AiTool,
 								id: 'call_123',
-								input: { expression: '2+2' },
+								metadata: {
+									itemIndex: 0,
+								},
 							},
-							type: NodeConnectionTypes.AiTool,
-							id: 'call_123',
-							metadata: {
-								itemIndex: 0,
+							data: {
+								data: {
+									ai_tool: [[{ json: { result: '4' } }]],
+								},
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
 							},
 						},
-						// Missing data property
+					],
+					metadata: {
+						previousRequests,
 					},
-				],
-				metadata: {},
-			};
+				};
 
-			const result = buildSteps(response, itemIndex);
+				const result = buildSteps(response, itemIndex);
 
-			expect(result).toHaveLength(0);
-		});
-	});
+				expect(result).toHaveLength(2);
+				expect(result[0]).toEqual(previousRequests[0]);
+				expect(result[1].action.tool).toBe('Calculator');
+			});
 
-	describe('Previous requests handling', () => {
-		it('should include previous requests from metadata', () => {
-			const previousRequests = [
-				{
-					action: {
-						tool: 'previous_tool',
-						toolInput: { input: 'previous' },
-						log: 'Previous log',
-						toolCallId: 'call_prev',
-						type: 'tool_call',
-					},
-					observation: 'previous result',
-				},
-			];
-
-			const response: EngineResponse<RequestResponseMetadata> = {
-				actionResponses: [
+			it('should not duplicate steps that already exist in previousRequests', () => {
+				const previousRequests = [
 					{
 						action: {
-							actionType: 'ExecutionNodeAction',
-							nodeName: 'Calculator',
-							input: {
+							tool: 'calculator',
+							toolInput: { expression: '2+2' },
+							log: 'Previous log',
+							toolCallId: 'call_123',
+							type: 'tool_call',
+						},
+						observation: '4',
+					},
+				];
+
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [
+						{
+							action: {
+								actionType: 'ExecutionNodeAction',
+								nodeName: 'Calculator',
+								input: {
+									id: 'call_123', // Same ID as in previousRequests
+									input: { expression: '2+2' },
+								},
+								type: NodeConnectionTypes.AiTool,
 								id: 'call_123',
-								input: { expression: '2+2' },
+								metadata: {
+									itemIndex: 0,
+								},
 							},
-							type: NodeConnectionTypes.AiTool,
-							id: 'call_123',
-							metadata: {
-								itemIndex: 0,
-							},
-						},
-						data: {
 							data: {
-								ai_tool: [[{ json: { result: '4' } }]],
+								data: {
+									ai_tool: [[{ json: { result: '4' } }]],
+								},
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
 							},
 						},
+					],
+					metadata: {
+						previousRequests,
 					},
-				],
-				metadata: {
-					previousRequests,
-				},
-			};
+				};
 
-			const result = buildSteps(response, itemIndex);
+				const result = buildSteps(response, itemIndex);
 
-			expect(result).toHaveLength(2);
-			expect(result[0]).toEqual(previousRequests[0]);
-			expect(result[1].action.tool).toBe('Calculator');
-		});
-
-		it('should not duplicate steps that already exist in previousRequests', () => {
-			const previousRequests = [
-				{
-					action: {
-						tool: 'calculator',
-						toolInput: { expression: '2+2' },
-						log: 'Previous log',
-						toolCallId: 'call_123',
-						type: 'tool_call',
-					},
-					observation: '4',
-				},
-			];
-
-			const response: EngineResponse<RequestResponseMetadata> = {
-				actionResponses: [
-					{
-						action: {
-							actionType: 'ExecutionNodeAction',
-							nodeName: 'Calculator',
-							input: {
-								id: 'call_123', // Same ID as in previousRequests
-								input: { expression: '2+2' },
-							},
-							type: NodeConnectionTypes.AiTool,
-							id: 'call_123',
-							metadata: {
-								itemIndex: 0,
-							},
-						},
-						data: {
-							data: {
-								ai_tool: [[{ json: { result: '4' } }]],
-							},
-						},
-					},
-				],
-				metadata: {
-					previousRequests,
-				},
-			};
-
-			const result = buildSteps(response, itemIndex);
-
-			expect(result).toHaveLength(1);
-			expect(result[0]).toEqual(previousRequests[0]);
-		});
-	});
-
-	describe('Synthetic AI message creation', () => {
-		it('should create synthetic AI message with tool calls', () => {
-			const response: EngineResponse<RequestResponseMetadata> = {
-				actionResponses: [
-					{
-						action: {
-							actionType: 'ExecutionNodeAction',
-							nodeName: 'Calculator Node',
-							input: {
-								id: 'call_123',
-								input: { expression: '2+2' },
-							},
-							type: NodeConnectionTypes.AiTool,
-							id: 'call_123',
-							metadata: {
-								itemIndex: 0,
-							},
-						},
-						data: {
-							data: {
-								ai_tool: [[{ json: { result: '4' } }]],
-							},
-						},
-					},
-				],
-				metadata: {},
-			};
-
-			const result = buildSteps(response, itemIndex);
-
-			expect(result).toHaveLength(1);
-			expect(result[0].action.messageLog).toBeDefined();
-			expect(result[0].action.messageLog).toHaveLength(1);
-
-			const message = result[0].action.messageLog![0];
-			expect(message).toHaveProperty('tool_calls');
-			expect(message.tool_calls).toHaveLength(1);
-			expect(message.tool_calls[0]).toMatchObject({
-				id: 'call_123',
-				name: 'Calculator_Node',
-				type: 'tool_call',
+				expect(result).toHaveLength(1);
+				expect(result[0]).toEqual(previousRequests[0]);
 			});
 		});
 
-		it('should use custom log if provided', () => {
-			const response: EngineResponse<RequestResponseMetadata> = {
-				actionResponses: [
-					{
-						action: {
-							actionType: 'ExecutionNodeAction',
-							nodeName: 'Calculator',
-							input: {
+		describe('Synthetic AI message creation', () => {
+			it('should create synthetic AI message with tool calls', () => {
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [
+						{
+							action: {
+								actionType: 'ExecutionNodeAction',
+								nodeName: 'Calculator Node',
+								input: {
+									id: 'call_123',
+									input: { expression: '2+2' },
+								},
+								type: NodeConnectionTypes.AiTool,
 								id: 'call_123',
-								input: { expression: '2+2' },
-								log: 'Custom log message',
+								metadata: {
+									itemIndex: 0,
+								},
 							},
-							type: NodeConnectionTypes.AiTool,
-							id: 'call_123',
-							metadata: {
-								itemIndex: 0,
-							},
-						},
-						data: {
 							data: {
-								ai_tool: [[{ json: { result: '4' } }]],
+								data: {
+									ai_tool: [[{ json: { result: '4' } }]],
+								},
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
 							},
 						},
-					},
-				],
-				metadata: {},
-			};
+					],
+					metadata: {},
+				};
 
-			const result = buildSteps(response, itemIndex);
+				const result = buildSteps(response, itemIndex);
 
-			expect(result).toHaveLength(1);
-			expect(result[0].action.log).toBe('Custom log message');
-		});
+				expect(result).toHaveLength(1);
+				expect(result[0].action.messageLog).toBeDefined();
+				expect(result[0].action.messageLog).toHaveLength(1);
 
-		it('should use custom type if provided', () => {
-			const response: EngineResponse<RequestResponseMetadata> = {
-				actionResponses: [
-					{
-						action: {
-							actionType: 'ExecutionNodeAction',
-							nodeName: 'Calculator',
-							input: {
+				const message = result[0].action.messageLog![0];
+				expect(message).toHaveProperty('tool_calls');
+				expect(message.tool_calls).toHaveLength(1);
+				expect(message.tool_calls?.[0]).toMatchObject({
+					id: 'call_123',
+					name: 'Calculator_Node',
+					type: 'tool_call',
+				});
+			});
+
+			it('should use custom log if provided', () => {
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [
+						{
+							action: {
+								actionType: 'ExecutionNodeAction',
+								nodeName: 'Calculator',
+								input: {
+									id: 'call_123',
+									input: { expression: '2+2' },
+									log: 'Custom log message',
+								},
+								type: NodeConnectionTypes.AiTool,
 								id: 'call_123',
-								input: { expression: '2+2' },
-								type: 'custom_type',
+								metadata: {
+									itemIndex: 0,
+								},
 							},
-							type: NodeConnectionTypes.AiTool,
-							id: 'call_123',
-							metadata: {
-								itemIndex: 0,
-							},
-						},
-						data: {
 							data: {
-								ai_tool: [[{ json: { result: '4' } }]],
+								data: {
+									ai_tool: [[{ json: { result: '4' } }]],
+								},
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
 							},
 						},
-					},
-				],
-				metadata: {},
-			};
+					],
+					metadata: {},
+				};
 
-			const result = buildSteps(response, itemIndex);
+				const result = buildSteps(response, itemIndex);
 
-			expect(result).toHaveLength(1);
-			expect(result[0].action.type).toBe('custom_type');
+				expect(result).toHaveLength(1);
+				expect(result[0].action.log).toBe('Custom log message');
+			});
+
+			it('should use custom type if provided', () => {
+				const response: EngineResponse<RequestResponseMetadata> = {
+					actionResponses: [
+						{
+							action: {
+								actionType: 'ExecutionNodeAction',
+								nodeName: 'Calculator',
+								input: {
+									id: 'call_123',
+									input: { expression: '2+2' },
+									type: 'custom_type',
+								},
+								type: NodeConnectionTypes.AiTool,
+								id: 'call_123',
+								metadata: {
+									itemIndex: 0,
+								},
+							},
+							data: {
+								data: {
+									ai_tool: [[{ json: { result: '4' } }]],
+								},
+								executionTime: 0,
+								startTime: 0,
+								executionIndex: 0,
+								source: [],
+							},
+						},
+					],
+					metadata: {},
+				};
+
+				const result = buildSteps(response, itemIndex);
+
+				expect(result).toHaveLength(1);
+				expect(result[0].action.type).toBe('custom_type');
+			});
 		});
 	});
 
@@ -464,6 +480,10 @@ describe('buildSteps', () => {
 									],
 								],
 							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
 						},
 					},
 				],
@@ -502,6 +522,10 @@ describe('buildSteps', () => {
 							data: {
 								ai_tool: [],
 							},
+							executionTime: 0,
+							startTime: 0,
+							executionIndex: 0,
+							source: [],
 						},
 					},
 				],
