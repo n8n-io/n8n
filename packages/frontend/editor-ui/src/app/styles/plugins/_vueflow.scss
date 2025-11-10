@@ -88,6 +88,10 @@
 	}
 }
 
+.vue-flow__nodes:has(.bring-to-front) {
+	z-index: 2 !important;
+}
+
 /**
  * Handles
  */
@@ -113,6 +117,8 @@
 /**
  * Edges
  */
+
+.vue-flow__edges:has(.bring-to-front),
 .vue-flow__edge-label.selected {
 	z-index: 1 !important;
 }
