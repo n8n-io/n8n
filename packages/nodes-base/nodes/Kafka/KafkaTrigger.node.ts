@@ -11,6 +11,8 @@ import type {
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
+import { mskIamAuthProvider } from './mskIamAuthProvider';
+
 export class KafkaTrigger implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Kafka Trigger',
@@ -201,17 +203,37 @@ export class KafkaTrigger implements INodeType {
 		};
 
 		if (credentials.authentication === true) {
-			if (!(credentials.username && credentials.password)) {
-				throw new NodeOperationError(
-					this.getNode(),
-					'Username and password are required for authentication',
-				);
+			// Default to 'userpass' for backward compatibility
+			const authMode = credentials.authMode ?? 'userpass';
+			switch (authMode) {
+				case 'userpass': {
+					if (!(credentials.username && credentials.password)) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Username and password are required for authentication',
+						);
+					}
+					config.sasl = {
+						username: credentials.username as string,
+						password: credentials.password as string,
+						mechanism: credentials.saslMechanism as string,
+					} as SASLOptions;
+					break;
+				}
+				case 'awsIam': {
+					// AWS IAM MSK Auth configuration
+					config.ssl = true; // required for IAM
+					// Await the async provider
+					const brokerHost = brokers[0]; // first broker in the array
+					config.sasl = {
+						mechanism: 'aws',
+						authenticationProvider: await mskIamAuthProvider(credentials, brokerHost),
+					} as unknown as SASLOptions;
+					break;
+				}
+				default:
+					break;
 			}
-			config.sasl = {
-				username: credentials.username as string,
-				password: credentials.password as string,
-				mechanism: credentials.saslMechanism as string,
-			} as SASLOptions;
 		}
 
 		const maxInFlightRequests = (

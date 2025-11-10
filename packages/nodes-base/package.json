@@ -886,6 +886,8 @@
   },
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
+    "@aws-sdk/client-sts": "3.926.0",
+    "@aws-sdk/credential-providers": "3.926.0",
     "@kafkajs/confluent-schema-registry": "3.8.0",
     "@mozilla/readability": "0.6.0",
     "@n8n/config": "workspace:*",

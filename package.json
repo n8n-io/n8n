@@ -54,6 +54,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.0",
     "@n8n/eslint-config": "workspace:*",
+    "@types/axios": "^0.14.4",
     "@types/jest": "^29.5.3",
     "@types/node": "*",
     "@types/supertest": "^6.0.3",
@@ -132,5 +133,8 @@
       "@lezer/highlight": "patches/@lezer__highlight.patch",
       "v-code-diff": "patches/v-code-diff.patch"
     }
+  },
+  "dependencies": {
+    "axios": "catalog:"
   }
 }
