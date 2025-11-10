@@ -103,7 +103,7 @@ const isEulaError = (error: unknown): error is EulaErrorResponse => {
 
 const onLicenseActivation = async (eulaUri?: string) => {
 	try {
-		await usageStore.activateLicense(activationKey.value, eulaUri);
+		await usageStore.activateLicense(activationKey.value.trim(), eulaUri?.trim());
 		activationKeyModal.value = false;
 		eulaModal.value = false;
 		activationKey.value = '';
