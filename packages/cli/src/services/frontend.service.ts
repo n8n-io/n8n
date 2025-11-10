@@ -15,6 +15,8 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { UrlService } from './url.service';
+
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -34,8 +36,6 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
-
-import { UrlService } from './url.service';
 
 export type PublicEnterpriseSettings = Pick<
 	IEnterpriseSettings,
@@ -180,6 +180,10 @@ export class FrontendService {
 				whatsNewEnabled: this.globalConfig.versionNotifications.whatsNewEnabled,
 				whatsNewEndpoint: this.globalConfig.versionNotifications.whatsNewEndpoint,
 				infoUrl: this.globalConfig.versionNotifications.infoUrl,
+			},
+			dynamicBanners: {
+				endpoint: this.globalConfig.dynamicBanners.endpoint,
+				enabled: this.globalConfig.dynamicBanners.enabled,
 			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
@@ -449,7 +453,8 @@ export class FrontendService {
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
-			this.settings.aiAssistant.setup = !!this.globalConfig.aiAssistant.baseUrl;
+			this.settings.aiAssistant.setup =
+				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
 		}
 
 		if (isAskAiEnabled) {

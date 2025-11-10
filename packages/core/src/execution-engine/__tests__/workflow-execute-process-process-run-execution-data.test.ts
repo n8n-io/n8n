@@ -433,7 +433,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { query: 'test input', toolCallId: 'action_1' },
+							json: { prompt: 'test prompt', query: 'test input', toolCallId: 'action_1' },
 							pairedItem: {
 								input: 0,
 								item: 0,
@@ -453,7 +453,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { data: 'another input', toolCallId: 'action_2' },
+							json: { prompt: 'test prompt', data: 'another input', toolCallId: 'action_2' },
 							pairedItem: {
 								input: 0,
 								item: 0,
@@ -565,7 +565,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { query: 'test input', toolCallId: 'action_1' },
+							json: { prompt: 'test prompt', query: 'test input', toolCallId: 'action_1' },
 							pairedItem: {
 								input: 0,
 								item: 0,

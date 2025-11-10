@@ -90,9 +90,17 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'folder:list',
 	'oidc:manage',
 	'provisioning:manage',
+	'dataTable:create',
+	'dataTable:delete',
+	'dataTable:read',
+	'dataTable:update',
 	'dataTable:list',
+	'dataTable:listProject',
+	'dataTable:readRow',
+	'dataTable:writeRow',
 	'role:manage',
 	'mcp:manage',
+	'mcp:oauth',
 	'mcpApiKey:create',
 	'mcpApiKey:rotate',
 	'chatHub:manage',
@@ -102,6 +110,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'chatHubAgent:update',
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
+	'breakingChanges:list',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
@@ -122,6 +131,7 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'variable:list',
 	'variable:read',
 	'dataTable:list',
+	'mcp:oauth',
 	'mcpApiKey:create',
 	'mcpApiKey:rotate',
 	'chatHub:message',

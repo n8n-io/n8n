@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { useClipboard } from '@/composables/useClipboard';
+import { useClipboard } from '@/app/composables/useClipboard';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 
 type Props = {
@@ -27,7 +27,7 @@ const props = withDefaults(defineProps<Props>(), {
 		<div :class="$style['copy-button-wrapper']">
 			<slot name="customActions" />
 			<N8nTooltip
-				:disables="!isSupported"
+				:disabled="!isSupported"
 				:content="copied ? i18n.baseText('generic.copied') : i18n.baseText('generic.copy')"
 				placement="right"
 			>

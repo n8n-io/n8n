@@ -5,14 +5,14 @@ import {
 	AI_CATEGORY_CHAINS,
 	AI_TRANSFORM_NODE_TYPE,
 	PRE_BUILT_AGENTS_EXPERIMENT,
-} from '@/constants';
+} from '@/app/constants';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { START_NODE_TYPE } from 'n8n-workflow';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { AIView } from './viewsData';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { usePostHog } from '@/stores/posthog.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 let posthogStore: ReturnType<typeof usePostHog>;
 
@@ -48,7 +48,7 @@ const otherNodes = (
 	] as Array<Partial<INodeTypeDescription>>
 ).map(mockNodeTypeDescription);
 
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
 		allLatestNodeTypes: [aiTransformNode, ...otherNodes],

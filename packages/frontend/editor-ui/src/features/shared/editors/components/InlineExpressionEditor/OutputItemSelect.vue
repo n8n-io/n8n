@@ -52,7 +52,7 @@ function prevItem() {
 				:min="0"
 				:max="max"
 				:model-value="itemIndex"
-				:style="{ '--input-width': `calc(${inputCharWidth}ch + var(--spacing--sm))` }"
+				:style="{ '--output-item-select--width': `calc(${inputCharWidth}ch + var(--spacing--sm))` }"
 				@update:model-value="updateItemIndex"
 			></N8nInputNumber>
 			<N8nIconButton
@@ -99,8 +99,8 @@ function prevItem() {
 	--input--height: 22px;
 	--input--radius--top-left: var(--radius);
 	--input--radius--bottom-left: var(--radius);
-	--input-border-top-right-radius: var(--radius);
-	--input-border-bottom-right-radius: var(--radius);
+	--input-triple--radius--top-right: var(--radius);
+	--input-triple--radius--bottom-right: var(--radius);
 	line-height: calc(var(--input--height) - var(--spacing--4xs));
 
 	&.hovering {
@@ -113,7 +113,7 @@ function prevItem() {
 		line-height: var(--input--height);
 		text-align: center;
 		padding: 0 var(--spacing--4xs);
-		max-width: var(--input-width);
+		max-width: var(--output-item-select--width);
 	}
 }
 </style>
