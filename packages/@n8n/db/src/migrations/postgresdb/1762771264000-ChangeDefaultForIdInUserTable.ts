@@ -10,7 +10,7 @@ export class ChangeDefaultForIdInUserTable1762771264000 implements IrreversibleM
 		const idColumnName = escape.columnName('id');
 
 		await queryRunner.query(
-			`ALTER TABLE "${tableName}" ALTER COLUMN "${idColumnName}" SET DEFAULT gen_random_uuid()`,
+			`ALTER TABLE ${tableName} ALTER COLUMN ${idColumnName} SET DEFAULT gen_random_uuid()`,
 		);
 	}
 }
