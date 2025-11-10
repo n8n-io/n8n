@@ -1833,14 +1833,14 @@ defineExpose({ enterEditMode });
 				<div :class="$style.dataSizeWarning">
 					<NDVEmptyState
 						:title="
-							i18n.baseText('ndv.output.tooMuchData.title', {
+							i18n.baseText('ndv.tooMuchData.title', {
 								interpolate: {
 									size: dataSizeInMB,
 								},
 							})
 						"
 					>
-						<span v-n8n-html="i18n.baseText('ndv.output.tooMuchData.message')" />
+						<span v-n8n-html="i18n.baseText('ndv.tooMuchData.message')" />
 					</NDVEmptyState>
 
 					<div :class="$style.warningActions">
@@ -1853,7 +1853,7 @@ defineExpose({ enterEditMode });
 
 						<N8nButton
 							size="small"
-							:label="i18n.baseText('ndv.output.tooMuchData.showDataAnyway')"
+							:label="i18n.baseText('ndv.tooMuchData.showDataAnyway')"
 							@click="showTooMuchData"
 						/>
 					</div>

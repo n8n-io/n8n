@@ -128,7 +128,7 @@ watch(
 			<section v-else :class="$style.warning">
 				<NDVEmptyState
 					:title="
-						i18n.baseText('ndv.output.tooMuchData.title', {
+						i18n.baseText('ndv.tooMuchData.title', {
 							interpolate: {
 								size: dataSizeInMB,
 							},
@@ -136,7 +136,7 @@ watch(
 					"
 					:class="$style.warningState"
 				>
-					<span v-n8n-html="i18n.baseText('ndv.output.tooMuchData.message')" />
+					<span v-n8n-html="i18n.baseText('ndv.tooMuchData.message')" />
 				</NDVEmptyState>
 				<div :class="$style.warningActions">
 					<N8nButton
@@ -147,7 +147,7 @@ watch(
 					/>
 					<N8nButton
 						size="small"
-						:label="i18n.baseText('ndv.output.tooMuchData.showDataAnyway')"
+						:label="i18n.baseText('ndv.tooMuchData.showDataAnyway')"
 						@click.stop="onShowDataAnyway"
 					/>
 				</div>

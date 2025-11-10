@@ -43,7 +43,7 @@ describe('AiRunContentBlock', () => {
 			},
 		});
 
-		expect(await screen.findByText('Display data?')).toBeInTheDocument();
+		expect(await screen.findByText('Show 0.5 MB of data?')).toBeInTheDocument();
 		expect(await screen.findByRole('button', { name: 'Show data' })).toBeInTheDocument();
 		expect(screen.queryByTestId('ai-content')).not.toBeInTheDocument();
 
@@ -67,7 +67,7 @@ describe('AiRunContentBlock', () => {
 		});
 
 		expect(screen.queryByTestId('ai-content')).not.toBeInTheDocument();
-		expect(await screen.findByText('Display data?')).toBeInTheDocument();
+		expect(await screen.findByText('Show 0.5 MB of data?')).toBeInTheDocument();
 	});
 
 	it('shows small payloads automatically', async () => {
