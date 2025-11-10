@@ -4,6 +4,7 @@ import https from 'https';
 import { HttpsProxyAgent } from 'https-proxy-agent';
 import { LoggerProxy } from 'n8n-workflow';
 import proxyFromEnv from 'proxy-from-env';
+import { Agent as UndiciAgent, ProxyAgent, setGlobalDispatcher, type Dispatcher } from 'undici';
 
 type ProxyRequestParameters = Parameters<HttpProxyAgent<string>['addRequest']>;
 type ProxyClientRequest = ProxyRequestParameters[0];
@@ -38,8 +39,8 @@ function getOrCreateProxyAgent<T extends HttpProxyAgent<string> | HttpsProxyAgen
 	return proxyAgent;
 }
 
-function createFallbackAgent<T extends http.Agent | https.Agent>(AgentClass: new () => T): T {
-	return new AgentClass();
+function createFallbackAgent<T extends http.Agent | https.Agent>(agentClass: new () => T): T {
+	return new agentClass();
 }
 
 /**
@@ -92,6 +93,48 @@ class HttpsProxyManager extends https.Agent {
 	}
 }
 
+/**
+ * Custom dispatcher for fetch that conditionally uses proxy based on target URL
+ * Similar to HttpProxyManager and HttpsProxyManager
+ */
+class FetchProxyManager extends UndiciAgent {
+	private readonly proxyAgentCache = new Map<string, ProxyAgent>();
+
+	dispatch(options: Dispatcher.DispatchOptions, handler: Dispatcher.DispatchHandlers): boolean {
+		const targetUrl = options.origin?.toString() ?? '';
+		const proxyUrl = proxyFromEnv.getProxyForUrl(targetUrl);
+
+		if (proxyUrl) {
+			let proxyAgent = this.proxyAgentCache.get(proxyUrl);
+			if (!proxyAgent) {
+				proxyAgent = new ProxyAgent(proxyUrl);
+				this.proxyAgentCache.set(proxyUrl, proxyAgent);
+			}
+			return proxyAgent.dispatch(options, handler);
+		}
+
+		return super.dispatch(options, handler);
+	}
+
+	async close(): Promise<void> {
+		const promises: Array<Promise<void>> = [];
+		for (const agent of this.proxyAgentCache.values()) {
+			promises.push(agent.close());
+		}
+		promises.push(super.close());
+		await Promise.all(promises);
+	}
+
+	async destroy(): Promise<void> {
+		const promises: Array<Promise<void>> = [];
+		for (const agent of this.proxyAgentCache.values()) {
+			promises.push(agent.destroy());
+		}
+		promises.push(super.destroy());
+		await Promise.all(promises);
+	}
+}
+
 export function createHttpProxyAgent(
 	customProxyUrl: string | null = null,
 	targetUrl: string,
@@ -135,10 +178,16 @@ export function installGlobalProxyAgent(): void {
 
 		http.globalAgent = new HttpProxyManager();
 		https.globalAgent = new HttpsProxyManager();
+
+		// Configure proxy for fetch requests (undici)
+		// Uses FetchProxyManager to conditionally proxy based on target URL
+		setGlobalDispatcher(new FetchProxyManager());
 	}
 }
 
 export function uninstallGlobalProxyAgent(): void {
 	http.globalAgent = new http.Agent();
 	https.globalAgent = new https.Agent();
+	// Reset fetch global dispatcher to default
+	setGlobalDispatcher(new UndiciAgent());
 }
