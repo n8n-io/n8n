@@ -434,6 +434,60 @@ describe('GET /workflows', () => {
 			expect(pinData).not.toBeDefined();
 		}
 	});
+
+	test('should return activeVersion for all workflows', async () => {
+		const inactiveWorkflow = await createWorkflow({}, member);
+		const activeWorkflow = await createWorkflowWithTrigger({}, member);
+
+		await createWorkflowHistory(activeWorkflow, member);
+		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(2);
+
+		const inactiveInResponse = response.body.data.find(
+			(w: { id: string }) => w.id === inactiveWorkflow.id,
+		);
+		const activeInResponse = response.body.data.find(
+			(w: { id: string }) => w.id === activeWorkflow.id,
+		);
+
+		// Inactive workflow should have null activeVersion
+		expect(inactiveInResponse).toBeDefined();
+		expect(inactiveInResponse.active).toBe(false);
+		expect(inactiveInResponse.activeVersion).toBeNull();
+
+		// Active workflow should have populated activeVersion
+		expect(activeInResponse).toBeDefined();
+		expect(activeInResponse.active).toBe(true);
+		expect(activeInResponse.activeVersion).toBeDefined();
+		expect(activeInResponse.activeVersion).not.toBeNull();
+		expect(activeInResponse.activeVersion.versionId).toBe(activeWorkflow.versionId);
+		expect(activeInResponse.activeVersion.nodes).toEqual(activeWorkflow.nodes);
+		expect(activeInResponse.activeVersion.connections).toEqual(activeWorkflow.connections);
+	});
+
+	test('should return activeVersion when filtering by active=true', async () => {
+		await createWorkflow({}, member);
+		const activeWorkflow = await createWorkflowWithTrigger({}, member);
+
+		await createWorkflowHistory(activeWorkflow, member);
+		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
+
+		const response = await authMemberAgent.get('/workflows?active=true');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(1);
+
+		const workflow = response.body.data[0];
+		expect(workflow.id).toBe(activeWorkflow.id);
+		expect(workflow.active).toBe(true);
+		expect(workflow.activeVersion).toBeDefined();
+		expect(workflow.activeVersion).not.toBeNull();
+		expect(workflow.activeVersion.versionId).toBe(activeWorkflow.versionId);
+	});
 });
 
 describe('GET /workflows/:id', () => {
@@ -519,6 +573,33 @@ describe('GET /workflows/:id', () => {
 		const { pinData } = response.body;
 
 		expect(pinData).not.toBeDefined();
+	});
+
+	test('should return activeVersion as null for inactive workflow', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.active).toBe(false);
+		expect(response.body.activeVersion).toBeNull();
+	});
+
+	test('should return activeVersion for active workflow', async () => {
+		const workflow = await createWorkflowWithTrigger({}, member);
+
+		await createWorkflowHistory(workflow, member);
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.active).toBe(true);
+		expect(response.body.activeVersion).toBeDefined();
+		expect(response.body.activeVersion).not.toBeNull();
+		expect(response.body.activeVersion.versionId).toBe(workflow.versionId);
+		expect(response.body.activeVersion.nodes).toEqual(workflow.nodes);
+		expect(response.body.activeVersion.connections).toEqual(workflow.connections);
 	});
 });
 

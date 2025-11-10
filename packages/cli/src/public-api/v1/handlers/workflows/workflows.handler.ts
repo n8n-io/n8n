@@ -120,7 +120,10 @@ export = {
 				id,
 				req.user,
 				['workflow:read'],
-				{ includeTags: !Container.get(GlobalConfig).tags.disabled },
+				{
+					includeTags: !Container.get(GlobalConfig).tags.disabled,
+					includeActiveVersion: true,
+				},
 			);
 
 			if (!workflow) {
@@ -236,7 +239,7 @@ export = {
 				selectFields.push('pinData');
 			}
 
-			const relations = ['shared'];
+			const relations = ['shared', 'activeVersion'];
 			if (!Container.get(GlobalConfig).tags.disabled) {
 				relations.push('tags');
 			}

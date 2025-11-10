@@ -50,3 +50,7 @@ properties:
     type: array
     items:
       $ref: './sharedWorkflow.yml'
+  activeVersion:
+    $ref: './activeVersion.yml'
+    nullable: true
+    readOnly: true
