@@ -1,9 +1,5 @@
-@use '@n8n/design-system/css/mixins' as ds-mixins;
-@use '@n8n/chat/css';
-@use '@/app/styles';
-
 :root {
-	// Using native css variable enables us to use this value in JS
+	--navbar--height: 64px;
 	--header--height: 65;
 	--content-container--width: 1280px;
 	--banner--height: 48px;

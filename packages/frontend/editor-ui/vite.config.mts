@@ -200,7 +200,7 @@ export default mergeConfig(
 				scss: {
 					additionalData: [
 						'',
-						'@use "@/n8n-theme-variables.scss" as *;',
+						'@use "@/app/css/_variables.scss" as *;',
 						'@use "@n8n/design-system/css/mixins" as mixins;',
 					].join('\n'),
 				},
