@@ -1311,6 +1311,7 @@
 	"ndv.output.tooMuchData.message": "The node contains {size} MB of data. Displaying it may slow down your browser temporarily.",
 	"ndv.output.tooMuchData.showDataAnyway": "Show data",
 	"ndv.output.tooMuchData.title": "Display data?",
+	"ndv.output.logs.tooMuchData.message": "The {inOut} contains {size} MB of data. Displaying it may slow down your browser temporarily.",
 	"ndv.output.waitingToRun": "Waiting to execute...",
 	"ndv.output.noToolUsedInfo": "None of your tools were used in this run. Try giving your tools clearer names and descriptions to help the AI",
 	"ndv.title.cancel": "Cancel",
