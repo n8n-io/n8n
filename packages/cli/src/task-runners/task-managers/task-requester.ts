@@ -2,7 +2,7 @@ import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
-import { isSerializedBuffer, toBuffer } from 'n8n-core';
+import { isSerializedBuffer, toBuffer, ErrorReporter } from 'n8n-core';
 import { createResultOk, createResultError } from 'n8n-workflow';
 import type {
 	EnvProviderState,
@@ -68,6 +68,7 @@ export abstract class TaskRequester {
 		private readonly eventService: EventService,
 		private readonly taskRunnersConfig: TaskRunnersConfig,
 		private readonly globalConfig: GlobalConfig,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	async startTask<TData, TError>(
@@ -290,6 +291,17 @@ export abstract class TaskRequester {
 		const error = new TaskRequestTimeoutError({
 			timeout: this.taskRunnersConfig.taskRequestTimeout,
 			isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
+		});
+
+		this.errorReporter.error('Task request timed out', {
+			extra: {
+				requestId,
+				timeout: this.taskRunnersConfig.taskRequestTimeout,
+				deploymentType: this.globalConfig.deployment.type,
+			},
+			tags: {
+				issue: 'task-runners-timeouts',
+			},
 		});
 
 		acceptReject.reject(error);
