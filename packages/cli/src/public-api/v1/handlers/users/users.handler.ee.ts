@@ -172,7 +172,7 @@ export = {
 				throw new BadRequestError('Invalid scopes for target user role');
 			}
 
-			const newApiKey = await publicApiKeyService.createPublicApiKeyForUserByAdmin(targetUserId, {
+			const newApiKey = await publicApiKeyService.createPublicApiKeyForUserByAdmin(targetUser, {
 				label,
 				expiresAt,
 				scopes,

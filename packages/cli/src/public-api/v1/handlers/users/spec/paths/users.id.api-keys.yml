@@ -35,6 +35,7 @@ post:
           required:
             - label
             - scopes
+            - expiresAt
   responses:
     '201':
       description: API key created successfully
