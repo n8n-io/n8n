@@ -329,7 +329,7 @@ export class WorkflowService {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 		}
 
-		if (workflowUpdateData.versionId !== workflow.versionId) {
+		if (workflowUpdateData.versionId && workflowUpdateData.versionId !== workflow.versionId) {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
