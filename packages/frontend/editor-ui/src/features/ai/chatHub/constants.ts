@@ -21,3 +21,5 @@ export const MOBILE_MEDIA_QUERY = '(max-width: 768px)';
 
 export const TOOLS_SELECTOR_MODAL_KEY = 'toolsSelectorModal';
 export const AGENT_EDITOR_MODAL_KEY = 'agentEditorModal';
+export const CHAT_CREDENTIAL_SELECTOR_MODAL_KEY = 'chatCredentialSelectorModal';
+export const CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY = 'chatModelByIdSelectorModal';

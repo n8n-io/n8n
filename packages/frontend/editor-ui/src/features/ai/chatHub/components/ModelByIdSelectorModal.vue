@@ -4,20 +4,23 @@ import { N8nButton, N8nFormInput, N8nText } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { type ChatHubLLMProvider, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
-import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import {
+	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+	providerDisplayNames,
+} from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 
 const props = defineProps<{
-	provider: ChatHubLLMProvider;
-	initialValue: string | null;
-}>();
-
-const emit = defineEmits<{
-	select: [provider: ChatHubLLMProvider, credentialId: string];
+	modalName: string;
+	data: {
+		provider: ChatHubLLMProvider;
+		initialValue: string | null;
+		onSelect: (provider: ChatHubLLMProvider, modelId: string) => void;
+	};
 }>();
 
 const modalBus = ref(createEventBus());
-const modelId = ref<string | null>(props.initialValue);
+const modelId = ref<string | null>(props.data.initialValue);
 
 const inputRef = ref<InstanceType<typeof N8nFormInput> | null>(null);
 
@@ -31,7 +34,7 @@ onMounted(() => {
 
 function onConfirm() {
 	if (modelId.value) {
-		emit('select', props.provider, modelId.value);
+		props.data.onSelect(props.data.provider, modelId.value);
 		modalBus.value.emit('close');
 	}
 }
@@ -43,7 +46,7 @@ function onCancel() {
 
 <template>
 	<Modal
-		name="chatModelByIdSelectorModal"
+		:name="CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY"
 		:event-bus="modalBus"
 		width="50%"
 		:center="true"
@@ -53,11 +56,11 @@ function onCancel() {
 		<template #header>
 			<div :class="$style.header">
 				<CredentialIcon
-					:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[provider]"
+					:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[data.provider]"
 					:size="24"
 					:class="$style.icon"
 				/>
-				<h2 :class="$style.title">Choose {{ providerDisplayNames[provider] }} Model By ID</h2>
+				<h2 :class="$style.title">Choose {{ providerDisplayNames[data.provider] }} Model By ID</h2>
 			</div>
 		</template>
 		<template #content>

@@ -13,14 +13,16 @@ import type {
 	ChatModelDto,
 	ChatModelsResponse,
 } from '@n8n/api-types';
-import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import {
+	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+	providerDisplayNames,
+} from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 
 import type { CredentialsMap } from '../chat.types';
-import CredentialSelectorModal from './CredentialSelectorModal.vue';
-import ModelByIdSelectorModal from './ModelByIdSelectorModal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
@@ -72,8 +74,6 @@ function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
 const i18n = useI18n();
 const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const dropdownRef = useTemplateRef('dropdownRef');
-const credentialSelectorProvider = ref<ChatHubLLMProvider | null>(null);
-const modelByIdSelectorProvider = ref<ChatHubLLMProvider | null>(null);
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();
@@ -169,13 +169,26 @@ function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 		return;
 	}
 
-	credentialSelectorProvider.value = provider;
-	uiStore.openModal('chatCredentialSelector');
+	uiStore.openModalWithData({
+		name: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+		data: {
+			provider,
+			initialValue: credentials?.[provider] ?? null,
+			onSelect: handleSelectCredentials,
+			onCreateNew: handleCreateNewCredential,
+		},
+	});
 }
 
 function openModelByIdSelector(provider: ChatHubLLMProvider) {
-	modelByIdSelectorProvider.value = provider;
-	uiStore.openModal('chatModelByIdSelectorModal');
+	uiStore.openModalWithData({
+		name: CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+		data: {
+			provider,
+			initialValue: null,
+			onSelect: handleSelectModelById,
+		},
+	});
 }
 
 function onSelect(id: string) {
@@ -277,22 +290,6 @@ defineExpose({
 		</template>
 
 		<N8nButton :class="$style.dropdownButton" type="secondary" text>
-			<CredentialSelectorModal
-				v-if="credentialSelectorProvider"
-				:key="credentialSelectorProvider"
-				:provider="credentialSelectorProvider"
-				:initial-value="credentials?.[credentialSelectorProvider] ?? null"
-				@select="handleSelectCredentials"
-				@create-new="handleCreateNewCredential"
-			/>
-
-			<ModelByIdSelectorModal
-				v-if="modelByIdSelectorProvider"
-				:provider="modelByIdSelectorProvider"
-				:initial-value="null"
-				@select="handleSelectModelById"
-			/>
-
 			<ChatAgentAvatar
 				v-if="selectedAgent"
 				:agent="selectedAgent"

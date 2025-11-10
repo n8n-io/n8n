@@ -10,21 +10,21 @@ import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 
 const props = defineProps<{
-	provider: ChatHubLLMProvider;
-	initialValue: string | null;
-}>();
-
-const emit = defineEmits<{
-	select: [provider: ChatHubLLMProvider, credentialId: string];
-	createNew: [provider: ChatHubLLMProvider];
+	modalName: string;
+	data: {
+		provider: ChatHubLLMProvider;
+		initialValue: string | null;
+		onSelect: (provider: ChatHubLLMProvider, credentialId: string) => void;
+		onCreateNew: (provider: ChatHubLLMProvider) => void;
+	};
 }>();
 
 const credentialsStore = useCredentialsStore();
 const modalBus = ref(createEventBus());
-const selectedCredentialId = ref<string | null>(props.initialValue);
+const selectedCredentialId = ref<string | null>(props.data.initialValue);
 
 const availableCredentials = computed<ICredentialsResponse[]>(() => {
-	return credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[props.provider]);
+	return credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[props.data.provider]);
 });
 
 function onCredentialSelect(credentialId: string) {
@@ -33,13 +33,13 @@ function onCredentialSelect(credentialId: string) {
 
 function onConfirm() {
 	if (selectedCredentialId.value) {
-		emit('select', props.provider, selectedCredentialId.value);
+		props.data.onSelect(props.data.provider, selectedCredentialId.value);
 		modalBus.value.emit('close');
 	}
 }
 
 function onCreateNew() {
-	emit('createNew', props.provider);
+	props.data.onCreateNew(props.data.provider);
 	modalBus.value.emit('close');
 }
 
@@ -50,7 +50,7 @@ function onCancel() {
 
 <template>
 	<Modal
-		name="chatCredentialSelector"
+		:name="modalName"
 		:event-bus="modalBus"
 		width="50%"
 		:center="true"
@@ -60,11 +60,11 @@ function onCancel() {
 		<template #header>
 			<div :class="$style.header">
 				<CredentialIcon
-					:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[provider]"
+					:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[data.provider]"
 					:size="24"
 					:class="$style.icon"
 				/>
-				<h2 :class="$style.title">Select {{ providerDisplayNames[provider] }} Credential</h2>
+				<h2 :class="$style.title">Select {{ providerDisplayNames[data.provider] }} Credential</h2>
 			</div>
 		</template>
 		<template #content>
