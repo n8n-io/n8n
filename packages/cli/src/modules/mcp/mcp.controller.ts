@@ -12,7 +12,6 @@ import {
 	USER_CONNECTED_TO_MCP_EVENT,
 	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
 	INTERNAL_SERVER_ERROR_MESSAGE,
-	UNAUTHORIZED_ERROR_MESSAGE,
 } from './mcp.constants';
 import { McpService } from './mcp.service';
 import { McpSettingsService } from './mcp.settings.service';
