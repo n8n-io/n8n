@@ -142,6 +142,7 @@ function handleSwitchView(value: 'overview' | 'details') {
 					:latest-node-info="latestNodeInfo"
 					:flat-log-entries="flatLogEntries"
 					:can-open-ndv="true"
+					:execution="execution"
 					@toggle-expanded="emit('toggleExpanded', $event)"
 					@open-ndv="emit('openNdv', $event)"
 					@select="emit('select', $event)"

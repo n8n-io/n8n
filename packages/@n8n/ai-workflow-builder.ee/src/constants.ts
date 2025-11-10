@@ -35,4 +35,4 @@ export const MAX_WORKFLOW_LENGTH_TOKENS = 30_000;
  * Average character-to-token ratio for Anthropic models.
  * Used for rough token count estimation from character counts.
  */
-export const AVG_CHARS_PER_TOKEN_ANTHROPIC = 2.5;
+export const AVG_CHARS_PER_TOKEN_ANTHROPIC = 3.5;
