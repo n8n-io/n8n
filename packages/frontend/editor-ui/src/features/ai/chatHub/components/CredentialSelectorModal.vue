@@ -89,9 +89,9 @@ function onCancel() {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="onCreateNew"> Create New </N8nButton>
+				<N8nButton type="secondary" @click="onCreateNew">Create New</N8nButton>
 				<div :class="$style.footerRight">
-					<N8nButton type="tertiary" @click="onCancel"> Cancel </N8nButton>
+					<N8nButton type="tertiary" @click="onCancel">Cancel</N8nButton>
 					<N8nButton type="primary" :disabled="!selectedCredentialId" @click="onConfirm">
 						Select
 					</N8nButton>
