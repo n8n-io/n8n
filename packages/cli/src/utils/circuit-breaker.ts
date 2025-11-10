@@ -134,10 +134,10 @@ export class CircuitBreaker {
 	private failureTimestamps: number[] = [];
 	private slidingWindow: SlidingWindow;
 
-	private readonly timeout: number;
+	private readonly timeoutMs: number;
 	private readonly maxFailures: number;
 	private readonly halfOpenRequests: number;
-	private readonly failureWindow: number;
+	private readonly failureWindowMs: number;
 	private readonly maxConcurrentHalfOpenRequests: number;
 
 	/**
@@ -150,14 +150,14 @@ export class CircuitBreaker {
 		this.lastFailureTime = 0;
 		this.halfOpenCount = 0;
 
-		this.timeout = options.timeout;
+		this.timeoutMs = options.timeout;
 		this.maxFailures = options.maxFailures;
 		this.halfOpenRequests = options.halfOpenRequests;
-		this.failureWindow = options.failureWindow;
+		this.failureWindowMs = options.failureWindow;
 		this.maxConcurrentHalfOpenRequests = options.maxConcurrentHalfOpenRequests ?? 1;
 
 		this.slidingWindow = new SlidingWindow({
-			durationMs: this.failureWindow,
+			durationMs: this.failureWindowMs,
 			maxEvents: this.maxFailures,
 		});
 
@@ -200,7 +200,7 @@ export class CircuitBreaker {
 	}
 
 	private async handleOpenState<T>(fn: () => Promise<T>): Promise<T> {
-		if (Date.now() - this.lastFailureTime >= this.timeout) {
+		if (Date.now() - this.lastFailureTime >= this.timeoutMs) {
 			this.halfOpenCount = 0;
 			this.changeToState('HALF_OPEN');
 			return await this.handleHalfOpenState(fn);

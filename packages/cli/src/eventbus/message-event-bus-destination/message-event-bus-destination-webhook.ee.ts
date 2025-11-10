@@ -110,55 +110,52 @@ export class MessageEventBusDestinationWebhook
 		this.axiosInstance = axios.create(axiosSetting);
 
 		this.logger.debug(`MessageEventBusDestinationWebhook with id ${this.getId()} initialized`);
-		this.logger.debug(
-			`MessageEventBusDestinationWebhook with options ${JSON.stringify(this.options)}`,
-		);
 	}
 
 	private buildAxiosSetting(
-		options: MessageEventBusDestinationWebhookOptions,
+		axiosParameters: MessageEventBusDestinationWebhookOptions,
 	): CreateAxiosDefaults {
 		const axiosSetting: CreateAxiosDefaults = {
 			headers: {},
-			method: options.method as Method,
-			url: options.url,
+			method: axiosParameters.method as Method,
+			url: axiosParameters.url,
 			maxRedirects: 0,
 		} as AxiosRequestConfig;
 
-		if (options.options?.redirect?.followRedirects) {
-			axiosSetting.maxRedirects = options.options.redirect?.maxRedirects;
+		if (axiosParameters.options?.redirect?.followRedirects) {
+			axiosSetting.maxRedirects = axiosParameters.options.redirect?.maxRedirects;
 		}
 
-		axiosSetting.proxy = options.options?.proxy;
+		axiosSetting.proxy = axiosParameters.options?.proxy;
 
-		axiosSetting.timeout = options.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS;
+		axiosSetting.timeout =
+			axiosParameters.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS;
 
 		const agentOptions: HTTPAgentOptions = {
 			// keepAlive to keep TCP connections alive for reuse
-			keepAlive: options.options?.socket?.keepAlive ?? true,
-			maxSockets: options.options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+			keepAlive: axiosParameters.options?.socket?.keepAlive ?? true,
+			maxSockets: axiosParameters.options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_SOCKETS,
 			maxFreeSockets:
-				options.options?.socket?.maxFreeSockets ?? LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
+				axiosParameters.options?.socket?.maxFreeSockets ?? LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
 			maxTotalSockets:
-				options.options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
+				axiosParameters.options?.socket?.maxSockets ?? LOGSTREAMING_DEFAULT_MAX_TOTAL_SOCKETS,
 			// Socket timeout in milliseconds defaults to 5 seconds
-			timeout: options.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
+			timeout: axiosParameters.options?.timeout ?? LOGSTREAMING_DEFAULT_SOCKET_TIMEOUT_MS,
 		};
 
 		const httpsAgentOptions: HTTPSAgentOptions = {
 			...agentOptions,
 		};
 
-		if (options.options?.allowUnauthorizedCerts) {
+		if (axiosParameters.options?.allowUnauthorizedCerts) {
 			httpsAgentOptions.rejectUnauthorized = false;
 		}
 
-		const url = new URL(options.url);
+		const url = new URL(axiosParameters.url);
 
 		if (url.protocol === 'https:') {
 			axiosSetting.httpsAgent = new HTTPSAgent(httpsAgentOptions);
-		}
-		if (url.protocol === 'http:') {
+		} else {
 			axiosSetting.httpAgent = new HTTPAgent(agentOptions);
 		}
 		return axiosSetting;
