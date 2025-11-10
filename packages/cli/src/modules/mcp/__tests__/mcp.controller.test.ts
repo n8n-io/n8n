@@ -74,15 +74,16 @@ describe('McpController', () => {
 		expect(mcpService.getServer as unknown as jest.Mock).toHaveBeenCalled();
 	});
 
-	test('GET /http returns 401 with WWW-Authenticate header for auth scheme discovery', async () => {
+	test('HEAD /http returns 401 with WWW-Authenticate header for auth scheme discovery', async () => {
 		const req = {} as Request;
 		const res = createRes();
 		res.header = jest.fn().mockReturnThis();
+		res.end = jest.fn().mockReturnThis();
 
-		await controller.discoverAuthScheme(req, res);
+		await controller.discoverAuthSchemeHead(req, res);
 
 		expect(res.header).toHaveBeenCalledWith('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
 		expect(res.status).toHaveBeenCalledWith(401);
-		expect(res.json).toHaveBeenCalledWith({ message: 'Unauthorized' });
+		expect(res.end).toHaveBeenCalled();
 	});
 });
