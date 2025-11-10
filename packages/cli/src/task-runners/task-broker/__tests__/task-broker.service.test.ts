@@ -951,7 +951,7 @@ describe('TaskBroker', () => {
 
 			expect(taskBroker.getPendingTaskRequests()).toHaveLength(1);
 
-			jest.advanceTimersByTime(20 * 1000);
+			jest.advanceTimersByTime(60 * 1000);
 
 			await Promise.resolve();
 
@@ -1003,7 +1003,7 @@ describe('TaskBroker', () => {
 
 			expect(taskBroker.getPendingTaskRequests()).toHaveLength(0);
 
-			jest.advanceTimersByTime(25 * 1000);
+			jest.advanceTimersByTime(65 * 1000);
 
 			await Promise.resolve();
 
@@ -1053,7 +1053,7 @@ describe('TaskBroker', () => {
 			const deferredRequest = taskBroker.getPendingTaskRequests()[0];
 			expect(deferredRequest.timeout).toBeDefined();
 
-			jest.advanceTimersByTime(20 * 1000);
+			jest.advanceTimersByTime(60 * 1000);
 
 			await Promise.resolve();
 

@@ -65,7 +65,7 @@ export class TaskRunnersConfig {
 	 * indefinitely when no runners are available. Must be greater than 0.
 	 */
 	@Env('N8N_RUNNERS_TASK_REQUEST_TIMEOUT')
-	taskRequestTimeout: number = 20;
+	taskRequestTimeout: number = 60;
 
 	/** How often (in seconds) the runner must send a heartbeat to the broker, else the task will be aborted. (In internal mode, the runner will also  be restarted.) Must be greater than 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')
