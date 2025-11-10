@@ -26,6 +26,31 @@ Default.args = {
 	} as IMenuItem,
 };
 
+export const AsButton = Template.bind({});
+AsButton.args = {
+	as: 'button',
+	type: 'button',
+	item: {
+		id: 'item1',
+		label: 'Button Item',
+		icon: 'layers',
+		size: 'medium',
+	} as IMenuItem,
+};
+
+export const AsLink = Template.bind({});
+AsLink.args = {
+	as: 'a',
+	href: '#',
+	target: '_blank',
+	item: {
+		id: 'item1',
+		label: 'Link Item',
+		icon: 'external-link',
+		size: 'medium',
+	} as IMenuItem,
+};
+
 export const Collapsed = Template.bind({});
 Collapsed.args = {
 	item: {

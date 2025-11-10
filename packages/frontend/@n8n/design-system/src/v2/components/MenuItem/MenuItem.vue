@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { PrimitiveProps } from 'reka-ui';
 import { Primitive } from 'reka-ui';
+import type { Component } from 'vue';
 import { computed } from 'vue';
 
 import { N8nIcon, N8nText } from '@n8n/design-system/components';
@@ -8,14 +9,39 @@ import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import type { IMenuItem } from '@n8n/design-system/types';
 
-interface Props {
+// Discriminated union for proper TypeScript autocomplete
+type MenuItemAsButton = {
+	as?: 'button';
+	type?: 'button' | 'submit' | 'reset';
+	disabled?: boolean;
+} & PrimitiveProps;
+
+type MenuItemAsLink = {
+	as: 'a';
+	href: string;
+	target?: string;
+	rel?: string;
+} & PrimitiveProps;
+
+type MenuItemAsComponent = {
+	as: Component;
+} & PrimitiveProps;
+
+type MenuItemProps = MenuItemAsButton | MenuItemAsLink | MenuItemAsComponent;
+
+interface BaseProps {
 	item: IMenuItem;
 	collapsed?: boolean;
 }
 
-const props = withDefaults(defineProps<PrimitiveProps & Props>(), {
+const props = withDefaults(defineProps<MenuItemProps & BaseProps>(), {
 	as: 'button',
 });
+
+const emit = defineEmits<{
+	click: [event: MouseEvent];
+	select: [event: Event];
+}>();
 
 const icon = computed<
 	{ value: IconName; type: 'icon' } | { value: string; type: 'emoji' } | undefined
@@ -36,6 +62,8 @@ const icon = computed<
 			$style.MenuItem,
 			{ [$style.MenuItemCollapsed]: collapsed, [$style.MenuItemDisabled]: item.disabled },
 		]"
+		@click="emit('click', $event)"
+		@select="emit('select', $event)"
 	>
 		<div v-if="icon" :class="$style.MenuItemIcon">
 			<span v-if="item.notification" :class="$style.MenuItemNotification" />
