@@ -7,17 +7,10 @@ import { useToast } from '@/composables/useToast';
 import { useRoute, useRouter } from 'vue-router';
 import { DATA_TABLE_DETAILS, PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useTelemetry } from '@/composables/useTelemetry';
-import { dataTableColumnNameSchema, DATA_TABLE_COLUMN_ERROR_MESSAGE } from '@n8n/api-types';
+import { dataTableColumnNameSchema } from '@n8n/api-types';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
-import {
-	N8nButton,
-	N8nInput,
-	N8nInputLabel,
-	N8nSelect,
-	N8nOption,
-	N8nIcon,
-} from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nInputLabel, N8nSelect, N8nOption } from '@n8n/design-system';
 import Modal from '@/components/Modal.vue';
 import { ElUpload, ElIcon } from 'element-plus';
 import type { UploadFile } from 'element-plus';
@@ -77,21 +70,6 @@ const getColumnTypeOptions = (compatibleTypes: ColumnType[]) => {
 	);
 };
 
-const getTypeIcon = (type: ColumnType) => {
-	switch (type) {
-		case 'string':
-			return 'text' as const;
-		case 'number':
-			return 'hash' as const;
-		case 'boolean':
-			return 'check' as const;
-		case 'date':
-			return 'clock' as const;
-		default:
-			return 'text' as const;
-	}
-};
-
 const validateColumnName = (columnName: string): string | undefined => {
 	// Check if it's a reserved system column name
 	if (DATA_TABLE_SYSTEM_COLUMNS.includes(columnName)) {
@@ -103,7 +81,7 @@ const validateColumnName = (columnName: string): string | undefined => {
 	// Validate with schema
 	const result = dataTableColumnNameSchema.safeParse(columnName);
 	if (!result.success) {
-		return DATA_TABLE_COLUMN_ERROR_MESSAGE;
+		return i18n.baseText('dataTable.import.invalidColumnName');
 	}
 	return undefined;
 };
@@ -120,16 +98,13 @@ const hasDuplicateNames = computed(() => {
 });
 
 const modalTitle = computed(() => {
-	if (creationMode.value === 'select') {
-		return i18n.baseText('dataTable.add.title');
+	if (creationMode.value === 'import') {
+		return 'Set data table columns';
 	}
 	return i18n.baseText('dataTable.add.title');
 });
 
 const isCreateDisabled = computed(() => {
-	if (creationMode.value === 'scratch') {
-		return !dataTableName.value;
-	}
 	if (creationMode.value === 'import') {
 		return (
 			!dataTableName.value ||
@@ -148,15 +123,27 @@ onMounted(() => {
 	}, 0);
 });
 
+const selectedOption = ref<'scratch' | 'import' | null>(null);
+
 const selectFromScratch = () => {
-	creationMode.value = 'scratch';
-	setTimeout(() => {
-		inputRef.value?.focus();
-	}, 0);
+	selectedOption.value = 'scratch';
 };
 
 const selectImportCsv = () => {
-	creationMode.value = 'file-selected';
+	selectedOption.value = 'import';
+};
+
+const proceedFromSelect = async () => {
+	if (!selectedOption.value || !dataTableName.value) return;
+
+	if (selectedOption.value === 'scratch') {
+		// Directly create the table for "From Scratch" option
+		await onSubmit();
+	} else if (selectedOption.value === 'import') {
+		// Upload the CSV file first, then go to the import screen
+		if (!selectedFile.value) return;
+		await uploadFile();
+	}
 };
 
 const onColumnNameChange = (index: number) => {
@@ -239,12 +226,14 @@ const onSubmit = async () => {
 	try {
 		let newDataTable;
 
-		if (creationMode.value === 'scratch') {
+		if (selectedOption.value === 'scratch') {
+			// Create from scratch
 			newDataTable = await dataTableStore.createDataTable(
 				dataTableName.value,
 				route.params.projectId as string,
 			);
 		} else if (creationMode.value === 'import' && uploadedFileId.value) {
+			// Create from imported CSV
 			newDataTable = await dataTableStore.createDataTable(
 				dataTableName.value,
 				route.params.projectId as string,
@@ -258,7 +247,7 @@ const onSubmit = async () => {
 			telemetry.track('User created data table', {
 				data_table_id: newDataTable.id,
 				data_table_project_id: newDataTable.project?.id,
-				creation_mode: creationMode.value,
+				creation_mode: selectedOption.value,
 			});
 			resetForm();
 			uiStore.closeModal(props.modalName);
@@ -288,27 +277,25 @@ const resetForm = () => {
 	csvColumns.value = [];
 	csvRowCount.value = 0;
 	csvColumnCount.value = 0;
+	selectedOption.value = null;
 	creationMode.value = 'select';
 };
 
 const resetToSelect = () => {
-	dataTableName.value = '';
 	selectedFile.value = null;
 	uploadedFileId.value = null;
 	uploadedFileName.value = '';
 	csvColumns.value = [];
 	csvRowCount.value = 0;
 	csvColumnCount.value = 0;
+	selectedOption.value = null;
 	creationMode.value = 'select';
 };
 
 const goBack = () => {
-	if (creationMode.value === 'import' && uploadedFileId.value) {
-		// If we have uploaded file data, clear it
-		resetToSelect();
-	} else {
-		creationMode.value = 'select';
-	}
+	// Just go back to select mode without clearing the state
+	// This preserves the selected file and radio button selection
+	creationMode.value = 'select';
 };
 
 const redirectToDataTables = () => {
@@ -320,8 +307,8 @@ const redirectToDataTables = () => {
 	<Modal
 		:name="props.modalName"
 		:center="true"
-		:width="creationMode === 'import' && uploadedFileId ? '700px' : '540px'"
-		:min-height="creationMode === 'import' && uploadedFileId ? '600px' : undefined"
+		:width="creationMode === 'import' ? '700px' : '540px'"
+		:min-height="creationMode === 'import' ? '600px' : undefined"
 		:before-close="redirectToDataTables"
 	>
 		<template #header>
@@ -332,56 +319,53 @@ const redirectToDataTables = () => {
 		<template #content>
 			<!-- Step 1: Selection Screen -->
 			<div v-if="creationMode === 'select'" :class="$style.selectionContent">
-				<div :class="$style.optionCards">
-					<button
-						:class="$style.optionCard"
-						@click="selectFromScratch"
-						data-test-id="create-from-scratch-option"
-					>
-						<div :class="$style.optionIcon">
-							<N8nIcon icon="plus" size="large" />
-						</div>
-						<div :class="$style.optionLabel">
-							{{ i18n.baseText('dataTable.add.fromScratch') }}
-						</div>
-					</button>
-					<button
-						:class="$style.optionCard"
-						@click="selectImportCsv"
-						data-test-id="import-csv-option"
-					>
-						<div :class="$style.optionIcon">
-							<N8nIcon icon="file" size="large" />
-						</div>
-						<div :class="$style.optionLabel">
-							{{ i18n.baseText('dataTable.add.importCsv') }}
-						</div>
-					</button>
-				</div>
-			</div>
-
-			<!-- Step 2: From Scratch -->
-			<div v-else-if="creationMode === 'scratch'" :class="$style.content">
 				<N8nInputLabel
 					:label="i18n.baseText('dataTable.add.input.name.label')"
 					:required="true"
-					input-name="dataTableName"
+					input-name="dataTableNameSelect"
 				>
 					<N8nInput
 						ref="inputRef"
 						v-model="dataTableName"
 						type="text"
 						:placeholder="i18n.baseText('dataTable.add.input.name.placeholder')"
-						data-test-id="data-table-name-input"
-						name="dataTableName"
-						@keydown.enter="onSubmit"
+						data-test-id="data-table-name-input-select"
+						name="dataTableNameSelect"
 					/>
 				</N8nInputLabel>
-			</div>
+				<div :class="$style.radioGroup">
+					<label :class="$style.radioOption">
+						<input
+							type="radio"
+							name="creationMode"
+							value="scratch"
+							:class="$style.radioInput"
+							:checked="selectedOption === 'scratch'"
+							data-test-id="create-from-scratch-option"
+							@change="selectFromScratch"
+						/>
+						<span :class="$style.radioLabel">
+							{{ i18n.baseText('dataTable.add.fromScratch') }}
+						</span>
+					</label>
+					<label :class="$style.radioOption">
+						<input
+							type="radio"
+							name="creationMode"
+							value="import"
+							:class="$style.radioInput"
+							:checked="selectedOption === 'import'"
+							data-test-id="import-csv-option"
+							@change="selectImportCsv"
+						/>
+						<span :class="$style.radioLabel">
+							{{ i18n.baseText('dataTable.add.importCsv') }}
+						</span>
+					</label>
+				</div>
 
-			<!-- Step 2.5: File Selected - Configure Upload -->
-			<div v-else-if="creationMode === 'file-selected'" :class="$style.content">
-				<div :class="$style.fileSelectedContainer">
+				<!-- Upload section - shown when Import from CSV is selected -->
+				<div v-if="selectedOption === 'import'" :class="$style.uploadSection">
 					<ElUpload
 						:class="$style.uploadDemo"
 						drag
@@ -399,11 +383,6 @@ const redirectToDataTables = () => {
 								{{ i18n.baseText('dataTable.upload.dropOrClick') }}
 							</span>
 						</div>
-						<template #tip>
-							<div :class="$style.uploadTip">
-								{{ i18n.baseText('dataTable.upload.csvOnly') }}
-							</div>
-						</template>
 					</ElUpload>
 
 					<div :class="$style.checkboxContainer">
@@ -420,7 +399,7 @@ const redirectToDataTables = () => {
 				</div>
 			</div>
 
-			<!-- Step 3: Import CSV -->
+			<!-- Step 3: Import CSV Column Configuration -->
 			<div v-else-if="creationMode === 'import'" :class="$style.content">
 				<div v-if="isUploading" :class="$style.uploadingMessage">
 					{{ i18n.baseText('dataTable.upload.uploading') }}
@@ -430,8 +409,8 @@ const redirectToDataTables = () => {
 					{{ i18n.baseText('dataTable.upload.selectFile') }}
 				</div>
 
-				<div v-else-if="uploadedFileId && csvColumns.length > 0">
-					<div :class="$style.uploadSuccessMessage">
+				<div v-else-if="uploadedFileId && csvColumns.length > 0" :class="$style.importContent">
+					<div :class="$style.successNotice">
 						{{
 							i18n.baseText('dataTable.upload.success', {
 								adjustToNumber: csvRowCount,
@@ -444,108 +423,69 @@ const redirectToDataTables = () => {
 						}}
 					</div>
 
-					<div :class="$style.columnMappingSection">
-						<h3 :class="$style.sectionTitle">
-							{{ i18n.baseText('dataTable.import.columnsFound') }}
-						</h3>
-						<p :class="$style.sectionDescription">
-							{{ i18n.baseText('dataTable.import.columnsDescription') }}
-						</p>
-
-						<div :class="$style.columnsList">
-							<div :class="$style.columnsHeader">
-								<div :class="$style.columnNameHeader">
-									{{ i18n.baseText('dataTable.import.columnName') }}
-								</div>
-								<div :class="$style.columnTypeHeader">
-									{{ i18n.baseText('dataTable.import.columnType') }}
-								</div>
-							</div>
-							<div :class="$style.columnsScrollableContainer">
-								<div v-for="(column, index) in csvColumns" :key="index" :class="$style.columnRow">
-									<div :class="$style.columnNameWrapper">
-										<N8nInput
-											v-model="column.name"
-											:placeholder="i18n.baseText('dataTable.import.columnNamePlaceholder')"
-											:data-test-id="`column-name-${index}`"
-											:class="{ [$style.inputError]: column.error }"
-											size="small"
-											@update:model-value="onColumnNameChange(index)"
-										/>
-										<div v-if="column.error" :class="$style.errorMessage">
-											{{ column.error }}
-										</div>
-									</div>
-									<div :class="$style.columnType">
-										<div :class="$style.typeSelectWrapper">
-											<N8nIcon
-												:icon="getTypeIcon(column.type)"
-												:class="$style.typeIcon"
-												size="small"
-											/>
-											<N8nSelect
-												v-model="column.type"
-												:data-test-id="`column-type-${index}`"
-												:class="$style.typeSelect"
-												size="small"
-											>
-												<N8nOption
-													v-for="option in column.typeOptions"
-													:key="option.value"
-													:value="option.value"
-													:label="option.label"
-												/>
-											</N8nSelect>
-										</div>
-									</div>
-								</div>
-							</div>
+					<div :class="$style.columnHeaders">
+						<div :class="$style.columnHeaderLabel">
+							{{ i18n.baseText('dataTable.import.columnName') }}
+						</div>
+						<div :class="$style.columnHeaderLabel">
+							{{ i18n.baseText('dataTable.import.columnType') }}
 						</div>
 					</div>
 
-					<div :class="$style.tableNameSection">
-						<N8nInputLabel
-							:label="i18n.baseText('dataTable.add.input.name.label')"
-							:required="true"
-							input-name="dataTableName"
-						>
-							<N8nInput
-								ref="inputRef"
-								v-model="dataTableName"
-								type="text"
-								:placeholder="i18n.baseText('dataTable.add.input.name.placeholder')"
-								data-test-id="data-table-name-input"
-								name="dataTableName"
-								@keydown.enter="onSubmit"
-							/>
-						</N8nInputLabel>
+					<div :class="$style.columnsContainer">
+						<div v-for="(column, index) in csvColumns" :key="index" :class="$style.columnItem">
+							<div :class="$style.columnInputWrapper">
+								<N8nInput
+									v-model="column.name"
+									:placeholder="i18n.baseText('dataTable.import.columnNamePlaceholder')"
+									:data-test-id="`column-name-${index}`"
+									:class="{ [$style.inputError]: column.error }"
+									@update:model-value="onColumnNameChange(index)"
+								/>
+								<div v-if="column.error" :class="$style.columnErrorMessage">
+									{{ column.error }}
+								</div>
+							</div>
+							<div :class="$style.columnTypeWrapper">
+								<N8nSelect v-model="column.type" :data-test-id="`column-type-${index}`">
+									<N8nOption
+										v-for="option in column.typeOptions"
+										:key="option.value"
+										:value="option.value"
+										:label="option.label"
+									/>
+								</N8nSelect>
+							</div>
+						</div>
 					</div>
 				</div>
 			</div>
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<!-- File Selected Step Buttons -->
+				<!-- Select Mode Buttons -->
 				<N8nButton
-					v-if="creationMode === 'file-selected'"
+					v-if="creationMode === 'select'"
 					type="secondary"
 					size="large"
 					:label="i18n.baseText('generic.cancel')"
-					data-test-id="cancel-file-button"
-					@click="resetToSelect"
+					data-test-id="cancel-select-button"
+					@click="redirectToDataTables"
 				/>
 				<N8nButton
-					v-if="creationMode === 'file-selected'"
+					v-if="creationMode === 'select'"
 					size="large"
-					:disabled="!selectedFile"
-					:label="i18n.baseText('dataTable.upload.uploadButton')"
-					data-test-id="upload-csv-button"
-					@click="uploadFile"
+					:disabled="
+						!dataTableName || !selectedOption || (selectedOption === 'import' && !selectedFile)
+					"
+					:label="i18n.baseText('generic.create')"
+					data-test-id="proceed-from-select-button"
+					@click="proceedFromSelect"
 				/>
 
-				<!-- Other Modes Buttons -->
+				<!-- Import CSV Column Configuration Buttons -->
 				<N8nButton
-					v-if="creationMode !== 'select' && creationMode !== 'file-selected'"
+					v-if="creationMode === 'import'"
 					type="secondary"
 					size="large"
 					:label="i18n.baseText('generic.back')"
@@ -553,19 +493,13 @@ const redirectToDataTables = () => {
 					@click="goBack"
 				/>
 				<N8nButton
-					v-if="creationMode !== 'select' && creationMode !== 'file-selected'"
+					v-if="creationMode === 'import'"
 					size="large"
 					:disabled="isCreateDisabled"
 					:label="i18n.baseText('generic.create')"
 					data-test-id="confirm-add-data-table-button"
 					@click="onSubmit"
 				/>
-				<!-- <N8nButton
-					type="secondary"
-					:label="i18n.baseText('generic.cancel')"
-					data-test-id="cancel-add-data-table-button"
-					@click="onCancel"
-				/> -->
 			</div>
 		</template>
 	</Modal>
@@ -582,49 +516,43 @@ const redirectToDataTables = () => {
 }
 
 .selectionContent {
-	padding: var(--spacing--md) 0;
-}
-
-.optionCards {
-	display: flex;
-	gap: var(--spacing--md);
-	justify-content: center;
-}
-
-.optionCard {
-	flex: 1;
 	display: flex;
 	flex-direction: column;
+	gap: var(--spacing--md);
+}
+
+.radioGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
+}
+
+.radioOption {
+	display: flex;
 	align-items: center;
-	justify-content: center;
-	padding: var(--spacing--2xl);
-	border: 2px solid var(--color--foreground);
-	border-radius: var(--radius--lg);
-	background-color: var(--color--foreground);
+	gap: var(--spacing--xs);
 	cursor: pointer;
-	transition: all 0.2s ease;
-
-	&:hover {
-		background-color: var(--color--foreground--shade-1);
-		border-color: var(--color--primary);
-	}
-
-	&:focus {
-		outline: 2px solid var(--color--primary);
-		outline-offset: 2px;
-	}
+	user-select: none;
 }
 
-.optionIcon {
-	margin-bottom: var(--spacing--sm);
-	color: var(--color--primary);
-	font-weight: var(--font-weight--bold);
+.radioInput {
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+	flex-shrink: 0;
 }
 
-.optionLabel {
-	font-size: var(--font-size--md);
-	font-weight: var(--font-weight--bold);
+.radioLabel {
+	font-size: var(--font-size--sm);
 	color: var(--color--text);
+	cursor: pointer;
+}
+
+.uploadSection {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	margin-top: var(--spacing--sm);
 }
 
 .uploadingMessage {
@@ -633,9 +561,14 @@ const redirectToDataTables = () => {
 	color: var(--color--text--tint-1);
 }
 
-.uploadSuccessMessage {
+.importContent {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+}
+
+.successNotice {
 	padding: var(--spacing--sm) var(--spacing--md);
-	margin-bottom: var(--spacing--md);
 	background-color: var(--color--success--tint-4);
 	border-radius: var(--radius);
 	color: var(--color--success--shade-1);
@@ -643,76 +576,44 @@ const redirectToDataTables = () => {
 	line-height: var(--line-height--lg);
 }
 
-.columnMappingSection {
-	margin-bottom: var(--spacing--lg);
+.columnHeaders {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: var(--spacing--md);
+	padding: 0 var(--spacing--2xs);
 }
 
-.sectionTitle {
+.columnHeaderLabel {
 	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
-	margin-bottom: var(--spacing--3xs);
-	color: var(--color--text);
-}
-
-.sectionDescription {
-	font-size: var(--font-size--xs);
+	font-weight: var(--font-weight--regular);
 	color: var(--color--text--tint-1);
-	margin-bottom: var(--spacing--sm);
-	line-height: var(--line-height--lg);
 }
 
-.columnsList {
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: var(--radius);
-	overflow: hidden;
-}
-
-.columnsHeader {
-	display: grid;
-	grid-template-columns: 1fr 1fr;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	background-color: var(--color--foreground--shade-1);
-	font-size: var(--font-size--sm);
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--shade-1);
-}
-
-.columnNameHeader,
-.columnTypeHeader {
-	font-weight: var(--font-weight--bold);
-	color: var(--color--text--shade-1);
-}
-
-.columnsScrollableContainer {
-	max-height: 300px;
+.columnsContainer {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--md);
+	max-height: 400px;
 	overflow-y: auto;
-	overflow-x: hidden;
+	padding: var(--spacing--2xs);
 }
 
-.columnRow {
+.columnItem {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
-	gap: var(--spacing--xs);
-	padding: var(--spacing--xs) var(--spacing--sm);
-	border-top: var(--border-width) var(--border-style) var(--color--foreground);
+	gap: var(--spacing--md);
 	align-items: start;
-
-	&:hover {
-		background-color: var(--color--background--light-2);
-	}
 }
 
-.columnNameWrapper {
+.columnInputWrapper {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
 }
 
-.columnName,
-.columnType {
+.columnTypeWrapper {
 	display: flex;
-	align-items: flex-start;
+	align-items: center;
 }
 
 .inputError {
@@ -723,33 +624,10 @@ const redirectToDataTables = () => {
 	}
 }
 
-.errorMessage {
+.columnErrorMessage {
 	font-size: var(--font-size--3xs);
 	color: var(--color--danger);
 	line-height: var(--line-height--sm);
-	margin-top: var(--spacing--5xs);
-}
-
-.typeSelectWrapper {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	width: 100%;
-}
-
-.typeIcon {
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
-}
-
-.typeSelect {
-	flex: 1;
-}
-
-.tableNameSection {
-	margin-top: var(--spacing--md);
-	padding-top: var(--spacing--md);
-	border-top: var(--border-width) var(--border-style) var(--color--foreground);
 }
 
 .footer {
