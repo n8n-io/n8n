@@ -3,7 +3,7 @@ import type { Constructable } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 import type { RequestHandler, Router } from 'express';
 
-export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete';
+export type Method = 'get' | 'post' | 'put' | 'patch' | 'delete' | 'options';
 
 export type Arg = { type: 'body' | 'query' } | { type: 'param'; key: string };
 
