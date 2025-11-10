@@ -45,20 +45,29 @@ export class TelemetryController {
 		usesTemplates: true,
 	})
 	async sourceConfig(_: Request, res: Response) {
-		const response = await fetch('https://api-rs.n8n.io/sourceConfig', {
-			headers: {
-				authorization:
-					'Basic ' + btoa(`${this.globalConfig.diagnostics.frontendConfig.split(';')[0]}:`),
-			},
-		});
+		try {
+			const response = await fetch('https://api-rs.n8n.io/sourceConfig', {
+				headers: {
+					authorization:
+						'Basic ' + btoa(`${this.globalConfig.diagnostics.frontendConfig.split(';')[0]}:`),
+				},
+				// Add timeout to prevent hanging requests
+				signal: AbortSignal.timeout(5000), // 5 second timeout
+			});
 
-		if (!response.ok) {
-			throw new Error(`Failed to fetch source config: ${response.statusText}`);
+			if (!response.ok) {
+				// Return empty config instead of throwing error to prevent console spam
+				return res.json({});
+			}
+
+			const config: unknown = await response.json();
+
+			// write directly to response to avoid wrapping the config in `data` key which is not expected by RudderStack sdk
+			res.json(config);
+		} catch (error) {
+			// Silently handle network errors (timeout, ENOTFOUND, etc.)
+			// Return empty config to allow the app to continue functioning
+			res.json({});
 		}
-
-		const config: unknown = await response.json();
-
-		// write directly to response to avoid wrapping the config in `data` key which is not expected by RudderStack sdk
-		res.json(config);
 	}
 }
