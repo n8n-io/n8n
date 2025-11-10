@@ -321,7 +321,7 @@ const openCommunityRegisterModal = () => {
 					<N8nButton type="secondary" @click="activationKeyModal = false">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 					</N8nButton>
-					<N8nButton :disabled="!activationKey" @click="onLicenseActivation">
+					<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
 					</N8nButton>
 				</template>
