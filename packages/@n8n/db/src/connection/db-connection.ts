@@ -95,10 +95,12 @@ export class DbConnection {
 
 	private async ping() {
 		if (!this.dataSource.isInitialized) return;
+		const abortController = new AbortController();
+
 		try {
 			await Promise.race([
 				this.dataSource.query('SELECT 1'),
-				setTimeoutP(5000).then(() => {
+				setTimeoutP(5000, undefined, { signal: abortController.signal }).then(() => {
 					throw new OperationalError('Database connection timed out');
 				}),
 			]);
@@ -117,6 +119,7 @@ export class DbConnection {
 				this.errorReporter.error(error);
 			}
 		} finally {
+			abortController.abort();
 			this.scheduleNextPing();
 		}
 	}
