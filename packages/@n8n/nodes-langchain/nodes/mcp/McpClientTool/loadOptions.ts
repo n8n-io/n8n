@@ -5,7 +5,7 @@ import {
 } from 'n8n-workflow';
 
 import type { McpAuthenticationOption, McpServerTransport } from './types';
-import { connectMcpClient, getAllTools, getAuthHeaders } from './utils';
+import { connectMcpClient, getAllTools, getAuthHeaders, tryRefreshOAuth2Token } from './utils';
 
 export async function getTools(this: ILoadOptionsFunctions): Promise<INodePropertyOptions[]> {
 	const authentication = this.getNodeParameter('authentication') as McpAuthenticationOption;
@@ -26,6 +26,7 @@ export async function getTools(this: ILoadOptionsFunctions): Promise<INodeProper
 		headers,
 		name: node.type,
 		version: node.typeVersion,
+		onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
 	});
 
 	if (!client.ok) {

@@ -30,7 +30,7 @@ const props = withDefaults(defineProps<N8nPromptInputProps>(), {
 	modelValue: '',
 	placeholder: '',
 	maxLength: 5000,
-	maxLinesBeforeScroll: 6,
+	maxLinesBeforeScroll: 10,
 	minLines: 1,
 	streaming: false,
 	disabled: false,
@@ -53,6 +53,7 @@ const { t } = useI18n();
 
 const textareaRef = ref<HTMLTextAreaElement>();
 const containerRef = ref<HTMLDivElement>();
+const scrollAreaRef = ref<InstanceType<typeof N8nScrollArea>>();
 const isFocused = ref(false);
 const textValue = ref(props.modelValue || '');
 const singleLineHeight = 24;
@@ -136,9 +137,8 @@ const textareaStyle = computed<{ height?: string; overflowY?: 'hidden' }>(() => 
 		return {};
 	}
 
-	const height = Math.min(textareaHeight.value, textAreaMaxHeight.value);
 	return {
-		height: `${height}px`,
+		height: `${textareaHeight.value}px`,
 		overflowY: 'hidden',
 	};
 });
@@ -168,26 +168,49 @@ function adjustHeight() {
 		return;
 	}
 
-	// Measure the natural height
 	if (!textareaRef.value) return;
-	textareaRef.value.style.height = '0';
+
+	// Save scroll position BEFORE any measurements or height changes
+	// Only save if we're in multiline mode and have a scroll area
+	let viewportEl: HTMLElement | null = null;
+	let savedScrollTop = 0;
+
+	if (wasMultiline && scrollAreaRef.value) {
+		const scrollAreaElement = scrollAreaRef.value.$el as HTMLElement | undefined;
+		viewportEl = scrollAreaElement?.querySelector(
+			'[data-reka-scroll-area-viewport]',
+		) as HTMLElement | null;
+		if (viewportEl) {
+			savedScrollTop = viewportEl.scrollTop;
+		}
+	}
+
+	// Measure required height using 'auto' instead of '0' to minimize visual disruption
+	const currentHeight = textareaRef.value.style.height;
+	textareaRef.value.style.height = 'auto';
 	const scrollHeight = textareaRef.value.scrollHeight;
+	textareaRef.value.style.height = currentHeight; // Restore immediately to minimize flash
 
 	// Check if we need multiline mode
-	// Switch to multiline when text would wrap, when there's actual line breaks, or when minLines > 1
 	const shouldBeMultiline =
 		props.minLines > 1 || scrollHeight > singleLineHeight || textValue.value.includes('\n');
 
-	// Update height tracking - use at least the minimum height
-	textareaHeight.value = Math.max(scrollHeight, minHeight);
+	// Update height tracking
+	const newHeight = Math.max(scrollHeight, minHeight);
+	textareaHeight.value = newHeight;
 	isMultiline.value = shouldBeMultiline;
 
 	// Apply the appropriate height
 	if (!isMultiline.value) {
 		textareaRef.value.style.height = `${singleLineHeight}px`;
 	} else {
-		// For multiline, set at least minHeight
-		textareaRef.value.style.height = `${Math.max(scrollHeight, minHeight)}px`;
+		textareaRef.value.style.height = `${newHeight}px`;
+
+		// Restore scroll position immediately after setting height
+		// This needs to happen before browser recalculates layout
+		if (viewportEl && wasMultiline && savedScrollTop > 0) {
+			viewportEl.scrollTop = savedScrollTop;
+		}
 	}
 
 	// Restore focus if mode changed or if scrollbar appeared/disappeared
@@ -358,6 +381,7 @@ defineExpose({
 			<template v-else>
 				<!-- Use ScrollArea when content exceeds max height -->
 				<N8nScrollArea
+					ref="scrollAreaRef"
 					:class="$style.scrollAreaWrapper"
 					:max-height="`${textAreaMaxHeight}px`"
 					type="auto"

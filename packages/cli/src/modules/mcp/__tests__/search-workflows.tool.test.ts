@@ -5,6 +5,7 @@ import type { INode } from 'n8n-workflow';
 import { createWorkflow } from './mock.utils';
 import { searchWorkflows, createSearchWorkflowsTool } from '../tools/search-workflows.tool';
 
+import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
@@ -25,7 +26,15 @@ describe('search-workflows MCP tool', () => {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
 
-			const tool = createSearchWorkflowsTool(user, workflowService as unknown as WorkflowService);
+			const telemetry = mockInstance(Telemetry, {
+				track: jest.fn(),
+			});
+
+			const tool = createSearchWorkflowsTool(
+				user,
+				workflowService as unknown as WorkflowService,
+				telemetry,
+			);
 
 			expect(tool.name).toBe('search_workflows');
 			expect(tool.config).toBeDefined();
@@ -88,18 +97,16 @@ describe('search-workflows MCP tool', () => {
 			});
 			await searchWorkflows(user, workflowService as unknown as WorkflowService, {
 				limit: 500,
-				active: true,
-				name: 'foo',
+				query: 'foo',
 				projectId: 'proj-1',
 			});
 
 			const [_userArg, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
-			expect(optionsArg.take).toBe(200); // clamped to MAX_RESULTS
+			expect(optionsArg.take).toBe(200);
 			expect(optionsArg.filter).toMatchObject({
 				isArchived: false,
 				availableInMCP: true,
-				active: true,
-				name: 'foo',
+				query: 'foo',
 				projectId: 'proj-1',
 			});
 		});
