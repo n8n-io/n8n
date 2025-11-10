@@ -19,7 +19,7 @@ import type {
 	IExecutionFlattedResponse,
 	IExecutionResponse,
 } from './executions.types';
-import { isEmpty } from '@/utils/typesUtils';
+import { isEmpty } from '@/app/utils/typesUtils';
 import {
 	CORE_NODES_CATEGORY,
 	ERROR_TRIGGER_NODE_TYPE,
@@ -27,14 +27,14 @@ import {
 	SCHEDULE_TRIGGER_NODE_TYPE,
 	WEBHOOK_NODE_TYPE,
 	WORKFLOW_TRIGGER_NODE_TYPE,
-} from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+} from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { i18n } from '@n8n/i18n';
 import { h } from 'vue';
-import NodeExecutionErrorMessage from '@/components/NodeExecutionErrorMessage.vue';
+import NodeExecutionErrorMessage from '@/app/components/NodeExecutionErrorMessage.vue';
 import { parse } from 'flatted';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 export function getDefaultExecutionFilters(): ExecutionFilterType {
 	return {

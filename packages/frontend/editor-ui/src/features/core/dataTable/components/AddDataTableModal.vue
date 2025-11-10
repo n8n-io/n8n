@@ -2,8 +2,8 @@
 import { useI18n } from '@n8n/i18n';
 import { onMounted, ref, computed } from 'vue';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useToast } from '@/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useToast } from '@/app/composables/useToast';
 import { useRoute, useRouter } from 'vue-router';
 import { DATA_TABLE_DETAILS, PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
 import { useTelemetry } from '@/composables/useTelemetry';

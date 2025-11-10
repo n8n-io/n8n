@@ -16,6 +16,7 @@ export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
 		id: string; // deleted if sent
 		name: string;
+		description: string | null;
 		nodes: INode[];
 		connections: IConnections;
 		settings: IWorkflowSettings;
