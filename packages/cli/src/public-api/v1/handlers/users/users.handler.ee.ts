@@ -189,7 +189,7 @@ export = {
 				...newApiKey,
 				apiKey: publicApiKeyService.redactApiKey(newApiKey.apiKey),
 				rawApiKey: newApiKey.apiKey,
-				expiresAt,
+				expiresAt: publicApiKeyService.getApiKeyExpiration(newApiKey.apiKey),
 			});
 		},
 	],

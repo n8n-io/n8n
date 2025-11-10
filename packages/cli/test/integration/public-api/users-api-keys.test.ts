@@ -202,7 +202,7 @@ describe('POST /users/:id/api-keys - Create API key for another user', () => {
 		expect(response.body.rawApiKey).toBeDefined();
 		expect(response.body.label).toBe('Non-Expiring Key');
 		expect(response.body.scopes).toEqual(['workflow:read']);
-		expect(response.body.expiresAt).toBeUndefined();
+		expect(response.body.expiresAt).toBeNull();
 
 		// Verify the API key was created for the member
 		const storedApiKey = await Container.get(ApiKeyRepository).findOneBy({

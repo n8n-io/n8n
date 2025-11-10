@@ -179,10 +179,10 @@ export class PublicApiKeyService {
 		);
 	}
 
-	private getApiKeyExpiration = (apiKey: string) => {
+	getApiKeyExpiration(apiKey: string) {
 		const decoded = this.jwtService.decode(apiKey);
 		return decoded?.exp ?? null;
-	};
+	}
 
 	apiKeyHasValidScopesForRole(role: AuthPrincipal, apiKeyScopes: ApiKeyScope[]) {
 		const scopesForRole = getApiKeyScopesForRole(role);

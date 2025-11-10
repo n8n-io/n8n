@@ -61,7 +61,7 @@ export class ApiKeysController {
 			...newApiKey,
 			apiKey: this.publicApiKeyService.redactApiKey(newApiKey.apiKey),
 			rawApiKey: newApiKey.apiKey,
-			expiresAt: body.expiresAt,
+			expiresAt: this.publicApiKeyService.getApiKeyExpiration(newApiKey.apiKey),
 		};
 	}
 
