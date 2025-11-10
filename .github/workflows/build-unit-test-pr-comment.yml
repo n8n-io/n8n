@@ -41,9 +41,13 @@ jobs:
               }
             }
 
+            core.setOutput('proceed', 'false');
+            core.setOutput('headSha', '');
+            core.setOutput('prNumber', '');
+
             if (!context.payload.issue.pull_request || !isCommand) {
               console.log('Comment is not /build-unit-test on a pull request. Skipping.');
-              return { proceed: 'false' };
+              return;
             }
 
             let permission;
@@ -57,13 +61,13 @@ jobs:
             } catch (error) {
               console.log(`Could not verify permissions for @${commenter}: ${error.message}`);
               await react('confused');
-              return { proceed: 'false' };
+              return;
             }
 
             if (!allowedPermissions.includes(permission)) {
               console.log(`User @${commenter} has '${permission}' permission; requires admin/write/maintain.`);
               await react('-1');
-              return { proceed: 'false' };
+              return;
             }
 
             try {
@@ -74,15 +78,12 @@ jobs:
                 pull_number: prNumber,
               });
               await react('+1');
-              return {
-                proceed: 'true',
-                headSha: pr.head.sha,
-                prNumber: String(prNumber),
-              };
+              core.setOutput('proceed', 'true');
+              core.setOutput('headSha', pr.head.sha);
+              core.setOutput('prNumber', String(prNumber));
             } catch (error) {
               console.log(`Failed to fetch PR details for PR #${context.issue.number}: ${error.message}`);
               await react('confused');
-              return { proceed: 'false' };
             }
 
       - name: Dispatch build/unit test workflow
