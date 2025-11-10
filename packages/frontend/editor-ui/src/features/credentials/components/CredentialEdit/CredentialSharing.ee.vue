@@ -27,12 +27,14 @@ type Props = {
 	credentialPermissions: PermissionsRecord['credential'];
 	credential?: ICredentialsResponse | ICredentialsDecryptedResponse | null;
 	modalBus: EventBus;
+	isSharedWithAllUsers?: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), { credential: null });
+const props = withDefaults(defineProps<Props>(), { credential: null, isSharedWithAllUsers: false });
 
 const emit = defineEmits<{
 	'update:modelValue': [value: ProjectSharingData[]];
+	'update:shareWithAllUsers': [value: boolean];
 }>();
 
 const i18n = useI18n();
@@ -162,6 +164,9 @@ function goToUpgrade() {
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
 				:placeholder="sharingSelectPlaceholder"
+				:include-all-users-group-option="true"
+				:is-shared-with-all-users="isSharedWithAllUsers"
+				@update:share-with-all-users="emit('update:shareWithAllUsers', $event)"
 			/>
 		</div>
 	</div>

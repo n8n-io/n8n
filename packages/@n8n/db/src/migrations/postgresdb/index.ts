@@ -109,6 +109,7 @@ import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRole
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
+import { AddIsAvailableForAllUsersColumnToCredentialsTable1762771954619 } from '../common/1762771954619-AddIsAvailableForAllUsersColumnToCredentialsTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -223,4 +224,5 @@ export const postgresMigrations: Migration[] = [
 	ChangeDependencyInfoToJson1761655473000,
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
+	AddIsAvailableForAllUsersColumnToCredentialsTable1762771954619,
 ];

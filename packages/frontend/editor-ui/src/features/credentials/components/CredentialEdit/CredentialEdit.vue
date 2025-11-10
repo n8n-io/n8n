@@ -113,6 +113,7 @@ const hasUserSpecifiedName = ref(false);
 const isSharedWithChanged = ref(false);
 const requiredCredentials = ref(false); // Are credentials required or optional for the node
 const contentRef = ref<HTMLDivElement>();
+const isSharedWithAllUsers = ref(false);
 
 const activeNodeType = computed(() => {
 	const activeNode = ndvStore.activeNode;
@@ -539,6 +540,11 @@ async function loadCurrentCredential() {
 		}
 
 		credentialName.value = currentCredentials.name;
+		isSharedWithAllUsers.value =
+			'isAvailableForAllUsers' in currentCredentials &&
+			typeof currentCredentials.isAvailableForAllUsers === 'boolean'
+				? currentCredentials.isAvailableForAllUsers
+				: false;
 	} catch (error) {
 		toast.showError(
 			error,
@@ -570,6 +576,12 @@ function onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 		...credentialData.value,
 		sharedWithProjects,
 	};
+	isSharedWithChanged.value = true;
+	hasUnsavedChanges.value = true;
+}
+
+function onShareWithAllUsersUpdate(shareWithAllUsers: boolean) {
+	isSharedWithAllUsers.value = shareWithAllUsers;
 	isSharedWithChanged.value = true;
 	hasUnsavedChanges.value = true;
 }
@@ -916,6 +928,7 @@ async function updateCredential(
 			credential = await credentialsStore.setCredentialSharedWith({
 				credentialId: credentialDetails.id,
 				sharedWithProjects: credentialDetails.sharedWithProjects,
+				isAvailableForAllUsers: isSharedWithAllUsers.value,
 			});
 			isSharedWithChanged.value = false;
 		}
@@ -1233,8 +1246,10 @@ const { width } = useElementSize(credNameRef);
 						:credential-data="credentialData"
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
+						:is-shared-with-all-users="isSharedWithAllUsers"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
+						@update:share-with-all-users="onShareWithAllUsersUpdate"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">

@@ -9,6 +9,17 @@ import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../
 import ProjectSharingInfo from './ProjectSharingInfo.vue';
 
 import { N8nBadge, N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+
+const All_USERS_GROUP: ProjectListItem = {
+	id: 'all_users',
+	name: 'All users',
+	type: 'public',
+	icon: { type: 'icon', value: 'users' },
+	role: 'member',
+	createdAt: `${Date.now()}`,
+	updatedAt: `${Date.now()}`,
+};
+
 const locale = useI18n();
 
 type Props = {
@@ -21,19 +32,32 @@ type Props = {
 	emptyOptionsText?: string;
 	size?: SelectSize;
 	clearable?: boolean;
+	includeAllUsersGroupOption?: boolean;
+	isSharedWithAllUsers?: boolean;
 };
 
 const props = defineProps<Props>();
 const model = defineModel<(ProjectSharingData | null) | ProjectSharingData[]>({
 	required: true,
 });
+
 const emit = defineEmits<{
 	projectAdded: [value: ProjectSharingData];
 	projectRemoved: [value: ProjectSharingData];
 	clear: [];
+	'update:shareWithAllUsers': [value: boolean];
 }>();
 
 const selectedProject = ref(Array.isArray(model.value) ? '' : (model.value?.id ?? ''));
+
+const selectedProjects = computed((): ProjectSharingData[] | null => {
+	if (!Array.isArray(model.value)) {
+		return null;
+	}
+
+	return props.isSharedWithAllUsers ? [All_USERS_GROUP, ...model.value] : model.value;
+});
+
 const filter = ref('');
 const selectPlaceholder = computed(
 	() => props.placeholder ?? locale.baseText('projects.sharing.select.placeholder'),
@@ -50,13 +74,14 @@ const filteredProjects = computed(() =>
 	),
 );
 
-const sortedProjects = computed(() =>
-	orderBy(
+const sortedProjects = computed((): ProjectListItem[] => [
+	...(props.includeAllUsersGroupOption && !props.isSharedWithAllUsers ? [All_USERS_GROUP] : []),
+	...orderBy(
 		filteredProjects.value,
 		['type', (project) => project.name?.toLowerCase()],
 		['desc', 'asc'],
 	),
-);
+]);
 
 const projectIcon = computed<IconOrEmoji>(() => {
 	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
@@ -76,6 +101,11 @@ const setFilter = (query: string) => {
 };
 
 const onProjectSelected = (projectId: string) => {
+	if (projectId === All_USERS_GROUP.id) {
+		emit('update:shareWithAllUsers', true);
+		return;
+	}
+
 	const project = props.projects.find((p) => p.id === projectId);
 
 	if (!project) {
@@ -92,6 +122,12 @@ const onProjectSelected = (projectId: string) => {
 
 const onRoleAction = (project: ProjectSharingData, role: string) => {
 	if (!Array.isArray(model.value) || props.readonly) {
+		return;
+	}
+
+	if (project.id === All_USERS_GROUP.id && role === 'remove') {
+		emit('update:shareWithAllUsers', false);
+
 		return;
 	}
 
@@ -151,7 +187,7 @@ watch(
 				<ProjectSharingInfo :project="project" />
 			</N8nOption>
 		</N8nSelect>
-		<ul v-if="Array.isArray(model)" :class="$style.selectedProjects">
+		<ul v-if="selectedProjects" :class="$style.selectedProjects">
 			<li v-if="props.homeProject" :class="$style.project" data-test-id="project-sharing-owner">
 				<ProjectSharingInfo :project="props.homeProject">
 					<N8nBadge theme="tertiary" bold>
@@ -160,7 +196,7 @@ watch(
 				>
 			</li>
 			<li
-				v-for="project in model"
+				v-for="project in selectedProjects"
 				:key="project.id"
 				:class="$style.project"
 				data-test-id="project-sharing-list-item"

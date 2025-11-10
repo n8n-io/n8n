@@ -36,6 +36,12 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	@Column({ default: false })
 	isManaged: boolean;
 
+	/**
+	 * Whether the credential is available for use by all users.
+	 */
+	@Column({ default: false })
+	isAvailableForAllUsers: boolean;
+
 	toJSON() {
 		const { shared, ...rest } = this;
 		return rest;

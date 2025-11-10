@@ -105,6 +105,7 @@ import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-Cr
 import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
+import { AddIsAvailableForAllUsersColumnToCredentialsTable1762771954619 } from '../common/1762771954619-AddIsAvailableForAllUsersColumnToCredentialsTable';
 import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
 import { AddWorkflowDescriptionColumn1762177736257 } from './../common/1762177736257-AddWorkflowDescriptionColumn';
 
@@ -217,6 +218,7 @@ const sqliteMigrations: Migration[] = [
 	ChangeDependencyInfoToJson1761655473000,
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
+	AddIsAvailableForAllUsersColumnToCredentialsTable1762771954619,
 ];
 
 export { sqliteMigrations };

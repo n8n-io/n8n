@@ -93,7 +93,11 @@ export declare namespace CredentialRequest {
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
-	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
+	type Share = AuthenticatedRequest<
+		{ credentialId: string },
+		{},
+		{ shareWithIds: string[]; isAvailableForAllUsers?: boolean }
+	>;
 
 	type Transfer = AuthenticatedRequest<
 		{ credentialId: string },
