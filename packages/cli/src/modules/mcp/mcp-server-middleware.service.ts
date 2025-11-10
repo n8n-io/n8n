@@ -92,6 +92,8 @@ export class McpServerMiddlewareService {
 
 	private responseWithUnauthorized(res: Response, req: Request) {
 		this.trackUnauthorizedEvent(req);
+		// RFC 6750 Section 3: Include WWW-Authenticate header for 401 responses
+		res.header('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
 		res.status(401).send({ message: UNAUTHORIZED_ERROR_MESSAGE });
 	}
 
