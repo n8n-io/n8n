@@ -5,7 +5,7 @@ import { Memoized } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import { DataSource } from '@n8n/typeorm';
 import { ErrorReporter } from 'n8n-core';
-import { DbConnectionTimeoutError, ensureError } from 'n8n-workflow';
+import { DbConnectionTimeoutError, ensureError, OperationalError } from 'n8n-workflow';
 import { setTimeout as setTimeoutP } from 'timers/promises';
 
 import { DbConnectionOptions } from './db-connection-options';
@@ -99,7 +99,7 @@ export class DbConnection {
 			await Promise.race([
 				this.dataSource.query('SELECT 1'),
 				setTimeoutP(5000).then(() => {
-					throw new Error('Database connection timed out');
+					throw new OperationalError('Database connection timed out');
 				}),
 			]);
 
@@ -111,7 +111,11 @@ export class DbConnection {
 			return;
 		} catch (error) {
 			this.connectionState.connected = false;
-			this.errorReporter.error(error);
+			if (error instanceof OperationalError) {
+				this.logger.warn(error.message);
+			} else {
+				this.errorReporter.error(error);
+			}
 		} finally {
 			this.scheduleNextPing();
 		}
