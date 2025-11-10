@@ -421,7 +421,7 @@ describe('SamlService', () => {
 			});
 		});
 
-		it('logs in the user if just-in-time provisioning is disabled', async () => {
+		it('logs in the user if just-in-time provisioning is enabled', async () => {
 			const samlAttributes = {
 				email: 'foo@bar.com',
 				firstName: '',
