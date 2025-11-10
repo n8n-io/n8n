@@ -127,28 +127,28 @@ watch(
 			/>
 			<section v-else :class="$style.warning">
 				<NDVEmptyState
-					:title="i18n.baseText('ndv.output.tooMuchData.title')"
+					:title="
+						i18n.baseText('ndv.tooMuchData.title', {
+							interpolate: {
+								size: dataSizeInMB,
+							},
+						})
+					"
 					:class="$style.warningState"
 				>
-					<span
-						v-n8n-html="
-							i18n.baseText('ndv.output.logs.tooMuchData.message', {
-								interpolate: { size: dataSizeInMB, inOut: runData.inOut },
-							})
-						"
-					/>
+					<span v-n8n-html="i18n.baseText('ndv.tooMuchData.message')" />
 				</NDVEmptyState>
 				<div :class="$style.warningActions">
 					<N8nButton
 						outline
 						size="small"
-						:label="i18n.baseText('ndv.output.tooMuchData.showDataAnyway')"
-						@click.stop="onShowDataAnyway"
+						:label="i18n.baseText('runData.downloadBinaryData')"
+						@click.stop="downloadJsonData"
 					/>
 					<N8nButton
 						size="small"
-						:label="i18n.baseText('runData.downloadBinaryData')"
-						@click.stop="downloadJsonData"
+						:label="i18n.baseText('ndv.tooMuchData.showDataAnyway')"
+						@click.stop="onShowDataAnyway"
 					/>
 				</div>
 			</section>
@@ -232,8 +232,10 @@ watch(
 
 .warningActions {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--xs);
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: center;
+	gap: var(--spacing--2xs);
 	width: 100%;
 	align-items: center;
 }
