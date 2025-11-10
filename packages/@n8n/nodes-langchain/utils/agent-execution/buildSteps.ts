@@ -66,7 +66,7 @@ export function buildSteps(
 					toolCallId: toolInput?.id,
 					type: toolInput.type || 'tool_call',
 				},
-				observation: JSON.stringify(tool.data?.data?.ai_tool?.[0]?.[0]?.json ?? ''),
+				observation: JSON.stringify(tool.data?.data?.ai_tool?.[0]?.map((item) => item?.json) ?? ''),
 			};
 
 			steps.push(toolResult);

@@ -11,3 +11,7 @@ export { runAgent } from './runAgent';
 export { finalizeResult } from './finalizeResult';
 
 export { executeBatch } from './executeBatch';
+
+export { checkMaxIterations } from './checkMaxIterations';
+
+export { buildMetadata as buildIterationMetadata } from './buildIterationMetadata';
