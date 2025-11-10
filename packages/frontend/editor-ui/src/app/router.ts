@@ -20,20 +20,21 @@ import {
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
-import { initializeAuthenticatedFeatures, initializeCore } from '@/init';
+import { initializeAuthenticatedFeatures, initializeCore } from '@/app/init';
 import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { projectsRoutes } from '@/features/collaboration/projects/projects.routes';
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { usePostHog } from './app/stores/posthog.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
 const ErrorView = async () => await import('@/app/views/ErrorView.vue');
 const EntityNotFound = async () => await import('@/app/views/EntityNotFound.vue');
 const EntityUnAuthorised = async () => await import('@/app/views/EntityUnAuthorised.vue');
+const OAuthConsentView = async () => await import('@/app/views/OAuthConsentView.vue');
 const ForgotMyPasswordView = async () =>
 	await import('@/features/core/auth/views/ForgotMyPasswordView.vue');
 const MainHeader = async () => await import('@/app/components/MainHeader/MainHeader.vue');
@@ -469,6 +470,16 @@ export const routes: RouteRecordRaw[] = [
 			telemetry: {
 				pageCategory: 'auth',
 			},
+			middleware: ['authenticated'],
+		},
+	},
+	{
+		path: '/oauth/consent',
+		name: VIEWS.OAUTH_CONSENT,
+		components: {
+			default: OAuthConsentView,
+		},
+		meta: {
 			middleware: ['authenticated'],
 		},
 	},
