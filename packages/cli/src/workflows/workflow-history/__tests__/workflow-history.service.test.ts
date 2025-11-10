@@ -49,7 +49,7 @@ describe('WorkflowHistoryService', () => {
 			});
 		});
 
-		it('should not save a new version when nodes or connections are missing', async () => {
+		it('should throw an error when nodes or connections are missing', async () => {
 			// Arrange
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
@@ -57,10 +57,12 @@ describe('WorkflowHistoryService', () => {
 			workflow.versionId = '456';
 			// Nodes are set but connections is empty
 
-			// Act
-			await workflowHistoryService.saveVersion(testUser, workflow, workflowId);
-
-			// Assert
+			// Act & Assert
+			await expect(
+				workflowHistoryService.saveVersion(testUser, workflow, workflowId),
+			).rejects.toThrow(
+				'Cannot save workflow history: nodes and connections are required for workflow 123',
+			);
 			expect(workflowHistoryRepository.insert).not.toHaveBeenCalled();
 		});
 
