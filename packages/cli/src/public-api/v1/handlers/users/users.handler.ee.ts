@@ -136,7 +136,7 @@ export = {
 	],
 	createApiKeyForUser: [
 		apiKeyHasScopeWithGlobalScopeFallback({
-			apiKeyScope: 'user:create',
+			apiKeyScope: 'apiKey:create',
 			globalScope: 'apiKey:create',
 		}),
 		async (req: CreateApiKeyForUser, res: Response) => {

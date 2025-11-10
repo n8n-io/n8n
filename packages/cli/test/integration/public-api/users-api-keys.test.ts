@@ -5,6 +5,7 @@ import { Container } from '@n8n/di';
 import { v4 as uuid } from 'uuid';
 
 import { License } from '@/license';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 import {
 	createMember,
@@ -14,8 +15,9 @@ import {
 } from '../shared/db/users';
 import * as utils from '../shared/utils/';
 
-mockInstance(License, {
+const license = mockInstance(License, {
 	getUsersLimit: jest.fn().mockReturnValue(-1),
+	isApiKeyScopesEnabled: jest.fn().mockReturnValue(true),
 });
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
@@ -83,6 +85,37 @@ describe('POST /users/:id/api-keys - Create API key for another user', () => {
 		const storedApiKey = await Container.get(ApiKeyRepository).findOneBy({
 			userId: member.id,
 			label: 'Public API Key for Member',
+		});
+
+		expect(storedApiKey).toBeDefined();
+		expect(storedApiKey?.apiKey).toBe(response.body.rawApiKey);
+	});
+
+	test('should allow admin API key with apiKey:create scope to create API keys for users', async () => {
+		const owner = await createOwnerWithApiKey({
+			scopes: ['apiKey:create', 'user:list'],
+		});
+		const member = await createMember();
+
+		const authAdminKeyAgent = testServer.publicApiAgentFor(owner);
+
+		const response = await authAdminKeyAgent
+			.post(`/users/${member.id}/api-keys`)
+			.send({
+				label: 'API Key Created by Admin API Key',
+				scopes: ['workflow:read'],
+				expiresAt: null,
+			})
+			.expect(201);
+
+		expect(response.body).toBeDefined();
+		expect(response.body.rawApiKey).toBeDefined();
+		expect(response.body.label).toBe('API Key Created by Admin API Key');
+
+		// Verify the API key was created for the member
+		const storedApiKey = await Container.get(ApiKeyRepository).findOneBy({
+			userId: member.id,
+			label: 'API Key Created by Admin API Key',
 		});
 
 		expect(storedApiKey).toBeDefined();
