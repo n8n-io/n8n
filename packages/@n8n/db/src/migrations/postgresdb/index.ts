@@ -108,8 +108,8 @@ import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-Cr
 import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
-import { AddWorkflowHistoryAutoSaveFields1762262250375 } from '../common/1762262250375-AddWorkflowHistoryAutoSaveFields';
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
+import { AddWorkflowHistoryAutoSaveFields1762262250375 } from '../common/1762262250375-AddWorkflowHistoryAutoSaveFields';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [

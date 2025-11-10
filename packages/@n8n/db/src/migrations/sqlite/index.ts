@@ -1,3 +1,4 @@
+import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
 import { InitialMigration1588102412422 } from './1588102412422-InitialMigration';
 import { WebhookModel1592445003908 } from './1592445003908-WebhookModel';
 import { CreateIndexStoppedAt1594825041918 } from './1594825041918-CreateIndexStoppedAt';
@@ -105,9 +106,8 @@ import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-Cr
 import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
-import { AddWorkflowHistoryAutoSaveFields1762262250375 } from './../common/1762262250375-AddWorkflowHistoryAutoSaveFields';
-import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
 import { AddWorkflowDescriptionColumn1762177736257 } from './../common/1762177736257-AddWorkflowDescriptionColumn';
+import { AddWorkflowHistoryAutoSaveFields1762262250375 } from './../common/1762262250375-AddWorkflowHistoryAutoSaveFields';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -218,7 +218,7 @@ const sqliteMigrations: Migration[] = [
 	ChangeDependencyInfoToJson1761655473000,
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
-  AddWorkflowHistoryAutoSaveFields1762262250375,
+	AddWorkflowHistoryAutoSaveFields1762262250375,
 ];
 
 export { sqliteMigrations };
