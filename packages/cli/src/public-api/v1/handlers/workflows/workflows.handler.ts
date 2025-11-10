@@ -359,7 +359,6 @@ export = {
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
-			const { versionId } = req.body;
 
 			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
 				id,
@@ -373,7 +372,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			const activeVersionId = versionId ?? workflow.versionId;
+			const activeVersionId = workflow.versionId;
 
 			const newVersionIsBeingActivated =
 				activeVersionId && activeVersionId !== workflow.activeVersion?.versionId;
