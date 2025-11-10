@@ -1,6 +1,6 @@
 import type { IrreversibleMigration, MigrationContext } from '../migration-types';
 
-export class BackfillMissingWorkflowHistoryRecords1761609600000 implements IrreversibleMigration {
+export class BackfillMissingWorkflowHistoryRecords1762763704614 implements IrreversibleMigration {
 	/**
 	 * 1. Generate versionIds for workflows with NULL versionId (only possible for manual inserts)
 	 * 2. Create workflow_history records for all workflows missing them
