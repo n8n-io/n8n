@@ -566,8 +566,6 @@ export class ImportService {
 		const dbTimestamp = parseInt(String(latestDbMigration.timestamp || '0'));
 		const importName = latestImportMigration.name;
 		const dbName = latestDbMigration.name;
-		const importId = latestImportMigration.id;
-		const dbId = latestDbMigration.id;
 
 		// Check timestamp match
 		if (importTimestamp !== dbTimestamp) {
@@ -580,13 +578,6 @@ export class ImportService {
 		if (importName !== dbName) {
 			throw new Error(
 				`Migration name mismatch. Import data: ${String(importName)} does not match target database ${String(dbName)}. Cannot import data from different migration states.`,
-			);
-		}
-
-		// Check ID match (if both have IDs)
-		if (importId && dbId && importId !== dbId) {
-			throw new Error(
-				`Migration ID mismatch. Import data: ${String(importName)} (id: ${String(importId)}) does not match target database ${String(dbName)} (id: ${String(dbId)}). Cannot import data from different migration states.`,
 			);
 		}
 

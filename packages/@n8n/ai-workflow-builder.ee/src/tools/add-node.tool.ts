@@ -15,10 +15,7 @@ import { findNodeType } from './helpers/validation';
 import type { AddedNode } from '../types/nodes';
 import type { AddNodeOutput, ToolError } from '../types/tools';
 
-/**
- * Schema for node creation input
- */
-export const nodeCreationSchema = z.object({
+const baseSchema = {
 	nodeType: z.string().describe('The type of node to add (e.g., n8n-nodes-base.httpRequest)'),
 	nodeVersion: z.number().describe('The exact node version'),
 	name: z
@@ -35,6 +32,24 @@ export const nodeCreationSchema = z.object({
 		.describe(
 			'Parameters that affect node connections (e.g., mode: "insert" for Vector Store). Pass an empty object {} if no connection parameters are needed. Only connection-affecting parameters like mode, operation, resource, action, etc. are allowed.',
 		),
+};
+
+/**
+ * Schema for node creation input
+ */
+export const nodeCreationSchema = z.object(baseSchema);
+
+/**
+ * Schema for E2E tests, we can specify the ID during E2E test runs to make them deterministic
+ */
+export const nodeCreationE2ESchema = z.object({
+	...baseSchema,
+	id: z
+		.string()
+		.optional()
+		.describe(
+			'Optional: A specific ID to use for this node. If not provided, a unique ID will be generated automatically. This is primarily used for testing purposes to ensure deterministic node IDs.',
+		),
 });
 
 /**
@@ -47,6 +62,7 @@ function createNode(
 	existingNodes: INode[],
 	nodeTypes: INodeTypeDescription[],
 	connectionParameters?: INodeParameters,
+	id?: string,
 ): INode {
 	// Generate unique name
 	const baseName = customName ?? nodeType.defaults?.name ?? nodeType.displayName;
@@ -56,7 +72,7 @@ function createNode(
 	const position = calculateNodePosition(existingNodes, isSubNode(nodeType), nodeTypes);
 
 	// Create the node instance with connection parameters
-	return createNodeInstance(nodeType, typeVersion, uniqueName, position, connectionParameters);
+	return createNodeInstance(nodeType, typeVersion, uniqueName, position, connectionParameters, id);
 }
 
 /**
@@ -106,8 +122,18 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 			);
 
 			try {
-				// Validate input using Zod schema
-				const validatedInput = nodeCreationSchema.parse(input);
+				// Parse with appropriate schema based on environment
+				let id: string | undefined;
+				let validatedInput: z.infer<typeof nodeCreationSchema>;
+
+				if (process.env.E2E_TESTS) {
+					const e2eInput = nodeCreationE2ESchema.parse(input);
+					id = e2eInput.id;
+					validatedInput = e2eInput;
+				} else {
+					validatedInput = nodeCreationSchema.parse(input);
+				}
+
 				const { nodeType, nodeVersion, name, connectionParametersReasoning, connectionParameters } =
 					validatedInput;
 
@@ -134,7 +160,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 					return createErrorResponse(config, error);
 				}
 
-				// Create the new node
+				// Create the new node (id will be undefined in production, defined in E2E if provided)
 				const newNode = createNode(
 					nodeTypeDesc,
 					nodeVersion,
@@ -142,6 +168,7 @@ export function createAddNodeTool(nodeTypes: INodeTypeDescription[]): BuilderToo
 					workflow.nodes, // Use current workflow nodes
 					nodeTypes,
 					connectionParameters as INodeParameters,
+					id,
 				);
 
 				// Build node info
