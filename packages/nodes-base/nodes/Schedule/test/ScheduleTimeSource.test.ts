@@ -3,6 +3,13 @@ import moment from 'moment-timezone';
 import { ScheduleTimeSource } from '../helpers/ScheduleTimeSource';
 
 describe('ScheduleTimeSource', () => {
+	const mockDate = new Date('2024-01-01T10:00:00Z');
+
+	beforeEach(() => {
+		jest.useFakeTimers();
+		jest.setSystemTime(mockDate);
+	});
+
 	it('should initialize with cron expression', () => {
 		const cronExpression = '0 9 * * 1-5';
 		const timeSource = new ScheduleTimeSource({
@@ -15,18 +22,15 @@ describe('ScheduleTimeSource', () => {
 	});
 
 	describe('constructor with irregular type', () => {
-		let mockStart: moment.Moment;
 		let mockInterval: moment.Duration;
 
 		beforeEach(() => {
-			mockStart = moment('2024-01-01T10:00:00Z');
 			mockInterval = moment.duration(2, 'hours');
 		});
 
 		it('should initialize with start time and interval', () => {
 			const timeSource = new ScheduleTimeSource({
 				type: 'irregular',
-				start: mockStart,
 				interval: mockInterval,
 			});
 
@@ -38,7 +42,6 @@ describe('ScheduleTimeSource', () => {
 			const minuteInterval = moment.duration(30, 'minutes');
 			const timeSource = new ScheduleTimeSource({
 				type: 'irregular',
-				start: mockStart,
 				interval: minuteInterval,
 			});
 
@@ -50,7 +53,6 @@ describe('ScheduleTimeSource', () => {
 			const dayInterval = moment.duration(1, 'day');
 			const timeSource = new ScheduleTimeSource({
 				type: 'irregular',
-				start: mockStart,
 				interval: dayInterval,
 			});
 
@@ -71,11 +73,9 @@ describe('ScheduleTimeSource', () => {
 		});
 
 		it('should return Date object for irregular type', () => {
-			const mockStart = moment('2024-01-01T10:00:00Z');
 			const mockInterval = moment.duration(1, 'hour');
 			const timeSource = new ScheduleTimeSource({
 				type: 'irregular',
-				start: mockStart,
 				interval: mockInterval,
 			});
 
@@ -104,11 +104,9 @@ describe('ScheduleTimeSource', () => {
 
 	describe('updateTimeSource', () => {
 		it('should update irregular time source', () => {
-			const mockStart = moment('2024-01-01T10:00:00Z');
 			const mockInterval = moment.duration(1, 'hour');
 			const timeSource = new ScheduleTimeSource({
 				type: 'irregular',
-				start: mockStart,
 				interval: mockInterval,
 			});
 
@@ -116,10 +114,12 @@ describe('ScheduleTimeSource', () => {
 			expect(timeSource.getTimeSource()).toEqual(moment('2024-01-01T11:00:00Z').toDate());
 
 			// Update and check next execution
+			jest.advanceTimersByTime(60 * 60 * 1000); // 1 hour
 			timeSource.updateTimeSource();
 			expect(timeSource.getTimeSource()).toEqual(moment('2024-01-01T12:00:00Z').toDate());
 
 			// Update again
+			jest.advanceTimersByTime(60 * 60 * 1000); // 1 hour
 			timeSource.updateTimeSource();
 			expect(timeSource.getTimeSource()).toEqual(moment('2024-01-01T13:00:00Z').toDate());
 		});
@@ -152,31 +152,27 @@ describe('ScheduleTimeSource', () => {
 		});
 
 		it('should return humanized interval for irregular type', () => {
-			const mockStart = moment('2024-01-01T10:00:00Z');
 			const mockInterval = moment.duration(2, 'hours');
 			const timeSource = new ScheduleTimeSource({
 				type: 'irregular',
-				start: mockStart,
 				interval: mockInterval,
 			});
 
 			const result = timeSource.toString();
 			expect(result).toContain('Irregular interval:');
-			expect(result).toContain('2 hours');
+			expect(result).toContain('PT2H');
 		});
 
 		it('should handle different interval durations in toString', () => {
-			const mockStart = moment('2024-01-01T10:00:00Z');
 			const minuteInterval = moment.duration(15, 'minutes');
 			const timeSource = new ScheduleTimeSource({
 				type: 'irregular',
-				start: mockStart,
 				interval: minuteInterval,
 			});
 
 			const result = timeSource.toString();
 			expect(result).toContain('Irregular interval:');
-			expect(result).toContain('15 minutes');
+			expect(result).toContain('PT15M');
 		});
 
 		it('should return unknown interval for invalid state', () => {
@@ -207,41 +203,35 @@ describe('ScheduleTimeSource', () => {
 		});
 
 		it('should handle zero interval for irregular type', () => {
-			const mockStart = moment('2024-01-01T10:00:00Z');
 			const zeroInterval = moment.duration(0);
 			const timeSource = new ScheduleTimeSource({
 				type: 'irregular',
-				start: mockStart,
 				interval: zeroInterval,
 			});
 
-			expect(timeSource.getTimeSource()).toEqual(mockStart.toDate());
+			expect(timeSource.getTimeSource()).toEqual(mockDate);
 		});
 
 		it('should handle very small intervals', () => {
-			const mockStart = moment('2024-01-01T10:00:00Z');
 			const smallInterval = moment.duration(1, 'second');
 			const timeSource = new ScheduleTimeSource({
 				type: 'irregular',
-				start: mockStart,
 				interval: smallInterval,
 			});
 
 			expect(timeSource.getTimeSource()).toEqual(moment('2024-01-01T10:00:01Z').toDate());
 		});
 
-		it('should handle different timezones', () => {
-			const startWithTimezone = moment.tz('2024-01-01T10:00:00', 'America/New_York');
-			const interval = moment.duration(1, 'hour');
+		it('should not return a date in the past', () => {
+			const smallInterval = moment.duration(1, 'second');
 			const timeSource = new ScheduleTimeSource({
 				type: 'irregular',
-				start: startWithTimezone,
-				interval,
+				interval: smallInterval,
 			});
 
-			expect(timeSource.getTimeSource()).toEqual(
-				moment.tz('2024-01-01T11:00:00', 'America/New_York').toDate(),
-			);
+			jest.advanceTimersByTime(10 * 60 * 1000); // 10 minutes
+
+			expect(timeSource.getTimeSource()).toEqual(moment('2024-01-01T10:10:01Z').toDate());
 		});
 	});
 });

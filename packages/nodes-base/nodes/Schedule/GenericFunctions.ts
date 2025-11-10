@@ -79,11 +79,10 @@ export const intervalToDuration = (interval: ScheduleInterval): Duration => {
 	}
 };
 
-export const toTimeSource = (interval: ScheduleInterval, timezone: string): ScheduleTimeSource => {
+export const toTimeSource = (interval: ScheduleInterval): ScheduleTimeSource => {
 	if (isIrregularInterval(interval)) {
 		return new ScheduleTimeSource({
 			type: 'irregular',
-			start: moment.tz(timezone),
 			interval: intervalToDuration(interval),
 		});
 	}

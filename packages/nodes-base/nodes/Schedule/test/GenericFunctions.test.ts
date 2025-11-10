@@ -265,13 +265,10 @@ describe('intervalToRecurrence', () => {
 
 describe('toTimeSource', () => {
 	it('should return ScheduleTimeSource for cron interval', () => {
-		const result = toTimeSource(
-			{
-				field: 'cronExpression',
-				expression: '1 2 3 * * *',
-			},
-			'UTC',
-		);
+		const result = toTimeSource({
+			field: 'cronExpression',
+			expression: '1 2 3 * * *',
+		});
 		expect(result).toBeInstanceOf(ScheduleTimeSource);
 		expect(result.type).toBe('cron');
 		expect(result.getTimeSource()).toBe('1 2 3 * * *');
@@ -285,7 +282,7 @@ describe('toTimeSource', () => {
 		{ field: 'hours', hoursInterval: 24 },
 		{ field: 'hours', hoursInterval: 25 },
 	])('should return ScheduleTimeSource for irregular $field interval', (data) => {
-		const result = toTimeSource(data as ScheduleInterval, 'UTC');
+		const result = toTimeSource(data as ScheduleInterval);
 		expect(result).toBeInstanceOf(ScheduleTimeSource);
 		expect(result.type).toBe('irregular');
 		expect(result.getTimeSource()).toBeInstanceOf(Date);

@@ -445,7 +445,7 @@ export class ScheduleTrigger implements INodeType {
 
 		const rules = intervals.map((interval, i) => ({
 			interval,
-			timeSource: toTimeSource(interval, timezone),
+			timeSource: toTimeSource(interval),
 			recurrence: intervalToRecurrence(interval, i),
 		}));
 

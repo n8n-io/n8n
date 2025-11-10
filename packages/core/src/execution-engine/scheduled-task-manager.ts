@@ -86,6 +86,7 @@ export class ScheduledTaskManager {
 				try {
 					onTick();
 				} finally {
+					// for irregular intervals, we need to schedule the next execution manually
 					if (typeof expression !== 'string') {
 						expression.updateTimeSource();
 						job.setTime(new CronTime(expression.getTimeSource(), timezone));

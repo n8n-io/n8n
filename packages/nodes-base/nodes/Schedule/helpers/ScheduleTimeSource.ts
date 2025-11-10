@@ -1,4 +1,5 @@
-import type { Moment, Duration } from 'moment-timezone';
+import moment from 'moment-timezone';
+import type { Duration } from 'moment-timezone';
 import type { ITimeSource } from 'n8n-workflow';
 
 import { CronTimeIrregular } from './CronTimeIrregular';
@@ -10,7 +11,6 @@ type TimeSourceConstructorParams =
 	  }
 	| {
 			type: 'irregular';
-			start: Moment;
 			interval: Duration;
 	  };
 
@@ -24,7 +24,7 @@ export class ScheduleTimeSource implements ITimeSource {
 		if (params.type === 'cron') {
 			this.cronExpression = params.cronExpression;
 		} else if (params.type === 'irregular') {
-			this.cronTimeIrregular = new CronTimeIrregular(params.start, params.interval);
+			this.cronTimeIrregular = new CronTimeIrregular(params.interval);
 		}
 	}
 
@@ -32,6 +32,11 @@ export class ScheduleTimeSource implements ITimeSource {
 		if (this.cronExpression) {
 			return this.cronExpression;
 		} else if (this.cronTimeIrregular) {
+			const nextExecution = this.cronTimeIrregular.getNextExecution();
+			const isInPast = moment.tz().isAfter(nextExecution);
+			if (isInPast) {
+				this.cronTimeIrregular.updateNextExecution();
+			}
 			return this.cronTimeIrregular.getNextExecution();
 		}
 		throw new Error('No time source defined');
@@ -47,7 +52,7 @@ export class ScheduleTimeSource implements ITimeSource {
 		if (this.cronExpression) {
 			return this.cronExpression;
 		} else if (this.cronTimeIrregular) {
-			return `Irregular interval: ${this.cronTimeIrregular.interval.humanize()} `;
+			return `Irregular interval: ${this.cronTimeIrregular.interval.toISOString()} `;
 		}
 		return 'Unknown interval';
 	}
