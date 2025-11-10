@@ -56,6 +56,9 @@ describe('GlobalConfig', () => {
 			maxSize: 50 * 1024 * 1024,
 			sizeCheckCacheDuration: 60000,
 			uploadMaxFileSize: 100 * 1024 * 1024,
+			cleanupIntervalMs: 60 * 1000,
+			fileMaxAgeMs: 2 * 60 * 1000,
+			uploadDir: '/tmp/n8n/dataTableUploads',
 		},
 		database: {
 			logging: {
