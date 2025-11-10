@@ -7,12 +7,14 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createOwner } from '../shared/db/users';
 
 let workflowService: WorkflowService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+const workflowHistoryService = mockInstance(WorkflowHistoryService);
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
@@ -27,7 +29,7 @@ beforeAll(async () => {
 		mock(),
 		mock(),
 		mock(),
-		mock(),
+		workflowHistoryService,
 		mock(),
 		activeWorkflowManager,
 		mock(),
@@ -110,5 +112,52 @@ describe('update()', () => {
 		expect(updatedWorkflow.nodes).toHaveLength(1);
 		expect(updatedWorkflow.nodes[0].name).toBe('New Node');
 		expect(updatedWorkflow.versionId).not.toBe(workflow.versionId);
+	});
+
+	test('should not save workflow history version when updating only active status', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflow({ active: false }, owner);
+
+		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+
+		const updateData: Partial<WorkflowEntity> = {
+			active: true,
+			versionId: workflow.versionId,
+		};
+
+		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id);
+
+		expect(saveVersionSpy).not.toHaveBeenCalled();
+	});
+
+	test('should save workflow history version with backfilled data when versionId changes', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflow({ active: false }, owner);
+
+		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+
+		const newVersionId = 'new-version-id-123';
+		const updateData: Partial<WorkflowEntity> = {
+			active: true,
+			versionId: newVersionId,
+		};
+
+		await workflowService.update(
+			owner,
+			updateData as WorkflowEntity,
+			workflow.id,
+			undefined,
+			undefined,
+			true, // forceSave
+		);
+
+		expect(saveVersionSpy).toHaveBeenCalledTimes(1);
+		const [user, workflowData, workflowId] = saveVersionSpy.mock.calls[0];
+		expect(user).toBe(owner);
+		expect(workflowId).toBe(workflow.id);
+		// Verify that nodes and connections were backfilled from the DB
+		expect(workflowData.nodes).toEqual(workflow.nodes);
+		expect(workflowData.connections).toEqual(workflow.connections);
+		expect(workflowData.versionId).toBe(newVersionId);
 	});
 });

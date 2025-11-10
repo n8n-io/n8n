@@ -236,10 +236,6 @@ export class WorkflowService {
 			// This is necessary for collaboration to work properly - even when only name or settings
 			// change, we need to update the version to detect conflicts when multiple users are editing.
 
-			// To save a version, we need both nodes and connections
-			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
-			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
-
 			workflowUpdateData.versionId = uuid();
 			this.logger.debug(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
@@ -248,6 +244,14 @@ export class WorkflowService {
 					newVersionId: workflowUpdateData.versionId,
 				},
 			);
+		}
+
+		const versionChanged =
+			workflowUpdateData.versionId && workflowUpdateData.versionId !== workflow.versionId;
+		if (versionChanged) {
+			// To save a version, we need both nodes and connections
+			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
+			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
 		}
 
 		// check credentials for old format
@@ -329,7 +333,7 @@ export class WorkflowService {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 		}
 
-		if (workflowUpdateData.versionId && workflowUpdateData.versionId !== workflow.versionId) {
+		if (versionChanged) {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
