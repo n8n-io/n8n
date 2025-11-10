@@ -1,3 +1,12 @@
+## [1.119.1](https://github.com/n8n-io/n8n/compare/n8n@1.119.0...n8n@1.119.1) (2025-11-10)
+
+
+### Bug Fixes
+
+* **editor:** Ensure license activation modal works when used without EULA ([#21681](https://github.com/n8n-io/n8n/issues/21681)) ([5ac5cf1](https://github.com/n8n-io/n8n/commit/5ac5cf1eeacdad740ed46a8379f5d8a8ad01a500))
+
+
+
 # [1.119.0](https://github.com/n8n-io/n8n/compare/n8n@1.118.0...n8n@1.119.0) (2025-11-03)
 
 
