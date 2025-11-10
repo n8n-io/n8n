@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
@@ -8,6 +8,7 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { type ChatHubLLMProvider, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	modalName: string;
@@ -19,6 +20,7 @@ const props = defineProps<{
 	};
 }>();
 
+const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const modalBus = ref(createEventBus());
 const selectedCredentialId = ref<string | null>(props.data.initialValue);
@@ -64,13 +66,27 @@ function onCancel() {
 					:size="24"
 					:class="$style.icon"
 				/>
-				<h2 :class="$style.title">Select {{ providerDisplayNames[data.provider] }} Credential</h2>
+				<N8nHeading size="medium" tag="h2" :class="$style.title">
+					{{
+						i18n.baseText('chatHub.credentials.selector.title', {
+							interpolate: {
+								provider: providerDisplayNames[data.provider],
+							},
+						})
+					}}
+				</N8nHeading>
 			</div>
 		</template>
 		<template #content>
 			<div :class="$style.content">
 				<N8nText size="small" color="text-base">
-					Choose an existing credential or create a new one
+					{{
+						i18n.baseText('chatHub.credentials.selector.chooseOrCreate', {
+							interpolate: {
+								provider: providerDisplayNames[data.provider],
+							},
+						})
+					}}
 				</N8nText>
 				<N8nSelect
 					:model-value="selectedCredentialId"
@@ -89,11 +105,15 @@ function onCancel() {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="onCreateNew">Create New</N8nButton>
+				<N8nButton type="secondary" @click="onCreateNew">
+					{{ i18n.baseText('chatHub.credentials.selector.createNew') }}
+				</N8nButton>
 				<div :class="$style.footerRight">
-					<N8nButton type="tertiary" @click="onCancel">Cancel</N8nButton>
+					<N8nButton type="tertiary" @click="onCancel">
+						{{ i18n.baseText('chatHub.credentials.selector.cancel') }}
+					</N8nButton>
 					<N8nButton type="primary" :disabled="!selectedCredentialId" @click="onConfirm">
-						Select
+						{{ i18n.baseText('chatHub.credentials.selector.confirm') }}
 					</N8nButton>
 				</div>
 			</div>
@@ -102,12 +122,6 @@ function onCancel() {
 </template>
 
 <style lang="scss" module>
-.title {
-	font-size: var(--font-size--lg);
-	line-height: var(--line-height--md);
-	margin: 0;
-}
-
 .content {
 	display: flex;
 	flex-direction: column;

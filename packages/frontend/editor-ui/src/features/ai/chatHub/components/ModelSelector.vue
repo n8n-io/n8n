@@ -137,13 +137,13 @@ const menu = computed(() => {
 			{
 				id: `${provider}::add-model`,
 				icon: 'plus',
-				title: 'Add model',
+				title: i18n.baseText('chatHub.agent.addModel'),
 				disabled: false,
 			},
 			{
 				id: `${provider}::configure`,
 				icon: 'settings',
-				title: 'Configure credentials',
+				title: i18n.baseText('chatHub.agent.configureCredentials'),
 				disabled: false,
 			},
 		]);

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { N8nButton, N8nFormInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nFormInput, N8nHeading, N8nText } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { type ChatHubLLMProvider, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
@@ -9,6 +9,7 @@ import {
 	providerDisplayNames,
 } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import { useI18n } from '@n8n/i18n';
 
 const props = defineProps<{
 	modalName: string;
@@ -21,8 +22,9 @@ const props = defineProps<{
 
 const modalBus = ref(createEventBus());
 const modelId = ref<string | null>(props.data.initialValue);
-
 const inputRef = ref<InstanceType<typeof N8nFormInput> | null>(null);
+
+const i18n = useI18n();
 
 onMounted(() => {
 	// With modals normal focusing via `props.focus-initially` on N8nFormInput does not work
@@ -60,12 +62,22 @@ function onCancel() {
 					:size="24"
 					:class="$style.icon"
 				/>
-				<h2 :class="$style.title">Choose {{ providerDisplayNames[data.provider] }} Model By ID</h2>
+				<N8nHeading size="medium" tag="h2" :class="$style.title">
+					{{
+						i18n.baseText('chatHub.models.byIdSelector.title', {
+							interpolate: {
+								provider: providerDisplayNames[data.provider],
+							},
+						})
+					}}
+				</N8nHeading>
 			</div>
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<N8nText size="small" color="text-base"> Enter the identifier of the modal </N8nText>
+				<N8nText size="small" color="text-base">
+					{{ i18n.baseText('chatHub.models.byIdSelector.choose') }}
+				</N8nText>
 				<N8nFormInput
 					ref="inputRef"
 					v-model="modelId"
@@ -79,20 +91,18 @@ function onCancel() {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="tertiary" @click="onCancel">Cancel</N8nButton>
-				<N8nButton type="primary" :disabled="!modelId" @click="onConfirm">Select</N8nButton>
+				<N8nButton type="tertiary" @click="onCancel">
+					{{ i18n.baseText('chatHub.models.byIdSelector.cancel') }}
+				</N8nButton>
+				<N8nButton type="primary" :disabled="!modelId" @click="onConfirm">
+					{{ i18n.baseText('chatHub.models.byIdSelector.confirm') }}
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>
 </template>
 
 <style lang="scss" module>
-.title {
-	font-size: var(--font-size--lg);
-	line-height: var(--line-height--md);
-	margin: 0;
-}
-
 .content {
 	display: flex;
 	flex-direction: column;
