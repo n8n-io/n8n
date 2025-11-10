@@ -1,0 +1,55 @@
+name: Build, unit test and lint (manual trigger)
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Commit SHA or ref to check out
+        required: true
+
+jobs:
+  install-and-build:
+    name: Install & Build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    env:
+      NODE_OPTIONS: '--max-old-space-size=6144'
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+      - name: Run format check
+        run: pnpm format:check
+
+      - name: Run typecheck
+        run: pnpm typecheck
+
+  unit-tests:
+    name: Unit tests
+    needs: install-and-build
+    uses: ./.github/workflows/units-tests-reusable.yml
+    with:
+      ref: ${{ inputs.ref }}
+      collectCoverage: true
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  lint:
+    name: Lint
+    needs: install-and-build
+    uses: ./.github/workflows/linting-reusable.yml
+    with:
+      ref: ${{ inputs.ref }}
+
+  post-build-unit-tests:
+    name: Build & Unit Tests - Checks
+    runs-on: ubuntu-latest
+    needs: [install-and-build, unit-tests, lint]
+    if: always()
+    steps:
+      - name: Fail if any job failed
+        if: needs.install-and-build.result == 'failure' || needs.unit-tests.result == 'failure' || needs.lint.result == 'failure'
+        run: exit 1
