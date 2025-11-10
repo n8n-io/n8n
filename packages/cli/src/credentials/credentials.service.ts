@@ -69,6 +69,29 @@ export class CredentialsService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
+	private async addGlobalCredentialsIfNeeded(
+		credentials: CredentialsEntity[],
+		hasProjectFilter: boolean,
+	): Promise<CredentialsEntity[]> {
+		if (hasProjectFilter) {
+			return credentials;
+		}
+
+		const globalCredentials = await this.credentialsRepository.findBy({
+			isAvailableForAllUsers: true,
+		});
+
+		// Merge and deduplicate based on credential ID
+		const credentialMap = new Map(credentials.map((c) => [c.id, c]));
+		for (const globalCred of globalCredentials) {
+			if (!credentialMap.has(globalCred.id)) {
+				credentials.push(globalCred);
+			}
+		}
+
+		return credentials;
+	}
+
 	async getMany(
 		user: User,
 		{
@@ -89,6 +112,7 @@ export class CredentialsService {
 			typeof listQueryOptions.filter?.projectId === 'string'
 				? listQueryOptions.filter.projectId
 				: undefined;
+		const hasProjectFilter = projectId !== undefined;
 
 		if (onlySharedWithMe) {
 			listQueryOptions.filter = {
@@ -124,6 +148,9 @@ export class CredentialsService {
 			}
 
 			let credentials = await this.credentialsRepository.findMany(listQueryOptions);
+
+			// If no project filter, also include credentials available for all users
+			credentials = await this.addGlobalCredentialsIfNeeded(credentials, hasProjectFilter);
 
 			if (isDefaultSelect) {
 				// Since we're filtering using project ID as part of the relation,
@@ -178,6 +205,9 @@ export class CredentialsService {
 			ids, // only accessible credentials
 		);
 
+		// If no project filter, also include credentials available for all users
+		credentials = await this.addGlobalCredentialsIfNeeded(credentials, hasProjectFilter);
+
 		if (isDefaultSelect) {
 			// Since we're filtering using project ID as part of the relation,
 			// we end up filtering out all the other relations, meaning that if
@@ -230,7 +260,7 @@ export class CredentialsService {
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
 
 		// get all credentials the user has access to
-		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
+		let allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
 
@@ -242,7 +272,28 @@ export class CredentialsService {
 
 		// the intersection of both is all credentials the user can use in this
 		// workflow or project
-		const intersection = allCredentials.filter((c) => allCredentialsForWorkflow.includes(c.id));
+		let intersection = allCredentials.filter((c) => allCredentialsForWorkflow.includes(c.id));
+
+		// Include global credentials if the project is personal
+		const project =
+			'workflowId' in options
+				? await this.projectRepository.findOne({
+						where: { sharedWorkflows: { workflowId: options.workflowId, role: 'workflow:owner' } },
+					})
+				: await this.projectRepository.findOneBy({ id: options.projectId });
+
+		if (project?.type === 'personal') {
+			const globalCredentials = await this.credentialsRepository.findBy({
+				isAvailableForAllUsers: true,
+			});
+			// Merge and deduplicate based on credential ID
+			const credentialMap = new Map(intersection.map((c) => [c.id, c]));
+			for (const globalCred of globalCredentials) {
+				if (!credentialMap.has(globalCred.id)) {
+					intersection.push(globalCred);
+				}
+			}
+		}
 
 		return intersection
 			.map((c) => this.roleService.addScopes(c, user, projectRelations))

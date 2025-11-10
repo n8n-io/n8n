@@ -1,5 +1,5 @@
 import type { Project } from '@n8n/db';
-import { SharedCredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { INode } from 'n8n-workflow';
@@ -34,6 +34,7 @@ class InaccessibleCredentialError extends UserError {
 export class CredentialsPermissionChecker {
 	constructor(
 		private readonly sharedCredentialsRepository: SharedCredentialsRepository,
+		private readonly credentialsRepository: CredentialsRepository,
 		private readonly ownershipService: OwnershipService,
 		private readonly projectService: ProjectService,
 	) {}
@@ -67,8 +68,19 @@ export class CredentialsPermissionChecker {
 			workflowCredIds,
 		);
 
+		// If project is personal, also allow credentials with isAvailableForAllUsers: true
+		const accessibleSet = new Set(accessible);
+		if (homeProject.type === 'personal') {
+			const globalCredentials = await this.credentialsRepository.findBy({
+				isAvailableForAllUsers: true,
+			});
+			for (const globalCred of globalCredentials) {
+				accessibleSet.add(globalCred.id);
+			}
+		}
+
 		for (const credentialsId of workflowCredIds) {
-			if (!accessible.includes(credentialsId)) {
+			if (!accessibleSet.has(credentialsId)) {
 				const nodeToFlag = credIdsToNodes[credentialsId][0];
 				throw new InaccessibleCredentialError(nodeToFlag, homeProject);
 			}
