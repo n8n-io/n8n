@@ -143,14 +143,14 @@ export const draftFields: INodeProperties[] = [
 				options: [
 					{
 						name: 'HTML',
-						value: 'html',
+						value: 'HTML',
 					},
 					{
 						name: 'Text',
 						value: 'Text',
 					},
 				],
-				default: 'html',
+				default: 'HTML',
 			},
 			{
 				displayName: 'Category Names or IDs',

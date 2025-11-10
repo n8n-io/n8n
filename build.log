@@ -1,13 +1,6 @@
 
-> n8n-monorepo@1.117.0 build /home/alch3my/Desktop/n8n
+> n8n-monorepo@1.117.0 build /home/alch33my/Desktop/n8n
 > turbo run build
-
-
-Attention:
-Turborepo now collects completely anonymous telemetry regarding usage.
-This information is used to shape the Turborepo roadmap and prioritize features.
-You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
-https://turborepo.com/docs/telemetry
 
 turbo 2.5.4
 
@@ -15,114 +8,111 @@ turbo 2.5.4
 • Running build in 46 packages
 • Remote caching disabled
 n8n-editor-ui:popularity-cache-marker: cache bypass, force executing 7fe428c9f6d52417
-@n8n/n8n-benchmark:build: cache miss, executing 972d445682064852
 @n8n/client-oauth2:build: cache miss, executing 8673ab41d340827c
-@n8n/errors:build: cache miss, executing e50e5217be76814d
-@n8n/codemirror-lang:build: cache miss, executing c1ee4b7f14d5ff34
-@n8n/di:build: cache miss, executing e1829ae92858001b
-@n8n/json-schema-to-zod:build: cache miss, executing 5d941c83561f46f0
-@n8n/constants:build: cache miss, executing 442d65222303e77a
+@n8n/n8n-benchmark:build: cache miss, executing 972d445682064852
+@n8n/vitest-config:build: cache miss, executing 28d6f55664f6355d
 @n8n/extension-sdk:build: cache miss, executing 06fe14715a4bd54c
+@n8n/permissions:build: cache miss, executing 7f3d7dc6e156379d
+@n8n/json-schema-to-zod:build: cache miss, executing 5d941c83561f46f0
 @n8n/stylelint-config:build: cache miss, executing 28ca40edc6bf537f
-@n8n/client-oauth2:build: 
-@n8n/client-oauth2:build: > @n8n/client-oauth2@0.30.0 build /home/alch3my/Desktop/n8n/packages/@n8n/client-oauth2
-@n8n/client-oauth2:build: > tsc -p tsconfig.build.json
-@n8n/client-oauth2:build: 
+@n8n/codemirror-lang:build: cache miss, executing c1ee4b7f14d5ff34
+@n8n/errors:build: cache miss, executing e50e5217be76814d
+n8n-editor-ui:popularity-cache-marker: 
+n8n-editor-ui:popularity-cache-marker: > n8n-editor-ui@1.117.0 popularity-cache-marker /home/alch33my/Desktop/n8n/packages/frontend/editor-ui
+n8n-editor-ui:popularity-cache-marker: > node scripts/cache-marker.mjs
+n8n-editor-ui:popularity-cache-marker: 
 @n8n/n8n-benchmark:build: 
-@n8n/n8n-benchmark:build: > @n8n/n8n-benchmark@1.27.0 build /home/alch3my/Desktop/n8n/packages/@n8n/benchmark
+@n8n/n8n-benchmark:build: > @n8n/n8n-benchmark@1.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/benchmark
 @n8n/n8n-benchmark:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
 @n8n/n8n-benchmark:build: 
+@n8n/client-oauth2:build: 
+@n8n/client-oauth2:build: > @n8n/client-oauth2@0.30.0 build /home/alch33my/Desktop/n8n/packages/@n8n/client-oauth2
+@n8n/client-oauth2:build: > tsc -p tsconfig.build.json
+@n8n/client-oauth2:build: 
+@n8n/vitest-config:build: 
+@n8n/vitest-config:build: > @n8n/vitest-config@1.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/vitest-config
+@n8n/vitest-config:build: > tsc -p tsconfig.build.json
+@n8n/vitest-config:build: 
+@n8n/permissions:build: 
+@n8n/permissions:build: > @n8n/permissions@0.40.0 build /home/alch33my/Desktop/n8n/packages/@n8n/permissions
+@n8n/permissions:build: > tsc -p tsconfig.build.json
+@n8n/permissions:build: 
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 build /home/alch33my/Desktop/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > pnpm "/^typecheck:.+/" && pnpm clean && tsdown && pnpm create-json-schema
+@n8n/extension-sdk:build: 
 @n8n/json-schema-to-zod:build: 
-@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build /home/alch3my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
 @n8n/json-schema-to-zod:build: > rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm
 @n8n/json-schema-to-zod:build: 
 @n8n/codemirror-lang:build: 
-@n8n/codemirror-lang:build: > @n8n/codemirror-lang@0.3.0 build /home/alch3my/Desktop/n8n/packages/@n8n/codemirror-lang
+@n8n/codemirror-lang:build: > @n8n/codemirror-lang@0.3.0 build /home/alch33my/Desktop/n8n/packages/@n8n/codemirror-lang
 @n8n/codemirror-lang:build: > tsc -p tsconfig.build.json
 @n8n/codemirror-lang:build: 
-@n8n/stylelint-config:build: 
-@n8n/stylelint-config:build: > @n8n/stylelint-config@0.0.1 build /home/alch3my/Desktop/n8n/packages/@n8n/stylelint-config
-@n8n/stylelint-config:build: > tsc
-@n8n/stylelint-config:build: 
-n8n-editor-ui:popularity-cache-marker: 
-n8n-editor-ui:popularity-cache-marker: > n8n-editor-ui@1.117.0 popularity-cache-marker /home/alch3my/Desktop/n8n/packages/frontend/editor-ui
-n8n-editor-ui:popularity-cache-marker: > node scripts/cache-marker.mjs
-n8n-editor-ui:popularity-cache-marker: 
-@n8n/di:build: 
-@n8n/di:build: > @n8n/di@0.9.0 build /home/alch3my/Desktop/n8n/packages/@n8n/di
-@n8n/di:build: > tsc -p tsconfig.build.json
-@n8n/di:build: 
-@n8n/constants:build: 
-@n8n/constants:build: > @n8n/constants@0.13.0 build /home/alch3my/Desktop/n8n/packages/@n8n/constants
-@n8n/constants:build: > tsc -p tsconfig.build.json
-@n8n/constants:build: 
-@n8n/extension-sdk:build: 
-@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 build /home/alch3my/Desktop/n8n/packages/@n8n/extension-sdk
-@n8n/extension-sdk:build: > pnpm "/^typecheck:.+/" && pnpm clean && tsdown && pnpm create-json-schema
-@n8n/extension-sdk:build: 
 @n8n/errors:build: 
-@n8n/errors:build: > @n8n/errors@0.5.0 build /home/alch3my/Desktop/n8n/packages/@n8n/errors
+@n8n/errors:build: > @n8n/errors@0.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/errors
 @n8n/errors:build: > tsc -p tsconfig.build.json
 @n8n/errors:build: 
-@n8n/permissions:build: cache miss, executing 7f3d7dc6e156379d
-@n8n/permissions:build: 
-@n8n/permissions:build: > @n8n/permissions@0.40.0 build /home/alch3my/Desktop/n8n/packages/@n8n/permissions
-@n8n/permissions:build: > tsc -p tsconfig.build.json
-@n8n/permissions:build: 
+@n8n/stylelint-config:build: 
+@n8n/stylelint-config:build: > @n8n/stylelint-config@0.0.1 build /home/alch33my/Desktop/n8n/packages/@n8n/stylelint-config
+@n8n/stylelint-config:build: > tsc
+@n8n/stylelint-config:build: 
+@n8n/constants:build: cache miss, executing 442d65222303e77a
+@n8n/constants:build: 
+@n8n/constants:build: > @n8n/constants@0.13.0 build /home/alch33my/Desktop/n8n/packages/@n8n/constants
+@n8n/constants:build: > tsc -p tsconfig.build.json
+@n8n/constants:build: 
 @n8n/json-schema-to-zod:build: 
-@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:types /home/alch3my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:types /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
 @n8n/json-schema-to-zod:build: > tsc -p tsconfig.types.json
 @n8n/json-schema-to-zod:build: 
-@n8n/vitest-config:build: cache miss, executing 28d6f55664f6355d
-n8n-editor-ui:fetch-popularity: cache miss, executing 976ebfd0c41f642e
+@n8n/di:build: cache miss, executing e1829ae92858001b
+@n8n/di:build: 
+@n8n/di:build: > @n8n/di@0.9.0 build /home/alch33my/Desktop/n8n/packages/@n8n/di
+@n8n/di:build: > tsc -p tsconfig.build.json
+@n8n/di:build: 
+n8n-editor-ui:fetch-popularity: cache miss, executing c739cf93a61b7135
 @n8n/codemirror-lang-sql:build: cache miss, executing 53886a63e482f1b5
-@n8n/config:build: cache miss, executing 6e436bcbca992ff4
-@n8n/vitest-config:build: 
-@n8n/vitest-config:build: > @n8n/vitest-config@1.5.0 build /home/alch3my/Desktop/n8n/packages/@n8n/vitest-config
-@n8n/vitest-config:build: > tsc -p tsconfig.build.json
-@n8n/vitest-config:build: 
-@n8n/codemirror-lang-sql:build: 
-@n8n/codemirror-lang-sql:build: > @n8n/codemirror-lang-sql@1.2.0 build /home/alch3my/Desktop/n8n/packages/@n8n/codemirror-lang-sql
-@n8n/codemirror-lang-sql:build: > tsc -p tsconfig.build.json
-@n8n/codemirror-lang-sql:build: 
 n8n-editor-ui:fetch-popularity: 
-n8n-editor-ui:fetch-popularity: > n8n-editor-ui@1.117.0 fetch-popularity /home/alch3my/Desktop/n8n/packages/frontend/editor-ui
+n8n-editor-ui:fetch-popularity: > n8n-editor-ui@1.117.0 fetch-popularity /home/alch33my/Desktop/n8n/packages/frontend/editor-ui
 n8n-editor-ui:fetch-popularity: > node scripts/fetch-node-popularity.mjs
 n8n-editor-ui:fetch-popularity: 
-n8n-editor-ui:fetch-popularity: Fetching node popularity data from: https://internal.users.n8n.cloud/webhook/nodes-popularity-scores
-@n8n/config:build: 
-@n8n/config:build: > @n8n/config@1.59.0 build /home/alch3my/Desktop/n8n/packages/@n8n/config
-@n8n/config:build: > tsc -p tsconfig.build.json
-@n8n/config:build: 
-@n8n/imap:build: cache miss, executing 8e453a4a5d7cecf1
-@n8n/eslint-plugin-community-nodes:build: cache miss, executing e7cc9047aa0936bd
 @n8n/eslint-config:build: cache miss, executing 3f4c0728992ea264
-@n8n/extension-sdk:build: 
-@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 clean /home/alch3my/Desktop/n8n/packages/@n8n/extension-sdk
-@n8n/extension-sdk:build: > rimraf dist
-@n8n/extension-sdk:build: 
-n8n-editor-ui:fetch-popularity: Successfully fetched popularity data for 1000 nodes
-n8n-editor-ui:fetch-popularity: Saved popularity data to /home/alch3my/Desktop/n8n/packages/frontend/editor-ui/.build/node-popularity.json with 1000 nodes
+n8n-editor-ui:fetch-popularity: Fetching node popularity data from: https://internal.users.n8n.cloud/webhook/nodes-popularity-scores
+@n8n/codemirror-lang-sql:build: 
+@n8n/codemirror-lang-sql:build: > @n8n/codemirror-lang-sql@1.2.0 build /home/alch33my/Desktop/n8n/packages/@n8n/codemirror-lang-sql
+@n8n/codemirror-lang-sql:build: > tsc -p tsconfig.build.json
+@n8n/codemirror-lang-sql:build: 
+@n8n/eslint-plugin-community-nodes:build: cache miss, executing e7cc9047aa0936bd
+@n8n/imap:build: cache miss, executing 8e453a4a5d7cecf1
+@n8n/eslint-config:build: 
+@n8n/eslint-config:build: > @n8n/eslint-config@0.0.1 build /home/alch33my/Desktop/n8n/packages/@n8n/eslint-config
+@n8n/eslint-config:build: > tsc
+@n8n/eslint-config:build: 
 @n8n/eslint-plugin-community-nodes:build: 
-@n8n/eslint-plugin-community-nodes:build: > @n8n/eslint-plugin-community-nodes@0.6.0 build /home/alch3my/Desktop/n8n/packages/@n8n/eslint-plugin-community-nodes
+@n8n/eslint-plugin-community-nodes:build: > @n8n/eslint-plugin-community-nodes@0.6.0 build /home/alch33my/Desktop/n8n/packages/@n8n/eslint-plugin-community-nodes
 @n8n/eslint-plugin-community-nodes:build: > tsc --project tsconfig.build.json
 @n8n/eslint-plugin-community-nodes:build: 
 @n8n/imap:build: 
-@n8n/imap:build: > @n8n/imap@0.15.0 build /home/alch3my/Desktop/n8n/packages/@n8n/imap
+@n8n/imap:build: > @n8n/imap@0.15.0 build /home/alch33my/Desktop/n8n/packages/@n8n/imap
 @n8n/imap:build: > tsc -p tsconfig.build.json
 @n8n/imap:build: 
-@n8n/eslint-config:build: 
-@n8n/eslint-config:build: > @n8n/eslint-config@0.0.1 build /home/alch3my/Desktop/n8n/packages/@n8n/eslint-config
-@n8n/eslint-config:build: > tsc
-@n8n/eslint-config:build: 
+@n8n/config:build: cache miss, executing 6e436bcbca992ff4
+@n8n/config:build: 
+@n8n/config:build: > @n8n/config@1.59.0 build /home/alch33my/Desktop/n8n/packages/@n8n/config
+@n8n/config:build: > tsc -p tsconfig.build.json
+@n8n/config:build: 
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 clean /home/alch33my/Desktop/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > rimraf dist
+@n8n/extension-sdk:build: 
 @n8n/extension-sdk:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
-n8n-workflow:build: cache miss, executing 58327c7b7e6d4748
-@n8n/extension-sdk:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/@n8n/extension-sdk/tsdown.config.ts
-@n8n/extension-sdk:build: ℹ entry: src/backend/define.ts, src/backend/index.ts, src/backend/types.ts
+@n8n/extension-sdk:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/@n8n/extension-sdk/tsdown.config.ts
 @n8n/extension-sdk:build: ℹ entry: src/index.ts, src/schema.ts
+@n8n/extension-sdk:build: ℹ entry: src/backend/define.ts, src/backend/index.ts, src/backend/types.ts
 @n8n/extension-sdk:build: ℹ entry: src/frontend/define.ts, src/frontend/index.ts, src/frontend/types.ts
-@n8n/extension-sdk:build: ℹ tsconfig: tsconfig.backend.json
 @n8n/extension-sdk:build: ℹ tsconfig: tsconfig.common.json
+@n8n/extension-sdk:build: ℹ tsconfig: tsconfig.backend.json
 @n8n/extension-sdk:build: ℹ tsconfig: tsconfig.frontend.json
 @n8n/extension-sdk:build: ℹ Build start
 @n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
@@ -137,49 +127,50 @@ n8n-workflow:build: cache miss, executing 58327c7b7e6d4748
 @n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
 @n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-n8n-workflow:build: 
-n8n-workflow:build: > n8n-workflow@1.114.0 build /home/alch3my/Desktop/n8n/packages/workflow
-n8n-workflow:build: > tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json
-n8n-workflow:build: 
 @n8n/json-schema-to-zod:build: 
-@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:cjs /home/alch3my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:cjs /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
 @n8n/json-schema-to-zod:build: > tsc -p tsconfig.cjs.json && node postcjs.cjs
 @n8n/json-schema-to-zod:build: 
 @n8n/node-cli:build: cache miss, executing ac66daa1fdcf3d7b
-@n8n/composables:build: cache miss, executing 4afbcdc54a806c4d
-@n8n/utils:build: cache miss, executing 92a4a6a19595bcc5
+n8n-workflow:build: cache miss, executing 58327c7b7e6d4748
 @n8n/node-cli:build: 
-@n8n/node-cli:build: > @n8n/node-cli@0.13.0 build /home/alch3my/Desktop/n8n/packages/@n8n/node-cli
+@n8n/node-cli:build: > @n8n/node-cli@0.13.0 build /home/alch33my/Desktop/n8n/packages/@n8n/node-cli
 @n8n/node-cli:build: > tsc -p tsconfig.build.json && pnpm copy-templates
 @n8n/node-cli:build: 
+@n8n/composables:build: cache miss, executing 4afbcdc54a806c4d
+@n8n/utils:build: cache miss, executing 92a4a6a19595bcc5
+n8n-workflow:build: 
+n8n-workflow:build: > n8n-workflow@1.114.0 build /home/alch33my/Desktop/n8n/packages/workflow
+n8n-workflow:build: > tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json
+n8n-workflow:build: 
 @n8n/composables:build: 
-@n8n/composables:build: > @n8n/composables@1.12.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/composables
+@n8n/composables:build: > @n8n/composables@1.12.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/composables
 @n8n/composables:build: > tsdown
 @n8n/composables:build: 
 @n8n/utils:build: 
-@n8n/utils:build: > @n8n/utils@1.18.0 build /home/alch3my/Desktop/n8n/packages/@n8n/utils
+@n8n/utils:build: > @n8n/utils@1.18.0 build /home/alch33my/Desktop/n8n/packages/@n8n/utils
 @n8n/utils:build: > tsdown
 @n8n/utils:build: 
-@n8n/composables:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
 @n8n/utils:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
-@n8n/composables:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/frontend/@n8n/composables/tsdown.config.ts
+@n8n/composables:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+@n8n/utils:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/@n8n/utils/tsdown.config.ts
+@n8n/utils:build: ℹ entry: src/assert.ts, src/event-bus.ts, src/event-queue.ts, src/retry.ts, src/number/smartDecimal.ts, src/sort/sortByProperty.ts, src/search/reRankSearchResults.ts, src/search/sublimeSearch.ts, src/string/truncate.ts
+@n8n/utils:build: ℹ tsconfig: tsconfig.json
+@n8n/utils:build: ℹ Build start
+@n8n/composables:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/frontend/@n8n/composables/tsdown.config.ts
 @n8n/composables:build: ℹ entry: src/useDeviceSupport.ts, src/useShortKeyPress.ts, src/useThrottleWithReactiveDelay.ts
 @n8n/composables:build: ℹ tsconfig: tsconfig.json
 @n8n/composables:build: ℹ Build start
-@n8n/utils:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/@n8n/utils/tsdown.config.ts
-@n8n/utils:build: ℹ entry: src/assert.ts, src/event-bus.ts, src/event-queue.ts, src/retry.ts, src/number/smartDecimal.ts, src/sort/sortByProperty.ts, src/string/truncate.ts, src/search/reRankSearchResults.ts, src/search/sublimeSearch.ts
-@n8n/utils:build: ℹ tsconfig: tsconfig.json
-@n8n/utils:build: ℹ Build start
-@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/utils:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
 @n8n/utils:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/utils:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
 @n8n/utils:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/json-schema-to-zod:build: 
-@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:esm /home/alch3my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:esm /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
 @n8n/json-schema-to-zod:build: > tsc -p tsconfig.esm.json && node postesm.cjs
 @n8n/json-schema-to-zod:build: 
 @n8n/utils:build: ℹ [CJS] dist/search/sublimeSearch.cjs             5.36 kB │ gzip: 1.75 kB
@@ -241,7 +232,11 @@ n8n-workflow:build:
 @n8n/utils:build: ℹ [CJS] dist/number/smartDecimal.d.cts         0.19 kB │ gzip: 0.15 kB
 @n8n/utils:build: ℹ [CJS] dist/assert.d.cts                      0.18 kB │ gzip: 0.15 kB
 @n8n/utils:build: ℹ [CJS] 9 files, total: 3.10 kB
-@n8n/utils:build: ✔ Build complete in 4100ms
+@n8n/utils:build: ✔ Build complete in 1541ms
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.13.0 copy-templates /home/alch33my/Desktop/n8n/packages/@n8n/node-cli
+@n8n/node-cli:build: > node scripts/copy-templates.mjs
+@n8n/node-cli:build: 
 @n8n/composables:build: ℹ [CJS] dist/useDeviceSupport.cjs                  1.85 kB │ gzip: 0.75 kB
 @n8n/composables:build: ℹ [CJS] dist/useShortKeyPress.cjs                  0.79 kB │ gzip: 0.38 kB
 @n8n/composables:build: ℹ [CJS] dist/useThrottleWithReactiveDelay.cjs      0.75 kB │ gzip: 0.38 kB
@@ -266,12 +261,17 @@ n8n-workflow:build:
 @n8n/composables:build: ℹ [CJS] dist/useShortKeyPress.d.cts              0.41 kB │ gzip: 0.25 kB
 @n8n/composables:build: ℹ [CJS] dist/useThrottleWithReactiveDelay.d.cts  0.30 kB │ gzip: 0.19 kB
 @n8n/composables:build: ℹ [CJS] 3 files, total: 1.18 kB
-@n8n/composables:build: ✔ Build complete in 4983ms
-@n8n/extension-sdk:build: ℹ [CJS] dist/index.cjs                0.13 kB │ gzip: 0.10 kB
-@n8n/extension-sdk:build: ℹ [CJS] dist/schema.cjs               0.13 kB │ gzip: 0.10 kB
-@n8n/extension-sdk:build: ℹ [CJS] dist/schema-CW-nDERU.cjs.map  2.65 kB │ gzip: 0.87 kB
-@n8n/extension-sdk:build: ℹ [CJS] dist/schema-CW-nDERU.cjs      1.90 kB │ gzip: 0.81 kB
-@n8n/extension-sdk:build: ℹ [CJS] 4 files, total: 4.82 kB
+@n8n/composables:build: ✔ Build complete in 1715ms
+n8n-editor-ui:fetch-popularity: Failed to fetch node popularity data: The operation was aborted due to timeout
+n8n-editor-ui:fetch-popularity: API unavailable, checking for existing cached data
+n8n-editor-ui:fetch-popularity: No data available - neither from API nor cache
+n8n-editor-ui:fetch-popularity: Creating empty placeholder file to avoid build failure
+n8n-editor-ui:fetch-popularity: Saved popularity data to /home/alch33my/Desktop/n8n/packages/frontend/editor-ui/.build/node-popularity.json with 0 nodes
+@n8n/design-system:build: cache miss, executing b004854771daf6c3
+@n8n/design-system:build: 
+@n8n/design-system:build: > @n8n/design-system@1.104.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system
+@n8n/design-system:build: > vite build
+@n8n/design-system:build: 
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/define.cjs               0.13 kB │ gzip: 0.10 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/index.cjs                0.13 kB │ gzip: 0.10 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/types.cjs                0.00 kB │ gzip: 0.02 kB
@@ -280,8 +280,11 @@ n8n-workflow:build:
 @n8n/extension-sdk:build: ℹ [CJS] 5 files, total: 0.91 kB
 @n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
 @n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/extension-sdk:build: ℹ [CJS] dist/index.cjs                0.13 kB │ gzip: 0.10 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/schema.cjs               0.13 kB │ gzip: 0.10 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/schema-CW-nDERU.cjs.map  2.65 kB │ gzip: 0.87 kB
+@n8n/extension-sdk:build: ℹ [CJS] dist/schema-CW-nDERU.cjs      1.90 kB │ gzip: 0.81 kB
+@n8n/extension-sdk:build: ℹ [CJS] 4 files, total: 4.82 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/backend/define.cjs               0.13 kB │ gzip: 0.10 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/backend/index.cjs                0.13 kB │ gzip: 0.10 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/backend/types.cjs                0.00 kB │ gzip: 0.02 kB
@@ -290,11 +293,8 @@ n8n-workflow:build:
 @n8n/extension-sdk:build: ℹ [CJS] 5 files, total: 0.89 kB
 @n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
 @n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/design-system:build: cache miss, executing b004854771daf6c3
-@n8n/node-cli:build: 
-@n8n/node-cli:build: > @n8n/node-cli@0.13.0 copy-templates /home/alch3my/Desktop/n8n/packages/@n8n/node-cli
-@n8n/node-cli:build: > node scripts/copy-templates.mjs
-@n8n/node-cli:build: 
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/extension-sdk:build: ℹ [ESM] dist/index.js                0.10 kB │ gzip: 0.09 kB
 @n8n/extension-sdk:build: ℹ [ESM] dist/schema.js               0.10 kB │ gzip: 0.09 kB
 @n8n/extension-sdk:build: ℹ [ESM] dist/schema-BSoNETEW.js.map  2.60 kB │ gzip: 0.86 kB
@@ -329,85 +329,88 @@ n8n-workflow:build:
 @n8n/extension-sdk:build: ℹ [CJS] dist/schema.d.cts           0.15 kB │ gzip: 0.11 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/schema-epxNxocl.d.cts  2.37 kB │ gzip: 0.49 kB
 @n8n/extension-sdk:build: ℹ [CJS] 3 files, total: 2.67 kB
-@n8n/extension-sdk:build: ✔ Build complete in 9077ms
 @n8n/extension-sdk:build: ℹ [CJS] dist/backend/index.d.cts            0.29 kB │ gzip: 0.15 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/backend/types.d.cts            0.20 kB │ gzip: 0.12 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/backend/define.d.cts           0.13 kB │ gzip: 0.11 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/backend/types-BTuWXQec.d.cts   0.37 kB │ gzip: 0.20 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/backend/define-DC3Bc-EN.d.cts  0.28 kB │ gzip: 0.19 kB
 @n8n/extension-sdk:build: ℹ [CJS] 5 files, total: 1.28 kB
-@n8n/extension-sdk:build: ✔ Build complete in 9083ms
+@n8n/extension-sdk:build: ✔ Build complete in 3708ms
+@n8n/extension-sdk:build: ✔ Build complete in 3708ms
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/index.d.cts            0.30 kB │ gzip: 0.15 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/types.d.cts            0.21 kB │ gzip: 0.12 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/define.d.cts           0.14 kB │ gzip: 0.11 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/types-C99xASCm.d.cts   0.58 kB │ gzip: 0.29 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/define-DPnB827L.d.cts  0.29 kB │ gzip: 0.19 kB
 @n8n/extension-sdk:build: ℹ [CJS] 5 files, total: 1.52 kB
-@n8n/extension-sdk:build: ✔ Build complete in 9132ms
-@n8n/design-system:build: 
-@n8n/design-system:build: > @n8n/design-system@1.104.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system
-@n8n/design-system:build: > vite build
-@n8n/design-system:build: 
+@n8n/extension-sdk:build: ✔ Build complete in 3714ms
+@n8n/design-system:build: rolldown-vite v7.1.16 building for production...
 @n8n/extension-sdk:build: 
-@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 create-json-schema /home/alch3my/Desktop/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 create-json-schema /home/alch33my/Desktop/n8n/packages/@n8n/extension-sdk
 @n8n/extension-sdk:build: > tsx scripts/create-json-schema.ts
 @n8n/extension-sdk:build: 
-@n8n/design-system:build: rolldown-vite v7.1.16 building for production...
 @n8n/n8n-extension-insights:build: cache miss, executing d4578fc78299a567
-@n8n/api-types:build: cache miss, executing e36c4e651e8e0cd8
-@n8n/decorators:build: cache miss, executing b320debbeae95284
-@n8n/stores:build: cache miss, executing a5db038921269ff9
-@n8n/i18n:build: cache miss, executing 641d0c9470a647ba
-@n8n/stores:build: 
-@n8n/stores:build: > @n8n/stores@1.24.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/stores
-@n8n/stores:build: > tsdown
-@n8n/stores:build: 
 @n8n/n8n-extension-insights:build: 
-@n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.9.0 build /home/alch3my/Desktop/n8n/packages/extensions/insights
+@n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.9.0 build /home/alch33my/Desktop/n8n/packages/extensions/insights
 @n8n/n8n-extension-insights:build: > pnpm cleanup && pnpm run "/^build:.*/"
 @n8n/n8n-extension-insights:build: 
+@n8n/n8n-extension-insights:build: 
+@n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.9.0 cleanup /home/alch33my/Desktop/n8n/packages/extensions/insights
+@n8n/n8n-extension-insights:build: > rimraf dist
+@n8n/n8n-extension-insights:build: 
+@n8n/i18n:build: cache miss, executing 641d0c9470a647ba
+@n8n/decorators:build: cache miss, executing b320debbeae95284
+@n8n/stores:build: cache miss, executing a5db038921269ff9
+@n8n/api-types:build: cache miss, executing e36c4e651e8e0cd8
 @n8n/i18n:build: 
-@n8n/i18n:build: > @n8n/i18n@1.21.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/i18n
+@n8n/i18n:build: > @n8n/i18n@1.21.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/i18n
 @n8n/i18n:build: > tsdown
 @n8n/i18n:build: 
-@n8n/stores:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
-@n8n/i18n:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
-@n8n/stores:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/frontend/@n8n/stores/tsdown.config.ts
-@n8n/decorators:build: 
-@n8n/decorators:build: > @n8n/decorators@0.27.0 build /home/alch3my/Desktop/n8n/packages/@n8n/decorators
-@n8n/decorators:build: > tsc -p tsconfig.build.json
-@n8n/decorators:build: 
-@n8n/stores:build: ℹ entry: src/constants.ts, src/index.ts, src/metaTagConfig.ts, src/useAgentRequestStore.ts, src/useRootStore.ts
 @n8n/api-types:build: 
-@n8n/api-types:build: > @n8n/api-types@0.51.0 build /home/alch3my/Desktop/n8n/packages/@n8n/api-types
+@n8n/api-types:build: > @n8n/api-types@0.51.0 build /home/alch33my/Desktop/n8n/packages/@n8n/api-types
 @n8n/api-types:build: > tsc -p tsconfig.build.json
 @n8n/api-types:build: 
+@n8n/decorators:build: 
+@n8n/decorators:build: > @n8n/decorators@0.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/decorators
+@n8n/decorators:build: > tsc -p tsconfig.build.json
+@n8n/decorators:build: 
+@n8n/stores:build: 
+@n8n/stores:build: > @n8n/stores@1.24.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/stores
+@n8n/stores:build: > tsdown
+@n8n/stores:build: 
+@n8n/i18n:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+@n8n/stores:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+@n8n/stores:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/frontend/@n8n/stores/tsdown.config.ts
+@n8n/i18n:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/frontend/@n8n/i18n/tsdown.config.ts
+@n8n/stores:build: ℹ entry: src/constants.ts, src/index.ts, src/metaTagConfig.ts, src/useAgentRequestStore.ts, src/useRootStore.ts
 @n8n/stores:build: ℹ tsconfig: tsconfig.json
 @n8n/stores:build: ℹ Build start
-@n8n/i18n:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/frontend/@n8n/i18n/tsdown.config.ts
 @n8n/i18n:build: ℹ entry: src/index.ts, src/types.ts, src/utils.ts
 @n8n/i18n:build: ℹ tsconfig: tsconfig.json
 @n8n/i18n:build: ℹ Build start
-@n8n/stores:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/stores:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/stores:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/stores:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/i18n:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
 @n8n/i18n:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/i18n:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
 @n8n/i18n:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/n8n-extension-insights:build: 
-@n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.9.0 cleanup /home/alch3my/Desktop/n8n/packages/extensions/insights
-@n8n/n8n-extension-insights:build: > rimraf dist
-@n8n/n8n-extension-insights:build: 
-@n8n/backend-common:build: cache miss, executing 40af3c52aabac65b
-@n8n/backend-common:build: 
-@n8n/backend-common:build: > @n8n/backend-common@0.27.0 build /home/alch3my/Desktop/n8n/packages/@n8n/backend-common
-@n8n/backend-common:build: > tsc -p tsconfig.build.json
-@n8n/backend-common:build: 
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/design-system:build: Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
 @n8n/design-system:build:   npx update-browserslist-db@latest
 @n8n/design-system:build:   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+@n8n/backend-common:build: cache miss, executing 40af3c52aabac65b
+@n8n/backend-common:build: 
+@n8n/backend-common:build: > @n8n/backend-common@0.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/backend-common
+@n8n/backend-common:build: > tsc -p tsconfig.build.json
+@n8n/backend-common:build: 
+@n8n/design-system:build: [2K@n8n/design-system:build: transforming...[32m✓[39m 2708 modules transformed.
+@n8n/design-system:build: rendering chunks...
+@n8n/design-system:build: computing gzip size...
+@n8n/design-system:build: [2mdist/[22m[35mdesign-system.css        [39m[1m[2m  114.08 kB[22m[22m[2m │ gzip:  18.17 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36men-BIzD-hdW.js           [39m[1m[2m    0.08 kB[22m[22m[2m │ gzip:   0.08 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36men-DaqoBz3R.js           [39m[1m[2m    4.79 kB[22m[22m[2m │ gzip:   1.71 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36mn8n-design-system.es.js  [39m[1m[33m1,776.09 kB[39m[22m[2m │ gzip: 442.57 kB[22m
 @n8n/stores:build: ℹ [CJS] dist/useRootStore.cjs                5.88 kB │ gzip: 1.34 kB
 @n8n/stores:build: ℹ [CJS] dist/useAgentRequestStore.cjs        2.05 kB │ gzip: 0.62 kB
 @n8n/stores:build: ℹ [CJS] dist/metaTagConfig.cjs               0.24 kB │ gzip: 0.12 kB
@@ -456,7 +459,7 @@ n8n-workflow:build:
 @n8n/stores:build: ℹ [CJS] dist/index.d.cts                 0.07 kB │ gzip: 0.08 kB
 @n8n/stores:build: ℹ [CJS] dist/constants-DwkrkpBX.d.cts    1.77 kB │ gzip: 0.74 kB
 @n8n/stores:build: ℹ [CJS] 6 files, total: 12.17 kB
-@n8n/stores:build: ✔ Build complete in 7848ms
+@n8n/stores:build: ✔ Build complete in 2909ms
 @n8n/i18n:build: ℹ [CJS] dist/index.cjs               310.75 kB │ gzip: 71.28 kB
 @n8n/i18n:build: ℹ [CJS] dist/utils.cjs                 0.30 kB │ gzip:  0.16 kB
 @n8n/i18n:build: ℹ [CJS] dist/types.cjs                 0.00 kB │ gzip:  0.02 kB
@@ -482,53 +485,47 @@ n8n-workflow:build:
 @n8n/i18n:build: ℹ [CJS] dist/types.d.cts             0.21 kB │ gzip:  0.15 kB
 @n8n/i18n:build: ℹ [CJS] dist/types-wNLLPlzG.d.cts  186.90 kB │ gzip: 25.94 kB
 @n8n/i18n:build: ℹ [CJS] 4 files, total: 385.28 kB
-@n8n/i18n:build: ✔ Build complete in 9274ms
-@n8n/design-system:build: [2K@n8n/design-system:build: transforming...[32m✓[39m 2708 modules transformed.
+@n8n/i18n:build: ✔ Build complete in 3645ms
 @n8n/rest-api-client:build: cache miss, executing f05f439c36ad80c6
 n8n-core:build: cache miss, executing cc4626690562d3e8
 @n8n/ai-workflow-builder:build: cache miss, executing 7f9e69807dec9d82
-@n8n/design-system:build: rendering chunks...
-@n8n/rest-api-client:build: 
-@n8n/rest-api-client:build: > @n8n/rest-api-client@1.20.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/rest-api-client
-@n8n/rest-api-client:build: > tsdown
-@n8n/rest-api-client:build: 
-@n8n/ai-workflow-builder:build: 
-@n8n/ai-workflow-builder:build: > @n8n/ai-workflow-builder@0.27.0 build /home/alch3my/Desktop/n8n/packages/@n8n/ai-workflow-builder.ee
-@n8n/ai-workflow-builder:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
-@n8n/ai-workflow-builder:build: 
-@n8n/rest-api-client:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
-n8n-core:build: 
-n8n-core:build: > n8n-core@1.116.0 build /home/alch3my/Desktop/n8n/packages/core
-n8n-core:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
-n8n-core:build: 
-@n8n/design-system:build: computing gzip size...
-@n8n/rest-api-client:build: ℹ Using tsdown config: /home/alch3my/Desktop/n8n/packages/frontend/@n8n/rest-api-client/tsdown.config.ts
-@n8n/rest-api-client:build: ℹ entry: src/index.ts, src/types.ts, src/utils.ts, src/api/api-keys.ts, src/api/cloudPlans.ts, src/api/communityNodes.ts, src/api/ctas.ts, src/api/eventbus.ee.ts, src/api/events.ts, src/api/execution.ts, src/api/externalSecrets.ee.ts, src/api/index.ts, src/api/ldap.ts, src/api/mfa.ts, src/api/module-settings.ts, src/api/nodeTypes.ts, src/api/npsSurvey.ts, src/api/orchestration.ts, src/api/prompts.ts, src/api/provisioning.ts, src/api/roles.ts, src/api/settings.ts, src/api/sso.ts, src/api/tags.ts, src/api/templates.ts, src/api/third-party-licenses.ts, src/api/ui.ts, src/api/usage.ts, src/api/users.ts, src/api/versions.ts, src/api/webhooks.ts, src/api/workflowHistory.ts, src/api/workflows.ts
-@n8n/rest-api-client:build: ℹ tsconfig: tsconfig.json
-@n8n/rest-api-client:build: ℹ Build start
-@n8n/design-system:build: [2mdist/[22m[35mdesign-system.css        [39m[1m[2m  114.08 kB[22m[22m[2m │ gzip:  18.17 kB[22m
-@n8n/design-system:build: [2mdist/[22m[36men-BIzD-hdW.js           [39m[1m[2m    0.08 kB[22m[22m[2m │ gzip:   0.08 kB[22m
-@n8n/design-system:build: [2mdist/[22m[36men-DaqoBz3R.js           [39m[1m[2m    4.79 kB[22m[22m[2m │ gzip:   1.71 kB[22m
-@n8n/design-system:build: [2mdist/[22m[36mn8n-design-system.es.js  [39m[1m[33m1,776.09 kB[39m[22m[2m │ gzip: 442.57 kB[22m
-@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/design-system:build: [2K@n8n/design-system:build: transforming...[32m✓[39m 2708 modules transformed.
 @n8n/design-system:build: rendering chunks...
+@n8n/ai-workflow-builder:build: 
+@n8n/ai-workflow-builder:build: > @n8n/ai-workflow-builder@0.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/ai-workflow-builder.ee
+@n8n/ai-workflow-builder:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/ai-workflow-builder:build: 
+@n8n/rest-api-client:build: 
+@n8n/rest-api-client:build: > @n8n/rest-api-client@1.20.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/rest-api-client
+@n8n/rest-api-client:build: > tsdown
+@n8n/rest-api-client:build: 
+n8n-core:build: 
+n8n-core:build: > n8n-core@1.116.0 build /home/alch33my/Desktop/n8n/packages/core
+n8n-core:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+n8n-core:build: 
+@n8n/rest-api-client:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
 @n8n/design-system:build: computing gzip size...
 @n8n/design-system:build: [2mdist/[22m[35mdesign-system.css         [39m[1m[2m  114.08 kB[22m[22m[2m │ gzip:  18.17 kB[22m
 @n8n/design-system:build: [2mdist/[22m[36mn8n-design-system.umd.js  [39m[1m[33m1,325.43 kB[39m[22m[2m │ gzip: 387.79 kB[22m
-@n8n/design-system:build: ✓ built in 17.19s
+@n8n/design-system:build: ✓ built in 5.89s
+@n8n/rest-api-client:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/frontend/@n8n/rest-api-client/tsdown.config.ts
+@n8n/rest-api-client:build: ℹ entry: src/index.ts, src/types.ts, src/utils.ts, src/api/api-keys.ts, src/api/cloudPlans.ts, src/api/communityNodes.ts, src/api/ctas.ts, src/api/eventbus.ee.ts, src/api/events.ts, src/api/execution.ts, src/api/externalSecrets.ee.ts, src/api/index.ts, src/api/ldap.ts, src/api/mfa.ts, src/api/module-settings.ts, src/api/nodeTypes.ts, src/api/npsSurvey.ts, src/api/orchestration.ts, src/api/prompts.ts, src/api/provisioning.ts, src/api/roles.ts, src/api/settings.ts, src/api/sso.ts, src/api/tags.ts, src/api/templates.ts, src/api/third-party-licenses.ts, src/api/ui.ts, src/api/usage.ts, src/api/users.ts, src/api/versions.ts, src/api/webhooks.ts, src/api/workflowHistory.ts, src/api/workflows.ts
+@n8n/rest-api-client:build: ℹ tsconfig: tsconfig.json
+@n8n/rest-api-client:build: ℹ Build start
+@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/chat:build: cache miss, executing 341aa5f9db4f30d8
 @n8n/chat:build: 
-@n8n/chat:build: > @n8n/chat@0.62.0 build /home/alch3my/Desktop/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > @n8n/chat@0.62.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/chat
 @n8n/chat:build: > pnpm build:vite && pnpm build:bundle
 @n8n/chat:build: 
 @n8n/chat:build: 
-@n8n/chat:build: > @n8n/chat@0.62.0 build:vite /home/alch3my/Desktop/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > @n8n/chat@0.62.0 build:vite /home/alch33my/Desktop/n8n/packages/frontend/@n8n/chat
 @n8n/chat:build: > cross-env vite build
 @n8n/chat:build: 
+@n8n/chat:build: rolldown-vite v7.1.16 building for production...
 @n8n/rest-api-client:build: ℹ [CJS] dist/index.cjs                               9.43 kB │ gzip: 2.04 kB
 @n8n/rest-api-client:build: ℹ [CJS] dist/api/index.cjs                           8.87 kB │ gzip: 1.90 kB
 @n8n/rest-api-client:build: ℹ [CJS] dist/api/users.cjs                           1.21 kB │ gzip: 0.34 kB
@@ -846,31 +843,30 @@ n8n-core:build:
 @n8n/rest-api-client:build: ℹ [CJS] dist/types-pb6j0BjZ.d.cts                 0.18 kB │ gzip: 0.16 kB
 @n8n/rest-api-client:build: ℹ [CJS] dist/index-CPiw-gXy.d.cts                 0.01 kB │ gzip: 0.03 kB
 @n8n/rest-api-client:build: ℹ [CJS] 64 files, total: 61.37 kB
-@n8n/rest-api-client:build: ✔ Build complete in 7401ms
-@n8n/chat:build: rolldown-vite v7.1.16 building for production...
+@n8n/rest-api-client:build: ✔ Build complete in 2759ms
 @n8n/db:build: cache miss, executing f26481842baf4a49
-n8n-node-dev:build: cache miss, executing 83d0c4f0db96ee01
-n8n-nodes-base:build: cache miss, executing b07b6389996ece3d
+n8n-nodes-base:build: cache miss, executing 1edc524b989e75ea
 @n8n/task-runner:build: cache miss, executing ceea05d6762d8e96
-n8n-node-dev:build: 
-n8n-node-dev:build: > n8n-node-dev@1.115.0 build /home/alch3my/Desktop/n8n/packages/node-dev
-n8n-node-dev:build: > tsc --noEmit
-n8n-node-dev:build: 
+n8n-node-dev:build: cache miss, executing 83d0c4f0db96ee01
 @n8n/db:build: 
-@n8n/db:build: > @n8n/db@0.28.0 build /home/alch3my/Desktop/n8n/packages/@n8n/db
+@n8n/db:build: > @n8n/db@0.28.0 build /home/alch33my/Desktop/n8n/packages/@n8n/db
 @n8n/db:build: > tsc -p tsconfig.build.json
 @n8n/db:build: 
 n8n-nodes-base:build: 
-n8n-nodes-base:build: > n8n-nodes-base@1.115.0 build /home/alch3my/Desktop/n8n/packages/nodes-base
+n8n-nodes-base:build: > n8n-nodes-base@1.115.0 build /home/alch33my/Desktop/n8n/packages/nodes-base
 n8n-nodes-base:build: > tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata
 n8n-nodes-base:build: 
+n8n-node-dev:build: 
+n8n-node-dev:build: > n8n-node-dev@1.115.0 build /home/alch33my/Desktop/n8n/packages/node-dev
+n8n-node-dev:build: > tsc --noEmit
+n8n-node-dev:build: 
 @n8n/task-runner:build: 
-@n8n/task-runner:build: > @n8n/task-runner@1.53.0 build /home/alch3my/Desktop/n8n/packages/@n8n/task-runner
+@n8n/task-runner:build: > @n8n/task-runner@1.53.0 build /home/alch33my/Desktop/n8n/packages/@n8n/task-runner
 @n8n/task-runner:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
 @n8n/task-runner:build: 
 @n8n/backend-test-utils:build: cache miss, executing be25bb35b1c486ce
 @n8n/backend-test-utils:build: 
-@n8n/backend-test-utils:build: > @n8n/backend-test-utils@0.20.0 build /home/alch3my/Desktop/n8n/packages/@n8n/backend-test-utils
+@n8n/backend-test-utils:build: > @n8n/backend-test-utils@0.20.0 build /home/alch33my/Desktop/n8n/packages/@n8n/backend-test-utils
 @n8n/backend-test-utils:build: > tsc -p tsconfig.build.json
 @n8n/backend-test-utils:build: 
 @n8n/chat:build: [96m../design-system/src/components/DateRangePicker/DateRangePicker.vue[0m:[93m36[0m:[93m7[0m - [91merror[0m[90m TS7022: [0m'slots' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
@@ -881,11 +877,11 @@ n8n-nodes-base:build:
 @n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2808 modules transformed.
 @n8n/chat:build: rendering chunks...
 @n8n/chat:build: [plugin builtin:reporter] 
-@n8n/chat:build: (!) /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/chat:build: (!) /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
 @n8n/chat:build: 
 @n8n/chat:build: 
 @n8n/chat:build: [vite:dts] Start generate declaration files...
-@n8n/chat:build: [vite:dts] Declaration files built in 24763ms.
+@n8n/chat:build: [vite:dts] Declaration files built in 12363ms.
 @n8n/chat:build: 
 @n8n/chat:build: computing gzip size...
 @n8n/chat:build: [2mdist/[22m[35mchat.css    [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
@@ -895,14 +891,14 @@ n8n-nodes-base:build:
 @n8n/chat:build: computing gzip size...
 @n8n/chat:build: [2mdist/[22m[35mchat.css     [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
 @n8n/chat:build: [2mdist/[22m[36mchat.umd.js  [39m[1m[33m690.95 kB[39m[22m[2m │ gzip: 214.84 kB[22m
-@n8n/chat:build: ✓ built in 38.77s
+@n8n/chat:build: ✓ built in 17.20s
 @n8n/chat:build: 
-@n8n/chat:build: > @n8n/chat@0.62.0 build:bundle /home/alch3my/Desktop/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > @n8n/chat@0.62.0 build:bundle /home/alch33my/Desktop/n8n/packages/frontend/@n8n/chat
 @n8n/chat:build: > cross-env INCLUDE_VUE=true vite build
 @n8n/chat:build: 
 @n8n/chat:build: rolldown-vite v7.1.16 building for production...
 n8n-nodes-base:build: 
-n8n-nodes-base:build: > n8n-nodes-base@1.115.0 copy-nodes-json /home/alch3my/Desktop/n8n/packages/nodes-base
+n8n-nodes-base:build: > n8n-nodes-base@1.115.0 copy-nodes-json /home/alch33my/Desktop/n8n/packages/nodes-base
 n8n-nodes-base:build: > node scripts/copy-nodes-json.js .
 n8n-nodes-base:build: 
 n8n-nodes-base:build: Default locale set to: [35men[0m
@@ -912,42 +908,42 @@ n8n-nodes-base:build: No translation required - Skipping translations build...
 @n8n/chat:build: [7m36[0m const slots = useSlots();
 @n8n/chat:build: [7m  [0m [91m      ~~~~~[0m
 @n8n/chat:build: 
-@n8n/n8n-nodes-langchain:build: cache miss, executing 60e539658c525109
+@n8n/n8n-nodes-langchain:build: cache miss, executing 1411ef01cc13e4b8
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2811 modules transformed.
 @n8n/n8n-nodes-langchain:build: 
-@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 build /home/alch3my/Desktop/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 build /home/alch33my/Desktop/n8n/packages/@n8n/nodes-langchain
 @n8n/n8n-nodes-langchain:build: > tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata
 @n8n/n8n-nodes-langchain:build: 
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: [plugin builtin:reporter] 
+@n8n/chat:build: (!) /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: [vite:dts] Start generate declaration files...
+@n8n/chat:build: [vite:dts] Declaration files built in 10790ms.
+@n8n/chat:build: 
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css           [39m[1m[2m   63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.bundle.es.js  [39m[1m[33m1,030.03 kB[39m[22m[2m │ gzip: 272.95 kB[22m
 @n8n/n8n-nodes-langchain:build: 
-@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 copy-nodes-json /home/alch3my/Desktop/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 copy-nodes-json /home/alch33my/Desktop/n8n/packages/@n8n/nodes-langchain
 @n8n/n8n-nodes-langchain:build: > node ../../nodes-base/scripts/copy-nodes-json.js .
 @n8n/n8n-nodes-langchain:build: 
 @n8n/n8n-nodes-langchain:build: 
-@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 copy-tokenizer-json /home/alch3my/Desktop/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 copy-tokenizer-json /home/alch33my/Desktop/n8n/packages/@n8n/nodes-langchain
 @n8n/n8n-nodes-langchain:build: > node scripts/copy-tokenizer-json.js .
 @n8n/n8n-nodes-langchain:build: 
 @n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/cl100k_base.json -> dist/utils/tokenizer/cl100k_base.json
 @n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/o200k_base.json -> dist/utils/tokenizer/o200k_base.json
 @n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2811 modules transformed.
 @n8n/chat:build: rendering chunks...
-@n8n/chat:build: [plugin builtin:reporter] 
-@n8n/chat:build: (!) /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/alch3my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
-@n8n/chat:build: 
-@n8n/chat:build: 
-@n8n/chat:build: [vite:dts] Start generate declaration files...
-@n8n/chat:build: [vite:dts] Declaration files built in 17729ms.
-@n8n/chat:build: 
-@n8n/chat:build: computing gzip size...
-@n8n/chat:build: [2mdist/[22m[35mchat.css           [39m[1m[2m   63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
-@n8n/chat:build: [2mdist/[22m[36mchat.bundle.es.js  [39m[1m[33m1,030.03 kB[39m[22m[2m │ gzip: 272.95 kB[22m
-@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2811 modules transformed.
-@n8n/chat:build: rendering chunks...
 @n8n/chat:build: computing gzip size...
 @n8n/chat:build: [2mdist/[22m[35mchat.css            [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
 @n8n/chat:build: [2mdist/[22m[36mchat.bundle.umd.js  [39m[1m[33m696.25 kB[39m[22m[2m │ gzip: 235.25 kB[22m
-@n8n/chat:build: ✓ built in 30.98s
-n8n-editor-ui:build: cache miss, executing d82fc56d28fd55fc
+@n8n/chat:build: ✓ built in 15.21s
+n8n-editor-ui:build: cache miss, executing 2a4d49b6fa8eb308
 n8n-editor-ui:build: 
-n8n-editor-ui:build: > n8n-editor-ui@1.117.0 build /home/alch3my/Desktop/n8n/packages/frontend/editor-ui
+n8n-editor-ui:build: > n8n-editor-ui@1.117.0 build /home/alch33my/Desktop/n8n/packages/frontend/editor-ui
 n8n-editor-ui:build: > cross-env VUE_APP_PUBLIC_PATH="/{{BASE_PATH}}/" NODE_OPTIONS="--max-old-space-size=8192" vite build
 n8n-editor-ui:build: 
 n8n-editor-ui:build: Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
@@ -959,13 +955,409 @@ n8n-editor-ui:build: <script src="/{{BASE_PATH}}/static/base-path.js"> in "/inde
 n8n-editor-ui:build: <script src="/{{BASE_PATH}}/static/posthog.init.js"> in "/index.html" can't be bundled without type="module" attribute
 n8n-editor-ui:build: 
 n8n-editor-ui:build: /{{BASE_PATH}}/static/prefers-color-scheme.css doesn't exist at build time, it will remain unchanged to be resolved at runtime
-n8n-editor-ui:build: Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
-n8n-editor-ui:build:   npx update-browserslist-db@latest
-n8n-editor-ui:build:   Why you should do it regularly: https://github.com/browserslist/update-db#readme
 n8n-editor-ui:build: [plugin builtin:import-glob] Invalid glob pattern: `@n8n/i18n/locales/*.json` in file 'src/dev/i18nHmr.ts'. Glob patterns must start with:
 n8n-editor-ui:build:   • '/' for absolute paths from project root
 n8n-editor-ui:build:   • './' or '../' for relative paths
 n8n-editor-ui:build:   • '**/' for recursive matching from project root
 n8n-editor-ui:build:   • '#' for subpath imports (with '*' wildcard)
-n8n-editor-ui:build: [plugin rolldown:vite-resolve] Module "os" has been externalized for browser compatibility, imported by "/home/alch3my/Desktop/n8n/node_modules/.pnpm/recast@0.22.0/node_modules/recast/lib/util.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
+n8n-editor-ui:build: Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
+n8n-editor-ui:build:   npx update-browserslist-db@latest
+n8n-editor-ui:build:   Why you should do it regularly: https://github.com/browserslist/update-db#readme
+n8n-editor-ui:build: [plugin rolldown:vite-resolve] Module "os" has been externalized for browser compatibility, imported by "/home/alch33my/Desktop/n8n/node_modules/.pnpm/recast@0.22.0/node_modules/recast/lib/util.js". See https://vite.dev/guide/troubleshooting.html#module-externalized-for-browser-compatibility for more details.
 n8n-editor-ui:build: [2Kn8n-editor-ui:build: transforming...[32m✓[39m 6420 modules transformed.
+n8n-editor-ui:build: rendering chunks...
+n8n-editor-ui:build: [plugin builtin:reporter] 
+n8n-editor-ui:build: (!) /home/alch33my/Desktop/n8n/packages/frontend/editor-ui/src/components/CollectionParameter.vue is dynamically imported by /home/alch33my/Desktop/n8n/packages/frontend/editor-ui/src/components/ParameterInputList.vue?vue&type=script&setup=true&lang.ts but also statically imported by /home/alch33my/Desktop/n8n/packages/frontend/editor-ui/src/components/MultipleParameter.vue?vue&type=script&setup=true&lang.ts, dynamic import will not move module into another chunk.
+n8n-editor-ui:build: 
+n8n-editor-ui:build: [plugin vite:legacy-generate-polyfill-chunk] Error: This plugin assigns to bundle variable. This is discouraged by Rollup and is not supported by Rolldown. This will be ignored. https://rollupjs.org/plugin-development/#generatebundle:~:text=DANGER,this.emitFile.
+n8n-editor-ui:build:     at Object.set (file:///home/alch33my/Desktop/n8n/node_modules/.pnpm/rolldown@1.0.0-beta.42/node_modules/rolldown/dist/shared/src-CUdyD4rb.mjs:2905:18)
+n8n-editor-ui:build:     at buildPolyfillChunk (file:///home/alch33my/Desktop/n8n/node_modules/.pnpm/@vitejs+plugin-legacy@6.0.2_rolldown-vite@7.1.16_@types+node@20.19.21_esbuild@0.25.10_j_37f577dbec79d3131c40095589331fae/node_modules/@vitejs/plugin-legacy/dist/index.mjs:731:34)
+n8n-editor-ui:build: [vite-plugin-static-copy] Copied 2 items.
+n8n-editor-ui:build: computing gzip size...
+n8n-editor-ui:build: [2mdist/[22m[32mindex.html                                                     [39m[1m[2m   13.99 kB[22m[22m[2m │ gzip:   2.61 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32msqlite3-opfs-async-proxy-vVtmDGHX.js                    [39m[1m[2m   15.79 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32melement-icons-B-tDfklg.woff                             [39m[1m[2m   28.20 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32melement-icons-_lZGOqcG.ttf                              [39m[1m[2m   55.95 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mCommitMonoVariable-ytizKI8U.woff2                       [39m[1m[2m   86.76 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mdoppler-B__k0MeW.webp                                   [39m[1m[2m  315.06 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mInterVariable-DiVDrmQJ.woff2                            [39m[1m[2m  352.24 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32msqlite3-worker1-bundler-friendly-BOYmhhGN.js            [39m[1m[2m  362.94 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mworker-DYbBH4SI.js                                      [39m[1m[2m  377.11 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mInterVariable-Italic-FCBEiFp6.woff2                     [39m[1m[2m  387.97 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32msqlite3-DBpDb1lf.wasm                                   [39m[1m[2m  856.44 kB[22m[22m[2m │ gzip: 396.48 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[32mtypescript.worker-CkR7RUha.js                           [39m[1m[2m7,973.55 kB[22m[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectRolesView-Bpk_JP1z.css                           [39m[1m[2m    0.18 kB[22m[22m[2m │ gzip:   0.16 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mEntityNotFound-DfstTvbZ.css                             [39m[1m[2m    0.19 kB[22m[22m[2m │ gzip:   0.15 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mEntityUnAuthorised-C6EIQ1Pq.css                         [39m[1m[2m    0.19 kB[22m[22m[2m │ gzip:   0.16 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNDVEmptyState-Hm1vFJ4i.css                              [39m[1m[2m    0.46 kB[22m[22m[2m │ gzip:   0.26 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mAnimatedSpinner-ChSRgyeI.css                            [39m[1m[2m    0.57 kB[22m[22m[2m │ gzip:   0.19 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectRoleView-Cewy9KCA.css                            [39m[1m[2m    0.87 kB[22m[22m[2m │ gzip:   0.42 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataHtml-Bu3RZcuV.css                                [39m[1m[2m    2.53 kB[22m[22m[2m │ gzip:   0.46 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mCredentialIcon-bZrcXcyJ.css                             [39m[1m[2m    2.56 kB[22m[22m[2m │ gzip:   0.47 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeIcon-C-Ise6x6.css                                   [39m[1m[2m    2.57 kB[22m[22m[2m │ gzip:   0.48 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mModalDrawer-B-12esvU.css                                [39m[1m[2m    2.58 kB[22m[22m[2m │ gzip:   0.48 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTextWithHighlights-BgbTzzK2.css                         [39m[1m[2m    2.63 kB[22m[22m[2m │ gzip:   0.51 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mKeyboardShortcutTooltip-pRLqnHdh.css                    [39m[1m[2m    2.65 kB[22m[22m[2m │ gzip:   0.52 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataJsonActions-CZx7rSSE.css                         [39m[1m[2m    2.65 kB[22m[22m[2m │ gzip:   0.52 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mInsightsPaywall-CE5W3W4m.css                            [39m[1m[2m    2.70 kB[22m[22m[2m │ gzip:   0.56 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mDraggable-DfBtatxg.css                                  [39m[1m[2m    2.72 kB[22m[22m[2m │ gzip:   0.55 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mVariablesUsageBadge-CQU1F9NU.css                        [39m[1m[2m    2.72 kB[22m[22m[2m │ gzip:   0.54 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mAddDataTableModal-BzS5Yqag.css                          [39m[1m[2m    2.73 kB[22m[22m[2m │ gzip:   0.55 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mExternalSecretsProviderConnectionSwitch-Df3YK0La.css    [39m[1m[2m    2.74 kB[22m[22m[2m │ gzip:   0.56 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSaveButton-Dc01Y2MA.css                                 [39m[1m[2m    2.86 kB[22m[22m[2m │ gzip:   0.61 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mPageViewLayout-BIiboMgG.css                             [39m[1m[2m    2.90 kB[22m[22m[2m │ gzip:   0.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mErrorView-D2OMvGTk.css                                  [39m[1m[2m    2.93 kB[22m[22m[2m │ gzip:   0.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeCreation-CKa3G1zA.css                               [39m[1m[2m    2.93 kB[22m[22m[2m │ gzip:   0.65 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSelectedItemsInfo-DDbNnY7M.css                          [39m[1m[2m    2.96 kB[22m[22m[2m │ gzip:   0.64 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowExecutionsLandingPage-DMldlKod.css              [39m[1m[2m    2.97 kB[22m[22m[2m │ gzip:   0.63 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplatesCollectionView-klb8FT9y.css                    [39m[1m[2m    3.06 kB[22m[22m[2m │ gzip:   0.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSigninView-BQgsTN8o.css                                 [39m[1m[2m    3.07 kB[22m[22m[2m │ gzip:   0.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSetupWorkflowFromTemplateView-CU2iGJTa.css              [39m[1m[2m    3.10 kB[22m[22m[2m │ gzip:   0.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsExternalSecrets-CaiOf7cD.css                    [39m[1m[2m    3.10 kB[22m[22m[2m │ gzip:   0.65 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35museCommandBar-eK4Fv9lH.css                              [39m[1m[2m    3.12 kB[22m[22m[2m │ gzip:   0.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowPreview-Bt03akXc.css                            [39m[1m[2m    3.17 kB[22m[22m[2m │ gzip:   0.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsLdapView-KgMO_1GA.css                           [39m[1m[2m    3.26 kB[22m[22m[2m │ gzip:   0.70 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectBreadcrumb-CAEDvzuN.css                          [39m[1m[2m    3.27 kB[22m[22m[2m │ gzip:   0.71 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mDataTableView-ByKnlVtU.css                              [39m[1m[2m    3.28 kB[22m[22m[2m │ gzip:   0.78 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplatesWorkflowView-CBjRBbmw.css                      [39m[1m[2m    3.29 kB[22m[22m[2m │ gzip:   0.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataSearch-BvNE3iVy.css                              [39m[1m[2m    3.29 kB[22m[22m[2m │ gzip:   0.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectCardBadge-B_wj_mAB.css                           [39m[1m[2m    3.32 kB[22m[22m[2m │ gzip:   0.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowExecutionsInfoAccordion-CEOvJ-SX.css            [39m[1m[2m    3.32 kB[22m[22m[2m │ gzip:   0.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mMainSidebarUserArea-yJKeCkOz.css                        [39m[1m[2m    3.33 kB[22m[22m[2m │ gzip:   0.70 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mInsightsTableWorkflows-D20Yb7ZW.css                     [39m[1m[2m    3.35 kB[22m[22m[2m │ gzip:   0.77 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35museTelemetryContext-BpnKRIT7.css                        [39m[1m[2m    3.38 kB[22m[22m[2m │ gzip:   0.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsSso-w7Iz4Luy.css                                [39m[1m[2m    3.39 kB[22m[22m[2m │ gzip:   0.71 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mPrebuiltAgentTemplatesView-jF7HvWnL.css                 [39m[1m[2m    3.40 kB[22m[22m[2m │ gzip:   0.75 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectIcon-DT95ZcDW.css                                [39m[1m[2m    3.50 kB[22m[22m[2m │ gzip:   0.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsPersonalView-D6LtKnaF.css                       [39m[1m[2m    3.57 kB[22m[22m[2m │ gzip:   0.84 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsProvisioningView-Dhfda99J.css                   [39m[1m[2m    3.60 kB[22m[22m[2m │ gzip:   0.76 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mCopyInput-CwgZTYF4.css                                  [39m[1m[2m    3.73 kB[22m[22m[2m │ gzip:   0.86 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataParsedAiContent-CvjNCtpG.css                     [39m[1m[2m    3.95 kB[22m[22m[2m │ gzip:   0.75 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mevaluation-CGxdCHrN.css                                 [39m[1m[2m    4.12 kB[22m[22m[2m │ gzip:   0.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsSourceControl-DEs9MNB6.css                      [39m[1m[2m    4.19 kB[22m[22m[2m │ gzip:   0.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTagsDropdown-2j57MEiW.css                               [39m[1m[2m    4.57 kB[22m[22m[2m │ gzip:   1.05 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mFixedCollectionParameter-BkEju_IA.css                   [39m[1m[2m    5.10 kB[22m[22m[2m │ gzip:   0.96 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mInsightsDashboard-CXRybzGm.css                          [39m[1m[2m    5.35 kB[22m[22m[2m │ gzip:   1.40 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplateDetails-DfyKyMyy.css                            [39m[1m[2m    5.40 kB[22m[22m[2m │ gzip:   0.65 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mCommunityNodeUpdateInfo-kPDiipF5.css                    [39m[1m[2m    5.52 kB[22m[22m[2m │ gzip:   0.69 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mVariablesView-PPP4k5c3.css                              [39m[1m[2m    5.66 kB[22m[22m[2m │ gzip:   0.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mAuthView-Dg9ZkCud.css                                   [39m[1m[2m    5.80 kB[22m[22m[2m │ gzip:   0.80 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mInsightsSummary-BazqPYQ0.css                            [39m[1m[2m    5.88 kB[22m[22m[2m │ gzip:   1.28 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mModal-C6HnfA6j.css                                      [39m[1m[2m    5.89 kB[22m[22m[2m │ gzip:   0.81 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplatesView-BgdyYmrL.css                              [39m[1m[2m    5.92 kB[22m[22m[2m │ gzip:   0.82 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsView-6sirGv9l.css                               [39m[1m[2m    6.01 kB[22m[22m[2m │ gzip:   0.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsLogStreamingView-xo-rTSA0.css                   [39m[1m[2m    6.02 kB[22m[22m[2m │ gzip:   0.91 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mCredentialsView-BDOl2A0w.css                            [39m[1m[2m    6.03 kB[22m[22m[2m │ gzip:   0.90 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectVariables-Cw92ZPKE.css                           [39m[1m[2m    6.14 kB[22m[22m[2m │ gzip:   0.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectSharing-DsD3YT5P.css                             [39m[1m[2m    6.18 kB[22m[22m[2m │ gzip:   0.86 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectHeader-CY-3wSig.css                              [39m[1m[2m    6.47 kB[22m[22m[2m │ gzip:   1.01 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsCommunityNodesView-m7kLUpJK.css                 [39m[1m[2m    6.49 kB[22m[22m[2m │ gzip:   0.98 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsApiView-Dtl_N9mK.css                            [39m[1m[2m    6.64 kB[22m[22m[2m │ gzip:   1.05 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsUsageAndPlan-pptm91gP.css                       [39m[1m[2m    7.18 kB[22m[22m[2m │ gzip:   1.14 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataJson-LufoUTRy.css                                [39m[1m[2m    7.26 kB[22m[22m[2m │ gzip:   1.10 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mRunDataTable-CnUH-sL_.css                               [39m[1m[2m    7.71 kB[22m[22m[2m │ gzip:   1.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowActivator-BNp0duVE.css                          [39m[1m[2m    8.03 kB[22m[22m[2m │ gzip:   0.78 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeDetailsViewV2-rAVfbsOa.css                          [39m[1m[2m    8.21 kB[22m[22m[2m │ gzip:   1.43 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTestRunDetailView-DkQcfFP4.css                          [39m[1m[2m    8.39 kB[22m[22m[2m │ gzip:   1.49 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsUsersView-CfJcVjkl.css                          [39m[1m[2m    9.32 kB[22m[22m[2m │ gzip:   1.15 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mProjectSettings-BQOluc3A.css                            [39m[1m[2m    9.71 kB[22m[22m[2m │ gzip:   1.17 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mExecutionsTime-qhi9xQEs.css                             [39m[1m[2m    9.95 kB[22m[22m[2m │ gzip:   1.25 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mVirtualSchema-CSh2c6Ec.css                              [39m[1m[2m   10.01 kB[22m[22m[2m │ gzip:   2.20 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mChatSidebar-DGlWPwKB.css                                [39m[1m[2m   10.01 kB[22m[22m[2m │ gzip:   1.30 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplateList-CNUtq0N7.css                               [39m[1m[2m   10.03 kB[22m[22m[2m │ gzip:   1.21 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mExecutionsView-f-kKRR2k.css                             [39m[1m[2m   11.05 kB[22m[22m[2m │ gzip:   1.05 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSettingsMCPView-BBO_ZyBU.css                            [39m[1m[2m   11.83 kB[22m[22m[2m │ gzip:   1.46 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mEvaluationsView-DsfXDJ-U.css                            [39m[1m[2m   12.06 kB[22m[22m[2m │ gzip:   1.28 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mEvaluationsRootView-BVNlhh2l.css                        [39m[1m[2m   12.34 kB[22m[22m[2m │ gzip:   1.29 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35museLogsTreeExpand-BT6XJR8J.css                          [39m[1m[2m   12.44 kB[22m[22m[2m │ gzip:   1.80 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mSetupTemplateFormStep-She0GnTz.css                      [39m[1m[2m   13.55 kB[22m[22m[2m │ gzip:   0.99 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mResourcesListLayout-B8d0Asrt.css                        [39m[1m[2m   13.56 kB[22m[22m[2m │ gzip:   1.50 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeDetailsView-DKKIPSTh.css                            [39m[1m[2m   13.82 kB[22m[22m[2m │ gzip:   1.63 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowHistory-BmerBiKz.css                            [39m[1m[2m   14.41 kB[22m[22m[2m │ gzip:   1.59 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowExecutionsPreview-BkXT82z5.css                  [39m[1m[2m   15.45 kB[22m[22m[2m │ gzip:   1.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowExecutionsView-9RB5OO5c.css                     [39m[1m[2m   16.57 kB[22m[22m[2m │ gzip:   1.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeView-KpAB56Z3.css                                   [39m[1m[2m   18.84 kB[22m[22m[2m │ gzip:   2.09 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTemplatesSearchView-BfT0LMil.css                        [39m[1m[2m   19.49 kB[22m[22m[2m │ gzip:   1.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mMainHeader-QMv9Ba5g.css                                 [39m[1m[2m   19.86 kB[22m[22m[2m │ gzip:   1.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkerView-4m_NaoAx.css                                 [39m[1m[2m   20.16 kB[22m[22m[2m │ gzip:   1.38 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mMainSidebar-BqoiqeXY.css                                [39m[1m[2m   23.02 kB[22m[22m[2m │ gzip:   2.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mTriggerPanel-D5WejHyJ.css                               [39m[1m[2m   25.10 kB[22m[22m[2m │ gzip:   2.56 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mDataTableDetailsView-CxS46D7a.css                       [39m[1m[2m   29.73 kB[22m[22m[2m │ gzip:   2.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mChatView-CsdUJ_Zx.css                                   [39m[1m[2m   31.30 kB[22m[22m[2m │ gzip:   2.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeCreator-C-oYFkbs.css                                [39m[1m[2m   35.65 kB[22m[22m[2m │ gzip:   3.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mWorkflowsView-2XTsT7zB.css                              [39m[1m[2m   36.17 kB[22m[22m[2m │ gzip:   2.70 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mItemsRenderer-B89wKDHQ.css                              [39m[1m[2m   39.11 kB[22m[22m[2m │ gzip:   2.45 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mNodeSettings-B50suDD9.css                               [39m[1m[2m   39.74 kB[22m[22m[2m │ gzip:   3.61 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35misEmpty-B-mcFJ04.css                                    [39m[1m[2m   47.94 kB[22m[22m[2m │ gzip:   4.03 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mLogsPanel-K1M_gOCT.css                                  [39m[1m[2m   77.83 kB[22m[22m[2m │ gzip:   5.79 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mCanvas-CNvrcRSO.css                                     [39m[1m[2m  112.52 kB[22m[22m[2m │ gzip:   6.75 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mParameterInputList-aGPYvt18.css                         [39m[1m[2m  169.76 kB[22m[22m[2m │ gzip:  11.24 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35msrc-C5a_PFvg.css                                        [39m[1m[2m  388.72 kB[22m[22m[2m │ gzip:  26.44 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[35mindex-DmWYvsgC.css                                      [39m[1m[2m  668.32 kB[22m[22m[2m │ gzip:  65.58 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36men-CPX7bHht.js                                          [39m[1m[2m    0.08 kB[22m[22m[2m │ gzip:   0.08 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msourceControl.eventBus-B10rpVhp.js                      [39m[1m[2m    0.14 kB[22m[22m[2m │ gzip:   0.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mcore-CGHB7oTc.js                                        [39m[1m[2m    0.20 kB[22m[22m[2m │ gzip:   0.16 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36m_plugin-vue_export-helper-BwBpWJRZ.js                   [39m[1m[2m    0.22 kB[22m[22m[2m │ gzip:   0.16 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msmartDecimal-BitNC0jz.js                                [39m[1m[2m    0.23 kB[22m[22m[2m │ gzip:   0.17 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mauth.eventBus-CUpasXbj.js                               [39m[1m[2m    0.27 kB[22m[22m[2m │ gzip:   0.15 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msortByProperty-CUhVU03p.js                              [39m[1m[2m    0.28 kB[22m[22m[2m │ gzip:   0.20 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataHtml-DCb1Egc3.js                                 [39m[1m[2m    0.31 kB[22m[22m[2m │ gzip:   0.21 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mconstants-DlQs6Cav.js                                   [39m[1m[2m    0.39 kB[22m[22m[2m │ gzip:   0.25 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36muniqBy-B6leB4-I.js                                      [39m[1m[2m    0.49 kB[22m[22m[2m │ gzip:   0.29 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museProjectPages-Bc1uGrQW.js                             [39m[1m[2m    0.64 kB[22m[22m[2m │ gzip:   0.34 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mretry-sDkwzrPY.js                                       [39m[1m[2m    0.68 kB[22m[22m[2m │ gzip:   0.35 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36morderBy-BEv0Uww7.js                                     [39m[1m[2m    0.73 kB[22m[22m[2m │ gzip:   0.37 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mVueMarkdown-BL7rAYQd.js                                 [39m[1m[2m    0.85 kB[22m[22m[2m │ gzip:   0.45 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEnterpriseEdition.ee-Dp43upOG.js                        [39m[1m[2m    0.86 kB[22m[22m[2m │ gzip:   0.47 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mpickBy-BxxAn7IN.js                                      [39m[1m[2m    0.88 kB[22m[22m[2m │ gzip:   0.43 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museExecutionData-BbdUcGEx.js                            [39m[1m[2m    0.89 kB[22m[22m[2m │ gzip:   0.40 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museExternalHooks-DsAYEFdD.js                            [39m[1m[2m    0.89 kB[22m[22m[2m │ gzip:   0.43 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mPageViewLayout-CCwb27rd.js                              [39m[1m[2m    0.95 kB[22m[22m[2m │ gzip:   0.46 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataParsedAiContent-DkyudRJw.js                      [39m[1m[2m    0.96 kB[22m[22m[2m │ gzip:   0.47 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museMcp-VvVR2AFr.js                                      [39m[1m[2m    1.03 kB[22m[22m[2m │ gzip:   0.52 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSignoutView-D0-4dZX2.js                                 [39m[1m[2m    1.25 kB[22m[22m[2m │ gzip:   0.65 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museBeforeUnload-2cDPNoYX.js                             [39m[1m[2m    1.35 kB[22m[22m[2m │ gzip:   0.59 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataHtml-DOQ0pkg3.js                                 [39m[1m[2m    1.43 kB[22m[22m[2m │ gzip:   0.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEmptySharedSectionActionBox-BSKRPeBv.js                 [39m[1m[2m    1.49 kB[22m[22m[2m │ gzip:   0.75 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museClipboard-BCwBDgVT.js                                [39m[1m[2m    1.52 kB[22m[22m[2m │ gzip:   0.70 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museTelemetryContext-6OMLpuzB.js                         [39m[1m[2m    1.60 kB[22m[22m[2m │ gzip:   0.71 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mVariablesUsageBadge-Bc3YK7mM.js                         [39m[1m[2m    1.61 kB[22m[22m[2m │ gzip:   0.75 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mVirtualSchema-BdYVRwfC.js                               [39m[1m[2m    1.64 kB[22m[22m[2m │ gzip:   0.76 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mAnimatedSpinner-DRB4A7Dx.js                             [39m[1m[2m    1.69 kB[22m[22m[2m │ gzip:   0.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsChartFailed-D8rDUthj.js                         [39m[1m[2m    1.80 kB[22m[22m[2m │ gzip:   0.86 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mPushConnectionTracker-BMirjgC0.js                       [39m[1m[2m    1.80 kB[22m[22m[2m │ gzip:   0.82 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mchunk-6z4oVpB-.js                                       [39m[1m[2m    1.87 kB[22m[22m[2m │ gzip:   0.83 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mapiKeys.store-CRdEaV20.js                               [39m[1m[2m    1.90 kB[22m[22m[2m │ gzip:   0.67 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mKeyboardShortcutTooltip-6h8soiEn.js                     [39m[1m[2m    1.92 kB[22m[22m[2m │ gzip:   0.78 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsChartTotal-f6iwgPv4.js                          [39m[1m[2m    1.96 kB[22m[22m[2m │ gzip:   0.89 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdateFormatter-jkly8a5N.js                               [39m[1m[2m    1.98 kB[22m[22m[2m │ gzip:   0.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36minsights.constants-DK2g3nnD.js                          [39m[1m[2m    2.00 kB[22m[22m[2m │ gzip:   0.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsChartFailureRate-D7MEDAWL.js                    [39m[1m[2m    2.03 kB[22m[22m[2m │ gzip:   0.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mroles.store-D-RKFTyd.js                                 [39m[1m[2m    2.11 kB[22m[22m[2m │ gzip:   0.71 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mpreload-helper-CR0ecmWK.js                              [39m[1m[2m    2.13 kB[22m[22m[2m │ gzip:   1.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowTagsDropdown-C3uNjQxX.js                        [39m[1m[2m    2.14 kB[22m[22m[2m │ gzip:   0.88 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mtemplateTransforms-D3rpuzwV.js                          [39m[1m[2m    2.15 kB[22m[22m[2m │ gzip:   0.64 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mLogsPanel-CqO6Gixo.js                                   [39m[1m[2m    2.18 kB[22m[22m[2m │ gzip:   0.98 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mAnnotationTagsDropdown.ee-BFEOUomc.js                   [39m[1m[2m    2.20 kB[22m[22m[2m │ gzip:   0.90 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCollectionParameter-B9sjwa64.js                         [39m[1m[2m    2.21 kB[22m[22m[2m │ gzip:   0.99 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsChartAverageRuntime-B9_qwMgO.js                 [39m[1m[2m    2.24 kB[22m[22m[2m │ gzip:   1.03 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36musePageRedirectionHelper-D5bWMNPq.js                    [39m[1m[2m    2.29 kB[22m[22m[2m │ gzip:   0.79 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsChartTimeSaved-BjEX9cpj.js                      [39m[1m[2m    2.33 kB[22m[22m[2m │ gzip:   1.08 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowOnboardingView-DVPrtvi1.js                      [39m[1m[2m    2.40 kB[22m[22m[2m │ gzip:   0.95 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mnodeTransforms-CZhsZqyQ.js                              [39m[1m[2m    2.46 kB[22m[22m[2m │ gzip:   0.78 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectIcon-BF9toYLX.js                                 [39m[1m[2m    2.49 kB[22m[22m[2m │ gzip:   1.01 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSelectedItemsInfo-RFkjFTo0.js                           [39m[1m[2m    2.56 kB[22m[22m[2m │ gzip:   0.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSamlOnboarding-CnWWPDnZ.js                              [39m[1m[2m    2.58 kB[22m[22m[2m │ gzip:   1.13 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36minsights.store-r2r-xjgy.js                              [39m[1m[2m    2.59 kB[22m[22m[2m │ gzip:   0.77 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36minsights.utils-7zZgNSKk.js                              [39m[1m[2m    2.60 kB[22m[22m[2m │ gzip:   0.84 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mnodeIcon-s08eTOBG.js                                    [39m[1m[2m    2.64 kB[22m[22m[2m │ gzip:   0.81 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSetupWorkflowCredentialsButton-5zjtOD5z.js              [39m[1m[2m    2.72 kB[22m[22m[2m │ gzip:   1.14 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mDemoFooter-cU-pVGFq.js                                  [39m[1m[2m    2.74 kB[22m[22m[2m │ gzip:   1.26 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museKeybindings-BzhrKUeF.js                              [39m[1m[2m    2.84 kB[22m[22m[2m │ gzip:   1.15 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mErrorView-MM8vENd-.js                                   [39m[1m[2m    2.84 kB[22m[22m[2m │ gzip:   1.13 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsPaywall-8kDqYJpU.js                             [39m[1m[2m    2.84 kB[22m[22m[2m │ gzip:   1.11 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mmcp.store-B4BjHmWx.js                                   [39m[1m[2m    2.86 kB[22m[22m[2m │ gzip:   0.95 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mDataTableActions-BGhnSzu8.js                            [39m[1m[2m    2.87 kB[22m[22m[2m │ gzip:   1.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEntityUnAuthorised-DLJcKpKV.js                          [39m[1m[2m    2.94 kB[22m[22m[2m │ gzip:   1.23 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeIcon-dvoH9MzW.js                                    [39m[1m[2m    2.98 kB[22m[22m[2m │ gzip:   1.04 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplatesView-OeVmy-U6.js                               [39m[1m[2m    2.98 kB[22m[22m[2m │ gzip:   0.99 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mtemplateActions-B5qWUgqX.js                             [39m[1m[2m    2.98 kB[22m[22m[2m │ gzip:   1.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTextWithHighlights-B8mQwCVK.js                          [39m[1m[2m    3.03 kB[22m[22m[2m │ gzip:   1.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCopyInput-CDC3D_KB.js                                   [39m[1m[2m    3.13 kB[22m[22m[2m │ gzip:   1.20 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEntityNotFound-Dc69BhZI.js                              [39m[1m[2m    3.15 kB[22m[22m[2m │ gzip:   1.14 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCredentialIcon-CVSxGfx3.js                              [39m[1m[2m    3.18 kB[22m[22m[2m │ gzip:   1.12 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSaveButton-D482Uokx.js                                  [39m[1m[2m    3.20 kB[22m[22m[2m │ gzip:   1.13 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museExecutionHelpers-Dr4ZNNNr.js                         [39m[1m[2m    3.24 kB[22m[22m[2m │ gzip:   1.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mForgotMyPasswordView-DTHJV-Hu.js                        [39m[1m[2m    3.43 kB[22m[22m[2m │ gzip:   1.38 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSetupView-Bk4df0YH.js                                   [39m[1m[2m    3.44 kB[22m[22m[2m │ gzip:   1.31 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectBreadcrumb-C1ihPq6g.js                           [39m[1m[2m    3.69 kB[22m[22m[2m │ gzip:   1.30 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mschemaPreview.store-B_rDLRSh.js                         [39m[1m[2m    3.72 kB[22m[22m[2m │ gzip:   1.43 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mFileSaver.min-CR_3Le5x.js                               [39m[1m[2m    3.82 kB[22m[22m[2m │ gzip:   1.59 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mnpsSurvey.store-Y15Abk2P.js                             [39m[1m[2m    3.84 kB[22m[22m[2m │ gzip:   1.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museWorkflowActivate-CsPlXA1Y.js                         [39m[1m[2m    3.98 kB[22m[22m[2m │ gzip:   1.26 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36musage.store-gscjBt0T.js                                 [39m[1m[2m    4.05 kB[22m[22m[2m │ gzip:   1.22 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mexternalSecrets.ee.store-qUfx8w_o.js                    [39m[1m[2m    4.19 kB[22m[22m[2m │ gzip:   1.25 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTimeAgo-CBD_49sM.js                                     [39m[1m[2m    4.26 kB[22m[22m[2m │ gzip:   1.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mchartjs.utils-DrHDj0Lr.js                               [39m[1m[2m    4.29 kB[22m[22m[2m │ gzip:   1.05 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mchatPanel.store-CqioDaa1.js                             [39m[1m[2m    4.34 kB[22m[22m[2m │ gzip:   1.29 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mMainSidebarUserArea-DOr4_mm0.js                         [39m[1m[2m    4.35 kB[22m[22m[2m │ gzip:   1.56 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mcol-BKXir7j-.js                                         [39m[1m[2m    4.40 kB[22m[22m[2m │ gzip:   1.37 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSignupView-B8A7hd4_.js                                  [39m[1m[2m    4.45 kB[22m[22m[2m │ gzip:   1.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mDraggable-CRAacM9l.js                                   [39m[1m[2m    4.53 kB[22m[22m[2m │ gzip:   1.51 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museRecentResources-62glP5qp.js                          [39m[1m[2m    4.54 kB[22m[22m[2m │ gzip:   1.50 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mAuthView-BHf1cWSy.js                                    [39m[1m[2m    4.58 kB[22m[22m[2m │ gzip:   1.56 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdist-BCqe3G7U.js                                        [39m[1m[2m    4.60 kB[22m[22m[2m │ gzip:   1.52 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museExecutionDebugging-BPgwIKuy.js                       [39m[1m[2m    4.84 kB[22m[22m[2m │ gzip:   1.71 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36men-BYTsM8fR.js                                          [39m[1m[2m    4.85 kB[22m[22m[2m │ gzip:   1.74 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mChangePasswordView-BicZ-kKZ.js                          [39m[1m[2m    4.91 kB[22m[22m[2m │ gzip:   1.73 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowExecutionsLandingPage-B2vVSOEd.js               [39m[1m[2m    4.91 kB[22m[22m[2m │ gzip:   1.70 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mAddDataTableModal-PdMYuWU2.js                           [39m[1m[2m    5.05 kB[22m[22m[2m │ gzip:   1.83 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdateformat-D7TIhVd4.js                                  [39m[1m[2m    5.28 kB[22m[22m[2m │ gzip:   1.98 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museWorkflowsCache-aVNrPd1_.js                           [39m[1m[2m    5.30 kB[22m[22m[2m │ gzip:   1.44 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msso.store-DOTrwj6-.js                                   [39m[1m[2m    5.56 kB[22m[22m[2m │ gzip:   1.35 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataSearch-BMZ2dSkM.js                               [39m[1m[2m    5.57 kB[22m[22m[2m │ gzip:   2.03 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museDebounce-BRhQZVIC.js                                 [39m[1m[2m    5.60 kB[22m[22m[2m │ gzip:   1.76 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mcloudPlan.store-BZZJEbxe.js                             [39m[1m[2m    5.67 kB[22m[22m[2m │ gzip:   1.80 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36moverlay-7X9NqKTM.js                                     [39m[1m[2m    5.73 kB[22m[22m[2m │ gzip:   1.96 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplateDetails-HYa8eZLw.js                             [39m[1m[2m    6.58 kB[22m[22m[2m │ gzip:   1.82 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mlogStreaming.store-CC7tQNNl.js                          [39m[1m[2m    6.71 kB[22m[22m[2m │ gzip:   1.72 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdataTable.store-J_UsVXeq.js                             [39m[1m[2m    6.92 kB[22m[22m[2m │ gzip:   1.65 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mModal-BGWjZIsD.js                                       [39m[1m[2m    7.02 kB[22m[22m[2m │ gzip:   2.24 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mPrebuiltAgentTemplatesView-7euBfcTP.js                  [39m[1m[2m    7.20 kB[22m[22m[2m │ gzip:   1.87 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mexecutions.store-CsY4ADwb.js                            [39m[1m[2m    7.21 kB[22m[22m[2m │ gzip:   1.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowPreview-CmcS6P_T.js                             [39m[1m[2m    7.24 kB[22m[22m[2m │ gzip:   2.11 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mversions.store-CwIXENsC.js                              [39m[1m[2m    7.53 kB[22m[22m[2m │ gzip:   2.26 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplatesWorkflowView-D7_44qBp.js                       [39m[1m[2m    7.61 kB[22m[22m[2m │ gzip:   2.40 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataParsedAiContent-CPQktL1q.js                      [39m[1m[2m    7.81 kB[22m[22m[2m │ gzip:   2.54 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsSummary-DwccM8Wr.js                             [39m[1m[2m    7.83 kB[22m[22m[2m │ gzip:   2.41 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplatesCollectionView-C3S2sWJd.js                     [39m[1m[2m    7.99 kB[22m[22m[2m │ gzip:   2.50 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36musePinnedData-CCzK9ivW.js                               [39m[1m[2m    8.04 kB[22m[22m[2m │ gzip:   2.35 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTagsDropdown-CLEcxXxg.js                                [39m[1m[2m    8.08 kB[22m[22m[2m │ gzip:   2.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectCardBadge-d250kc-o.js                            [39m[1m[2m    8.14 kB[22m[22m[2m │ gzip:   2.17 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mfolders.store-D-m0trjE.js                               [39m[1m[2m    8.23 kB[22m[22m[2m │ gzip:   2.24 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mfocusPanel.store-DKIXJgU-.js                            [39m[1m[2m    8.35 kB[22m[22m[2m │ gzip:   2.79 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowExecutionsInfoAccordion-pONnkux0.js             [39m[1m[2m    8.67 kB[22m[22m[2m │ gzip:   2.32 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mModalDrawer-BFRylyzn.js                                 [39m[1m[2m    8.91 kB[22m[22m[2m │ gzip:   2.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataJson-DxStf8BX.js                                 [39m[1m[2m    9.25 kB[22m[22m[2m │ gzip:   2.96 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mradio-CQQTLzd3.js                                       [39m[1m[2m    9.43 kB[22m[22m[2m │ gzip:   2.52 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsView-Cx85l0HP.js                                [39m[1m[2m    9.55 kB[22m[22m[2m │ gzip:   2.63 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsTableWorkflows-dkw716l8.js                      [39m[1m[2m    9.71 kB[22m[22m[2m │ gzip:   3.01 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectRolesView-rA04_G6A.js                            [39m[1m[2m    9.81 kB[22m[22m[2m │ gzip:   2.97 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museActions-BrgK7_1W.js                                  [39m[1m[2m    9.89 kB[22m[22m[2m │ gzip:   2.88 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mpath-browserify-DsmB_HMK.js                             [39m[1m[2m   10.17 kB[22m[22m[2m │ gzip:   2.48 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museWorkflowSaving-B21LkYQO.js                           [39m[1m[2m   10.45 kB[22m[22m[2m │ gzip:   2.88 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectSharing-BGCOlL5_.js                              [39m[1m[2m   10.83 kB[22m[22m[2m │ gzip:   2.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeCreation-CJXoPd7l.js                                [39m[1m[2m   11.19 kB[22m[22m[2m │ gzip:   3.53 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsExternalSecrets-DfSZgCV5.js                     [39m[1m[2m   11.28 kB[22m[22m[2m │ gzip:   3.15 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mevaluation.constants-YSAHERNe.js                        [39m[1m[2m   11.39 kB[22m[22m[2m │ gzip:   3.71 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mpersonalizedTemplatesV3.store-oDsRBcJ8.js               [39m[1m[2m   11.84 kB[22m[22m[2m │ gzip:   3.09 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museBugReporting-BU3dZS32.js                             [39m[1m[2m   11.86 kB[22m[22m[2m │ gzip:   3.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCommunityNodeUpdateInfo-CJwgtx3_.js                     [39m[1m[2m   11.87 kB[22m[22m[2m │ gzip:   3.27 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mDataTableView-B2rV6P26.js                               [39m[1m[2m   12.11 kB[22m[22m[2m │ gzip:   3.52 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSetupWorkflowFromTemplateView-CVrf6Ve_.js               [39m[1m[2m   12.15 kB[22m[22m[2m │ gzip:   3.40 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mtemplates.store-DNlf8Hem.js                             [39m[1m[2m   12.54 kB[22m[22m[2m │ gzip:   3.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplateList-C_aujR6f.js                                [39m[1m[2m   12.69 kB[22m[22m[2m │ gzip:   3.09 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsProvisioningView-12BXr0H3.js                    [39m[1m[2m   12.86 kB[22m[22m[2m │ gzip:   2.84 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSigninView-zp2DnwxG.js                                  [39m[1m[2m   13.64 kB[22m[22m[2m │ gzip:   3.94 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdialog-B1PMwi6J.js                                      [39m[1m[2m   13.71 kB[22m[22m[2m │ gzip:   4.08 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsUsageAndPlan-DIQa0QRO.js                        [39m[1m[2m   13.90 kB[22m[22m[2m │ gzip:   3.64 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsApiView-CJ4IZpZs.js                             [39m[1m[2m   14.05 kB[22m[22m[2m │ gzip:   3.91 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mChatSidebar-DIuUG0TC.js                                 [39m[1m[2m   14.74 kB[22m[22m[2m │ gzip:   4.20 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mFixedCollectionParameter-CvPi8tIu.js                    [39m[1m[2m   15.01 kB[22m[22m[2m │ gzip:   4.24 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mreadyToRunWorkflowsV2.store-CPm4iFG9.js                 [39m[1m[2m   15.85 kB[22m[22m[2m │ gzip:   4.42 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museChatHubSidebarState-D7uN6j-5.js                      [39m[1m[2m   15.96 kB[22m[22m[2m │ gzip:   3.75 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museToast-BymzUoA-.js                                    [39m[1m[2m   16.36 kB[22m[22m[2m │ gzip:   5.62 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsPersonalView-CKvvmz48.js                        [39m[1m[2m   16.70 kB[22m[22m[2m │ gzip:   4.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectRoleView-DVIpqlFp.js                             [39m[1m[2m   16.73 kB[22m[22m[2m │ gzip:   4.09 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mExternalSecretsProviderConnectionSwitch.ee-iQyzjnx1.js  [39m[1m[2m   16.88 kB[22m[22m[2m │ gzip:   8.21 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsCommunityNodesView-DfldPPZU.js                  [39m[1m[2m   17.20 kB[22m[22m[2m │ gzip:   4.37 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowActivator-nOc4R63P.js                           [39m[1m[2m   17.30 kB[22m[22m[2m │ gzip:   4.58 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsLogStreamingView-Do30VYIa.js                    [39m[1m[2m   17.52 kB[22m[22m[2m │ gzip:   4.57 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSetupTemplateFormStep-CRVkAQeX.js                       [39m[1m[2m   18.16 kB[22m[22m[2m │ gzip:   4.45 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTestRunDetailView-Bnt9bHBH.js                           [39m[1m[2m   18.19 kB[22m[22m[2m │ gzip:   4.55 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEvaluationsView-CIfTFt8f.js                             [39m[1m[2m   18.67 kB[22m[22m[2m │ gzip:   4.96 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mVariablesView-CEIWikKt.js                               [39m[1m[2m   18.96 kB[22m[22m[2m │ gzip:   5.22 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36micon-C8yfF1LY.js                                        [39m[1m[2m   19.52 kB[22m[22m[2m │ gzip:   4.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectVariables-Av2azBl7.js                            [39m[1m[2m   20.74 kB[22m[22m[2m │ gzip:   5.60 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCredentialsView-BM_LPl6g.js                             [39m[1m[2m   21.04 kB[22m[22m[2m │ gzip:   5.89 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36musePushConnection-CHaf6qlM.js                           [39m[1m[2m   21.70 kB[22m[22m[2m │ gzip:   5.24 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museMessage-BTM3qg4I.js                                  [39m[1m[2m   22.49 kB[22m[22m[2m │ gzip:   5.87 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mInsightsDashboard-RkJHGIFF.js                           [39m[1m[2m   22.91 kB[22m[22m[2m │ gzip:   6.05 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mExecutionsTime-3YIzN_7z.js                              [39m[1m[2m   22.97 kB[22m[22m[2m │ gzip:   4.67 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectHeader-BWXCtRWz.js                               [39m[1m[2m   23.14 kB[22m[22m[2m │ gzip:   5.47 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkerView-CoYdGqF1.js                                  [39m[1m[2m   23.88 kB[22m[22m[2m │ gzip:   5.73 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsSso-DjcWLBpy.js                                 [39m[1m[2m   23.95 kB[22m[22m[2m │ gzip:   5.10 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mEvaluationsRootView-Bl6BzVPg.js                         [39m[1m[2m   23.96 kB[22m[22m[2m │ gzip:   5.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mbuttons.esm-CnepylvE.js                                 [39m[1m[2m   24.60 kB[22m[22m[2m │ gzip:   7.53 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsSourceControl-CQw1vZVY.js                       [39m[1m[2m   24.99 kB[22m[22m[2m │ gzip:   4.95 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mvue-json-pretty-DiH9ZFoW.js                             [39m[1m[2m   25.13 kB[22m[22m[2m │ gzip:   6.51 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsMCPView-BroxoG3D.js                             [39m[1m[2m   25.27 kB[22m[22m[2m │ gzip:   5.77 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mmerge-Db6rb1_m.js                                       [39m[1m[2m   27.11 kB[22m[22m[2m │ gzip:   5.68 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataTable-CTvwaNYa.js                                [39m[1m[2m   27.33 kB[22m[22m[2m │ gzip:   6.67 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowExecutionsPreview-D08afctM.js                   [39m[1m[2m   28.11 kB[22m[22m[2m │ gzip:   6.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowHistory-6xqFW-7T.js                             [39m[1m[2m   30.16 kB[22m[22m[2m │ gzip:   7.11 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsUsersView-DoofPt2Y.js                           [39m[1m[2m   31.28 kB[22m[22m[2m │ gzip:   7.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mResourcesListLayout-R9wwLmzN.js                         [39m[1m[2m   32.78 kB[22m[22m[2m │ gzip:   7.80 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowExecutionsView-EMwIwzJi.js                      [39m[1m[2m   34.04 kB[22m[22m[2m │ gzip:   7.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mExecutionsView-CXHu38pl.js                              [39m[1m[2m   35.78 kB[22m[22m[2m │ gzip:   7.89 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museLogsTreeExpand-CaQCKWVW.js                           [39m[1m[2m   36.87 kB[22m[22m[2m │ gzip:   9.41 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museRunWorkflow-PZgaMHxj.js                              [39m[1m[2m   36.92 kB[22m[22m[2m │ gzip:   9.54 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mItemsRenderer-Bar_1Ome.js                               [39m[1m[2m   37.79 kB[22m[22m[2m │ gzip:   8.07 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mxml-CcxXd9zY.js                                         [39m[1m[2m   37.98 kB[22m[22m[2m │ gzip:   7.96 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mProjectSettings-DFR5vbjM.js                             [39m[1m[2m   38.13 kB[22m[22m[2m │ gzip:   8.06 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mcore-BfCr8skN.js                                        [39m[1m[2m   38.30 kB[22m[22m[2m │ gzip:  10.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeDetailsViewV2-D4VBwIJk.js                           [39m[1m[2m   39.23 kB[22m[22m[2m │ gzip:   9.86 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36massistant.store-CId6QwY6.js                             [39m[1m[2m   41.03 kB[22m[22m[2m │ gzip:   9.32 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTemplatesSearchView-BwB0j8jg.js                         [39m[1m[2m   44.35 kB[22m[22m[2m │ gzip:  10.50 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeDetailsView-BvN6oD5J.js                             [39m[1m[2m   44.39 kB[22m[22m[2m │ gzip:  10.49 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mMainSidebar-sVF-HnDQ.js                                 [39m[1m[2m   44.85 kB[22m[22m[2m │ gzip:   9.71 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mChatView-CbTfkdEI.js                                    [39m[1m[2m   48.17 kB[22m[22m[2m │ gzip:  11.02 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msemver-VVlbnk-5.js                                      [39m[1m[2m   50.96 kB[22m[22m[2m │ gzip:  11.18 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mTriggerPanel-BuChSfKP.js                                [39m[1m[2m   54.95 kB[22m[22m[2m │ gzip:  11.84 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mnodeCreator.store-h2dpj__O.js                           [39m[1m[2m   55.15 kB[22m[22m[2m │ gzip:  13.19 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mreadyToRunWorkflows.store-D5Dp2K1d.js                   [39m[1m[2m   59.50 kB[22m[22m[2m │ gzip:  14.63 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mexports-RJH1xso1.js                                     [39m[1m[2m   61.43 kB[22m[22m[2m │ gzip:  15.92 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mrouter-0XD8_5U4.js                                      [39m[1m[2m   62.06 kB[22m[22m[2m │ gzip:  14.79 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeCreator-B05fSyc1.js                                 [39m[1m[2m   63.22 kB[22m[22m[2m │ gzip:  14.16 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museCommandBar-B2hIl6_W.js                               [39m[1m[2m   64.96 kB[22m[22m[2m │ gzip:  12.00 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mMainHeader-BpL7tkeH.js                                  [39m[1m[2m   66.86 kB[22m[22m[2m │ gzip:  16.16 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mSettingsLdapView-DPY98JsM.js                            [39m[1m[2m   70.68 kB[22m[22m[2m │ gzip:  14.36 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museCanvasOperations-CQguuQto.js                         [39m[1m[2m   70.77 kB[22m[22m[2m │ gzip:  15.86 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeSettings-DESNdjGo.js                                [39m[1m[2m   81.89 kB[22m[22m[2m │ gzip:  17.79 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mVirtualSchema-D9ofq76a.js                               [39m[1m[2m   84.98 kB[22m[22m[2m │ gzip:  22.41 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mempty-BuGRxzl4.js                                       [39m[1m[2m   89.28 kB[22m[22m[2m │ gzip:  18.85 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mLogsPanel-bqVHTmjw.js                                   [39m[1m[2m  100.98 kB[22m[22m[2m │ gzip:  22.90 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNodeView-BZYoE5qY.js                                    [39m[1m[2m  104.23 kB[22m[22m[2m │ gzip:  23.89 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mWorkflowsView-CPJKqqm5.js                               [39m[1m[2m  131.26 kB[22m[22m[2m │ gzip:  24.52 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mtable-CHLBPsGV.js                                       [39m[1m[2m  137.67 kB[22m[22m[2m │ gzip:  33.64 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mtruncate-Dc79aML5.js                                    [39m[1m[2m  137.94 kB[22m[22m[2m │ gzip:  34.84 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mvue-B27A1Apg.js                                         [39m[1m[2m  154.13 kB[22m[22m[2m │ gzip:  38.44 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mdate-picker-7Ic5qEVm.js                                 [39m[1m[2m  157.50 kB[22m[22m[2m │ gzip:  32.34 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mRunDataJsonActions-CYdhlXp6.js                          [39m[1m[2m  178.82 kB[22m[22m[2m │ gzip:  38.16 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mvue.runtime.esm-bundler-DDuXT-9r.js                     [39m[1m[2m  274.44 kB[22m[22m[2m │ gzip:  69.13 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museImportCurlCommand-CQtvZvdR.js                        [39m[1m[2m  313.74 kB[22m[22m[2m │ gzip:  63.46 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mlanguageModules-B8UNBljm.js                             [39m[1m[2m  323.45 kB[22m[22m[2m │ gzip:  89.88 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mchart-inxSB4fp.js                                       [39m[1m[2m  348.73 kB[22m[22m[2m │ gzip:  86.01 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msanitize-html-BuXr7o4T.js                               [39m[1m[2m  365.28 kB[22m[22m[2m │ gzip:  94.76 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mCanvas-CquOVLY9.js                                      [39m[1m[2m  440.21 kB[22m[22m[2m │ gzip: 100.06 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36m_MapCache-BGBKpT5S.js                                   [39m[1m[2m  495.05 kB[22m[22m[2m │ gzip: 112.29 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mNDVEmptyState-DAsAh3NE.js                               [39m[1m[33m  727.35 kB[39m[22m[2m │ gzip: 183.66 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36museTelemetry-TR93hZEL.js                                [39m[1m[33m1,010.53 kB[39m[22m[2m │ gzip: 239.83 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mindex-CAd2Jz32.js                                       [39m[1m[33m1,071.14 kB[39m[22m[2m │ gzip: 226.20 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mes-BO7MlKL2.js                                          [39m[1m[33m1,227.54 kB[39m[22m[2m │ gzip: 335.25 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36misEmpty-1gc-6K5C.js                                     [39m[1m[33m1,337.51 kB[39m[22m[2m │ gzip: 333.32 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mParameterInputList-Dv8tlC9k.js                          [39m[1m[33m1,396.25 kB[39m[22m[2m │ gzip: 346.24 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mDataTableDetailsView-C1B2-Bgb.js                        [39m[1m[33m1,584.98 kB[39m[22m[2m │ gzip: 354.23 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36msrc-DHpCiny0.js                                         [39m[1m[33m1,804.99 kB[39m[22m[2m │ gzip: 390.89 kB[22m
+n8n-editor-ui:build: [2mdist/[22m[2massets/[22m[36mconstants-y8l1Juio.js                                   [39m[1m[33m2,624.39 kB[39m[22m[2m │ gzip: 506.71 kB[22m
+n8n-editor-ui:build: [33m[EVAL] Warning:[0m Use of `eval` function is strongly discouraged as it poses security risks and may cause issues with minification.
+n8n-editor-ui:build:       [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../node_modules/.pnpm/web-tree-sitter@0.24.3/node_modules/web-tree-sitter/tree-sitter.js:1195:37 [38;5;246m][0m
+n8n-editor-ui:build:       [38;5;246m│[0m
+n8n-editor-ui:build:  [38;5;246m1195 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mA[0m[38;5;249mS[0m[38;5;249mM[0m[38;5;249m_[0m[38;5;249mC[0m[38;5;249mO[0m[38;5;249mN[0m[38;5;249mS[0m[38;5;249mT[0m[38;5;249mS[0m[38;5;249m[[0m[38;5;249ms[0m[38;5;249mt[0m[38;5;249ma[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249m][0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0meval[38;5;249m([0m[38;5;249mf[0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249mc[0m[38;5;249m)[0m[38;5;249m;[0m
+n8n-editor-ui:build:  [38;5;240m     │[0m                                     ──┬─  
+n8n-editor-ui:build:  [38;5;240m     │[0m                                       ╰─── Use of `eval` function here.
+n8n-editor-ui:build: [38;5;246m──────╯[0m
+n8n-editor-ui:build: 
+n8n-editor-ui:build: [33m[EVAL] Warning:[0m Use of `eval` function is strongly discouraged as it poses security risks and may cause issues with minification.
+n8n-editor-ui:build:       [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m ../../../node_modules/.pnpm/web-tree-sitter@0.24.3/node_modules/web-tree-sitter/tree-sitter.js:1221:39 [38;5;246m][0m
+n8n-editor-ui:build:       [38;5;246m│[0m
+n8n-editor-ui:build:  [38;5;246m1221 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249mm[0m[38;5;249mo[0m[38;5;249md[0m[38;5;249mu[0m[38;5;249ml[0m[38;5;249me[0m[38;5;249mE[0m[38;5;249mx[0m[38;5;249mp[0m[38;5;249mo[0m[38;5;249mr[0m[38;5;249mt[0m[38;5;249ms[0m[38;5;249m[[0m[38;5;249mn[0m[38;5;249ma[0m[38;5;249mm[0m[38;5;249me[0m[38;5;249m][0m[38;5;249m [0m[38;5;249m=[0m[38;5;249m [0meval[38;5;249m([0m[38;5;249mf[0m[38;5;249mu[0m[38;5;249mn[0m[38;5;249mc[0m[38;5;249m)[0m[38;5;249m;[0m
+n8n-editor-ui:build:  [38;5;240m     │[0m                                       ──┬─  
+n8n-editor-ui:build:  [38;5;240m     │[0m                                         ╰─── Use of `eval` function here.
+n8n-editor-ui:build: [38;5;246m──────╯[0m
+n8n-editor-ui:build: 
+n8n-editor-ui:build: ✓ built in 49.43s
+n8n:build: cache miss, executing 591db829c8a6d48e
+n8n:build: 
+n8n:build: > n8n@1.117.0 build /home/alch33my/Desktop/n8n/packages/cli
+n8n:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data
+n8n:build: 
+n8n:build: 
+n8n:build: > n8n@1.117.0 build:data /home/alch33my/Desktop/n8n/packages/cli
+n8n:build: > node scripts/build.mjs
+n8n:build: 
+
+ Tasks:    41 successful, 41 total
+Cached:    0 cached, 41 total
+  Time:    2m14.21s 
+
