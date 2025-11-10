@@ -1,5 +1,5 @@
-import type { CredentialsEntity, SharedCredentials, User } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import type { SharedCredentials, User } from '@n8n/db';
+import { CredentialsEntity, CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import type { CredentialSharingRole, ProjectRole, Scope } from '@n8n/permissions';
@@ -47,7 +47,26 @@ export class CredentialsFinderService {
 			};
 		}
 
-		return await this.credentialsRepository.find({ where, relations: { shared: true } });
+		const credentials = await this.credentialsRepository.find({
+			where,
+			relations: { shared: true },
+		});
+
+		// Also include global credentials
+		const globalCredentials = await this.credentialsRepository.find({
+			where: { isAvailableForAllUsers: true },
+			relations: { shared: true },
+		});
+
+		// Merge and deduplicate based on credential ID
+		const credentialMap = new Map(credentials.map((c) => [c.id, c]));
+		for (const globalCred of globalCredentials) {
+			if (!credentialMap.has(globalCred.id)) {
+				credentials.push(globalCred);
+			}
+		}
+
+		return credentials;
 	}
 
 	/** Get a credential if it has been shared with a user */
@@ -109,7 +128,32 @@ export class CredentialsFinderService {
 			trx,
 		);
 
-		return sharedCredential.map((sc) => ({ ...sc.credentials, projectId: sc.projectId }));
+		const sharedCredentialsList = sharedCredential.map((sc) => ({
+			...sc.credentials,
+			projectId: sc.projectId,
+		}));
+
+		// Also include global credentials
+		const em = trx ?? this.credentialsRepository.manager;
+		const globalCredentials = await em.find(CredentialsEntity, {
+			where: { isAvailableForAllUsers: true },
+			relations: { shared: true },
+		});
+
+		// Merge and deduplicate based on credential ID
+		const credentialMap = new Map(sharedCredentialsList.map((c) => [c.id, c]));
+		for (const globalCred of globalCredentials) {
+			if (!credentialMap.has(globalCred.id)) {
+				// For global credentials, use the owner's project ID
+				const ownerSharing = globalCred.shared?.find((s) => s.role === 'credential:owner');
+				const projectId = ownerSharing?.projectId;
+				if (projectId) {
+					sharedCredentialsList.push({ ...globalCred, projectId });
+				}
+			}
+		}
+
+		return sharedCredentialsList;
 	}
 
 	async getCredentialIdsByUserAndRole(

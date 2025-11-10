@@ -3,6 +3,7 @@ import {
 	type User,
 	type SharedCredentialsRepository,
 	type CredentialsRepository,
+	CredentialsEntity,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -115,9 +116,11 @@ describe('CredentialsPermissionChecker', () => {
 	it('should allow global credentials for personal projects', async () => {
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
-		credentialsRepository.findBy.mockResolvedValueOnce([
-			mock({ id: credentialId, isAvailableForAllUsers: true }),
-		]);
+		const globalCredential = mock<CredentialsEntity>({
+			id: credentialId,
+			isAvailableForAllUsers: true,
+		});
+		credentialsRepository.findBy.mockResolvedValueOnce([globalCredential]);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
 
