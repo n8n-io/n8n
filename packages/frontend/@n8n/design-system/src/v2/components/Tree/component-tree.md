@@ -39,7 +39,7 @@ By default, it uses `IMenuItem` but can be used with custom types for different 
 
 **Slots**
 
-- `default`: `{ item: FlattenedItem<T>; handleToggle: () => void; isExpanded: boolean, hasChildren: boolean }` - Main content for each tree item.
+- `default`: `{ item: FlattenedItem<T>; handleToggle: () => void; handleSelect: () => void; isExpanded: boolean, hasChildren: boolean }` - Main content for each tree item.
 ### Template usage example
 
 #### Basic Usage (with IMenuItem - and MenuItem component)
