@@ -78,13 +78,45 @@ export function shouldModifyState(
 		return 'create_workflow_name';
 	}
 
+	const workflowContextToAppend = getWorkflowContext(state);
+
 	// Check if we should auto-compact based on token count
-	const estimatedTokens = estimateTokenCountFromMessages(messages);
+	const estimatedTokens = estimateTokenCountFromMessages([
+		...messages,
+		// appended later to last message
+		new HumanMessage(workflowContextToAppend),
+	]);
 	if (estimatedTokens > autoCompactThresholdTokens) {
 		return 'auto_compact_messages';
 	}
 
 	return 'agent';
+}
+
+function getWorkflowContext(state: typeof WorkflowState.State) {
+	const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
+	const executionData = state.workflowContext?.executionData ?? {};
+	const executionSchema = state.workflowContext?.executionSchema ?? [];
+	const workflowContext = [
+		'',
+		'<current_workflow_json>',
+		JSON.stringify(trimmedWorkflow),
+		'</current_workflow_json>',
+		'<trimmed_workflow_json_note>',
+		'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
+		'Use get_node_parameter tool to get full details when needed.',
+		'</trimmed_workflow_json_note>',
+		'',
+		'<current_simplified_execution_data>',
+		JSON.stringify(executionData),
+		'</current_simplified_execution_data>',
+		'',
+		'<current_execution_nodes_schemas>',
+		JSON.stringify(executionSchema),
+		'</current_execution_nodes_schemas>',
+	].join('\n');
+
+	return workflowContext;
 }
 
 export interface WorkflowBuilderAgentConfig {
@@ -168,9 +200,6 @@ export class WorkflowBuilderAgent {
 			}
 
 			const hasPreviousSummary = state.previousSummary && state.previousSummary !== 'EMPTY';
-			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
-			const executionData = state.workflowContext?.executionData ?? {};
-			const executionSchema = state.workflowContext?.executionSchema ?? [];
 
 			const prompt = await mainAgentPrompt.invoke({
 				...state,
@@ -182,24 +211,7 @@ export class WorkflowBuilderAgent {
 				previousSummary: hasPreviousSummary ? state.previousSummary : '',
 			});
 
-			const workflowContext = [
-				'',
-				'<current_workflow_json>',
-				JSON.stringify(trimmedWorkflow, null, 2),
-				'</current_workflow_json>',
-				'<trimmed_workflow_json_note>',
-				'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
-				'Use get_node_parameter tool to get full details when needed.',
-				'</trimmed_workflow_json_note>',
-				'',
-				'<current_simplified_execution_data>',
-				JSON.stringify(executionData, null, 2),
-				'</current_simplified_execution_data>',
-				'',
-				'<current_execution_nodes_schemas>',
-				JSON.stringify(executionSchema, null, 2),
-				'</current_execution_nodes_schemas>',
-			].join('\n');
+			const workflowContext = getWorkflowContext(state);
 
 			// Optimize prompts for Anthropic's caching by:
 			// 1. Finding all user/tool message positions (cache breakpoints)

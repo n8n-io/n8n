@@ -16,7 +16,7 @@ export type UserLike = {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	role: {
+	role?: {
 		slug: string;
 	};
 };

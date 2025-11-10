@@ -829,18 +829,19 @@ describe('GET /workflows', () => {
 	});
 
 	describe('filter', () => {
-		test('should filter workflows by field: name', async () => {
-			await createWorkflow({ name: 'First' }, owner);
-			await createWorkflow({ name: 'Second' }, owner);
+		test('should filter workflows by field: query', async () => {
+			await createWorkflow({ name: 'First', description: 'A workflow' }, owner);
+			await createWorkflow({ name: 'Second', description: 'Also a workflow' }, owner);
+			await createWorkflow({ name: 'Third', description: 'My first workflow' }, owner);
 
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={"name":"First"}')
+				.query('filter={"query":"first"}')
 				.expect(200);
 
 			expect(response.body).toEqual({
-				count: 1,
-				data: [objectContaining({ name: 'First' })],
+				count: 2,
+				data: [objectContaining({ name: 'First' }), objectContaining({ name: 'Third' })],
 			});
 		});
 
@@ -1461,7 +1462,7 @@ describe('GET /workflows', () => {
 			const response = await authOwnerAgent
 				.get('/workflows')
 				.query('take=2&skip=1')
-				.query('filter={"name":"Special"}')
+				.query('filter={"query":"Special"}')
 				.expect(200);
 
 			expect(response.body.data).toHaveLength(2);
@@ -1797,7 +1798,7 @@ describe('GET /workflows?includeFolders=true', () => {
 	});
 
 	describe('filter', () => {
-		test('should filter workflows and folders by field: name', async () => {
+		test('should filter workflows and folders by field: query', async () => {
 			const workflow1 = await createWorkflow({ name: 'First' }, owner);
 			await createWorkflow({ name: 'Second' }, owner);
 
@@ -1806,7 +1807,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			const folder1 = await createFolder(ownerProject, { name: 'First' });
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('filter={"name":"First"}&includeFolders=true')
+				.query('filter={"query":"First"}&includeFolders=true')
 				.expect(200);
 
 			expect(response.body).toEqual({
@@ -1919,7 +1920,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			expect(response2.body.data).toHaveLength(0);
 		});
 
-		test('should filter workflows by parentFolderId and its descendants when filtering by name', async () => {
+		test('should filter workflows by parentFolderId and its descendants when filtering by query', async () => {
 			const pp = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(owner.id);
 
 			await createFolder(pp, {
@@ -1966,7 +1967,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			const filter2Response = await authOwnerAgent
 				.get('/workflows')
 				.query(
-					`filter={ "projectId": "${pp.id}", "parentFolderId": "${rootFolder2.id}", "name": "key" }&includeFolders=true`,
+					`filter={ "projectId": "${pp.id}", "parentFolderId": "${rootFolder2.id}", "query": "key" }&includeFolders=true`,
 				);
 
 			expect(filter2Response.body.count).toBe(4);
@@ -2258,7 +2259,7 @@ describe('GET /workflows?includeFolders=true', () => {
 			const response = await authOwnerAgent
 				.get('/workflows')
 				.query('take=2&skip=1')
-				.query('filter={"name":"Special"}&includeFolders=true')
+				.query('filter={"query":"Special"}&includeFolders=true')
 				.expect(200);
 
 			expect(response.body.data).toHaveLength(2);
