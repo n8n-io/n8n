@@ -173,9 +173,15 @@ const filteredWorkflows = computed(() => {
 	return workflows;
 });
 
-const sortedWorkflows = computed(() =>
-	orderBy(filteredWorkflows.value, [sortBy.value[0].id], [sortBy.value[0].desc ? 'desc' : 'asc']),
-);
+const sortedWorkflows = computed(() => {
+	if (!sortBy.value.length) return filteredWorkflows.value;
+
+	return orderBy(
+		filteredWorkflows.value,
+		[sortBy.value[0].id],
+		[sortBy.value[0].desc ? 'desc' : 'asc'],
+	);
+});
 </script>
 
 <template>
