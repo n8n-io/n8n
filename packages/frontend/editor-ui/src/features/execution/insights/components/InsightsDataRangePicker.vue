@@ -41,7 +41,7 @@ function getDaysDiff({ start, end }: DateRange) {
 	if (!start) return 0;
 	if (!end) return 0;
 
-	return end.compare(start) + 1;
+	return end.compare(start);
 }
 
 function isBeforeOrSame(dateToCompare: DateValue, referenceDate: DateValue): boolean {

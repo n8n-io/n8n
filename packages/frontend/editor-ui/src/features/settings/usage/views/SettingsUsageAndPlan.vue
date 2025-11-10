@@ -103,7 +103,7 @@ const isEulaError = (error: unknown): error is EulaErrorResponse => {
 
 const onLicenseActivation = async (eulaUri?: string) => {
 	try {
-		await usageStore.activateLicense(activationKey.value, eulaUri);
+		await usageStore.activateLicense(activationKey.value.trim(), eulaUri?.trim());
 		activationKeyModal.value = false;
 		eulaModal.value = false;
 		activationKey.value = '';
@@ -321,7 +321,7 @@ const openCommunityRegisterModal = () => {
 					<N8nButton type="secondary" @click="activationKeyModal = false">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 					</N8nButton>
-					<N8nButton :disabled="!activationKey" @click="onLicenseActivation">
+					<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.activate') }}
 					</N8nButton>
 				</template>
