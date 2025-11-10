@@ -4,7 +4,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createPinia, setActivePinia } from 'pinia';
 import userEvent from '@testing-library/user-event';
 import type { WorkflowListItem } from '@/Interface';
-import router from '@/router';
+import router from '@/app/router';
 import { VIEWS } from '@/app/constants';
 
 const renderComponent = createComponentRenderer(WorkflowsTable);
@@ -12,7 +12,7 @@ const renderComponent = createComponentRenderer(WorkflowsTable);
 let pinia: ReturnType<typeof createPinia>;
 
 // Mock router
-vi.mock('@/router', () => ({
+vi.mock('@/app/router', () => ({
 	default: {
 		resolve: vi.fn((route) => ({
 			fullPath: `/mock-path/${route.params?.name || route.params?.projectId}`,
