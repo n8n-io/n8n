@@ -205,4 +205,44 @@ describe('sso/saml/samlHelpers', () => {
 			missingAttributes: [],
 		});
 	});
+
+	test('maps single projectRoles string to array', () => {
+		const flowResult = {
+			extract: {
+				attributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					projectRoles: 'projectRole1',
+				},
+			},
+		} as any;
+		const attributeMapping = {
+			email: 'email',
+			instanceRole: 'instanceRole',
+			firstName: 'firstName',
+			lastName: 'lastName',
+			userPrincipalName: 'userPrincipalName',
+		};
+		const jitClaimNames = {
+			instanceRole: 'instanceRole',
+			projectRoles: 'projectRoles',
+		};
+		const result = helpers.getMappedSamlAttributesFromFlowResult(
+			flowResult,
+			attributeMapping,
+			jitClaimNames,
+		);
+		expect(result).toEqual({
+			attributes: {
+				email: 'test@test.com',
+				firstName: 'test',
+				lastName: 'test',
+				userPrincipalName: 'test',
+				n8nProjectRoles: ['projectRole1'],
+			},
+			missingAttributes: [],
+		});
+	});
 });
