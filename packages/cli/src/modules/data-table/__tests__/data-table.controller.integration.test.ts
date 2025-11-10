@@ -3708,7 +3708,7 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 		const csvContent = 'name,age,email\nAlice,30,alice@example.com\nBob,25,bob@example.com';
 		const uploadResponse = await authOwnerAgent
 			.post('/data-tables/uploads')
-			.attach('file', Buffer.from(csvContent), 'test.csv')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
 			.expect(200);
 
 		const fileId = uploadResponse.body.data.id;
@@ -3760,7 +3760,10 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 			'Customer Id,Full Name,Email Address\n1001,John Doe,john@example.com\n1002,Jane Smith,jane@example.com';
 		const uploadResponse = await authOwnerAgent
 			.post('/data-tables/uploads')
-			.attach('file', Buffer.from(csvContent), 'customers.csv')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'customers.csv',
+				contentType: 'text/csv',
+			})
 			.expect(200);
 
 		const fileId = uploadResponse.body.data.id;
@@ -3810,7 +3813,7 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 		const csvContent = 'name,age\nAlice,30';
 		const uploadResponse = await authOwnerAgent
 			.post('/data-tables/uploads')
-			.attach('file', Buffer.from(csvContent), 'test.csv')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
 			.expect(200);
 
 		const fileId = uploadResponse.body.data.id;
@@ -3852,7 +3855,7 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 		const csvContent = '';
 		const uploadResponse = await authOwnerAgent
 			.post('/data-tables/uploads')
-			.attach('file', Buffer.from(csvContent), 'empty.csv')
+			.attach('file', Buffer.from(csvContent), { filename: 'empty.csv', contentType: 'text/csv' })
 			.expect(200);
 
 		const fileId = uploadResponse.body.data.id;
@@ -3883,7 +3886,10 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 		const csvContent = 'name,age,city';
 		const uploadResponse = await authOwnerAgent
 			.post('/data-tables/uploads')
-			.attach('file', Buffer.from(csvContent), 'headers-only.csv')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'headers-only.csv',
+				contentType: 'text/csv',
+			})
 			.expect(200);
 
 		const fileId = uploadResponse.body.data.id;
@@ -3919,7 +3925,10 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 
 		const uploadResponse = await authOwnerAgent
 			.post('/data-tables/uploads')
-			.attach('file', Buffer.from(csvContent), 'multiple-rows.csv')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'multiple-rows.csv',
+				contentType: 'text/csv',
+			})
 			.expect(200);
 
 		const fileId = uploadResponse.body.data.id;
@@ -3978,7 +3987,7 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 			'name,address\n"John Doe","123 Main St, Apt 4"\n"Jane Smith","456 Oak Ave, Suite 10"';
 		const uploadResponse = await authOwnerAgent
 			.post('/data-tables/uploads')
-			.attach('file', Buffer.from(csvContent), 'quoted.csv')
+			.attach('file', Buffer.from(csvContent), { filename: 'quoted.csv', contentType: 'text/csv' })
 			.expect(200);
 
 		const fileId = uploadResponse.body.data.id;
@@ -4022,7 +4031,7 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 		const csvContent = 'name,city\nJohn Müller,München\nMaría García,São Paulo';
 		const uploadResponse = await authOwnerAgent
 			.post('/data-tables/uploads')
-			.attach('file', Buffer.from(csvContent), 'unicode.csv')
+			.attach('file', Buffer.from(csvContent), { filename: 'unicode.csv', contentType: 'text/csv' })
 			.expect(200);
 
 		const fileId = uploadResponse.body.data.id;
@@ -4067,7 +4076,10 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 			'name,age,active,joinDate\nAlice,30,true,2024-01-15\nBob,25,false,2024-02-20';
 		const uploadResponse = await authOwnerAgent
 			.post('/data-tables/uploads')
-			.attach('file', Buffer.from(csvContent), 'mixed-types.csv')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'mixed-types.csv',
+				contentType: 'text/csv',
+			})
 			.expect(200);
 
 		const fileId = uploadResponse.body.data.id;
