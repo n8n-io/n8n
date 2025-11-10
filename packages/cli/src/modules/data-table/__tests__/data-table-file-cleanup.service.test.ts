@@ -97,7 +97,7 @@ describe('DataTableFileCleanupService', () => {
 	});
 
 	describe('cleanupOrphanedFiles', () => {
-		const flushPromises = () => new Promise(jest.requireActual('timers').setImmediate);
+		const flushPromises = async () => new Promise(jest.requireActual('timers').setImmediate);
 
 		beforeEach(() => {
 			jest.useFakeTimers();
