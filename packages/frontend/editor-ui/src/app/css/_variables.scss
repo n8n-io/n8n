@@ -92,3 +92,5 @@ $version-card-release-date-text-color: var(--color--foreground--shade-2);
 // supplemental node types
 $supplemental-node-types: ai_chain ai_document ai_embedding ai_languageModel ai_memory
 	ai_outputParser ai_tool ai_retriever ai_textSplitter ai_vectorRetriever ai_vectorStore;
+
+$ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
