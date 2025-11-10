@@ -441,7 +441,6 @@ export class ChatHubService {
 
 	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
 		const { sessionId, editId, messageId, message, model, credentials } = payload;
-		const { provider } = model;
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
 			const session = await this.getChatSession(user, sessionId, trx);
