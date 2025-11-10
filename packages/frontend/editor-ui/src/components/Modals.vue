@@ -30,6 +30,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
+	WORKFLOW_PUBLISH_MODAL_KEY,
 } from '@/constants';
 import { DEBUG_PAYWALL_MODAL_KEY } from '@/features/execution/executions/executions.constants';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
@@ -106,6 +107,7 @@ import DynamicModalLoader from './DynamicModalLoader.vue';
 import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
+import WorkflowPublishModal from '@/components/MainHeader/WorkflowPublishModal.vue';
 </script>
 
 <template>
@@ -393,6 +395,11 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 			</template>
 		</ModalRoot>
 
+		<ModalRoot :name="WORKFLOW_PUBLISH_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowPublishModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
 		<!-- Dynamic modals from modules -->
 		<DynamicModalLoader />
 	</div>

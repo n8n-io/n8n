@@ -7,9 +7,11 @@ import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, useTemplateRef } from 'vue';
 import { useSettingsStore } from '@/stores/settings.store';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature, WORKFLOW_PUBLISH_MODAL_KEY } from '@/constants';
 import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
-
+import { N8nButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
+import { useUIStore } from '@/stores/ui.store';
 const props = defineProps<{
 	readOnly?: boolean;
 	id: IWorkflowDb['id'];
@@ -29,6 +31,8 @@ const emit = defineEmits<{
 const settingsStore = useSettingsStore();
 const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsMenu>>('actionsMenu');
 const pageRedirectionHelper = usePageRedirectionHelper();
+const locale = useI18n();
+const uiStore = useUIStore();
 
 const isWorkflowHistoryFeatureEnabled = computed(() => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
@@ -36,9 +40,16 @@ const isWorkflowHistoryFeatureEnabled = computed(() => {
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
-function goToWorkflowHistoryUpgrade() {
+const goToWorkflowHistoryUpgrade = () => {
 	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
-}
+};
+
+const onPublishButtonClick = () => {
+	uiStore.openModalWithData({
+		name: WORKFLOW_PUBLISH_MODAL_KEY,
+		data: {},
+	});
+};
 
 defineExpose({
 	importFileRef,
@@ -46,6 +57,10 @@ defineExpose({
 </script>
 
 <template>
+	<!-- TODO: add top right indicator on the button when the wf has changes -->
+	<N8nButton type="tertiary" @click="onPublishButtonClick">
+		{{ locale.baseText('workflows.publish') }}
+	</N8nButton>
 	<WorkflowHistoryButton
 		:workflow-id="props.id"
 		:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
