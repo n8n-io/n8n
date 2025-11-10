@@ -1,6 +1,6 @@
 ARG NODE_VERSION=22.21.0
 ARG N8N_VERSION=snapshot
-ARG LAUNCHER_VERSION=1.4.0
+ARG LAUNCHER_VERSION=1.4.1
 ARG TARGETPLATFORM
 
 # ==============================================================================

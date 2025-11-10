@@ -12,6 +12,8 @@ import { LOGGED_OUT_RESPONSE_BODY } from './shared/constants';
 import { createUser, createUserShell } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
+import { EventService } from '@/events/event.service';
+import type { RelayEventMap } from '@/events/maps/relay.event-map';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -391,6 +393,36 @@ describe('GET /resolve-signup-token', () => {
 		for (const response of [first, second, third, fourth, fifth]) {
 			expect(response.statusCode).toBe(400);
 		}
+	});
+
+	test('should send roles for user-invite-email-click event', async () => {
+		const memberShell = await createUserShell(GLOBAL_MEMBER_ROLE);
+
+		const eventService = Container.get(EventService);
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
+		await authOwnerAgent
+			.get('/resolve-signup-token')
+			.query({ inviterId: owner.id })
+			.query({ inviteeId: memberShell.id })
+			.expect(200);
+
+		// Check all emitted events
+		let foundEvent = false;
+		for (const [eventName, payload] of emitSpy.mock.calls) {
+			if (eventName === 'user-invite-email-click') {
+				foundEvent = true;
+				expect(payload).toBeDefined();
+				const { invitee, inviter } = payload as RelayEventMap['user-invite-email-click'];
+				expect(invitee.role).toBeDefined();
+				expect(invitee.role?.slug).toBe('global:member');
+				expect(inviter.role).toBeDefined();
+				expect(inviter.role?.slug).toBe('global:owner');
+			}
+		}
+
+		expect(foundEvent).toBe(true);
+		emitSpy.mockRestore();
 	});
 });
 

@@ -72,8 +72,16 @@ const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
 
+// Show MCP action if:
+// - MCP module is active
+// - Instance-level access is enabled
+// - Workflow is eligible for MCP access
 const isMcpAvailable = computed(() => {
-	return settingsStore.isModuleActive('mcp') && isEligibleForMcpAccess(props.workflow);
+	return (
+		settingsStore.isModuleActive('mcp') &&
+		settingsStore.moduleSettings.mcp?.mcpAccessEnabled &&
+		isEligibleForMcpAccess(props.workflow)
+	);
 });
 
 const availableActions = computed(() => {

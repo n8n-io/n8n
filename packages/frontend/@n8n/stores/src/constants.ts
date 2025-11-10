@@ -42,4 +42,5 @@ export const STORES = {
 	PERSONALIZED_TEMPLATES_V3: 'personalizedTemplatesV3',
 	TEMPLATES_DATA_QUALITY: 'templatesDataQuality',
 	BANNERS: 'banners',
+	CONSENT: 'consent',
 } as const;
