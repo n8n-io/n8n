@@ -105,7 +105,7 @@ import { CreateChatHubTables1760019379982 } from '../common/1760019379982-Create
 import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-CreateChatHubAgentTable';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
-import { AddActiveVersionIdColumn1761302979000 } from '../common/1761302979000-AddActiveVersionIdColumn';
+import { AddActiveVersionIdColumn1762819200000 } from '../common/1762819200000-AddActiveVersionIdColumn';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
@@ -214,7 +214,7 @@ const sqliteMigrations: Migration[] = [
 	DropUnusedChatHubColumns1760965142113,
 	AddWorkflowVersionColumn1761047826451,
 	ChangeDependencyInfoToJson1761655473000,
-	AddActiveVersionIdColumn1761302979000,
+	AddActiveVersionIdColumn1762819200000,
 ];
 
 export { sqliteMigrations };

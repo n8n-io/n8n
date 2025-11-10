@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const WORKFLOWS_TABLE_NAME = 'workflow_entity';
 const WORKFLOW_HISTORY_TABLE_NAME = 'workflow_history';
 
-export class AddActiveVersionIdColumn1761302979000 implements ReversibleMigration {
+export class AddActiveVersionIdColumn1762819200000 implements ReversibleMigration {
 	async up({
 		schemaBuilder: { addColumns, column, addForeignKey },
 		queryRunner,

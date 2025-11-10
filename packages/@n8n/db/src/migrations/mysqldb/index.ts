@@ -109,7 +109,7 @@ import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRole
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
-import { AddActiveVersionIdColumn1761302979000 } from './../common/1761302979000-AddActiveVersionIdColumn';
+import { AddActiveVersionIdColumn1762819200000 } from './../common/1762819200000-AddActiveVersionIdColumn';
 
 export const mysqlMigrations: Migration[] = [
 	InitialMigration1588157391238,
@@ -222,5 +222,5 @@ export const mysqlMigrations: Migration[] = [
 	DropUnusedChatHubColumns1760965142113,
 	AddWorkflowVersionColumn1761047826451,
 	ChangeDependencyInfoToJson1761655473000,
-	AddActiveVersionIdColumn1761302979000,
+	AddActiveVersionIdColumn1762819200000,
 ];
