@@ -1,0 +1,83 @@
+post:
+  x-eov-operation-id: createApiKeyForUser
+  x-eov-operation-handler: v1/handlers/users/users.handler.ee
+  tags:
+    - User
+  summary: Create API key for a user
+  description: Create an API key for a specific user. Only available for instance owners and admins.
+  parameters:
+    - $ref: '../schemas/parameters/userIdentifier.yml'
+  requestBody:
+    description: API key details to create
+    required: true
+    content:
+      application/json:
+        schema:
+          type: object
+          properties:
+            label:
+              type: string
+              minLength: 1
+              maxLength: 50
+              description: A label to identify the API key
+              example: My API Key
+            scopes:
+              type: array
+              items:
+                type: string
+              description: List of scopes for the API key
+              example: ['workflow:read', 'workflow:execute']
+            expiresAt:
+              type: number
+              nullable: true
+              description: Unix timestamp for when the API key expires (null for no expiration)
+              example: 1735689600
+          required:
+            - label
+            - scopes
+  responses:
+    '201':
+      description: API key created successfully
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              id:
+                type: string
+                format: uuid
+                description: The API key ID
+              label:
+                type: string
+                description: The API key label
+              apiKey:
+                type: string
+                description: Redacted API key for display
+              rawApiKey:
+                type: string
+                description: The full API key (only shown once)
+              scopes:
+                type: array
+                items:
+                  type: string
+                description: List of scopes
+              expiresAt:
+                type: number
+                nullable: true
+                description: Expiration timestamp
+              createdAt:
+                type: string
+                format: date-time
+                description: Creation timestamp
+              updatedAt:
+                type: string
+                format: date-time
+                description: Last update timestamp
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'
+    '403':
+      $ref: '../../../../shared/spec/responses/forbidden.yml'
+    '404':
+      $ref: '../../../../shared/spec/responses/notFound.yml'

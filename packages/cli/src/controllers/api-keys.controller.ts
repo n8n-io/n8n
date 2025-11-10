@@ -1,10 +1,25 @@
-import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
-import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Delete, Get, Param, Patch, Post, RestController } from '@n8n/decorators';
+import {
+	CreateApiKeyRequestDto,
+	UpdateApiKeyRequestDto,
+	CreateApiKeyForUserRequestDto,
+} from '@n8n/api-types';
+import { AuthenticatedRequest, UserRepository } from '@n8n/db';
+import {
+	Body,
+	Delete,
+	Get,
+	GlobalScope,
+	Param,
+	Patch,
+	Post,
+	RestController,
+} from '@n8n/decorators';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/public-api';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
@@ -22,6 +37,7 @@ export class ApiKeysController {
 	constructor(
 		private readonly eventService: EventService,
 		private readonly publicApiKeyService: PublicApiKeyService,
+		private readonly userRepository: UserRepository,
 	) {}
 
 	/**
@@ -93,5 +109,54 @@ export class ApiKeysController {
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
 		const scopes = getApiKeyScopesForRole(req.user);
 		return scopes;
+	}
+
+	/**
+	 * Create an API Key for another user (admin only)
+	 */
+	@Post('/user', { middlewares: [isApiEnabledMiddleware] })
+	@GlobalScope('apiKey:create')
+	async createApiKeyForUser(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body body: CreateApiKeyForUserRequestDto,
+	) {
+		// Only global:owner and global:admin can create API keys for other users
+		if (!['global:owner', 'global:admin'].includes(req.user.role.slug)) {
+			throw new ForbiddenError('Only administrators can create API keys for other users');
+		}
+
+		// Validate the target user exists
+		const targetUser = await this.userRepository.findOne({
+			where: { id: body.userId },
+			relations: ['role'],
+		});
+
+		if (!targetUser) {
+			throw new NotFoundError(`User with id ${body.userId} not found`);
+		}
+
+		// Validate that the API key scopes are valid for the target user's role
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(targetUser, body.scopes)) {
+			throw new BadRequestError('Invalid scopes for target user role');
+		}
+
+		const newApiKey = await this.publicApiKeyService.createPublicApiKeyForUserByAdmin(body.userId, {
+			label: body.label,
+			expiresAt: body.expiresAt,
+			scopes: body.scopes,
+		});
+
+		this.eventService.emit('public-api-key-created', {
+			user: req.user,
+			publicApi: false,
+		});
+
+		return {
+			...newApiKey,
+			apiKey: this.publicApiKeyService.redactApiKey(newApiKey.apiKey),
+			rawApiKey: newApiKey.apiKey,
+			expiresAt: body.expiresAt,
+		};
 	}
 }

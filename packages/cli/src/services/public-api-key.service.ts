@@ -54,6 +54,29 @@ export class PublicApiKeyService {
 	}
 
 	/**
+	 * Creates a new public API key for a target user by an admin.
+	 * @param targetUserId - The ID of the user for whom the API key is being created.
+	 * @param label - The label for the API key.
+	 * @param expiresAt - The expiration timestamp.
+	 * @param scopes - The scopes for the API key.
+	 */
+	async createPublicApiKeyForUserByAdmin(
+		targetUserId: string,
+		{ label, expiresAt, scopes }: CreateApiKeyRequestDto,
+	) {
+		const targetUser = await this.userRepository.findOne({
+			where: { id: targetUserId },
+			relations: ['role'],
+		});
+
+		if (!targetUser) {
+			throw new Error('Target user not found');
+		}
+
+		return await this.createPublicApiKeyForUser(targetUser, { label, expiresAt, scopes });
+	}
+
+	/**
 	 * Retrieves and redacts API keys for a given user.
 	 * @param user - The user for whom to retrieve and redact API keys.
 	 */

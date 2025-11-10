@@ -1,6 +1,10 @@
-import { InviteUsersRequestDto, RoleChangeRequestDto } from '@n8n/api-types';
+import {
+	InviteUsersRequestDto,
+	RoleChangeRequestDto,
+	CreateApiKeyRequestDto,
+} from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
-import { ProjectRelationRepository } from '@n8n/db';
+import { ProjectRelationRepository, UserRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import type { Response } from 'express';
@@ -8,6 +12,10 @@ import type { Response } from 'express';
 import { InvitationController } from '@/controllers/invitation.controller';
 import { UsersController } from '@/controllers/users.controller';
 import { EventService } from '@/events/event.service';
+import { PublicApiKeyService } from '@/services/public-api-key.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { UserRequest } from '@/requests';
 
 import { clean, getAllUsersAndCount, getUser } from './users.service.ee';
@@ -22,6 +30,7 @@ import { encodeNextCursor } from '../../shared/services/pagination.service';
 type Create = AuthenticatedRequest<{}, {}, InviteUsersRequestDto>;
 type Delete = UserRequest.Delete;
 type ChangeRole = AuthenticatedRequest<{ id: string }, {}, RoleChangeRequestDto, {}>;
+type CreateApiKeyForUser = AuthenticatedRequest<{ id: string }, {}, CreateApiKeyRequestDto, {}>;
 
 export = {
 	getUser: [
@@ -123,6 +132,63 @@ export = {
 			);
 
 			return res.status(204).send();
+		},
+	],
+	createApiKeyForUser: [
+		apiKeyHasScopeWithGlobalScopeFallback({
+			apiKeyScope: 'user:create',
+			globalScope: 'apiKey:create',
+		}),
+		async (req: CreateApiKeyForUser, res: Response) => {
+			// Validate request body
+			const validation = CreateApiKeyRequestDto.safeParse(req.body);
+			if (validation.error) {
+				return res.status(400).json({
+					message: validation.error.errors[0].message,
+				});
+			}
+
+			// Only global:owner and global:admin can create API keys for other users
+			if (!['global:owner', 'global:admin'].includes(req.user.role.slug)) {
+				throw new ForbiddenError('Only administrators can create API keys for other users');
+			}
+
+			const { id: targetUserId } = req.params;
+			const { label, expiresAt, scopes } = validation.data;
+
+			// Validate the target user exists
+			const targetUser = await Container.get(UserRepository).findOne({
+				where: { id: targetUserId },
+				relations: ['role'],
+			});
+
+			if (!targetUser) {
+				throw new NotFoundError(`User with id ${targetUserId} not found`);
+			}
+
+			// Validate that the API key scopes are valid for the target user's role
+			const publicApiKeyService = Container.get(PublicApiKeyService);
+			if (!publicApiKeyService.apiKeyHasValidScopesForRole(targetUser, scopes)) {
+				throw new BadRequestError('Invalid scopes for target user role');
+			}
+
+			const newApiKey = await publicApiKeyService.createPublicApiKeyForUserByAdmin(targetUserId, {
+				label,
+				expiresAt,
+				scopes,
+			});
+
+			Container.get(EventService).emit('public-api-key-created', {
+				user: req.user,
+				publicApi: true,
+			});
+
+			return res.status(201).json({
+				...newApiKey,
+				apiKey: publicApiKeyService.redactApiKey(newApiKey.apiKey),
+				rawApiKey: newApiKey.apiKey,
+				expiresAt,
+			});
 		},
 	],
 };
