@@ -24,12 +24,14 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import {
+	flattenModel,
 	fromStringToModel,
 	isMatchedAgent,
 	stringifyModel,
 } from '@/features/ai/chatHub/chat.utils';
 import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
 
@@ -59,6 +61,7 @@ const dropdownRef = useTemplateRef('dropdownRef');
 const credentialSelectorProvider = ref<ChatHubLLMProvider | null>(null);
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+const telemetry = useTelemetry();
 
 const credentialsName = computed(() =>
 	selectedAgent
@@ -179,11 +182,25 @@ function onSelect(id: string) {
 		return;
 	}
 
+	telemetry.track('User selected model or agent', {
+		...flattenModel(selected.model),
+		is_custom: selected.model.provider === 'custom-agent',
+	});
+
 	emit('change', selected);
 }
 
 function handleCreateNewCredential(provider: ChatHubLLMProvider) {
-	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
+	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+
+	telemetry.track('User opened Credential modal', {
+		credential_type: credentialType,
+		source: 'chat',
+		new_credential: true,
+		workflow_id: null,
+	});
+
+	uiStore.openNewCredential(credentialType);
 }
 
 onClickOutside(
