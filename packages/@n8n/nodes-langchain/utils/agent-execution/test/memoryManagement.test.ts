@@ -1,7 +1,6 @@
-import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages';
-import { trimMessages } from '@langchain/core/messages';
-import { mock } from 'jest-mock-extended';
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { HumanMessage, AIMessage, SystemMessage, trimMessages } from '@langchain/core/messages';
+import { mock } from 'jest-mock-extended';
 import type { BaseChatMemory } from 'langchain/memory';
 
 import { loadMemory, saveToMemory, saveToolResultsToMemory } from '../memoryManagement';

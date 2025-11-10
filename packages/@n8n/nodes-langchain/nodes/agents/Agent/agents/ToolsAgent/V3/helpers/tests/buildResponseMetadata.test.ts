@@ -1,5 +1,6 @@
 import type { EngineResponse } from 'n8n-workflow';
 
+import * as agentExecution from '@utils/agent-execution';
 import type { RequestResponseMetadata } from '../../types';
 import { buildResponseMetadata } from '../buildResponseMetadata';
 
@@ -143,7 +144,6 @@ describe('buildIterationMetadata', () => {
 	});
 
 	it('should pass correct itemIndex to buildSteps', () => {
-		const buildSteps = require('@utils/agent-execution').buildSteps;
 		const response: EngineResponse<RequestResponseMetadata> = {
 			actionResponses: [],
 			metadata: { iterationCount: 1 },
@@ -151,7 +151,7 @@ describe('buildIterationMetadata', () => {
 
 		buildResponseMetadata(response, 5);
 
-		expect(buildSteps).toHaveBeenCalledWith(response, 5);
+		expect(agentExecution.buildSteps).toHaveBeenCalledWith(response, 5);
 	});
 
 	it('should handle iterationCount starting from 0', () => {
