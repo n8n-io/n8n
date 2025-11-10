@@ -12,7 +12,7 @@ const renderComponent = createComponentRenderer(WorkflowsTable);
 let pinia: ReturnType<typeof createPinia>;
 
 // Mock router
-vi.mock('@/router', () => ({
+vi.mock('@/app/router', () => ({
 	default: {
 		resolve: vi.fn((route) => ({
 			fullPath: `/mock-path/${route.params?.name || route.params?.projectId}`,
