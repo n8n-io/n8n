@@ -131,7 +131,6 @@ export class CircuitBreaker {
 	private pendingHalfOpenRequests = 0;
 	private inflightRequests = 0;
 
-	private failureTimestamps: number[] = [];
 	private slidingWindow: SlidingWindow;
 
 	private readonly timeoutMs: number;
@@ -187,10 +186,6 @@ export class CircuitBreaker {
 		this.lastFailureTime = now;
 
 		this.slidingWindow.addEvent(now);
-
-		this.logger.debug(
-			`Circuit breaker recording failure at ${now}: ${this.failureTimestamps.length} failures max ${this.maxFailures}`,
-		);
 	}
 
 	private changeToState(newState: CircuitBreakerState) {
