@@ -3,7 +3,7 @@ import type { INodeUi, Optional, Primitives, Schema, SchemaType } from '@/Interf
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { generatePath, getNodeParentExpression } from '@/app/utils/mappingUtils';
 import { isObject } from '@/app/utils/objectUtils';
-import { isObj } from '@/app/utils/typeGuards';
+import { isBinary, isObj } from '@/app/utils/typeGuards';
 import { isPresent, shorten } from '@/app/utils/typesUtils';
 import type { JSONSchema7, JSONSchema7Definition, JSONSchema7TypeName } from 'json-schema';
 import merge from 'lodash/merge';
@@ -57,7 +57,7 @@ export function useDataSchema() {
 					};
 				} else if (isObj(input)) {
 					schema = {
-						type: 'object',
+						type: isBinary(input) ? 'binary' : 'object',
 						value: Object.entries(input).map(([k, v]) => ({
 							key: k,
 							...getSchema(v, generatePath(path, [k]), excludeValues, collapseArrays),
@@ -316,6 +316,7 @@ export type RenderEmpty = {
 export type Renders = RenderHeader | RenderItem | RenderIcon | RenderNotice | RenderEmpty;
 
 const icons = {
+	binary: DATA_TYPE_ICON_MAP.file,
 	object: DATA_TYPE_ICON_MAP.object,
 	array: DATA_TYPE_ICON_MAP.array,
 	['string']: DATA_TYPE_ICON_MAP.string,

@@ -795,7 +795,8 @@ export type SchemaType =
 	| 'object'
 	| 'function'
 	| 'null'
-	| 'undefined';
+	| 'undefined'
+	| 'binary';
 
 export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
 
