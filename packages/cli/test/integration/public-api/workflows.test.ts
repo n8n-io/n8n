@@ -8,16 +8,10 @@ import {
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, TagEntity, User } from '@n8n/db';
-import {
-	ProjectRepository,
-	WorkflowHistoryRepository,
-	SharedWorkflowRepository,
-	WorkflowRepository,
-} from '@n8n/db';
+import { ProjectRepository, WorkflowHistoryRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
-import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
@@ -746,8 +740,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
 	});
 
-	test('should set activeVersionId when activating workflow with workflow history enabled', async () => {
-		license.enable('feat:workflowHistory');
+	test('should set activeVersionId when activating workflow', async () => {
 		const workflow = await createWorkflowWithTrigger({}, member);
 
 		await createWorkflowHistory(workflow, member);
@@ -770,118 +763,6 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.activeVersion?.versionId).toBe(workflow.versionId);
 		expect(sharedWorkflow?.workflow.activeVersion?.nodes).toEqual(workflow.nodes);
 		expect(sharedWorkflow?.workflow.activeVersion?.connections).toEqual(workflow.connections);
-	});
-
-	test('should activate a specific version of the workflow', async () => {
-		license.enable('feat:workflowHistory');
-		const workflow = await createWorkflowWithTrigger({}, member);
-
-		const version1Id = uuid();
-		const version1Nodes: INode[] = [
-			{
-				id: 'uuid-v1',
-				parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
-				name: 'Cron V1',
-				type: 'n8n-nodes-base.cron',
-				typeVersion: 1,
-				position: [100, 200],
-			},
-		];
-
-		const version2Id = uuid();
-		const version2Nodes: INode[] = [
-			{
-				id: 'uuid-v2',
-				parameters: { triggerTimes: { item: [{ mode: 'everyHour' }] } },
-				name: 'Cron V2',
-				type: 'n8n-nodes-base.cron',
-				typeVersion: 1,
-				position: [300, 400],
-			},
-		];
-
-		await createWorkflowHistory(
-			{ ...workflow, versionId: version1Id, nodes: version1Nodes },
-			member,
-		);
-		await createWorkflowHistory(
-			{ ...workflow, versionId: version2Id, nodes: version2Nodes },
-			member,
-		);
-		await Container.get(WorkflowRepository).update(workflow.id, { versionId: version2Id });
-
-		const activateResponse = await authMemberAgent
-			.post(`/workflows/${workflow.id}/activate`)
-			.send({ versionId: version1Id });
-
-		expect(activateResponse.statusCode).toBe(200);
-		expect(activateResponse.body.active).toBe(true);
-
-		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
-			where: {
-				projectId: memberPersonalProject.id,
-				workflowId: workflow.id,
-			},
-			relations: ['workflow', 'workflow.activeVersion'],
-		});
-
-		expect(sharedWorkflow?.workflow.active).toBe(true);
-		expect(sharedWorkflow?.workflow.versionId).toBe(version2Id);
-		expect(sharedWorkflow?.workflow.activeVersion?.versionId).toBe(version1Id);
-		expect(sharedWorkflow?.workflow.activeVersion?.nodes).toEqual(version1Nodes);
-	});
-
-	test('should switch active version when activating with different versionId', async () => {
-		license.enable('feat:workflowHistory');
-		const workflow = await createWorkflowWithTrigger({}, member);
-
-		await createWorkflowHistory(workflow, member);
-
-		// Activate with current version
-		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
-
-		// Update workflow to create a new version
-		const updatedPayload = {
-			name: 'Updated workflow v2',
-			nodes: [
-				{
-					id: 'uuid-9999',
-					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
-					name: 'New Trigger',
-					type: 'n8n-nodes-base.cron',
-					typeVersion: 1,
-					position: [100, 200],
-				},
-			],
-			connections: {},
-			staticData: workflow.staticData,
-			settings: workflow.settings,
-		};
-
-		await authMemberAgent.put(`/workflows/${workflow.id}`).send(updatedPayload);
-
-		const updatedWorkflow = await authMemberAgent.get(`/workflows/${workflow.id}`);
-		const newVersionId = updatedWorkflow.body.versionId;
-
-		// Now switch to the new version
-		const switchResponse = await authMemberAgent
-			.post(`/workflows/${workflow.id}/activate`)
-			.send({ versionId: newVersionId });
-
-		expect(switchResponse.statusCode).toBe(200);
-		expect(switchResponse.body.active).toBe(true);
-
-		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
-			where: {
-				projectId: memberPersonalProject.id,
-				workflowId: workflow.id,
-			},
-			relations: ['workflow', 'workflow.activeVersion'],
-		});
-
-		expect(sharedWorkflow?.workflow.active).toBe(true);
-		expect(sharedWorkflow?.workflow.activeVersion?.versionId).toBe(newVersionId);
-		expect(sharedWorkflow?.workflow.activeVersion?.nodes).toEqual(updatedPayload.nodes);
 	});
 
 	test('should set non-owned workflow as active when owner', async () => {
@@ -981,7 +862,6 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 
 	test('should clear activeVersionId when deactivating workflow', async () => {
-		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflowWithTrigger({}, member);
 
 		await createWorkflowHistory(workflow, member);
@@ -1475,7 +1355,6 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should update activeVersionId when updating an active workflow', async () => {
-		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflowWithTrigger({}, member);
 
 		await createWorkflowHistory(workflow, member);
@@ -1533,7 +1412,6 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should not update activeVersionId when updating an inactive workflow', async () => {
-		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflow({}, member);
 
 		// Update workflow without activating it
