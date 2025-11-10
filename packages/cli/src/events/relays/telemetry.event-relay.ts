@@ -550,6 +550,7 @@ export class TelemetryEventRelay extends EventRelay {
 			public_api: publicApi,
 			project_id: projectId,
 			project_type: projectType,
+			meta: JSON.stringify(workflow.meta),
 			uiContext,
 		});
 	}
@@ -749,6 +750,7 @@ export class TelemetryEventRelay extends EventRelay {
 					credential_type: null,
 					is_managed: false,
 					eval_rows_left: null,
+					meta: JSON.stringify(workflow.meta),
 					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),
 					...TelemetryHelpers.resolveVectorStoreMetrics(workflow.nodes, this.nodeTypes, runData),
 					...TelemetryHelpers.extractLastExecutedNodeStructuredOutputErrorInfo(
