@@ -42,3 +42,4 @@ export const Post = RouteFactory('post');
 export const Put = RouteFactory('put');
 export const Patch = RouteFactory('patch');
 export const Delete = RouteFactory('delete');
+export const Options = RouteFactory('options');
