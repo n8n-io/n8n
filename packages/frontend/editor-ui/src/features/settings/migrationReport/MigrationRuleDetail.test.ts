@@ -1,5 +1,6 @@
 import { createTestingPinia } from '@pinia/testing';
 import { screen, waitFor } from '@testing-library/vue';
+import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore } from '@/__tests__/utils';
@@ -341,6 +342,178 @@ describe('MigrationRuleDetail', () => {
 
 			await waitFor(() => {
 				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+			});
+		});
+	});
+
+	describe('search functionality', () => {
+		it('should filter workflows by name (case insensitive)', async () => {
+			const user = userEvent.setup({ delay: null });
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+				expect(screen.getByText('Test Workflow 2')).toBeInTheDocument();
+			});
+
+			// Type "workflow 1" in search (lowercase to test case insensitivity)
+			const searchInput = screen.getByPlaceholderText('Search workflows...');
+			await user.type(searchInput, 'workflow 1');
+
+			// Wait for debounce (300ms) plus a bit extra
+			await vi.waitFor(
+				() => {
+					// Only Workflow 1 should be visible
+					expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+					expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
+				},
+				{ timeout: 1000 },
+			);
+		});
+
+		it('should show all workflows when search is cleared', async () => {
+			const user = userEvent.setup({ delay: null });
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+				expect(screen.getByText('Test Workflow 2')).toBeInTheDocument();
+			});
+
+			// Type something in search
+			const searchInput = screen.getByPlaceholderText('Search workflows...');
+			await user.type(searchInput, 'workflow 1');
+
+			await vi.waitFor(
+				() => {
+					expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
+				},
+				{ timeout: 1000 },
+			);
+
+			// Clear the search
+			await user.clear(searchInput);
+
+			await vi.waitFor(
+				() => {
+					// Both workflows should be visible again
+					expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+					expect(screen.getByText('Test Workflow 2')).toBeInTheDocument();
+				},
+				{ timeout: 1000 },
+			);
+		});
+
+		it('should show no results when no workflows match search', async () => {
+			const user = userEvent.setup({ delay: null });
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+			});
+
+			const searchInput = screen.getByPlaceholderText('Search workflows...');
+			await user.type(searchInput, 'nonexistent workflow');
+
+			await vi.waitFor(
+				() => {
+					expect(screen.queryByText('Test Workflow 1')).not.toBeInTheDocument();
+					expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
+				},
+				{ timeout: 1000 },
+			);
+		});
+	});
+
+	describe('status filter', () => {
+		it('should render filter dropdown button', async () => {
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+
+			await waitFor(() => {
+				const filterButton = screen.getByTestId('migration-rule-filters');
+				expect(filterButton).toBeInTheDocument();
+			});
+		});
+
+		it('should open filter dropdown when clicked', async () => {
+			const user = userEvent.setup({ delay: null });
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+			});
+
+			// Open filter dropdown
+			const filterButton = screen.getByTestId('migration-rule-filters');
+			await user.click(filterButton);
+
+			await waitFor(() => {
+				const dropdown = screen.getByTestId('resources-list-filters-dropdown');
+				expect(dropdown).toBeInTheDocument();
+				// Check that the status filter label is visible
+				expect(screen.getByText('Status')).toBeInTheDocument();
+			});
+		});
+
+		it('should filter workflows by status', async () => {
+			const user = userEvent.setup({ delay: null });
+			renderComponent({
+				props: {
+					migrationRuleId: 'rule-1',
+				},
+			});
+
+			await waitFor(() => {
+				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+				expect(screen.getByText('Test Workflow 2')).toBeInTheDocument();
+			});
+
+			// Open filter dropdown
+			const filterButton = screen.getByTestId('migration-rule-filters');
+			await user.click(filterButton);
+
+			await waitFor(() => {
+				expect(screen.getByTestId('resources-list-filters-dropdown')).toBeInTheDocument();
+			});
+
+			// Select "Active" status
+			// Find the select combobox input and click it to open the dropdown
+			const statusSelectWrapper = screen.getByTestId('migration-rule-status-filter');
+			const statusSelectInput = statusSelectWrapper.querySelector('input[role="combobox"]');
+			if (!statusSelectInput) throw new Error('Select input not found');
+			await user.click(statusSelectInput);
+
+			// Wait for options to appear and click Active
+			await waitFor(() => {
+				expect(screen.getByRole('option', { name: 'Active' })).toBeInTheDocument();
+			});
+			const activeOption = screen.getByRole('option', { name: 'Active' });
+			await user.click(activeOption);
+
+			await waitFor(() => {
+				// Only active workflow should be visible
+				expect(screen.getByText('Test Workflow 1')).toBeInTheDocument();
+				expect(screen.queryByText('Test Workflow 2')).not.toBeInTheDocument();
 			});
 		});
 	});

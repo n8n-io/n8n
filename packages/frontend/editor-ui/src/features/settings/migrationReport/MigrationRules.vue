@@ -170,7 +170,7 @@ const compatibleWorkflowsCount = computed(() => {
 						<span :class="$style.NoLineBreak">
 							{{
 								i18n.baseText('settings.migrationReport.workflowsCount', {
-									interpolate: { count: String(issue.nbAffectedWorkflows) },
+									interpolate: { count: issue.nbAffectedWorkflows },
 								})
 							}}
 							<N8nIcon icon="chevron-right" :size="24" />
