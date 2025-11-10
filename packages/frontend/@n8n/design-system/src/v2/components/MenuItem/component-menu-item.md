@@ -12,12 +12,16 @@ Primitive style wrapper for re-use across different types of menus: Sidebar, Dro
 **Props**
 
 - `item: IMenuItem` Existing type from design system.
-- `collapsed?: boolean` True for collapsed sidebar where only icon is visible
+- `collapsed?: boolean` True for collapsed, where only icon is visible. This hides the slots and prevents interaction with them
 
 **Slots**
 
 - `toggle`: Slot for toggle button, for use with trees and collapsible lists.
 - `actions`: Slot for right side actions, use for buttons or dropdown menus.
+
+**Events**
+
+- `click(event: MouseEvent)`: Generic click action, will be available on different primitive types.
 
 
 ### Template usage example
