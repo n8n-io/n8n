@@ -438,7 +438,11 @@ const redirectToDataTables = () => {
 								</div>
 							</div>
 							<div :class="$style.columnTypeWrapper">
-								<N8nSelect v-model="column.type" :data-test-id="`column-type-${index}`">
+								<N8nSelect
+									v-model="column.type"
+									:disabled="column.typeOptions.length === 1"
+									:data-test-id="`column-type-${index}`"
+								>
 									<N8nOption
 										v-for="option in column.typeOptions"
 										:key="option.value"
