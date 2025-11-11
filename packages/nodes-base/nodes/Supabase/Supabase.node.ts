@@ -393,12 +393,43 @@ export class Supabase implements INodeType {
 							rows = rows.concat(newRows);
 							qs.offset = rows.length;
 						} while (responseLength >= 1000);
-						rows.forEach((row) => {
-							const executionData = this.helpers.constructExecutionMetaData(
-								this.helpers.returnJsonArray(row),
-								{ itemData: { item: i } },
-							);
-							returnData.push(...executionData);
+						rows.forEach((row, rowIndex) => {
+							try {
+								// Skip null or undefined rows
+								if (row === null || row === undefined) {
+									if (this.continueOnFail()) {
+										const executionData = this.helpers.constructExecutionMetaData(
+											this.helpers.returnJsonArray({ error: 'Row is null or undefined', rowIndex }),
+											{ itemData: { item: i } },
+										);
+										returnData.push(...executionData);
+										return;
+									}
+									throw new NodeOperationError(
+										this.getNode(),
+										`Row at index ${rowIndex} is null or undefined`,
+										{ itemIndex: i },
+									);
+								}
+								const executionData = this.helpers.constructExecutionMetaData(
+									this.helpers.returnJsonArray(row),
+									{ itemData: { item: i } },
+								);
+								returnData.push(...executionData);
+							} catch (error) {
+								if (this.continueOnFail()) {
+									const executionData = this.helpers.constructExecutionMetaData(
+										this.helpers.returnJsonArray({
+											error: error.message || 'Unknown error processing row',
+											rowIndex,
+										}),
+										{ itemData: { item: i } },
+									);
+									returnData.push(...executionData);
+								} else {
+									throw error;
+								}
+							}
 						});
 					} catch (error) {
 						if (this.continueOnFail()) {
