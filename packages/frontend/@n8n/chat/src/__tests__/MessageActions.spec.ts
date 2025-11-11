@@ -29,6 +29,9 @@ vi.mock('@n8n/chat/composables', () => ({
 			enableMessageActions: true,
 		},
 	}),
+	useI18n: () => ({
+		t: vi.fn(),
+	}),
 }));
 
 vi.mock('@n8n/chat/event-buses', () => ({
