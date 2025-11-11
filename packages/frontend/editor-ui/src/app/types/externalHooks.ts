@@ -3,6 +3,7 @@ import type {
 	ExecutionError,
 	GenericValue,
 	IConnections,
+	IDestinationNode,
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
@@ -64,7 +65,10 @@ interface OutputModeChangedEventData {
 }
 interface ExecutionFinishedEventData {
 	runDataExecutedStartData:
-		| { destinationNode?: string | undefined; runNodeFilter?: string[] | undefined }
+		| {
+				destinationNode?: IDestinationNode | string | undefined;
+				runNodeFilter?: string[] | undefined;
+		  }
 		| undefined;
 	nodeName?: string;
 	errorMessage: string;

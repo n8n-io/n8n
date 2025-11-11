@@ -17,7 +17,6 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
-	IDestinationNode,
 } from 'n8n-workflow';
 import { SubworkflowOperationError, toDestinationNodeStruct, Workflow } from 'n8n-workflow';
 
