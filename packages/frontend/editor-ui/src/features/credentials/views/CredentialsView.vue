@@ -89,6 +89,7 @@ const allCredentials = computed<Resource[]>(() =>
 		sharedWithProjects: credential.sharedWithProjects,
 		readOnly: !getResourcePermissions(credential.scopes).credential.update,
 		needsSetup: needsSetup(credential.data),
+		isGlobal: credential.isGlobal,
 		type: credential.type,
 	})),
 );

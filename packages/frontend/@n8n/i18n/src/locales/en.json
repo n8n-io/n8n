@@ -3455,6 +3455,8 @@
 	"projects.move.resource.success.message.workflow.withAllCredentials": "The workflow's credentials were shared with the project.",
 	"projects.move.resource.success.message.workflow.withSomeCredentials": "Due to missing permissions not all the workflow's credentials were shared with the project.",
 	"projects.move.resource.success.link": "View {targetProjectName}",
+	"projects.badge.global": "Global",
+	"projects.badge.tooltip.global": "This {resourceTypeLabel} was shared globally with all users and projects",
 	"projects.badge.tooltip.sharedOwned": "This {resourceTypeLabel} is owned by you and shared with {count} users",
 	"projects.badge.tooltip.sharedPersonal": "This {resourceTypeLabel} is owned by {name} and shared with {count} users",
 	"projects.badge.tooltip.personal": "This {resourceTypeLabel} is owned by {name}",

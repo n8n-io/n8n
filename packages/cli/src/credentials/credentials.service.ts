@@ -72,9 +72,7 @@ export class CredentialsService {
 	private async addGlobalCredentials(
 		credentials: CredentialsEntity[],
 	): Promise<CredentialsEntity[]> {
-		const globalCredentials = await this.credentialsRepository.findBy({
-			isGlobal: true,
-		});
+		const globalCredentials = await this.credentialsRepository.findAllGlobalCredentials();
 
 		// Merge and deduplicate based on credential ID
 		const credentialMap = new Map(credentials.map((c) => [c.id, c]));
