@@ -1,4 +1,4 @@
-import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
+import { createWorkflowWithHistory, testDb, mockInstance } from '@n8n/backend-test-utils';
 import type { Project, WebhookEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -65,8 +65,8 @@ beforeAll(async () => {
 	await utils.initNodeTypes(nodes);
 
 	const owner = await createOwner();
-	createActiveWorkflow = async () => await createWorkflow({ active: true }, owner);
-	createInactiveWorkflow = async () => await createWorkflow({ active: false }, owner);
+	createActiveWorkflow = async () => await createWorkflowWithHistory({ active: true }, owner);
+	createInactiveWorkflow = async () => await createWorkflowWithHistory({ active: false }, owner);
 	Container.get(InstanceSettings).markAsLeader();
 });
 
@@ -176,7 +176,7 @@ describe('add()', () => {
 		);
 
 		// Create a workflow which has a form trigger
-		const dbWorkflow = await createWorkflow({
+		const dbWorkflow = await createWorkflowWithHistory({
 			nodes: [
 				{
 					id: 'uuid-1',
@@ -192,6 +192,21 @@ describe('add()', () => {
 		await activeWorkflowManager.add(dbWorkflow.id, 'activate');
 
 		expect(updateWorkflowTriggerCountSpy).toHaveBeenCalledWith(dbWorkflow.id, 1);
+	});
+
+	test('should activate an initially inactive workflow in memory', async () => {
+		await activeWorkflowManager.init();
+
+		const dbWorkflow = await createInactiveWorkflow();
+		webhookService.getNodeWebhooks.mockReturnValue([]);
+
+		// Verify it's not active in memory yet
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(0);
+
+		await activeWorkflowManager.add(dbWorkflow.id, 'activate');
+
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(1);
+		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
 	});
 });
 

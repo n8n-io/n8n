@@ -3,15 +3,6 @@ import { Container } from '@n8n/di';
 
 import { License } from '@/license';
 
-export function isWorkflowHistoryLicensed() {
-	const license = Container.get(License);
-	return license.isWorkflowHistoryLicensed();
-}
-
-export function isWorkflowHistoryEnabled() {
-	return isWorkflowHistoryLicensed() && Container.get(GlobalConfig).workflowHistory.enabled;
-}
-
 export function getWorkflowHistoryLicensePruneTime() {
 	return Container.get(License).getWorkflowHistoryPruneLimit();
 }
