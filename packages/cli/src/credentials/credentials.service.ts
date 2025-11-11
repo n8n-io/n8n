@@ -27,7 +27,13 @@ import type {
 	INodeProperties,
 	INodePropertyCollection,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from 'n8n-workflow';
+import {
+	CREDENTIAL_EMPTY_VALUE,
+	deepCopy,
+	isINodePropertyCollection,
+	NodeHelpers,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 
@@ -531,7 +537,7 @@ export class CredentialsService {
 			if (prop.type === 'fixedCollection' && prop.options?.length) {
 				const dataObject = data[dataKey] as IDataObject;
 				for (const option of prop.options) {
-					if ('values' in option) {
+					if (isINodePropertyCollection(option)) {
 						this.redactCollectionOption(dataObject, option);
 					}
 				}

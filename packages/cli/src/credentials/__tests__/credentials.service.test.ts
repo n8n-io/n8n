@@ -85,6 +85,7 @@ describe('CredentialsService', () => {
 						typeOptions: { multipleValues: true },
 						options: [
 							{
+								displayName: 'Header',
 								name: 'values',
 								values: [
 									{
@@ -146,6 +147,7 @@ describe('CredentialsService', () => {
 						typeOptions: { multipleValues: false },
 						options: [
 							{
+								displayName: 'Header',
 								name: 'values',
 								values: [
 									{
@@ -198,6 +200,7 @@ describe('CredentialsService', () => {
 						typeOptions: { multipleValues: true },
 						options: [
 							{
+								displayName: 'Header',
 								name: 'values1',
 								values: [
 									{
@@ -212,6 +215,7 @@ describe('CredentialsService', () => {
 								],
 							},
 							{
+								displayName: 'Header',
 								name: 'values2',
 								values: [
 									{
@@ -287,6 +291,7 @@ describe('CredentialsService', () => {
 						typeOptions: { multipleValues: false },
 						options: [
 							{
+								displayName: 'Header',
 								name: 'values1',
 								values: [
 									{
@@ -301,6 +306,7 @@ describe('CredentialsService', () => {
 								],
 							},
 							{
+								displayName: 'Header',
 								name: 'values2',
 								values: [
 									{
