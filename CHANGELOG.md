@@ -1,3 +1,12 @@
+## [1.120.1](https://github.com/n8n-io/n8n/compare/n8n@1.120.0...n8n@1.120.1) (2025-11-11)
+
+
+### Features
+
+* **core:** Return WWW-Authenticate header in `/mcp-server/http` endpoint ([#21686](https://github.com/n8n-io/n8n/issues/21686)) ([45b17c1](https://github.com/n8n-io/n8n/commit/45b17c12e20dbf10d23ccb073e0573a04c066739))
+
+
+
 # [1.120.0](https://github.com/n8n-io/n8n/compare/n8n@1.119.0...n8n@1.120.0) (2025-11-10)
 
 
