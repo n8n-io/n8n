@@ -67,12 +67,18 @@ const hiddenIssuesInputs = computed(() => {
 		return [];
 	}
 
-	const option = props.parameter.options?.[0];
-	if (!option || !isINodePropertyCollection(option)) {
+	if (!props.parameter.options?.length) {
 		return [];
 	}
 
-	return option.values.map((value) => value.name);
+	const names = [];
+	for (const option of props.parameter.options) {
+		if (isINodePropertyCollection(option)) {
+			names.push(...option.values.map((value) => value.name));
+		}
+	}
+
+	return names;
 });
 
 const fixedCollectionValues = computed(() => {
