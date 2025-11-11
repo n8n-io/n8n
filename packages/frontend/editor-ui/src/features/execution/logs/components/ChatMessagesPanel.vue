@@ -108,6 +108,7 @@ watch(
 	async (newIsOpen) => {
 		if (newIsOpen && !chatApp) {
 			// Panel opened and chat not yet initialized - initialize it
+			destroyChat();
 			initializeChat();
 		}
 		// Note: We don't destroy when closing to preserve chat state
