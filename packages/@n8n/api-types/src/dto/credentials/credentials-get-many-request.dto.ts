@@ -26,5 +26,5 @@ export class CredentialsGetManyRequestQuery extends Z.class({
 	 * Includes global credentials (credentials available to all users).
 	 * Defaults to false.
 	 */
-	includeGlobal: booleanFromString.optional().default('false'),
+	includeGlobal: booleanFromString.optional().default('true'),
 }) {}

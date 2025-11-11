@@ -35,7 +35,7 @@ export async function getAllCredentials(
 		includeData: true,
 		...(filter ? { filter } : {}),
 		...(onlySharedWithMe ? { onlySharedWithMe } : {}),
-		...(includeGlobal ? { includeGlobal } : {}),
+		...(typeof includeGlobal === 'boolean' ? { includeGlobal } : {}),
 	});
 }
 

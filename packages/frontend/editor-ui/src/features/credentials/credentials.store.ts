@@ -267,7 +267,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		projectId?: string,
 		includeScopes = true,
 		onlySharedWithMe = false,
-		includeGlobal = false,
+		includeGlobal?: boolean,
 	): Promise<ICredentialsResponse[]> => {
 		const filter = {
 			projectId,
