@@ -1,19 +1,21 @@
-import { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
-import {
+import type { OAuthRegisteredClientsStore } from '@modelcontextprotocol/sdk/server/auth/clients';
+import type {
 	AuthorizationParams,
 	OAuthServerProvider,
 } from '@modelcontextprotocol/sdk/server/auth/provider';
-import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
-import {
+import type { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
+import type {
 	OAuthClientInformationFull,
 	OAuthTokens,
 	OAuthTokenRevocationRequest,
 } from '@modelcontextprotocol/sdk/shared/auth';
 import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { Response } from 'express';
+import type { Response } from 'express';
 
+import { OAuthClient } from './database/entities/oauth-client.entity';
 import { OAuthClientRepository } from './database/repositories/oauth-client.repository';
+import { UserConsentRepository } from './database/repositories/oauth-user-consent.repository';
 import { McpOAuthAuthorizationCodeService } from './mcp-oauth-authorization-code.service';
 import { McpOAuthTokenService } from './mcp-oauth-token.service';
 import { OAuthSessionService } from './oauth-session.service';
@@ -32,6 +34,7 @@ export class McpOAuthService implements OAuthServerProvider {
 		private readonly oauthClientRepository: OAuthClientRepository,
 		private readonly tokenService: McpOAuthTokenService,
 		private readonly authorizationCodeService: McpOAuthAuthorizationCodeService,
+		private readonly userConsentRepository: UserConsentRepository,
 	) {}
 
 	get clientsStore(): OAuthRegisteredClientsStore {
@@ -185,6 +188,45 @@ export class McpOAuthService implements OAuthServerProvider {
 
 		this.logger.debug('Token revocation requested for unknown token', {
 			clientId: client.client_id,
+		});
+	}
+
+	/**
+	 * Get all OAuth clients for a specific user (excluding sensitive data)
+	 */
+	async getAllClients(
+		userId: string,
+	): Promise<Array<Omit<OAuthClient, 'clientSecret' | 'clientSecretExpiresAt' | 'setUpdateDate'>>> {
+		// Get all consents for the user with client information
+		const userConsents = await this.userConsentRepository.findByUserWithClient(userId);
+
+		// Extract and sanitize the client information
+		return userConsents.map((consent) => {
+			const { clientSecret, clientSecretExpiresAt, ...sanitizedClient } = consent.client;
+			return sanitizedClient;
+		});
+	}
+
+	/**
+	 * Delete an OAuth client and all related data
+	 */
+	async deleteClient(clientId: string): Promise<void> {
+		// First check if the client exists
+		const client = await this.oauthClientRepository.findOne({
+			where: { id: clientId },
+		});
+
+		if (!client) {
+			throw new Error(`OAuth client with ID ${clientId} not found`);
+		}
+
+		this.logger.info('Deleting OAuth client and related data', { clientId });
+
+		await this.oauthClientRepository.delete({ id: clientId });
+
+		this.logger.info('OAuth client deleted successfully', {
+			clientId,
+			clientName: client.name,
 		});
 	}
 }
