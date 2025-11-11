@@ -1,22 +1,22 @@
 <script lang="ts" setup>
 import ApiKeyScopes from './ApiKeyScopes.vue';
-import CopyInput from '@/components/CopyInput.vue';
-import Modal from '@/components/Modal.vue';
-import { EnterpriseEditionFeature } from '@/constants';
+import CopyInput from '@/app/components/CopyInput.vue';
+import Modal from '@/app/components/Modal.vue';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { API_KEY_CREATE_OR_EDIT_MODAL_KEY } from '../apiKeys.constants';
 import { computed, onMounted, ref } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useApiKeysStore } from '../apiKeys.store';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import type { BaseTextKey } from '@n8n/i18n';
 import { DateTime } from 'luxon';
 import type { ApiKey, ApiKeyWithRawValue, CreateApiKeyRequestDto } from '@n8n/api-types';
 import type { ApiKeyScope } from '@n8n/permissions';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 import { ElDatePicker } from 'element-plus';
 import {

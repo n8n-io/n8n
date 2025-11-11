@@ -3,12 +3,14 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, within } from '@testing-library/vue';
-import * as workflowHelpers from '@/composables/useWorkflowHelpers';
+import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import AssignmentCollection from './AssignmentCollection.vue';
 import { STORES } from '@n8n/stores';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createTestNodeProperties } from '@/__tests__/mocks';
 import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
+
+vi.mock('vue-router');
 
 const DEFAULT_SETUP: RenderOptions<typeof AssignmentCollection> = {
 	pinia: createTestingPinia({

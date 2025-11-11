@@ -39,7 +39,7 @@ import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
 import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
 
 @Service()
@@ -233,6 +233,9 @@ export class WorkflowService {
 		if (Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active'])).length > 0) {
 			// Update the workflow's version when changing properties such as
 			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
+			// This is necessary for collaboration to work properly - even when only name or settings
+			// change, we need to update the version to detect conflicts when multiple users are editing.
+
 			workflowUpdateData.versionId = uuid();
 			this.logger.debug(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
@@ -241,6 +244,14 @@ export class WorkflowService {
 					newVersionId: workflowUpdateData.versionId,
 				},
 			);
+		}
+
+		const versionChanged =
+			workflowUpdateData.versionId && workflowUpdateData.versionId !== workflow.versionId;
+		if (versionChanged) {
+			// To save a version, we need both nodes and connections
+			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
+			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
 		}
 
 		// check credentials for old format
@@ -297,6 +308,7 @@ export class WorkflowService {
 			'staticData',
 			'pinData',
 			'versionId',
+			'description',
 		]);
 
 		if (parentFolderId) {
@@ -322,7 +334,7 @@ export class WorkflowService {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
 		}
 
-		if (workflowUpdateData.versionId !== workflow.versionId) {
+		if (versionChanged) {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
@@ -587,8 +599,11 @@ export class WorkflowService {
 		);
 	}
 
-	async getWorkflowsWithNodesIncluded(user: User, nodeTypes: string[]) {
-		const foundWorkflows = await this.workflowRepository.findWorkflowsWithNodeType(nodeTypes);
+	async getWorkflowsWithNodesIncluded(user: User, nodeTypes: string[], includeNodes = false) {
+		const foundWorkflows = await this.workflowRepository.findWorkflowsWithNodeType(
+			nodeTypes,
+			includeNodes,
+		);
 
 		let { workflows } = await this.workflowRepository.getManyAndCount(
 			foundWorkflows.map((w) => w.id),
@@ -598,13 +613,16 @@ export class WorkflowService {
 			workflows = await this.processSharedWorkflows(workflows);
 		}
 
-		workflows = await this.addUserScopes(workflows, user);
+		const withScopes = await this.addUserScopes(workflows, user);
 
-		this.cleanupSharedField(workflows);
+		this.cleanupSharedField(withScopes);
 
-		return workflows.map((workflow) => ({
-			resourceType: 'workflow',
-			...workflow,
-		}));
+		return withScopes.map((workflow) => {
+			const nodes = includeNodes
+				? (foundWorkflows.find((w) => w.id === workflow.id)?.nodes ?? [])
+				: undefined;
+
+			return { resourceType: 'workflow', ...workflow, ...(includeNodes ? { nodes } : {}) };
+		});
 	}
 }

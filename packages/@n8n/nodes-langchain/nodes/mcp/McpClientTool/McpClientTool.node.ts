@@ -1,3 +1,4 @@
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
 	type IDataObject,
 	type IExecuteFunctions,
@@ -394,7 +395,7 @@ export class McpClientTool implements INodeType {
 
 		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
 
-		if (!mcpTools || !mcpTools.length) {
+		if (!mcpTools?.length) {
 			return setError(
 				'MCP Server returned no tools',
 				'Connected successfully to your MCP server but it returned an empty list of tools.',
@@ -461,7 +462,9 @@ export class McpClientTool implements INodeType {
 						name: tool.name,
 						arguments: toolArguments,
 					};
-					const result = await client.callTool(params);
+					const result = await client.callTool(params, CallToolResultSchema, {
+						timeout: config.timeout,
+					});
 					returnData.push({
 						json: {
 							response: result.content as IDataObject,

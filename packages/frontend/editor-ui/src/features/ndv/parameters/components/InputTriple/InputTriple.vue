@@ -53,7 +53,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 }
 
 .observer {
-	--parameter-input-options-height: 22px;
+	--parameter-input-options--height: 22px;
 	width: 100%;
 	position: relative;
 }
@@ -61,7 +61,7 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 .background {
 	position: absolute;
 	background-color: var(--input-triple--color--background);
-	top: var(--parameter-input-options-height);
+	top: var(--parameter-input-options--height);
 	bottom: 0;
 	left: 0;
 	right: 0;
@@ -90,21 +90,21 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 .middle {
 	flex-grow: 0;
 	flex-basis: 160px;
-	padding-top: var(--parameter-input-options-height);
+	padding-top: var(--parameter-input-options--height);
 }
 
 .item:first-of-type {
 	--input--radius--top-left: var(--radius);
 	--input--radius--bottom-left: var(--radius);
-	--input-border-top-right-radius: 0;
-	--input-border-bottom-right-radius: 0;
+	--input-triple--radius--top-right: 0;
+	--input-triple--radius--bottom-right: 0;
 }
 
 .item:last-of-type {
 	--input--radius--top-left: 0;
 	--input--radius--bottom-left: 0;
-	--input-border-top-right-radius: var(--radius);
-	--input-border-bottom-right-radius: var(--radius);
+	--input-triple--radius--top-right: var(--radius);
+	--input-triple--radius--bottom-right: var(--radius);
 }
 
 .medium:not(.noRightSlot) {
@@ -113,13 +113,13 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 	.middle {
 		margin-left: -1px;
 
-		--input-border-top-right-radius: var(--radius);
-		--input-border-bottom-right-radius: 0;
+		--input-triple--radius--top-right: var(--radius);
+		--input-triple--radius--bottom-right: 0;
 	}
 
 	.item:first-of-type {
 		--input--radius--top-left: var(--radius);
-		--input-border-top-right-radius: 0;
+		--input-triple--radius--top-right: 0;
 		--input--radius--bottom-left: 0;
 	}
 
@@ -128,9 +128,9 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 		margin-top: -1px;
 
 		--input--radius--top-left: 0;
-		--input-border-top-right-radius: 0;
+		--input-triple--radius--top-right: 0;
 		--input--radius--bottom-left: var(--radius);
-		--input-border-bottom-right-radius: var(--radius);
+		--input-triple--radius--bottom-right: var(--radius);
 	}
 }
 
@@ -148,9 +148,9 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 
 	.item:first-of-type {
 		--input--radius--top-left: var(--radius);
-		--input-border-top-right-radius: var(--radius);
+		--input-triple--radius--top-right: var(--radius);
 		--input--radius--bottom-left: 0;
-		--input-border-bottom-right-radius: 0;
+		--input-triple--radius--bottom-right: 0;
 	}
 
 	.item:not(:first-of-type) {
@@ -159,9 +159,9 @@ withDefaults(defineProps<Props>(), { middleWidth: '160px' });
 
 	.item:last-of-type {
 		--input--radius--top-left: 0;
-		--input-border-top-right-radius: 0;
+		--input-triple--radius--top-right: 0;
 		--input--radius--bottom-left: var(--radius);
-		--input-border-bottom-right-radius: var(--radius);
+		--input-triple--radius--bottom-right: var(--radius);
 	}
 }
 </style>

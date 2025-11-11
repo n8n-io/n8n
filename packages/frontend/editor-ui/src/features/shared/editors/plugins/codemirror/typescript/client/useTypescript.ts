@@ -1,12 +1,12 @@
-import { useDataSchema } from '@/composables/useDataSchema';
-import { useDebounce } from '@/composables/useDebounce';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useDataSchema } from '@/app/composables/useDataSchema';
+import { useDebounce } from '@/app/composables/useDebounce';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { autocompletableNodeNames } from '@/features/shared/editors/plugins/codemirror/completions/utils';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { forceParse } from '@/utils/forceParse';
-import { executionDataToJson } from '@/utils/nodeTypesUtils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { forceParse } from '@/app/utils/forceParse';
+import { executionDataToJson } from '@/app/utils/nodeTypesUtils';
 import { autocompletion } from '@codemirror/autocomplete';
 import { javascriptLanguage } from '@codemirror/lang-javascript';
 import { LanguageSupport } from '@codemirror/language';

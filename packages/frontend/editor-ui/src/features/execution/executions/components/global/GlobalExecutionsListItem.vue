@@ -1,12 +1,12 @@
 <script lang="ts" setup>
-import AnimatedSpinner from '@/components/AnimatedSpinner.vue';
+import AnimatedSpinner from '@/app/components/AnimatedSpinner.vue';
 import ExecutionsTime from '../ExecutionsTime.vue';
 import GlobalExecutionsListItemQueuedTooltip from './GlobalExecutionsListItemQueuedTooltip.vue';
 import { useExecutionHelpers } from '../../composables/useExecutionHelpers';
 import { useI18n } from '@n8n/i18n';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { convertToDisplayDate } from '@/utils/formatters/dateFormatter';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 import type { IconColor } from '@n8n/design-system/types/icon';
 import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
@@ -263,7 +263,12 @@ async function handleActionItemClick(commandData: Command) {
 			</span>
 		</td>
 		<td>
-			<N8nIcon v-if="execution.mode === 'manual'" icon="flask-conical" />
+			<N8nTooltip v-if="execution.mode === 'manual'" content="Manual Execution" placement="top">
+				<N8nIcon icon="flask-conical" />
+			</N8nTooltip>
+			<N8nTooltip v-else-if="execution.mode === 'chat'" content="Chat Execution" placement="top">
+				<N8nIcon icon="messages-square" />
+			</N8nTooltip>
 		</td>
 		<td>
 			<N8nButton

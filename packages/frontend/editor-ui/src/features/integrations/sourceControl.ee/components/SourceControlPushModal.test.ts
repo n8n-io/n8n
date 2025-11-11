@@ -7,12 +7,12 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { useSourceControlStore } from '../sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
-import { VIEWS } from '@/constants';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { VIEWS } from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { reactive } from 'vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 
 const eventBus = createEventBus();
@@ -38,7 +38,7 @@ vi.mock('vue-router', () => ({
 	},
 }));
 
-vi.mock('@/composables/useTelemetry', () => {
+vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {
@@ -49,7 +49,7 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/composables/useLoadingService', () => ({
+vi.mock('@/app/composables/useLoadingService', () => ({
 	useLoadingService: () => ({
 		startLoading: vi.fn(),
 		stopLoading: vi.fn(),
@@ -57,7 +57,7 @@ vi.mock('@/composables/useLoadingService', () => ({
 	}),
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
