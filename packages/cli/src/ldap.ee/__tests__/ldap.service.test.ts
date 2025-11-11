@@ -1435,7 +1435,7 @@ describe('LdapService', () => {
 				expect(result).toEqual(mockUser);
 			});
 
-			it.only('should not check duplicates for existing users with AuthIdentity', async () => {
+			it('should not check duplicates for existing users with AuthIdentity', async () => {
 				const ldapService = createDefaultLdapService({
 					...ldapConfig,
 					enforceEmailUniqueness: true,
