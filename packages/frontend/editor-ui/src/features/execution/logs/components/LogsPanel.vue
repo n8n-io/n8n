@@ -190,7 +190,7 @@ function onHideChatPanel() {
 							@close="onToggleOpen"
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
-							@click-header="onToggleOpen(true)"
+							@click-header="onToggleOpen"
 							@hide-chat-panel="onHideChatPanel"
 						/>
 					</N8nResizeWrapper>
