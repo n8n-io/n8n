@@ -43,6 +43,7 @@ import { MigrateTestDefinitionKeyToString1731582748663 } from './1731582748663-M
 import { CreateFolderTable1738709609940 } from './1738709609940-CreateFolderTable';
 import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateParentFolderIdColumn';
 import { AddScopesColumnToApiKeys1742918400000 } from './1742918400000-AddScopesColumnToApiKeys';
+import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
 import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
 import { UniqueWorkflowNames1620821879465 } from '../common/1620821879465-UniqueWorkflowNames';
@@ -92,21 +93,20 @@ import { AddRolesTables1750252139167 } from '../common/1750252139167-AddRolesTab
 import { LinkRoleToUserTable1750252139168 } from '../common/1750252139168-LinkRoleToUserTable';
 import { RemoveOldRoleColumn1750252139170 } from '../common/1750252139170-RemoveOldRoleColumn';
 import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
+import { LinkRoleToProjectRelationTable1753953244168 } from '../common/1753953244168-LinkRoleToProjectRelationTable';
 import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
 import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
 import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
+import { AddAudienceColumnToApiKeys1758731786132 } from '../common/1758731786132-AddAudienceColumnToApiKey';
 import { ChangeValueTypesForInsights1759399811000 } from '../common/1759399811000-ChangeValueTypesForInsights';
-import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
-import type { Migration } from '../migration-types';
-import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
-import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
 import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-CreateChatHubAgentTable';
+import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
 import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
-import { AddAudienceColumnToApiKeys1758731786132 } from './../common/1758731786132-AddAudienceColumnToApiKey';
-import { AddWorkflowDescriptionColumn1762177736257 } from './../common/1762177736257-AddWorkflowDescriptionColumn';
+import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
+import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
 	InitialMigration1588102412422,
