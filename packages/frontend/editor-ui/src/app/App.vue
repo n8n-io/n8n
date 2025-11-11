@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue';
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
-import BannerStack from '@/features/shared/banners/components/BannerStack.vue';
 import Modals from '@/app/components/Modals.vue';
 import Telemetry from '@/app/components/Telemetry.vue';
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
@@ -145,9 +144,6 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 		}"
 	>
 		<div id="app-grid" ref="appGrid" :class="$style['app-grid']">
-			<div id="banners" :class="$style.banners">
-				<BannerStack v-if="!isDemoMode" />
-			</div>
 			<div id="header" :class="$style.header">
 				<RouterView name="header" />
 			</div>

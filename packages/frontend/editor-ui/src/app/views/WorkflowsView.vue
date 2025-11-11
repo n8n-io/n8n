@@ -1819,7 +1819,7 @@ const onNameSubmit = async (name: string) => {
 </script>
 
 <template>
-	<SimplifiedEmptyLayout v-if="true" @click:add="addWorkflow" />
+	<SimplifiedEmptyLayout v-if="workflowsStore.allWorkflows.length === 0" @click:add="addWorkflow" />
 
 	<ResourcesListLayout
 		v-else
@@ -1974,33 +1974,6 @@ const onNameSubmit = async (name: string) => {
 					}"
 				/>
 			</SuggestedWorkflows>
-			<N8nCallout
-				v-if="true"
-				theme="secondary"
-				icon="bolt-filled"
-				:class="$style['easy-ai-workflow-callout']"
-			>
-				{{ readyToRunWorkflowsStore.getCalloutText() }}
-				<template #trailingContent>
-					<div :class="$style['callout-trailing-content']">
-						<N8nButton
-							data-test-id="easy-ai-button"
-							size="small"
-							type="secondary"
-							@click="handleCreateReadyToRunWorkflows('callout')"
-						>
-							{{ i18n.baseText('generic.startNow') }}
-						</N8nButton>
-						<N8nIcon
-							size="small"
-							icon="x"
-							:title="i18n.baseText('generic.dismiss')"
-							class="clickable"
-							@click="handleDismissReadyToRunCallout"
-						/>
-					</div>
-				</template>
-			</N8nCallout>
 		</template>
 		<template #breadcrumbs>
 			<div v-if="breadcrumbsLoading" :class="$style['breadcrumbs-loading']">
