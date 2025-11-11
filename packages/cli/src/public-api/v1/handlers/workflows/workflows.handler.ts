@@ -308,13 +308,7 @@ export = {
 
 			try {
 				// First add a record to workflow history to be able to get the full version object during the update
-				if (updateData.versionId !== workflow.versionId) {
-					await Container.get(WorkflowHistoryService).saveVersion(
-						req.user,
-						updateData,
-						workflow.id,
-					);
-				}
+				await Container.get(WorkflowHistoryService).saveVersion(req.user, updateData, workflow.id);
 
 				const updatedVersion = await Container.get(WorkflowHistoryService).getVersion(
 					req.user,
