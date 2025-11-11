@@ -343,12 +343,7 @@ export const routes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated', 'enterprise'],
-			middlewareOptions: {
-				enterprise: {
-					feature: [EnterpriseEditionFeature.WorkflowHistory],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
