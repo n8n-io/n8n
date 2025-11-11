@@ -1,6 +1,5 @@
 import {
-	createWorkflow,
-	createWorkflowHistory,
+	createWorkflowWithHistory,
 	setActiveVersion,
 	testDb,
 	mockInstance,
@@ -50,7 +49,7 @@ const externalHooks = mockInstance(ExternalHooks);
 let activeWorkflowManager: ActiveWorkflowManager;
 
 let createActiveWorkflow: (
-	workflowOptions?: Parameters<typeof createWorkflow>[0],
+	workflowOptions?: Parameters<typeof createWorkflowWithHistory>[0],
 ) => Promise<IWorkflowBase>;
 let createInactiveWorkflow: () => Promise<IWorkflowBase>;
 let owner: User;
@@ -75,12 +74,11 @@ beforeAll(async () => {
 
 	owner = await createOwner();
 	createActiveWorkflow = async (workflowOptions: Partial<IWorkflowDb> = {}) => {
-		const workflow = await createWorkflow({ active: true, ...workflowOptions }, owner);
-		await createWorkflowHistory(workflow, owner);
+		const workflow = await createWorkflowWithHistory({ active: true, ...workflowOptions }, owner);
 		await setActiveVersion(workflow.id, workflow.versionId);
 		return workflow;
 	};
-	createInactiveWorkflow = async () => await createWorkflow({ active: false }, owner);
+	createInactiveWorkflow = async () => await createWorkflowWithHistory({ active: false }, owner);
 	Container.get(InstanceSettings).markAsLeader();
 });
 
@@ -206,6 +204,21 @@ describe('add()', () => {
 		await activeWorkflowManager.add(dbWorkflow.id, 'activate');
 
 		expect(updateWorkflowTriggerCountSpy).toHaveBeenCalledWith(dbWorkflow.id, 1);
+	});
+
+	test('should activate an initially inactive workflow in memory', async () => {
+		await activeWorkflowManager.init();
+
+		const dbWorkflow = await createInactiveWorkflow();
+		webhookService.getNodeWebhooks.mockReturnValue([]);
+
+		// Verify it's not active in memory yet
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(0);
+
+		await activeWorkflowManager.add(dbWorkflow.id, 'activate');
+
+		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(1);
+		expect(activeWorkflowManager.allActiveInMemory()).toContain(dbWorkflow.id);
 	});
 });
 

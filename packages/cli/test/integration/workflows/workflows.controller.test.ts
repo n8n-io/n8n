@@ -3,9 +3,9 @@ import {
 	getPersonalProject,
 	linkUserToProject,
 	createWorkflow,
-	createWorkflowWithTrigger,
-	createWorkflowHistory,
 	setActiveVersion,
+	createWorkflowWithHistory,
+	createWorkflowWithTriggerAndHistory,
 	shareWorkflowWithProjects,
 	shareWorkflowWithUsers,
 	randomCredentialPayload,
@@ -2252,7 +2252,7 @@ describe('GET /workflows?includeFolders=true', () => {
 
 describe('PATCH /workflows/:workflowId', () => {
 	test('should always create workflow history version', async () => {
-		const workflow = await createWorkflow({}, owner);
+		const workflow = await createWorkflowWithHistory({}, owner);
 		const payload = {
 			name: 'name updated',
 			versionId: workflow.versionId,
@@ -2289,7 +2289,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		const {
-			data: { id },
+			data: { id, versionId: updatedVersionId },
 		} = response.body;
 
 		expect(response.statusCode).toBe(200);
@@ -2297,10 +2297,11 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(id).toBe(workflow.id);
 		expect(
 			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-		).toBe(1);
+		).toBe(2);
 		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
 			where: {
 				workflowId: id,
+				versionId: updatedVersionId,
 			},
 		});
 		expect(historyVersion).not.toBeNull();
@@ -2329,7 +2330,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should activate workflow without changing version ID', async () => {
-		const workflow = await createWorkflow({}, owner);
+		const workflow = await createWorkflowWithHistory({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
 			active: true,
@@ -2350,7 +2351,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should deactivate workflow without changing version ID', async () => {
-		const workflow = await createWorkflow({ active: true }, owner);
+		const workflow = await createWorkflowWithHistory({ active: true }, owner);
 		const payload = {
 			versionId: workflow.versionId,
 			active: false,
@@ -2372,8 +2373,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should set activeVersionId when activating via PATCH', async () => {
-		const workflow = await createWorkflowWithTrigger({}, owner);
-		await createWorkflowHistory(workflow, owner);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, owner);
 
 		const payload = {
 			versionId: workflow.versionId,
@@ -2406,8 +2406,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should clear activeVersionId when deactivating via PATCH', async () => {
-		const workflow = await createWorkflowWithTrigger({ active: true }, owner);
-		await createWorkflowHistory(workflow, owner);
+		const workflow = await createWorkflowWithTriggerAndHistory({ active: true }, owner);
 
 		await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -2439,8 +2438,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should update activeVersionId when updating an active workflow', async () => {
-		const workflow = await createWorkflowWithTrigger({ active: true }, owner);
-		await createWorkflowHistory(workflow, owner);
+		const workflow = await createWorkflowWithTriggerAndHistory({ active: true }, owner);
 
 		await setActiveVersion(workflow.id, workflow.versionId);
 

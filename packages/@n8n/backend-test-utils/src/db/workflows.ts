@@ -176,6 +176,41 @@ export async function createWorkflowWithTrigger(
 	return workflow;
 }
 
+/**
+ * Store a workflow in the DB and create its workflow history.
+ * @param attributes workflow attributes
+ * @param userOrProject user or project to assign the workflow to
+ */
+export async function createWorkflowWithHistory(
+	attributes: Partial<IWorkflowDb> = {},
+	userOrProject?: User | Project,
+) {
+	const workflow = await createWorkflow(attributes, userOrProject);
+
+	// Create workflow history for the initial version
+	const user = userOrProject instanceof User ? userOrProject : undefined;
+	await createWorkflowHistory(workflow, user);
+
+	return workflow;
+}
+
+/**
+ * Store a workflow with trigger in the DB and create its workflow history.
+ * @param attributes workflow attributes
+ * @param user user to assign the workflow to
+ */
+export async function createWorkflowWithTriggerAndHistory(
+	attributes: Partial<IWorkflowDb> = {},
+	user?: User,
+) {
+	const workflow = await createWorkflowWithTrigger(attributes, user);
+
+	// Create workflow history for the initial version
+	await createWorkflowHistory(workflow, user);
+
+	return workflow;
+}
+
 export async function getAllWorkflows() {
 	return await Container.get(WorkflowRepository).find();
 }

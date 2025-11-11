@@ -1,8 +1,7 @@
 import {
 	createTeamProject,
 	createWorkflow,
-	createWorkflowWithTrigger,
-	createWorkflowHistory,
+	createWorkflowWithTriggerAndHistory,
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
@@ -431,9 +430,8 @@ describe('GET /workflows', () => {
 
 	test('should return activeVersion for all workflows', async () => {
 		const inactiveWorkflow = await createWorkflow({}, member);
-		const activeWorkflow = await createWorkflowWithTrigger({}, member);
+		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		await createWorkflowHistory(activeWorkflow, member);
 		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
 
 		const response = await authMemberAgent.get('/workflows');
@@ -465,9 +463,8 @@ describe('GET /workflows', () => {
 
 	test('should return activeVersion when filtering by active=true', async () => {
 		await createWorkflow({}, member);
-		const activeWorkflow = await createWorkflowWithTrigger({}, member);
+		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		await createWorkflowHistory(activeWorkflow, member);
 		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
 
 		const response = await authMemberAgent.get('/workflows?active=true');
@@ -580,9 +577,8 @@ describe('GET /workflows/:id', () => {
 	});
 
 	test('should return activeVersion for active workflow', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		await createWorkflowHistory(workflow, member);
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
@@ -706,7 +702,7 @@ describe('POST /workflows/:id/activate', () => {
 	});
 
 	test('should set workflow as active', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
@@ -741,9 +737,30 @@ describe('POST /workflows/:id/activate', () => {
 	});
 
 	test('should set activeVersionId when activating workflow', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		await createWorkflowHistory(workflow, member);
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.active).toBe(true);
+
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow', 'workflow.activeVersion'],
+		});
+
+		expect(sharedWorkflow?.workflow.active).toBe(true);
+		expect(sharedWorkflow?.workflow.activeVersion).not.toBeNull();
+		expect(sharedWorkflow?.workflow.activeVersion?.versionId).toBe(workflow.versionId);
+		expect(sharedWorkflow?.workflow.activeVersion?.nodes).toEqual(workflow.nodes);
+		expect(sharedWorkflow?.workflow.activeVersion?.connections).toEqual(workflow.connections);
+	});
+
+	test('should set activeVersionId when activating workflow', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
@@ -766,7 +783,7 @@ describe('POST /workflows/:id/activate', () => {
 	});
 
 	test('should set non-owned workflow as active when owner', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`).expect(200);
 
@@ -825,7 +842,7 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 
 	test('should deactivate workflow', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
@@ -862,9 +879,39 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 
 	test('should clear activeVersionId when deactivating workflow', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		await createWorkflowHistory(workflow, member);
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		let sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow', 'workflow.activeVersion'],
+		});
+
+		expect(sharedWorkflow?.workflow.active).toBe(true);
+		expect(sharedWorkflow?.workflow.activeVersion).not.toBeNull();
+
+		const deactivateResponse = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+
+		expect(deactivateResponse.statusCode).toBe(200);
+		expect(deactivateResponse.body.active).toBe(false);
+
+		sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow', 'workflow.activeVersion'],
+		});
+
+		expect(sharedWorkflow?.workflow.active).toBe(false);
+		expect(sharedWorkflow?.workflow.activeVersion).toBeNull();
+	});
+
+	test('should clear activeVersionId when deactivating workflow', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 		let sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
@@ -896,7 +943,7 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 
 	test('should deactivate non-owned workflow when owner', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
@@ -1268,9 +1315,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should update activeVersionId when updating an active workflow', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
-
-		await createWorkflowHistory(workflow, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 		let sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
@@ -1366,7 +1411,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should not allow setting active field via PUT request', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		const updatePayload = {
 			name: 'Try to activate via update',
