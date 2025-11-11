@@ -198,7 +198,7 @@ describe('ManualExecutionService', () => {
 				},
 				startNodes: [{ name: startNodeName }],
 				executionMode: 'manual',
-				destinationNode: destinationNodeName,
+				destinationNode: { nodeName: destinationNodeName, mode: 'inclusive' },
 			});
 
 			const startNode = mock<INode>({ name: startNodeName });
@@ -384,7 +384,7 @@ describe('ManualExecutionService', () => {
 				runData: mockRunData,
 				startNodes: [{ name: 'node1' }],
 				dirtyNodeNames,
-				destinationNode: destinationNodeName,
+				destinationNode: { nodeName: destinationNodeName, mode: 'inclusive' },
 			});
 
 			const workflow = mock<Workflow>({
@@ -493,7 +493,7 @@ describe('ManualExecutionService', () => {
 				executionMode: 'manual',
 				runData: mockRunData,
 				startNodes: [],
-				destinationNode: destinationNodeName,
+				destinationNode: { nodeName: destinationNodeName, mode: 'inclusive' },
 				pinData: {},
 				dirtyNodeNames: [],
 				agentRequest: undefined,
