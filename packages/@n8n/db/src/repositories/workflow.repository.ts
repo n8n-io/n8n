@@ -497,6 +497,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 	}
 
+	/**
+	 * Applies a name or description filter to the query builder.
+	 * We are supporting searching by multiple words, where any of the words can match
+	 * @param qb
+	 * @param filter
+	 */
 	private applyNameFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
@@ -504,11 +510,30 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const searchValue = filter?.query;
 
 		if (typeof searchValue === 'string' && searchValue !== '') {
-			const searchTerm = `%${searchValue.toLowerCase()}%`;
-			qb.andWhere(
-				"(LOWER(workflow.name) LIKE :searchTerm OR LOWER(COALESCE(workflow.description, '')) LIKE :searchTerm)",
-				{ searchTerm },
-			);
+			const searchWords = searchValue
+				.toLowerCase()
+				.split(/\s+/)
+				.filter((word) => word.length > 0);
+
+			if (searchWords.length > 0) {
+				const dbType = this.globalConfig.database.type;
+
+				const concatExpression =
+					dbType === 'sqlite'
+						? "LOWER(workflow.name || ' ' || COALESCE(workflow.description, ''))"
+						: "LOWER(CONCAT(workflow.name, ' ', COALESCE(workflow.description, '')))";
+
+				const conditions = searchWords.map((_, index) => {
+					return `${concatExpression} LIKE :searchWord${index}`;
+				});
+
+				const parameters: Record<string, string> = {};
+				searchWords.forEach((word, index) => {
+					parameters[`searchWord${index}`] = `%${word}%`;
+				});
+
+				qb.andWhere(`(${conditions.join(' OR ')})`, parameters);
+			}
 		}
 	}
 
