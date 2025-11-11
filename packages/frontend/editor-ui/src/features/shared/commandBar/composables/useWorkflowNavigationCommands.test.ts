@@ -140,14 +140,14 @@ describe('useWorkflowNavigationCommands', () => {
 			value: vi
 				.fn()
 				.mockImplementation(
-					async (params: { name?: string; nodeTypes?: string[]; tags?: string[] }) => {
+					async (params: { query?: string; nodeTypes?: string[]; tags?: string[] }) => {
 						if (params.nodeTypes && params.nodeTypes.length > 0) {
 							return [{ ...allWorkflows[0], nodes: [{ type: 'n8n-nodes-base.httpRequest' }] }];
 						}
 						if (params.tags && params.tags.length > 0) {
 							return [allWorkflows[0]];
 						}
-						if (typeof params.name === 'string') {
+						if (typeof params.query === 'string') {
 							return [allWorkflows[0], allWorkflows[1], allWorkflows[2]];
 						}
 						return [];
@@ -303,5 +303,44 @@ describe('useWorkflowNavigationCommands', () => {
 		expect(item.keywords).toEqual(expect.arrayContaining(['Alpha', 'Marketing']));
 		// Icon present when matched by node type
 		expect(item.icon).toBeDefined();
+	});
+
+	it('root workflow items have correct title and section', async () => {
+		const api = useWorkflowNavigationCommands({
+			lastQuery: ref('Alpha'),
+			activeNodeId: ref(null),
+			currentProjectName: ref('My Project'),
+		});
+		(api.handlers?.onCommandBarChange as (q: string) => void)('Alpha');
+		await waitFor(() => {
+			expect(api.commands.value.length).toBeGreaterThan(2);
+		});
+		const alphaWf = api.commands.value.find((c) => c.id === 'w1');
+		expect((alphaWf?.title as unknown as { props?: { title?: string } }).props?.title).toBe(
+			'generic.openResource',
+		);
+		expect(alphaWf?.section).toBe('commandBar.sections.workflows');
+	});
+
+	it('open workflow children have correct title and section', async () => {
+		const api = useWorkflowNavigationCommands({
+			lastQuery: ref(''),
+			activeNodeId: ref(null),
+			currentProjectName: ref('My Project'),
+		});
+		api.handlers?.onCommandBarNavigateTo?.('open-workflow');
+		await waitFor(() => {
+			const open = api.commands.value.find((c) => c.id === 'open-workflow');
+			expect(open?.children?.length).toBeGreaterThan(0);
+		});
+		const children = api.commands.value.find((c) => c.id === 'open-workflow')?.children;
+		if (!children) {
+			throw new Error('Open workflow command not found');
+		}
+		expect(children).toHaveLength(2);
+		expect((children[0].title as unknown as { props?: { title?: string } }).props?.title).toBe(
+			'Alpha',
+		);
+		expect(children[0].section).toBe('commandBar.workflows.open');
 	});
 });

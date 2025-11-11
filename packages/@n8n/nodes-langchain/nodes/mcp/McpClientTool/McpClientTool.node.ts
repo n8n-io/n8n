@@ -1,3 +1,4 @@
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
 	type IDataObject,
 	type IExecuteFunctions,
@@ -474,7 +475,9 @@ export class McpClientTool implements INodeType {
 						name: tool.name,
 						arguments: toolArguments,
 					};
-					const result = await client.callTool(params);
+					const result = await client.callTool(params, CallToolResultSchema, {
+						timeout: config.timeout,
+					});
 					returnData.push({
 						json: {
 							response: result.content as IDataObject,

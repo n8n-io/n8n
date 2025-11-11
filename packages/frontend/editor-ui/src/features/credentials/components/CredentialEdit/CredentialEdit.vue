@@ -25,7 +25,11 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
+import {
+	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+} from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -40,6 +44,8 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { sendUserEvent, type DynamicNotification } from '@n8n/rest-api-client/api/cloudPlans';
 import { isExpression, isTestableExpression } from '@/app/utils/expressions';
 import {
 	getNodeAuthOptions,
@@ -88,6 +94,7 @@ const message = useMessage();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const router = useRouter();
+const rootStore = useRootStore();
 
 const activeTab = ref('connection');
 const authError = ref('');
@@ -795,12 +802,46 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		 */
 		if (!isOAuthType.value) {
 			telemetry.track('User saved credentials', trackProperties);
+			void handleDynamicNotification(!!trackProperties.is_valid);
 		}
 
 		await externalHooks.run('credentialEdit.saveCredential', trackProperties);
 	}
 
 	return credential;
+}
+
+async function handleDynamicNotification(isValid: boolean) {
+	if (!isValid || !settingsStore.isCloudDeployment) {
+		return;
+	}
+
+	try {
+		const response: DynamicNotification = await sendUserEvent(rootStore.restApiContext, {
+			eventType: 'credential-saved',
+			metadata: {
+				credential_type: credentialTypeName.value,
+			},
+		});
+
+		if (response.title && response.message) {
+			setTimeout(async () => {
+				try {
+					await message.confirm(response.message, response.title, {
+						confirmButtonText: i18n.baseText('generic.keepBuilding'),
+						cancelButtonText: '',
+						showCancelButton: false,
+						closeOnClickModal: true,
+						closeOnPressEscape: true,
+					});
+				} catch (error) {
+					// Silently fail
+				}
+			}, 15000);
+		}
+	} catch (error) {
+		// Silently fail
+	}
 }
 
 const createToastMessagingForNewCredentials = (project?: Project | null) => {
@@ -870,7 +911,10 @@ async function createCredential(
 	telemetry.track('User created credentials', {
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id:
+			workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
+				? null
+				: workflowsStore.workflowId,
 	});
 
 	return credential;
@@ -1020,7 +1064,10 @@ async function oAuthCredentialAuthorize() {
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id:
+				workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
+					? null
+					: workflowsStore.workflowId,
 			credential_id: credentialId.value,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: props.mode === 'new' && !credentialId.value,
@@ -1033,6 +1080,7 @@ async function oAuthCredentialAuthorize() {
 		}
 
 		telemetry.track('User saved credentials', trackProperties);
+		void handleDynamicNotification(successfullyConnected);
 
 		if (successfullyConnected) {
 			oauthChannel.removeEventListener('message', receiveMessage);

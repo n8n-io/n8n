@@ -60,6 +60,7 @@ export const TEMPLATES_DATA_QUALITY_EXPERIMENT = {
 	control: 'control',
 	variant1: 'variant-batch-1',
 	variant2: 'variant-batch-2',
+	variant3: 'variant-batch-3',
 };
 
 export const READY_TO_RUN_V2_EXPERIMENT = {
@@ -82,6 +83,10 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 	variant: 'variant',
 };
 
+export const SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT = {
+	name: '050_sso_jit_provisioning',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
@@ -91,4 +96,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_RECO_V2.name,
 	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
 	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
+	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name,
 ];

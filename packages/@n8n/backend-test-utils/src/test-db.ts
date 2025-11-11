@@ -82,7 +82,12 @@ type EntityName =
 	| 'DataTable'
 	| 'DataTableColumn'
 	| 'ChatHubSession'
-	| 'ChatHubMessage';
+	| 'ChatHubMessage'
+	| 'OAuthClient'
+	| 'AuthorizationCode'
+	| 'AccessToken'
+	| 'RefreshToken'
+	| 'UserConsent';
 
 /**
  * Truncate specific DB tables in a test DB.
