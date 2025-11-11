@@ -111,6 +111,7 @@ import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-D
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
 import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/1762763704614-BackfillMissingWorkflowHistoryRecords';
 import type { Migration } from '../migration-types';
+import { ChangeDefaultForIdInUserTable1762771264000 } from './1762771264000-ChangeDefaultForIdInUserTable';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -225,4 +226,5 @@ export const postgresMigrations: Migration[] = [
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
 	BackfillMissingWorkflowHistoryRecords1762763704614,
+	ChangeDefaultForIdInUserTable1762771264000,
 ];
