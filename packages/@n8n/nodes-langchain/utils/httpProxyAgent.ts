@@ -31,6 +31,10 @@ export function getProxyAgent(targetUrl?: string) {
 	return new ProxyAgent(proxyUrl);
 }
 
+/**
+ * Make a fetch() request with a ProxyAgent if proxy environment variables are set.
+ * If no proxy is configured, use the default fetch().
+ */
 export async function proxyFetch(input: string | URL, init?: RequestInit): Promise<Response> {
 	return await fetch(input, {
 		...init,
