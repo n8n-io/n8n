@@ -228,5 +228,5 @@ export const postgresMigrations: Migration[] = [
 	CreateOAuthEntities1760116750277,
 	BackfillMissingWorkflowHistoryRecords1762763704614,
 	ChangeDefaultForIdInUserTable1762771264000,
-  AddWorkflowHistoryAutoSaveFields1762847206508,
+	AddWorkflowHistoryAutoSaveFields1762847206508,
 ];
