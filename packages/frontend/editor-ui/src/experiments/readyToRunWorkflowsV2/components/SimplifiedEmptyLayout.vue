@@ -106,27 +106,6 @@ const emit = defineEmits<{
 				:class="$style.actionsContainer"
 			>
 				<N8nCard
-					v-if="showReadyToRunV2Card"
-					:class="[$style.actionCard, { [$style.loading]: isLoadingReadyToRun }]"
-					:hoverable="!isLoadingReadyToRun"
-					data-test-id="ready-to-run-v2-card"
-					@click="handleReadyToRunV2Click"
-				>
-					<div :class="$style.cardContent">
-						<N8nIcon
-							:class="$style.cardIcon"
-							:icon="isLoadingReadyToRun ? 'spinner' : 'sparkles'"
-							color="foreground-dark"
-							:stroke-width="1.5"
-							:spin="isLoadingReadyToRun"
-						/>
-						<N8nText size="large" class="mt-xs">
-							{{ i18n.baseText('workflows.empty.readyToRunV2') }}
-						</N8nText>
-					</div>
-				</N8nCard>
-
-				<N8nCard
 					:class="$style.actionCard"
 					hoverable
 					data-test-id="new-workflow-card"
