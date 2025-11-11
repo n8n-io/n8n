@@ -69,14 +69,9 @@ export class CredentialsService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
-	private async addGlobalCredentialsIfNeeded(
+	private async addGlobalCredentials(
 		credentials: CredentialsEntity[],
-		hasProjectFilter: boolean,
 	): Promise<CredentialsEntity[]> {
-		if (hasProjectFilter) {
-			return credentials;
-		}
-
 		const globalCredentials = await this.credentialsRepository.findBy({
 			isAvailableForAllUsers: true,
 		});
@@ -112,7 +107,6 @@ export class CredentialsService {
 			typeof listQueryOptions.filter?.projectId === 'string'
 				? listQueryOptions.filter.projectId
 				: undefined;
-		const hasProjectFilter = projectId !== undefined;
 
 		if (onlySharedWithMe) {
 			listQueryOptions.filter = {
@@ -149,8 +143,8 @@ export class CredentialsService {
 
 			let credentials = await this.credentialsRepository.findMany(listQueryOptions);
 
-			// If no project filter, also include credentials available for all users
-			credentials = await this.addGlobalCredentialsIfNeeded(credentials, hasProjectFilter);
+			// Also include credentials available for all users
+			credentials = await this.addGlobalCredentials(credentials);
 
 			if (isDefaultSelect) {
 				// Since we're filtering using project ID as part of the relation,
@@ -205,8 +199,8 @@ export class CredentialsService {
 			ids, // only accessible credentials
 		);
 
-		// If no project filter, also include credentials available for all users
-		credentials = await this.addGlobalCredentialsIfNeeded(credentials, hasProjectFilter);
+		// Also include credentials available for all users
+		credentials = await this.addGlobalCredentials(credentials);
 
 		if (isDefaultSelect) {
 			// Since we're filtering using project ID as part of the relation,
