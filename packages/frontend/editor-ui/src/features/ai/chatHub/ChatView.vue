@@ -108,14 +108,15 @@ const defaultTools = useLocalStorage<INode[] | null>(
 	},
 );
 
-const toolsSelection = ref<INode[]>([]);
+const toolsSelection = ref<INode[] | null>(null);
 
 const selectedTools = computed<INode[]>(() => {
 	if (currentConversation.value?.tools) {
 		return currentConversation.value.tools;
 	}
 
-	if (toolsSelection.value) {
+	// As soon as the user selects tools use the selection over the default
+	if (toolsSelection.value !== null) {
 		return toolsSelection.value;
 	}
 
@@ -411,6 +412,7 @@ function handleConfigureTools() {
 
 async function onUpdateTools(newTools: INode[]) {
 	toolsSelection.value = newTools;
+	defaultTools.value = newTools;
 
 	if (currentConversation.value) {
 		await chatStore.updateToolsInSession(sessionId.value, newTools);
