@@ -19,6 +19,37 @@ export class CredentialsFinderService {
 	) {}
 
 	/**
+	 * Fetches global credentials from the database.
+	 */
+	private async fetchGlobalCredentials(trx?: EntityManager): Promise<CredentialsEntity[]> {
+		const em = trx ?? this.credentialsRepository.manager;
+		return await em.find(CredentialsEntity, {
+			where: { isAvailableForAllUsers: true },
+			relations: { shared: true },
+		});
+	}
+
+	/**
+	 * Merges global credentials with the provided credentials list,
+	 * deduplicating based on credential ID.
+	 */
+	private mergeAndDeduplicateCredentials<T extends { id: string }>(
+		credentials: T[],
+		globalCredentials: CredentialsEntity[],
+		mapGlobalCredential: (cred: CredentialsEntity) => T | null,
+	): void {
+		const credentialMap = new Map(credentials.map((c) => [c.id, c]));
+		for (const globalCred of globalCredentials) {
+			if (!credentialMap.has(globalCred.id)) {
+				const mapped = mapGlobalCredential(globalCred);
+				if (mapped) {
+					credentials.push(mapped);
+				}
+			}
+		}
+	}
+
+	/**
 	 * Find all credentials that the user has access to taking the scopes into
 	 * account.
 	 *
@@ -53,18 +84,8 @@ export class CredentialsFinderService {
 		});
 
 		// Also include global credentials
-		const globalCredentials = await this.credentialsRepository.find({
-			where: { isAvailableForAllUsers: true },
-			relations: { shared: true },
-		});
-
-		// Merge and deduplicate based on credential ID
-		const credentialMap = new Map(credentials.map((c) => [c.id, c]));
-		for (const globalCred of globalCredentials) {
-			if (!credentialMap.has(globalCred.id)) {
-				credentials.push(globalCred);
-			}
-		}
+		const globalCredentials = await this.fetchGlobalCredentials();
+		this.mergeAndDeduplicateCredentials(credentials, globalCredentials, (cred) => cred);
 
 		return credentials;
 	}
@@ -140,24 +161,21 @@ export class CredentialsFinderService {
 
 		// Include global credentials if flag is set
 		if (options?.includeGlobalCredentials) {
-			const em = trx ?? this.credentialsRepository.manager;
-			const globalCredentials = await em.find(CredentialsEntity, {
-				where: { isAvailableForAllUsers: true },
-				relations: { shared: true },
-			});
-
-			// Merge and deduplicate based on credential ID
-			const credentialMap = new Map(sharedCredentialsList.map((c) => [c.id, c]));
-			for (const globalCred of globalCredentials) {
-				if (!credentialMap.has(globalCred.id)) {
+			const globalCredentials = await this.fetchGlobalCredentials(trx);
+			this.mergeAndDeduplicateCredentials(
+				sharedCredentialsList,
+				globalCredentials,
+				(globalCred) => {
 					// For global credentials, use the owner's project ID
 					const ownerSharing = globalCred.shared?.find((s) => s.role === 'credential:owner');
 					const projectId = ownerSharing?.projectId;
 					if (projectId) {
-						sharedCredentialsList.push({ ...globalCred, projectId });
+						return { ...globalCred, projectId };
 					}
-				}
-			}
+					// Skip credentials without a valid project ID
+					return null;
+				},
+			);
 		}
 
 		return sharedCredentialsList;
