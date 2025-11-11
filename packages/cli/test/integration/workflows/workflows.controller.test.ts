@@ -2371,8 +2371,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(active).toBe(false);
 	});
 
-	test('should set activeVersionId when activating via PATCH with workflow history enabled', async () => {
-		license.enable('feat:workflowHistory');
+	test('should set activeVersionId when activating via PATCH', async () => {
 		const workflow = await createWorkflowWithTrigger({}, owner);
 		await createWorkflowHistory(workflow, owner);
 
@@ -2407,7 +2406,6 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should clear activeVersionId when deactivating via PATCH', async () => {
-		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflowWithTrigger({ active: true }, owner);
 		await createWorkflowHistory(workflow, owner);
 
@@ -2441,7 +2439,6 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should update activeVersionId when updating an active workflow', async () => {
-		license.enable('feat:workflowHistory');
 		const workflow = await createWorkflowWithTrigger({ active: true }, owner);
 		await createWorkflowHistory(workflow, owner);
 
