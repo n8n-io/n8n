@@ -10,7 +10,7 @@ import type {
 import { NodeConnectionTypes, NodeHelpers, UserError, TelemetryHelpers } from 'n8n-workflow';
 import type { CanvasConnection, CanvasNode } from '@/features/workflows/canvas/canvas.types';
 import { CanvasConnectionMode } from '@/features/workflows/canvas/canvas.types';
-import type { INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
+import type { AddedNode, INodeUi, IWorkflowDb, WorkflowDataWithTemplateId } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import type { IWorkflowTemplate, IWorkflowTemplateNode } from '@n8n/rest-api-client/api/templates';
@@ -76,6 +76,7 @@ vi.mock('vue-router', async (importOriginal) => ({
 }));
 
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { GRID_SIZE, PUSH_NODES_OFFSET } from '@/app/utils/nodeViewUtils';
 
 vi.mock('n8n-workflow', async (importOriginal) => {
 	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
@@ -1071,6 +1072,41 @@ describe('useCanvasOperations', () => {
 					node_type: nodeTypeName,
 				}),
 			);
+		});
+
+		it('should respect positionOffset', async () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = useNodeTypesStore();
+			const nodeTypeName = 'type';
+			const nodes: AddedNode[] = [
+				{ name: 'Node 1', type: nodeTypeName },
+				{ name: 'Node 2', type: nodeTypeName, positionOffset: [2 * GRID_SIZE, GRID_SIZE] },
+			];
+
+			workflowsStore.workflowObject = createTestWorkflowObject(workflowsStore.workflow);
+
+			nodeTypesStore.nodeTypes = {
+				[nodeTypeName]: { 1: mockNodeTypeDescription({ name: nodeTypeName }) },
+			};
+
+			const { addNodes } = useCanvasOperations();
+			await addNodes(nodes, { position: [32, 32] });
+
+			expect(workflowsStore.addNode).toHaveBeenCalledTimes(2);
+			expect(workflowsStore.addNode.mock.calls[0][0]).toMatchObject({
+				name: nodes[0].name,
+				type: nodeTypeName,
+				typeVersion: 1,
+				position: [32, 32],
+				parameters: {},
+			});
+			expect(workflowsStore.addNode.mock.calls[1][0]).toMatchObject({
+				name: nodes[1].name,
+				type: nodeTypeName,
+				typeVersion: 1,
+				position: [32 + PUSH_NODES_OFFSET + 2 * GRID_SIZE, 32 + GRID_SIZE],
+				parameters: {},
+			});
 		});
 	});
 

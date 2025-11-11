@@ -716,10 +716,15 @@ export function useCanvasOperations() {
 		}
 
 		for (const [index, nodeAddData] of nodesWithTypeVersion.entries()) {
-			const { isAutoAdd, openDetail: openNDV, actionName, ...node } = nodeAddData;
-			const position = node.position ?? insertPosition;
-			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
+			const { isAutoAdd, openDetail: openNDV, actionName, positionOffset, ...node } = nodeAddData;
 
+			const rawPosition = node.position ?? insertPosition;
+			const position: XYPosition | undefined =
+				rawPosition && positionOffset
+					? [rawPosition[0] + positionOffset[0], rawPosition[1] + positionOffset[1]]
+					: rawPosition;
+
+			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			try {
 				const newNode = addNode(
 					{
