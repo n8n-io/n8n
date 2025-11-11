@@ -26,7 +26,10 @@ export async function nodeExecuteAfter(
 		pushData.itemCountByConnectionType &&
 		typeof pushData.itemCountByConnectionType === 'object'
 	) {
-		workflowState.setNodeExecutionItemCount(pushData.nodeName, pushData.itemCountByConnectionType);
+		workflowState.addExecutionItemCountsForNode(
+			pushData.nodeName,
+			pushData.itemCountByConnectionType,
+		);
 	}
 
 	/**
@@ -35,29 +38,29 @@ export async function nodeExecuteAfter(
 	 * a placeholder object indicating that the data has been trimmed until the
 	 * `nodeExecuteAfterData` event comes in.
 	 */
-	const placeholderOutputData: ITaskData['data'] = {
-		main: [],
-	};
-
-	if (
-		pushData.itemCountByConnectionType &&
-		typeof pushData.itemCountByConnectionType === 'object'
-	) {
-		const fillObject: INodeExecutionData = { json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } };
-		for (const [connectionType, outputs] of Object.entries(pushData.itemCountByConnectionType)) {
-			if (isValidNodeConnectionType(connectionType)) {
-				placeholderOutputData[connectionType] = outputs.map((count) =>
-					Array.from({ length: count }, () => fillObject),
-				);
-			}
-		}
-	}
+	// const placeholderOutputData: ITaskData['data'] = {
+	// 	main: [],
+	// };
+	//
+	// if (
+	// 	pushData.itemCountByConnectionType &&
+	// 	typeof pushData.itemCountByConnectionType === 'object'
+	// ) {
+	// 	const fillObject: INodeExecutionData = { json: { [TRIMMED_TASK_DATA_CONNECTIONS_KEY]: true } };
+	// 	for (const [connectionType, outputs] of Object.entries(pushData.itemCountByConnectionType)) {
+	// 		if (isValidNodeConnectionType(connectionType)) {
+	// 			placeholderOutputData[connectionType] = outputs.map((count) =>
+	// 				Array.from({ length: count }, () => fillObject),
+	// 			);
+	// 		}
+	// 	}
+	// }
 
 	const pushDataWithPlaceholderOutputData: PushPayload<'nodeExecuteAfterData'> = {
 		...pushData,
 		data: {
 			...pushData.data,
-			data: placeholderOutputData,
+			// data: placeholderOutputData,
 		},
 	};
 

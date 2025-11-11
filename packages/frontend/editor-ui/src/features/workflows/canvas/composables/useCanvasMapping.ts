@@ -36,6 +36,7 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	ITaskData,
+	NodeConnectionType,
 	Workflow,
 } from 'n8n-workflow';
 import {
@@ -364,61 +365,52 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	// Create a map for O(1) node lookups by name
+	const nodesByName = computed(() => new Map(nodes.value.map((n) => [n.name, n])));
+	const nodesById = computed(() => new Map(nodes.value.map((n) => [n.id, n])));
+
 	const nodeExecutionRunDataOutputMapById = ref<Record<string, ExecutionOutputMap>>({});
 
 	throttledWatch(
-		[nodeExecutionRunDataById, () => workflowState.nodeExecutionItemCounts.value],
-		([runDataValue, itemCounts]) => {
-			nodeExecutionRunDataOutputMapById.value = Object.keys(runDataValue).reduce<
-				Record<string, ExecutionOutputMap>
-			>((acc, nodeId) => {
-				acc[nodeId] = {};
+		[nodeExecutionRunDataById, () => workflowState.executionItemCountsByNodeName.value],
+		([_, itemCounts]) => {
+			console.log(workflowState, workflowState.executionItemCountsByNodeName.value);
+			nodeExecutionRunDataOutputMapById.value = Object.keys(
+				workflowState.executionItemCountsByNodeName.value,
+			).reduce<Record<string, ExecutionOutputMap>>((acc, nodeName) => {
+				const node = nodesByName.value.get(nodeName);
+				if (!node) {
+					return acc;
+				}
 
-				// Get the node name for this nodeId
-				const node = nodes.value.find((n) => n.id === nodeId);
-				if (!node) return acc;
+				acc[node.id] = {};
 
-				// Check if we have stored item counts for this node
-				const storedItemCounts = itemCounts[node.name];
+				const outputData = { iterations: 0, total: 0 };
+				for (const runIteration of itemCounts[nodeName] ?? []) {
+					const data: Partial<Record<NodeConnectionType, number[]>> = runIteration ?? {};
 
-				if (storedItemCounts && Object.keys(storedItemCounts).length > 0) {
-					// Use stored item counts from workflowState
-					for (const [connectionType, outputCounts] of Object.entries(storedItemCounts)) {
-						acc[nodeId][connectionType] = acc[nodeId][connectionType] ?? {};
+					for (const connectionType of Object.keys(data) as NodeConnectionType[]) {
+						const connectionTypeData = data[connectionType] ?? [];
 
-						outputCounts.forEach((count, outputIndex) => {
-							acc[nodeId][connectionType][outputIndex.toString()] = {
-								iterations: 1,
-								total: count,
-							};
-						});
-					}
-				} else {
-					// Fall back to calculating from run data (for completed executions)
-					const outputData = { iterations: 0, total: 0 };
-					for (const runIteration of nodeExecutionRunDataById.value[nodeId] ?? []) {
-						const data = runIteration.data ?? {};
+						acc[node.id][connectionType] = acc[node.id][connectionType] ?? {};
 
-						for (const connectionType of Object.keys(data)) {
-							const connectionTypeData = data[connectionType] ?? {};
-							acc[nodeId][connectionType] = acc[nodeId][connectionType] ?? {};
+						for (const outputIndex of Object.keys(connectionTypeData)) {
+							const parsedOutputIndex = parseInt(outputIndex, 10);
+							const connectionTypeOutputIndexData = connectionTypeData[parsedOutputIndex] ?? 0;
 
-							for (const outputIndex of Object.keys(connectionTypeData)) {
-								const parsedOutputIndex = parseInt(outputIndex, 10);
-								const connectionTypeOutputIndexData = connectionTypeData[parsedOutputIndex] ?? [];
+							acc[node.id][connectionType][outputIndex] = acc[node.id][connectionType][
+								outputIndex
+							] ?? { ...outputData };
 
-								acc[nodeId][connectionType][outputIndex] = acc[nodeId][connectionType][
-									outputIndex
-								] ?? { ...outputData };
-								if (runIteration.executionStatus !== 'canceled') {
-									acc[nodeId][connectionType][outputIndex].iterations += 1;
-								}
-								acc[nodeId][connectionType][outputIndex].total +=
-									connectionTypeOutputIndexData.length;
-							}
+							// if (runIteration.executionStatus !== 'canceled') {
+							// 	acc[node.id][connectionType][outputIndex].iterations += 1;
+							// }
+							acc[node.id][connectionType][outputIndex].total += connectionTypeOutputIndexData;
 						}
 					}
 				}
+
+				console.log(acc);
 
 				return acc;
 			}, {});

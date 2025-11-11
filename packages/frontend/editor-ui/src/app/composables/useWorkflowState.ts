@@ -55,29 +55,6 @@ export function useWorkflowState() {
 	const nodeTypesStore = useNodeTypesStore();
 
 	////
-	// Node execution item counts
-	////
-
-	/**
-	 * Stores the item count by connection type for each node during execution.
-	 * This data is sent from the backend via the nodeExecuteAfter push event.
-	 */
-	const nodeExecutionItemCounts = ref<
-		Record<string, Partial<Record<NodeConnectionType, number[]>>>
-	>({});
-
-	function setNodeExecutionItemCount(
-		nodeName: string,
-		itemCountByConnectionType: Partial<Record<NodeConnectionType, number[]>>,
-	) {
-		nodeExecutionItemCounts.value[nodeName] = itemCountByConnectionType;
-	}
-
-	function clearNodeExecutionItemCounts() {
-		nodeExecutionItemCounts.value = {};
-	}
-
-	////
 	// Workflow editing state
 	////
 
@@ -206,6 +183,35 @@ export function useWorkflowState() {
 	}
 
 	////
+	// Execution item counts
+	////
+
+	/**
+	 * Stores the item count by connection type for each node during execution.
+	 * This data is sent from the backend via the nodeExecuteAfter push event.
+	 */
+	const executionItemCountsByNodeName = ref<
+		Record<string, Array<Partial<Record<NodeConnectionType, number[]>>>>
+	>({});
+
+	function addExecutionItemCountsForNode(
+		nodeName: string,
+		itemCountByConnectionType: Partial<Record<NodeConnectionType, number[]>>,
+	) {
+		executionItemCountsByNodeName.value = {
+			...executionItemCountsByNodeName.value,
+			[nodeName]: [
+				...(executionItemCountsByNodeName.value[nodeName] ?? []),
+				itemCountByConnectionType,
+			],
+		};
+	}
+
+	function clearExecutionItemCounts() {
+		executionItemCountsByNodeName.value = {};
+	}
+
+	////
 	// Execution
 	////
 
@@ -217,7 +223,7 @@ export function useWorkflowState() {
 		ws.executionWaitingForWebhook = false;
 		documentTitle.setDocumentTitle(ws.workflowName, 'IDLE');
 		ws.workflowExecutionStartedData = undefined;
-		clearNodeExecutionItemCounts();
+		clearExecutionItemCounts();
 
 		// TODO(ckolb): confirm this works across files?
 		clearPopupWindowState();
@@ -257,7 +263,7 @@ export function useWorkflowState() {
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
 		ws.executionWaitingForWebhook = false;
-		clearNodeExecutionItemCounts();
+		clearExecutionItemCounts();
 	}
 
 	////
@@ -442,10 +448,10 @@ export function useWorkflowState() {
 		// Execution
 		markExecutionAsStopped,
 
-		// Node execution item counts
-		nodeExecutionItemCounts,
-		setNodeExecutionItemCount,
-		clearNodeExecutionItemCounts,
+		// Execution item counts
+		executionItemCountsByNodeName,
+		addExecutionItemCountsForNode,
+		clearExecutionItemCounts,
 
 		// Node modification
 		setNodeParameters,

@@ -743,7 +743,7 @@ describe('useCanvasMapping', () => {
 				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
 
 				// Set up stored item counts in workflowState
-				workflowState.nodeExecutionItemCounts.value = {
+				workflowState.executionItemCountsByNodeName.value = {
 					'Node 1': {
 						[NodeConnectionTypes.Main]: [5, 3],
 					},
@@ -785,7 +785,7 @@ describe('useCanvasMapping', () => {
 
 				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
 
-				workflowState.nodeExecutionItemCounts.value = {
+				workflowState.executionItemCountsByNodeName.value = {
 					'AI Node': {
 						[NodeConnectionTypes.Main]: [10],
 						[NodeConnectionTypes.AiMemory]: [2, 4],
@@ -839,7 +839,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				// No stored item counts
-				workflowState.nodeExecutionItemCounts.value = {};
+				workflowState.executionItemCountsByNodeName.value = {};
 
 				// Mock run data instead
 				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue([
@@ -884,7 +884,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Set stored item counts
-				workflowState.nodeExecutionItemCounts.value = {
+				workflowState.executionItemCountsByNodeName.value = {
 					'Node 1': {
 						[NodeConnectionTypes.Main]: [7],
 					},
@@ -933,7 +933,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Empty item counts object
-				workflowState.nodeExecutionItemCounts.value = {
+				workflowState.executionItemCountsByNodeName.value = {
 					'Node 1': {},
 				};
 
@@ -983,7 +983,7 @@ describe('useCanvasMapping', () => {
 				});
 
 				// Node 1 has stored item counts
-				workflowState.nodeExecutionItemCounts.value = {
+				workflowState.executionItemCountsByNodeName.value = {
 					'Node 1': {
 						[NodeConnectionTypes.Main]: [5],
 					},

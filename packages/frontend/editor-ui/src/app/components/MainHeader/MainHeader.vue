@@ -3,6 +3,7 @@ import TabBar from '@/app/components/MainHeader/TabBar.vue';
 import WorkflowDetails from '@/app/components/MainHeader/WorkflowDetails.vue';
 import { useI18n } from '@n8n/i18n';
 import { usePushConnection } from '@/app/composables/usePushConnection';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import {
 	LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON,
 	MAIN_HEADER_TABS,
@@ -30,7 +31,8 @@ import { useToast } from '@/app/composables/useToast';
 const router = useRouter();
 const route = useRoute();
 const locale = useI18n();
-const pushConnection = usePushConnection({ router });
+const workflowState = injectWorkflowState();
+const pushConnection = usePushConnection({ router, workflowState });
 const toast = useToast();
 const ndvStore = useNDVStore();
 const uiStore = useUIStore();
