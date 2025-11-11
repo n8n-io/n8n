@@ -1,13 +1,53 @@
-import { getOverflowAncestors } from '@floating-ui/dom';
 import { ref, onBeforeUnmount, nextTick, type Ref } from 'vue';
 
-interface ScrollListener {
+type ScrollListener = {
 	element: Element;
 	handler: () => void;
-}
+};
 
 const isHTMLElement = (element: unknown): element is HTMLElement => {
 	return element !== undefined && element instanceof HTMLElement;
+};
+
+const isScrollable = (element: Element): boolean => {
+	const computedStyle = window.getComputedStyle(element);
+	const overflowY = computedStyle.overflowY;
+	const overflowX = computedStyle.overflowX;
+
+	// Check if element has scrollable overflow
+	const hasScrollableOverflow =
+		overflowY === 'auto' ||
+		overflowY === 'scroll' ||
+		overflowX === 'auto' ||
+		overflowX === 'scroll';
+
+	if (!hasScrollableOverflow) {
+		return false;
+	}
+
+	// Check if element actually has scrollable content
+	return element.scrollHeight > element.clientHeight || element.scrollWidth > element.clientWidth;
+};
+
+const findFirstScrollableParent = (element: HTMLElement): Element | null => {
+	let parent = element.parentElement;
+
+	while (parent && parent !== document.body) {
+		if (isScrollable(parent)) {
+			return parent;
+		}
+		parent = parent.parentElement;
+	}
+
+	if (document.body && isScrollable(document.body)) {
+		return document.body;
+	}
+
+	if (document.documentElement && isScrollable(document.documentElement)) {
+		return document.documentElement;
+	}
+
+	return null;
 };
 
 /**
@@ -41,21 +81,13 @@ export function useParentScroll(
 
 			detachScrollListeners();
 
-			// Get all scrollable ancestors and attach listeners
-			const scrollableParents = getOverflowAncestors(dropdownElement);
+			const scrollableParent = findFirstScrollableParent(dropdownElement);
 
-			scrollableParents.forEach((parent) => {
-				if (parent instanceof Element) {
-					const handler = () => onScroll();
-					parent.addEventListener('scroll', handler, { passive: true, capture: true });
-					scrollListeners.value.push({ element: parent, handler });
-				}
-			});
-
-			// Also listen to window scroll
-			const windowHandler = () => onScroll();
-			window.addEventListener('scroll', windowHandler, { passive: true, capture: true });
-			scrollListeners.value.push({ element: window as unknown as Element, handler: windowHandler });
+			if (scrollableParent) {
+				const handler = () => onScroll();
+				scrollableParent.addEventListener('scroll', handler, { passive: true, capture: true });
+				scrollListeners.value.push({ element: scrollableParent, handler });
+			}
 		});
 	};
 
