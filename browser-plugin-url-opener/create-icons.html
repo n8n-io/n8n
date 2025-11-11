@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Icon Generator - 2nd Market Filter</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            text-align: center;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin: 10px;
+        }
+        .container {
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>EUR Icon Generator</h1>
+    <p>Right-click on each icon and "Save Image As..." with the corresponding filename</p>
+
+    <div class="container">
+        <p><strong>icon-48.png</strong> (48x48)</p>
+        <canvas id="icon48" width="48" height="48"></canvas>
+    </div>
+
+    <div class="container">
+        <p><strong>icon-96.png</strong> (96x96)</p>
+        <canvas id="icon96" width="96" height="96"></canvas>
+    </div>
+
+    <script>
+        function drawIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+
+            // Background
+            ctx.fillStyle = '#4CAF50';
+            ctx.roundRect(0, 0, size, size, size / 6);
+            ctx.fill();
+
+            // EUR symbol
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.66}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('€', size / 2, size / 2);
+        }
+
+        // Draw both icons
+        drawIcon('icon48', 48);
+        drawIcon('icon96', 96);
+
+        // Add download functionality
+        document.querySelectorAll('canvas').forEach(canvas => {
+            canvas.addEventListener('click', function() {
+                const link = document.createElement('a');
+                link.download = this.id.replace('icon', 'icon-') + '.png';
+                link.href = this.toDataURL();
+                link.click();
+            });
+            canvas.style.cursor = 'pointer';
+        });
+    </script>
+</body>
+</html>

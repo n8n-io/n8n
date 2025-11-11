@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "2nd market filter",
+  "version": "1.0.0",
+  "description": "Opens the secondary market page on Esketit with one click",
+  "icons": {
+    "48": "icons/icon.svg",
+    "96": "icons/icon.svg"
+  },
+  "browser_action": {
+    "default_icon": "icons/icon.svg",
+    "default_title": "Open 2nd Market"
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "permissions": [
+    "tabs"
+  ]
+}
