@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { useI18n } from '@n8n/i18n';
+import { useDebounce } from '@/app/composables/useDebounce';
 import type { IResourceLocatorResultExpanded } from '@/Interface';
+import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { INodeParameterResourceLocator } from 'n8n-workflow';
 import { computed, onBeforeUnmount, onMounted, ref, useCssModule, watch } from 'vue';
 
-import { N8nBadge, N8nIcon, N8nInput, N8nLoading, N8nPopover } from '@n8n/design-system';
 const SEARCH_BAR_HEIGHT_PX = 40;
 const SCROLL_MARGIN_PX = 10;
 
@@ -46,6 +47,14 @@ const emit = defineEmits<{
 	filter: [filter: string];
 	addResourceClick: [];
 }>();
+
+const { debounce } = useDebounce();
+const debouncedLoadMore = debounce(
+	() => {
+		emit('loadMore');
+	},
+	{ debounceTime: 500 },
+);
 
 const i18n = useI18n();
 const $style = useCssModule();
@@ -209,7 +218,7 @@ function onResultsEnd() {
 			resultsContainerRef.value.offsetHeight -
 			(resultsContainerRef.value.scrollHeight - resultsContainerRef.value.scrollTop);
 		if (diff > -SCROLL_MARGIN_PX && diff < SCROLL_MARGIN_PX) {
-			emit('loadMore');
+			debouncedLoadMore();
 		}
 	}
 }
@@ -219,6 +228,23 @@ function isWithinDropdown(element: HTMLElement) {
 }
 
 defineExpose({ isWithinDropdown });
+
+const canLoadMore = computed(() => {
+	return props.hasMore && !props.loading && !props.filter;
+});
+
+watch(
+	canLoadMore,
+	(loadMore) => {
+		const isScrollable =
+			!!resultsContainerRef.value &&
+			resultsContainerRef.value?.scrollHeight > resultsContainerRef.value?.clientHeight;
+		if (loadMore && !isScrollable) {
+			debouncedLoadMore();
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
