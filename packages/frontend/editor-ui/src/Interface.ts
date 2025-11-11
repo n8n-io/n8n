@@ -798,7 +798,13 @@ export type SchemaType =
 	| 'undefined'
 	| 'binary';
 
-export type Schema = { type: SchemaType; key?: string; value: string | Schema[]; path: string };
+export type Schema = {
+	type: SchemaType;
+	key?: string;
+	value: string | Schema[];
+	path: string;
+	binaryData?: { url: string; name: string };
+};
 
 export type NodeAuthenticationOption = {
 	name: string;

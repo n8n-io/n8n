@@ -56,14 +56,27 @@ export function useDataSchema() {
 						path,
 					};
 				} else if (isObj(input)) {
+					const type = isBinary(input) ? 'binary' : 'object';
 					schema = {
-						type: isBinary(input) ? 'binary' : 'object',
+						type,
 						value: Object.entries(input).map(([k, v]) => ({
 							key: k,
 							...getSchema(v, generatePath(path, [k]), excludeValues, collapseArrays),
 						})),
 						path,
 					};
+					if (type === 'binary') {
+						const { id, fileName, mimeType, fileExtension } = input as {
+							id: string;
+							fileName: string;
+							mimeType: string;
+							fileExtension: string;
+						};
+						const url = useWorkflowsStore().getBinaryUrl(id, 'download', fileName ?? '', mimeType);
+						const name = [fileName, fileExtension].join('.');
+
+						schema.binaryData = { url, name };
+					}
 				}
 				break;
 			case 'function':
@@ -277,6 +290,7 @@ export type RenderItem = {
 	preview?: boolean;
 	locked?: boolean;
 	lockedTooltip?: string;
+	binaryData?: { url: string; name: string };
 };
 
 export type RenderHeader = {
@@ -421,6 +435,7 @@ export const useFlattenSchema = () => {
 					nodeName,
 					type: 'item',
 					preview,
+					binaryData: schema.binaryData ? schema.binaryData : undefined,
 				});
 			}
 
@@ -441,7 +456,7 @@ export const useFlattenSchema = () => {
 							depth,
 							prefix: itemPrefix,
 							level: level + 1,
-							preview,
+							preview: preview || schema.type === 'binary',
 							lastSuccessfulPreview,
 							truncateLimit,
 						});

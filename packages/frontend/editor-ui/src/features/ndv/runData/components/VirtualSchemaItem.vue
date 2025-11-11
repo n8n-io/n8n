@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import TextWithHighlights from './TextWithHighlights.vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { saveAs } from 'file-saver';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 type Props = {
@@ -23,9 +24,15 @@ type Props = {
 	locked?: boolean;
 	lockedTooltip?: string;
 	runIndex?: number;
+	binaryData?: { url: string; name: string };
 };
 
 const props = defineProps<Props>();
+
+async function downloadBinaryData() {
+	if (!props.binaryData) return;
+	saveAs(props.binaryData.url, props.binaryData.name);
+}
 
 const emit = defineEmits<{
 	click: [];
@@ -75,6 +82,29 @@ const emit = defineEmits<{
 			:content="value"
 			:search="props.search"
 		/>
+		<div v-if="props.binaryData && !preview" class="binary-controls">
+			<div
+				class="pill"
+				:class="{
+					'pill--highlight': highlight,
+					'pill--preview': preview,
+					'pill--locked': locked,
+				}"
+				@click="downloadBinaryData"
+			>
+				<N8nIcon class="type-icon" :icon="'download'" size="small" />
+			</div>
+			<div
+				class="pill"
+				:class="{
+					'pill--highlight': highlight,
+					'pill--preview': preview,
+					'pill--locked': locked,
+				}"
+			>
+				<N8nIcon class="type-icon" :icon="'eye'" size="small" />
+			</div>
+		</div>
 	</div>
 </template>
 
@@ -195,6 +225,18 @@ const emit = defineEmits<{
 
 .tooltip {
 	max-width: 260px;
+}
+
+.binary-controls {
+	display: inline-flex;
+	gap: var(--spacing--3xs);
+	opacity: 0;
+	transition: opacity 0.2s ease-in-out;
+	cursor: pointer;
+}
+
+.schema-item:hover .binary-controls {
+	opacity: 1;
 }
 </style>
 
