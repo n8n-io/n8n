@@ -47,6 +47,7 @@ describe('establishExecutionContext', () => {
 			expect(runExecutionData.executionData!.runtimeData).toBeDefined();
 			expect(runExecutionData.executionData!.runtimeData).toHaveProperty('version', 1);
 			expect(runExecutionData.executionData!.runtimeData).toHaveProperty('establishedAt');
+			expect(runExecutionData.executionData!.runtimeData).toHaveProperty('source', 'manual');
 
 			const establishedAt = runExecutionData.executionData!.runtimeData!.establishedAt;
 			expect(establishedAt).toBeGreaterThanOrEqual(beforeTimestamp);
@@ -148,6 +149,7 @@ describe('establishExecutionContext', () => {
 			// Should establish basic context even with empty stack
 			expect(runExecutionData.executionData!.runtimeData).toBeDefined();
 			expect(runExecutionData.executionData!.runtimeData!.version).toBe(1);
+			expect(runExecutionData.executionData!.runtimeData!.source).toBe('manual');
 			expect(runExecutionData.executionData!.runtimeData!.establishedAt).toBeGreaterThanOrEqual(
 				beforeTimestamp,
 			);
@@ -176,9 +178,10 @@ describe('establishExecutionContext', () => {
 			const context = runExecutionData.executionData!.runtimeData;
 
 			// Verify context has only basic properties (no start-node-specific extraction)
-			expect(Object.keys(context!)).toEqual(['version', 'establishedAt']);
+			expect(Object.keys(context!)).toEqual(['version', 'establishedAt', 'source']);
 			expect(typeof context!.version).toBe('number');
 			expect(typeof context!.establishedAt).toBe('number');
+			expect(context!.source).toBe('manual');
 		});
 	});
 
@@ -242,9 +245,10 @@ describe('establishExecutionContext', () => {
 			const context = runExecutionData.executionData!.runtimeData;
 
 			// Verify context has only expected properties
-			expect(Object.keys(context!)).toEqual(['version', 'establishedAt']);
+			expect(Object.keys(context!)).toEqual(['version', 'establishedAt', 'source']);
 			expect(typeof context!.version).toBe('number');
 			expect(typeof context!.establishedAt).toBe('number');
+			expect(context!.source).toBe('manual');
 		});
 
 		it('should create unique timestamps for different executions', async () => {
@@ -334,6 +338,7 @@ describe('establishExecutionContext', () => {
 
 				expect(runExecutionData.executionData!.runtimeData).toBeDefined();
 				expect(runExecutionData.executionData!.runtimeData!.version).toBe(1);
+				expect(runExecutionData.executionData!.runtimeData!.source).toBe(mode);
 			}
 		});
 	});

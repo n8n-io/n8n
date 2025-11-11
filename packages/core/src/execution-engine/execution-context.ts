@@ -72,6 +72,7 @@ export const establishExecutionContext = async (
 	executionData.runtimeData = {
 		version: 1,
 		establishedAt: Date.now(),
+		source: mode,
 	};
 
 	// Next, we attempt to extract additional context from the start node of the execution stack.
