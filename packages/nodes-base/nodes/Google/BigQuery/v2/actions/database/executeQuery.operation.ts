@@ -219,6 +219,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+	const abortSignal = this.getExecutionCancelSignal();
 	const items = this.getInputData();
 	const length = items.length;
 
@@ -401,7 +402,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	let waitTime = 1000;
 	while (jobs.length > 0) {
-		const completedJobs: string[] = [];
+		const settledJobs: string[] = [];
 
 		for (const job of jobs) {
 			try {
@@ -420,7 +421,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				);
 
 				if (response.jobComplete) {
-					completedJobs.push(job.jobId);
+					settledJobs.push(job.jobId);
 
 					returnData.push(...prepareOutput.call(this, response, job.i, job.raw, job.includeSchema));
 				}
@@ -446,12 +447,17 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					itemIndex: job.i,
 					description: error.description,
 				});
+			} finally {
+				settledJobs.push(job.jobId);
 			}
 		}
 
-		jobs = jobs.filter((job) => !completedJobs.includes(job.jobId));
+		jobs = jobs.filter((job) => !settledJobs.includes(job.jobId));
 
 		if (jobs.length > 0) {
+			if (abortSignal?.aborted) {
+				break;
+			}
 			await sleep(waitTime);
 			if (waitTime < 30000) {
 				waitTime = waitTime * 2;
