@@ -147,7 +147,10 @@ export class ManualExecutionService {
 						data.executionData.startData.originalDestinationNode = data.destinationNode;
 					}
 					// Set destination to Tool Executor
-					data.destinationNode.nodeName = TOOL_EXECUTOR_NODE_NAME;
+					data.destinationNode = {
+						nodeName: TOOL_EXECUTOR_NODE_NAME,
+						mode: data.executionData?.startData?.originalDestinationNode?.mode ?? 'inclusive',
+					};
 				}
 			}
 

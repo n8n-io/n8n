@@ -399,7 +399,7 @@ describe('prepareExecutionData', () => {
 			'targetNode',
 		);
 
-		expect(runExecutionData.startData?.destinationNode).toBe({
+		expect(runExecutionData.startData?.destinationNode).toEqual({
 			nodeName: 'targetNode',
 			mode: 'inclusive',
 		});
