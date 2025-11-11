@@ -154,6 +154,7 @@ import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
+import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
 import IconLucidePalette from '~icons/lucide/palette';
 import IconLucidePanelLeft from '~icons/lucide/panel-left';
@@ -589,6 +590,7 @@ export const updatedIconSet = {
 	milestone: IconLucideMilestone,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
+	'notebook-pen': IconLucideNotebookPen,
 	'package-open': IconLucidePackageOpen,
 	palette: IconLucidePalette,
 	'panel-left': IconLucidePanelLeft,

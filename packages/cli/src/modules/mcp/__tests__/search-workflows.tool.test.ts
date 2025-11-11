@@ -97,18 +97,16 @@ describe('search-workflows MCP tool', () => {
 			});
 			await searchWorkflows(user, workflowService as unknown as WorkflowService, {
 				limit: 500,
-				active: true,
-				name: 'foo',
+				query: 'foo',
 				projectId: 'proj-1',
 			});
 
 			const [_userArg, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
-			expect(optionsArg.take).toBe(200); // clamped to MAX_RESULTS
+			expect(optionsArg.take).toBe(200);
 			expect(optionsArg.filter).toMatchObject({
 				isArchived: false,
 				availableInMCP: true,
-				active: true,
-				name: 'foo',
+				query: 'foo',
 				projectId: 'proj-1',
 			});
 		});

@@ -653,9 +653,17 @@ export function useCanvasOperations() {
 		}
 
 		const nodes = workflowsStore.getNodesByIds(ids);
-		const nextStatePinned = nodes.some((node) => !workflowsStore.pinDataByNodeName(node.name));
 
-		for (const node of nodes) {
+		// Filter to only pinnable nodes
+		const pinnableNodes = nodes.filter((node) => {
+			const pinnedDataForNode = usePinnedData(node);
+			return pinnedDataForNode.canPinNode(true);
+		});
+		const nextStatePinned = pinnableNodes.some(
+			(node) => !workflowsStore.pinDataByNodeName(node.name),
+		);
+
+		for (const node of pinnableNodes) {
 			const pinnedDataForNode = usePinnedData(node);
 			if (nextStatePinned) {
 				const dataToPin = useDataSchema().getInputDataWithPinned(node);
@@ -716,10 +724,15 @@ export function useCanvasOperations() {
 		}
 
 		for (const [index, nodeAddData] of nodesWithTypeVersion.entries()) {
-			const { isAutoAdd, openDetail: openNDV, actionName, ...node } = nodeAddData;
-			const position = node.position ?? insertPosition;
-			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
+			const { isAutoAdd, openDetail: openNDV, actionName, positionOffset, ...node } = nodeAddData;
 
+			const rawPosition = node.position ?? insertPosition;
+			const position: XYPosition | undefined =
+				rawPosition && positionOffset
+					? [rawPosition[0] + positionOffset[0], rawPosition[1] + positionOffset[1]]
+					: rawPosition;
+
+			const nodeTypeDescription = requireNodeTypeDescription(node.type, node.typeVersion);
 			try {
 				const newNode = addNode(
 					{

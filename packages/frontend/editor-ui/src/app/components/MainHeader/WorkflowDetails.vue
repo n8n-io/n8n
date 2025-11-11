@@ -74,6 +74,8 @@ import {
 	N8nInlineTextEdit,
 	N8nTooltip,
 } from '@n8n/design-system';
+import WorkflowDescriptionPopover from './WorkflowDescriptionPopover.vue';
+
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
 	SM: 200,
@@ -92,6 +94,7 @@ const props = defineProps<{
 	active: IWorkflowDb['active'];
 	currentFolder?: FolderShortInfo;
 	isArchived: IWorkflowDb['isArchived'];
+	description?: IWorkflowDb['description'];
 }>();
 
 const emit = defineEmits<{
@@ -256,10 +259,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	}
 
 	return actions;
-});
-
-const isWorkflowHistoryFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
 });
 
 const workflowTagIds = computed(() => {
@@ -668,10 +667,6 @@ function goToUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
 }
 
-function goToWorkflowHistoryUpgrade() {
-	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
-}
-
 function getPersonalProjectToastContent() {
 	const title = locale.baseText('workflows.create.personal.toast.title');
 	if (!props.currentFolder) {
@@ -843,7 +838,7 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 				/>
 			</template>
 
-			<span class="archived">
+			<span :class="$style['header-controls']">
 				<N8nBadge
 					v-if="isArchived"
 					class="ml-3xs"
@@ -853,6 +848,11 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nBadge>
+				<WorkflowDescriptionPopover
+					v-else-if="!props.readOnly && workflowPermissions.update"
+					:workflow-id="props.id"
+					:workflow-description="props.description"
+				/>
 			</span>
 		</span>
 
@@ -923,12 +923,7 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
-				<WorkflowHistoryButton
-					:workflow-id="props.id"
-					:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
-					:is-new-workflow="isNewWorkflow"
-					@upgrade="goToWorkflowHistoryUpgrade"
-				/>
+				<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 			</div>
 			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input
@@ -1002,14 +997,6 @@ $--header-spacing: 20px;
 	min-width: 100px;
 	width: 100%;
 	max-width: 460px;
-}
-
-.archived {
-	display: flex;
-	align-items: center;
-	width: 100%;
-	flex: 1;
-	margin-right: $--header-spacing;
 }
 
 .actions {
@@ -1086,5 +1073,14 @@ $--header-spacing: 20px;
 	right: var(--spacing--xs);
 	top: var(--spacing--xs);
 	cursor: pointer;
+}
+
+.header-controls {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--md);
+	width: 100%;
+	flex: 1;
+	margin: 0 var(--spacing--md);
 }
 </style>

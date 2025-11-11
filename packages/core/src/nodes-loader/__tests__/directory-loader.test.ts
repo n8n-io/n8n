@@ -106,6 +106,58 @@ describe('DirectoryLoader', () => {
 
 			expect(mockFs.readFileSync).not.toHaveBeenCalled();
 		});
+
+		it('should load custom nodes when specified with CUSTOM prefix in includeNodes', async () => {
+			const loader = new CustomDirectoryLoader(directory, [], ['CUSTOM.node1', 'CUSTOM.node2']);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({
+				node1: { sourcePath: 'dist/Node1/Node1.node.js', type: mockNode1 },
+				node2: { sourcePath: 'dist/Node2/Node2.node.js', type: mockNode2 },
+			});
+			expect(Object.keys(loader.nodeTypes)).toHaveLength(2);
+		});
+
+		it('should load only specified custom nodes when includeNodes contains mixed packages', async () => {
+			const loader = new CustomDirectoryLoader(
+				directory,
+				[],
+				['n8n-nodes-base.aggregate', 'CUSTOM.node1'],
+			);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({
+				node1: { sourcePath: 'dist/Node1/Node1.node.js', type: mockNode1 },
+			});
+			expect(Object.keys(loader.nodeTypes)).toHaveLength(1);
+			// node2 should not be loaded
+		});
+
+		it('should not load any custom nodes when only built-in nodes are in includeNodes', async () => {
+			const loader = new CustomDirectoryLoader(
+				directory,
+				[],
+				['n8n-nodes-base.aggregate', 'n8n-nodes-base.httpRequest'],
+			);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({});
+			expect(loader.types.nodes).toEqual([]);
+		});
+
+		it('should exclude custom nodes when specified with CUSTOM prefix in excludeNodes', async () => {
+			const loader = new CustomDirectoryLoader(directory, ['CUSTOM.node1'], []);
+
+			await loader.loadAll();
+
+			expect(loader.nodeTypes).toEqual({
+				node2: { sourcePath: 'dist/Node2/Node2.node.js', type: mockNode2 },
+			});
+			expect(Object.keys(loader.nodeTypes)).toHaveLength(1);
+		});
 	});
 
 	describe('PackageDirectoryLoader', () => {
