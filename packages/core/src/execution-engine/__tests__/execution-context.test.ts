@@ -1,10 +1,11 @@
 import { mock } from 'jest-mock-extended';
-import type {
-	INode,
-	IRunExecutionData,
-	IWorkflowExecuteAdditionalData,
-	Workflow,
-	WorkflowExecuteMode,
+import {
+	UnexpectedError,
+	type INode,
+	type IRunExecutionData,
+	type IWorkflowExecuteAdditionalData,
+	type Workflow,
+	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
 import { establishExecutionContext } from '../execution-context';
@@ -193,7 +194,7 @@ describe('establishExecutionContext', () => {
 
 			await expect(
 				establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode),
-			).rejects.toThrow();
+			).rejects.toThrow(UnexpectedError);
 		});
 
 		it('should throw error when executionData is undefined', async () => {
@@ -207,7 +208,7 @@ describe('establishExecutionContext', () => {
 
 			await expect(
 				establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode),
-			).rejects.toThrow();
+			).rejects.toThrow(UnexpectedError);
 		});
 	});
 

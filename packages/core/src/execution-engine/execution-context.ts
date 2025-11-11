@@ -1,20 +1,11 @@
 import {
-	ExecutionBaseError,
 	type IWorkflowExecuteAdditionalData,
 	type WorkflowExecuteMode,
-	type IExecutionContextV1,
 	type IRunExecutionData,
 	type Workflow,
 } from 'n8n-workflow';
 
 import { assertExecutionDataExists } from '@/utils/assertions';
-
-export class ExecutionContextEstablishmentError extends ExecutionBaseError {
-	constructor(message: string) {
-		super(message);
-		this.name = 'ExecutionContextEstablishmentError';
-	}
-}
 
 /**
  * Establishes the execution context for a workflow run.
@@ -30,7 +21,7 @@ export class ExecutionContextEstablishmentError extends ExecutionBaseError {
  *
  * @returns Promise that resolves when context has been established
  *
- * @throws {ExecutionContextEstablishmentError} When `runExecutionData.executionData` is missing or invalid
+ * @throws {UnexpectedError} When `runExecutionData.executionData` is missing or invalid
  *
  * @remarks
  * ## Mutation Behavior
@@ -71,17 +62,17 @@ export const establishExecutionContext = async (
 	additionalData: IWorkflowExecuteAdditionalData,
 	mode: WorkflowExecuteMode,
 ): Promise<void> => {
-	const executionContext: IExecutionContextV1 = {
-		version: 1,
-		establishedAt: Date.now(),
-	};
-
 	assertExecutionDataExists(runExecutionData.executionData, workflow, additionalData, mode);
 
 	const executionData = runExecutionData.executionData;
 
 	// At this point we have established the basic execution context.
-	executionData.runtimeData = executionContext;
+	// If a context is already established we overwrite it.
+	// This might change depending on the propagation strategy we want to implement in the future.
+	executionData.runtimeData = {
+		version: 1,
+		establishedAt: Date.now(),
+	};
 
 	// Next, we attempt to extract additional context from the start node of the execution stack.
 	const [startItem] = executionData.nodeExecutionStack;
@@ -99,6 +90,12 @@ export const establishExecutionContext = async (
 	if (!startItem) {
 		return;
 	}
+
+	// TODO: the following comments will be implemented in future iterations
+	// to extract more context information based on the start node
+	// and the data that triggered the workflow execution.
+	// the comments are left here for now to provide more context on how
+	// this can be achieved.
 
 	// startNodeParameters will hold the parameters of the start node
 	// this can be the settings for the different hooks to be executed
