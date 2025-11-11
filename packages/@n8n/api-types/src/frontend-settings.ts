@@ -46,7 +46,6 @@ export interface IEnterpriseSettings {
 	showNonProdBanner: boolean;
 	debugInEditor: boolean;
 	binaryDataS3: boolean;
-	workflowHistory: boolean;
 	workerView: boolean;
 	advancedPermissions: boolean;
 	apiKeyScopes: boolean;

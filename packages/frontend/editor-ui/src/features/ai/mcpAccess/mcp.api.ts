@@ -1,4 +1,8 @@
-import type { ApiKey } from '@n8n/api-types';
+import type {
+	ApiKey,
+	ListOAuthClientsResponseDto,
+	DeleteOAuthClientResponseDto,
+} from '@n8n/api-types';
 import type { IWorkflowSettings } from '@/Interface';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -40,5 +44,22 @@ export async function toggleWorkflowMcpAccessApi(
 		{
 			availableInMCP,
 		},
+	);
+}
+
+export async function fetchOAuthClients(
+	context: IRestApiContext,
+): Promise<ListOAuthClientsResponseDto> {
+	return await makeRestApiRequest(context, 'GET', '/mcp/oauth-clients');
+}
+
+export async function deleteOAuthClient(
+	context: IRestApiContext,
+	clientId: string,
+): Promise<DeleteOAuthClientResponseDto> {
+	return await makeRestApiRequest(
+		context,
+		'DELETE',
+		`/mcp/oauth-clients/${encodeURIComponent(clientId)}`,
 	);
 }
