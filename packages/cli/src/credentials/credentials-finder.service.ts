@@ -104,7 +104,12 @@ export class CredentialsFinderService {
 	}
 
 	/** Get all credentials shared to a user */
-	async findAllCredentialsForUser(user: User, scopes: Scope[], trx?: EntityManager) {
+	async findAllCredentialsForUser(
+		user: User,
+		scopes: Scope[],
+		trx?: EntityManager,
+		options?: { includeGlobalCredentials?: boolean },
+	) {
 		let where: FindOptionsWhere<SharedCredentials> = {};
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
@@ -133,22 +138,24 @@ export class CredentialsFinderService {
 			projectId: sc.projectId,
 		}));
 
-		// Also include global credentials
-		const em = trx ?? this.credentialsRepository.manager;
-		const globalCredentials = await em.find(CredentialsEntity, {
-			where: { isAvailableForAllUsers: true },
-			relations: { shared: true },
-		});
+		// Include global credentials if flag is set
+		if (options?.includeGlobalCredentials) {
+			const em = trx ?? this.credentialsRepository.manager;
+			const globalCredentials = await em.find(CredentialsEntity, {
+				where: { isAvailableForAllUsers: true },
+				relations: { shared: true },
+			});
 
-		// Merge and deduplicate based on credential ID
-		const credentialMap = new Map(sharedCredentialsList.map((c) => [c.id, c]));
-		for (const globalCred of globalCredentials) {
-			if (!credentialMap.has(globalCred.id)) {
-				// For global credentials, use the owner's project ID
-				const ownerSharing = globalCred.shared?.find((s) => s.role === 'credential:owner');
-				const projectId = ownerSharing?.projectId;
-				if (projectId) {
-					sharedCredentialsList.push({ ...globalCred, projectId });
+			// Merge and deduplicate based on credential ID
+			const credentialMap = new Map(sharedCredentialsList.map((c) => [c.id, c]));
+			for (const globalCred of globalCredentials) {
+				if (!credentialMap.has(globalCred.id)) {
+					// For global credentials, use the owner's project ID
+					const ownerSharing = globalCred.shared?.find((s) => s.role === 'credential:owner');
+					const projectId = ownerSharing?.projectId;
+					if (projectId) {
+						sharedCredentialsList.push({ ...globalCred, projectId });
+					}
 				}
 			}
 		}
