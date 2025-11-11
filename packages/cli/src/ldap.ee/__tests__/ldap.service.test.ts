@@ -82,6 +82,7 @@ describe('LdapService', () => {
 		synchronizationInterval: 60,
 		searchPageSize: 1,
 		searchTimeout: 6,
+		enforceEmailUniqueness: true,
 	};
 
 	const settingsRepository = mockInstance(SettingsRepository);
