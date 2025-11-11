@@ -195,6 +195,21 @@ export class WorkflowsController {
 
 		await this.workflowHistoryService.saveVersion(req.user, savedWorkflow, savedWorkflow.id);
 
+		if (savedWorkflow.active) {
+			const activeVersion = await this.workflowHistoryService.getVersion(
+				req.user,
+				savedWorkflow.id,
+				savedWorkflow.versionId,
+			);
+
+			await this.workflowRepository.update(savedWorkflow.id, {
+				activeVersion,
+			});
+
+			// Update the in-memory object to reflect the change
+			savedWorkflow.activeVersion = activeVersion;
+		}
+
 		if (tagIds && !this.globalConfig.tags.disabled && savedWorkflow.tags) {
 			savedWorkflow.tags = this.tagService.sortByRequestOrder(savedWorkflow.tags, {
 				requestOrder: tagIds,
