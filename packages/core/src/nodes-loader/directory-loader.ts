@@ -115,6 +115,13 @@ export abstract class DirectoryLoader {
 		return path.resolve(this.directory, file);
 	}
 
+	protected extractNodeTypes(fullNodeTypes: string[], packageName: string): string[] {
+		return fullNodeTypes
+			.map((fullNodeType) => fullNodeType.split('.'))
+			.filter(([pkg]) => pkg === packageName)
+			.map(([_, nodeType]) => nodeType);
+	}
+
 	private loadClass<T>(sourcePath: string) {
 		const filePath = this.resolvePath(sourcePath);
 		const [className] = path.parse(sourcePath).name.split('.');
