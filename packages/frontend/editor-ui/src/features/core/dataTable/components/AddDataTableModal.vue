@@ -10,7 +10,14 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { dataTableColumnNameSchema } from '@n8n/api-types';
 import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
-import { N8nButton, N8nInput, N8nInputLabel, N8nSelect, N8nOption } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nInput,
+	N8nInputLabel,
+	N8nRadioButtons,
+	N8nSelect,
+	N8nOption,
+} from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { ElUpload, ElIcon } from 'element-plus';
 import type { UploadFile } from 'element-plus';
@@ -125,13 +132,16 @@ onMounted(() => {
 
 const selectedOption = ref<'scratch' | 'import' | null>(null);
 
-const selectFromScratch = () => {
-	selectedOption.value = 'scratch';
-};
-
-const selectImportCsv = () => {
-	selectedOption.value = 'import';
-};
+const creationModeOptions = computed(() => [
+	{
+		label: i18n.baseText('dataTable.add.fromScratch'),
+		value: 'scratch',
+	},
+	{
+		label: i18n.baseText('dataTable.add.importCsv'),
+		value: 'import',
+	},
+]);
 
 const proceedFromSelect = async () => {
 	if (!selectedOption.value || !dataTableName.value) return;
@@ -333,36 +343,11 @@ const redirectToDataTables = () => {
 						name="dataTableNameSelect"
 					/>
 				</N8nInputLabel>
-				<div :class="$style.radioGroup">
-					<label :class="$style.radioOption">
-						<input
-							type="radio"
-							name="creationMode"
-							value="scratch"
-							:class="$style.radioInput"
-							:checked="selectedOption === 'scratch'"
-							data-test-id="create-from-scratch-option"
-							@change="selectFromScratch"
-						/>
-						<span :class="$style.radioLabel">
-							{{ i18n.baseText('dataTable.add.fromScratch') }}
-						</span>
-					</label>
-					<label :class="$style.radioOption">
-						<input
-							type="radio"
-							name="creationMode"
-							value="import"
-							:class="$style.radioInput"
-							:checked="selectedOption === 'import'"
-							data-test-id="import-csv-option"
-							@change="selectImportCsv"
-						/>
-						<span :class="$style.radioLabel">
-							{{ i18n.baseText('dataTable.add.importCsv') }}
-						</span>
-					</label>
-				</div>
+				<N8nRadioButtons
+					v-model="selectedOption"
+					:options="creationModeOptions"
+					:class="$style.radioButtons"
+				/>
 
 				<!-- Upload section - shown when Import from CSV is selected -->
 				<div v-if="selectedOption === 'import'" :class="$style.uploadSection">
@@ -521,31 +506,8 @@ const redirectToDataTables = () => {
 	gap: var(--spacing--md);
 }
 
-.radioGroup {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.radioOption {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	cursor: pointer;
-	user-select: none;
-}
-
-.radioInput {
-	width: 16px;
-	height: 16px;
-	cursor: pointer;
-	flex-shrink: 0;
-}
-
-.radioLabel {
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	cursor: pointer;
+.radioButtons {
+	width: 100%;
 }
 
 .uploadSection {
