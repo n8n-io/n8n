@@ -2407,8 +2407,9 @@ export interface IRun {
 export interface IRunExecutionData {
 	startData?: {
 		startNodes?: StartNodeData[];
-		destinationNode?: string;
-		originalDestinationNode?: string;
+		// NOTE: prefer the structured ID. The string version is only for backward compatibility.
+		destinationNode?: IDestinationNode | string;
+		originalDestinationNode?: IDestinationNode;
 		runNodeFilter?: string[];
 	};
 	resultData: {
@@ -2599,8 +2600,13 @@ export interface IWorkflowCredentials {
 	};
 }
 
+export interface IDestinationNode {
+	nodeName: string;
+	mode: 'inclusive' | 'exclusive';
+}
+
 export interface IWorkflowExecutionDataProcess {
-	destinationNode?: string;
+	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**

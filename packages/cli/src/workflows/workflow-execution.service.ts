@@ -17,6 +17,7 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
+	IDestinationNode,
 } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
 
@@ -114,12 +115,14 @@ export class WorkflowExecutionService {
 		streamingEnabled?: boolean,
 		httpResponse?: Response,
 	) {
+		const destinationNodeInfo = this.convertDestinationNode(destinationNode);
+
 		const pinData = workflowData.pinData;
 		let pinnedTrigger = this.selectPinnedActivatorStarter(
 			workflowData,
 			startNodes?.map((nodeData) => nodeData.name),
 			pinData,
-			destinationNode,
+			destinationNodeInfo?.nodeName,
 		);
 
 		// TODO: Reverse the order of events, first find out if the execution is
@@ -133,8 +136,8 @@ export class WorkflowExecutionService {
 		// create the execution stack and have to cancel the execution, come back
 		// here and either create the runData (e.g. scheduler trigger) or wait for
 		// a webhook or event.
-		if (destinationNode) {
-			if (this.isDestinationNodeATrigger(destinationNode, workflowData)) {
+		if (destinationNodeInfo !== undefined) {
+			if (this.isDestinationNodeATrigger(destinationNodeInfo.nodeName, workflowData)) {
 				runData = undefined;
 			}
 		}
@@ -151,7 +154,7 @@ export class WorkflowExecutionService {
 			(runData === undefined ||
 				startNodes === undefined ||
 				startNodes.length === 0 ||
-				destinationNode === undefined)
+				destinationNodeInfo === undefined)
 		) {
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
 				userId: user.id,
@@ -164,7 +167,7 @@ export class WorkflowExecutionService {
 				additionalData,
 				runData,
 				pushRef,
-				destinationNode,
+				destinationNode: destinationNodeInfo?.nodeName,
 				triggerToStartFrom,
 			});
 
@@ -176,7 +179,7 @@ export class WorkflowExecutionService {
 
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
-			destinationNode,
+			destinationNode: destinationNodeInfo,
 			executionMode: 'manual',
 			runData,
 			pinData,
@@ -211,7 +214,7 @@ export class WorkflowExecutionService {
 			data.executionData = {
 				startData: {
 					startNodes: data.startNodes,
-					destinationNode,
+					destinationNode: destinationNodeInfo,
 				},
 				resultData: {
 					pinData,
@@ -231,6 +234,14 @@ export class WorkflowExecutionService {
 		return {
 			executionId,
 		};
+	}
+	private convertDestinationNode(
+		destinationNode: string | IDestinationNode | undefined,
+	): IDestinationNode | undefined {
+		if (typeof destinationNode === 'string') {
+			return { nodeName: destinationNode, mode: 'inclusive' };
+		}
+		return destinationNode;
 	}
 
 	async executeChatWorkflow(
@@ -424,7 +435,7 @@ export class WorkflowExecutionService {
 		workflow: IWorkflowBase,
 		startNodes?: string[],
 		pinData?: IPinData,
-		destinationNode?: string,
+		destinationNodeName?: string,
 	) {
 		if (!pinData || !startNodes) return null;
 
@@ -438,14 +449,14 @@ export class WorkflowExecutionService {
 
 		if (startNodes?.length === 0) {
 			// If there is a destination node, find the pinned activator that is a parent of the destination node
-			if (destinationNode) {
+			if (destinationNodeName) {
 				const destinationParents = new Set(
 					new Workflow({
 						nodes: workflow.nodes,
 						connections: workflow.connections,
 						active: workflow.active,
 						nodeTypes: this.nodeTypes,
-					}).getParentNodes(destinationNode),
+					}).getParentNodes(destinationNodeName),
 				);
 
 				const activator = allPinnedActivators.find((a) => destinationParents.has(a.name));

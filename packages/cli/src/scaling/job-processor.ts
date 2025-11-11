@@ -11,7 +11,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
+import { BINARY_ENCODING, Workflow, UnexpectedError, toDestinationNodeStruct } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import type {
@@ -57,6 +57,7 @@ export class JobProcessor {
 			includeData: true,
 			unflattenData: true,
 		});
+		console.log(execution);
 
 		if (!execution) {
 			throw new UnexpectedError(
@@ -192,7 +193,7 @@ export class JobProcessor {
 			const data: IWorkflowExecutionDataProcess = {
 				executionMode: execution.mode,
 				workflowData: execution.workflowData,
-				destinationNode: startData?.destinationNode,
+				destinationNode: toDestinationNodeStruct(startData?.destinationNode),
 				startNodes: startData?.startNodes,
 				runData: resultData.runData,
 				pinData: resultData.pinData,

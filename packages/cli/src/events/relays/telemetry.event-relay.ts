@@ -10,7 +10,7 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { snakeCase } from 'change-case';
 import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ExecutionStatus, INodesGraphResult, ITelemetryTrackProperties } from 'n8n-workflow';
-import { TelemetryHelpers } from 'n8n-workflow';
+import { getNodeName, TelemetryHelpers } from 'n8n-workflow';
 import os from 'node:os';
 import { get as pslGet } from 'psl';
 
@@ -792,9 +792,10 @@ export class TelemetryEventRelay extends EventRelay {
 						...manualExecEventProperties,
 						node_type: TelemetryHelpers.getNodeTypeForName(
 							workflow,
-							runData.data.startData?.destinationNode,
+							getNodeName(runData.data.startData?.destinationNode),
 						)?.type,
-						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+						node_id:
+							nodeGraphResult.nameIndices[getNodeName(runData.data.startData?.destinationNode)],
 					};
 
 					this.telemetry.track('Manual node exec finished', telemetryPayload);

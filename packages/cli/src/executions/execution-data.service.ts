@@ -30,7 +30,8 @@ export class ExecutionDataService {
 
 		if (node) {
 			returnData.data.startData = {
-				destinationNode: node.name,
+				// TODO: is this right?
+				destinationNode: { nodeName: node.name, mode: 'inclusive' },
 				runNodeFilter: [node.name],
 			};
 			returnData.data.resultData.lastNodeExecuted = node.name;

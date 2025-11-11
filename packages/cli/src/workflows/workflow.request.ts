@@ -8,6 +8,7 @@ import type {
 	ITaskData,
 	IWorkflowBase,
 	AiAgentRequest,
+	IDestinationNode,
 } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
@@ -33,7 +34,8 @@ export declare namespace WorkflowRequest {
 		workflowData: IWorkflowBase;
 		runData?: IRunData;
 		startNodes?: StartNodeData[];
-		destinationNode?: string;
+		// Prefer the structured ID. The string version is only for backward compatibility and will be removed.
+		destinationNode?: IDestinationNode | string;
 		dirtyNodeNames?: string[];
 		triggerToStartFrom?: {
 			name: string;

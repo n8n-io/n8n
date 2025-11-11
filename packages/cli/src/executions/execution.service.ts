@@ -322,7 +322,8 @@ export class ExecutionService {
 
 		const executionData: IRunExecutionData = {
 			startData: {
-				destinationNode: node.name,
+				// TODO: is this right?
+				destinationNode: { nodeName: node.name, mode: 'inclusive' },
 				runNodeFilter: [node.name],
 			},
 			executionData: {

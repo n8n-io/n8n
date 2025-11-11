@@ -324,7 +324,8 @@ export function prepareExecutionData(
 	} as IRunExecutionData;
 
 	if (destinationNode && runExecutionData.startData) {
-		runExecutionData.startData.destinationNode = destinationNode;
+		// TODO: fix this.
+		runExecutionData.startData.destinationNode = { nodeName: destinationNode, mode: 'inclusive' };
 	}
 
 	if (executionId !== undefined) {

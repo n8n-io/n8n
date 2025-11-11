@@ -19,6 +19,7 @@ export * from './from-ai-parse-utils';
 export * from './node-helpers';
 export * from './tool-helpers';
 export * from './node-reference-parser-utils';
+export * from './partial-execution-utils';
 export * from './metadata-utils';
 export * from './workflow';
 export * from './workflow-data-proxy';
