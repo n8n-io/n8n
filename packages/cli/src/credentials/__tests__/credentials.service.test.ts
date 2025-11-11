@@ -147,4 +147,72 @@ describe('CredentialsService', () => {
 			});
 		});
 	});
+
+	describe('addGlobalCredentials', () => {
+		it('should merge global credentials without duplicates', async () => {
+			// ARRANGE
+			const regularCred = mock<CredentialsEntity>({ id: 'cred1', name: 'Regular' });
+			const globalCred = mock<CredentialsEntity>({ id: 'cred2', name: 'Global', isGlobal: true });
+			const credentials = [regularCred];
+
+			credentialsRepository.findAllGlobalCredentials.mockResolvedValueOnce([globalCred]);
+
+			// ACT
+			const result = await (service as any).addGlobalCredentials(credentials);
+
+			// ASSERT
+			expect(result).toHaveLength(2);
+			expect(result).toContain(regularCred);
+			expect(result).toContain(globalCred);
+		});
+
+		it('should not duplicate credentials when user already has access', async () => {
+			// ARRANGE
+			const sharedGlobalCred = mock<CredentialsEntity>({
+				id: 'cred1',
+				name: 'Shared Global',
+				isGlobal: true,
+			});
+			const credentials = [sharedGlobalCred];
+
+			credentialsRepository.findAllGlobalCredentials.mockResolvedValueOnce([sharedGlobalCred]);
+
+			// ACT
+			const result = await (service as any).addGlobalCredentials(credentials);
+
+			// ASSERT
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBe(sharedGlobalCred);
+		});
+
+		it('should handle empty global credentials list', async () => {
+			// ARRANGE
+			const regularCred = mock<CredentialsEntity>({ id: 'cred1', name: 'Regular' });
+			const credentials = [regularCred];
+
+			credentialsRepository.findAllGlobalCredentials.mockResolvedValueOnce([]);
+
+			// ACT
+			const result = await (service as any).addGlobalCredentials(credentials);
+
+			// ASSERT
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBe(regularCred);
+		});
+
+		it('should handle empty input credentials list', async () => {
+			// ARRANGE
+			const globalCred = mock<CredentialsEntity>({ id: 'cred1', name: 'Global', isGlobal: true });
+			const credentials: CredentialsEntity[] = [];
+
+			credentialsRepository.findAllGlobalCredentials.mockResolvedValueOnce([globalCred]);
+
+			// ACT
+			const result = await (service as any).addGlobalCredentials(credentials);
+
+			// ASSERT
+			expect(result).toHaveLength(1);
+			expect(result[0]).toBe(globalCred);
+		});
+	});
 });

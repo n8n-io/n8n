@@ -75,7 +75,7 @@ export async function userHasScopes(
 				isGlobal: true,
 			});
 
-			if (globalCredential) {
+			if (globalCredential.length > 0) {
 				return true;
 			}
 		}

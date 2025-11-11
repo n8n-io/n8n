@@ -36,6 +36,13 @@ describe('CredentialsFinderService', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 
+		// Setup manager mock for global credentials fetching
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		// @ts-ignore
+		credentialsRepository.manager = {
+			find: jest.fn().mockResolvedValue([]),
+		} as any;
+
 		// Default mock implementation for all tests
 		roleService.rolesWithScope.mockImplementation(async (namespace) => {
 			if (namespace === 'project') {
@@ -264,10 +271,7 @@ describe('CredentialsFinderService', () => {
 		});
 
 		test('should allow global owner access to all credentials without role filtering', async () => {
-			const mockGlobalCredentials = [mock<CredentialsEntity>({ id: 'global1', isGlobal: true })];
 			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			credentialsRepository.manager.find = jest.fn().mockResolvedValueOnce(mockGlobalCredentials);
-
 			const result = await credentialsFinderService.findCredentialsForUser(owner, [
 				'credential:read' as const,
 			]);
@@ -281,13 +285,11 @@ describe('CredentialsFinderService', () => {
 				relations: { shared: true },
 			});
 			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-			expect(result).toEqual([...credentials, ...mockGlobalCredentials]);
+			expect(result).toEqual([...credentials]);
 		});
 
 		test('should filter credentials by roles for regular members', async () => {
-			const mockGlobalCredentials = [mock<CredentialsEntity>({ id: 'global1', isGlobal: true })];
 			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			credentialsRepository.manager.find = jest.fn().mockResolvedValueOnce(mockGlobalCredentials);
 
 			const result = await credentialsFinderService.findCredentialsForUser(member, [
 				'credential:update' as const,
@@ -318,7 +320,7 @@ describe('CredentialsFinderService', () => {
 				where: { isGlobal: true },
 				relations: { shared: true },
 			});
-			expect(result).toEqual([...credentials, ...mockGlobalCredentials]);
+			expect(result).toEqual([...credentials]);
 		});
 
 		test('should include global credentials and deduplicate when user already has access', async () => {
@@ -328,7 +330,9 @@ describe('CredentialsFinderService', () => {
 				mock<CredentialsEntity>({ id: 'global1', isGlobal: true }),
 			];
 			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			credentialsRepository.manager.find = jest.fn().mockResolvedValueOnce(mockGlobalCredentials);
+			(credentialsRepository.manager.find as jest.Mock).mockResolvedValueOnce(
+				mockGlobalCredentials,
+			);
 
 			const result = await credentialsFinderService.findCredentialsForUser(member, [
 				'credential:read' as const,
@@ -341,7 +345,6 @@ describe('CredentialsFinderService', () => {
 
 		test('should handle empty global credentials list', async () => {
 			credentialsRepository.find.mockResolvedValueOnce(credentials);
-			credentialsRepository.manager.find = jest.fn().mockResolvedValueOnce([]);
 
 			const result = await credentialsFinderService.findCredentialsForUser(member, [
 				'credential:read' as const,
@@ -359,7 +362,6 @@ describe('CredentialsFinderService', () => {
 
 			const singleCredResult = [credentials[0]];
 			credentialsRepository.find.mockResolvedValueOnce(singleCredResult);
-			credentialsRepository.manager.find = jest.fn().mockResolvedValueOnce([]);
 
 			const result = await credentialsFinderService.findCredentialsForUser(member, [
 				'credential:delete' as const,
@@ -764,7 +766,6 @@ describe('CredentialsFinderService', () => {
 			roleService.rolesWithScope.mockResolvedValue([]);
 			const emptyResult: CredentialsEntity[] = [];
 			credentialsRepository.find.mockResolvedValueOnce(emptyResult);
-			credentialsRepository.manager.find = jest.fn().mockResolvedValueOnce([]);
 
 			const result = await credentialsFinderService.findCredentialsForUser(member, [
 				'credential:read' as const,
@@ -816,7 +817,6 @@ describe('CredentialsFinderService', () => {
 
 			const isolationResult: CredentialsEntity[] = [];
 			credentialsRepository.find.mockResolvedValueOnce(isolationResult);
-			credentialsRepository.manager.find = jest.fn().mockResolvedValueOnce([]);
 
 			const result = await credentialsFinderService.findCredentialsForUser(member, [
 				'credential:read' as const,
