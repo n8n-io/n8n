@@ -259,8 +259,8 @@ export class CredentialsService {
 		// necessary to get the scopes
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
 
-		// get all credentials the user has access to
-		let allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
+		// get all credentials the user has access to (including global credentials)
+		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
 
@@ -272,28 +272,7 @@ export class CredentialsService {
 
 		// the intersection of both is all credentials the user can use in this
 		// workflow or project
-		let intersection = allCredentials.filter((c) => allCredentialsForWorkflow.includes(c.id));
-
-		// Include global credentials if the project is personal
-		const project =
-			'workflowId' in options
-				? await this.projectRepository.findOne({
-						where: { sharedWorkflows: { workflowId: options.workflowId, role: 'workflow:owner' } },
-					})
-				: await this.projectRepository.findOneBy({ id: options.projectId });
-
-		if (project?.type === 'personal') {
-			const globalCredentials = await this.credentialsRepository.findBy({
-				isAvailableForAllUsers: true,
-			});
-			// Merge and deduplicate based on credential ID
-			const credentialMap = new Map(intersection.map((c) => [c.id, c]));
-			for (const globalCred of globalCredentials) {
-				if (!credentialMap.has(globalCred.id)) {
-					intersection.push(globalCred);
-				}
-			}
-		}
+		const intersection = allCredentials.filter((c) => allCredentialsForWorkflow.includes(c.id));
 
 		return intersection
 			.map((c) => this.roleService.addScopes(c, user, projectRelations))
