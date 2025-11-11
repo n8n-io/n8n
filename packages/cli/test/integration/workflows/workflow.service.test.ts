@@ -1,4 +1,4 @@
-import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
+import { createWorkflowWithHistory, testDb, mockInstance } from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository, type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -51,7 +51,7 @@ afterEach(async () => {
 describe('update()', () => {
 	test('should remove and re-add to active workflows on `active: true` payload', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflow({ active: true }, owner);
+		const workflow = await createWorkflowWithHistory({ active: true }, owner);
 
 		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
 		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
@@ -70,7 +70,7 @@ describe('update()', () => {
 
 	test('should remove from active workflows on `active: false` payload', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflow({ active: true }, owner);
+		const workflow = await createWorkflowWithHistory({ active: true }, owner);
 
 		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
 		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
@@ -87,7 +87,7 @@ describe('update()', () => {
 
 	test('should fetch missing connections from DB when updating nodes', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflow({}, owner);
+		const workflow = await createWorkflowWithHistory({}, owner);
 
 		const updateData: Partial<WorkflowEntity> = {
 			nodes: [
@@ -116,7 +116,7 @@ describe('update()', () => {
 
 	test('should not save workflow history version when updating only active status', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflow({ active: false }, owner);
+		const workflow = await createWorkflowWithHistory({ active: false }, owner);
 
 		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
 
@@ -132,7 +132,7 @@ describe('update()', () => {
 
 	test('should save workflow history version with backfilled data when versionId changes', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflow({ active: false }, owner);
+		const workflow = await createWorkflowWithHistory({ active: false }, owner);
 
 		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
 
