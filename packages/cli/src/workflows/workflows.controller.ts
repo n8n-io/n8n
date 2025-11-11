@@ -119,7 +119,9 @@ export class WorkflowsController {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used credentials
 
-			const allCredentials = await this.credentialsService.getMany(req.user);
+			const allCredentials = await this.credentialsService.getMany(req.user, {
+				includeGlobal: true,
+			});
 
 			try {
 				this.enterpriseWorkflowService.validateCredentialPermissionsToUser(

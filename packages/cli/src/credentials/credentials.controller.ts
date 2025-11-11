@@ -76,6 +76,7 @@ export class CredentialsController {
 			includeScopes: query.includeScopes,
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
+			includeGlobal: query.includeGlobal,
 		});
 		credentials.forEach((c) => {
 			// @ts-expect-error: This is to emulate the old behavior of removing the shared

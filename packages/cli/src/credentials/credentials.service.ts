@@ -92,11 +92,13 @@ export class CredentialsService {
 			includeScopes = false,
 			includeData = false,
 			onlySharedWithMe = false,
+			includeGlobal = false,
 		}: {
 			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
 			includeScopes?: boolean;
 			includeData?: boolean;
 			onlySharedWithMe?: boolean;
+			includeGlobal?: boolean;
 		} = {},
 	) {
 		const returnAll = hasGlobalScope(user, 'credential:list');
@@ -142,7 +144,9 @@ export class CredentialsService {
 			let credentials = await this.credentialsRepository.findMany(listQueryOptions);
 
 			// Also include credentials available for all users
-			credentials = await this.addGlobalCredentials(credentials);
+			if (includeGlobal) {
+				credentials = await this.addGlobalCredentials(credentials);
+			}
 
 			if (isDefaultSelect) {
 				// Since we're filtering using project ID as part of the relation,
@@ -198,7 +202,9 @@ export class CredentialsService {
 		);
 
 		// Also include credentials available for all users
-		credentials = await this.addGlobalCredentials(credentials);
+		if (includeGlobal) {
+			credentials = await this.addGlobalCredentials(credentials);
+		}
 
 		if (isDefaultSelect) {
 			// Since we're filtering using project ID as part of the relation,
