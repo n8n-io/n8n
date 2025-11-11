@@ -96,6 +96,7 @@ import { getResourcePermissions } from '@n8n/permissions';
 
 const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['settings']> } = {
 	name: '',
+	description: '',
 	active: false,
 	isArchived: false,
 	createdAt: -1,
@@ -609,7 +610,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		pageSize = DEFAULT_WORKFLOW_PAGE_SIZE,
 		sortBy?: string,
 		filters: {
-			name?: string;
+			query?: string;
 			tags?: string[];
 			active?: boolean;
 			isArchived?: boolean;
@@ -652,20 +653,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function searchWorkflows({
 		projectId,
-		name,
+		query,
 		nodeTypes,
 		tags,
 		select,
 	}: {
 		projectId?: string;
-		name?: string;
+		query?: string;
 		nodeTypes?: string[];
 		tags?: string[];
 		select?: string[];
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
-			name,
+			query,
 			nodeTypes,
 			tags,
 		};
@@ -883,6 +884,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setIsArchived(isArchived: boolean) {
 		workflow.value.isArchived = isArchived;
+	}
+
+	function setDescription(description: string | undefined | null) {
+		workflow.value.description = description;
 	}
 
 	async function getDuplicateCurrentWorkflowName(currentWorkflowName: string): Promise<string> {
@@ -1611,6 +1616,47 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updated;
 	}
 
+	async function saveWorkflowDescription(
+		id: string,
+		description: string | null,
+	): Promise<IWorkflowDb> {
+		let currentVersionId = '';
+		const isCurrentWorkflow = id === workflow.value.id;
+
+		if (isCurrentWorkflow) {
+			currentVersionId = workflow.value.versionId;
+		} else {
+			const cached = workflowsById.value[id];
+			if (cached?.versionId) {
+				currentVersionId = cached.versionId;
+			} else {
+				const fetched = await fetchWorkflow(id);
+				currentVersionId = fetched.versionId;
+			}
+		}
+
+		const updated = await updateWorkflow(id, {
+			versionId: currentVersionId,
+			description,
+		});
+
+		// Update local store state
+		if (isCurrentWorkflow) {
+			setDescription(updated.description ?? '');
+			if (updated.versionId !== currentVersionId) {
+				setWorkflowVersionId(updated.versionId);
+			}
+		} else if (workflowsById.value[id]) {
+			workflowsById.value[id] = {
+				...workflowsById.value[id],
+				description: updated.description,
+				versionId: updated.versionId,
+			};
+		}
+
+		return updated;
+	}
+
 	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
 		if (startRunData.workflowData.settings === null) {
 			startRunData.workflowData.settings = undefined;
@@ -1859,6 +1905,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowInactive,
 		fetchActiveWorkflows,
 		setIsArchived,
+		setDescription,
 		getDuplicateCurrentWorkflowName,
 		setWorkflowExecutionRunData,
 		setWorkflowPinData,
@@ -1887,6 +1934,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		createNewWorkflow,
 		updateWorkflow,
 		updateWorkflowSetting,
+		saveWorkflowDescription,
 		runWorkflow,
 		removeTestWebhook,
 		fetchExecutionDataById,

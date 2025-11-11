@@ -45,9 +45,11 @@ import type {
 import { retry } from '@n8n/utils/retry';
 import { isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
+	const telemetry = useTelemetry();
 	const agents = ref<ChatModelsResponse>();
 	const sessions = ref<ChatHubSessionDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
@@ -470,6 +472,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			onStreamDone,
 			onStreamError,
 		);
+
+		telemetry.track('User sent chat hub message', {
+			...flattenModel(model),
+			is_custom: model.provider === 'custom-agent',
+			chat_session_id: sessionId,
+		});
 	}
 
 	function editMessage(
@@ -637,6 +645,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		agents.value?.['custom-agent'].models.push(agentModel);
 
 		await fetchAgents(credentials);
+
+		telemetry.track('User created agent', { ...flattenModel(payload) });
 
 		return agentModel;
 	}

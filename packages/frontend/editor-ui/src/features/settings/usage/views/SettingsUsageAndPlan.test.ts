@@ -123,6 +123,34 @@ describe('SettingsUsageAndPlan', () => {
 		expect(container.querySelector('.n8n-badge')).toHaveTextContent('Registered');
 	});
 
+	it('should correctly call activateLicense on non-eula acceptance', async () => {
+		usageStore.isLoading = false;
+		usageStore.planName = 'Community';
+		usersStore.currentUser = {
+			globalScopes: ['license:manage'],
+		} as IUser;
+		rbacStore.setGlobalScopes(['license:manage']);
+		usageStore.activateLicense.mockImplementation(async () => {});
+
+		const { getByRole } = renderComponent();
+
+		await userEvent.click(getByRole('button', { name: /activation/i }));
+		const input = document.querySelector('input') as HTMLInputElement;
+		await userEvent.type(input, 'test-key-123');
+		await userEvent.click(getByRole('button', { name: /activate/i }));
+
+		await waitFor(() => {
+			expect(usageStore.activateLicense).toHaveBeenCalledTimes(1);
+			expect(usageStore.activateLicense).toHaveBeenLastCalledWith('test-key-123', undefined);
+		});
+
+		expect(mockToast.showMessage).toHaveBeenCalledWith(
+			expect.objectContaining({
+				type: 'success',
+			}),
+		);
+	});
+
 	describe('License activation with EULA', () => {
 		it('should show EULA modal when activation fails with 400 error and eulaUrl', async () => {
 			usageStore.isLoading = false;
@@ -249,7 +277,7 @@ describe('SettingsUsageAndPlan', () => {
 			await userEvent.click(getByRole('button', { name: /activate/i }));
 
 			await waitFor(() => {
-				expect(mockToast.showError).toHaveBeenCalledWith(error, expect.any(String));
+				expect(mockToast.showError).toHaveBeenCalledWith(error, 'Activation failed');
 			});
 		});
 	});

@@ -105,6 +105,7 @@
       "tsconfig-paths": "^4.2.0",
       "typescript": "catalog:",
       "vue-tsc": "^2.2.8",
+      "gaxios": ">=7.1.1",
       "google-gax": "^4.3.7",
       "ws": ">=8.17.1",
       "brace-expansion@1": "1.1.12",
