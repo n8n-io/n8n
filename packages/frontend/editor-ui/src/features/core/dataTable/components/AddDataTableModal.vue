@@ -130,7 +130,7 @@ onMounted(() => {
 	}, 0);
 });
 
-const selectedOption = ref<'scratch' | 'import' | null>(null);
+const selectedOption = ref<'scratch' | 'import' | null>('scratch');
 
 const creationModeOptions = computed(() => [
 	{
@@ -287,7 +287,7 @@ const resetForm = () => {
 	csvColumns.value = [];
 	csvRowCount.value = 0;
 	csvColumnCount.value = 0;
-	selectedOption.value = null;
+	selectedOption.value = 'scratch';
 	creationMode.value = 'select';
 };
 
@@ -298,7 +298,7 @@ const resetToSelect = () => {
 	csvColumns.value = [];
 	csvRowCount.value = 0;
 	csvColumnCount.value = 0;
-	selectedOption.value = null;
+	selectedOption.value = 'scratch';
 	creationMode.value = 'select';
 };
 
