@@ -873,6 +873,7 @@ export type AddedNode = {
 	type: string;
 	openDetail?: boolean;
 	isAutoAdd?: boolean;
+	positionOffset?: XYPosition;
 	actionName?: string;
 } & Partial<INodeUi>;
 
@@ -909,7 +910,6 @@ export type EnterpriseEditionFeatureKey =
 	| 'ExternalSecrets'
 	| 'AuditLogs'
 	| 'DebugInEditor'
-	| 'WorkflowHistory'
 	| 'WorkerView'
 	| 'AdvancedPermissions'
 	| 'ApiKeyScopes'

@@ -16,7 +16,7 @@ The Select is ideal when there are less than 10 items to choose from, for bigger
 
 - `id?: string`
 - `placeholder?: string`
-- `items?: T` Array or Nested Array for elements to render (nested array represent groups)
+- `items?: T` Array for elements to render
 - `valueKey?: VK` When `items` is an array of objects, select the field to use as the value.
 - `labelKey?: GetItemKeys<T>` When `items` is an array of objects, select the field to use as the label.
 - `defaultValue?: GetModelValue<T, VK, M>` The value of the Select when initially rendered. Use when you do not need to control the state of the Select.
@@ -41,10 +41,10 @@ The Select is ideal when there are less than 10 items to choose from, for bigger
 **Slots**
 
 - `default`: `{ modelValue?: GetModelValue<T, VK, M>; open: boolean }`
-- `item`: `{ item: T; index: number }`
-- `item-leading`: `{ item: T; index: number }`
-- `item-label`: `{ item: T; index: number }`
-- `item-trailing`: `{ item: T; index: number }`
+- `item`: `{ item: T; }`
+- `item-leading`: `{ item: T; ui: object }`
+- `item-label`: `{ item: T; }`
+- `item-trailing`: `{ item: T; ui: object }`
 
 
 ### Template usage example
