@@ -13,7 +13,7 @@ import { PROJECT_OWNER_ROLE_SLUG, type Scope, type WorkflowSharingRole } from '@
 import type { WorkflowId } from 'n8n-workflow';
 
 import { License } from '@/license';
-import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
