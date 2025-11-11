@@ -10,17 +10,17 @@ import ProjectSharingInfo from './ProjectSharingInfo.vue';
 
 import { N8nBadge, N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 
+const locale = useI18n();
+
 const All_USERS_GROUP: ProjectListItem = {
 	id: 'all_users',
-	name: 'All users',
+	name: locale.baseText('projects.sharing.allUsers'),
 	type: 'public',
 	icon: { type: 'icon', value: 'users' },
 	role: 'member',
 	createdAt: `${Date.now()}`,
 	updatedAt: `${Date.now()}`,
 };
-
-const locale = useI18n();
 
 type Props = {
 	projects: ProjectListItem[];
