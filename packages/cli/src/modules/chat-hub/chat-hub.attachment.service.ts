@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
+import { BINARY_ENCODING, sanitizeFilename, type IBinaryData } from 'n8n-workflow';
 import { BinaryDataService } from 'n8n-core';
 import { Not, IsNull } from '@n8n/typeorm';
 import { ChatHubMessageRepository } from './chat-message.repository';
@@ -45,6 +45,10 @@ export class ChatHubAttachmentService {
 				throw new BadRequestError(
 					`Total size of attachments exceeds maximum size of ${maxSizeMB} MB`,
 				);
+			}
+
+			if (attachment.fileName) {
+				attachment.fileName = sanitizeFilename(attachment.fileName);
 			}
 
 			attachmentsWithBuffer.push([attachment, buffer]);

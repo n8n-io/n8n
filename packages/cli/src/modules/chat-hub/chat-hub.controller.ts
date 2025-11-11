@@ -33,6 +33,7 @@ import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { sanitizeFilename } from 'n8n-workflow';
 
 @RestController('/chat')
 export class ChatHubController {
@@ -103,7 +104,7 @@ export class ChatHubController {
 		}
 
 		if (fileName) {
-			res.setHeader('Content-Disposition', `inline; filename="${fileName}"`);
+			res.setHeader('Content-Disposition', `inline; filename="${sanitizeFilename(fileName)}"`);
 		}
 
 		if (data.type === 'buffer') {
