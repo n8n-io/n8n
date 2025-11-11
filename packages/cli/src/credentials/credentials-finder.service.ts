@@ -91,7 +91,11 @@ export class CredentialsFinderService {
 	}
 
 	/** Get a credential if it has been shared with a user */
-	async findCredentialForUser(credentialsId: string, user: User, scopes: Scope[]) {
+	async findCredentialForUser(
+		credentialsId: string,
+		user: User,
+		scopes: Scope[],
+	): Promise<CredentialsEntity | null> {
 		let where: FindOptionsWhere<SharedCredentials> = { credentialsId };
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
@@ -120,8 +124,17 @@ export class CredentialsFinderService {
 				},
 			},
 		});
-		if (!sharedCredential) return null;
-		return sharedCredential.credentials;
+
+		if (!sharedCredential && scopes.length === 1 && scopes[0] === 'credential:read') {
+			const globalCredential = await this.credentialsRepository.findBy({
+				id: credentialsId,
+				isGlobal: true,
+			});
+
+			return globalCredential.length ? globalCredential[0] : null;
+		}
+
+		return sharedCredential ? sharedCredential.credentials : null;
 	}
 
 	/** Get all credentials shared to a user */

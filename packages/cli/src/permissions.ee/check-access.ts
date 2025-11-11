@@ -1,5 +1,10 @@
 import type { User } from '@n8n/db';
-import { ProjectRepository, SharedCredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	ProjectRepository,
+	SharedCredentialsRepository,
+	SharedWorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
@@ -60,9 +65,22 @@ export async function userHasScopes(
 
 		const validRoles = await roleService.rolesWithScope('credential', scopes);
 
-		return credentials.some(
+		const hasValidRoles = credentials.some(
 			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
 		);
+
+		if (!hasValidRoles && scopes.length === 1 && scopes[0] === 'credential:read') {
+			const globalCredential = await Container.get(CredentialsRepository).findBy({
+				id: credentialId,
+				isGlobal: true,
+			});
+
+			if (globalCredential) {
+				return true;
+			}
+		}
+
+		return hasValidRoles;
 	}
 
 	if (workflowId) {

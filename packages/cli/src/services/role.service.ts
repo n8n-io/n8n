@@ -253,6 +253,10 @@ export class RoleService {
 			userProjectRelations,
 		);
 
+		if ('isGlobal' in entity && entity.isGlobal && !entity.scopes.includes('credential:read')) {
+			entity.scopes.push('credential:read');
+		}
+
 		return entity;
 	}
 
