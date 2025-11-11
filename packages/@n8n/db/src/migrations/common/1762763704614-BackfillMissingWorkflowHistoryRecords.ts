@@ -4,7 +4,8 @@ export class BackfillMissingWorkflowHistoryRecords1762763704614 implements Irrev
 	/**
 	 * 1. Generate/regenerate versionIds for workflows that need them:
 	 *    - NULL/empty versionId
-	 *    - duplicate versionIds without workflow_history
+	 *    - duplicate versionIds that do not own the history record
+	 *    (i.e., no history record with matching versionId AND workflowId)
 	 * 2. Create workflow_history records for all workflows missing them
 	 * 3. Make versionId NOT NULL to ensure data consistency
 	 */
@@ -33,9 +34,11 @@ export class BackfillMissingWorkflowHistoryRecords1762763704614 implements Irrev
 						WHERE w2.${versionIdColumn} = w.${versionIdColumn}
 						AND w2.${idColumn} != w.${idColumn}
 					)
-					AND w.${versionIdColumn} NOT IN (
-						SELECT ${versionIdColumn}
-						FROM ${historyTable}
+					AND NOT EXISTS (
+						SELECT 1
+						FROM ${historyTable} wh
+						WHERE wh.${versionIdColumn} = w.${versionIdColumn}
+						AND wh.${workflowIdColumn} = w.${idColumn}
 					)
 				)
 		`);
