@@ -1,40 +1,18 @@
 import { PaginationDto } from '@n8n/api-types';
-import { RestController, Get, Middleware, Query } from '@n8n/decorators';
-import { Request, Response, NextFunction } from 'express';
+import { RestController, Get, Query } from '@n8n/decorators';
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { SharedWorkflowNotFoundError } from '@/errors/shared-workflow-not-found.error';
 import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { WorkflowHistoryRequest } from '@/requests';
 
-import { isWorkflowHistoryEnabled, isWorkflowHistoryLicensed } from './workflow-history-helper.ee';
-import { WorkflowHistoryService } from './workflow-history.service.ee';
+import { WorkflowHistoryService } from './workflow-history.service';
 
 const DEFAULT_TAKE = 20;
 
 @RestController('/workflow-history')
 export class WorkflowHistoryController {
 	constructor(private readonly historyService: WorkflowHistoryService) {}
-
-	@Middleware()
-	workflowHistoryLicense(_req: Request, res: Response, next: NextFunction) {
-		if (!isWorkflowHistoryLicensed()) {
-			res.status(403);
-			res.send('Workflow History license data not found');
-			return;
-		}
-		next();
-	}
-
-	@Middleware()
-	workflowHistoryEnabled(_req: Request, res: Response, next: NextFunction) {
-		if (!isWorkflowHistoryEnabled()) {
-			res.status(403);
-			res.send('Workflow History is disabled');
-			return;
-		}
-		next();
-	}
 
 	@Get('/workflow/:workflowId')
 	async getList(req: WorkflowHistoryRequest.GetList, _res: Response, @Query query: PaginationDto) {
