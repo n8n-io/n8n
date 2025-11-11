@@ -1,11 +1,11 @@
 import { computed } from 'vue';
 import { defineStore } from 'pinia';
 import { useAsyncState } from '@vueuse/core';
-import type { ListInsightsWorkflowQueryDto, InsightsDateRange } from '@n8n/api-types';
+import type { ListInsightsWorkflowQueryDto, InsightsDateFilterDto } from '@n8n/api-types';
 import * as insightsApi from '@/features/execution/insights/insights.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { transformInsightsSummary } from '@/features/execution/insights/insights.utils';
 import { getResourcePermissions } from '@n8n/permissions';
 
@@ -28,9 +28,7 @@ export const useInsightsStore = defineStore('insights', () => {
 
 	const weeklySummary = useAsyncState(
 		async () => {
-			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext, {
-				dateRange: 'week',
-			});
+			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext);
 			return transformInsightsSummary(raw);
 		},
 		[],
@@ -38,7 +36,7 @@ export const useInsightsStore = defineStore('insights', () => {
 	);
 
 	const summary = useAsyncState(
-		async (filter?: { dateRange: InsightsDateRange['key']; projectId?: string }) => {
+		async (filter?: InsightsDateFilterDto) => {
 			const raw = await insightsApi.fetchInsightsSummary(rootStore.restApiContext, filter);
 			return transformInsightsSummary(raw);
 		},
@@ -47,7 +45,7 @@ export const useInsightsStore = defineStore('insights', () => {
 	);
 
 	const charts = useAsyncState(
-		async (filter?: { dateRange: InsightsDateRange['key']; projectId?: string }) => {
+		async (filter?: InsightsDateFilterDto) => {
 			const dataFetcher = isDashboardEnabled.value
 				? insightsApi.fetchInsightsByTime
 				: insightsApi.fetchInsightsTimeSaved;

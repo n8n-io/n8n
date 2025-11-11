@@ -1,4 +1,4 @@
-import type { Scope, ProjectRole } from '@n8n/permissions';
+import type { Scope, Role } from '@n8n/permissions';
 import type { IUserResponse } from '@n8n/rest-api-client/api/users';
 
 export const ProjectTypes = {
@@ -18,7 +18,7 @@ export type ProjectMemberData = {
 	firstName?: string | null;
 	lastName?: string | null;
 	email?: string | null;
-	role: ProjectRole;
+	role: Role['slug'];
 };
 export type ProjectSharingData = {
 	id: string;
@@ -34,7 +34,7 @@ export type Project = ProjectSharingData & {
 	scopes: Scope[];
 };
 export type ProjectListItem = ProjectSharingData & {
-	role: ProjectRole;
+	role: Role['slug'];
 	scopes?: Scope[];
 };
 export type ProjectsCount = Record<ProjectType, number>;

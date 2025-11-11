@@ -22,7 +22,6 @@ import {
 import { ensureError, sleep, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
-import config from '@/config';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
@@ -36,7 +35,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -126,7 +125,7 @@ export abstract class BaseCommand<F = never> {
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
 		if (
-			config.getEnv('executions.mode') === 'queue' &&
+			this.globalConfig.executions.mode === 'queue' &&
 			this.globalConfig.database.type === 'sqlite'
 		) {
 			this.logger.warn(

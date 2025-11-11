@@ -19,7 +19,7 @@ import {
 } from '@codemirror/view';
 import type { SyntaxNode } from '@lezer/common';
 import type { createInfoBoxRenderer } from '../completions/infoBoxRenderer';
-import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/constants';
+import { CODEMIRROR_TOOLTIP_CONTAINER_ELEMENT_ID } from '@/app/constants';
 
 const findNearestParentOfType =
 	(type: string) =>

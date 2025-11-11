@@ -34,6 +34,8 @@ export class ModuleRegistry {
 		'community-packages',
 		'data-table',
 		'provisioning',
+		'breaking-changes',
+		'mcp',
 	];
 
 	private readonly activeModules: string[] = [];
