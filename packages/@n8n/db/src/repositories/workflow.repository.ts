@@ -147,27 +147,56 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	private buildBaseUnionQuery(workflowIds: string[], options: ListQuery.Options = {}) {
-		const subQueryParameters: ListQuery.Options = {
+		// Common fields for both folders and workflows
+		const commonFields = {
+			createdAt: true,
+			updatedAt: true,
+			id: true,
+			name: true,
+		} as const;
+
+		// Transform `query` => `name` for folder repository
+		const folderFilter = options.filter ? { ...options.filter } : undefined;
+		if (folderFilter?.query) {
+			folderFilter.name = folderFilter.query;
+		}
+
+		const folderQueryParameters: ListQuery.Options = {
+			select: commonFields,
+			filter: folderFilter,
+		};
+
+		const workflowQueryParameters: ListQuery.Options = {
 			select: {
-				createdAt: true,
+				...commonFields,
+				description: true,
+				// For some reason the order of updatedAt and createdAt here is load-bearing
+				// and the generated sql queries below risk switching up the order otherwise
+				// depending on whether this code is called for a project or the overview
+				// A proper fix would sort the columnNames here and in the folder and workflow queries
+				// but that risks breaking other use cases
+				// https://linear.app/n8n/issue/ADO-4376/tech-debt-investigate-and-fix-root-cause-of-incorrect-sql-column
 				updatedAt: true,
+				createdAt: true,
 				id: true,
 				name: true,
 			},
 			filter: options.filter,
 		};
 
-		const columnNames = [...Object.keys(subQueryParameters.select ?? {}), 'resource'];
+		// For union, we need to have the same columns, so add NULL as description for folders
+		const columnNames = [...Object.keys(workflowQueryParameters.select ?? {}), 'resource'];
 
 		const [sortByColumn, sortByDirection] = this.parseSortingParams(
 			options.sortBy ?? 'updatedAt:asc',
 		);
 
 		const foldersQuery = this.folderRepository
-			.getManyQuery(subQueryParameters)
+			.getManyQuery(folderQueryParameters)
+			.addSelect('NULL', 'description') // Add NULL for description in folders
 			.addSelect("'folder'", 'resource');
 
-		const workflowsQuery = this.getManyQuery(workflowIds, subQueryParameters).addSelect(
+		const workflowsQuery = this.getManyQuery(workflowIds, workflowQueryParameters).addSelect(
 			"'workflow'",
 			'resource',
 		);
@@ -290,7 +319,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			typeof options.filter?.parentFolderId === 'string' &&
 			options.filter.parentFolderId !== PROJECT_ROOT &&
 			typeof options.filter?.projectId === 'string' &&
-			options.filter.name
+			options.filter.query
 		) {
 			const folderIds = await this.folderRepository.getAllFolderIdsInHierarchy(
 				options.filter.parentFolderId,
@@ -472,10 +501,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
 	): void {
-		if (typeof filter?.name === 'string' && filter.name !== '') {
-			qb.andWhere('LOWER(workflow.name) LIKE :name', {
-				name: `%${filter.name.toLowerCase()}%`,
-			});
+		const searchValue = filter?.query;
+
+		if (typeof searchValue === 'string' && searchValue !== '') {
+			const searchTerm = `%${searchValue.toLowerCase()}%`;
+			qb.andWhere(
+				"(LOWER(workflow.name) LIKE :searchTerm OR LOWER(COALESCE(workflow.description, '')) LIKE :searchTerm)",
+				{ searchTerm },
+			);
 		}
 	}
 
@@ -607,6 +640,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 				'workflow.updatedAt',
 				'workflow.versionId',
 				'workflow.settings',
+				'workflow.description',
 			]);
 			return;
 		}

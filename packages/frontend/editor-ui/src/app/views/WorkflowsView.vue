@@ -255,6 +255,10 @@ const teamProjectsEnabled = computed(() => {
 	return projectsStore.isTeamProjectFeatureEnabled;
 });
 
+const mcpEnabled = computed(() => {
+	return settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled;
+});
+
 const showFolders = computed(() => {
 	return foldersEnabled.value && !projectPages.isOverviewSubPage && !projectPages.isSharedSubPage;
 });
@@ -348,6 +352,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				resourceType: 'workflow',
 				id: resource.id,
 				name: resource.name,
+				description: resource.description,
 				active: resource.active ?? false,
 				isArchived: resource.isArchived,
 				updatedAt: resource.updatedAt.toString(),
@@ -672,7 +677,7 @@ const fetchWorkflows = async () => {
 			pageSize.value,
 			currentSort.value,
 			{
-				name: filters.value.search || undefined,
+				query: filters.value.search || undefined,
 				active: activeFilter,
 				isArchived: archivedFilter,
 				tags: tags.length ? tags : undefined,
@@ -2110,7 +2115,7 @@ const onNameSubmit = async (name: string) => {
 					:show-ownership-badge="showCardsBadge"
 					:are-folders-enabled="settingsStore.isFoldersFeatureEnabled"
 					:are-tags-enabled="settingsStore.areTagsEnabled"
-					:is-mcp-enabled="settingsStore.isModuleActive('mcp')"
+					:is-mcp-enabled="mcpEnabled"
 					@click:tag="onClickTag"
 					@workflow:deleted="refreshWorkflows"
 					@workflow:archived="refreshWorkflows"
