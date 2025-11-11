@@ -498,42 +498,64 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	/**
+	 * Parses and normalizes the search query into individual words
+	 */
+	private parseSearchWords(searchValue: unknown): string[] {
+		if (typeof searchValue !== 'string' || searchValue === '') {
+			return [];
+		}
+
+		return searchValue
+			.toLowerCase()
+			.split(/\s+/)
+			.filter((word) => word.length > 0);
+	}
+
+	/**
+	 * Returns the database-specific SQL expression to concatenate workflow name and description
+	 */
+	private getFieldConcatExpression(): string {
+		const dbType = this.globalConfig.database.type;
+
+		return dbType === 'sqlite'
+			? "LOWER(workflow.name || ' ' || COALESCE(workflow.description, ''))"
+			: "LOWER(CONCAT(workflow.name, ' ', COALESCE(workflow.description, '')))";
+	}
+
+	/**
+	 * Builds search conditions and parameters for matching any of the search words
+	 */
+	private buildSearchConditions(searchWords: string[]): {
+		conditions: string[];
+		parameters: Record<string, string>;
+	} {
+		const concatExpression = this.getFieldConcatExpression();
+
+		const conditions = searchWords.map((_, index) => {
+			return `${concatExpression} LIKE :searchWord${index}`;
+		});
+
+		const parameters: Record<string, string> = {};
+		searchWords.forEach((word, index) => {
+			parameters[`searchWord${index}`] = `%${word}%`;
+		});
+
+		return { conditions, parameters };
+	}
+
+	/**
 	 * Applies a name or description filter to the query builder.
 	 * We are supporting searching by multiple words, where any of the words can match
-	 * @param qb
-	 * @param filter
 	 */
 	private applyNameFilter(
 		qb: SelectQueryBuilder<WorkflowEntity>,
 		filter: ListQuery.Options['filter'],
 	): void {
-		const searchValue = filter?.query;
+		const searchWords = this.parseSearchWords(filter?.query);
 
-		if (typeof searchValue === 'string' && searchValue !== '') {
-			const searchWords = searchValue
-				.toLowerCase()
-				.split(/\s+/)
-				.filter((word) => word.length > 0);
-
-			if (searchWords.length > 0) {
-				const dbType = this.globalConfig.database.type;
-
-				const concatExpression =
-					dbType === 'sqlite'
-						? "LOWER(workflow.name || ' ' || COALESCE(workflow.description, ''))"
-						: "LOWER(CONCAT(workflow.name, ' ', COALESCE(workflow.description, '')))";
-
-				const conditions = searchWords.map((_, index) => {
-					return `${concatExpression} LIKE :searchWord${index}`;
-				});
-
-				const parameters: Record<string, string> = {};
-				searchWords.forEach((word, index) => {
-					parameters[`searchWord${index}`] = `%${word}%`;
-				});
-
-				qb.andWhere(`(${conditions.join(' OR ')})`, parameters);
-			}
+		if (searchWords.length > 0) {
+			const { conditions, parameters } = this.buildSearchConditions(searchWords);
+			qb.andWhere(`(${conditions.join(' OR ')})`, parameters);
 		}
 	}
 
