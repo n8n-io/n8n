@@ -1,7 +1,36 @@
 import moment from 'moment-timezone';
-import { type CronExpression, randomInt } from 'n8n-workflow';
+import { type CronExpression, type INode, NodeOperationError, randomInt } from 'n8n-workflow';
 
 import type { IRecurrenceRule, ScheduleInterval } from './SchedulerInterface';
+
+export function validateInterval(node: INode, itemIndex: number, interval: ScheduleInterval): void {
+	let errorMessage = '';
+	if (
+		interval.field === 'seconds' &&
+		(interval.secondsInterval > 59 || interval.secondsInterval < 0)
+	) {
+		errorMessage = 'Seconds must be in range 0-59';
+	}
+	if (
+		interval.field === 'minutes' &&
+		(interval.minutesInterval > 59 || interval.minutesInterval < 0)
+	) {
+		errorMessage = 'Minutes must be in range 0-59';
+	}
+	if (interval.field === 'hours' && (interval.hoursInterval > 23 || interval.hoursInterval < 0)) {
+		errorMessage = 'Hours must be in range 0-23';
+	}
+	if (interval.field === 'days' && (interval.daysInterval > 31 || interval.daysInterval < 0)) {
+		errorMessage = 'Days must be in range 1-31';
+	}
+
+	if (errorMessage) {
+		throw new NodeOperationError(node, 'Invalid interval', {
+			itemIndex,
+			description: errorMessage,
+		});
+	}
+}
 
 export function recurrenceCheck(
 	recurrence: IRecurrenceRule,
