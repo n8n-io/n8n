@@ -3,6 +3,7 @@ import type { ZodIssue } from 'zod';
 
 import type { PromptCategorization } from './categorization';
 import type { AddedNode, NodeDetails, NodeSearchResult } from './nodes';
+import type { SimpleWorkflow } from './workflow';
 
 /**
  * Types of progress updates
@@ -151,4 +152,22 @@ export interface RemoveConnectionOutput {
  */
 export interface CategorizePromptOutput {
 	categorization: PromptCategorization;
+}
+
+/**
+ * Description of a workflow example we have found
+ */
+export interface WorkflowMetadata {
+	name: string;
+	description?: string;
+	workflow: SimpleWorkflow;
+}
+
+/**
+ * Output type for get workflow examples tool
+ */
+export interface GetWorkflowExamplesOutput {
+	examples: WorkflowMetadata[];
+	totalResults: number;
+	message: string;
 }

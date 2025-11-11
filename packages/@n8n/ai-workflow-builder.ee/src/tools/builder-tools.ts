@@ -9,6 +9,10 @@ import { CATEGORIZE_PROMPT_TOOL, createCategorizePromptTool } from './categorize
 import { CONNECT_NODES_TOOL, createConnectNodesTool } from './connect-nodes.tool';
 import { createGetBestPracticesTool, GET_BEST_PRACTICES_TOOL } from './get-best-practices.tool';
 import { createGetNodeParameterTool, GET_NODE_PARAMETER_TOOL } from './get-node-parameter.tool';
+import {
+	createGetWorkflowExamplesTool,
+	GET_WORKFLOW_EXAMPLES_TOOL,
+} from './get-workflow-examples.tool';
 import { createNodeDetailsTool, NODE_DETAILS_TOOL } from './node-details.tool';
 import { createNodeSearchTool, NODE_SEARCH_TOOL } from './node-search.tool';
 import { createRemoveConnectionTool, REMOVE_CONNECTION_TOOL } from './remove-connection.tool';
@@ -33,6 +37,7 @@ export function getBuilderTools({
 	return [
 		createCategorizePromptTool(llmComplexTask, logger),
 		createGetBestPracticesTool(),
+		createGetWorkflowExamplesTool(logger),
 		createNodeSearchTool(parsedNodeTypes),
 		createNodeDetailsTool(parsedNodeTypes),
 		createAddNodeTool(parsedNodeTypes),
@@ -56,6 +61,7 @@ export function getBuilderToolsForDisplay({
 	return [
 		CATEGORIZE_PROMPT_TOOL,
 		GET_BEST_PRACTICES_TOOL,
+		GET_WORKFLOW_EXAMPLES_TOOL,
 		NODE_SEARCH_TOOL,
 		NODE_DETAILS_TOOL,
 		getAddNodeToolBase(nodeTypes),

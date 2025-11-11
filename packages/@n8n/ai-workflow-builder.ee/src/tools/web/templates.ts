@@ -1,0 +1,86 @@
+import type {
+	TemplateSearchQuery,
+	TemplateSearchResponse,
+	Category,
+	TemplateFetchResponse,
+} from '@/types';
+
+/**
+ * Base URL for n8n template API
+ */
+const N8N_API_BASE_URL = 'https://api.n8n.io/api';
+
+/**
+ * Build query string from search parameters
+ */
+function buildQueryString(query: TemplateSearchQuery): string {
+	const params = new URLSearchParams();
+
+	if (query.search) {
+		params.append('search', query.search);
+	}
+	if (query.rows !== undefined) {
+		params.append('rows', query.rows.toString());
+	}
+	if (query.page !== undefined) {
+		params.append('page', query.page.toString());
+	}
+	if (query.sort) {
+		params.append('sort', query.sort);
+	}
+	if (query.price !== undefined) {
+		params.append('price', query.price.toString());
+	}
+	if (query.combineWith) {
+		params.append('combineWith', query.combineWith);
+	}
+
+	return params.toString();
+}
+
+/**
+ * Fetch template/workflow list from n8n API
+ */
+export async function fetchTemplateList(query: {
+	search?: string;
+	category?: Category;
+	sort?: string;
+}): Promise<TemplateSearchResponse> {
+	const queryString = buildQueryString(query);
+	const url = `${N8N_API_BASE_URL}/templates/search${queryString ? `?${queryString}` : ''}`;
+
+	const response = await fetch(url, {
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json',
+			Accept: 'application/json',
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch templates: ${response.status} ${response.statusText}`);
+	}
+
+	return (await response.json()) as TemplateSearchResponse;
+}
+
+/**
+ * Fetch a specific workflow template by ID from n8n API
+ */
+export async function fetchTemplateByID(id: number): Promise<TemplateFetchResponse> {
+	const url = `${N8N_API_BASE_URL}/workflows/templates/${id}`;
+
+	const response = await fetch(url, {
+		method: 'GET',
+		headers: {
+			'Content-Type': 'application/json',
+			Accept: 'application/json',
+		},
+	});
+
+	if (!response.ok) {
+		throw new Error(`Failed to fetch template ${id}: ${response.status} ${response.statusText}`);
+	}
+
+	return (await response.json()) as TemplateFetchResponse;
+}
