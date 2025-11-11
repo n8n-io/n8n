@@ -43,7 +43,7 @@ const WorkflowExecuteModeSchema = z.union([
 	z.literal('chat'),
 ]);
 
-export type WorkflowExecuteMode = z.infer<typeof WorkflowExecuteModeSchema>;
+export type WorkflowExecuteModeValues = z.infer<typeof WorkflowExecuteModeSchema>;
 
 const ExecutionContextSchemaV1 = z.object({
 	version: z.literal(1),
