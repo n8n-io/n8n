@@ -1,8 +1,4 @@
-import type {
-	AuthenticatedRequest,
-	SharedCredentialsRepository,
-	CredentialsRepository,
-} from '@n8n/db';
+import type { AuthenticatedRequest, SharedCredentialsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { createRawProjectData } from '@/__tests__/project.test-data';
@@ -16,7 +12,6 @@ describe('CredentialsController', () => {
 	const eventService = mock<EventService>();
 	const credentialsService = mock<CredentialsService>();
 	const sharedCredentialsRepository = mock<SharedCredentialsRepository>();
-	const credentialsRepository = mock<CredentialsRepository>();
 
 	const credentialsController = new CredentialsController(
 		mock(),
@@ -27,7 +22,6 @@ describe('CredentialsController', () => {
 		mock(),
 		mock(),
 		sharedCredentialsRepository,
-		credentialsRepository,
 		mock(),
 		eventService,
 		mock(),
