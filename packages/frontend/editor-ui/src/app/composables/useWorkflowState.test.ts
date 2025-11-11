@@ -215,4 +215,125 @@ describe('useWorkflowState', () => {
 			expect(() => workflowState.updateNodeAtIndex(0, { name: 'Updated Node' })).toThrowError();
 		});
 	});
+
+	describe('nodeExecutionItemCounts', () => {
+		describe('setNodeExecutionItemCount()', () => {
+			it('should store item counts for a node', () => {
+				const itemCounts = { main: [5, 3] };
+
+				workflowState.setNodeExecutionItemCount('TestNode', itemCounts);
+
+				expect(workflowState.nodeExecutionItemCounts.value['TestNode']).toEqual(itemCounts);
+			});
+
+			it('should store item counts for multiple connection types', () => {
+				const itemCounts = {
+					main: [10],
+					ai_memory: [2, 4],
+					ai_tool: [1],
+				};
+
+				workflowState.setNodeExecutionItemCount('AINode', itemCounts);
+
+				expect(workflowState.nodeExecutionItemCounts.value['AINode']).toEqual(itemCounts);
+			});
+
+			it('should store empty object when no item counts provided', () => {
+				workflowState.setNodeExecutionItemCount('EmptyNode', {});
+
+				expect(workflowState.nodeExecutionItemCounts.value['EmptyNode']).toEqual({});
+			});
+
+			it('should overwrite existing item counts for the same node', () => {
+				workflowState.setNodeExecutionItemCount('Node1', { main: [5] });
+				expect(workflowState.nodeExecutionItemCounts.value['Node1']).toEqual({ main: [5] });
+
+				workflowState.setNodeExecutionItemCount('Node1', { main: [10] });
+				expect(workflowState.nodeExecutionItemCounts.value['Node1']).toEqual({ main: [10] });
+			});
+
+			it('should store item counts for multiple nodes independently', () => {
+				workflowState.setNodeExecutionItemCount('Node1', { main: [5] });
+				workflowState.setNodeExecutionItemCount('Node2', { main: [10] });
+				workflowState.setNodeExecutionItemCount('Node3', { ai_tool: [2] });
+
+				expect(workflowState.nodeExecutionItemCounts.value['Node1']).toEqual({ main: [5] });
+				expect(workflowState.nodeExecutionItemCounts.value['Node2']).toEqual({ main: [10] });
+				expect(workflowState.nodeExecutionItemCounts.value['Node3']).toEqual({ ai_tool: [2] });
+			});
+		});
+
+		describe('clearNodeExecutionItemCounts()', () => {
+			it('should clear all stored item counts', () => {
+				workflowState.setNodeExecutionItemCount('Node1', { main: [5] });
+				workflowState.setNodeExecutionItemCount('Node2', { main: [10] });
+
+				expect(Object.keys(workflowState.nodeExecutionItemCounts.value)).toHaveLength(2);
+
+				workflowState.clearNodeExecutionItemCounts();
+
+				expect(workflowState.nodeExecutionItemCounts.value).toEqual({});
+			});
+
+			it('should be safe to call when no item counts exist', () => {
+				expect(workflowState.nodeExecutionItemCounts.value).toEqual({});
+
+				workflowState.clearNodeExecutionItemCounts();
+
+				expect(workflowState.nodeExecutionItemCounts.value).toEqual({});
+			});
+		});
+
+		describe('integration with resetState()', () => {
+			it('should clear item counts when resetting state', () => {
+				workflowState.setNodeExecutionItemCount('Node1', { main: [5] });
+				workflowState.setNodeExecutionItemCount('Node2', { main: [10] });
+
+				expect(Object.keys(workflowState.nodeExecutionItemCounts.value)).toHaveLength(2);
+
+				workflowState.resetState();
+
+				expect(workflowState.nodeExecutionItemCounts.value).toEqual({});
+			});
+		});
+
+		describe('integration with markExecutionAsStopped()', () => {
+			beforeEach(() => {
+				workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
+					status: 'running',
+					data: {
+						resultData: {
+							runData: {
+								node1: [createTestTaskData({ executionStatus: 'success' })],
+							},
+						},
+					},
+				});
+			});
+
+			it('should clear item counts when execution is stopped', () => {
+				workflowState.setNodeExecutionItemCount('Node1', { main: [5] });
+				workflowState.setNodeExecutionItemCount('Node2', { main: [10] });
+
+				expect(Object.keys(workflowState.nodeExecutionItemCounts.value)).toHaveLength(2);
+
+				workflowState.markExecutionAsStopped();
+
+				expect(workflowState.nodeExecutionItemCounts.value).toEqual({});
+			});
+
+			it('should clear item counts when execution is stopped with stopData', () => {
+				workflowState.setNodeExecutionItemCount('Node1', { main: [5] });
+
+				workflowState.markExecutionAsStopped({
+					status: 'canceled',
+					startedAt: new Date(),
+					stoppedAt: new Date(),
+					mode: 'manual',
+				});
+
+				expect(workflowState.nodeExecutionItemCounts.value).toEqual({});
+			});
+		});
+	});
 });

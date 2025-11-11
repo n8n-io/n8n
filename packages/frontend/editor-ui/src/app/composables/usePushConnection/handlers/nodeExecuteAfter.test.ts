@@ -24,6 +24,7 @@ describe('nodeExecuteAfter', () => {
 				executingNode: {
 					removeExecutingNode: vi.fn(),
 				},
+				setNodeExecutionItemCount: vi.fn(),
 			}),
 		};
 	});
@@ -49,6 +50,10 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
+		expect(mockOptions.workflowState.setNodeExecutionItemCount).toHaveBeenCalledTimes(1);
+		expect(mockOptions.workflowState.setNodeExecutionItemCount).toHaveBeenCalledWith('Test Node', {
+			main: [2, 1],
+		});
 		expect(workflowsStore.updateNodeExecutionStatus).toHaveBeenCalledTimes(1);
 		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledTimes(1);
 		expect(mockOptions.workflowState.executingNode.removeExecutingNode).toHaveBeenCalledWith(
@@ -91,6 +96,13 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
+		expect(mockOptions.workflowState.setNodeExecutionItemCount).toHaveBeenCalledTimes(1);
+		expect(mockOptions.workflowState.setNodeExecutionItemCount).toHaveBeenCalledWith('Test Node', {
+			main: [3],
+			ai_memory: [1, 2],
+			ai_tool: [1],
+		});
+
 		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		expect(updateCall.data.data).toEqual({
 			main: [
@@ -126,6 +138,12 @@ describe('nodeExecuteAfter', () => {
 
 		await nodeExecuteAfter(event, mockOptions);
 
+		expect(mockOptions.workflowState.setNodeExecutionItemCount).toHaveBeenCalledTimes(1);
+		expect(mockOptions.workflowState.setNodeExecutionItemCount).toHaveBeenCalledWith(
+			'Test Node',
+			{},
+		);
+
 		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		expect(updateCall.data.data).toEqual({
 			main: [],
@@ -151,6 +169,11 @@ describe('nodeExecuteAfter', () => {
 		};
 
 		await nodeExecuteAfter(event, mockOptions);
+
+		expect(mockOptions.workflowState.setNodeExecutionItemCount).toHaveBeenCalledTimes(1);
+		expect(mockOptions.workflowState.setNodeExecutionItemCount).toHaveBeenCalledWith('Test Node', {
+			main: [1],
+		});
 
 		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		expect(updateCall.executionId).toBe('exec-1');
@@ -191,6 +214,12 @@ describe('nodeExecuteAfter', () => {
 		};
 
 		await nodeExecuteAfter(event, mockOptions);
+
+		expect(mockOptions.workflowState.setNodeExecutionItemCount).toHaveBeenCalledTimes(1);
+		expect(mockOptions.workflowState.setNodeExecutionItemCount).toHaveBeenCalledWith('Test Node', {
+			main: [1],
+			invalid_connection: [2],
+		});
 
 		const updateCall = workflowsStore.updateNodeExecutionStatus.mock.calls[0][0];
 		// Should only contain main connection, invalid_connection should be filtered out

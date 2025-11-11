@@ -729,6 +729,323 @@ describe('useCanvasMapping', () => {
 					},
 				});
 			});
+
+			it('should use stored item counts from workflowState when available', async () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const nodes = [createTestNode({ name: 'Node 1' })];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Mock that there's no run data yet
+				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
+
+				// Set up stored item counts in workflowState
+				workflowState.nodeExecutionItemCounts.value = {
+					'Node 1': {
+						[NodeConnectionTypes.Main]: [5, 3],
+					},
+				};
+
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				// Wait for throttled watch to process
+				await vi.waitFor(() => {
+					expect(nodeExecutionRunDataOutputMapById.value).toEqual({
+						[nodes[0].id]: {
+							[NodeConnectionTypes.Main]: {
+								'0': {
+									iterations: 1,
+									total: 5,
+								},
+								'1': {
+									iterations: 1,
+									total: 3,
+								},
+							},
+						},
+					});
+				});
+			});
+
+			it('should use stored item counts for multiple connection types', async () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const nodes = [createTestNode({ name: 'AI Node' })];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue(null);
+
+				workflowState.nodeExecutionItemCounts.value = {
+					'AI Node': {
+						[NodeConnectionTypes.Main]: [10],
+						[NodeConnectionTypes.AiMemory]: [2, 4],
+						[NodeConnectionTypes.AiTool]: [1],
+					},
+				};
+
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				await vi.waitFor(() => {
+					expect(nodeExecutionRunDataOutputMapById.value).toEqual({
+						[nodes[0].id]: {
+							[NodeConnectionTypes.Main]: {
+								'0': {
+									iterations: 1,
+									total: 10,
+								},
+							},
+							[NodeConnectionTypes.AiMemory]: {
+								'0': {
+									iterations: 1,
+									total: 2,
+								},
+								'1': {
+									iterations: 1,
+									total: 4,
+								},
+							},
+							[NodeConnectionTypes.AiTool]: {
+								'0': {
+									iterations: 1,
+									total: 1,
+								},
+							},
+						},
+					});
+				});
+			});
+
+			it('should fall back to calculating from run data when no stored item counts', async () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const nodes = [createTestNode({ name: 'Node 1' })];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// No stored item counts
+				workflowState.nodeExecutionItemCounts.value = {};
+
+				// Mock run data instead
+				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue([
+					{
+						startTime: 0,
+						executionTime: 0,
+						executionIndex: 0,
+						source: [],
+						data: {
+							[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+						},
+					},
+				]);
+
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				await vi.waitFor(() => {
+					expect(nodeExecutionRunDataOutputMapById.value).toEqual({
+						[nodes[0].id]: {
+							[NodeConnectionTypes.Main]: {
+								'0': {
+									iterations: 1,
+									total: 3,
+								},
+							},
+						},
+					});
+				});
+			});
+
+			it('should prefer stored item counts over run data when both exist', async () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const nodes = [createTestNode({ name: 'Node 1' })];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Set stored item counts
+				workflowState.nodeExecutionItemCounts.value = {
+					'Node 1': {
+						[NodeConnectionTypes.Main]: [7],
+					},
+				};
+
+				// Also mock run data (but it should be ignored)
+				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue([
+					{
+						startTime: 0,
+						executionTime: 0,
+						executionIndex: 0,
+						source: [],
+						data: {
+							[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+						},
+					},
+				]);
+
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				await vi.waitFor(() => {
+					expect(nodeExecutionRunDataOutputMapById.value).toEqual({
+						[nodes[0].id]: {
+							[NodeConnectionTypes.Main]: {
+								'0': {
+									iterations: 1,
+									total: 7,
+								},
+							},
+						},
+					});
+				});
+			});
+
+			it('should handle empty stored item counts object', async () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const nodes = [createTestNode({ name: 'Node 1' })];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Empty item counts object
+				workflowState.nodeExecutionItemCounts.value = {
+					'Node 1': {},
+				};
+
+				// Mock run data as fallback
+				workflowsStore.getWorkflowResultDataByNodeName.mockReturnValue([
+					{
+						startTime: 0,
+						executionTime: 0,
+						executionIndex: 0,
+						source: [],
+						data: {
+							[NodeConnectionTypes.Main]: [[{ json: {} }]],
+						},
+					},
+				]);
+
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				await vi.waitFor(() => {
+					expect(nodeExecutionRunDataOutputMapById.value).toEqual({
+						[nodes[0].id]: {
+							[NodeConnectionTypes.Main]: {
+								'0': {
+									iterations: 1,
+									total: 1,
+								},
+							},
+						},
+					});
+				});
+			});
+
+			it('should handle multiple nodes with mixed stored/calculated data', async () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const nodes = [
+					createTestNode({ id: 'node1', name: 'Node 1' }),
+					createTestNode({ id: 'node2', name: 'Node 2' }),
+				];
+				const connections = {};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Node 1 has stored item counts
+				workflowState.nodeExecutionItemCounts.value = {
+					'Node 1': {
+						[NodeConnectionTypes.Main]: [5],
+					},
+				};
+
+				// Mock run data for both nodes
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === 'Node 1') {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }]],
+								},
+							},
+						];
+					} else if (nodeName === 'Node 2') {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }, { json: {} }, { json: {} }]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				await vi.waitFor(() => {
+					expect(nodeExecutionRunDataOutputMapById.value).toEqual({
+						node1: {
+							[NodeConnectionTypes.Main]: {
+								'0': {
+									iterations: 1,
+									total: 5, // From stored item counts
+								},
+							},
+						},
+						node2: {
+							[NodeConnectionTypes.Main]: {
+								'0': {
+									iterations: 1,
+									total: 3, // Calculated from run data
+								},
+							},
+						},
+					});
+				});
+			});
 		});
 
 		describe('additionalNodePropertiesById', () => {

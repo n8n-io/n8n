@@ -18,12 +18,23 @@ export async function nodeExecuteAfter(
 	const assistantStore = useAssistantStore();
 
 	/**
+	 * Store the item count data in workflowState for use in canvas rendering.
+	 * This data will be used to display iterations and total item counts without
+	 * generating placeholder items.
+	 */
+	if (
+		pushData.itemCountByConnectionType &&
+		typeof pushData.itemCountByConnectionType === 'object'
+	) {
+		workflowState.setNodeExecutionItemCount(pushData.nodeName, pushData.itemCountByConnectionType);
+	}
+
+	/**
 	 * We trim the actual data returned from the node execution to avoid performance issues
 	 * when dealing with large datasets. Instead of storing the actual data, we initially store
 	 * a placeholder object indicating that the data has been trimmed until the
 	 * `nodeExecuteAfterData` event comes in.
 	 */
-
 	const placeholderOutputData: ITaskData['data'] = {
 		main: [],
 	};
