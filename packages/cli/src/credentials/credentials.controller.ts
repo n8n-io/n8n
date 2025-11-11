@@ -26,7 +26,7 @@ import {
 	Param,
 	Query,
 } from '@n8n/decorators';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import { deepCopy } from 'n8n-workflow';
@@ -356,7 +356,14 @@ export class CredentialsController {
 			newShareeIds = toShare;
 
 			// Update isAvailableForAllUsers if provided in the payload
+			// Only users with credential:shareGlobally scope can set global credentials
 			if (isAvailableForAllUsers !== undefined) {
+				const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
+				if (!canShareGlobally) {
+					throw new ForbiddenError(
+						'Missing required scope to share or unshare credentials with all users',
+					);
+				}
 				await this.credentialsRepository.update({ id: credentialId }, { isAvailableForAllUsers });
 			}
 		});
