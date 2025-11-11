@@ -68,15 +68,13 @@ export class CredentialsPermissionChecker {
 			workflowCredIds,
 		);
 
-		// If project is personal, also allow credentials with isAvailableForAllUsers: true
+		// Also allow credentials with isAvailableForAllUsers: true
 		const accessibleSet = new Set(accessible);
-		if (homeProject.type === 'personal') {
-			const globalCredentials = await this.credentialsRepository.findBy({
-				isAvailableForAllUsers: true,
-			});
-			for (const globalCred of globalCredentials) {
-				accessibleSet.add(globalCred.id);
-			}
+		const globalCredentials = await this.credentialsRepository.findBy({
+			isAvailableForAllUsers: true,
+		});
+		for (const globalCred of globalCredentials) {
+			accessibleSet.add(globalCred.id);
 		}
 
 		for (const credentialsId of workflowCredIds) {

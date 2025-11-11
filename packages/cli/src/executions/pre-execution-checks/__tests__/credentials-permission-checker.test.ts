@@ -113,7 +113,7 @@ describe('CredentialsPermissionChecker', () => {
 		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).not.toHaveBeenCalled();
 	});
 
-	it('should allow global credentials for personal projects', async () => {
+	it('should allow global credentials for any project', async () => {
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
 		const globalCredential = mock<CredentialsEntity>({
@@ -134,7 +134,7 @@ describe('CredentialsPermissionChecker', () => {
 		});
 	});
 
-	it('should not allow global credentials for team projects', async () => {
+	it('should allow global credentials for team projects', async () => {
 		const teamProject = mock<Project>({
 			id: 'team-project',
 			name: 'Team Project',
@@ -146,16 +146,21 @@ describe('CredentialsPermissionChecker', () => {
 		projectService.findProjectsWorkflowIsIn.mockResolvedValueOnce([teamProject.id]);
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
+		const globalCredential = mock<CredentialsEntity>({
+			id: credentialId,
+			isAvailableForAllUsers: true,
+		});
+		credentialsRepository.findBy.mockResolvedValueOnce([globalCredential]);
 
-		await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
-			'Node "Test Node" does not have access to the credential',
-		);
+		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
 
 		expect(projectService.findProjectsWorkflowIsIn).toHaveBeenCalledWith(workflowId);
 		expect(sharedCredentialsRepository.getFilteredAccessibleCredentials).toHaveBeenCalledWith(
 			[teamProject.id],
 			[credentialId],
 		);
-		expect(credentialsRepository.findBy).not.toHaveBeenCalled();
+		expect(credentialsRepository.findBy).toHaveBeenCalledWith({
+			isAvailableForAllUsers: true,
+		});
 	});
 });
