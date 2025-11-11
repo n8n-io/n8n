@@ -1,4 +1,6 @@
 type: object
+readOnly: true
+nullable: true
 additionalProperties: false
 properties:
   versionId:
