@@ -5,7 +5,7 @@ const name = 'name';
 const autosaved = 'autosaved';
 const description = 'description';
 
-export class AddWorkflowHistoryAutoSaveFields1762262250375 implements ReversibleMigration {
+export class AddWorkflowHistoryAutoSaveFields1762847206508 implements ReversibleMigration {
 	async up({ schemaBuilder: { addColumns, column } }: MigrationContext) {
 		await addColumns(tableName, [
 			column(name).varchar(128),
