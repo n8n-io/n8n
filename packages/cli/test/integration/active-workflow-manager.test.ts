@@ -206,7 +206,7 @@ describe('add()', () => {
 		expect(updateWorkflowTriggerCountSpy).toHaveBeenCalledWith(dbWorkflow.id, 1);
 	});
 
-	test('should activate an initially inactive workflow in memory', async () => {
+	test('should activate a workflow after its active status changes from false to true', async () => {
 		await activeWorkflowManager.init();
 
 		const dbWorkflow = await createInactiveWorkflow();
@@ -214,6 +214,10 @@ describe('add()', () => {
 
 		// Verify it's not active in memory yet
 		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(0);
+
+		// Simulate the workflow being activated
+		await setActiveVersion(dbWorkflow.id, dbWorkflow.versionId!);
+		await Container.get(WorkflowRepository).update(dbWorkflow.id, { active: true });
 
 		await activeWorkflowManager.add(dbWorkflow.id, 'activate');
 
