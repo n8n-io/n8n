@@ -61,7 +61,8 @@ export function useToast() {
 			} else if (
 				params.message &&
 				typeof params.message === 'object' &&
-				'props' in params.message
+				'props' in params.message &&
+				params.message.props
 			) {
 				// Extract error message from VNode props (e.g., NodeExecutionErrorMessage component)
 				const props = params.message.props as Record<string, unknown>;
