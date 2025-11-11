@@ -436,6 +436,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
+					settledJobs.push(job.jobId);
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: job.i } },
@@ -447,8 +448,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 					itemIndex: job.i,
 					description: error.description,
 				});
-			} finally {
-				settledJobs.push(job.jobId);
 			}
 		}
 
