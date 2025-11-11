@@ -1,11 +1,12 @@
+on: [workflow_dispatch]
 name: Test Master
 
-on:
-  push:
-    branches:
-      - master
-    paths-ignore:
-      - packages/@n8n/task-runner-python/**
+# on:
+#   push:
+#     branches:
+#       - master
+#     paths-ignore:
+#       - packages/@n8n/task-runner-python/**
 
 jobs:
   build-github:
