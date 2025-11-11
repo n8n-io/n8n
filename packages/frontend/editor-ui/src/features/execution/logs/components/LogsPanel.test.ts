@@ -45,11 +45,14 @@ vi.mock('@/app/composables/useToast', () => {
 	};
 });
 
-vi.mock('@/composables/useClipboard', () => {
+const mockCopy = vi.fn();
+vi.mock('@vueuse/core', async () => {
+	const actual = await vi.importActual('@vueuse/core');
 	return {
+		...actual,
 		useClipboard: () => {
 			return {
-				copy: vi.fn(),
+				copy: mockCopy,
 			};
 		},
 	};
@@ -629,13 +632,19 @@ describe('LogsPanel', () => {
 			});
 
 			it('should allow copying session ID', async () => {
-				const clipboardSpy = vi.fn();
-				document.execCommand = clipboardSpy;
 				const { getByTestId } = render();
 
-				await userEvent.click(getByTestId('chat-session-id'));
+				const sessionIdElement = getByTestId('chat-session-id');
+
+				await userEvent.click(sessionIdElement);
+
+				// Verify clipboard was called with the full session ID
+				expect(mockCopy).toHaveBeenCalledTimes(1);
+				const copiedSessionId = mockCopy.mock.calls[0][0];
+				expect(typeof copiedSessionId).toBe('string');
+
+				// Verify toast was shown
 				const toast = useToast();
-				//expect(clipboardSpy).toHaveBeenCalledWith('copy');
 				expect(toast.showMessage).toHaveBeenCalledWith({
 					message: '',
 					title: 'Copied to clipboard',
