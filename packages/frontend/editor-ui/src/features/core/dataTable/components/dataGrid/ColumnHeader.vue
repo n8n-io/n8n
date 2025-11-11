@@ -5,9 +5,11 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { isAGGridCellType } from '@/features/core/dataTable/typeGuards';
 import { N8nActionDropdown, N8nIcon, N8nIconButton } from '@n8n/design-system';
+import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
 export type HeaderParamsWithDelete = IHeaderParams & {
 	onDelete?: (columnId: string) => void;
+	onRename?: (columnId: string, columnName: string) => void;
 	allowMenuActions: boolean;
 	showTypeIcon?: boolean;
 };
@@ -28,6 +30,7 @@ const shouldShowTypeIcon = computed(() => props.params.showTypeIcon !== false);
 const isFilterable = computed(() => props.params.column.getColDef().filter !== false);
 
 const enum ItemAction {
+	Rename = 'rename',
 	Delete = 'delete',
 }
 
@@ -35,6 +38,8 @@ const onItemClick = (action: string) => {
 	const actionEnum = action as ItemAction;
 	if (actionEnum === ItemAction.Delete) {
 		props.params.onDelete?.(props.params.column.getColId());
+	} else if (actionEnum === ItemAction.Rename) {
+		props.params.onRename?.(props.params.column.getColId(), props.params.displayName);
 	}
 };
 
@@ -87,14 +92,33 @@ const typeIcon = computed(() => {
 	return getIconForType(mapToDataTableColumnType(cellDataType));
 });
 
-const columnActionItems = [
-	{
-		id: ItemAction.Delete,
-		label: i18n.baseText('dataTable.deleteColumn.confirm.title'),
-		icon: 'trash-2',
-		customClass: 'data-table-column-header-action-item',
-	} as const,
-];
+const isSystemColumn = computed(() => {
+	const columnId = props.params.column.getColId();
+	return DATA_TABLE_SYSTEM_COLUMNS.includes(columnId);
+});
+
+const columnActionItems = computed(() => {
+	const items = [];
+
+	// Only show rename for user-defined columns
+	if (!isSystemColumn.value) {
+		items.push({
+			id: ItemAction.Rename,
+			label: i18n.baseText('dataTable.renameColumn.label'),
+			icon: 'pen',
+			customClass: 'data-table-column-header-action-item',
+		} as const);
+
+		items.push({
+			id: ItemAction.Delete,
+			label: i18n.baseText('dataTable.deleteColumn.confirm.title'),
+			icon: 'trash-2',
+			customClass: 'data-table-column-header-action-item',
+		} as const);
+	}
+
+	return items;
+});
 
 const isSortable = computed(() => {
 	return props.params.column.getColDef().sortable;
