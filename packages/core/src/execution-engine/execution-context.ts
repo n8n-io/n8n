@@ -1,9 +1,13 @@
 import {
 	ExecutionBaseError,
+	type IWorkflowExecuteAdditionalData,
+	type WorkflowExecuteMode,
 	type IExecutionContextV1,
 	type IRunExecutionData,
 	type Workflow,
 } from 'n8n-workflow';
+
+import { assertExecutionDataExists } from '@/utils/assertions';
 
 export class ExecutionContextEstablishmentError extends ExecutionBaseError {
 	constructor(message: string) {
@@ -19,13 +23,14 @@ export class ExecutionContextEstablishmentError extends ExecutionBaseError {
  * the workflow execution lifecycle. The context is stored directly in the provided
  * `runExecutionData.executionData.runtimeData` object.
  *
- * @param _workflow - The workflow instance being executed (currently unused, reserved for future context extraction)
+ * @param workflow - The workflow instance being executed (reserved for future context extraction)
  * @param runExecutionData - The execution data structure that will be mutated to include the execution context
+ * @param additionalData - Additional workflow execution data used for validation and future context extraction
+ * @param mode - The workflow execution mode (manual, trigger, webhook, etc.)
  *
  * @returns Promise that resolves when context has been established
  *
- * @throws {ExecutionContextEstablishmentError} When `runExecutionData.executionData` is missing
- * @throws {ExecutionContextEstablishmentError} When the node execution stack is empty
+ * @throws {ExecutionContextEstablishmentError} When `runExecutionData.executionData` is missing or invalid
  *
  * @remarks
  * ## Mutation Behavior
@@ -34,47 +39,65 @@ export class ExecutionContextEstablishmentError extends ExecutionBaseError {
  *
  * ## Context Creation
  * - Creates a new context with version 1 schema and current timestamp
- * - Supports context propagation from parent workflows (future enhancement)
+ * - Establishes basic context for all workflows (including Chat Trigger workflows)
+ * - Supports future extraction of context information from start node (when available)
  * - Validates execution data structure before context creation
+ *
+ * ## Chat Trigger Support
+ * Workflows containing only Chat Trigger nodes have an empty `nodeExecutionStack`.
+ * In such cases, basic context (version + timestamp) is still established, but no
+ * start-node-specific context extraction is performed.
  *
  * ## Future Enhancements
  * The function is designed to support extracting context information from:
  * - Start node parameters (e.g., webhook authentication tokens)
  * - Start node type (trigger, manual, webhook, etc.)
  * - Input data from triggering events
+ * - User identification from various sources
  *
  * ## Example Usage
  * ```typescript
- * await establishExecutionContext(workflow, runExecutionData);
+ * await establishExecutionContext(workflow, runExecutionData, additionalData, mode);
  * // Context is now available in: runExecutionData.executionData.runtimeData
  * ```
  *
  * @see IExecutionContextV1 for context structure definition
  * @see IRunExecutionData for execution data structure
+ * @see IWorkflowExecuteAdditionalData for additional execution data
  */
 export const establishExecutionContext = async (
-	_workflow: Workflow,
+	workflow: Workflow,
 	runExecutionData: IRunExecutionData,
+	additionalData: IWorkflowExecuteAdditionalData,
+	mode: WorkflowExecuteMode,
 ): Promise<void> => {
 	const executionContext: IExecutionContextV1 = {
 		version: 1,
 		establishedAt: Date.now(),
 	};
 
-	if (!runExecutionData.executionData) {
-		throw new ExecutionContextEstablishmentError(
-			'Execution data is missing, this state is not expected, when the workflow is executed the execution data should be initialized.',
-		);
-	}
+	assertExecutionDataExists(runExecutionData.executionData, workflow, additionalData, mode);
 
 	const executionData = runExecutionData.executionData;
 
+	// At this point we have established the basic execution context.
+	executionData.runtimeData = executionContext;
+
+	// Next, we attempt to extract additional context from the start node of the execution stack.
 	const [startItem] = executionData.nodeExecutionStack;
 
+	// The nodeExecutionStack is typically initialized in one of three ways:
+	// 1. run() method: Creates stack with start node (workflow-execute.ts:143-157)
+	// 2. runPartialWorkflow2(): Recreates stack from existing runData via recreateNodeExecutionStack()
+	// 3. Constructor with executionData: Pre-populated from caller (resume scenarios)
+	//
+	// However, the stack CAN be legitimately empty for workflows containing only Chat Trigger nodes
+	// (see workflow-execute.ts:1368-1369). In such cases, we cannot extract context from a start
+	// node, but we should still establish basic execution context.
+	//
+	// We cannot extract user specific information from the initial item though. So we exit early.
 	if (!startItem) {
-		throw new ExecutionContextEstablishmentError(
-			'Empty execution stack on workflow execution, failed to establish execution context',
-		);
+		return;
 	}
 
 	// startNodeParameters will hold the parameters of the start node
@@ -95,6 +118,4 @@ export const establishExecutionContext = async (
 
 	// based on startNodeParameters, startNodeType and mainInput we can now
 	// iterate over the different hooks to extract specific data for the runtime context
-
-	executionData.runtimeData = executionContext;
 };

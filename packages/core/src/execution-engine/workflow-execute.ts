@@ -56,6 +56,12 @@ import {
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
+import { ErrorReporter } from '@/errors/error-reporter';
+import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
+import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { assertExecutionDataExists } from '@/utils/assertions';
+import { isJsonCompatible } from '@/utils/is-json-compatible';
+
 import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import { ExecuteContext, PollContext } from './node-execution-context';
@@ -74,11 +80,6 @@ import {
 import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
-
-import { ErrorReporter } from '@/errors/error-reporter';
-import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
-import * as NodeExecuteFunctions from '@/node-execute-functions';
-import { isJsonCompatible } from '@/utils/is-json-compatible';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -1326,22 +1327,6 @@ export class WorkflowExecute {
 		);
 	}
 
-	private assertExecutionDataExists(
-		this: WorkflowExecute,
-		executionData: IRunExecutionData['executionData'],
-		workflow: Workflow,
-	): asserts executionData is NonNullable<IRunExecutionData['executionData']> {
-		if (!executionData) {
-			throw new UnexpectedError('Failed to run workflow due to missing execution data', {
-				extra: {
-					workflowId: workflow.id,
-					executionId: this.additionalData.executionId,
-					mode: this.mode,
-				},
-			});
-		}
-	}
-
 	/**
 	 * Handles executions that have been waiting by
 	 * 1. unsetting the `waitTill`
@@ -1355,7 +1340,12 @@ export class WorkflowExecute {
 		if (this.runExecutionData.waitTill) {
 			this.runExecutionData.waitTill = undefined;
 
-			this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
+			assertExecutionDataExists(
+				this.runExecutionData.executionData,
+				workflow,
+				this.additionalData,
+				this.mode,
+			);
 			this.runExecutionData.executionData.nodeExecutionStack[0].node.disabled = true;
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
@@ -1364,7 +1354,12 @@ export class WorkflowExecute {
 	}
 
 	private checkForWorkflowIssues(workflow: Workflow): void {
-		this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
+		assertExecutionDataExists(
+			this.runExecutionData.executionData,
+			workflow,
+			this.additionalData,
+			this.mode,
+		);
 		// Node execution stack will be empty for an execution containing only Chat
 		// Trigger.
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
@@ -1487,10 +1482,15 @@ export class WorkflowExecute {
 
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
-				// Establish the execution context
-				await establishExecutionContext(workflow, this.runExecutionData);
-
 				try {
+					// Establish the execution context
+					await establishExecutionContext(
+						workflow,
+						this.runExecutionData,
+						this.additionalData,
+						this.mode,
+					);
+
 					if (!this.additionalData.restartExecutionId) {
 						await hooks.runHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
 					}

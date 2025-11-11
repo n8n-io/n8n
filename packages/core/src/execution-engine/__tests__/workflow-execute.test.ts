@@ -121,6 +121,12 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				expect(result.data.executionData!.contextData).toEqual({});
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});
@@ -190,6 +196,13 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				expect(result.data.executionData!.contextData).toEqual({});
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});
@@ -404,6 +417,13 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				// expect(result.data.executionData!.contextData).toEqual({}); //Fails when test workflow Includes splitInbatches
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});

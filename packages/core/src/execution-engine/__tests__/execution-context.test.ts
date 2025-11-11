@@ -1,10 +1,18 @@
 import { mock } from 'jest-mock-extended';
-import type { INode, IRunExecutionData, Workflow } from 'n8n-workflow';
+import type {
+	INode,
+	IRunExecutionData,
+	IWorkflowExecuteAdditionalData,
+	Workflow,
+	WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import { establishExecutionContext } from '../execution-context';
 
 describe('establishExecutionContext', () => {
-	const mockWorkflow = mock<Workflow>();
+	const mockWorkflow = mock<Workflow>({ id: 'test-workflow-id' });
+	const mockAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+	const mockMode: WorkflowExecuteMode = 'manual';
 
 	describe('successful context establishment', () => {
 		it('should establish context with version 1 and timestamp', async () => {
@@ -32,7 +40,7 @@ describe('establishExecutionContext', () => {
 			};
 
 			const beforeTimestamp = Date.now();
-			await establishExecutionContext(mockWorkflow, runExecutionData);
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
 			const afterTimestamp = Date.now();
 
 			expect(runExecutionData.executionData!.runtimeData).toBeDefined();
@@ -69,7 +77,7 @@ describe('establishExecutionContext', () => {
 			};
 
 			const referenceBefore = runExecutionData.executionData;
-			await establishExecutionContext(mockWorkflow, runExecutionData);
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
 			const referenceAfter = runExecutionData.executionData;
 
 			// Verify the same object reference is used (mutation, not replacement)
@@ -109,43 +117,45 @@ describe('establishExecutionContext', () => {
 				},
 			};
 
-			await establishExecutionContext(mockWorkflow, runExecutionData);
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
 
 			expect(runExecutionData.executionData!.runtimeData).toBeDefined();
 			expect(runExecutionData.executionData!.runtimeData!.version).toBe(1);
 		});
 	});
 
-	describe('error handling', () => {
-		it('should throw error when executionData is missing', async () => {
+	describe('Chat Trigger workflow support', () => {
+		it('should establish basic context for empty execution stack (Chat Trigger)', async () => {
 			const runExecutionData: IRunExecutionData = {
 				startData: {},
 				resultData: {
 					runData: {},
 				},
-				// executionData is missing
-			};
-
-			await expect(establishExecutionContext(mockWorkflow, runExecutionData)).rejects.toThrow(
-				'Execution data is missing, this state is not expected, when the workflow is executed the execution data should be initialized.',
-			);
-		});
-
-		it('should throw error when executionData is undefined', async () => {
-			const runExecutionData: IRunExecutionData = {
-				startData: {},
-				resultData: {
-					runData: {},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [], // Empty stack - Chat Trigger workflow
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
 				},
-				executionData: undefined,
 			};
 
-			await expect(establishExecutionContext(mockWorkflow, runExecutionData)).rejects.toThrow(
-				'Execution data is missing, this state is not expected, when the workflow is executed the execution data should be initialized.',
+			const beforeTimestamp = Date.now();
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
+			const afterTimestamp = Date.now();
+
+			// Should establish basic context even with empty stack
+			expect(runExecutionData.executionData!.runtimeData).toBeDefined();
+			expect(runExecutionData.executionData!.runtimeData!.version).toBe(1);
+			expect(runExecutionData.executionData!.runtimeData!.establishedAt).toBeGreaterThanOrEqual(
+				beforeTimestamp,
+			);
+			expect(runExecutionData.executionData!.runtimeData!.establishedAt).toBeLessThanOrEqual(
+				afterTimestamp,
 			);
 		});
 
-		it('should throw error when nodeExecutionStack is empty', async () => {
+		it('should establish basic context without start node extraction for Chat Trigger', async () => {
 			const runExecutionData: IRunExecutionData = {
 				startData: {},
 				resultData: {
@@ -160,27 +170,44 @@ describe('establishExecutionContext', () => {
 				},
 			};
 
-			await expect(establishExecutionContext(mockWorkflow, runExecutionData)).rejects.toThrow(
-				'Empty execution stack on workflow execution, failed to establish execution context',
-			);
-		});
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
 
-		it('should throw error when nodeExecutionStack is undefined', async () => {
+			const context = runExecutionData.executionData!.runtimeData;
+
+			// Verify context has only basic properties (no start-node-specific extraction)
+			expect(Object.keys(context!)).toEqual(['version', 'establishedAt']);
+			expect(typeof context!.version).toBe('number');
+			expect(typeof context!.establishedAt).toBe('number');
+		});
+	});
+
+	describe('error handling', () => {
+		it('should throw error when executionData is missing', async () => {
 			const runExecutionData: IRunExecutionData = {
 				startData: {},
 				resultData: {
 					runData: {},
 				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: undefined as any, // Simulating undefined
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
+				// executionData is missing
 			};
 
-			await expect(establishExecutionContext(mockWorkflow, runExecutionData)).rejects.toThrow();
+			await expect(
+				establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode),
+			).rejects.toThrow();
+		});
+
+		it('should throw error when executionData is undefined', async () => {
+			const runExecutionData: IRunExecutionData = {
+				startData: {},
+				resultData: {
+					runData: {},
+				},
+				executionData: undefined,
+			};
+
+			await expect(
+				establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode),
+			).rejects.toThrow();
 		});
 	});
 
@@ -209,7 +236,7 @@ describe('establishExecutionContext', () => {
 				},
 			};
 
-			await establishExecutionContext(mockWorkflow, runExecutionData);
+			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
 
 			const context = runExecutionData.executionData!.runtimeData;
 
@@ -258,15 +285,55 @@ describe('establishExecutionContext', () => {
 				},
 			};
 
-			await establishExecutionContext(mockWorkflow, runExecutionData1);
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData1,
+				mockAdditionalData,
+				mockMode,
+			);
 			// Small delay to ensure different timestamps
 			await new Promise((resolve) => setTimeout(resolve, 5));
-			await establishExecutionContext(mockWorkflow, runExecutionData2);
+			await establishExecutionContext(
+				mockWorkflow,
+				runExecutionData2,
+				mockAdditionalData,
+				mockMode,
+			);
 
 			const timestamp1 = runExecutionData1.executionData!.runtimeData!.establishedAt;
 			const timestamp2 = runExecutionData2.executionData!.runtimeData!.establishedAt;
 
 			expect(timestamp1).toBeLessThan(timestamp2);
+		});
+
+		it('should work with different execution modes', async () => {
+			const startNode = mock<INode>({ name: 'Trigger', type: 'n8n-nodes-base.cron' });
+			const modes: WorkflowExecuteMode[] = ['manual', 'trigger', 'webhook'];
+
+			for (const mode of modes) {
+				const runExecutionData: IRunExecutionData = {
+					startData: {},
+					resultData: { runData: {} },
+					executionData: {
+						contextData: {},
+						nodeExecutionStack: [
+							{
+								node: startNode,
+								data: { main: [[{ json: {} }]] },
+								source: null,
+							},
+						],
+						metadata: {},
+						waitingExecution: {},
+						waitingExecutionSource: {},
+					},
+				};
+
+				await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mode);
+
+				expect(runExecutionData.executionData!.runtimeData).toBeDefined();
+				expect(runExecutionData.executionData!.runtimeData!.version).toBe(1);
+			}
 		});
 	});
 });
