@@ -284,7 +284,8 @@ onClickOutside(
 		}
 	}
 
-	.el-tag {
+	.el-tag,
+	.el-tag.el-tag--info {
 		padding: var(--spacing--5xs) var(--spacing--4xs);
 		color: var(--color--text);
 		background-color: var(--color--background);
