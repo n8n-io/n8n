@@ -361,6 +361,7 @@ export = {
 				id,
 				req.user,
 				['workflow:update'],
+				{ includeActiveVersion: true },
 			);
 
 			if (!workflow) {
