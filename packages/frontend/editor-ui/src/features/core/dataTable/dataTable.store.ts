@@ -10,6 +10,7 @@ import {
 	addDataTableColumnApi,
 	deleteDataTableColumnApi,
 	moveDataTableColumnApi,
+	renameDataTableColumnApi,
 	getDataTableRowsApi,
 	insertDataTableRowApi,
 	updateDataTableRowsApi,
@@ -187,6 +188,33 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return moved;
 	};
 
+	const renameDataTableColumn = async (
+		dataTableId: string,
+		projectId: string,
+		columnId: string,
+		newName: string,
+	) => {
+		const renamedColumn = await renameDataTableColumnApi(
+			rootStore.restApiContext,
+			dataTableId,
+			projectId,
+			columnId,
+			newName,
+		);
+		if (renamedColumn) {
+			const tableIndex = dataTables.value.findIndex((table) => table.id === dataTableId);
+			if (tableIndex !== -1) {
+				const columnIndex = dataTables.value[tableIndex].columns.findIndex(
+					(col) => col.id === columnId,
+				);
+				if (columnIndex !== -1) {
+					dataTables.value[tableIndex].columns[columnIndex].name = newName;
+				}
+			}
+		}
+		return renamedColumn;
+	};
+
 	const fetchDataTableContent = async (
 		dataTableId: string,
 		projectId: string,
@@ -263,6 +291,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		addDataTableColumn,
 		deleteDataTableColumn,
 		moveDataTableColumn,
+		renameDataTableColumn,
 		fetchDataTableContent,
 		insertEmptyRow,
 		updateRow,

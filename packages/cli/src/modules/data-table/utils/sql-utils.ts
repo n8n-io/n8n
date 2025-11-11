@@ -106,6 +106,30 @@ export function deleteColumnQuery(
 	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
 }
 
+export function renameColumnQuery(
+	tableName: DataTableUserTableName,
+	oldColumnName: string,
+	newColumnName: string,
+	dbType: DataSourceOptions['type'],
+): string {
+	// API requests should already conform to this, but better safe than sorry
+	if (!isValidColumnName(newColumnName)) {
+		throw new UnexpectedError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
+	}
+
+	const quotedTableName = quoteIdentifier(tableName, dbType);
+	const quotedOldName = quoteIdentifier(oldColumnName, dbType);
+	const quotedNewName = quoteIdentifier(newColumnName, dbType);
+
+	// SQLite uses different syntax for renaming columns
+	if (dbType === 'sqlite') {
+		return `ALTER TABLE ${quotedTableName} RENAME COLUMN ${quotedOldName} TO ${quotedNewName}`;
+	}
+
+	// PostgreSQL, MySQL, and MariaDB use similar syntax
+	return `ALTER TABLE ${quotedTableName} RENAME COLUMN ${quotedOldName} TO ${quotedNewName}`;
+}
+
 export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
 	switch (dbType) {
 		case 'mysql':

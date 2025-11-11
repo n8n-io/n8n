@@ -125,6 +125,49 @@ export class DataTableColumnRepository extends Repository<DataTableColumn> {
 		});
 	}
 
+	async renameColumn(
+		dataTableId: string,
+		column: DataTableColumn,
+		newName: string,
+		trx?: EntityManager,
+	) {
+		return await withTransaction(this.manager, trx, async (em) => {
+			if (DATA_TABLE_SYSTEM_COLUMNS.includes(newName)) {
+				throw new DataTableSystemColumnNameConflictError(newName);
+			}
+			if (newName === DATA_TABLE_SYSTEM_TESTING_COLUMN) {
+				throw new DataTableSystemColumnNameConflictError(newName, 'testing');
+			}
+
+			const existingColumnMatch = await em.existsBy(DataTableColumn, {
+				name: newName,
+				dataTableId,
+			});
+
+			if (existingColumnMatch) {
+				const dataTable = await em.findOneBy(DataTable, { id: dataTableId });
+				if (!dataTable) {
+					throw new UnexpectedError('Data table not found');
+				}
+				throw new DataTableColumnNameConflictError(newName, dataTable.name);
+			}
+
+			const oldName = column.name;
+
+			await em.update(DataTableColumn, { id: column.id }, { name: newName });
+
+			await this.ddlService.renameColumn(
+				dataTableId,
+				oldName,
+				newName,
+				em.connection.options.type,
+				em,
+			);
+
+			return { ...column, name: newName };
+		});
+	}
+
 	async shiftColumns(dataTableId: string, lowestIndex: number, delta: -1 | 1, trx?: EntityManager) {
 		await withTransaction(this.manager, trx, async (em) => {
 			await em

@@ -4,7 +4,13 @@ import { DataSource, DataSourceOptions, EntityManager } from '@n8n/typeorm';
 import { UnexpectedError } from 'n8n-workflow';
 
 import { DataTableColumn } from './data-table-column.entity';
-import { addColumnQuery, deleteColumnQuery, toDslColumns, toTableName } from './utils/sql-utils';
+import {
+	addColumnQuery,
+	deleteColumnQuery,
+	renameColumnQuery,
+	toDslColumns,
+	toTableName,
+} from './utils/sql-utils';
 
 /**
  * Manages database schema operations for data tables (DDL).
@@ -61,6 +67,20 @@ export class DataTableDDLService {
 	) {
 		await withTransaction(this.dataSource.manager, trx, async (em) => {
 			await em.query(deleteColumnQuery(toTableName(dataTableId), columnName, dbType));
+		});
+	}
+
+	async renameColumn(
+		dataTableId: string,
+		oldColumnName: string,
+		newColumnName: string,
+		dbType: DataSourceOptions['type'],
+		trx?: EntityManager,
+	) {
+		await withTransaction(this.dataSource.manager, trx, async (em) => {
+			await em.query(
+				renameColumnQuery(toTableName(dataTableId), oldColumnName, newColumnName, dbType),
+			);
 		});
 	}
 }

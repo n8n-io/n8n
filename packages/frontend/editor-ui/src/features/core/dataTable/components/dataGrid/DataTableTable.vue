@@ -53,6 +53,7 @@ const agGrid = useAgGrid<DataTableRow>({
 
 const dataTableColumns = useDataTableColumns({
 	onDeleteColumn: onDeleteColumnFunction,
+	onRenameColumn: onRenameColumnFunction,
 	onAddRowClick: onAddRowClickFunction,
 	onAddColumn: onAddColumnFunction,
 	isTextEditorOpen: agGrid.isTextEditorOpen,
@@ -106,6 +107,10 @@ const dataTableOperations = useDataTableOperations({
 
 async function onDeleteColumnFunction(columnId: string) {
 	await dataTableOperations.onDeleteColumn(columnId);
+}
+
+async function onRenameColumnFunction(columnId: string, columnName: string) {
+	await dataTableOperations.onRenameColumn(columnId, columnName);
 }
 
 async function onAddColumnFunction(column: DataTableColumnCreatePayload) {
