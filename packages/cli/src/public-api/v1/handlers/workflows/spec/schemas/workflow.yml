@@ -51,6 +51,7 @@ properties:
     items:
       $ref: './sharedWorkflow.yml'
   activeVersion:
-    $ref: './activeVersion.yml'
     nullable: true
     readOnly: true
+    allOf:
+      - $ref: './activeVersion.yml'
