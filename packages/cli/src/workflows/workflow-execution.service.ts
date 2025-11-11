@@ -19,7 +19,7 @@ import type {
 	IWorkflowBase,
 	IDestinationNode,
 } from 'n8n-workflow';
-import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
+import { SubworkflowOperationError, toDestinationNodeStruct, Workflow } from 'n8n-workflow';
 
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -115,7 +115,7 @@ export class WorkflowExecutionService {
 		streamingEnabled?: boolean,
 		httpResponse?: Response,
 	) {
-		const destinationNodeInfo = this.convertDestinationNode(destinationNode);
+		const destinationNodeInfo = toDestinationNodeStruct(destinationNode);
 
 		const pinData = workflowData.pinData;
 		let pinnedTrigger = this.selectPinnedActivatorStarter(
@@ -234,14 +234,6 @@ export class WorkflowExecutionService {
 		return {
 			executionId,
 		};
-	}
-	private convertDestinationNode(
-		destinationNode: string | IDestinationNode | undefined,
-	): IDestinationNode | undefined {
-		if (typeof destinationNode === 'string') {
-			return { nodeName: destinationNode, mode: 'inclusive' };
-		}
-		return destinationNode;
 	}
 
 	async executeChatWorkflow(

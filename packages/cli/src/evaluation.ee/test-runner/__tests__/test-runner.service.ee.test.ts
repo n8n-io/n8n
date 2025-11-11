@@ -457,7 +457,10 @@ describe('TestRunnerService', () => {
 			const runCallArg = workflowRunner.run.mock.calls[0][0];
 
 			// Verify it has the correct structure
-			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('destinationNode', {
+				nodeName: triggerNodeName,
+				mode: 'inclusive',
+			});
 			expect(runCallArg).toHaveProperty('executionMode', 'manual');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');
@@ -530,7 +533,10 @@ describe('TestRunnerService', () => {
 			const runCallArg = workflowRunner.run.mock.calls[0][0];
 
 			// Verify it has the correct structure
-			expect(runCallArg).toHaveProperty('destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('destinationNode', {
+				nodeName: triggerNodeName,
+				mode: 'inclusive',
+			});
 			expect(runCallArg).toHaveProperty('executionMode', 'manual');
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveManualExecutions', false);
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveDataErrorExecution', 'none');

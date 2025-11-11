@@ -123,9 +123,6 @@ export class WorkflowExecute {
 		pinData?: IPinData,
 		triggerToStartFrom?: IWorkflowExecutionDataProcess['triggerToStartFrom'],
 	): PCancelable<IRun> {
-		Logger.info('here');
-		Logger.info(`Trace: ${new Error().stack}`);
-		console.log('here');
 		this.status = 'running';
 
 		// Get the nodes to start workflow execution from

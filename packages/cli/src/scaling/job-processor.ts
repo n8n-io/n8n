@@ -57,7 +57,6 @@ export class JobProcessor {
 			includeData: true,
 			unflattenData: true,
 		});
-		console.log(execution);
 
 		if (!execution) {
 			throw new UnexpectedError(

@@ -87,6 +87,10 @@ describe('WorkflowExecutionService', () => {
 		mock(),
 	);
 
+	afterEach(() => {
+		jest.clearAllMocks();
+	});
+
 	const additionalData = mock<IWorkflowExecuteAdditionalData>({});
 	jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
 
@@ -141,7 +145,7 @@ describe('WorkflowExecutionService', () => {
 			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
 				workflowData: { nodes: [node] },
 				startNodes: [],
-				destinationNode: node.name,
+				destinationNode: { nodeName: node.name, mode: 'inclusive' },
 				agentRequest: undefined,
 			});
 
