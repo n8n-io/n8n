@@ -64,13 +64,15 @@ const currentlyShownBanner = computed(() => {
 
 	return {
 		component: currentBanner.component,
-		props: {
-			name: currentBannerName,
-			content: currentBanner.content,
-			theme: currentBanner.theme,
-			isDismissible: currentBanner.isDismissible,
-			dismissPermanently: currentBanner.dismissPermanently,
-		},
+		props: Object.fromEntries(
+			Object.entries({
+				name: currentBannerName,
+				content: currentBanner.content,
+				theme: currentBanner.theme,
+				isDismissible: currentBanner.isDismissible,
+				dismissPermanently: currentBanner.dismissPermanently,
+			}).filter(([_, value]) => value !== undefined),
+		),
 	};
 });
 
