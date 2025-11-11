@@ -1,7 +1,7 @@
+import { mapGoogleGeminiModel } from '@utils/modelMetadataMapper';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
-import { mapGoogleGeminiModel } from '@utils/modelMetadataMapper';
 
 async function baseModelSearch(
 	this: ILoadOptionsFunctions,

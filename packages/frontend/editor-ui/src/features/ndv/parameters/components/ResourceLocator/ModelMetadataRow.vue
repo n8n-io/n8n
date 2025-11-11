@@ -39,16 +39,12 @@ const formatPrice = (inputPrice: number, outputPrice: number): string => {
 	return `${input}→${output}/1M`;
 };
 
-const getIntelligenceIcon = (): string => {
-	return 'brain';
-};
-
 type CapabilityIcon = 'wrench' | 'eye' | 'code' | 'palette' | 'mic' | 'lightbulb';
 
 const capabilities = computed(() => {
 	const caps: Array<{ icon: CapabilityIcon; label: string }> = [];
 	if (props.metadata.capabilities.functionCalling) {
-		caps.push({ icon: 'wrench' as const, label: 'Functions' });
+		caps.push({ icon: 'wrench' as const, label: 'Tool Calling' });
 	}
 	if (props.metadata.capabilities.vision) {
 		caps.push({ icon: 'eye' as const, label: 'Vision' });
@@ -78,12 +74,8 @@ const capabilities = computed(() => {
 
 		<!-- Metadata Line -->
 		<div :class="$style.metadataLine">
-			<!-- Provider -->
-			<span :class="$style.metadataText">{{ metadata.provider }}</span>
-
 			<!-- Context Length -->
 			<template v-if="metadata.contextLength > 0">
-				<span :class="$style.separator">•</span>
 				<span :class="$style.metadataText"
 					>{{ formatContextLength(metadata.contextLength) }} context</span
 				>
@@ -95,23 +87,23 @@ const capabilities = computed(() => {
 					metadata.pricing.promptPerMilTokenUsd > 0 || metadata.pricing.completionPerMilTokenUsd > 0
 				"
 			>
-				<span :class="$style.separator">•</span>
+				<span :class="$style.separator">&middot;</span>
 				<span :class="$style.metadataText">{{
 					formatPrice(
 						metadata.pricing.promptPerMilTokenUsd,
 						metadata.pricing.completionPerMilTokenUsd,
 					)
 				}}</span>
+				<span :class="$style.separator">&middot;</span>
 			</template>
 
 			<!-- Intelligence Level -->
-			<span :class="$style.separator">•</span>
-			<N8nIcon icon="brain" size="small" :class="$style.intelligenceIcon" />
+			<N8nIcon icon="brain" size="small" />
 			<span :class="$style.metadataText">{{ metadata.intelligenceLevel }}</span>
 
 			<!-- Capability Icons -->
 			<template v-if="capabilities.length > 0">
-				<span :class="$style.separator">•</span>
+				<span :class="$style.separator">&middot;</span>
 				<div :class="$style.capabilities">
 					<N8nTooltip
 						v-for="cap in capabilities"
@@ -145,25 +137,19 @@ const capabilities = computed(() => {
 	gap: var(--spacing--3xs);
 	flex-wrap: nowrap;
 	overflow: hidden;
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--3xs);
 	color: var(--color--text--tint-1);
 }
 
 .separator {
-	color: var(--color--text--tint-2);
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size-3xs);
+	font-weight: bold;
 	line-height: 1;
 }
 
 .metadataText {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text--tint-1);
 	white-space: nowrap;
 	text-transform: capitalize;
-}
-
-.intelligenceIcon {
-	color: var(--color--text--tint-1);
 }
 
 .capabilities {
@@ -173,7 +159,6 @@ const capabilities = computed(() => {
 }
 
 .capabilityIcon {
-	color: var(--color--text--tint-1);
 	cursor: help;
 
 	&:hover {
