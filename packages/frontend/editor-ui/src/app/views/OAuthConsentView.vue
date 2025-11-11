@@ -2,7 +2,7 @@
 import { useConsentStore } from '@/app/stores/consent.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
-import { onMounted, computed } from 'vue';
+import { onMounted, computed, ref } from 'vue';
 import type { ConsentDetails } from '@n8n/rest-api-client/api/consent';
 import { N8nButton, N8nHeading, N8nIcon, N8nLogo, N8nNotice, N8nText } from '@n8n/design-system';
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
@@ -17,8 +17,10 @@ const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const toast = useToast();
 
-const error = computed(() => consentStore.error);
+// Success state:
+const waitingForRedirect = ref(false);
 
+const error = computed(() => consentStore.error);
 const loading = computed(() => consentStore.isLoading);
 
 const clentDetails = computed<ConsentDetails | null>(() => consentStore.consentDetails);
@@ -37,6 +39,7 @@ const clientIcon = computed(() => {
 const handleAllow = async () => {
 	try {
 		const response = await consentStore.approveConsent(true);
+		waitingForRedirect.value = true;
 		window.location.href = response.redirectUrl;
 	} catch (err) {
 		toast.showError(err, i18n.baseText('oauth.consentView.error.allow'));
@@ -76,7 +79,17 @@ onMounted(async () => {
 					<N8nIcon :icon="clientIcon" size="xlarge" color="text-dark" />
 				</div>
 			</header>
-			<div :class="$style.content">
+			<!-- Success screen, show while waiting to be redirected back to client -->
+			<div v-if="waitingForRedirect" :class="$style.success" data-test-id="consent-success-screen">
+				<N8nHeading tag="h2" size="large" :bold="true">
+					{{ i18n.baseText('oauth.consentView.success.title') }}
+				</N8nHeading>
+				<N8nText color="text-base">
+					{{ i18n.baseText('oauth.consentView.success.description') }}
+				</N8nText>
+			</div>
+			<!-- Default content -->
+			<div v-else :class="$style.content" data-test-id="consent-content">
 				<N8nHeading tag="h2" size="large" :bold="true">
 					{{
 						i18n.baseText('oauth.consentView.heading', {
@@ -109,7 +122,7 @@ onMounted(async () => {
 					</p>
 				</div>
 			</div>
-			<footer :class="$style.footer">
+			<footer v-if="!waitingForRedirect" :class="$style.footer">
 				<N8nNotice
 					v-if="error"
 					theme="danger"
@@ -196,6 +209,15 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+}
+
+.success {
+	padding: var(--spacing--xl);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	text-align: center;
 }
 
 .text-content {

@@ -415,7 +415,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:run-index="isMappingMode ? 0 : runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="!mappedNode && canLinkRuns"
-		:too-much-data-title="i18n.baseText('ndv.input.tooMuchData.title')"
 		:no-data-in-branch-message="i18n.baseText('ndv.input.noOutputDataInBranch')"
 		:is-executing="isExecutingPrevious"
 		:executing-message="i18n.baseText('ndv.input.executingPrevious')"
