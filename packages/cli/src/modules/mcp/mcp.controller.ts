@@ -1,8 +1,8 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Post, RootLevelController } from '@n8n/decorators';
+import { Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
 import { Telemetry } from '@/telemetry';
@@ -50,6 +50,21 @@ export class McpController {
 	// 	this.setCorsHeaders(res);
 	// 	res.status(204).send();
 	// }
+
+	/**
+	 * HEAD endpoint for authentication scheme discovery
+	 * Per RFC 6750 Section 3, returns 401 with WWW-Authenticate header
+	 * This allows MCP clients to probe the endpoint and discover Bearer token authentication
+	 */
+	@Head('/http', {
+		skipAuth: true,
+		usesTemplates: true,
+	})
+	async discoverAuthSchemeHead(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.header('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+		res.status(401).end();
+	}
 
 	@Post('/http', {
 		rateLimit: { limit: 100 },

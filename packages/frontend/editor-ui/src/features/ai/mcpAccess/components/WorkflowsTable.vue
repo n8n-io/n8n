@@ -17,7 +17,7 @@ import {
 } from '@n8n/design-system';
 import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
 import { VIEWS } from '@/app/constants';
-import router from '@/router';
+import router from '@/app/router';
 import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 
 type Props = {
