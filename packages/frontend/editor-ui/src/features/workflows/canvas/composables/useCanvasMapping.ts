@@ -367,33 +367,55 @@ export function useCanvasMapping({
 	const nodeExecutionRunDataOutputMapById = ref<Record<string, ExecutionOutputMap>>({});
 
 	throttledWatch(
-		nodeExecutionRunDataById,
-		(value) => {
-			nodeExecutionRunDataOutputMapById.value = Object.keys(value).reduce<
+		[nodeExecutionRunDataById, () => workflowState.nodeExecutionItemCounts.value],
+		([runDataValue, itemCounts]) => {
+			nodeExecutionRunDataOutputMapById.value = Object.keys(runDataValue).reduce<
 				Record<string, ExecutionOutputMap>
 			>((acc, nodeId) => {
 				acc[nodeId] = {};
 
-				const outputData = { iterations: 0, total: 0 };
-				for (const runIteration of nodeExecutionRunDataById.value[nodeId] ?? []) {
-					const data = runIteration.data ?? {};
+				// Get the node name for this nodeId
+				const node = nodes.value.find((n) => n.id === nodeId);
+				if (!node) return acc;
 
-					for (const connectionType of Object.keys(data)) {
-						const connectionTypeData = data[connectionType] ?? {};
+				// Check if we have stored item counts for this node
+				const storedItemCounts = itemCounts[node.name];
+
+				if (storedItemCounts && Object.keys(storedItemCounts).length > 0) {
+					// Use stored item counts from workflowState
+					for (const [connectionType, outputCounts] of Object.entries(storedItemCounts)) {
 						acc[nodeId][connectionType] = acc[nodeId][connectionType] ?? {};
 
-						for (const outputIndex of Object.keys(connectionTypeData)) {
-							const parsedOutputIndex = parseInt(outputIndex, 10);
-							const connectionTypeOutputIndexData = connectionTypeData[parsedOutputIndex] ?? [];
+						outputCounts.forEach((count, outputIndex) => {
+							acc[nodeId][connectionType][outputIndex.toString()] = {
+								iterations: 1,
+								total: count,
+							};
+						});
+					}
+				} else {
+					// Fall back to calculating from run data (for completed executions)
+					const outputData = { iterations: 0, total: 0 };
+					for (const runIteration of nodeExecutionRunDataById.value[nodeId] ?? []) {
+						const data = runIteration.data ?? {};
 
-							acc[nodeId][connectionType][outputIndex] = acc[nodeId][connectionType][
-								outputIndex
-							] ?? { ...outputData };
-							if (runIteration.executionStatus !== 'canceled') {
-								acc[nodeId][connectionType][outputIndex].iterations += 1;
+						for (const connectionType of Object.keys(data)) {
+							const connectionTypeData = data[connectionType] ?? {};
+							acc[nodeId][connectionType] = acc[nodeId][connectionType] ?? {};
+
+							for (const outputIndex of Object.keys(connectionTypeData)) {
+								const parsedOutputIndex = parseInt(outputIndex, 10);
+								const connectionTypeOutputIndexData = connectionTypeData[parsedOutputIndex] ?? [];
+
+								acc[nodeId][connectionType][outputIndex] = acc[nodeId][connectionType][
+									outputIndex
+								] ?? { ...outputData };
+								if (runIteration.executionStatus !== 'canceled') {
+									acc[nodeId][connectionType][outputIndex].iterations += 1;
+								}
+								acc[nodeId][connectionType][outputIndex].total +=
+									connectionTypeOutputIndexData.length;
 							}
-							acc[nodeId][connectionType][outputIndex].total +=
-								connectionTypeOutputIndexData.length;
 						}
 					}
 				}

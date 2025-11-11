@@ -24,7 +24,7 @@ import {
 	type INodeParameters,
 	type IWorkflowSettings,
 } from 'n8n-workflow';
-import { inject } from 'vue';
+import { inject, ref } from 'vue';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { isEmpty } from '@/app/utils/typesUtils';
@@ -39,6 +39,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import isEqual from 'lodash/isEqual';
 import pick from 'lodash/pick';
 import { createEventBus } from '@n8n/utils/event-bus';
+import type { NodeConnectionType } from 'n8n-workflow';
 
 export type WorkflowStateBusEvents = {
 	updateNodeProperties: [WorkflowState, INodeUpdatePropertiesInformation];
@@ -52,6 +53,29 @@ export function useWorkflowState() {
 	const uiStore = useUIStore();
 	const rootStore = useRootStore();
 	const nodeTypesStore = useNodeTypesStore();
+
+	////
+	// Node execution item counts
+	////
+
+	/**
+	 * Stores the item count by connection type for each node during execution.
+	 * This data is sent from the backend via the nodeExecuteAfter push event.
+	 */
+	const nodeExecutionItemCounts = ref<
+		Record<string, Partial<Record<NodeConnectionType, number[]>>>
+	>({});
+
+	function setNodeExecutionItemCount(
+		nodeName: string,
+		itemCountByConnectionType: Partial<Record<NodeConnectionType, number[]>>,
+	) {
+		nodeExecutionItemCounts.value[nodeName] = itemCountByConnectionType;
+	}
+
+	function clearNodeExecutionItemCounts() {
+		nodeExecutionItemCounts.value = {};
+	}
 
 	////
 	// Workflow editing state
@@ -193,6 +217,7 @@ export function useWorkflowState() {
 		ws.executionWaitingForWebhook = false;
 		documentTitle.setDocumentTitle(ws.workflowName, 'IDLE');
 		ws.workflowExecutionStartedData = undefined;
+		clearNodeExecutionItemCounts();
 
 		// TODO(ckolb): confirm this works across files?
 		clearPopupWindowState();
@@ -232,6 +257,7 @@ export function useWorkflowState() {
 		setActiveExecutionId(undefined);
 		workflowStateStore.executingNode.executingNode.length = 0;
 		ws.executionWaitingForWebhook = false;
+		clearNodeExecutionItemCounts();
 	}
 
 	////
@@ -415,6 +441,11 @@ export function useWorkflowState() {
 
 		// Execution
 		markExecutionAsStopped,
+
+		// Node execution item counts
+		nodeExecutionItemCounts,
+		setNodeExecutionItemCount,
+		clearNodeExecutionItemCounts,
 
 		// Node modification
 		setNodeParameters,
