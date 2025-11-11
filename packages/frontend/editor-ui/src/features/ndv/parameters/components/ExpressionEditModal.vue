@@ -25,7 +25,14 @@ import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 import { useThrottleFn } from '@vueuse/core';
 
 import { ElDialog } from 'element-plus';
-import { N8nIcon, N8nInput, N8nResizeWrapper, N8nText, type ResizeData } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nInput,
+	N8nRadioButtons,
+	N8nResizeWrapper,
+	N8nText,
+	type ResizeData,
+} from '@n8n/design-system';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
@@ -64,6 +71,7 @@ const sidebarWidth = ref(DEFAULT_LEFT_SIDEBAR_WIDTH);
 const expressionInputRef = ref<InstanceType<typeof ExpressionEditorModalInput>>();
 const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
+const outputRenderMode = ref<'text' | 'html' | 'markdown'>('text');
 
 const activeNode = computed(() => ndvStore.activeNode);
 const inputEditor = computed(() => expressionInputRef.value?.editor);
@@ -216,7 +224,18 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						<N8nText bold size="large">
 							{{ i18n.baseText('parameterInput.result') }}
 						</N8nText>
-						<OutputItemSelect />
+						<div :class="$style.headerControls">
+							<OutputItemSelect />
+							<N8nRadioButtons
+								v-model="outputRenderMode"
+								size="small"
+								:options="[
+									{ label: i18n.baseText('ndv.render.text'), value: 'text' },
+									{ label: i18n.baseText('ndv.render.html'), value: 'html' },
+									{ label: i18n.baseText('ndv.render.markdown'), value: 'markdown' },
+								]"
+							/>
+						</div>
 					</div>
 
 					<div :class="[$style.editorContainer, { 'ph-no-capture': redactValues }]">
@@ -225,6 +244,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 							:class="$style.editor"
 							:segments="segments"
 							:extensions="theme"
+							:render="outputRenderMode"
 							data-test-id="expression-modal-output"
 						/>
 					</div>
@@ -316,6 +336,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	flex-direction: column;
 
 	gap: var(--spacing--5xs);
+}
+
+.headerControls {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding-right: var(--spacing--4xs);
 }
 
 .tip {
