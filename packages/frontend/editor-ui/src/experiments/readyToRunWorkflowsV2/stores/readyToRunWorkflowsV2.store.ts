@@ -35,14 +35,7 @@ export const useReadyToRunWorkflowsV2Store = defineStore(
 		const cloudPlanStore = useCloudPlanStore();
 		const workflowsStore = useWorkflowsStore();
 
-		const isFeatureEnabled = computed(() => {
-			const variant = posthogStore.getVariant(READY_TO_RUN_V2_PART2_EXPERIMENT.name);
-			return (
-				(variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant3 ||
-					variant === READY_TO_RUN_V2_PART2_EXPERIMENT.variant4) &&
-				cloudPlanStore.userIsTrialing
-			);
-		});
+		const isFeatureEnabled = computed(() => true);
 
 		const claimedCredentialIdRef = useLocalStorage(LOCAL_STORAGE_CREDENTIAL_KEY, '');
 

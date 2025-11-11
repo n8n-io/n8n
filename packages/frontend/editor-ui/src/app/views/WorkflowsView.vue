@@ -1819,7 +1819,7 @@ const onNameSubmit = async (name: string) => {
 </script>
 
 <template>
-	<SimplifiedEmptyLayout v-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
+	<SimplifiedEmptyLayout v-if="true" @click:add="addWorkflow" />
 
 	<ResourcesListLayout
 		v-else
@@ -1905,7 +1905,7 @@ const onNameSubmit = async (name: string) => {
 		</template>
 		<template #callout>
 			<N8nCallout
-				v-if="showPrebuiltAgentsCallout"
+				v-if="false"
 				theme="secondary"
 				icon="bot"
 				icon-size="large"
@@ -1975,7 +1975,7 @@ const onNameSubmit = async (name: string) => {
 				/>
 			</SuggestedWorkflows>
 			<N8nCallout
-				v-if="showReadyToRunWorkflowsCallout"
+				v-if="true"
 				theme="secondary"
 				icon="bolt-filled"
 				:class="$style['easy-ai-workflow-callout']"
