@@ -50,5 +50,4 @@ export interface ICredentialsState {
 
 export interface IShareCredentialsPayload {
 	shareWithIds: string[];
-	isGlobal?: boolean;
 }

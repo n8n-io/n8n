@@ -747,6 +747,13 @@ export class CredentialsService {
 			data: opts.data as ICredentialDataDecryptedObject,
 		});
 
+		// Set isGlobal if provided in the payload and user has permission
+		const isGlobal = opts.isGlobal;
+		const canShareGlobally = hasGlobalScope(user, 'credential:shareGlobally');
+		if (isGlobal !== undefined && canShareGlobally) {
+			encryptedCredential.isGlobal = isGlobal;
+		}
+
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
 			isManaged: opts.isManaged,

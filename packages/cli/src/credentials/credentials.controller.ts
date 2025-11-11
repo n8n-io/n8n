@@ -244,6 +244,13 @@ export class CredentialsController {
 			data: preparedCredentialData.data as unknown as ICredentialDataDecryptedObject,
 		});
 
+		// Update isGlobal if provided in the payload and user has permission
+		const isGlobal = body.isGlobal;
+		const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
+		if (isGlobal !== undefined && canShareGlobally) {
+			newCredentialData.isGlobal = isGlobal;
+		}
+
 		const responseData = await this.credentialsService.update(credentialId, newCredentialData);
 
 		if (responseData === null) {
@@ -303,7 +310,7 @@ export class CredentialsController {
 	@ProjectScope('credential:share')
 	async shareCredentials(req: CredentialRequest.Share) {
 		const { credentialId } = req.params;
-		const { shareWithIds, isGlobal } = req.body;
+		const { shareWithIds } = req.body;
 
 		if (
 			!Array.isArray(shareWithIds) ||
@@ -354,18 +361,6 @@ export class CredentialsController {
 			}
 
 			newShareeIds = toShare;
-
-			// Update isGlobal if provided in the payload
-			// Only users with credential:shareGlobally scope can set global credentials
-			if (isGlobal !== undefined) {
-				const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
-				if (!canShareGlobally) {
-					throw new ForbiddenError(
-						'Missing required scope to share or unshare credentials with all users',
-					);
-				}
-				await this.credentialsRepository.update({ id: credentialId }, { isGlobal });
-			}
 		});
 
 		this.eventService.emit('credentials-shared', {

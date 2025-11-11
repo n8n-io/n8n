@@ -581,7 +581,6 @@ function onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 
 function onShareWithAllUsersUpdate(shareWithAllUsers: boolean) {
 	isSharedWithAllUsers.value = shareWithAllUsers;
-	isSharedWithChanged.value = true;
 	hasUnsavedChanges.value = true;
 }
 
@@ -712,6 +711,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		name: credentialName.value,
 		type: credentialTypeName.value,
 		data: data as unknown as ICredentialDataDecryptedObject,
+		isGlobal: isSharedWithAllUsers.value,
 	};
 
 	if (
@@ -927,7 +927,6 @@ async function updateCredential(
 			credential = await credentialsStore.setCredentialSharedWith({
 				credentialId: credentialDetails.id,
 				sharedWithProjects: credentialDetails.sharedWithProjects,
-				isGlobal: isSharedWithAllUsers.value,
 			});
 			isSharedWithChanged.value = false;
 		}

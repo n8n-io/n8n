@@ -72,6 +72,7 @@ export declare namespace CredentialRequest {
 		data: ICredentialDataDecryptedObject;
 		projectId?: string;
 		isManaged?: boolean;
+		isGlobal?: boolean;
 	}>;
 
 	type Get = AuthenticatedRequest<{ credentialId: string }, {}, {}, Record<string, string>>;
@@ -93,11 +94,7 @@ export declare namespace CredentialRequest {
 
 	type Test = AuthenticatedRequest<{}, {}, INodeCredentialTestRequest>;
 
-	type Share = AuthenticatedRequest<
-		{ credentialId: string },
-		{},
-		{ shareWithIds: string[]; isGlobal?: boolean }
-	>;
+	type Share = AuthenticatedRequest<{ credentialId: string }, {}, { shareWithIds: string[] }>;
 
 	type Transfer = AuthenticatedRequest<
 		{ credentialId: string },

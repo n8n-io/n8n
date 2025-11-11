@@ -326,6 +326,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			data: data.data ?? {},
 			projectId,
 			uiContext,
+			isGlobal: data.isGlobal,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
@@ -408,7 +409,6 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 				payload.credentialId,
 				{
 					shareWithIds: payload.sharedWithProjects.map((project) => project.id),
-					isGlobal: payload.isGlobal,
 				},
 			);
 
