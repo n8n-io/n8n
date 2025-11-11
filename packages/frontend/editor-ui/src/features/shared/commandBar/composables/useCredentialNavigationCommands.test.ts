@@ -222,6 +222,14 @@ describe('useCredentialNavigationCommands', () => {
 			await vi.waitFor(() => {
 				const openCommand = commands.value.find((cmd) => cmd.id === 'open-credential');
 				expect(openCommand?.children).toHaveLength(1);
+				expect(openCommand?.children?.[0].section).toBe('commandBar.credentials.open');
+				expect(openCommand?.children?.[0].title).toEqual(
+					expect.objectContaining({
+						props: expect.objectContaining({
+							title: 'My API Key',
+						}),
+					}),
+				);
 			});
 		});
 	});
@@ -344,6 +352,14 @@ describe('useCredentialNavigationCommands', () => {
 			await vi.waitFor(() => {
 				const rootCredentials = commands.value.filter((cmd) => cmd.id === 'cred-1');
 				expect(rootCredentials).toHaveLength(1);
+				expect(rootCredentials[0].section).toBe('commandBar.sections.credentials');
+				expect(rootCredentials[0].title).toEqual(
+					expect.objectContaining({
+						props: expect.objectContaining({
+							title: 'generic.openResource',
+						}),
+					}),
+				);
 			});
 		});
 	});

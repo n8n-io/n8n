@@ -5,7 +5,6 @@ import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 import { programmaticValidation } from '@/validation/programmatic';
-import type { ProgrammaticViolation } from '@/validation/types';
 
 import { ToolExecutionError, ValidationError } from '../errors';
 import { formatWorkflowValidation } from '../utils/workflow-validation';
@@ -45,29 +44,6 @@ export function createValidateWorkflowTool(
 					},
 					parsedNodeTypes,
 				);
-
-				const blockingViolations: ProgrammaticViolation[] = [
-					...violations.connections,
-					...violations.trigger,
-					...violations.agentPrompt,
-					...violations.tools,
-					...violations.fromAi,
-				].filter((violation) => violation.type === 'critical' || violation.type === 'major');
-
-				if (blockingViolations.length > 0) {
-					const summary = formatWorkflowValidation(violations);
-					const validationError = new ValidationError(
-						`Workflow validation failed due to critical or major violations.\n${summary}`,
-						{ extra: { violations: blockingViolations } },
-					);
-
-					reporter.error(validationError);
-					logger?.warn('validate_workflow tool detected blocking violations', {
-						violations: blockingViolations,
-					});
-
-					return createErrorResponse(config, validationError);
-				}
 
 				const message = formatWorkflowValidation(violations);
 

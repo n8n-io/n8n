@@ -1,6 +1,6 @@
 <script lang="ts">
 import type { BannerName } from '@n8n/api-types';
-import { useBannersStore } from '@/app/stores/banners.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import NonProductionLicenseBanner from './banners/NonProductionLicenseBanner.vue';
 import TrialOverBanner from './banners/TrialOverBanner.vue';
 import TrialBanner from './banners/TrialBanner.vue';

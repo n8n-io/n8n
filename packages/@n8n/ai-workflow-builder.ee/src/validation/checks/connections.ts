@@ -2,6 +2,7 @@ import type { INodeConnections, INodeTypeDescription, NodeConnectionType } from 
 import { mapConnectionsByDestination } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
+import { isSubNode } from '@/utils/node-helpers';
 import { resolveNodeInputs, resolveNodeOutputs } from '@/validation/utils/resolve-connections';
 
 import type {
@@ -130,6 +131,50 @@ function checkMergeNodeConnections(
 	return issues;
 }
 
+function checkSubNodeRootConnections(
+	workflow: SimpleWorkflow,
+	nodeInfo: NodeResolvedConnectionTypesInfo,
+	nodesByName: Map<string, SimpleWorkflow['nodes'][number]>,
+): ProgrammaticViolation[] {
+	const issues: ProgrammaticViolation[] = [];
+
+	const { node, nodeType, resolvedOutputs } = nodeInfo;
+
+	if (!resolvedOutputs || resolvedOutputs.size === 0) {
+		return issues;
+	}
+
+	if (!isSubNode(nodeType, node)) {
+		return issues;
+	}
+
+	const aiOutputs = Array.from(resolvedOutputs).filter((output) => output.startsWith('ai_'));
+
+	if (aiOutputs.length === 0) {
+		return issues;
+	}
+
+	const nodeConnections = workflow.connections?.[node.name];
+
+	for (const outputType of aiOutputs) {
+		const connectionsForType = nodeConnections?.[outputType];
+
+		const hasRootConnection = connectionsForType?.some((connectionGroup) =>
+			connectionGroup?.some((connection) => connection?.node && nodesByName.has(connection.node)),
+		);
+
+		if (!hasRootConnection) {
+			issues.push({
+				type: 'critical',
+				description: `Sub-node ${node.name} (${node.type}) provides ${outputType} but is not connected to a root node.`,
+				pointsDeducted: 50,
+			});
+		}
+	}
+
+	return issues;
+}
+
 export function validateConnections(
 	workflow: SimpleWorkflow,
 	nodeTypes: INodeTypeDescription[],
@@ -141,9 +186,11 @@ export function validateConnections(
 	}
 
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+	const nodesByName = new Map(workflow.nodes.map((node) => [node.name, node]));
+	const nodeTypeMap = new Map(nodeTypes.map((type) => [type.name, type]));
 
 	for (const node of workflow.nodes) {
-		const nodeType = nodeTypes.find((type) => type.name === node.type);
+		const nodeType = nodeTypeMap.get(node.type);
 		if (!nodeType) {
 			violations.push({
 				type: 'critical',
@@ -178,6 +225,8 @@ export function validateConnections(
 		violations.push(...checkUnsupportedConnections(nodeInfo, providedInputTypes));
 
 		violations.push(...checkMergeNodeConnections(nodeInfo, nodeConnections));
+
+		violations.push(...checkSubNodeRootConnections(workflow, nodeInfo, nodesByName));
 	}
 
 	return violations;
