@@ -266,7 +266,9 @@ export class CredentialsService {
 
 		// the intersection of both is all credentials the user can use in this
 		// workflow or project
-		const intersection = allCredentials.filter((c) => allCredentialsForWorkflow.includes(c.id));
+		const intersection = allCredentials.filter(
+			(c) => allCredentialsForWorkflow.includes(c.id) || c.isGlobal,
+		);
 
 		return intersection
 			.map((c) => this.roleService.addScopes(c, user, projectRelations))
@@ -276,6 +278,7 @@ export class CredentialsService {
 				type: c.type,
 				scopes: c.scopes,
 				isManaged: c.isManaged,
+				isGlobal: c.isGlobal,
 			}));
 	}
 
