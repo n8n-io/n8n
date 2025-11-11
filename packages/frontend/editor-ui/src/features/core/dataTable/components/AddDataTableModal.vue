@@ -12,9 +12,9 @@ import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 
 import {
 	N8nButton,
+	N8nCheckbox,
 	N8nInput,
 	N8nInputLabel,
-	N8nRadioButtons,
 	N8nSelect,
 	N8nOption,
 } from '@n8n/design-system';
@@ -131,17 +131,6 @@ onMounted(() => {
 });
 
 const selectedOption = ref<'scratch' | 'import' | null>('scratch');
-
-const creationModeOptions = computed(() => [
-	{
-		label: i18n.baseText('dataTable.add.fromScratch'),
-		value: 'scratch',
-	},
-	{
-		label: i18n.baseText('dataTable.add.importCsv'),
-		value: 'import',
-	},
-]);
 
 const proceedFromSelect = async () => {
 	if (!selectedOption.value || !dataTableName.value) return;
@@ -343,11 +332,34 @@ const redirectToDataTables = () => {
 						name="dataTableNameSelect"
 					/>
 				</N8nInputLabel>
-				<N8nRadioButtons
-					v-model="selectedOption"
-					:options="creationModeOptions"
-					:class="$style.radioButtons"
-				/>
+				<div :class="$style.radioGroup">
+					<label :class="$style.radioOption">
+						<input
+							v-model="selectedOption"
+							type="radio"
+							name="creationMode"
+							value="scratch"
+							:class="$style.radioInput"
+							data-test-id="create-from-scratch-option"
+						/>
+						<span :class="$style.radioLabel">
+							{{ i18n.baseText('dataTable.add.fromScratch') }}
+						</span>
+					</label>
+					<label :class="$style.radioOption">
+						<input
+							v-model="selectedOption"
+							type="radio"
+							name="creationMode"
+							value="import"
+							:class="$style.radioInput"
+							data-test-id="import-csv-option"
+						/>
+						<span :class="$style.radioLabel">
+							{{ i18n.baseText('dataTable.add.importCsv') }}
+						</span>
+					</label>
+				</div>
 
 				<!-- Upload section - shown when Import from CSV is selected -->
 				<div v-if="selectedOption === 'import'" :class="$style.uploadSection">
@@ -370,17 +382,11 @@ const redirectToDataTables = () => {
 						</div>
 					</ElUpload>
 
-					<div :class="$style.checkboxContainer">
-						<label :class="$style.checkboxLabel">
-							<input
-								v-model="hasHeaders"
-								type="checkbox"
-								:class="$style.checkbox"
-								data-test-id="has-headers-checkbox"
-							/>
-							<span>{{ i18n.baseText('dataTable.upload.hasHeaders') }}</span>
-						</label>
-					</div>
+					<N8nCheckbox
+						v-model="hasHeaders"
+						:label="i18n.baseText('dataTable.upload.hasHeaders')"
+						data-test-id="has-headers-checkbox"
+					/>
 				</div>
 			</div>
 
@@ -506,8 +512,31 @@ const redirectToDataTables = () => {
 	gap: var(--spacing--md);
 }
 
-.radioButtons {
-	width: 100%;
+.radioGroup {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.radioOption {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	cursor: pointer;
+	user-select: none;
+}
+
+.radioInput {
+	width: 16px;
+	height: 16px;
+	cursor: pointer;
+	flex-shrink: 0;
+}
+
+.radioLabel {
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
+	cursor: pointer;
 }
 
 .uploadSection {
@@ -661,27 +690,5 @@ const redirectToDataTables = () => {
 	color: var(--color--text--tint-1);
 	margin-top: var(--spacing--xs);
 	line-height: var(--line-height--lg);
-}
-
-.checkboxContainer {
-	display: flex;
-	align-items: center;
-	padding: var(--spacing--sm) 0;
-}
-
-.checkboxLabel {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	cursor: pointer;
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	user-select: none;
-}
-
-.checkbox {
-	width: 18px;
-	height: 18px;
-	cursor: pointer;
 }
 </style>
