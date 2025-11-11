@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, ref } from 'vue';
 import {
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
@@ -116,8 +116,6 @@ const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 // without needing to modify the workflow prop directly.
 // null means we haven't changed it yet
 const mcpToggleStatus = ref<boolean | null>(null);
-
-const actionToggleRef = useTemplateRef('actionToggleRef');
 
 const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toLowerCase());
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
@@ -499,21 +497,6 @@ const tags = computed(
 	() =>
 		props.data.tags?.map((tag) => (typeof tag === 'string' ? { id: tag, name: tag } : tag)) ?? [],
 );
-
-// Close action toggle on parent scroll
-const onParentScroll = () => {
-	if (actionToggleRef.value) {
-		actionToggleRef.value.openActionToggle(false);
-	}
-};
-
-onMounted(() => {
-	props.workflowListEventBus?.on('listScrolled', onParentScroll);
-});
-
-onBeforeUnmount(() => {
-	props.workflowListEventBus?.off('listScrolled', onParentScroll);
-});
 </script>
 
 <template>
@@ -637,7 +620,6 @@ onBeforeUnmount(() => {
 				/>
 
 				<N8nActionToggle
-					ref="actionToggleRef"
 					:actions="actions"
 					theme="dark"
 					data-test-id="workflow-card-actions"

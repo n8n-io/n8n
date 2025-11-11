@@ -1816,10 +1816,6 @@ const onNameSubmit = async (name: string) => {
 		}
 	}
 };
-
-const onListScroll = () => {
-	workflowListEventBus.emit('listScrolled');
-};
 </script>
 
 <template>
@@ -1847,7 +1843,6 @@ const onListScroll = () => {
 		@update:filters="onFiltersUpdated"
 		@update:pagination-and-sort="setPaginationAndSort"
 		@mouseleave="folderHelpers.resetDropTarget"
-		@scroll="onListScroll"
 	>
 		<template #header>
 			<ProjectHeader
@@ -2062,7 +2057,6 @@ const onListScroll = () => {
 				</template>
 				<FolderCard
 					:data="data as FolderResource"
-					:workflow-list-event-bus="workflowListEventBus"
 					:actions="folderCardActions"
 					:read-only="
 						readOnlyEnv || (!hasPermissionToDeleteFolders && !hasPermissionToCreateFolders)
