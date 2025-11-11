@@ -226,7 +226,7 @@ describe('ManualExecutionService', () => {
 				data.executionMode,
 				expect.objectContaining({
 					startData: {
-						destinationNode: destinationNodeName,
+						destinationNode: data.destinationNode,
 					},
 					resultData: expect.any(Object),
 					executionData: expect.any(Object),
@@ -411,7 +411,7 @@ describe('ManualExecutionService', () => {
 
 			expect(mockRunPartialWorkflow2).toHaveBeenCalled();
 			expect(mockRunPartialWorkflow2.mock.calls[0][0]).toBe(workflow);
-			expect(mockRunPartialWorkflow2.mock.calls[0][4]).toBe(destinationNodeName);
+			expect(mockRunPartialWorkflow2.mock.calls[0][4]).toEqual(data.destinationNode);
 		});
 
 		it('should validate nodes exist before execution', async () => {
@@ -526,7 +526,7 @@ describe('ManualExecutionService', () => {
 				mockRunData,
 				data.pinData,
 				data.dirtyNodeNames,
-				destinationNodeName,
+				data.destinationNode,
 				data.agentRequest,
 			);
 		});

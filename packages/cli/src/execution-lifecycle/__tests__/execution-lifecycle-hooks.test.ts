@@ -182,7 +182,10 @@ describe('Execution Lifecycle Hooks', () => {
 					userId: expectedUserId,
 				});
 
-				expect(successfulRunWithRewiredDestination.data.startData?.destinationNode).toBe(nodeName);
+				expect(successfulRunWithRewiredDestination.data.startData?.destinationNode).toEqual({
+					nodeName,
+					mode: 'inclusive',
+				});
 				expect(
 					successfulRunWithRewiredDestination.data.startData?.originalDestinationNode,
 				).toBeUndefined();
