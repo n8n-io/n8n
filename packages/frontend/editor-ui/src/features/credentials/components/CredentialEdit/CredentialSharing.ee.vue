@@ -28,7 +28,7 @@ type Props = {
 	credentialPermissions: PermissionsRecord['credential'];
 	credential?: ICredentialsResponse | ICredentialsDecryptedResponse | null;
 	modalBus: EventBus;
-	isSharedWithAllUsers?: boolean;
+	isSharedGlobally?: boolean;
 };
 
 const props = withDefaults(defineProps<Props>(), { credential: null, isSharedWithAllUsers: false });
@@ -108,7 +108,7 @@ const sharingSelectPlaceholder = computed(() =>
 		: i18n.baseText('projects.sharing.select.placeholder.user'),
 );
 
-const canShareWithAllUsers = computed(() => {
+const canShareGlobally = computed(() => {
 	const permissions = getResourcePermissions(usersStore.currentUser?.globalScopes);
 	return permissions.credential?.shareGlobally ?? false;
 });
@@ -170,8 +170,8 @@ function goToUpgrade() {
 				:readonly="!credentialPermissions.share"
 				:static="!credentialPermissions.share"
 				:placeholder="sharingSelectPlaceholder"
-				:include-all-users-group-option="canShareWithAllUsers"
-				:is-shared-with-all-users="isSharedWithAllUsers"
+				:can-share-globally="canShareGlobally"
+				:is-shared-globally="isSharedGlobally"
 				@update:share-with-all-users="emit('update:shareWithAllUsers', $event)"
 			/>
 		</div>

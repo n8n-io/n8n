@@ -12,7 +12,7 @@ import { N8nBadge, N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8
 
 const locale = useI18n();
 
-const All_USERS_GROUP: ProjectListItem = {
+const GLOBAL_GROUP: ProjectListItem = {
 	id: 'all_users',
 	name: locale.baseText('projects.sharing.allUsers'),
 	type: 'public',
@@ -32,8 +32,8 @@ type Props = {
 	emptyOptionsText?: string;
 	size?: SelectSize;
 	clearable?: boolean;
-	includeAllUsersGroupOption?: boolean;
-	isSharedWithAllUsers?: boolean;
+	canShareGlobally?: boolean;
+	isSharedGlobally?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -55,7 +55,7 @@ const selectedProjects = computed((): ProjectSharingData[] | null => {
 		return null;
 	}
 
-	return props.isSharedWithAllUsers ? [All_USERS_GROUP, ...model.value] : model.value;
+	return props.isSharedGlobally ? [GLOBAL_GROUP, ...model.value] : model.value;
 });
 
 const filter = ref('');
@@ -75,7 +75,7 @@ const filteredProjects = computed(() =>
 );
 
 const sortedProjects = computed((): ProjectListItem[] => [
-	...(props.includeAllUsersGroupOption && !props.isSharedWithAllUsers ? [All_USERS_GROUP] : []),
+	...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
 	...orderBy(
 		filteredProjects.value,
 		['type', (project) => project.name?.toLowerCase()],
@@ -101,7 +101,7 @@ const setFilter = (query: string) => {
 };
 
 const onProjectSelected = (projectId: string) => {
-	if (projectId === All_USERS_GROUP.id) {
+	if (projectId === GLOBAL_GROUP.id) {
 		emit('update:shareWithAllUsers', true);
 		return;
 	}
@@ -125,7 +125,7 @@ const onRoleAction = (project: ProjectSharingData, role: string) => {
 		return;
 	}
 
-	if (project.id === All_USERS_GROUP.id && role === 'remove') {
+	if (project.id === GLOBAL_GROUP.id && role === 'remove') {
 		emit('update:shareWithAllUsers', false);
 
 		return;
@@ -203,7 +203,11 @@ watch(
 			>
 				<ProjectSharingInfo :project="project" />
 				<N8nSelect
-					v-if="props.roles?.length && !props.static"
+					v-if="
+						props.roles?.length &&
+						!props.static &&
+						!(project.id === GLOBAL_GROUP.id && !canShareGlobally)
+					"
 					:class="$style.projectRoleSelect"
 					:model-value="props.roles[0]"
 					:disabled="props.readonly"
@@ -218,7 +222,7 @@ watch(
 					/>
 				</N8nSelect>
 				<N8nButton
-					v-if="!props.static"
+					v-if="!props.static && !(project.id === GLOBAL_GROUP.id && !canShareGlobally)"
 					type="tertiary"
 					native-type="button"
 					square
