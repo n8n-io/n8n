@@ -251,6 +251,11 @@ export class WorkflowService {
 
 		const versionChanged =
 			workflowUpdateData.versionId && workflowUpdateData.versionId !== workflow.versionId;
+		const wasActive = workflow.active;
+		const isNowActive = workflowUpdateData.active ?? workflow.active;
+		const activationStatusChanged = isNowActive !== wasActive;
+		const needsActiveVersionUpdate = activationStatusChanged || (versionChanged && isNowActive);
+
 		if (versionChanged) {
 			// To save a version, we need both nodes and connections
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
@@ -314,16 +319,25 @@ export class WorkflowService {
 			'description',
 		]);
 
-		// First add a record to workflow history to be able to get the full version object during the update
+		// Save the workflow to history first, so we can retrieve the complete version object for the update
 		if (versionChanged) {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
-		const updatedVersion = await this.workflowHistoryService.getVersion(
-			user,
-			workflowId,
-			workflowUpdateData.versionId,
-		);
+		if (needsActiveVersionUpdate) {
+			const versionIdToFetch = versionChanged ? workflowUpdateData.versionId : workflow.versionId;
+			const version = await this.workflowHistoryService.getVersion(
+				user,
+				workflowId,
+				versionIdToFetch,
+			);
+
+			updatePayload.activeVersion = WorkflowHelpers.getActiveVersionUpdateValue(
+				workflow,
+				version,
+				workflowUpdateData.active,
+			);
+		}
 
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
@@ -339,12 +353,6 @@ export class WorkflowService {
 			}
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
-
-		updatePayload.activeVersion = WorkflowHelpers.getActiveVersionUpdateValue(
-			workflow,
-			updatedVersion,
-			workflowUpdateData.active,
-		);
 
 		await this.workflowRepository.update(workflowId, updatePayload);
 
@@ -382,11 +390,7 @@ export class WorkflowService {
 			publicApi: false,
 		});
 
-		// Check if workflow activation status changed
-		const wasActive = workflow.active;
-		const isNowActive = updatedWorkflow.active;
-
-		if (isNowActive && !wasActive) {
+		if (activationStatusChanged && isNowActive) {
 			// Workflow is being activated
 			this.eventService.emit('workflow-activated', {
 				user,
@@ -394,7 +398,7 @@ export class WorkflowService {
 				workflow: updatedWorkflow,
 				publicApi: false,
 			});
-		} else if (!isNowActive && wasActive) {
+		} else if (activationStatusChanged && !isNowActive) {
 			// Workflow is being deactivated
 			this.eventService.emit('workflow-deactivated', {
 				user,
