@@ -22,6 +22,8 @@ export const defaultOptions: ChatOptions = {
 			getStarted: 'New Conversation',
 			inputPlaceholder: 'Type your question..',
 			closeButtonTooltip: 'Close chat',
+			repostButton: 'Repost message',
+			reuseButton: 'Reuse message',
 		},
 	},
 	theme: {},

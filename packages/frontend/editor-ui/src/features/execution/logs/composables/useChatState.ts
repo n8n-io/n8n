@@ -198,12 +198,17 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 			i18n: {
 				en: {
 					title: locale.baseText('chat.window.title') || 'Chat',
-					subtitle: 'Test your workflow',
+					repostButton:
+						locale.baseText('chat.window.chat.chatMessageOptions.repostMessage') ||
+						'Repost message',
+					reuseButton:
+						locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage') || 'Repost message',
+					subtitle: '',
 					footer: '',
-					getStarted: 'Send a message',
+					getStarted: '',
 					inputPlaceholder:
 						locale.baseText('chat.window.chat.placeholder') || 'Type your message...',
-					closeButtonTooltip: 'Close',
+					closeButtonTooltip: '',
 				},
 			},
 			beforeMessageSent: async (message: string) => {
