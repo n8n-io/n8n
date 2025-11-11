@@ -24,7 +24,7 @@ export class HttpMultipleHeadersAuth implements ICredentialType {
 			},
 			options: [
 				{
-					displayName: 'Values',
+					displayName: 'Header',
 					name: 'values',
 					values: [
 						{
