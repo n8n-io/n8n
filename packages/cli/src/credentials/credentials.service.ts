@@ -25,6 +25,7 @@ import type {
 	ICredentialType,
 	IDataObject,
 	INodeProperties,
+	INodePropertyCollection,
 } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from 'n8n-workflow';
 
@@ -527,21 +528,12 @@ export class CredentialsService {
 				continue;
 			}
 
-			if (prop.type === 'fixedCollection' && prop.options?.[0] && 'values' in prop.options[0]) {
+			if (prop.type === 'fixedCollection' && prop.options?.length) {
 				const dataObject = data[dataKey] as IDataObject;
-				const values = dataObject?.values;
-				if (Array.isArray(values)) {
-					for (let i = 0; i < values.length; i++) {
-						values[i] = this.redactValues(
-							values[i] as ICredentialDataDecryptedObject,
-							prop.options[0].values,
-						);
+				for (const option of prop.options) {
+					if ('values' in option) {
+						this.redactCollectionOption(dataObject, option);
 					}
-				} else if (typeof values === 'object' && values !== null) {
-					dataObject.values = this.redactValues(
-						values as ICredentialDataDecryptedObject,
-						prop.options[0].values,
-					);
 				}
 			}
 
@@ -558,6 +550,21 @@ export class CredentialsService {
 		}
 
 		return data;
+	}
+
+	private redactCollectionOption(data: IDataObject, option: INodePropertyCollection) {
+		const collectionValuesKey = option.name;
+		const values = data?.[collectionValuesKey];
+		if (Array.isArray(values)) {
+			for (let i = 0; i < values.length; i++) {
+				values[i] = this.redactValues(values[i] as ICredentialDataDecryptedObject, option.values);
+			}
+		} else if (typeof values === 'object' && values !== null) {
+			data[collectionValuesKey] = this.redactValues(
+				values as ICredentialDataDecryptedObject,
+				option.values,
+			);
+		}
 	}
 
 	private unredactRestoreValues(unmerged: any, replacement: any) {
