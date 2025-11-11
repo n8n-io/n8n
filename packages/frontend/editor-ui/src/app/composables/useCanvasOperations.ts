@@ -653,9 +653,17 @@ export function useCanvasOperations() {
 		}
 
 		const nodes = workflowsStore.getNodesByIds(ids);
-		const nextStatePinned = nodes.some((node) => !workflowsStore.pinDataByNodeName(node.name));
 
-		for (const node of nodes) {
+		// Filter to only pinnable nodes
+		const pinnableNodes = nodes.filter((node) => {
+			const pinnedDataForNode = usePinnedData(node);
+			return pinnedDataForNode.canPinNode(true);
+		});
+		const nextStatePinned = pinnableNodes.some(
+			(node) => !workflowsStore.pinDataByNodeName(node.name),
+		);
+
+		for (const node of pinnableNodes) {
 			const pinnedDataForNode = usePinnedData(node);
 			if (nextStatePinned) {
 				const dataToPin = useDataSchema().getInputDataWithPinned(node);

@@ -45,6 +45,7 @@ import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateP
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
 import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
+import { ChangeDefaultForIdInUserTable1762771264000 } from './1762771264000-ChangeDefaultForIdInUserTable';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
@@ -226,5 +227,6 @@ export const postgresMigrations: Migration[] = [
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
 	BackfillMissingWorkflowHistoryRecords1762763704614,
+	ChangeDefaultForIdInUserTable1762771264000,
 	AddToolsColumnToChatHubTables1761830340990,
 ];
