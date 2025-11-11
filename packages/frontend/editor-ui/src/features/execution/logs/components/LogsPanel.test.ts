@@ -595,7 +595,7 @@ describe('LogsPanel', () => {
 			it('should not render chat when panel is closed', async () => {
 				const { queryByTestId } = render();
 				logsStore.toggleOpen(false);
-				await waitFor(() => expect(queryByTestId('canvas-chat-body')).not.toBeInTheDocument());
+				await waitFor(() => expect(queryByTestId('canvas-chat-body')).not.toBeVisible());
 			});
 
 			it('should show correct input placeholder', async () => {
@@ -629,9 +629,8 @@ describe('LogsPanel', () => {
 			});
 
 			it('should allow copying session ID', async () => {
-				// TODO: fix this test
-				//const clipboardSpy = vi.fn();
-				//document.execCommand = clipboardSpy;
+				const clipboardSpy = vi.fn();
+				document.execCommand = clipboardSpy;
 				const { getByTestId } = render();
 
 				await userEvent.click(getByTestId('chat-session-id'));
