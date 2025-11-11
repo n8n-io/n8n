@@ -37,12 +37,7 @@ export async function prepareItemContext(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
 	itemIndex: number,
 	response?: EngineResponse<RequestResponseMetadata>,
-): Promise<ItemContext | null> {
-	// Skip if this item was already processed
-	if (response && response?.metadata?.itemIndex === itemIndex) {
-		return null;
-	}
-
+): Promise<ItemContext> {
 	const steps = buildSteps(response, itemIndex);
 
 	const input = getPromptInputByType({

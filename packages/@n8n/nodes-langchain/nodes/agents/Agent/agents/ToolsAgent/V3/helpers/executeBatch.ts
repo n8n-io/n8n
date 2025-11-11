@@ -25,7 +25,7 @@ type BatchResult = AgentResult | EngineRequest<RequestResponseMetadata>;
  *
  * @param ctx - The execution context
  * @param batch - Array of items to process in this batch
- * @param startIndex - Starting index of the batch
+ * @param startIndex - Starting index of the batch in the original items array (used to calculate itemIndex)
  * @param model - Primary chat model
  * @param fallbackModel - Optional fallback model
  * @param memory - Optional memory for conversation context
@@ -51,11 +51,6 @@ export async function executeBatch(
 		const itemIndex = startIndex + batchItemIndex;
 
 		const itemContext = await prepareItemContext(ctx, itemIndex, response);
-
-		// Skip if item was already processed
-		if (!itemContext) {
-			return null;
-		}
 
 		const { tools, prompt, options, outputParser } = itemContext;
 

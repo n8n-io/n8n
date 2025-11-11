@@ -9,7 +9,7 @@ import { getChatModel, getOptionalMemory } from '../../common';
 /**
  * Execution context that contains shared configuration needed across all items
  */
-export type ExecutionContext = {
+export type ToolsAgentExecutionContext = {
 	items: INodeExecutionData[];
 	batchSize: number;
 	delayBetweenBatches: number;
@@ -26,9 +26,9 @@ export type ExecutionContext = {
  * @param ctx - The execution context (IExecuteFunctions or ISupplyDataFunctions)
  * @returns ExecutionContext containing all shared configuration
  */
-export async function buildExecutionContext(
+export async function buildToolsAgentExecutionContext(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
-): Promise<ExecutionContext> {
+): Promise<ToolsAgentExecutionContext> {
 	const items = ctx.getInputData();
 	const batchSize = ctx.getNodeParameter('options.batching.batchSize', 0, 1) as number;
 	const delayBetweenBatches = ctx.getNodeParameter(

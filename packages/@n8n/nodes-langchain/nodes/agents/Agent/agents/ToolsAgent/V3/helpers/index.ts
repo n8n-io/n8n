@@ -1,5 +1,5 @@
-export { buildExecutionContext } from './buildExecutionContext';
-export type { ExecutionContext } from './buildExecutionContext';
+export { buildToolsAgentExecutionContext as buildExecutionContext } from './buildExecutionContext';
+export type { ToolsAgentExecutionContext as ExecutionContext } from './buildExecutionContext';
 
 export { createAgentSequence } from './createAgentSequence';
 

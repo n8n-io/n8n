@@ -1,6 +1,7 @@
 import type { EngineResponse } from 'n8n-workflow';
 
 import * as agentExecution from '@utils/agent-execution';
+
 import type { RequestResponseMetadata } from '../../types';
 import { buildResponseMetadata } from '../buildResponseMetadata';
 
@@ -34,6 +35,7 @@ describe('buildIterationMetadata', () => {
 
 		expect(result).toEqual({
 			previousRequests: [],
+			itemIndex: 0,
 			iterationCount: 1,
 		});
 	});
@@ -47,6 +49,7 @@ describe('buildIterationMetadata', () => {
 
 		expect(result).toEqual({
 			previousRequests: [],
+			itemIndex: 0,
 			iterationCount: 1,
 		});
 	});
@@ -61,6 +64,7 @@ describe('buildIterationMetadata', () => {
 
 		expect(result).toEqual({
 			previousRequests: [],
+			itemIndex: 0,
 			iterationCount: 1,
 		});
 	});
@@ -77,6 +81,7 @@ describe('buildIterationMetadata', () => {
 
 		expect(result).toEqual({
 			previousRequests: [],
+			itemIndex: 0,
 			iterationCount: 4,
 		});
 	});
@@ -109,6 +114,7 @@ describe('buildIterationMetadata', () => {
 
 		const result = buildResponseMetadata(response, 0);
 
+		expect(result.itemIndex).toBe(0);
 		expect(result.iterationCount).toBe(2);
 		expect(result.previousRequests).toHaveLength(1);
 		expect(result.previousRequests?.[0]).toMatchObject({
@@ -165,6 +171,7 @@ describe('buildIterationMetadata', () => {
 
 		expect(result).toEqual({
 			previousRequests: [],
+			itemIndex: 0,
 			iterationCount: 1,
 		});
 	});

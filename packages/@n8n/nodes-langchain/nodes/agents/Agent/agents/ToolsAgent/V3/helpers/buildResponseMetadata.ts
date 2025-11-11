@@ -23,6 +23,7 @@ export function buildResponseMetadata(
 
 	return {
 		previousRequests: buildSteps(response, itemIndex),
+		itemIndex,
 		iterationCount: currentIterationCount + 1,
 	};
 }

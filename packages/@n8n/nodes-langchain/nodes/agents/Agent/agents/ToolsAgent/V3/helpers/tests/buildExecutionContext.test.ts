@@ -4,7 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, INode, INodeExecutionData } from 'n8n-workflow';
 
 import * as commonHelpers from '../../../common';
-import { buildExecutionContext } from '../buildExecutionContext';
+import { buildToolsAgentExecutionContext } from '../buildExecutionContext';
 
 jest.mock('../../../common', () => ({
 	getChatModel: jest.fn(),
@@ -38,7 +38,7 @@ describe('buildExecutionContext', () => {
 		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
 		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
 
-		const result = await buildExecutionContext(mockContext);
+		const result = await buildToolsAgentExecutionContext(mockContext);
 
 		expect(result).toEqual({
 			items: mockInputData,
@@ -69,7 +69,7 @@ describe('buildExecutionContext', () => {
 		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
 		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
 
-		const result = await buildExecutionContext(mockContext);
+		const result = await buildToolsAgentExecutionContext(mockContext);
 
 		expect(result.batchSize).toBe(5);
 		expect(result.delayBetweenBatches).toBe(1000);
@@ -94,7 +94,7 @@ describe('buildExecutionContext', () => {
 			.mockResolvedValueOnce(mockFallbackModel);
 		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
 
-		const result = await buildExecutionContext(mockContext);
+		const result = await buildToolsAgentExecutionContext(mockContext);
 
 		expect(result.needsFallback).toBe(true);
 		expect(result.model).toBe(mockModel);
@@ -119,7 +119,7 @@ describe('buildExecutionContext', () => {
 			.mockResolvedValueOnce(undefined);
 		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
 
-		await expect(buildExecutionContext(mockContext)).rejects.toThrow(NodeOperationError);
+		await expect(buildToolsAgentExecutionContext(mockContext)).rejects.toThrow(NodeOperationError);
 	});
 
 	it('should throw assertion error when no model is provided', async () => {
@@ -133,7 +133,7 @@ describe('buildExecutionContext', () => {
 		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(undefined);
 		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(undefined);
 
-		await expect(buildExecutionContext(mockContext)).rejects.toThrow(
+		await expect(buildToolsAgentExecutionContext(mockContext)).rejects.toThrow(
 			'Please connect a model to the Chat Model input',
 		);
 	});
@@ -151,7 +151,7 @@ describe('buildExecutionContext', () => {
 		jest.spyOn(commonHelpers, 'getChatModel').mockResolvedValue(mockModel);
 		jest.spyOn(commonHelpers, 'getOptionalMemory').mockResolvedValue(mockMemory);
 
-		const result = await buildExecutionContext(mockContext);
+		const result = await buildToolsAgentExecutionContext(mockContext);
 
 		expect(result.memory).toBe(mockMemory);
 	});
