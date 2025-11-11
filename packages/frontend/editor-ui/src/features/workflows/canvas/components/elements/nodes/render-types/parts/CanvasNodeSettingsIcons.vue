@@ -2,7 +2,7 @@
 import { computed } from 'vue';
 import { useCanvasNode } from '../../../../../composables/useCanvasNode';
 import { useI18n } from '@n8n/i18n';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 const { name } = useCanvasNode();

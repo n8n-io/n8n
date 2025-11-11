@@ -8,7 +8,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { waitingNodeTooltip } from '@/features/execution/executions/executions.utils';
 import { computed, inject, ref } from 'vue';
 import { I18nT } from 'vue-i18n';
-import { PopOutWindowKey } from '@/constants';
+import { PopOutWindowKey } from '@/app/constants';
 import { isSubNodeLog } from '../logs.utils';
 import RunDataItemCount from '@/features/ndv/runData/components/RunDataItemCount.vue';
 import { type SearchShortcut } from '@/features/workflows/canvas/canvas.types';
@@ -83,7 +83,6 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:class="$style.component"
 		:workflow-object="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
-		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"
 		:executing-message="locale.baseText('ndv.output.executing')"
 		:pane-type="paneType"

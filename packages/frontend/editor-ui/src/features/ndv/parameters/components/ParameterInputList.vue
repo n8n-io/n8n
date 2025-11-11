@@ -24,25 +24,25 @@ import ParameterInputFull from './ParameterInputFull.vue';
 import ResourceMapper from './ResourceMapper/ResourceMapper.vue';
 import { useI18n } from '@n8n/i18n';
 import { useNodeSettingsParameters } from '@/features/ndv/settings/composables/useNodeSettingsParameters';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
-import { useMessage } from '@/composables/useMessage';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useMessage } from '@/app/composables/useMessage';
 import {
 	FORM_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	KEEP_AUTH_IN_NDV_FOR_NODES,
 	MODAL_CONFIRM,
 	WAIT_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { captureException } from '@sentry/vue';
 import { computedWithControl } from '@vueuse/core';
 import get from 'lodash/get';
 import { storeToRefs } from 'pinia';
-import { useCalloutHelpers } from '@/composables/useCalloutHelpers';
+import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
 
 import {

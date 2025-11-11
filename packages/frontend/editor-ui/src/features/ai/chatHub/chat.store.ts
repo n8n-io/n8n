@@ -43,10 +43,13 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
+import { isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
+	const telemetry = useTelemetry();
 	const agents = ref<ChatModelsResponse>();
 	const sessions = ref<ChatHubSessionDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
@@ -469,6 +472,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			onStreamDone,
 			onStreamError,
 		);
+
+		telemetry.track('User sent chat hub message', {
+			...flattenModel(model),
+			is_custom: model.provider === 'custom-agent',
+			chat_session_id: sessionId,
+		});
 	}
 
 	function editMessage(
@@ -637,6 +646,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		await fetchAgents(credentials);
 
+		telemetry.track('User created agent', { ...flattenModel(payload) });
+
 		return agentModel;
 	}
 
@@ -675,15 +686,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function getAgent(model: ChatHubConversationModel) {
 		if (!agents.value) return;
 
-		return agents.value[model.provider].models.find((m) => {
-			if (model.provider === 'n8n') {
-				return m.model.provider === 'n8n' && m.model.workflowId === model.workflowId;
-			} else if (model.provider === 'custom-agent') {
-				return m.model.provider === 'custom-agent' && m.model.agentId === model.agentId;
-			} else {
-				return m.model.provider === model.provider && m.model.model === model.model;
-			}
-		});
+		return agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
 	}
 
 	return {

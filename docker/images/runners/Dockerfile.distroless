@@ -91,7 +91,7 @@ RUN uv pip install -r /app/task-runner-python/extras.txt
 # ==============================================================================
 FROM debian:bookworm-slim AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.0
+ARG LAUNCHER_VERSION=1.4.1
 
 RUN set -e; \
     apt-get update && apt-get install -y --no-install-recommends wget ca-certificates && \
@@ -136,9 +136,6 @@ COPY --from=python-runner-builder /usr/lib/*-linux-gnu* /runtime/usr/lib/
 
 # Copy Node.js runtime
 COPY --from=node-debian /usr/local/bin/node /runtime/usr/local/bin/node
-
-# Copy uv
-COPY --from=python-runner-builder /usr/local/bin/uv /runtime/usr/local/bin/uv
 
 # Copy task runners
 COPY --from=javascript-runner-builder /app/task-runner-javascript /runtime/opt/runners/task-runner-javascript

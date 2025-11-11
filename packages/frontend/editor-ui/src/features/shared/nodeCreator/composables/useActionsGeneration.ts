@@ -5,7 +5,7 @@ import {
 	AI_SUBCATEGORY,
 	CUSTOM_API_CALL_KEY,
 	HTTP_REQUEST_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 import memoize from 'lodash/memoize';
 import startCase from 'lodash/startCase';
 import type {
@@ -18,10 +18,10 @@ import type {
 
 import { i18n } from '@n8n/i18n';
 
-import { getCredentialOnlyNodeType } from '@/utils/credentialOnlyNodes';
+import { getCredentialOnlyNodeType } from '@/app/utils/credentialOnlyNodes';
 import { formatTriggerActionName } from '../nodeCreator.utils';
 import { useEvaluationStore } from '@/features/ai/evaluation.ee/evaluation.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const PLACEHOLDER_RECOMMENDED_ACTION_KEY = 'placeholder_recommended';
 

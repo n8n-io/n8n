@@ -1,4 +1,4 @@
-import { ExpressionLocalResolveContextSymbol } from '@/constants';
+import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { computed, inject } from 'vue';
 
 export function useIsInExperimentalNdv() {

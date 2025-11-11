@@ -1,6 +1,6 @@
 import { NodeConnectionTypes, type INodeProperties, type INodeTypeDescription } from 'n8n-workflow';
 import { useActionsGenerator } from './useActionsGeneration';
-import { usePostHog } from '@/stores/posthog.store';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
 

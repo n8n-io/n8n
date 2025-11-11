@@ -10,6 +10,7 @@ from src.constants import (
     ERROR_RELATIVE_IMPORT,
     ERROR_DANGEROUS_NAME,
     ERROR_DANGEROUS_ATTRIBUTE,
+    ERROR_NAME_MANGLED_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
     BLOCKED_ATTRIBUTES,
     BLOCKED_NAMES,
@@ -61,6 +62,11 @@ class SecurityValidator(ast.NodeVisitor):
             self._add_violation(
                 node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
             )
+
+        if node.attr.startswith("_") and "__" in node.attr:
+            parts = node.attr.split("__", 1)
+            if len(parts) == 2 and parts[0].startswith("_"):
+                self._add_violation(node.lineno, ERROR_NAME_MANGLED_ATTRIBUTE)
 
         self.generic_visit(node)
 

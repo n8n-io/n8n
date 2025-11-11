@@ -29,7 +29,7 @@ vi.mock('@/features/ndv/shared/ndv.store', () => ({
 	}),
 }));
 
-vi.mock('@/stores/settings.store', () => ({
+vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: vi.fn(() => ({ settings: {}, isAskAiEnabled: true })),
 }));
 

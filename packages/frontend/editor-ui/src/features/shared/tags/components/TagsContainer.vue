@@ -2,8 +2,8 @@
 import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue';
 import type { ComponentInstance } from 'vue';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
-import IntersectionObserver from '@/components/IntersectionObserver.vue';
-import IntersectionObserved from '@/components/IntersectionObserved.vue';
+import IntersectionObserver from '@/app/components/IntersectionObserver.vue';
+import IntersectionObserved from '@/app/components/IntersectionObserved.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
 

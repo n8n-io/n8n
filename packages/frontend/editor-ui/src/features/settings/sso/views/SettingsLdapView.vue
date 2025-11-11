@@ -1,23 +1,23 @@
 <script setup lang="ts">
 import type { CSSProperties } from 'vue';
 import { computed, onMounted, ref } from 'vue';
-import { capitalizeFirstLetter } from '@/utils/htmlUtils';
-import { convertToDisplayDate } from '@/utils/typesUtils';
-import { useToast } from '@/composables/useToast';
-import { useMessage } from '@/composables/useMessage';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { capitalizeFirstLetter } from '@/app/utils/htmlUtils';
+import { convertToDisplayDate } from '@/app/utils/typesUtils';
+import { useToast } from '@/app/composables/useToast';
+import { useMessage } from '@/app/composables/useMessage';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import type { IFormInput, IFormInputs } from '@/Interface';
 import type { LdapConfig, LdapSyncData, LdapSyncTable } from '@n8n/rest-api-client/api/ldap';
-import { MODAL_CONFIRM } from '@/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 
 import humanizeDuration from 'humanize-duration';
 import type { Events } from 'v3-infinite-loading';
 import InfiniteLoading from 'v3-infinite-loading';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { createFormEventBus } from '@n8n/design-system/utils';
 import type { TableColumnCtx } from 'element-plus';
 import { useI18n } from '@n8n/i18n';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useSSOStore } from '../sso.store';
 
 import { ElTable, ElTableColumn } from 'element-plus';

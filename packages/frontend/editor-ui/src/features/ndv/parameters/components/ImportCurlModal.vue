@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import Modal from '@/components/Modal.vue';
-import { IMPORT_CURL_MODAL_KEY } from '@/constants';
+import Modal from '@/app/components/Modal.vue';
+import { IMPORT_CURL_MODAL_KEY } from '@/app/constants';
 import { onMounted, ref } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 
@@ -76,7 +76,7 @@ function sendTelemetry(
 }
 
 async function onImport() {
-	const { useImportCurlCommand } = await import('@/composables/useImportCurlCommand');
+	const { useImportCurlCommand } = await import('@/app/composables/useImportCurlCommand');
 	const { importCurlCommand } = useImportCurlCommand({
 		onImportSuccess,
 		onImportFailure,

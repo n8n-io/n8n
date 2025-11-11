@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useClipboard } from '@/composables/useClipboard';
+import { useClipboard } from '@/app/composables/useClipboard';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
@@ -178,12 +178,11 @@ onBeforeMount(() => {
 				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
 				<ChatMessageActions
 					v-else
-					:type="message.type"
 					:just-copied="justCopied"
 					:is-speech-synthesis-available="speech.isSupported.value"
 					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
-					:message-id="message.id"
+					:message="message"
 					:alternatives="message.alternatives"
 					@copy="handleCopy"
 					@edit="handleEdit"
