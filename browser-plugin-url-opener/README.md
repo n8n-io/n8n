@@ -1,12 +1,14 @@
 # 2nd Market Filter - Firefox Extension
 
-A simple Firefox browser extension that opens the Esketit secondary market page with a single click.
+A Firefox browser extension that opens the Esketit secondary market page and automatically populates filter values.
 
 ## Features
 
 - One-click access to https://esketit.com/investor/secondary-market
+- Automatically fills "Interest rate" filter with "12"
 - EUR symbol icon for easy identification
-- Lightweight and fast
+- Smart content script with multiple fallback strategies for finding form fields
+- Works with dynamically loaded content (Nuxt.js SPA)
 
 ## Installation
 
@@ -45,16 +47,31 @@ For permanent local installation without signing:
 
 ## Usage
 
-Once installed, simply click the EUR (€) icon in your Firefox toolbar. The extension will automatically open the Esketit secondary market page in a new tab.
+1. Click the EUR (€) icon in your Firefox toolbar
+2. The extension will:
+   - Open the Esketit secondary market page in a new tab
+   - Wait for the page to fully load
+   - Automatically fill the "Interest rate" filter with "12"
+
+The auto-fill happens automatically - no additional interaction needed!
 
 ## Files
 
 - `manifest.json` - Extension configuration
-- `background.js` - Background script that handles the click action
+- `background.js` - Background script that handles the toolbar icon click
+- `content.js` - Content script that auto-fills the Interest rate filter
 - `icons/icon.svg` - EUR symbol icon (SVG format)
 - `create-icons.html` - Optional tool to generate PNG versions of the icon
 
 ## Customization
+
+### Changing the Interest Rate Value
+
+To change the auto-filled interest rate value, edit `content.js` and modify the `TARGET_VALUE` on line 6:
+
+```javascript
+const TARGET_VALUE = '12';  // Change '12' to your desired value
+```
 
 ### Changing the URL
 
