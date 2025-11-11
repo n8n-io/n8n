@@ -40,7 +40,7 @@ export class CredentialsEntity extends WithTimestampsAndStringId implements ICre
 	 * Whether the credential is available for use by all users.
 	 */
 	@Column({ default: false })
-	isAvailableForAllUsers: boolean;
+	isGlobal: boolean;
 
 	toJSON() {
 		const { shared, ...rest } = this;

@@ -541,9 +541,8 @@ async function loadCurrentCredential() {
 
 		credentialName.value = currentCredentials.name;
 		isSharedWithAllUsers.value =
-			'isAvailableForAllUsers' in currentCredentials &&
-			typeof currentCredentials.isAvailableForAllUsers === 'boolean'
-				? currentCredentials.isAvailableForAllUsers
+			'isGlobal' in currentCredentials && typeof currentCredentials.isGlobal === 'boolean'
+				? currentCredentials.isGlobal
 				: false;
 	} catch (error) {
 		toast.showError(
@@ -928,7 +927,7 @@ async function updateCredential(
 			credential = await credentialsStore.setCredentialSharedWith({
 				credentialId: credentialDetails.id,
 				sharedWithProjects: credentialDetails.sharedWithProjects,
-				isAvailableForAllUsers: isSharedWithAllUsers.value,
+				isGlobal: isSharedWithAllUsers.value,
 			});
 			isSharedWithChanged.value = false;
 		}

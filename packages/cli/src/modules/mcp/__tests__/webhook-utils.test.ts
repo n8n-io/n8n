@@ -24,7 +24,7 @@ const mockCredentialsService = (
 				type: 'mock',
 				shared: [] as SharedCredentials[],
 				isManaged: false,
-				isAvailableForAllUsers: false,
+				isGlobal: false,
 				id,
 				// Methods present on entities via WithTimestampsAndStringId mixin
 				generateId() {},

@@ -79,14 +79,14 @@ export class CredentialsPermissionChecker {
 	}
 
 	/**
-	 * Adds global credentials (isAvailableForAllUsers: true) to the set of accessible credentials.
+	 * Adds global credentials (isGlobal: true) to the set of accessible credentials.
 	 */
 	private async addGlobalCredentialsToAccessibleSet(
 		accessibleCredentialIds: string[],
 	): Promise<Set<string>> {
 		const accessibleSet = new Set(accessibleCredentialIds);
 		const globalCredentials = await this.credentialsRepository.findBy({
-			isAvailableForAllUsers: true,
+			isGlobal: true,
 		});
 		for (const globalCred of globalCredentials) {
 			accessibleSet.add(globalCred.id);

@@ -400,7 +400,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const setCredentialSharedWith = async (payload: {
 		sharedWithProjects: ProjectSharingData[];
 		credentialId: string;
-		isAvailableForAllUsers?: boolean;
+		isGlobal?: boolean;
 	}): Promise<ICredentialsResponse> => {
 		if (useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			await credentialsEeApi.setCredentialSharedWith(
@@ -408,7 +408,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 				payload.credentialId,
 				{
 					shareWithIds: payload.sharedWithProjects.map((project) => project.id),
-					isAvailableForAllUsers: payload.isAvailableForAllUsers,
+					isGlobal: payload.isGlobal,
 				},
 			);
 

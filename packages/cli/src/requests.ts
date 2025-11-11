@@ -96,7 +96,7 @@ export declare namespace CredentialRequest {
 	type Share = AuthenticatedRequest<
 		{ credentialId: string },
 		{},
-		{ shareWithIds: string[]; isAvailableForAllUsers?: boolean }
+		{ shareWithIds: string[]; isGlobal?: boolean }
 	>;
 
 	type Transfer = AuthenticatedRequest<

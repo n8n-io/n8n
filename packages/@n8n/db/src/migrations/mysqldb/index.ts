@@ -108,7 +108,7 @@ import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-Cr
 import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
 import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
-import { AddIsAvailableForAllUsersColumnToCredentialsTable1762771954619 } from '../common/1762771954619-AddIsAvailableForAllUsersColumnToCredentialsTable';
+import { AddIsGlobalColumnToCredentialsTable1762771954619 } from '../common/1762771954619-IsGlobalGlobalColumnToCredentialsTable';
 import type { Migration } from '../migration-types';
 import { UpdateParentFolderIdColumn1740445074052 } from '../mysqldb/1740445074052-UpdateParentFolderIdColumn';
 import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
@@ -226,5 +226,5 @@ export const mysqlMigrations: Migration[] = [
 	ChangeDependencyInfoToJson1761655473000,
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
-	AddIsAvailableForAllUsersColumnToCredentialsTable1762771954619,
+	AddIsGlobalColumnToCredentialsTable1762771954619,
 ];

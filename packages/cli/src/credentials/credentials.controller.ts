@@ -303,7 +303,7 @@ export class CredentialsController {
 	@ProjectScope('credential:share')
 	async shareCredentials(req: CredentialRequest.Share) {
 		const { credentialId } = req.params;
-		const { shareWithIds, isAvailableForAllUsers } = req.body;
+		const { shareWithIds, isGlobal } = req.body;
 
 		if (
 			!Array.isArray(shareWithIds) ||
@@ -355,16 +355,16 @@ export class CredentialsController {
 
 			newShareeIds = toShare;
 
-			// Update isAvailableForAllUsers if provided in the payload
+			// Update isGlobal if provided in the payload
 			// Only users with credential:shareGlobally scope can set global credentials
-			if (isAvailableForAllUsers !== undefined) {
+			if (isGlobal !== undefined) {
 				const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
 				if (!canShareGlobally) {
 					throw new ForbiddenError(
 						'Missing required scope to share or unshare credentials with all users',
 					);
 				}
-				await this.credentialsRepository.update({ id: credentialId }, { isAvailableForAllUsers });
+				await this.credentialsRepository.update({ id: credentialId }, { isGlobal });
 			}
 		});
 

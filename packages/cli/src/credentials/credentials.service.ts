@@ -73,7 +73,7 @@ export class CredentialsService {
 		credentials: CredentialsEntity[],
 	): Promise<CredentialsEntity[]> {
 		const globalCredentials = await this.credentialsRepository.findBy({
-			isAvailableForAllUsers: true,
+			isGlobal: true,
 		});
 
 		// Merge and deduplicate based on credential ID

@@ -118,7 +118,7 @@ describe('CredentialsPermissionChecker', () => {
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
 		const globalCredential = mock<CredentialsEntity>({
 			id: credentialId,
-			isAvailableForAllUsers: true,
+			isGlobal: true,
 		});
 		credentialsRepository.findBy.mockResolvedValueOnce([globalCredential]);
 
@@ -130,7 +130,7 @@ describe('CredentialsPermissionChecker', () => {
 			[credentialId],
 		);
 		expect(credentialsRepository.findBy).toHaveBeenCalledWith({
-			isAvailableForAllUsers: true,
+			isGlobal: true,
 		});
 	});
 
@@ -148,7 +148,7 @@ describe('CredentialsPermissionChecker', () => {
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
 		const globalCredential = mock<CredentialsEntity>({
 			id: credentialId,
-			isAvailableForAllUsers: true,
+			isGlobal: true,
 		});
 		credentialsRepository.findBy.mockResolvedValueOnce([globalCredential]);
 
@@ -160,7 +160,7 @@ describe('CredentialsPermissionChecker', () => {
 			[credentialId],
 		);
 		expect(credentialsRepository.findBy).toHaveBeenCalledWith({
-			isAvailableForAllUsers: true,
+			isGlobal: true,
 		});
 	});
 });

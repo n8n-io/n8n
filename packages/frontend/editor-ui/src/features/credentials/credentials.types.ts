@@ -14,7 +14,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	scopes?: Scope[];
 	ownedBy?: Pick<IUserResponse, 'id' | 'firstName' | 'lastName' | 'email'>;
 	isManaged: boolean;
-	isAvailableForAllUsers?: boolean;
+	isGlobal?: boolean;
 }
 
 export interface IUsedCredential {
@@ -50,5 +50,5 @@ export interface ICredentialsState {
 
 export interface IShareCredentialsPayload {
 	shareWithIds: string[];
-	isAvailableForAllUsers?: boolean;
+	isGlobal?: boolean;
 }

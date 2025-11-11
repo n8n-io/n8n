@@ -1,11 +1,9 @@
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-export class AddIsAvailableForAllUsersColumnToCredentialsTable1762771954619
-	implements ReversibleMigration
-{
+export class AddIsGlobalColumnToCredentialsTable1762771954619 implements ReversibleMigration {
 	async up({ escape, runQuery, isSqlite }: MigrationContext) {
 		const tableName = escape.tableName('credentials_entity');
-		const columnName = escape.columnName('isAvailableForAllUsers');
+		const columnName = escape.columnName('isGlobal');
 
 		const defaultValue = isSqlite ? 0 : 'FALSE';
 
@@ -16,7 +14,7 @@ export class AddIsAvailableForAllUsersColumnToCredentialsTable1762771954619
 
 	async down({ escape, runQuery }: MigrationContext) {
 		const tableName = escape.tableName('credentials_entity');
-		const columnName = escape.columnName('isAvailableForAllUsers');
+		const columnName = escape.columnName('isGlobal');
 
 		await runQuery(`ALTER TABLE ${tableName} DROP COLUMN ${columnName}`);
 	}

@@ -24,7 +24,7 @@ export class CredentialsFinderService {
 	private async fetchGlobalCredentials(trx?: EntityManager): Promise<CredentialsEntity[]> {
 		const em = trx ?? this.credentialsRepository.manager;
 		return await em.find(CredentialsEntity, {
-			where: { isAvailableForAllUsers: true },
+			where: { isGlobal: true },
 			relations: { shared: true },
 		});
 	}
