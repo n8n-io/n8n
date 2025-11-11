@@ -217,3 +217,24 @@ export const fetchDataTableGlobalLimitInBytes = async (context: IRestApiContext)
 		'/data-tables-global/limits',
 	);
 };
+
+export const downloadDataTableCsvApi = async (
+	context: IRestApiContext,
+	dataTableId: string,
+	projectId: string,
+): Promise<{ csvContent: string; filename: string }> => {
+	// We need to use makeRestApiRequest to include authentication headers
+	const response = await makeRestApiRequest<{ csvContent: string; dataTableName: string }>(
+		context,
+		'GET',
+		`/projects/${projectId}/data-tables/${dataTableId}/download-csv`,
+	);
+
+	// Use just the data table name as filename
+	const filename = `${response.dataTableName}.csv`;
+
+	return {
+		csvContent: response.csvContent,
+		filename,
+	};
+};

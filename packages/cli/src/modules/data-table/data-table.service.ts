@@ -632,4 +632,113 @@ export class DataTableService {
 			dataTables: accessibleDataTables,
 		};
 	}
+
+	async generateDataTableCsv(
+		dataTableId: string,
+		projectId: string,
+	): Promise<{ csvContent: string; dataTableName: string }> {
+		const dataTable = await this.validateDataTableExists(dataTableId, projectId);
+
+		// Fetch columns (ordered by index)
+		const columns = await this.dataTableColumnRepository.getColumns(dataTableId);
+
+		// Fetch ALL rows (no pagination for export)
+		const { data: rows } = await this.dataTableRowsRepository.getManyAndCount(dataTableId, {
+			skip: 0,
+			take: -1, // Get all rows
+		});
+
+		// Build CSV
+		const csvContent = this.buildCsvContent(rows, columns);
+
+		return {
+			csvContent,
+			dataTableName: dataTable.name,
+		};
+	}
+
+	private buildCsvContent(rows: DataTableRowReturn[], columns: DataTableColumn[]): string {
+		// Build header row: id + user columns + createdAt/updatedAt at the end
+		const userHeaders = columns.sort((a, b) => a.index - b.index).map((col) => col.name);
+		const headers = ['id', ...userHeaders, 'createdAt', 'updatedAt'];
+
+		// Escape and join headers
+		const csvRows: string[] = [headers.map((h) => this.escapeCsvValue(h)).join(',')];
+
+		// Build data rows
+		for (const row of rows) {
+			const values: string[] = [];
+
+			// Add id first
+			values.push(this.escapeCsvValue(row.id));
+
+			// Add user column values (in correct order)
+			for (const column of columns.sort((a, b) => a.index - b.index)) {
+				const value = row[column.name];
+				values.push(this.escapeCsvValue(this.formatValueForCsv(value, column.type)));
+			}
+
+			// Add createdAt and updatedAt at the end
+			values.push(this.escapeCsvValue(this.formatDateForCsv(row.createdAt)));
+			values.push(this.escapeCsvValue(this.formatDateForCsv(row.updatedAt)));
+
+			csvRows.push(values.join(','));
+		}
+
+		return csvRows.join('\n');
+	}
+
+	private formatValueForCsv(value: unknown, columnType: DataTableColumnType): string {
+		// Handle NULL/undefined
+		if (value === null || value === undefined) {
+			return '';
+		}
+
+		// Handle dates - always use ISO format for CSV
+		if (columnType === 'date') {
+			if (value instanceof Date) {
+				return value.toISOString();
+			}
+			if (typeof value === 'string') {
+				// Ensure it's in ISO format
+				const date = new Date(value);
+				return !isNaN(date.getTime()) ? date.toISOString() : String(value);
+			}
+		}
+
+		// Handle booleans - already normalized to true/false by normalizeRows
+		if (columnType === 'boolean') {
+			return String(value);
+		}
+
+		// Handle numbers
+		if (columnType === 'number') {
+			return String(value);
+		}
+
+		// Handle strings and everything else
+		return String(value);
+	}
+
+	private formatDateForCsv(date: Date | string): string {
+		if (date instanceof Date) {
+			return date.toISOString();
+		}
+		// If it's already a string, try to parse and format
+		const parsed = new Date(date);
+		return !isNaN(parsed.getTime()) ? parsed.toISOString() : String(date);
+	}
+
+	private escapeCsvValue(value: unknown): string {
+		const str = String(value);
+
+		// RFC 4180 compliant escaping:
+		// - If value contains comma, quote, or newline, wrap in quotes
+		// - Escape quotes by doubling them
+		if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+			return `"${str.replace(/"/g, '""')}"`;
+		}
+
+		return str;
+	}
 }

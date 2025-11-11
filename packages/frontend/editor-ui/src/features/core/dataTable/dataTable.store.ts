@@ -15,6 +15,7 @@ import {
 	updateDataTableRowsApi,
 	deleteDataTableRowsApi,
 	fetchDataTableGlobalLimitInBytes,
+	downloadDataTableCsvApi,
 } from '@/features/core/dataTable/dataTable.api';
 import type {
 	DataTable,
@@ -246,6 +247,30 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return result;
 	};
 
+	const downloadDataTableCsv = async (dataTableId: string, projectId: string) => {
+		// Fetch CSV content with authentication
+		const { csvContent, filename } = await downloadDataTableCsvApi(
+			rootStore.restApiContext,
+			dataTableId,
+			projectId,
+		);
+
+		// Create blob with UTF-8 BOM for Excel compatibility
+		const bom = '\uFEFF';
+		const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
+		const url = URL.createObjectURL(blob);
+
+		// Trigger download
+		const tempElement = document.createElement('a');
+		tempElement.setAttribute('href', url);
+		tempElement.setAttribute('download', filename);
+		tempElement.style.display = 'none';
+		document.body.appendChild(tempElement);
+		tempElement.click();
+		document.body.removeChild(tempElement);
+		URL.revokeObjectURL(url);
+	};
+
 	return {
 		dataTables,
 		totalCount,
@@ -267,5 +292,6 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		insertEmptyRow,
 		updateRow,
 		deleteRows,
+		downloadDataTableCsv,
 	};
 });
