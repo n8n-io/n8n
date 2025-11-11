@@ -219,8 +219,8 @@ const sqliteMigrations: Migration[] = [
 	ChangeDependencyInfoToJson1761655473000,
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
-	AddWorkflowHistoryAutoSaveFields1762847206508,
 	BackfillMissingWorkflowHistoryRecords1762763704614,
+	AddWorkflowHistoryAutoSaveFields1762847206508,
 ];
 
 export { sqliteMigrations };
