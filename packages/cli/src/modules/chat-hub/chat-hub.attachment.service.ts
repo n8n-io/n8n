@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { BINARY_ENCODING, sanitizeFilename, type IBinaryData } from 'n8n-workflow';
-import { BinaryDataService } from 'n8n-core';
+import { BinaryData, BinaryDataService } from 'n8n-core';
 import { Not, IsNull } from '@n8n/typeorm';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import type { ChatMessageId, ChatSessionId } from '@n8n/api-types';
@@ -77,8 +77,8 @@ export class ChatHubAttachmentService {
 		[
 			IBinaryData,
 			(
-				| { type: 'buffer'; buffer: Buffer<ArrayBufferLike> }
-				| { type: 'stream'; stream: Stream.Readable }
+				| { type: 'buffer'; buffer: Buffer<ArrayBufferLike>; fileSize: number }
+				| { type: 'stream'; stream: Stream.Readable; fileSize: number }
 			),
 		]
 	> {
@@ -95,15 +95,16 @@ export class ChatHubAttachmentService {
 		}
 
 		if (attachment.id) {
+			const metadata = await this.binaryDataService.getMetadata(attachment.id);
 			const stream = await this.binaryDataService.getAsStream(attachment.id);
 
-			return [attachment, { type: 'stream', stream }];
+			return [attachment, { type: 'stream', stream, fileSize: metadata.fileSize }];
 		}
 
 		if (attachment.data) {
 			const buffer = await this.binaryDataService.getAsBuffer(attachment);
 
-			return [attachment, { type: 'buffer', buffer }];
+			return [attachment, { type: 'buffer', buffer, fileSize: buffer.length }];
 		}
 
 		throw new NotFoundError('Attachment has no stored file');

@@ -91,7 +91,7 @@ export class ChatHubController {
 		// Verify user has access to this session
 		await this.chatService.getConversation(req.user.id, sessionId);
 
-		const [{ mimeType, fileSize, fileName }, data] = await this.chatAttachmentService.getAttachment(
+		const [{ mimeType, fileName }, data] = await this.chatAttachmentService.getAttachment(
 			sessionId,
 			messageId,
 			attachmentIndex,
@@ -99,8 +99,8 @@ export class ChatHubController {
 
 		res.setHeader('Content-Type', mimeType ?? 'application/octet-stream');
 
-		if (fileSize) {
-			res.setHeader('Content-Length', fileSize);
+		if (data.fileSize) {
+			res.setHeader('Content-Length', data.fileSize);
 		}
 
 		if (fileName) {
