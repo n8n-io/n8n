@@ -100,11 +100,9 @@ export class DbConnection {
 		try {
 			await Promise.race([
 				this.dataSource.query('SELECT 1'),
-				setTimeoutP(5000, undefined, { signal: abortController.signal })
-					.then(() => {
-						throw new OperationalError('Database connection timed out');
-					})
-					.catch(() => {}), // Handle abort when DB responds before timeout
+				setTimeoutP(5000, undefined, { signal: abortController.signal }).then(() => {
+					throw new OperationalError('Database connection timed out');
+				}),
 			]);
 
 			if (!this.connectionState.connected) {
