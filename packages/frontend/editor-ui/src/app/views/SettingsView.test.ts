@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { createComponentRenderer } from '@/__tests__/render';
 import SettingsView from '@/app/views/SettingsView.vue';
 import { VIEWS } from '@/app/constants';
-import { routes as originalRoutes } from '@/router';
+import { routes as originalRoutes } from '@/app/router';
 
 const component = { template: '<div />' };
 const settingsRoute = originalRoutes.find((route) => route.name === VIEWS.SETTINGS);
