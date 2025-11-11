@@ -25,8 +25,8 @@ import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
-let owner: User;
 let ownerPersonalProject: Project;
+let owner: User;
 let member: User;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
@@ -869,8 +869,7 @@ describe('POST /workflows', () => {
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
-	test('should create workflow history version when licensed', async () => {
-		license.enable('feat:workflowHistory');
+	test('should always create workflow history version', async () => {
 		const payload = {
 			name: 'testing',
 			nodes: [
@@ -913,44 +912,6 @@ describe('POST /workflows', () => {
 		expect(historyVersion).not.toBeNull();
 		expect(historyVersion!.connections).toEqual(payload.connections);
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
-	});
-
-	test('should not create workflow history version when not licensed', async () => {
-		license.disable('feat:workflowHistory');
-		const payload = {
-			name: 'testing',
-			nodes: [
-				{
-					id: 'uuid-1234',
-					parameters: {},
-					name: 'Start',
-					type: 'n8n-nodes-base.start',
-					typeVersion: 1,
-					position: [240, 300],
-				},
-			],
-			connections: {},
-			staticData: null,
-			settings: {
-				saveExecutionProgress: true,
-				saveManualExecutions: true,
-				saveDataErrorExecution: 'all',
-				saveDataSuccessExecution: 'all',
-				executionTimeout: 3600,
-				timezone: 'America/New_York',
-			},
-		};
-
-		const response = await authMemberAgent.post('/workflows').send(payload);
-
-		expect(response.statusCode).toBe(200);
-
-		const { id } = response.body;
-
-		expect(id).toBeDefined();
-		expect(
-			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-		).toBe(0);
 	});
 
 	test('should not add a starting node if the payload has no starting nodes', async () => {
@@ -1111,8 +1072,7 @@ describe('PUT /workflows/:id', () => {
 		);
 	});
 
-	test('should create workflow history version when licensed', async () => {
-		license.enable('feat:workflowHistory');
+	test('should always create workflow history version', async () => {
 		const workflow = await createWorkflow({}, member);
 		const payload = {
 			name: 'name updated',
@@ -1164,53 +1124,6 @@ describe('PUT /workflows/:id', () => {
 		expect(historyVersion).not.toBeNull();
 		expect(historyVersion!.connections).toEqual(payload.connections);
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
-	});
-
-	test('should not create workflow history when not licensed', async () => {
-		license.disable('feat:workflowHistory');
-		const workflow = await createWorkflow({}, member);
-		const payload = {
-			name: 'name updated',
-			nodes: [
-				{
-					id: 'uuid-1234',
-					parameters: {},
-					name: 'Start',
-					type: 'n8n-nodes-base.start',
-					typeVersion: 1,
-					position: [240, 300],
-				},
-				{
-					id: 'uuid-1234',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
-					typeVersion: 1,
-					position: [400, 300],
-				},
-			],
-			connections: {},
-			staticData: '{"id":1}',
-			settings: {
-				saveExecutionProgress: false,
-				saveManualExecutions: false,
-				saveDataErrorExecution: 'all',
-				saveDataSuccessExecution: 'all',
-				executionTimeout: 3600,
-				timezone: 'America/New_York',
-			},
-		};
-
-		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
-
-		const { id } = response.body;
-
-		expect(response.statusCode).toBe(200);
-
-		expect(id).toBe(workflow.id);
-		expect(
-			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-		).toBe(0);
 	});
 
 	test('should update non-owned workflow if owner', async () => {
