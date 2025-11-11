@@ -759,29 +759,6 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.activeVersion?.connections).toEqual(workflow.connections);
 	});
 
-	test('should set activeVersionId when activating workflow', async () => {
-		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
-
-		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
-
-		expect(response.statusCode).toBe(200);
-		expect(response.body.active).toBe(true);
-
-		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
-			where: {
-				projectId: memberPersonalProject.id,
-				workflowId: workflow.id,
-			},
-			relations: ['workflow', 'workflow.activeVersion'],
-		});
-
-		expect(sharedWorkflow?.workflow.active).toBe(true);
-		expect(sharedWorkflow?.workflow.activeVersion).not.toBeNull();
-		expect(sharedWorkflow?.workflow.activeVersion?.versionId).toBe(workflow.versionId);
-		expect(sharedWorkflow?.workflow.activeVersion?.nodes).toEqual(workflow.nodes);
-		expect(sharedWorkflow?.workflow.activeVersion?.connections).toEqual(workflow.connections);
-	});
-
 	test('should set non-owned workflow as active when owner', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
@@ -876,38 +853,6 @@ describe('POST /workflows/:id/deactivate', () => {
 		expect(sharedWorkflow?.workflow.active).toBe(false);
 
 		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
-	});
-
-	test('should clear activeVersionId when deactivating workflow', async () => {
-		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
-
-		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
-		let sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
-			where: {
-				projectId: memberPersonalProject.id,
-				workflowId: workflow.id,
-			},
-			relations: ['workflow', 'workflow.activeVersion'],
-		});
-
-		expect(sharedWorkflow?.workflow.active).toBe(true);
-		expect(sharedWorkflow?.workflow.activeVersion).not.toBeNull();
-
-		const deactivateResponse = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
-
-		expect(deactivateResponse.statusCode).toBe(200);
-		expect(deactivateResponse.body.active).toBe(false);
-
-		sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
-			where: {
-				projectId: memberPersonalProject.id,
-				workflowId: workflow.id,
-			},
-			relations: ['workflow', 'workflow.activeVersion'],
-		});
-
-		expect(sharedWorkflow?.workflow.active).toBe(false);
-		expect(sharedWorkflow?.workflow.activeVersion).toBeNull();
 	});
 
 	test('should clear activeVersionId when deactivating workflow', async () => {
