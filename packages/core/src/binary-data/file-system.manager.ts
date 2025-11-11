@@ -13,6 +13,10 @@ import { FileNotFoundError } from '../errors/file-not-found.error';
 const EXECUTION_ID_EXTRACTOR =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
 
+const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\//;
+
+const CHAT_HUB_ATTACHMENT_PATH_MATCHER = /^chat-hub\/sessions\/([^/]+)\/messages\/([^/]+)\//;
+
 export class FileSystemManager implements BinaryData.Manager {
 	constructor(private storagePath: string) {}
 
@@ -197,7 +201,7 @@ export class FileSystemManager implements BinaryData.Manager {
 	}
 
 	private parseFileId(fileId: string): BinaryData.FileLocation | null {
-		const executionMatch = fileId.match(/^workflows\/([^/]+)\/executions\/([^/]+)\//);
+		const executionMatch = fileId.match(EXECUTION_PATH_MATCHER);
 
 		if (executionMatch) {
 			return {
@@ -207,7 +211,7 @@ export class FileSystemManager implements BinaryData.Manager {
 			};
 		}
 
-		const chatHubMatch = fileId.match(/^chat-hub\/sessions\/([^/]+)\/messages\/([^/]+)\//);
+		const chatHubMatch = fileId.match(CHAT_HUB_ATTACHMENT_PATH_MATCHER);
 
 		if (chatHubMatch) {
 			return {
