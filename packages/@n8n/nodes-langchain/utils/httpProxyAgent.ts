@@ -31,6 +31,14 @@ export function getProxyAgent(targetUrl?: string) {
 	return new ProxyAgent(proxyUrl);
 }
 
+export async function proxyFetch(input: string | URL, init?: RequestInit): Promise<Response> {
+	return await fetch(input, {
+		...init,
+		// @ts-expect-error - dispatcher is an undici-specific option not in standard fetch
+		dispatcher: getProxyAgent(input.toString()),
+	});
+}
+
 /**
  * Returns a Node.js HTTP/HTTPS proxy agent for use with AWS SDK v3 clients.
  * AWS SDK v3 requires Node.js http.Agent/https.Agent instances (not undici ProxyAgent).
