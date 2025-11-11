@@ -2,7 +2,9 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
 
 export class BackfillMissingWorkflowHistoryRecords1762763704614 implements IrreversibleMigration {
 	/**
-	 * 1. Generate versionIds for workflows with NULL versionId (only possible for manual inserts)
+	 * 1. Generate/regenerate versionIds for workflows that need them:
+	 *    - NULL/empty versionId
+	 *    - duplicate versionIds without workflow_history
 	 * 2. Create workflow_history records for all workflows missing them
 	 * 3. Make versionId NOT NULL to ensure data consistency
 	 */
@@ -18,15 +20,28 @@ export class BackfillMissingWorkflowHistoryRecords1762763704614 implements Irrev
 		const createdAtColumn = escape.columnName('createdAt');
 		const updatedAtColumn = escape.columnName('updatedAt');
 
-		// Step 1: Generate versionIds for workflows that have NULL or empty versionId
-		const workflowsWithoutVersionId = await runQuery<Array<{ id: string }>>(`
-			SELECT ${idColumn} as id
-			FROM ${workflowTable}
-			WHERE ${versionIdColumn} IS NULL OR ${versionIdColumn} = ''
+		// Step 1: Generate versionIds that do not exist in workflow history
+		const workflowsNeedingNewVersionId = await runQuery<Array<{ id: string }>>(`
+			SELECT w.${idColumn} as id
+			FROM ${workflowTable} w
+			WHERE
+				w.${versionIdColumn} IS NULL OR w.${versionIdColumn} = ''
+				OR (
+					EXISTS (
+						SELECT 1
+						FROM ${workflowTable} w2
+						WHERE w2.${versionIdColumn} = w.${versionIdColumn}
+						AND w2.${idColumn} != w.${idColumn}
+					)
+					AND w.${versionIdColumn} NOT IN (
+						SELECT ${versionIdColumn}
+						FROM ${historyTable}
+					)
+				)
 		`);
 
 		// Running in a loop to avoid using DB-specific syntax for generating UUIDs
-		for (const workflow of workflowsWithoutVersionId) {
+		for (const workflow of workflowsNeedingNewVersionId) {
 			const versionId = crypto.randomUUID();
 			await runQuery(
 				`
