@@ -3,7 +3,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { waitFor } from '@testing-library/vue';
 import type { Extension } from '@codemirror/state';
 import ExpressionOutput from './ExpressionOutput.vue';
-import type { Segment } from '@/types/expressions';
+import type { Segment } from '../../../../../app/types/expressions';
 
 describe('ExpressionOutput.vue', () => {
 	const basicSegments: Segment[] = [
