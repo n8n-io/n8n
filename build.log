@@ -8,100 +8,38 @@ turbo 2.5.4
 • Running build in 46 packages
 • Remote caching disabled
 n8n-editor-ui:popularity-cache-marker: cache bypass, force executing 7fe428c9f6d52417
-@n8n/client-oauth2:build: cache miss, executing 8673ab41d340827c
-@n8n/n8n-benchmark:build: cache miss, executing 972d445682064852
-@n8n/vitest-config:build: cache miss, executing 28d6f55664f6355d
-@n8n/extension-sdk:build: cache miss, executing 06fe14715a4bd54c
-@n8n/permissions:build: cache miss, executing 7f3d7dc6e156379d
-@n8n/json-schema-to-zod:build: cache miss, executing 5d941c83561f46f0
-@n8n/stylelint-config:build: cache miss, executing 28ca40edc6bf537f
-@n8n/codemirror-lang:build: cache miss, executing c1ee4b7f14d5ff34
-@n8n/errors:build: cache miss, executing e50e5217be76814d
-n8n-editor-ui:popularity-cache-marker: 
-n8n-editor-ui:popularity-cache-marker: > n8n-editor-ui@1.117.0 popularity-cache-marker /home/alch33my/Desktop/n8n/packages/frontend/editor-ui
-n8n-editor-ui:popularity-cache-marker: > node scripts/cache-marker.mjs
-n8n-editor-ui:popularity-cache-marker: 
-@n8n/n8n-benchmark:build: 
-@n8n/n8n-benchmark:build: > @n8n/n8n-benchmark@1.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/benchmark
-@n8n/n8n-benchmark:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
-@n8n/n8n-benchmark:build: 
-@n8n/client-oauth2:build: 
-@n8n/client-oauth2:build: > @n8n/client-oauth2@0.30.0 build /home/alch33my/Desktop/n8n/packages/@n8n/client-oauth2
-@n8n/client-oauth2:build: > tsc -p tsconfig.build.json
-@n8n/client-oauth2:build: 
-@n8n/vitest-config:build: 
-@n8n/vitest-config:build: > @n8n/vitest-config@1.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/vitest-config
-@n8n/vitest-config:build: > tsc -p tsconfig.build.json
-@n8n/vitest-config:build: 
-@n8n/permissions:build: 
-@n8n/permissions:build: > @n8n/permissions@0.40.0 build /home/alch33my/Desktop/n8n/packages/@n8n/permissions
-@n8n/permissions:build: > tsc -p tsconfig.build.json
-@n8n/permissions:build: 
-@n8n/extension-sdk:build: 
-@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 build /home/alch33my/Desktop/n8n/packages/@n8n/extension-sdk
-@n8n/extension-sdk:build: > pnpm "/^typecheck:.+/" && pnpm clean && tsdown && pnpm create-json-schema
-@n8n/extension-sdk:build: 
-@n8n/json-schema-to-zod:build: 
-@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
-@n8n/json-schema-to-zod:build: > rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm
-@n8n/json-schema-to-zod:build: 
+@n8n/codemirror-lang:build: cache hit, replaying logs c1ee4b7f14d5ff34
 @n8n/codemirror-lang:build: 
 @n8n/codemirror-lang:build: > @n8n/codemirror-lang@0.3.0 build /home/alch33my/Desktop/n8n/packages/@n8n/codemirror-lang
 @n8n/codemirror-lang:build: > tsc -p tsconfig.build.json
 @n8n/codemirror-lang:build: 
-@n8n/errors:build: 
-@n8n/errors:build: > @n8n/errors@0.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/errors
-@n8n/errors:build: > tsc -p tsconfig.build.json
-@n8n/errors:build: 
+@n8n/stylelint-config:build: cache hit, replaying logs 28ca40edc6bf537f
 @n8n/stylelint-config:build: 
 @n8n/stylelint-config:build: > @n8n/stylelint-config@0.0.1 build /home/alch33my/Desktop/n8n/packages/@n8n/stylelint-config
 @n8n/stylelint-config:build: > tsc
 @n8n/stylelint-config:build: 
-@n8n/constants:build: cache miss, executing 442d65222303e77a
-@n8n/constants:build: 
-@n8n/constants:build: > @n8n/constants@0.13.0 build /home/alch33my/Desktop/n8n/packages/@n8n/constants
-@n8n/constants:build: > tsc -p tsconfig.build.json
-@n8n/constants:build: 
+@n8n/json-schema-to-zod:build: cache hit, replaying logs 5d941c83561f46f0
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm
+@n8n/json-schema-to-zod:build: 
 @n8n/json-schema-to-zod:build: 
 @n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:types /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
 @n8n/json-schema-to-zod:build: > tsc -p tsconfig.types.json
 @n8n/json-schema-to-zod:build: 
-@n8n/di:build: cache miss, executing e1829ae92858001b
-@n8n/di:build: 
-@n8n/di:build: > @n8n/di@0.9.0 build /home/alch33my/Desktop/n8n/packages/@n8n/di
-@n8n/di:build: > tsc -p tsconfig.build.json
-@n8n/di:build: 
-n8n-editor-ui:fetch-popularity: cache miss, executing c739cf93a61b7135
-@n8n/codemirror-lang-sql:build: cache miss, executing 53886a63e482f1b5
-n8n-editor-ui:fetch-popularity: 
-n8n-editor-ui:fetch-popularity: > n8n-editor-ui@1.117.0 fetch-popularity /home/alch33my/Desktop/n8n/packages/frontend/editor-ui
-n8n-editor-ui:fetch-popularity: > node scripts/fetch-node-popularity.mjs
-n8n-editor-ui:fetch-popularity: 
-@n8n/eslint-config:build: cache miss, executing 3f4c0728992ea264
-n8n-editor-ui:fetch-popularity: Fetching node popularity data from: https://internal.users.n8n.cloud/webhook/nodes-popularity-scores
-@n8n/codemirror-lang-sql:build: 
-@n8n/codemirror-lang-sql:build: > @n8n/codemirror-lang-sql@1.2.0 build /home/alch33my/Desktop/n8n/packages/@n8n/codemirror-lang-sql
-@n8n/codemirror-lang-sql:build: > tsc -p tsconfig.build.json
-@n8n/codemirror-lang-sql:build: 
-@n8n/eslint-plugin-community-nodes:build: cache miss, executing e7cc9047aa0936bd
-@n8n/imap:build: cache miss, executing 8e453a4a5d7cecf1
-@n8n/eslint-config:build: 
-@n8n/eslint-config:build: > @n8n/eslint-config@0.0.1 build /home/alch33my/Desktop/n8n/packages/@n8n/eslint-config
-@n8n/eslint-config:build: > tsc
-@n8n/eslint-config:build: 
-@n8n/eslint-plugin-community-nodes:build: 
-@n8n/eslint-plugin-community-nodes:build: > @n8n/eslint-plugin-community-nodes@0.6.0 build /home/alch33my/Desktop/n8n/packages/@n8n/eslint-plugin-community-nodes
-@n8n/eslint-plugin-community-nodes:build: > tsc --project tsconfig.build.json
-@n8n/eslint-plugin-community-nodes:build: 
-@n8n/imap:build: 
-@n8n/imap:build: > @n8n/imap@0.15.0 build /home/alch33my/Desktop/n8n/packages/@n8n/imap
-@n8n/imap:build: > tsc -p tsconfig.build.json
-@n8n/imap:build: 
-@n8n/config:build: cache miss, executing 6e436bcbca992ff4
-@n8n/config:build: 
-@n8n/config:build: > @n8n/config@1.59.0 build /home/alch33my/Desktop/n8n/packages/@n8n/config
-@n8n/config:build: > tsc -p tsconfig.build.json
-@n8n/config:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:cjs /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.cjs.json && node postcjs.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: 
+@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:esm /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
+@n8n/json-schema-to-zod:build: > tsc -p tsconfig.esm.json && node postesm.cjs
+@n8n/json-schema-to-zod:build: 
+@n8n/extension-sdk:build: cache hit, replaying logs 06fe14715a4bd54c
+@n8n/extension-sdk:build: 
+@n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 build /home/alch33my/Desktop/n8n/packages/@n8n/extension-sdk
+@n8n/extension-sdk:build: > pnpm "/^typecheck:.+/" && pnpm clean && tsdown && pnpm create-json-schema
+@n8n/extension-sdk:build: 
 @n8n/extension-sdk:build: 
 @n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 clean /home/alch33my/Desktop/n8n/packages/@n8n/extension-sdk
 @n8n/extension-sdk:build: > rimraf dist
@@ -127,151 +65,6 @@ n8n-editor-ui:fetch-popularity: Fetching node popularity data from: https://inte
 @n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
 @n8n/extension-sdk:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/json-schema-to-zod:build: 
-@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:cjs /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
-@n8n/json-schema-to-zod:build: > tsc -p tsconfig.cjs.json && node postcjs.cjs
-@n8n/json-schema-to-zod:build: 
-@n8n/node-cli:build: cache miss, executing ac66daa1fdcf3d7b
-n8n-workflow:build: cache miss, executing 58327c7b7e6d4748
-@n8n/node-cli:build: 
-@n8n/node-cli:build: > @n8n/node-cli@0.13.0 build /home/alch33my/Desktop/n8n/packages/@n8n/node-cli
-@n8n/node-cli:build: > tsc -p tsconfig.build.json && pnpm copy-templates
-@n8n/node-cli:build: 
-@n8n/composables:build: cache miss, executing 4afbcdc54a806c4d
-@n8n/utils:build: cache miss, executing 92a4a6a19595bcc5
-n8n-workflow:build: 
-n8n-workflow:build: > n8n-workflow@1.114.0 build /home/alch33my/Desktop/n8n/packages/workflow
-n8n-workflow:build: > tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json
-n8n-workflow:build: 
-@n8n/composables:build: 
-@n8n/composables:build: > @n8n/composables@1.12.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/composables
-@n8n/composables:build: > tsdown
-@n8n/composables:build: 
-@n8n/utils:build: 
-@n8n/utils:build: > @n8n/utils@1.18.0 build /home/alch33my/Desktop/n8n/packages/@n8n/utils
-@n8n/utils:build: > tsdown
-@n8n/utils:build: 
-@n8n/utils:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
-@n8n/composables:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
-@n8n/utils:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/@n8n/utils/tsdown.config.ts
-@n8n/utils:build: ℹ entry: src/assert.ts, src/event-bus.ts, src/event-queue.ts, src/retry.ts, src/number/smartDecimal.ts, src/sort/sortByProperty.ts, src/search/reRankSearchResults.ts, src/search/sublimeSearch.ts, src/string/truncate.ts
-@n8n/utils:build: ℹ tsconfig: tsconfig.json
-@n8n/utils:build: ℹ Build start
-@n8n/composables:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/frontend/@n8n/composables/tsdown.config.ts
-@n8n/composables:build: ℹ entry: src/useDeviceSupport.ts, src/useShortKeyPress.ts, src/useThrottleWithReactiveDelay.ts
-@n8n/composables:build: ℹ tsconfig: tsconfig.json
-@n8n/composables:build: ℹ Build start
-@n8n/utils:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/utils:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/utils:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/utils:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/json-schema-to-zod:build: 
-@n8n/json-schema-to-zod:build: > @n8n/json-schema-to-zod@1.5.0 build:esm /home/alch33my/Desktop/n8n/packages/@n8n/json-schema-to-zod
-@n8n/json-schema-to-zod:build: > tsc -p tsconfig.esm.json && node postesm.cjs
-@n8n/json-schema-to-zod:build: 
-@n8n/utils:build: ℹ [CJS] dist/search/sublimeSearch.cjs             5.36 kB │ gzip: 1.75 kB
-@n8n/utils:build: ℹ [CJS] dist/retry.cjs                            1.45 kB │ gzip: 0.66 kB
-@n8n/utils:build: ℹ [CJS] dist/string/truncate.cjs                  1.37 kB │ gzip: 0.62 kB
-@n8n/utils:build: ℹ [CJS] dist/event-bus.cjs                        1.03 kB │ gzip: 0.47 kB
-@n8n/utils:build: ℹ [CJS] dist/event-queue.cjs                      1.01 kB │ gzip: 0.48 kB
-@n8n/utils:build: ℹ [CJS] dist/search/reRankSearchResults.cjs       0.56 kB │ gzip: 0.30 kB
-@n8n/utils:build: ℹ [CJS] dist/sort/sortByProperty.cjs              0.39 kB │ gzip: 0.25 kB
-@n8n/utils:build: ℹ [CJS] dist/number/smartDecimal.cjs              0.34 kB │ gzip: 0.22 kB
-@n8n/utils:build: ℹ [CJS] dist/assert.cjs                           0.24 kB │ gzip: 0.19 kB
-@n8n/utils:build: ℹ [CJS] dist/search/sublimeSearch.cjs.map        11.66 kB │ gzip: 3.92 kB
-@n8n/utils:build: ℹ [CJS] dist/event-bus.cjs.map                    2.93 kB │ gzip: 0.99 kB
-@n8n/utils:build: ℹ [CJS] dist/retry.cjs.map                        2.35 kB │ gzip: 1.05 kB
-@n8n/utils:build: ℹ [CJS] dist/string/truncate.cjs.map              2.33 kB │ gzip: 1.01 kB
-@n8n/utils:build: ℹ [CJS] dist/event-queue.cjs.map                  1.75 kB │ gzip: 0.83 kB
-@n8n/utils:build: ℹ [CJS] dist/search/reRankSearchResults.cjs.map   1.27 kB │ gzip: 0.63 kB
-@n8n/utils:build: ℹ [CJS] dist/sort/sortByProperty.cjs.map          0.67 kB │ gzip: 0.42 kB
-@n8n/utils:build: ℹ [CJS] dist/number/smartDecimal.cjs.map          0.63 kB │ gzip: 0.37 kB
-@n8n/utils:build: ℹ [CJS] dist/assert.cjs.map                       0.46 kB │ gzip: 0.33 kB
-@n8n/utils:build: ℹ [CJS] 18 files, total: 35.80 kB
-@n8n/utils:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/utils:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/utils:build: ℹ [ESM] dist/search/sublimeSearch.js             5.32 kB │ gzip: 1.74 kB
-@n8n/utils:build: ℹ [ESM] dist/retry.js                            1.44 kB │ gzip: 0.66 kB
-@n8n/utils:build: ℹ [ESM] dist/string/truncate.js                  1.33 kB │ gzip: 0.61 kB
-@n8n/utils:build: ℹ [ESM] dist/event-bus.js                        1.01 kB │ gzip: 0.46 kB
-@n8n/utils:build: ℹ [ESM] dist/event-queue.js                      1.00 kB │ gzip: 0.47 kB
-@n8n/utils:build: ℹ [ESM] dist/search/reRankSearchResults.js       0.54 kB │ gzip: 0.29 kB
-@n8n/utils:build: ℹ [ESM] dist/sort/sortByProperty.js              0.37 kB │ gzip: 0.25 kB
-@n8n/utils:build: ℹ [ESM] dist/number/smartDecimal.js              0.32 kB │ gzip: 0.22 kB
-@n8n/utils:build: ℹ [ESM] dist/assert.js                           0.23 kB │ gzip: 0.18 kB
-@n8n/utils:build: ℹ [ESM] dist/search/sublimeSearch.js.map        11.66 kB │ gzip: 3.92 kB
-@n8n/utils:build: ℹ [ESM] dist/event-bus.js.map                    2.93 kB │ gzip: 0.99 kB
-@n8n/utils:build: ℹ [ESM] dist/retry.js.map                        2.35 kB │ gzip: 1.05 kB
-@n8n/utils:build: ℹ [ESM] dist/string/truncate.js.map              2.33 kB │ gzip: 1.00 kB
-@n8n/utils:build: ℹ [ESM] dist/event-queue.js.map                  1.75 kB │ gzip: 0.83 kB
-@n8n/utils:build: ℹ [ESM] dist/search/reRankSearchResults.js.map   1.27 kB │ gzip: 0.63 kB
-@n8n/utils:build: ℹ [ESM] dist/sort/sortByProperty.js.map          0.67 kB │ gzip: 0.41 kB
-@n8n/utils:build: ℹ [ESM] dist/number/smartDecimal.js.map          0.63 kB │ gzip: 0.37 kB
-@n8n/utils:build: ℹ [ESM] dist/assert.js.map                       0.46 kB │ gzip: 0.33 kB
-@n8n/utils:build: ℹ [ESM] dist/event-bus.d.ts                      0.98 kB │ gzip: 0.34 kB
-@n8n/utils:build: ℹ [ESM] dist/search/sublimeSearch.d.ts           0.38 kB │ gzip: 0.25 kB
-@n8n/utils:build: ℹ [ESM] dist/search/reRankSearchResults.d.ts     0.36 kB │ gzip: 0.21 kB
-@n8n/utils:build: ℹ [ESM] dist/retry.d.ts                          0.28 kB │ gzip: 0.21 kB
-@n8n/utils:build: ℹ [ESM] dist/string/truncate.d.ts                0.27 kB │ gzip: 0.18 kB
-@n8n/utils:build: ℹ [ESM] dist/event-queue.d.ts                    0.23 kB │ gzip: 0.17 kB
-@n8n/utils:build: ℹ [ESM] dist/sort/sortByProperty.d.ts            0.22 kB │ gzip: 0.17 kB
-@n8n/utils:build: ℹ [ESM] dist/number/smartDecimal.d.ts            0.19 kB │ gzip: 0.14 kB
-@n8n/utils:build: ℹ [ESM] dist/assert.d.ts                         0.18 kB │ gzip: 0.15 kB
-@n8n/utils:build: ℹ [ESM] 27 files, total: 38.70 kB
-@n8n/utils:build: ℹ [CJS] dist/event-bus.d.cts                   0.98 kB │ gzip: 0.34 kB
-@n8n/utils:build: ℹ [CJS] dist/search/sublimeSearch.d.cts        0.38 kB │ gzip: 0.25 kB
-@n8n/utils:build: ℹ [CJS] dist/search/reRankSearchResults.d.cts  0.36 kB │ gzip: 0.22 kB
-@n8n/utils:build: ℹ [CJS] dist/retry.d.cts                       0.28 kB │ gzip: 0.21 kB
-@n8n/utils:build: ℹ [CJS] dist/string/truncate.d.cts             0.27 kB │ gzip: 0.18 kB
-@n8n/utils:build: ℹ [CJS] dist/event-queue.d.cts                 0.23 kB │ gzip: 0.17 kB
-@n8n/utils:build: ℹ [CJS] dist/sort/sortByProperty.d.cts         0.22 kB │ gzip: 0.17 kB
-@n8n/utils:build: ℹ [CJS] dist/number/smartDecimal.d.cts         0.19 kB │ gzip: 0.15 kB
-@n8n/utils:build: ℹ [CJS] dist/assert.d.cts                      0.18 kB │ gzip: 0.15 kB
-@n8n/utils:build: ℹ [CJS] 9 files, total: 3.10 kB
-@n8n/utils:build: ✔ Build complete in 1541ms
-@n8n/node-cli:build: 
-@n8n/node-cli:build: > @n8n/node-cli@0.13.0 copy-templates /home/alch33my/Desktop/n8n/packages/@n8n/node-cli
-@n8n/node-cli:build: > node scripts/copy-templates.mjs
-@n8n/node-cli:build: 
-@n8n/composables:build: ℹ [CJS] dist/useDeviceSupport.cjs                  1.85 kB │ gzip: 0.75 kB
-@n8n/composables:build: ℹ [CJS] dist/useShortKeyPress.cjs                  0.79 kB │ gzip: 0.38 kB
-@n8n/composables:build: ℹ [CJS] dist/useThrottleWithReactiveDelay.cjs      0.75 kB │ gzip: 0.38 kB
-@n8n/composables:build: ℹ [CJS] dist/useDeviceSupport.cjs.map              2.58 kB │ gzip: 1.07 kB
-@n8n/composables:build: ℹ [CJS] dist/useShortKeyPress.cjs.map              1.27 kB │ gzip: 0.64 kB
-@n8n/composables:build: ℹ [CJS] dist/chunk-CUT6urMc.cjs                    1.09 kB │ gzip: 0.54 kB
-@n8n/composables:build: ℹ [CJS] dist/useThrottleWithReactiveDelay.cjs.map  0.88 kB │ gzip: 0.49 kB
-@n8n/composables:build: ℹ [CJS] 7 files, total: 9.21 kB
-@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/composables:build: ℹ [ESM] dist/useDeviceSupport.js                  1.68 kB │ gzip: 0.69 kB
-@n8n/composables:build: ℹ [ESM] dist/useShortKeyPress.js                  0.57 kB │ gzip: 0.32 kB
-@n8n/composables:build: ℹ [ESM] dist/useThrottleWithReactiveDelay.js      0.56 kB │ gzip: 0.31 kB
-@n8n/composables:build: ℹ [ESM] dist/useDeviceSupport.js.map              2.62 kB │ gzip: 1.07 kB
-@n8n/composables:build: ℹ [ESM] dist/useShortKeyPress.js.map              1.27 kB │ gzip: 0.64 kB
-@n8n/composables:build: ℹ [ESM] dist/useThrottleWithReactiveDelay.js.map  0.89 kB │ gzip: 0.48 kB
-@n8n/composables:build: ℹ [ESM] dist/useDeviceSupport.d.ts                0.47 kB │ gzip: 0.29 kB
-@n8n/composables:build: ℹ [ESM] dist/useShortKeyPress.d.ts                0.41 kB │ gzip: 0.25 kB
-@n8n/composables:build: ℹ [ESM] dist/useThrottleWithReactiveDelay.d.ts    0.30 kB │ gzip: 0.19 kB
-@n8n/composables:build: ℹ [ESM] 9 files, total: 8.77 kB
-@n8n/composables:build: ℹ [CJS] dist/useDeviceSupport.d.cts              0.47 kB │ gzip: 0.29 kB
-@n8n/composables:build: ℹ [CJS] dist/useShortKeyPress.d.cts              0.41 kB │ gzip: 0.25 kB
-@n8n/composables:build: ℹ [CJS] dist/useThrottleWithReactiveDelay.d.cts  0.30 kB │ gzip: 0.19 kB
-@n8n/composables:build: ℹ [CJS] 3 files, total: 1.18 kB
-@n8n/composables:build: ✔ Build complete in 1715ms
-n8n-editor-ui:fetch-popularity: Failed to fetch node popularity data: The operation was aborted due to timeout
-n8n-editor-ui:fetch-popularity: API unavailable, checking for existing cached data
-n8n-editor-ui:fetch-popularity: No data available - neither from API nor cache
-n8n-editor-ui:fetch-popularity: Creating empty placeholder file to avoid build failure
-n8n-editor-ui:fetch-popularity: Saved popularity data to /home/alch33my/Desktop/n8n/packages/frontend/editor-ui/.build/node-popularity.json with 0 nodes
-@n8n/design-system:build: cache miss, executing b004854771daf6c3
-@n8n/design-system:build: 
-@n8n/design-system:build: > @n8n/design-system@1.104.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system
-@n8n/design-system:build: > vite build
-@n8n/design-system:build: 
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/define.cjs               0.13 kB │ gzip: 0.10 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/index.cjs                0.13 kB │ gzip: 0.10 kB
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/types.cjs                0.00 kB │ gzip: 0.02 kB
@@ -344,12 +137,46 @@ n8n-editor-ui:fetch-popularity: Saved popularity data to /home/alch33my/Desktop/
 @n8n/extension-sdk:build: ℹ [CJS] dist/frontend/define-DPnB827L.d.cts  0.29 kB │ gzip: 0.19 kB
 @n8n/extension-sdk:build: ℹ [CJS] 5 files, total: 1.52 kB
 @n8n/extension-sdk:build: ✔ Build complete in 3714ms
-@n8n/design-system:build: rolldown-vite v7.1.16 building for production...
 @n8n/extension-sdk:build: 
 @n8n/extension-sdk:build: > @n8n/extension-sdk@0.8.0 create-json-schema /home/alch33my/Desktop/n8n/packages/@n8n/extension-sdk
 @n8n/extension-sdk:build: > tsx scripts/create-json-schema.ts
 @n8n/extension-sdk:build: 
-@n8n/n8n-extension-insights:build: cache miss, executing d4578fc78299a567
+@n8n/vitest-config:build: cache hit, replaying logs 28d6f55664f6355d
+@n8n/vitest-config:build: 
+@n8n/vitest-config:build: > @n8n/vitest-config@1.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/vitest-config
+@n8n/vitest-config:build: > tsc -p tsconfig.build.json
+@n8n/vitest-config:build: 
+@n8n/n8n-benchmark:build: cache hit, replaying logs 972d445682064852
+@n8n/n8n-benchmark:build: 
+@n8n/n8n-benchmark:build: > @n8n/n8n-benchmark@1.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/benchmark
+@n8n/n8n-benchmark:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
+@n8n/n8n-benchmark:build: 
+@n8n/errors:build: cache hit, replaying logs e50e5217be76814d
+@n8n/errors:build: 
+@n8n/errors:build: > @n8n/errors@0.5.0 build /home/alch33my/Desktop/n8n/packages/@n8n/errors
+@n8n/errors:build: > tsc -p tsconfig.build.json
+@n8n/errors:build: 
+@n8n/di:build: cache hit, replaying logs e1829ae92858001b
+@n8n/di:build: 
+@n8n/di:build: > @n8n/di@0.9.0 build /home/alch33my/Desktop/n8n/packages/@n8n/di
+@n8n/di:build: > tsc -p tsconfig.build.json
+@n8n/di:build: 
+@n8n/constants:build: cache hit, replaying logs 442d65222303e77a
+@n8n/constants:build: 
+@n8n/constants:build: > @n8n/constants@0.13.0 build /home/alch33my/Desktop/n8n/packages/@n8n/constants
+@n8n/constants:build: > tsc -p tsconfig.build.json
+@n8n/constants:build: 
+@n8n/client-oauth2:build: cache hit, replaying logs 8673ab41d340827c
+@n8n/client-oauth2:build: 
+@n8n/client-oauth2:build: > @n8n/client-oauth2@0.30.0 build /home/alch33my/Desktop/n8n/packages/@n8n/client-oauth2
+@n8n/client-oauth2:build: > tsc -p tsconfig.build.json
+@n8n/client-oauth2:build: 
+@n8n/codemirror-lang-sql:build: cache hit, replaying logs 53886a63e482f1b5
+@n8n/codemirror-lang-sql:build: 
+@n8n/codemirror-lang-sql:build: > @n8n/codemirror-lang-sql@1.2.0 build /home/alch33my/Desktop/n8n/packages/@n8n/codemirror-lang-sql
+@n8n/codemirror-lang-sql:build: > tsc -p tsconfig.build.json
+@n8n/codemirror-lang-sql:build: 
+@n8n/n8n-extension-insights:build: cache hit, replaying logs d4578fc78299a567
 @n8n/n8n-extension-insights:build: 
 @n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.9.0 build /home/alch33my/Desktop/n8n/packages/extensions/insights
 @n8n/n8n-extension-insights:build: > pnpm cleanup && pnpm run "/^build:.*/"
@@ -358,52 +185,162 @@ n8n-editor-ui:fetch-popularity: Saved popularity data to /home/alch33my/Desktop/
 @n8n/n8n-extension-insights:build: > @n8n/n8n-extension-insights@0.9.0 cleanup /home/alch33my/Desktop/n8n/packages/extensions/insights
 @n8n/n8n-extension-insights:build: > rimraf dist
 @n8n/n8n-extension-insights:build: 
-@n8n/i18n:build: cache miss, executing 641d0c9470a647ba
-@n8n/decorators:build: cache miss, executing b320debbeae95284
-@n8n/stores:build: cache miss, executing a5db038921269ff9
-@n8n/api-types:build: cache miss, executing e36c4e651e8e0cd8
-@n8n/i18n:build: 
-@n8n/i18n:build: > @n8n/i18n@1.21.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/i18n
-@n8n/i18n:build: > tsdown
-@n8n/i18n:build: 
-@n8n/api-types:build: 
-@n8n/api-types:build: > @n8n/api-types@0.51.0 build /home/alch33my/Desktop/n8n/packages/@n8n/api-types
-@n8n/api-types:build: > tsc -p tsconfig.build.json
-@n8n/api-types:build: 
-@n8n/decorators:build: 
-@n8n/decorators:build: > @n8n/decorators@0.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/decorators
-@n8n/decorators:build: > tsc -p tsconfig.build.json
-@n8n/decorators:build: 
-@n8n/stores:build: 
-@n8n/stores:build: > @n8n/stores@1.24.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/stores
-@n8n/stores:build: > tsdown
-@n8n/stores:build: 
-@n8n/i18n:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
-@n8n/stores:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
-@n8n/stores:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/frontend/@n8n/stores/tsdown.config.ts
-@n8n/i18n:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/frontend/@n8n/i18n/tsdown.config.ts
-@n8n/stores:build: ℹ entry: src/constants.ts, src/index.ts, src/metaTagConfig.ts, src/useAgentRequestStore.ts, src/useRootStore.ts
-@n8n/stores:build: ℹ tsconfig: tsconfig.json
-@n8n/stores:build: ℹ Build start
-@n8n/i18n:build: ℹ entry: src/index.ts, src/types.ts, src/utils.ts
-@n8n/i18n:build: ℹ tsconfig: tsconfig.json
-@n8n/i18n:build: ℹ Build start
-@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/stores:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/stores:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/stores:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
-@n8n/stores:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/permissions:build: cache hit, replaying logs 7f3d7dc6e156379d
+@n8n/permissions:build: 
+@n8n/permissions:build: > @n8n/permissions@0.40.0 build /home/alch33my/Desktop/n8n/packages/@n8n/permissions
+@n8n/permissions:build: > tsc -p tsconfig.build.json
+@n8n/permissions:build: 
+@n8n/imap:build: cache hit, replaying logs 8e453a4a5d7cecf1
+@n8n/imap:build: 
+@n8n/imap:build: > @n8n/imap@0.15.0 build /home/alch33my/Desktop/n8n/packages/@n8n/imap
+@n8n/imap:build: > tsc -p tsconfig.build.json
+@n8n/imap:build: 
+@n8n/eslint-config:build: cache hit, replaying logs 3f4c0728992ea264
+@n8n/eslint-config:build: 
+@n8n/eslint-config:build: > @n8n/eslint-config@0.0.1 build /home/alch33my/Desktop/n8n/packages/@n8n/eslint-config
+@n8n/eslint-config:build: > tsc
+@n8n/eslint-config:build: 
+@n8n/eslint-plugin-community-nodes:build: cache hit, replaying logs e7cc9047aa0936bd
+@n8n/eslint-plugin-community-nodes:build: 
+@n8n/eslint-plugin-community-nodes:build: > @n8n/eslint-plugin-community-nodes@0.6.0 build /home/alch33my/Desktop/n8n/packages/@n8n/eslint-plugin-community-nodes
+@n8n/eslint-plugin-community-nodes:build: > tsc --project tsconfig.build.json
+@n8n/eslint-plugin-community-nodes:build: 
+@n8n/config:build: cache hit, replaying logs 6e436bcbca992ff4
+@n8n/config:build: 
+@n8n/config:build: > @n8n/config@1.59.0 build /home/alch33my/Desktop/n8n/packages/@n8n/config
+@n8n/config:build: > tsc -p tsconfig.build.json
+@n8n/config:build: 
+@n8n/composables:build: cache hit, replaying logs 4afbcdc54a806c4d
+@n8n/composables:build: 
+@n8n/composables:build: > @n8n/composables@1.12.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/composables
+@n8n/composables:build: > tsdown
+@n8n/composables:build: 
+@n8n/composables:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+@n8n/composables:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/frontend/@n8n/composables/tsdown.config.ts
+@n8n/composables:build: ℹ entry: src/useDeviceSupport.ts, src/useShortKeyPress.ts, src/useThrottleWithReactiveDelay.ts
+@n8n/composables:build: ℹ tsconfig: tsconfig.json
+@n8n/composables:build: ℹ Build start
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/composables:build: ℹ [CJS] dist/useDeviceSupport.cjs                  1.85 kB │ gzip: 0.75 kB
+@n8n/composables:build: ℹ [CJS] dist/useShortKeyPress.cjs                  0.79 kB │ gzip: 0.38 kB
+@n8n/composables:build: ℹ [CJS] dist/useThrottleWithReactiveDelay.cjs      0.75 kB │ gzip: 0.38 kB
+@n8n/composables:build: ℹ [CJS] dist/useDeviceSupport.cjs.map              2.58 kB │ gzip: 1.07 kB
+@n8n/composables:build: ℹ [CJS] dist/useShortKeyPress.cjs.map              1.27 kB │ gzip: 0.64 kB
+@n8n/composables:build: ℹ [CJS] dist/chunk-CUT6urMc.cjs                    1.09 kB │ gzip: 0.54 kB
+@n8n/composables:build: ℹ [CJS] dist/useThrottleWithReactiveDelay.cjs.map  0.88 kB │ gzip: 0.49 kB
+@n8n/composables:build: ℹ [CJS] 7 files, total: 9.21 kB
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/composables:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/composables:build: ℹ [ESM] dist/useDeviceSupport.js                  1.68 kB │ gzip: 0.69 kB
+@n8n/composables:build: ℹ [ESM] dist/useShortKeyPress.js                  0.57 kB │ gzip: 0.32 kB
+@n8n/composables:build: ℹ [ESM] dist/useThrottleWithReactiveDelay.js      0.56 kB │ gzip: 0.31 kB
+@n8n/composables:build: ℹ [ESM] dist/useDeviceSupport.js.map              2.62 kB │ gzip: 1.07 kB
+@n8n/composables:build: ℹ [ESM] dist/useShortKeyPress.js.map              1.27 kB │ gzip: 0.64 kB
+@n8n/composables:build: ℹ [ESM] dist/useThrottleWithReactiveDelay.js.map  0.89 kB │ gzip: 0.48 kB
+@n8n/composables:build: ℹ [ESM] dist/useDeviceSupport.d.ts                0.47 kB │ gzip: 0.29 kB
+@n8n/composables:build: ℹ [ESM] dist/useShortKeyPress.d.ts                0.41 kB │ gzip: 0.25 kB
+@n8n/composables:build: ℹ [ESM] dist/useThrottleWithReactiveDelay.d.ts    0.30 kB │ gzip: 0.19 kB
+@n8n/composables:build: ℹ [ESM] 9 files, total: 8.77 kB
+@n8n/composables:build: ℹ [CJS] dist/useDeviceSupport.d.cts              0.47 kB │ gzip: 0.29 kB
+@n8n/composables:build: ℹ [CJS] dist/useShortKeyPress.d.cts              0.41 kB │ gzip: 0.25 kB
+@n8n/composables:build: ℹ [CJS] dist/useThrottleWithReactiveDelay.d.cts  0.30 kB │ gzip: 0.19 kB
+@n8n/composables:build: ℹ [CJS] 3 files, total: 1.18 kB
+@n8n/composables:build: ✔ Build complete in 1715ms
+@n8n/utils:build: cache hit, replaying logs 92a4a6a19595bcc5
+@n8n/utils:build: 
+@n8n/utils:build: > @n8n/utils@1.18.0 build /home/alch33my/Desktop/n8n/packages/@n8n/utils
+@n8n/utils:build: > tsdown
+@n8n/utils:build: 
+@n8n/utils:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+@n8n/utils:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/@n8n/utils/tsdown.config.ts
+@n8n/utils:build: ℹ entry: src/assert.ts, src/event-bus.ts, src/event-queue.ts, src/retry.ts, src/number/smartDecimal.ts, src/sort/sortByProperty.ts, src/search/reRankSearchResults.ts, src/search/sublimeSearch.ts, src/string/truncate.ts
+@n8n/utils:build: ℹ tsconfig: tsconfig.json
+@n8n/utils:build: ℹ Build start
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/utils:build: ℹ [CJS] dist/search/sublimeSearch.cjs             5.36 kB │ gzip: 1.75 kB
+@n8n/utils:build: ℹ [CJS] dist/retry.cjs                            1.45 kB │ gzip: 0.66 kB
+@n8n/utils:build: ℹ [CJS] dist/string/truncate.cjs                  1.37 kB │ gzip: 0.62 kB
+@n8n/utils:build: ℹ [CJS] dist/event-bus.cjs                        1.03 kB │ gzip: 0.47 kB
+@n8n/utils:build: ℹ [CJS] dist/event-queue.cjs                      1.01 kB │ gzip: 0.48 kB
+@n8n/utils:build: ℹ [CJS] dist/search/reRankSearchResults.cjs       0.56 kB │ gzip: 0.30 kB
+@n8n/utils:build: ℹ [CJS] dist/sort/sortByProperty.cjs              0.39 kB │ gzip: 0.25 kB
+@n8n/utils:build: ℹ [CJS] dist/number/smartDecimal.cjs              0.34 kB │ gzip: 0.22 kB
+@n8n/utils:build: ℹ [CJS] dist/assert.cjs                           0.24 kB │ gzip: 0.19 kB
+@n8n/utils:build: ℹ [CJS] dist/search/sublimeSearch.cjs.map        11.66 kB │ gzip: 3.92 kB
+@n8n/utils:build: ℹ [CJS] dist/event-bus.cjs.map                    2.93 kB │ gzip: 0.99 kB
+@n8n/utils:build: ℹ [CJS] dist/retry.cjs.map                        2.35 kB │ gzip: 1.05 kB
+@n8n/utils:build: ℹ [CJS] dist/string/truncate.cjs.map              2.33 kB │ gzip: 1.01 kB
+@n8n/utils:build: ℹ [CJS] dist/event-queue.cjs.map                  1.75 kB │ gzip: 0.83 kB
+@n8n/utils:build: ℹ [CJS] dist/search/reRankSearchResults.cjs.map   1.27 kB │ gzip: 0.63 kB
+@n8n/utils:build: ℹ [CJS] dist/sort/sortByProperty.cjs.map          0.67 kB │ gzip: 0.42 kB
+@n8n/utils:build: ℹ [CJS] dist/number/smartDecimal.cjs.map          0.63 kB │ gzip: 0.37 kB
+@n8n/utils:build: ℹ [CJS] dist/assert.cjs.map                       0.46 kB │ gzip: 0.33 kB
+@n8n/utils:build: ℹ [CJS] 18 files, total: 35.80 kB
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/utils:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/utils:build: ℹ [ESM] dist/search/sublimeSearch.js             5.32 kB │ gzip: 1.74 kB
+@n8n/utils:build: ℹ [ESM] dist/retry.js                            1.44 kB │ gzip: 0.66 kB
+@n8n/utils:build: ℹ [ESM] dist/string/truncate.js                  1.33 kB │ gzip: 0.61 kB
+@n8n/utils:build: ℹ [ESM] dist/event-bus.js                        1.01 kB │ gzip: 0.46 kB
+@n8n/utils:build: ℹ [ESM] dist/event-queue.js                      1.00 kB │ gzip: 0.47 kB
+@n8n/utils:build: ℹ [ESM] dist/search/reRankSearchResults.js       0.54 kB │ gzip: 0.29 kB
+@n8n/utils:build: ℹ [ESM] dist/sort/sortByProperty.js              0.37 kB │ gzip: 0.25 kB
+@n8n/utils:build: ℹ [ESM] dist/number/smartDecimal.js              0.32 kB │ gzip: 0.22 kB
+@n8n/utils:build: ℹ [ESM] dist/assert.js                           0.23 kB │ gzip: 0.18 kB
+@n8n/utils:build: ℹ [ESM] dist/search/sublimeSearch.js.map        11.66 kB │ gzip: 3.92 kB
+@n8n/utils:build: ℹ [ESM] dist/event-bus.js.map                    2.93 kB │ gzip: 0.99 kB
+@n8n/utils:build: ℹ [ESM] dist/retry.js.map                        2.35 kB │ gzip: 1.05 kB
+@n8n/utils:build: ℹ [ESM] dist/string/truncate.js.map              2.33 kB │ gzip: 1.00 kB
+@n8n/utils:build: ℹ [ESM] dist/event-queue.js.map                  1.75 kB │ gzip: 0.83 kB
+@n8n/utils:build: ℹ [ESM] dist/search/reRankSearchResults.js.map   1.27 kB │ gzip: 0.63 kB
+@n8n/utils:build: ℹ [ESM] dist/sort/sortByProperty.js.map          0.67 kB │ gzip: 0.41 kB
+@n8n/utils:build: ℹ [ESM] dist/number/smartDecimal.js.map          0.63 kB │ gzip: 0.37 kB
+@n8n/utils:build: ℹ [ESM] dist/assert.js.map                       0.46 kB │ gzip: 0.33 kB
+@n8n/utils:build: ℹ [ESM] dist/event-bus.d.ts                      0.98 kB │ gzip: 0.34 kB
+@n8n/utils:build: ℹ [ESM] dist/search/sublimeSearch.d.ts           0.38 kB │ gzip: 0.25 kB
+@n8n/utils:build: ℹ [ESM] dist/search/reRankSearchResults.d.ts     0.36 kB │ gzip: 0.21 kB
+@n8n/utils:build: ℹ [ESM] dist/retry.d.ts                          0.28 kB │ gzip: 0.21 kB
+@n8n/utils:build: ℹ [ESM] dist/string/truncate.d.ts                0.27 kB │ gzip: 0.18 kB
+@n8n/utils:build: ℹ [ESM] dist/event-queue.d.ts                    0.23 kB │ gzip: 0.17 kB
+@n8n/utils:build: ℹ [ESM] dist/sort/sortByProperty.d.ts            0.22 kB │ gzip: 0.17 kB
+@n8n/utils:build: ℹ [ESM] dist/number/smartDecimal.d.ts            0.19 kB │ gzip: 0.14 kB
+@n8n/utils:build: ℹ [ESM] dist/assert.d.ts                         0.18 kB │ gzip: 0.15 kB
+@n8n/utils:build: ℹ [ESM] 27 files, total: 38.70 kB
+@n8n/utils:build: ℹ [CJS] dist/event-bus.d.cts                   0.98 kB │ gzip: 0.34 kB
+@n8n/utils:build: ℹ [CJS] dist/search/sublimeSearch.d.cts        0.38 kB │ gzip: 0.25 kB
+@n8n/utils:build: ℹ [CJS] dist/search/reRankSearchResults.d.cts  0.36 kB │ gzip: 0.22 kB
+@n8n/utils:build: ℹ [CJS] dist/retry.d.cts                       0.28 kB │ gzip: 0.21 kB
+@n8n/utils:build: ℹ [CJS] dist/string/truncate.d.cts             0.27 kB │ gzip: 0.18 kB
+@n8n/utils:build: ℹ [CJS] dist/event-queue.d.cts                 0.23 kB │ gzip: 0.17 kB
+@n8n/utils:build: ℹ [CJS] dist/sort/sortByProperty.d.cts         0.22 kB │ gzip: 0.17 kB
+@n8n/utils:build: ℹ [CJS] dist/number/smartDecimal.d.cts         0.19 kB │ gzip: 0.15 kB
+@n8n/utils:build: ℹ [CJS] dist/assert.d.cts                      0.18 kB │ gzip: 0.15 kB
+@n8n/utils:build: ℹ [CJS] 9 files, total: 3.10 kB
+@n8n/utils:build: ✔ Build complete in 1541ms
+@n8n/node-cli:build: cache hit, replaying logs ac66daa1fdcf3d7b
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.13.0 build /home/alch33my/Desktop/n8n/packages/@n8n/node-cli
+@n8n/node-cli:build: > tsc -p tsconfig.build.json && pnpm copy-templates
+@n8n/node-cli:build: 
+@n8n/node-cli:build: 
+@n8n/node-cli:build: > @n8n/node-cli@0.13.0 copy-templates /home/alch33my/Desktop/n8n/packages/@n8n/node-cli
+@n8n/node-cli:build: > node scripts/copy-templates.mjs
+@n8n/node-cli:build: 
+@n8n/design-system:build: cache hit, replaying logs b004854771daf6c3
+@n8n/design-system:build: 
+@n8n/design-system:build: > @n8n/design-system@1.104.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system
+@n8n/design-system:build: > vite build
+@n8n/design-system:build: 
+@n8n/design-system:build: rolldown-vite v7.1.16 building for production...
 @n8n/design-system:build: Browserslist: browsers data (caniuse-lite) is 6 months old. Please run:
 @n8n/design-system:build:   npx update-browserslist-db@latest
 @n8n/design-system:build:   Why you should do it regularly: https://github.com/browserslist/update-db#readme
-@n8n/backend-common:build: cache miss, executing 40af3c52aabac65b
-@n8n/backend-common:build: 
-@n8n/backend-common:build: > @n8n/backend-common@0.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/backend-common
-@n8n/backend-common:build: > tsc -p tsconfig.build.json
-@n8n/backend-common:build: 
 @n8n/design-system:build: [2K@n8n/design-system:build: transforming...[32m✓[39m 2708 modules transformed.
 @n8n/design-system:build: rendering chunks...
 @n8n/design-system:build: computing gzip size...
@@ -411,6 +348,92 @@ n8n-editor-ui:fetch-popularity: Saved popularity data to /home/alch33my/Desktop/
 @n8n/design-system:build: [2mdist/[22m[36men-BIzD-hdW.js           [39m[1m[2m    0.08 kB[22m[22m[2m │ gzip:   0.08 kB[22m
 @n8n/design-system:build: [2mdist/[22m[36men-DaqoBz3R.js           [39m[1m[2m    4.79 kB[22m[22m[2m │ gzip:   1.71 kB[22m
 @n8n/design-system:build: [2mdist/[22m[36mn8n-design-system.es.js  [39m[1m[33m1,776.09 kB[39m[22m[2m │ gzip: 442.57 kB[22m
+@n8n/design-system:build: [2K@n8n/design-system:build: transforming...[32m✓[39m 2708 modules transformed.
+@n8n/design-system:build: rendering chunks...
+@n8n/design-system:build: computing gzip size...
+@n8n/design-system:build: [2mdist/[22m[35mdesign-system.css         [39m[1m[2m  114.08 kB[22m[22m[2m │ gzip:  18.17 kB[22m
+@n8n/design-system:build: [2mdist/[22m[36mn8n-design-system.umd.js  [39m[1m[33m1,325.43 kB[39m[22m[2m │ gzip: 387.79 kB[22m
+@n8n/design-system:build: ✓ built in 5.89s
+@n8n/chat:build: cache hit, replaying logs 341aa5f9db4f30d8
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.62.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > pnpm build:vite && pnpm build:bundle
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.62.0 build:vite /home/alch33my/Desktop/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env vite build
+@n8n/chat:build: 
+@n8n/chat:build: rolldown-vite v7.1.16 building for production...
+@n8n/chat:build: [96m../design-system/src/components/DateRangePicker/DateRangePicker.vue[0m:[93m36[0m:[93m7[0m - [91merror[0m[90m TS7022: [0m'slots' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+@n8n/chat:build: 
+@n8n/chat:build: [7m36[0m const slots = useSlots();
+@n8n/chat:build: [7m  [0m [91m      ~~~~~[0m
+@n8n/chat:build: 
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2808 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: [plugin builtin:reporter] 
+@n8n/chat:build: (!) /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: [vite:dts] Start generate declaration files...
+@n8n/chat:build: [vite:dts] Declaration files built in 12363ms.
+@n8n/chat:build: 
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css    [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.es.js  [39m[1m[33m945.25 kB[39m[22m[2m │ gzip: 245.32 kB[22m
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2808 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css     [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.umd.js  [39m[1m[33m690.95 kB[39m[22m[2m │ gzip: 214.84 kB[22m
+@n8n/chat:build: ✓ built in 17.20s
+@n8n/chat:build: 
+@n8n/chat:build: > @n8n/chat@0.62.0 build:bundle /home/alch33my/Desktop/n8n/packages/frontend/@n8n/chat
+@n8n/chat:build: > cross-env INCLUDE_VUE=true vite build
+@n8n/chat:build: 
+@n8n/chat:build: rolldown-vite v7.1.16 building for production...
+@n8n/chat:build: [96m../design-system/src/components/DateRangePicker/DateRangePicker.vue[0m:[93m36[0m:[93m7[0m - [91merror[0m[90m TS7022: [0m'slots' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
+@n8n/chat:build: 
+@n8n/chat:build: [7m36[0m const slots = useSlots();
+@n8n/chat:build: [7m  [0m [91m      ~~~~~[0m
+@n8n/chat:build: 
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2811 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: [plugin builtin:reporter] 
+@n8n/chat:build: (!) /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
+@n8n/chat:build: 
+@n8n/chat:build: 
+@n8n/chat:build: [vite:dts] Start generate declaration files...
+@n8n/chat:build: [vite:dts] Declaration files built in 10790ms.
+@n8n/chat:build: 
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css           [39m[1m[2m   63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.bundle.es.js  [39m[1m[33m1,030.03 kB[39m[22m[2m │ gzip: 272.95 kB[22m
+@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2811 modules transformed.
+@n8n/chat:build: rendering chunks...
+@n8n/chat:build: computing gzip size...
+@n8n/chat:build: [2mdist/[22m[35mchat.css            [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
+@n8n/chat:build: [2mdist/[22m[36mchat.bundle.umd.js  [39m[1m[33m696.25 kB[39m[22m[2m │ gzip: 235.25 kB[22m
+@n8n/chat:build: ✓ built in 15.21s
+n8n-workflow:build: cache hit, replaying logs 58327c7b7e6d4748
+n8n-workflow:build: 
+n8n-workflow:build: > n8n-workflow@1.114.0 build /home/alch33my/Desktop/n8n/packages/workflow
+n8n-workflow:build: > tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json
+n8n-workflow:build: 
+@n8n/stores:build: cache hit, replaying logs a5db038921269ff9
+@n8n/stores:build: 
+@n8n/stores:build: > @n8n/stores@1.24.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/stores
+@n8n/stores:build: > tsdown
+@n8n/stores:build: 
+@n8n/stores:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+@n8n/stores:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/frontend/@n8n/stores/tsdown.config.ts
+@n8n/stores:build: ℹ entry: src/constants.ts, src/index.ts, src/metaTagConfig.ts, src/useAgentRequestStore.ts, src/useRootStore.ts
+@n8n/stores:build: ℹ tsconfig: tsconfig.json
+@n8n/stores:build: ℹ Build start
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/stores:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/stores:build: ℹ [CJS] dist/useRootStore.cjs                5.88 kB │ gzip: 1.34 kB
 @n8n/stores:build: ℹ [CJS] dist/useAgentRequestStore.cjs        2.05 kB │ gzip: 0.62 kB
 @n8n/stores:build: ℹ [CJS] dist/metaTagConfig.cjs               0.24 kB │ gzip: 0.12 kB
@@ -460,6 +483,20 @@ n8n-editor-ui:fetch-popularity: Saved popularity data to /home/alch33my/Desktop/
 @n8n/stores:build: ℹ [CJS] dist/constants-DwkrkpBX.d.cts    1.77 kB │ gzip: 0.74 kB
 @n8n/stores:build: ℹ [CJS] 6 files, total: 12.17 kB
 @n8n/stores:build: ✔ Build complete in 2909ms
+@n8n/i18n:build: cache hit, replaying logs 641d0c9470a647ba
+@n8n/i18n:build: 
+@n8n/i18n:build: > @n8n/i18n@1.21.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/i18n
+@n8n/i18n:build: > tsdown
+@n8n/i18n:build: 
+@n8n/i18n:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
+@n8n/i18n:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/frontend/@n8n/i18n/tsdown.config.ts
+@n8n/i18n:build: ℹ entry: src/index.ts, src/types.ts, src/utils.ts
+@n8n/i18n:build: ℹ tsconfig: tsconfig.json
+@n8n/i18n:build: ℹ Build start
+@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
+@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
+@n8n/i18n:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/i18n:build: ℹ [CJS] dist/index.cjs               310.75 kB │ gzip: 71.28 kB
 @n8n/i18n:build: ℹ [CJS] dist/utils.cjs                 0.30 kB │ gzip:  0.16 kB
 @n8n/i18n:build: ℹ [CJS] dist/types.cjs                 0.00 kB │ gzip:  0.02 kB
@@ -486,28 +523,37 @@ n8n-editor-ui:fetch-popularity: Saved popularity data to /home/alch33my/Desktop/
 @n8n/i18n:build: ℹ [CJS] dist/types-wNLLPlzG.d.cts  186.90 kB │ gzip: 25.94 kB
 @n8n/i18n:build: ℹ [CJS] 4 files, total: 385.28 kB
 @n8n/i18n:build: ✔ Build complete in 3645ms
-@n8n/rest-api-client:build: cache miss, executing f05f439c36ad80c6
-n8n-core:build: cache miss, executing cc4626690562d3e8
-@n8n/ai-workflow-builder:build: cache miss, executing 7f9e69807dec9d82
-@n8n/design-system:build: [2K@n8n/design-system:build: transforming...[32m✓[39m 2708 modules transformed.
-@n8n/design-system:build: rendering chunks...
+@n8n/decorators:build: cache hit, replaying logs b320debbeae95284
+@n8n/decorators:build: 
+@n8n/decorators:build: > @n8n/decorators@0.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/decorators
+@n8n/decorators:build: > tsc -p tsconfig.build.json
+@n8n/decorators:build: 
+@n8n/backend-common:build: cache hit, replaying logs 40af3c52aabac65b
+@n8n/backend-common:build: 
+@n8n/backend-common:build: > @n8n/backend-common@0.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/backend-common
+@n8n/backend-common:build: > tsc -p tsconfig.build.json
+@n8n/backend-common:build: 
+@n8n/api-types:build: cache hit, replaying logs e36c4e651e8e0cd8
+@n8n/api-types:build: 
+@n8n/api-types:build: > @n8n/api-types@0.51.0 build /home/alch33my/Desktop/n8n/packages/@n8n/api-types
+@n8n/api-types:build: > tsc -p tsconfig.build.json
+@n8n/api-types:build: 
+@n8n/ai-workflow-builder:build: cache hit, replaying logs 7f9e69807dec9d82
 @n8n/ai-workflow-builder:build: 
 @n8n/ai-workflow-builder:build: > @n8n/ai-workflow-builder@0.27.0 build /home/alch33my/Desktop/n8n/packages/@n8n/ai-workflow-builder.ee
 @n8n/ai-workflow-builder:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
 @n8n/ai-workflow-builder:build: 
-@n8n/rest-api-client:build: 
-@n8n/rest-api-client:build: > @n8n/rest-api-client@1.20.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/rest-api-client
-@n8n/rest-api-client:build: > tsdown
-@n8n/rest-api-client:build: 
+n8n-core:build: cache hit, replaying logs cc4626690562d3e8
 n8n-core:build: 
 n8n-core:build: > n8n-core@1.116.0 build /home/alch33my/Desktop/n8n/packages/core
 n8n-core:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json
 n8n-core:build: 
+@n8n/rest-api-client:build: cache hit, replaying logs f05f439c36ad80c6
+@n8n/rest-api-client:build: 
+@n8n/rest-api-client:build: > @n8n/rest-api-client@1.20.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/rest-api-client
+@n8n/rest-api-client:build: > tsdown
+@n8n/rest-api-client:build: 
 @n8n/rest-api-client:build: ℹ tsdown v0.15.6 powered by rolldown v1.0.0-beta.44
-@n8n/design-system:build: computing gzip size...
-@n8n/design-system:build: [2mdist/[22m[35mdesign-system.css         [39m[1m[2m  114.08 kB[22m[22m[2m │ gzip:  18.17 kB[22m
-@n8n/design-system:build: [2mdist/[22m[36mn8n-design-system.umd.js  [39m[1m[33m1,325.43 kB[39m[22m[2m │ gzip: 387.79 kB[22m
-@n8n/design-system:build: ✓ built in 5.89s
 @n8n/rest-api-client:build: ℹ Using tsdown config: /home/alch33my/Desktop/n8n/packages/frontend/@n8n/rest-api-client/tsdown.config.ts
 @n8n/rest-api-client:build: ℹ entry: src/index.ts, src/types.ts, src/utils.ts, src/api/api-keys.ts, src/api/cloudPlans.ts, src/api/communityNodes.ts, src/api/ctas.ts, src/api/eventbus.ee.ts, src/api/events.ts, src/api/execution.ts, src/api/externalSecrets.ee.ts, src/api/index.ts, src/api/ldap.ts, src/api/mfa.ts, src/api/module-settings.ts, src/api/nodeTypes.ts, src/api/npsSurvey.ts, src/api/orchestration.ts, src/api/prompts.ts, src/api/provisioning.ts, src/api/roles.ts, src/api/settings.ts, src/api/sso.ts, src/api/tags.ts, src/api/templates.ts, src/api/third-party-licenses.ts, src/api/ui.ts, src/api/usage.ts, src/api/users.ts, src/api/versions.ts, src/api/webhooks.ts, src/api/workflowHistory.ts, src/api/workflows.ts
 @n8n/rest-api-client:build: ℹ tsconfig: tsconfig.json
@@ -516,16 +562,6 @@ n8n-core:build:
 @n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
 @n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "define" option is deprecated. Use "transform.define" instead.
 @n8n/rest-api-client:build: ⚠ Deprecation Warning: The top-level "inject" option is deprecated. Use "transform.inject" instead.
-@n8n/chat:build: cache miss, executing 341aa5f9db4f30d8
-@n8n/chat:build: 
-@n8n/chat:build: > @n8n/chat@0.62.0 build /home/alch33my/Desktop/n8n/packages/frontend/@n8n/chat
-@n8n/chat:build: > pnpm build:vite && pnpm build:bundle
-@n8n/chat:build: 
-@n8n/chat:build: 
-@n8n/chat:build: > @n8n/chat@0.62.0 build:vite /home/alch33my/Desktop/n8n/packages/frontend/@n8n/chat
-@n8n/chat:build: > cross-env vite build
-@n8n/chat:build: 
-@n8n/chat:build: rolldown-vite v7.1.16 building for production...
 @n8n/rest-api-client:build: ℹ [CJS] dist/index.cjs                               9.43 kB │ gzip: 2.04 kB
 @n8n/rest-api-client:build: ℹ [CJS] dist/api/index.cjs                           8.87 kB │ gzip: 1.90 kB
 @n8n/rest-api-client:build: ℹ [CJS] dist/api/users.cjs                           1.21 kB │ gzip: 0.34 kB
@@ -567,6 +603,7 @@ n8n-core:build:
 @n8n/rest-api-client:build: ℹ [CJS] dist/nodeTypes-DCk86LDz.cjs.map              4.68 kB │ gzip: 1.32 kB
 @n8n/rest-api-client:build: ℹ [CJS] dist/nodeTypes-DCk86LDz.cjs                  3.84 kB │ gzip: 0.87 kB
 @n8n/rest-api-client:build: ℹ [CJS] dist/sso-C7aUBmBN.cjs.map                    2.85 kB │ gzip: 0.78 kB
+n8n-nodes-base:build: cache miss, executing 1adf86e182ab12b8
 @n8n/rest-api-client:build: ℹ [CJS] dist/externalSecrets.ee-DyhPxamB.cjs.map     2.65 kB │ gzip: 0.71 kB
 @n8n/rest-api-client:build: ℹ [CJS] dist/ldap-B4lzIQvN.cjs.map                   2.61 kB │ gzip: 0.89 kB
 @n8n/rest-api-client:build: ℹ [CJS] dist/sso-C7aUBmBN.cjs                        2.53 kB │ gzip: 0.51 kB
@@ -844,104 +881,46 @@ n8n-core:build:
 @n8n/rest-api-client:build: ℹ [CJS] dist/index-CPiw-gXy.d.cts                 0.01 kB │ gzip: 0.03 kB
 @n8n/rest-api-client:build: ℹ [CJS] 64 files, total: 61.37 kB
 @n8n/rest-api-client:build: ✔ Build complete in 2759ms
-@n8n/db:build: cache miss, executing f26481842baf4a49
-n8n-nodes-base:build: cache miss, executing 1edc524b989e75ea
-@n8n/task-runner:build: cache miss, executing ceea05d6762d8e96
-n8n-node-dev:build: cache miss, executing 83d0c4f0db96ee01
-@n8n/db:build: 
-@n8n/db:build: > @n8n/db@0.28.0 build /home/alch33my/Desktop/n8n/packages/@n8n/db
-@n8n/db:build: > tsc -p tsconfig.build.json
-@n8n/db:build: 
-n8n-nodes-base:build: 
-n8n-nodes-base:build: > n8n-nodes-base@1.115.0 build /home/alch33my/Desktop/n8n/packages/nodes-base
-n8n-nodes-base:build: > tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata
-n8n-nodes-base:build: 
+n8n-node-dev:build: cache hit, replaying logs 83d0c4f0db96ee01
 n8n-node-dev:build: 
 n8n-node-dev:build: > n8n-node-dev@1.115.0 build /home/alch33my/Desktop/n8n/packages/node-dev
 n8n-node-dev:build: > tsc --noEmit
 n8n-node-dev:build: 
+@n8n/task-runner:build: cache hit, replaying logs ceea05d6762d8e96
 @n8n/task-runner:build: 
 @n8n/task-runner:build: > @n8n/task-runner@1.53.0 build /home/alch33my/Desktop/n8n/packages/@n8n/task-runner
 @n8n/task-runner:build: > tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json
 @n8n/task-runner:build: 
-@n8n/backend-test-utils:build: cache miss, executing be25bb35b1c486ce
+n8n-editor-ui:popularity-cache-marker: 
+n8n-editor-ui:popularity-cache-marker: > n8n-editor-ui@1.117.0 popularity-cache-marker /home/alch33my/Desktop/n8n/packages/frontend/editor-ui
+n8n-editor-ui:popularity-cache-marker: > node scripts/cache-marker.mjs
+n8n-editor-ui:popularity-cache-marker: 
+@n8n/db:build: cache hit, replaying logs f26481842baf4a49
+@n8n/db:build: 
+@n8n/db:build: > @n8n/db@0.28.0 build /home/alch33my/Desktop/n8n/packages/@n8n/db
+@n8n/db:build: > tsc -p tsconfig.build.json
+@n8n/db:build: 
+@n8n/backend-test-utils:build: cache hit, replaying logs be25bb35b1c486ce
 @n8n/backend-test-utils:build: 
 @n8n/backend-test-utils:build: > @n8n/backend-test-utils@0.20.0 build /home/alch33my/Desktop/n8n/packages/@n8n/backend-test-utils
 @n8n/backend-test-utils:build: > tsc -p tsconfig.build.json
 @n8n/backend-test-utils:build: 
-@n8n/chat:build: [96m../design-system/src/components/DateRangePicker/DateRangePicker.vue[0m:[93m36[0m:[93m7[0m - [91merror[0m[90m TS7022: [0m'slots' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
-@n8n/chat:build: 
-@n8n/chat:build: [7m36[0m const slots = useSlots();
-@n8n/chat:build: [7m  [0m [91m      ~~~~~[0m
-@n8n/chat:build: 
-@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2808 modules transformed.
-@n8n/chat:build: rendering chunks...
-@n8n/chat:build: [plugin builtin:reporter] 
-@n8n/chat:build: (!) /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
-@n8n/chat:build: 
-@n8n/chat:build: 
-@n8n/chat:build: [vite:dts] Start generate declaration files...
-@n8n/chat:build: [vite:dts] Declaration files built in 12363ms.
-@n8n/chat:build: 
-@n8n/chat:build: computing gzip size...
-@n8n/chat:build: [2mdist/[22m[35mchat.css    [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
-@n8n/chat:build: [2mdist/[22m[36mchat.es.js  [39m[1m[33m945.25 kB[39m[22m[2m │ gzip: 245.32 kB[22m
-@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2808 modules transformed.
-@n8n/chat:build: rendering chunks...
-@n8n/chat:build: computing gzip size...
-@n8n/chat:build: [2mdist/[22m[35mchat.css     [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
-@n8n/chat:build: [2mdist/[22m[36mchat.umd.js  [39m[1m[33m690.95 kB[39m[22m[2m │ gzip: 214.84 kB[22m
-@n8n/chat:build: ✓ built in 17.20s
-@n8n/chat:build: 
-@n8n/chat:build: > @n8n/chat@0.62.0 build:bundle /home/alch33my/Desktop/n8n/packages/frontend/@n8n/chat
-@n8n/chat:build: > cross-env INCLUDE_VUE=true vite build
-@n8n/chat:build: 
-@n8n/chat:build: rolldown-vite v7.1.16 building for production...
+n8n-editor-ui:fetch-popularity: cache hit, replaying logs c739cf93a61b7135
+n8n-editor-ui:fetch-popularity: 
+n8n-editor-ui:fetch-popularity: > n8n-editor-ui@1.117.0 fetch-popularity /home/alch33my/Desktop/n8n/packages/frontend/editor-ui
+n8n-editor-ui:fetch-popularity: > node scripts/fetch-node-popularity.mjs
+n8n-editor-ui:fetch-popularity: 
+n8n-editor-ui:fetch-popularity: Fetching node popularity data from: https://internal.users.n8n.cloud/webhook/nodes-popularity-scores
+n8n-editor-ui:fetch-popularity: Failed to fetch node popularity data: The operation was aborted due to timeout
+n8n-editor-ui:fetch-popularity: API unavailable, checking for existing cached data
+n8n-editor-ui:fetch-popularity: No data available - neither from API nor cache
+n8n-editor-ui:fetch-popularity: Creating empty placeholder file to avoid build failure
+n8n-editor-ui:fetch-popularity: Saved popularity data to /home/alch33my/Desktop/n8n/packages/frontend/editor-ui/.build/node-popularity.json with 0 nodes
 n8n-nodes-base:build: 
-n8n-nodes-base:build: > n8n-nodes-base@1.115.0 copy-nodes-json /home/alch33my/Desktop/n8n/packages/nodes-base
-n8n-nodes-base:build: > node scripts/copy-nodes-json.js .
+n8n-nodes-base:build: > n8n-nodes-base@1.115.0 build /home/alch33my/Desktop/n8n/packages/nodes-base
+n8n-nodes-base:build: > tsc --build tsconfig.build.cjs.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.cjs.json && pnpm n8n-copy-static-files && pnpm n8n-generate-translations && pnpm n8n-generate-metadata
 n8n-nodes-base:build: 
-n8n-nodes-base:build: Default locale set to: [35men[0m
-n8n-nodes-base:build: No translation required - Skipping translations build...
-@n8n/chat:build: [96m../design-system/src/components/DateRangePicker/DateRangePicker.vue[0m:[93m36[0m:[93m7[0m - [91merror[0m[90m TS7022: [0m'slots' implicitly has type 'any' because it does not have a type annotation and is referenced directly or indirectly in its own initializer.
-@n8n/chat:build: 
-@n8n/chat:build: [7m36[0m const slots = useSlots();
-@n8n/chat:build: [7m  [0m [91m      ~~~~~[0m
-@n8n/chat:build: 
-@n8n/n8n-nodes-langchain:build: cache miss, executing 1411ef01cc13e4b8
-@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2811 modules transformed.
-@n8n/n8n-nodes-langchain:build: 
-@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 build /home/alch33my/Desktop/n8n/packages/@n8n/nodes-langchain
-@n8n/n8n-nodes-langchain:build: > tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata
-@n8n/n8n-nodes-langchain:build: 
-@n8n/chat:build: rendering chunks...
-@n8n/chat:build: [plugin builtin:reporter] 
-@n8n/chat:build: (!) /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/lang/en.ts is dynamically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts but also statically imported by /home/alch33my/Desktop/n8n/packages/frontend/@n8n/design-system/src/locale/index.ts, dynamic import will not move module into another chunk.
-@n8n/chat:build: 
-@n8n/chat:build: 
-@n8n/chat:build: [vite:dts] Start generate declaration files...
-@n8n/chat:build: [vite:dts] Declaration files built in 10790ms.
-@n8n/chat:build: 
-@n8n/chat:build: computing gzip size...
-@n8n/chat:build: [2mdist/[22m[35mchat.css           [39m[1m[2m   63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
-@n8n/chat:build: [2mdist/[22m[36mchat.bundle.es.js  [39m[1m[33m1,030.03 kB[39m[22m[2m │ gzip: 272.95 kB[22m
-@n8n/n8n-nodes-langchain:build: 
-@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 copy-nodes-json /home/alch33my/Desktop/n8n/packages/@n8n/nodes-langchain
-@n8n/n8n-nodes-langchain:build: > node ../../nodes-base/scripts/copy-nodes-json.js .
-@n8n/n8n-nodes-langchain:build: 
-@n8n/n8n-nodes-langchain:build: 
-@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 copy-tokenizer-json /home/alch33my/Desktop/n8n/packages/@n8n/nodes-langchain
-@n8n/n8n-nodes-langchain:build: > node scripts/copy-tokenizer-json.js .
-@n8n/n8n-nodes-langchain:build: 
-@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/cl100k_base.json -> dist/utils/tokenizer/cl100k_base.json
-@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/o200k_base.json -> dist/utils/tokenizer/o200k_base.json
-@n8n/chat:build: [2K@n8n/chat:build: transforming...[32m✓[39m 2811 modules transformed.
-@n8n/chat:build: rendering chunks...
-@n8n/chat:build: computing gzip size...
-@n8n/chat:build: [2mdist/[22m[35mchat.css            [39m[1m[2m 63.16 kB[22m[22m[2m │ gzip:   9.77 kB[22m
-@n8n/chat:build: [2mdist/[22m[36mchat.bundle.umd.js  [39m[1m[33m696.25 kB[39m[22m[2m │ gzip: 235.25 kB[22m
-@n8n/chat:build: ✓ built in 15.21s
-n8n-editor-ui:build: cache miss, executing 2a4d49b6fa8eb308
+n8n-editor-ui:build: cache hit, replaying logs 2a4d49b6fa8eb308
 n8n-editor-ui:build: 
 n8n-editor-ui:build: > n8n-editor-ui@1.117.0 build /home/alch33my/Desktop/n8n/packages/frontend/editor-ui
 n8n-editor-ui:build: > cross-env VUE_APP_PUBLIC_PATH="/{{BASE_PATH}}/" NODE_OPTIONS="--max-old-space-size=8192" vite build
@@ -1347,7 +1326,28 @@ n8n-editor-ui:build:  [38;5;240m     │[0m                                   
 n8n-editor-ui:build: [38;5;246m──────╯[0m
 n8n-editor-ui:build: 
 n8n-editor-ui:build: ✓ built in 49.43s
-n8n:build: cache miss, executing 591db829c8a6d48e
+n8n-nodes-base:build: 
+n8n-nodes-base:build: > n8n-nodes-base@1.115.0 copy-nodes-json /home/alch33my/Desktop/n8n/packages/nodes-base
+n8n-nodes-base:build: > node scripts/copy-nodes-json.js .
+n8n-nodes-base:build: 
+n8n-nodes-base:build: Default locale set to: [35men[0m
+n8n-nodes-base:build: No translation required - Skipping translations build...
+@n8n/n8n-nodes-langchain:build: cache miss, executing 7e49e7f051201806
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 build /home/alch33my/Desktop/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > tsup --tsconfig tsconfig.build.json && pnpm copy-nodes-json && tsc-alias -p tsconfig.build.json && pnpm copy-tokenizer-json && pnpm n8n-copy-static-files && pnpm n8n-generate-metadata
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 copy-nodes-json /home/alch33my/Desktop/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > node ../../nodes-base/scripts/copy-nodes-json.js .
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: > @n8n/n8n-nodes-langchain@1.116.0 copy-tokenizer-json /home/alch33my/Desktop/n8n/packages/@n8n/nodes-langchain
+@n8n/n8n-nodes-langchain:build: > node scripts/copy-tokenizer-json.js .
+@n8n/n8n-nodes-langchain:build: 
+@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/cl100k_base.json -> dist/utils/tokenizer/cl100k_base.json
+@n8n/n8n-nodes-langchain:build: Copied: utils/tokenizer/o200k_base.json -> dist/utils/tokenizer/o200k_base.json
+n8n:build: cache miss, executing 883d6eb6598feca4
 n8n:build: 
 n8n:build: > n8n@1.117.0 build /home/alch33my/Desktop/n8n/packages/cli
 n8n:build: > tsc -p tsconfig.build.json && tsc-alias -p tsconfig.build.json && pnpm run build:data
@@ -1358,6 +1358,6 @@ n8n:build: > node scripts/build.mjs
 n8n:build: 
 
  Tasks:    41 successful, 41 total
-Cached:    0 cached, 41 total
-  Time:    2m14.21s 
+Cached:    37 cached, 41 total
+  Time:    21.115s 
 

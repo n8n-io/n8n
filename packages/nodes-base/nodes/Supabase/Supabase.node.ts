@@ -393,11 +393,13 @@ export class Supabase implements INodeType {
 							rows = rows.concat(newRows);
 							qs.offset = rows.length;
 						} while (responseLength >= 1000);
-						const executionData = this.helpers.constructExecutionMetaData(
-							this.helpers.returnJsonArray(rows),
-							{ itemData: { item: i } },
-						);
-						returnData.push(...executionData);
+						rows.forEach((row) => {
+							const executionData = this.helpers.constructExecutionMetaData(
+								this.helpers.returnJsonArray(row),
+								{ itemData: { item: i } },
+							);
+							returnData.push(...executionData);
+						});
 					} catch (error) {
 						if (this.continueOnFail()) {
 							const executionData = this.helpers.constructExecutionMetaData(
