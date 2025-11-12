@@ -1,3 +1,10 @@
+import type { Completion } from '@codemirror/autocomplete';
+
+export type Alias = { label: string; info?: string };
+export interface AliasCompletion extends Completion {
+	alias?: Alias[];
+}
+
 export interface ExtensionMap {
 	typeName: string;
 	functions: Record<string, Extension>;

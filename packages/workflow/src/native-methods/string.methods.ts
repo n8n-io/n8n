@@ -6,6 +6,7 @@ export const stringMethods: NativeDoc = {
 		length: {
 			doc: {
 				name: 'length',
+				aliases: ['size', 'count'],
 				description: 'The number of characters in the string',
 				examples: [{ example: '"hello".length', evaluated: '5' }],
 				section: 'query',
@@ -190,6 +191,7 @@ export const stringMethods: NativeDoc = {
 		includes: {
 			doc: {
 				name: 'includes',
+				aliases: ['contains'],
 				description:
 					'Returns <code>true</code> if the string contains the <code>searchString</code>. Case-sensitive.',
 				section: 'query',
@@ -483,6 +485,7 @@ export const stringMethods: NativeDoc = {
 		toLowerCase: {
 			doc: {
 				name: 'toLowerCase',
+				aliases: ['lower'],
 				description: 'Converts all letters in the string to lower case',
 				section: 'case',
 				docURL:
@@ -494,6 +497,7 @@ export const stringMethods: NativeDoc = {
 		toUpperCase: {
 			doc: {
 				name: 'toUpperCase',
+				aliases: ['upper'],
 				description: 'Converts all letters in the string to upper case (capitals)',
 				examples: [{ example: '"I\'m not angry".toUpperCase()', evaluated: '"I\'M NOT ANGRY"' }],
 				section: 'case',
@@ -517,6 +521,7 @@ export const stringMethods: NativeDoc = {
 		trimEnd: {
 			doc: {
 				name: 'trimEnd',
+				aliases: ['trimRight'],
 				description:
 					'Removes whitespace from the end of a string and returns a new string. Whitespace includes new lines, tabs, spaces, etc.',
 				examples: [{ example: "'   lonely   '.trimEnd()", evaluated: "'   lonely'" }],
@@ -529,6 +534,7 @@ export const stringMethods: NativeDoc = {
 		trimStart: {
 			doc: {
 				name: 'trimStart',
+				aliases: ['trimLeft'],
 				description:
 					'Removes whitespace from the beginning of a string and returns a new string. Whitespace includes new lines, tabs, spaces, etc.',
 				examples: [{ example: "'   lonely   '.trimStart()", evaluated: "'lonely   '" }],
