@@ -35,7 +35,7 @@ By default, it uses `IMenuItem` but can be used with custom types for different 
 **Events**
 
 - `update:modelValue(value: string[])` - Emitted when selection changes
-- `update:expanded(value: string[])` - Emitted when expanded items change
+- `update:expanded([val: Record<string, any> | Record<string, any>[]])` - Emitted when expanded items change
 
 **Slots**
 
