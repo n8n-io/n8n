@@ -12,6 +12,7 @@ export const commonOptions: INodeProperties[] = [
 		typeOptions: {
 			rows: 6,
 		},
+		improveWithAi: true,
 	},
 	{
 		displayName: 'Max Iterations',

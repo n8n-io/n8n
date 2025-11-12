@@ -8,6 +8,7 @@ import {
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
 	AiSessionMetadataResponseDto,
+	AiImprovePromptRequestDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, RestController } from '@n8n/decorators';
@@ -257,5 +258,18 @@ export class AiController {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
 		}
+	}
+
+	@Post('/improve-prompt')
+	async improvePrompt(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: AiImprovePromptRequestDto,
+	): Promise<{ improvedPrompt: string }> {
+		// For now, return a static improved prompt
+		// This will be replaced with actual AI improvement logic later
+		return {
+			improvedPrompt: `This is an improved version of your prompt!`,
+		};
 	}
 }

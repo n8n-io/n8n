@@ -34,6 +34,8 @@ import {
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { inject } from 'vue';
 import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
+import { improvePrompt } from '@/features/ai/assistant/assistant.api';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 import { N8nInputLabel } from '@n8n/design-system';
 type Props = {
@@ -79,6 +81,7 @@ const wrapperHovered = ref(false);
 
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
+const { restApiContext } = useRootStore();
 
 const expressionLocalResolveCtx = inject(ExpressionLocalResolveContextSymbol, undefined);
 const activeNode = computed(() => {
@@ -166,10 +169,47 @@ function onWrapperMouseLeave() {
 	wrapperHovered.value = false;
 }
 
-function optionSelected(command: string) {
+async function handleImproveWithAi() {
+	try {
+		const currentValue = String(props.value || '');
+
+		// Call the API to improve the prompt
+		const response = await improvePrompt(restApiContext, {
+			prompt: currentValue,
+		});
+
+		// Focus the input field and select all text
+		await parameterInputWrapper.value?.focusInput();
+
+		// Use setTimeout to ensure the input is focused before selecting
+		setTimeout(() => {
+			parameterInputWrapper.value?.selectInput();
+
+			// Use execCommand to replace the text so undo works
+			// This maintains the browser's undo stack
+			document.execCommand('insertText', false, response.improvedPrompt);
+		}, 0);
+
+		toast.showMessage({
+			title: i18n.baseText('parameterInput.improveWithAi.success.title'),
+			message: i18n.baseText('parameterInput.improveWithAi.success.message'),
+			type: 'success',
+		});
+	} catch (error) {
+		toast.showError(error, i18n.baseText('parameterInput.improveWithAi.error.title'));
+	}
+}
+
+async function optionSelected(command: string) {
 	if (isContentOverride.value && command === 'resetValue') {
 		removeOverride(true);
 	}
+
+	if (command === 'improveWithAi') {
+		await handleImproveWithAi();
+		return;
+	}
+
 	eventBus.value.emit('optionSelected', command);
 }
 

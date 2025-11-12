@@ -1571,6 +1571,7 @@ export interface INodeProperties {
 	ignoreValidationDuringExecution?: boolean;
 	// for type: options | multiOptions – skip validation of the value (e.g. when value is not in the list and specified via expression)
 	allowArbitraryValues?: boolean;
+	improveWithAi?: boolean;
 }
 
 export interface INodePropertyModeTypeOptions {

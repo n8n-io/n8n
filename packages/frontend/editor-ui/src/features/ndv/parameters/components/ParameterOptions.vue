@@ -159,6 +159,14 @@ const onViewSelected = (selected: string) => {
 		emit('update:modelValue', 'removeExpression');
 	}
 };
+
+const showImproveWithAi = computed(() => {
+	return props.parameter.improveWithAi && !props.isReadOnly;
+});
+
+const onImproveWithAi = () => {
+	emit('update:modelValue', 'improveWithAi');
+};
 </script>
 
 <template>
@@ -177,6 +185,16 @@ const onViewSelected = (selected: string) => {
 					:icon="'panel-right'"
 					:class="$style.focusButton"
 					@click="$emit('update:modelValue', 'focus')"
+				/>
+			</N8nTooltip>
+			<N8nTooltip v-if="showImproveWithAi">
+				<template #content>{{ i18n.baseText('parameterInput.improveWithAi') }}</template>
+				<N8nIcon
+					size="medium"
+					icon="sparkles"
+					:class="$style.improveButton"
+					data-test-id="improve-with-ai-button"
+					@click="onImproveWithAi"
 				/>
 			</N8nTooltip>
 			<div
@@ -240,6 +258,16 @@ $container-height: 22px;
 }
 
 .focusButton {
+	outline: none;
+	color: var(--color--text--tint-1);
+
+	&:hover {
+		cursor: pointer;
+		color: var(--color--primary);
+	}
+}
+
+.improveButton {
 	outline: none;
 	color: var(--color--text--tint-1);
 
