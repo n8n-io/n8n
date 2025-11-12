@@ -146,6 +146,30 @@ export class LmChatOpenRouter implements INodeType {
 						},
 					},
 					{
+						displayName: 'Reasoning Effort',
+						name: 'reasoningEffort',
+						default: '',
+						type: 'options',
+						options: [
+							{
+								name: 'High',
+								value: 'high',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+							},
+							{
+								name: 'Low',
+								value: 'low',
+							},
+							{
+								name: 'Minimal',
+								value: 'minimal',
+							},
+						],
+					},
+					{
 						displayName: 'Response Format',
 						name: 'responseFormat',
 						default: 'text',
@@ -204,30 +228,6 @@ export class LmChatOpenRouter implements INodeType {
 						description:
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
-					},
-					{
-						displayName: 'Reasoning Effort',
-						name: 'reasoningEffort',
-						default: '',
-						type: 'options',
-						options: [
-							{
-								name: 'High',
-								value: 'high',
-							},
-							{
-								name: 'Medium',
-								value: 'medium',
-							},
-							{
-								name: 'Low',
-								value: 'low',
-							},
-							{
-								name: 'Minimal',
-								value: 'minimal',
-							},
-						],
 					},
 				],
 			},
