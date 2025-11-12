@@ -72,4 +72,10 @@ export declare namespace WorkflowRequest {
 	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload, {}>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
+
+	/**
+	 * Returns aggregated per-node metrics for a workflow heatmap.
+	 * Query: ?limit=number (defaults to 100)
+	 */
+	type Heatmap = AuthenticatedRequest<{ workflowId: string }, {}, {}, { limit?: string }>;
 }

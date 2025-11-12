@@ -250,6 +250,12 @@ export class WorkflowsController {
 		return { name };
 	}
 
+	@Get('/:workflowId/heatmap')
+	async getWorkflowHeatmap(req: WorkflowRequest.Heatmap) {
+		const limit = req.query.limit ? parseInt(String(req.query.limit), 10) : 100;
+		return await this.workflowService.getHeatmap(req.user, req.params.workflowId, limit);
+	}
+
 	@Get('/from-url')
 	async getFromUrl(
 		_req: AuthenticatedRequest,

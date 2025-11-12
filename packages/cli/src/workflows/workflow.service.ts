@@ -22,6 +22,10 @@ import { BinaryDataService } from 'n8n-core';
 import { NodeApiError, PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+import { WorkflowSharingService } from './workflow-sharing.service';
+
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -32,15 +36,41 @@ import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { OwnershipService } from '@/services/ownership.service';
-// eslint-disable-next-line import-x/no-cycle
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
-import { WorkflowSharingService } from './workflow-sharing.service';
+type HeatmapNodeBucket = {
+	durationSum: number;
+	durationCount: number;
+	heapSum: number;
+	rssSum: number;
+	memCount: number;
+	totalExecsAcrossRuns: number;
+	presenceCount: number;
+};
+
+type ExecutionTaskLite = {
+	executionTime?: number;
+	metadata?: { memory?: { heapUsedDelta?: number; rssDelta?: number } };
+};
+
+export type WorkflowHeatmapResponse = {
+	workflowId: string;
+	consideredExecutions: number;
+	limit: number;
+	nodes: Record<
+		string,
+		{
+			avgDurationMs: number;
+			avgHeapUsedDeltaMB: number | null;
+			avgRssDeltaMB: number | null;
+			avgExecutionsPerRun: number;
+			samples: { duration: number; memory: number };
+		}
+	>;
+};
 
 @Service()
 export class WorkflowService {
@@ -135,6 +165,164 @@ export class WorkflowService {
 			workflows,
 			count,
 		};
+	}
+
+	/**
+	 * Aggregates per-node metrics across the last N finished executions of a workflow.
+	 */
+	async getHeatmap(user: User, workflowId: string, limit = 100): Promise<WorkflowHeatmapResponse> {
+		// Access check: ensure user can read this workflow
+		const wf = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
+			'workflow:read',
+		]);
+		if (!wf) {
+			throw new NotFoundError('Workflow not found');
+		}
+
+		// Only consider nodes present in the current workflow version; map name -> id
+		const currentNameToId = this.getCurrentNameToIdMap(wf);
+
+		// Clamp limit and fetch executions
+		const clamped = this.clampLimit(limit);
+		const executions = await this.fetchFinishedExecutionsWithData(workflowId, clamped);
+
+		const consideredExecutions = executions.length;
+		// Buckets keyed by nodeId
+		const buckets: Record<string, HeatmapNodeBucket> = {};
+
+		for (const exec of executions) {
+			// Defensive
+			const runData = exec.data?.resultData?.runData ?? {};
+			this.updatePresenceCountsForExecution(buckets, currentNameToId, exec);
+
+			this.aggregateRunDataForExecution(buckets, currentNameToId, runData);
+		}
+
+		return this.buildHeatmapResponse(buckets, workflowId, consideredExecutions, clamped);
+	}
+
+	private getCurrentNameToIdMap(wf: { nodes: Array<{ id: string; name: string }> }): Map<
+		string,
+		string
+	> {
+		const currentNameToId = new Map<string, string>();
+		for (const n of wf.nodes) {
+			if (n?.name && n?.id) currentNameToId.set(n.name, n.id);
+		}
+		return currentNameToId;
+	}
+
+	private clampLimit(limit?: number): number {
+		if (!Number.isFinite(limit as number) || (limit as number) <= 0) return 100;
+		const n = Math.trunc(limit as number);
+		return Math.min(Math.max(n, 1), 1000);
+	}
+
+	private async fetchFinishedExecutionsWithData(workflowId: string, limit: number) {
+		const finishedStatuses = ['success', 'error', 'canceled'] as const;
+		return await this.executionRepository.findMultipleExecutions(
+			{
+				where: {
+					workflowId,
+					status: In(finishedStatuses),
+				},
+				order: { id: 'DESC' },
+				take: limit,
+			},
+			{ includeData: true, unflattenData: true },
+		);
+	}
+
+	private updatePresenceCountsForExecution(
+		buckets: Record<string, HeatmapNodeBucket>,
+		currentNameToId: Map<string, string>,
+		exec: { workflowData?: { nodes?: Array<{ name: string }> } },
+	) {
+		const execNodes = exec.workflowData?.nodes ?? [];
+		const presentNames = new Set(execNodes.map((n) => n.name));
+		for (const name of presentNames) {
+			const nodeId = currentNameToId.get(name);
+			if (!nodeId) continue;
+			if (!buckets[nodeId]) {
+				buckets[nodeId] = {
+					durationSum: 0,
+					durationCount: 0,
+					heapSum: 0,
+					rssSum: 0,
+					memCount: 0,
+					totalExecsAcrossRuns: 0,
+					presenceCount: 0,
+				};
+			}
+			buckets[nodeId].presenceCount += 1;
+		}
+	}
+
+	private aggregateRunDataForExecution(
+		buckets: Record<string, HeatmapNodeBucket>,
+		currentNameToId: Map<string, string>,
+		runData: Record<string, unknown>,
+	) {
+		for (const [nodeName, tasks] of Object.entries(runData)) {
+			const nodeId = currentNameToId.get(nodeName);
+			if (!nodeId) continue;
+			if (!buckets[nodeId]) {
+				buckets[nodeId] = {
+					durationSum: 0,
+					durationCount: 0,
+					heapSum: 0,
+					rssSum: 0,
+					memCount: 0,
+					totalExecsAcrossRuns: 0,
+					presenceCount: 0,
+				};
+			}
+			const bucket = buckets[nodeId];
+			const arr = this.isExecutionTaskArray(tasks) ? tasks : [];
+			bucket.totalExecsAcrossRuns += arr.length;
+			for (const task of arr) {
+				if (typeof task.executionTime === 'number') {
+					bucket.durationSum += task.executionTime;
+					bucket.durationCount += 1;
+				}
+				const mem = task.metadata?.memory;
+				if (mem && typeof mem.heapUsedDelta === 'number' && typeof mem.rssDelta === 'number') {
+					bucket.heapSum += mem.heapUsedDelta;
+					bucket.rssSum += mem.rssDelta;
+					bucket.memCount += 1;
+				}
+			}
+		}
+	}
+
+	private isExecutionTaskArray(x: unknown): x is ExecutionTaskLite[] {
+		return Array.isArray(x);
+	}
+
+	private buildHeatmapResponse(
+		buckets: Record<string, HeatmapNodeBucket>,
+		workflowId: string,
+		consideredExecutions: number,
+		limit: number,
+	): WorkflowHeatmapResponse {
+		const toMB = (bytes: number) => bytes / (1024 * 1024);
+		const nodes: WorkflowHeatmapResponse['nodes'] = {};
+		for (const [nodeId, b] of Object.entries(buckets)) {
+			const avgDurationMs = b.durationCount ? b.durationSum / b.durationCount : 0;
+			const avgHeapUsedDeltaMB = b.memCount ? toMB(b.heapSum / b.memCount) : null;
+			const avgRssDeltaMB = b.memCount ? toMB(b.rssSum / b.memCount) : null;
+			const avgExecutionsPerRun =
+				b.presenceCount > 0 ? b.totalExecsAcrossRuns / b.presenceCount : 0;
+
+			nodes[nodeId] = {
+				avgDurationMs,
+				avgHeapUsedDeltaMB,
+				avgRssDeltaMB,
+				avgExecutionsPerRun,
+				samples: { duration: b.durationCount, memory: b.memCount },
+			};
+		}
+		return { workflowId, consideredExecutions, limit, nodes };
 	}
 
 	private async processSharedWorkflows(
