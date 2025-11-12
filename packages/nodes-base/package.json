@@ -750,6 +750,7 @@
       "dist/nodes/Salesforce/Salesforce.node.js",
       "dist/nodes/Salesforce/SalesforceTrigger.node.js",
       "dist/nodes/Salesmate/Salesmate.node.js",
+      "dist/nodes/SavedTime/SavedTime.node.js",
       "dist/nodes/Schedule/ScheduleTrigger.node.js",
       "dist/nodes/SeaTable/SeaTable.node.js",
       "dist/nodes/SeaTable/SeaTableTrigger.node.js",
