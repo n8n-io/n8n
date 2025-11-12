@@ -167,7 +167,7 @@ All tests pass successfully:
 
 ```bash
 pnpm test generateTypes.test.ts
-# ✓ 52 tests passed
+# ✓ 54 tests passed (includes NodeTypeToParametersMap tests)
 ```
 
 TypeScript compilation succeeds:
@@ -175,6 +175,43 @@ TypeScript compilation succeeds:
 ```bash
 pnpm typecheck
 # ✓ No errors
+```
+
+### 7. Node Type to Parameters Mapping
+
+A `NodeTypeToParametersMap` interface is now generated at the end of the output, providing a type-safe mapping from node type strings to their parameter interfaces:
+
+```typescript
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.httpRequest": HttprequestParameters;
+  "n8n-nodes-base.gmail": GmailParameters;
+  "n8n-nodes-base.set": SetParameters;
+}
+```
+
+This enables powerful type-safe patterns:
+
+```typescript
+// Extract specific node parameter types
+type HttpParams = NodeTypeToParametersMap['n8n-nodes-base.httpRequest'];
+
+// Generic function with full type safety
+function getNodeParameters<T extends keyof NodeTypeToParametersMap>(
+  nodeType: T
+): NodeTypeToParametersMap[T] {
+  // Implementation
+}
+
+// Usage - TypeScript knows the exact type!
+const params = getNodeParameters('n8n-nodes-base.httpRequest');
+// params.method is typed as "GET" | "POST" | "PUT" | "DELETE" | undefined
+// params.url is typed as string
+
+// TypeScript errors on invalid node types
+const invalid = getNodeParameters('n8n-nodes-base.nonExistent');
+//                                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+//                                 Compile error!
 ```
 
 ## Future Enhancements
@@ -187,14 +224,16 @@ Potential areas for further improvement:
 4. **Validation Rules**: Include min/max values and regex patterns in JSDoc
 5. **Dependency Tracking**: Handle `loadOptionsDependsOn` relationships
 6. **Required Field Analysis**: More intelligent required vs optional determination based on displayOptions
+7. **Utility Types**: Generate helper types like `ExtractResourceOps<Node, Resource>` for operation extraction
 
 ## Files Modified
 
-- `scripts/generateTypes.ts` - Core type generation logic with nested structure support
-- `scripts/generateTypes.test.ts` - Comprehensive test suite with 52 tests using `toEqual` assertions
+- `scripts/generateTypes.ts` - Core type generation logic with nested structure support and NodeTypeToParametersMap
+- `scripts/generateTypes.test.ts` - Comprehensive test suite with 54 tests using `toEqual` assertions
 - `scripts/test-action-network.ts` - Real-world demonstration of Action Network node types
+- `scripts/test-multiple-nodes.ts` - Multi-node example showcasing NodeTypeToParametersMap usage
 - `tsconfig.json` - Added `scripts/**/*.ts` to includes for proper type checking
 
 ## Conclusion
 
-The type generation system now provides accurate, type-safe TypeScript interfaces for n8n node parameters, significantly improving the developer experience when working with the workflow JSON SDK. The comprehensive test suite ensures reliability and makes future enhancements easier to implement safely.
+The type generation system now provides accurate, type-safe TypeScript interfaces for n8n node parameters, significantly improving the developer experience when working with the workflow JSON SDK. The `NodeTypeToParametersMap` interface enables compile-time validation of node types and their parameters, preventing runtime errors and providing excellent IDE autocomplete support. The comprehensive test suite ensures reliability and makes future enhancements easier to implement safely.

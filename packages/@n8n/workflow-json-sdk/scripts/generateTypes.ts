@@ -336,13 +336,19 @@ export function generateOperationTypes(node: NodeTypeDefinition): string[] {
 export function convertNodeToTypes(nodeDefinitions: NodeTypeDefinition[]): string {
 	let output = '// Auto-generated n8n Node Parameter Types\n\n';
 
+	const nodeTypeMappings: Array<{ nodeType: string; parameterType: string }> = [];
+
 	for (const node of nodeDefinitions) {
 		output += `// ${node.displayName}\n`;
 		output += `// Node: ${node.name}\n\n`;
 
 		// Generate main parameters interface
+		const interfaceName = `${toPascalCase(node.name.replace('n8n-nodes-base.', ''))}Parameters`;
 		output += generateNodeParametersInterface(node);
 		output += '\n\n';
+
+		// Store mapping for later
+		nodeTypeMappings.push({ nodeType: node.name, parameterType: interfaceName });
 
 		// Generate operation-specific types
 		const operationTypes = generateOperationTypes(node);
@@ -353,6 +359,16 @@ export function convertNodeToTypes(nodeDefinitions: NodeTypeDefinition[]): strin
 		}
 
 		output += '// ---\n\n';
+	}
+
+	// Generate NodeTypeToParametersMap
+	if (nodeTypeMappings.length > 0) {
+		output += '// Node Type to Parameters Mapping\n';
+		output += 'export interface NodeTypeToParametersMap {\n';
+		for (const mapping of nodeTypeMappings) {
+			output += `  "${mapping.nodeType}": ${mapping.parameterType};\n`;
+		}
+		output += '}\n';
 	}
 
 	return output;

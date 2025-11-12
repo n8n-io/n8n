@@ -692,6 +692,10 @@ export interface ActionnetworkParameters {
 
 // ---
 
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.actionNetwork": ActionnetworkParameters;
+}
 `);
 		});
 
@@ -745,6 +749,11 @@ export interface Node2Parameters {
 
 // ---
 
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.node1": Node1Parameters;
+  "n8n-nodes-base.node2": Node2Parameters;
+}
 `);
 		});
 
@@ -809,6 +818,10 @@ export interface TestnodeUserGetParameters {
 
 // ---
 
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.testNode": TestnodeParameters;
+}
 `);
 		});
 
@@ -816,6 +829,100 @@ export interface TestnodeUserGetParameters {
 			const result = convertNodeToTypes([]);
 
 			expect(result).toEqual('// Auto-generated n8n Node Parameter Types\n\n');
+		});
+
+		it('should generate NodeTypeToParametersMap for single node', () => {
+			const nodes: NodeTypeDefinition[] = [
+				{
+					displayName: 'Test Node',
+					name: 'n8n-nodes-base.testNode',
+					properties: [
+						{
+							displayName: 'Field',
+							name: 'field',
+							type: 'string',
+						},
+					],
+				},
+			];
+
+			const result = convertNodeToTypes(nodes);
+
+			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
+
+// Test Node
+// Node: n8n-nodes-base.testNode
+
+export interface TestnodeParameters {
+
+  field?: string;
+}
+
+// ---
+
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.testNode": TestnodeParameters;
+}
+`);
+		});
+
+		it('should generate NodeTypeToParametersMap for multiple nodes', () => {
+			const nodes: NodeTypeDefinition[] = [
+				{
+					displayName: 'Node 1',
+					name: 'n8n-nodes-base.node1',
+					properties: [
+						{
+							displayName: 'Field 1',
+							name: 'field1',
+							type: 'string',
+						},
+					],
+				},
+				{
+					displayName: 'Node 2',
+					name: 'n8n-nodes-base.node2',
+					properties: [
+						{
+							displayName: 'Field 2',
+							name: 'field2',
+							type: 'number',
+						},
+					],
+				},
+			];
+
+			const result = convertNodeToTypes(nodes);
+
+			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
+
+// Node 1
+// Node: n8n-nodes-base.node1
+
+export interface Node1Parameters {
+
+  field1?: string;
+}
+
+// ---
+
+// Node 2
+// Node: n8n-nodes-base.node2
+
+export interface Node2Parameters {
+
+  field2?: number;
+}
+
+// ---
+
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.node1": Node1Parameters;
+  "n8n-nodes-base.node2": Node2Parameters;
+}
+`);
 		});
 	});
 
@@ -871,6 +978,10 @@ export interface ActionnetworkParameters {
 
 // ---
 
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.actionNetwork": ActionnetworkParameters;
+}
 `);
 		});
 
@@ -963,6 +1074,10 @@ export interface ComplexnodeParameters {
 
 // ---
 
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.complexNode": ComplexnodeParameters;
+}
 `);
 		});
 
@@ -1022,6 +1137,10 @@ export interface ComplexnodeParameters {
 
 // ---
 
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.complexNode": ComplexnodeParameters;
+}
 `);
 		});
 
@@ -1069,6 +1188,10 @@ export interface TestnodeParameters {
 
 // ---
 
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.testNode": TestnodeParameters;
+}
 `);
 		});
 
@@ -1104,6 +1227,10 @@ export interface TestnodeParameters {
 
 // ---
 
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.testNode": TestnodeParameters;
+}
 `);
 		});
 
@@ -1332,6 +1459,10 @@ export interface ActionnetworkParameters {
 
 // ---
 
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.actionNetwork": ActionnetworkParameters;
+}
 `;
 
 			const expectedOption2 = `// Auto-generated n8n Node Parameter Types
@@ -1388,6 +1519,10 @@ export interface ActionnetworkParameters {
 
 // ---
 
+// Node Type to Parameters Mapping
+export interface NodeTypeToParametersMap {
+  "n8n-nodes-base.actionNetwork": ActionnetworkParameters;
+}
 `;
 
 			expect([expectedOption1, expectedOption2]).toContainEqual(result);
