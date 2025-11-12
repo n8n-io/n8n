@@ -68,7 +68,7 @@ describe('Workflow JSON SDK', () => {
 
 			const setNode = wf.node('Set').type('n8n-nodes-base.set').parameters({});
 
-			wf.connection().from(triggerNode).to(setNode).build();
+			wf.connection().from(triggerNode).to(setNode);
 
 			const json = wf.toJSON();
 
@@ -91,7 +91,7 @@ describe('Workflow JSON SDK', () => {
 
 			const setB = wf.node('Set B').type('n8n-nodes-base.set').parameters({});
 
-			wf.connection().from(trigger).to([setA, setB]).build();
+			wf.connection().from(trigger).to([setA, setB]);
 
 			const json = wf.toJSON();
 
@@ -111,9 +111,9 @@ describe('Workflow JSON SDK', () => {
 
 			const setC = wf.node('Set C').type('n8n-nodes-base.set').parameters({});
 
-			wf.connection().from(trigger).to([setA, setB]).build();
+			wf.connection().from(trigger).to([setA, setB]);
 
-			wf.connection().from(setA).to(setC).build();
+			wf.connection().from(setA).to(setC);
 
 			const json = wf.toJSON();
 
@@ -131,8 +131,7 @@ describe('Workflow JSON SDK', () => {
 
 			wf.connection()
 				.from({ node: toolNode, type: 'ai_tool', index: 0 })
-				.to({ node: agentNode, type: 'ai_tool', index: 0 })
-				.build();
+				.to({ node: agentNode, type: 'ai_tool', index: 0 });
 
 			const json = wf.toJSON();
 
@@ -154,7 +153,7 @@ describe('Workflow JSON SDK', () => {
 
 			const setC = wf.node('Set C').type('n8n-nodes-base.set').parameters({});
 
-			wf.connection().from(trigger).to([setA, setB]).to(setC).build();
+			wf.connection().from(trigger).to([setA, setB]).to(setC);
 
 			const json = wf.toJSON();
 
@@ -253,27 +252,23 @@ describe('Workflow JSON SDK', () => {
 				.notes('© 2025 Lucas Peyrin');
 
 			// Create connections
-			wf.connection().from(chatTrigger).to({ node: agent, type: 'main', index: 0 }).build();
+			wf.connection().from(chatTrigger).to({ node: agent, type: 'main', index: 0 });
 
 			wf.connection()
 				.from({ node: gemini, type: 'ai_languageModel', index: 0 })
-				.to({ node: agent, type: 'ai_languageModel', index: 0 })
-				.build();
+				.to({ node: agent, type: 'ai_languageModel', index: 0 });
 
 			wf.connection()
 				.from({ node: memory, type: 'ai_memory', index: 0 })
-				.to({ node: agent, type: 'ai_memory', index: 0 })
-				.build();
+				.to({ node: agent, type: 'ai_memory', index: 0 });
 
 			wf.connection()
 				.from({ node: weatherTool, type: 'ai_tool', index: 0 })
-				.to({ node: agent, type: 'ai_tool', index: 0 })
-				.build();
+				.to({ node: agent, type: 'ai_tool', index: 0 });
 
 			wf.connection()
 				.from({ node: newsTool, type: 'ai_tool', index: 0 })
-				.to({ node: agent, type: 'ai_tool', index: 0 })
-				.build();
+				.to({ node: agent, type: 'ai_tool', index: 0 });
 
 			const json = wf.toJSON();
 
@@ -494,13 +489,12 @@ describe('Workflow JSON SDK', () => {
 				example: 'value',
 			});
 
-			wf.connection().from(manualTrigger).to([setA, setB]).build();
+			wf.connection().from(manualTrigger).to([setA, setB]);
 
 			wf.connection()
 				.from({ node: manualTrigger, type: 'main', index: 0 })
 				.to([setA, setB])
-				.to({ node: setC, type: 'main', index: 0 })
-				.build();
+				.to({ node: setC, type: 'main', index: 0 });
 
 			const workflowJSON = wf.toJSON();
 

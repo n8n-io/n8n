@@ -59,13 +59,13 @@ const setC = wf
 
 // Create connections
 // Connect trigger to both Set A and Set B
-wf.connection().from(manualTrigger).to([setA, setB]).build();
+wf.connection().from(manualTrigger).to([setA, setB]);
 
 // Connect Set A to Set C
-wf.connection().from(setA).to(setC).build();
+wf.connection().from(setA).to(setC);
 
 // Connect Set B to Set C
-wf.connection().from(setB).to(setC).build();
+wf.connection().from(setB).to(setC);
 
 // Export to JSON
 const workflowJSON = wf.toJSON();

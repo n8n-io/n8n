@@ -100,8 +100,7 @@ const nodeB = wf.node('Node B').type('n8n-nodes-base.set').parameters({});
 
 wf.connection()
   .from(nodeA)
-  .to(nodeB)
-  .build();
+  .to(nodeB);
 ```
 
 #### Connect to Multiple Nodes
@@ -113,8 +112,7 @@ const nodeB = wf.node('Node B').type('n8n-nodes-base.set').parameters({});
 
 wf.connection()
   .from(trigger)
-  .to([nodeA, nodeB])  // Array of nodes
-  .build();
+  .to([nodeA, nodeB]);  // Array of nodes
 ```
 
 #### Chain Connections
@@ -124,8 +122,7 @@ wf.connection()
   .from(trigger)
   .to(nodeA)
   .to(nodeB)
-  .to(nodeC)
-  .build();
+  .to(nodeC);
 ```
 
 #### Custom Connection Types (AI Agents, Sub-workflows, etc.)
@@ -136,8 +133,7 @@ const tool = wf.node('Tool').type('n8n-nodes-base.httpRequestTool').parameters({
 
 wf.connection()
   .from({ node: tool, type: 'ai_tool', index: 0 })
-  .to({ node: agent, type: 'ai_tool', index: 0 })
-  .build();
+  .to({ node: agent, type: 'ai_tool', index: 0 });
 ```
 
 ### Workflow Settings
@@ -305,23 +301,19 @@ const weatherTool = wf
 // Connect everything
 wf.connection()
   .from(chatTrigger)
-  .to({ node: agent, type: 'main', index: 0 })
-  .build();
+  .to({ node: agent, type: 'main', index: 0 });
 
 wf.connection()
   .from({ node: languageModel, type: 'ai_languageModel', index: 0 })
-  .to({ node: agent, type: 'ai_languageModel', index: 0 })
-  .build();
+  .to({ node: agent, type: 'ai_languageModel', index: 0 });
 
 wf.connection()
   .from({ node: memory, type: 'ai_memory', index: 0 })
-  .to({ node: agent, type: 'ai_memory', index: 0 })
-  .build();
+  .to({ node: agent, type: 'ai_memory', index: 0 });
 
 wf.connection()
   .from({ node: weatherTool, type: 'ai_tool', index: 0 })
-  .to({ node: agent, type: 'ai_tool', index: 0 })
-  .build();
+  .to({ node: agent, type: 'ai_tool', index: 0 });
 
 const workflowJSON = wf.toJSON();
 ```
@@ -350,7 +342,7 @@ const emailNode = wf
 
 // Connect it to the last node
 const lastNode = wf.node('Existing Last Node'); // Reference existing node by name
-wf.connection().from(lastNode).to(emailNode).build();
+wf.connection().from(lastNode).to(emailNode);
 
 // Export modified workflow
 const updatedWorkflow = wf.toJSON();

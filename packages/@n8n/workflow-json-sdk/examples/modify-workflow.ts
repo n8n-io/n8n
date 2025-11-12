@@ -99,16 +99,16 @@ const transformNode = wf.node('Transform Data');
 
 // Connect the new nodes
 // Transform Data -> Email Notification
-wf.connection().from(transformNode).to(emailNode).build();
+wf.connection().from(transformNode).to(emailNode);
 
 // Transform Data -> Database
-wf.connection().from(transformNode).to(dbNode).build();
+wf.connection().from(transformNode).to(dbNode);
 
 // Email Notification -> Slack
-wf.connection().from(emailNode).to(slackNode).build();
+wf.connection().from(emailNode).to(slackNode);
 
 // Database -> Slack
-wf.connection().from(dbNode).to(slackNode).build();
+wf.connection().from(dbNode).to(slackNode);
 
 // Add workflow settings
 wf.settings({

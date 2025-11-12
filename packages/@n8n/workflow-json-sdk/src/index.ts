@@ -185,12 +185,6 @@ export class ConnectionBuilder {
 		index: number;
 	};
 
-	private destinations: Array<{
-		node: WorkflowNode;
-		type: string;
-		index: number;
-	}> = [];
-
 	constructor(private workflow: Workflow) {}
 
 	/**
@@ -214,7 +208,7 @@ export class ConnectionBuilder {
 	}
 
 	/**
-	 * Add destination nodes
+	 * Add destination nodes and create connections immediately
 	 */
 	to(
 		destinations:
@@ -222,39 +216,36 @@ export class ConnectionBuilder {
 			| WorkflowNode[]
 			| { node: WorkflowNode; type?: string; index?: number },
 	): this {
+		if (!this.source) {
+			throw new Error('Source node not set. Use .from() to set the source node.');
+		}
+
+		const destNodes: Array<{ node: WorkflowNode; type: string; index: number }> = [];
+
 		if (Array.isArray(destinations)) {
 			for (const dest of destinations) {
-				this.destinations.push({
+				destNodes.push({
 					node: dest,
 					type: 'main',
 					index: 0,
 				});
 			}
 		} else if (destinations instanceof WorkflowNode) {
-			this.destinations.push({
+			destNodes.push({
 				node: destinations,
 				type: 'main',
 				index: 0,
 			});
 		} else {
-			this.destinations.push({
+			destNodes.push({
 				node: destinations.node,
 				type: destinations.type ?? 'main',
 				index: destinations.index ?? 0,
 			});
 		}
-		return this;
-	}
 
-	/**
-	 * Build and register the connections
-	 */
-	build(): void {
-		if (!this.source) {
-			throw new Error('Source node not set. Use .from() to set the source node.');
-		}
-
-		for (const dest of this.destinations) {
+		// Add connections immediately
+		for (const dest of destNodes) {
 			this.workflow.addConnection(
 				this.source.node,
 				dest.node,
@@ -264,6 +255,8 @@ export class ConnectionBuilder {
 				dest.index,
 			);
 		}
+
+		return this;
 	}
 }
 
@@ -497,7 +490,3 @@ export function fromJSON(json: WorkflowJSON): Workflow {
 
 	return wf;
 }
-
-// ============================================================================
-// Exports
-// ============================================================================

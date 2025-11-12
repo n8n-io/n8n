@@ -229,14 +229,12 @@ wf.node('My Node')
 // Good: Flexibility with optional parameters
 wf.connection()
   .from(nodeA)
-  .to(nodeB)
-  .build();
+  .to(nodeB);
 
 // Good: Both simple and detailed usage supported
 wf.connection()
   .from({ node: nodeA, type: 'ai_tool', index: 0 })
-  .to({ node: nodeB, type: 'ai_tool', index: 0 })
-  .build();
+  .to({ node: nodeB, type: 'ai_tool', index: 0 });
 ```
 
 ## Documentation

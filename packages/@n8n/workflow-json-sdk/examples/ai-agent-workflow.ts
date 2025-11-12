@@ -184,32 +184,27 @@ const newsTool = wf
 // Chat trigger to agent (main connection)
 wf.connection()
 	.from({ node: chatTrigger, type: 'main', index: 0 })
-	.to({ node: agent, type: 'main', index: 0 })
-	.build();
+	.to({ node: agent, type: 'main', index: 0 });
 
 // Gemini to agent (language model connection)
 wf.connection()
 	.from({ node: gemini, type: 'ai_languageModel', index: 0 })
-	.to({ node: agent, type: 'ai_languageModel', index: 0 })
-	.build();
+	.to({ node: agent, type: 'ai_languageModel', index: 0 });
 
 // Memory to agent (memory connection)
 wf.connection()
 	.from({ node: memory, type: 'ai_memory', index: 0 })
-	.to({ node: agent, type: 'ai_memory', index: 0 })
-	.build();
+	.to({ node: agent, type: 'ai_memory', index: 0 });
 
 // Weather tool to agent (tool connection)
 wf.connection()
 	.from({ node: weatherTool, type: 'ai_tool', index: 0 })
-	.to({ node: agent, type: 'ai_tool', index: 0 })
-	.build();
+	.to({ node: agent, type: 'ai_tool', index: 0 });
 
 // News tool to agent (tool connection)
 wf.connection()
 	.from({ node: newsTool, type: 'ai_tool', index: 0 })
-	.to({ node: agent, type: 'ai_tool', index: 0 })
-	.build();
+	.to({ node: agent, type: 'ai_tool', index: 0 });
 
 // Export to JSON
 const workflowJSON = wf.toJSON();
