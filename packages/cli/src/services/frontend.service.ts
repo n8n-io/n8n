@@ -15,6 +15,8 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { UrlService } from './url.service';
+
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -33,9 +35,7 @@ import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
-
-import { UrlService } from './url.service';
+} from '@/workflows/workflow-history/workflow-history-helper';
 
 export type PublicEnterpriseSettings = Pick<
 	IEnterpriseSettings,
@@ -181,6 +181,10 @@ export class FrontendService {
 				whatsNewEndpoint: this.globalConfig.versionNotifications.whatsNewEndpoint,
 				infoUrl: this.globalConfig.versionNotifications.infoUrl,
 			},
+			dynamicBanners: {
+				endpoint: this.globalConfig.dynamicBanners.endpoint,
+				enabled: this.globalConfig.dynamicBanners.enabled,
+			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
 			posthog: {
@@ -268,7 +272,6 @@ export class FrontendService {
 				showNonProdBanner: false,
 				debugInEditor: false,
 				binaryDataS3: false,
-				workflowHistory: false,
 				workerView: false,
 				advancedPermissions: false,
 				apiKeyScopes: false,
@@ -311,8 +314,8 @@ export class FrontendService {
 				allowSendingActualData: true,
 			},
 			workflowHistory: {
-				pruneTime: -1,
-				licensePruneTime: -1,
+				pruneTime: getWorkflowHistoryPruneTime(),
+				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
 			},
 			pruning: {
 				isEnabled: this.globalConfig.executions.pruneData,
@@ -414,8 +417,6 @@ export class FrontendService {
 			showNonProdBanner: this.license.isLicensed(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
 			debugInEditor: this.license.isDebugInEditorLicensed(),
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
-			workflowHistory:
-				this.license.isWorkflowHistoryLicensed() && this.globalConfig.workflowHistory.enabled,
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
@@ -447,20 +448,14 @@ export class FrontendService {
 			this.settings.variables.limit = this.license.getVariablesLimit();
 		}
 
-		if (this.globalConfig.workflowHistory.enabled && this.license.isWorkflowHistoryLicensed()) {
-			Object.assign(this.settings.workflowHistory, {
-				pruneTime: getWorkflowHistoryPruneTime(),
-				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
-			});
-		}
-
 		if (this.communityPackagesService) {
 			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
 		}
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
-			this.settings.aiAssistant.setup = !!this.globalConfig.aiAssistant.baseUrl;
+			this.settings.aiAssistant.setup =
+				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
 		}
 
 		if (isAskAiEnabled) {

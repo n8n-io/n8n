@@ -4,7 +4,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { createComponentRenderer } from '@/__tests__/render';
 import EvaluationRootView from './EvaluationsRootView.vue';
 
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useEvaluationStore } from '../evaluation.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
@@ -12,13 +12,13 @@ import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
 import type { TestRunRecord } from '../evaluation.api';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/constants';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { SourceControlPreferences } from '@/features/integrations/sourceControl.ee/sourceControl.types';
 
-vi.mock('@/composables/useTelemetry', () => {
+vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => ({
@@ -28,7 +28,7 @@ vi.mock('@/composables/useTelemetry', () => {
 });
 
 const getNodeType = vi.fn();
-vi.mock('@/stores/nodeTypes.store', () => ({
+vi.mock('@/app/stores/nodeTypes.store', () => ({
 	useNodeTypesStore: vi.fn(() => ({
 		getNodeType,
 	})),

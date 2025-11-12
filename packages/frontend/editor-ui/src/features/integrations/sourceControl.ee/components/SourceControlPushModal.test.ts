@@ -7,12 +7,12 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import type { SourceControlledFile } from '@n8n/api-types';
 import { useSourceControlStore } from '../sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
-import { VIEWS } from '@/constants';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { VIEWS } from '@/app/constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
 import { reactive } from 'vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 
 const eventBus = createEventBus();
@@ -38,7 +38,7 @@ vi.mock('vue-router', () => ({
 	},
 }));
 
-vi.mock('@/composables/useTelemetry', () => {
+vi.mock('@/app/composables/useTelemetry', () => {
 	const track = vi.fn();
 	return {
 		useTelemetry: () => {
@@ -49,7 +49,7 @@ vi.mock('@/composables/useTelemetry', () => {
 	};
 });
 
-vi.mock('@/composables/useLoadingService', () => ({
+vi.mock('@/app/composables/useLoadingService', () => ({
 	useLoadingService: () => ({
 		startLoading: vi.fn(),
 		stopLoading: vi.fn(),
@@ -57,7 +57,7 @@ vi.mock('@/composables/useLoadingService', () => ({
 	}),
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
@@ -368,7 +368,8 @@ describe('SourceControlPushModal', () => {
 		expect(sourceControlStore.pushWorkfolder).toHaveBeenCalledWith(
 			expect.objectContaining({
 				commitMessage,
-				fileNames: expect.arrayContaining(status.filter((file) => file.type !== 'credential')),
+				// All files including credentials should be pushed (credentials now selected by default)
+				fileNames: expect.arrayContaining(status),
 				force: true,
 			}),
 		);
@@ -432,6 +433,82 @@ describe('SourceControlPushModal', () => {
 		await userEvent.type(getByTestId('source-control-push-modal-commit'), 'message');
 		const submitButton = getByTestId('source-control-push-modal-submit');
 		expect(submitButton).not.toBeDisabled();
+	});
+
+	it('should have all credentials selected by default', async () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'workflow-1',
+				name: 'My workflow',
+				type: 'workflow',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/workflows/workflow-1.json',
+				updatedAt: '2024-09-20T10:30:00.000Z',
+			},
+			{
+				id: 'cred-1',
+				name: 'My credential 1',
+				type: 'credential',
+				status: 'created',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/credentials/cred-1.json',
+				updatedAt: '2024-09-20T10:31:40.000Z',
+			},
+			{
+				id: 'cred-2',
+				name: 'My credential 2',
+				type: 'credential',
+				status: 'modified',
+				location: 'local',
+				conflict: false,
+				file: '/home/user/.n8n/git/credentials/cred-2.json',
+				updatedAt: '2024-09-20T14:42:51.968Z',
+			},
+		];
+
+		sourceControlStore.getAggregatedStatus.mockResolvedValue(status);
+
+		const { getAllByTestId, getByText } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		// Wait for modal content to be visible
+		await waitFor(() => {
+			expect(getByText('Commit and push changes')).toBeInTheDocument();
+		});
+
+		await waitFor(() => {
+			const workflows = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(workflows).toHaveLength(1);
+		});
+
+		// Switch to credentials tab
+		const tabs = getAllByTestId('source-control-push-modal-tab');
+		const credentialsTab = tabs.find((tab) => tab.textContent?.includes('Credentials'));
+		await userEvent.click(credentialsTab!);
+
+		await waitFor(() => {
+			const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
+			expect(credentials).toHaveLength(2);
+		});
+
+		const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
+
+		// All credentials should be selected by default
+		expect(within(credentials[0]).getByRole('checkbox')).toBeChecked();
+		expect(within(credentials[1]).getByRole('checkbox')).toBeChecked();
+
+		// Verify the tab shows correct count
+		expect(credentialsTab?.textContent).toContain('2 / 2 selected');
 	});
 
 	it('should show credentials in a different tab', async () => {
@@ -499,6 +576,8 @@ describe('SourceControlPushModal', () => {
 		const credentials = getAllByTestId('source-control-push-modal-file-checkbox');
 		expect(credentials).toHaveLength(1);
 		expect(within(credentials[0]).getByText('My credential')).toBeInTheDocument();
+		// Credentials should be selected by default
+		expect(within(credentials[0]).getByRole('checkbox')).toBeChecked();
 	});
 
 	describe('filters', () => {

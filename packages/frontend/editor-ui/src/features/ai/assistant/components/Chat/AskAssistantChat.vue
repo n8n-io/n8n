@@ -5,8 +5,8 @@ import { useSettingsStore } from '@/stores/settings.store';
 import { computed, ref, useSlots } from 'vue';
 import { N8nAskAssistantChat } from '@n8n/design-system';
 import AISettingsButton from '@/features/ai/assistant/components/Chat/AISettingsButton.vue';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { injectWorkflowState } from '@/composables/useWorkflowState';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 
 const emit = defineEmits<{
 	close: [];

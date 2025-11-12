@@ -46,7 +46,6 @@ export interface IEnterpriseSettings {
 	showNonProdBanner: boolean;
 	debugInEditor: boolean;
 	binaryDataS3: boolean;
-	workflowHistory: boolean;
 	workerView: boolean;
 	advancedPermissions: boolean;
 	apiKeyScopes: boolean;
@@ -102,6 +101,10 @@ export interface FrontendSettings {
 		[key: string]: string | number | undefined;
 	};
 	versionNotifications: IVersionNotificationSettings;
+	dynamicBanners: {
+		endpoint: string;
+		enabled: boolean;
+	};
 	instanceId: string;
 	telemetry: ITelemetrySettings;
 	posthog: {
