@@ -10,7 +10,7 @@ export class SavedTime implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Track Saved Time',
 		name: 'savedTime',
-		icon: 'fa:clock',
+		icon: 'fa:timer',
 		group: ['organization'],
 		version: 1,
 		description: 'Track dynamic time savings for this workflow execution',
