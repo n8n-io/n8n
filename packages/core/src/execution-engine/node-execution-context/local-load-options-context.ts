@@ -20,7 +20,10 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 		private workflowLoader: IWorkflowLoader,
 	) {}
 
-	async getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null> {
+	async getWorkflowNodeContext(
+		nodeType: string,
+		nodeName?: string,
+	): Promise<IWorkflowNodeContext | null> {
 		const { value: workflowId } = this.getCurrentNodeParameter(
 			'workflowId',
 		) as INodeParameterResourceLocator;
@@ -31,7 +34,12 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 
 		const dbWorkflow = await this.workflowLoader.get(workflowId);
 
-		const selectedWorkflowNode = dbWorkflow.nodes.find((node) => node.type === nodeType);
+		// Filter by type and optionally by name
+		const selectedWorkflowNode = dbWorkflow.nodes.find((node) => {
+			if (node.type !== nodeType) return false;
+			if (nodeName && node.name !== nodeName) return false;
+			return true;
+		});
 
 		if (selectedWorkflowNode) {
 			const selectedSingleNodeWorkflow = new Workflow({

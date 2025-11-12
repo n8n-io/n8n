@@ -82,19 +82,6 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				default: '',
 			},
 			{
-				displayName: 'Trigger Path',
-				name: 'triggerPath',
-				type: 'string',
-				default: '',
-				placeholder: 'e.g. /agent-tool-1',
-				description:
-					'Optional identifier for this trigger. When multiple Execute Workflow Triggers exist, use this to specify which one to invoke from the Execute Workflow node.',
-				noDataExpression: true,
-				displayOptions: {
-					show: { '@version': [{ _cnd: { gte: 1.1 } }] },
-				},
-			},
-			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 				displayName: 'Input data mode',
 				name: INPUT_SOURCE,

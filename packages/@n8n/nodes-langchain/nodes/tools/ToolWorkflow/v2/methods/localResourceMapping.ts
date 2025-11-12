@@ -4,7 +4,11 @@ import type { ILocalLoadOptionsFunctions, ResourceMapperFields } from 'n8n-workf
 export async function loadSubWorkflowInputs(
 	this: ILocalLoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const { fields, subworkflowInfo, dataMode } = await loadWorkflowInputMappings.bind(this)();
+	// Get the trigger node name parameter to load inputs from the specific trigger
+	const triggerNodeName = this.getCurrentNodeParameter('triggerNodeName') as string | undefined;
+
+	const { fields, subworkflowInfo, dataMode } =
+		await loadWorkflowInputMappings.bind(this)(triggerNodeName);
 	let emptyFieldsNotice: string | undefined;
 	if (fields.length === 0) {
 		const { triggerId, workflowId } = subworkflowInfo ?? {};

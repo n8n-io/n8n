@@ -96,8 +96,8 @@ export const versionDescription: INodeTypeDescription = {
 			required: true,
 		},
 		{
-			displayName: 'Trigger Path',
-			name: 'triggerPath',
+			displayName: 'Trigger Node Name',
+			name: 'triggerNodeName',
 			type: 'string',
 			displayOptions: {
 				show: {
@@ -108,9 +108,9 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			},
 			default: '',
-			placeholder: 'e.g. /agent-tool-1',
+			placeholder: 'e.g. When Executed by Another Workflow',
 			description:
-				'Optional path to specify which Execute Workflow Trigger to invoke when the sub-workflow has multiple triggers. Leave empty to use the default trigger.',
+				'Name of the Execute Workflow Trigger node to invoke when the sub-workflow has multiple triggers. Must exactly match the node name in the target workflow. Leave empty to use the first trigger.',
 		},
 		// -----------------------------------------------
 		//         Resource mapper for workflow inputs

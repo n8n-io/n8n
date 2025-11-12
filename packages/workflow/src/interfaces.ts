@@ -980,7 +980,7 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			options?: {
 				doNotWaitToFinish?: boolean;
 				parentExecution?: RelatedExecution;
-				triggerPath?: string;
+				triggerNodeName?: string;
 			},
 		): Promise<ExecuteWorkflowData>;
 		getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined>;
@@ -1119,7 +1119,8 @@ export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
 	Pick<FunctionsBase, 'getNode' | 'getWorkflow'>;
 
 export interface ILocalLoadOptionsFunctions {
-	getWorkflowNodeContext(nodeType: string): Promise<IWorkflowNodeContext | null>;
+	getWorkflowNodeContext(nodeType: string, nodeName?: string): Promise<IWorkflowNodeContext | null>;
+	getCurrentNodeParameter(parameterPath: string): NodeParameterValueType | object | undefined;
 }
 
 export interface IWorkflowLoader {
@@ -2640,7 +2641,7 @@ export interface ExecuteWorkflowOptions {
 	parentCallbackManager?: CallbackManager;
 	doNotWaitToFinish?: boolean;
 	parentExecution?: RelatedExecution;
-	triggerPath?: string;
+	triggerNodeName?: string;
 }
 
 export type AiEvent =

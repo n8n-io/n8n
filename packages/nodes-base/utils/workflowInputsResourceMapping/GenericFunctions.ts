@@ -167,8 +167,12 @@ export function getCurrentWorkflowInputData(this: IExecuteFunctions | ISupplyDat
 
 export async function loadWorkflowInputMappings(
 	this: ILocalLoadOptionsFunctions,
+	triggerNodeName?: string,
 ): Promise<WorkflowInputsData> {
-	const nodeLoadContext = await this.getWorkflowNodeContext(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
+	const nodeLoadContext = await this.getWorkflowNodeContext(
+		EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+		triggerNodeName,
+	);
 	let fields: ResourceMapperField[] = [];
 	let dataMode: string = PASSTHROUGH;
 	let subworkflowInfo: { workflowId?: string; triggerId?: string } | undefined;

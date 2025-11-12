@@ -5,7 +5,11 @@ import { loadWorkflowInputMappings } from '@utils/workflowInputsResourceMapping/
 export async function loadSubWorkflowInputs(
 	this: ILocalLoadOptionsFunctions,
 ): Promise<ResourceMapperFields> {
-	const { fields, dataMode, subworkflowInfo } = await loadWorkflowInputMappings.bind(this)();
+	// Get the trigger node name parameter to load inputs from the specific trigger
+	const triggerNodeName = this.getCurrentNodeParameter('triggerNodeName') as string | undefined;
+
+	const { fields, dataMode, subworkflowInfo } =
+		await loadWorkflowInputMappings.bind(this)(triggerNodeName);
 	let emptyFieldsNotice: string | undefined;
 	if (fields.length === 0) {
 		const { triggerId, workflowId } = subworkflowInfo ?? {};

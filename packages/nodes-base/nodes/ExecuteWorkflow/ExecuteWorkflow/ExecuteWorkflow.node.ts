@@ -9,7 +9,7 @@ import type {
 
 import { findPairedItemThroughWorkflowData } from './../../../utils/workflow-backtracking';
 import { getWorkflowInfo } from './GenericFunctions';
-import { localResourceMapping } from './methods';
+import { localResourceMapping, loadOptions } from './methods';
 import { generatePairedItemData } from '../../../utils/utilities';
 import { getCurrentWorkflowInputData } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
@@ -189,8 +189,8 @@ export class ExecuteWorkflow implements INodeType {
 				description: 'The URL from which to load the workflow from',
 			},
 			{
-				displayName: 'Trigger Path',
-				name: 'triggerPath',
+				displayName: 'Trigger Node Name',
+				name: 'triggerNodeName',
 				type: 'string',
 				displayOptions: {
 					show: {
@@ -202,9 +202,9 @@ export class ExecuteWorkflow implements INodeType {
 					},
 				},
 				default: '',
-				placeholder: 'e.g. /agent-tool-1',
+				placeholder: 'e.g. When Executed by Another Workflow',
 				description:
-					'Optional path to specify which Execute Workflow Trigger to invoke when the sub-workflow has multiple triggers. Leave empty to use the default trigger.',
+					'Name of the Execute Workflow Trigger node to invoke when the sub-workflow has multiple triggers. Must exactly match the node name in the target workflow. Leave empty to use the first trigger.',
 			},
 			{
 				displayName:
@@ -304,12 +304,13 @@ export class ExecuteWorkflow implements INodeType {
 
 	methods = {
 		localResourceMapping,
+		loadOptions,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const source = this.getNodeParameter('source', 0) as string;
 		const mode = this.getNodeParameter('mode', 0, false) as string;
-		const triggerPath = this.getNodeParameter('triggerPath', 0, '') as string;
+		const triggerNodeName = this.getNodeParameter('triggerNodeName', 0, '') as string;
 		const items = getCurrentWorkflowInputData.call(this);
 
 		const workflowProxy = this.getWorkflowDataProxy(0);
@@ -338,7 +339,7 @@ export class ExecuteWorkflow implements INodeType {
 									workflowId: workflowProxy.$workflow.id,
 									shouldResume: waitForSubWorkflow,
 								},
-								triggerPath,
+								triggerNodeName,
 							},
 						);
 						const workflowResult = executionResult.data as INodeExecutionData[][];
@@ -372,7 +373,7 @@ export class ExecuteWorkflow implements INodeType {
 									workflowId: workflowProxy.$workflow.id,
 									shouldResume: waitForSubWorkflow,
 								},
-								triggerPath,
+								triggerNodeName,
 							},
 						);
 
@@ -441,7 +442,7 @@ export class ExecuteWorkflow implements INodeType {
 							workflowId: workflowProxy.$workflow.id,
 							shouldResume: waitForSubWorkflow,
 						},
-						triggerPath,
+						triggerNodeName,
 					},
 				);
 
