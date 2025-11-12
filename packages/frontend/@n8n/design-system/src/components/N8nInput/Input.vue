@@ -62,7 +62,7 @@ const inputElement = computed(() => {
 const focus = () => inputElement.value?.focus();
 const blur = () => inputElement.value?.blur();
 const select = () => inputElement.value?.select();
-defineExpose({ focus, blur, select });
+defineExpose({ focus, blur, select, inputElement });
 </script>
 
 <template>

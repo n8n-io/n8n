@@ -71,13 +71,17 @@ function onSetActive(value: boolean) {
 		emit('activate', id.value);
 		const graphNode = vueFlowInstance.findNode(id.value);
 		if (!graphNode) return;
-		const rect = getRectOfNodes([graphNode]);
-		void vueFlowInstance.fitBounds({
-			x: rect.x,
-			y: rect.y,
-			width: Math.min(rect.width, 800),
-			height: Math.min(rect.height, 800),
-		});
+		const canvas = document.getElementById('canvas');
+		if (!canvas) return;
+		if (
+			graphNode.dimensions.height / 2 < canvas.clientHeight &&
+			graphNode.dimensions.width / 2 < canvas.clientWidth
+		) {
+			void vueFlowInstance.fitView({
+				nodes: [graphNode.id],
+				maxZoom: 1.5,
+			});
+		}
 	} else {
 		emit('deactivate', id.value);
 	}
@@ -106,7 +110,17 @@ onMounted(() => {
 onBeforeUnmount(() => {
 	eventBus.value?.off('update:node:activated', onActivate);
 });
+
+function test(event: { width: number; height: number }) {
+	console.log(event, renderOptions.value.height, renderOptions.value.width);
+	emit('update', {
+		...(event.height > (renderOptions.value?.height ?? 0) ? { height: event.height } : {}),
+		// ...(event.width ? { width: event.width } : {}),
+		// ...(event.height ? { height: event.height } : {}),
+	});
+}
 </script>
+
 <template>
 	<NodeResizer
 		:min-height="80"
@@ -131,6 +145,7 @@ onBeforeUnmount(() => {
 		@dblclick.stop="onActivate"
 		@update:model-value="onInputChange"
 		@contextmenu="openContextMenu"
+		@resize="test"
 	/>
 </template>
 

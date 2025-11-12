@@ -1,24 +1,27 @@
 <script lang="ts" setup>
 import { computed, ref, watch } from 'vue';
 
-import { defaultStickyProps } from './constants';
-import type { StickyProps } from './types';
 import { useI18n } from '../../composables/useI18n';
 import N8nInput from '../N8nInput';
 import N8nMarkdown from '../N8nMarkdown';
 import N8nText from '../N8nText';
+import { defaultStickyProps } from './constants';
+import type { StickyProps } from './types';
+import { useElementSize } from '@vueuse/core';
 
+// const props = withDefaults(defineProps<Omit<StickyProps, 'editMode'>>(), defaultStickyProps);
 const props = withDefaults(defineProps<StickyProps>(), defaultStickyProps);
 
 const emit = defineEmits<{
 	edit: [editing: boolean];
 	'update:modelValue': [value: string];
 	'markdown-click': [link: HTMLAnchorElement, e: MouseEvent];
+	resize: [size: { width: number; height: number }];
 }>();
 
 const { t } = useI18n();
 const isResizing = ref(false);
-const input = ref<HTMLTextAreaElement | undefined>(undefined);
+const input = ref<InstanceType<typeof N8nInput> | undefined>(undefined);
 
 const resHeight = computed((): number => {
 	return props.height < props.minHeight ? props.minHeight : props.height;
@@ -31,11 +34,15 @@ const resWidth = computed((): number => {
 const inputName = computed(() => (props.id ? `${props.id}-input` : undefined));
 
 const styles = computed((): { height: string; width: string } => ({
-	height: `${resHeight.value}px`,
+	height: props.editMode ? 'auto' : `${resHeight.value}px`,
 	width: `${resWidth.value}px`,
+	...(props.editMode && { minHeight: `${resHeight.value}px` }),
 }));
 
 const shouldShowFooter = computed((): boolean => resHeight.value > 100 && resWidth.value > 155);
+const innerInput = computed(() => input.value?.inputElement);
+const size = useElementSize(innerInput);
+// const editMode = ref(true);
 
 watch(
 	() => props.editMode,
@@ -46,6 +53,7 @@ watch(
 					input.value.select();
 				}
 				input.value.focus();
+				console.log(innerInput.value, size);
 			}
 		}, 100);
 	},
@@ -61,6 +69,7 @@ const onInputBlur = () => {
 
 const onUpdateModelValue = (value: string) => {
 	emit('update:modelValue', value);
+	emit('resize', { width: size.width.value, height: size.height.value });
 };
 
 const onMarkdownClick = (link: HTMLAnchorElement, event: MouseEvent) => {
@@ -110,9 +119,11 @@ const onInputScroll = (event: WheelEvent) => {
 				:name="inputName"
 				type="textarea"
 				:rows="5"
+				autosize
 				@blur="onInputBlur"
 				@update:model-value="onUpdateModelValue"
 				@wheel="onInputScroll"
+				@resize="emit('resize', $event)"
 			/>
 		</div>
 		<div v-if="editMode && shouldShowFooter" :class="$style.footer">
