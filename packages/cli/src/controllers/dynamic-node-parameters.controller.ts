@@ -154,6 +154,30 @@ export class DynamicNodeParametersController {
 		);
 	}
 
+	@Post('/local-options')
+	async getLocalOptions(
+		req: AuthenticatedRequest,
+		_res: Response,
+		@Body payload: OptionsRequestDto,
+	): Promise<INodePropertyOptions[]> {
+		await this.service.scrubInaccessibleProjectId(req.user, payload);
+
+		const { path, methodName, currentNodeParameters, nodeTypeAndVersion, projectId } = payload;
+
+		const additionalData = await getBase({
+			userId: req.user.id,
+			currentNodeParameters,
+			projectId,
+		});
+
+		return await this.service.getLocalLoadOptions(
+			methodName!,
+			path,
+			additionalData,
+			nodeTypeAndVersion,
+		);
+	}
+
 	@Post('/action-result')
 	async getActionResult(
 		req: AuthenticatedRequest,

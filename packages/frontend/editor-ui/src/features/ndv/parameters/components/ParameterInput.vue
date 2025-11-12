@@ -243,7 +243,11 @@ const isSecretParameter = computed<boolean>(() => {
 });
 
 const hasRemoteMethod = computed<boolean>(() => {
-	return !!getTypeOption('loadOptionsMethod') || !!getTypeOption('loadOptions');
+	return (
+		!!getTypeOption('loadOptionsMethod') ||
+		!!getTypeOption('localLoadOptionsMethod') ||
+		!!getTypeOption('loadOptions')
+	);
 });
 
 const parameterOptions = computed(() => {
@@ -703,22 +707,42 @@ async function loadRemoteParameterOptions() {
 			currentNodeParameters,
 		) as INodeParameters;
 		const loadOptionsMethod = getTypeOption('loadOptionsMethod');
+		const localLoadOptionsMethod = getTypeOption('localLoadOptionsMethod');
 		const loadOptions = getTypeOption('loadOptions');
 
-		const options = await nodeTypesStore.getNodeParameterOptions({
-			nodeTypeAndVersion: {
-				name: node.value.type,
-				version: node.value.typeVersion,
-			},
-			path: props.path,
-			methodName: loadOptionsMethod,
-			loadOptions,
-			currentNodeParameters: resolvedNodeParameters,
-			credentials: node.value.credentials,
-			projectId: projectsStore.currentProjectId,
-		});
+		let options: INodePropertyOptions[] | null = null;
 
-		remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
+		// Check for localLoadOptionsMethod first (doesn't require credentials)
+		if (localLoadOptionsMethod) {
+			options = await nodeTypesStore.getLocalNodeParameterOptions({
+				nodeTypeAndVersion: {
+					name: node.value.type,
+					version: node.value.typeVersion,
+				},
+				path: props.path,
+				methodName: localLoadOptionsMethod,
+				currentNodeParameters: resolvedNodeParameters,
+				projectId: projectsStore.currentProjectId,
+			});
+		} else {
+			// Fall back to standard loadOptionsMethod
+			options = await nodeTypesStore.getNodeParameterOptions({
+				nodeTypeAndVersion: {
+					name: node.value.type,
+					version: node.value.typeVersion,
+				},
+				path: props.path,
+				methodName: loadOptionsMethod,
+				loadOptions,
+				currentNodeParameters: resolvedNodeParameters,
+				credentials: node.value.credentials,
+				projectId: projectsStore.currentProjectId,
+			});
+		}
+
+		if (options) {
+			remoteParameterOptions.value = remoteParameterOptions.value.concat(options);
+		}
 	} catch (error: unknown) {
 		if (error instanceof Error) {
 			remoteParameterOptionsLoadingIssues.value = error.message;

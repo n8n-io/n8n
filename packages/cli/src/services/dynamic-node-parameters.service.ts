@@ -33,6 +33,7 @@ import { Logger } from '@n8n/backend-common';
 type LocalResourceMappingMethod = (
 	this: ILocalLoadOptionsFunctions,
 ) => Promise<ResourceMapperFields>;
+type LocalLoadOptionsMethod = (this: ILocalLoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 type ListSearchMethod = (
 	this: ILoadOptionsFunctions,
 	filter?: string,
@@ -47,6 +48,7 @@ type ResourceMappingMethod = (this: ILoadOptionsFunctions) => Promise<ResourceMa
 
 type NodeMethod =
 	| LocalResourceMappingMethod
+	| LocalLoadOptionsMethod
 	| ListSearchMethod
 	| LoadOptionsMethod
 	| ActionHandlerMethod
@@ -229,6 +231,20 @@ export class DynamicNodeParametersService {
 		return method.call(thisArgs);
 	}
 
+	/** Returns the available options for parameters using local load options methods */
+	async getLocalLoadOptions(
+		methodName: string,
+		path: string,
+		additionalData: IWorkflowExecuteAdditionalData,
+		nodeTypeAndVersion: INodeTypeNameVersion,
+	): Promise<INodePropertyOptions[]> {
+		const nodeType = this.getNodeType(nodeTypeAndVersion);
+		const method = this.getMethod('localLoadOptions', methodName, nodeType);
+		const thisArgs = this.getLocalLoadOptionsContext(path, additionalData);
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-return
+		return method.call(thisArgs);
+	}
+
 	/** Returns the result of the action handler */
 	async getActionResult(
 		handler: string,
@@ -257,6 +273,11 @@ export class DynamicNodeParametersService {
 		methodName: string,
 		nodeType: INodeType,
 	): LocalResourceMappingMethod;
+	private getMethod(
+		type: 'localLoadOptions',
+		methodName: string,
+		nodeType: INodeType,
+	): LocalLoadOptionsMethod;
 	private getMethod(type: 'listSearch', methodName: string, nodeType: INodeType): ListSearchMethod;
 	private getMethod(
 		type: 'loadOptions',
@@ -272,6 +293,7 @@ export class DynamicNodeParametersService {
 		type:
 			| 'resourceMapping'
 			| 'localResourceMapping'
+			| 'localLoadOptions'
 			| 'listSearch'
 			| 'loadOptions'
 			| 'actionHandler',
