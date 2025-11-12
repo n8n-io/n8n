@@ -81,6 +81,7 @@ export class UserManagementMailer {
 		email: string;
 		firstName?: string;
 		workflowId: string;
+		workflowName: string;
 	}): Promise<SendEmailResult> {
 		if (!this.mailer) return { emailSent: false };
 
@@ -90,12 +91,14 @@ export class UserManagementMailer {
 		const template = await this.getTemplate('workflow-failure');
 		return await this.mailer.sendMail({
 			emailRecipients: data.email,
-			subject: 'Your n8n workflow failed in production',
+			subject: '⚠️ Your workflow failed. Get alerts next time',
 			body: template({
 				...this.basePayload,
 				firstName: data.firstName ?? 'there',
 				workflowId: data.workflowId,
+				workflowName: data.workflowName,
 				workflowUrl,
+				instanceURL: baseUrl,
 			}),
 		});
 	}

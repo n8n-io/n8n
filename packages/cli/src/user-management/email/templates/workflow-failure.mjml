@@ -4,15 +4,17 @@
 		<mj-section padding="0 20px">
 			<mj-column>
 				<mj-include path="./_logo.mjml" />
-				<mj-text font-size="22px" font-weight="400">Workflow Execution Failed</mj-text>
 				<mj-text>Hi {{firstName}},</mj-text>
-				<mj-text>This is to notify you that a workflow in your n8n instance has failed during its first production execution.</mj-text>
-				<mj-text><b>Workflow ID:</b> {{workflowId}}</mj-text>
-				<mj-text>Please review your workflow execution logs to understand what went wrong and make necessary adjustments.</mj-text>
-				<mj-button href="{{workflowUrl}}">View Workflow</mj-button>
-				<mj-text font-size="14px" color="#909398" font-style="italic" font-weight="300">
-					This is an automated notification sent only for the first production failure of your n8n instance.
+				<mj-text>⚠️ Your workflow "{{workflowName}}" ran into an error.</mj-text>
+				<mj-text>Set up an error workflow now to get instant alerts on Gmail, Slack or any tool of your choice.</mj-text>
+				<mj-button href="{{instanceURL}}/templates/2159">Set up my Error Workflow</mj-button>
+				<mj-text>
+					<ul style="padding-left: 20px; margin: 0;">
+						<li style="margin-bottom: 8px;"><a href="https://www.youtube.com/watch?v=bTF3tACqPRU" style="color: #007bff; text-decoration: none;">Tutorial</a></li>
+						<li><a href="https://docs.n8n.io/flow-logic/error-handling/" style="color: #007bff; text-decoration: none;">Docs</a></li>
+					</ul>
 				</mj-text>
+				<mj-text>Happy automating,<br />The n8n team</mj-text>
 				<mj-include path="./_footer.mjml" />
 			</mj-column>
 		</mj-section>

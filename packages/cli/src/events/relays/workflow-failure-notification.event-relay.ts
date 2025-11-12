@@ -35,7 +35,7 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 	private async onFirstProductionWorkflowFailed(
 		event: RelayEventMap['instance-first-production-workflow-failed'],
 	) {
-		const { workflowId, userId } = event;
+		const { workflowId, workflowName, userId } = event;
 
 		// Skip if email is not configured
 		if (!this.mailer.isEmailSetUp) {
@@ -66,6 +66,7 @@ export class WorkflowFailureNotificationEventRelay extends EventRelay {
 				email: user.email,
 				firstName: user.firstName,
 				workflowId,
+				workflowName,
 			});
 
 			this.logger.info('Sent first production failure email', {

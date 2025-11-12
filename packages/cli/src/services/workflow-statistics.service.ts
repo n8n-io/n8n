@@ -179,6 +179,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 					this.eventService.emit('instance-first-production-workflow-failed', {
 						projectId: project.id,
 						workflowId,
+						workflowName: workflowData.name,
 						userId: owner.id,
 					});
 				}
