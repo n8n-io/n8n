@@ -24,7 +24,7 @@ describe('generateTypes', () => {
 		});
 
 		it('should convert dot.case to PascalCase', () => {
-			expect(toPascalCase('n8n-nodes-base.actionNetwork')).toEqual('N8nNodesBaseActionnetwork');
+			expect(toPascalCase('n8n-nodes-base.actionNetwork')).toEqual('N8nNodesBaseActionNetwork');
 		});
 
 		it('should handle mixed case conversions', () => {
@@ -33,7 +33,7 @@ describe('generateTypes', () => {
 
 		it('should handle single words', () => {
 			expect(toPascalCase('node')).toEqual('Node');
-			expect(toPascalCase('NODE')).toEqual('Node');
+			expect(toPascalCase('NODE')).toEqual('NODE');
 		});
 
 		it('should handle empty strings', () => {
@@ -334,7 +334,7 @@ describe('generateTypes', () => {
 
 			const result = generateNodeParametersInterface(node);
 
-			expect(result).toEqual(`export interface TestnodeParameters {
+			expect(result).toEqual(`export interface TestNodeParameters {
 
   name?: string;
 
@@ -363,7 +363,7 @@ describe('generateTypes', () => {
 
 			const result = generateNodeParametersInterface(node);
 
-			expect(result).toEqual(`export interface TestnodeParameters {
+			expect(result).toEqual(`export interface TestNodeParameters {
 
   required: string;
 
@@ -387,7 +387,7 @@ describe('generateTypes', () => {
 
 			const result = generateNodeParametersInterface(node);
 
-			expect(result).toEqual(`export interface TestnodeParameters {
+			expect(result).toEqual(`export interface TestNodeParameters {
 
   /** The name of the resource */
   name?: string;
@@ -420,7 +420,7 @@ describe('generateTypes', () => {
 
 			const result = generateNodeParametersInterface(node);
 
-			expect(result).toEqual(`export interface TestnodeParameters {
+			expect(result).toEqual(`export interface TestNodeParameters {
 
   resource?: "user";
 
@@ -452,13 +452,13 @@ describe('generateTypes', () => {
 			const result = generateNodeParametersInterface(node);
 
 			// Note: The order of conditions may vary, so we check both possibilities
-			const expectedOption1 = `export interface TestnodeParameters {
+			const expectedOption1 = `export interface TestNodeParameters {
 
   // Properties shown when: resource: user AND operation: get
 
   field?: string;
 }`;
-			const expectedOption2 = `export interface TestnodeParameters {
+			const expectedOption2 = `export interface TestNodeParameters {
 
   // Properties shown when: operation: get AND resource: user
 
@@ -483,7 +483,7 @@ describe('generateTypes', () => {
 
 			const result = generateNodeParametersInterface(node);
 
-			expect(result).toEqual(`export interface TestnodeParameters {
+			expect(result).toEqual(`export interface TestNodeParameters {
 
   "my-special-property"?: string;
 }`);
@@ -556,7 +556,7 @@ describe('generateTypes', () => {
 			const result = generateOperationTypes(node);
 
 			expect(result).toHaveLength(1);
-			expect(result[0]).toEqual(`export interface TestnodeUserGetParameters {
+			expect(result[0]).toEqual(`export interface TestNodeUserGetParameters {
   resource: "user";
   operation: "get";
 
@@ -615,8 +615,8 @@ describe('generateTypes', () => {
 			const result = generateOperationTypes(node);
 
 			expect(result.length).toBeGreaterThan(0);
-			expect(result.some((type) => type.includes('TestnodeUserGetParameters'))).toBe(true);
-			expect(result.some((type) => type.includes('TestnodePostGetParameters'))).toBe(true);
+			expect(result.some((type) => type.includes('TestNodeUserGetParameters'))).toBe(true);
+			expect(result.some((type) => type.includes('TestNodePostGetParameters'))).toBe(true);
 		});
 
 		it('should not generate types for operations without properties', () => {
@@ -683,7 +683,7 @@ describe('generateTypes', () => {
 // Action Network
 // Node: n8n-nodes-base.actionNetwork
 
-export interface ActionnetworkParameters {
+export interface ActionNetworkParameters {
 
   resource?: "attendance" | "event";
 
@@ -694,7 +694,7 @@ export interface ActionnetworkParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.actionNetwork": ActionnetworkParameters;
+  "n8n-nodes-base.actionNetwork": ActionNetworkParameters;
 }
 `);
 		});
@@ -797,7 +797,7 @@ export interface NodeTypeToParametersMap {
 // Test Node
 // Node: n8n-nodes-base.testNode
 
-export interface TestnodeParameters {
+export interface TestNodeParameters {
 
   resource?: "user";
 
@@ -809,7 +809,7 @@ export interface TestnodeParameters {
 }
 
 // Operation-specific parameter types
-export interface TestnodeUserGetParameters {
+export interface TestNodeUserGetParameters {
   resource: "user";
   operation: "get";
 
@@ -820,7 +820,7 @@ export interface TestnodeUserGetParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.testNode": TestnodeParameters;
+  "n8n-nodes-base.testNode": TestNodeParameters;
 }
 `);
 		});
@@ -853,7 +853,7 @@ export interface NodeTypeToParametersMap {
 // Test Node
 // Node: n8n-nodes-base.testNode
 
-export interface TestnodeParameters {
+export interface TestNodeParameters {
 
   field?: string;
 }
@@ -862,7 +862,7 @@ export interface TestnodeParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.testNode": TestnodeParameters;
+  "n8n-nodes-base.testNode": TestNodeParameters;
 }
 `);
 		});
@@ -967,7 +967,7 @@ export interface NodeTypeToParametersMap {
 // Action Network
 // Node: n8n-nodes-base.actionNetwork
 
-export interface ActionnetworkParameters {
+export interface ActionNetworkParameters {
 
   resource?: "attendance" | "event";
 
@@ -980,7 +980,7 @@ export interface ActionnetworkParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.actionNetwork": ActionnetworkParameters;
+  "n8n-nodes-base.actionNetwork": ActionNetworkParameters;
 }
 `);
 		});
@@ -1052,7 +1052,7 @@ export interface NodeTypeToParametersMap {
 // Complex Node
 // Node: n8n-nodes-base.complexNode
 
-export interface ComplexnodeParameters {
+export interface ComplexNodeParameters {
 
   /** A string field */
   stringField: string;
@@ -1076,7 +1076,7 @@ export interface ComplexnodeParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.complexNode": ComplexnodeParameters;
+  "n8n-nodes-base.complexNode": ComplexNodeParameters;
 }
 `);
 		});
@@ -1124,7 +1124,7 @@ export interface NodeTypeToParametersMap {
 // Complex Node
 // Node: n8n-nodes-base.complexNode
 
-export interface ComplexnodeParameters {
+export interface ComplexNodeParameters {
 
   email_addresses?: {
   "email_fields"?: {
@@ -1139,7 +1139,7 @@ export interface ComplexnodeParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.complexNode": ComplexnodeParameters;
+  "n8n-nodes-base.complexNode": ComplexNodeParameters;
 }
 `);
 		});
@@ -1177,7 +1177,7 @@ export interface NodeTypeToParametersMap {
 // Test Node
 // Node: n8n-nodes-base.testNode
 
-export interface TestnodeParameters {
+export interface TestNodeParameters {
 
   additionalFields?: {
   /** The name field */
@@ -1190,7 +1190,7 @@ export interface TestnodeParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.testNode": TestnodeParameters;
+  "n8n-nodes-base.testNode": TestNodeParameters;
 }
 `);
 		});
@@ -1220,7 +1220,7 @@ export interface NodeTypeToParametersMap {
 // Test Node
 // Node: n8n-nodes-base.testNode
 
-export interface TestnodeParameters {
+export interface TestNodeParameters {
 
   multipleStrings?: Array<string>;
 }
@@ -1229,7 +1229,7 @@ export interface TestnodeParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.testNode": TestnodeParameters;
+  "n8n-nodes-base.testNode": TestNodeParameters;
 }
 `);
 		});
@@ -1410,7 +1410,7 @@ export interface NodeTypeToParametersMap {
 // Action Network
 // Node: n8n-nodes-base.actionNetwork
 
-export interface ActionnetworkParameters {
+export interface ActionNetworkParameters {
 
   resource?: "attendance" | "event" | "person";
 
@@ -1461,7 +1461,7 @@ export interface ActionnetworkParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.actionNetwork": ActionnetworkParameters;
+  "n8n-nodes-base.actionNetwork": ActionNetworkParameters;
 }
 `;
 
@@ -1470,7 +1470,7 @@ export interface NodeTypeToParametersMap {
 // Action Network
 // Node: n8n-nodes-base.actionNetwork
 
-export interface ActionnetworkParameters {
+export interface ActionNetworkParameters {
 
   resource?: "attendance" | "event" | "person";
 
@@ -1521,7 +1521,7 @@ export interface ActionnetworkParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.actionNetwork": ActionnetworkParameters;
+  "n8n-nodes-base.actionNetwork": ActionNetworkParameters;
 }
 `;
 
