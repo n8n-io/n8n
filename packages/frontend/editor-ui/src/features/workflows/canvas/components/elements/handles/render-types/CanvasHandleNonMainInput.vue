@@ -1,16 +1,11 @@
 <script lang="ts" setup>
-import CanvasHandlePlus from './parts/CanvasHandlePlus.vue';
 import { useCanvasNodeHandle } from '../../../../composables/useCanvasNodeHandle';
-import { computed, ref, useCssModule } from 'vue';
+import { computed, useCssModule } from 'vue';
 import CanvasHandleDiamond from './parts/CanvasHandleDiamond.vue';
-
-const emit = defineEmits<{
-	add: [];
-}>();
 
 const $style = useCssModule();
 
-const { label, isConnected, isConnecting, isRequired, maxConnections } = useCanvasNodeHandle();
+const { label, isRequired } = useCanvasNodeHandle();
 
 const handleClasses = 'target';
 
@@ -19,45 +14,11 @@ const classes = computed(() => ({
 	[$style.handle]: true,
 	[$style.required]: isRequired.value,
 }));
-
-const isHandlePlusAvailable = computed(
-	() => !isConnected.value || !maxConnections.value || maxConnections.value > 1,
-);
-
-const isHandlePlusVisible = computed(
-	() => !isConnecting.value || isHovered.value || !maxConnections.value || maxConnections.value > 1,
-);
-
-const isHovered = ref(false);
-
-function onMouseEnter() {
-	isHovered.value = true;
-}
-
-function onMouseLeave() {
-	isHovered.value = false;
-}
-
-function onClickAdd() {
-	emit('add');
-}
 </script>
 <template>
 	<div :class="classes">
 		<div :class="[$style.label]">{{ label }}</div>
 		<CanvasHandleDiamond :handle-classes="handleClasses" />
-		<Transition name="canvas-node-handle-non-main-input">
-			<CanvasHandlePlus
-				v-if="isHandlePlusAvailable"
-				v-show="isHandlePlusVisible"
-				:handle-classes="handleClasses"
-				type="secondary"
-				position="bottom"
-				@mouseenter="onMouseEnter"
-				@mouseleave="onMouseLeave"
-				@click:plus="onClickAdd"
-			/>
-		</Transition>
 	</div>
 </template>
 
