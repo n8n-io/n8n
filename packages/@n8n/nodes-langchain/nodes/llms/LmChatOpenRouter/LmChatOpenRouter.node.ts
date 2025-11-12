@@ -149,6 +149,8 @@ export class LmChatOpenRouter implements INodeType {
 						displayName: 'Reasoning Effort',
 						name: 'reasoningEffort',
 						default: '',
+						description:
+							'Controls the amount of reasoning tokens to use. A value of "low" will favor speed and economical token usage, "high" will favor more complete reasoning at the cost of more tokens generated and slower responses. Not all reasoning models support "minimal".',
 						type: 'options',
 						options: [
 							{
