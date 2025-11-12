@@ -265,6 +265,7 @@ describe('GlobalConfig', () => {
 			maxOldSpaceSize: '',
 			maxConcurrency: 10,
 			taskTimeout: 300,
+			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
 			insecureMode: false,
 			isNativePythonRunnerEnabled: false,
@@ -361,7 +362,6 @@ describe('GlobalConfig', () => {
 			disabled: false,
 		},
 		workflowHistory: {
-			enabled: true,
 			pruneTime: -1,
 		},
 		sso: {

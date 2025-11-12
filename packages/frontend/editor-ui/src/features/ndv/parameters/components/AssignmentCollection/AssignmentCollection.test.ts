@@ -10,6 +10,8 @@ import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
 import { createTestNodeProperties } from '@/__tests__/mocks';
 import type { AssignmentCollectionValue, AssignmentValue } from 'n8n-workflow';
 
+vi.mock('vue-router');
+
 const DEFAULT_SETUP: RenderOptions<typeof AssignmentCollection> = {
 	pinia: createTestingPinia({
 		initialState: {
