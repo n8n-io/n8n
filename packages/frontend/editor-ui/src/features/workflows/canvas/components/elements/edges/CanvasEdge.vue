@@ -52,7 +52,7 @@ watch(
 	{ immediate: true },
 );
 
-const renderToolbar = computed(() => (props.selected || delayedHovered.value) && !props.readOnly);
+const renderToolbar = computed(() => delayedHovered.value && !props.readOnly);
 
 const isMainConnection = computed(() => data.value.source.type === NodeConnectionTypes.Main);
 
