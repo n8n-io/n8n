@@ -80,7 +80,7 @@ export async function clearOtherExecutions(
 	executionStopped: Date,
 ): Promise<void> {
 	await Container.get(ExecutionRepository).deleteExecutionsByFilter(
-		{ status: [status], stoppedBefore: executionStopped.toISOString() },
+		{ status: [status], stoppedBefore: executionStopped.toISOString(), mode: 'trigger' },
 		[workflowId],
 		{ deleteBefore: executionStarted },
 		true,

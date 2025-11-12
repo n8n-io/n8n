@@ -23,7 +23,6 @@ const shouldSkipStatus: Record<ExecutionStatus, boolean> = {
 	running: true,
 	unknown: true,
 	waiting: true,
-	deleted: true,
 };
 
 const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {

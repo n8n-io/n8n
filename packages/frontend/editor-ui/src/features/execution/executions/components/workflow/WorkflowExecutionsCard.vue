@@ -82,10 +82,7 @@ function onRetryMenuItemSelect(action: string): void {
 		}"
 	>
 		<RouterLink
-			:class="{
-				[$style.executionLink]: true,
-				[$style.executionDisabled]: execution.status === 'deleted',
-			}"
+			:class="$style.executionLink"
 			:to="{
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: currentWorkflow, executionId: execution.id },
@@ -214,10 +211,6 @@ function onRetryMenuItemSelect(action: string): void {
 		.executionLink {
 			--execution-list-item--color--background: var(--execution-card--color--background--hover);
 		}
-	}
-	.executionDisabled {
-		opacity: 0.5;
-		pointer-events: none;
 	}
 
 	&.new,

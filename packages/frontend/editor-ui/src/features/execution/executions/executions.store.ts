@@ -125,9 +125,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 	async function pruneDeletedExecutions() {
 		const keys = Object.keys(executionsById.value);
-		console.log(keys);
 		const result = await fetchExistingExecutionIds(keys);
-		console.log(result);
 		if (!result) return;
 		const validIds = new Set(result as never);
 		for (const key of keys) {
@@ -351,7 +349,6 @@ export const useExecutionsStore = defineStore('executions', () => {
 		stopCurrentExecution,
 		retryExecution,
 		deleteExecutions,
-		removeExecution, // clears execution from the front end store only
 		addExecution,
 		resetData,
 		reset,

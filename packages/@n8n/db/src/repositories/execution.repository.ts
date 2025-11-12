@@ -83,6 +83,9 @@ function parseFiltersToQueryBuilder(
 			workflowStatus: filters.status,
 		});
 	}
+	if (filters?.mode) {
+		qb.andWhere({ mode: filters.mode });
+	}
 	if (filters?.finished) {
 		qb.andWhere({ finished: filters.finished });
 	}
@@ -524,18 +527,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
 			const batch = ids.splice(0, this.hardDeletionBatchSize);
 			const tasks = softDelete
-				? [
-						this.softDelete(
-							batch.map(({ executionId }) => executionId),
-							// {
-							// 	status: 'deleted',
-							// 	deletedAt: new Date(),
-							// 	executionData: {},
-							// 	annotation: {},
-							// },
-						),
-						this.binaryDataService.deleteMany(batch),
-					]
+				? [this.softDelete(batch.map(({ executionId }) => executionId))]
 				: [
 						this.delete(batch.map(({ executionId }) => executionId)),
 						this.binaryDataService.deleteMany(batch),

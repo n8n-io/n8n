@@ -51,9 +51,6 @@ export function useExecutionHelpers() {
 		} else if (execution.status === 'error' || execution.status === 'crashed') {
 			status.name = 'error';
 			status.label = i18n.baseText('executionsList.error');
-		} else if (execution.status === 'deleted') {
-			status.name = 'deleted';
-			status.label = 'Deleted';
 		}
 
 		if (!execution.status) execution.status = 'unknown';

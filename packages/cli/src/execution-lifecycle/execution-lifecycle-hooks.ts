@@ -371,14 +371,6 @@ function hookFunctionsSave(
 					executionId: this.executionId,
 				});
 
-				if (pushRef) {
-					const pushInstance = Container.get(Push);
-					pushInstance.send(
-						{ type: 'executionDeleted', data: { executionId: this.executionId } },
-						pushRef,
-					);
-				}
-
 				return;
 			}
 
