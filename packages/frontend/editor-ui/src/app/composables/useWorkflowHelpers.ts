@@ -656,6 +656,12 @@ export function useWorkflowHelpers() {
 			);
 			nodeData.parameters = nodeParameters !== null ? nodeParameters : {};
 
+			// Preserve parentId as a special system parameter for sticky note grouping
+			// This parameter is not in node type schemas but is needed for parent-child relationships
+			if (node.parameters?.parentId !== undefined) {
+				nodeData.parameters.parentId = node.parameters.parentId;
+			}
+
 			// Add the node credentials if there are some set and if they should be displayed
 			if (node.credentials !== undefined && nodeType.credentials !== undefined) {
 				const saveCredentials: INodeCredentials = {};
