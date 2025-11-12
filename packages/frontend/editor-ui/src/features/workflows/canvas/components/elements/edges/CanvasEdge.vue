@@ -72,11 +72,13 @@ const edgeColor = computed(() => {
 
 const edgeStyle = computed(() => ({
 	...props.style,
-	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
+	...(isMainConnection.value ? {} : { strokeDasharray: '5,6' }),
 }));
 
 const edgeStroke = computed(() =>
-	delayedHovered.value ? 'var(--color--primary)' : edgeColor.value,
+	delayedHovered.value
+		? 'light-dark(var(--color--neutral-500), var(--color--neutral-400))'
+		: edgeColor.value,
 );
 
 const edgeClasses = computed(() => ({
