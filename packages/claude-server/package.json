@@ -1,0 +1,36 @@
+{
+  "name": "@n8n/claude-server",
+  "version": "0.1.0",
+  "description": "Remote collaboration server for Claude Code",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "clean": "rimraf dist .turbo",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix"
+  },
+  "engines": {
+    "node": ">=20.19 <= 24.x"
+  },
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@n8n/typescript-config": "workspace:*",
+    "@types/express": "catalog:",
+    "@types/uuid": "catalog:",
+    "tsx": "catalog:"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.68.0",
+    "express": "5.1.0",
+    "uuid": "catalog:",
+    "zod": "catalog:",
+    "fast-glob": "catalog:",
+    "picocolors": "catalog:"
+  }
+}

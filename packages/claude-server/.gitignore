@@ -1,0 +1,6 @@
+dist/
+node_modules/
+.env
+*.log
+.turbo
+*.tsbuildinfo
