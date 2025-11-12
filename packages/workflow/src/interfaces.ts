@@ -2295,13 +2295,13 @@ export type IWorkflowDataProxyAdditionalKeys = IDataObject & {
 		mode: 'test' | 'production';
 		resumeUrl: string;
 		resumeFormUrl: string;
-		memoryUsage?: {
-			heapUsed: number;
-			heapTotal: number;
-			external: number;
-			rss: number;
-			arrayBuffers: number;
-			heapUsedPercentage: number;
+		memoryUsage: {
+			heapUsedMb: string | number;
+			heapTotalMb: string | number;
+			externalMb: string | number;
+			rssMb: string | number;
+			arrayBuffersMb: string | number;
+			heapUsedPercentage: string | number;
 		};
 		customData?: {
 			set(key: string, value: string): void;

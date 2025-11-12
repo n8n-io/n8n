@@ -117,14 +117,20 @@ function resolveParameterImpl<T = IDataObject>(
 	opts: ResolveParameterOptions = {},
 ): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
-	const currentMemory = MemoryMonitor.getMemoryUsage();
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$execution: {
 			id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 			mode: 'test',
 			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-			memoryUsage: currentMemory,
+			memoryUsage: {
+				heapUsedMb: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				heapTotalMb: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				externalMb: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				rssMb: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				arrayBuffersMb: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+				heapUsedPercentage: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			},
 		},
 		$vars: envVars,
 
