@@ -2235,39 +2235,6 @@ onBeforeUnmount(() => {
 	display: flex;
 	width: 100%;
 }
-</style>
-
-<style lang="scss">
-/* Heatmap bucket styles - applied globally to canvas nodes */
-.heatmap-bucket-0 {
-	--canvas-node--color--background: var(--color--foreground--tint-2);
-	--canvas-node--border-color: var(--color--foreground--tint-2);
-}
-
-.heatmap-bucket-1 {
-	--canvas-node--color--background: var(--color--success--tint-4);
-	--canvas-node--border-color: var(--color--success--tint-3);
-}
-
-.heatmap-bucket-2 {
-	--canvas-node--color--background: var(--color--success--tint-2);
-	--canvas-node--border-color: var(--color--success--tint-1);
-}
-
-.heatmap-bucket-3 {
-	--canvas-node--color--background: var(--color--warning--tint-2);
-	--canvas-node--border-color: var(--color--warning--tint-1);
-}
-
-.heatmap-bucket-4 {
-	--canvas-node--color--background: var(--color--warning);
-	--canvas-node--border-color: var(--color--warning--shade-1);
-}
-
-.heatmap-bucket-5 {
-	--canvas-node--color--background: var(--color--danger--tint-4);
-	--canvas-node--border-color: var(--color--danger--tint-3);
-}
 
 .executionButtons {
 	position: absolute;
@@ -2332,5 +2299,38 @@ onBeforeUnmount(() => {
 	top: 50%;
 	transform: translate(-50%, -50%);
 	z-index: 10;
+}
+</style>
+
+<style lang="scss">
+/* Heatmap bucket styles - applied globally to canvas nodes */
+.heatmap-bucket-0 {
+	--canvas-node--color--background: var(--color--foreground--tint-2);
+	--canvas-node--border-color: var(--color--foreground--tint-2);
+}
+
+.heatmap-bucket-1 {
+	--canvas-node--color--background: var(--color--success--tint-4);
+	--canvas-node--border-color: var(--color--success--tint-3);
+}
+
+.heatmap-bucket-2 {
+	--canvas-node--color--background: var(--color--success--tint-2);
+	--canvas-node--border-color: var(--color--success--tint-1);
+}
+
+.heatmap-bucket-3 {
+	--canvas-node--color--background: var(--color--warning--tint-2);
+	--canvas-node--border-color: var(--color--warning--tint-1);
+}
+
+.heatmap-bucket-4 {
+	--canvas-node--color--background: var(--color--warning);
+	--canvas-node--border-color: var(--color--warning--shade-1);
+}
+
+.heatmap-bucket-5 {
+	--canvas-node--color--background: var(--color--danger--tint-4);
+	--canvas-node--border-color: var(--color--danger--tint-3);
 }
 </style>
