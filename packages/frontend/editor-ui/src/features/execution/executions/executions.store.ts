@@ -123,6 +123,20 @@ export const useExecutionsStore = defineStore('executions', () => {
 		};
 	}
 
+	async function pruneDeletedExecutions() {
+		const keys = Object.keys(executionsById.value);
+		console.log(keys);
+		const result = await fetchExistingExecutionIds(keys);
+		console.log(result);
+		if (!result) return;
+		const validIds = new Set(result as never);
+		for (const key of keys) {
+			if (!validIds.has(key)) {
+				removeExecution(key);
+			}
+		}
+	}
+
 	function addCurrentExecution(execution: ExecutionSummaryWithScopes) {
 		currentExecutionsById.value[execution.id] = {
 			...execution,
@@ -145,6 +159,17 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 		await fetchExecutions();
 		await startAutoRefreshInterval(workflowId);
+	}
+
+	async function fetchExistingExecutionIds(candidates: string[]) {
+		return await makeRestApiRequest<IExecutionsListResponse>(
+			rootStore.restApiContext,
+			'GET',
+			'/executions',
+			{
+				ids: candidates,
+			},
+		);
 	}
 
 	async function fetchExecutions(
@@ -202,6 +227,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 
 		autoRefreshTimeout.value = setTimeout(async () => {
 			if (autoRefresh.value) {
+				await pruneDeletedExecutions();
 				await fetchExecutions(autoRefreshExecutionFilters);
 				void startAutoRefreshInterval(workflowId);
 			}
@@ -325,6 +351,7 @@ export const useExecutionsStore = defineStore('executions', () => {
 		stopCurrentExecution,
 		retryExecution,
 		deleteExecutions,
+		removeExecution, // clears execution from the front end store only
 		addExecution,
 		resetData,
 		reset,

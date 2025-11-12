@@ -187,6 +187,10 @@ const loadSaveDataErrorExecutionOptions = async () => {
 			value: i18n.baseText('workflowSettings.saveDataErrorExecutionOptions.save'),
 		},
 		{
+			key: 'last',
+			value: i18n.baseText('workflowSettings.saveDataSuccessExecutionOptions.saveLatest'),
+		},
+		{
 			key: 'none',
 			value: i18n.baseText('workflowSettings.saveDataErrorExecutionOptions.doNotSave'),
 		},
@@ -209,6 +213,10 @@ const loadSaveDataSuccessExecutionOptions = async () => {
 		{
 			key: 'all',
 			value: i18n.baseText('workflowSettings.saveDataSuccessExecutionOptions.save'),
+		},
+		{
+			key: 'last',
+			value: i18n.baseText('workflowSettings.saveDataSuccessExecutionOptions.saveLatest'),
 		},
 		{
 			key: 'none',

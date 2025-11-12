@@ -26,6 +26,13 @@ export type ExecutionWaiting = {
 	};
 };
 
+export type ExecutionDeleted = {
+	type: 'executionDeleted';
+	data: {
+		executionId: string;
+	};
+};
+
 export type ExecutionFinished = {
 	type: 'executionFinished';
 	data: {
@@ -96,6 +103,7 @@ export type ExecutionPushMessage =
 	| ExecutionWaiting
 	| ExecutionFinished
 	| ExecutionRecovered
+	| ExecutionDeleted
 	| NodeExecuteBefore
 	| NodeExecuteAfter
 	| NodeExecuteAfterData;

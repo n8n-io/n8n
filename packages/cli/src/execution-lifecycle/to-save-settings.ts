@@ -3,8 +3,8 @@ import { Container } from '@n8n/di';
 import type { IWorkflowSettings } from 'n8n-workflow';
 
 export type ExecutionSaveSettings = {
-	error: boolean | 'all' | 'none';
-	success: boolean | 'all' | 'none';
+	error: 'all' | 'none' | 'last';
+	success: 'all' | 'none' | 'last';
 	manual: boolean;
 	progress: boolean;
 };
@@ -35,11 +35,8 @@ export function toSaveSettings(
 	} = workflowSettings ?? {};
 
 	return {
-		error: saveDataErrorExecution === 'DEFAULT' ? DEFAULTS.ERROR : saveDataErrorExecution === 'all',
-		success:
-			saveDataSuccessExecution === 'DEFAULT'
-				? DEFAULTS.SUCCESS
-				: saveDataSuccessExecution === 'all',
+		error: saveDataErrorExecution === 'DEFAULT' ? DEFAULTS.ERROR : saveDataErrorExecution,
+		success: saveDataSuccessExecution === 'DEFAULT' ? DEFAULTS.SUCCESS : saveDataSuccessExecution,
 		manual: saveManualExecutions === 'DEFAULT' ? DEFAULTS.MANUAL : saveManualExecutions,
 		progress: saveExecutionProgress === 'DEFAULT' ? DEFAULTS.PROGRESS : saveExecutionProgress,
 	};

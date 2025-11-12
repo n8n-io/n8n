@@ -72,6 +72,21 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 	return fullExecutionData;
 }
 
+// clears all executions that started before and finished before the provided dates
+export async function clearOtherExecutions(
+	workflowId: string,
+	status: 'success' | 'error',
+	executionStarted: Date,
+	executionStopped: Date,
+): Promise<void> {
+	await Container.get(ExecutionRepository).deleteExecutionsByFilter(
+		{ status: [status], stoppedBefore: executionStopped.toISOString() },
+		[workflowId],
+		{ deleteBefore: executionStarted },
+		true,
+	);
+}
+
 export async function updateExistingExecution(parameters: {
 	executionId: string;
 	workflowId: string;

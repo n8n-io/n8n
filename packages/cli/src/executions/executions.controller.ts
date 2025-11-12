@@ -42,6 +42,10 @@ export class ExecutionsController {
 			return { count: 0, estimated: false, results: [] };
 		}
 
+		if (req.query.ids) {
+			return await this.executionService.getExistingIds(req.query.ids);
+		}
+
 		const { rangeQuery: query } = req;
 
 		if (query.workflowId && !accessibleWorkflowIds.includes(query.workflowId)) {
@@ -85,6 +89,11 @@ export class ExecutionsController {
 			...executions,
 			concurrentExecutionsCount,
 		};
+	}
+
+	@Get('/validateExistingExecutionIds/:ids')
+	async validateExistingExecutionIds(req: ExecutionRequest.ValidateExistingExecutionIds) {
+		return await this.executionService.getExistingIds(req.params.ids);
 	}
 
 	@Get('/:id')

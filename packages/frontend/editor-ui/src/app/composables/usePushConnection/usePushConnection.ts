@@ -24,6 +24,7 @@ import {
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { createEventQueue } from '@n8n/utils/event-queue';
 import type { useRouter } from 'vue-router';
+import { executionDeleted } from './handlers/executionDeleted';
 
 export function usePushConnection({
 	router,
@@ -87,6 +88,8 @@ export function usePushConnection({
 				return await executionFinished(event, options);
 			case 'executionRecovered':
 				return await executionRecovered(event, options);
+			case 'executionDeleted':
+				return await executionDeleted(event);
 			case 'workflowActivated':
 				return await workflowActivated(event);
 			case 'workflowDeactivated':

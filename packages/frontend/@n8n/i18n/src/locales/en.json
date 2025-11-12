@@ -2902,6 +2902,7 @@
 	"workflowSettings.saveDataSuccessExecution": "Save successful production executions",
 	"workflowSettings.saveDataSuccessExecutionOptions.defaultSave": "Default - {defaultValue}",
 	"workflowSettings.saveDataSuccessExecutionOptions.doNotSave": "Do not save",
+	"workflowSettings.saveDataSuccessExecutionOptions.saveLatest": "Save latest",
 	"workflowSettings.saveDataSuccessExecutionOptions.save": "@:_reusableBaseText.save",
 	"workflowSettings.saveExecutionProgress": "Save execution progress",
 	"workflowSettings.saveExecutionProgressOptions.defaultSave": "Default - {defaultValue}",

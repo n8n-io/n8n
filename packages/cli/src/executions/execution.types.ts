@@ -13,6 +13,7 @@ export declare namespace ExecutionRequest {
 			limit: string;
 			lastId: string;
 			firstId: string;
+			ids?: string[];
 		};
 	}
 
@@ -28,6 +29,9 @@ export declare namespace ExecutionRequest {
 		type ExecutionId = {
 			id: ExecutionEntity['id'];
 		};
+		type ExecutionIds = {
+			ids: Array<ExecutionEntity['id']>;
+		};
 	}
 
 	type ExecutionUpdatePayload = {
@@ -40,6 +44,7 @@ export declare namespace ExecutionRequest {
 	};
 
 	type GetOne = AuthenticatedRequest<RouteParams.ExecutionId>;
+	type ValidateExistingExecutionIds = AuthenticatedRequest<RouteParams.ExecutionIds>;
 
 	type Delete = AuthenticatedRequest<{}, {}, BodyParams.DeleteFilter>;
 

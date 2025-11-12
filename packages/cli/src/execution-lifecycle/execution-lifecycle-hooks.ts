@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import { Logger } from '@n8n/backend-common';
 import { ExecutionRepository } from '@n8n/db';
 import { LifecycleMetadata } from '@n8n/decorators';
@@ -22,6 +23,7 @@ import { executeErrorWorkflow } from './execute-error-workflow';
 import { restoreBinaryDataId } from './restore-binary-data-id';
 import { saveExecutionProgress } from './save-execution-progress';
 import {
+	clearOtherExecutions,
 	determineFinalExecutionStatus,
 	prepareExecutionDataForDbUpdate,
 	updateExistingExecution,
@@ -358,8 +360,8 @@ function hookFunctionsSave(
 			}
 
 			const shouldNotSave =
-				(fullRunData.status === 'success' && !saveSettings.success) ||
-				(fullRunData.status !== 'success' && !saveSettings.error);
+				(fullRunData.status === 'success' && saveSettings.success === 'none') ||
+				(fullRunData.status !== 'success' && saveSettings.error === 'none');
 
 			if (shouldNotSave && !fullRunData.waitTill && !isManualMode) {
 				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
@@ -368,6 +370,14 @@ function hookFunctionsSave(
 					workflowId: this.workflowData.id,
 					executionId: this.executionId,
 				});
+
+				if (pushRef) {
+					const pushInstance = Container.get(Push);
+					pushInstance.send(
+						{ type: 'executionDeleted', data: { executionId: this.executionId } },
+						pushRef,
+					);
+				}
 
 				return;
 			}
@@ -392,6 +402,20 @@ function hookFunctionsSave(
 				executionData: fullExecutionData,
 			});
 
+			if (
+				!isManualMode &&
+				fullRunData.stoppedAt &&
+				((saveSettings.success === 'last' && fullRunData.status === 'success') ||
+					(saveSettings.error === 'last' && fullRunData.status === 'error'))
+			) {
+				const SECONDS_GRACE = 10;
+				await clearOtherExecutions(
+					this.workflowData.id,
+					fullRunData.status,
+					fullRunData.startedAt,
+					new Date(fullRunData.stoppedAt.getTime() - SECONDS_GRACE * 1000), // we add a grace period here to give users time to click on an execution in the front end before it gets deleted
+				);
+			}
 			if (!isManualMode) {
 				executeErrorWorkflow(this.workflowData, fullRunData, this.mode, this.executionId, retryOf);
 			}

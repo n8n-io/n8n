@@ -71,6 +71,7 @@ export interface IGetExecutionsQueryFilter {
 	metadata?: Array<{ key: string; value: string; exactMatch?: boolean }>;
 	startedAfter?: string;
 	startedBefore?: string;
+	stoppedBefore?: string;
 }
 
 function parseFiltersToQueryBuilder(
@@ -107,6 +108,11 @@ function parseFiltersToQueryBuilder(
 			startedAt: LessThanOrEqual(
 				DateUtils.mixedDateToUtcDatetimeString(new Date(filters.startedBefore)),
 			),
+		});
+	}
+	if (filters?.stoppedBefore) {
+		qb.andWhere({
+			stoppedAt: LessThan(DateUtils.mixedDateToUtcDatetimeString(new Date(filters.stoppedBefore))),
 		});
 	}
 	if (filters?.workflowId) {
@@ -474,6 +480,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			deleteBefore?: Date;
 			ids?: string[];
 		},
+		softDelete: boolean = false,
 	) {
 		if (!deleteConditions?.deleteBefore && !deleteConditions?.ids) {
 			throw new UnexpectedError(
@@ -516,10 +523,24 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		do {
 			// Delete in batches to avoid "SQLITE_ERROR: Expression tree is too large (maximum depth 1000)" error
 			const batch = ids.splice(0, this.hardDeletionBatchSize);
-			await Promise.all([
-				this.delete(batch.map(({ executionId }) => executionId)),
-				this.binaryDataService.deleteMany(batch),
-			]);
+			const tasks = softDelete
+				? [
+						this.softDelete(
+							batch.map(({ executionId }) => executionId),
+							// {
+							// 	status: 'deleted',
+							// 	deletedAt: new Date(),
+							// 	executionData: {},
+							// 	annotation: {},
+							// },
+						),
+						this.binaryDataService.deleteMany(batch),
+					]
+				: [
+						this.delete(batch.map(({ executionId }) => executionId)),
+						this.binaryDataService.deleteMany(batch),
+					];
+			await Promise.all(tasks);
 		} while (ids.length > 0);
 	}
 
@@ -1124,8 +1145,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return qb;
 	}
 
-	async getAllIds() {
-		const executions = await this.find({ select: ['id'], order: { id: 'ASC' } });
+	async getAllIds(where?: FindOptionsWhere<ExecutionEntity>) {
+		const executions = await this.find({ select: ['id'], order: { id: 'ASC' }, where });
 
 		return executions.map(({ id }) => id);
 	}

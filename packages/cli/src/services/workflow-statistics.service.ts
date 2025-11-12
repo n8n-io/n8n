@@ -25,6 +25,7 @@ const isStatusRootExecution = {
 	running: false,
 	unknown: false,
 	waiting: false,
+	deleted: false,
 } satisfies Record<ExecutionStatus, boolean>;
 
 const isModeRootExecution = {

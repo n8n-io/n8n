@@ -95,11 +95,11 @@ export class ExecutionsConfig {
 
 	/** Whether to save execution data for failed production executions. This default can be overridden at a workflow level. */
 	@Env('EXECUTIONS_DATA_SAVE_ON_ERROR')
-	saveDataOnError: 'all' | 'none' = 'all';
+	saveDataOnError: 'all' | 'none' | 'last' = 'all';
 
 	/** Whether to save execution data for successful production executions. This default can be overridden at a workflow level. */
 	@Env('EXECUTIONS_DATA_SAVE_ON_SUCCESS')
-	saveDataOnSuccess: 'all' | 'none' = 'all';
+	saveDataOnSuccess: 'all' | 'none' | 'last' = 'all';
 
 	/** Whether to save execution data as each node executes. This default can be overridden at a workflow level. */
 	@Env('EXECUTIONS_DATA_SAVE_ON_PROGRESS')

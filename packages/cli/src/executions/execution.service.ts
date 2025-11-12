@@ -11,6 +11,7 @@ import {
 	AnnotationTagMappingRepository,
 	ExecutionAnnotationRepository,
 	ExecutionRepository,
+	In,
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -624,5 +625,10 @@ export class ExecutionService {
 		if (updateData.tags) {
 			await this.annotationTagMappingRepository.overwriteTags(annotation.id, updateData.tags);
 		}
+	}
+
+	async getExistingIds(executionIds: string[]) {
+		// todo: sql injection risk?
+		return await this.executionRepository.getAllIds({ id: In(executionIds) });
 	}
 }
