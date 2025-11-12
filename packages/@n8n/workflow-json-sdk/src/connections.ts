@@ -13,14 +13,14 @@ import { WorkflowNode } from './nodes';
 // ============================================================================
 
 export interface ConnectionConfig {
-	node: WorkflowNode;
+	node: WorkflowNode<any>;
 	type?: NodeConnectionType;
 	index?: number;
 }
 
 export class ConnectionBuilder {
 	private source?: {
-		node: WorkflowNode;
+		node: WorkflowNode<any>;
 		type: NodeConnectionType;
 		index: number;
 	};
@@ -31,7 +31,9 @@ export class ConnectionBuilder {
 	 * Set the source node
 	 */
 	from(
-		source: WorkflowNode | { node: WorkflowNode; type?: NodeConnectionType; index?: number },
+		source:
+			| WorkflowNode<any>
+			| { node: WorkflowNode<any>; type?: NodeConnectionType; index?: number },
 	): this {
 		if (source instanceof WorkflowNode) {
 			this.source = {
@@ -54,15 +56,16 @@ export class ConnectionBuilder {
 	 */
 	to(
 		destinations:
-			| WorkflowNode
-			| WorkflowNode[]
-			| { node: WorkflowNode; type?: NodeConnectionType; index?: number },
+			| WorkflowNode<any>
+			| WorkflowNode<any>[]
+			| { node: WorkflowNode<any>; type?: NodeConnectionType; index?: number },
 	): this {
 		if (!this.source) {
 			throw new Error('Source node not set. Use .from() to set the source node.');
 		}
 
-		const destNodes: Array<{ node: WorkflowNode; type: NodeConnectionType; index: number }> = [];
+		const destNodes: Array<{ node: WorkflowNode<any>; type: NodeConnectionType; index: number }> =
+			[];
 
 		if (Array.isArray(destinations)) {
 			for (const dest of destinations) {

@@ -13,7 +13,7 @@ import { ConnectionBuilder } from './connections';
 
 export class Workflow {
 	private data: Partial<WorkflowJSON> = {};
-	private nodes: Map<string, WorkflowNode> = new Map();
+	private nodes: Map<string, WorkflowNode<any>> = new Map();
 	private connectionMap: Map<string, Map<string, IConnection[][]>> = new Map();
 
 	constructor(options?: { name?: string; meta?: WorkflowFEMeta }) {
@@ -57,8 +57,8 @@ export class Workflow {
 	 * Add a connection between nodes (internal use)
 	 */
 	addConnection(
-		sourceNode: WorkflowNode,
-		destNode: WorkflowNode,
+		sourceNode: WorkflowNode<any>,
+		destNode: WorkflowNode<any>,
 		sourceType: NodeConnectionType,
 		sourceIndex: number,
 		destType: NodeConnectionType,

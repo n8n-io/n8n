@@ -1,6 +1,10 @@
 import type { INode, INodeParameters, INodeCredentials } from 'n8n-workflow';
+import type { NodeType, GetNodeParameters } from './nodeTypes';
 
-export class WorkflowNode {
+// Helper type to get parameters based on node type
+type NodeParams<T> = T extends NodeType ? GetNodeParameters<T> : INodeParameters;
+
+export class WorkflowNode<T extends NodeType | '' = ''> {
 	private node: INode;
 
 	constructor(name: string) {
@@ -21,16 +25,16 @@ export class WorkflowNode {
 	/**
 	 * Set the node type
 	 */
-	type(type: string): this {
+	type<NewType extends NodeType>(type: NewType): WorkflowNode<NewType> {
 		this.node.type = type;
-		return this;
+		return this as unknown as WorkflowNode<NewType>;
 	}
 
 	/**
 	 * Set the node parameters
 	 */
-	parameters(params: INodeParameters): this {
-		this.node.parameters = { ...this.node.parameters, ...params };
+	parameters(params: NodeParams<T>): this {
+		this.node.parameters = { ...this.node.parameters, ...params } as INodeParameters;
 		return this;
 	}
 

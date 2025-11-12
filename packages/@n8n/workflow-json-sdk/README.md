@@ -39,12 +39,53 @@ console.log(JSON.stringify(workflowJSON, null, 2));
 
 ## Features
 
-- 🎯 **Type-safe** workflow construction
+- 🎯 **Type-safe** workflow construction with intelligent parameter inference
 - 🔗 **Fluent API** inspired by Zod
 - 🧩 **Modular** node and connection builders
 - 🔄 **Bi-directional** - create from scratch or parse existing workflows
 - 📦 **Zero dependencies** (except dev dependencies)
 - ✅ **Fully tested**
+
+## Type Safety
+
+The SDK provides **full type safety** for node parameters. When you call `.type()` with a specific node type, the `.parameters()` method will automatically infer the correct parameter types for that node:
+
+```typescript
+import { workflow } from '@n8n/workflow-json-sdk';
+
+const wf = workflow({ name: 'Type-safe workflow' });
+
+// Before calling .type(), parameters accepts any INodeParameters
+const genericNode = wf.node('Generic Node').parameters({});
+
+// After calling .type(), parameters are type-safe for that specific node type
+const httpNode = wf
+  .node('HTTP Request')
+  .type('n8n-nodes-base.httpRequest')
+  .parameters({
+    method: 'GET',              // ✅ Autocomplete and type checking
+    url: 'https://api.example.com',
+    authentication: 'none',
+    options: {},
+    // TypeScript will error if you use invalid parameters!
+  });
+
+// Type changes dynamically when you use a different node type
+const slackNode = wf
+  .node('Slack')
+  .type('n8n-nodes-base.slack')
+  .parameters({
+    resource: 'message',        // ✅ Only valid Slack parameters allowed
+    operation: 'create',
+    // TypeScript knows about all Slack-specific options!
+  });
+```
+
+This means:
+- ✅ **Autocomplete** - Your IDE will suggest valid parameters
+- ✅ **Type checking** - Invalid parameters are caught at compile time
+- ✅ **Refactoring safety** - Parameter changes are tracked across your codebase
+- ✅ **Self-documenting** - No need to look up parameter names
 
 ## API Reference
 

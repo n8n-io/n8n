@@ -23,8 +23,8 @@ describe('Workflow JSON SDK', () => {
 			const wf = workflow();
 
 			wf.node('Test Node')
-				.type('n8n-nodes-base.test')
-				.parameters({ value: 'test' })
+				.type('n8n-nodes-base.set')
+				.parameters({ mode: 'manual' })
 				.position(100, 200)
 				.version(2)
 				.disabled(true)
@@ -34,8 +34,8 @@ describe('Workflow JSON SDK', () => {
 			const nodeData = json.nodes[0];
 
 			expect(nodeData.name).toBe('Test Node');
-			expect(nodeData.type).toBe('n8n-nodes-base.test');
-			expect(nodeData.parameters).toEqual({ value: 'test' });
+			expect(nodeData.type).toBe('n8n-nodes-base.set');
+			expect(nodeData.parameters).toEqual({ mode: 'manual' });
 			expect(nodeData.position).toEqual([100, 200]);
 			expect(nodeData.typeVersion).toBe(2);
 			expect(nodeData.disabled).toBe(true);
@@ -285,7 +285,7 @@ describe('Workflow JSON SDK', () => {
 		it('should support pin data', () => {
 			const wf = workflow();
 
-			wf.node('Test').type('n8n-nodes-base.test').parameters({});
+			wf.node('Test').type('n8n-nodes-base.set').parameters({ mode: 'manual' });
 
 			wf.pinData('Test', [{ json: { value: 'test' } }]);
 
@@ -336,7 +336,10 @@ describe('Workflow JSON SDK', () => {
 		it('should support retry configuration', () => {
 			const wf = workflow();
 
-			wf.node('Test').type('n8n-nodes-base.test').parameters({}).retryOnFail(true, 3, 1000);
+			wf.node('Test')
+				.type('n8n-nodes-base.set')
+				.parameters({ mode: 'manual' })
+				.retryOnFail(true, 3, 1000);
 
 			const json = wf.toJSON();
 			const node = json.nodes[0];
@@ -350,8 +353,8 @@ describe('Workflow JSON SDK', () => {
 			const wf = workflow();
 
 			wf.node('Test')
-				.type('n8n-nodes-base.test')
-				.parameters({})
+				.type('n8n-nodes-base.set')
+				.parameters({ mode: 'manual' })
 				.credentials({
 					api: {
 						id: 'cred-123',
@@ -397,7 +400,7 @@ describe('Workflow JSON SDK', () => {
 						name: 'Set',
 						type: 'n8n-nodes-base.set',
 						position: [300, 200],
-						parameters: { values: {} },
+						parameters: { mode: 'manual' },
 						typeVersion: 1,
 					},
 				],
@@ -433,9 +436,9 @@ describe('Workflow JSON SDK', () => {
 					{
 						id: 'node-1',
 						name: 'Test',
-						type: 'n8n-nodes-base.test',
+						type: 'n8n-nodes-base.set',
 						position: [100, 200],
-						parameters: { value: 'test' },
+						parameters: { mode: 'manual' },
 						typeVersion: 2,
 						disabled: true,
 						notes: 'Test note',
@@ -457,7 +460,7 @@ describe('Workflow JSON SDK', () => {
 			const node = json.nodes[0];
 
 			expect(node.name).toBe('Test');
-			expect(node.type).toBe('n8n-nodes-base.test');
+			expect(node.type).toBe('n8n-nodes-base.set');
 			expect(node.typeVersion).toBe(2);
 			expect(node.disabled).toBe(true);
 			expect(node.notes).toBe('Test note');
@@ -501,6 +504,33 @@ describe('Workflow JSON SDK', () => {
 			expect(workflowJSON.name).toBe('My workflow');
 			expect(workflowJSON.nodes).toHaveLength(4);
 			expect(workflowJSON.connections['Manual Trigger']).toBeDefined();
+		});
+
+		it('should provide type-safe parameters based on node type', () => {
+			const wf = workflow({ name: 'Type-safe workflow' });
+
+			// Before calling .type(), parameters accepts any INodeParameters
+			wf.node('Generic Node').parameters({});
+
+			// After calling .type(), parameters are type-safe for that specific node
+			wf.node('HTTP Request').type('n8n-nodes-base.httpRequest').parameters({
+				method: 'GET',
+				url: 'https://api.example.com',
+				authentication: 'none',
+				options: {},
+			});
+
+			// Type changes when calling .type() with a different node type
+			wf.node('Slack').type('n8n-nodes-base.slack').parameters({
+				resource: 'message',
+				operation: 'create',
+			});
+
+			const json = wf.toJSON();
+
+			expect(json.nodes).toHaveLength(3);
+			expect(json.nodes[1].type).toBe('n8n-nodes-base.httpRequest');
+			expect(json.nodes[2].type).toBe('n8n-nodes-base.slack');
 		});
 	});
 });

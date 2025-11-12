@@ -26,8 +26,7 @@
     "example:basic": "tsx examples/basic-workflow.ts",
     "example:ai-agent": "tsx examples/ai-agent-workflow.ts",
     "example:modify": "tsx examples/modify-workflow.ts",
-    "convert": "tsx scripts/convertNodesJSON.ts",
-    "generate:ts": "tsx cc-scripts/generate-node-types.ts"
+    "generate": "tsx scripts/generate-node-types.ts"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",

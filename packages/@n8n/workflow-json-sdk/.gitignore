@@ -23,4 +23,3 @@ dist-ssr
 *.sln
 *.sw?
 nodes.json
-generated-node-types.ts

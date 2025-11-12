@@ -17,11 +17,11 @@ export function fromJSON(json: WorkflowJSON): Workflow {
 	if (json.active !== undefined) wf.active(json.active);
 
 	// Create nodes
-	const nodeMap = new Map<string, WorkflowNode>();
+	const nodeMap = new Map<string, WorkflowNode<any>>();
 	for (const nodeData of json.nodes) {
 		const node = wf
 			.node(nodeData.name)
-			.type(nodeData.type)
+			.type(nodeData.type as any)
 			.parameters(nodeData.parameters)
 			.position(nodeData.position[0], nodeData.position[1]);
 
