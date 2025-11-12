@@ -18,7 +18,7 @@ export class GenericConfig {
 	@Env('N8N_GRACEFUL_SHUTDOWN_TIMEOUT')
 	gracefulShutdownTimeout: number = 30;
 
-	/** Period (in seconds) in which n8n should whether an external webhook is still registerd. */
+	/** Period (in seconds) in which n8n should whether an external webhook is still registered. */
 	@Env('N8N_WEBHOOK_REGISTERED_CHECK')
-	webhookRegisteredCheck: number = 300;
+	webhookRegisteredCheck: number = 300_000;
 }

@@ -1005,7 +1005,6 @@ export class ActiveWorkflowManager {
 	 */
 	checkExternalWebhooksRegistered() {
 		setInterval(async () => {
-			console.log('Run Registration-Webhook check');
 			const webhooks = await this.webhookService.findAll();
 
 			// TODO: We should probably save in the DB if the webhook registers something externally
@@ -1057,7 +1056,7 @@ export class ActiveWorkflowManager {
 						workflowId: workflow.id,
 					});
 
-					const webhookDescription = nodeType.description.webhooks!.filter(
+					const webhookDescription = nodeType.description?.webhooks!.filter(
 						(value) => value.name === 'default',
 					)[0];
 					if (!webhookDescription) {
@@ -1095,6 +1094,24 @@ export class ActiveWorkflowManager {
 							mode,
 							activation,
 						);
+
+						this.logger.info(
+							`The webhook of node "${webhook.node}" in workflow "${workflow.name}" (${webhook.workflowId}) was not registered anymore and got reregistered`,
+							{
+								nodeName: node.name,
+								workflowId: workflow.id,
+								workflowName: workflow.name,
+							},
+						);
+
+						// TODO: We should probably also do something like this (but of different type) and run an
+						//       error workflow. After all is there a reasonable chance that webhook calls got missed
+						//       and we can so give them the opportunity to check for that
+						// const activationError = new WorkflowActivationError(
+						// 	`The webhook of node "${webhook.node}" in workflow "${workflow.name}" (${webhook.workflowId}) was not registered anymore and got reregistered`,
+						// 	{ node, workflowId: workflow.id },
+						// );
+						// this.executeErrorWorkflow(activationError, workflowData, mode);
 					} catch (error) {
 						this.errorReporter.error(error);
 						this.logger.error(
@@ -1106,25 +1123,6 @@ export class ActiveWorkflowManager {
 							},
 						);
 					}
-
-					// executeErrorWorkflow
-					this.logger.info(
-						`The webhook of node "${webhook.node}" in workflow "${workflow.name}" (${webhook.workflowId}) was not registered anymore and got reregistered`,
-						{
-							nodeName: node.name,
-							workflowId: workflow.id,
-							workflowName: workflow.name,
-						},
-					);
-
-					// TODO: We should probably also do something like this (but of different type) and run an
-					//       error workflow. After all is there a reasonable chance that webhook calls got missed
-					//       and we can so give them the opportunity to check for that
-					// const activationError = new WorkflowActivationError(
-					// 	`The webhook of node "${webhook.node}" in workflow "${workflow.name}" (${webhook.workflowId}) was not registered anymore and got reregistered`,
-					// 	{ node, workflowId: workflow.id },
-					// );
-					// this.executeErrorWorkflow(activationError, workflowData, mode);
 				} catch (error) {
 					// Ignore problems
 				}
