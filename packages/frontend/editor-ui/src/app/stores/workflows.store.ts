@@ -433,6 +433,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.nodes.find((node) => node.id === nodeId);
 	}
 
+	function findRootWithMainConnection(nodeName: string): string | null {
+		const children = workflowObject.value.getChildNodes(nodeName, 'ALL');
+
+		for (let i = children.length - 1; i >= 0; i--) {
+			const childName = children[i];
+			const parentNodes = workflowObject.value.getParentNodes(childName, NodeConnectionTypes.Main);
+
+			if (parentNodes.length > 0) {
+				return childName;
+			}
+		}
+
+		return null;
+	}
+
 	// Finds the full id for a given partial id for a node, relying on order for uniqueness in edge cases
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
 		return workflow.value.nodes.find((node) => node.id.startsWith(partialId));
@@ -1869,6 +1884,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		isNodeInOutgoingNodeConnections,
 		getWorkflowById,
 		getNodeByName,
+		findRootWithMainConnection,
 		getNodeById,
 		getNodesByIds,
 		getParametersLastUpdate,
