@@ -64,7 +64,7 @@ const edgeColor = computed(() => {
 	} else if (status.value === 'pinned') {
 		return 'var(--color--secondary)';
 	} else if (props.selected) {
-		return 'var(--color--background--shade-2)';
+		return 'light-dark(var(--color--neutral-500), var(--color--neutral-400))';
 	} else {
 		return 'light-dark(var(--color--neutral-250), var(--color--neutral-700))';
 	}
