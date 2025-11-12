@@ -221,7 +221,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 
 				if (isWebhookNode(nodes[0])) {
 					const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(nodes[0].type);
-
+					const isWorkflowActive = workflowsStore.workflow.active;
 					if (!isProductionOnly) {
 						copyWebhookActions.push({
 							divided: true,
@@ -232,13 +232,15 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 						});
 					}
 
-					copyWebhookActions.push({
-						divided: isProductionOnly,
-						id: 'copy_production_url',
-						label: 'Copy production url',
-						shortcut: { altKey: true, keys: ['U'] },
-						disabled: false,
-					});
+					if (isWorkflowActive) {
+						copyWebhookActions.push({
+							divided: isProductionOnly,
+							id: 'copy_production_url',
+							label: 'Copy production url',
+							shortcut: { altKey: true, keys: ['U'] },
+							disabled: false,
+						});
+					}
 				}
 
 				const singleNodeActions: Item[] = onlyStickies
@@ -268,7 +270,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 							},
 							...copyWebhookActions,
 							{
-								divided: isWebhookNode(nodes[0]),
+								divided: !!copyWebhookActions.length,
 								id: 'rename',
 								label: i18n.baseText('contextMenu.rename'),
 								shortcut: { keys: ['Space'] },

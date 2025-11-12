@@ -359,6 +359,8 @@ const keyMap = computed(() => {
 		alt_x: emitWithSelectedNodes((ids) => emit('extract-workflow', ids)),
 		c: () => emit('start-chat'),
 		r: emitWithLastSelectedNode((id) => emit('replace:node', id)),
+		shift_alt_u: emitWithLastSelectedNode((id) => emit('copy:test:url', id)),
+		alt_u: emitWithLastSelectedNode((id) => emit('copy:production:url', id)),
 	};
 	return fullKeymap;
 });
