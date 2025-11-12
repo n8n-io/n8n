@@ -1,6 +1,13 @@
 import { getPersonalProject, createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { IWorkflowDb, Project, SettingsRepository, WorkflowEntity, User } from '@n8n/db';
+import type {
+	IWorkflowDb,
+	Project,
+	SettingsRepository,
+	WorkflowEntity,
+	WorkflowRepository,
+	User,
+} from '@n8n/db';
 import { WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
@@ -274,6 +281,8 @@ describe('WorkflowStatisticsService', () => {
 			eventService = mock<EventService>();
 			workflowStatisticsRepository = new WorkflowStatisticsRepository(dataSource, globalConfig);
 			const settingsRepository = mock<SettingsRepository>();
+			const workflowRepository = mock<WorkflowRepository>();
+			workflowRepository.hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(false);
 			workflowStatisticsService = new WorkflowStatisticsService(
 				mock(),
 				workflowStatisticsRepository,
@@ -281,6 +290,7 @@ describe('WorkflowStatisticsService', () => {
 				userService,
 				eventService,
 				settingsRepository,
+				workflowRepository,
 			);
 			globalConfig.diagnostics.enabled = true;
 			globalConfig.deployment.type = 'n8n-testing';

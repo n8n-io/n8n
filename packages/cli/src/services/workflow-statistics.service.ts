@@ -1,5 +1,10 @@
 import { Logger } from '@n8n/backend-common';
-import { SettingsRepository, StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
+import {
+	SettingsRepository,
+	StatisticsNames,
+	WorkflowRepository,
+	WorkflowStatisticsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import type {
 	ExecutionStatus,
@@ -73,6 +78,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 		private readonly userService: UserService,
 		private readonly eventService: EventService,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly workflowRepository: WorkflowRepository,
 	) {
 		super({ captureRejections: true });
 		if ('SKIP_STATISTICS_EVENTS' in process.env) return;
@@ -137,12 +143,15 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 			}
 
 			if (name === StatisticsNames.productionError && upsertResult === 'insert') {
-				// Check if this is the first production failure for the entire instance
+				// Check if this is the first production failure and if error workflows are configured
 				const instanceHadProductionFailure = await this.settingsRepository.findByKey(
 					'instance.firstProductionFailure',
 				);
 
-				if (!instanceHadProductionFailure) {
+				if (
+					!instanceHadProductionFailure &&
+					!(await this.workflowRepository.hasAnyWorkflowsWithErrorWorkflow())
+				) {
 					// This is the first production failure ever on this instance
 					const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
 
