@@ -1,14 +1,7 @@
 import { getPersonalProject, createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type {
-	IWorkflowDb,
-	Project,
-	SettingsRepository,
-	WorkflowEntity,
-	WorkflowRepository,
-	User,
-} from '@n8n/db';
-import { WorkflowStatisticsRepository } from '@n8n/db';
+import type { IWorkflowDb, Project, WorkflowEntity, WorkflowRepository, User } from '@n8n/db';
+import { SettingsRepository, WorkflowStatisticsRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	QueryFailedError,
@@ -57,6 +50,9 @@ describe('WorkflowStatisticsService', () => {
 		beforeEach(async () => {
 			jest.restoreAllMocks();
 			await testDb.truncate(['WorkflowStatistics']);
+			// Clear first production failure setting
+			const settingsRepository = Container.get(SettingsRepository);
+			await settingsRepository.delete({ key: 'instance.firstProductionFailure' });
 		});
 
 		test.each<WorkflowExecuteMode>(['cli', 'error', 'retry', 'trigger', 'webhook', 'evaluation'])(
@@ -248,6 +244,105 @@ describe('WorkflowStatisticsService', () => {
 			// ASSERT
 			expect(updateSettingsSpy).not.toHaveBeenCalled();
 			expect(emitSpy).not.toHaveBeenCalled();
+		});
+
+		test('emits instance-first-production-workflow-failed event on first production failure when no error workflows exist', async () => {
+			// ARRANGE
+			const runData: IRun = {
+				finished: false,
+				status: 'error',
+				data: { resultData: { runData: {} } },
+				mode: 'trigger',
+				startedAt: new Date(),
+			};
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+
+			// ACT
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+			// ASSERT
+			expect(emitSpy).toHaveBeenCalledWith('instance-first-production-workflow-failed', {
+				projectId: personalProject.id,
+				workflowId: workflow.id,
+				workflowName: workflow.name,
+				userId: user.id,
+			});
+		});
+
+		test('does not emit instance-first-production-workflow-failed event on successive production failures', async () => {
+			// ARRANGE
+			const runData: IRun = {
+				finished: false,
+				status: 'error',
+				data: { resultData: { runData: {} } },
+				mode: 'trigger',
+				startedAt: new Date(),
+			};
+			// First failure
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+
+			// ACT - Second failure
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+			// ASSERT
+			expect(emitSpy).not.toHaveBeenCalled();
+		});
+
+		test('does not emit instance-first-production-workflow-failed event when error workflows exist', async () => {
+			// ARRANGE
+			const runData: IRun = {
+				finished: false,
+				status: 'error',
+				data: { resultData: { runData: {} } },
+				mode: 'trigger',
+				startedAt: new Date(),
+			};
+
+			// Create a fresh instance with workflowRepository returning true (error workflows exist)
+			const workflowRepositoryWithErrorWorkflows = mock<WorkflowRepository>();
+			workflowRepositoryWithErrorWorkflows.hasAnyWorkflowsWithErrorWorkflow.mockResolvedValue(true);
+			const settingsRepository = Container.get(SettingsRepository);
+			const statisticsService = new WorkflowStatisticsService(
+				mock(),
+				workflowStatisticsRepository,
+				Container.get(OwnershipService),
+				userService,
+				Container.get(EventService),
+				settingsRepository,
+				workflowRepositoryWithErrorWorkflows,
+			);
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+
+			// ACT
+			await statisticsService.workflowExecutionCompleted(workflow, runData);
+
+			// ASSERT
+			expect(emitSpy).not.toHaveBeenCalledWith(
+				'instance-first-production-workflow-failed',
+				expect.any(Object),
+			);
+		});
+
+		test('does not emit instance-first-production-workflow-failed event for non-production mode failures', async () => {
+			// ARRANGE
+			const runData: IRun = {
+				finished: false,
+				status: 'error',
+				data: { resultData: { runData: {} } },
+				mode: 'manual', // non-production mode
+				startedAt: new Date(),
+			};
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+
+			// ACT
+			await workflowStatisticsService.workflowExecutionCompleted(workflow, runData);
+
+			// ASSERT
+			expect(emitSpy).not.toHaveBeenCalledWith(
+				'instance-first-production-workflow-failed',
+				expect.any(Object),
+			);
 		});
 	});
 
