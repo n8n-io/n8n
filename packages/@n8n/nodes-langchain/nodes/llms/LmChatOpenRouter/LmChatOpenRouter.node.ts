@@ -1,5 +1,6 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
+	jsonParse,
 	NodeConnectionTypes,
 	NodeOperationError,
 	type INodeType,
@@ -272,7 +273,7 @@ export class LmChatOpenRouter implements INodeType {
 				}) as string;
 
 				// TODO: support expressions in json, maybe with resolveRawData(jsonOutput)
-				jsonOptions = jsonOutput;
+				jsonOptions = jsonParse(jsonOutput);
 			} catch (error) {
 				throw new NodeOperationError(this.getNode(), error.message, {
 					description: error.message,
