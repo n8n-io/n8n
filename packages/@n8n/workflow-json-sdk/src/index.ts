@@ -1,3 +1,16 @@
+import type {
+	IWorkflowBase as WorkflowJSON,
+	INode,
+	INodeParameters,
+	INodeCredentials,
+	IConnections,
+	IPinData,
+	IWorkflowSettings,
+	IDataObject,
+	WorkflowFEMeta,
+	IConnection,
+} from 'n8n-workflow';
+
 /**
  * Workflow JSON SDK for n8n
  *
@@ -8,73 +21,13 @@
 // Types
 // ============================================================================
 
-export type NodeParameterValue = string | number | boolean | object | null | undefined;
-
-export interface NodeParameters {
-	[key: string]: NodeParameterValue | NodeParameters;
-}
-
-export interface NodePosition {
-	x: number;
-	y: number;
-}
-
-export interface NodeConnection {
-	node: string;
-	type: string;
-	index: number;
-}
+// Re-export commonly used types
+export type { INode as WorkflowNodeData, IConnections as WorkflowConnections, WorkflowJSON };
 
 export interface ConnectionConfig {
 	node: WorkflowNode;
 	type?: string;
 	index?: number;
-}
-
-export interface WorkflowMeta {
-	instanceId?: string;
-	templateCredsSetupCompleted?: boolean;
-	[key: string]: unknown;
-}
-
-export interface WorkflowNodeData {
-	id: string;
-	name: string;
-	type: string;
-	position: [number, number];
-	parameters: NodeParameters;
-	typeVersion?: number;
-	disabled?: boolean;
-	notes?: string;
-	notesInFlow?: boolean;
-	creator?: string;
-	cid?: string;
-	webhookId?: string;
-	credentials?: Record<string, unknown>;
-	retryOnFail?: boolean;
-	maxTries?: number;
-	waitBetweenTries?: number;
-	alwaysOutputData?: boolean;
-	executeOnce?: boolean;
-	continueOnFail?: boolean;
-}
-
-export interface WorkflowConnections {
-	[nodeName: string]: {
-		[outputType: string]: NodeConnection[][];
-	};
-}
-
-export interface WorkflowJSON {
-	meta?: WorkflowMeta;
-	name?: string;
-	nodes: WorkflowNodeData[];
-	connections: WorkflowConnections;
-	pinData?: Record<string, unknown[]>;
-	settings?: Record<string, unknown>;
-	staticData?: unknown;
-	tags?: unknown[];
-	active?: boolean;
 }
 
 // ============================================================================
@@ -85,16 +38,14 @@ export class WorkflowNode {
 	private _id: string;
 	private _name: string;
 	private _type: string = '';
-	private _parameters: NodeParameters = {};
+	private _parameters: INodeParameters = {};
 	private _position: [number, number] = [0, 0];
 	private _typeVersion: number = 1;
 	private _disabled: boolean = false;
 	private _notes?: string;
 	private _notesInFlow?: boolean;
-	private _creator?: string;
-	private _cid?: string;
 	private _webhookId?: string;
-	private _credentials?: Record<string, unknown>;
+	private _credentials?: INodeCredentials;
 	private _retryOnFail?: boolean;
 	private _maxTries?: number;
 	private _waitBetweenTries?: number;
@@ -122,7 +73,7 @@ export class WorkflowNode {
 	/**
 	 * Set the node parameters
 	 */
-	parameters(params: NodeParameters): this {
+	parameters(params: INodeParameters): this {
 		this._parameters = { ...this._parameters, ...params };
 		return this;
 	}
@@ -169,22 +120,6 @@ export class WorkflowNode {
 	}
 
 	/**
-	 * Set the creator
-	 */
-	creator(creator: string): this {
-		this._creator = creator;
-		return this;
-	}
-
-	/**
-	 * Set the CID
-	 */
-	cid(cid: string): this {
-		this._cid = cid;
-		return this;
-	}
-
-	/**
 	 * Set webhook ID
 	 */
 	webhookId(webhookId: string): this {
@@ -195,7 +130,7 @@ export class WorkflowNode {
 	/**
 	 * Set credentials
 	 */
-	credentials(credentials: Record<string, unknown>): this {
+	credentials(credentials: INodeCredentials): this {
 		this._credentials = credentials;
 		return this;
 	}
@@ -244,21 +179,19 @@ export class WorkflowNode {
 	/**
 	 * Convert to JSON representation
 	 */
-	toJSON(): WorkflowNodeData {
-		const node: WorkflowNodeData = {
+	toJSON(): INode {
+		const node: INode = {
 			id: this._id,
 			name: this._name,
 			type: this._type,
+			typeVersion: this._typeVersion,
 			position: this._position,
 			parameters: this._parameters,
 		};
 
-		if (this._typeVersion !== 1) node.typeVersion = this._typeVersion;
 		if (this._disabled) node.disabled = this._disabled;
 		if (this._notes) node.notes = this._notes;
 		if (this._notesInFlow) node.notesInFlow = this._notesInFlow;
-		if (this._creator) node.creator = this._creator;
-		if (this._cid) node.cid = this._cid;
 		if (this._webhookId) node.webhookId = this._webhookId;
 		if (this._credentials) node.credentials = this._credentials;
 		if (this._retryOnFail) node.retryOnFail = this._retryOnFail;
@@ -364,19 +297,15 @@ export class ConnectionBuilder {
 
 export class Workflow {
 	private _name?: string;
-	private _meta: WorkflowMeta = {};
+	private _meta?: WorkflowFEMeta;
 	private nodes: Map<string, WorkflowNode> = new Map();
-	private connectionMap: Map<
-		string,
-		Map<string, Array<Array<{ node: string; type: string; index: number }>>>
-	> = new Map();
-	private _pinData: Record<string, unknown[]> = {};
-	private _settings: Record<string, unknown> = {};
-	private _staticData: unknown = null;
-	private _tags: unknown[] = [];
+	private connectionMap: Map<string, Map<string, IConnection[][]>> = new Map();
+	private _pinData?: IPinData;
+	private _settings?: IWorkflowSettings;
+	private _staticData?: IDataObject;
 	private _active: boolean = false;
 
-	constructor(options?: { name?: string; meta?: WorkflowMeta }) {
+	constructor(options?: { name?: string; meta?: WorkflowFEMeta }) {
 		if (options?.name) this._name = options.name;
 		if (options?.meta) this._meta = options.meta;
 	}
@@ -392,7 +321,7 @@ export class Workflow {
 	/**
 	 * Set workflow meta
 	 */
-	meta(meta: WorkflowMeta): this {
+	meta(meta: WorkflowFEMeta): this {
 		this._meta = { ...this._meta, ...meta };
 		return this;
 	}
@@ -446,7 +375,7 @@ export class Workflow {
 		// Add the connection
 		typeConnections[sourceIndex].push({
 			node: destNode.getName(),
-			type: destType,
+			type: destType as IConnection['type'],
 			index: destIndex,
 		});
 	}
@@ -454,7 +383,8 @@ export class Workflow {
 	/**
 	 * Set pin data
 	 */
-	pinData(nodeName: string, data: unknown[]): this {
+	pinData(nodeName: string, data: IPinData[string]): this {
+		this._pinData ??= {};
 		this._pinData[nodeName] = data;
 		return this;
 	}
@@ -462,7 +392,7 @@ export class Workflow {
 	/**
 	 * Set workflow settings
 	 */
-	settings(settings: Record<string, unknown>): this {
+	settings(settings: IWorkflowSettings): this {
 		this._settings = { ...this._settings, ...settings };
 		return this;
 	}
@@ -470,16 +400,8 @@ export class Workflow {
 	/**
 	 * Set static data
 	 */
-	staticData(data: unknown): this {
+	staticData(data: IDataObject): this {
 		this._staticData = data;
-		return this;
-	}
-
-	/**
-	 * Set tags
-	 */
-	tags(tags: unknown[]): this {
-		this._tags = tags;
 		return this;
 	}
 
@@ -496,7 +418,7 @@ export class Workflow {
 	 */
 	toJSON(): WorkflowJSON {
 		// Build connections object
-		const connections: WorkflowConnections = {};
+		const connections: IConnections = {};
 		for (const [nodeName, typeMap] of this.connectionMap.entries()) {
 			connections[nodeName] = {};
 			for (const [type, indexArray] of typeMap.entries()) {
@@ -508,17 +430,20 @@ export class Workflow {
 		const nodesArray = Array.from(this.nodes.values()).map((node) => node.toJSON());
 
 		const workflow: WorkflowJSON = {
+			id: '',
+			name: this._name ?? '',
+			active: this._active,
+			isArchived: false,
+			createdAt: new Date(),
+			updatedAt: new Date(),
 			nodes: nodesArray,
 			connections,
 		};
 
-		if (this._name) workflow.name = this._name;
-		if (Object.keys(this._meta).length > 0) workflow.meta = this._meta;
-		if (Object.keys(this._pinData).length > 0) workflow.pinData = this._pinData;
-		if (Object.keys(this._settings).length > 0) workflow.settings = this._settings;
-		if (this._staticData !== null) workflow.staticData = this._staticData;
-		if (this._tags.length > 0) workflow.tags = this._tags;
-		if (this._active) workflow.active = this._active;
+		if (this._meta) workflow.meta = this._meta;
+		if (this._pinData) workflow.pinData = this._pinData;
+		if (this._settings) workflow.settings = this._settings;
+		if (this._staticData) workflow.staticData = this._staticData;
 
 		return workflow;
 	}
@@ -531,7 +456,7 @@ export class Workflow {
 /**
  * Create a new workflow
  */
-export function workflow(options?: { name?: string; meta?: WorkflowMeta }): Workflow {
+export function workflow(options?: { name?: string; meta?: WorkflowFEMeta }): Workflow {
 	return new Workflow(options);
 }
 
@@ -547,7 +472,7 @@ export function fromJSON(json: WorkflowJSON): Workflow {
 	// Add settings and other properties
 	if (json.settings) wf.settings(json.settings);
 	if (json.staticData) wf.staticData(json.staticData);
-	if (json.tags) wf.tags(json.tags);
+	if (json.active !== undefined) wf.active(json.active);
 	if (json.active) wf.active(json.active);
 
 	// Create nodes
@@ -563,8 +488,6 @@ export function fromJSON(json: WorkflowJSON): Workflow {
 		if (nodeData.typeVersion) node.version(nodeData.typeVersion);
 		if (nodeData.disabled) node.disabled(nodeData.disabled);
 		if (nodeData.notes) node.notes(nodeData.notes, nodeData.notesInFlow);
-		if (nodeData.creator) node.creator(nodeData.creator);
-		if (nodeData.cid) node.cid(nodeData.cid);
 		if (nodeData.webhookId) node.webhookId(nodeData.webhookId);
 		if (nodeData.credentials) node.credentials(nodeData.credentials);
 		if (nodeData.retryOnFail) {
@@ -584,6 +507,7 @@ export function fromJSON(json: WorkflowJSON): Workflow {
 
 		for (const [sourceType, indexArrays] of Object.entries(typeConnections)) {
 			indexArrays.forEach((connections, sourceIndex) => {
+				if (!connections) return;
 				for (const conn of connections) {
 					const destNode = nodeMap.get(conn.node);
 					if (!destNode) continue;
@@ -600,6 +524,10 @@ export function fromJSON(json: WorkflowJSON): Workflow {
 			wf.pinData(nodeName, data);
 		}
 	}
+
+	// Set workflow name and active status
+	if (json.name) wf.name(json.name);
+	if (json.active !== undefined) wf.active(json.active);
 
 	return wf;
 }

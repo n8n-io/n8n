@@ -28,8 +28,7 @@ describe('Workflow JSON SDK', () => {
 				.position(100, 200)
 				.version(2)
 				.disabled(true)
-				.notes('Test note', true)
-				.creator('John Doe');
+				.notes('Test note', true);
 
 			const json = wf.toJSON();
 			const nodeData = json.nodes[0];
@@ -42,7 +41,6 @@ describe('Workflow JSON SDK', () => {
 			expect(nodeData.disabled).toBe(true);
 			expect(nodeData.notes).toBe('Test note');
 			expect(nodeData.notesInFlow).toBe(true);
-			expect(nodeData.creator).toBe('John Doe');
 		});
 
 		it('should set workflow metadata', () => {
@@ -75,9 +73,9 @@ describe('Workflow JSON SDK', () => {
 			const json = wf.toJSON();
 
 			expect(json.connections['Trigger']).toBeDefined();
-			expect(json.connections['Trigger']['main']).toBeDefined();
-			expect(json.connections['Trigger']['main'][0]).toHaveLength(1);
-			expect(json.connections['Trigger']['main'][0][0]).toEqual({
+			expect(json.connections['Trigger']?.main).toBeDefined();
+			expect(json.connections['Trigger']?.main?.[0]).toHaveLength(1);
+			expect(json.connections['Trigger']?.main?.[0]?.[0]).toEqual({
 				node: 'Set',
 				type: 'main',
 				index: 0,
@@ -97,9 +95,9 @@ describe('Workflow JSON SDK', () => {
 
 			const json = wf.toJSON();
 
-			expect(json.connections['Trigger']['main'][0]).toHaveLength(2);
-			expect(json.connections['Trigger']['main'][0][0].node).toBe('Set A');
-			expect(json.connections['Trigger']['main'][0][1].node).toBe('Set B');
+			expect(json.connections['Trigger']?.main?.[0]).toHaveLength(2);
+			expect(json.connections['Trigger']?.main?.[0]?.[0]?.node).toBe('Set A');
+			expect(json.connections['Trigger']?.main?.[0]?.[1]?.node).toBe('Set B');
 		});
 
 		it('should create chained connections', () => {
@@ -119,9 +117,9 @@ describe('Workflow JSON SDK', () => {
 
 			const json = wf.toJSON();
 
-			expect(json.connections['Trigger']['main'][0]).toHaveLength(2);
-			expect(json.connections['Set A']['main'][0]).toHaveLength(1);
-			expect(json.connections['Set A']['main'][0][0].node).toBe('Set C');
+			expect(json.connections['Trigger']?.main?.[0]).toHaveLength(2);
+			expect(json.connections['Set A']?.main?.[0]).toHaveLength(1);
+			expect(json.connections['Set A']?.main?.[0]?.[0]?.node).toBe('Set C');
 		});
 
 		it('should support custom connection types and indices', () => {
@@ -138,7 +136,7 @@ describe('Workflow JSON SDK', () => {
 
 			const json = wf.toJSON();
 
-			expect(json.connections['Tool']['ai_tool'][0][0]).toEqual({
+			expect(json.connections['Tool']?.ai_tool?.[0]?.[0]).toEqual({
 				node: 'Agent',
 				type: 'ai_tool',
 				index: 0,
@@ -160,8 +158,8 @@ describe('Workflow JSON SDK', () => {
 
 			const json = wf.toJSON();
 
-			expect(json.connections['Trigger']['main'][0]).toHaveLength(3);
-			expect(json.connections['Trigger']['main'][0].map((c) => c.node)).toEqual([
+			expect(json.connections['Trigger']?.main?.[0]).toHaveLength(3);
+			expect(json.connections['Trigger']?.main?.[0]?.map((c) => c?.node)).toEqual([
 				'Set A',
 				'Set B',
 				'Set C',
@@ -195,9 +193,7 @@ describe('Workflow JSON SDK', () => {
 				})
 				.webhookId('e5616171-e3b5-4c39-81d4-67409f9fa60a')
 				.version(1.1)
-				.notes('© 2025 Lucas Peyrin')
-				.creator('Lucas Peyrin')
-				.cid('Ikx1Y2FzIFBleXJpbiI');
+				.notes('© 2025 Lucas Peyrin');
 
 			const agent = wf
 				.node('Your First AI Agent')
@@ -209,9 +205,7 @@ describe('Workflow JSON SDK', () => {
 					},
 				})
 				.version(2.2)
-				.notes('© 2025 Lucas Peyrin')
-				.creator('Lucas Peyrin')
-				.cid('Ikx1Y2FzIFBleXJpbiI');
+				.notes('© 2025 Lucas Peyrin');
 
 			const gemini = wf
 				.node('Connect Gemini')
@@ -223,9 +217,7 @@ describe('Workflow JSON SDK', () => {
 					},
 				})
 				.version(1)
-				.notes('© 2025 Lucas Peyrin')
-				.creator('Lucas Peyrin')
-				.cid('Ikx1Y2FzIFBleXJpbiI');
+				.notes('© 2025 Lucas Peyrin');
 
 			const memory = wf
 				.node('Conversation Memory')
@@ -235,9 +227,7 @@ describe('Workflow JSON SDK', () => {
 					contextWindowLength: 30,
 				})
 				.version(1.3)
-				.notes('© 2025 Lucas Peyrin')
-				.creator('Lucas Peyrin')
-				.cid('Ikx1Y2FzIFBleXJpbiI');
+				.notes('© 2025 Lucas Peyrin');
 
 			const weatherTool = wf
 				.node('Get Weather')
@@ -250,8 +240,6 @@ describe('Workflow JSON SDK', () => {
 					toolDescription: 'Get weather forecast anywhere, anytime.',
 				})
 				.version(4.2)
-				.creator('Lucas Peyrin')
-				.cid('Ikx1Y2FzIFBleXJpbiI')
 				.notes('', true);
 
 			const newsTool = wf
@@ -262,9 +250,7 @@ describe('Workflow JSON SDK', () => {
 					toolDescription: 'Gets the latest blog posts about any rss feed.',
 				})
 				.version(1.2)
-				.notes('© 2025 Lucas Peyrin')
-				.creator('Lucas Peyrin')
-				.cid('Ikx1Y2FzIFBleXJpbiI');
+				.notes('© 2025 Lucas Peyrin');
 
 			// Create connections
 			wf.connection().from(chatTrigger).to({ node: agent, type: 'main', index: 0 }).build();
@@ -342,16 +328,6 @@ describe('Workflow JSON SDK', () => {
 			expect(json.staticData).toEqual({ counter: 0 });
 		});
 
-		it('should support tags', () => {
-			const wf = workflow();
-
-			wf.tags(['production', 'important']);
-
-			const json = wf.toJSON();
-
-			expect(json.tags).toEqual(['production', 'important']);
-		});
-
 		it('should support active status', () => {
 			const wf = workflow();
 
@@ -403,7 +379,12 @@ describe('Workflow JSON SDK', () => {
 	describe('fromJSON', () => {
 		it('should parse workflow from JSON', () => {
 			const originalJSON: WorkflowJSON = {
+				id: '',
 				name: 'Test Workflow',
+				active: false,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
 				meta: {
 					instanceId: 'test-id',
 				},
@@ -442,11 +423,17 @@ describe('Workflow JSON SDK', () => {
 			expect(json.nodes[0].name).toBe('Trigger');
 			expect(json.nodes[1].name).toBe('Set');
 			// eslint-disable-next-line @typescript-eslint/naming-convention
-			expect(json.connections['Trigger']['main'][0][0].node).toBe('Set');
+			expect(json.connections['Trigger']?.main?.[0]?.[0]?.node).toBe('Set');
 		});
 
 		it('should preserve all node properties when parsing from JSON', () => {
 			const originalJSON: WorkflowJSON = {
+				id: '',
+				name: 'Test Workflow',
+				active: false,
+				isArchived: false,
+				createdAt: new Date(),
+				updatedAt: new Date(),
 				nodes: [
 					{
 						id: 'node-1',
@@ -458,8 +445,6 @@ describe('Workflow JSON SDK', () => {
 						disabled: true,
 						notes: 'Test note',
 						notesInFlow: true,
-						creator: 'John Doe',
-						cid: 'test-cid',
 						webhookId: 'webhook-123',
 						retryOnFail: true,
 						maxTries: 3,
@@ -482,8 +467,6 @@ describe('Workflow JSON SDK', () => {
 			expect(node.disabled).toBe(true);
 			expect(node.notes).toBe('Test note');
 			expect(node.notesInFlow).toBe(true);
-			expect(node.creator).toBe('John Doe');
-			expect(node.cid).toBe('test-cid');
 			expect(node.webhookId).toBe('webhook-123');
 			expect(node.retryOnFail).toBe(true);
 			expect(node.maxTries).toBe(3);

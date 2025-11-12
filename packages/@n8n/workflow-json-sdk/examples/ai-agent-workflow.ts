@@ -34,9 +34,7 @@ const chatTrigger = wf
 	})
 	.webhookId('e5616171-e3b5-4c39-81d4-67409f9fa60a')
 	.version(1.1)
-	.notes('© 2025 Lucas Peyrin')
-	.creator('Lucas Peyrin')
-	.cid('Ikx1Y2FzIFBleXJpbiI');
+	.notes('© 2025 Lucas Peyrin');
 
 // Create AI agent
 const agent = wf
@@ -83,9 +81,7 @@ You must choose one of your available tools if the user's request matches its ca
 		},
 	})
 	.version(2.2)
-	.notes('© 2025 Lucas Peyrin')
-	.creator('Lucas Peyrin')
-	.cid('Ikx1Y2FzIFBleXJpbiI');
+	.notes('© 2025 Lucas Peyrin');
 
 // Create language model (Gemini)
 const gemini = wf
@@ -98,9 +94,7 @@ const gemini = wf
 		},
 	})
 	.version(1)
-	.notes('© 2025 Lucas Peyrin')
-	.creator('Lucas Peyrin')
-	.cid('Ikx1Y2FzIFBleXJpbiI');
+	.notes('© 2025 Lucas Peyrin');
 
 // Create conversation memory
 const memory = wf
@@ -111,9 +105,7 @@ const memory = wf
 		contextWindowLength: 30,
 	})
 	.version(1.3)
-	.notes('© 2025 Lucas Peyrin')
-	.creator('Lucas Peyrin')
-	.cid('Ikx1Y2FzIFBleXJpbiI');
+	.notes('© 2025 Lucas Peyrin');
 
 // Create weather tool
 const weatherTool = wf
@@ -172,8 +164,6 @@ const weatherTool = wf
 			'Get weather forecast anywhere, anytime. You can make requests by assuming most information, the only thing you need is the location (use the city name to infer lat and long automatically) and time period (assume today if not specified)',
 	})
 	.version(4.2)
-	.creator('Lucas Peyrin')
-	.cid('Ikx1Y2FzIFBleXJpbiI')
 	.notes('', true);
 
 // Create RSS news tool
@@ -187,9 +177,7 @@ const newsTool = wf
 		toolDescription: 'Gets the latest blog posts about any rss feed.',
 	})
 	.version(1.2)
-	.notes('© 2025 Lucas Peyrin')
-	.creator('Lucas Peyrin')
-	.cid('Ikx1Y2FzIFBleXJpbiI');
+	.notes('© 2025 Lucas Peyrin');
 
 // Create connections
 

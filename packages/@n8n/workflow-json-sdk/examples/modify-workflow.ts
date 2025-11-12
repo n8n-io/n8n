@@ -118,9 +118,6 @@ wf.settings({
 	saveDataErrorExecution: 'all',
 });
 
-// Add tags for organization
-wf.tags(['production', 'customer-management', 'notifications']);
-
 // Mark as active
 wf.active(true);
 

@@ -77,8 +77,6 @@ const trigger = wf
   .version(1.0)                    // Type version
   .disabled(false)                 // Enable/disable node
   .notes('My note', true)          // Notes and show in flow
-  .creator('John Doe')             // Creator name
-  .cid('unique-id')                // Content ID
   .webhookId('webhook-123')        // Webhook ID
   .credentials({                   // Node credentials
     api: {
@@ -160,9 +158,6 @@ wf.settings({
 
 // Set static data
 wf.staticData({ counter: 0 });
-
-// Set tags
-wf.tags(['production', 'important']);
 
 // Set active status
 wf.active(true);

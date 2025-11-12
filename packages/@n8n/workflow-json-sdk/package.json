@@ -34,6 +34,7 @@
     "@testing-library/jest-dom": "catalog:frontend",
     "@testing-library/user-event": "catalog:frontend",
     "@testing-library/vue": "catalog:frontend",
+    "n8n-workflow": "workspace:*",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
