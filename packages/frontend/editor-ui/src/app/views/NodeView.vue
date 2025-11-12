@@ -258,6 +258,7 @@ const {
 	fitView,
 	openWorkflowTemplate,
 	openWorkflowTemplateFromJSON,
+	addStickyGroupNode,
 } = useCanvasOperations();
 const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
@@ -1154,6 +1155,14 @@ function onCreateSticky() {
 	void onAddNodesAndConnections({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
 }
 
+function onCreateGroupSticky(
+	coordinates: { x: number; y: number; width: number; height: number },
+	nodes: CanvasNode[],
+) {
+	addStickyGroupNode(coordinates, nodes);
+	console.log(coordinates, nodes);
+}
+
 function onClickConnectionAdd(connection: Connection) {
 	nodeCreatorStore.openNodeCreatorForConnectingNode({
 		connection,
@@ -2019,6 +2028,7 @@ onBeforeUnmount(() => {
 			@click:pane="onClickPane"
 			@create:node="onOpenNodeCreatorFromCanvas"
 			@create:sticky="onCreateSticky"
+			@create:group-sticky="onCreateGroupSticky"
 			@delete:nodes="onDeleteNodes"
 			@update:nodes:enabled="onToggleNodesDisabled"
 			@update:nodes:pin="onPinNodes"

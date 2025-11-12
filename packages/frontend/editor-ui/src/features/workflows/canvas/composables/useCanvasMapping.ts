@@ -666,6 +666,7 @@ export function useCanvasMapping({
 					data,
 					...additionalNodePropertiesById.value[node.id],
 					draggable: node.draggable ?? true,
+					parentNode: node.parameters.parentId,
 				};
 			}),
 		];

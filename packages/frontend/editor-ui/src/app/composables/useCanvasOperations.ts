@@ -306,6 +306,37 @@ export function useCanvasOperations() {
 		}
 	}
 
+	function addStickyGroupNode(
+		coordinates: { x: number; y: number; width: number; height: number },
+		nodes: CanvasNode[],
+	) {
+		const nodeTypeDescription = requireNodeTypeDescription(STICKY_NODE_TYPE);
+		const node = resolveNodeData(
+			{
+				type: STICKY_NODE_TYPE,
+				typeVersion: resolveNodeVersion(nodeTypeDescription),
+				position: [coordinates.x - 40, coordinates.y + 40],
+			},
+			nodeTypeDescription,
+			{ forcePosition: true },
+		);
+		Object.assign(node.parameters, {
+			height: coordinates.height + 40,
+			width: coordinates.width + 40,
+		});
+		workflowsStore.addNode(node);
+
+		nodes.forEach((canvasNode) => {
+			workflowState.setNodeParameters(
+				{
+					name: canvasNode.data!.name,
+					value: { parentId: node.id },
+				},
+				true,
+			);
+		});
+	}
+
 	async function revertReplaceNodeParameters(
 		nodeId: string,
 		currentParameters: INodeParameters,
@@ -2638,5 +2669,6 @@ export function useCanvasOperations() {
 		fitView,
 		openWorkflowTemplate,
 		openWorkflowTemplateFromJSON,
+		addStickyGroupNode,
 	};
 }

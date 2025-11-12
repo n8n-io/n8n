@@ -89,6 +89,10 @@ const emit = defineEmits<{
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
 	'create:sticky': [];
+	'create:group-sticky': [
+		payload: { x: number; y: number; width: number; height: number },
+		elements: CanvasNode[],
+	];
 	'delete:nodes': [ids: string[]];
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
@@ -400,10 +404,12 @@ function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
 }
 
 function onUpdateNodePosition(id: string, position: XYPosition) {
+	console.log(id, position);
 	emit('update:node:position', id, position);
 }
 
 function onNodeDragStop(event: NodeDragEvent) {
+	console.log(event);
 	onUpdateNodesPosition(event.nodes.map(({ id, position }) => ({ id, position })));
 }
 
@@ -764,6 +770,10 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return await onTidyUp({ source: 'context-menu' });
 		case 'extract_sub_workflow':
 			return emit('extract-workflow', nodeIds);
+		case 'group':
+			// console.log('group nodes', getRectOfNodes(selectedNodes.value));
+			emit('create:group-sticky', getRectOfNodes(selectedNodes.value), selectedNodes.value);
+			return;
 		case 'open_sub_workflow': {
 			return emit('open:sub-workflow', nodeIds[0]);
 		}

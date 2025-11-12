@@ -29,7 +29,8 @@ export type ContextMenuAction =
 	| 'change_color'
 	| 'open_sub_workflow'
 	| 'tidy_up'
-	| 'extract_sub_workflow';
+	| 'extract_sub_workflow'
+	| 'group';
 
 type Item = ActionDropdownItem<ContextMenuAction>;
 
@@ -200,6 +201,12 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					disabled: isReadOnly.value,
 				},
 			].filter(Boolean) as Item[];
+
+			menuActions.push({
+				id: 'group',
+				label: 'group',
+				disabled: false,
+			});
 
 			if (nodes.length === 1) {
 				const singleNodeActions: Item[] = onlyStickies
