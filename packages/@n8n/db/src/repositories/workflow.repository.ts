@@ -838,6 +838,10 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 	}
 
+	async deactivate(workflowId: string) {
+		return await this.update({ id: workflowId }, { active: false });
+	}
+
 	async deactivateAll() {
 		return await this.update(
 			{ activeVersionId: Not(IsNull()) },
