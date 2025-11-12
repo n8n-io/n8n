@@ -1792,6 +1792,8 @@
 	"parameterInput.clearContents": "Clear Contents",
 	"parameterInput.focusParameter": "Focus parameter",
 	"parameterInput.improveWithAi": "Improve prompt with AI",
+	"parameterInput.improveWithAi.tip": "Tip: Add more context to help the AI generate better results.",
+	"parameterInput.improveWithAi.enhance": "Enhance",
 	"parameterInput.improveWithAi.success.title": "Prompt improved",
 	"parameterInput.improveWithAi.success.message": "Your prompt has been improved with AI",
 	"parameterInput.improveWithAi.error.title": "Failed to improve prompt",

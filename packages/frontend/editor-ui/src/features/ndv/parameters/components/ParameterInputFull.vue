@@ -37,7 +37,7 @@ import { ExpressionLocalResolveContextSymbol } from '@/app/constants';
 import { improvePrompt } from '@/features/ai/assistant/assistant.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
-import { N8nInputLabel } from '@n8n/design-system';
+import { N8nInputLabel, N8nIcon } from '@n8n/design-system';
 type Props = {
 	parameter: INodeProperties;
 	path: string;
@@ -78,6 +78,7 @@ const focused = ref(false);
 const menuExpanded = ref(false);
 const forceShowExpression = ref(false);
 const wrapperHovered = ref(false);
+const isImprovingPrompt = ref(false);
 
 const ndvStore = useNDVStore();
 const telemetry = useTelemetry();
@@ -170,7 +171,10 @@ function onWrapperMouseLeave() {
 }
 
 async function handleImproveWithAi() {
+	if (isImprovingPrompt.value) return; // Prevent multiple clicks
+
 	try {
+		isImprovingPrompt.value = true;
 		const currentValue = String(props.value || '');
 
 		// Call the API to improve the prompt
@@ -185,26 +189,29 @@ async function handleImproveWithAi() {
 
 		// Use setTimeout to ensure the input is focused and then update
 		setTimeout(() => {
-			// Select all text
+			// Select all text first
 			parameterInputWrapper.value?.selectInput();
 
-			// Try using execCommand for undo support
-			const success = document.execCommand('insertText', false, response.improvedPrompt);
-			console.log('[Frontend] execCommand success:', success);
+			// Small delay to ensure selection is complete
+			setTimeout(() => {
+				// Try using execCommand for undo support
+				const success = document.execCommand('insertText', false, response.improvedPrompt);
+				console.log('[Frontend] execCommand success:', success);
 
-			// Fallback: if execCommand didn't work, use the valueChanged method
-			if (!success || props.value === currentValue) {
-				console.log(
-					'[Frontend] execCommand failed or value not changed, using valueChanged fallback',
-				);
-				if (activeNode.value) {
-					valueChanged({
-						node: activeNode.value.name,
-						name: props.path,
-						value: response.improvedPrompt,
-					});
+				// Only use fallback if execCommand explicitly failed
+				if (!success) {
+					console.log('[Frontend] execCommand failed, using valueChanged fallback');
+					if (activeNode.value) {
+						valueChanged({
+							node: activeNode.value.name,
+							name: props.path,
+							value: response.improvedPrompt,
+						});
+					}
+				} else {
+					console.log('[Frontend] execCommand succeeded, undo should work');
 				}
-			}
+			}, 10);
 		}, 100);
 
 		toast.showMessage({
@@ -215,6 +222,8 @@ async function handleImproveWithAi() {
 	} catch (error) {
 		console.error('[Frontend] Error in handleImproveWithAi:', error);
 		toast.showError(error, i18n.baseText('parameterInput.improveWithAi.error.title'));
+	} finally {
+		isImprovingPrompt.value = false;
 	}
 }
 
@@ -468,6 +477,26 @@ function removeOverride(clearField = false) {
 							<FromAiOverrideButton @click="applyOverride" />
 						</template>
 					</ParameterInputWrapper>
+					<div v-if="parameter.improveWithAi && !isReadOnly" :class="$style.aiEnhanceBanner">
+						<div :class="$style.aiEnhanceBannerContent">
+							<N8nIcon icon="info" size="medium" :class="$style.aiEnhanceBannerIcon" />
+							<span :class="$style.aiEnhanceBannerText">
+								Tip: Add more context to help the AI generate better results.
+							</span>
+						</div>
+						<button
+							:class="[
+								$style.aiEnhanceButton,
+								{ [$style.aiEnhanceButtonLoading]: isImprovingPrompt },
+							]"
+							:disabled="isImprovingPrompt"
+							data-test-id="improve-with-ai-button"
+							@click="handleImproveWithAi"
+						>
+							<N8nIcon icon="sparkles" size="small" />
+							{{ isImprovingPrompt ? 'Enhancing...' : 'Enhance' }}
+						</button>
+					</div>
 				</div>
 			</template>
 		</DraggableTarget>
@@ -538,6 +567,89 @@ function removeOverride(clearField = false) {
 
 	&.visible {
 		opacity: 1;
+	}
+}
+
+.aiEnhanceBanner {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: var(--spacing--xs);
+	margin-top: var(--spacing--2xs);
+	background-color: var(--color--foreground--tint-2);
+	border-radius: var(--radius);
+	gap: var(--spacing--xs);
+}
+
+.aiEnhanceBannerContent {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	flex: 1;
+}
+
+.aiEnhanceBannerIcon {
+	color: var(--color--secondary);
+	flex-shrink: 0;
+}
+
+.aiEnhanceBannerText {
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--tint-1);
+	line-height: var(--line-height--md);
+}
+
+.aiEnhanceButton {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	background-color: var(--color--foreground);
+	border: none;
+	border-radius: var(--radius);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+	cursor: pointer;
+	white-space: nowrap;
+	transition: all 0.2s ease;
+	position: relative;
+	overflow: hidden;
+
+	&:hover {
+		background-color: var(--color--foreground--shade-1);
+		color: var(--color--primary);
+	}
+
+	&:active {
+		transform: scale(0.98);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.9;
+	}
+}
+
+.aiEnhanceButtonLoading {
+	&::after {
+		content: '';
+		position: absolute;
+		top: 0;
+		left: -100%;
+		width: 100%;
+		height: 100%;
+		background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+		animation: shimmer 1.5s infinite;
+	}
+}
+
+@keyframes shimmer {
+	0% {
+		left: -100%;
+	}
+	100% {
+		left: 100%;
 	}
 }
 </style>

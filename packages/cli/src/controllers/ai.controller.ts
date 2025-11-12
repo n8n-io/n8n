@@ -10,7 +10,6 @@ import {
 	AiSessionMetadataResponseDto,
 	AiImprovePromptRequestDto,
 } from '@n8n/api-types';
-import type { ChatPayload } from '@n8n/ai-workflow-builder/dist/workflow-builder-agent';
 import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Get, Licensed, Post, RestController } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
@@ -26,6 +25,7 @@ import { InternalServerError } from '@/errors/response-errors/internal-server.er
 import { TooManyRequestsError } from '@/errors/response-errors/too-many-requests.error';
 import { WorkflowBuilderService } from '@/services/ai-workflow-builder.service';
 import { AiService } from '@/services/ai.service';
+import { PromptImprovementService } from '@/services/prompt-improvement.service';
 import { UserService } from '@/services/user.service';
 
 export type FlushableResponse = Response & { flush: () => void };
@@ -35,6 +35,7 @@ export class AiController {
 	constructor(
 		private readonly aiService: AiService,
 		private readonly workflowBuilderService: WorkflowBuilderService,
+		private readonly promptImprovementService: PromptImprovementService,
 		private readonly credentialsService: CredentialsService,
 		private readonly userService: UserService,
 	) {}
@@ -263,63 +264,13 @@ export class AiController {
 
 	@Post('/improve-prompt')
 	async improvePrompt(
-		req: AuthenticatedRequest,
+		_req: AuthenticatedRequest,
 		_res: Response,
 		@Body payload: AiImprovePromptRequestDto,
 	): Promise<{ improvedPrompt: string }> {
 		try {
-			console.log('[ImprovePrompt] Starting prompt improvement');
-			console.log('[ImprovePrompt] Original prompt:', payload.prompt);
-
-			// Use the workflow builder service which already works
-			const chatPayload: ChatPayload = {
-				message: `Please improve the following prompt to make it more effective, clear, and detailed. Return ONLY the improved prompt without any explanations or additional text:\n\n${payload.prompt}`,
-				workflowContext: {
-					currentWorkflow: {},
-					executionData: {
-						runData: {},
-					},
-					executionSchema: [],
-					expressionValues: {},
-				},
-			};
-
-			let improvedPrompt = '';
-			let chunkCount = 0;
-
-			// Stream the response from the builder
-			for await (const chunk of this.workflowBuilderService.chat(chatPayload, req.user)) {
-				chunkCount++;
-				console.log(`[ImprovePrompt] Chunk ${chunkCount}:`, JSON.stringify(chunk, null, 2));
-
-				// Check for text messages
-				if (chunk.messages) {
-					for (const message of chunk.messages) {
-						if (
-							'content' in message &&
-							message.role === 'assistant' &&
-							typeof message.content === 'string' &&
-							message.content
-						) {
-							improvedPrompt = message.content;
-							console.log('[ImprovePrompt] Updated improved prompt');
-						} else if (
-							'text' in message &&
-							message.role === 'assistant' &&
-							typeof message.text === 'string' &&
-							message.text
-						) {
-							improvedPrompt = message.text;
-							console.log('[ImprovePrompt] Updated improved prompt from text field');
-						}
-					}
-				}
-			}
-
-			console.log('[ImprovePrompt] Final improved prompt:', improvedPrompt);
-			console.log('[ImprovePrompt] Total chunks:', chunkCount);
-
-			return { improvedPrompt: improvedPrompt || payload.prompt };
+			const improvedPrompt = await this.promptImprovementService.improvePrompt(payload.prompt);
+			return { improvedPrompt };
 		} catch (e) {
 			assert(e instanceof Error);
 			console.error('[ImprovePrompt] Error:', e.message);
