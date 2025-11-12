@@ -173,6 +173,7 @@ export type CanvasNodeEventBusEvents = {
 	'update:sticky:color': never;
 	'update:node:activated': never;
 	'update:node:class': { className: string; add?: boolean };
+	'update:node:badge': { badge: string | null };
 };
 
 export type CanvasEventBusEvents = {

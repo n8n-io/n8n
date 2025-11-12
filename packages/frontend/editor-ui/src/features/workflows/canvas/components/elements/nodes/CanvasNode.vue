@@ -79,6 +79,7 @@ const { connectingHandle, isExperimentalNdvActive } = useCanvas();
   Toolbar slot classes
 */
 const nodeClasses = ref<string[]>([]);
+const nodeBadge = ref<string | null>(null);
 const inputs = computed(() => props.data.inputs);
 const outputs = computed(() => props.data.outputs);
 const connections = computed(() => props.data.connections);
@@ -286,6 +287,10 @@ function onUpdateClass({ className, add = true }: CanvasNodeEventBusEvents['upda
 		: nodeClasses.value.filter((c) => c !== className);
 }
 
+function onUpdateBadge({ badge }: CanvasNodeEventBusEvents['update:node:badge']) {
+	nodeBadge.value = badge;
+}
+
 /**
  * Provide
  */
@@ -341,11 +346,13 @@ watch(outputs, (newValue, oldValue) => {
 onMounted(() => {
 	props.eventBus?.on('nodes:action', emitCanvasNodeEvent);
 	canvasNodeEventBus.value?.on('update:node:class', onUpdateClass);
+	canvasNodeEventBus.value?.on('update:node:badge', onUpdateBadge);
 });
 
 onBeforeUnmount(() => {
 	props.eventBus?.off('nodes:action', emitCanvasNodeEvent);
 	canvasNodeEventBus.value?.off('update:node:class', onUpdateClass);
+	canvasNodeEventBus.value?.off('update:node:badge', onUpdateBadge);
 });
 </script>
 
@@ -430,6 +437,10 @@ onBeforeUnmount(() => {
 			:class="$style.trigger"
 			:is-experimental-ndv-active="isExperimentalNdvActive"
 		/>
+
+		<div v-if="nodeBadge" :class="$style.heatmapBadge" data-test-id="canvas-node-heatmap-badge">
+			{{ nodeBadge }}
+		</div>
 	</div>
 </template>
 
@@ -454,5 +465,22 @@ onBeforeUnmount(() => {
 	bottom: 100%;
 	left: 0;
 	z-index: 1;
+}
+
+.heatmapBadge {
+	position: absolute;
+	top: -8px;
+	right: -8px;
+	background: white;
+	border-radius: 8px;
+	padding: 2px 6px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #6b7280;
+	line-height: 1.4;
+	white-space: nowrap;
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+	z-index: 2;
+	pointer-events: none;
 }
 </style>
