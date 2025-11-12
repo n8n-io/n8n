@@ -1,6 +1,6 @@
 {
   "name": "@n8n/chat",
-  "version": "0.64.0",
+  "version": "0.65.0",
   "scripts": {
     "dev": "pnpm run storybook",
     "build": "pnpm build:vite && pnpm build:bundle",

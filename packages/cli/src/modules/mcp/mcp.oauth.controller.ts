@@ -2,7 +2,7 @@ import { authorizationHandler } from '@modelcontextprotocol/sdk/server/auth/hand
 import { clientRegistrationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/register.js';
 import { revocationHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/revoke.js';
 import { tokenHandler } from '@modelcontextprotocol/sdk/server/auth/handlers/token.js';
-import { Get, RootLevelController, StaticRouterMetadata } from '@n8n/decorators';
+import { Get, Options, RootLevelController, StaticRouterMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import type { Response, Request, Router } from 'express';
 
@@ -15,6 +15,14 @@ const mcpOAuthService = Container.get(McpOAuthService);
 @RootLevelController('/')
 export class McpOAuthController {
 	constructor(private readonly urlService: UrlService) {}
+
+	// Add CORS headers for OAuth discovery endpoints
+	private setCorsHeaders(res: Response) {
+		// Allow requests from any origin for OAuth discovery
+		res.header('Access-Control-Allow-Origin', '*');
+		res.header('Access-Control-Allow-Methods', 'GET, OPTIONS');
+		res.header('Access-Control-Allow-Headers', 'Content-Type');
+	}
 
 	static routers: StaticRouterMetadata[] = [
 		{
@@ -39,8 +47,16 @@ export class McpOAuthController {
 		},
 	];
 
+	@Options('/.well-known/oauth-authorization-server', { skipAuth: true, usesTemplates: true })
+	metadataOptions(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.status(204).end();
+	}
+
 	@Get('/.well-known/oauth-authorization-server', { skipAuth: true, usesTemplates: true })
 	metadata(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		const metadata = {
 			issuer: baseUrl,
@@ -58,11 +74,22 @@ export class McpOAuthController {
 		res.json(metadata);
 	}
 
+	@Options('/.well-known/oauth-protected-resource/mcp-server/http', {
+		skipAuth: true,
+		usesTemplates: true,
+	})
+	protectedResourceMetadataOptions(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.status(204).end();
+	}
+
 	@Get('/.well-known/oauth-protected-resource/mcp-server/http', {
 		skipAuth: true,
 		usesTemplates: true,
 	})
 	protectedResourceMetadata(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+
 		const baseUrl = this.urlService.getInstanceBaseUrl();
 		res.json({
 			resource: `${baseUrl}/mcp-server/http`,
