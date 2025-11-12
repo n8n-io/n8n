@@ -189,6 +189,24 @@ export class ExecuteWorkflow implements INodeType {
 				description: 'The URL from which to load the workflow from',
 			},
 			{
+				displayName: 'Trigger Path',
+				name: 'triggerPath',
+				type: 'string',
+				displayOptions: {
+					show: {
+						source: ['database'],
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+					hide: {
+						workflowId: [''],
+					},
+				},
+				default: '',
+				placeholder: 'e.g. /agent-tool-1',
+				description:
+					'Optional path to specify which Execute Workflow Trigger to invoke when the sub-workflow has multiple triggers. Leave empty to use the default trigger.',
+			},
+			{
 				displayName:
 					'Any data you pass into this node will be output by the Execute Workflow Trigger. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.executeworkflow/" target="_blank">More info</a>',
 				name: 'executeWorkflowNotice',
@@ -291,6 +309,7 @@ export class ExecuteWorkflow implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const source = this.getNodeParameter('source', 0) as string;
 		const mode = this.getNodeParameter('mode', 0, false) as string;
+		const triggerPath = this.getNodeParameter('triggerPath', 0, '') as string;
 		const items = getCurrentWorkflowInputData.call(this);
 
 		const workflowProxy = this.getWorkflowDataProxy(0);
@@ -319,6 +338,7 @@ export class ExecuteWorkflow implements INodeType {
 									workflowId: workflowProxy.$workflow.id,
 									shouldResume: waitForSubWorkflow,
 								},
+								triggerPath,
 							},
 						);
 						const workflowResult = executionResult.data as INodeExecutionData[][];
@@ -352,6 +372,7 @@ export class ExecuteWorkflow implements INodeType {
 									workflowId: workflowProxy.$workflow.id,
 									shouldResume: waitForSubWorkflow,
 								},
+								triggerPath,
 							},
 						);
 
@@ -420,6 +441,7 @@ export class ExecuteWorkflow implements INodeType {
 							workflowId: workflowProxy.$workflow.id,
 							shouldResume: waitForSubWorkflow,
 						},
+						triggerPath,
 					},
 				);
 

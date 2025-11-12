@@ -12,7 +12,29 @@ export function isWorkflowIdValid(id: string | null | undefined): boolean {
 }
 
 function findWorkflowStart(executionMode: 'integrated' | 'cli') {
-	return function (nodes: INode[]) {
+	return function (nodes: INode[], triggerPath?: string) {
+		// If triggerPath is specified, find the matching executeWorkflowTrigger
+		if (triggerPath) {
+			const matchingTrigger = nodes.find(
+				(node) =>
+					node.type === 'n8n-nodes-base.executeWorkflowTrigger' &&
+					node.parameters.triggerPath === triggerPath,
+			);
+
+			if (matchingTrigger) return matchingTrigger;
+
+			// If triggerPath was specified but not found, throw an error
+			const title = 'Execute Workflow Trigger not found';
+			const description = `No Execute Workflow Trigger with path "${triggerPath}" was found in the workflow`;
+
+			if (executionMode === 'integrated') {
+				throw new SubworkflowOperationError(title, description);
+			}
+
+			throw new CliWorkflowOperationError(title, description);
+		}
+
+		// Default behavior: find any executeWorkflowTrigger
 		const executeWorkflowTriggerNode = nodes.find(
 			(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
 		);

@@ -28,7 +28,6 @@ export class ExecuteWorkflowTrigger implements INodeType {
 		description:
 			'Helpers for calling other n8n workflows. Used for designing modular, microservice-like workflows.',
 		eventTriggerDescription: '',
-		maxNodes: 1,
 		defaults: {
 			name: 'When Executed by Another Workflow',
 			color: '#ff6d5a',
@@ -81,6 +80,19 @@ export class ExecuteWorkflowTrigger implements INodeType {
 				type: 'notice',
 				displayOptions: { show: { '@version': [{ _cnd: { eq: 1 } }] } },
 				default: '',
+			},
+			{
+				displayName: 'Trigger Path',
+				name: 'triggerPath',
+				type: 'string',
+				default: '',
+				placeholder: 'e.g. /agent-tool-1',
+				description:
+					'Optional identifier for this trigger. When multiple Execute Workflow Triggers exist, use this to specify which one to invoke from the Execute Workflow node.',
+				noDataExpression: true,
+				displayOptions: {
+					show: { '@version': [{ _cnd: { gte: 1.1 } }] },
+				},
 			},
 			{
 				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased

@@ -55,10 +55,11 @@ export async function getRunData(
 	workflowData: IWorkflowBase,
 	inputData?: INodeExecutionData[],
 	parentExecution?: RelatedExecution,
+	triggerPath?: string,
 ): Promise<IWorkflowExecutionDataProcess> {
 	const mode = 'integrated';
 
-	const startingNode = findSubworkflowStart(workflowData.nodes);
+	const startingNode = findSubworkflowStart(workflowData.nodes, triggerPath);
 
 	// Always start with empty data if no inputData got supplied
 	inputData = inputData || [
@@ -156,7 +157,12 @@ export async function executeWorkflow(
 
 	const runData =
 		options.loadedRunData ??
-		(await getRunData(workflowData, options.inputData, options.parentExecution));
+		(await getRunData(
+			workflowData,
+			options.inputData,
+			options.parentExecution,
+			options.triggerPath,
+		));
 
 	const executionId = await activeExecutions.add(runData);
 

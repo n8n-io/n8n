@@ -28,6 +28,7 @@ async function getTool(
 	const name =
 		typeVersion <= 2.1 ? (ctx.getNodeParameter('name', 0) as string) : nodeNameToToolName(node);
 	const description = ctx.getNodeParameter('description', 0) as string;
+	const triggerPath = ctx.getNodeParameter('triggerPath', itemIndex, '') as string;
 
 	return await workflowToolService.createTool({
 		ctx,
@@ -35,6 +36,7 @@ async function getTool(
 		description,
 		itemIndex,
 		manualLogging: enableLogging,
+		triggerPath,
 	});
 }
 

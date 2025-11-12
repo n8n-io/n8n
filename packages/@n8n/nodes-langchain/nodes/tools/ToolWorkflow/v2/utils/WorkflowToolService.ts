@@ -51,6 +51,9 @@ export class WorkflowToolService {
 
 	private returnAllItems: boolean = false;
 
+	// Trigger path to specify which Execute Workflow Trigger to invoke
+	private triggerPath: string | undefined;
+
 	constructor(
 		private baseContext: ISupplyDataFunctions | IExecuteFunctions,
 		options?: { returnAllItems: boolean },
@@ -68,13 +71,17 @@ export class WorkflowToolService {
 		description,
 		itemIndex,
 		manualLogging = true,
+		triggerPath,
 	}: {
 		ctx: ISupplyDataFunctions | IExecuteFunctions;
 		name: string;
 		description: string;
 		itemIndex: number;
 		manualLogging?: boolean;
+		triggerPath?: string;
 	}): Promise<DynamicTool | DynamicStructuredTool> {
+		// Store triggerPath for use in executeSubWorkflow
+		this.triggerPath = triggerPath;
 		// Handler for the tool execution, will be called when the tool is executed
 		// This function will execute the sub-workflow and return the response
 		// We get the runIndex from the context to handle multiple executions
@@ -254,6 +261,7 @@ export class WorkflowToolService {
 					executionId: workflowProxy.$execution.id,
 					workflowId: workflowProxy.$workflow.id,
 				},
+				triggerPath: this.triggerPath,
 			});
 			// Set sub-workflow execution id so it can be used in other places
 			this.subExecutionId = receivedData.executionId;

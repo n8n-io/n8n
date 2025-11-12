@@ -95,6 +95,23 @@ export const versionDescription: INodeTypeDescription = {
 			default: '',
 			required: true,
 		},
+		{
+			displayName: 'Trigger Path',
+			name: 'triggerPath',
+			type: 'string',
+			displayOptions: {
+				show: {
+					source: ['database'],
+				},
+				hide: {
+					workflowId: [''],
+				},
+			},
+			default: '',
+			placeholder: 'e.g. /agent-tool-1',
+			description:
+				'Optional path to specify which Execute Workflow Trigger to invoke when the sub-workflow has multiple triggers. Leave empty to use the default trigger.',
+		},
 		// -----------------------------------------------
 		//         Resource mapper for workflow inputs
 		// -----------------------------------------------
