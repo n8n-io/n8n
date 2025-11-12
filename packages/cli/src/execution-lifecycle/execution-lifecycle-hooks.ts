@@ -166,6 +166,7 @@ function hookFunctionsNodeEvents(hooks: ExecutionLifecycleHooks) {
 
 /**
  * Returns hook functions to push data to Editor-UI
+ * Supports both regular executions and sub-executions (parentExecutionId from hooks instance)
  */
 function hookFunctionsPush(
 	hooks: ExecutionLifecycleHooks,
@@ -174,130 +175,12 @@ function hookFunctionsPush(
 	if (!pushRef) return;
 	const logger = Container.get(Logger);
 	const pushInstance = Container.get(Push);
+
 	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
-		const { executionId } = this;
+		const { executionId, parentExecutionId } = this;
 		// Push data to session which started workflow before each
 		// node which starts rendering
 		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
-			executionId,
-			pushRef,
-			workflowId: this.workflowData.id,
-		});
-
-		pushInstance.send(
-			{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data } },
-			pushRef,
-		);
-	});
-	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
-		const { executionId } = this;
-		// Push data to session which started workflow after each rendered node
-		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
-			executionId,
-			pushRef,
-			workflowId: this.workflowData.id,
-		});
-
-		const itemCountByConnectionType = getItemCountByConnectionType(data?.data);
-		const { data: _, ...taskData } = data;
-
-		pushInstance.send(
-			{
-				type: 'nodeExecuteAfter',
-				data: { executionId, nodeName, itemCountByConnectionType, data: taskData },
-			},
-			pushRef,
-		);
-
-		// We send the node execution data as a WS binary message to the FE. Not
-		// because it's more efficient on the wire: the content is a JSON string
-		// so both text and binary would end the same on the wire. The reason
-		// is that the FE can then receive the data directly as an ArrayBuffer,
-		// and we can pass it directly to a web worker for processing without
-		// extra copies.
-		const asBinary = true;
-		pushInstance.send(
-			{
-				type: 'nodeExecuteAfterData',
-				data: { executionId, nodeName, itemCountByConnectionType, data },
-			},
-			pushRef,
-			asBinary,
-		);
-	});
-	hooks.addHandler('workflowExecuteBefore', function (_workflow, data) {
-		const { executionId } = this;
-		const { id: workflowId, name: workflowName } = this.workflowData;
-		logger.debug('Executing hook (hookFunctionsPush)', {
-			executionId,
-			pushRef,
-			workflowId,
-		});
-		// Push data to session which started the workflow
-		pushInstance.send(
-			{
-				type: 'executionStarted',
-				data: {
-					executionId,
-					mode: this.mode,
-					startedAt: new Date(),
-					retryOf,
-					workflowId,
-					workflowName,
-					flattedRunData: data?.resultData.runData
-						? stringify(data.resultData.runData)
-						: stringify({}),
-				},
-			},
-			pushRef,
-		);
-	});
-	hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
-		const { executionId } = this;
-		const { id: workflowId } = this.workflowData;
-		logger.debug('Executing hook (hookFunctionsPush)', {
-			executionId,
-			pushRef,
-			workflowId,
-		});
-
-		const { status } = fullRunData;
-		if (status === 'waiting') {
-			pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
-		} else {
-			pushInstance.send(
-				{ type: 'executionFinished', data: { executionId, workflowId, status } },
-				pushRef,
-			);
-		}
-	});
-}
-
-/**
- * Returns hook functions to push data to Editor-UI for sub-executions.
- * When the sub-workflow is the same as the parent (same canvas), we use
- * the parent's execution ID so the UI shows both executions on the same canvas.
- */
-function hookFunctionsPushForSubExecution(
-	hooks: ExecutionLifecycleHooks,
-	{
-		pushRef,
-		executionId,
-		parentExecutionId,
-	}: {
-		pushRef: string;
-		executionId: string;
-		parentExecutionId?: string;
-	},
-) {
-	if (!pushRef) return;
-	const logger = Container.get(Logger);
-	const pushInstance = Container.get(Push);
-
-	// For node execution events, we send the sub-execution's own ID
-	// and include parentExecutionId so the frontend can fetch and merge data
-	hooks.addHandler('nodeExecuteBefore', function (nodeName, data) {
-		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPushForSubExecution)`, {
 			executionId,
 			parentExecutionId,
 			pushRef,
@@ -305,16 +188,15 @@ function hookFunctionsPushForSubExecution(
 		});
 
 		pushInstance.send(
-			{
-				type: 'nodeExecuteBefore',
-				data: { executionId, nodeName, data, parentExecutionId },
-			},
+			{ type: 'nodeExecuteBefore', data: { executionId, nodeName, data, parentExecutionId } },
 			pushRef,
 		);
 	});
 
 	hooks.addHandler('nodeExecuteAfter', function (nodeName, data) {
-		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPushForSubExecution)`, {
+		const { executionId, parentExecutionId } = this;
+		// Push data to session which started workflow after each rendered node
+		logger.debug(`Executing hook on node "${nodeName}" (hookFunctionsPush)`, {
 			executionId,
 			parentExecutionId,
 			pushRef,
@@ -338,28 +220,72 @@ function hookFunctionsPushForSubExecution(
 			pushRef,
 		);
 
+		// We send the node execution data as a WS binary message to the FE. Not
+		// because it's more efficient on the wire: the content is a JSON string
+		// so both text and binary would end the same on the wire. The reason
+		// is that the FE can then receive the data directly as an ArrayBuffer,
+		// and we can pass it directly to a web worker for processing without
+		// extra copies.
 		const asBinary = true;
 		pushInstance.send(
 			{
 				type: 'nodeExecuteAfterData',
-				data: {
-					executionId,
-					nodeName,
-					itemCountByConnectionType,
-					data,
-					parentExecutionId,
-				},
+				data: { executionId, nodeName, itemCountByConnectionType, data, parentExecutionId },
 			},
 			pushRef,
 			asBinary,
 		);
 	});
 
-	// Note: We intentionally do NOT send workflowExecuteBefore/After events for sub-executions
-	// because:
-	// 1. executionStarted with parent's ID would conflict/reset the parent's execution state
-	// 2. The node execution events (nodeExecuteBefore/After) should be sufficient for UI updates
-	// 3. The UI should handle node events for the parent executionId without requiring a separate executionStarted
+	// Skip workflow-level events for sub-executions to avoid conflicts with parent execution state
+	if (!hooks.parentExecutionId) {
+		hooks.addHandler('workflowExecuteBefore', function (_workflow, data) {
+			const { executionId } = this;
+			const { id: workflowId, name: workflowName } = this.workflowData;
+			logger.debug('Executing hook (hookFunctionsPush)', {
+				executionId,
+				pushRef,
+				workflowId,
+			});
+			// Push data to session which started the workflow
+			pushInstance.send(
+				{
+					type: 'executionStarted',
+					data: {
+						executionId,
+						mode: this.mode,
+						startedAt: new Date(),
+						retryOf,
+						workflowId,
+						workflowName,
+						flattedRunData: data?.resultData.runData
+							? stringify(data.resultData.runData)
+							: stringify({}),
+					},
+				},
+				pushRef,
+			);
+		});
+		hooks.addHandler('workflowExecuteAfter', function (fullRunData) {
+			const { executionId } = this;
+			const { id: workflowId } = this.workflowData;
+			logger.debug('Executing hook (hookFunctionsPush)', {
+				executionId,
+				pushRef,
+				workflowId,
+			});
+
+			const { status } = fullRunData;
+			if (status === 'waiting') {
+				pushInstance.send({ type: 'executionWaiting', data: { executionId } }, pushRef);
+			} else {
+				pushInstance.send(
+					{ type: 'executionFinished', data: { executionId, workflowId, status } },
+					pushRef,
+				);
+			}
+		});
+	}
 }
 
 function hookFunctionsExternalHooks(hooks: ExecutionLifecycleHooks) {
@@ -622,7 +548,12 @@ export function getLifecycleHooksForSubExecutions(
 	parentExecution?: RelatedExecution,
 	pushRef?: string,
 ): ExecutionLifecycleHooks {
-	const hooks = new ExecutionLifecycleHooks(mode, executionId, workflowData);
+	const hooks = new ExecutionLifecycleHooks(
+		mode,
+		executionId,
+		workflowData,
+		parentExecution?.executionId,
+	);
 	const saveSettings = toSaveSettings(workflowData.settings);
 	hookFunctionsWorkflowEvents(hooks, userId);
 	hookFunctionsNodeEvents(hooks);
@@ -633,13 +564,10 @@ export function getLifecycleHooksForSubExecutions(
 	hookFunctionsExternalHooks(hooks);
 
 	if (pushRef) {
-		// Check if this is a "same canvas" scenario where the sub-workflow is the same workflow as the parent
-		const isSameCanvas = parentExecution && parentExecution.workflowId === workflowData.id;
-
-		hookFunctionsPushForSubExecution(hooks, {
+		hookFunctionsPush(hooks, {
 			pushRef,
-			executionId,
-			parentExecutionId: isSameCanvas ? parentExecution.executionId : undefined,
+			retryOf: undefined,
+			saveSettings,
 		});
 	}
 	return hooks;
