@@ -174,21 +174,38 @@ async function handleImproveWithAi() {
 		const currentValue = String(props.value || '');
 
 		// Call the API to improve the prompt
+		console.log('[Frontend] Calling improvePrompt API with:', currentValue);
 		const response = await improvePrompt(restApiContext, {
 			prompt: currentValue,
 		});
+		console.log('[Frontend] Received improved prompt:', response.improvedPrompt);
 
-		// Focus the input field and select all text
+		// Focus the input field first
 		await parameterInputWrapper.value?.focusInput();
 
-		// Use setTimeout to ensure the input is focused before selecting
+		// Use setTimeout to ensure the input is focused and then update
 		setTimeout(() => {
+			// Select all text
 			parameterInputWrapper.value?.selectInput();
 
-			// Use execCommand to replace the text so undo works
-			// This maintains the browser's undo stack
-			document.execCommand('insertText', false, response.improvedPrompt);
-		}, 0);
+			// Try using execCommand for undo support
+			const success = document.execCommand('insertText', false, response.improvedPrompt);
+			console.log('[Frontend] execCommand success:', success);
+
+			// Fallback: if execCommand didn't work, use the valueChanged method
+			if (!success || props.value === currentValue) {
+				console.log(
+					'[Frontend] execCommand failed or value not changed, using valueChanged fallback',
+				);
+				if (activeNode.value) {
+					valueChanged({
+						node: activeNode.value.name,
+						name: props.path,
+						value: response.improvedPrompt,
+					});
+				}
+			}
+		}, 100);
 
 		toast.showMessage({
 			title: i18n.baseText('parameterInput.improveWithAi.success.title'),
@@ -196,6 +213,7 @@ async function handleImproveWithAi() {
 			type: 'success',
 		});
 	} catch (error) {
+		console.error('[Frontend] Error in handleImproveWithAi:', error);
 		toast.showError(error, i18n.baseText('parameterInput.improveWithAi.error.title'));
 	}
 }
