@@ -1740,6 +1740,8 @@
 	"nodeWebhooks.invalidExpression": "[INVALID EXPRESSION]",
 	"nodeWebhooks.productionUrl": "Production URL",
 	"nodeWebhooks.showMessage.title": "URL copied",
+	"nodeWebhooks.showMessage.testWebhookUrl": "This node is only supports production webhooks",
+	"nodeWebhooks.showMessage.not.active": "Workflow is not active",
 	"nodeWebhooks.showMessage.title.formTrigger": "Form URL copied",
 	"nodeWebhooks.showMessage.title.chatTrigger": "Chat URL copied",
 	"nodeWebhooks.showMessage.title.mcpTrigger": "MCP URL copied",

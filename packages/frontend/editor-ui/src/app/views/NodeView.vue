@@ -68,6 +68,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
+	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -1271,18 +1272,32 @@ async function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
 		title: i18n.baseText('nodeWebhooks.showMessage.title'),
 		type: 'success',
 	});
-
-	telemetry.track('User copied webhook URL', {
-		pane: 'canvas',
-		type: `${webhookType} url`,
-	});
 }
 
 async function onCopyTestUrl(id: string) {
+	const node = workflowsStore.getNodeById(id);
+	const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(node?.type ?? '');
+
+	if (isProductionOnly) {
+		toast.showMessage({
+			title: i18n.baseText('nodeWebhooks.showMessage.testWebhookUrl'),
+			type: 'warning',
+		});
+		return;
+	}
+
 	await copyWebhookUrl(id, 'test');
 }
 
 async function onCopyProductionUrl(id: string) {
+	const isWorkflowActive = workflowsStore.workflow.active;
+	if (!isWorkflowActive) {
+		toast.showMessage({
+			title: i18n.baseText('nodeWebhooks.showMessage.not.active'),
+			type: 'warning',
+		});
+		return;
+	}
 	await copyWebhookUrl(id, 'production');
 }
 
