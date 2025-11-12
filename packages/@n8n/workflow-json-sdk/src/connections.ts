@@ -1,26 +1,16 @@
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import type { NodeConnectionType } from 'n8n-workflow';
-import type { Workflow } from './workflow';
+
 import { WorkflowNode } from './nodes';
+import type { NodeType } from './nodeTypes';
+import type { Workflow } from './workflow';
 
-/**
- * Workflow JSON SDK for n8n
- *
- * A Zod-like API for constructing n8n workflows programmatically
- */
-
-// ============================================================================
-// Types
-// ============================================================================
-
-export interface ConnectionConfig {
-	node: WorkflowNode<any>;
-	type?: NodeConnectionType;
-	index?: number;
-}
-
-export class ConnectionBuilder {
+export class ConnectionBuilder<
+	Source extends NodeType | unknown = unknown,
+	Target extends NodeType | unknown = unknown,
+> {
 	private source?: {
-		node: WorkflowNode<any>;
+		node: WorkflowNode<Source>;
 		type: NodeConnectionType;
 		index: number;
 	};
@@ -32,8 +22,8 @@ export class ConnectionBuilder {
 	 */
 	from(
 		source:
-			| WorkflowNode<any>
-			| { node: WorkflowNode<any>; type?: NodeConnectionType; index?: number },
+			| WorkflowNode<Source>
+			| { node: WorkflowNode<Source>; type?: NodeConnectionType; index?: number },
 	): this {
 		if (source instanceof WorkflowNode) {
 			this.source = {
@@ -48,6 +38,7 @@ export class ConnectionBuilder {
 				index: source.index ?? 0,
 			};
 		}
+
 		return this;
 	}
 
@@ -56,16 +47,19 @@ export class ConnectionBuilder {
 	 */
 	to(
 		destinations:
-			| WorkflowNode<any>
-			| WorkflowNode<any>[]
-			| { node: WorkflowNode<any>; type?: NodeConnectionType; index?: number },
+			| WorkflowNode<Target>
+			| Array<WorkflowNode<Target>>
+			| { node: WorkflowNode<Target>; type?: NodeConnectionType; index?: number },
 	): this {
 		if (!this.source) {
 			throw new Error('Source node not set. Use .from() to set the source node.');
 		}
 
-		const destNodes: Array<{ node: WorkflowNode<any>; type: NodeConnectionType; index: number }> =
-			[];
+		const destNodes: Array<{
+			node: WorkflowNode<Target>;
+			type: NodeConnectionType;
+			index: number;
+		}> = [];
 
 		if (Array.isArray(destinations)) {
 			for (const dest of destinations) {

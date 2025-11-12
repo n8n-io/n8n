@@ -1,10 +1,12 @@
+/* eslint-disable @typescript-eslint/no-redundant-type-constituents */
 import type { INode, INodeParameters, INodeCredentials } from 'n8n-workflow';
+
 import type { NodeType, GetNodeParameters } from './nodeTypes';
 
 // Helper type to get parameters based on node type
 type NodeParams<T> = T extends NodeType ? GetNodeParameters<T> : INodeParameters;
 
-export class WorkflowNode<T extends NodeType | '' = ''> {
+export class WorkflowNode<T extends NodeType | unknown = unknown> {
 	private node: INode;
 
 	constructor(name: string) {

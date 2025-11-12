@@ -26,7 +26,8 @@
     "example:basic": "tsx examples/basic-workflow.ts",
     "example:ai-agent": "tsx examples/ai-agent-workflow.ts",
     "example:modify": "tsx examples/modify-workflow.ts",
-    "generate": "tsx scripts/generate-node-types.ts"
+    "generate": "tsx scripts/generate-node-types.ts",
+    "playground": "tsx playground/index.ts"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",

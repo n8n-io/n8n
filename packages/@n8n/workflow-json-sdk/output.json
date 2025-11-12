@@ -1,0 +1,108 @@
+{
+	"id": "",
+	"name": "My workflow",
+	"active": false,
+	"isArchived": false,
+	"createdAt": "2025-11-12T13:29:07.423Z",
+	"updatedAt": "2025-11-12T13:29:07.423Z",
+	"nodes": [
+		{
+			"id": "gftroix-pifdfeg3ghg",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"parameters": {}
+		},
+		{
+			"id": "g0ps51p-91u6la0xdz9",
+			"name": "Edit Fields A",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [200, -150],
+			"parameters": {
+				"options": {}
+			}
+		},
+		{
+			"id": "f8ve6b1-zpz7bbp0jwj",
+			"name": "Edit Fields B",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"parameters": {
+				"options": {}
+			}
+		},
+		{
+			"id": "as7kfjr-pvtlh93xkbo",
+			"name": "Edit Fields C",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [200, 150],
+			"parameters": {
+				"values": {
+					"string": [
+						{
+							"value": "n8n"
+						}
+					]
+				}
+			}
+		},
+		{
+			"id": "zdx8qpe-cr4nji83lh",
+			"name": "Search a page on Notion",
+			"type": "n8n-nodes-base.notion",
+			"typeVersion": 1,
+			"position": [400, 0],
+			"parameters": {
+				"operation": "search"
+			}
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Edit Fields A",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields B",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields A",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields B",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Edit Fields C",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Edit Fields B": {
+			"main": [
+				[
+					{
+						"node": "Search a page on Notion",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	}
+}

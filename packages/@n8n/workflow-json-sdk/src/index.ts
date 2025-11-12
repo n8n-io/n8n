@@ -1,11 +1,13 @@
 import type { WorkflowFEMeta } from 'n8n-workflow';
+
 import { Workflow } from './workflow';
 
 export * from './connections';
 export * from './nodes';
-export * from './types';
+export * from './nodeTypes';
 export * from './workflow';
 export * from './utils';
+export type * from './types';
 
 /**
  * Workflow JSON SDK for n8n

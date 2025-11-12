@@ -1,5 +1,6 @@
-import { NodeConnectionType, WorkflowJSON } from './types';
-import { WorkflowNode } from './nodes';
+import type { WorkflowNode } from './nodes';
+import type { NodeType } from './nodeTypes';
+import type { NodeConnectionType, WorkflowJSON } from './types';
 import { Workflow } from './workflow';
 
 /**
@@ -17,11 +18,11 @@ export function fromJSON(json: WorkflowJSON): Workflow {
 	if (json.active !== undefined) wf.active(json.active);
 
 	// Create nodes
-	const nodeMap = new Map<string, WorkflowNode<any>>();
+	const nodeMap = new Map<string, WorkflowNode>();
 	for (const nodeData of json.nodes) {
 		const node = wf
 			.node(nodeData.name)
-			.type(nodeData.type as any)
+			.type(nodeData.type as NodeType)
 			.parameters(nodeData.parameters)
 			.position(nodeData.position[0], nodeData.position[1]);
 
@@ -38,7 +39,7 @@ export function fromJSON(json: WorkflowJSON): Workflow {
 		if (nodeData.executeOnce) node.executeOnce(nodeData.executeOnce);
 		if (nodeData.continueOnFail) node.continueOnFail(nodeData.continueOnFail);
 
-		nodeMap.set(nodeData.name, node);
+		nodeMap.set(nodeData.name, node as unknown as WorkflowNode<''>);
 	}
 
 	// Create connections

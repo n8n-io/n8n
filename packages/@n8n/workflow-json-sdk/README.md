@@ -405,7 +405,6 @@ import type {
   WorkflowNodeData,
   WorkflowConnections,
   NodeConnectionType,
-  ConnectionConfig
 } from '@n8n/workflow-json-sdk';
 ```
 

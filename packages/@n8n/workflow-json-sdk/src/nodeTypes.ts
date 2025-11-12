@@ -2532,7 +2532,7 @@ export interface ActionNetworkParameters extends BaseNodeParams {
 		| 'tag'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'update' | 'add' | 'remove';
 	/** Person ID */
 	personId?: string;
 	/** Event ID */
@@ -2580,13 +2580,25 @@ export interface ActiveCampaignParameters extends BaseNodeParams {
 		| 'tag'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'remove'
+		| 'createNote'
+		| 'updateNote'
+		| 'getByProductId'
+		| 'getByOrderId';
 	/** Type */
 	tagType?: 'contact' | 'template';
 	/** Name */
 	name?: string;
 	/** Tag ID */
-	tagId?: number;
+	tagId?: number | string;
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -2817,7 +2829,7 @@ export interface ActiveCampaignParameters extends BaseNodeParams {
 	/** Total Price */
 	totalPrice?: number;
 	/** Connection ID */
-	connectionid?: number;
+	connectionid?: number | string;
 	/** Customer ID */
 	customerid?: number;
 	/** Creation Date */
@@ -2882,7 +2894,7 @@ export interface AffinityParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'list' | 'listEntry' | 'organization' | 'person';
 	/** Operation */
-	operation?: 'get' | 'getAll';
+	operation?: 'get' | 'getAll' | 'create' | 'delete' | 'update';
 	/** List ID */
 	listId?: string;
 	/** Return All */
@@ -2961,7 +2973,15 @@ export interface Airtable_v2_1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'base' | 'record';
 	/** Operation */
-	operation?: 'create' | 'upsert' | 'deleteRecord' | 'get' | 'search' | 'update';
+	operation?:
+		| 'create'
+		| 'upsert'
+		| 'deleteRecord'
+		| 'get'
+		| 'search'
+		| 'update'
+		| 'getMany'
+		| 'getSchema';
 	/** Base */
 	base?: unknown;
 	/** Table */
@@ -3034,7 +3054,28 @@ export interface AirtopParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'extraction' | 'file' | 'interaction' | 'session' | 'window';
 	/** Operation */
-	operation?: 'create' | 'save' | 'terminate' | 'waitForDownload';
+	operation?:
+		| 'create'
+		| 'save'
+		| 'terminate'
+		| 'waitForDownload'
+		| 'close'
+		| 'getLiveView'
+		| 'list'
+		| 'load'
+		| 'takeScreenshot'
+		| 'deleteFile'
+		| 'get'
+		| 'getMany'
+		| 'upload'
+		| 'query'
+		| 'getPaginated'
+		| 'scrape'
+		| 'click'
+		| 'fill'
+		| 'hover'
+		| 'scroll'
+		| 'type';
 	/** Profile Name */
 	profileName?: string;
 	/** Save Profile */
@@ -3146,7 +3187,7 @@ export interface ApiTemplateIoParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'account' | 'image' | 'pdf' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | '__CUSTOM_API_CALL__' | 'get';
 	/** Template Name or ID */
 	imageTemplateId?: string;
 	/** Template Name or ID */
@@ -3181,7 +3222,17 @@ export interface AsanaParameters extends BaseNodeParams {
 		| 'user'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'delete'
+		| 'get'
+		| 'move'
+		| 'search'
+		| 'update'
+		| 'add'
+		| 'remove';
 	/** Parent Task ID */
 	taskId?: string;
 	/** Name */
@@ -3250,7 +3301,7 @@ export interface AutopilotParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'contact' | 'contactJourney' | 'contactList' | 'list';
 	/** Operation */
-	operation?: 'upsert' | 'delete' | 'get' | 'getAll';
+	operation?: 'upsert' | 'delete' | 'get' | 'getAll' | 'add' | 'exist' | 'remove' | 'create';
 	/** Email */
 	email?: string;
 	/** Contact ID */
@@ -3331,7 +3382,15 @@ export interface AwsCognitoParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'group' | 'user' | 'userPool' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'addToGroup'
+		| 'removeFromGroup';
 	/** User Pool */
 	userPool?: unknown;
 	/** Group Name */
@@ -3405,7 +3464,7 @@ export interface AwsDynamoDbParameters extends BaseNodeParams {
 	/** Simplify */
 	simple?: boolean;
 	/** Select */
-	select?: 'ALL_ATTRIBUTES' | 'ALL_PROJECTED_ATTRIBUTES' | 'SPECIFIC_ATTRIBUTES';
+	select?: 'ALL_ATTRIBUTES' | 'ALL_PROJECTED_ATTRIBUTES' | 'SPECIFIC_ATTRIBUTES' | 'COUNT';
 	/** Scan */
 	scan?: boolean;
 	/** Filter Expression */
@@ -3424,7 +3483,7 @@ export interface AwsElbParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'listenerCertificate' | 'loadBalancer' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getMany' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'delete' | 'get' | 'getMany' | '__CUSTOM_API_CALL__' | 'add' | 'remove';
 	/** IP Address Type */
 	ipAddressType?: 'ipv4' | 'dualstack';
 	/** Name */
@@ -3504,7 +3563,15 @@ export interface AwsS3_v2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'bucket' | 'file' | 'folder' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'getAll' | 'search' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'getAll'
+		| 'search'
+		| '__CUSTOM_API_CALL__'
+		| 'copy'
+		| 'download'
+		| 'upload';
 	/** Name */
 	name?: string;
 	/** Return All */
@@ -3539,7 +3606,7 @@ export interface AwsS3_v1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'bucket' | 'file' | 'folder';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'getAll' | 'search';
+	operation?: 'create' | 'delete' | 'getAll' | 'search' | 'copy' | 'download' | 'upload';
 	/** Name */
 	name?: string;
 	/** Return All */
@@ -3574,7 +3641,15 @@ export interface AwsSesParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'customVerificationEmail' | 'email' | 'template' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'send' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'send'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'sendTemplate';
 	/** From Email */
 	fromEmailAddress?: string;
 	/** Template Name */
@@ -3662,7 +3737,7 @@ export interface BambooHrParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'companyReport' | 'employee' | 'employeeDocument' | 'file';
 	/** Operation */
-	operation?: 'create' | 'get' | 'getAll' | 'update';
+	operation?: 'create' | 'get' | 'getAll' | 'update' | 'delete' | 'download' | 'upload';
 	/** Synced with Trax Payroll */
 	synced?: boolean;
 	/** First Name */
@@ -3739,7 +3814,7 @@ export interface BannerbearParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'image' | 'template';
 	/** Operation */
-	operation?: 'create' | 'get';
+	operation?: 'create' | 'get' | 'getAll';
 	/** Template Name or ID */
 	templateId?: string;
 	/** Modifications */
@@ -3779,7 +3854,20 @@ export interface BeeminderParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'charge' | 'datapoint' | 'goal' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| '__CUSTOM_API_CALL__'
+		| 'createAll'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'getArchived'
+		| 'refresh'
+		| 'shortCircuit'
+		| 'stepDown'
+		| 'cancelStepDown'
+		| 'uncle';
 	/** Goal Name or ID */
 	goalName?: string;
 	/** Amount */
@@ -3834,7 +3922,16 @@ export interface BitwardenParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'collection' | 'event' | 'group' | 'member';
 	/** Operation */
-	operation?: 'delete' | 'get' | 'getAll' | 'update';
+	operation?:
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'create'
+		| 'getMembers'
+		| 'updateMembers'
+		| 'getGroups'
+		| 'updateGroups';
 	/** Collection ID */
 	collectionId?: string;
 	/** Return All */
@@ -3871,7 +3968,9 @@ export interface BoxParameters extends BaseNodeParams {
 		| 'search'
 		| 'share'
 		| 'upload'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'update';
 	/** File ID */
 	fileId?: string;
 	/** Parent ID */
@@ -3980,7 +4079,7 @@ export interface ChargebeeParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'customer' | 'invoice' | 'subscription';
 	/** Operation */
-	operation?: 'create';
+	operation?: 'create' | 'list' | 'pdfUrl' | 'cancel' | 'delete';
 	/** Properties */
 	properties?: Record<string, unknown>;
 	/** Max Results */
@@ -4064,7 +4163,7 @@ export interface CiscoWebexTriggerParameters extends BaseNodeParams {
 		| 'room'
 		| '__CUSTOM_API_CALL__';
 	/** Event */
-	event?: 'created' | 'deleted' | 'updated' | 'all';
+	event?: 'created' | 'deleted' | 'updated' | 'all' | 'started' | 'ended';
 	/** Resolve Data */
 	resolveData?: boolean;
 }
@@ -4122,7 +4221,20 @@ export interface ClickUpParameters extends BaseNodeParams {
 		| 'timeEntryTag'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'getAll'
+		| 'get'
+		| 'add'
+		| 'remove'
+		| 'member'
+		| 'setCustomField'
+		| 'start'
+		| 'stop'
+		| 'customFields';
 	/** Task ID */
 	task?: string;
 	/** Name */
@@ -4260,7 +4372,7 @@ export interface CockpitParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'collection' | 'form' | 'singleton';
 	/** Operation */
-	operation?: 'create' | 'getAll' | 'update';
+	operation?: 'create' | 'getAll' | 'update' | 'submit' | 'get';
 	/** Collection Name or ID */
 	collection?: string;
 	/** Return All */
@@ -4292,7 +4404,14 @@ export interface CodaParameters extends BaseNodeParams {
 		| 'getAllRows'
 		| 'getColumn'
 		| 'getRow'
-		| 'pushButton';
+		| 'pushButton'
+		| 'get'
+		| 'getAll'
+		| 'deleteViewRow'
+		| 'getAllViewColumns'
+		| 'getAllViewRows'
+		| 'pushViewButton'
+		| 'updateViewRow';
 	/** Doc Name or ID */
 	docId?: string;
 	/** Table Name or ID */
@@ -4319,7 +4438,7 @@ export interface Code_v2Parameters extends BaseNodeParams {
 	/** Mode */
 	mode?: 'runOnceForAllItems' | 'runOnceForEachItem';
 	/** Language */
-	language?: 'javaScript' | 'python' | 'pythonNative';
+	language?: 'javaScript' | 'python' | 'pythonNative' | unknown;
 	/** JavaScript */
 	jsCode?: string;
 	/** Type <code>$</code> for a list of <a target="_blank" href="https://docs.n8n.io/code-examples/methods-variables-reference/">special vars/methods</a>. Debug by using <code>console.log()</code> statements and viewing their output in the browser console. */
@@ -4405,7 +4524,7 @@ export interface ContentfulParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'asset' | 'contentType' | 'entry' | 'locale' | 'space';
 	/** Operation */
-	operation?: 'get';
+	operation?: 'get' | 'getAll';
 	/** Environment ID */
 	environmentId?: string;
 	/** Content Type ID */
@@ -4424,7 +4543,14 @@ export interface ConvertKitParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'customField' | 'form' | 'sequence' | 'tag' | 'tagSubscriber';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'getAll' | 'update';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'getAll'
+		| 'update'
+		| 'addSubscriber'
+		| 'getSubscriptions'
+		| 'add';
 	/** Field ID */
 	id?: string;
 	/** Label */
@@ -4524,7 +4650,7 @@ export interface CortexParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'analyzer' | 'job' | 'responder' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'execute' | '__CUSTOM_API_CALL__';
+	operation?: 'execute' | '__CUSTOM_API_CALL__' | 'get' | 'report';
 	/** Analyzer Type Name or ID */
 	analyzer?: string;
 	/** Observable Type Name or ID */
@@ -4584,9 +4710,19 @@ export interface CrowdDevParameters extends BaseNodeParams {
 		| 'task'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'createWithMember' | 'createForMember' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'createWithMember'
+		| 'createForMember'
+		| '__CUSTOM_API_CALL__'
+		| 'createOrUpdate'
+		| 'delete'
+		| 'find'
+		| 'update'
+		| 'create'
+		| 'destroy'
+		| 'list';
 	/** Username */
-	username?: Record<string, unknown>;
+	username?: Record<string, unknown> | string;
 	/** displayName */
 	displayName?: string;
 	/** Emails */
@@ -4707,7 +4843,17 @@ export interface CustomerIoParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'customer' | 'event' | 'campaign' | 'segment' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'getMetrics' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'getMetrics'
+		| '__CUSTOM_API_CALL__'
+		| 'upsert'
+		| 'delete'
+		| 'track'
+		| 'trackAnonymous'
+		| 'add'
+		| 'remove';
 	/** Campaign ID */
 	campaignId?: number;
 	/** Period */
@@ -4823,7 +4969,15 @@ export interface DateTime_v1Parameters extends BaseNodeParams {
 	/** Custom Format */
 	custom?: boolean;
 	/** To Format */
-	toFormat?: string;
+	toFormat?:
+		| string
+		| 'MM/DD/YYYY'
+		| 'YYYY/MM/DD'
+		| 'MMMM DD YYYY'
+		| 'MM-DD-YYYY'
+		| 'YYYY-MM-DD'
+		| 'X'
+		| 'x';
 	/** Operation */
 	operation?: 'add' | 'subtract';
 	/** Duration */
@@ -4926,7 +5080,13 @@ export interface Discord_v2Parameters extends BaseNodeParams {
 		| 'react'
 		| 'send'
 		| 'sendAndWait'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'deleteChannel'
+		| 'update'
+		| 'roleAdd'
+		| 'roleRemove'
+		| 'sendLegacy';
 	/** Server */
 	guildId?: unknown;
 	/** Channel */
@@ -4984,7 +5144,7 @@ export interface DiscourseParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'category' | 'group' | 'post' | 'user' | 'userGroup' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'getAll' | 'update' | '__CUSTOM_API_CALL__' | 'get' | 'add' | 'remove';
 	/** Name */
 	name?: string;
 	/** Color */
@@ -5059,7 +5219,16 @@ export interface DropboxParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'folder' | 'search' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'copy' | 'delete' | 'download' | 'move' | 'upload' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'copy'
+		| 'delete'
+		| 'download'
+		| 'move'
+		| 'upload'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'list'
+		| 'query';
 	/** From Path */
 	path?: string;
 	/** To Path */
@@ -5258,7 +5427,9 @@ export interface ElasticSecurityParameters extends BaseNodeParams {
 		| 'getAll'
 		| 'getStatus'
 		| 'update'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'remove';
 	/** Title */
 	title?: string;
 	/** Connector Name or ID */
@@ -5397,7 +5568,7 @@ export interface EmeliaParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'campaign' | 'contactList';
 	/** Operation */
-	operation?: 'addContact' | 'create' | 'duplicate' | 'get' | 'getAll' | 'pause' | 'start';
+	operation?: 'addContact' | 'create' | 'duplicate' | 'get' | 'getAll' | 'pause' | 'start' | 'add';
 	/** Campaign Name or ID */
 	campaignId?: string;
 	/** Contact Email */
@@ -5497,7 +5668,14 @@ export interface EvaluationParameters extends BaseNodeParams {
 	/** Metrics measure the quality of an execution. They will be displayed in the ‘evaluations’ tab, not on the Google Sheet or Data table. */
 	notice?: unknown;
 	/** Metric */
-	metric?: unknown;
+	metric?:
+		| unknown
+		| 'correctness'
+		| 'helpfulness'
+		| 'stringSimilarity'
+		| 'categorization'
+		| 'toolsUsed'
+		| 'customMetrics';
 	/** Expected Answer */
 	expectedAnswer?: string;
 	/** Actual Answer */
@@ -5540,7 +5718,7 @@ export interface ExecuteWorkflowParameters extends BaseNodeParams {
 	/** Source */
 	source?: 'database' | 'localFile' | 'parameter' | 'url';
 	/** Workflow ID */
-	workflowId?: string;
+	workflowId?: string | unknown;
 	/** Workflow Path */
 	workflowPath?: string;
 	/** Workflow JSON */
@@ -6055,7 +6233,15 @@ export interface FreshworksCrmParameters extends BaseNodeParams {
 		| 'task'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'query'
+		| 'lookup';
 	/** Name */
 	name?: string;
 	/** Account ID */
@@ -6193,13 +6379,13 @@ export interface GhostParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'post' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'create' | 'delete' | 'update';
 	/** Title */
 	title?: string;
 	/** Content Format */
 	contentFormat?: 'html' | 'mobileDoc' | 'lexical';
 	/** Content */
-	content?: string;
+	content?: string | object;
 	/** Post ID */
 	postId?: string;
 	/** By */
@@ -6268,7 +6454,31 @@ export interface GithubParameters extends BaseNodeParams {
 		| 'workflow'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'getRepositories' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'getRepositories'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'createComment'
+		| 'edit'
+		| 'get'
+		| 'lock'
+		| 'delete'
+		| 'list'
+		| 'getIssues'
+		| 'getLicense'
+		| 'getProfile'
+		| 'getPullRequests'
+		| 'listPopularPaths'
+		| 'listReferrers'
+		| 'getUserIssues'
+		| 'invite'
+		| 'getAll'
+		| 'update'
+		| 'disable'
+		| 'dispatch'
+		| 'dispatchAndWait'
+		| 'enable'
+		| 'getUsage';
 	/** Your execution will pause until a webhook is called. This URL will be generated at runtime and passed to your Github workflow as a resumeUrl input. */
 	webhookNotice?: unknown;
 	/** Repository Owner */
@@ -6278,7 +6488,7 @@ export interface GithubParameters extends BaseNodeParams {
 	/** Workflow */
 	workflowId?: unknown;
 	/** Ref */
-	ref?: string;
+	ref?: string | unknown;
 	/** Inputs */
 	inputs?: string | object;
 	/** File Path */
@@ -6354,7 +6564,19 @@ export interface GitlabParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'issue' | 'release' | 'repository' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'createComment' | 'edit' | 'get' | 'lock' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'createComment'
+		| 'edit'
+		| 'get'
+		| 'lock'
+		| '__CUSTOM_API_CALL__'
+		| 'getIssues'
+		| 'getRepositories'
+		| 'delete'
+		| 'getAll'
+		| 'update'
+		| 'list';
 	/** Project Owner */
 	owner?: string;
 	/** Project Name */
@@ -6460,7 +6682,7 @@ export interface GoogleAnalytics_v2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'report' | 'userActivity' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | '__CUSTOM_API_CALL__';
+	operation?: 'get' | '__CUSTOM_API_CALL__' | 'search';
 	/** Property Type */
 	propertyType?: 'ga4' | 'universal';
 	/** Property */
@@ -6489,7 +6711,7 @@ export interface GoogleAnalytics_v2Parameters extends BaseNodeParams {
 	/** Simplify Output */
 	simple?: boolean;
 	/** View */
-	viewId?: unknown;
+	viewId?: unknown | string;
 	/** Metrics */
 	metricsUA?: Record<string, unknown>;
 	/** Dimensions to split by */
@@ -6504,7 +6726,7 @@ export interface GoogleAnalytics_v1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'report' | 'userActivity';
 	/** Operation */
-	operation?: 'get';
+	operation?: 'get' | 'search';
 	/** View Name or ID */
 	viewId?: string;
 	/** Return All */
@@ -6569,7 +6791,7 @@ export interface GoogleBooksParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'bookshelf' | 'bookshelfVolume' | 'volume' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'add' | 'clear' | 'move' | 'remove';
 	/** My Library */
 	myLibrary?: boolean;
 	/** Search Query */
@@ -6594,7 +6816,14 @@ export interface GoogleCalendarParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'calendar' | 'event' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'availability' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'availability'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update';
 	/** Calendar */
 	calendar?: unknown;
 	/** Start Time */
@@ -6636,7 +6865,14 @@ export interface GoogleChatParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'member' | 'message' | 'space' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'delete'
+		| 'sendAndWait'
+		| 'update';
 	/** Member ID */
 	memberId?: string;
 	/** Space Name or ID */
@@ -6795,7 +7031,22 @@ export interface GoogleDrive_v3Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'fileFolder' | 'folder' | 'drive' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'deleteDrive' | 'get' | 'list' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'deleteDrive'
+		| 'get'
+		| 'list'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'copy'
+		| 'createFromText'
+		| 'deleteFile'
+		| 'download'
+		| 'move'
+		| 'share'
+		| 'upload'
+		| 'search'
+		| 'deleteFolder';
 	/** Name */
 	name?: string;
 	/** Shared Drive */
@@ -6838,7 +7089,16 @@ export interface GoogleDrive_v2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'drive' | 'file' | 'folder';
 	/** Operation */
-	operation?: 'copy' | 'delete' | 'download' | 'list' | 'share' | 'update' | 'upload';
+	operation?:
+		| 'copy'
+		| 'delete'
+		| 'download'
+		| 'list'
+		| 'share'
+		| 'update'
+		| 'upload'
+		| 'create'
+		| 'get';
 	/** File */
 	fileId?: unknown;
 	/** Put Output File in Field */
@@ -6879,7 +7139,7 @@ export interface GoogleDriveTriggerParameters extends BaseNodeParams {
 	/** File */
 	fileToWatch?: unknown;
 	/** Watch For */
-	event?: 'fileUpdated';
+	event?: 'fileUpdated' | 'fileCreated' | 'folderCreated' | 'folderUpdated' | 'watchFolderUpdated';
 	/** Folder */
 	folderToWatch?: unknown;
 	/** Changes within subfolders won't trigger this node */
@@ -6936,7 +7196,20 @@ export interface Gmail_v2_1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'message' | 'label' | 'draft' | 'thread';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'addLabels'
+		| 'markAsRead'
+		| 'markAsUnread'
+		| 'removeLabels'
+		| 'reply'
+		| 'send'
+		| 'sendAndWait'
+		| 'trash'
+		| 'untrash';
 	/** Draft ID */
 	messageId?: string;
 	/** Subject */
@@ -6985,7 +7258,7 @@ export interface Gmail_v1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'draft' | 'label' | 'message' | 'messageLabel';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'reply' | 'send' | 'add' | 'remove';
 	/** Draft ID */
 	messageId?: string;
 	/** Subject */
@@ -7031,7 +7304,16 @@ export interface GSuiteAdminParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'device' | 'group' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'update' | 'changeStatus' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'changeStatus'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'delete'
+		| 'addToGroup'
+		| 'removeFromGroup';
 	/** Device */
 	deviceId?: unknown;
 	/** Return All */
@@ -7039,7 +7321,7 @@ export interface GSuiteAdminParameters extends BaseNodeParams {
 	/** Limit */
 	limit?: number;
 	/** Output */
-	projection?: 'basic' | 'full';
+	projection?: 'basic' | 'full' | 'custom';
 	/** Include Children */
 	includeChildOrgunits?: boolean;
 	/** Filter */
@@ -7080,7 +7362,7 @@ export interface GoogleBusinessProfileParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'post' | 'review' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__' | 'reply';
 	/** Account */
 	account?: unknown;
 	/** Location */
@@ -7155,7 +7437,8 @@ export interface GoogleSheets_v4_7Parameters extends BaseNodeParams {
 		| 'remove'
 		| 'delete'
 		| 'read'
-		| 'update';
+		| 'update'
+		| 'deleteSpreadsheet';
 	/** Document */
 	documentId?: unknown;
 	/** Sheet */
@@ -7173,7 +7456,7 @@ export interface GoogleSheets_v4_7Parameters extends BaseNodeParams {
 	/** Keep First Row */
 	keepFirstRow?: boolean;
 	/** Start Row Number */
-	startIndex?: number;
+	startIndex?: number | string;
 	/** Number of Rows to Delete */
 	rowsToDelete?: number;
 	/** Number of Columns to Delete */
@@ -7267,7 +7550,13 @@ export interface GoogleSlidesParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'page' | 'presentation' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'get' | 'getSlides' | 'replaceText' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'get'
+		| 'getSlides'
+		| 'replaceText'
+		| '__CUSTOM_API_CALL__'
+		| 'getThumbnail';
 	/** Title */
 	title?: string;
 	/** Presentation ID */
@@ -7326,7 +7615,17 @@ export interface YouTubeParameters extends BaseNodeParams {
 		| 'videoCategory'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'update' | 'uploadBanner' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'uploadBanner'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'delete'
+		| 'add'
+		| 'rate'
+		| 'upload';
 	/** Fields */
 	part?: unknown;
 	/** Return All */
@@ -7379,7 +7678,15 @@ export interface GoToWebinarParameters extends BaseNodeParams {
 		| 'webinar'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'getDetails' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'getDetails'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'delete'
+		| 'reinvite'
+		| 'update';
 	/** Webinar Key Name or ID */
 	webinarKey?: string;
 	/** Session Key Name or ID */
@@ -7387,7 +7694,7 @@ export interface GoToWebinarParameters extends BaseNodeParams {
 	/** Registrant Key */
 	registrantKey?: string;
 	/** Details */
-	details?: 'polls' | 'questions' | 'surveyAnswers';
+	details?: 'polls' | 'questions' | 'surveyAnswers' | 'performance' | 'surveys';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -7422,7 +7729,15 @@ export interface GrafanaParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'dashboard' | 'team' | 'teamMember' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'remove';
 	/** Title */
 	title?: string;
 	/** Dashboard UID or URL */
@@ -7506,7 +7821,7 @@ export interface HackerNewsParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'all' | 'article' | 'user';
 	/** Operation */
-	operation?: 'getAll';
+	operation?: 'getAll' | 'get';
 	/** Article ID */
 	articleId?: string;
 	/** Username */
@@ -7569,7 +7884,19 @@ export interface HarvestParameters extends BaseNodeParams {
 		| 'user'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'createByDuration'
+		| 'createByStartEnd'
+		| 'deleteExternal'
+		| 'restartTime'
+		| 'stopTime'
+		| 'me';
 	/** Account Name or ID */
 	accountId?: string;
 	/** Return All */
@@ -7608,7 +7935,14 @@ export interface HelpScoutParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'conversation' | 'customer' | 'mailbox' | 'thread' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'properties'
+		| 'update';
 	/** Mailbox Name or ID */
 	mailboxId?: string;
 	/** Status */
@@ -7616,7 +7950,7 @@ export interface HelpScoutParameters extends BaseNodeParams {
 	/** Subject */
 	subject?: string;
 	/** Type */
-	type?: 'chat' | 'email' | 'phone';
+	type?: 'chat' | 'email' | 'phone' | 'customer' | 'note' | 'reply';
 	/** Resolve Data */
 	resolveData?: boolean;
 	/** Threads */
@@ -7656,7 +7990,15 @@ export interface HighLevel_v2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'contact' | 'opportunity' | 'task' | 'calendar' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'bookAppointment'
+		| 'getFreeSlots';
 	/** Create a new contact or update an existing one if email or phone matches (upsert) */
 	contactCreateNotice?: unknown;
 	/** Email */
@@ -7740,7 +8082,16 @@ export interface HomeAssistantParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'cameraProxy' | 'config' | 'event' | 'log' | 'service' | 'state' | 'template';
 	/** Operation */
-	operation?: 'getScreenshot';
+	operation?:
+		| 'getScreenshot'
+		| 'get'
+		| 'check'
+		| 'create'
+		| 'getAll'
+		| 'getErroLogs'
+		| 'getLogbookEntries'
+		| 'call'
+		| 'upsert';
 	/** Camera Entity Name or ID */
 	cameraEntityId?: string;
 	/** Put Output File in Field */
@@ -7836,7 +8187,7 @@ export interface HttpRequest_v4_3Parameters extends BaseNodeParams {
 	/** Body Content Type */
 	contentType?: 'form-urlencoded' | 'multipart-form-data' | 'json' | 'binaryData' | 'raw';
 	/** Specify Body */
-	specifyBody?: 'keypair' | 'json';
+	specifyBody?: 'keypair' | 'json' | 'string';
 	/** Body Parameters */
 	bodyParameters?: Record<string, unknown>;
 	/** JSON */
@@ -7958,7 +8309,18 @@ export interface Hubspot_v2_2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'company' | 'contact' | 'contactList' | 'deal' | 'engagement' | 'ticket';
 	/** Operation */
-	operation?: 'upsert' | 'delete' | 'get' | 'getAll' | 'getRecentlyCreatedUpdated' | 'search';
+	operation?:
+		| 'upsert'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'getRecentlyCreatedUpdated'
+		| 'search'
+		| 'add'
+		| 'remove'
+		| 'create'
+		| 'searchByDomain'
+		| 'update';
 	/** Email */
 	email?: string;
 	/** Contact to Get */
@@ -8009,7 +8371,22 @@ export interface Hubspot_v1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'company' | 'contact' | 'contactList' | 'deal' | 'engagement' | 'form' | 'ticket';
 	/** Operation */
-	operation?: 'upsert' | 'delete' | 'get' | 'getAll' | 'getRecentlyCreatedUpdated' | 'search';
+	operation?:
+		| 'upsert'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'getRecentlyCreatedUpdated'
+		| 'search'
+		| 'add'
+		| 'remove'
+		| 'create'
+		| 'getRecentlyCreated'
+		| 'getRecentlyModified'
+		| 'searchByDomain'
+		| 'update'
+		| 'getFields'
+		| 'submit';
 	/** Email */
 	email?: string;
 	/** Resolve Data */
@@ -8132,7 +8509,7 @@ export interface IntercomParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'company' | 'lead' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__' | 'users';
 	/** ID */
 	id?: string;
 	/** Return All */
@@ -8140,7 +8517,7 @@ export interface IntercomParameters extends BaseNodeParams {
 	/** Limit */
 	limit?: number;
 	/** Select By */
-	selectBy?: 'id' | 'userId';
+	selectBy?: 'id' | 'userId' | 'email' | 'phone' | 'companyId' | 'name';
 	/** Value */
 	value?: string;
 	/** Update By */
@@ -8188,7 +8565,14 @@ export interface InvoiceNinjaParameters extends BaseNodeParams {
 		| 'task'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'email'
+		| 'matchPayment';
 	/** Billing Address */
 	billingAddressUi?: Record<string, unknown>;
 	/** Contacts */
@@ -8246,7 +8630,13 @@ export interface ItemLists_v3_1Parameters extends BaseNodeParams {
 	/** Put Output in Field */
 	destinationFieldName?: string;
 	/** Include */
-	include?: 'allFields' | 'specifiedFields' | 'allFieldsExcept';
+	include?:
+		| 'allFields'
+		| 'specifiedFields'
+		| 'allFieldsExcept'
+		| 'noOtherFields'
+		| 'allOtherFields'
+		| 'selectedOtherFields';
 	/** Fields To Exclude */
 	fieldsToExclude?: string;
 	/** Fields To Include */
@@ -8285,7 +8675,13 @@ export interface ItemLists_v2_2Parameters extends BaseNodeParams {
 	/** Fields To Split Out */
 	fieldToSplitOut?: string;
 	/** Include */
-	include?: 'noOtherFields' | 'allOtherFields' | 'selectedOtherFields';
+	include?:
+		| 'noOtherFields'
+		| 'allOtherFields'
+		| 'selectedOtherFields'
+		| 'allFields'
+		| 'specifiedFields'
+		| 'allFieldsExcept';
 	/** Fields To Include */
 	fieldsToInclude?: Record<string, unknown>;
 	/** Aggregate */
@@ -8328,7 +8724,13 @@ export interface ItemLists_v1Parameters extends BaseNodeParams {
 	/** Field To Split Out */
 	fieldToSplitOut?: string;
 	/** Include */
-	include?: 'noOtherFields' | 'allOtherFields' | 'selectedOtherFields';
+	include?:
+		| 'noOtherFields'
+		| 'allOtherFields'
+		| 'selectedOtherFields'
+		| 'allFields'
+		| 'specifiedFields'
+		| 'allFieldsExcept';
 	/** Fields To Include */
 	fieldsToInclude?: Record<string, unknown>;
 	/** Aggregate */
@@ -8363,7 +8765,7 @@ export interface IterableParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'event' | 'user' | 'userList' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'track' | '__CUSTOM_API_CALL__';
+	operation?: 'track' | '__CUSTOM_API_CALL__' | 'upsert' | 'delete' | 'get' | 'add' | 'remove';
 	/** Name */
 	name?: string;
 	/** Identifier */
@@ -8386,7 +8788,18 @@ export interface JenkinsParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'build' | 'instance' | 'job';
 	/** Operation */
-	operation?: 'copy' | 'create' | 'trigger' | 'triggerParams';
+	operation?:
+		| 'copy'
+		| 'create'
+		| 'trigger'
+		| 'triggerParams'
+		| 'cancelQuietDown'
+		| 'quietDown'
+		| 'restart'
+		| 'safeRestart'
+		| 'safeExit'
+		| 'exit'
+		| 'getAll';
 	/** Make sure the job is setup to support triggering with parameters. <a href="https://wiki.jenkins.io/display/JENKINS/Parameterized+Build" target="_blank">More info</a> */
 	triggerParamsNotice?: unknown;
 	/** Job Name or ID */
@@ -8413,7 +8826,7 @@ export interface JinaAiParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'reader' | 'research' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'read' | 'search' | '__CUSTOM_API_CALL__';
+	operation?: 'read' | 'search' | '__CUSTOM_API_CALL__' | 'deepResearch';
 	/** URL */
 	url?: string;
 	/** Simplify */
@@ -8441,7 +8854,9 @@ export interface JiraParameters extends BaseNodeParams {
 		| 'notify'
 		| 'transitions'
 		| 'update'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'remove';
 	/** Project */
 	project?: unknown;
 	/** Issue Type */
@@ -8574,7 +8989,17 @@ export interface KeapParameters extends BaseNodeParams {
 		| 'file'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'upsert'
+		| 'delete'
+		| 'get'
+		| 'update'
+		| 'createRecord'
+		| 'send'
+		| 'upload';
 	/** Company Name */
 	companyName?: string;
 	/** Addresses */
@@ -8600,7 +9025,7 @@ export interface KeapParameters extends BaseNodeParams {
 	/** Note ID */
 	noteId?: string;
 	/** Tag Names or IDs */
-	tagIds?: unknown;
+	tagIds?: unknown | string;
 	/** Order Date */
 	orderDate?: string;
 	/** Order Title */
@@ -8654,7 +9079,7 @@ export interface KitemakerParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'organization' | 'space' | 'user' | 'workItem';
 	/** Operation */
-	operation?: 'get';
+	operation?: 'get' | 'getAll' | 'create' | 'update';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -8673,7 +9098,18 @@ export interface KoBoToolboxParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'form' | 'hook' | 'submission' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'redeploy' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'redeploy'
+		| '__CUSTOM_API_CALL__'
+		| 'getLogs'
+		| 'retryAll'
+		| 'retryOne'
+		| 'delete'
+		| 'getValidation'
+		| 'setValidation'
+		| 'create';
 	/** Form Name or ID */
 	formId?: string;
 	/** Return All */
@@ -8766,7 +9202,18 @@ export interface Lemlist_v2Parameters extends BaseNodeParams {
 		| 'unsubscribe'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'getStats'
+		| 'get'
+		| 'enrichLead'
+		| 'enrichPerson'
+		| 'create'
+		| 'delete'
+		| 'unsubscribe'
+		| 'getCredits'
+		| 'add';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -8799,7 +9246,7 @@ export interface Lemlist_v1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'activity' | 'campaign' | 'lead' | 'team' | 'unsubscribe';
 	/** Operation */
-	operation?: 'getAll';
+	operation?: 'getAll' | 'create' | 'delete' | 'get' | 'unsubscribe' | 'add';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -8880,7 +9327,15 @@ export interface LinearParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'comment' | 'issue' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'addComment' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'addComment'
+		| '__CUSTOM_API_CALL__'
+		| 'addLink'
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update';
 	/** Issue ID */
 	issueId?: string;
 	/** Comment */
@@ -8956,7 +9411,7 @@ export interface LoneScaleParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'list' | 'item' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | '__CUSTOM_API_CALL__' | 'add';
 	/** Type */
 	type?: 'COMPANY' | 'PEOPLE';
 	/** List Name or ID */
@@ -8979,7 +9434,15 @@ export interface Magento2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'customer' | 'invoice' | 'order' | 'product' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'cancel'
+		| 'ship';
 	/** Email */
 	email?: string;
 	/** First Name */
@@ -9033,7 +9496,16 @@ export interface MailchimpParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'campaign' | 'listGroup' | 'member' | 'memberTag' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'replicate'
+		| 'resend'
+		| 'send';
 	/** List Name or ID */
 	list?: string;
 	/** Email */
@@ -9232,7 +9704,7 @@ export interface MarketstackParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'endOfDayData' | 'exchange' | 'ticker';
 	/** Operation */
-	operation?: 'getAll';
+	operation?: 'getAll' | 'get';
 	/** Ticker */
 	symbols?: string;
 	/** Return All */
@@ -9249,7 +9721,7 @@ export interface MatrixParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'account' | 'event' | 'media' | 'message' | 'room' | 'roomMember';
 	/** Operation */
-	operation?: 'me';
+	operation?: 'me' | 'get' | 'upload' | 'create' | 'getAll' | 'invite' | 'join' | 'kick' | 'leave';
 	/** Room ID */
 	roomId?: string;
 	/** Event ID */
@@ -9298,7 +9770,14 @@ export interface MattermostParameters extends BaseNodeParams {
 		| 'restore'
 		| 'search'
 		| 'statistics'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'post'
+		| 'postEphemeral'
+		| 'getAll'
+		| 'deactive'
+		| 'getByEmail'
+		| 'getById'
+		| 'invite';
 	/** Team Name or ID */
 	teamId?: string;
 	/** Display Name */
@@ -9358,7 +9837,19 @@ export interface MauticParameters extends BaseNodeParams {
 		| 'segmentEmail'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'editContactPoint'
+		| 'editDoNotContactList'
+		| 'sendEmail'
+		| 'add'
+		| 'remove'
+		| 'send';
 	/** Company Name */
 	name?: string;
 	/** Simplify */
@@ -9418,7 +9909,7 @@ export interface MediumParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'post' | 'publication' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | '__CUSTOM_API_CALL__' | 'getAll';
 	/** Publication */
 	publication?: boolean;
 	/** Publication Name or ID */
@@ -9508,7 +9999,7 @@ export interface MessageBirdParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'sms' | 'balance';
 	/** Operation */
-	operation?: 'send';
+	operation?: 'send' | 'get';
 	/** From */
 	originator?: string;
 	/** To */
@@ -9521,7 +10012,13 @@ export interface MetabaseParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'alerts' | 'databases' | 'metrics' | 'questions' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'resultData' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'resultData'
+		| '__CUSTOM_API_CALL__'
+		| 'addNewDatasource'
+		| 'getFields';
 	/** Question ID */
 	questionId?: string;
 	/** Format */
@@ -9560,7 +10057,7 @@ export interface AzureCosmosDbParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'container' | 'item' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'query' | 'update';
 	/** ID */
 	containerCreate?: string;
 	/** Partition Key */
@@ -9602,7 +10099,7 @@ export interface MicrosoftEntraParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'group' | 'user';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'addGroup' | 'removeGroup';
 	/** Group Type */
 	groupType?: 'Unified' | '';
 	/** Group Name */
@@ -9652,7 +10149,15 @@ export interface MicrosoftExcel_v2_2Parameters extends BaseNodeParams {
 		| 'deleteTable'
 		| 'getColumns'
 		| 'getRows'
-		| 'lookup';
+		| 'lookup'
+		| 'addWorksheet'
+		| 'deleteWorkbook'
+		| 'getAll'
+		| 'upsert'
+		| 'clear'
+		| 'deleteWorksheet'
+		| 'readRows'
+		| 'update';
 	/** Workbook */
 	workbook?: unknown;
 	/** Sheet */
@@ -9703,7 +10208,14 @@ export interface MicrosoftExcel_v1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'table' | 'workbook' | 'worksheet';
 	/** Operation */
-	operation?: 'addWorksheet' | 'getAll';
+	operation?:
+		| 'addWorksheet'
+		| 'getAll'
+		| 'getContent'
+		| 'addRow'
+		| 'getColumns'
+		| 'getRows'
+		| 'lookup';
 	/** Workbook Name or ID */
 	workbook?: string;
 	/** Return All */
@@ -9734,7 +10246,7 @@ export interface MicrosoftGraphSecurityParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'secureScore' | 'secureScoreControlProfile';
 	/** Operation */
-	operation?: 'get' | 'getAll';
+	operation?: 'get' | 'getAll' | 'update';
 	/** Secure Score ID */
 	secureScoreId?: string;
 	/** Return All */
@@ -9753,7 +10265,17 @@ export interface MicrosoftOneDriveParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'folder';
 	/** Operation */
-	operation?: 'copy' | 'delete' | 'download' | 'get' | 'rename' | 'search' | 'share' | 'upload';
+	operation?:
+		| 'copy'
+		| 'delete'
+		| 'download'
+		| 'get'
+		| 'rename'
+		| 'search'
+		| 'share'
+		| 'upload'
+		| 'create'
+		| 'getChildren';
 	/** File ID */
 	fileId?: string;
 	/** Parent Reference */
@@ -9794,7 +10316,7 @@ export interface MicrosoftOneDriveTriggerParameters extends BaseNodeParams {
 	/** Watch Folder */
 	watchFolder?: boolean;
 	/** Watch */
-	watch?: 'anyFile' | 'selectedFolder' | 'selectedFile';
+	watch?: 'anyFile' | 'selectedFolder' | 'selectedFile' | 'anyFolder' | 'oneSelectedFolder';
 	/** File */
 	fileId?: unknown;
 	/** Folder */
@@ -9813,7 +10335,18 @@ export interface MicrosoftOutlook_v2Parameters extends BaseNodeParams {
 		| 'message'
 		| 'messageAttachment';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'send'
+		| 'move'
+		| 'reply'
+		| 'sendAndWait'
+		| 'add'
+		| 'download';
 	/** Name */
 	name?: string;
 	/** Calendar */
@@ -9886,7 +10419,19 @@ export interface MicrosoftOutlook_v1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'draft' | 'folder' | 'folderMessage' | 'message' | 'messageAttachment';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'send' | 'update';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'send'
+		| 'update'
+		| 'getAll'
+		| 'getMime'
+		| 'move'
+		| 'reply'
+		| 'add'
+		| 'download'
+		| 'getChildren';
 	/** Message ID */
 	messageId?: string;
 	/** Subject */
@@ -9938,7 +10483,7 @@ export interface MicrosoftSharePointParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'item' | 'list';
 	/** Operation */
-	operation?: 'download' | 'update' | 'upload';
+	operation?: 'download' | 'update' | 'upload' | 'create' | 'upsert' | 'delete' | 'get' | 'getAll';
 	/** Site */
 	site?: unknown;
 	/** Parent Folder */
@@ -10062,7 +10607,14 @@ export interface MicrosoftTeams_v2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'channel' | 'channelMessage' | 'chatMessage' | 'task';
 	/** Operation */
-	operation?: 'create' | 'deleteChannel' | 'get' | 'getAll' | 'update';
+	operation?:
+		| 'create'
+		| 'deleteChannel'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'sendAndWait'
+		| 'deleteTask';
 	/** Team */
 	teamId?: unknown;
 	/** New Channel Name */
@@ -10176,7 +10728,20 @@ export interface MispParameters extends BaseNodeParams {
 		| 'warninglist'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'search' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'search'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'publish'
+		| 'unpublish'
+		| 'add'
+		| 'remove'
+		| 'disable'
+		| 'enable';
 	/** Event UUID */
 	eventId?: string;
 	/** Type */
@@ -10261,7 +10826,18 @@ export interface MondayComParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'board' | 'boardColumn' | 'boardGroup' | 'boardItem' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'archive' | 'create' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'archive'
+		| 'create'
+		| 'get'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'delete'
+		| 'addUpdate'
+		| 'changeColumnValue'
+		| 'changeMultipleColumnValues'
+		| 'getByColumnValue'
+		| 'move';
 	/** Board Name or ID */
 	boardId?: string;
 	/** Name */
@@ -10302,7 +10878,7 @@ export interface MondayComParameters extends BaseNodeParams {
 	/** Item ID */
 	itemId?: string;
 	/** Update Text */
-	value?: string;
+	value?: string | object;
 	/** Column Name or ID */
 	columnId?: string;
 	/** Column Values */
@@ -10322,7 +10898,11 @@ export interface MongoDbParameters extends BaseNodeParams {
 		| 'findOneAndReplace'
 		| 'findOneAndUpdate'
 		| 'insert'
-		| 'update';
+		| 'update'
+		| 'createSearchIndex'
+		| 'dropSearchIndex'
+		| 'listSearchIndexes'
+		| 'updateSearchIndex';
 	/** Collection */
 	collection?: string;
 	/** Query */
@@ -10359,7 +10939,7 @@ export interface MonicaCrmParameters extends BaseNodeParams {
 		| 'tag'
 		| 'task';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'add' | 'remove';
 	/** Activity Type Name or ID */
 	activityTypeId?: string;
 	/** Contacts */
@@ -10522,7 +11102,17 @@ export interface N8nParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'audit' | 'credential' | 'execution' | 'workflow' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'generate' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'generate'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'delete'
+		| 'getSchema'
+		| 'get'
+		| 'getAll'
+		| 'activate'
+		| 'deactivate'
+		| 'update';
 	/** Additional Options */
 	additionalOptions?: Record<string, unknown>;
 	/** Name */
@@ -10587,7 +11177,7 @@ export interface NasaParameters extends BaseNodeParams {
 		| 'earthAssets'
 		| 'earthImagery';
 	/** Operation */
-	operation?: 'get';
+	operation?: 'get' | 'getAll';
 	/** Asteroid ID */
 	asteroidId?: string;
 	/** Download Image */
@@ -10608,7 +11198,7 @@ export interface NetlifyParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'deploy' | 'site' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'cancel' | 'create' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'cancel' | 'create' | 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'delete';
 	/** Site Name or ID */
 	siteId?: string;
 	/** Deploy ID */
@@ -10636,7 +11226,19 @@ export interface NextCloudParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'folder' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'copy' | 'delete' | 'download' | 'move' | 'share' | 'upload' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'copy'
+		| 'delete'
+		| 'download'
+		| 'move'
+		| 'share'
+		| 'upload'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'list'
+		| 'get'
+		| 'getAll'
+		| 'update';
 	/** From Path */
 	path?: string;
 	/** To Path */
@@ -10708,7 +11310,16 @@ export interface SendInBlueParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'contact' | 'attribute' | 'email' | 'sender' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'update' | 'delete' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'update'
+		| 'delete'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'upsert'
+		| 'get'
+		| 'send'
+		| 'sendTemplate';
 	/** Category */
 	attributeCategory?: 'calculated' | 'category' | 'global' | 'normal' | 'transactional';
 	/** Name */
@@ -10798,7 +11409,20 @@ export interface OnfleetParameters extends BaseNodeParams {
 		| 'team'
 		| 'worker';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'getAll' | 'update';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'getAll'
+		| 'update'
+		| 'addTask'
+		| 'get'
+		| 'updateTask'
+		| 'getDelegatee'
+		| 'clone'
+		| 'complete'
+		| 'autoDispatch'
+		| 'getTimeEstimates'
+		| 'getSchedule';
 	/** Admin ID */
 	id?: string;
 	/** Return All */
@@ -10887,7 +11511,7 @@ export interface CitrixAdcParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'certificate' | 'file' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'install' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'install' | '__CUSTOM_API_CALL__' | 'delete' | 'download' | 'upload';
 	/** Certificate File Name */
 	certificateFileName?: string;
 	/** Certificate Format */
@@ -10935,7 +11559,7 @@ export interface Notion_v2_2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'block' | 'database' | 'databasePage' | 'page' | 'user';
 	/** Operation */
-	operation?: 'append' | 'getAll';
+	operation?: 'append' | 'getAll' | 'get' | 'search' | 'create' | 'update' | 'archive';
 	/** Block */
 	blockId?: unknown;
 	/** Blocks */
@@ -10959,7 +11583,7 @@ export interface Notion_v2_2Parameters extends BaseNodeParams {
 	/** Properties */
 	propertiesUi?: Record<string, unknown>;
 	/** Database Page */
-	pageId?: unknown;
+	pageId?: unknown | string;
 	/** Filter */
 	filterType?: 'none' | 'manual' | 'json';
 	/** Must Match */
@@ -10978,7 +11602,7 @@ export interface Notion_v1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'block' | 'database' | 'databasePage' | 'page' | 'user';
 	/** Operation */
-	operation?: 'append' | 'getAll';
+	operation?: 'append' | 'getAll' | 'get' | 'search' | 'create' | 'update' | 'archive';
 	/** Block */
 	blockId?: unknown;
 	/** Blocks */
@@ -11002,7 +11626,7 @@ export interface Notion_v1Parameters extends BaseNodeParams {
 	/** Properties */
 	propertiesUi?: Record<string, unknown>;
 	/** Database Page */
-	pageId?: unknown;
+	pageId?: unknown | string;
 	/** Filter */
 	filterType?: 'none' | 'manual' | 'json';
 	/** Must Match */
@@ -11032,7 +11656,13 @@ export interface NpmParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'package' | 'distTag' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'getMetadata' | 'getVersions' | 'search' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'getMetadata'
+		| 'getVersions'
+		| 'search'
+		| '__CUSTOM_API_CALL__'
+		| 'getMany'
+		| 'update';
 	/** Package Name */
 	packageName?: string;
 	/** Package Version */
@@ -11119,7 +11749,17 @@ export interface OneSimpleApiParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'information' | 'socialProfile' | 'utility' | 'website';
 	/** Operation */
-	operation?: 'pdf' | 'seo' | 'screenshot';
+	operation?:
+		| 'pdf'
+		| 'seo'
+		| 'screenshot'
+		| 'instagramProfile'
+		| 'spotifyArtistProfile'
+		| 'exchangeRate'
+		| 'imageMetadata'
+		| 'expandURL'
+		| 'qrCode'
+		| 'validateEmail';
 	/** Webpage URL */
 	link?: string;
 	/** Download PDF? */
@@ -11148,13 +11788,18 @@ export interface OpenAi_v1_1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'chat' | 'image' | 'text' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'complete' | '__CUSTOM_API_CALL__';
+	operation?: 'complete' | '__CUSTOM_API_CALL__' | 'create' | 'edit' | 'moderate';
 	/** Model */
-	model?: string;
+	model?:
+		| string
+		| 'code-davinci-edit-001'
+		| 'text-davinci-edit-001'
+		| 'text-moderation-stable'
+		| 'text-moderation-latest';
 	/** Model */
 	chatModel?: string;
 	/** Prompt */
-	prompt?: Record<string, unknown>;
+	prompt?: Record<string, unknown> | string;
 	/** Simplify */
 	simplifyOutput?: boolean;
 	/** Model */
@@ -11230,7 +11875,7 @@ export interface OrbitParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'activity' | 'member' | 'note' | 'post';
 	/** Operation */
-	operation?: 'create' | 'getAll';
+	operation?: 'create' | 'getAll' | 'upsert' | 'delete' | 'get' | 'lookup' | 'update';
 	/** Workspace Name or ID */
 	workspaceId?: string;
 	/** Member ID */
@@ -11273,7 +11918,7 @@ export interface OuraParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'profile' | 'summary' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | '__CUSTOM_API_CALL__';
+	operation?: 'get' | '__CUSTOM_API_CALL__' | 'getActivity' | 'getReadiness' | 'getSleep';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -11284,7 +11929,7 @@ export interface PaddleParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'coupon' | 'payment' | 'plan' | 'product' | 'user';
 	/** Operation */
-	operation?: 'create' | 'getAll' | 'update';
+	operation?: 'create' | 'getAll' | 'update' | 'reschedule' | 'get';
 	/** Coupon Type */
 	couponType?: 'checkout' | 'product';
 	/** Product Names or IDs */
@@ -11378,7 +12023,7 @@ export interface PayPalParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'payout' | 'payoutItem';
 	/** Operation */
-	operation?: 'create' | 'get';
+	operation?: 'create' | 'get' | 'cancel';
 	/** Sender Batch ID */
 	senderBatchId?: string;
 	/** JSON Parameters */
@@ -11471,7 +12116,18 @@ export interface PipedriveParameters extends BaseNodeParams {
 		| 'product'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'duplicate'
+		| 'search'
+		| 'add'
+		| 'remove'
+		| 'download';
 	/** Subject */
 	subject?: string;
 	/** Done */
@@ -11489,7 +12145,7 @@ export interface PipedriveParameters extends BaseNodeParams {
 	/** Person ID */
 	person_id?: number;
 	/** Deal ID */
-	dealId?: number;
+	dealId?: number | string;
 	/** Product Name or ID */
 	productId?: string;
 	/** Item Price */
@@ -11536,7 +12192,7 @@ export interface PipedriveTriggerParameters extends BaseNodeParams {
 	/** Incoming Authentication */
 	incomingAuthentication?: 'basicAuth' | 'none';
 	/** Action */
-	action?: 'added' | '*' | 'deleted' | 'merged' | 'updated';
+	action?: 'added' | '*' | 'deleted' | 'merged' | 'updated' | 'create' | 'delete' | 'change';
 	/** Entity */
 	entity?:
 		| 'activity'
@@ -11569,7 +12225,7 @@ export interface PlivoParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'call' | 'mms' | 'sms';
 	/** Operation */
-	operation?: 'send';
+	operation?: 'send' | 'make';
 	/** From */
 	from?: string;
 	/** To */
@@ -11588,7 +12244,7 @@ export interface PostBinParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'bin' | 'request';
 	/** Operation */
-	operation?: 'create' | 'get' | 'delete';
+	operation?: 'create' | 'get' | 'delete' | 'removeFirst' | 'send';
 	/** Bin ID */
 	binId?: string;
 	/** Bin Content */
@@ -11674,7 +12330,7 @@ export interface PostHogParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'alias' | 'event' | 'identity' | 'track';
 	/** Operation */
-	operation?: 'create';
+	operation?: 'create' | 'page' | 'screen';
 	/** Alias */
 	alias?: string;
 	/** Distinct ID */
@@ -11698,7 +12354,7 @@ export interface ProfitWellParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'company' | 'metric';
 	/** Operation */
-	operation?: 'getSetting';
+	operation?: 'getSetting' | 'get';
 	/** Type */
 	type?: 'daily' | 'monthly';
 	/** Month */
@@ -11786,7 +12442,7 @@ export interface QuickbaseParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'field' | 'file' | 'record' | 'report';
 	/** Operation */
-	operation?: 'getAll';
+	operation?: 'getAll' | 'delete' | 'download' | 'create' | 'upsert' | 'update' | 'get' | 'run';
 	/** Table ID */
 	tableId?: string;
 	/** Return All */
@@ -11830,7 +12486,16 @@ export interface QuickbooksParameters extends BaseNodeParams {
 		| 'vendor'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'send'
+		| 'void'
+		| 'getReport';
 	/** For Vendor Name or ID */
 	VendorRef?: string;
 	/** Line */
@@ -11899,6 +12564,8 @@ export interface QuickChartParameters extends BaseNodeParams {
 }
 
 export interface RabbitmqParameters extends BaseNodeParams {
+	/** Operation */
+	operation?: 'sendMessage' | 'deleteMessage';
 	/** Will delete an item from the queue triggered earlier in the workflow by a RabbitMQ Trigger node */
 	deleteMessage?: unknown;
 	/** Mode */
@@ -11978,7 +12645,7 @@ export interface RedditParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'post' | 'postComment' | 'profile' | 'subreddit' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'getAll' | 'delete' | 'reply' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'getAll' | 'delete' | 'reply' | '__CUSTOM_API_CALL__' | 'get' | 'search';
 	/** Post ID */
 	postId?: string;
 	/** Comment Text */
@@ -11994,7 +12661,19 @@ export interface RedditParameters extends BaseNodeParams {
 	/** Reply Text */
 	replyText?: string;
 	/** Details */
-	details?: 'blockedUsers' | 'friends' | 'identity' | 'karma' | 'prefs' | 'saved' | 'trophies';
+	details?:
+		| 'blockedUsers'
+		| 'friends'
+		| 'identity'
+		| 'karma'
+		| 'prefs'
+		| 'saved'
+		| 'trophies'
+		| 'about'
+		| 'comments'
+		| 'gilded'
+		| 'overview'
+		| 'submitted';
 	/** Content */
 	content?: 'about' | 'rules';
 	/** Kind */
@@ -12139,7 +12818,7 @@ export interface S3Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'bucket' | 'file' | 'folder';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'getAll' | 'search';
+	operation?: 'create' | 'delete' | 'getAll' | 'search' | 'copy' | 'download' | 'upload';
 	/** Name */
 	name?: string;
 	/** Return All */
@@ -12199,7 +12878,11 @@ export interface SalesforceParameters extends BaseNodeParams {
 		| 'getAll'
 		| 'getSummary'
 		| 'update'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'upload'
+		| 'query'
+		| 'addComment'
+		| 'invoke';
 	/** Match Against */
 	externalId?: string;
 	/** Value to Match */
@@ -12339,7 +13022,21 @@ export interface SeaTable_v2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'row' | 'base' | 'link' | 'asset';
 	/** Operation */
-	operation?: 'create' | 'remove' | 'get' | 'list' | 'lock' | 'search' | 'unlock' | 'update';
+	operation?:
+		| 'create'
+		| 'remove'
+		| 'get'
+		| 'list'
+		| 'lock'
+		| 'search'
+		| 'unlock'
+		| 'update'
+		| 'snapshot'
+		| 'metadata'
+		| 'collaborator'
+		| 'add'
+		| 'getPublicURL'
+		| 'upload';
 	/** Table Name */
 	tableName?: string;
 	/** Row ID */
@@ -12436,7 +13133,16 @@ export interface SecurityScorecardParameters extends BaseNodeParams {
 		| 'getFactorHistorical'
 		| 'getHistoricalScore'
 		| 'getScorecard'
-		| 'getScorePlan';
+		| 'getScorePlan'
+		| 'getScore'
+		| 'create'
+		| 'delete'
+		| 'getAll'
+		| 'update'
+		| 'add'
+		| 'remove'
+		| 'download'
+		| 'generate';
 	/** Scorecard Identifier */
 	scorecardIdentifier?: string;
 	/** Score */
@@ -12491,7 +13197,7 @@ export interface SegmentParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'group' | 'identify' | 'track' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'add' | '__CUSTOM_API_CALL__';
+	operation?: 'add' | '__CUSTOM_API_CALL__' | 'create' | 'event' | 'page';
 	/** User ID */
 	userId?: string;
 	/** Group ID */
@@ -12514,7 +13220,15 @@ export interface SendGridParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'contact' | 'list' | 'mail' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'upsert'
+		| 'send';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -12561,7 +13275,7 @@ export interface SendyParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'campaign' | 'subscriber';
 	/** Operation */
-	operation?: 'create';
+	operation?: 'create' | 'add' | 'count' | 'delete' | 'remove' | 'status';
 	/** From Name */
 	fromName?: string;
 	/** From Email */
@@ -12597,7 +13311,7 @@ export interface SentryIoParameters extends BaseNodeParams {
 		| 'team'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'delete' | 'update' | 'create';
 	/** Organization Slug Name or ID */
 	organizationSlug?: string;
 	/** Project Slug Name or ID */
@@ -12645,7 +13359,7 @@ export interface ServiceNowParameters extends BaseNodeParams {
 		| 'userRole'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'upload' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'upload' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'create' | 'update';
 	/** Table Name or ID */
 	tableName?: string;
 	/** Table Record ID */
@@ -12857,9 +13571,24 @@ export interface Slack_v2_3Parameters extends BaseNodeParams {
 		| 'replies'
 		| 'setPurpose'
 		| 'setTopic'
-		| 'unarchive';
+		| 'unarchive'
+		| 'delete'
+		| 'getPermalink'
+		| 'search'
+		| 'post'
+		| 'sendAndWait'
+		| 'update'
+		| 'add'
+		| 'upload'
+		| 'remove'
+		| 'info'
+		| 'getProfile'
+		| 'getPresence'
+		| 'updateProfile'
+		| 'disable'
+		| 'enable';
 	/** Channel */
-	channelId?: unknown;
+	channelId?: unknown | string;
 	/** Channel Visibility */
 	channelVisibility?: 'public' | 'private';
 	/** User Names or IDs */
@@ -12965,7 +13694,19 @@ export interface Slack_v1Parameters extends BaseNodeParams {
 		| 'replies'
 		| 'setPurpose'
 		| 'setTopic'
-		| 'unarchive';
+		| 'unarchive'
+		| 'delete'
+		| 'getPermalink'
+		| 'post'
+		| 'postEphemeral'
+		| 'update'
+		| 'add'
+		| 'upload'
+		| 'remove'
+		| 'info'
+		| 'getPresence'
+		| 'disable'
+		| 'enable';
 	/** Channel Name or ID */
 	channelId?: string;
 	/** User Names or IDs */
@@ -13084,7 +13825,18 @@ export interface Splunk_v2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'alert' | 'report' | 'search' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'getReport' | 'getMetrics' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'getReport'
+		| 'getMetrics'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'deleteReport'
+		| 'get'
+		| 'getAll'
+		| 'deleteJob'
+		| 'getResult'
+		| 'deleteUser'
+		| 'update';
 	/** Search Job */
 	searchJobId?: unknown;
 	/** Name */
@@ -13113,7 +13865,7 @@ export interface Splunk_v1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'firedAlert' | 'searchConfiguration' | 'searchJob' | 'searchResult' | 'user';
 	/** Operation */
-	operation?: 'getReport';
+	operation?: 'getReport' | 'delete' | 'get' | 'getAll' | 'create' | 'update';
 	/** Search Configuration ID */
 	searchConfigurationId?: string;
 	/** Return All */
@@ -13165,7 +13917,21 @@ export interface SpotifyParameters extends BaseNodeParams {
 		| 'resume'
 		| 'volume'
 		| 'startMusic'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'get'
+		| 'getNewReleases'
+		| 'getTracks'
+		| 'search'
+		| 'getAlbums'
+		| 'getRelatedArtists'
+		| 'getTopTracks'
+		| 'add'
+		| 'create'
+		| 'getUserPlaylists'
+		| 'delete'
+		| 'getAudioFeatures'
+		| 'getLikedTracks'
+		| 'getFollowingArtists';
 	/** Resource ID */
 	id?: string;
 	/** Search Keyword */
@@ -13215,7 +13981,7 @@ export interface SshParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'command' | 'file';
 	/** Operation */
-	operation?: 'execute';
+	operation?: 'execute' | 'download' | 'upload';
 	/** Command */
 	command?: string;
 	/** Working Directory */
@@ -13263,7 +14029,7 @@ export interface StoryblokParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'story';
 	/** Operation */
-	operation?: 'get' | 'getAll';
+	operation?: 'get' | 'getAll' | 'delete' | 'publish' | 'unpublish';
 	/** Identifier */
 	identifier?: string;
 	/** Return All */
@@ -13403,7 +14169,15 @@ export interface StripeParameters extends BaseNodeParams {
 		| 'token'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'remove'
+		| 'create'
+		| 'getAll'
+		| 'update'
+		| 'delete';
 	/** Customer ID */
 	customerId?: string;
 	/** Card Token */
@@ -13427,7 +14201,7 @@ export interface StripeParameters extends BaseNodeParams {
 	/** Apply */
 	duration?: 'forever' | 'once';
 	/** Discount Type */
-	type?: 'fixedAmount' | 'percent';
+	type?: 'fixedAmount' | 'percent' | 'wechat' | 'cardToken';
 	/** Amount Off */
 	amountOff?: number;
 	/** Percent Off */
@@ -13463,7 +14237,7 @@ export interface SupabaseParameters extends BaseNodeParams {
 	/** Table Name or ID */
 	tableId?: string;
 	/** Select Type */
-	filterType?: 'manual' | 'string';
+	filterType?: 'manual' | 'string' | 'none';
 	/** Must Match */
 	matchType?: 'anyFilter' | 'allFilters';
 	/** See <a href="https://postgrest.org/en/stable/references/api/tables_views.html#horizontal-filtering" target="_blank">PostgREST guide</a> to creating filters */
@@ -13536,7 +14310,7 @@ export interface Switch_v2Parameters extends BaseNodeParams {
 	/** Data Type */
 	dataType?: 'boolean' | 'dateTime' | 'number' | 'string';
 	/** Value 1 */
-	value1?: boolean;
+	value1?: boolean | string | number;
 	/** Routing Rules */
 	rules?: Record<string, unknown>;
 	/** Fallback Output Name or ID */
@@ -13551,7 +14325,7 @@ export interface Switch_v1Parameters extends BaseNodeParams {
 	/** Data Type */
 	dataType?: 'boolean' | 'dateTime' | 'number' | 'string';
 	/** Value 1 */
-	value1?: boolean;
+	value1?: boolean | string | number;
 	/** Routing Rules */
 	rules?: Record<string, unknown>;
 	/** Fallback Output */
@@ -13562,7 +14336,7 @@ export interface SyncroMspParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'contact' | 'customer' | 'rmm' | 'ticket';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'mute';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -13623,7 +14397,16 @@ export interface TapfiliateParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'affiliate' | 'affiliateMetadata' | 'programAffiliate';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'add'
+		| 'remove'
+		| 'update'
+		| 'approve'
+		| 'disapprove';
 	/** Email */
 	email?: string;
 	/** First Name */
@@ -13652,7 +14435,30 @@ export interface TelegramParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'chat' | 'callback' | 'file' | 'message';
 	/** Operation */
-	operation?: 'get' | 'administrators' | 'member' | 'leave' | 'setDescription' | 'setTitle';
+	operation?:
+		| 'get'
+		| 'administrators'
+		| 'member'
+		| 'leave'
+		| 'setDescription'
+		| 'setTitle'
+		| 'answerQuery'
+		| 'answerInlineQuery'
+		| 'deleteMessage'
+		| 'editMessageText'
+		| 'pinChatMessage'
+		| 'sendAnimation'
+		| 'sendAudio'
+		| 'sendChatAction'
+		| 'sendDocument'
+		| 'sendLocation'
+		| 'sendMediaGroup'
+		| 'sendMessage'
+		| 'sendAndWait'
+		| 'sendPhoto'
+		| 'sendSticker'
+		| 'sendVideo'
+		| 'unpinChatMessage';
 	/** Chat ID */
 	chatId?: string;
 	/** Message ID */
@@ -13680,7 +14486,7 @@ export interface TelegramParameters extends BaseNodeParams {
 	/** Inline Message ID */
 	inlineMessageId?: string;
 	/** Reply Markup */
-	replyMarkup?: 'none' | 'inlineKeyboard';
+	replyMarkup?: 'none' | 'inlineKeyboard' | 'forceReply' | 'replyKeyboard' | 'replyKeyboardRemove';
 	/** Animation */
 	file?: string;
 	/** Action */
@@ -13759,7 +14565,20 @@ export interface TheHiveProjectParameters extends BaseNodeParams {
 		| 'search'
 		| 'update'
 		| 'status'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'addAttachment'
+		| 'deleteAttachment'
+		| 'deleteCase'
+		| 'getAttachment'
+		| 'getTimeline'
+		| 'add'
+		| 'deleteComment'
+		| 'deleteLog'
+		| 'deleteObservable'
+		| 'executeAnalyzer'
+		| 'deletePage'
+		| 'executeQuery'
+		| 'deleteTask';
 	/** Fields */
 	alertFields?: unknown;
 	/** Observables */
@@ -13853,7 +14672,7 @@ export interface TheHiveParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'alert' | 'case' | 'log' | 'observable' | 'task' | '__CUSTOM_API_CALL__';
 	/** Operation Name or ID */
-	operation?: string;
+	operation?: string | 'create' | 'executeResponder' | 'getAll' | 'get' | '__CUSTOM_API_CALL__';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -13875,7 +14694,17 @@ export interface TheHiveParameters extends BaseNodeParams {
 	/** TLP */
 	tlp?: 0 | 1 | 2 | 3;
 	/** Status */
-	status?: 'New' | 'Updated' | 'Ignored' | 'Imported';
+	status?:
+		| 'New'
+		| 'Updated'
+		| 'Ignored'
+		| 'Imported'
+		| 'Ok'
+		| 'Deleted'
+		| 'Cancel'
+		| 'Completed'
+		| 'InProgress'
+		| 'Waiting';
 	/** Type */
 	type?: string;
 	/** Source */
@@ -13953,7 +14782,10 @@ export interface Todoist_v2_1Parameters extends BaseNodeParams {
 		| 'move'
 		| 'quickAdd'
 		| 'reopen'
-		| 'update';
+		| 'update'
+		| 'archive'
+		| 'getCollaborators'
+		| 'unarchive';
 	/** Task ID */
 	taskId?: string;
 	/** Project Name or ID */
@@ -14095,13 +14927,31 @@ export interface TrelloParameters extends BaseNodeParams {
 		| 'list'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'update'
+		| 'add'
+		| 'invite'
+		| 'remove'
+		| 'createCheckItem'
+		| 'deleteCheckItem'
+		| 'getCheckItem'
+		| 'completedCheckItems'
+		| 'updateCheckItem'
+		| 'addLabel'
+		| 'removeLabel'
+		| 'archive'
+		| 'getCards';
 	/** Card ID */
 	cardId?: unknown;
 	/** Source URL */
 	url?: string;
 	/** Attachment ID */
-	id?: string;
+	id?: string | unknown;
 	/** Name */
 	name?: string;
 	/** Description */
@@ -14167,7 +15017,7 @@ export interface TwilioParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'call' | 'sms' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'send' | '__CUSTOM_API_CALL__';
+	operation?: 'send' | '__CUSTOM_API_CALL__' | 'make';
 	/** From */
 	from?: string;
 	/** To */
@@ -14228,7 +15078,15 @@ export interface Twitter_v2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'directMessage' | 'list' | 'tweet' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'delete'
+		| 'like'
+		| 'retweet'
+		| 'search'
+		| 'searchUser';
 	/** User */
 	user?: unknown;
 	/** Text */
@@ -14257,7 +15115,7 @@ export interface Twitter_v1Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'directMessage' | 'tweet';
 	/** Operation */
-	operation?: 'create';
+	operation?: 'create' | 'delete' | 'like' | 'retweet' | 'search';
 	/** User ID */
 	userId?: string;
 	/** Text */
@@ -14287,7 +15145,7 @@ export interface UnleashedSoftwareParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'salesOrder' | 'stockOnHand';
 	/** Operation */
-	operation?: 'getAll';
+	operation?: 'getAll' | 'get';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -14328,7 +15186,462 @@ export interface UprocParameters extends BaseNodeParams {
 		| 'security'
 		| 'text';
 	/** Operation */
-	tool?: 'getAudioAdvancedSpeechByText' | 'getAudioSpeechByText';
+	tool?:
+		| 'getAudioAdvancedSpeechByText'
+		| 'getAudioSpeechByText'
+		| 'checkSocialDomainExist'
+		| 'checkDomainCatchall'
+		| 'checkDomainFree'
+		| 'checkDomainDisposable'
+		| 'checkEmailExistsExtended'
+		| 'checkEmailExists'
+		| 'checkEmailSmtp'
+		| 'checkSocialEmailExist'
+		| 'checkEmailFormat'
+		| 'checkEmailCatchall'
+		| 'checkEmailDisposable'
+		| 'checkEmailFree'
+		| 'checkRobinsonEmailExist'
+		| 'checkEmailRole'
+		| 'checkEmailSpamtrap'
+		| 'checkMobileImei'
+		| 'checkLinkedinProfileIsContact'
+		| 'checkMobileExist'
+		| 'checkSocialMobileExist'
+		| 'checkMobileFormat'
+		| 'checkMobileFormatEs'
+		| 'checkMobileValidPrefix'
+		| 'checkMobileValidPrefixEs'
+		| 'checkMobileAlive'
+		| 'checkMobileSms'
+		| 'checkRobinsonPhoneExist'
+		| 'checkPhoneOrMobileValid'
+		| 'checkPhoneFormatEs'
+		| 'checkPhoneFormat'
+		| 'checkPhoneValidPrefix'
+		| 'getPhoneNormalized'
+		| 'getMobileCountryCode'
+		| 'getEmailDomain'
+		| 'getEmailRecipientByCompanyFirstnameAndLastname'
+		| 'getEmailRecipientByCompanyAndFullname'
+		| 'getEmailRecipientByDomainAndFullname'
+		| 'getEmailRecipient'
+		| 'getEmailRecipientByProfile'
+		| 'getEmailType'
+		| 'getEmailListByDomain'
+		| 'getEmailListByEmail'
+		| 'getEmailFirstReferences'
+		| 'getEmailFix'
+		| 'getPhoneFixed'
+		| 'getMobileFormatted'
+		| 'getEmailGdprListByDomain'
+		| 'getMobileHlrLookup'
+		| 'getMobileOrPhoneMnpEs'
+		| 'getLinkedinProfilesByCompany'
+		| 'getLinkedinGroupMembers'
+		| 'getLinkedinConnections'
+		| 'getLinkedinInvitations'
+		| 'getLinkedinPostComments'
+		| 'getLinkedinPostLikes'
+		| 'getLinkedinProfile'
+		| 'getLinkedinProfiles'
+		| 'getLinkedinProfilesByContent'
+		| 'getMobileLookup'
+		| 'getMobileMnpLookup'
+		| 'getMobileOrPhoneLookupEs'
+		| 'getEmailNormalized'
+		| 'getMobileNormalized'
+		| 'getPhoneParsed'
+		| 'getEmailPersonalRecipientByProfile'
+		| 'getMobileCountryPrefix'
+		| 'getLinkedinPublicProfileBySalesProfile'
+		| 'getLinkedinSearchContactsUrl'
+		| 'getSocialUriParsed'
+		| 'getSocialDomainParsed'
+		| 'getSocialDomainLookup'
+		| 'getSocialEmailLookup'
+		| 'getSocialMobileLookup'
+		| 'getEmailReferences'
+		| 'sendLinkedinInvitation'
+		| 'sendEmailCustom'
+		| 'sendMobileSms'
+		| 'sendLinkedinInvitationOrMessage'
+		| 'sendLinkedinVisit'
+		| 'sendLinkedinMessage'
+		| 'checkCifValid'
+		| 'checkCompanyDebtorByTaxid'
+		| 'checkNumberIsin'
+		| 'checkNumberSsEs'
+		| 'getRoleClassified'
+		| 'getCompanyByCif'
+		| 'getCompanyByDuns'
+		| 'getCompanyByDomain'
+		| 'getCompanyByEmail'
+		| 'getCompanyByIp'
+		| 'getCompanyByName'
+		| 'getCompanyByPhone'
+		| 'getCompanyByProfile'
+		| 'getCompanyNameByDomain'
+		| 'getPersonDecisionMaker'
+		| 'getPersonDecisionMakerBySearch'
+		| 'getPersonEmailsByDomainAndArea'
+		| 'getPersonMultipleDecisionMakerBySearch'
+		| 'getCompanyDomainByName'
+		| 'getPersonListByParams'
+		| 'getProfileFacebookByCompany'
+		| 'getProfileFacebookByCompanyDomain'
+		| 'getCompanyGeocodedByIp'
+		| 'getProfileGithubByCompanyDomain'
+		| 'getProfileInstagramByCompanyDomain'
+		| 'getProfileLinkedinByCompany'
+		| 'getProfileLinkedinByCompanyDomain'
+		| 'getCifNormalized'
+		| 'getCompanyPhoneByDomain'
+		| 'getCompanyPhoneByName'
+		| 'getProfilePinterestByCompanyDomain'
+		| 'getCompanyFinancialByDuns'
+		| 'getCompanyFinancialByDomain'
+		| 'getCompanyFinancialByName'
+		| 'getCompanyFinancialByTaxid'
+		| 'getProfileTwitterByCompany'
+		| 'getProfileTwitterByCompanyDomain'
+		| 'getProfileYoutubeByCompanyDomain'
+		| 'checkBankBicValid'
+		| 'checkBankAccountValidEs'
+		| 'checkCreditcardChecksum'
+		| 'checkCryptoWalletAddressValid'
+		| 'checkBankIbanValid'
+		| 'checkCurrencyValidIso'
+		| 'checkVatExist'
+		| 'getCurrencyConvertedBetweenIsocodeDate'
+		| 'getCreditcardType'
+		| 'getCurrencyListByCountry'
+		| 'getCurrencyListByIp'
+		| 'getCurrencyListByIsocode'
+		| 'getCurrencyByIp'
+		| 'getCurrencyByIsocode'
+		| 'getCurrencyByCountryIsocode'
+		| 'getCurrencyByCountry'
+		| 'getVatByNumber'
+		| 'getBankIbanByAccount'
+		| 'getBankIbanLookup'
+		| 'getSwiftLookup'
+		| 'getVatByAddress'
+		| 'getVatByCoordinates'
+		| 'getVatByIp'
+		| 'getVatByIsocode'
+		| 'getVatByPhone'
+		| 'getVatByZipcode'
+		| 'checkCountryValidIso'
+		| 'checkDistanceEq'
+		| 'checkDistanceGt'
+		| 'checkDistanceGe'
+		| 'checkDistanceLt'
+		| 'checkDistanceLe'
+		| 'checkAddressExist'
+		| 'checkAddressNumberExist'
+		| 'checkCoordinateValid'
+		| 'checkZipcodeExist'
+		| 'checkZipcodeFormat'
+		| 'getCoordinateCartesian'
+		| 'getCityListByPhone'
+		| 'getCityListByName'
+		| 'getCityListByZipcode'
+		| 'getCityByIp'
+		| 'getCityByName'
+		| 'getCityByPhone'
+		| 'getCityByZipcode'
+		| 'getCommunityByZipcode'
+		| 'getCoordinateByIp'
+		| 'getCoordinateBySearch'
+		| 'getCountryListByCurrencyCode'
+		| 'getCountryListByCode'
+		| 'getCountryListByName'
+		| 'getCountryByCurrencyCode'
+		| 'getCountryByIp'
+		| 'getCountryByCode'
+		| 'getCountryByName'
+		| 'getCountryByPhone'
+		| 'getCountryCodeByName'
+		| 'getCoordinateDecimal'
+		| 'getDistanceByAddresses'
+		| 'getDistanceByCoordinates'
+		| 'getDistanceByIps'
+		| 'getDistanceByPhones'
+		| 'getDistanceByZipcodes'
+		| 'getAddressBySearch'
+		| 'getLocationExtendedByIp'
+		| 'getLocationGeocodedByIp'
+		| 'getAddressSplittedBest'
+		| 'getLocaleByIp'
+		| 'getLocationByCoordinates'
+		| 'getLocationByIp'
+		| 'getLocationByPhone'
+		| 'getLocationByName'
+		| 'getLocationByParams'
+		| 'getLocationByZipcode'
+		| 'getLocationListByName'
+		| 'getLocationListByParams'
+		| 'getNameListByPrefix'
+		| 'getNetByIp'
+		| 'getAddressNormalized'
+		| 'getCityNormalized'
+		| 'getCountryNormalized'
+		| 'getProvinceNormalized'
+		| 'getZipcodeNormalized'
+		| 'getAddressSplitted'
+		| 'getProvinceByIp'
+		| 'getProvinceByName'
+		| 'getProvinceByPhone'
+		| 'getProvinceByZipcode'
+		| 'getProvinceListByName'
+		| 'getProvinceListByPhone'
+		| 'getProvinceListByZipcode'
+		| 'getReputationByIp'
+		| 'getRouteByAddresses'
+		| 'getRouteByCoordinates'
+		| 'getRouteByIps'
+		| 'getRouteByPhones'
+		| 'getRouteByZipcodes'
+		| 'getTimeByCoordinates'
+		| 'getTimeByIp'
+		| 'getTimeByAddress'
+		| 'getCoordinateUsng'
+		| 'getCoordinateUtm'
+		| 'getZipcodeByIp'
+		| 'getZipcodeByPrefix'
+		| 'getZipcodeListByPrefix'
+		| 'getQrDecoded'
+		| 'getImageExif'
+		| 'getBarcodeEncoded'
+		| 'getQrEncoded'
+		| 'getImageWithText'
+		| 'getDomainLogo'
+		| 'getImageOcr'
+		| 'getUrlScreenshot'
+		| 'checkDomainExist'
+		| 'checkDomainRecord'
+		| 'checkDomainReverse'
+		| 'checkDomainMx'
+		| 'checkDomainCertificate'
+		| 'checkDomainFormat'
+		| 'checkNetHostAlive'
+		| 'checkNetServiceUp'
+		| 'checkUrlContains'
+		| 'checkUrlExist'
+		| 'checkUrlValid'
+		| 'getDomainCertificate'
+		| 'getUrlContents'
+		| 'getUrlDecode'
+		| 'getUrlByDomain'
+		| 'getDeviceByUa'
+		| 'getDomainByIp'
+		| 'getDomainRecords'
+		| 'getDomainRecord'
+		| 'getUrlEncode'
+		| 'getFeedEntriesByDomain'
+		| 'getFileCopiedBetweenUrls'
+		| 'getNetFixip'
+		| 'getDomainReverseIp'
+		| 'getNetNtoa'
+		| 'getDomainIsp'
+		| 'getFeedLastEntryByDomain'
+		| 'getUrlUnshortened'
+		| 'getNetAton'
+		| 'getNetScan'
+		| 'getUrlListContentsParsed'
+		| 'getUrlContentsParsed'
+		| 'getUrlParsed'
+		| 'getUrlPdf'
+		| 'getDomainByUrl'
+		| 'getUrlShareableLinks'
+		| 'getUrlTables'
+		| 'getDomainTechnologies'
+		| 'getUrlTechnologies'
+		| 'getUrlAnalysis'
+		| 'getDomainVisits'
+		| 'getDomainWhois'
+		| 'getIpWhois'
+		| 'checkAgeBetw'
+		| 'checkAgeIsTwenties'
+		| 'checkAgeIsForties'
+		| 'checkAgeGt'
+		| 'checkAgeGe'
+		| 'checkAgeIsRetired'
+		| 'checkAgeIsAdult'
+		| 'checkAgeLt'
+		| 'checkAgeLe'
+		| 'checkAgeEq'
+		| 'checkDateBetw'
+		| 'checkDateGt'
+		| 'checkDateGe'
+		| 'checkDateLeap'
+		| 'checkDateLt'
+		| 'checkDateLe'
+		| 'checkDateValid'
+		| 'checkDateEq'
+		| 'checkGenderValid'
+		| 'checkNieValid'
+		| 'checkNifValid'
+		| 'checkNameExist'
+		| 'checkNameValid'
+		| 'checkRobinsonNifExist'
+		| 'checkSurnameValid'
+		| 'checkSurnameExist'
+		| 'checkDniValid'
+		| 'getAgeByDate'
+		| 'getAgeRange'
+		| 'getDateDifference'
+		| 'getGenderByEmail'
+		| 'getGenderByPersonalName'
+		| 'getProfileLinkedinByEmail'
+		| 'getProfileByEmployeeData'
+		| 'getProfileLinkedinByPhone'
+		| 'getNifByDni'
+		| 'getNameByPrefix'
+		| 'getDniNormalized'
+		| 'getDateNormalized'
+		| 'getNieNormalized'
+		| 'getNifNormalized'
+		| 'getNameNormalized'
+		| 'getSurnameNormalized'
+		| 'getDateParsed'
+		| 'getFullnameParsed'
+		| 'getPersonExtendedByEmail'
+		| 'getPersonExtendedByEmailAndCompany'
+		| 'getPersonExtendedByProfile'
+		| 'getPersonByEmail'
+		| 'getPersonByFirstnameLastnameCompanyLocation'
+		| 'getPersonByMobile'
+		| 'getPersonByProfile'
+		| 'getPersonFakedData'
+		| 'getSurnameByPrefix'
+		| 'getSurnameListByPrefix'
+		| 'getProfileXingByEmployeeData'
+		| 'sendPersonEmailToList'
+		| 'sendPersonProfileToList'
+		| 'checkAsinExist'
+		| 'checkAsinValid'
+		| 'checkEanExist'
+		| 'checkEanValid'
+		| 'checkEan13Valid'
+		| 'checkEan14Valid'
+		| 'checkEan18Valid'
+		| 'checkEan8Valid'
+		| 'checkGtinValid'
+		| 'checkGtin13Valid'
+		| 'checkGtin14Valid'
+		| 'checkGtin8Valid'
+		| 'checkBookIsbnExist'
+		| 'checkBookIsbn'
+		| 'checkBookIsbn10'
+		| 'checkBookIsbn13'
+		| 'checkUpcExist'
+		| 'checkUpcFormat'
+		| 'checkVinFormat'
+		| 'getAsinByEan'
+		| 'getBookAuthorLookup'
+		| 'getBookCategoryLookup'
+		| 'getBookPublisherLookup'
+		| 'getBookIsbnLookup'
+		| 'getBookTitleLookup'
+		| 'getBookListAuthorLookup'
+		| 'getBookListCategoryLookup'
+		| 'getBookListPublisherLookup'
+		| 'getBookListTitleLookup'
+		| 'getVinLookup'
+		| 'getEanByAsin'
+		| 'getBookIsbn13ToIsbn10'
+		| 'getBookIsbn10ToIsbn13'
+		| 'getUpcLookup'
+		| 'checkNumberLuhn'
+		| 'checkPasswordStrong'
+		| 'checkNumberUuid'
+		| 'getDomainBlacklists'
+		| 'getIpBlacklists'
+		| 'checkStringAlpha'
+		| 'checkStringAlphanumeric'
+		| 'checkStringBoolean'
+		| 'checkNumberDecimal'
+		| 'checkNumberEven'
+		| 'checkListMax'
+		| 'checkStringIp'
+		| 'checkStringIp4'
+		| 'checkStringIp6'
+		| 'checkListLengthBetw'
+		| 'checkListLengthEq'
+		| 'checkListLengthGt'
+		| 'checkListLengthGe'
+		| 'checkListLengthLt'
+		| 'checkListLengthLe'
+		| 'checkListContains'
+		| 'checkListEnds'
+		| 'checkListSorted'
+		| 'checkListStarts'
+		| 'checkListMin'
+		| 'checkNumberMod'
+		| 'checkNumberNatural'
+		| 'checkNumberBetw'
+		| 'checkNumberEq'
+		| 'checkNumberGt'
+		| 'checkNumberGe'
+		| 'checkNumberLt'
+		| 'checkNumberLe'
+		| 'checkStringNumeric'
+		| 'checkNumberOdd'
+		| 'checkNumberPrime'
+		| 'checkStringContains'
+		| 'checkStringEnds'
+		| 'checkStringBlank'
+		| 'checkStringRandom'
+		| 'checkStringRegex'
+		| 'checkStringLengthBetw'
+		| 'checkStringLengthEq'
+		| 'checkStringLengthGt'
+		| 'checkStringLengthGe'
+		| 'checkStringLengthLt'
+		| 'checkStringLengthLe'
+		| 'checkStringStarts'
+		| 'checkStringLowercase'
+		| 'checkStringUppercase'
+		| 'checkListUnique'
+		| 'checkListValid'
+		| 'checkWordCountBetw'
+		| 'checkWordCountEq'
+		| 'checkWordCountGt'
+		| 'checkWordCountGe'
+		| 'checkWordCountLt'
+		| 'checkWordCountLe'
+		| 'getStringBase64'
+		| 'getWordBanned'
+		| 'getStringFieldName'
+		| 'getStringByFormat'
+		| 'getStringByRegex'
+		| 'getListMax'
+		| 'getStringHtmlByMarkdown'
+		| 'getListMin'
+		| 'getStringLowercase'
+		| 'getStringMd5'
+		| 'getStringMarkdownByHtml'
+		| 'getStringJoin'
+		| 'getStringNormalized'
+		| 'getStringParsed'
+		| 'getStringSha'
+		| 'getSentimentByText'
+		| 'getListSort'
+		| 'getStringSpin'
+		| 'getStringSplitAndJoin'
+		| 'getStringSplit'
+		| 'getStringLength'
+		| 'getStringVlookup'
+		| 'getWordCleanAbuse'
+		| 'getStringReplaceFirst'
+		| 'getStringWithoutHtml'
+		| 'getStringReplaceAll'
+		| 'getStringTranslated'
+		| 'getListUnique'
+		| 'getStringUppercase'
+		| 'getWordCount';
 	/** Credit card */
 	credit_card?: string;
 	/** Address */
@@ -15016,11 +16329,11 @@ export interface UptimeRobotParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'account' | 'alertContact' | 'maintenanceWindow' | 'monitor' | 'publicStatusPage';
 	/** Operation */
-	operation?: 'get';
+	operation?: 'get' | 'create' | 'delete' | 'getAll' | 'reset' | 'update';
 	/** Friendly Name */
 	friendlyName?: string;
 	/** Type */
-	type?: 5 | 1 | 2 | 3 | 4;
+	type?: 5 | 1 | 2 | 3 | 4 | 6 | 9;
 	/** URL */
 	url?: string;
 	/** ID */
@@ -15069,7 +16382,8 @@ export interface VeroParameters extends BaseNodeParams {
 		| 'delete'
 		| 'resubscribe'
 		| 'removeTags'
-		| 'unsubscribe';
+		| 'unsubscribe'
+		| 'track';
 	/** ID */
 	id?: string;
 	/** JSON Parameters */
@@ -15096,7 +16410,14 @@ export interface VenafiTlsProtectCloudParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'certificate' | 'certificateRequest' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'delete' | 'download' | 'get' | 'getMany' | 'renew' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'delete'
+		| 'download'
+		| 'get'
+		| 'getMany'
+		| 'renew'
+		| '__CUSTOM_API_CALL__'
+		| 'create';
 	/** Certificate ID */
 	certificateId?: string;
 	/** Download Item */
@@ -15191,7 +16512,7 @@ export interface WaitParameters extends BaseNodeParams {
 	/** Resume */
 	resume?: 'timeInterval' | 'specificTime' | 'webhook' | 'form';
 	/** Authentication */
-	incomingAuthentication?: 'basicAuth' | 'none';
+	incomingAuthentication?: 'basicAuth' | 'none' | 'headerAuth' | 'jwtAuth';
 	/** Date and Time */
 	dateTime?: string;
 	/** Wait Amount */
@@ -15310,13 +16631,13 @@ export interface WebhookParameters extends BaseNodeParams {
 	/** Allow Multiple HTTP Methods */
 	multipleMethods?: boolean;
 	/** HTTP Method */
-	httpMethod?: 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT';
+	httpMethod?: 'DELETE' | 'GET' | 'HEAD' | 'PATCH' | 'POST' | 'PUT' | unknown;
 	/** Path */
 	path?: string;
 	/** Authentication */
 	authentication?: 'basicAuth' | 'headerAuth' | 'jwtAuth' | 'none';
 	/** Respond */
-	responseMode?: 'onReceived' | 'lastNode' | 'responseNode';
+	responseMode?: 'onReceived' | 'lastNode' | 'responseNode' | 'streaming';
 	/** Insert a 'Respond to Webhook' node to control when and how you respond. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details</a> */
 	webhookNotice?: unknown;
 	/** Insert a node that supports streaming (e.g. 'AI Agent') and enable streaming to stream directly to the response while the workflow is executed. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.respondtowebhook/" target="_blank">More details</a> */
@@ -15342,7 +16663,7 @@ export interface WekanParameters extends BaseNodeParams {
 		| 'list'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'update';
 	/** Title */
 	title?: string;
 	/** Owner Name or ID */
@@ -15388,7 +16709,13 @@ export interface WhatsAppParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'message' | 'media';
 	/** Operation */
-	operation?: 'send' | 'sendAndWait' | 'sendTemplate';
+	operation?:
+		| 'send'
+		| 'sendAndWait'
+		| 'sendTemplate'
+		| 'mediaUpload'
+		| 'mediaUrlGet'
+		| 'mediaDelete';
 	/** Messaging Product */
 	messagingProduct?: unknown;
 	/** Sender Phone Number (or ID) */
@@ -15441,7 +16768,15 @@ export interface WiseParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'account' | 'exchangeRate' | 'profile' | 'quote' | 'recipient' | 'transfer';
 	/** Operation */
-	operation?: 'getBalances' | 'getCurrencies' | 'getStatement';
+	operation?:
+		| 'getBalances'
+		| 'getCurrencies'
+		| 'getStatement'
+		| 'get'
+		| 'getAll'
+		| 'create'
+		| 'delete'
+		| 'execute';
 	/** Profile Name or ID */
 	profileId?: string;
 	/** Borderless Account Name or ID */
@@ -15651,7 +16986,7 @@ export interface ZammadParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'group' | 'organization' | 'ticket' | 'user';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'getSelf';
 	/** Group Name */
 	name?: string;
 	/** Group ID */
@@ -15682,7 +17017,18 @@ export interface ZendeskParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'ticket' | 'ticketField' | 'user' | 'organization' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'recover' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'recover'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'getOrganizations'
+		| 'getRelatedData'
+		| 'search'
+		| 'count';
 	/** Description */
 	description?: string;
 	/** JSON Parameters */
@@ -15729,7 +17075,15 @@ export interface ZohoCrmParameters extends BaseNodeParams {
 		| 'vendor'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'upsert' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'upsert'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'getFields';
 	/** Account Name */
 	accountName?: string;
 	/** Account ID */
@@ -15795,7 +17149,17 @@ export interface ZulipParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'message' | 'stream' | 'user';
 	/** Operation */
-	operation?: 'delete' | 'get' | 'sendPrivate' | 'sendStream' | 'update' | 'updateFile';
+	operation?:
+		| 'delete'
+		| 'get'
+		| 'sendPrivate'
+		| 'sendStream'
+		| 'update'
+		| 'updateFile'
+		| 'create'
+		| 'getAll'
+		| 'getSubscribed'
+		| 'deactivate';
 	/** To */
 	to?: unknown;
 	/** Content */
@@ -15915,7 +17279,17 @@ export interface AnthropicParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'document' | 'file' | 'image' | 'prompt' | 'text' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'analyze' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'analyze'
+		| '__CUSTOM_API_CALL__'
+		| 'upload'
+		| 'get'
+		| 'list'
+		| 'deleteFile'
+		| 'generate'
+		| 'improve'
+		| 'templatize'
+		| 'message';
 	/** Model */
 	modelId?: unknown;
 	/** Text Input */
@@ -15956,7 +17330,15 @@ export interface GoogleGeminiParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'audio' | 'document' | 'file' | 'image' | 'text' | 'video' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'analyze' | 'transcribe' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'analyze'
+		| 'transcribe'
+		| '__CUSTOM_API_CALL__'
+		| 'upload'
+		| 'generate'
+		| 'edit'
+		| 'message'
+		| 'download';
 	/** Model */
 	modelId?: unknown;
 	/** Text Input */
@@ -15995,7 +17377,7 @@ export interface OllamaParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'image' | 'text' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'analyze' | '__CUSTOM_API_CALL__';
+	operation?: 'analyze' | '__CUSTOM_API_CALL__' | 'message';
 	/** Model */
 	modelId?: unknown;
 	/** Text Input */
@@ -16016,7 +17398,19 @@ export interface OpenAi_v1_8Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'assistant' | 'text' | 'image' | 'audio' | 'file';
 	/** Operation */
-	operation?: 'create' | 'deleteAssistant' | 'list' | 'message' | 'update';
+	operation?:
+		| 'create'
+		| 'deleteAssistant'
+		| 'list'
+		| 'message'
+		| 'update'
+		| 'generate'
+		| 'transcribe'
+		| 'translate'
+		| 'deleteFile'
+		| 'upload'
+		| 'analyze'
+		| 'classify';
 	/** Model */
 	modelId?: unknown;
 	/** Name */
@@ -16036,7 +17430,7 @@ export interface OpenAi_v1_8Parameters extends BaseNodeParams {
 	/** Assistant */
 	assistantId?: unknown;
 	/** Source for Prompt (User Message) */
-	prompt?: 'auto' | 'define';
+	prompt?: 'auto' | 'define' | string;
 	/** Prompt (User Message) */
 	text?: string;
 	/** Memory */
@@ -16048,7 +17442,7 @@ export interface OpenAi_v1_8Parameters extends BaseNodeParams {
 	/** OpenAI API limits the size of the audio file to 25 MB */
 	fileSizeLimitNotice?: unknown;
 	/** Model */
-	model?: 'tts-1' | 'tts-1-hd';
+	model?: 'tts-1' | 'tts-1-hd' | 'dall-e-2' | 'dall-e-3' | 'gpt-image-1';
 	/** Text Input */
 	input?: string;
 	/** Voice */
@@ -16073,11 +17467,25 @@ export interface OpenAi_v2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'text' | 'image' | 'audio' | 'file' | 'conversation' | 'video';
 	/** Operation */
-	operation?: 'generate' | 'transcribe' | 'translate';
+	operation?:
+		| 'generate'
+		| 'transcribe'
+		| 'translate'
+		| 'deleteFile'
+		| 'list'
+		| 'upload'
+		| 'analyze'
+		| 'edit'
+		| 'response'
+		| 'classify'
+		| 'create'
+		| 'get'
+		| 'remove'
+		| 'update';
 	/** OpenAI API limits the size of the audio file to 25 MB */
 	fileSizeLimitNotice?: unknown;
 	/** Model */
-	model?: 'tts-1' | 'tts-1-hd';
+	model?: 'tts-1' | 'tts-1-hd' | 'dall-e-2' | 'dall-e-3' | 'gpt-image-1';
 	/** Text Input */
 	input?: string;
 	/** Voice */
@@ -16103,7 +17511,17 @@ export interface OpenAi_v2Parameters extends BaseNodeParams {
 	/** Number of Images */
 	n?: number;
 	/** Size */
-	size?: '256x256' | '512x512' | '1024x1024' | '1024x1536' | '1536x1024' | 'auto';
+	size?:
+		| '256x256'
+		| '512x512'
+		| '1024x1024'
+		| '1024x1536'
+		| '1536x1024'
+		| 'auto'
+		| '720x1280'
+		| '1280x720'
+		| '1024x1792'
+		| '1792x1024';
 	/** Quality */
 	quality?: 'auto' | 'high' | 'medium' | 'low' | 'standard';
 	/** Response Format */
@@ -16162,7 +17580,9 @@ export interface Agent_v1_9Parameters extends BaseNodeParams {
 		| 'openAiFunctionsAgent'
 		| 'planAndExecuteAgent'
 		| 'reActAgent'
-		| 'sqlAgent';
+		| 'sqlAgent'
+		| 'toolsAgent'
+		| unknown;
 	/** Source for Prompt (User Message) */
 	promptType?: 'auto' | 'define';
 	/** Prompt (User Message) */
@@ -16482,7 +17902,8 @@ export interface LmChatAnthropicParameters extends BaseNodeParams {
 		| 'claude-2'
 		| 'claude-2.1'
 		| 'claude-instant-1.2'
-		| 'claude-instant-1';
+		| 'claude-instant-1'
+		| unknown;
 }
 
 export interface LmChatAzureOpenAiParameters extends BaseNodeParams {
@@ -16586,7 +18007,7 @@ export interface LmChatOpenAiParameters extends BaseNodeParams {
 	/** This node must be connected to an AI chain. <a data-action='openSelectiveNodeCreator' data-action-parameter-creatorview='AI'>Insert one</a> */
 	notice?: unknown;
 	/** Model */
-	model?: string;
+	model?: string | unknown;
 }
 
 export interface LmOpenAiParameters extends BaseNodeParams {
@@ -16816,7 +18237,7 @@ export interface RetrieverWorkflowParameters extends BaseNodeParams {
 	/** Source */
 	source?: 'database' | 'parameter';
 	/** Workflow ID */
-	workflowId?: string;
+	workflowId?: string | unknown;
 	/** Workflow JSON */
 	workflowJson?: string | object;
 	/** Workflow Values */
@@ -17022,7 +18443,7 @@ export interface ToolWorkflow_v1_3Parameters extends BaseNodeParams {
 	/** Source */
 	source?: 'database' | 'parameter';
 	/** Workflow ID */
-	workflowId?: string;
+	workflowId?: string | unknown;
 	/** Workflow JSON */
 	workflowJson?: string | object;
 	/** Field to Return */
@@ -17082,7 +18503,7 @@ export interface VectorStoreInMemoryParameters extends BaseNodeParams {
 	/** Description */
 	toolDescription?: string;
 	/** Memory Key */
-	memoryKey?: string;
+	memoryKey?: string | unknown;
 	/** Embedding Batch Size */
 	embeddingBatchSize?: number;
 	/** Clear Store */
@@ -17446,7 +18867,7 @@ export interface ActionNetworkToolParameters extends BaseNodeParams {
 		| 'tag'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'update' | 'add' | 'remove';
 	/** Person ID */
 	personId?: string;
 	/** Event ID */
@@ -17498,13 +18919,25 @@ export interface ActiveCampaignToolParameters extends BaseNodeParams {
 		| 'tag'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'remove'
+		| 'createNote'
+		| 'updateNote'
+		| 'getByProductId'
+		| 'getByOrderId';
 	/** Type */
 	tagType?: 'contact' | 'template';
 	/** Name */
 	name?: string;
 	/** Tag ID */
-	tagId?: number;
+	tagId?: number | string;
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -17735,7 +19168,7 @@ export interface ActiveCampaignToolParameters extends BaseNodeParams {
 	/** Total Price */
 	totalPrice?: number;
 	/** Connection ID */
-	connectionid?: number;
+	connectionid?: number | string;
 	/** Customer ID */
 	customerid?: number;
 	/** Creation Date */
@@ -17787,7 +19220,7 @@ export interface AffinityToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'list' | 'listEntry' | 'organization' | 'person';
 	/** Operation */
-	operation?: 'get' | 'getAll';
+	operation?: 'get' | 'getAll' | 'create' | 'delete' | 'update';
 	/** List ID */
 	listId?: string;
 	/** Return All */
@@ -17869,7 +19302,15 @@ export interface AirtableToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'base' | 'record';
 	/** Operation */
-	operation?: 'create' | 'upsert' | 'deleteRecord' | 'get' | 'search' | 'update';
+	operation?:
+		| 'create'
+		| 'upsert'
+		| 'deleteRecord'
+		| 'get'
+		| 'search'
+		| 'update'
+		| 'getMany'
+		| 'getSchema';
 	/** Base */
 	base?: unknown;
 	/** Table */
@@ -17896,7 +19337,28 @@ export interface AirtopToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'extraction' | 'file' | 'interaction' | 'session' | 'window';
 	/** Operation */
-	operation?: 'create' | 'save' | 'terminate' | 'waitForDownload';
+	operation?:
+		| 'create'
+		| 'save'
+		| 'terminate'
+		| 'waitForDownload'
+		| 'close'
+		| 'getLiveView'
+		| 'list'
+		| 'load'
+		| 'takeScreenshot'
+		| 'deleteFile'
+		| 'get'
+		| 'getMany'
+		| 'upload'
+		| 'query'
+		| 'getPaginated'
+		| 'scrape'
+		| 'click'
+		| 'fill'
+		| 'hover'
+		| 'scroll'
+		| 'type';
 	/** Profile Name */
 	profileName?: string;
 	/** Save Profile */
@@ -17996,7 +19458,7 @@ export interface ApiTemplateIoToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'account' | 'image' | 'pdf' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | '__CUSTOM_API_CALL__' | 'get';
 	/** Template Name or ID */
 	imageTemplateId?: string;
 	/** Template Name or ID */
@@ -18035,7 +19497,17 @@ export interface AsanaToolParameters extends BaseNodeParams {
 		| 'user'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'delete'
+		| 'get'
+		| 'move'
+		| 'search'
+		| 'update'
+		| 'add'
+		| 'remove';
 	/** Parent Task ID */
 	taskId?: string;
 	/** Name */
@@ -18078,7 +19550,7 @@ export interface AutopilotToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'contact' | 'contactJourney' | 'contactList' | 'list';
 	/** Operation */
-	operation?: 'upsert' | 'delete' | 'get' | 'getAll';
+	operation?: 'upsert' | 'delete' | 'get' | 'getAll' | 'add' | 'exist' | 'remove' | 'create';
 	/** Email */
 	email?: string;
 	/** Contact ID */
@@ -18137,7 +19609,15 @@ export interface AwsS3ToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'bucket' | 'file' | 'folder' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'getAll' | 'search' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'getAll'
+		| 'search'
+		| '__CUSTOM_API_CALL__'
+		| 'copy'
+		| 'download'
+		| 'upload';
 	/** Name */
 	name?: string;
 	/** Return All */
@@ -18176,7 +19656,15 @@ export interface AwsSesToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'customVerificationEmail' | 'email' | 'template' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'send' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'send'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'sendTemplate';
 	/** From Email */
 	fromEmailAddress?: string;
 	/** Template Name */
@@ -18261,7 +19749,7 @@ export interface BambooHrToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'companyReport' | 'employee' | 'employeeDocument' | 'file';
 	/** Operation */
-	operation?: 'create' | 'get' | 'getAll' | 'update';
+	operation?: 'create' | 'get' | 'getAll' | 'update' | 'delete' | 'download' | 'upload';
 	/** Synced with Trax Payroll */
 	synced?: boolean;
 	/** First Name */
@@ -18373,7 +19861,20 @@ export interface BeeminderToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'charge' | 'datapoint' | 'goal' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| '__CUSTOM_API_CALL__'
+		| 'createAll'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'getArchived'
+		| 'refresh'
+		| 'shortCircuit'
+		| 'stepDown'
+		| 'cancelStepDown'
+		| 'uncle';
 	/** Goal Name or ID */
 	goalName?: string;
 	/** Amount */
@@ -18425,7 +19926,16 @@ export interface BitwardenToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'collection' | 'event' | 'group' | 'member';
 	/** Operation */
-	operation?: 'delete' | 'get' | 'getAll' | 'update';
+	operation?:
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'create'
+		| 'getMembers'
+		| 'updateMembers'
+		| 'getGroups'
+		| 'updateGroups';
 	/** Collection ID */
 	collectionId?: string;
 	/** Return All */
@@ -18498,7 +20008,7 @@ export interface ChargebeeToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'customer' | 'invoice' | 'subscription';
 	/** Operation */
-	operation?: 'create';
+	operation?: 'create' | 'list' | 'pdfUrl' | 'cancel' | 'delete';
 	/** Properties */
 	properties?: Record<string, unknown>;
 	/** Max Results */
@@ -18638,7 +20148,20 @@ export interface ClickUpToolParameters extends BaseNodeParams {
 		| 'timeEntryTag'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'getAll'
+		| 'get'
+		| 'add'
+		| 'remove'
+		| 'member'
+		| 'setCustomField'
+		| 'start'
+		| 'stop'
+		| 'customFields';
 	/** Task ID */
 	task?: string;
 	/** Name */
@@ -18766,7 +20289,7 @@ export interface CockpitToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'collection' | 'form' | 'singleton';
 	/** Operation */
-	operation?: 'create' | 'getAll' | 'update';
+	operation?: 'create' | 'getAll' | 'update' | 'submit' | 'get';
 	/** Collection Name or ID */
 	collection?: string;
 	/** Return All */
@@ -18802,7 +20325,14 @@ export interface CodaToolParameters extends BaseNodeParams {
 		| 'getAllRows'
 		| 'getColumn'
 		| 'getRow'
-		| 'pushButton';
+		| 'pushButton'
+		| 'get'
+		| 'getAll'
+		| 'deleteViewRow'
+		| 'getAllViewColumns'
+		| 'getAllViewRows'
+		| 'pushViewButton'
+		| 'updateViewRow';
 	/** Doc Name or ID */
 	docId?: string;
 	/** Table Name or ID */
@@ -18899,7 +20429,7 @@ export interface ContentfulToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'asset' | 'contentType' | 'entry' | 'locale' | 'space';
 	/** Operation */
-	operation?: 'get';
+	operation?: 'get' | 'getAll';
 	/** Environment ID */
 	environmentId?: string;
 	/** Content Type ID */
@@ -18922,7 +20452,14 @@ export interface ConvertKitToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'customField' | 'form' | 'sequence' | 'tag' | 'tagSubscriber';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'getAll' | 'update';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'getAll'
+		| 'update'
+		| 'addSubscriber'
+		| 'getSubscriptions'
+		| 'add';
 	/** Field ID */
 	id?: string;
 	/** Label */
@@ -19019,9 +20556,19 @@ export interface CrowdDevToolParameters extends BaseNodeParams {
 		| 'task'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'createWithMember' | 'createForMember' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'createWithMember'
+		| 'createForMember'
+		| '__CUSTOM_API_CALL__'
+		| 'createOrUpdate'
+		| 'delete'
+		| 'find'
+		| 'update'
+		| 'create'
+		| 'destroy'
+		| 'list';
 	/** Username */
-	username?: Record<string, unknown>;
+	username?: Record<string, unknown> | string;
 	/** displayName */
 	displayName?: string;
 	/** Emails */
@@ -19143,7 +20690,17 @@ export interface CustomerIoToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'customer' | 'event' | 'campaign' | 'segment' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'getMetrics' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'getMetrics'
+		| '__CUSTOM_API_CALL__'
+		| 'upsert'
+		| 'delete'
+		| 'track'
+		| 'trackAnonymous'
+		| 'add'
+		| 'remove';
 	/** Campaign ID */
 	campaignId?: number;
 	/** Period */
@@ -19316,7 +20873,13 @@ export interface DiscordToolParameters extends BaseNodeParams {
 		| 'react'
 		| 'send'
 		| 'sendAndWait'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'deleteChannel'
+		| 'update'
+		| 'roleAdd'
+		| 'roleRemove'
+		| 'sendLegacy';
 	/** Server */
 	guildId?: unknown;
 	/** Channel */
@@ -19369,7 +20932,7 @@ export interface DiscourseToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'category' | 'group' | 'post' | 'user' | 'userGroup' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'getAll' | 'update' | '__CUSTOM_API_CALL__' | 'get' | 'add' | 'remove';
 	/** Name */
 	name?: string;
 	/** Color */
@@ -19439,7 +21002,16 @@ export interface DropboxToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'folder' | 'search' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'copy' | 'delete' | 'download' | 'move' | 'upload' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'copy'
+		| 'delete'
+		| 'download'
+		| 'move'
+		| 'upload'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'list'
+		| 'query';
 	/** From Path */
 	path?: string;
 	/** To Path */
@@ -19550,7 +21122,9 @@ export interface ElasticSecurityToolParameters extends BaseNodeParams {
 		| 'getAll'
 		| 'getStatus'
 		| 'update'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'remove';
 	/** Title */
 	title?: string;
 	/** Connector Name or ID */
@@ -19667,7 +21241,7 @@ export interface EmeliaToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'campaign' | 'contactList';
 	/** Operation */
-	operation?: 'addContact' | 'create' | 'duplicate' | 'get' | 'getAll' | 'pause' | 'start';
+	operation?: 'addContact' | 'create' | 'duplicate' | 'get' | 'getAll' | 'pause' | 'start' | 'add';
 	/** Campaign Name or ID */
 	campaignId?: string;
 	/** Contact Email */
@@ -19972,7 +21546,15 @@ export interface FreshworksCrmToolParameters extends BaseNodeParams {
 		| 'task'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'query'
+		| 'lookup';
 	/** Name */
 	name?: string;
 	/** Account ID */
@@ -20074,13 +21656,13 @@ export interface GhostToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'post' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'create' | 'delete' | 'update';
 	/** Title */
 	title?: string;
 	/** Content Format */
 	contentFormat?: 'html' | 'mobileDoc' | 'lexical';
 	/** Content */
-	content?: string;
+	content?: string | object;
 	/** Post ID */
 	postId?: string;
 	/** By */
@@ -20157,7 +21739,31 @@ export interface GithubToolParameters extends BaseNodeParams {
 		| 'workflow'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'getRepositories' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'getRepositories'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'createComment'
+		| 'edit'
+		| 'get'
+		| 'lock'
+		| 'delete'
+		| 'list'
+		| 'getIssues'
+		| 'getLicense'
+		| 'getProfile'
+		| 'getPullRequests'
+		| 'listPopularPaths'
+		| 'listReferrers'
+		| 'getUserIssues'
+		| 'invite'
+		| 'getAll'
+		| 'update'
+		| 'disable'
+		| 'dispatch'
+		| 'dispatchAndWait'
+		| 'enable'
+		| 'getUsage';
 	/** Your execution will pause until a webhook is called. This URL will be generated at runtime and passed to your Github workflow as a resumeUrl input. */
 	webhookNotice?: unknown;
 	/** Repository Owner */
@@ -20167,7 +21773,7 @@ export interface GithubToolParameters extends BaseNodeParams {
 	/** Workflow */
 	workflowId?: unknown;
 	/** Ref */
-	ref?: string;
+	ref?: string | unknown;
 	/** Inputs */
 	inputs?: string | object;
 	/** File Path */
@@ -20234,7 +21840,19 @@ export interface GitlabToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'issue' | 'release' | 'repository' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'createComment' | 'edit' | 'get' | 'lock' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'createComment'
+		| 'edit'
+		| 'get'
+		| 'lock'
+		| '__CUSTOM_API_CALL__'
+		| 'getIssues'
+		| 'getRepositories'
+		| 'delete'
+		| 'getAll'
+		| 'update'
+		| 'list';
 	/** Project Owner */
 	owner?: string;
 	/** Project Name */
@@ -20341,7 +21959,7 @@ export interface GoogleAnalyticsToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'report' | 'userActivity' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | '__CUSTOM_API_CALL__';
+	operation?: 'get' | '__CUSTOM_API_CALL__' | 'search';
 	/** Property Type */
 	propertyType?: 'ga4' | 'universal';
 	/** Property */
@@ -20370,7 +21988,7 @@ export interface GoogleAnalyticsToolParameters extends BaseNodeParams {
 	/** Simplify Output */
 	simple?: boolean;
 	/** View */
-	viewId?: unknown;
+	viewId?: unknown | string;
 	/** Metrics */
 	metricsUA?: Record<string, unknown>;
 	/** Dimensions to split by */
@@ -20414,7 +22032,7 @@ export interface GoogleBooksToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'bookshelf' | 'bookshelfVolume' | 'volume' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'add' | 'clear' | 'move' | 'remove';
 	/** My Library */
 	myLibrary?: boolean;
 	/** Search Query */
@@ -20443,7 +22061,14 @@ export interface GoogleCalendarToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'calendar' | 'event' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'availability' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'availability'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update';
 	/** Calendar */
 	calendar?: unknown;
 	/** Start Time */
@@ -20480,7 +22105,14 @@ export interface GoogleChatToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'member' | 'message' | 'space' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'delete'
+		| 'sendAndWait'
+		| 'update';
 	/** Member ID */
 	memberId?: string;
 	/** Space Name or ID */
@@ -20659,7 +22291,22 @@ export interface GoogleDriveToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'fileFolder' | 'folder' | 'drive' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'deleteDrive' | 'get' | 'list' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'deleteDrive'
+		| 'get'
+		| 'list'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'copy'
+		| 'createFromText'
+		| 'deleteFile'
+		| 'download'
+		| 'move'
+		| 'share'
+		| 'upload'
+		| 'search'
+		| 'deleteFolder';
 	/** Name */
 	name?: string;
 	/** Shared Drive */
@@ -20754,7 +22401,20 @@ export interface GmailToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'message' | 'label' | 'draft' | 'thread';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'addLabels'
+		| 'markAsRead'
+		| 'markAsUnread'
+		| 'removeLabels'
+		| 'reply'
+		| 'send'
+		| 'sendAndWait'
+		| 'trash'
+		| 'untrash';
 	/** Draft ID */
 	messageId?: string;
 	/** Subject */
@@ -20803,7 +22463,16 @@ export interface GSuiteAdminToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'device' | 'group' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'update' | 'changeStatus' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'changeStatus'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'delete'
+		| 'addToGroup'
+		| 'removeFromGroup';
 	/** Device */
 	deviceId?: unknown;
 	/** Return All */
@@ -20811,7 +22480,7 @@ export interface GSuiteAdminToolParameters extends BaseNodeParams {
 	/** Limit */
 	limit?: number;
 	/** Output */
-	projection?: 'basic' | 'full';
+	projection?: 'basic' | 'full' | 'custom';
 	/** Include Children */
 	includeChildOrgunits?: boolean;
 	/** Filter */
@@ -20856,7 +22525,7 @@ export interface GoogleBusinessProfileToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'post' | 'review' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__' | 'reply';
 	/** Account */
 	account?: unknown;
 	/** Location */
@@ -20928,7 +22597,8 @@ export interface GoogleSheetsToolParameters extends BaseNodeParams {
 		| 'remove'
 		| 'delete'
 		| 'read'
-		| 'update';
+		| 'update'
+		| 'deleteSpreadsheet';
 	/** Document */
 	documentId?: unknown;
 	/** Sheet */
@@ -20946,7 +22616,7 @@ export interface GoogleSheetsToolParameters extends BaseNodeParams {
 	/** Keep First Row */
 	keepFirstRow?: boolean;
 	/** Start Row Number */
-	startIndex?: number;
+	startIndex?: number | string;
 	/** Number of Rows to Delete */
 	rowsToDelete?: number;
 	/** Number of Columns to Delete */
@@ -20981,7 +22651,13 @@ export interface GoogleSlidesToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'page' | 'presentation' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'get' | 'getSlides' | 'replaceText' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'get'
+		| 'getSlides'
+		| 'replaceText'
+		| '__CUSTOM_API_CALL__'
+		| 'getThumbnail';
 	/** Title */
 	title?: string;
 	/** Presentation ID */
@@ -21052,7 +22728,17 @@ export interface YouTubeToolParameters extends BaseNodeParams {
 		| 'videoCategory'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'update' | 'uploadBanner' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'uploadBanner'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'delete'
+		| 'add'
+		| 'rate'
+		| 'upload';
 	/** Fields */
 	part?: unknown;
 	/** Return All */
@@ -21113,7 +22799,15 @@ export interface GoToWebinarToolParameters extends BaseNodeParams {
 		| 'webinar'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'getDetails' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'getDetails'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'delete'
+		| 'reinvite'
+		| 'update';
 	/** Webinar Key Name or ID */
 	webinarKey?: string;
 	/** Session Key Name or ID */
@@ -21121,7 +22815,7 @@ export interface GoToWebinarToolParameters extends BaseNodeParams {
 	/** Registrant Key */
 	registrantKey?: string;
 	/** Details */
-	details?: 'polls' | 'questions' | 'surveyAnswers';
+	details?: 'polls' | 'questions' | 'surveyAnswers' | 'performance' | 'surveys';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -21160,7 +22854,15 @@ export interface GrafanaToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'dashboard' | 'team' | 'teamMember' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'remove';
 	/** Title */
 	title?: string;
 	/** Dashboard UID or URL */
@@ -21249,7 +22951,7 @@ export interface HackerNewsToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'all' | 'article' | 'user';
 	/** Operation */
-	operation?: 'getAll';
+	operation?: 'getAll' | 'get';
 	/** Article ID */
 	articleId?: string;
 	/** Username */
@@ -21320,7 +23022,19 @@ export interface HarvestToolParameters extends BaseNodeParams {
 		| 'user'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'createByDuration'
+		| 'createByStartEnd'
+		| 'deleteExternal'
+		| 'restartTime'
+		| 'stopTime'
+		| 'me';
 	/** Account Name or ID */
 	accountId?: string;
 	/** Return All */
@@ -21363,7 +23077,14 @@ export interface HelpScoutToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'conversation' | 'customer' | 'mailbox' | 'thread' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'properties'
+		| 'update';
 	/** Mailbox Name or ID */
 	mailboxId?: string;
 	/** Status */
@@ -21371,7 +23092,7 @@ export interface HelpScoutToolParameters extends BaseNodeParams {
 	/** Subject */
 	subject?: string;
 	/** Type */
-	type?: 'chat' | 'email' | 'phone';
+	type?: 'chat' | 'email' | 'phone' | 'customer' | 'note' | 'reply';
 	/** Resolve Data */
 	resolveData?: boolean;
 	/** Threads */
@@ -21410,7 +23131,15 @@ export interface HighLevelToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'contact' | 'opportunity' | 'task' | 'calendar' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'bookAppointment'
+		| 'getFreeSlots';
 	/** Create a new contact or update an existing one if email or phone matches (upsert) */
 	contactCreateNotice?: unknown;
 	/** Email */
@@ -21461,7 +23190,16 @@ export interface HomeAssistantToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'cameraProxy' | 'config' | 'event' | 'log' | 'service' | 'state' | 'template';
 	/** Operation */
-	operation?: 'getScreenshot';
+	operation?:
+		| 'getScreenshot'
+		| 'get'
+		| 'check'
+		| 'create'
+		| 'getAll'
+		| 'getErroLogs'
+		| 'getLogbookEntries'
+		| 'call'
+		| 'upsert';
 	/** Camera Entity Name or ID */
 	cameraEntityId?: string;
 	/** Put Output File in Field */
@@ -21535,7 +23273,7 @@ export interface HttpRequestToolParameters extends BaseNodeParams {
 	/** Body Content Type */
 	contentType?: 'form-urlencoded' | 'multipart-form-data' | 'json' | 'binaryData' | 'raw';
 	/** Specify Body */
-	specifyBody?: 'keypair' | 'json';
+	specifyBody?: 'keypair' | 'json' | 'string';
 	/** Body Parameters */
 	bodyParameters?: Record<string, unknown>;
 	/** JSON */
@@ -21580,7 +23318,18 @@ export interface HubspotToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'company' | 'contact' | 'contactList' | 'deal' | 'engagement' | 'ticket';
 	/** Operation */
-	operation?: 'upsert' | 'delete' | 'get' | 'getAll' | 'getRecentlyCreatedUpdated' | 'search';
+	operation?:
+		| 'upsert'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'getRecentlyCreatedUpdated'
+		| 'search'
+		| 'add'
+		| 'remove'
+		| 'create'
+		| 'searchByDomain'
+		| 'update';
 	/** Email */
 	email?: string;
 	/** Contact to Get */
@@ -21675,7 +23424,7 @@ export interface IntercomToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'company' | 'lead' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__' | 'users';
 	/** ID */
 	id?: string;
 	/** Return All */
@@ -21683,7 +23432,7 @@ export interface IntercomToolParameters extends BaseNodeParams {
 	/** Limit */
 	limit?: number;
 	/** Select By */
-	selectBy?: 'id' | 'userId';
+	selectBy?: 'id' | 'userId' | 'email' | 'phone' | 'companyId' | 'name';
 	/** Value */
 	value?: string;
 	/** Update By */
@@ -21726,7 +23475,14 @@ export interface InvoiceNinjaToolParameters extends BaseNodeParams {
 		| 'task'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'email'
+		| 'matchPayment';
 	/** Billing Address */
 	billingAddressUi?: Record<string, unknown>;
 	/** Contacts */
@@ -21769,7 +23525,7 @@ export interface IterableToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'event' | 'user' | 'userList' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'track' | '__CUSTOM_API_CALL__';
+	operation?: 'track' | '__CUSTOM_API_CALL__' | 'upsert' | 'delete' | 'get' | 'add' | 'remove';
 	/** Name */
 	name?: string;
 	/** Identifier */
@@ -21796,7 +23552,18 @@ export interface JenkinsToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'build' | 'instance' | 'job';
 	/** Operation */
-	operation?: 'copy' | 'create' | 'trigger' | 'triggerParams';
+	operation?:
+		| 'copy'
+		| 'create'
+		| 'trigger'
+		| 'triggerParams'
+		| 'cancelQuietDown'
+		| 'quietDown'
+		| 'restart'
+		| 'safeRestart'
+		| 'safeExit'
+		| 'exit'
+		| 'getAll';
 	/** Make sure the job is setup to support triggering with parameters. <a href="https://wiki.jenkins.io/display/JENKINS/Parameterized+Build" target="_blank">More info</a> */
 	triggerParamsNotice?: unknown;
 	/** Job Name or ID */
@@ -21827,7 +23594,7 @@ export interface JinaAiToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'reader' | 'research' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'read' | 'search' | '__CUSTOM_API_CALL__';
+	operation?: 'read' | 'search' | '__CUSTOM_API_CALL__' | 'deepResearch';
 	/** URL */
 	url?: string;
 	/** Simplify */
@@ -21859,7 +23626,9 @@ export interface JiraToolParameters extends BaseNodeParams {
 		| 'notify'
 		| 'transitions'
 		| 'update'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'remove';
 	/** Project */
 	project?: unknown;
 	/** Issue Type */
@@ -21971,7 +23740,17 @@ export interface KeapToolParameters extends BaseNodeParams {
 		| 'file'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'upsert'
+		| 'delete'
+		| 'get'
+		| 'update'
+		| 'createRecord'
+		| 'send'
+		| 'upload';
 	/** Company Name */
 	companyName?: string;
 	/** Addresses */
@@ -21997,7 +23776,7 @@ export interface KeapToolParameters extends BaseNodeParams {
 	/** Note ID */
 	noteId?: string;
 	/** Tag Names or IDs */
-	tagIds?: unknown;
+	tagIds?: unknown | string;
 	/** Order Date */
 	orderDate?: string;
 	/** Order Title */
@@ -22048,7 +23827,7 @@ export interface KitemakerToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'organization' | 'space' | 'user' | 'workItem';
 	/** Operation */
-	operation?: 'get';
+	operation?: 'get' | 'getAll' | 'create' | 'update';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -22071,7 +23850,18 @@ export interface KoBoToolboxToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'form' | 'hook' | 'submission' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'redeploy' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'redeploy'
+		| '__CUSTOM_API_CALL__'
+		| 'getLogs'
+		| 'retryAll'
+		| 'retryOne'
+		| 'delete'
+		| 'getValidation'
+		| 'setValidation'
+		| 'create';
 	/** Form Name or ID */
 	formId?: string;
 	/** Return All */
@@ -22163,7 +23953,18 @@ export interface LemlistToolParameters extends BaseNodeParams {
 		| 'unsubscribe'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'getStats'
+		| 'get'
+		| 'enrichLead'
+		| 'enrichPerson'
+		| 'create'
+		| 'delete'
+		| 'unsubscribe'
+		| 'getCredits'
+		| 'add';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -22217,7 +24018,15 @@ export interface LinearToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'comment' | 'issue' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'addComment' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'addComment'
+		| '__CUSTOM_API_CALL__'
+		| 'addLink'
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update';
 	/** Issue ID */
 	issueId?: string;
 	/** Comment */
@@ -22280,7 +24089,7 @@ export interface LoneScaleToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'list' | 'item' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | '__CUSTOM_API_CALL__' | 'add';
 	/** Type */
 	type?: 'COMPANY' | 'PEOPLE';
 	/** List Name or ID */
@@ -22307,7 +24116,15 @@ export interface Magento2ToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'customer' | 'invoice' | 'order' | 'product' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'cancel'
+		| 'ship';
 	/** Email */
 	email?: string;
 	/** First Name */
@@ -22369,7 +24186,16 @@ export interface MailchimpToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'campaign' | 'listGroup' | 'member' | 'memberTag' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'replicate'
+		| 'resend'
+		| 'send';
 	/** List Name or ID */
 	list?: string;
 	/** Email */
@@ -22518,7 +24344,7 @@ export interface MarketstackToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'endOfDayData' | 'exchange' | 'ticker';
 	/** Operation */
-	operation?: 'getAll';
+	operation?: 'getAll' | 'get';
 	/** Ticker */
 	symbols?: string;
 	/** Return All */
@@ -22539,7 +24365,7 @@ export interface MatrixToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'account' | 'event' | 'media' | 'message' | 'room' | 'roomMember';
 	/** Operation */
-	operation?: 'me';
+	operation?: 'me' | 'get' | 'upload' | 'create' | 'getAll' | 'invite' | 'join' | 'kick' | 'leave';
 	/** Room ID */
 	roomId?: string;
 	/** Event ID */
@@ -22592,7 +24418,14 @@ export interface MattermostToolParameters extends BaseNodeParams {
 		| 'restore'
 		| 'search'
 		| 'statistics'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'post'
+		| 'postEphemeral'
+		| 'getAll'
+		| 'deactive'
+		| 'getByEmail'
+		| 'getById'
+		| 'invite';
 	/** Team Name or ID */
 	teamId?: string;
 	/** Display Name */
@@ -22656,7 +24489,19 @@ export interface MauticToolParameters extends BaseNodeParams {
 		| 'segmentEmail'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'editContactPoint'
+		| 'editDoNotContactList'
+		| 'sendEmail'
+		| 'add'
+		| 'remove'
+		| 'send';
 	/** Company Name */
 	name?: string;
 	/** Simplify */
@@ -22711,7 +24556,7 @@ export interface MediumToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'post' | 'publication' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | '__CUSTOM_API_CALL__' | 'getAll';
 	/** Publication */
 	publication?: boolean;
 	/** Publication Name or ID */
@@ -22736,7 +24581,7 @@ export interface MessageBirdToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'sms' | 'balance';
 	/** Operation */
-	operation?: 'send';
+	operation?: 'send' | 'get';
 	/** From */
 	originator?: string;
 	/** To */
@@ -22753,7 +24598,13 @@ export interface MetabaseToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'alerts' | 'databases' | 'metrics' | 'questions' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | 'resultData' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| 'getAll'
+		| 'resultData'
+		| '__CUSTOM_API_CALL__'
+		| 'addNewDatasource'
+		| 'getFields';
 	/** Question ID */
 	questionId?: string;
 	/** Format */
@@ -22815,7 +24666,7 @@ export interface MicrosoftEntraToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'group' | 'user';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'addGroup' | 'removeGroup';
 	/** Group Type */
 	groupType?: 'Unified' | '';
 	/** Group Name */
@@ -22869,7 +24720,15 @@ export interface MicrosoftExcelToolParameters extends BaseNodeParams {
 		| 'deleteTable'
 		| 'getColumns'
 		| 'getRows'
-		| 'lookup';
+		| 'lookup'
+		| 'addWorksheet'
+		| 'deleteWorkbook'
+		| 'getAll'
+		| 'upsert'
+		| 'clear'
+		| 'deleteWorksheet'
+		| 'readRows'
+		| 'update';
 	/** Workbook */
 	workbook?: unknown;
 	/** Sheet */
@@ -22922,7 +24781,7 @@ export interface MicrosoftGraphSecurityToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'secureScore' | 'secureScoreControlProfile';
 	/** Operation */
-	operation?: 'get' | 'getAll';
+	operation?: 'get' | 'getAll' | 'update';
 	/** Secure Score ID */
 	secureScoreId?: string;
 	/** Return All */
@@ -22945,7 +24804,17 @@ export interface MicrosoftOneDriveToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'folder';
 	/** Operation */
-	operation?: 'copy' | 'delete' | 'download' | 'get' | 'rename' | 'search' | 'share' | 'upload';
+	operation?:
+		| 'copy'
+		| 'delete'
+		| 'download'
+		| 'get'
+		| 'rename'
+		| 'search'
+		| 'share'
+		| 'upload'
+		| 'create'
+		| 'getChildren';
 	/** File ID */
 	fileId?: string;
 	/** Parent Reference */
@@ -22992,7 +24861,18 @@ export interface MicrosoftOutlookToolParameters extends BaseNodeParams {
 		| 'message'
 		| 'messageAttachment';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'send'
+		| 'move'
+		| 'reply'
+		| 'sendAndWait'
+		| 'add'
+		| 'download';
 	/** Name */
 	name?: string;
 	/** Calendar */
@@ -23067,7 +24947,7 @@ export interface MicrosoftSharePointToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'item' | 'list';
 	/** Operation */
-	operation?: 'download' | 'update' | 'upload';
+	operation?: 'download' | 'update' | 'upload' | 'create' | 'upsert' | 'delete' | 'get' | 'getAll';
 	/** Site */
 	site?: unknown;
 	/** Parent Folder */
@@ -23127,7 +25007,14 @@ export interface MicrosoftTeamsToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'channel' | 'channelMessage' | 'chatMessage' | 'task';
 	/** Operation */
-	operation?: 'create' | 'deleteChannel' | 'get' | 'getAll' | 'update';
+	operation?:
+		| 'create'
+		| 'deleteChannel'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| 'sendAndWait'
+		| 'deleteTask';
 	/** Team */
 	teamId?: unknown;
 	/** New Channel Name */
@@ -23219,7 +25106,20 @@ export interface MispToolParameters extends BaseNodeParams {
 		| 'warninglist'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'search' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'search'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'publish'
+		| 'unpublish'
+		| 'add'
+		| 'remove'
+		| 'disable'
+		| 'enable';
 	/** Event UUID */
 	eventId?: string;
 	/** Type */
@@ -23316,7 +25216,18 @@ export interface MondayComToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'board' | 'boardColumn' | 'boardGroup' | 'boardItem' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'archive' | 'create' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'archive'
+		| 'create'
+		| 'get'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'delete'
+		| 'addUpdate'
+		| 'changeColumnValue'
+		| 'changeMultipleColumnValues'
+		| 'getByColumnValue'
+		| 'move';
 	/** Board Name or ID */
 	boardId?: string;
 	/** Name */
@@ -23357,7 +25268,7 @@ export interface MondayComToolParameters extends BaseNodeParams {
 	/** Item ID */
 	itemId?: string;
 	/** Update Text */
-	value?: string;
+	value?: string | object;
 	/** Column Name or ID */
 	columnId?: string;
 	/** Column Values */
@@ -23381,7 +25292,11 @@ export interface MongoDbToolParameters extends BaseNodeParams {
 		| 'findOneAndReplace'
 		| 'findOneAndUpdate'
 		| 'insert'
-		| 'update';
+		| 'update'
+		| 'createSearchIndex'
+		| 'dropSearchIndex'
+		| 'listSearchIndexes'
+		| 'updateSearchIndex';
 	/** Collection */
 	collection?: string;
 	/** Query */
@@ -23422,7 +25337,7 @@ export interface MonicaCrmToolParameters extends BaseNodeParams {
 		| 'tag'
 		| 'task';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'add' | 'remove';
 	/** Activity Type Name or ID */
 	activityTypeId?: string;
 	/** Contacts */
@@ -23581,7 +25496,7 @@ export interface NasaToolParameters extends BaseNodeParams {
 		| 'earthAssets'
 		| 'earthImagery';
 	/** Operation */
-	operation?: 'get';
+	operation?: 'get' | 'getAll';
 	/** Asteroid ID */
 	asteroidId?: string;
 	/** Download Image */
@@ -23606,7 +25521,7 @@ export interface NetlifyToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'deploy' | 'site' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'cancel' | 'create' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'cancel' | 'create' | 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'delete';
 	/** Site Name or ID */
 	siteId?: string;
 	/** Deploy ID */
@@ -23627,7 +25542,19 @@ export interface NextCloudToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'file' | 'folder' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'copy' | 'delete' | 'download' | 'move' | 'share' | 'upload' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'copy'
+		| 'delete'
+		| 'download'
+		| 'move'
+		| 'share'
+		| 'upload'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'list'
+		| 'get'
+		| 'getAll'
+		| 'update';
 	/** From Path */
 	path?: string;
 	/** To Path */
@@ -23707,7 +25634,16 @@ export interface SendInBlueToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'contact' | 'attribute' | 'email' | 'sender' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'update' | 'delete' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'update'
+		| 'delete'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'upsert'
+		| 'get'
+		| 'send'
+		| 'sendTemplate';
 	/** Category */
 	attributeCategory?: 'calculated' | 'category' | 'global' | 'normal' | 'transactional';
 	/** Name */
@@ -23783,7 +25719,20 @@ export interface OnfleetToolParameters extends BaseNodeParams {
 		| 'team'
 		| 'worker';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'getAll' | 'update';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'getAll'
+		| 'update'
+		| 'addTask'
+		| 'get'
+		| 'updateTask'
+		| 'getDelegatee'
+		| 'clone'
+		| 'complete'
+		| 'autoDispatch'
+		| 'getTimeEstimates'
+		| 'getSchedule';
 	/** Admin ID */
 	id?: string;
 	/** Return All */
@@ -23857,7 +25806,7 @@ export interface NotionToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'block' | 'database' | 'databasePage' | 'page' | 'user';
 	/** Operation */
-	operation?: 'append' | 'getAll';
+	operation?: 'append' | 'getAll' | 'get' | 'search' | 'create' | 'update' | 'archive';
 	/** Block */
 	blockId?: unknown;
 	/** Blocks */
@@ -23881,7 +25830,7 @@ export interface NotionToolParameters extends BaseNodeParams {
 	/** Properties */
 	propertiesUi?: Record<string, unknown>;
 	/** Database Page */
-	pageId?: unknown;
+	pageId?: unknown | string;
 	/** Filter */
 	filterType?: 'none' | 'manual' | 'json';
 	/** Must Match */
@@ -23902,7 +25851,13 @@ export interface NpmToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'package' | 'distTag' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'getMetadata' | 'getVersions' | 'search' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'getMetadata'
+		| 'getVersions'
+		| 'search'
+		| '__CUSTOM_API_CALL__'
+		| 'getMany'
+		| 'update';
 	/** Package Name */
 	packageName?: string;
 	/** Package Version */
@@ -24001,7 +25956,17 @@ export interface OneSimpleApiToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'information' | 'socialProfile' | 'utility' | 'website';
 	/** Operation */
-	operation?: 'pdf' | 'seo' | 'screenshot';
+	operation?:
+		| 'pdf'
+		| 'seo'
+		| 'screenshot'
+		| 'instagramProfile'
+		| 'spotifyArtistProfile'
+		| 'exchangeRate'
+		| 'imageMetadata'
+		| 'expandURL'
+		| 'qrCode'
+		| 'validateEmail';
 	/** Webpage URL */
 	link?: string;
 	/** Download PDF? */
@@ -24099,7 +26064,7 @@ export interface OuraToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'profile' | 'summary' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | '__CUSTOM_API_CALL__';
+	operation?: 'get' | '__CUSTOM_API_CALL__' | 'getActivity' | 'getReadiness' | 'getSleep';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -24114,7 +26079,7 @@ export interface PaddleToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'coupon' | 'payment' | 'plan' | 'product' | 'user';
 	/** Operation */
-	operation?: 'create' | 'getAll' | 'update';
+	operation?: 'create' | 'getAll' | 'update' | 'reschedule' | 'get';
 	/** Coupon Type */
 	couponType?: 'checkout' | 'product';
 	/** Product Names or IDs */
@@ -24297,7 +26262,18 @@ export interface PipedriveToolParameters extends BaseNodeParams {
 		| 'product'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'duplicate'
+		| 'search'
+		| 'add'
+		| 'remove'
+		| 'download';
 	/** Subject */
 	subject?: string;
 	/** Done */
@@ -24315,7 +26291,7 @@ export interface PipedriveToolParameters extends BaseNodeParams {
 	/** Person ID */
 	person_id?: number;
 	/** Deal ID */
-	dealId?: number;
+	dealId?: number | string;
 	/** Product Name or ID */
 	productId?: string;
 	/** Item Price */
@@ -24364,7 +26340,7 @@ export interface PlivoToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'call' | 'mms' | 'sms';
 	/** Operation */
-	operation?: 'send';
+	operation?: 'send' | 'make';
 	/** From */
 	from?: string;
 	/** To */
@@ -24387,7 +26363,7 @@ export interface PostBinToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'bin' | 'request';
 	/** Operation */
-	operation?: 'create' | 'get' | 'delete';
+	operation?: 'create' | 'get' | 'delete' | 'removeFirst' | 'send';
 	/** Bin ID */
 	binId?: string;
 	/** Bin Content */
@@ -24449,7 +26425,7 @@ export interface PostHogToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'alias' | 'event' | 'identity' | 'track';
 	/** Operation */
-	operation?: 'create';
+	operation?: 'create' | 'page' | 'screen';
 	/** Alias */
 	alias?: string;
 	/** Distinct ID */
@@ -24468,7 +26444,7 @@ export interface ProfitWellToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'company' | 'metric';
 	/** Operation */
-	operation?: 'getSetting';
+	operation?: 'getSetting' | 'get';
 	/** Type */
 	type?: 'daily' | 'monthly';
 	/** Month */
@@ -24571,7 +26547,7 @@ export interface QuickbaseToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'field' | 'file' | 'record' | 'report';
 	/** Operation */
-	operation?: 'getAll';
+	operation?: 'getAll' | 'delete' | 'download' | 'create' | 'upsert' | 'update' | 'get' | 'run';
 	/** Table ID */
 	tableId?: string;
 	/** Return All */
@@ -24619,7 +26595,16 @@ export interface QuickbooksToolParameters extends BaseNodeParams {
 		| 'vendor'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'send'
+		| 'void'
+		| 'getReport';
 	/** For Vendor Name or ID */
 	VendorRef?: string;
 	/** Line */
@@ -24694,6 +26679,8 @@ export interface RabbitmqToolParameters extends BaseNodeParams {
 	descriptionType?: 'auto' | 'manual';
 	/** Description */
 	toolDescription?: string;
+	/** Operation */
+	operation?: 'sendMessage' | 'deleteMessage';
 	/** Will delete an item from the queue triggered earlier in the workflow by a RabbitMQ Trigger node */
 	deleteMessage?: unknown;
 	/** Mode */
@@ -24751,7 +26738,7 @@ export interface RedditToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'post' | 'postComment' | 'profile' | 'subreddit' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'getAll' | 'delete' | 'reply' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'getAll' | 'delete' | 'reply' | '__CUSTOM_API_CALL__' | 'get' | 'search';
 	/** Post ID */
 	postId?: string;
 	/** Comment Text */
@@ -24767,7 +26754,19 @@ export interface RedditToolParameters extends BaseNodeParams {
 	/** Reply Text */
 	replyText?: string;
 	/** Details */
-	details?: 'blockedUsers' | 'friends' | 'identity' | 'karma' | 'prefs' | 'saved' | 'trophies';
+	details?:
+		| 'blockedUsers'
+		| 'friends'
+		| 'identity'
+		| 'karma'
+		| 'prefs'
+		| 'saved'
+		| 'trophies'
+		| 'about'
+		| 'comments'
+		| 'gilded'
+		| 'overview'
+		| 'submitted';
 	/** Content */
 	content?: 'about' | 'rules';
 	/** Kind */
@@ -24878,7 +26877,7 @@ export interface S3ToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'bucket' | 'file' | 'folder';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'getAll' | 'search';
+	operation?: 'create' | 'delete' | 'getAll' | 'search' | 'copy' | 'download' | 'upload';
 	/** Name */
 	name?: string;
 	/** Return All */
@@ -24942,7 +26941,11 @@ export interface SalesforceToolParameters extends BaseNodeParams {
 		| 'getAll'
 		| 'getSummary'
 		| 'update'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'upload'
+		| 'query'
+		| 'addComment'
+		| 'invoke';
 	/** Match Against */
 	externalId?: string;
 	/** Value to Match */
@@ -25056,7 +27059,21 @@ export interface SeaTableTool_v2Parameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'row' | 'base' | 'link' | 'asset';
 	/** Operation */
-	operation?: 'create' | 'remove' | 'get' | 'list' | 'lock' | 'search' | 'unlock' | 'update';
+	operation?:
+		| 'create'
+		| 'remove'
+		| 'get'
+		| 'list'
+		| 'lock'
+		| 'search'
+		| 'unlock'
+		| 'update'
+		| 'snapshot'
+		| 'metadata'
+		| 'collaborator'
+		| 'add'
+		| 'getPublicURL'
+		| 'upload';
 	/** Table Name */
 	tableName?: string;
 	/** Row ID */
@@ -25135,7 +27152,16 @@ export interface SecurityScorecardToolParameters extends BaseNodeParams {
 		| 'getFactorHistorical'
 		| 'getHistoricalScore'
 		| 'getScorecard'
-		| 'getScorePlan';
+		| 'getScorePlan'
+		| 'getScore'
+		| 'create'
+		| 'delete'
+		| 'getAll'
+		| 'update'
+		| 'add'
+		| 'remove'
+		| 'download'
+		| 'generate';
 	/** Scorecard Identifier */
 	scorecardIdentifier?: string;
 	/** Score */
@@ -25194,7 +27220,7 @@ export interface SegmentToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'group' | 'identify' | 'track' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'add' | '__CUSTOM_API_CALL__';
+	operation?: 'add' | '__CUSTOM_API_CALL__' | 'create' | 'event' | 'page';
 	/** User ID */
 	userId?: string;
 	/** Group ID */
@@ -25221,7 +27247,15 @@ export interface SendGridToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'contact' | 'list' | 'mail' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'upsert'
+		| 'send';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -25272,7 +27306,7 @@ export interface SendyToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'campaign' | 'subscriber';
 	/** Operation */
-	operation?: 'create';
+	operation?: 'create' | 'add' | 'count' | 'delete' | 'remove' | 'status';
 	/** From Name */
 	fromName?: string;
 	/** From Email */
@@ -25312,7 +27346,7 @@ export interface SentryIoToolParameters extends BaseNodeParams {
 		| 'team'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'delete' | 'update' | 'create';
 	/** Organization Slug Name or ID */
 	organizationSlug?: string;
 	/** Project Slug Name or ID */
@@ -25364,7 +27398,7 @@ export interface ServiceNowToolParameters extends BaseNodeParams {
 		| 'userRole'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'upload' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'upload' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'create' | 'update';
 	/** Table Name or ID */
 	tableName?: string;
 	/** Table Record ID */
@@ -25464,9 +27498,24 @@ export interface SlackToolParameters extends BaseNodeParams {
 		| 'replies'
 		| 'setPurpose'
 		| 'setTopic'
-		| 'unarchive';
+		| 'unarchive'
+		| 'delete'
+		| 'getPermalink'
+		| 'search'
+		| 'post'
+		| 'sendAndWait'
+		| 'update'
+		| 'add'
+		| 'upload'
+		| 'remove'
+		| 'info'
+		| 'getProfile'
+		| 'getPresence'
+		| 'updateProfile'
+		| 'disable'
+		| 'enable';
 	/** Channel */
-	channelId?: unknown;
+	channelId?: unknown | string;
 	/** Channel Visibility */
 	channelVisibility?: 'public' | 'private';
 	/** User Names or IDs */
@@ -25581,7 +27630,18 @@ export interface SplunkToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'alert' | 'report' | 'search' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'getReport' | 'getMetrics' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'getReport'
+		| 'getMetrics'
+		| '__CUSTOM_API_CALL__'
+		| 'create'
+		| 'deleteReport'
+		| 'get'
+		| 'getAll'
+		| 'deleteJob'
+		| 'getResult'
+		| 'deleteUser'
+		| 'update';
 	/** Search Job */
 	searchJobId?: unknown;
 	/** Name */
@@ -25643,7 +27703,21 @@ export interface SpotifyToolParameters extends BaseNodeParams {
 		| 'resume'
 		| 'volume'
 		| 'startMusic'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'get'
+		| 'getNewReleases'
+		| 'getTracks'
+		| 'search'
+		| 'getAlbums'
+		| 'getRelatedArtists'
+		| 'getTopTracks'
+		| 'add'
+		| 'create'
+		| 'getUserPlaylists'
+		| 'delete'
+		| 'getAudioFeatures'
+		| 'getLikedTracks'
+		| 'getFollowingArtists';
 	/** Resource ID */
 	id?: string;
 	/** Search Keyword */
@@ -25693,7 +27767,7 @@ export interface StoryblokToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'story';
 	/** Operation */
-	operation?: 'get' | 'getAll';
+	operation?: 'get' | 'getAll' | 'delete' | 'publish' | 'unpublish';
 	/** Identifier */
 	identifier?: string;
 	/** Return All */
@@ -25836,7 +27910,15 @@ export interface StripeToolParameters extends BaseNodeParams {
 		| 'token'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'get' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'get'
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'remove'
+		| 'create'
+		| 'getAll'
+		| 'update'
+		| 'delete';
 	/** Customer ID */
 	customerId?: string;
 	/** Card Token */
@@ -25860,7 +27942,7 @@ export interface StripeToolParameters extends BaseNodeParams {
 	/** Apply */
 	duration?: 'forever' | 'once';
 	/** Discount Type */
-	type?: 'fixedAmount' | 'percent';
+	type?: 'fixedAmount' | 'percent' | 'wechat' | 'cardToken';
 	/** Amount Off */
 	amountOff?: number;
 	/** Percent Off */
@@ -25893,7 +27975,7 @@ export interface SupabaseToolParameters extends BaseNodeParams {
 	/** Table Name or ID */
 	tableId?: string;
 	/** Select Type */
-	filterType?: 'manual' | 'string';
+	filterType?: 'manual' | 'string' | 'none';
 	/** Must Match */
 	matchType?: 'anyFilter' | 'allFilters';
 	/** See <a href="https://postgrest.org/en/stable/references/api/tables_views.html#horizontal-filtering" target="_blank">PostgREST guide</a> to creating filters */
@@ -25920,7 +28002,7 @@ export interface SyncroMspToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'contact' | 'customer' | 'rmm' | 'ticket';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'mute';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -25980,7 +28062,16 @@ export interface TapfiliateToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'affiliate' | 'affiliateMetadata' | 'programAffiliate';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'add'
+		| 'remove'
+		| 'update'
+		| 'approve'
+		| 'disapprove';
 	/** Email */
 	email?: string;
 	/** First Name */
@@ -26013,7 +28104,30 @@ export interface TelegramToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'chat' | 'callback' | 'file' | 'message';
 	/** Operation */
-	operation?: 'get' | 'administrators' | 'member' | 'leave' | 'setDescription' | 'setTitle';
+	operation?:
+		| 'get'
+		| 'administrators'
+		| 'member'
+		| 'leave'
+		| 'setDescription'
+		| 'setTitle'
+		| 'answerQuery'
+		| 'answerInlineQuery'
+		| 'deleteMessage'
+		| 'editMessageText'
+		| 'pinChatMessage'
+		| 'sendAnimation'
+		| 'sendAudio'
+		| 'sendChatAction'
+		| 'sendDocument'
+		| 'sendLocation'
+		| 'sendMediaGroup'
+		| 'sendMessage'
+		| 'sendAndWait'
+		| 'sendPhoto'
+		| 'sendSticker'
+		| 'sendVideo'
+		| 'unpinChatMessage';
 	/** Chat ID */
 	chatId?: string;
 	/** Message ID */
@@ -26041,7 +28155,7 @@ export interface TelegramToolParameters extends BaseNodeParams {
 	/** Inline Message ID */
 	inlineMessageId?: string;
 	/** Reply Markup */
-	replyMarkup?: 'none' | 'inlineKeyboard';
+	replyMarkup?: 'none' | 'inlineKeyboard' | 'forceReply' | 'replyKeyboard' | 'replyKeyboardRemove';
 	/** Animation */
 	file?: string;
 	/** Action */
@@ -26115,7 +28229,20 @@ export interface TheHiveProjectToolParameters extends BaseNodeParams {
 		| 'search'
 		| 'update'
 		| 'status'
-		| '__CUSTOM_API_CALL__';
+		| '__CUSTOM_API_CALL__'
+		| 'addAttachment'
+		| 'deleteAttachment'
+		| 'deleteCase'
+		| 'getAttachment'
+		| 'getTimeline'
+		| 'add'
+		| 'deleteComment'
+		| 'deleteLog'
+		| 'deleteObservable'
+		| 'executeAnalyzer'
+		| 'deletePage'
+		| 'executeQuery'
+		| 'deleteTask';
 	/** Fields */
 	alertFields?: unknown;
 	/** Observables */
@@ -26206,7 +28333,7 @@ export interface TheHiveToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'alert' | 'case' | 'log' | 'observable' | 'task' | '__CUSTOM_API_CALL__';
 	/** Operation Name or ID */
-	operation?: string;
+	operation?: string | 'create' | 'executeResponder' | 'getAll' | 'get' | '__CUSTOM_API_CALL__';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -26228,7 +28355,17 @@ export interface TheHiveToolParameters extends BaseNodeParams {
 	/** TLP */
 	tlp?: 0 | 1 | 2 | 3;
 	/** Status */
-	status?: 'New' | 'Updated' | 'Ignored' | 'Imported';
+	status?:
+		| 'New'
+		| 'Updated'
+		| 'Ignored'
+		| 'Imported'
+		| 'Ok'
+		| 'Deleted'
+		| 'Cancel'
+		| 'Completed'
+		| 'InProgress'
+		| 'Waiting';
 	/** Type */
 	type?: string;
 	/** Source */
@@ -26307,7 +28444,10 @@ export interface TodoistToolParameters extends BaseNodeParams {
 		| 'move'
 		| 'quickAdd'
 		| 'reopen'
-		| 'update';
+		| 'update'
+		| 'archive'
+		| 'getCollaborators'
+		| 'unarchive';
 	/** Task ID */
 	taskId?: string;
 	/** Project Name or ID */
@@ -26429,13 +28569,31 @@ export interface TrelloToolParameters extends BaseNodeParams {
 		| 'list'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| '__CUSTOM_API_CALL__'
+		| 'update'
+		| 'add'
+		| 'invite'
+		| 'remove'
+		| 'createCheckItem'
+		| 'deleteCheckItem'
+		| 'getCheckItem'
+		| 'completedCheckItems'
+		| 'updateCheckItem'
+		| 'addLabel'
+		| 'removeLabel'
+		| 'archive'
+		| 'getCards';
 	/** Card ID */
 	cardId?: unknown;
 	/** Source URL */
 	url?: string;
 	/** Attachment ID */
-	id?: string;
+	id?: string | unknown;
 	/** Name */
 	name?: string;
 	/** Description */
@@ -26504,7 +28662,7 @@ export interface TwilioToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'call' | 'sms' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'send' | '__CUSTOM_API_CALL__';
+	operation?: 'send' | '__CUSTOM_API_CALL__' | 'make';
 	/** From */
 	from?: string;
 	/** To */
@@ -26566,7 +28724,15 @@ export interface TwitterToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'directMessage' | 'list' | 'tweet' | 'user' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| '__CUSTOM_API_CALL__'
+		| 'add'
+		| 'delete'
+		| 'like'
+		| 'retweet'
+		| 'search'
+		| 'searchUser';
 	/** User */
 	user?: unknown;
 	/** Text */
@@ -26599,7 +28765,7 @@ export interface UnleashedSoftwareToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'salesOrder' | 'stockOnHand';
 	/** Operation */
-	operation?: 'getAll';
+	operation?: 'getAll' | 'get';
 	/** Return All */
 	returnAll?: boolean;
 	/** Limit */
@@ -26646,7 +28812,462 @@ export interface UprocToolParameters extends BaseNodeParams {
 		| 'security'
 		| 'text';
 	/** Operation */
-	tool?: 'getAudioAdvancedSpeechByText' | 'getAudioSpeechByText';
+	tool?:
+		| 'getAudioAdvancedSpeechByText'
+		| 'getAudioSpeechByText'
+		| 'checkSocialDomainExist'
+		| 'checkDomainCatchall'
+		| 'checkDomainFree'
+		| 'checkDomainDisposable'
+		| 'checkEmailExistsExtended'
+		| 'checkEmailExists'
+		| 'checkEmailSmtp'
+		| 'checkSocialEmailExist'
+		| 'checkEmailFormat'
+		| 'checkEmailCatchall'
+		| 'checkEmailDisposable'
+		| 'checkEmailFree'
+		| 'checkRobinsonEmailExist'
+		| 'checkEmailRole'
+		| 'checkEmailSpamtrap'
+		| 'checkMobileImei'
+		| 'checkLinkedinProfileIsContact'
+		| 'checkMobileExist'
+		| 'checkSocialMobileExist'
+		| 'checkMobileFormat'
+		| 'checkMobileFormatEs'
+		| 'checkMobileValidPrefix'
+		| 'checkMobileValidPrefixEs'
+		| 'checkMobileAlive'
+		| 'checkMobileSms'
+		| 'checkRobinsonPhoneExist'
+		| 'checkPhoneOrMobileValid'
+		| 'checkPhoneFormatEs'
+		| 'checkPhoneFormat'
+		| 'checkPhoneValidPrefix'
+		| 'getPhoneNormalized'
+		| 'getMobileCountryCode'
+		| 'getEmailDomain'
+		| 'getEmailRecipientByCompanyFirstnameAndLastname'
+		| 'getEmailRecipientByCompanyAndFullname'
+		| 'getEmailRecipientByDomainAndFullname'
+		| 'getEmailRecipient'
+		| 'getEmailRecipientByProfile'
+		| 'getEmailType'
+		| 'getEmailListByDomain'
+		| 'getEmailListByEmail'
+		| 'getEmailFirstReferences'
+		| 'getEmailFix'
+		| 'getPhoneFixed'
+		| 'getMobileFormatted'
+		| 'getEmailGdprListByDomain'
+		| 'getMobileHlrLookup'
+		| 'getMobileOrPhoneMnpEs'
+		| 'getLinkedinProfilesByCompany'
+		| 'getLinkedinGroupMembers'
+		| 'getLinkedinConnections'
+		| 'getLinkedinInvitations'
+		| 'getLinkedinPostComments'
+		| 'getLinkedinPostLikes'
+		| 'getLinkedinProfile'
+		| 'getLinkedinProfiles'
+		| 'getLinkedinProfilesByContent'
+		| 'getMobileLookup'
+		| 'getMobileMnpLookup'
+		| 'getMobileOrPhoneLookupEs'
+		| 'getEmailNormalized'
+		| 'getMobileNormalized'
+		| 'getPhoneParsed'
+		| 'getEmailPersonalRecipientByProfile'
+		| 'getMobileCountryPrefix'
+		| 'getLinkedinPublicProfileBySalesProfile'
+		| 'getLinkedinSearchContactsUrl'
+		| 'getSocialUriParsed'
+		| 'getSocialDomainParsed'
+		| 'getSocialDomainLookup'
+		| 'getSocialEmailLookup'
+		| 'getSocialMobileLookup'
+		| 'getEmailReferences'
+		| 'sendLinkedinInvitation'
+		| 'sendEmailCustom'
+		| 'sendMobileSms'
+		| 'sendLinkedinInvitationOrMessage'
+		| 'sendLinkedinVisit'
+		| 'sendLinkedinMessage'
+		| 'checkCifValid'
+		| 'checkCompanyDebtorByTaxid'
+		| 'checkNumberIsin'
+		| 'checkNumberSsEs'
+		| 'getRoleClassified'
+		| 'getCompanyByCif'
+		| 'getCompanyByDuns'
+		| 'getCompanyByDomain'
+		| 'getCompanyByEmail'
+		| 'getCompanyByIp'
+		| 'getCompanyByName'
+		| 'getCompanyByPhone'
+		| 'getCompanyByProfile'
+		| 'getCompanyNameByDomain'
+		| 'getPersonDecisionMaker'
+		| 'getPersonDecisionMakerBySearch'
+		| 'getPersonEmailsByDomainAndArea'
+		| 'getPersonMultipleDecisionMakerBySearch'
+		| 'getCompanyDomainByName'
+		| 'getPersonListByParams'
+		| 'getProfileFacebookByCompany'
+		| 'getProfileFacebookByCompanyDomain'
+		| 'getCompanyGeocodedByIp'
+		| 'getProfileGithubByCompanyDomain'
+		| 'getProfileInstagramByCompanyDomain'
+		| 'getProfileLinkedinByCompany'
+		| 'getProfileLinkedinByCompanyDomain'
+		| 'getCifNormalized'
+		| 'getCompanyPhoneByDomain'
+		| 'getCompanyPhoneByName'
+		| 'getProfilePinterestByCompanyDomain'
+		| 'getCompanyFinancialByDuns'
+		| 'getCompanyFinancialByDomain'
+		| 'getCompanyFinancialByName'
+		| 'getCompanyFinancialByTaxid'
+		| 'getProfileTwitterByCompany'
+		| 'getProfileTwitterByCompanyDomain'
+		| 'getProfileYoutubeByCompanyDomain'
+		| 'checkBankBicValid'
+		| 'checkBankAccountValidEs'
+		| 'checkCreditcardChecksum'
+		| 'checkCryptoWalletAddressValid'
+		| 'checkBankIbanValid'
+		| 'checkCurrencyValidIso'
+		| 'checkVatExist'
+		| 'getCurrencyConvertedBetweenIsocodeDate'
+		| 'getCreditcardType'
+		| 'getCurrencyListByCountry'
+		| 'getCurrencyListByIp'
+		| 'getCurrencyListByIsocode'
+		| 'getCurrencyByIp'
+		| 'getCurrencyByIsocode'
+		| 'getCurrencyByCountryIsocode'
+		| 'getCurrencyByCountry'
+		| 'getVatByNumber'
+		| 'getBankIbanByAccount'
+		| 'getBankIbanLookup'
+		| 'getSwiftLookup'
+		| 'getVatByAddress'
+		| 'getVatByCoordinates'
+		| 'getVatByIp'
+		| 'getVatByIsocode'
+		| 'getVatByPhone'
+		| 'getVatByZipcode'
+		| 'checkCountryValidIso'
+		| 'checkDistanceEq'
+		| 'checkDistanceGt'
+		| 'checkDistanceGe'
+		| 'checkDistanceLt'
+		| 'checkDistanceLe'
+		| 'checkAddressExist'
+		| 'checkAddressNumberExist'
+		| 'checkCoordinateValid'
+		| 'checkZipcodeExist'
+		| 'checkZipcodeFormat'
+		| 'getCoordinateCartesian'
+		| 'getCityListByPhone'
+		| 'getCityListByName'
+		| 'getCityListByZipcode'
+		| 'getCityByIp'
+		| 'getCityByName'
+		| 'getCityByPhone'
+		| 'getCityByZipcode'
+		| 'getCommunityByZipcode'
+		| 'getCoordinateByIp'
+		| 'getCoordinateBySearch'
+		| 'getCountryListByCurrencyCode'
+		| 'getCountryListByCode'
+		| 'getCountryListByName'
+		| 'getCountryByCurrencyCode'
+		| 'getCountryByIp'
+		| 'getCountryByCode'
+		| 'getCountryByName'
+		| 'getCountryByPhone'
+		| 'getCountryCodeByName'
+		| 'getCoordinateDecimal'
+		| 'getDistanceByAddresses'
+		| 'getDistanceByCoordinates'
+		| 'getDistanceByIps'
+		| 'getDistanceByPhones'
+		| 'getDistanceByZipcodes'
+		| 'getAddressBySearch'
+		| 'getLocationExtendedByIp'
+		| 'getLocationGeocodedByIp'
+		| 'getAddressSplittedBest'
+		| 'getLocaleByIp'
+		| 'getLocationByCoordinates'
+		| 'getLocationByIp'
+		| 'getLocationByPhone'
+		| 'getLocationByName'
+		| 'getLocationByParams'
+		| 'getLocationByZipcode'
+		| 'getLocationListByName'
+		| 'getLocationListByParams'
+		| 'getNameListByPrefix'
+		| 'getNetByIp'
+		| 'getAddressNormalized'
+		| 'getCityNormalized'
+		| 'getCountryNormalized'
+		| 'getProvinceNormalized'
+		| 'getZipcodeNormalized'
+		| 'getAddressSplitted'
+		| 'getProvinceByIp'
+		| 'getProvinceByName'
+		| 'getProvinceByPhone'
+		| 'getProvinceByZipcode'
+		| 'getProvinceListByName'
+		| 'getProvinceListByPhone'
+		| 'getProvinceListByZipcode'
+		| 'getReputationByIp'
+		| 'getRouteByAddresses'
+		| 'getRouteByCoordinates'
+		| 'getRouteByIps'
+		| 'getRouteByPhones'
+		| 'getRouteByZipcodes'
+		| 'getTimeByCoordinates'
+		| 'getTimeByIp'
+		| 'getTimeByAddress'
+		| 'getCoordinateUsng'
+		| 'getCoordinateUtm'
+		| 'getZipcodeByIp'
+		| 'getZipcodeByPrefix'
+		| 'getZipcodeListByPrefix'
+		| 'getQrDecoded'
+		| 'getImageExif'
+		| 'getBarcodeEncoded'
+		| 'getQrEncoded'
+		| 'getImageWithText'
+		| 'getDomainLogo'
+		| 'getImageOcr'
+		| 'getUrlScreenshot'
+		| 'checkDomainExist'
+		| 'checkDomainRecord'
+		| 'checkDomainReverse'
+		| 'checkDomainMx'
+		| 'checkDomainCertificate'
+		| 'checkDomainFormat'
+		| 'checkNetHostAlive'
+		| 'checkNetServiceUp'
+		| 'checkUrlContains'
+		| 'checkUrlExist'
+		| 'checkUrlValid'
+		| 'getDomainCertificate'
+		| 'getUrlContents'
+		| 'getUrlDecode'
+		| 'getUrlByDomain'
+		| 'getDeviceByUa'
+		| 'getDomainByIp'
+		| 'getDomainRecords'
+		| 'getDomainRecord'
+		| 'getUrlEncode'
+		| 'getFeedEntriesByDomain'
+		| 'getFileCopiedBetweenUrls'
+		| 'getNetFixip'
+		| 'getDomainReverseIp'
+		| 'getNetNtoa'
+		| 'getDomainIsp'
+		| 'getFeedLastEntryByDomain'
+		| 'getUrlUnshortened'
+		| 'getNetAton'
+		| 'getNetScan'
+		| 'getUrlListContentsParsed'
+		| 'getUrlContentsParsed'
+		| 'getUrlParsed'
+		| 'getUrlPdf'
+		| 'getDomainByUrl'
+		| 'getUrlShareableLinks'
+		| 'getUrlTables'
+		| 'getDomainTechnologies'
+		| 'getUrlTechnologies'
+		| 'getUrlAnalysis'
+		| 'getDomainVisits'
+		| 'getDomainWhois'
+		| 'getIpWhois'
+		| 'checkAgeBetw'
+		| 'checkAgeIsTwenties'
+		| 'checkAgeIsForties'
+		| 'checkAgeGt'
+		| 'checkAgeGe'
+		| 'checkAgeIsRetired'
+		| 'checkAgeIsAdult'
+		| 'checkAgeLt'
+		| 'checkAgeLe'
+		| 'checkAgeEq'
+		| 'checkDateBetw'
+		| 'checkDateGt'
+		| 'checkDateGe'
+		| 'checkDateLeap'
+		| 'checkDateLt'
+		| 'checkDateLe'
+		| 'checkDateValid'
+		| 'checkDateEq'
+		| 'checkGenderValid'
+		| 'checkNieValid'
+		| 'checkNifValid'
+		| 'checkNameExist'
+		| 'checkNameValid'
+		| 'checkRobinsonNifExist'
+		| 'checkSurnameValid'
+		| 'checkSurnameExist'
+		| 'checkDniValid'
+		| 'getAgeByDate'
+		| 'getAgeRange'
+		| 'getDateDifference'
+		| 'getGenderByEmail'
+		| 'getGenderByPersonalName'
+		| 'getProfileLinkedinByEmail'
+		| 'getProfileByEmployeeData'
+		| 'getProfileLinkedinByPhone'
+		| 'getNifByDni'
+		| 'getNameByPrefix'
+		| 'getDniNormalized'
+		| 'getDateNormalized'
+		| 'getNieNormalized'
+		| 'getNifNormalized'
+		| 'getNameNormalized'
+		| 'getSurnameNormalized'
+		| 'getDateParsed'
+		| 'getFullnameParsed'
+		| 'getPersonExtendedByEmail'
+		| 'getPersonExtendedByEmailAndCompany'
+		| 'getPersonExtendedByProfile'
+		| 'getPersonByEmail'
+		| 'getPersonByFirstnameLastnameCompanyLocation'
+		| 'getPersonByMobile'
+		| 'getPersonByProfile'
+		| 'getPersonFakedData'
+		| 'getSurnameByPrefix'
+		| 'getSurnameListByPrefix'
+		| 'getProfileXingByEmployeeData'
+		| 'sendPersonEmailToList'
+		| 'sendPersonProfileToList'
+		| 'checkAsinExist'
+		| 'checkAsinValid'
+		| 'checkEanExist'
+		| 'checkEanValid'
+		| 'checkEan13Valid'
+		| 'checkEan14Valid'
+		| 'checkEan18Valid'
+		| 'checkEan8Valid'
+		| 'checkGtinValid'
+		| 'checkGtin13Valid'
+		| 'checkGtin14Valid'
+		| 'checkGtin8Valid'
+		| 'checkBookIsbnExist'
+		| 'checkBookIsbn'
+		| 'checkBookIsbn10'
+		| 'checkBookIsbn13'
+		| 'checkUpcExist'
+		| 'checkUpcFormat'
+		| 'checkVinFormat'
+		| 'getAsinByEan'
+		| 'getBookAuthorLookup'
+		| 'getBookCategoryLookup'
+		| 'getBookPublisherLookup'
+		| 'getBookIsbnLookup'
+		| 'getBookTitleLookup'
+		| 'getBookListAuthorLookup'
+		| 'getBookListCategoryLookup'
+		| 'getBookListPublisherLookup'
+		| 'getBookListTitleLookup'
+		| 'getVinLookup'
+		| 'getEanByAsin'
+		| 'getBookIsbn13ToIsbn10'
+		| 'getBookIsbn10ToIsbn13'
+		| 'getUpcLookup'
+		| 'checkNumberLuhn'
+		| 'checkPasswordStrong'
+		| 'checkNumberUuid'
+		| 'getDomainBlacklists'
+		| 'getIpBlacklists'
+		| 'checkStringAlpha'
+		| 'checkStringAlphanumeric'
+		| 'checkStringBoolean'
+		| 'checkNumberDecimal'
+		| 'checkNumberEven'
+		| 'checkListMax'
+		| 'checkStringIp'
+		| 'checkStringIp4'
+		| 'checkStringIp6'
+		| 'checkListLengthBetw'
+		| 'checkListLengthEq'
+		| 'checkListLengthGt'
+		| 'checkListLengthGe'
+		| 'checkListLengthLt'
+		| 'checkListLengthLe'
+		| 'checkListContains'
+		| 'checkListEnds'
+		| 'checkListSorted'
+		| 'checkListStarts'
+		| 'checkListMin'
+		| 'checkNumberMod'
+		| 'checkNumberNatural'
+		| 'checkNumberBetw'
+		| 'checkNumberEq'
+		| 'checkNumberGt'
+		| 'checkNumberGe'
+		| 'checkNumberLt'
+		| 'checkNumberLe'
+		| 'checkStringNumeric'
+		| 'checkNumberOdd'
+		| 'checkNumberPrime'
+		| 'checkStringContains'
+		| 'checkStringEnds'
+		| 'checkStringBlank'
+		| 'checkStringRandom'
+		| 'checkStringRegex'
+		| 'checkStringLengthBetw'
+		| 'checkStringLengthEq'
+		| 'checkStringLengthGt'
+		| 'checkStringLengthGe'
+		| 'checkStringLengthLt'
+		| 'checkStringLengthLe'
+		| 'checkStringStarts'
+		| 'checkStringLowercase'
+		| 'checkStringUppercase'
+		| 'checkListUnique'
+		| 'checkListValid'
+		| 'checkWordCountBetw'
+		| 'checkWordCountEq'
+		| 'checkWordCountGt'
+		| 'checkWordCountGe'
+		| 'checkWordCountLt'
+		| 'checkWordCountLe'
+		| 'getStringBase64'
+		| 'getWordBanned'
+		| 'getStringFieldName'
+		| 'getStringByFormat'
+		| 'getStringByRegex'
+		| 'getListMax'
+		| 'getStringHtmlByMarkdown'
+		| 'getListMin'
+		| 'getStringLowercase'
+		| 'getStringMd5'
+		| 'getStringMarkdownByHtml'
+		| 'getStringJoin'
+		| 'getStringNormalized'
+		| 'getStringParsed'
+		| 'getStringSha'
+		| 'getSentimentByText'
+		| 'getListSort'
+		| 'getStringSpin'
+		| 'getStringSplitAndJoin'
+		| 'getStringSplit'
+		| 'getStringLength'
+		| 'getStringVlookup'
+		| 'getWordCleanAbuse'
+		| 'getStringReplaceFirst'
+		| 'getStringWithoutHtml'
+		| 'getStringReplaceAll'
+		| 'getStringTranslated'
+		| 'getListUnique'
+		| 'getStringUppercase'
+		| 'getWordCount';
 	/** Credit card */
 	credit_card?: string;
 	/** Address */
@@ -27338,11 +29959,11 @@ export interface UptimeRobotToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'account' | 'alertContact' | 'maintenanceWindow' | 'monitor' | 'publicStatusPage';
 	/** Operation */
-	operation?: 'get';
+	operation?: 'get' | 'create' | 'delete' | 'getAll' | 'reset' | 'update';
 	/** Friendly Name */
 	friendlyName?: string;
 	/** Type */
-	type?: 5 | 1 | 2 | 3 | 4;
+	type?: 5 | 1 | 2 | 3 | 4 | 6 | 9;
 	/** URL */
 	url?: string;
 	/** ID */
@@ -27399,7 +30020,8 @@ export interface VeroToolParameters extends BaseNodeParams {
 		| 'delete'
 		| 'resubscribe'
 		| 'removeTags'
-		| 'unsubscribe';
+		| 'unsubscribe'
+		| 'track';
 	/** ID */
 	id?: string;
 	/** JSON Parameters */
@@ -27430,7 +30052,14 @@ export interface VenafiTlsProtectCloudToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'certificate' | 'certificateRequest' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'delete' | 'download' | 'get' | 'getMany' | 'renew' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'delete'
+		| 'download'
+		| 'get'
+		| 'getMany'
+		| 'renew'
+		| '__CUSTOM_API_CALL__'
+		| 'create';
 	/** Certificate ID */
 	certificateId?: string;
 	/** Download Item */
@@ -27562,7 +30191,7 @@ export interface WekanToolParameters extends BaseNodeParams {
 		| 'list'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | '__CUSTOM_API_CALL__' | 'update';
 	/** Title */
 	title?: string;
 	/** Owner Name or ID */
@@ -27605,7 +30234,13 @@ export interface WhatsAppToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'message' | 'media';
 	/** Operation */
-	operation?: 'send' | 'sendAndWait' | 'sendTemplate';
+	operation?:
+		| 'send'
+		| 'sendAndWait'
+		| 'sendTemplate'
+		| 'mediaUpload'
+		| 'mediaUrlGet'
+		| 'mediaDelete';
 	/** Messaging Product */
 	messagingProduct?: unknown;
 	/** Sender Phone Number (or ID) */
@@ -27786,7 +30421,7 @@ export interface ZammadToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'group' | 'organization' | 'ticket' | 'user';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update';
+	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'update' | 'getSelf';
 	/** Group Name */
 	name?: string;
 	/** Group ID */
@@ -27821,7 +30456,18 @@ export interface ZendeskToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'ticket' | 'ticketField' | 'user' | 'organization' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'delete' | 'get' | 'getAll' | 'recover' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'recover'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'getOrganizations'
+		| 'getRelatedData'
+		| 'search'
+		| 'count';
 	/** Description */
 	description?: string;
 	/** JSON Parameters */
@@ -27863,7 +30509,15 @@ export interface ZohoCrmToolParameters extends BaseNodeParams {
 		| 'vendor'
 		| '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'create' | 'upsert' | 'delete' | 'get' | 'getAll' | 'update' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'create'
+		| 'upsert'
+		| 'delete'
+		| 'get'
+		| 'getAll'
+		| 'update'
+		| '__CUSTOM_API_CALL__'
+		| 'getFields';
 	/** Account Name */
 	accountName?: string;
 	/** Account ID */
@@ -27937,7 +30591,17 @@ export interface ZulipToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'message' | 'stream' | 'user';
 	/** Operation */
-	operation?: 'delete' | 'get' | 'sendPrivate' | 'sendStream' | 'update' | 'updateFile';
+	operation?:
+		| 'delete'
+		| 'get'
+		| 'sendPrivate'
+		| 'sendStream'
+		| 'update'
+		| 'updateFile'
+		| 'create'
+		| 'getAll'
+		| 'getSubscribed'
+		| 'deactivate';
 	/** To */
 	to?: unknown;
 	/** Content */
@@ -27978,7 +30642,17 @@ export interface AnthropicToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'document' | 'file' | 'image' | 'prompt' | 'text' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'analyze' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'analyze'
+		| '__CUSTOM_API_CALL__'
+		| 'upload'
+		| 'get'
+		| 'list'
+		| 'deleteFile'
+		| 'generate'
+		| 'improve'
+		| 'templatize'
+		| 'message';
 	/** Model */
 	modelId?: unknown;
 	/** Text Input */
@@ -28023,7 +30697,15 @@ export interface GoogleGeminiToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'audio' | 'document' | 'file' | 'image' | 'text' | 'video' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'analyze' | 'transcribe' | '__CUSTOM_API_CALL__';
+	operation?:
+		| 'analyze'
+		| 'transcribe'
+		| '__CUSTOM_API_CALL__'
+		| 'upload'
+		| 'generate'
+		| 'edit'
+		| 'message'
+		| 'download';
 	/** Model */
 	modelId?: unknown;
 	/** Text Input */
@@ -28066,7 +30748,7 @@ export interface OllamaToolParameters extends BaseNodeParams {
 	/** Resource */
 	resource?: 'image' | 'text' | '__CUSTOM_API_CALL__';
 	/** Operation */
-	operation?: 'analyze' | '__CUSTOM_API_CALL__';
+	operation?: 'analyze' | '__CUSTOM_API_CALL__' | 'message';
 	/** Model */
 	modelId?: unknown;
 	/** Text Input */

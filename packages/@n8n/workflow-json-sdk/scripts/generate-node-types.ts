@@ -2,11 +2,7 @@ import { readFileSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 
-// ES module equivalent of __dirname
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-interface NodeProperty {
+export interface NodeProperty {
 	displayName?: string;
 	name: string;
 	type: string;
@@ -15,21 +11,21 @@ interface NodeProperty {
 	options?: Array<{ name: string; value: string | number | boolean }>;
 }
 
-interface Node {
+export interface Node {
 	name: string;
 	displayName: string;
 	version: number | number[];
 	properties?: NodeProperty[];
 }
 
-function toPascalCase(str: string): string {
+export function toPascalCase(str: string): string {
 	// Convert n8n-nodes-base.actionNetwork to ActionNetwork
 	const parts = str.split('.');
 	const nodeName = parts[parts.length - 1];
 	return nodeName.charAt(0).toUpperCase() + nodeName.slice(1);
 }
 
-function getVersionString(version: number | number[]): string {
+export function getVersionString(version: number | number[]): string {
 	if (Array.isArray(version)) {
 		return `v${Math.max(...version)
 			.toString()
@@ -38,7 +34,7 @@ function getVersionString(version: number | number[]): string {
 	return `v${version.toString().replace('.', '_')}`;
 }
 
-function mapPropertyTypeToTS(prop: NodeProperty): string {
+export function mapPropertyTypeToTS(prop: NodeProperty): string {
 	switch (prop.type) {
 		case 'string':
 			return 'string';
@@ -72,7 +68,7 @@ function mapPropertyTypeToTS(prop: NodeProperty): string {
 	}
 }
 
-function generateParameterInterface(node: Node & { uniqueKey: string }): string | null {
+export function generateParameterInterface(node: Node & { uniqueKey: string }): string | null {
 	if (!node.properties || node.properties.length === 0) {
 		return null;
 	}
@@ -92,12 +88,13 @@ function generateParameterInterface(node: Node & { uniqueKey: string }): string 
 		'filters',
 	]);
 
-	// Group properties by name to find common ones
-	const propertyMap = new Map<string, NodeProperty>();
+	// Group properties by name to aggregate types for duplicates
+	const propertyMap = new Map<string, { properties: NodeProperty[]; displayName?: string }>();
 	for (const prop of node.properties) {
 		if (!propertyMap.has(prop.name)) {
-			propertyMap.set(prop.name, prop);
+			propertyMap.set(prop.name, { properties: [], displayName: prop.displayName });
 		}
+		propertyMap.get(prop.name)!.properties.push(prop);
 	}
 
 	// Common restricted identifiers that need quoting
@@ -115,29 +112,46 @@ function generateParameterInterface(node: Node & { uniqueKey: string }): string 
 		'void',
 	]);
 
-	for (const [, prop] of propertyMap) {
-		const nodeProperties = prop as NodeProperty;
-		const tsType = mapPropertyTypeToTS(nodeProperties);
-
-		// Skip properties that are in BaseNodeParams if they have unknown or generic type
-		// This prevents type conflicts while allowing specific unions to override
-		if (baseParamNames.has(nodeProperties.name)) {
-			if (tsType === 'unknown' || tsType === 'Record<string, unknown>') {
-				continue; // Skip - use the base definition
-			}
-			// If it's a specific type (like a union of strings), include it to override
+	for (const [propName, { properties, displayName }] of propertyMap) {
+		// Aggregate all types for this property name
+		const types = new Set<string>();
+		for (const prop of properties) {
+			const tsType = mapPropertyTypeToTS(prop);
+			// Split union types and add individual types to deduplicate properly
+			const individualTypes = tsType.split(' | ').map((t) => t.trim());
+			individualTypes.forEach((t) => types.add(t));
 		}
+
+		// Handle base params specially to avoid type conflicts
+		if (baseParamNames.has(propName)) {
+			// Filter out generic types that would conflict with BaseNodeParams
+			const genericTypes = new Set(['unknown', 'Record<string, unknown>']);
+			const specificTypes = Array.from(types).filter((type) => !genericTypes.has(type));
+
+			if (specificTypes.length === 0) {
+				// All types are generic - skip and use the base definition
+				continue;
+			}
+
+			// Use only the specific types to override the base definition
+			const aggregatedType = specificTypes.join(' | ');
+			const comment = displayName ? `\t/** ${displayName} */\n` : '';
+			const quotedPropName = restrictedIdentifiers.has(propName) ? `'${propName}'` : propName;
+			fields.push(`${comment}\t${quotedPropName}?: ${aggregatedType};`);
+			continue;
+		}
+
+		// Create union type from all unique types
+		const aggregatedType = Array.from(types).join(' | ');
 
 		// Always make properties optional since n8n nodes have context-dependent requirements
 		// (properties are conditionally required based on displayOptions/resource/operation)
-		const comment = nodeProperties.displayName ? `\t/** ${nodeProperties.displayName} */\n` : '';
+		const comment = displayName ? `\t/** ${displayName} */\n` : '';
 
 		// Quote property names if they're restricted identifiers
-		const propName = restrictedIdentifiers.has(nodeProperties.name)
-			? `'${nodeProperties.name}'`
-			: nodeProperties.name;
+		const quotedPropName = restrictedIdentifiers.has(propName) ? `'${propName}'` : propName;
 
-		fields.push(`${comment}\t${propName}?: ${tsType};`);
+		fields.push(`${comment}\t${quotedPropName}?: ${aggregatedType};`);
 	}
 
 	if (fields.length === 0) {
@@ -148,14 +162,14 @@ function generateParameterInterface(node: Node & { uniqueKey: string }): string 
 	return `export interface ${interfaceName} extends BaseNodeParams {\n${fields.join('\n')}\n}`;
 }
 
-function deduplicateNodes(nodes: Node[]): Array<Node & { uniqueKey: string }> {
+export function deduplicateNodes(nodes: Node[]): Array<Node & { uniqueKey: string }> {
 	const keyCount = new Map<string, number>();
 	const result: Array<Node & { uniqueKey: string }> = [];
 
 	// First pass: count occurrences of each key
 	for (const node of nodes) {
 		const baseKey = toPascalCase(node.name);
-		keyCount.set(baseKey, (keyCount.get(baseKey) || 0) + 1);
+		keyCount.set(baseKey, (keyCount.get(baseKey) ?? 0) + 1);
 	}
 
 	// Second pass: create unique keys
@@ -165,7 +179,7 @@ function deduplicateNodes(nodes: Node[]): Array<Node & { uniqueKey: string }> {
 		let uniqueKey: string;
 
 		const key = keyCount.get(baseKey);
-		if (key && key > 1) {
+		if ((key ?? 0) > 1) {
 			// Multiple versions exist, add version suffix
 			const versionStr = getVersionString(node.version);
 			uniqueKey = `${baseKey}_${versionStr}`;
@@ -174,7 +188,7 @@ function deduplicateNodes(nodes: Node[]): Array<Node & { uniqueKey: string }> {
 		}
 
 		// Ensure uniqueness even with version suffix
-		const useCount = usedKeys.get(uniqueKey) || 0;
+		const useCount = usedKeys.get(uniqueKey) ?? 0;
 		if (useCount > 0) {
 			uniqueKey = `${uniqueKey}_${useCount}`;
 		}
@@ -186,7 +200,7 @@ function deduplicateNodes(nodes: Node[]): Array<Node & { uniqueKey: string }> {
 	return result;
 }
 
-function generateNodeTypes(nodes: Node[]): string {
+export function generateNodeTypes(nodes: Node[]): string {
 	const output: string[] = [];
 
 	output.push('/* eslint-disable @typescript-eslint/naming-convention */\n');
@@ -360,6 +374,10 @@ function generateNodeTypes(nodes: Node[]): string {
 }
 
 function main() {
+	// ES module equivalent of __dirname
+	const __filename = fileURLToPath(import.meta.url);
+	const __dirname = dirname(__filename);
+
 	const nodesPath = join(__dirname, '..', 'tmp', 'nodes.json');
 	const outputPath = join(__dirname, '..', 'src', 'nodeTypes.ts');
 
@@ -395,4 +413,7 @@ function main() {
 	}
 }
 
-main();
+// Only run main if this file is being executed directly
+if (import.meta.url === `file://${process.argv[1]}`) {
+	main();
+}

@@ -15,6 +15,7 @@
 		"src/**/*.ts",
 		"src/**/*.vue",
 		"scripts/**/*.ts",
+		"playground/**/*.ts",
 		"vite.config.ts",
 		"tsdown.config.ts"
 	]
