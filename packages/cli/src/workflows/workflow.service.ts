@@ -454,6 +454,12 @@ export class WorkflowService {
 					workflow: updatedWorkflow,
 					publicApi,
 				});
+
+				if (updatedWorkflow.meta?.autoDeactivated) {
+					const { autoDeactivated, ...remainingMeta } = updatedWorkflow.meta;
+					updatedWorkflow.meta = remainingMeta;
+					await this.workflowRepository.update({ id: workflowId }, { meta: remainingMeta });
+				}
 			} else if (activationStatusChanged && !isNowActive) {
 				// Workflow is being deactivated
 				this.eventService.emit('workflow-deactivated', {
