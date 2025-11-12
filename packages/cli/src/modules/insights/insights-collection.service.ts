@@ -4,7 +4,12 @@ import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorat
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
-import { UnexpectedError, type ExecutionStatus, type WorkflowExecuteMode } from 'n8n-workflow';
+import {
+	UnexpectedError,
+	type ExecutionStatus,
+	type IRun,
+	type WorkflowExecuteMode,
+} from 'n8n-workflow';
 
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
 import { InsightsRaw } from '@/modules/insights/database/entities/insights-raw';
@@ -156,12 +161,15 @@ export class InsightsCollectionService {
 		}
 
 		// time saved event
-		if (status === 'success' && ctx.workflow.settings?.timeSavedPerExecution) {
-			this.bufferedInsights.add({
-				...commonWorkflowData,
-				type: 'time_saved_min',
-				value: ctx.workflow.settings.timeSavedPerExecution,
-			});
+		if (status === 'success') {
+			const finalTimeSaved = this.calculateTimeSaved(ctx);
+			if (finalTimeSaved !== undefined) {
+				this.bufferedInsights.add({
+					...commonWorkflowData,
+					type: 'time_saved_min',
+					value: finalTimeSaved,
+				});
+			}
 		}
 
 		if (!this.isAsynchronouslySavingInsights) {
@@ -278,5 +286,60 @@ export class InsightsCollectionService {
 		// Add the flush promise to the set of flushes in progress for shutdown await
 		this.flushesInProgress.add(flushPromise);
 		await flushPromise;
+	}
+
+	/**
+	 * Calculate the final time saved value by extracting SavedTime node metadata
+	 * and combining it with workflow settings based on the node's behavior.
+	 */
+	private calculateTimeSaved(ctx: WorkflowExecuteAfterContext): number | undefined {
+		console.log('calculateTimeSaved');
+		const workflowTimeSaved = ctx.workflow.settings?.timeSavedPerExecution;
+
+		// Extract time saved from SavedTime nodes
+		const nodeTimeSaved = this.extractTimeSavedFromNodes(ctx.runData);
+
+		console.log('nodeTimeSaved', nodeTimeSaved);
+		if (nodeTimeSaved === undefined) {
+			// No SavedTime nodes, use workflow setting
+			return workflowTimeSaved;
+		}
+
+		console.log('nodeTimeSaved', nodeTimeSaved);
+
+		return nodeTimeSaved;
+	}
+
+	/**
+	 * Extract and sum time saved from all SavedTime nodes in the workflow execution.
+	 * Returns undefined if no SavedTime nodes were executed.
+	 */
+	private extractTimeSavedFromNodes(runData: IRun): number | undefined {
+		let totalMinutes = 0;
+		let hasAnyNode = false;
+
+		const resultData = runData.data.resultData.runData;
+		if (!resultData) {
+			return undefined;
+		}
+
+		// Iterate through all node metadata
+		for (const nodeName in resultData) {
+			const taskData = resultData[nodeName];
+
+			// Each node can have multiple run indexes
+			for (const taskDataEntry of taskData) {
+				if (taskDataEntry?.metadata?.timeSaved) {
+					hasAnyNode = true;
+					totalMinutes += taskDataEntry?.metadata?.timeSaved.minutes;
+				}
+			}
+		}
+
+		if (!hasAnyNode) {
+			return undefined;
+		}
+
+		return totalMinutes;
 	}
 }
