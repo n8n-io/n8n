@@ -310,6 +310,9 @@ export class FrontendService {
 				enabled: false,
 				credits: 0,
 			},
+			ai: {
+				allowSendingParameterValues: true,
+			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
 				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
@@ -377,6 +380,15 @@ export class FrontendService {
 			this.settings.easyAIWorkflowOnboarded = config.getEnv('easyAIWorkflowOnboarded') ?? false;
 		} catch {
 			this.settings.easyAIWorkflowOnboarded = false;
+		}
+
+		// Load AI usage settings
+		try {
+			this.settings.ai.allowSendingParameterValues =
+				config.getEnv('ai.allowSendingParameterValues') ?? true;
+		} catch {
+			// Not yet in DB, use default
+			this.settings.ai.allowSendingParameterValues = true;
 		}
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
