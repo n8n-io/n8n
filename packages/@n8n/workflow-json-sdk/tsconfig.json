@@ -4,13 +4,18 @@
 		"baseUrl": ".",
 		"rootDir": ".",
 		"outDir": "dist",
-		"types": ["vite/client", "vitest/globals"],
-		"isolatedModules": true
+		"types": ["vite/client", "vitest/globals", "node"],
+		"isolatedModules": true,
+		"module": "ESNext",
+		"target": "ES2020",
+		"moduleResolution": "bundler",
+		"downlevelIteration": true
 	},
 	"include": [
 		"src/**/*.ts",
 		"src/**/*.vue",
 		"scripts/**/*.ts",
+		"cc-scripts/**/*.ts",
 		"vite.config.ts",
 		"tsdown.config.ts"
 	]
