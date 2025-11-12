@@ -6,6 +6,7 @@ import type {
 	NodeError,
 	NodeOperationError,
 	INode,
+	INodeParameters,
 } from 'n8n-workflow';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -15,7 +16,7 @@ import {
 	getMainAuthField,
 	getNodeAuthOptions,
 } from '@/app/utils/nodeTypesUtils';
-import type { ChatRequest } from '../assistant.types';
+import type { AssistantProcessOptions, ChatRequest } from '../assistant.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useDataSchema } from '@/app/composables/useDataSchema';
 import { AI_ASSISTANT_MAX_CONTENT_LENGTH, VIEWS } from '@/app/constants';
@@ -93,6 +94,16 @@ export const useAIAssistantHelpers = () => {
 	}
 
 	/**
+	 * Removes sensitive values from node parameters while preserving structure
+	 * for AI assistant context when allowSendingParameterData is false.
+	 * Since we are calling this recursively, we use method overloads to keep type safety.
+	 */
+	function removeParameterValues(params: INodeParameters): INodeParameters {
+		// TODO: Implement this
+		return {};
+	}
+
+	/**
 	 * Processes node object before sending it to AI assistant
 	 * - Removes unnecessary properties
 	 * - Extracts expressions from the parameters and resolves them
@@ -100,21 +111,31 @@ export const useAIAssistantHelpers = () => {
 	 * @param propsToRemove properties to remove from the node object
 	 * @returns processed node
 	 */
-	function processNodeForAssistant(node: INode, propsToRemove: string[]): INode {
+	function processNodeForAssistant(
+		node: INode,
+		propsToRemove: string[],
+		options?: AssistantProcessOptions,
+	): INode {
 		// Make a copy of the node object so we don't modify the original
 		const nodeForLLM = deepCopy(node);
 		propsToRemove.forEach((key) => {
 			delete nodeForLLM[key as keyof INode];
 		});
-		const resolvedParameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
-			nodeForLLM.parameters,
-		);
-		nodeForLLM.parameters = resolvedParameters;
+		if (options?.trimParameterValues) {
+			nodeForLLM.parameters = removeParameterValues(nodeForLLM.parameters);
+		} else {
+			nodeForLLM.parameters = workflowHelpers.getNodeParametersWithResolvedExpressions(
+				nodeForLLM.parameters,
+			);
+		}
 		return nodeForLLM;
 	}
 
-	function getNodeInfoForAssistant(node: INode): ChatRequest.NodeInfo {
-		if (!node) {
+	function getNodeInfoForAssistant(
+		node: INode,
+		options?: AssistantProcessOptions,
+	): ChatRequest.NodeInfo {
+		if (!node || options?.trimParameterValues) {
 			return {};
 		}
 		// Get all referenced nodes and their schemas
@@ -285,12 +306,23 @@ export const useAIAssistantHelpers = () => {
 		return simplifiedResultData;
 	}
 
-	const simplifyWorkflowForAssistant = (workflow: IWorkflowDb): Partial<IWorkflowDb> => ({
-		name: workflow.name,
-		active: workflow.active,
-		connections: workflow.connections,
-		nodes: workflow.nodes,
-	});
+	const simplifyWorkflowForAssistant = (
+		workflow: IWorkflowDb,
+		options?: AssistantProcessOptions,
+	): Partial<IWorkflowDb> => {
+		let nodes = workflow.nodes;
+		if (options?.trimParameterValues) {
+			nodes = workflow.nodes.map((node) =>
+				processNodeForAssistant(node, [], { trimParameterValues: true }),
+			);
+		}
+		return {
+			name: workflow.name,
+			active: workflow.active,
+			connections: workflow.connections,
+			nodes,
+		};
+	};
 
 	/**
 	 * Extract all expressions from workflow nodes and resolve them to their values.

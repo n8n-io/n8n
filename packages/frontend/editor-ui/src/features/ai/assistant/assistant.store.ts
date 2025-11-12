@@ -113,6 +113,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		return hasPermission(['rbac'], { rbac: { scope: 'aiAssistant:manage' } });
 	});
 
+	const allowSendingParameterValues = computed(
+		() => settings.settings.ai.allowSendingParameterValues,
+	);
+
 	function resetAssistantChat() {
 		clearMessages();
 		currentSessionId.value = undefined;
@@ -314,7 +318,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		const currentView = route.name as VIEWS;
 		const activeNode = workflowsStore.activeNode();
 		const activeNodeForLLM = activeNode
-			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'])
+			? assistantHelpers.processNodeForAssistant(activeNode, ['position', 'parameters.notice'], {
+					trimParameterValues: !allowSendingParameterValues.value,
+				})
 			: null;
 		const activeModals = uiStore.activeModals;
 		const isCredentialModalActive = activeModals.includes(CREDENTIAL_EDIT_MODAL_KEY);
@@ -356,7 +362,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 					}
 				: undefined,
 			currentWorkflow: workflowDataStale.value
-				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow)
+				? assistantHelpers.simplifyWorkflowForAssistant(workflowsStore.workflow, {
+						trimParameterValues: !allowSendingParameterValues.value,
+					})
 				: undefined,
 			executionData:
 				workflowExecutionDataStale.value && executionResult
@@ -369,7 +377,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		resetAssistantChat();
 		chatSessionTask.value = credentialType ? 'credentials' : 'support';
 		const activeNode = workflowsStore.activeNode() as INode;
-		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
+		const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
+			trimParameterValues: !allowSendingParameterValues.value,
+		});
 		// For the initial message, only provide visual context if the task is support
 		const visualContext =
 			chatSessionTask.value === 'support' ? getVisualContext(nodeInfo) : undefined;
@@ -436,6 +446,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 
 		const { authType, nodeInputData, schemas } = assistantHelpers.getNodeInfoForAssistant(
 			context.node,
+			{ trimParameterValues: !allowSendingParameterValues.value },
 		);
 
 		addLoadingAssistantMessage(locale.baseText('aiAssistant.thinkingSteps.analyzingError'));
@@ -447,10 +458,13 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				firstName: usersStore.currentUser?.firstName ?? '',
 			},
 			error: context.error,
-			node: assistantHelpers.processNodeForAssistant(context.node, [
-				'position',
-				'parameters.notice',
-			]),
+			node: assistantHelpers.processNodeForAssistant(
+				context.node,
+				['position', 'parameters.notice'],
+				{
+					trimParameterValues: !allowSendingParameterValues.value,
+				},
+			),
 			nodeInputData,
 			executionSchema: schemas,
 			authType,
@@ -553,7 +567,9 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 				nodeExecutionStatus.value = 'not_executed';
 			}
 			const activeNode = workflowsStore.activeNode() as INode;
-			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode);
+			const nodeInfo = assistantHelpers.getNodeInfoForAssistant(activeNode, {
+				trimParameterValues: !allowSendingParameterValues.value,
+			});
 			const userContext = getVisualContext(nodeInfo);
 
 			chatWithAssistant(

@@ -228,6 +228,10 @@ export namespace AskAiRequest {
 	}
 }
 
+export type AssistantProcessOptions = {
+	trimParameterValues?: boolean;
+};
+
 // Type guards for ChatRequest messages
 export function isTextMessage(msg: ChatRequest.MessageResponse): msg is ChatRequest.TextMessage {
 	return 'type' in msg && msg.type === 'message' && 'text' in msg;
