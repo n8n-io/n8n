@@ -218,6 +218,11 @@ function onActivate(event: MouseEvent) {
 	&.configuration {
 		border-radius: calc(var(--canvas-node--height) / 2);
 
+		&.running::after,
+		&.waiting::after {
+			border-radius: 50%;
+		}
+
 		.statusIcons {
 			right: unset;
 		}
@@ -310,7 +315,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.running {
-		border: transparent;
+		border-color: transparent;
 		--canvas-node--border-color: var(
 			--color-canvas-node-running-border-color,
 			var(--node--border-color--running)
