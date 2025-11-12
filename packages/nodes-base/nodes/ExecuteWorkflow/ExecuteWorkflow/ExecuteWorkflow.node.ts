@@ -9,7 +9,7 @@ import type {
 
 import { findPairedItemThroughWorkflowData } from './../../../utils/workflow-backtracking';
 import { getWorkflowInfo } from './GenericFunctions';
-import { localResourceMapping, loadOptions } from './methods';
+import { localResourceMapping, localLoadOptions } from './methods';
 import { generatePairedItemData } from '../../../utils/utilities';
 import { getCurrentWorkflowInputData } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
@@ -191,7 +191,11 @@ export class ExecuteWorkflow implements INodeType {
 			{
 				displayName: 'Trigger Node Name',
 				name: 'triggerNodeName',
-				type: 'string',
+				type: 'options',
+				typeOptions: {
+					localLoadOptionsMethod: 'getTriggerNodes',
+					loadOptionsDependsOn: ['workflowId.value'],
+				},
 				displayOptions: {
 					show: {
 						source: ['database'],
@@ -202,9 +206,8 @@ export class ExecuteWorkflow implements INodeType {
 					},
 				},
 				default: '',
-				placeholder: 'e.g. When Executed by Another Workflow',
 				description:
-					'Name of the Execute Workflow Trigger node to invoke when the sub-workflow has multiple triggers. Must exactly match the node name in the target workflow. Leave empty to use the first trigger.',
+					'Select which Execute Workflow Trigger to invoke when the sub-workflow has multiple triggers. Leave empty to use the first trigger.',
 			},
 			{
 				displayName:
@@ -304,7 +307,7 @@ export class ExecuteWorkflow implements INodeType {
 
 	methods = {
 		localResourceMapping,
-		loadOptions,
+		localLoadOptions,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

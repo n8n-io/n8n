@@ -98,7 +98,11 @@ export const versionDescription: INodeTypeDescription = {
 		{
 			displayName: 'Trigger Node Name',
 			name: 'triggerNodeName',
-			type: 'string',
+			type: 'options',
+			typeOptions: {
+				localLoadOptionsMethod: 'getTriggerNodes',
+				loadOptionsDependsOn: ['workflowId.value'],
+			},
 			displayOptions: {
 				show: {
 					source: ['database'],
@@ -108,9 +112,8 @@ export const versionDescription: INodeTypeDescription = {
 				},
 			},
 			default: '',
-			placeholder: 'e.g. When Executed by Another Workflow',
 			description:
-				'Name of the Execute Workflow Trigger node to invoke when the sub-workflow has multiple triggers. Must exactly match the node name in the target workflow. Leave empty to use the first trigger.',
+				'Select which Execute Workflow Trigger to invoke when the sub-workflow has multiple triggers. Leave empty to use the first trigger.',
 		},
 		// -----------------------------------------------
 		//         Resource mapper for workflow inputs

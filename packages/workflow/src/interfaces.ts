@@ -1121,6 +1121,7 @@ export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
 export interface ILocalLoadOptionsFunctions {
 	getWorkflowNodeContext(nodeType: string, nodeName?: string): Promise<IWorkflowNodeContext | null>;
 	getCurrentNodeParameter(parameterPath: string): NodeParameterValueType | object | undefined;
+	getAllWorkflowNodes(nodeTypeFilter?: string): Promise<INode[]>;
 }
 
 export interface IWorkflowLoader {
@@ -1767,6 +1768,9 @@ export interface INodeType {
 		};
 		localResourceMapping?: {
 			[functionName: string]: (this: ILocalLoadOptionsFunctions) => Promise<ResourceMapperFields>;
+		};
+		localLoadOptions?: {
+			[functionName: string]: (this: ILocalLoadOptionsFunctions) => Promise<INodePropertyOptions[]>;
 		};
 		actionHandler?: {
 			[functionName: string]: (

@@ -11,7 +11,7 @@ import type {
 } from 'n8n-workflow';
 import { nodeNameToToolName } from 'n8n-workflow';
 
-import { localResourceMapping } from './methods';
+import { localResourceMapping, localLoadOptions } from './methods';
 import { WorkflowToolService } from './utils/WorkflowToolService';
 import { versionDescription } from './versionDescription';
 
@@ -52,6 +52,7 @@ export class ToolWorkflowV2 implements INodeType {
 
 	methods = {
 		localResourceMapping,
+		localLoadOptions,
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {

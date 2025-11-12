@@ -1,6 +1,7 @@
 import get from 'lodash/get';
 import { ApplicationError, resolveRelativePath, Workflow } from 'n8n-workflow';
 import type {
+	INode,
 	INodeParameterResourceLocator,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValueType,
@@ -72,5 +73,24 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 		parameterPath = resolveRelativePath(this.path, parameterPath);
 
 		return get(nodeParameters, parameterPath);
+	}
+
+	async getAllWorkflowNodes(nodeTypeFilter?: string): Promise<INode[]> {
+		const { value: workflowId } = this.getCurrentNodeParameter(
+			'workflowId',
+		) as INodeParameterResourceLocator;
+
+		if (typeof workflowId !== 'string' || !workflowId) {
+			return [];
+		}
+
+		const dbWorkflow = await this.workflowLoader.get(workflowId);
+
+		// Filter by node type if specified, and exclude disabled nodes
+		if (nodeTypeFilter) {
+			return dbWorkflow.nodes.filter((node) => node.type === nodeTypeFilter && !node.disabled);
+		}
+
+		return dbWorkflow.nodes.filter((node) => !node.disabled);
 	}
 }
