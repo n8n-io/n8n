@@ -7,5 +7,11 @@
 		"types": ["vite/client", "vitest/globals"],
 		"isolatedModules": true
 	},
-	"include": ["src/**/*.ts", "src/**/*.vue", "vite.config.ts", "tsdown.config.ts"]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.vue",
+		"scripts/**/*.ts",
+		"vite.config.ts",
+		"tsdown.config.ts"
+	]
 }
