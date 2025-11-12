@@ -1613,7 +1613,12 @@ function handleSetHeatmap(
 		| {
 				nodes: Record<
 					string,
-					{ avgRssDeltaMB: number | null; avgExecutionsPerRun: number; avgDurationMs: number }
+					{
+						avgRssDeltaMB: number | null;
+						avgExecutionsPerRun: number;
+						avgDurationMs: number;
+						samples: { duration: number; memory: number };
+					}
 				>;
 		  }
 		| null
@@ -1658,7 +1663,7 @@ function handleSetHeatmap(
 			value = data.avgDurationMs;
 		}
 
-		if (value !== null && Number.isFinite(value)) {
+		if (value !== null && Number.isFinite(value) && data.samples.duration > 0) {
 			nodeValues[nodeId] = value;
 			values.push(value);
 		}
@@ -2449,32 +2454,32 @@ onBeforeUnmount(() => {
 <style lang="scss">
 /* Heatmap bucket styles - applied globally to canvas nodes */
 .heatmap-bucket-0 {
-	--canvas-node--color--background: var(--color--foreground--tint-2);
-	--canvas-node--border-color: var(--color--foreground--tint-2);
+	--canvas-node--color--background: hsl(247, 49%, 93%);
+	--canvas-node--border-color: var(--p--color--secondary-570);
 }
 
 .heatmap-bucket-1 {
-	--canvas-node--color--background: var(--color--success--tint-4);
-	--canvas-node--border-color: var(--color--success--tint-3);
+	--canvas-node--color--background: hsl(247, 49%, 90%);
+	--canvas-node--border-color: var(--p--color--secondary-570);
 }
 
 .heatmap-bucket-2 {
-	--canvas-node--color--background: var(--color--success--tint-2);
-	--canvas-node--border-color: var(--color--success--tint-1);
+	--canvas-node--color--background: hsl(247, 49%, 87%);
+	--canvas-node--border-color: var(--p--color--secondary-570);
 }
 
 .heatmap-bucket-3 {
-	--canvas-node--color--background: var(--color--warning--tint-2);
-	--canvas-node--border-color: var(--color--warning--tint-1);
+	--canvas-node--color--background: hsl(247, 49%, 85%);
+	--canvas-node--border-color: var(--p--color--secondary-570);
 }
 
 .heatmap-bucket-4 {
-	--canvas-node--color--background: var(--color--warning);
-	--canvas-node--border-color: var(--color--warning--shade-1);
+	--canvas-node--color--background: hsl(247, 49%, 82%);
+	--canvas-node--border-color: var(--p--color--secondary-570);
 }
 
 .heatmap-bucket-5 {
-	--canvas-node--color--background: var(--color--danger--tint-4);
-	--canvas-node--border-color: var(--color--danger--tint-3);
+	--canvas-node--color--background: hsl(247, 49%, 79%);
+	--canvas-node--border-color: var(--p--color--secondary-570);
 }
 </style>

@@ -20,7 +20,7 @@ const rootStore = useRootStore();
 const workflowId = computed(() => route.params.name as string);
 const workflow = computed(() => workflowsStore.getWorkflowById(workflowId.value));
 const heatmapData = ref<WorkflowHeatmapResponse | null>(null);
-const selectedMode = ref<HeatmapMode>('memory');
+const selectedMode = ref<HeatmapMode>('duration');
 const previewRef = ref<{
 	sendCommand: (command: string, payload?: Record<string, unknown>) => void;
 } | null>(null);
@@ -28,9 +28,9 @@ const isLoading = ref(false);
 let retryTimeout: ReturnType<typeof setTimeout> | null = null;
 
 const modeOptions = computed(() => [
-	{ value: 'memory', label: locale.baseText('heatmap.mode.memory') },
-	{ value: 'frequency', label: locale.baseText('heatmap.mode.frequency') },
 	{ value: 'duration', label: locale.baseText('heatmap.mode.duration') },
+	{ value: 'frequency', label: locale.baseText('heatmap.mode.frequency') },
+	{ value: 'memory', label: locale.baseText('heatmap.mode.memory') },
 ]);
 
 async function fetchHeatmap() {
