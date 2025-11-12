@@ -41,7 +41,7 @@ import type { WorkflowData, WorkflowDataUpdate } from '@n8n/rest-api-client/api/
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 
 import get from 'lodash/get';
-
+import { MemoryMonitor } from 'n8n-workflow';
 import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
@@ -117,13 +117,14 @@ function resolveParameterImpl<T = IDataObject>(
 	opts: ResolveParameterOptions = {},
 ): T | null {
 	let itemIndex = opts?.targetItem?.itemIndex || 0;
-
+	const currentMemory = MemoryMonitor.getMemoryUsage();
 	const additionalKeys: IWorkflowDataProxyAdditionalKeys = {
 		$execution: {
 			id: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 			mode: 'test',
 			resumeUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
 			resumeFormUrl: PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
+			memoryUsage: currentMemory,
 		},
 		$vars: envVars,
 

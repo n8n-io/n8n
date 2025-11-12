@@ -4,7 +4,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { LoggerProxy } from 'n8n-workflow';
+import { LoggerProxy, MemoryMonitor } from 'n8n-workflow';
 
 import { PLACEHOLDER_EMPTY_EXECUTION_ID } from '@/constants';
 
@@ -26,12 +26,15 @@ export function getAdditionalKeys(
 	const executionId = additionalData.executionId ?? PLACEHOLDER_EMPTY_EXECUTION_ID;
 	const resumeUrl = `${additionalData.webhookWaitingBaseUrl}/${executionId}`;
 	const resumeFormUrl = `${additionalData.formWaitingBaseUrl}/${executionId}`;
+	const currentMemory = MemoryMonitor.getMemoryUsage();
+
 	return {
 		$execution: {
 			id: executionId,
 			mode: mode === 'manual' ? 'test' : 'production',
 			resumeUrl,
 			resumeFormUrl,
+			memoryUsage: currentMemory,
 			customData: runExecutionData
 				? {
 						set(key: string, value: string): void {
