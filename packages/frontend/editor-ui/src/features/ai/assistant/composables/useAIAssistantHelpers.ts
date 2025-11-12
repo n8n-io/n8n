@@ -135,12 +135,12 @@ export const useAIAssistantHelpers = () => {
 		node: INode,
 		options?: AssistantProcessOptions,
 	): ChatRequest.NodeInfo {
-		if (!node || options?.trimParameterValues) {
+		if (!node) {
 			return {};
 		}
 		// Get all referenced nodes and their schemas
 		const referencedNodeNames = getReferencedNodes(node);
-		const schemas = getNodesSchemas(referencedNodeNames);
+		const schemas = getNodesSchemas(referencedNodeNames, options?.trimParameterValues);
 
 		const nodeType = nodeTypesStore.getNodeType(node.type);
 
@@ -152,15 +152,18 @@ export const useAIAssistantHelpers = () => {
 			const availableAuthOptions = getNodeAuthOptions(nodeType);
 			authType = availableAuthOptions.find((option) => option.value === credentialInUse);
 		}
-		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = undefined;
-		const ndvInput = ndvStore.ndvInputData;
-		if (isNodeReferencingInputData(node) && ndvInput?.length) {
-			const inputData = ndvStore.ndvInputData[0].json;
-			const inputNodeName = ndvStore.input.nodeName;
-			nodeInputData = {
-				inputNodeName,
-				inputData,
-			};
+		let nodeInputData: { inputNodeName?: string; inputData?: IDataObject } | undefined = {};
+		// Only include input data if the node references it and we are allowed to send it
+		if (!options?.trimParameterValues) {
+			const ndvInput = ndvStore.ndvInputData;
+			if (isNodeReferencingInputData(node) && ndvInput?.length) {
+				const inputData = ndvStore.ndvInputData[0].json;
+				const inputNodeName = ndvStore.input.nodeName;
+				nodeInputData = {
+					inputNodeName,
+					inputData,
+				};
+			}
 		}
 		return {
 			authType,
