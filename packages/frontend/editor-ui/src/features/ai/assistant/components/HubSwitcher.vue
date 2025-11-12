@@ -30,7 +30,6 @@ function toggle(value: boolean) {
 </script>
 
 <template>
-	<!-- This looks weird but tooltip is enabled when switch is disabled -->
 	<N8nTooltip
 		:content="i18n.baseText('aiAssistant.tabs.builder.disabled.tooltip')"
 		:disabled="!props.disabled"
