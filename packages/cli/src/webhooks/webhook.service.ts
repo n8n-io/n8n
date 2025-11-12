@@ -304,7 +304,7 @@ export class WebhookService {
 		await this.runWebhookMethod('delete', workflow, webhookData, mode, activation);
 	}
 
-	private async runWebhookMethod(
+	async runWebhookMethod(
 		method: WebhookSetupMethodNames,
 		workflow: Workflow,
 		webhookData: IWebhookData,

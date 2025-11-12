@@ -17,4 +17,8 @@ export class GenericConfig {
 	/** Grace period (in seconds) to wait for components to shut down before process exit. */
 	@Env('N8N_GRACEFUL_SHUTDOWN_TIMEOUT')
 	gracefulShutdownTimeout: number = 30;
+
+	/** Period (in seconds) in which n8n should whether an external webhook is still registerd. */
+	@Env('N8N_WEBHOOK_REGISTERED_CHECK')
+	webhookRegisteredCheck: number = 300;
 }

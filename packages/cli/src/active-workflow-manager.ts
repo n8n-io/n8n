@@ -1,9 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
-import {
-	STARTING_NODES,
-	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
-	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
-} from '@/constants';
+import { GlobalConfig } from '@n8n/config';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
@@ -33,6 +29,7 @@ import type {
 	WorkflowExecuteMode,
 	INodeType,
 	WorkflowId,
+	IWebhookData,
 } from 'n8n-workflow';
 import {
 	Workflow,
@@ -45,6 +42,11 @@ import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
+import {
+	STARTING_NODES,
+	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
+	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
+} from '@/constants';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -88,6 +90,7 @@ export class ActiveWorkflowManager {
 		private readonly publisher: Publisher,
 		private readonly workflowsConfig: WorkflowsConfig,
 		private readonly push: Push,
+		private readonly globalConfig: GlobalConfig,
 	) {
 		this.logger = this.logger.scoped(['workflow-activation']);
 	}
@@ -101,6 +104,8 @@ export class ActiveWorkflowManager {
 		await this.addActiveWorkflows('init');
 
 		await this.externalHooks.run('activeWorkflows.initialized');
+
+		this.checkExternalWebhooksRegistered();
 	}
 
 	async getAllWorkflowActivationErrors() {
@@ -993,5 +998,137 @@ export class ActiveWorkflowManager {
 	 */
 	shouldAddTriggersAndPollers() {
 		return this.instanceSettings.isLeader;
+	}
+
+	/**
+	 * Checks regularly if all webhooks are functional and registers them again if they are not.
+	 */
+	checkExternalWebhooksRegistered() {
+		setInterval(async () => {
+			console.log('Run Registration-Webhook check');
+			const webhooks = await this.webhookService.findAll();
+
+			// TODO: We should probably save in the DB if the webhook registers something externally
+			//       to not have to do the very expensive and wasteful check here
+
+			// TODO: Think if they are set to best possible values
+			const mode = 'internal';
+			const activation = 'update';
+
+			for (const webhook of webhooks) {
+				try {
+					// TODO: Could be optimized to check query and create workflows only once in
+					//       case they have multiple webhooks.
+					const workflowData = await this.workflowRepository.findOne({
+						where: { id: webhook.workflowId },
+					});
+
+					if (workflowData === null) {
+						continue;
+					}
+
+					const workflow = new Workflow({
+						id: webhook.workflowId,
+						name: workflowData.name,
+						nodes: workflowData.nodes,
+						connections: workflowData.connections,
+						active: workflowData.active,
+						nodeTypes: this.nodeTypes,
+						staticData: workflowData.staticData,
+						settings: workflowData.settings,
+					});
+
+					const node = workflow.getNode(webhook.node);
+
+					if (!node) {
+						continue;
+					}
+
+					const nodeType = this.nodeTypes.getByNameAndVersion(node.type, node.typeVersion);
+
+					// Check if the node has "create" and "checkExists" methods defined. If not a
+					// check is not necessary as they do not have external webhook calls registered
+					const webhookMethodsDefault = nodeType.webhookMethods?.default;
+					if (!webhookMethodsDefault?.checkExists || !webhookMethodsDefault.create) {
+						continue;
+					}
+
+					const additionalData = await WorkflowExecuteAdditionalData.getBase({
+						workflowId: workflow.id,
+					});
+
+					const webhookDescription = nodeType.description.webhooks!.filter(
+						(value) => value.name === 'default',
+					)[0];
+					if (!webhookDescription) {
+						continue;
+					}
+
+					const webhookData: IWebhookData = {
+						workflowId: webhook.workflowId,
+						path: webhook.webhookPath,
+						httpMethod: webhook.method,
+						node: webhook.node,
+						webhookId: webhook.webhookId,
+						webhookDescription,
+						workflowExecuteAdditionalData: additionalData,
+						staticData: workflow.staticData,
+					};
+
+					// Check for each webhook if it is already registered with external service
+					const webhookExists = await this.webhookService.runWebhookMethod(
+						'checkExists',
+						workflow,
+						webhookData,
+						mode,
+						activation,
+					);
+
+					if (webhookExists) continue;
+
+					// If webhook is not registered anymore, register again
+					try {
+						await this.webhookService.runWebhookMethod(
+							'create',
+							workflow,
+							webhookData,
+							mode,
+							activation,
+						);
+					} catch (error) {
+						this.errorReporter.error(error);
+						this.logger.error(
+							`The webhook of node "${webhook.node}" in workflow "${workflow.name}" (${webhook.workflowId}) was not registered anymore. Reregistration of webhook failed`,
+							{
+								error,
+								workflowId: workflow.id,
+								workflowName: workflow.name,
+							},
+						);
+					}
+
+					// executeErrorWorkflow
+					this.logger.info(
+						`The webhook of node "${webhook.node}" in workflow "${workflow.name}" (${webhook.workflowId}) was not registered anymore and got reregistered`,
+						{
+							nodeName: node.name,
+							workflowId: workflow.id,
+							workflowName: workflow.name,
+						},
+					);
+
+					// TODO: We should probably also do something like this (but of different type) and run an
+					//       error workflow. After all is there a reasonable chance that webhook calls got missed
+					//       and we can so give them the opportunity to check for that
+					// const activationError = new WorkflowActivationError(
+					// 	`The webhook of node "${webhook.node}" in workflow "${workflow.name}" (${webhook.workflowId}) was not registered anymore and got reregistered`,
+					// 	{ node, workflowId: workflow.id },
+					// );
+					// this.executeErrorWorkflow(activationError, workflowData, mode);
+				} catch (error) {
+					// Ignore problems
+				}
+			}
+		}, this.globalConfig.generic.webhookRegisteredCheck);
 	}
 }
