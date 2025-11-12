@@ -1,6 +1,7 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -117,12 +118,49 @@ export class LmChatOpenRouter implements INodeType {
 				default: 'openai/gpt-4.1-mini',
 			},
 			{
+				displayName: 'Define Options',
+				name: 'defineOptions',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Using Fields Below',
+						value: 'fields',
+					},
+					{
+						name: 'Using JSON',
+						value: 'json',
+					},
+				],
+				default: 'fields',
+			},
+			{
+				displayName: 'Options',
+				name: 'jsonOutput',
+				type: 'json',
+				typeOptions: {
+					rows: 5,
+				},
+				// TODO: come up with default schema
+				default: '{\n}',
+				displayOptions: {
+					show: {
+						defineOptions: ['json'],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				placeholder: 'Add Option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
+				displayOptions: {
+					show: {
+						defineOptions: ['fields'],
+					},
+				},
 				options: [
 					{
 						displayName: 'Frequency Penalty',
@@ -214,7 +252,10 @@ export class LmChatOpenRouter implements INodeType {
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
-		const options = this.getNodeParameter('options', itemIndex, {}) as {
+		const defineOptions = this.getNodeParameter('defineOptions', itemIndex) as 'json' | 'fields';
+
+		let jsonOptions = {};
+		let options: {
 			frequencyPenalty?: number;
 			maxTokens?: number;
 			maxRetries: number;
@@ -223,7 +264,31 @@ export class LmChatOpenRouter implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
-		};
+		} = {} as any;
+		if (defineOptions === 'json') {
+			try {
+				const jsonOutput = this.getNodeParameter('jsonOutput', itemIndex, {
+					rawExpressions: true,
+				}) as string;
+
+				// TODO: support expressions in json, maybe with resolveRawData(jsonOutput)
+				jsonOptions = jsonOutput;
+			} catch (error) {
+				throw new NodeOperationError(this.getNode(), error.message, {
+					description: error.message,
+				});
+			}
+		} else {
+			options = this.getNodeParameter('options', itemIndex, {}) as any;
+			options = {
+				...options,
+			};
+			if (options.responseFormat) {
+				jsonOptions = {
+					response_format: { type: options.responseFormat },
+				};
+			}
+		}
 
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
@@ -240,11 +305,7 @@ export class LmChatOpenRouter implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs: jsonOptions,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
