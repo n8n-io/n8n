@@ -35,11 +35,11 @@ export class BackfillMissingWorkflowHistoryRecords1762763704614 implements Irrev
 			FROM ${workflowTable} w
 			LEFT JOIN ${historyTable} wh
 				ON wh.${versionIdColumn} = w.${versionIdColumn}
-			    AND wh.${workflowIdColumn} = w.${idColumn}
+				AND wh.${workflowIdColumn} = w.${idColumn}
 			LEFT JOIN dup_version d
 				ON d.${versionIdColumn} = w.${versionIdColumn}
 			WHERE
-			    -- missing or empty versionId
+				-- missing or empty versionId
 				w.${versionIdColumn} IS NULL OR w.${versionIdColumn} = ''
 				-- duplicate versionId without matching history entry by both versionId and workflowId
 				OR (
