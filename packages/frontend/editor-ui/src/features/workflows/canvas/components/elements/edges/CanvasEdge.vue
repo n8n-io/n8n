@@ -147,7 +147,7 @@ function onEdgeLabelMouseLeave() {
 			:class="edgeClasses"
 			:style="edgeStyle"
 			:path="segment[0]"
-			:marker-end="markerEnd"
+			:marker-end="isMainConnection ? markerEnd : undefined"
 			:interaction-width="40"
 		/>
 	</g>
