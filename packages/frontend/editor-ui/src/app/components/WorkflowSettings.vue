@@ -28,7 +28,15 @@ import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
-import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nIcon,
+	N8nInput,
+	N8nOption,
+	N8nSelect,
+	N8nTabs,
+	N8nTooltip,
+} from '@n8n/design-system';
 const route = useRoute();
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
@@ -124,6 +132,28 @@ const isEligibleForMcp = computed(() => {
 	if (!workflow?.value) return false;
 	return isEligibleForMcpAccess(workflow.value);
 });
+
+const savedTimeNodes = computed(() => {
+	if (!workflow?.value?.nodes) return [];
+	return workflow.value.nodes.filter((node) => node.type === 'n8n-nodes-base.savedTime');
+});
+
+const hasSavedTimeNodes = computed(() => savedTimeNodes.value.length > 0);
+
+const timeSavedTab = ref<'fixed' | 'conditional'>(
+	hasSavedTimeNodes.value ? 'conditional' : 'fixed',
+);
+
+const timeSavedTabOptions = computed(() => [
+	{
+		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.fixed'),
+		value: 'fixed' as const,
+	},
+	{
+		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.conditional'),
+		value: 'conditional' as const,
+	},
+]);
 
 const onCallerIdsInput = (str: string) => {
 	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
@@ -914,17 +944,91 @@ onBeforeUnmount(() => {
 						</label>
 					</ElCol>
 					<ElCol :span="14">
-						<div :class="$style['time-saved']">
-							<N8nInput
-								id="timeSavedPerExecution"
-								v-model="workflowSettings.timeSavedPerExecution"
-								:disabled="readOnlyEnv || !workflowPermissions.update"
-								data-test-id="workflow-settings-time-saved-per-execution"
-								type="number"
-								min="0"
-								@update:model-value="updateTimeSavedPerExecution"
+						<div :class="$style['time-saved-tabs']">
+							<N8nTabs
+								v-model="timeSavedTab"
+								:options="timeSavedTabOptions"
+								data-test-id="workflow-settings-time-saved-tabs"
 							/>
-							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
+							<div :class="$style['time-saved-content']">
+								<!-- Fixed tab content -->
+								<div v-if="timeSavedTab === 'fixed'" :class="$style['time-saved-fixed']">
+									<div v-if="hasSavedTimeNodes" :class="$style['time-saved-warning']">
+										<span
+											v-n8n-html="
+												i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning', {
+													interpolate: {
+														link: `<a href='#' class='${$style['time-saved-link']}'>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.link')}</a>`,
+														action: `<strong>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.action')}</strong>`,
+													},
+												})
+											"
+										></span>
+									</div>
+									<div v-else :class="$style['time-saved-input']">
+										<N8nInput
+											id="timeSavedPerExecution"
+											v-model="workflowSettings.timeSavedPerExecution"
+											:disabled="readOnlyEnv || !workflowPermissions.update"
+											data-test-id="workflow-settings-time-saved-per-execution"
+											type="number"
+											min="0"
+											@update:model-value="updateTimeSavedPerExecution"
+										/>
+										<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
+									</div>
+								</div>
+
+								<!-- Conditional tab content -->
+								<div v-else :class="$style['time-saved-conditional']">
+									<div v-if="!hasSavedTimeNodes" :class="$style['time-saved-no-nodes']">
+										<div :class="$style['no-nodes-title']">
+											{{ i18n.baseText('workflowSettings.timeSavedPerExecution.noNodesDetected') }}
+										</div>
+										<div
+											:class="$style['no-nodes-hint']"
+											v-n8n-html="
+												i18n.baseText(
+													'workflowSettings.timeSavedPerExecution.noNodesDetected.hint',
+													{
+														interpolate: {
+															link: `<a href='#' class='${$style['time-saved-link']}'>${i18n.baseText('workflowSettings.timeSavedPerExecution.noNodesDetected.link')}</a>`,
+														},
+													},
+												)
+											"
+										></div>
+									</div>
+									<div v-else :class="$style['time-saved-nodes-active']">
+										<div :class="$style['nodes-active-wrapper']">
+											<N8nIcon icon="clock" :class="$style['nodes-active-icon']" />
+											<div :class="$style['nodes-active-content']">
+												<div :class="$style['nodes-active-title']">
+													{{
+														i18n.baseText('workflowSettings.timeSavedPerExecution.nodesDetected', {
+															interpolate: { count: savedTimeNodes.length },
+														})
+													}}
+												</div>
+												<div :class="$style['nodes-active-hint']">
+													{{
+														i18n.baseText(
+															'workflowSettings.timeSavedPerExecution.nodesDetected.hint',
+														)
+													}}
+												</div>
+											</div>
+										</div>
+										<a href="#" :class="$style['add-more-link']">
+											{{
+												i18n.baseText(
+													'workflowSettings.timeSavedPerExecution.nodesDetected.addMore',
+												)
+											}}
+										</a>
+									</div>
+								</div>
+							</div>
 						</div>
 					</ElCol>
 				</ElRow>
@@ -986,7 +1090,20 @@ onBeforeUnmount(() => {
 	margin-left: var(--spacing--3xs);
 }
 
-.time-saved {
+.time-saved-tabs {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
+.time-saved-content {
+	padding: var(--spacing--sm);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius);
+	background-color: var(--color--background--light-2);
+}
+
+.time-saved-input {
 	display: flex;
 	align-items: center;
 
@@ -996,6 +1113,81 @@ onBeforeUnmount(() => {
 
 	span {
 		margin-left: var(--spacing--2xs);
+	}
+}
+
+.time-saved-warning {
+	color: var(--color--text);
+	line-height: var(--line-height--xl);
+}
+
+.time-saved-link {
+	color: var(--color--primary);
+	text-decoration: none;
+
+	&:hover {
+		text-decoration: underline;
+	}
+}
+
+.time-saved-no-nodes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.no-nodes-title {
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+}
+
+.no-nodes-hint {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+}
+
+.time-saved-nodes-active {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.nodes-active-wrapper {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+}
+
+.nodes-active-icon {
+	color: var(--color--primary);
+	margin-top: var(--spacing--5xs);
+}
+
+.nodes-active-content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	flex: 1;
+}
+
+.nodes-active-title {
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+}
+
+.nodes-active-hint {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+}
+
+.add-more-link {
+	color: var(--color--primary);
+	text-decoration: none;
+	font-size: var(--font-size--sm);
+
+	&:hover {
+		text-decoration: underline;
 	}
 }
 </style>

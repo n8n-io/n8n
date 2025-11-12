@@ -45,6 +45,7 @@ export const QA_CHAIN_NODE_TYPE = '@n8n/n8n-nodes-langchain.chainRetrievalQa';
 export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
 export const N8N_NODE_TYPE = 'n8n-nodes-base.n8n';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
+export const SAVED_TIME_NODE = 'n8n-nodes-base.savedTime';
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
 export const NOTION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.notionTrigger';
 export const PAGERDUTY_NODE_TYPE = 'n8n-nodes-base.pagerDuty';

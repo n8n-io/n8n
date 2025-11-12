@@ -14,7 +14,6 @@ export class SavedTime implements INodeType {
 		group: ['organization'],
 		version: 1,
 		description: 'Track dynamic time savings for this workflow execution',
-		iconColor: 'gray',
 		defaults: {
 			name: 'Saved Time',
 			color: '#1E90FF',
@@ -33,18 +32,18 @@ export class SavedTime implements INodeType {
 				displayName: 'Calculation Mode',
 				name: 'mode',
 				type: 'options',
-				default: 'fixed',
+				default: 'once',
 				noDataExpression: true,
 				options: [
+					{
+						name: 'Once For All Items',
+						value: 'once',
+						description: 'Counts minutes saved once for all input items',
+					},
 					{
 						name: 'Per Item',
 						value: 'perItem',
 						description: 'Multiply minutes saved by the number of input items',
-					},
-					{
-						name: 'Once For All Items',
-						value: 'once',
-						description: 'Count minutes saved once for all input items',
 					},
 				],
 			},
@@ -90,8 +89,6 @@ export class SavedTime implements INodeType {
 					`Time saved cannot be negative, got: ${timeSavedMinutes}`,
 				);
 			}
-
-			console.log('timeSavedMinutes', timeSavedMinutes);
 
 			// Set metadata using the clean API
 			this.setMetadata({

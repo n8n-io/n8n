@@ -58,6 +58,7 @@ import {
 	AI_WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE,
 	HUMAN_IN_THE_LOOP_CATEGORY,
 	TEMPLATE_CATEGORY_AI,
+	SAVED_TIME_NODE,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -590,7 +591,7 @@ export function RegularView(nodes: SimplifiedNodeType[]) {
 						{
 							key: 'popular',
 							title: i18n.baseText('nodeCreator.sectionNames.popular'),
-							items: [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE, CODE_NODE_TYPE],
+							items: [HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE, CODE_NODE_TYPE, SAVED_TIME_NODE],
 						},
 					],
 				},
