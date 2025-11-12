@@ -43,6 +43,7 @@
 		"../../node_modules/jest-expect-message/types/index.d.ts"
 	],
 	"references": [
+		{ "path": "../@n8n/db/tsconfig.build.json" },
 		{ "path": "../@n8n/imap/tsconfig.build.json" },
 		{ "path": "../workflow/tsconfig.build.esm.json" },
 		{ "path": "../core/tsconfig.build.json" }

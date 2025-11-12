@@ -1,0 +1,14 @@
+{
+	"node": "n8n-nodes-base.emailUser",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"categories": ["Communication"],
+	"alias": ["Email", "Mail", "Notify", "Alert", "Message", "User"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.emailuser/"
+			}
+		]
+	}
+}
