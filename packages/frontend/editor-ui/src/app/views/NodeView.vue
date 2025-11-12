@@ -120,6 +120,7 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import type { PinDataSource } from '@/app/composables/usePinnedData';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useBeforeUnload } from '@/app/composables/useBeforeUnload';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { getResourcePermissions } from '@n8n/permissions';
 import NodeViewUnfinishedWorkflowMessage from '@/app/components/NodeViewUnfinishedWorkflowMessage.vue';
 import { shouldIgnoreCanvasShortcut } from '@/features/workflows/canvas/canvas.utils';
@@ -177,6 +178,8 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({ router });
 const nodeHelpers = useNodeHelpers();
+const workflowHelpers = useWorkflowHelpers();
+const clipboard = useClipboard({ onPaste: onClipboardPaste });
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -263,7 +266,6 @@ const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 const { fetchAndSetParentFolder } = useParentFolder();
 
-useClipboard({ onPaste: onClipboardPaste });
 useKeybindings({
 	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
 });
@@ -1261,7 +1263,51 @@ async function onRunWorkflowToNode(id: string) {
 		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
 	}
 }
+async function onCopyTestUrl(id: string) {
+	const node = workflowsStore.getNodeById(id);
+	if (!node) return;
 
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	if (!nodeType?.webhooks?.length) return;
+
+	const webhook = nodeType.webhooks[0];
+	const webhookUrl = workflowHelpers.getWebhookUrl(webhook, node, 'test');
+
+	void clipboard.copy(webhookUrl);
+
+	toast.showMessage({
+		title: i18n.baseText('nodeWebhooks.showMessage.title'),
+		type: 'success',
+	});
+
+	telemetry.track('User copied webhook URL', {
+		pane: 'canvas',
+		type: 'test url',
+	});
+}
+
+async function onCopyProductionUrl(id: string) {
+	const node = workflowsStore.getNodeById(id);
+	if (!node) return;
+
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	if (!nodeType?.webhooks?.length) return;
+
+	const webhook = nodeType.webhooks[0];
+	const webhookUrl = workflowHelpers.getWebhookUrl(webhook, node, 'production');
+
+	void clipboard.copy(webhookUrl);
+
+	toast.showMessage({
+		title: i18n.baseText('nodeWebhooks.showMessage.title'),
+		type: 'success',
+	});
+
+	telemetry.track('User copied webhook URL', {
+		pane: 'canvas',
+		type: 'production url',
+	});
+}
 function trackRunWorkflowToNode(node: INodeUi) {
 	const telemetryPayload = {
 		node_type: node.type,
@@ -2011,6 +2057,8 @@ onBeforeUnmount(() => {
 			@click:node="onClickNode"
 			@click:node:add="onClickNodeAdd"
 			@run:node="onRunWorkflowToNode"
+			@copy:production:url="onCopyProductionUrl"
+			@copy:test:url="onCopyTestUrl"
 			@delete:node="onDeleteNode"
 			@create:connection="onCreateConnection"
 			@create:connection:cancelled="onCreateConnectionCancelled"

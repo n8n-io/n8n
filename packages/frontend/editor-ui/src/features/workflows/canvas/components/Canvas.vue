@@ -85,6 +85,8 @@ const emit = defineEmits<{
 	'click:node': [id: string, position: XYPosition];
 	'click:node:add': [id: string, handle: string];
 	'run:node': [id: string];
+	'copy:production:url': [id: string];
+	'copy:test:url': [id: string];
 	'delete:node': [id: string];
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
@@ -750,6 +752,10 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return emit('update:nodes:pin', nodeIds, 'context-menu');
 		case 'execute':
 			return emit('run:node', nodeIds[0]);
+		case 'copy_production_url':
+			return emit('copy:production:url', nodeIds[0]);
+		case 'copy_test_url':
+			return emit('copy:test:url', nodeIds[0]);
 		case 'toggle_activation':
 			return emit('update:nodes:enabled', nodeIds);
 		case 'open':
