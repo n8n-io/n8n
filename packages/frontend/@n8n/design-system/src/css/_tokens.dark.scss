@@ -69,19 +69,11 @@
 
 	// Canvas
 	--canvas--color--background: var(--color--neutral-950);
-	--canvas--color--background--h: 0;
-	--canvas--color--background--s: 0%;
-	--canvas--color--background--l: 9%;
 	--canvas--dot--color: var(--color--neutral-700);
 	--canvas--read-only-line--color: var(--color--neutral-900);
 	--canvas--color--selected: var(--color--white-alpha-400);
 	--canvas--color--selected-transparent: var(--canvas--color--selected);
-	--canvas--label--color--background: hsla(
-		var(--canvas--color--background--h),
-		var(--canvas--color--background--s),
-		var(--canvas--color--background--l),
-		0.85
-	);
+	--canvas--label--color--background: oklch(from var(--canvas--color--background) l c h / 0.85);
 
 	// Nodes
 	--node--color--background: var(--color--neutral-850);

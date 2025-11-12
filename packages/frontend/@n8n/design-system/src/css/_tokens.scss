@@ -167,20 +167,12 @@
 	--lm-chat--user--color: var(--color--text--tint-3);
 
 	// Canvas
-	--canvas--color--background: var(--color--neutral-50);
-	--canvas--color--background--h: 220;
-	--canvas--color--background--s: 47%;
-	--canvas--color--background--l: 99%;
+	--canvas--color--background: var(--color--neutral-150);
 	--canvas--dot--color: var(--color--neutral-500);
 	--canvas--read-only-line--color: var(--color--neutral-100);
 	--canvas--color--selected: var(--color--neutral-150);
 	--canvas--color--selected-transparent: hsla(220, 47%, 30%, 0.1);
-	--canvas--label--color--background: hsla(
-		var(--canvas--color--background--h),
-		var(--canvas--color--background--s),
-		var(--canvas--color--background--l),
-		0.85
-	);
+	--canvas--label--color--background: oklch(from var(--canvas--color--background) l c h / 0.85);
 
 	// Nodes
 	--node--color--background: var(--color--background--light-3);
