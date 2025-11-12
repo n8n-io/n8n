@@ -1391,24 +1391,22 @@ describe('LdapService', () => {
 			});
 
 			beforeEach(() => {
-				Client.prototype.search = jest.fn().mockImplementation(async () => {
-					return Promise.resolve({
-						searchEntries: [
-							{
-								dn: 'uid:duplicate,ou=users,dc=example,dc=com',
-								cn: 'Duplicate',
-								mail: 'jdoe@example.com', // same email as jdoe
-								uid: 'duplicate',
-							},
-							{
-								dn: 'uid=jdoe,ou=users,dc=example,dc=com',
-								cn: 'John Doe',
-								mail: 'jdoe@example.com',
-								uid: 'jdoe',
-							},
-						],
-					});
-				});
+				Client.prototype.search = jest.fn().mockImplementation(async () => ({
+					searchEntries: [
+						{
+							dn: 'uid:duplicate,ou=users,dc=example,dc=com',
+							cn: 'Duplicate',
+							mail: 'jdoe@example.com', // same email as jdoe
+							uid: 'duplicate',
+						},
+						{
+							dn: 'uid=jdoe,ou=users,dc=example,dc=com',
+							cn: 'John Doe',
+							mail: 'jdoe@example.com',
+							uid: 'jdoe',
+						},
+					],
+				}));
 
 				const mockedGetAuthIdentity = getAuthIdentityByLdapId as jest.Mock;
 				mockedGetAuthIdentity.mockResolvedValue(null);
