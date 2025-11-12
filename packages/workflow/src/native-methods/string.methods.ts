@@ -7,6 +7,7 @@ export const stringMethods: NativeDoc = {
 			doc: {
 				name: 'length',
 				aliases: ['size', 'count'],
+				aliasMode: 'exact',
 				description: 'The number of characters in the string',
 				examples: [{ example: '"hello".length', evaluated: '5' }],
 				section: 'query',

@@ -7,6 +7,7 @@ export const arrayMethods: NativeDoc = {
 			doc: {
 				name: 'length',
 				aliases: ['size', 'count'],
+				aliasMode: 'exact',
 				description: 'The number of elements in the array',
 				examples: [{ example: "['Bob', 'Bill', 'Nat'].length", evaluated: '3' }],
 				docURL:

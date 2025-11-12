@@ -85,7 +85,10 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 	addAlias('toLowerCase()', [{ label: 'lower()' }]);
 	addAlias('toUpperCase()', [{ label: 'upper()' }]);
 
-	addAlias('length', [{ label: 'size' }, { label: 'count' }]);
+	addAlias('length', [
+		{ label: 'size', mode: 'exact' },
+		{ label: 'count', mode: 'exact' },
+	]);
 
 	if (isGlobal) {
 		options = options

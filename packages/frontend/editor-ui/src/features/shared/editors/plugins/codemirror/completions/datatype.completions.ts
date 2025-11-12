@@ -156,8 +156,10 @@ export function sortCompletionsByInput(options: AliasCompletion[], input: string
 		.map((o) => {
 			let order = 0;
 			if (prefixMatch(o.label, input)) {
+				order = 3;
+			} else if (o.alias?.some((a) => a.mode === 'exact' && a.label === input)) {
 				order = 2;
-			} else if (o.alias?.some((a) => prefixMatch(a.label, input))) {
+			} else if (o.alias?.some((a) => a.mode !== 'exact' && prefixMatch(a.label, input))) {
 				order = 1;
 			}
 			return {
@@ -367,7 +369,7 @@ const createCompletionOption = ({
 			defaultArgs: getDefaultArgs(doc),
 			transformLabel,
 		}),
-		alias: doc?.aliases?.map((alias) => ({ label: alias })),
+		alias: doc?.aliases?.map((alias) => ({ label: alias, mode: doc.aliasMode })),
 		type,
 	};
 	option.info = createInfoBoxRenderer(doc, isFunction);
