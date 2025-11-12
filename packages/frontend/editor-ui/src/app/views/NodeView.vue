@@ -2466,6 +2466,22 @@ onBeforeUnmount(() => {
 </style>
 
 <style lang="scss">
+.heatmap-bucket-0,
+.heatmap-bucket-10,
+.heatmap-bucket-9,
+.heatmap-bucket-8,
+.heatmap-bucket-7,
+.heatmap-bucket-6,
+.heatmap-bucket-5,
+.heatmap-bucket-4,
+.heatmap-bucket-3,
+.heatmap-bucket-2,
+.heatmap-bucket-1 {
+	.n8n-node-icon {
+		mix-blend-mode: luminosity;
+	}
+}
+
 /* Heatmap bucket styles - applied globally to canvas nodes */
 /* Bucket 0: No data - neutral gray */
 .heatmap-bucket-0 {
