@@ -1,0 +1,20 @@
+<mjml>
+	<mj-include path="./_common.mjml" />
+	<mj-body>
+		<mj-section padding="0 20px">
+			<mj-column>
+				<mj-include path="./_logo.mjml" />
+				<mj-text font-size="22px" font-weight="400">Workflow Execution Failed</mj-text>
+				<mj-text>Hi {{firstName}},</mj-text>
+				<mj-text>This is to notify you that a workflow in your n8n instance has failed during its first production execution.</mj-text>
+				<mj-text><b>Workflow ID:</b> {{workflowId}}</mj-text>
+				<mj-text>Please review your workflow execution logs to understand what went wrong and make necessary adjustments.</mj-text>
+				<mj-button href="{{workflowUrl}}">View Workflow</mj-button>
+				<mj-text font-size="14px" color="#909398" font-style="italic" font-weight="300">
+					This is an automated notification sent only for the first production failure of your n8n instance.
+				</mj-text>
+				<mj-include path="./_footer.mjml" />
+			</mj-column>
+		</mj-section>
+	</mj-body>
+</mjml>

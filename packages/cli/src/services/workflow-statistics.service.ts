@@ -145,10 +145,14 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 				if (!instanceHadProductionFailure) {
 					// This is the first production failure ever on this instance
 					const project = await this.ownershipService.getWorkflowProjectCached(workflowId);
-					const owner =
+
+					// Get owner: personal project owner if available, otherwise instance owner
+					let owner =
 						project.type === 'personal'
 							? await this.ownershipService.getPersonalProjectOwnerCached(project.id)
 							: null;
+
+					owner ??= await this.ownershipService.getInstanceOwner();
 
 					// Store the flag to prevent future emissions
 					await this.settingsRepository.save({
@@ -156,7 +160,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 						value: JSON.stringify({
 							workflowId,
 							projectId: project.id,
-							userId: owner?.id,
+							userId: owner.id,
 							timestamp: runData.startedAt.getTime(),
 						}),
 						loadOnStartup: false,
@@ -166,7 +170,7 @@ export class WorkflowStatisticsService extends TypedEmitter<WorkflowStatisticsEv
 					this.eventService.emit('instance-first-production-workflow-failed', {
 						projectId: project.id,
 						workflowId,
-						userId: owner?.id ?? '',
+						userId: owner.id,
 					});
 				}
 			}
