@@ -1,11 +1,12 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-multiple-template-root */
-import { useCanvasNode } from '../../../../composables/useCanvasNode';
-import type { CanvasNodeStickyNoteRender } from '../../../../canvas.types';
-import { ref, computed, useCssModule, onMounted, onBeforeUnmount } from 'vue';
-import { NodeResizer } from '@vue-flow/node-resizer';
-import type { OnResize } from '@vue-flow/node-resizer';
 import type { XYPosition } from '@vue-flow/core';
+import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
+import type { OnResize } from '@vue-flow/node-resizer';
+import { NodeResizer } from '@vue-flow/node-resizer';
+import { computed, onBeforeUnmount, onMounted, ref, useCssModule } from 'vue';
+import type { CanvasNodeStickyNoteRender } from '../../../../canvas.types';
+import { useCanvasNode } from '../../../../composables/useCanvasNode';
 
 import { N8nSticky } from '@n8n/design-system';
 defineOptions({
@@ -22,7 +23,7 @@ const emit = defineEmits<{
 
 const $style = useCssModule();
 
-const { id, isSelected, isReadOnly, render, eventBus } = useCanvasNode();
+const { id, isSelected, isReadOnly, render, eventBus, node } = useCanvasNode();
 
 const renderOptions = computed(() => render.value.options as CanvasNodeStickyNoteRender['options']);
 
@@ -53,6 +54,7 @@ function onResize(event: OnResize) {
  */
 
 const isActive = ref(false);
+const vueFlowInstance = useVueFlow();
 
 function onInputChange(value: string) {
 	emit('update', {
@@ -67,6 +69,15 @@ function onSetActive(value: boolean) {
 
 	if (value) {
 		emit('activate', id.value);
+		const graphNode = vueFlowInstance.findNode(id.value);
+		if (!graphNode) return;
+		const rect = getRectOfNodes([graphNode]);
+		void vueFlowInstance.fitBounds({
+			x: rect.x,
+			y: rect.y,
+			width: Math.min(rect.width, 800),
+			height: Math.min(rect.height, 800),
+		});
 	} else {
 		emit('deactivate', id.value);
 	}
