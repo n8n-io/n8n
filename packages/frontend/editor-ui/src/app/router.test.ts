@@ -61,11 +61,7 @@ describe('router', () => {
 		10000,
 	);
 
-	test.each([
-		['/workflow/R9JFXwkUCL1jZBuw/debug/29021', VIEWS.WORKFLOWS],
-		['/workflow/8IFYawZ9dKqJu8sT/history', VIEWS.WORKFLOWS],
-		['/workflow/8IFYawZ9dKqJu8sT/history/6513ed960252b846f3792f0c', VIEWS.WORKFLOWS],
-	])(
+	test.each([['/workflow/R9JFXwkUCL1jZBuw/debug/29021', VIEWS.WORKFLOWS]])(
 		'should redirect %s to %s if user does not have permissions',
 		async (path, name) => {
 			await router.push(path);
@@ -75,18 +71,26 @@ describe('router', () => {
 		10000,
 	);
 
-	test.each([
-		['/workflow/R9JFXwkUCL1jZBuw/debug/29021', VIEWS.EXECUTION_DEBUG],
-		['/workflow/8IFYawZ9dKqJu8sT/history', VIEWS.WORKFLOW_HISTORY],
-		['/workflow/8IFYawZ9dKqJu8sT/history/6513ed960252b846f3792f0c', VIEWS.WORKFLOW_HISTORY],
-	])(
+	test.each([['/workflow/R9JFXwkUCL1jZBuw/debug/29021', VIEWS.EXECUTION_DEBUG]])(
 		'should resolve %s to %s if user has permissions',
 		async (path, name) => {
 			const settingsStore = useSettingsStore();
 
 			settingsStore.settings.enterprise.debugInEditor = true;
-			settingsStore.settings.enterprise.workflowHistory = true;
 
+			await router.push(path);
+			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
+			expect(router.currentRoute.value.name).toBe(name);
+		},
+		10000,
+	);
+
+	test.each([
+		['/workflow/8IFYawZ9dKqJu8sT/history', VIEWS.WORKFLOW_HISTORY],
+		['/workflow/8IFYawZ9dKqJu8sT/history/6513ed960252b846f3792f0c', VIEWS.WORKFLOW_HISTORY],
+	])(
+		'should resolve %s to %s (available to all users)',
+		async (path, name) => {
 			await router.push(path);
 			expect(initializeAuthenticatedFeaturesSpy).toHaveBeenCalled();
 			expect(router.currentRoute.value.name).toBe(name);

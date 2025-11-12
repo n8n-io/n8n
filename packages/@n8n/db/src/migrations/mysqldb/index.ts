@@ -110,6 +110,7 @@ import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRole
 import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
+import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/1762763704614-BackfillMissingWorkflowHistoryRecords';
 import type { Migration } from '../migration-types';
 
 export const mysqlMigrations: Migration[] = [
@@ -225,4 +226,5 @@ export const mysqlMigrations: Migration[] = [
 	ChangeDependencyInfoToJson1761655473000,
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
+	BackfillMissingWorkflowHistoryRecords1762763704614,
 ];

@@ -3,7 +3,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 
 import { License } from '@/license';
-import { getWorkflowHistoryPruneTime } from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
+import { getWorkflowHistoryPruneTime } from '@/workflows/workflow-history/workflow-history-helper';
 
 let licensePruneTime = -1;
 const globalConfig = Container.get(GlobalConfig);
