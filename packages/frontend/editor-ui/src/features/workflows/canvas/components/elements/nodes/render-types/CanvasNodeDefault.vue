@@ -190,7 +190,7 @@ function onActivate(event: MouseEvent) {
 
 <style lang="scss" module>
 .node {
-	--canvas-node--border-width: 2px;
+	--canvas-node--border-width: 1px;
 	--trigger-node--radius: 36px;
 	--canvas-node--status-icons--margin: var(--spacing--3xs);
 	--node--icon--color: var(--color--foreground--shade-1);
@@ -203,7 +203,14 @@ function onActivate(event: MouseEvent) {
 	justify-content: center;
 	background: var(--canvas-node--color--background, var(--node--color--background));
 	background-clip: padding-box;
-	border: var(--canvas-node--border-width) solid var(--canvas-node--border-color, transparent);
+	border: var(--canvas-node--border-width) solid
+		var(
+			--canvas-node--border-color,
+			light-dark(
+				oklch(from var(--color--neutral-black) l c h / 0.07),
+				oklch(from var(--color--neutral-white) l c h / 0.085)
+			)
+		);
 	border-radius: var(--radius--lg);
 
 	&.trigger {
@@ -286,6 +293,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.success {
+		--canvas-node--border-width: 2px;
 		--canvas-node--border-color: var(
 			--color-canvas-node-success-border-color,
 			var(--color--success)
@@ -293,6 +301,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.warning {
+		--canvas-node--border-width: 2px;
 		--canvas-node--border-color: var(--color--warning);
 	}
 
@@ -301,6 +310,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.pinned {
+		--canvas-node--border-width: 2px;
 		--canvas-node--border-color: var(
 			--color-canvas-node-pinned-border-color,
 			var(--node--border-color--pinned)
