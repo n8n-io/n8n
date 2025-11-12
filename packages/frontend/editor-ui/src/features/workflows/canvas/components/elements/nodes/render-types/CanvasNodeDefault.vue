@@ -202,8 +202,7 @@ function onActivate(event: MouseEvent) {
 	align-items: center;
 	justify-content: center;
 	background: var(--canvas-node--color--background, var(--node--color--background));
-	border: var(--canvas-node--border-width) solid
-		var(--canvas-node--border-color, var(--color--foreground--shade-2));
+	border: var(--canvas-node--border-width) solid var(--canvas-node--border-color, transparent);
 	border-radius: var(--radius--lg);
 
 	&.trigger {
@@ -216,12 +215,6 @@ function onActivate(event: MouseEvent) {
 	 */
 
 	&.configuration {
-		background: var(
-			--canvas-node--color--background,
-			var(--node-type--supplemental--color--background)
-		);
-		border: var(--canvas-node--border-width) solid
-			var(--canvas-node--border-color, var(--color--foreground--shade-1));
 		border-radius: calc(var(--canvas-node--height) / 2);
 
 		.statusIcons {

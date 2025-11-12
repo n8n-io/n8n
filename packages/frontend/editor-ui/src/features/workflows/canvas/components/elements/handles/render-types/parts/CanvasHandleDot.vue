@@ -18,7 +18,8 @@ withDefaults(
 	width: var(--handle--indicator--width);
 	height: var(--handle--indicator--height);
 	border-radius: 50%;
-	background: var(--color--foreground--shade-2);
+	background: light-dark(var(--color--neutral-white), var(--color--neutral-850));
+	border: 1px solid light-dark(var(--color--neutral-300), var(--color--neutral-500));
 
 	&:hover {
 		background: var(--color--primary);
