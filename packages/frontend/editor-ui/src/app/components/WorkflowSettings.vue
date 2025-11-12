@@ -26,6 +26,9 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
+import { NODE_CREATOR_OPEN_SOURCES } from '@/app/constants';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
 import {
@@ -44,6 +47,7 @@ const toast = useToast();
 const modalBus = createEventBus();
 const telemetry = useTelemetry();
 const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow } = useMcp();
+const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -51,6 +55,7 @@ const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
+const nodeCreatorStore = useNodeCreatorStore();
 
 const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
@@ -552,10 +557,24 @@ onMounted(async () => {
 	telemetry.track('User opened workflow settings', {
 		workflow_id: workflowsStore.workflowId,
 	});
+
+	// Register custom action for opening SavedTime node creator
+	registerCustomAction({
+		key: 'openSavedTimeNodeCreator',
+		action: () => {
+			// Close the workflow settings modal
+			closeDialog();
+			// Open node creator for regular nodes
+			nodeCreatorStore.openNodeCreatorForRegularNodes(
+				NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			);
+		},
+	});
 });
 
 onBeforeUnmount(() => {
 	debouncedLoadWorkflows.cancel?.();
+	unregisterCustomAction('openSavedTimeNodeCreator');
 });
 </script>
 
@@ -958,7 +977,7 @@ onBeforeUnmount(() => {
 											v-n8n-html="
 												i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning', {
 													interpolate: {
-														link: `<a href='#' class='${$style['time-saved-link']}'>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.link')}</a>`,
+														link: `<a href='#' class='${$style['time-saved-link']}' data-action='openSavedTimeNodeCreator'>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.link')}</a>`,
 														action: `<strong>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.action')}</strong>`,
 													},
 												})
@@ -992,7 +1011,7 @@ onBeforeUnmount(() => {
 													'workflowSettings.timeSavedPerExecution.noNodesDetected.hint',
 													{
 														interpolate: {
-															link: `<a href='#' class='${$style['time-saved-link']}'>${i18n.baseText('workflowSettings.timeSavedPerExecution.noNodesDetected.link')}</a>`,
+															link: `<a href='#' class='${$style['time-saved-link']}' data-action='openSavedTimeNodeCreator'>${i18n.baseText('workflowSettings.timeSavedPerExecution.noNodesDetected.link')}</a>`,
 														},
 													},
 												)
@@ -1019,7 +1038,11 @@ onBeforeUnmount(() => {
 												</div>
 											</div>
 										</div>
-										<a href="#" :class="$style['add-more-link']">
+										<a
+											href="#"
+											:class="$style['add-more-link']"
+											data-action="openSavedTimeNodeCreator"
+										>
 											{{
 												i18n.baseText(
 													'workflowSettings.timeSavedPerExecution.nodesDetected.addMore',
