@@ -64,18 +64,8 @@ const commonClasses = computed(() => [
 </script>
 
 <template>
-	<div v-if="executionWaiting || executionStatus === 'waiting'">
-		<div :class="[...commonClasses, $style.waiting]">
-			<N8nTooltip placement="bottom">
-				<template #content>
-					<div v-text="executionWaiting"></div>
-				</template>
-				<N8nIcon icon="clock" :size="size" />
-			</N8nTooltip>
-		</div>
-	</div>
 	<div
-		v-else-if="isNotInstalledCommunityNode && !isDemoRoute"
+		v-if="isNotInstalledCommunityNode && !isDemoRoute"
 		:class="[...commonClasses, $style.issues]"
 		data-test-id="node-not-installed"
 	>
@@ -83,13 +73,6 @@ const commonClasses = computed(() => [
 			<template #content> {{ i18n.baseText('node.install-to-use') }} </template>
 			<N8nIcon icon="hard-drive-download" :size="size" />
 		</N8nTooltip>
-	</div>
-	<div
-		v-else-if="isNodeExecuting"
-		data-test-id="canvas-node-status-running"
-		:class="[...commonClasses, $style.running]"
-	>
-		<N8nIcon icon="refresh-cw" spin />
 	</div>
 	<div v-else-if="isDisabled" :class="[...commonClasses, $style.disabled]">
 		<N8nIcon icon="power" :size="size" />

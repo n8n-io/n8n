@@ -202,6 +202,7 @@ function onActivate(event: MouseEvent) {
 	align-items: center;
 	justify-content: center;
 	background: var(--canvas-node--color--background, var(--node--color--background));
+	background-clip: padding-box;
 	border: var(--canvas-node--border-width) solid var(--canvas-node--border-color, transparent);
 	border-radius: var(--radius--lg);
 
@@ -309,7 +310,7 @@ function onActivate(event: MouseEvent) {
 	}
 
 	&.running {
-		background-color: var(--node--color--background--executing);
+		border: transparent;
 		--canvas-node--border-color: var(
 			--color-canvas-node-running-border-color,
 			var(--node--border-color--running)
@@ -323,6 +324,48 @@ function onActivate(event: MouseEvent) {
 		);
 	}
 }
+
+/* stylelint-disable */
+.running::after,
+.waiting::after {
+	content: '';
+	position: absolute;
+	inset: -3px;
+	border-radius: 10px;
+	z-index: -1;
+	background: conic-gradient(
+		from var(--node--gradient-angle),
+		rgba(255, 109, 90, 1),
+		rgba(255, 109, 90, 1) 20%,
+		rgba(255, 109, 90, 0.2) 35%,
+		rgba(255, 109, 90, 0.2) 65%,
+		rgba(255, 109, 90, 1) 90%,
+		rgba(255, 109, 90, 1)
+	);
+}
+
+.running::after {
+	animation: border-rotate 1.5s linear infinite;
+}
+.waiting::after {
+	animation: border-rotate 4.5s linear infinite;
+}
+
+@property --node--gradient-angle {
+	syntax: '<angle>';
+	initial-value: 0deg;
+	inherits: false;
+}
+
+@keyframes border-rotate {
+	from {
+		--node--gradient-angle: 0deg;
+	}
+	to {
+		--node--gradient-angle: 360deg;
+	}
+}
+/* stylelint-enable */
 
 .description {
 	top: 100%;
