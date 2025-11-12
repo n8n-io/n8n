@@ -1,4 +1,5 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import pick from 'lodash/pick';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -204,6 +205,30 @@ export class LmChatOpenRouter implements INodeType {
 							'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered. We generally recommend altering this or temperature but not both.',
 						type: 'number',
 					},
+					{
+						displayName: 'Reasoning Effort',
+						name: 'reasoningEffort',
+						default: '',
+						type: 'options',
+						options: [
+							{
+								name: 'High',
+								value: 'high',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+							},
+							{
+								name: 'Low',
+								value: 'low',
+							},
+							{
+								name: 'Minimal',
+								value: 'minimal',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -223,6 +248,7 @@ export class LmChatOpenRouter implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high';
 		};
 
 		const configuration: ClientOptions = {
@@ -232,10 +258,22 @@ export class LmChatOpenRouter implements INodeType {
 			},
 		};
 
+		const includedOptions = pick(options, [
+			'frequencyPenalty',
+			'maxTokens',
+			'presencePenalty',
+			'temperature',
+			'topP',
+			'responseFormat',
+		]);
+
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
 			model: modelName,
-			...options,
+			...includedOptions,
+			reasoning: {
+				effort: options.reasoningEffort,
+			},
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
