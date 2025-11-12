@@ -37,4 +37,8 @@ export class NodesConfig {
 	/** Whether to enable Python execution on the Code node. */
 	@Env('N8N_PYTHON_ENABLED')
 	pythonEnabled: boolean = true;
+
+	/** Remote node repositories to load, should point to a repository manifest JSON file. @example '["https://raw.githubusercontent.com/elsmr/n8n-nodes/refs/heads/main/repository.json"]' */
+	@Env('N8N_REMOTE_NODE_REPOSITORIES')
+	remoteNodeRepositories: JsonStringArray = [];
 }

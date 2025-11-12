@@ -30,6 +30,7 @@ import {
 	CUSTOM_NODES_CATEGORY,
 } from './constants';
 import { loadClassInIsolation } from './load-class-in-isolation';
+import type { ILoader, Types } from './loader';
 
 function toJSON(this: ICredentialType) {
 	return {
@@ -48,16 +49,11 @@ type Codex = {
 	alias: string[];
 };
 
-export type Types = {
-	nodes: INodeTypeDescription[];
-	credentials: ICredentialType[];
-};
-
 /**
  * Base class for loading n8n nodes and credentials from a directory.
  * Handles the common functionality for resolving paths, loading classes, and managing node and credential types.
  */
-export abstract class DirectoryLoader {
+export abstract class DirectoryLoader implements ILoader {
 	isLazyLoaded = false;
 
 	// Another way of keeping track of the names and versions of a node. This

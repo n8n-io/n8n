@@ -4,7 +4,7 @@ import { Container, Service } from '@n8n/di';
 import type ParcelWatcher from '@parcel/watcher';
 import glob from 'fast-glob';
 import fsPromises from 'fs/promises';
-import type { Class, DirectoryLoader, Types } from 'n8n-core';
+import type { Class, DirectoryLoader, ILoader, Types } from 'n8n-core';
 import {
 	CUSTOM_EXTENSION_ENV,
 	ErrorReporter,
@@ -14,6 +14,7 @@ import {
 	LazyPackageDirectoryLoader,
 	UnrecognizedCredentialTypeError,
 	UnrecognizedNodeTypeError,
+	RemoteRepositoryLoader,
 } from 'n8n-core';
 import type {
 	KnownNodesAndCredentials,
@@ -43,11 +44,15 @@ export class LoadNodesAndCredentials {
 	// actual file, or the lazy loaded json
 	types: Types = { nodes: [], credentials: [] };
 
-	loaders: Record<string, DirectoryLoader> = {};
+	loaders: Record<string, ILoader> = {};
+
+	remoteRepositoryTypes: Types = { nodes: [], credentials: [] };
 
 	excludeNodes = this.globalConfig.nodes.exclude;
 
 	includeNodes = this.globalConfig.nodes.include;
+
+	remoteNodeRepositories = this.globalConfig.nodes.remoteNodeRepositories;
 
 	private postProcessors: Array<() => Promise<void>> = [];
 
@@ -60,6 +65,7 @@ export class LoadNodesAndCredentials {
 	) {}
 
 	async init() {
+		this.logger.info('Loading nodes and credentials...');
 		if (inTest) throw new UnexpectedError('Not available in tests');
 
 		// Make sure the imported modules can resolve dependencies fine.
@@ -94,6 +100,9 @@ export class LoadNodesAndCredentials {
 		}
 
 		await this.loadNodesFromCustomDirectories();
+
+		await this.loadNodesFromRemoteRepositories();
+
 		await this.postProcessLoaders();
 	}
 
@@ -150,15 +159,27 @@ export class LoadNodesAndCredentials {
 		}
 	}
 
+	private async loadNodesFromRemoteRepositories(): Promise<void> {
+		this.logger.debug('Loading remote node repositories', {
+			repositories: this.remoteNodeRepositories,
+		});
+
+		for (const repositoryUrl of this.remoteNodeRepositories) {
+			const loader = new RemoteRepositoryLoader(repositoryUrl, this.logger);
+			await loader.loadAll();
+			this.loaders[loader.packageName] = loader;
+		}
+	}
+
 	resolveIcon(packageName: string, url: string): string | undefined {
 		const loader = this.loaders[packageName];
 		if (!loader) {
 			return undefined;
 		}
 		const pathPrefix = `/icons/${packageName}/`;
-		const filePath = path.resolve(loader.directory, url.substring(pathPrefix.length));
+		const filePath = path.resolve(loader.directory ?? '', url.substring(pathPrefix.length));
 
-		return isContainedWithin(loader.directory, filePath) ? filePath : undefined;
+		return isContainedWithin(loader.directory ?? '', filePath) ? filePath : undefined;
 	}
 
 	resolveSchema({
@@ -340,7 +361,7 @@ export class LoadNodesAndCredentials {
 
 		for (const loader of Object.values(this.loaders)) {
 			// list of node & credential types that will be sent to the frontend
-			const { known, types, directory, packageName } = loader;
+			const { known, types, directory = '', packageName } = loader;
 			this.types.nodes = this.types.nodes.concat(
 				types.nodes.map(({ name, ...rest }) => ({
 					...rest,
@@ -410,6 +431,9 @@ export class LoadNodesAndCredentials {
 				};
 			}
 		}
+
+		this.types.nodes = this.types.nodes.concat(this.remoteRepositoryTypes.nodes);
+		this.types.credentials = this.types.credentials.concat(this.remoteRepositoryTypes.credentials);
 
 		this.createAiTools();
 
@@ -550,6 +574,9 @@ export class LoadNodesAndCredentials {
 
 		for (const loader of Object.values(this.loaders)) {
 			const { directory } = loader;
+
+			if (!directory) continue;
+
 			try {
 				await fsPromises.access(directory);
 			} catch {
