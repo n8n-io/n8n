@@ -154,7 +154,8 @@ export const useDataTableOperations = ({
 		if (!columnToRename) return;
 
 		const promptResponse = await message.prompt(
-			i18n.baseText('dataTable.renameColumn.title' as never),
+			'', // Empty message
+			i18n.baseText('dataTable.renameColumn.title' as never), // Title
 			{
 				confirmButtonText: i18n.baseText('dataTable.renameColumn.submit' as never),
 				cancelButtonText: i18n.baseText('dataTable.renameColumn.cancel' as never),
