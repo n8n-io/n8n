@@ -22,7 +22,7 @@ const allowSendingSchema = ref(true);
 const isAssistantEnabled = computed(() => assistantStore.isAssistantEnabled);
 const isBulderEnabled = computed(() => settingsStore.isAiBuilderEnabled);
 const isAskAiEnabled = computed(() => settingsStore.isAskAiEnabled);
-const allowSendingActualData = computed(() => settingsStore.isAiDataSharingEnabled);
+const allowSendingParameterValues = computed(() => settingsStore.isAiDataSharingEnabled);
 
 const aiSettingsDescription = computed(() => {
 	if (isAssistantEnabled.value && isAskAiEnabled.value) {
@@ -43,7 +43,7 @@ const confirmationMessage = computed(() => {
 	return i18n.baseText('settings.ai.confirm.message.builderDisabled');
 });
 
-const onAllowSendingActualDataChange = async (newValue: boolean | string | number) => {
+const onallowSendingParameterValuesChange = async (newValue: boolean | string | number) => {
 	if (typeof newValue !== 'boolean') return;
 
 	if (!newValue) {
@@ -88,12 +88,12 @@ onMounted(async () => {
 				:tooltip-text="i18n.baseText('settings.ai.allowSendingSchema.description')"
 			/>
 			<N8nCheckbox
-				:model-value="allowSendingActualData"
-				:label="i18n.baseText('settings.ai.allowSendingActualData.label')"
-				:tooltip-text="i18n.baseText('settings.ai.allowSendingActualData.description')"
-				@update:model-value="onAllowSendingActualDataChange"
+				:model-value="allowSendingParameterValues"
+				:label="i18n.baseText('settings.ai.allowSendingParameterValues.label')"
+				:tooltip-text="i18n.baseText('settings.ai.allowSendingParameterValues.description')"
+				@update:model-value="onallowSendingParameterValuesChange"
 			/>
-			<N8nNotice v-if="!allowSendingActualData" type="warning" :closable="false">
+			<N8nNotice v-if="!allowSendingParameterValues" type="warning" :closable="false">
 				{{ i18n.baseText('settings.ai.efficiencyNotice') }}
 			</N8nNotice>
 		</div>

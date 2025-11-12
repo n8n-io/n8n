@@ -207,7 +207,7 @@ export interface FrontendSettings {
 		credits: number;
 	};
 	ai: {
-		allowSendingActualData: boolean;
+		allowSendingParameterValues: boolean;
 	};
 	pruning?: {
 		isEnabled: boolean;

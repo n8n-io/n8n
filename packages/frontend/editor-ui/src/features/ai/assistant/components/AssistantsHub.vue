@@ -27,7 +27,9 @@ const askAssistantChatRef = ref<InstanceType<typeof AskAssistantChat>>();
 const isBuildMode = computed(() => chatPanelStore.isBuilderModeActive);
 const chatWidth = computed(() => chatPanelStore.width);
 
-const allowSendingParameterData = computed(() => settingsStore.settings.ai.allowSendingActualData);
+const allowSendingParameterValues = computed(
+	() => settingsStore.settings.ai.allowSendingParameterValues,
+);
 
 // Show toggle only when both modes are available in current view
 const canToggleModes = computed(() => {
@@ -144,7 +146,7 @@ onBeforeUnmount(() => {
 						<template v-if="canToggleModes" #header>
 							<HubSwitcher
 								:is-build-mode="isBuildMode"
-								:disabled="!allowSendingParameterData"
+								:disabled="!allowSendingParameterValues"
 								@toggle="toggleAssistantMode"
 							/>
 						</template>

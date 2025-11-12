@@ -96,7 +96,7 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() =>
 			settings.value.aiBuilder?.enabled &&
 			settings.value.aiBuilder?.setup &&
-			settings.value.ai.allowSendingActualData,
+			settings.value.ai.allowSendingParameterValues,
 	);
 
 	const isAiAssistantOrBuilderEnabled = computed(
@@ -119,7 +119,9 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 
 	const aiCreditsQuota = computed(() => settings.value.aiCredits?.credits);
 
-	const isAiDataSharingEnabled = computed(() => settings.value.ai?.allowSendingActualData ?? true);
+	const isAiDataSharingEnabled = computed(
+		() => settings.value.ai?.allowSendingParameterValues ?? true,
+	);
 
 	const isSmtpSetup = computed(() => userManagement.value.smtpSetup);
 
@@ -346,13 +348,13 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		moduleSettings.value = fetched;
 	};
 
-	const updateAiDataSharingSettings = async (allowSendingActualData: boolean) => {
+	const updateAiDataSharingSettings = async (allowSendingParameterValues: boolean) => {
 		const rootStore = useRootStore();
 		await aiUsageApi.updateAiUsageSettings(rootStore.restApiContext, {
-			allowSendingActualData,
+			allowSendingParameterValues,
 		});
 		if (settings.value.ai) {
-			settings.value.ai.allowSendingActualData = allowSendingActualData;
+			settings.value.ai.allowSendingParameterValues = allowSendingParameterValues;
 		}
 	};
 

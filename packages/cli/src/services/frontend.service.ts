@@ -311,7 +311,7 @@ export class FrontendService {
 				credits: 0,
 			},
 			ai: {
-				allowSendingActualData: true,
+				allowSendingParameterValues: true,
 			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
@@ -384,10 +384,11 @@ export class FrontendService {
 
 		// Load AI usage settings
 		try {
-			this.settings.ai.allowSendingActualData = config.getEnv('ai.allowSendingActualData') ?? true;
+			this.settings.ai.allowSendingParameterValues =
+				config.getEnv('ai.allowSendingParameterValues') ?? true;
 		} catch {
 			// Not yet in DB, use default
-			this.settings.ai.allowSendingActualData = true;
+			this.settings.ai.allowSendingParameterValues = true;
 		}
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';

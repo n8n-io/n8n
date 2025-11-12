@@ -21,7 +21,9 @@ const slots = useSlots();
 
 const n8nChatRef = ref<InstanceType<typeof N8nAskAssistantChat>>();
 
-const allowSendingParameterData = computed(() => settingsStore.settings.ai.allowSendingActualData);
+const allowSendingParameterValues = computed(
+	() => settingsStore.settings.ai.allowSendingParameterValues,
+);
 
 const user = computed(() => ({
 	firstName: usersStore.currentUser?.firstName ?? '',
@@ -97,7 +99,7 @@ defineExpose({
 					<slot name="header" />
 					<AISettingsButton
 						v-if="showSettingsButton"
-						:show-usability-notice="!allowSendingParameterData"
+						:show-usability-notice="!allowSendingParameterValues"
 						:disabled="assistantStore.streaming"
 					/>
 				</div>

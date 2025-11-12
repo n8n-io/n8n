@@ -16,8 +16,8 @@ export class AiUsageService {
 	/**
 	 * Get the current value of the AI usage (privacy) setting for sending parameter data.
 	 */
-	async getAllowSendingActualData(): Promise<boolean> {
-		const key = 'ai.allowSendingActualData';
+	async getAllowSendingParameterValues(): Promise<boolean> {
+		const key = 'ai.allowSendingParameterValues';
 		try {
 			// If we've already loaded from DB, use the cached value
 			if (this.hasLoadedFromDb) {
@@ -52,8 +52,8 @@ export class AiUsageService {
 	/**
 	 * Update the AI usage setting for sending parameter data.
 	 */
-	async updateAllowSendingActualData(allowSendingActualData: boolean): Promise<void> {
-		const key = 'ai.allowSendingActualData';
+	async updateAllowSendingParameterValues(allowSendingActualData: boolean): Promise<void> {
+		const key = 'ai.allowSendingParameterValues';
 		try {
 			const value = JSON.stringify(allowSendingActualData);
 			const existingSetting = await this.settingsRepository.findOneBy({ key });
