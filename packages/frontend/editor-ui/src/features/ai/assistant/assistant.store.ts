@@ -28,7 +28,7 @@ import AiUpdatedCodeMessage from '@/app/components/AiUpdatedCodeMessage.vue';
 import { useChatPanelStateStore } from './chatPanelState.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
-import { hasPermission } from '@/utils/rbac/permissions';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;

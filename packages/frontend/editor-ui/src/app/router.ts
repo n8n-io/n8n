@@ -97,9 +97,9 @@ const TestRunDetailView = async () =>
 const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const PrebuiltAgentTemplatesView = async () =>
-	await import('@/views/PrebuiltAgentTemplatesView.vue');
-const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
 	await import('@/app/views/PrebuiltAgentTemplatesView.vue');
+const SettingsAIView = async () => await import('@/features/ai/assistant/views/SettingsAIView.vue');
+await import('@/app/views/PrebuiltAgentTemplatesView.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();

@@ -9,6 +9,7 @@ import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
+import { useRouter } from 'vue-router';
 
 import { N8nIcon, N8nLink, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
 const emit = defineEmits<{

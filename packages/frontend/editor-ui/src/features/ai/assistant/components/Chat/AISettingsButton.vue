@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { N8nLink, N8nTooltip, N8nIcon, N8nInfoTip } from '@n8n/design-system';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 
 type Props = {
 	disabled?: boolean;

@@ -2,12 +2,12 @@
 import { ref, onMounted, computed } from 'vue';
 import { N8nHeading, N8nInfoTip, N8nCheckbox, N8nNotice } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/composables/useToast';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
+import { useToast } from '@/app/composables/useToast';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useMessage } from '@/composables/useMessage';
-import { MODAL_CONFIRM } from '@/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useMessage } from '@/app/composables/useMessage';
+import { MODAL_CONFIRM } from '@/app/constants';
 
 const i18n = useI18n();
 const toast = useToast();
