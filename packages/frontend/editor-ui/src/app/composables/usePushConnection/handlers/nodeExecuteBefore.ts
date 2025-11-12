@@ -11,6 +11,17 @@ export async function nodeExecuteBefore(
 ) {
 	const workflowsStore = useWorkflowsStore();
 
+	console.log('[nodeExecuteBefore] Node starting execution:', {
+		nodeName: data.nodeName,
+		executionId: data.executionId,
+		parentExecutionId: data.parentExecutionId,
+	});
+
+	// Track sub-execution relationship for same-canvas scenarios
+	if (data.parentExecutionId) {
+		workflowState.trackSubExecution(data.executionId, data.parentExecutionId);
+	}
+
 	workflowState.executingNode.addExecutingNode(data.nodeName);
 	workflowsStore.addNodeExecutionStartedData(data);
 }

@@ -141,6 +141,9 @@ export async function executionFinished(
 		return;
 	}
 
+	// Fetch and merge sub-execution data for same-canvas scenarios
+	await fetchAndMergeSubExecutionData(execution, data.executionId, options.workflowState);
+
 	const runExecutionData = getRunExecutionData(execution);
 	uiStore.setProcessingExecutionResults(false);
 
@@ -224,6 +227,72 @@ export async function fetchExecutionData(
 		};
 	} catch {
 		return;
+	}
+}
+
+/**
+ * Fetches sub-execution data for same-canvas scenarios and merges it into the parent execution.
+ * This ensures that all nodes on the canvas show as executed, even if they belong to different execution IDs.
+ */
+async function fetchAndMergeSubExecutionData(
+	execution: SimplifiedExecution,
+	parentExecutionId: string,
+	workflowState: WorkflowState,
+): Promise<void> {
+	const subExecutionIds = workflowState.getSubExecutionIds(parentExecutionId);
+
+	if (subExecutionIds.length === 0) {
+		console.log('[fetchAndMergeSubExecutionData] No sub-executions found for parent:', {
+			parentExecutionId,
+		});
+		return;
+	}
+
+	console.log('[fetchAndMergeSubExecutionData] Fetching sub-executions:', {
+		parentExecutionId,
+		subExecutionIds,
+	});
+
+	// Fetch all sub-executions in parallel
+	const subExecutions = await Promise.all(
+		subExecutionIds.map(async (subExecutionId) => {
+			try {
+				return await fetchExecutionData(subExecutionId);
+			} catch (error) {
+				console.warn(
+					`[fetchAndMergeSubExecutionData] Failed to fetch sub-execution ${subExecutionId}:`,
+					error,
+				);
+				return undefined;
+			}
+		}),
+	);
+
+	// Merge runData from all sub-executions into the parent execution
+	for (const subExecution of subExecutions) {
+		if (!subExecution?.data?.resultData?.runData) {
+			continue;
+		}
+
+		console.log('[fetchAndMergeSubExecutionData] Merging sub-execution data:', {
+			subExecutionId: subExecution.id,
+			nodes: Object.keys(subExecution.data.resultData.runData),
+		});
+
+		// Ensure execution.data exists
+		if (!execution.data) {
+			continue;
+		}
+
+		// Merge runData
+		if (!execution.data.resultData) {
+			execution.data.resultData = { runData: {} };
+		}
+		if (!execution.data.resultData.runData) {
+			execution.data.resultData.runData = {};
+		}
+
+		Object.assign(execution.data.resultData.runData, subExecution.data.resultData.runData);
 	}
 }
 
