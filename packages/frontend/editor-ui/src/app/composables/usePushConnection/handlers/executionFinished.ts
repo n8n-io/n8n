@@ -269,6 +269,8 @@ async function fetchAndMergeSubExecutionData(
 	);
 
 	// Merge runData from all sub-executions into the parent execution
+	// For sub-executions called in loops, we append the runData instead of overwriting
+	// so users can select which iteration to view (same as regular loop nodes)
 	for (const subExecution of subExecutions) {
 		if (!subExecution?.data?.resultData?.runData) {
 			continue;
@@ -292,7 +294,16 @@ async function fetchAndMergeSubExecutionData(
 			execution.data.resultData.runData = {};
 		}
 
-		Object.assign(execution.data.resultData.runData, subExecution.data.resultData.runData);
+		// For each node in the sub-execution, append its runData to preserve all iterations
+		for (const [nodeName, nodeRunData] of Object.entries(subExecution.data.resultData.runData)) {
+			if (!execution.data.resultData.runData[nodeName]) {
+				// First time seeing this node - initialize with the runData
+				execution.data.resultData.runData[nodeName] = nodeRunData;
+			} else {
+				// Node already exists - append the runData to preserve all iterations
+				execution.data.resultData.runData[nodeName].push(...nodeRunData);
+			}
+		}
 	}
 }
 
