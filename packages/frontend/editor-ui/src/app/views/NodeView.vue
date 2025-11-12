@@ -1577,8 +1577,86 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 			executionsStore.activeExecution = (await executionsStore.fetchExecution(
 				json.executionId,
 			)) as ExecutionSummary;
+		} else if (json?.command === 'setHeatmap') {
+			handleSetHeatmap(json.mode, json.heatmap);
 		}
 	} catch (e) {}
+}
+
+const heatmapNodeBuckets = ref<Record<string, number>>({});
+
+function getBucketIndex(value: number, min: number, max: number, buckets: number): number {
+	if (max === min) return 0;
+	const normalized = (value - min) / (max - min);
+	return Math.min(Math.floor(normalized * buckets), buckets - 1);
+}
+
+function handleSetHeatmap(
+	mode: 'memory' | 'frequency' | 'duration',
+	heatmap:
+		| {
+				nodes: Record<
+					string,
+					{ avgRssDeltaMB: number | null; avgExecutionsPerRun: number; avgDurationMs: number }
+				>;
+		  }
+		| null
+		| undefined,
+) {
+	// First, remove all existing heatmap classes
+	Object.keys(heatmapNodeBuckets.value).forEach((nodeId) => {
+		const bucket = heatmapNodeBuckets.value[nodeId];
+		canvasEventBus.emit('nodes:action', {
+			ids: [nodeId],
+			action: 'update:node:class',
+			payload: { className: `heatmap-bucket-${bucket}`, add: false },
+		});
+	});
+	heatmapNodeBuckets.value = {};
+
+	if (!heatmap?.nodes) {
+		return;
+	}
+
+	// Extract values based on mode
+	const values: number[] = [];
+	const nodeValues: Record<string, number> = {};
+
+	Object.entries(heatmap.nodes).forEach(([nodeId, data]) => {
+		let value: number | null = null;
+		if (mode === 'memory') {
+			value = data.avgRssDeltaMB;
+		} else if (mode === 'frequency') {
+			value = data.avgExecutionsPerRun;
+		} else if (mode === 'duration') {
+			value = data.avgDurationMs;
+		}
+
+		if (value !== null && Number.isFinite(value)) {
+			nodeValues[nodeId] = value;
+			values.push(value);
+		}
+	});
+
+	if (values.length === 0) {
+		return;
+	}
+
+	// Calculate min/max for normalization
+	const min = Math.min(...values);
+	const max = Math.max(...values);
+	const bucketCount = 6;
+
+	// Assign buckets and emit events
+	Object.entries(nodeValues).forEach(([nodeId, value]) => {
+		const bucket = getBucketIndex(value, min, max, bucketCount);
+		heatmapNodeBuckets.value[nodeId] = bucket;
+		canvasEventBus.emit('nodes:action', {
+			ids: [nodeId],
+			action: 'update:node:class',
+			payload: { className: `heatmap-bucket-${bucket}`, add: true },
+		});
+	});
 }
 
 /**
@@ -2157,6 +2235,39 @@ onBeforeUnmount(() => {
 	display: flex;
 	width: 100%;
 }
+</style>
+
+<style lang="scss">
+/* Heatmap bucket styles - applied globally to canvas nodes */
+.heatmap-bucket-0 {
+	--canvas-node--color--background: var(--color--foreground--tint-2);
+	--canvas-node--border-color: var(--color--foreground--tint-2);
+}
+
+.heatmap-bucket-1 {
+	--canvas-node--color--background: var(--color--success--tint-4);
+	--canvas-node--border-color: var(--color--success--tint-3);
+}
+
+.heatmap-bucket-2 {
+	--canvas-node--color--background: var(--color--success--tint-2);
+	--canvas-node--border-color: var(--color--success--tint-1);
+}
+
+.heatmap-bucket-3 {
+	--canvas-node--color--background: var(--color--warning--tint-2);
+	--canvas-node--border-color: var(--color--warning--tint-1);
+}
+
+.heatmap-bucket-4 {
+	--canvas-node--color--background: var(--color--warning);
+	--canvas-node--border-color: var(--color--warning--shade-1);
+}
+
+.heatmap-bucket-5 {
+	--canvas-node--color--background: var(--color--danger--tint-4);
+	--canvas-node--border-color: var(--color--danger--tint-3);
+}
 
 .executionButtons {
 	position: absolute;
@@ -2167,6 +2278,7 @@ onBeforeUnmount(() => {
 	transform: translateX(-50%);
 	bottom: var(--spacing--sm);
 	width: auto;
+	z-index: 10;
 
 	@include mixins.breakpoint('sm-only') {
 		left: auto;

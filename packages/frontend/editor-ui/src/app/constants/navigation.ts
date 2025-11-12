@@ -63,6 +63,7 @@ export const enum VIEWS {
 	ENTITY_UNAUTHORIZED = 'EntityUnAuthorized',
 	PRE_BUILT_AGENT_TEMPLATES = 'PreBuiltAgentTemplates',
 	OAUTH_CONSENT = 'OAuthConsent',
+	WORKFLOW_HEATMAP = 'WorkflowHeatmap',
 }
 
 export const EDITABLE_CANVAS_VIEWS = [VIEWS.WORKFLOW, VIEWS.NEW_WORKFLOW, VIEWS.EXECUTION_DEBUG];
@@ -72,4 +73,5 @@ export const enum MAIN_HEADER_TABS {
 	EXECUTIONS = 'executions',
 	SETTINGS = 'settings',
 	EVALUATION = 'evaluation',
+	HEATMAP = 'heatmap',
 }

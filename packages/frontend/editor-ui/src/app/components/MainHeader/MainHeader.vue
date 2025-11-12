@@ -58,10 +58,14 @@ const executionRoutes: VIEWS[] = [
 	VIEWS.WORKFLOW_EXECUTIONS,
 	VIEWS.EXECUTION_PREVIEW,
 ];
+
+const heatmapRoutes: VIEWS[] = [VIEWS.WORKFLOW_HEATMAP];
+
 const tabBarItems = computed(() => {
 	return [
 		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
 		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
+		{ value: MAIN_HEADER_TABS.HEATMAP, label: locale.baseText('generic.heatmap') },
 		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
 	];
 });
@@ -121,7 +125,9 @@ onMounted(async () => {
 function isViewRoute(name: unknown): name is VIEWS {
 	return (
 		typeof name === 'string' &&
-		[evaluationRoutes, workflowRoutes, executionRoutes].flat().includes(name as VIEWS)
+		[evaluationRoutes, workflowRoutes, executionRoutes, heatmapRoutes]
+			.flat()
+			.includes(name as VIEWS)
 	);
 }
 
@@ -130,6 +136,7 @@ function syncTabsWithRoute(to: RouteLocation, from?: RouteLocation): void {
 	const routeTabMapping = [
 		{ routes: evaluationRoutes, tab: MAIN_HEADER_TABS.EVALUATION },
 		{ routes: executionRoutes, tab: MAIN_HEADER_TABS.EXECUTIONS },
+		{ routes: heatmapRoutes, tab: MAIN_HEADER_TABS.HEATMAP },
 		{ routes: workflowRoutes, tab: MAIN_HEADER_TABS.WORKFLOW },
 	];
 
@@ -165,6 +172,10 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 
 		case MAIN_HEADER_TABS.EXECUTIONS:
 			void navigateToExecutionsView(openInNewTab);
+			break;
+
+		case MAIN_HEADER_TABS.HEATMAP:
+			void navigateToHeatmapView(openInNewTab);
 			break;
 
 		case MAIN_HEADER_TABS.EVALUATION:
@@ -220,6 +231,25 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 		dirtyState.value = uiStore.stateIsDirty;
 		workflowToReturnTo.value = workflowId.value;
 		activeHeaderTab.value = MAIN_HEADER_TABS.EXECUTIONS;
+		await router.push(routeToNavigateTo);
+	}
+}
+
+async function navigateToHeatmapView(openInNewTab: boolean) {
+	const routeWorkflowId =
+		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
+	const routeToNavigateTo: RouteLocationRaw = {
+		name: VIEWS.WORKFLOW_HEATMAP,
+		params: { name: routeWorkflowId },
+	};
+
+	if (openInNewTab) {
+		const { href } = router.resolve(routeToNavigateTo);
+		window.open(href, '_blank');
+	} else if (route.name !== routeToNavigateTo.name) {
+		dirtyState.value = uiStore.stateIsDirty;
+		workflowToReturnTo.value = workflowId.value;
+		activeHeaderTab.value = MAIN_HEADER_TABS.HEATMAP;
 		await router.push(routeToNavigateTo);
 	}
 }

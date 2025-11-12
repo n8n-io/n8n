@@ -115,3 +115,32 @@ export async function getLastSuccessfulExecution(
 		`/workflows/${workflowId}/executions/last-successful`,
 	);
 }
+
+export interface WorkflowHeatmapNodeData {
+	avgDurationMs: number;
+	avgHeapUsedDeltaMB: number | null;
+	avgRssDeltaMB: number | null;
+	avgExecutionsPerRun: number;
+	samples: {
+		duration: number;
+		memory: number;
+	};
+}
+
+export interface WorkflowHeatmapResponse {
+	workflowId: string;
+	consideredExecutions: number;
+	limit: number;
+	nodes: Record<string, WorkflowHeatmapNodeData>;
+}
+
+export async function getWorkflowHeatmap(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<WorkflowHeatmapResponse> {
+	return await makeRestApiRequest<WorkflowHeatmapResponse>(
+		context,
+		'GET',
+		`/workflows/${workflowId}/heatmap`,
+	);
+}

@@ -544,6 +544,8 @@ export const getNodeViewTab = (route: RouteLocation): string | null => {
 			.includes(String(route.name))
 	) {
 		return MAIN_HEADER_TABS.EXECUTIONS;
+	} else if (route.name === VIEWS.WORKFLOW_HEATMAP) {
+		return MAIN_HEADER_TABS.HEATMAP;
 	}
 	return null;
 };

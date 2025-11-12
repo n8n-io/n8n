@@ -336,6 +336,20 @@ export const routes: RouteRecordRaw[] = [
 		],
 	},
 	{
+		path: '/workflow/:name/heatmap',
+		name: VIEWS.WORKFLOW_HEATMAP,
+		components: {
+			default: async () =>
+				await import('@/features/workflows/heatmap/views/WorkflowHeatmapView.vue'),
+			header: MainHeader,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			keepWorkflowAlive: true,
+			middleware: ['authenticated'],
+		},
+	},
+	{
 		path: '/workflow/:workflowId/history/:versionId?',
 		name: VIEWS.WORKFLOW_HISTORY,
 		components: {

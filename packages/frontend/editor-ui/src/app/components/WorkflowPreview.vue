@@ -224,6 +224,27 @@ watch(
 		}
 	},
 );
+
+function sendCommand(command: string, payload?: Record<string, unknown>) {
+	if (!ready.value || !iframeRef.value?.contentWindow) {
+		return;
+	}
+	try {
+		iframeRef.value.contentWindow.postMessage(
+			JSON.stringify({
+				command,
+				...payload,
+			}),
+			'*',
+		);
+	} catch (error) {
+		console.error('Failed to send command to iframe:', error);
+	}
+}
+
+defineExpose({
+	sendCommand,
+});
 </script>
 
 <template>
