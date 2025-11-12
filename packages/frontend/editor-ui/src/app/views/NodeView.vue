@@ -1595,6 +1595,8 @@ const isHeatmapActive = computed(
 	() => heatmapMode.value !== null && Object.keys(heatmapNodeBuckets.value).length > 0,
 );
 
+const lastHeatmapSignature = ref<string | null>(null);
+
 const heatmapTooltipVisible = ref(false);
 const heatmapTooltipVirtualRef = ref<HTMLElement | null>(null);
 const heatmapTooltipLabel = ref('');
@@ -1605,6 +1607,31 @@ function getBucketIndex(value: number, min: number, max: number, buckets: number
 	if (max === min) return 0;
 	const normalized = (value - min) / (max - min);
 	return Math.min(Math.floor(normalized * buckets), buckets - 1);
+}
+
+function createHeatmapSignature(
+	mode: 'memory' | 'frequency' | 'duration',
+	heatmap:
+		| {
+				nodes: Record<
+					string,
+					{ avgRssDeltaMB: number | null; avgExecutionsPerRun: number; avgDurationMs: number }
+				>;
+		  }
+		| null
+		| undefined,
+): string {
+	if (!heatmap?.nodes) return `${mode}:none`;
+	const keys = Object.keys(heatmap.nodes).sort();
+	const parts: Array<string | number> = [mode];
+	for (const k of keys) {
+		const v = heatmap.nodes[k];
+		parts.push(k);
+		parts.push(v.avgRssDeltaMB ?? 'null');
+		parts.push(v.avgExecutionsPerRun);
+		parts.push(v.avgDurationMs);
+	}
+	return String(parts.join('|'));
 }
 
 function handleSetHeatmap(
@@ -1619,6 +1646,13 @@ function handleSetHeatmap(
 		| null
 		| undefined,
 ) {
+	// Ignore duplicate payloads to avoid flicker caused by scheduled retries
+	const signature = createHeatmapSignature(mode, heatmap);
+	if (signature === lastHeatmapSignature.value) {
+		return;
+	}
+	lastHeatmapSignature.value = signature;
+
 	// Reset tooltip and stored values/mode
 	heatmapTooltipVisible.value = false;
 	heatmapTooltipVirtualRef.value = null;
