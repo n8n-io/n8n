@@ -710,33 +710,32 @@ async function loadRemoteParameterOptions() {
 		const localLoadOptionsMethod = getTypeOption('localLoadOptionsMethod');
 		const loadOptions = getTypeOption('loadOptions');
 
+		// Common parameters for both local and standard load options
+		const commonRequestParams = {
+			nodeTypeAndVersion: {
+				name: node.value.type,
+				version: node.value.typeVersion,
+			},
+			path: props.path,
+			currentNodeParameters: resolvedNodeParameters,
+			projectId: projectsStore.currentProjectId,
+		};
+
 		let options: INodePropertyOptions[] | null = null;
 
 		// Check for localLoadOptionsMethod first (doesn't require credentials)
 		if (localLoadOptionsMethod) {
 			options = await nodeTypesStore.getLocalNodeParameterOptions({
-				nodeTypeAndVersion: {
-					name: node.value.type,
-					version: node.value.typeVersion,
-				},
-				path: props.path,
+				...commonRequestParams,
 				methodName: localLoadOptionsMethod,
-				currentNodeParameters: resolvedNodeParameters,
-				projectId: projectsStore.currentProjectId,
 			});
 		} else {
 			// Fall back to standard loadOptionsMethod
 			options = await nodeTypesStore.getNodeParameterOptions({
-				nodeTypeAndVersion: {
-					name: node.value.type,
-					version: node.value.typeVersion,
-				},
-				path: props.path,
+				...commonRequestParams,
 				methodName: loadOptionsMethod,
 				loadOptions,
-				currentNodeParameters: resolvedNodeParameters,
 				credentials: node.value.credentials,
-				projectId: projectsStore.currentProjectId,
 			});
 		}
 

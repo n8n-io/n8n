@@ -1118,9 +1118,33 @@ export type FieldValueOption = { name: string; type: FieldType | 'any' };
 export type IWorkflowNodeContext = ExecuteFunctions.GetNodeParameterFn &
 	Pick<FunctionsBase, 'getNode' | 'getWorkflow'>;
 
+/**
+ * Interface for load options methods that need access to n8n's internal workflow data.
+ * Used by localLoadOptions and localResourceMapping methods to load data from other workflows
+ * stored in the database, without requiring external API credentials.
+ */
 export interface ILocalLoadOptionsFunctions {
+	/**
+	 * Load a specific node from the selected workflow and return its execution context.
+	 * @param nodeType - The type of node to find (e.g., 'n8n-nodes-base.executeWorkflowTrigger')
+	 * @param nodeName - Optional specific node name to filter by
+	 * @returns Node execution context or null if not found
+	 */
 	getWorkflowNodeContext(nodeType: string, nodeName?: string): Promise<IWorkflowNodeContext | null>;
+
+	/**
+	 * Get a parameter value from the current node without expression resolution.
+	 * @param parameterPath - Path to the parameter (supports nested paths like 'workflowId.value')
+	 * @returns The parameter value or undefined if not found
+	 */
 	getCurrentNodeParameter(parameterPath: string): NodeParameterValueType | object | undefined;
+
+	/**
+	 * Load all nodes from the selected workflow.
+	 * Automatically excludes disabled nodes.
+	 * @param nodeTypeFilter - Optional node type to filter by (e.g., 'n8n-nodes-base.executeWorkflowTrigger')
+	 * @returns Array of non-disabled nodes matching the filter
+	 */
 	getAllWorkflowNodes(nodeTypeFilter?: string): Promise<INode[]>;
 }
 

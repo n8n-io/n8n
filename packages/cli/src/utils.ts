@@ -1,4 +1,8 @@
-import { CliWorkflowOperationError, SubworkflowOperationError } from 'n8n-workflow';
+import {
+	CliWorkflowOperationError,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	SubworkflowOperationError,
+} from 'n8n-workflow';
 import type { INode, INodeType } from 'n8n-workflow';
 
 import { STARTING_NODES } from '@/constants';
@@ -17,7 +21,9 @@ function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 		if (triggerNodeName) {
 			const matchingTrigger = nodes.find(
 				(node) =>
-					node.type === 'n8n-nodes-base.executeWorkflowTrigger' && node.name === triggerNodeName,
+					node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE &&
+					node.name === triggerNodeName &&
+					!node.disabled,
 			);
 
 			if (matchingTrigger) return matchingTrigger;
@@ -35,7 +41,7 @@ function findWorkflowStart(executionMode: 'integrated' | 'cli') {
 
 		// Default behavior: find any executeWorkflowTrigger
 		const executeWorkflowTriggerNode = nodes.find(
-			(node) => node.type === 'n8n-nodes-base.executeWorkflowTrigger',
+			(node) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 		);
 
 		if (executeWorkflowTriggerNode) return executeWorkflowTriggerNode;

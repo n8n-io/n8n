@@ -7,6 +7,7 @@ import type {
 	IWorkflowNodeContext,
 	INodeExecutionData,
 	IDataObject,
+	INodePropertyOptions,
 	ResourceMapperField,
 	ILocalLoadOptionsFunctions,
 	WorkflowInputsData,
@@ -200,4 +201,34 @@ export async function loadWorkflowInputMappings(
 		});
 	}
 	return { fields, dataMode, subworkflowInfo };
+}
+
+/**
+ * Load available Execute Workflow Trigger nodes from the selected workflow.
+ * Used by ExecuteWorkflow and ToolWorkflow nodes for the trigger selection dropdown.
+ *
+ * @returns Array of trigger node names as dropdown options
+ */
+export async function getTriggerNodes(
+	this: ILocalLoadOptionsFunctions,
+): Promise<INodePropertyOptions[]> {
+	try {
+		// Get all executeWorkflowTrigger nodes from the selected workflow
+		// This automatically filters out disabled nodes
+		const triggerNodes = await this.getAllWorkflowNodes(EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE);
+
+		// Return empty array if no triggers found
+		if (triggerNodes.length === 0) {
+			return [];
+		}
+
+		// Map to dropdown options using node name
+		return triggerNodes.map((node) => ({
+			name: node.name,
+			value: node.name,
+		}));
+	} catch (error) {
+		// Return empty array on error to prevent breaking the UI
+		return [];
+	}
 }

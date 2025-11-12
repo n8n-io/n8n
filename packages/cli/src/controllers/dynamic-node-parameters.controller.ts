@@ -8,6 +8,7 @@ import { AuthenticatedRequest } from '@n8n/db';
 import { Post, RestController, Body } from '@n8n/decorators';
 import type { INodePropertyOptions, NodeParameterValueType } from 'n8n-workflow';
 
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
 import { getBase } from '@/workflow-execute-additional-data';
 
@@ -164,6 +165,10 @@ export class DynamicNodeParametersController {
 
 		const { path, methodName, currentNodeParameters, nodeTypeAndVersion, projectId } = payload;
 
+		if (!methodName) {
+			throw new BadRequestError('methodName is required for local-options endpoint');
+		}
+
 		const additionalData = await getBase({
 			userId: req.user.id,
 			currentNodeParameters,
@@ -171,7 +176,7 @@ export class DynamicNodeParametersController {
 		});
 
 		return await this.service.getLocalLoadOptions(
-			methodName!,
+			methodName,
 			path,
 			additionalData,
 			nodeTypeAndVersion,

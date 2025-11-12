@@ -7,11 +7,15 @@ import type {
 	INodeTypeDescription,
 } from 'n8n-workflow';
 
+import {
+	getTriggerNodes,
+	getCurrentWorkflowInputData,
+} from '@utils/workflowInputsResourceMapping/GenericFunctions';
+
 import { findPairedItemThroughWorkflowData } from './../../../utils/workflow-backtracking';
 import { getWorkflowInfo } from './GenericFunctions';
-import { localResourceMapping, localLoadOptions } from './methods';
+import { localResourceMapping } from './methods';
 import { generatePairedItemData } from '../../../utils/utilities';
-import { getCurrentWorkflowInputData } from '../../../utils/workflowInputsResourceMapping/GenericFunctions';
 
 export class ExecuteWorkflow implements INodeType {
 	description: INodeTypeDescription = {
@@ -307,7 +311,7 @@ export class ExecuteWorkflow implements INodeType {
 
 	methods = {
 		localResourceMapping,
-		localLoadOptions,
+		localLoadOptions: { getTriggerNodes },
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

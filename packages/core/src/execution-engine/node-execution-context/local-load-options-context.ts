@@ -3,6 +3,7 @@ import { ApplicationError, resolveRelativePath, Workflow } from 'n8n-workflow';
 import type {
 	INode,
 	INodeParameterResourceLocator,
+	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	NodeParameterValueType,
 	ILocalLoadOptionsFunctions,
@@ -21,26 +22,40 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 		private workflowLoader: IWorkflowLoader,
 	) {}
 
+	/**
+	 * Load workflow from database using workflowId from current node parameters
+	 * @returns Loaded workflow or null if workflowId not found/invalid
+	 */
+	private async loadWorkflow(): Promise<IWorkflowBase | null> {
+		const workflowIdParam = this.getCurrentNodeParameter('workflowId');
+
+		if (!workflowIdParam || typeof workflowIdParam !== 'object') {
+			return null;
+		}
+
+		const { value: workflowId } = workflowIdParam as INodeParameterResourceLocator;
+
+		if (typeof workflowId !== 'string' || !workflowId) {
+			return null;
+		}
+
+		return await this.workflowLoader.get(workflowId);
+	}
+
 	async getWorkflowNodeContext(
 		nodeType: string,
 		nodeName?: string,
 	): Promise<IWorkflowNodeContext | null> {
-		const { value: workflowId } = this.getCurrentNodeParameter(
-			'workflowId',
-		) as INodeParameterResourceLocator;
+		const dbWorkflow = await this.loadWorkflow();
 
-		if (typeof workflowId !== 'string' || !workflowId) {
+		if (!dbWorkflow) {
 			throw new ApplicationError(`No workflowId parameter defined on node of type "${nodeType}"!`);
 		}
 
-		const dbWorkflow = await this.workflowLoader.get(workflowId);
-
-		// Filter by type and optionally by name
-		const selectedWorkflowNode = dbWorkflow.nodes.find((node) => {
-			if (node.type !== nodeType) return false;
-			if (nodeName && node.name !== nodeName) return false;
-			return true;
-		});
+		// Filter by type, optionally by name, and exclude disabled nodes
+		const selectedWorkflowNode = dbWorkflow.nodes.find(
+			(node) => node.type === nodeType && (!nodeName || node.name === nodeName) && !node.disabled,
+		);
 
 		if (selectedWorkflowNode) {
 			const selectedSingleNodeWorkflow = new Workflow({
@@ -75,16 +90,20 @@ export class LocalLoadOptionsContext implements ILocalLoadOptionsFunctions {
 		return get(nodeParameters, parameterPath);
 	}
 
+	/**
+	 * Load all nodes from the selected workflow.
+	 * Reads the workflowId from current node parameters, loads the workflow from database,
+	 * and returns all non-disabled nodes (optionally filtered by type).
+	 *
+	 * @param nodeTypeFilter - Optional node type to filter by (e.g., 'n8n-nodes-base.executeWorkflowTrigger')
+	 * @returns Array of non-disabled nodes matching the filter, or empty array if workflowId not found
+	 */
 	async getAllWorkflowNodes(nodeTypeFilter?: string): Promise<INode[]> {
-		const { value: workflowId } = this.getCurrentNodeParameter(
-			'workflowId',
-		) as INodeParameterResourceLocator;
+		const dbWorkflow = await this.loadWorkflow();
 
-		if (typeof workflowId !== 'string' || !workflowId) {
+		if (!dbWorkflow) {
 			return [];
 		}
-
-		const dbWorkflow = await this.workflowLoader.get(workflowId);
 
 		// Filter by node type if specified, and exclude disabled nodes
 		if (nodeTypeFilter) {
