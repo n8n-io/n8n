@@ -9,6 +9,7 @@ import type {
 	IDataObject,
 	WorkflowFEMeta,
 	IConnection,
+	NodeConnectionType,
 } from 'n8n-workflow';
 
 /**
@@ -22,11 +23,16 @@ import type {
 // ============================================================================
 
 // Re-export commonly used types
-export type { INode as WorkflowNodeData, IConnections as WorkflowConnections, WorkflowJSON };
+export type {
+	INode as WorkflowNodeData,
+	IConnections as WorkflowConnections,
+	WorkflowJSON,
+	NodeConnectionType,
+};
 
 export interface ConnectionConfig {
 	node: WorkflowNode;
-	type?: string;
+	type?: NodeConnectionType;
 	index?: number;
 }
 
@@ -181,7 +187,7 @@ export class WorkflowNode {
 export class ConnectionBuilder {
 	private source?: {
 		node: WorkflowNode;
-		type: string;
+		type: NodeConnectionType;
 		index: number;
 	};
 
@@ -190,7 +196,9 @@ export class ConnectionBuilder {
 	/**
 	 * Set the source node
 	 */
-	from(source: WorkflowNode | { node: WorkflowNode; type?: string; index?: number }): this {
+	from(
+		source: WorkflowNode | { node: WorkflowNode; type?: NodeConnectionType; index?: number },
+	): this {
 		if (source instanceof WorkflowNode) {
 			this.source = {
 				node: source,
@@ -214,13 +222,13 @@ export class ConnectionBuilder {
 		destinations:
 			| WorkflowNode
 			| WorkflowNode[]
-			| { node: WorkflowNode; type?: string; index?: number },
+			| { node: WorkflowNode; type?: NodeConnectionType; index?: number },
 	): this {
 		if (!this.source) {
 			throw new Error('Source node not set. Use .from() to set the source node.');
 		}
 
-		const destNodes: Array<{ node: WorkflowNode; type: string; index: number }> = [];
+		const destNodes: Array<{ node: WorkflowNode; type: NodeConnectionType; index: number }> = [];
 
 		if (Array.isArray(destinations)) {
 			for (const dest of destinations) {
@@ -312,9 +320,9 @@ export class Workflow {
 	addConnection(
 		sourceNode: WorkflowNode,
 		destNode: WorkflowNode,
-		sourceType: string,
+		sourceType: NodeConnectionType,
 		sourceIndex: number,
-		destType: string,
+		destType: NodeConnectionType,
 		destIndex: number,
 	): void {
 		const sourceName = sourceNode.getName();
@@ -339,7 +347,7 @@ export class Workflow {
 		// Add the connection
 		typeConnections[sourceIndex].push({
 			node: destNode.getName(),
-			type: destType as IConnection['type'],
+			type: destType,
 			index: destIndex,
 		});
 	}
@@ -475,7 +483,14 @@ export function fromJSON(json: WorkflowJSON): Workflow {
 					const destNode = nodeMap.get(conn.node);
 					if (!destNode) continue;
 
-					wf.addConnection(sourceNode, destNode, sourceType, sourceIndex, conn.type, conn.index);
+					wf.addConnection(
+						sourceNode,
+						destNode,
+						sourceType as NodeConnectionType,
+						sourceIndex,
+						conn.type,
+						conn.index,
+					);
 				}
 			});
 		}

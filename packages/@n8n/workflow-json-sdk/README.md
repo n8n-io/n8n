@@ -362,13 +362,26 @@ The SDK exports the following types for use in your code:
 import type {
   WorkflowJSON,
   WorkflowNodeData,
-  NodeParameters,
   WorkflowConnections,
-  WorkflowMeta,
-  NodeConnection,
+  NodeConnectionType,
   ConnectionConfig
 } from '@n8n/workflow-json-sdk';
 ```
+
+### Connection Types
+
+The `NodeConnectionType` is imported from `n8n-workflow` and defines the valid connection types:
+
+- `'main'` - Standard node connections
+- `'ai_tool'` - AI agent tool connections
+- `'ai_memory'` - AI agent memory connections
+- `'ai_languageModel'` - AI language model connections
+- `'ai_outputParser'` - AI output parser connections
+- `'ai_embedding'` - AI embedding connections
+- `'ai_vectorStore'` - AI vector store connections
+- `'ai_document'` - AI document connections
+- `'ai_textSplitter'` - AI text splitter connections
+- And more...
 
 ## Development
 
