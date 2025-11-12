@@ -144,7 +144,7 @@ import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimenta
 import { useWorkflowState } from '@/app/composables/useWorkflowState';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 
-import { N8nCallout, N8nCanvasThinkingPill } from '@n8n/design-system';
+import { N8nCallout, N8nCanvasThinkingPill, N8nTooltip } from '@n8n/design-system';
 
 defineOptions({
 	name: 'NodeView',
@@ -1584,6 +1584,22 @@ async function onPostMessageReceived(messageEvent: MessageEvent) {
 }
 
 const heatmapNodeBuckets = ref<Record<string, number>>({});
+const heatmapMode = ref<'memory' | 'frequency' | 'duration' | null>(null);
+const heatmapValuesByNodeId = ref<
+	Record<
+		string,
+		{ avgRssDeltaMB: number | null; avgExecutionsPerRun: number; avgDurationMs: number }
+	>
+>({});
+const isHeatmapActive = computed(
+	() => heatmapMode.value !== null && Object.keys(heatmapNodeBuckets.value).length > 0,
+);
+
+const heatmapTooltipVisible = ref(false);
+const heatmapTooltipVirtualRef = ref<HTMLElement | null>(null);
+const heatmapTooltipLabel = ref('');
+const heatmapTooltipValue = ref('');
+const canvasRootEl = ref<HTMLElement | null>(null);
 
 function getBucketIndex(value: number, min: number, max: number, buckets: number): number {
 	if (max === min) return 0;
@@ -1603,6 +1619,12 @@ function handleSetHeatmap(
 		| null
 		| undefined,
 ) {
+	// Reset tooltip and stored values/mode
+	heatmapTooltipVisible.value = false;
+	heatmapTooltipVirtualRef.value = null;
+	heatmapMode.value = null;
+	heatmapValuesByNodeId.value = {};
+
 	// First, remove all existing heatmap classes
 	Object.keys(heatmapNodeBuckets.value).forEach((nodeId) => {
 		const bucket = heatmapNodeBuckets.value[nodeId];
@@ -1617,6 +1639,10 @@ function handleSetHeatmap(
 	if (!heatmap?.nodes) {
 		return;
 	}
+
+	// Store current mode and values for tooltip usage
+	heatmapMode.value = mode;
+	heatmapValuesByNodeId.value = heatmap.nodes;
 
 	// Extract values based on mode
 	const values: number[] = [];
@@ -1658,6 +1684,79 @@ function handleSetHeatmap(
 		});
 	});
 }
+
+function formatHeatmapValue(
+	mode: 'memory' | 'frequency' | 'duration',
+	values: { avgRssDeltaMB: number | null; avgExecutionsPerRun: number; avgDurationMs: number },
+): string {
+	if (mode === 'memory') {
+		const v = values.avgRssDeltaMB;
+		return v === null ? '—' : `${v.toFixed(1)} MB`;
+	}
+	if (mode === 'frequency') {
+		return `${values.avgExecutionsPerRun * 100}%`;
+	}
+	// duration
+	const ms = values.avgDurationMs;
+	return ms >= 1000 ? `${(ms / 1000).toFixed(2)} s` : `${Math.round(ms)} ms`;
+}
+
+function updateHeatmapTooltipForNodeEl(nodeEl: HTMLElement): boolean {
+	if (!isHeatmapActive.value) {
+		return false;
+	}
+	const nodeName = nodeEl.getAttribute('data-node-name') ?? '';
+	if (!nodeName) return false;
+	const node = workflowsStore.getNodeByName(nodeName);
+	if (!node) return false;
+	const values = heatmapValuesByNodeId.value[node.id];
+	if (!values) return false;
+
+	const mode = heatmapMode.value;
+	if (!mode) return false;
+
+	const label =
+		mode === 'memory'
+			? i18n.baseText('heatmap.mode.memory')
+			: mode === 'frequency'
+				? i18n.baseText('heatmap.mode.frequency')
+				: i18n.baseText('heatmap.mode.duration');
+
+	heatmapTooltipLabel.value = label;
+	heatmapTooltipValue.value = formatHeatmapValue(mode, values);
+	heatmapTooltipVirtualRef.value = nodeEl;
+	heatmapTooltipVisible.value = true;
+	return true;
+}
+
+function onCanvasMouseMove(e: MouseEvent) {
+	if (!isHeatmapActive.value) {
+		heatmapTooltipVisible.value = false;
+		return;
+	}
+	const target = e.target as HTMLElement | null;
+	const nodeEl = target?.closest?.('[data-node-name]') as HTMLElement | null;
+	if (!nodeEl) {
+		heatmapTooltipVisible.value = false;
+		return;
+	}
+	void updateHeatmapTooltipForNodeEl(nodeEl);
+}
+
+function onCanvasMouseLeave() {
+	heatmapTooltipVisible.value = false;
+	heatmapTooltipVirtualRef.value = null;
+}
+
+watch(
+	() => isHeatmapActive.value,
+	(active) => {
+		if (!active) {
+			heatmapTooltipVisible.value = false;
+			heatmapTooltipVirtualRef.value = null;
+		}
+	},
+);
 
 /**
  * Permission checks
@@ -2029,6 +2128,24 @@ onMounted(() => {
 	addExecutionOpenedEventBindings();
 	addCommandBarEventBindings();
 	registerCustomActions();
+
+	// Attach hover listeners for heatmap tooltips once canvas exists
+	watch(
+		() => isLoading.value,
+		(loading) => {
+			if (!loading) {
+				void nextTick(() => {
+					const el = document.getElementById('canvas');
+					if (el) {
+						canvasRootEl.value = el;
+						el.addEventListener('mousemove', onCanvasMouseMove);
+						el.addEventListener('mouseleave', onCanvasMouseLeave);
+					}
+				});
+			}
+		},
+		{ immediate: true },
+	);
 });
 
 onActivated(() => {
@@ -2052,6 +2169,10 @@ onBeforeUnmount(() => {
 	unregisterCustomActions();
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushDisconnect();
+	}
+	if (canvasRootEl.value) {
+		canvasRootEl.value.removeEventListener('mousemove', onCanvasMouseMove);
+		canvasRootEl.value.removeEventListener('mouseleave', onCanvasMouseLeave);
 	}
 });
 </script>
@@ -2227,6 +2348,26 @@ onBeforeUnmount(() => {
 			@save-keyboard-shortcut="onSaveWorkflow"
 			@context-menu-action="onContextMenuAction"
 		/>
+		<!-- Heatmap hover tooltip -->
+		<N8nTooltip
+			v-if="heatmapTooltipVisible"
+			:visible="heatmapTooltipVisible"
+			:virtual-triggering="true"
+			:virtual-ref="heatmapTooltipVirtualRef"
+			placement="top"
+			:teleported="false"
+			:show-after="0"
+			:hide-after="0"
+			:popper-class="$style.heatmapTooltipPopper"
+		>
+			<template #content>
+				<div data-test-id="heatmap-tooltip">
+					<strong>{{ heatmapTooltipLabel }}</strong
+					>: {{ heatmapTooltipValue }}
+				</div>
+			</template>
+			<span />
+		</N8nTooltip>
 	</div>
 </template>
 
@@ -2299,6 +2440,9 @@ onBeforeUnmount(() => {
 	top: 50%;
 	transform: translate(-50%, -50%);
 	z-index: 10;
+}
+.heatmapTooltipPopper {
+	white-space: nowrap;
 }
 </style>
 
