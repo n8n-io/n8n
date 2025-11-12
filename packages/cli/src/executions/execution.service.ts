@@ -138,7 +138,10 @@ export class ExecutionService {
 			execution.mode !== 'integrated' &&
 			execution.workflowId &&
 			execution.startedAt &&
-			execution.stoppedAt
+			execution.stoppedAt &&
+			execution.workflowData.nodes.some(
+				(n) => !n.disabled && n.type === 'n8n-nodes-base.executeWorkflow',
+			)
 		) {
 			await this.mergeSubExecutions(execution);
 		}
