@@ -9,7 +9,12 @@ import { fromJSON, type WorkflowJSON } from '../src/index';
 
 // Simulated existing workflow (this would typically come from an API or file)
 const existingWorkflowJSON: WorkflowJSON = {
+	id: '123',
 	name: 'Customer Data Processing',
+	active: false,
+	isArchived: false,
+	createdAt: new Date(),
+	updatedAt: new Date(),
 	meta: {
 		instanceId: 'existing-instance-id',
 	},
