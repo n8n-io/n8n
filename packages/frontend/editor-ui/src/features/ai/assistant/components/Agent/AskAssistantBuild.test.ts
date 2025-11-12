@@ -1348,6 +1348,50 @@ describe('AskAssistantBuild', () => {
 		});
 	});
 
+	it('should track categorization telemetry when categorize_prompt tool completes', async () => {
+		renderComponent();
+
+		// Simulate streaming starts
+		builderStore.$patch({ streaming: true });
+		await flushPromises();
+
+		// Add categorization tool message
+		builderStore.toolMessages = [
+			{
+				id: faker.string.uuid(),
+				role: 'assistant' as const,
+				type: 'tool' as const,
+				toolName: 'categorize_prompt',
+				toolCallId: faker.string.uuid(),
+				status: 'completed',
+				updates: [
+					{
+						type: 'output',
+						data: {
+							categorization: {
+								techniques: ['chatbot', 'notification'],
+								confidence: 0.85,
+							},
+						},
+					},
+				],
+			},
+		];
+
+		// Simulate streaming stops (this triggers trackWorkflowModifications)
+		builderStore.$patch({ streaming: false });
+		await flushPromises();
+
+		expect(trackMock).toHaveBeenCalledWith('Classifier labels user prompt', {
+			user_id: undefined,
+			workflow_id: 'abc123',
+			classifier_labels: ['chatbot', 'notification'],
+			confidence: 0.85,
+			session_id: 'app_session_id',
+			timestamp: expect.any(String),
+		});
+	});
+
 	it('should handle multiple canvas generations correctly', async () => {
 		const originalWorkflow = {
 			nodes: [],

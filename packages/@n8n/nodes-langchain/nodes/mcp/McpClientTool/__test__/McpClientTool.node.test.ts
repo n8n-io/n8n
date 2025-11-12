@@ -1,8 +1,9 @@
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { SSEClientTransport } from '@modelcontextprotocol/sdk/client/sse.js';
-import { McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
-import { mock } from 'jest-mock-extended';
+import { McpError, ErrorCode, CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
+import { mock, mockDeep } from 'jest-mock-extended';
 import {
+	type IExecuteFunctions,
 	NodeConnectionTypes,
 	NodeOperationError,
 	type ILoadOptionsFunctions,
@@ -463,10 +464,14 @@ describe('McpClientTool', () => {
 				],
 			]);
 
-			expect(Client.prototype.callTool).toHaveBeenCalledWith({
-				name: 'get_weather',
-				arguments: { location: 'Berlin' },
-			});
+			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+				{
+					name: 'get_weather',
+					arguments: { location: 'Berlin' },
+				},
+				expect.anything(),
+				expect.anything(),
+			);
 		});
 
 		it('should not execute if tool name does not match', async () => {
@@ -666,6 +671,54 @@ describe('McpClientTool', () => {
 
 			expect(result[0]).toHaveLength(1);
 			expect(result[0][0].json.response).toEqual([{ type: 'text', text: 'Weather is sunny' }]);
+		});
+
+		it('should execute tool with timeout', async () => {
+			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
+			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({
+				content: [{ type: 'text', text: 'Weather is sunny' }],
+			});
+			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
+				tools: [
+					{
+						name: 'get_weather',
+						description: 'Gets the weather',
+						inputSchema: { type: 'object', properties: { location: { type: 'string' } } },
+					},
+				],
+			});
+			const mockNode = mock<INode>({ typeVersion: 1.2, type: 'mcpClientTool' });
+			const mockExecuteFunctions = mockDeep<IExecuteFunctions>();
+			mockExecuteFunctions.getNode.mockReturnValue(mockNode);
+			mockExecuteFunctions.getInputData.mockReturnValue([
+				{
+					json: {
+						tool: 'get_weather',
+						location: 'Berlin',
+					},
+				},
+			]);
+			mockExecuteFunctions.getNodeParameter.mockImplementation((key, _idx, defaultValue) => {
+				const params = {
+					include: 'all',
+					authentication: 'none',
+					serverTransport: 'httpStreamable',
+					endpointUrl: 'https://test.com/mcp',
+					'options.timeout': 12345,
+				};
+				return params[key as keyof typeof params] ?? defaultValue;
+			});
+
+			await new McpClientTool().execute.call(mockExecuteFunctions);
+
+			expect(Client.prototype.callTool).toHaveBeenCalledWith(
+				{
+					name: 'get_weather',
+					arguments: { location: 'Berlin' },
+				},
+				CallToolResultSchema,
+				{ timeout: 12345 },
+			);
 		});
 	});
 });

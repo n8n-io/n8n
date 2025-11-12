@@ -1,11 +1,13 @@
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Post, RootLevelController } from '@n8n/decorators';
+import { Head, Post, RootLevelController } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import { ErrorReporter } from 'n8n-core';
 
-import { McpServerApiKeyService } from './mcp-api-key.service';
+import { Telemetry } from '@/telemetry';
+
+import { McpServerMiddlewareService } from './mcp-server-middleware.service';
 import {
 	USER_CONNECTED_TO_MCP_EVENT,
 	MCP_ACCESS_DISABLED_ERROR_MESSAGE,
@@ -17,11 +19,9 @@ import { isJSONRPCRequest } from './mcp.typeguards';
 import type { UserConnectedToMCPEventPayload } from './mcp.types';
 import { getClientInfo } from './mcp.utils';
 
-import { Telemetry } from '@/telemetry';
-
 export type FlushableResponse = Response & { flush: () => void };
 
-const getAuthMiddleware = () => Container.get(McpServerApiKeyService).getAuthMiddleware();
+const getAuthMiddleware = () => Container.get(McpServerMiddlewareService).getAuthMiddleware();
 
 @RootLevelController('/mcp-server')
 export class McpController {
@@ -32,6 +32,40 @@ export class McpController {
 		private readonly telemetry: Telemetry,
 	) {}
 
+	// Add CORS headers helper
+	private setCorsHeaders(res: Response) {
+		// Allow requests from Claude AI playground and other MCP clients
+		res.header('Access-Control-Allow-Origin', '*');
+		res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+		res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+		res.header('Access-Control-Allow-Credentials', 'true');
+		res.header('Access-Control-Max-Age', '86400'); // 24 hours
+	}
+
+	// // Handle OPTIONS preflight requests
+	// @Option('/http', {
+	// 	skipAuth: true,
+	// })
+	// async handlePreflight(req: AuthenticatedRequest, res: Response) {
+	// 	this.setCorsHeaders(res);
+	// 	res.status(204).send();
+	// }
+
+	/**
+	 * HEAD endpoint for authentication scheme discovery
+	 * Per RFC 6750 Section 3, returns 401 with WWW-Authenticate header
+	 * This allows MCP clients to probe the endpoint and discover Bearer token authentication
+	 */
+	@Head('/http', {
+		skipAuth: true,
+		usesTemplates: true,
+	})
+	async discoverAuthSchemeHead(_req: Request, res: Response) {
+		this.setCorsHeaders(res);
+		res.header('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
+		res.status(401).end();
+	}
+
 	@Post('/http', {
 		rateLimit: { limit: 100 },
 		middlewares: [getAuthMiddleware()],
@@ -39,6 +73,9 @@ export class McpController {
 		usesTemplates: true,
 	})
 	async build(req: AuthenticatedRequest, res: FlushableResponse) {
+		// Set CORS headers for all responses
+		this.setCorsHeaders(res);
+
 		const body = req.body;
 		const isInitializationRequest = isJSONRPCRequest(body) ? body.method === 'initialize' : false;
 		const clientInfo = getClientInfo(req);
@@ -51,6 +88,7 @@ export class McpController {
 
 		// Deny if MCP access is disabled
 		const enabled = await this.mcpSettingsService.getEnabled();
+
 		if (!enabled) {
 			if (isInitializationRequest) {
 				this.trackConnectionEvent({
