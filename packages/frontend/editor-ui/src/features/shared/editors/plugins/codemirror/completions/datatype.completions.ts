@@ -10,7 +10,7 @@ import type {
 } from '@codemirror/autocomplete';
 import uniqBy from 'lodash/uniqBy';
 import { DateTime } from 'luxon';
-import type { DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
+import type { Alias, DocMetadata, IDataObject, NativeDoc } from 'n8n-workflow';
 import {
 	Expression,
 	ExpressionExtensions,
@@ -155,16 +155,26 @@ export function sortCompletionsByInput(options: AliasCompletion[], input: string
 	return options
 		.map((o) => {
 			let order = 0;
+			let alias: Alias | undefined = undefined;
 			if (prefixMatch(o.label, input)) {
 				order = 3;
-			} else if (o.alias?.some((a) => a.mode === 'exact' && a.label === input)) {
-				order = 2;
-			} else if (o.alias?.some((a) => a.mode !== 'exact' && prefixMatch(a.label, input))) {
-				order = 1;
+			} else {
+				const exactAliasMatch = o.alias?.find((a) => a.mode === 'exact' && a.label === input);
+				const prefixAliasMatch = o.alias?.find(
+					(a) => a.mode !== 'exact' && prefixMatch(a.label, input),
+				);
+				if (exactAliasMatch) {
+					alias = exactAliasMatch;
+					order = 2;
+				} else if (prefixAliasMatch) {
+					alias = prefixAliasMatch;
+					order = 1;
+				}
 			}
 			return {
 				option: o,
 				order,
+				alias,
 			};
 		})
 		.sort((a, b) => b.order - a.order);

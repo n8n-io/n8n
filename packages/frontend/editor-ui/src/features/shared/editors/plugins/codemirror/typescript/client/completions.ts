@@ -108,10 +108,15 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 	}
 
 	const filteredOptions: AliasCompletion[] = [];
-	for (const { option, order } of sortCompletionsByInput(options, word.text)) {
+	for (const { option, order, alias } of sortCompletionsByInput(options, word.text)) {
 		const isEmpty = word.text === '';
 		const isStartCharacter = START_CHARACTERS.includes(word.text);
 		const isMatch = order > 0;
+
+		if (alias) {
+			option.info = alias.info;
+		}
+
 		if (isEmpty || isStartCharacter || isMatch) {
 			filteredOptions.push(option);
 		}
