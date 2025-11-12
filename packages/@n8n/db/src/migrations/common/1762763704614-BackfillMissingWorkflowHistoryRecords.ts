@@ -23,24 +23,29 @@ export class BackfillMissingWorkflowHistoryRecords1762763704614 implements Irrev
 
 		// Step 1: Generate versionIds that do not exist in workflow history
 		const workflowsNeedingNewVersionId = await runQuery<Array<{ id: string }>>(`
-			SELECT w.${idColumn} as id
+			-- Find duplicate versionIds (appear in more than one workflow)
+			WITH dup_version AS (
+				SELECT ${versionIdColumn}
+				FROM ${workflowTable}
+				WHERE ${versionIdColumn} IS NOT NULL AND ${versionIdColumn} <> ''
+				GROUP BY ${versionIdColumn}
+				HAVING COUNT(*) > 1
+			)
+			SELECT w.${idColumn} AS id
 			FROM ${workflowTable} w
+			LEFT JOIN ${historyTable} wh
+				ON wh.${versionIdColumn} = w.${versionIdColumn}
+			    AND wh.${workflowIdColumn} = w.${idColumn}
+			LEFT JOIN dup_version d
+				ON d.${versionIdColumn} = w.${versionIdColumn}
 			WHERE
+			    -- missing or empty versionId
 				w.${versionIdColumn} IS NULL OR w.${versionIdColumn} = ''
+				-- duplicate versionId without matching history entry by both versionId and workflowId
 				OR (
-					EXISTS (
-						SELECT 1
-						FROM ${workflowTable} w2
-						WHERE w2.${versionIdColumn} = w.${versionIdColumn}
-						AND w2.${idColumn} != w.${idColumn}
-					)
-					AND NOT EXISTS (
-						SELECT 1
-						FROM ${historyTable} wh
-						WHERE wh.${versionIdColumn} = w.${versionIdColumn}
-						AND wh.${workflowIdColumn} = w.${idColumn}
-					)
-				)
+					d.${versionIdColumn} IS NOT NULL
+					AND wh.${workflowIdColumn} IS NULL
+				);
 		`);
 
 		// Running in a loop to avoid using DB-specific syntax for generating UUIDs
