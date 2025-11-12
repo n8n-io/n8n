@@ -1676,16 +1676,30 @@ function handleSetHeatmap(
 	// Calculate min/max for normalization
 	const min = Math.min(...values);
 	const max = Math.max(...values);
-	const bucketCount = 6;
+	const bucketCount = 10; // Buckets 1-10 for nodes with data
 
-	// Assign buckets and emit events
+	// Get all workflow nodes
+	const allNodeIds = new Set(editableWorkflow.value.nodes.map((node) => node.id));
+
+	// Assign buckets for nodes with data (buckets 1-10)
 	Object.entries(nodeValues).forEach(([nodeId, value]) => {
-		const bucket = getBucketIndex(value, min, max, bucketCount);
+		const bucket = getBucketIndex(value, min, max, bucketCount) + 1; // Add 1 to shift to buckets 1-10
 		heatmapNodeBuckets.value[nodeId] = bucket;
 		canvasEventBus.emit('nodes:action', {
 			ids: [nodeId],
 			action: 'update:node:class',
 			payload: { className: `heatmap-bucket-${bucket}`, add: true },
+		});
+		allNodeIds.delete(nodeId);
+	});
+
+	// Assign bucket 0 to remaining nodes without data
+	allNodeIds.forEach((nodeId) => {
+		heatmapNodeBuckets.value[nodeId] = 0;
+		canvasEventBus.emit('nodes:action', {
+			ids: [nodeId],
+			action: 'update:node:class',
+			payload: { className: 'heatmap-bucket-0', add: true },
 		});
 	});
 }
@@ -2453,33 +2467,60 @@ onBeforeUnmount(() => {
 
 <style lang="scss">
 /* Heatmap bucket styles - applied globally to canvas nodes */
+/* Bucket 0: No data - neutral gray */
 .heatmap-bucket-0 {
-	--canvas-node--color--background: hsl(247, 49%, 93%);
-	--canvas-node--border-color: var(--p--color--secondary-570);
+	--canvas-node--color--background: #f9fafb;
+	--canvas-node--border-color: #9ca3af;
 }
 
-.heatmap-bucket-1 {
-	--canvas-node--color--background: hsl(247, 49%, 90%);
-	--canvas-node--border-color: var(--p--color--secondary-570);
+/* Buckets 1-10: Data visualization - purple gradient from lightest to darkest */
+.heatmap-bucket-10 {
+	--canvas-node--color--background: #d1c8f5;
+	--canvas-node--border-color: #2a2060;
 }
 
-.heatmap-bucket-2 {
-	--canvas-node--color--background: hsl(247, 49%, 87%);
-	--canvas-node--border-color: var(--p--color--secondary-570);
+.heatmap-bucket-9 {
+	--canvas-node--color--background: #d5cdf6;
+	--canvas-node--border-color: #3a2d7f;
 }
 
-.heatmap-bucket-3 {
-	--canvas-node--color--background: hsl(247, 49%, 85%);
-	--canvas-node--border-color: var(--p--color--secondary-570);
+.heatmap-bucket-8 {
+	--canvas-node--color--background: #dad2f7;
+	--canvas-node--border-color: #4a3a9f;
 }
 
-.heatmap-bucket-4 {
-	--canvas-node--color--background: hsl(247, 49%, 82%);
-	--canvas-node--border-color: var(--p--color--secondary-570);
+.heatmap-bucket-7 {
+	--canvas-node--color--background: #ded7f8;
+	--canvas-node--border-color: #6e58d9;
+}
+
+.heatmap-bucket-6 {
+	--canvas-node--color--background: #e2dcf9;
+	--canvas-node--border-color: #7c66e0;
 }
 
 .heatmap-bucket-5 {
-	--canvas-node--color--background: hsl(247, 49%, 79%);
-	--canvas-node--border-color: var(--p--color--secondary-570);
+	--canvas-node--color--background: #e7e2fa;
+	--canvas-node--border-color: #907de5;
+}
+
+.heatmap-bucket-4 {
+	--canvas-node--color--background: #ebe7fb;
+	--canvas-node--border-color: #a495ea;
+}
+
+.heatmap-bucket-3 {
+	--canvas-node--color--background: #f0edfc;
+	--canvas-node--border-color: #b8adef;
+}
+
+.heatmap-bucket-2 {
+	--canvas-node--color--background: #f4f2fd;
+	--canvas-node--border-color: #ccc4f3;
+}
+
+.heatmap-bucket-1 {
+	--canvas-node--color--background: #f8f7fe;
+	--canvas-node--border-color: #e0dcf8;
 }
 </style>
