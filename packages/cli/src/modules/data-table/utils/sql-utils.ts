@@ -112,7 +112,10 @@ export function renameColumnQuery(
 	newColumnName: string,
 	dbType: DataSourceOptions['type'],
 ): string {
-	// API requests should already conform to this, but better safe than sorry
+	// Validate both old and new column names for defense in depth
+	if (!isValidColumnName(oldColumnName)) {
+		throw new UnexpectedError('Invalid old column name');
+	}
 	if (!isValidColumnName(newColumnName)) {
 		throw new UnexpectedError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
 	}
@@ -121,12 +124,6 @@ export function renameColumnQuery(
 	const quotedOldName = quoteIdentifier(oldColumnName, dbType);
 	const quotedNewName = quoteIdentifier(newColumnName, dbType);
 
-	// SQLite uses different syntax for renaming columns
-	if (dbType === 'sqlite') {
-		return `ALTER TABLE ${quotedTableName} RENAME COLUMN ${quotedOldName} TO ${quotedNewName}`;
-	}
-
-	// PostgreSQL, MySQL, and MariaDB use similar syntax
 	return `ALTER TABLE ${quotedTableName} RENAME COLUMN ${quotedOldName} TO ${quotedNewName}`;
 }
 
