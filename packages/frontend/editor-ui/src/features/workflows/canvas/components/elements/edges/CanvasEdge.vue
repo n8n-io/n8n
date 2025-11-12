@@ -63,12 +63,10 @@ const edgeColor = computed(() => {
 		return 'var(--color--success)';
 	} else if (status.value === 'pinned') {
 		return 'var(--color--secondary)';
-	} else if (!isMainConnection.value) {
-		return 'var(--node-type--supplemental--color)';
 	} else if (props.selected) {
 		return 'var(--color--background--shade-2)';
 	} else {
-		return 'var(--color--foreground--shade-2)';
+		return 'light-dark(var(--color--neutral-250), var(--color--neutral-700))';
 	}
 });
 
