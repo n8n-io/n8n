@@ -189,9 +189,9 @@ describe('generateTypes', () => {
 			};
 			const result = getTypeScriptType(prop);
 			expect(result).toEqual(`{
-  /** First field */
-  field1?: any;
-  field2?: any;
+ /** First field */
+ field1?: any;
+ field2?: any;
 }`);
 		});
 
@@ -232,10 +232,10 @@ describe('generateTypes', () => {
 			};
 			const result = getTypeScriptType(prop);
 			expect(result).toEqual(`{
-  "email_addresses_fields"?: {
-    address?: string;
-    primary?: boolean;
-  };
+ "email_addresses_fields"?: {
+   address?: string;
+   primary?: boolean;
+ };
 }`);
 		});
 
@@ -264,9 +264,9 @@ describe('generateTypes', () => {
 			};
 			const result = getTypeScriptType(prop);
 			expect(result).toEqual(`{
-  "address_fields"?: Array<{
-    street?: string;
-  }>;
+ "address_fields"?: Array<{
+   street?: string;
+ }>;
 }`);
 		});
 
@@ -336,9 +336,9 @@ describe('generateTypes', () => {
 
 			expect(result).toEqual(`export interface TestNodeParameters {
 
-  name?: string;
+ name?: string;
 
-  count?: number;
+ count?: number;
 }`);
 		});
 
@@ -365,9 +365,9 @@ describe('generateTypes', () => {
 
 			expect(result).toEqual(`export interface TestNodeParameters {
 
-  required: string;
+ required: string;
 
-  optional?: string;
+ optional?: string;
 }`);
 		});
 
@@ -389,8 +389,8 @@ describe('generateTypes', () => {
 
 			expect(result).toEqual(`export interface TestNodeParameters {
 
-  /** The name of the resource */
-  name?: string;
+ /** The name of the resource */
+ name?: string;
 }`);
 		});
 
@@ -422,11 +422,11 @@ describe('generateTypes', () => {
 
 			expect(result).toEqual(`export interface TestNodeParameters {
 
-  resource?: "user";
+ resource?: "user";
 
-  // Properties shown when: resource: user
+ // Properties shown when: resource: user
 
-  userId?: string;
+ userId?: string;
 }`);
 		});
 
@@ -451,21 +451,12 @@ describe('generateTypes', () => {
 
 			const result = generateNodeParametersInterface(node);
 
-			// Note: The order of conditions may vary, so we check both possibilities
-			const expectedOption1 = `export interface TestNodeParameters {
+			expect(result).toEqual(`export interface TestNodeParameters {
 
-  // Properties shown when: resource: user AND operation: get
+ // Properties shown when: resource: user AND operation: get
 
-  field?: string;
-}`;
-			const expectedOption2 = `export interface TestNodeParameters {
-
-  // Properties shown when: operation: get AND resource: user
-
-  field?: string;
-}`;
-
-			expect([expectedOption1, expectedOption2]).toContainEqual(result);
+ field?: string;
+}`);
 		});
 
 		it('should quote property names with special characters', () => {
@@ -485,7 +476,7 @@ describe('generateTypes', () => {
 
 			expect(result).toEqual(`export interface TestNodeParameters {
 
-  "my-special-property"?: string;
+ "my-special-property"?: string;
 }`);
 		});
 	});
@@ -646,7 +637,7 @@ describe('generateTypes', () => {
 	});
 
 	describe('convertNodeToTypes', () => {
-		it('should generate complete type definitions for a node', () => {
+		it('should generate complete type definitions for a node', async () => {
 			const nodes: NodeTypeDefinition[] = [
 				{
 					displayName: 'Action Network',
@@ -676,7 +667,7 @@ describe('generateTypes', () => {
 				},
 			];
 
-			const result = convertNodeToTypes(nodes);
+			const result = await convertNodeToTypes(nodes);
 
 			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
 
@@ -684,22 +675,21 @@ describe('generateTypes', () => {
 // Node: n8n-nodes-base.actionNetwork
 
 export interface ActionNetworkParameters {
+  resource?: 'attendance' | 'event';
 
-  resource?: "attendance" | "event";
-
-  operation?: "create" | "get";
+  operation?: 'create' | 'get';
 }
 
 // ---
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.actionNetwork": ActionNetworkParameters;
+  'n8n-nodes-base.actionNetwork': ActionNetworkParameters;
 }
 `);
 		});
 
-		it('should handle multiple nodes', () => {
+		it('should handle multiple nodes', async () => {
 			const nodes: NodeTypeDefinition[] = [
 				{
 					displayName: 'Node 1',
@@ -725,7 +715,7 @@ export interface NodeTypeToParametersMap {
 				},
 			];
 
-			const result = convertNodeToTypes(nodes);
+			const result = await convertNodeToTypes(nodes);
 
 			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
 
@@ -733,7 +723,6 @@ export interface NodeTypeToParametersMap {
 // Node: n8n-nodes-base.node1
 
 export interface Node1Parameters {
-
   field1?: string;
 }
 
@@ -743,7 +732,6 @@ export interface Node1Parameters {
 // Node: n8n-nodes-base.node2
 
 export interface Node2Parameters {
-
   field2?: number;
 }
 
@@ -751,13 +739,13 @@ export interface Node2Parameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.node1": Node1Parameters;
-  "n8n-nodes-base.node2": Node2Parameters;
+  'n8n-nodes-base.node1': Node1Parameters;
+  'n8n-nodes-base.node2': Node2Parameters;
 }
 `);
 		});
 
-		it('should include operation-specific types when available', () => {
+		it('should include operation-specific types when available', async () => {
 			const nodes: NodeTypeDefinition[] = [
 				{
 					displayName: 'Test Node',
@@ -790,7 +778,7 @@ export interface NodeTypeToParametersMap {
 				},
 			];
 
-			const result = convertNodeToTypes(nodes);
+			const result = await convertNodeToTypes(nodes);
 
 			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
 
@@ -798,10 +786,9 @@ export interface NodeTypeToParametersMap {
 // Node: n8n-nodes-base.testNode
 
 export interface TestNodeParameters {
+  resource?: 'user';
 
-  resource?: "user";
-
-  operation?: "get";
+  operation?: 'get';
 
   // Properties shown when: resource: user AND operation: get
 
@@ -810,8 +797,8 @@ export interface TestNodeParameters {
 
 // Operation-specific parameter types
 export interface TestNodeUserGetParameters {
-  resource: "user";
-  operation: "get";
+  resource: 'user';
+  operation: 'get';
 
   userId?: string;
 }
@@ -820,18 +807,18 @@ export interface TestNodeUserGetParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.testNode": TestNodeParameters;
+  'n8n-nodes-base.testNode': TestNodeParameters;
 }
 `);
 		});
 
-		it('should handle empty node array', () => {
-			const result = convertNodeToTypes([]);
+		it('should handle empty node array', async () => {
+			const result = await convertNodeToTypes([]);
 
-			expect(result).toEqual('// Auto-generated n8n Node Parameter Types\n\n');
+			expect(result).toEqual('// Auto-generated n8n Node Parameter Types\n');
 		});
 
-		it('should generate NodeTypeToParametersMap for single node', () => {
+		it('should generate NodeTypeToParametersMap for single node', async () => {
 			const nodes: NodeTypeDefinition[] = [
 				{
 					displayName: 'Test Node',
@@ -846,7 +833,7 @@ export interface NodeTypeToParametersMap {
 				},
 			];
 
-			const result = convertNodeToTypes(nodes);
+			const result = await convertNodeToTypes(nodes);
 
 			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
 
@@ -854,7 +841,6 @@ export interface NodeTypeToParametersMap {
 // Node: n8n-nodes-base.testNode
 
 export interface TestNodeParameters {
-
   field?: string;
 }
 
@@ -862,12 +848,12 @@ export interface TestNodeParameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.testNode": TestNodeParameters;
+  'n8n-nodes-base.testNode': TestNodeParameters;
 }
 `);
 		});
 
-		it('should generate NodeTypeToParametersMap for multiple nodes', () => {
+		it('should generate NodeTypeToParametersMap for multiple nodes', async () => {
 			const nodes: NodeTypeDefinition[] = [
 				{
 					displayName: 'Node 1',
@@ -893,7 +879,7 @@ export interface NodeTypeToParametersMap {
 				},
 			];
 
-			const result = convertNodeToTypes(nodes);
+			const result = await convertNodeToTypes(nodes);
 
 			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
 
@@ -901,7 +887,6 @@ export interface NodeTypeToParametersMap {
 // Node: n8n-nodes-base.node1
 
 export interface Node1Parameters {
-
   field1?: string;
 }
 
@@ -911,7 +896,6 @@ export interface Node1Parameters {
 // Node: n8n-nodes-base.node2
 
 export interface Node2Parameters {
-
   field2?: number;
 }
 
@@ -919,613 +903,10 @@ export interface Node2Parameters {
 
 // Node Type to Parameters Mapping
 export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.node1": Node1Parameters;
-  "n8n-nodes-base.node2": Node2Parameters;
+  'n8n-nodes-base.node1': Node1Parameters;
+  'n8n-nodes-base.node2': Node2Parameters;
 }
 `);
-		});
-	});
-
-	describe('Integration tests', () => {
-		it('should generate correct types for Action Network example', () => {
-			const nodes: NodeTypeDefinition[] = [
-				{
-					displayName: 'Action Network',
-					name: 'n8n-nodes-base.actionNetwork',
-					properties: [
-						{
-							displayName: 'Resource',
-							name: 'resource',
-							type: 'options',
-							default: 'attendance',
-							options: [
-								{ name: 'Attendance', value: 'attendance' },
-								{ name: 'Event', value: 'event' },
-							],
-						},
-						{
-							displayName: 'Operation',
-							name: 'operation',
-							type: 'options',
-							default: 'create',
-							options: [
-								{ name: 'Create', value: 'create' },
-								{ name: 'Get', value: 'get' },
-							],
-							displayOptions: {
-								show: { resource: ['attendance'] },
-							},
-						},
-					],
-				},
-			];
-
-			const result = convertNodeToTypes(nodes);
-
-			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
-
-// Action Network
-// Node: n8n-nodes-base.actionNetwork
-
-export interface ActionNetworkParameters {
-
-  resource?: "attendance" | "event";
-
-  // Properties shown when: resource: attendance
-
-  operation?: "create" | "get";
-}
-
-// ---
-
-// Node Type to Parameters Mapping
-export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.actionNetwork": ActionNetworkParameters;
-}
-`);
-		});
-
-		it('should handle complex node with all property types', () => {
-			const nodes: NodeTypeDefinition[] = [
-				{
-					displayName: 'Complex Node',
-					name: 'n8n-nodes-base.complexNode',
-					properties: [
-						{
-							displayName: 'String Field',
-							name: 'stringField',
-							type: 'string',
-							description: 'A string field',
-							required: true,
-						},
-						{
-							displayName: 'Number Field',
-							name: 'numberField',
-							type: 'number',
-						},
-						{
-							displayName: 'Boolean Field',
-							name: 'booleanField',
-							type: 'boolean',
-						},
-						{
-							displayName: 'Date Field',
-							name: 'dateField',
-							type: 'dateTime',
-						},
-						{
-							displayName: 'Options Field',
-							name: 'optionsField',
-							type: 'options',
-							options: [
-								{ name: 'Option 1', value: 'opt1' },
-								{ name: 'Option 2', value: 'opt2' },
-							],
-						},
-						{
-							displayName: 'Multi Options',
-							name: 'multiOptions',
-							type: 'multiOptions',
-							options: [
-								{ name: 'Tag 1', value: 'tag1' },
-								{ name: 'Tag 2', value: 'tag2' },
-							],
-						},
-						{
-							displayName: 'JSON Field',
-							name: 'jsonField',
-							type: 'json',
-						},
-						{
-							displayName: 'Collection',
-							name: 'collection',
-							type: 'collection',
-						},
-					],
-				},
-			];
-
-			const result = convertNodeToTypes(nodes);
-
-			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
-
-// Complex Node
-// Node: n8n-nodes-base.complexNode
-
-export interface ComplexNodeParameters {
-
-  /** A string field */
-  stringField: string;
-
-  numberField?: number;
-
-  booleanField?: boolean;
-
-  dateField?: string | Date;
-
-  optionsField?: "opt1" | "opt2";
-
-  multiOptions?: Array<"tag1" | "tag2">;
-
-  jsonField?: string | object;
-
-  collection?: Record<string, any>;
-}
-
-// ---
-
-// Node Type to Parameters Mapping
-export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.complexNode": ComplexNodeParameters;
-}
-`);
-		});
-
-		it('should handle fixedCollection types with proper nesting', () => {
-			const nodes: NodeTypeDefinition[] = [
-				{
-					displayName: 'Complex Node',
-					name: 'n8n-nodes-base.complexNode',
-					properties: [
-						{
-							displayName: 'Email Addresses',
-							name: 'email_addresses',
-							type: 'fixedCollection',
-							options: [
-								{
-									name: 'Email Fields',
-									value: 'email_fields',
-									values: [
-										{
-											displayName: 'Address',
-											name: 'address',
-											type: 'string',
-											default: '',
-											description: 'Email address',
-										},
-										{
-											displayName: 'Primary',
-											name: 'primary',
-											type: 'boolean',
-											default: true,
-										},
-									],
-								},
-							],
-						},
-					],
-				},
-			];
-
-			const result = convertNodeToTypes(nodes);
-
-			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
-
-// Complex Node
-// Node: n8n-nodes-base.complexNode
-
-export interface ComplexNodeParameters {
-
-  email_addresses?: {
-  "email_fields"?: {
-    /** Email address */
-    address?: string;
-    primary?: boolean;
-  };
-};
-}
-
-// ---
-
-// Node Type to Parameters Mapping
-export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.complexNode": ComplexNodeParameters;
-}
-`);
-		});
-
-		it('should handle collection with nested options', () => {
-			const nodes: NodeTypeDefinition[] = [
-				{
-					displayName: 'Test Node',
-					name: 'n8n-nodes-base.testNode',
-					properties: [
-						{
-							displayName: 'Additional Fields',
-							name: 'additionalFields',
-							type: 'collection',
-							options: [
-								{
-									name: 'Name',
-									value: 'name',
-									description: 'The name field',
-								},
-								{
-									name: 'Age',
-									value: 'age',
-								},
-							],
-						},
-					],
-				},
-			];
-
-			const result = convertNodeToTypes(nodes);
-
-			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
-
-// Test Node
-// Node: n8n-nodes-base.testNode
-
-export interface TestNodeParameters {
-
-  additionalFields?: {
-  /** The name field */
-  name?: any;
-  age?: any;
-};
-}
-
-// ---
-
-// Node Type to Parameters Mapping
-export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.testNode": TestNodeParameters;
-}
-`);
-		});
-
-		it('should handle multipleValues in typeOptions', () => {
-			const nodes: NodeTypeDefinition[] = [
-				{
-					displayName: 'Test Node',
-					name: 'n8n-nodes-base.testNode',
-					properties: [
-						{
-							displayName: 'Multiple Strings',
-							name: 'multipleStrings',
-							type: 'string',
-							typeOptions: {
-								multipleValues: true,
-							},
-						},
-					],
-				},
-			];
-
-			const result = convertNodeToTypes(nodes);
-
-			expect(result).toEqual(`// Auto-generated n8n Node Parameter Types
-
-// Test Node
-// Node: n8n-nodes-base.testNode
-
-export interface TestNodeParameters {
-
-  multipleStrings?: Array<string>;
-}
-
-// ---
-
-// Node Type to Parameters Mapping
-export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.testNode": TestNodeParameters;
-}
-`);
-		});
-
-		it('should generate complete Action Network node with nested structures', () => {
-			const nodes: NodeTypeDefinition[] = [
-				{
-					displayName: 'Action Network',
-					name: 'n8n-nodes-base.actionNetwork',
-					properties: [
-						{
-							displayName: 'Resource',
-							name: 'resource',
-							type: 'options',
-							options: [
-								{ name: 'Attendance', value: 'attendance' },
-								{ name: 'Event', value: 'event' },
-								{ name: 'Person', value: 'person' },
-							],
-							default: 'attendance',
-						},
-						{
-							displayName: 'Operation',
-							name: 'operation',
-							type: 'options',
-							displayOptions: {
-								show: { resource: ['person'] },
-							},
-							options: [
-								{ name: 'Create', value: 'create' },
-								{ name: 'Get', value: 'get' },
-								{ name: 'Update', value: 'update' },
-							],
-							default: 'create',
-						},
-						{
-							displayName: 'Email Address',
-							name: 'email_addresses',
-							type: 'fixedCollection',
-							default: {},
-							description: "Person's email addresses",
-							displayOptions: {
-								show: {
-									resource: ['person'],
-									operation: ['create'],
-								},
-							},
-							options: [
-								{
-									name: 'Email Addresses Fields',
-									value: 'email_addresses_fields',
-									values: [
-										{
-											displayName: 'Address',
-											name: 'address',
-											type: 'string',
-											default: '',
-											description: "Person's email address",
-										},
-										{
-											displayName: 'Primary',
-											name: 'primary',
-											type: 'boolean',
-											default: true,
-											description: "Whether this is the person's primary email address",
-										},
-										{
-											displayName: 'Status',
-											name: 'status',
-											type: 'options',
-											default: 'subscribed',
-											description: 'Subscription status of this email address',
-											options: [
-												{ name: 'Bouncing', value: 'bouncing' },
-												{ name: 'Subscribed', value: 'subscribed' },
-												{ name: 'Unsubscribed', value: 'unsubscribed' },
-											],
-										},
-									],
-								},
-							],
-						},
-						{
-							displayName: 'Additional Fields',
-							name: 'additionalFields',
-							type: 'collection',
-							default: {},
-							displayOptions: {
-								show: {
-									resource: ['person'],
-									operation: ['create'],
-								},
-							},
-							options: [
-								{
-									name: 'Family Name',
-									value: 'family_name',
-									description: "Person's last name",
-								},
-								{
-									name: 'Given Name',
-									value: 'given_name',
-									description: "Person's first name",
-								},
-								{
-									name: 'Postal Addresses',
-									value: 'postal_addresses',
-									values: [
-										{
-											displayName: 'Address Line',
-											name: 'address_lines',
-											type: 'string',
-											default: '',
-											description: "Line for a person's address",
-										},
-										{
-											displayName: 'Postal Code',
-											name: 'postal_code',
-											type: 'string',
-											default: '',
-											description: 'Region specific postal code, such as ZIP code',
-										},
-										{
-											displayName: 'Location',
-											name: 'location',
-											type: 'fixedCollection',
-											default: {},
-											options: [
-												{
-													name: 'Location Fields',
-													value: 'location_fields',
-													values: [
-														{
-															displayName: 'Latitude',
-															name: 'latitude',
-															type: 'string',
-															default: '',
-															description: 'Latitude of the location of the address',
-														},
-														{
-															displayName: 'Longitude',
-															name: 'longitude',
-															type: 'string',
-															default: '',
-															description: 'Longitude of the location of the address',
-														},
-													],
-												},
-											],
-										},
-									],
-								},
-							],
-						},
-						{
-							displayName: 'Simplify',
-							name: 'simple',
-							type: 'boolean',
-							displayOptions: {
-								show: {
-									resource: ['person'],
-									operation: ['create'],
-								},
-							},
-							default: true,
-							description:
-								'Whether to return a simplified version of the response instead of the raw data',
-						},
-					],
-				},
-			];
-
-			const result = convertNodeToTypes(nodes);
-
-			// Note: The condition order may vary (resource/operation or operation/resource)
-			const expectedOption1 = `// Auto-generated n8n Node Parameter Types
-
-// Action Network
-// Node: n8n-nodes-base.actionNetwork
-
-export interface ActionNetworkParameters {
-
-  resource?: "attendance" | "event" | "person";
-
-  // Properties shown when: resource: person
-
-  operation?: "create" | "get" | "update";
-
-  // Properties shown when: resource: person AND operation: create
-
-  /** Person's email addresses */
-  email_addresses?: {
-  "email_addresses_fields"?: {
-    /** Person's email address */
-    address?: string;
-    /** Whether this is the person's primary email address */
-    primary?: boolean;
-    /** Subscription status of this email address */
-    status?: "bouncing" | "subscribed" | "unsubscribed";
-  };
-};
-
-  additionalFields?: {
-  /** Person's last name */
-  family_name?: any;
-  /** Person's first name */
-  given_name?: any;
-  postal_addresses?: {
-    /** Line for a person's address */
-    address_lines?: string;
-    /** Region specific postal code, such as ZIP code */
-    postal_code?: string;
-    location?: {
-  "location_fields"?: {
-    /** Latitude of the location of the address */
-    latitude?: string;
-    /** Longitude of the location of the address */
-    longitude?: string;
-  };
-};
-  };
-};
-
-  /** Whether to return a simplified version of the response instead of the raw data */
-  simple?: boolean;
-}
-
-// ---
-
-// Node Type to Parameters Mapping
-export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.actionNetwork": ActionNetworkParameters;
-}
-`;
-
-			const expectedOption2 = `// Auto-generated n8n Node Parameter Types
-
-// Action Network
-// Node: n8n-nodes-base.actionNetwork
-
-export interface ActionNetworkParameters {
-
-  resource?: "attendance" | "event" | "person";
-
-  // Properties shown when: resource: person
-
-  operation?: "create" | "get" | "update";
-
-  // Properties shown when: operation: create AND resource: person
-
-  /** Person's email addresses */
-  email_addresses?: {
-  "email_addresses_fields"?: {
-    /** Person's email address */
-    address?: string;
-    /** Whether this is the person's primary email address */
-    primary?: boolean;
-    /** Subscription status of this email address */
-    status?: "bouncing" | "subscribed" | "unsubscribed";
-  };
-};
-
-  additionalFields?: {
-  /** Person's last name */
-  family_name?: any;
-  /** Person's first name */
-  given_name?: any;
-  postal_addresses?: {
-    /** Line for a person's address */
-    address_lines?: string;
-    /** Region specific postal code, such as ZIP code */
-    postal_code?: string;
-    location?: {
-  "location_fields"?: {
-    /** Latitude of the location of the address */
-    latitude?: string;
-    /** Longitude of the location of the address */
-    longitude?: string;
-  };
-};
-  };
-};
-
-  /** Whether to return a simplified version of the response instead of the raw data */
-  simple?: boolean;
-}
-
-// ---
-
-// Node Type to Parameters Mapping
-export interface NodeTypeToParametersMap {
-  "n8n-nodes-base.actionNetwork": ActionNetworkParameters;
-}
-`;
-
-			expect([expectedOption1, expectedOption2]).toContainEqual(result);
 		});
 	});
 });

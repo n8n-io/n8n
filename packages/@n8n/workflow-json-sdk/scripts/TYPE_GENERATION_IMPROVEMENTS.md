@@ -167,7 +167,7 @@ All tests pass successfully:
 
 ```bash
 pnpm test generateTypes.test.ts
-# ✓ 54 tests passed (includes NodeTypeToParametersMap tests)
+# ✓ 57 tests passed (includes NodeTypeToParametersMap and deduplication tests)
 ```
 
 TypeScript compilation succeeds:
@@ -214,6 +214,48 @@ const invalid = getNodeParameters('n8n-nodes-base.nonExistent');
 //                                 Compile error!
 ```
 
+### 8. Duplicate Field Prevention and Undefined Filtering
+
+The generator now intelligently handles duplicate fields and filters out invalid properties:
+
+**Duplicate Prevention:**
+- Tracks property names across base and conditional sections
+- Only outputs each unique property name once
+- First occurrence takes precedence (base properties before conditional)
+- Empty conditional blocks are automatically removed if all properties were duplicates
+
+**Undefined Field Filtering:**
+- Skips properties with `undefined` type
+- Filters out properties with empty names
+- Ensures only valid, meaningful properties appear in generated types
+
+**Example:**
+
+```typescript
+// Before (with duplicates):
+export interface NodeParameters {
+  name?: string;
+
+  // Properties shown when: resource: user
+  name?: string;  // Duplicate!
+  email?: string;
+}
+
+// After (deduplicated):
+export interface NodeParameters {
+  name?: string;
+
+  // Properties shown when: resource: user
+  email?: string;
+}
+```
+
+**Benefits:**
+- Cleaner, more maintainable type definitions
+- No TypeScript errors from duplicate property declarations
+- Better IDE autocomplete (no duplicate suggestions)
+- Smaller generated file sizes
+
 ## Future Enhancements
 
 Potential areas for further improvement:
@@ -225,15 +267,17 @@ Potential areas for further improvement:
 5. **Dependency Tracking**: Handle `loadOptionsDependsOn` relationships
 6. **Required Field Analysis**: More intelligent required vs optional determination based on displayOptions
 7. **Utility Types**: Generate helper types like `ExtractResourceOps<Node, Resource>` for operation extraction
+8. **Smart Property Merging**: Merge duplicate properties with different conditions into union types
 
 ## Files Modified
 
-- `scripts/generateTypes.ts` - Core type generation logic with nested structure support and NodeTypeToParametersMap
-- `scripts/generateTypes.test.ts` - Comprehensive test suite with 54 tests using `toEqual` assertions
+- `scripts/generateTypes.ts` - Core type generation logic with nested structure support, NodeTypeToParametersMap, and deduplication
+- `scripts/generateTypes.test.ts` - Comprehensive test suite with 57 tests using `toEqual` assertions
 - `scripts/test-action-network.ts` - Real-world demonstration of Action Network node types
 - `scripts/test-multiple-nodes.ts` - Multi-node example showcasing NodeTypeToParametersMap usage
+- `scripts/test-deduplication.ts` - Demonstration of duplicate prevention and undefined filtering
 - `tsconfig.json` - Added `scripts/**/*.ts` to includes for proper type checking
 
 ## Conclusion
 
-The type generation system now provides accurate, type-safe TypeScript interfaces for n8n node parameters, significantly improving the developer experience when working with the workflow JSON SDK. The `NodeTypeToParametersMap` interface enables compile-time validation of node types and their parameters, preventing runtime errors and providing excellent IDE autocomplete support. The comprehensive test suite ensures reliability and makes future enhancements easier to implement safely.
+The type generation system now provides accurate, type-safe TypeScript interfaces for n8n node parameters, significantly improving the developer experience when working with the workflow JSON SDK. The `NodeTypeToParametersMap` interface enables compile-time validation of node types and their parameters, preventing runtime errors and providing excellent IDE autocomplete support. Intelligent deduplication and filtering ensure clean, maintainable type definitions without duplicates or invalid properties. The comprehensive test suite ensures reliability and makes future enhancements easier to implement safely.

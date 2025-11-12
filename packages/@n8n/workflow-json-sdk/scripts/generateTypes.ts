@@ -1,3 +1,5 @@
+import * as prettier from 'prettier';
+
 export interface NodeProperty {
 	displayName: string;
 	name: string;
@@ -70,18 +72,18 @@ function generateFixedCollectionType(property: NodeProperty): string {
 			const propName = toValidPropertyName(field.name);
 			const propType = getTypeScriptType(field);
 			const optional = !field.required ? '?' : '';
-			const comment = field.description ? `    /** ${field.description} */\n` : '';
+			const comment = field.description ? `   /** ${field.description} */\n` : '';
 
-			fieldsInterface += `${comment}    ${propName}${optional}: ${propType};\n`;
+			fieldsInterface += `${comment}   ${propName}${optional}: ${propType};\n`;
 		}
 
-		fieldsInterface += '  }';
+		fieldsInterface += ' }';
 
 		// Check if this field can have multiple values
 		const isMultiple = property.typeOptions?.multipleValues;
 		const fieldType = isMultiple ? `Array<${fieldsInterface}>` : fieldsInterface;
 
-		collectionTypes.push(`  "${fieldName}"?: ${fieldType};`);
+		collectionTypes.push(` "${fieldName}"?: ${fieldType};`);
 	}
 
 	if (collectionTypes.length === 0) {
@@ -110,26 +112,38 @@ function generateCollectionType(property: NodeProperty): string {
 				const nestedPropType = getTypeScriptType(nestedField);
 				const nestedOptional = !nestedField.required ? '?' : '';
 				const nestedComment = nestedField.description
-					? `    /** ${nestedField.description} */\n`
+					? `   /** ${nestedField.description} */\n`
 					: '';
 
-				fieldType += `${nestedComment}    ${nestedPropName}${nestedOptional}: ${nestedPropType};\n`;
+				fieldType += `${nestedComment}   ${nestedPropName}${nestedOptional}: ${nestedPropType};\n`;
 			}
-			fieldType += '  }';
+			fieldType += ' }';
 		} else {
 			// Simple field - infer from the option
 			fieldType = 'any';
 		}
 
 		const propName = toValidPropertyName(option.value);
-		const comment = option.description ? `  /** ${option.description} */\n` : '';
+		const comment = option.description ? ` /** ${option.description} */\n` : '';
 
-		fieldsInterface += `${comment}  ${propName}?: ${fieldType};\n`;
+		fieldsInterface += `${comment} ${propName}?: ${fieldType};\n`;
 	}
 
 	fieldsInterface += '}';
 
 	return fieldsInterface;
+}
+
+// Escape special characters in string literals for TypeScript
+function escapeStringLiteral(value: unknown): string {
+	// Convert to string if not already
+	const str = typeof value === 'string' ? value : String(value);
+	return str
+		.replace(/\\/g, '\\\\') // Escape backslashes first
+		.replace(/"/g, '\\"') // Escape double quotes
+		.replace(/\n/g, '\\n') // Escape newlines
+		.replace(/\r/g, '\\r') // Escape carriage returns
+		.replace(/\t/g, '\\t'); // Escape tabs
 }
 
 // Determine TypeScript type from n8n property type
@@ -157,7 +171,7 @@ export function getTypeScriptType(property: NodeProperty): string {
 
 		case 'options':
 			if (options && options.length > 0) {
-				const values = options.map((opt) => `"${opt.value}"`).join(' | ');
+				const values = options.map((opt) => `"${escapeStringLiteral(opt.value)}"`).join(' | ');
 				baseType = values || 'string';
 			} else {
 				baseType = 'string';
@@ -166,7 +180,7 @@ export function getTypeScriptType(property: NodeProperty): string {
 
 		case 'multiOptions':
 			if (options && options.length > 0) {
-				const values = options.map((opt) => `"${opt.value}"`).join(' | ');
+				const values = options.map((opt) => `"${escapeStringLiteral(opt.value)}"`).join(' | ');
 				baseType = `Array<${values}>`;
 			} else {
 				baseType = 'string[]';
@@ -220,15 +234,24 @@ export function getDefaultType(defaultValue: any): string {
 	return type;
 }
 
+export function normalizeNodeName(nodeName: string): string {
+	return nodeName.replace('n8n-nodes-base.', '').replace(/@n8n\/n8n-nodes-\w+\./, '');
+}
+
 // Generate TypeScript interface for a node's parameters
 export function generateNodeParametersInterface(node: NodeTypeDefinition): string {
-	const interfaceName = `${toPascalCase(node.name.replace('n8n-nodes-base.', ''))}Parameters`;
+	const interfaceName = `${toPascalCase(normalizeNodeName(node.name))}Parameters`;
 
 	// Group properties by their display conditions
 	const baseProperties: NodeProperty[] = [];
 	const conditionalProperties = new Map<string, NodeProperty[]>();
 
 	for (const prop of node.properties) {
+		// Skip properties with undefined type
+		if (!prop.name || prop.type === undefined) {
+			continue;
+		}
+
 		if (!prop.displayOptions?.show) {
 			baseProperties.push(prop);
 		} else {
@@ -242,14 +265,24 @@ export function generateNodeParametersInterface(node: NodeTypeDefinition): strin
 
 	let interfaceBody = '';
 
+	// Track which property names we've already added within each scope
+	const basePropertyNames = new Set<string>();
+
 	// Add base properties
 	for (const prop of baseProperties) {
 		const propName = toValidPropertyName(prop.name);
+
+		// Skip if we've already added this property in base scope
+		if (basePropertyNames.has(prop.name)) {
+			continue;
+		}
+		basePropertyNames.add(prop.name);
+
 		const propType = getTypeScriptType(prop);
 		const optional = !prop.required ? '?' : '';
-		const comment = prop.description ? `\n  /** ${prop.description} */` : '';
+		const comment = prop.description ? ` /** ${prop.description} */\n` : '';
 
-		interfaceBody += `${comment}\n  ${propName}${optional}: ${propType};\n`;
+		interfaceBody += `\n${comment} ${propName}${optional}: ${propType};\n`;
 	}
 
 	// Add conditional properties with comments
@@ -259,15 +292,31 @@ export function generateNodeParametersInterface(node: NodeTypeDefinition): strin
 			.map(([key, values]) => `${key}: ${(values as any[]).join(', ')}`)
 			.join(' AND ');
 
-		interfaceBody += `\n  // Properties shown when: ${conditionDesc}\n`;
+		// Track property names within this conditional block only
+		const conditionPropertyNames = new Set<string>();
+		let conditionHasProperties = false;
+		let conditionBody = '';
 
 		for (const prop of props) {
+			// Skip if we've already added this property in this conditional block
+			if (conditionPropertyNames.has(prop.name)) {
+				continue;
+			}
+			conditionPropertyNames.add(prop.name);
+
 			const propName = toValidPropertyName(prop.name);
 			const propType = getTypeScriptType(prop);
 			const optional = !prop.required ? '?' : '';
-			const comment = prop.description ? `\n  /** ${prop.description} */` : '';
+			const comment = prop.description ? ` /** ${prop.description} */\n` : '';
 
-			interfaceBody += `${comment}\n  ${propName}${optional}: ${propType};\n`;
+			conditionBody += `\n${comment} ${propName}${optional}: ${propType};\n`;
+			conditionHasProperties = true;
+		}
+
+		// Only add the condition comment if there are properties under it
+		if (conditionHasProperties) {
+			interfaceBody += `\n // Properties shown when: ${conditionDesc}\n`;
+			interfaceBody += conditionBody;
 		}
 	}
 
@@ -286,7 +335,7 @@ export function generateOperationTypes(node: NodeTypeDefinition): string[] {
 		return types;
 	}
 
-	const nodeName = toPascalCase(node.name.replace('n8n-nodes-base.', ''));
+	const nodeName = toPascalCase(normalizeNodeName(node.name));
 
 	// Generate types for each resource
 	for (const resource of resourceProp.options) {
@@ -306,13 +355,24 @@ export function generateOperationTypes(node: NodeTypeDefinition): string[] {
 				// Get all properties for this operation
 				const opProperties = node.properties.filter(
 					(p) =>
+						p.name &&
+						p.type !== undefined &&
 						p.displayOptions?.show?.operation?.includes(op.value) &&
 						p.displayOptions?.show?.resource?.includes(resource.value),
 				);
 
 				if (opProperties.length > 0) {
+					// Track which property names we've already added to avoid duplicates
+					const addedPropertyNames = new Set<string>();
 					let interfaceBody = '';
+
 					for (const prop of opProperties) {
+						// Skip if we've already added this property
+						if (addedPropertyNames.has(prop.name)) {
+							continue;
+						}
+						addedPropertyNames.add(prop.name);
+
 						const propName = toValidPropertyName(prop.name);
 						const propType = getTypeScriptType(prop);
 						const optional = !prop.required ? '?' : '';
@@ -333,7 +393,7 @@ export function generateOperationTypes(node: NodeTypeDefinition): string[] {
 }
 
 // Main conversion function
-export function convertNodeToTypes(nodeDefinitions: NodeTypeDefinition[]): string {
+export async function convertNodeToTypes(nodeDefinitions: NodeTypeDefinition[]): string {
 	let output = '// Auto-generated n8n Node Parameter Types\n\n';
 
 	const nodeTypeMappings: Array<{ nodeType: string; parameterType: string }> = [];
@@ -343,7 +403,7 @@ export function convertNodeToTypes(nodeDefinitions: NodeTypeDefinition[]): strin
 		output += `// Node: ${node.name}\n\n`;
 
 		// Generate main parameters interface
-		const interfaceName = `${toPascalCase(node.name.replace('n8n-nodes-base.', ''))}Parameters`;
+		const interfaceName = `${toPascalCase(normalizeNodeName(node.name))}Parameters`;
 		output += generateNodeParametersInterface(node);
 		output += '\n\n';
 
@@ -366,10 +426,14 @@ export function convertNodeToTypes(nodeDefinitions: NodeTypeDefinition[]): strin
 		output += '// Node Type to Parameters Mapping\n';
 		output += 'export interface NodeTypeToParametersMap {\n';
 		for (const mapping of nodeTypeMappings) {
-			output += `  "${mapping.nodeType}": ${mapping.parameterType};\n`;
+			output += ` "${mapping.nodeType}": ${mapping.parameterType};\n`;
 		}
 		output += '}\n';
 	}
 
-	return output;
+	return await prettier.format(output, {
+		parser: 'typescript',
+		singleQuote: true,
+		semi: true,
+	});
 }

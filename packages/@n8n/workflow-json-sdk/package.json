@@ -25,7 +25,8 @@
     "format:check": "biome ci . && prettier --check . --ignore-path ../../../../.prettierignore",
     "example:basic": "tsx examples/basic-workflow.ts",
     "example:ai-agent": "tsx examples/ai-agent-workflow.ts",
-    "example:modify": "tsx examples/modify-workflow.ts"
+    "example:modify": "tsx examples/modify-workflow.ts",
+    "convert": "tsx scripts/convertNodesJSON.ts"
   },
   "devDependencies": {
     "@n8n/eslint-config": "workspace:*",
@@ -40,5 +41,8 @@
     "vite": "catalog:",
     "vitest": "catalog:"
   },
-  "license": "See LICENSE.md file in the root of the repository"
+  "license": "See LICENSE.md file in the root of the repository",
+  "dependencies": {
+    "prettier": "^3.6.2"
+  }
 }
