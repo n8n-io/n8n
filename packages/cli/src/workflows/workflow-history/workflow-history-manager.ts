@@ -1,6 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
 import { WorkflowHistoryRepository } from '@n8n/db';
+import { OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 
@@ -15,18 +16,21 @@ export class WorkflowHistoryManager {
 		private readonly logger: Logger,
 		private workflowHistoryRepo: WorkflowHistoryRepository,
 	) {
-		this.logger = this.logger.scoped('workflow-history-manager');
+		this.logger = this.logger.scoped('pruning');
 	}
 
 	init() {
 		if (this.pruneTimer !== undefined) {
-			this.logger.warn('WorkflowHistoryManager.init() called multiple times. Restarting prune timer.');
+			this.logger.warn(
+				'WorkflowHistoryManager.init() called multiple times. Restarting prune timer.',
+			);
 			clearInterval(this.pruneTimer);
 		}
 
 		this.pruneTimer = setInterval(async () => await this.prune(), 1 * Time.hours.toMilliseconds);
 	}
 
+	@OnShutdown()
 	shutdown() {
 		if (this.pruneTimer !== undefined) {
 			clearInterval(this.pruneTimer);
