@@ -1391,7 +1391,7 @@ describe('LdapService', () => {
 			});
 
 			beforeEach(() => {
-				Client.prototype.search = jest.fn().mockImplementation(() => {
+				Client.prototype.search = jest.fn().mockImplementation(async () => {
 					return Promise.resolve({
 						searchEntries: [
 							{
