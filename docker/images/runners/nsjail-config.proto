@@ -1,0 +1,101 @@
+name: "js run script"
+
+mode: ONCE
+hostname: "js"
+log_level: 1
+
+disable_rl: true
+
+mount_proc: true
+
+cwd: "/tmp"
+
+clone_newnet: false
+clone_newcgroup: false
+
+skip_setsid: true
+keep_caps: false
+keep_env: true
+rlimit_as_type: 1
+iface_no_lo: true
+
+uidmap {
+    inside_id: "1000"
+    outside_id: "1000"
+}
+
+gidmap {
+    inside_id: "1000"
+    outside_id: "1000"
+}
+
+mount {
+    src: "/bin"
+    dst: "/bin"
+	is_bind: true
+}
+
+mount {
+    src: "/lib"
+    dst: "/lib"
+	is_bind: true
+}
+
+mount {
+    src: "/opt"
+    dst: "/opt"
+	is_bind: true
+}
+
+mount {
+    src: "/sys/fs"
+    dst: "/sys/fs"
+	is_bind: true
+}
+
+mount {
+    src: "/lib64"
+    dst: "/lib64"
+	is_bind: true
+    mandatory: false
+}
+
+
+mount {
+    src: "/usr"
+    dst: "/usr"
+	is_bind: true
+}
+
+mount {
+	src: "/dev/null"
+	dst: "/dev/null"
+	is_bind: true
+	rw: true
+}
+
+mount {
+	dst: "/tmp"
+	fstype: "tmpfs"
+	rw: true
+    options: "size=500000000"
+}
+
+mount {
+    src: "/etc"
+    dst: "/etc"
+	is_bind: true
+}
+
+mount {
+    src: "/dev/random"
+    dst: "/dev/random"
+    is_bind: true
+}
+
+mount {
+    src: "/dev/urandom"
+    dst: "/dev/urandom"
+    is_bind: true
+}
+

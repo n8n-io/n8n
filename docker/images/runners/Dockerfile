@@ -2,6 +2,35 @@ ARG NODE_VERSION=22.21.0
 ARG PYTHON_VERSION=3.13
 
 # ==============================================================================
+# STAGE 0: Build nsjail
+# ==============================================================================
+
+FROM alpine:3.22.1 AS nsjail-builder
+
+RUN apk add --no-cache \
+    libc6-compat \
+    libstdc++ \
+    protobuf \
+    libnl3 \
+    autoconf \
+    bison \
+    flex \
+    gcc \
+    g++ \
+    git \
+    libtool \
+    make \
+    pkgconfig \
+    protobuf-dev \
+    libnl3-dev \
+    protobuf-c \
+    libbsd-dev \
+    bsd-compat-headers
+
+COPY ./nsjail /nsjail
+RUN cd /nsjail && make clean && make
+
+# ==============================================================================
 # STAGE 1: JavaScript runner (@n8n/task-runner) artifact from CI
 # ==============================================================================
 FROM node:${NODE_VERSION}-alpine AS javascript-runner-builder
@@ -115,7 +144,11 @@ COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 
 # libstdc++ is required by Node
 # libc6-compat is required by task-runner-launcher
-RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat
+# RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat
+RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat \
+    protobuf \
+    libnl3 \
+    npm
 
 RUN addgroup -g 1000 -S runner \
  && adduser  -u 1000 -S -G runner -h /home/runner -D runner
@@ -126,6 +159,10 @@ COPY --from=javascript-runner-builder --chown=root:root /app/task-runner-javascr
 COPY --from=python-runner-builder --chown=root:root /app/task-runner-python /opt/runners/task-runner-python
 COPY --from=launcher-downloader /launcher-bin/* /usr/local/bin/
 COPY --chown=root:root docker/images/runners/n8n-task-runners.json /etc/n8n-task-runners.json
+
+COPY --from=nsjail-builder /nsjail/nsjail /bin
+
+COPY --chown=root:root docker/images/runners/nsjail-config.proto /etc/nsjail-config.proto
 
 USER runner
 

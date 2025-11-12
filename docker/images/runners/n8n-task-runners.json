@@ -3,8 +3,12 @@
 		{
 			"runner-type": "javascript",
 			"workdir": "/home/runner",
-			"command": "/usr/local/bin/node",
+			"command": "/bin/nsjail",
 			"args": [
+				"--config",
+				"/etc/nsjail-config.proto",
+				"--",
+				"/usr/local/bin/node",
 				"--disallow-code-generation-from-strings",
 				"--disable-proto=delete",
 				"/opt/runners/task-runner-javascript/dist/start.js"
@@ -31,8 +35,15 @@
 		{
 			"runner-type": "python",
 			"workdir": "/home/runner",
-			"command": "/opt/runners/task-runner-python/.venv/bin/python",
-			"args": ["-m", "src.main"],
+			"command": "/bin/nsjail",
+			"args": [
+				"--config",
+				"/etc/nsjail-config.proto",
+				"--",
+				"/opt/runners/task-runner-python/.venv/bin/python",
+				"-m",
+				"src.main"
+			],
 			"health-check-server-port": "5682",
 			"allowed-env": [
 				"PATH",
