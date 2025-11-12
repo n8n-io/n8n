@@ -131,7 +131,6 @@ const getIconFromNodeTypeString = (nodeTypeName: string): NodeIconSource | undef
 	const nodeDescription =
 		nodeTypeStore.communityNodeType(cleanedNodeType)?.nodeDescription ??
 		nodeTypeStore.getNodeType(cleanedNodeType);
-
 	const iconUrl = nodeDescription?.iconUrl
 		? getThemedValue(nodeDescription.iconUrl, useUIStore().appliedTheme)
 		: null;
@@ -158,7 +157,11 @@ export function getNodeIconSource(
 	}
 
 	const iconUrl = getNodeIconUrl(nodeType);
-	if (iconUrl) return createFileIconSource(prefixBaseUrl(iconUrl), nodeType);
+	if (iconUrl)
+		return createFileIconSource(
+			iconUrl.match(/^https?:\/\//) ? iconUrl : prefixBaseUrl(iconUrl),
+			nodeType,
+		);
 
 	if (nodeType.icon) {
 		let fullNodeType = nodeType;
