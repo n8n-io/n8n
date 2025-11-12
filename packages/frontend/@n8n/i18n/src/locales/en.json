@@ -1725,6 +1725,8 @@
 	"contextMenu.addSticky": "Add sticky note",
 	"contextMenu.editSticky": "Edit sticky note",
 	"contextMenu.changeColor": "Change color",
+	"contextMenu.copyTestUrl": "Copy test url",
+	"contextMenu.copyProductionUrl": "Copy production url",
 	"nodeWebhooks.clickToCopyWebhookUrls": "Click to copy webhook URLs",
 	"nodeWebhooks.clickToCopyWebhookUrls.formTrigger": "Click to copy Form URL",
 	"nodeWebhooks.clickToCopyWebhookUrls.chatTrigger": "Click to copy Chat URL",

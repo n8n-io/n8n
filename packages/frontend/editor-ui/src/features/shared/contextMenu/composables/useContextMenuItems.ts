@@ -226,7 +226,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 						copyWebhookActions.push({
 							divided: true,
 							id: 'copy_test_url',
-							label: 'Copy test url',
+							label: i18n.baseText('contextMenu.copyTestUrl'),
 							shortcut: { shiftKey: true, altKey: true, keys: ['U'] },
 							disabled: false,
 						});
@@ -236,7 +236,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 						copyWebhookActions.push({
 							divided: isProductionOnly,
 							id: 'copy_production_url',
-							label: 'Copy production url',
+							label: i18n.baseText('contextMenu.copyProductionUrl'),
 							shortcut: { altKey: true, keys: ['U'] },
 							disabled: false,
 						});
