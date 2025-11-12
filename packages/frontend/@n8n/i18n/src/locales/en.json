@@ -1336,6 +1336,7 @@
 	"ndv.tooMuchData.showDataAnyway": "Show data",
 	"ndv.tooMuchData.title": "Show {size} MB of data?",
 	"ndv.httpRequest.credentialOnly.docsNotice": "Use the <a target=\"_blank\" href=\"{docsUrl}\">{nodeName} docs</a> to construct your request. We'll take care of the authentication part if you add a {nodeName} credential below.",
+	"noTagsView.createTag": "Create a tag",
 	"noTagsView.readyToOrganizeYourWorkflows": "Ready to organize your workflows?",
 	"noTagsView.withWorkflowTagsYouReFree": "With workflow tags, you're free to create the perfect tagging system for your flows",
 	"noAnnotationTagsView.title": "Organize your executions",
