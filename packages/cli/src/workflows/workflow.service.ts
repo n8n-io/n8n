@@ -371,7 +371,13 @@ export class WorkflowService {
 		const isNowActive = updatedWorkflow.active;
 
 		if (isNowActive && !wasActive) {
-			// Workflow is being activated
+			// Workflow is being activated - clear auto-deactivation flag if it exists
+			if (updatedWorkflow.meta?.autoDeactivated) {
+				const { autoDeactivated, ...remainingMeta } = updatedWorkflow.meta;
+				updatedWorkflow.meta = remainingMeta;
+				await this.workflowRepository.update({ id: workflowId }, { meta: remainingMeta });
+			}
+
 			this.eventService.emit('workflow-activated', {
 				user,
 				workflowId,

@@ -108,6 +108,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	getBounds,
@@ -196,6 +197,7 @@ const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
+const bannersStore = useBannersStore();
 const ndvStore = useNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
@@ -1926,6 +1928,11 @@ onMounted(() => {
 			.finally(() => {
 				isLoading.value = false;
 				canvasStore.stopLoading();
+
+				// Check if workflow was auto-deactivated and show banner
+				if (workflowsStore.workflow.meta?.autoDeactivated) {
+					bannersStore.pushBannerToStack('WORKFLOW_AUTO_DEACTIVATED');
+				}
 
 				void externalHooks.run('nodeView.mount').catch(() => {});
 

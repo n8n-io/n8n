@@ -49,20 +49,40 @@ export class LegacySqliteExecutionRecoveryService {
 
 			if (this.globalConfig.executions.legacyRecovery.enableWorkflowDeactivation) {
 				const uniqueWorkflowIds = [...new Set(invalidExecutions.map((e) => e.workflowId))];
+				const maxLastExecutions = this.globalConfig.executions.legacyRecovery.maxLastExecutions;
+
 				for (const workflowId of uniqueWorkflowIds) {
 					const lastExecutions = await this.executionRepository.findMultipleExecutions({
 						where: { workflowId },
 						order: { startedAt: 'DESC' },
-						take: this.globalConfig.executions.legacyRecovery.maxLastExecutions,
+						take: maxLastExecutions,
 					});
 					const numberOfCrashedExecutions = lastExecutions.filter(
 						(e) => e.status === 'crashed',
 					).length;
 
-					// If all of the last executions are crashed, we deactivate the workflow
-					// and mark the pending executions as crashed.
-					if (lastExecutions.length === numberOfCrashedExecutions) {
-						await this.workflowRepository.deactivate(workflowId);
+					// If all of the last N executions are crashed, deactivate the workflow
+					if (
+						lastExecutions.length >= maxLastExecutions &&
+						lastExecutions.length === numberOfCrashedExecutions
+					) {
+						// Get workflow to preserve existing meta
+						const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
+
+						// Deactivate with metadata
+						await this.workflowRepository.update(
+							{ id: workflowId },
+							{
+								active: false,
+								meta: {
+									...workflow?.meta,
+									autoDeactivated: {
+										timestamp: new Date().toISOString(),
+										crashedExecutions: numberOfCrashedExecutions,
+									},
+								},
+							},
+						);
 						this.logger.warn(`Disabled workflow ${workflowId} due to too many crashed executions.`);
 						const pendingExecutions = await this.executionRepository.findMultipleExecutions({
 							where: { workflowId, status: In(['running', 'new'] as ExecutionStatus[]) },
@@ -73,7 +93,6 @@ export class LegacySqliteExecutionRecoveryService {
 								`Marked ${pendingExecutions.length} pending executions as crashed due to workflow deactivation.`,
 							);
 						}
-						// TODO: Inform user about the deactivation
 					}
 				}
 			}

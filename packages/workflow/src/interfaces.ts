@@ -2768,6 +2768,10 @@ export interface WorkflowFEMeta {
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
+	autoDeactivated?: {
+		timestamp: string;
+		crashedExecutions: number;
+	};
 }
 
 export interface WorkflowTestData {

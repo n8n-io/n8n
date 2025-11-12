@@ -266,6 +266,7 @@
 	"banners.trial.message": "1 day left in your n8n trial | {count} days left in your n8n trial",
 	"banners.trialOver.message": "Your trial is over. Upgrade now to keep automating.",
 	"banners.v1.message": "n8n has been updated to version 1, introducing some breaking changes. Please consult the <a target=\"_blank\" href=\"https://docs.n8n.io/1-0-migration-checklist\">migration guide</a> for more information.",
+	"banners.workflowAutoDeactivated.message": "This workflow was automatically deactivated due to multiple incomplete executions. Please review and reactivate it when ready.",
 	"binaryDataDisplay.backToList": "Back to list",
 	"binaryDataDisplay.backToOverviewPage": "Back to overview page",
 	"binaryDataDisplay.noDataFoundToDisplay": "No data found to display",
