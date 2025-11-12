@@ -149,32 +149,17 @@ export const useDataTableOperations = ({
 		}
 	}
 
-	async function onRenameColumn(columnId: string, currentName: string): Promise<void> {
+	async function onRenameColumn(columnId: string, newName: string): Promise<void> {
 		const columnToRename = colDefs.value.find((col) => col.colId === columnId);
 		if (!columnToRename) return;
 
-		const promptResponse = await message.prompt(
-			'', // Empty message
-			i18n.baseText('dataTable.renameColumn.title' as never), // Title
-			{
-				confirmButtonText: i18n.baseText('dataTable.renameColumn.submit' as never),
-				cancelButtonText: i18n.baseText('dataTable.renameColumn.cancel' as never),
-				inputValue: currentName,
-				inputPlaceholder: i18n.baseText('dataTable.renameColumn.nameInput.placeholder' as never),
-			},
-		);
-
-		if (promptResponse.action !== MODAL_CONFIRM) {
-			return;
-		}
-
-		const newName = promptResponse.value.trim();
-		if (!newName || newName === currentName) {
-			return;
-		}
-
 		const oldName = columnToRename.headerName;
 		const oldField = columnToRename.field;
+
+		// No change made
+		if (newName === oldName) {
+			return;
+		}
 
 		// Optimistically update the UI
 		columnToRename.headerName = newName;
