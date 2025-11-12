@@ -2493,6 +2493,18 @@ export interface ITaskMetadata {
 	parentExecution?: RelatedExecution;
 	subExecution?: RelatedExecution;
 	subExecutionsCount?: number;
+	/**
+	 * Per-node memory usage snapshot in bytes.
+	 * Captured at start and end of the node execution.
+	 */
+	memory?: {
+		rssStart: number;
+		rssEnd: number;
+		rssDelta: number;
+		heapUsedStart: number;
+		heapUsedEnd: number;
+		heapUsedDelta: number;
+	};
 	subNodeExecutionData?: {
 		actions: SubNodeExecutionDataAction[];
 		metadata: object;

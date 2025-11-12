@@ -1050,6 +1050,67 @@ export class WorkflowExecute {
 			}
 		}
 	}
+	/**
+	 * Capture memory usage at the start of a node execution.
+	 * Stores rss/heapUsed start values under executionData.metadata[node][runIndex].memory.
+	 */
+	private captureNodeMemoryStart(executionNodeName: string, runIndex: number): void {
+		try {
+			const { rss, heapUsed } = process.memoryUsage();
+			this.runExecutionData.executionData ??= {
+				contextData: {},
+				nodeExecutionStack: [],
+				waitingExecution: {},
+				waitingExecutionSource: null,
+				metadata: {},
+			};
+			this.runExecutionData.executionData.metadata ??= {};
+			const nodeMetaArray = (this.runExecutionData.executionData.metadata[executionNodeName] ??=
+				[]);
+			const currentMeta = (nodeMetaArray[runIndex] ??= {});
+			currentMeta.memory = {
+				rssStart: rss,
+				heapUsedStart: heapUsed,
+				rssEnd: 0,
+				heapUsedEnd: 0,
+				rssDelta: 0,
+				heapUsedDelta: 0,
+			};
+		} catch {
+			// best-effort only; ignore sampling errors
+		}
+	}
+
+	/**
+	 * Capture memory usage at the end of a node execution and compute deltas.
+	 * Completes rss/heapUsed end values and delta in metadata, or creates an end-only snapshot.
+	 */
+	private captureNodeMemoryEnd(executionNodeName: string, runIndex: number): void {
+		try {
+			const { rss, heapUsed } = process.memoryUsage();
+			const nodeMetaArray = this.runExecutionData.executionData?.metadata?.[executionNodeName];
+			const currentMeta = nodeMetaArray?.[runIndex];
+			if (currentMeta?.memory) {
+				currentMeta.memory.rssEnd = rss;
+				currentMeta.memory.heapUsedEnd = heapUsed;
+				currentMeta.memory.rssDelta = rss - currentMeta.memory.rssStart;
+				currentMeta.memory.heapUsedDelta = heapUsed - currentMeta.memory.heapUsedStart;
+			} else if (nodeMetaArray) {
+				// In case start snapshot failed, still provide an end-only snapshot
+				nodeMetaArray[runIndex] ??= {};
+				nodeMetaArray[runIndex].memory = {
+					rssStart: 0,
+					heapUsedStart: 0,
+					rssEnd: rss,
+					heapUsedEnd: heapUsed,
+					rssDelta: rss,
+					heapUsedDelta: heapUsed,
+				};
+			}
+		} catch {
+			// best-effort only; ignore sampling errors
+		}
+	}
 
 	private async executeNode(
 		workflow: Workflow,
@@ -1636,6 +1697,7 @@ export class WorkflowExecute {
 						node: executionNode.name,
 						workflowId: workflow.id,
 					});
+					this.captureNodeMemoryStart(executionNode.name, runIndex);
 					// Skip nodeExecuteBefore for resumed agent nodes to prevent duplicate event emission.
 					// Context: AI agents pause execution to run tools, then resume with tool results.
 					// Without this check, the agent would emit nodeExecuteBefore twice (initial + resume)
@@ -1862,6 +1924,7 @@ export class WorkflowExecute {
 						metadata: executionData.metadata,
 						executionStatus: this.runExecutionData.waitTill ? 'waiting' : 'success',
 					};
+					this.captureNodeMemoryEnd(executionNode.name, runIndex);
 
 					if (executionError !== undefined) {
 						taskData.error = executionError;
