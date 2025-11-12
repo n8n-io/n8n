@@ -265,15 +265,13 @@ export class LmChatOpenRouter implements INodeType {
 			'temperature',
 			'topP',
 			'responseFormat',
+			'reasoningEffort',
 		]);
 
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
 			model: modelName,
 			...includedOptions,
-			reasoning: {
-				effort: options.reasoningEffort,
-			},
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
