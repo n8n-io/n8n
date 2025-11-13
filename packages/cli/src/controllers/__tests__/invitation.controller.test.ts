@@ -6,15 +6,16 @@ import { AuthService } from '@/auth/auth.service';
 import { UserService } from '@/services/user.service';
 import { License } from '@/license';
 import { PasswordUtility } from '@/services/password.utility';
-import { User, UserRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { UserRepository } from '@n8n/db';
 import { Logger } from '@n8n/backend-common';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import { InvitationController } from '../invitation.controller';
 import { InviteUsersRequestDto } from '@n8n/api-types';
 import { mock } from 'jest-mock-extended';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE, GLOBAL_ADMIN_ROLE } from '@n8n/db';
-import { AuthenticatedRequest } from '@n8n/db';
-import { Response } from 'express';
+import type { AuthenticatedRequest } from '@n8n/db';
+import type { Response } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -64,7 +65,7 @@ describe('InvitationController', () => {
 			const req = mock<AuthenticatedRequest>({ user });
 			const res = mock<Response>();
 
-			expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
+			await expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
 				new BadRequestError(
 					'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 				),
@@ -100,7 +101,7 @@ describe('InvitationController', () => {
 			const req = mock<AuthenticatedRequest>({ user });
 			const res = mock<Response>();
 
-			expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
+			await expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
 				new ForbiddenError(RESPONSE_ERROR_MESSAGES.USERS_QUOTA_REACHED),
 			);
 		});
@@ -135,7 +136,7 @@ describe('InvitationController', () => {
 			const req = mock<AuthenticatedRequest>({ user });
 			const res = mock<Response>();
 
-			expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
+			await expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
 				new BadRequestError('You must set up your own account before inviting others'),
 			);
 		});
@@ -178,7 +179,7 @@ describe('InvitationController', () => {
 			const req = mock<AuthenticatedRequest>({ user });
 			const res = mock<Response>();
 
-			expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
+			await expect(invitationController.inviteUser(req, res, payload)).rejects.toThrow(
 				new ForbiddenError(
 					'Cannot invite admin user without advanced permissions. Please upgrade to a license that includes this feature.',
 				),
