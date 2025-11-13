@@ -111,7 +111,8 @@ import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-Create
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
 import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/1762763704614-BackfillMissingWorkflowHistoryRecords';
-import { AddActiveVersionIdColumn1762819200000 } from '../common/1762819200000-AddActiveVersionIdColumn';
+import { AddWorkflowHistoryAutoSaveFields1762847206508 } from '../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
+import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-AddActiveVersionIdColumn';
 import type { Migration } from '../migration-types';
 
 export const mysqlMigrations: Migration[] = [
@@ -228,5 +229,6 @@ export const mysqlMigrations: Migration[] = [
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
 	BackfillMissingWorkflowHistoryRecords1762763704614,
-	AddActiveVersionIdColumn1762819200000,
+	AddWorkflowHistoryAutoSaveFields1762847206508,
+	AddActiveVersionIdColumn1763047800000,
 ];
