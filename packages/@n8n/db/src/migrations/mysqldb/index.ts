@@ -1,5 +1,4 @@
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
-import { AddWorkflowHistoryAutoSaveFields1762847206508 } from './../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
 import { WebhookModel1592447867632 } from './1592447867632-WebhookModel';
 import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexStoppedAt';
