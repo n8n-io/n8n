@@ -415,7 +415,11 @@ async function onUpdateTools(newTools: INode[]) {
 	defaultTools.value = newTools;
 
 	if (currentConversation.value) {
-		await chatStore.updateToolsInSession(sessionId.value, newTools);
+		try {
+			await chatStore.updateToolsInSession(sessionId.value, newTools);
+		} catch (error) {
+			toast.showError(error, 'Could not update selected tools');
+		}
 	}
 }
 
