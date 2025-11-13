@@ -4,16 +4,23 @@ import { EditorView } from '@codemirror/view';
 
 import { useI18n } from '@n8n/i18n';
 import { highlighter } from '../../plugins/codemirror/resolvableHighlighter';
+
 import type { Plaintext, Resolved, Segment } from '@/app/types/expressions';
-import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { forceParse } from '@/app/utils/forceParse';
+import RunDataHtml from '@/features/ndv/runData/components/RunDataHtml.vue';
+import RunDataMarkdown from '@/features/ndv/runData/components/RunDataMarkdown.vue';
 
 interface ExpressionOutputProps {
 	segments: Segment[];
 	extensions?: Extension[];
+	render?: 'text' | 'html' | 'markdown';
 }
 
-const props = withDefaults(defineProps<ExpressionOutputProps>(), { extensions: () => [] });
+const props = withDefaults(defineProps<ExpressionOutputProps>(), {
+	extensions: () => [],
+	render: 'text',
+});
 
 const i18n = useI18n();
 
@@ -75,21 +82,9 @@ const resolvedSegments = computed<Resolved[]>(() => {
 		.filter((segment): segment is Resolved => segment.kind === 'resolvable');
 });
 
-watch(
-	() => props.segments,
-	() => {
-		if (!editor.value) return;
+function initializeEditor() {
+	if (!root.value) return;
 
-		editor.value.dispatch({
-			changes: { from: 0, to: editor.value.state.doc.length, insert: resolvedExpression.value },
-		});
-
-		highlighter.addColor(editor.value as EditorView, resolvedSegments.value);
-		highlighter.removeColor(editor.value as EditorView, plaintextSegments.value);
-	},
-);
-
-onMounted(() => {
 	editor.value = new EditorView({
 		parent: root.value as HTMLElement,
 		state: EditorState.create({
@@ -105,6 +100,38 @@ onMounted(() => {
 
 	highlighter.addColor(editor.value as EditorView, resolvedSegments.value);
 	highlighter.removeColor(editor.value as EditorView, plaintextSegments.value);
+}
+
+watch(
+	() => props.segments,
+	() => {
+		if (props.render !== 'text' || !editor.value) return;
+
+		editor.value.dispatch({
+			changes: { from: 0, to: editor.value.state.doc.length, insert: resolvedExpression.value },
+		});
+
+		highlighter.addColor(editor.value as EditorView, resolvedSegments.value);
+		highlighter.removeColor(editor.value as EditorView, plaintextSegments.value);
+	},
+);
+
+watch(
+	() => props.render,
+	async (newMode) => {
+		if (newMode === 'text' && !editor.value) {
+			await nextTick();
+			initializeEditor();
+		} else if ((newMode === 'html' || newMode === 'markdown') && editor.value) {
+			editor.value.destroy();
+			editor.value = null;
+		}
+	},
+);
+
+onMounted(() => {
+	if (props.render !== 'text') return;
+	initializeEditor();
 });
 
 onBeforeUnmount(() => {
@@ -115,5 +142,28 @@ defineExpose({ getValue: () => '=' + resolvedExpression.value });
 </script>
 
 <template>
-	<div ref="root" data-test-id="expression-output"></div>
+	<div v-if="render === 'text'" ref="root" data-test-id="expression-output"></div>
+
+	<RunDataHtml
+		v-else-if="render === 'html'"
+		data-test-id="expression-output"
+		:input-html="resolvedExpression"
+	/>
+
+	<RunDataMarkdown
+		v-else-if="render === 'markdown'"
+		data-test-id="expression-output"
+		:input-markdown="resolvedExpression"
+	/>
 </template>
+
+<style lang="scss">
+.__html-display {
+	border: 2px solid var(--border-color);
+	padding: var(--spacing--xs);
+	border-width: var(--border-width);
+	border-style: var(--input--border-style, var(--border-style));
+	border-color: var(--input--border-color, var(--border-color));
+	border-radius: var(--input--radius, var(--radius));
+}
+</style>
