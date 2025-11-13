@@ -16,7 +16,7 @@ import type {
 	Workflow,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-import { ApplicationError, createDeferredPromise, createRunExecutionData } from 'n8n-workflow';
+import { ApplicationError, createDeferredPromise, createEmptyRunExecutionData } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
 import { copyBinaryFile, getBinaryHelperFunctions } from './utils/binary-helper-functions';
@@ -143,7 +143,7 @@ export class WebhookContext extends NodeExecutionContext implements IWebhookFunc
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			{ json: this.additionalData.httpRequest?.body || {} },
 		];
-		const runExecutionData = this.runExecutionData ?? createRunExecutionData();
+		const runExecutionData = this.runExecutionData ?? createEmptyRunExecutionData();
 		const executeData: IExecuteData = {
 			data: {
 				main: [connectionInputData],
