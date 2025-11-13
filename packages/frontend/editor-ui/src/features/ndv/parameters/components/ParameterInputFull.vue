@@ -177,10 +177,100 @@ async function handleImproveWithAi() {
 		isImprovingPrompt.value = true;
 		const currentValue = String(props.value || '');
 
+		// Check if we're in a Tool node
+		const isToolNode = activeNode.value?.type.includes('Tool') ?? false;
+
+		// Gather node context for better prompt improvement
+		let nodeContext;
+		if (activeNode.value) {
+			const node = activeNode.value;
+			const nodeParams = node.parameters || {};
+
+			console.log('[Frontend] Node parameters:', nodeParams);
+
+			// Recursively find which fields have $fromAI values
+			const fromAIFields: string[] = [];
+			const checkForFromAI = (obj: unknown, prefix = ''): void => {
+				if (typeof obj === 'string' && (obj.includes('$fromAi') || obj.includes('$fromAI'))) {
+					fromAIFields.push(prefix);
+					console.log('[Frontend] Found $fromAI field:', prefix);
+				} else if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+					for (const [key, value] of Object.entries(obj)) {
+						const fieldPath = prefix ? `${prefix}.${key}` : key;
+						checkForFromAI(value, fieldPath);
+					}
+				}
+			};
+
+			for (const [key, value] of Object.entries(nodeParams)) {
+				console.log('[Frontend] Checking param:', key, 'value:', value);
+				checkForFromAI(value, key);
+			}
+
+			// Get parameter definitions from workflow nodes types
+			// Try to get from ndvStore first, then from workflowsStore
+			let nodeType = ndvStore.activeNodeType;
+
+			// If not available from ndvStore, try to get from the node itself
+			if (!nodeType && node.type) {
+				console.log('[Frontend] activeNodeType not available, using node type:', node.type);
+				// The node type definitions should be available somewhere, but for now
+				// we'll just send the parameter values we have
+			}
+
+			console.log('[Frontend] Node type:', nodeType?.name);
+			console.log('[Frontend] Node type properties:', nodeType?.properties?.length);
+
+			// Build parameter definitions with current values
+			const parameterDefs: Array<Record<string, unknown>> = [];
+			if (nodeType?.properties) {
+				for (const prop of nodeType.properties) {
+					parameterDefs.push({
+						name: prop.name,
+						displayName: prop.displayName,
+						type: prop.type,
+						description: prop.description,
+						currentValue: nodeParams[prop.name],
+					});
+				}
+			} else {
+				// If we don't have the node type definition, just send the raw parameters
+				for (const [key, value] of Object.entries(nodeParams)) {
+					parameterDefs.push({
+						name: key,
+						displayName: key,
+						type: typeof value,
+						currentValue: value,
+					});
+				}
+			}
+
+			nodeContext = {
+				nodeName: node.name,
+				nodeType: node.type,
+				parameters: parameterDefs,
+				fromAIFields,
+			};
+
+			console.log('[Frontend] Built nodeContext:', {
+				...nodeContext,
+				parameters: `${nodeContext.parameters?.length || 0} parameters`,
+			});
+		}
+
 		// Call the API to improve the prompt
-		console.log('[Frontend] Calling improvePrompt API with:', currentValue);
+		console.log(
+			'[Frontend] Calling improvePrompt API with:',
+			currentValue,
+			'isToolNode:',
+			isToolNode,
+			'nodeContext:',
+			nodeContext,
+		);
 		const response = await improvePrompt(restApiContext, {
 			prompt: currentValue,
+			toolDescription: isToolNode,
+			nodeContext,
 		});
 		console.log('[Frontend] Received improved prompt:', response.improvedPrompt);
 

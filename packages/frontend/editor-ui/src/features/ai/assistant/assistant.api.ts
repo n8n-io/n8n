@@ -133,10 +133,25 @@ export async function getBuilderCredits(ctx: IRestApiContext): Promise<{
 
 export async function improvePrompt(
 	ctx: IRestApiContext,
-	{ prompt }: { prompt: string },
+	{
+		prompt,
+		toolDescription,
+		nodeContext,
+	}: {
+		prompt: string;
+		toolDescription?: boolean;
+		nodeContext?: {
+			nodeName?: string;
+			nodeType?: string;
+			parameters?: Array<Record<string, unknown>>;
+			fromAIFields?: string[];
+		};
+	},
 ): Promise<{ improvedPrompt: string }> {
 	const body: IDataObject = {
 		prompt,
+		toolDescription,
+		nodeContext,
 	};
 	return await makeRestApiRequest(ctx, 'POST', '/ai/improve-prompt', body);
 }

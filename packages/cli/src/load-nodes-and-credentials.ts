@@ -507,6 +507,7 @@ export class LoadNodesAndCredentials {
 					typeOptions: { rows: 2 },
 					description:
 						'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+					improveWithAi: true,
 				};
 
 				const lastCallout = this.findLastCalloutIndex(item.description.properties);

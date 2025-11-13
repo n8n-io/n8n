@@ -50,6 +50,7 @@ export const versionDescription: INodeTypeDescription = {
 			typeOptions: {
 				rows: 3,
 			},
+			improveWithAi: true,
 		},
 
 		{

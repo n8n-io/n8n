@@ -104,6 +104,7 @@ describe('LoadNodesAndCredentials', () => {
 			expect(toolDescriptionProp).toBeDefined();
 			expect(toolDescriptionProp?.type).toBe('string');
 			expect(toolDescriptionProp?.default).toBe(fullNodeWrapper.description.description);
+			expect(toolDescriptionProp?.improveWithAi).toBe(true);
 		});
 
 		it('should add toolDescription property after callout property', () => {
@@ -374,6 +375,7 @@ describe('LoadNodesAndCredentials', () => {
 						description:
 							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
 						displayName: 'Description',
+						improveWithAi: true,
 						name: 'toolDescription',
 						required: true,
 						type: 'string',
@@ -429,6 +431,7 @@ describe('LoadNodesAndCredentials', () => {
 						typeOptions: { rows: 2 },
 						description:
 							'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
+						improveWithAi: true,
 					},
 				],
 				codex: {

@@ -269,7 +269,11 @@ export class AiController {
 		@Body payload: AiImprovePromptRequestDto,
 	): Promise<{ improvedPrompt: string }> {
 		try {
-			const improvedPrompt = await this.promptImprovementService.improvePrompt(payload.prompt);
+			const improvedPrompt = await this.promptImprovementService.improvePrompt(
+				payload.prompt,
+				payload.toolDescription,
+				payload.nodeContext,
+			);
 			return { improvedPrompt };
 		} catch (e) {
 			assert(e instanceof Error);
