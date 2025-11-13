@@ -10,7 +10,10 @@ export class SharedWorkflow extends WithTimestamps {
 	@Column({ type: 'varchar' })
 	role: WorkflowSharingRole;
 
-	@ManyToOne('WorkflowEntity', 'shared')
+	@ManyToOne(
+		() => WorkflowEntity,
+		(we) => we.shared,
+	)
 	workflow: Relation<WorkflowEntity>;
 
 	@PrimaryColumn()

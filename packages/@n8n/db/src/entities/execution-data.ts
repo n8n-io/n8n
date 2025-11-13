@@ -40,13 +40,12 @@ export class ExecutionData {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	workflowVersionId: string | null;
 
-	@ManyToOne(() => WorkflowHistory, { onDelete: 'SET NULL', nullable: true })
-	@JoinColumn({
-		name: 'workflowVersionId',
-		referencedColumnName: 'versionId',
-	})
-	workflowHistory: Relation<WorkflowHistory> | null; // this
-	// workflowHistory: Relation<Omit<WorkflowHistory, 'workflow'> & { workflow: WorkflowData }> | null; // this
+	@ManyToOne(
+		() => WorkflowHistory,
+		(wh) => wh.versionId,
+		{ onDelete: 'SET NULL', nullable: true },
+	)
+	workflowHistory: (Omit<WorkflowHistory, 'workflow'> & { workflow: WorkflowData }) | null;
 
 	@BeforeInsert()
 	@BeforeUpdate()
