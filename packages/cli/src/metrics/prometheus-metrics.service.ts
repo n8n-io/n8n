@@ -415,14 +415,16 @@ export class PrometheusMetricsService {
 		const cachedValue = await cacheService.get(fullCacheKey);
 
 		if (cachedValue !== undefined) {
-			const parsedValue = jsonParse(String(cachedValue));
-			// Update in-memory cache
-			this.workflowStatisticsCache = {
-				data: parsedValue,
-				timestamp: now,
-				ttl: cacheTtl,
-			};
-			return parsedValue;
+			const parsedValue = jsonParse(String(cachedValue), { fallbackValue: undefined });
+			if (parsedValue !== undefined) {
+				// Update in-memory cache with short TTL (just for scrape deduplication)
+				this.workflowStatisticsCache = {
+					data: parsedValue,
+					timestamp: now,
+					ttl: 1000, // 1 second - enough to dedupe within a single scrape
+				};
+				return parsedValue;
+			}
 		}
 
 		// Fetch from database and cache both in-memory and persistently
@@ -432,7 +434,7 @@ export class PrometheusMetricsService {
 		this.workflowStatisticsCache = {
 			data: metrics,
 			timestamp: now,
-			ttl: cacheTtl,
+			ttl: 1000, // 1 second - in-memory cache is only for scrape deduplication
 		};
 
 		return metrics;
