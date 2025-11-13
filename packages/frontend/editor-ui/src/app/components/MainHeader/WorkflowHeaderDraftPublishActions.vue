@@ -45,6 +45,8 @@ const goToWorkflowHistoryUpgrade = () => {
 };
 
 const onPublishButtonClick = () => {
+	// TODO: uncomment once the save doesn't automatically change the active version
+	// emit('workflow:saved');
 	uiStore.openModalWithData({
 		name: WORKFLOW_PUBLISH_MODAL_KEY,
 		data: {},

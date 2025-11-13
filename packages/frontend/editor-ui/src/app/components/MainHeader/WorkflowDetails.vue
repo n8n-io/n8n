@@ -200,6 +200,18 @@ async function onSaveButtonClick() {
 	}
 }
 
+async function onSaveWorkflow() {
+	// If the workflow is saving, do not allow another save
+	if (isWorkflowSaving.value) {
+		return;
+	}
+	await workflowSaving.saveCurrentWorkflow({
+		id: getWorkflowId(),
+		name: props.name,
+		tags: props.tags as string[],
+	});
+}
+
 function onTagsEditEnable() {
 	appliedTagIds.value = (props.tags ?? []) as string[];
 	isTagsEditEnabled.value = true;
@@ -586,6 +598,7 @@ onBeforeUnmount(() => {
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
+				@workflow:saved="onSaveWorkflow"
 			/>
 			<WorkflowHeaderActions
 				v-else
