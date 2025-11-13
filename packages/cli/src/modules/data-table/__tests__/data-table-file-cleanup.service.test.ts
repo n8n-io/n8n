@@ -1,5 +1,6 @@
 import type { GlobalConfig } from '@n8n/config';
 import { promises as fs } from 'fs';
+import path from 'path';
 
 import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
 
@@ -36,7 +37,7 @@ describe('DataTableFileCleanupService', () => {
 	describe('deleteFile', () => {
 		it('should delete a file successfully', async () => {
 			const fileId = 'test-file-123';
-			const expectedPath = `${uploadDir}/${fileId}`;
+			const expectedPath = path.join(uploadDir, fileId);
 
 			(fs.unlink as jest.Mock).mockResolvedValue(undefined);
 
@@ -126,8 +127,8 @@ describe('DataTableFileCleanupService', () => {
 
 			expect(fs.readdir).toHaveBeenCalledWith(uploadDir);
 			expect(fs.stat).toHaveBeenCalledTimes(2);
-			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${oldFile1}`);
-			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${oldFile2}`);
+			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, oldFile1));
+			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, oldFile2));
 		});
 
 		it('should not delete files newer than 2 minutes', async () => {
@@ -168,8 +169,8 @@ describe('DataTableFileCleanupService', () => {
 			await flushPromises();
 
 			expect(fs.unlink).toHaveBeenCalledTimes(1);
-			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${oldFile}`);
-			expect(fs.unlink).not.toHaveBeenCalledWith(`${uploadDir}/${newFile}`);
+			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, oldFile));
+			expect(fs.unlink).not.toHaveBeenCalledWith(path.join(uploadDir, newFile));
 		});
 
 		it('should handle empty upload directory', async () => {
@@ -225,7 +226,7 @@ describe('DataTableFileCleanupService', () => {
 			await flushPromises();
 
 			// Should still delete file2 even though file1 failed
-			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${file2}`);
+			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, file2));
 			expect(fs.unlink).toHaveBeenCalledTimes(1);
 		});
 
@@ -247,8 +248,8 @@ describe('DataTableFileCleanupService', () => {
 			await flushPromises();
 
 			// Should attempt to delete both files
-			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${file1}`);
-			expect(fs.unlink).toHaveBeenCalledWith(`${uploadDir}/${file2}`);
+			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, file1));
+			expect(fs.unlink).toHaveBeenCalledWith(path.join(uploadDir, file2));
 			expect(fs.unlink).toHaveBeenCalledTimes(2);
 		});
 
