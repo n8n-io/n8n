@@ -343,37 +343,26 @@ export class TestRunnerService {
 						name: triggerNode.name,
 					},
 				},
+				executionData: {
+					nodeExecutionStack: [
+						{ node: triggerNode, data: { main: [[{ json: {} }]] }, source: null },
+					],
+				},
 			}),
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
 		};
 
-		if (
-			!(
-				this.executionsConfig.mode === 'queue' &&
-				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-			) &&
-			data.executionData
-		) {
-			const nodeExecutionStack: IExecuteData[] = [];
-			nodeExecutionStack.push({
-				node: triggerNode,
-				data: {
-					main: [[{ json: {} }]],
-				},
-				source: null,
-			});
+		const offloadingManualExecutionsInQueueMode =
+			this.executionsConfig.mode === 'queue' &&
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
 
-			data.executionData.executionData = {
-				contextData: {},
-				metadata: {},
-				// workflow does not evaluate correctly if this is passed in queue mode with offload manual executions
-				// but this is expected otherwise in regular execution mode
-				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			};
+		if (offloadingManualExecutionsInQueueMode) {
+			// In regular mode we need this to be passed, but when offloading manual
+			// execution to workers the workflow evaluation fails if this is present,
+			// so we remove it in  this case.
+			data.executionData = undefined;
 		}
 
 		// Trigger the workflow under test with mocked data
