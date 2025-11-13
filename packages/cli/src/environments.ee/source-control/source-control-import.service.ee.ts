@@ -388,6 +388,7 @@ export class SourceControlImportService {
 				id: true,
 				name: true,
 				type: true,
+				isGlobal: true,
 				shared: {
 					project: {
 						id: true,
@@ -418,6 +419,7 @@ export class SourceControlImportService {
 				type: local.type,
 				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
 				ownedBy: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
+				isGlobal: local.isGlobal,
 			};
 		}) as StatusExportableCredential[];
 	}
