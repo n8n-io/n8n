@@ -34,7 +34,6 @@ if (globalConfig.database.isLegacySqlite) {
 			const workflow = workflowRepository.create({
 				id: 'test-workflow-id',
 				name: 'Test Workflow',
-				active: true,
 				nodes: [],
 				connections: {},
 				settings: {},

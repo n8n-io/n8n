@@ -4,6 +4,7 @@ import {
 	createWorkflowWithTriggerAndHistory,
 	testDb,
 	mockInstance,
+	createActiveWorkflow,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, TagEntity, User } from '@n8n/db';
@@ -109,7 +110,7 @@ describe('GET /workflows', () => {
 			const {
 				id,
 				connections,
-				active,
+				activeVersionId,
 				staticData,
 				nodes,
 				settings,
@@ -122,7 +123,7 @@ describe('GET /workflows', () => {
 			expect(id).toBeDefined();
 			expect(name).toBeDefined();
 			expect(connections).toBeDefined();
-			expect(active).toBe(false);
+			expect(activeVersionId).toBeNull();
 			expect(staticData).toBeDefined();
 			expect(nodes).toBeDefined();
 			expect(tags).toBeDefined();
@@ -160,7 +161,7 @@ describe('GET /workflows', () => {
 			const {
 				id,
 				connections,
-				active,
+				activeVersionId,
 				staticData,
 				nodes,
 				settings,
@@ -173,7 +174,7 @@ describe('GET /workflows', () => {
 			expect(id).toBeDefined();
 			expect(name).toBeDefined();
 			expect(connections).toBeDefined();
-			expect(active).toBe(false);
+			expect(activeVersionId).toBeNull();
 			expect(staticData).toBeDefined();
 			expect(nodes).toBeDefined();
 			expect(tags).toBeDefined();
@@ -202,7 +203,7 @@ describe('GET /workflows', () => {
 		const {
 			id,
 			connections,
-			active,
+			activeVersionId,
 			staticData,
 			nodes,
 			settings,
@@ -215,7 +216,7 @@ describe('GET /workflows', () => {
 		expect(id).toBe(workflow.id);
 		expect(name).toBeDefined();
 		expect(connections).toBeDefined();
-		expect(active).toBe(false);
+		expect(activeVersionId).toBeNull();
 		expect(staticData).toBeDefined();
 		expect(nodes).toBeDefined();
 		expect(settings).toBeDefined();
@@ -244,15 +245,24 @@ describe('GET /workflows', () => {
 		expect(response.body.data.length).toBe(2);
 
 		for (const workflow of response.body.data) {
-			const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
-				workflow;
+			const {
+				id,
+				connections,
+				activeVersionId,
+				staticData,
+				nodes,
+				settings,
+				name,
+				createdAt,
+				updatedAt,
+			} = workflow;
 
 			expect(id).toBeDefined();
 			expect([workflow1.id, workflow2.id].includes(id)).toBe(true);
 
 			expect(name).toBeDefined();
 			expect(connections).toBeDefined();
-			expect(active).toBe(false);
+			expect(activeVersionId).toBeNull();
 			expect(staticData).toBeDefined();
 			expect(nodes).toBeDefined();
 			expect(settings).toBeDefined();
@@ -323,7 +333,7 @@ describe('GET /workflows', () => {
 		const {
 			id,
 			connections,
-			active,
+			activeVersionId,
 			staticData,
 			nodes,
 			settings,
@@ -336,7 +346,7 @@ describe('GET /workflows', () => {
 		expect(id).toBeDefined();
 		expect(name).toBe(workflowName);
 		expect(connections).toBeDefined();
-		expect(active).toBe(false);
+		expect(activeVersionId).toBeNull();
 		expect(staticData).toBeDefined();
 		expect(nodes).toBeDefined();
 		expect(settings).toBeDefined();
@@ -364,7 +374,7 @@ describe('GET /workflows', () => {
 			const {
 				id,
 				connections,
-				active,
+				activeVersionId,
 				staticData,
 				nodes,
 				settings,
@@ -377,7 +387,7 @@ describe('GET /workflows', () => {
 			expect(id).toBeDefined();
 			expect(name).toBeDefined();
 			expect(connections).toBeDefined();
-			expect(active).toBe(false);
+			expect(activeVersionId).toBeNull();
 			expect(staticData).toBeDefined();
 			expect(nodes).toBeDefined();
 			expect(tags).toBeDefined();
@@ -448,12 +458,10 @@ describe('GET /workflows', () => {
 
 		// Inactive workflow should have null activeVersion
 		expect(inactiveInResponse).toBeDefined();
-		expect(inactiveInResponse.active).toBe(false);
-		expect(inactiveInResponse.activeVersion).toBeNull();
+		expect(inactiveInResponse.activeVersionId).toBeNull();
 
 		// Active workflow should have populated activeVersion
 		expect(activeInResponse).toBeDefined();
-		expect(activeInResponse.active).toBe(true);
 		expect(activeInResponse.activeVersion).toBeDefined();
 		expect(activeInResponse.activeVersion).not.toBeNull();
 		expect(activeInResponse.activeVersion.versionId).toBe(activeWorkflow.versionId);
@@ -474,7 +482,6 @@ describe('GET /workflows', () => {
 
 		const workflow = response.body.data[0];
 		expect(workflow.id).toBe(activeWorkflow.id);
-		expect(workflow.active).toBe(true);
 		expect(workflow.activeVersion).toBeDefined();
 		expect(workflow.activeVersion).not.toBeNull();
 		expect(workflow.activeVersion.versionId).toBe(activeWorkflow.versionId);
@@ -502,7 +509,7 @@ describe('GET /workflows/:id', () => {
 		const {
 			id,
 			connections,
-			active,
+			activeVersionId,
 			staticData,
 			nodes,
 			settings,
@@ -515,7 +522,7 @@ describe('GET /workflows/:id', () => {
 		expect(id).toEqual(workflow.id);
 		expect(name).toEqual(workflow.name);
 		expect(connections).toEqual(workflow.connections);
-		expect(active).toBe(false);
+		expect(activeVersionId).toBeNull();
 		expect(staticData).toEqual(workflow.staticData);
 		expect(nodes).toEqual(workflow.nodes);
 		expect(tags).toEqual([]);
@@ -532,13 +539,22 @@ describe('GET /workflows/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
-			response.body;
+		const {
+			id,
+			connections,
+			activeVersionId,
+			staticData,
+			nodes,
+			settings,
+			name,
+			createdAt,
+			updatedAt,
+		} = response.body;
 
 		expect(id).toEqual(workflow.id);
 		expect(name).toEqual(workflow.name);
 		expect(connections).toEqual(workflow.connections);
-		expect(active).toBe(false);
+		expect(activeVersionId).toBeNull();
 		expect(staticData).toEqual(workflow.staticData);
 		expect(nodes).toEqual(workflow.nodes);
 		expect(settings).toEqual(workflow.settings);
@@ -572,7 +588,7 @@ describe('GET /workflows/:id', () => {
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.active).toBe(false);
+		expect(response.body.activeVersionId).toBe(null);
 		expect(response.body.activeVersion).toBeNull();
 	});
 
@@ -584,7 +600,7 @@ describe('GET /workflows/:id', () => {
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.active).toBe(true);
+		expect(response.body.activeVersionId).toBe(workflow.versionId);
 		expect(response.body.activeVersion).toBeDefined();
 		expect(response.body.activeVersion).not.toBeNull();
 		expect(response.body.activeVersion.versionId).toBe(workflow.versionId);
@@ -611,13 +627,22 @@ describe('DELETE /workflows/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
-			response.body;
+		const {
+			id,
+			connections,
+			activeVersionId,
+			staticData,
+			nodes,
+			settings,
+			name,
+			createdAt,
+			updatedAt,
+		} = response.body;
 
 		expect(id).toEqual(workflow.id);
 		expect(name).toEqual(workflow.name);
 		expect(connections).toEqual(workflow.connections);
-		expect(active).toBe(false);
+		expect(activeVersionId).toBeNull();
 		expect(staticData).toEqual(workflow.staticData);
 		expect(nodes).toEqual(workflow.nodes);
 		expect(settings).toEqual(workflow.settings);
@@ -640,13 +665,22 @@ describe('DELETE /workflows/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
-			response.body;
+		const {
+			id,
+			connections,
+			activeVersionId,
+			staticData,
+			nodes,
+			settings,
+			name,
+			createdAt,
+			updatedAt,
+		} = response.body;
 
 		expect(id).toEqual(workflow.id);
 		expect(name).toEqual(workflow.name);
 		expect(connections).toEqual(workflow.connections);
-		expect(active).toBe(false);
+		expect(activeVersionId).toBeNull();
 		expect(staticData).toEqual(workflow.staticData);
 		expect(nodes).toEqual(workflow.nodes);
 		expect(settings).toEqual(workflow.settings);
@@ -708,13 +742,22 @@ describe('POST /workflows/:id/activate', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
-			response.body;
+		const {
+			id,
+			connections,
+			activeVersionId,
+			staticData,
+			nodes,
+			settings,
+			name,
+			createdAt,
+			updatedAt,
+		} = response.body;
 
 		expect(id).toEqual(workflow.id);
 		expect(name).toEqual(workflow.name);
 		expect(connections).toEqual(workflow.connections);
-		expect(active).toBe(true);
+		expect(activeVersionId).toBe(workflow.versionId);
 		expect(staticData).toEqual(workflow.staticData);
 		expect(nodes).toEqual(workflow.nodes);
 		expect(settings).toEqual(workflow.settings);
@@ -730,7 +773,7 @@ describe('POST /workflows/:id/activate', () => {
 			relations: ['workflow'],
 		});
 
-		expect(sharedWorkflow?.workflow.active).toBe(true);
+		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
 
 		// check whether the workflow is on the active workflow runner
 		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
@@ -742,7 +785,7 @@ describe('POST /workflows/:id/activate', () => {
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
 		expect(response.statusCode).toBe(200);
-		expect(response.body.active).toBe(true);
+		expect(response.body.activeVersionId).toBe(workflow.versionId);
 
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
@@ -752,8 +795,7 @@ describe('POST /workflows/:id/activate', () => {
 			relations: ['workflow', 'workflow.activeVersion'],
 		});
 
-		expect(sharedWorkflow?.workflow.active).toBe(true);
-		expect(sharedWorkflow?.workflow.activeVersion).not.toBeNull();
+		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
 		expect(sharedWorkflow?.workflow.activeVersion?.versionId).toBe(workflow.versionId);
 		expect(sharedWorkflow?.workflow.activeVersion?.nodes).toEqual(workflow.nodes);
 		expect(sharedWorkflow?.workflow.activeVersion?.connections).toEqual(workflow.connections);
@@ -764,13 +806,22 @@ describe('POST /workflows/:id/activate', () => {
 
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`).expect(200);
 
-		const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
-			response.body;
+		const {
+			id,
+			connections,
+			activeVersionId,
+			staticData,
+			nodes,
+			settings,
+			name,
+			createdAt,
+			updatedAt,
+		} = response.body;
 
 		expect(id).toEqual(workflow.id);
 		expect(name).toEqual(workflow.name);
 		expect(connections).toEqual(workflow.connections);
-		expect(active).toBe(true);
+		expect(activeVersionId).toBe(workflow.versionId);
 		expect(staticData).toEqual(workflow.staticData);
 		expect(nodes).toEqual(workflow.nodes);
 		expect(settings).toEqual(workflow.settings);
@@ -795,7 +846,7 @@ describe('POST /workflows/:id/activate', () => {
 			relations: ['workflow'],
 		});
 
-		expect(sharedWorkflow?.workflow.active).toBe(true);
+		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
 
 		// check whether the workflow is on the active workflow runner
 		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
@@ -827,13 +878,22 @@ describe('POST /workflows/:id/deactivate', () => {
 			`/workflows/${workflow.id}/deactivate`,
 		);
 
-		const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
-			workflowDeactivationResponse.body;
+		const {
+			id,
+			connections,
+			activeVersionId,
+			staticData,
+			nodes,
+			settings,
+			name,
+			createdAt,
+			updatedAt,
+		} = workflowDeactivationResponse.body;
 
 		expect(id).toEqual(workflow.id);
 		expect(name).toEqual(workflow.name);
 		expect(connections).toEqual(workflow.connections);
-		expect(active).toBe(false);
+		expect(activeVersionId).toBeNull();
 		expect(staticData).toEqual(workflow.staticData);
 		expect(nodes).toEqual(workflow.nodes);
 		expect(settings).toEqual(workflow.settings);
@@ -850,7 +910,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		});
 
 		// check whether the workflow is deactivated in the database
-		expect(sharedWorkflow?.workflow.active).toBe(false);
+		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 
 		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
 	});
@@ -864,27 +924,25 @@ describe('POST /workflows/:id/deactivate', () => {
 				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
-			relations: ['workflow', 'workflow.activeVersion'],
+			relations: ['workflow'],
 		});
 
-		expect(sharedWorkflow?.workflow.active).toBe(true);
-		expect(sharedWorkflow?.workflow.activeVersion).not.toBeNull();
+		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
 
 		const deactivateResponse = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
 
 		expect(deactivateResponse.statusCode).toBe(200);
-		expect(deactivateResponse.body.active).toBe(false);
+		expect(deactivateResponse.body.activeVersionId).toBe(null);
 
 		sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
-			relations: ['workflow', 'workflow.activeVersion'],
+			relations: ['workflow'],
 		});
 
-		expect(sharedWorkflow?.workflow.active).toBe(false);
-		expect(sharedWorkflow?.workflow.activeVersion).toBeNull();
+		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
 	test('should deactivate non-owned workflow when owner', async () => {
@@ -896,13 +954,22 @@ describe('POST /workflows/:id/deactivate', () => {
 			`/workflows/${workflow.id}/deactivate`,
 		);
 
-		const { id, connections, active, staticData, nodes, settings, name, createdAt, updatedAt } =
-			workflowDeactivationResponse.body;
+		const {
+			id,
+			connections,
+			activeVersionId,
+			staticData,
+			nodes,
+			settings,
+			name,
+			createdAt,
+			updatedAt,
+		} = workflowDeactivationResponse.body;
 
 		expect(id).toEqual(workflow.id);
 		expect(name).toEqual(workflow.name);
 		expect(connections).toEqual(workflow.connections);
-		expect(active).toBe(false);
+		expect(activeVersionId).toBe(null);
 		expect(staticData).toEqual(workflow.staticData);
 		expect(nodes).toEqual(workflow.nodes);
 		expect(settings).toEqual(workflow.settings);
@@ -927,7 +994,7 @@ describe('POST /workflows/:id/deactivate', () => {
 			relations: ['workflow'],
 		});
 
-		expect(sharedWorkflow?.workflow.active).toBe(false);
+		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 
 		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
 	});
@@ -975,8 +1042,17 @@ describe('POST /workflows', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		const { id, name, nodes, connections, staticData, active, settings, createdAt, updatedAt } =
-			response.body;
+		const {
+			id,
+			name,
+			nodes,
+			connections,
+			staticData,
+			activeVersionId,
+			settings,
+			createdAt,
+			updatedAt,
+		} = response.body;
 
 		expect(id).toBeDefined();
 		expect(name).toBe(payload.name);
@@ -984,7 +1060,7 @@ describe('POST /workflows', () => {
 		expect(settings).toEqual(payload.settings);
 		expect(staticData).toEqual(payload.staticData);
 		expect(nodes).toEqual(payload.nodes);
-		expect(active).toBe(false);
+		expect(activeVersionId).toBe(null);
 		expect(createdAt).toBeDefined();
 		expect(updatedAt).toEqual(createdAt);
 
@@ -1175,8 +1251,17 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
 
-		const { id, name, nodes, connections, staticData, active, settings, createdAt, updatedAt } =
-			response.body;
+		const {
+			id,
+			name,
+			nodes,
+			connections,
+			staticData,
+			activeVersionId,
+			settings,
+			createdAt,
+			updatedAt,
+		} = response.body;
 
 		expect(response.statusCode).toBe(200);
 
@@ -1186,7 +1271,7 @@ describe('PUT /workflows/:id', () => {
 		expect(settings).toEqual(payload.settings);
 		expect(staticData).toMatchObject(JSON.parse(payload.staticData));
 		expect(nodes).toEqual(payload.nodes);
-		expect(active).toBe(false);
+		expect(activeVersionId).toBeNull();
 		expect(createdAt).toBe(workflow.createdAt.toISOString());
 		expect(updatedAt).not.toBe(workflow.updatedAt.toISOString());
 
@@ -1260,19 +1345,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should update activeVersionId when updating an active workflow', async () => {
-		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
-
-		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
-		let sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
-			where: {
-				projectId: memberPersonalProject.id,
-				workflowId: workflow.id,
-			},
-			relations: ['workflow', 'workflow.activeVersion'],
-		});
-
-		const initialActiveVersionId = sharedWorkflow?.workflow.activeVersion?.versionId;
-		expect(initialActiveVersionId).toBe(workflow.versionId);
+		const workflow = await createActiveWorkflow({}, member);
 
 		const updatedPayload = {
 			name: 'Updated active workflow',
@@ -1299,7 +1372,7 @@ describe('PUT /workflows/:id', () => {
 
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
-		sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
 			where: {
 				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
@@ -1307,10 +1380,8 @@ describe('PUT /workflows/:id', () => {
 			relations: ['workflow', 'workflow.activeVersion'],
 		});
 
-		expect(sharedWorkflow?.workflow.active).toBe(true);
-		expect(sharedWorkflow?.workflow.activeVersion).not.toBeNull();
-		expect(sharedWorkflow?.workflow.activeVersion?.versionId).toBe(updateResponse.body.versionId);
-		expect(sharedWorkflow?.workflow.activeVersion?.versionId).not.toBe(initialActiveVersionId);
+		expect(sharedWorkflow?.workflow.activeVersionId).toBe(sharedWorkflow?.workflow.versionId);
+		expect(sharedWorkflow?.workflow.activeVersionId).not.toBe(workflow.activeVersionId);
 		expect(sharedWorkflow?.workflow.activeVersion?.nodes).toEqual(updatedPayload.nodes);
 	});
 
@@ -1340,7 +1411,7 @@ describe('PUT /workflows/:id', () => {
 			.send(updatedPayload);
 
 		expect(updateResponse.statusCode).toBe(200);
-		expect(updateResponse.body.active).toBe(false);
+		expect(updateResponse.body.activeVersionId).toBeNull();
 
 		// Verify activeVersion is still null
 		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
@@ -1348,11 +1419,10 @@ describe('PUT /workflows/:id', () => {
 				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
 			},
-			relations: ['workflow', 'workflow.activeVersion'],
+			relations: ['workflow'],
 		});
 
-		expect(sharedWorkflow?.workflow.active).toBe(false);
-		expect(sharedWorkflow?.workflow.activeVersion).toBeNull();
+		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
 	test('should not allow setting active field via PUT request', async () => {
@@ -1383,7 +1453,7 @@ describe('PUT /workflows/:id', () => {
 			relations: ['workflow'],
 		});
 
-		expect(sharedWorkflow?.workflow.active).toBe(false);
+		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 	});
 
 	test('should update non-owned workflow if owner', async () => {
@@ -1425,8 +1495,17 @@ describe('PUT /workflows/:id', () => {
 
 		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
 
-		const { id, name, nodes, connections, staticData, active, settings, createdAt, updatedAt } =
-			response.body;
+		const {
+			id,
+			name,
+			nodes,
+			connections,
+			staticData,
+			activeVersionId,
+			settings,
+			createdAt,
+			updatedAt,
+		} = response.body;
 
 		expect(response.statusCode).toBe(200);
 
@@ -1436,7 +1515,7 @@ describe('PUT /workflows/:id', () => {
 		expect(settings).toEqual(payload.settings);
 		expect(staticData).toMatchObject(JSON.parse(payload.staticData));
 		expect(nodes).toEqual(payload.nodes);
-		expect(active).toBe(false);
+		expect(activeVersionId).toBeNull();
 		expect(createdAt).toBe(workflow.createdAt.toISOString());
 		expect(updatedAt).not.toBe(workflow.updatedAt.toISOString());
 

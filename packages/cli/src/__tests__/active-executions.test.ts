@@ -64,12 +64,12 @@ describe('ActiveExecutions', () => {
 		workflowData: {
 			id: '123',
 			name: 'Test workflow 1',
-			active: false,
 			isArchived: false,
 			createdAt: new Date(),
 			updatedAt: new Date(),
 			nodes: [],
 			connections: {},
+			activeVersionId: null,
 		},
 		userId: uuid(),
 	};

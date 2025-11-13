@@ -1301,7 +1301,7 @@ describe('RoleService', () => {
 			const mockWorkflow = {
 				id: 'workflow-1',
 				name: 'Test Workflow',
-				active: true,
+				versionId: 'version-1',
 				shared: [
 					{
 						projectId: 'project-1',
@@ -1361,7 +1361,7 @@ describe('RoleService', () => {
 			const mockEntity = {
 				id: 'entity-1',
 				name: 'Test Entity',
-				active: true,
+				versionId: 'version-1',
 				shared: undefined,
 			} as any;
 			const userProjectRelations = [] as any[];
@@ -1385,7 +1385,7 @@ describe('RoleService', () => {
 			const mockEntity = {
 				id: 'entity-1',
 				name: 'Test Entity',
-				// Missing both 'active' and 'type' properties
+				// Missing both 'versionId' and 'type' properties
 				shared: [],
 			} as any;
 			const userProjectRelations = [] as any[];

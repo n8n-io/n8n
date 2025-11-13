@@ -61,7 +61,7 @@ describe('Execution Lifecycle Hooks', () => {
 	const workflowData: IWorkflowBase = {
 		id: workflowId,
 		name: 'Test Workflow',
-		active: true,
+		activeVersionId: 'some-version-id',
 		isArchived: false,
 		connections: {},
 		nodes: [

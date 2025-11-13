@@ -1,11 +1,10 @@
 import type { WorkflowEntity, WorkflowStatistics } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
-export const createWorkflow = (id: string, name: string, nodes: INode[], active = true) => ({
+export const createWorkflow = (id: string, name: string, nodes: INode[]) => ({
 	workflow: {
 		id,
 		name,
-		active,
 		nodes,
 		statistics: [
 			{

@@ -134,7 +134,7 @@ export async function getWorkflowSharing(workflow: IWorkflowBase) {
  */
 export async function createWorkflowWithTrigger(
 	attributes: Partial<IWorkflowDb> = {},
-	user?: User,
+	userOrProject?: User | Project,
 ) {
 	const workflow = await createWorkflow(
 		{
@@ -169,7 +169,7 @@ export async function createWorkflowWithTrigger(
 			},
 			...attributes,
 		},
-		user,
+		userOrProject,
 	);
 
 	return workflow;
@@ -200,12 +200,12 @@ export async function createWorkflowWithHistory(
  */
 export async function createWorkflowWithTriggerAndHistory(
 	attributes: Partial<IWorkflowDb> = {},
-	user?: User,
+	userOrProject?: User | Project,
 ) {
-	const workflow = await createWorkflowWithTrigger(attributes, user);
+	const workflow = await createWorkflowWithTrigger(attributes, userOrProject);
 
 	// Create workflow history for the initial version
-	await createWorkflowHistory(workflow, user);
+	await createWorkflowHistory(workflow, userOrProject);
 
 	return workflow;
 }
@@ -226,13 +226,16 @@ export const getWorkflowById = async (id: string) =>
  * @param workflow workflow to create history for
  * @param user user who created the version (optional)
  */
-export async function createWorkflowHistory(workflow: IWorkflowDb, user?: User): Promise<void> {
+export async function createWorkflowHistory(
+	workflow: IWorkflowDb,
+	userOrProject?: User | Project,
+): Promise<void> {
 	await Container.get(WorkflowHistoryRepository).insert({
 		workflowId: workflow.id,
 		versionId: workflow.versionId,
 		nodes: workflow.nodes,
 		connections: workflow.connections,
-		authors: user?.email ?? 'test@example.com',
+		authors: userOrProject instanceof User ? userOrProject.email : 'test@example.com',
 	});
 }
 
@@ -256,13 +259,34 @@ export async function setActiveVersion(workflowId: string, versionId: string): P
  * @param attributes workflow attributes
  * @param user user to assign the workflow to
  */
-export async function createActiveWorkflow(attributes: Partial<IWorkflowDb> = {}, user?: User) {
-	const workflow = await createWorkflowWithTriggerAndHistory(attributes, user);
+export async function createActiveWorkflow(
+	attributes: Partial<IWorkflowDb> = {},
+	userOrProject?: User | Project,
+) {
+	const workflow = await createWorkflowWithTriggerAndHistory(attributes, userOrProject);
 
 	await setActiveVersion(workflow.id, workflow.versionId);
 
 	workflow.activeVersionId = workflow.versionId;
 	return workflow;
+}
+
+/**
+ * Create many active workflows with triggers, history, and activeVersionId set to current version.
+ * @param amount number of workflows to create
+ * @param attributes workflow attributes to apply to all workflows
+ * @param user user to assign the workflows to
+ */
+export async function createManyActiveWorkflows(
+	amount: number,
+	attributes: Partial<IWorkflowDb> = {},
+	user?: User,
+) {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+	const workflowRequests = [...Array(amount)].map(
+		async (_) => await createActiveWorkflow(attributes, user),
+	);
+	return await Promise.all(workflowRequests);
 }
 
 /**

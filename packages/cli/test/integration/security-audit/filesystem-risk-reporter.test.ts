@@ -36,7 +36,6 @@ test('should report filesystem interaction nodes', async () => {
 	const promises = Object.entries(map).map(async ([nodeType, nodeId]) => {
 		const details = Container.get(WorkflowRepository).create({
 			name: 'My Test Workflow',
-			active: false,
 			connections: {},
 			versionId: uuid(),
 			nodes: [

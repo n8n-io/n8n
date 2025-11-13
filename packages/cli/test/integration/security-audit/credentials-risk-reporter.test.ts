@@ -1,4 +1,4 @@
-import { testDb } from '@n8n/backend-test-utils';
+import { createActiveWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { SecurityConfig } from '@n8n/config';
 import {
 	generateNanoId,
@@ -48,7 +48,6 @@ test('should report credentials not in any use', async () => {
 	const workflowDetails = {
 		id: generateNanoId(),
 		name: 'My Test Workflow',
-		active: false,
 		connections: {},
 		nodeTypes: {},
 		versionId: uuid(),
@@ -96,7 +95,6 @@ test('should report credentials not in active use', async () => {
 	const workflowDetails = {
 		id: generateNanoId(),
 		name: 'My Test Workflow',
-		active: false,
 		connections: {},
 		nodeTypes: {},
 		versionId: uuid(),
@@ -141,7 +139,6 @@ test('should report credential in not recently executed workflow', async () => {
 	const workflowDetails = {
 		id: generateNanoId(),
 		name: 'My Test Workflow',
-		active: false,
 		connections: {},
 		nodeTypes: {},
 		versionId: uuid(),
@@ -209,12 +206,9 @@ test('should not report credentials in recently executed workflow', async () => 
 	const credential = await Container.get(CredentialsRepository).save(credentialDetails);
 
 	const workflowDetails = {
-		id: generateNanoId(),
 		name: 'My Test Workflow',
-		active: true,
 		connections: {},
 		nodeTypes: {},
-		versionId: uuid(),
 		nodes: [
 			{
 				id: uuid(),
@@ -228,11 +222,12 @@ test('should not report credentials in recently executed workflow', async () => 
 						name: credential.name,
 					},
 				},
+				parameters: {},
 			},
 		],
 	};
 
-	const workflow = await Container.get(WorkflowRepository).save(workflowDetails);
+	const workflow = await createActiveWorkflow(workflowDetails);
 
 	const date = new Date();
 	date.setDate(date.getDate() - securityConfig.daysAbandonedWorkflow + 1);

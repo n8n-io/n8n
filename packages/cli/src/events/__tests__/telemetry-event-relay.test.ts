@@ -1214,7 +1214,7 @@ describe('TelemetryEventRelay', () => {
 		const mockWorkflowBase = mock<IWorkflowBase>({
 			id: 'workflow123',
 			name: 'Test Workflow',
-			active: true,
+			activeVersionId: 'some-version-id',
 			nodes: [
 				{
 					id: 'node1',

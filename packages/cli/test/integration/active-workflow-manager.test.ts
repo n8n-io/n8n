@@ -1,5 +1,7 @@
 import {
 	createWorkflowWithHistory,
+	createActiveWorkflow as createActiveWorkflowHelper,
+	createManyActiveWorkflows,
 	setActiveVersion,
 	testDb,
 	mockInstance,
@@ -9,8 +11,11 @@ import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings, ExternalSecretsProxy } from 'n8n-core';
+import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
+import { Set } from 'n8n-nodes-base/nodes/Set/Set.node';
+import { Start } from 'n8n-nodes-base/nodes/Start/Start.node';
 import { NodeApiError, Workflow } from 'n8n-workflow';
 import type {
 	IWebhookData,
@@ -60,6 +65,18 @@ beforeAll(async () => {
 	activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 	const nodes: INodeTypeData = {
+		'n8n-nodes-base.start': {
+			type: new Start(),
+			sourcePath: '',
+		},
+		'n8n-nodes-base.cron': {
+			type: new Cron(),
+			sourcePath: '',
+		},
+		'n8n-nodes-base.set': {
+			type: new Set(),
+			sourcePath: '',
+		},
 		'n8n-nodes-base.scheduleTrigger': {
 			type: new ScheduleTrigger(),
 			sourcePath: '',
@@ -74,11 +91,9 @@ beforeAll(async () => {
 
 	owner = await createOwner();
 	createActiveWorkflow = async (workflowOptions: Partial<IWorkflowDb> = {}) => {
-		const workflow = await createWorkflowWithHistory({ active: true, ...workflowOptions }, owner);
-		await setActiveVersion(workflow.id, workflow.versionId);
-		return workflow;
+		return await createActiveWorkflowHelper(workflowOptions, owner);
 	};
-	createInactiveWorkflow = async () => await createWorkflowWithHistory({ active: false }, owner);
+	createInactiveWorkflow = async () => await createWorkflowWithHistory({}, owner);
 	Container.get(InstanceSettings).markAsLeader();
 });
 
@@ -111,7 +126,7 @@ describe('init()', () => {
 	});
 
 	it('should check that workflow can be activated', async () => {
-		await Promise.all([createActiveWorkflow(), createActiveWorkflow()]);
+		await createManyActiveWorkflows(2);
 
 		const checkSpy = jest
 			.spyOn(activeWorkflowManager, 'checkIfWorkflowCanBeActivated')
@@ -217,7 +232,9 @@ describe('add()', () => {
 
 		// Simulate the workflow being activated
 		await setActiveVersion(dbWorkflow.id, dbWorkflow.versionId!);
-		await Container.get(WorkflowRepository).update(dbWorkflow.id, { active: true });
+		await Container.get(WorkflowRepository).update(dbWorkflow.id, {
+			activeVersionId: dbWorkflow.versionId!,
+		});
 
 		await activeWorkflowManager.add(dbWorkflow.id, 'activate');
 
@@ -333,7 +350,7 @@ describe('addWebhooks()', () => {
 			name: dbWorkflow.name,
 			nodes: dbWorkflow.nodes,
 			connections: dbWorkflow.connections,
-			active: dbWorkflow.active,
+			active: dbWorkflow.activeVersionId !== null,
 			nodeTypes: Container.get(NodeTypes),
 			staticData: dbWorkflow.staticData,
 			settings: dbWorkflow.settings,

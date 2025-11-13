@@ -42,6 +42,14 @@ import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
 
+/**
+ * Type for (soon to be legacy) workflow update data
+ * That activates current workflow version
+ */
+export type WorkflowUpdateData = WorkflowEntity & {
+	active?: boolean;
+};
+
 @Service()
 export class WorkflowService {
 	constructor(
@@ -199,7 +207,7 @@ export class WorkflowService {
 	// eslint-disable-next-line complexity
 	async update(
 		user: User,
-		workflowUpdateData: WorkflowEntity,
+		workflowUpdateData: WorkflowUpdateData,
 		workflowId: string,
 		tagIds?: string[],
 		parentFolderId?: string,
