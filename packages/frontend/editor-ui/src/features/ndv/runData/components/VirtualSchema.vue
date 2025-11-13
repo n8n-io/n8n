@@ -259,7 +259,8 @@ const contextItems = computed(() => {
 				const variablesEmptyNotice: RenderNotice = {
 					type: 'notice',
 					id: 'notice-variablesEmpty',
-					level: renderItem.level ?? 0,
+					// Increase level to indent under $vars
+					level: (renderItem.level ?? 0) + 1,
 					message: i18n.baseText('dataMapping.schemaView.variablesEmpty'),
 				};
 				return [renderItem, variablesEmptyNotice];

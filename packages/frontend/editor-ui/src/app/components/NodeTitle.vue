@@ -47,6 +47,7 @@ const { width } = useElementSize(wrapperRef);
 			<NodeIcon
 				v-else
 				:icon-source="iconSource"
+				:node-type="nodeType"
 				:size="18"
 				:show-tooltip="true"
 				tooltip-position="left"
