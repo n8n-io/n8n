@@ -22,8 +22,6 @@ export class DataTableUploadsController {
 			const error = req.fileUploadError;
 			if (error instanceof multer.MulterError) {
 				throw new BadRequestError(`File upload error: ${error.message}`);
-			} else if (error instanceof BadRequestError) {
-				throw error;
 			} else {
 				throw new BadRequestError('File upload failed');
 			}
@@ -36,7 +34,6 @@ export class DataTableUploadsController {
 		// Extract hasHeaders parameter from request body (multer parses form fields to body), default to true
 		const hasHeaders = (req.body as { hasHeaders?: string }).hasHeaders === 'false' ? false : true;
 
-		// Parse CSV file to extract metadata
 		const metadata = await this.csvParserService.parseFile(req.file.filename, hasHeaders);
 
 		return {
