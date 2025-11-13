@@ -62,9 +62,9 @@ export const Default = {
 			<template v-for="isDisabled in [false, true]" :key="isDisabled">
 				<h2 :style="{ margin: '20px 0' }">Disabled: {{ isDisabled }}</h2>
 				<Checkbox v-model="value" :disabled="isDisabled"/>
-				<Checkbox :model-value="false" label="Enabled" :disabled="isDisabled"/>
-				<Checkbox :model-value="true" label="Disabled" :disabled="isDisabled"/>
-				<Checkbox indeterminate  label="indeterminate" :disabled="isDisabled"/>
+				<Checkbox :model-value="true" label="Checked" :disabled="isDisabled"/>
+				<Checkbox :model-value="false" label="Unchecked" :disabled="isDisabled"/>
+				<Checkbox indeterminate  label="Indeterminate" :disabled="isDisabled"/>
 				<form>
 					<Checkbox name="test" v-model="value"  label="Form control" :disabled="isDisabled"/>
 				</form>
