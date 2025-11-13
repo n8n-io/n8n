@@ -3,7 +3,7 @@ import { User, WorkflowHistoryRepository } from '@n8n/db';
 import { mockClear } from 'jest-mock-extended';
 
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { getWorkflow } from '@test-integration/workflow';
 
 const workflowHistoryRepository = mockInstance(WorkflowHistoryRepository);
@@ -21,13 +21,6 @@ const testUser = Object.assign(new User(), {
 	firstName: 'John',
 	lastName: 'Doe',
 });
-let isWorkflowHistoryEnabled = true;
-
-jest.mock('@/workflows/workflow-history.ee/workflow-history-helper.ee', () => {
-	return {
-		isWorkflowHistoryEnabled: jest.fn(() => isWorkflowHistoryEnabled),
-	};
-});
 
 describe('WorkflowHistoryService', () => {
 	beforeEach(() => {
@@ -35,9 +28,8 @@ describe('WorkflowHistoryService', () => {
 	});
 
 	describe('saveVersion', () => {
-		it('should save a new version when workflow history is enabled and nodes and connections are present', async () => {
+		it('should save a new version when nodes and connections are present', async () => {
 			// Arrange
-			isWorkflowHistoryEnabled = true;
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
 			workflow.connections = {};
@@ -57,41 +49,25 @@ describe('WorkflowHistoryService', () => {
 			});
 		});
 
-		it('should not save a new version when workflow history is disabled', async () => {
+		it('should throw an error when nodes or connections are missing', async () => {
 			// Arrange
-			isWorkflowHistoryEnabled = false;
-			const workflow = getWorkflow({ addNodeWithoutCreds: true });
-			const workflowId = '123';
-			workflow.connections = {};
-			workflow.id = workflowId;
-			workflow.versionId = '456';
-
-			// Act
-			await workflowHistoryService.saveVersion(testUser, workflow, workflowId);
-
-			// Assert
-			expect(workflowHistoryRepository.insert).not.toHaveBeenCalled();
-		});
-
-		it('should not save a new version when nodes or connections are missing', async () => {
-			// Arrange
-			isWorkflowHistoryEnabled = true;
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
 			workflow.id = workflowId;
 			workflow.versionId = '456';
 			// Nodes are set but connections is empty
 
-			// Act
-			await workflowHistoryService.saveVersion(testUser, workflow, workflowId);
-
-			// Assert
+			// Act & Assert
+			await expect(
+				workflowHistoryService.saveVersion(testUser, workflow, workflowId),
+			).rejects.toThrow(
+				'Cannot save workflow history: nodes and connections are required for workflow 123',
+			);
 			expect(workflowHistoryRepository.insert).not.toHaveBeenCalled();
 		});
 
 		it('should log an error when failed to save workflow history version', async () => {
 			// Arrange
-			isWorkflowHistoryEnabled = true;
 			const workflow = getWorkflow({ addNodeWithoutCreds: true });
 			const workflowId = '123';
 			workflow.connections = {};
