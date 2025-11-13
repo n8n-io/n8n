@@ -132,6 +132,7 @@ export const createExecuteWorkflowTool = (
  * Executes a workflow for the given user with provided inputs.
  * In order to "synchronously" execute the workflow,
  * it is mapping mcp tool inputs to trigger node pin data and starting execution from there.
+ * LIMITATION: Does not properly support workflows with multiple triggers.
  */
 export const executeWorkflow = async (
 	user: User,
