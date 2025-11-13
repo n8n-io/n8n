@@ -2,7 +2,9 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type {
 	CreateExecutionPayload,
+	ExecutionEntity,
 	ExecutionSummaries,
+	FindOptionsWhere,
 	IExecutionResponse,
 	IGetExecutionsQueryFilter,
 	User,
@@ -14,6 +16,8 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { In, LessThan, MoreThan } from '@n8n/typeorm';
 import { validate as jsonSchemaValidate } from 'jsonschema';
 import type {
 	ExecutionError,
@@ -529,6 +533,46 @@ export class ExecutionService {
 			finished,
 			status,
 		};
+	}
+
+	async stopMany(query: ExecutionSummaries.StopExecutionFilterQuery, sharedWorkflowIds: string[]) {
+		const cancelQuery = this.executionRepository
+			.createQueryBuilder('execution')
+			.select(['execution.id'])
+			.where({ workflowId: query.workflowId });
+
+		if (query.mode) {
+			cancelQuery.andWhere({ mode: query.mode });
+		}
+
+		if (query.startedAfter) {
+			cancelQuery.andWhere({ startedAt: MoreThan(query.startedAfter) });
+		}
+
+		if (query.startedBefore) {
+			cancelQuery.andWhere({ startedAt: LessThan(query.startedBefore) });
+		}
+
+		if (query.status) {
+			cancelQuery.andWhere({ status: In(query.status) });
+		}
+
+		const findBy: FindOptionsWhere<ExecutionEntity> = {
+			workflowId: query.workflowId,
+			...(query.status ? { status: In(query.status) } : {}),
+			...(query.startedAfter ? { status: query.startedAfter } : {}),
+			...(query.startedBefore ? { status: query.startedBefore } : {}),
+		} as never;
+
+		const ids = await this.executionRepository.findBy(findBy);
+
+		for (const id of ids) {
+			try {
+				await this.stop(id.id, sharedWorkflowIds);
+			} catch (e) {
+				this.logger.error('ouchie:' + JSON.stringify(e));
+			}
+		}
 	}
 
 	private assertStoppable(execution: IExecutionResponse) {

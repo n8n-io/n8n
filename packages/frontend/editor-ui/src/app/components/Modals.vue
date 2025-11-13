@@ -29,6 +29,7 @@ import {
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
+	STOP_MANY_EXECUTIONS_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -110,6 +111,7 @@ import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/N
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
+import StopManyExecutions from './StopManyExecutions.vue';
 </script>
 
 <template>
@@ -358,6 +360,12 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 		<ModalRoot :name="FROM_AI_PARAMETERS_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<FromAiParametersModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="STOP_MANY_EXECUTIONS_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<StopManyExecutions :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 

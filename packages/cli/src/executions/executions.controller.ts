@@ -34,6 +34,12 @@ export class ExecutionsController {
 		}
 	}
 
+	@Post('/stopMany')
+	async stopMany(req: ExecutionRequest.StopMany) {
+		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		await this.executionService.stopMany(req.body.filter, accessibleWorkflowIds);
+	}
+
 	@Get('/', { middlewares: [parseRangeQuery] })
 	async getMany(req: ExecutionRequest.GetMany) {
 		const accessibleWorkflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');

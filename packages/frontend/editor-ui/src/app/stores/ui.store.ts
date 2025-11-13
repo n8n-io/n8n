@@ -31,6 +31,7 @@ import {
 	CONFIRM_PASSWORD_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V3_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
+	STOP_MANY_EXECUTIONS_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -220,6 +221,12 @@ export const useUIStore = defineStore(STORES.UI, () => {
 			open: false,
 			data: {
 				nodeName: undefined,
+			},
+		},
+		[STOP_MANY_EXECUTIONS_MODAL_KEY]: {
+			open: false,
+			data: {
+				workflowId: '',
 			},
 		},
 		[IMPORT_WORKFLOW_URL_MODAL_KEY]: {

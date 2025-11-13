@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router';
 import WorkflowExecutionsCard from './WorkflowExecutionsCard.vue';
 import WorkflowExecutionsInfoAccordion from './WorkflowExecutionsInfoAccordion.vue';
 import ExecutionsFilter from '../ExecutionsFilter.vue';
-import { VIEWS } from '@/app/constants';
+import { STOP_MANY_EXECUTIONS_MODAL_KEY, VIEWS } from '@/app/constants';
 import type { ExecutionSummary } from 'n8n-workflow';
 import { useExecutionsStore } from '../../executions.store';
 import type { IWorkflowDb } from '@/Interface';
@@ -20,7 +20,9 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
 import { ElCheckbox } from 'element-plus';
-import { N8nHeading, N8nLoading, N8nText } from '@n8n/design-system';
+import { N8nHeading, N8nIconButton, N8nLoading, N8nText } from '@n8n/design-system';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 type AutoScrollDeps = { activeExecutionSet: boolean; cardsMounted: boolean; scroll: boolean };
 
 const props = defineProps<{
@@ -36,6 +38,7 @@ const emit = defineEmits<{
 	loadMore: [amount: number];
 	filterUpdated: [filter: ExecutionFilterType];
 	'update:autoRefresh': [boolean];
+	'execution:stopMany': [];
 }>();
 
 const route = useRoute();
@@ -151,6 +154,13 @@ function onAutoRefreshChange(enabled: string | number | boolean) {
 	emit('update:autoRefresh', boolValue);
 }
 
+function onStopManyExecutions() {
+	useUIStore().openModalWithData({
+		name: STOP_MANY_EXECUTIONS_MODAL_KEY,
+		data: { workflowId: useWorkflowsStore().workflowId },
+	});
+}
+
 function scrollToActiveCard(): void {
 	if (
 		executionListRef.value &&
@@ -193,6 +203,11 @@ const goToUpgrade = () => {
 				:concurrency-cap="settingsStore.concurrency"
 				:is-cloud-deployment="settingsStore.isCloudDeployment"
 				@go-to-upgrade="goToUpgrade"
+			/>
+			<N8nIconButton
+				icon="filled-square"
+				aria-label="Stop Execution"
+				@click="onStopManyExecutions"
 			/>
 		</div>
 		<div :class="$style.controls">

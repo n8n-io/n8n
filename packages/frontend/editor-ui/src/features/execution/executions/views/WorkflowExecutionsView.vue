@@ -198,6 +198,12 @@ async function onUpdateFilters(newFilters: ExecutionFilterType) {
 	await executionsStore.initialize(workflowId.value);
 }
 
+async function onManyExecutionsStop() {
+	await executionsStore.stopExecutions({
+		status: ['waiting', 'running'],
+	});
+}
+
 async function onExecutionStop(id?: string) {
 	if (!id) {
 		return;
@@ -338,6 +344,7 @@ async function loadMore(): Promise<void> {
 		:loading="loading"
 		:loading-more="loadingMore"
 		@execution:stop="onExecutionStop"
+		@execution:stopMany="onManyExecutionsStop"
 		@execution:delete="onExecutionDelete"
 		@execution:retry="onExecutionRetry"
 		@update:filters="onUpdateFilters"
