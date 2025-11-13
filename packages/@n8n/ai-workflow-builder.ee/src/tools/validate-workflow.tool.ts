@@ -1,10 +1,12 @@
 import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
+import type { ITelemetryTrackProperties } from 'n8n-workflow/src';
 import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 import { programmaticValidation } from '@/validation/programmatic';
+import type { ProgrammaticChecksResult, ProgrammaticViolation } from '@/validation/types';
 
 import { ToolExecutionError, ValidationError } from '../errors';
 import { formatWorkflowValidation } from '../utils/workflow-validation';
@@ -19,9 +21,26 @@ export const VALIDATE_WORKFLOW_TOOL: BuilderToolBase = {
 	displayTitle: 'Validating workflow',
 };
 
+function collectTelemetryEventProps(results: ProgrammaticChecksResult) {
+	const props = {
+		validation_failed: [] as string[],
+	};
+
+	Object.values(results).forEach((violations: ProgrammaticViolation[]) => {
+		violations.forEach((violation) => {
+			if (violation?.name) {
+				props.validation_failed.push(violation.name);
+			}
+		});
+	});
+
+	return props;
+}
+
 export function createValidateWorkflowTool(
 	parsedNodeTypes: INodeTypeDescription[],
 	logger?: Logger,
+	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void,
 ): BuilderTool {
 	const dynamicTool = tool(
 		async (input, config) => {
@@ -44,6 +63,9 @@ export function createValidateWorkflowTool(
 					},
 					parsedNodeTypes,
 				);
+
+				const telemetryProps = collectTelemetryEventProps(violations);
+				onTelemetryEvent?.('Builder validation check failed', telemetryProps);
 
 				const message = formatWorkflowValidation(violations);
 

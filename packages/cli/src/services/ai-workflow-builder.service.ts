@@ -11,6 +11,8 @@ import { License } from '@/license';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
+import { Telemetry } from '@/telemetry';
+import { ITelemetryTrackProperties } from 'n8n-workflow/src';
 
 /**
  * This service wraps the actual AiWorkflowBuilderService to avoid circular dependencies.
@@ -27,6 +29,7 @@ export class WorkflowBuilderService {
 		private readonly logger: Logger,
 		private readonly urlService: UrlService,
 		private readonly push: Push,
+		private readonly telemetry: Telemetry,
 	) {}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
@@ -61,6 +64,12 @@ export class WorkflowBuilderService {
 				);
 			};
 
+			// Callback for AI Builder to send telemetry events
+			const onTelemetryEvent = (event: string, properties: ITelemetryTrackProperties) => {
+				console.log(event, properties);
+				this.telemetry.track(event, properties);
+			};
+
 			const { nodes: nodeTypeDescriptions } = this.loadNodesAndCredentials.types;
 
 			this.service = new AiWorkflowBuilderService(
@@ -69,6 +78,7 @@ export class WorkflowBuilderService {
 				this.logger,
 				this.urlService.getInstanceBaseUrl(),
 				onCreditsUpdated,
+				onTelemetryEvent,
 			);
 		}
 

@@ -5,6 +5,7 @@ import type { SimpleWorkflow } from '@/types';
 export type ProgrammaticViolationType = 'critical' | 'major' | 'minor';
 
 export interface ProgrammaticViolation {
+	name: string;
 	type: ProgrammaticViolationType;
 	description: string;
 	pointsDeducted: number;
