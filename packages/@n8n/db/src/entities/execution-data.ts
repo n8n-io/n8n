@@ -45,7 +45,8 @@ export class ExecutionData {
 		name: 'workflowVersionId',
 		referencedColumnName: 'versionId',
 	})
-	workflowHistory: Relation<Omit<WorkflowHistory, 'workflow'> & { workflow: WorkflowData }> | null; // this
+	workflowHistory: Relation<WorkflowHistory> | null; // this
+	// workflowHistory: Relation<Omit<WorkflowHistory, 'workflow'> & { workflow: WorkflowData }> | null; // this
 
 	@BeforeInsert()
 	@BeforeUpdate()

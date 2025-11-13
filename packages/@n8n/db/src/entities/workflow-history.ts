@@ -25,5 +25,5 @@ export class WorkflowHistory extends WithTimestamps {
 	@ManyToOne(() => WorkflowEntity, {
 		onDelete: 'CASCADE',
 	})
-	workflow: Relation<WorkflowEntity>;
+	workflow: Relation<any>;
 }

@@ -7,6 +7,7 @@ import {
 	ManyToMany,
 	ManyToOne,
 	OneToMany,
+	Relation,
 } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
@@ -87,7 +88,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	tagMappings: WorkflowTagMapping[];
 
 	@OneToMany('SharedWorkflow', 'workflow')
-	shared: SharedWorkflow[];
+	shared: Relation<SharedWorkflow[]>;
 
 	@OneToMany('WorkflowStatistics', 'workflow')
 	@JoinColumn({ referencedColumnName: 'workflow' })
