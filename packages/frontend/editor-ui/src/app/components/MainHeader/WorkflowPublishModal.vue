@@ -53,6 +53,10 @@ const currentVersionText = computed(() => {
 });
 
 const newVersionText = computed(() => {
+	if (!hasPublishedVersion.value) {
+		return 'Version 1';
+	}
+
 	if (wfHasAnyChanges.value) {
 		// TODO: this should be using the workflow publish history
 		return 'Version Y';
@@ -168,7 +172,7 @@ watchEffect(async () => {
 .versionRow {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--xs);
+	gap: var(--spacing--4xs);
 }
 
 .inputButtonContainer {
