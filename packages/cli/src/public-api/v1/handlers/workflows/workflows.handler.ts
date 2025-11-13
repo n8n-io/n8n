@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { WorkflowEntity, ProjectRepository, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, Like, QueryFailedError } from '@n8n/typeorm';
+import { In, Like, Not, IsNull, QueryFailedError } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import type express from 'express';
@@ -31,6 +31,7 @@ import {
 	parseTagNames,
 	getWorkflowTags,
 	updateTags,
+	addActiveProperty,
 } from './workflows.service';
 import type { WorkflowRequest } from '../../../types';
 import {
@@ -72,7 +73,7 @@ export = {
 				projectType: project.type,
 			});
 
-			return res.json(createdWorkflow);
+			return res.json(addActiveProperty(createdWorkflow));
 		},
 	],
 	transferWorkflow: [
@@ -105,7 +106,7 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			return res.json(workflow);
+			return res.json(addActiveProperty(workflow));
 		},
 	],
 	getWorkflow: [
@@ -141,7 +142,7 @@ export = {
 				publicApi: true,
 			});
 
-			return res.json(workflow);
+			return res.json(addActiveProperty(workflow));
 		},
 	],
 	getWorkflows: [
@@ -159,9 +160,19 @@ export = {
 			} = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
-				...(active !== undefined && { active }),
 				...(name !== undefined && { name: Like('%' + name.trim() + '%') }),
 			};
+
+			// Filter by active status based on activeVersionId
+			if (active !== undefined) {
+				if (active) {
+					// Active workflows have activeVersionId set (not null)
+					where.activeVersionId = Not(IsNull());
+				} else {
+					// Inactive workflows have activeVersionId as null
+					where.activeVersionId = IsNull();
+				}
+			}
 
 			if (['global:owner', 'global:admin'].includes(req.user.role.slug)) {
 				if (tags) {
@@ -262,7 +273,7 @@ export = {
 			});
 
 			return res.json({
-				data: workflows,
+				data: workflows.map((w) => addActiveProperty(w)),
 				nextCursor: encodeNextCursor({
 					offset,
 					limit,
@@ -339,6 +350,9 @@ export = {
 			}
 
 			const updatedWorkflow = await getWorkflowById(workflow.id);
+			if (!updatedWorkflow) {
+				return res.status(404).json({ message: 'Workflow not found after update' });
+			}
 
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
 			Container.get(EventService).emit('workflow-saved', {
@@ -347,7 +361,7 @@ export = {
 				publicApi: true,
 			});
 
-			return res.json(updatedWorkflow);
+			return res.json(addActiveProperty(updatedWorkflow));
 		},
 	],
 	activateWorkflow: [
@@ -377,12 +391,12 @@ export = {
 			if (!workflow.activeVersionId || newVersionIsBeingActivated) {
 				try {
 					// change the status to active in the DB
-					const activeVersion = await setWorkflowAsActive(req.user, workflow.id, activeVersionId);
+					await setWorkflowAsActive(workflow.id, activeVersionId);
 
 					await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
 
 					// Update the workflow object for response
-					workflow.activeVersion = activeVersion;
+					workflow.activeVersionId = activeVersionId;
 				} catch (error) {
 					// Rollback: restore previous state
 					await Container.get(WorkflowRepository).update(workflow.id, {
@@ -402,11 +416,11 @@ export = {
 					publicApi: true,
 				});
 
-				return res.json(workflow);
+				return res.json(addActiveProperty(workflow));
 			}
 
 			// nothing to do as this version is already active
-			return res.json(workflow);
+			return res.json(addActiveProperty(workflow));
 		},
 	],
 	deactivateWorkflow: [
@@ -434,6 +448,10 @@ export = {
 
 				await setWorkflowAsInactive(workflow.id);
 
+				// Update the workflow object for response
+				workflow.activeVersionId = null;
+				workflow.activeVersion = null;
+
 				Container.get(EventService).emit('workflow-deactivated', {
 					user: req.user,
 					workflowId: workflow.id,
@@ -441,11 +459,11 @@ export = {
 					publicApi: true,
 				});
 
-				return res.json(workflow);
+				return res.json(addActiveProperty(workflow));
 			}
 
 			// nothing to do as the workflow is already inactive
-			return res.json(workflow);
+			return res.json(addActiveProperty(workflow));
 		},
 	],
 	getWorkflowTags: [

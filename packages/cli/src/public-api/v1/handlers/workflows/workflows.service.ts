@@ -13,11 +13,21 @@ import { PROJECT_OWNER_ROLE_SLUG, type Scope, type WorkflowSharingRole } from '@
 import type { WorkflowId } from 'n8n-workflow';
 
 import { License } from '@/license';
-import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
+}
+
+/**
+ * Transform workflow entity to include the deprecated `active` property for backward compatibility
+ * with the public API.
+ */
+export function addActiveProperty<T extends WorkflowEntity>(workflow: T): T & { active: boolean } {
+	return {
+		...workflow,
+		active: workflow.activeVersionId !== null,
+	};
 }
 
 export async function getSharedWorkflowIds(
@@ -86,19 +96,11 @@ export async function createWorkflow(
 	});
 }
 
-export async function setWorkflowAsActive(user: User, workflowId: WorkflowId, versionId: string) {
-	const activeVersion = await Container.get(WorkflowHistoryService).getVersion(
-		user,
-		workflowId,
-		versionId,
-	);
-
+export async function setWorkflowAsActive(workflowId: WorkflowId, versionId: string) {
 	await Container.get(WorkflowRepository).update(workflowId, {
-		activeVersion,
+		activeVersionId: versionId,
 		updatedAt: new Date(),
 	});
-
-	return activeVersion;
 }
 
 export async function setWorkflowAsInactive(workflowId: WorkflowId) {

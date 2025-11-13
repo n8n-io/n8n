@@ -241,7 +241,10 @@ export class WorkflowService {
 			);
 		}
 
-		if (Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active'])).length > 0) {
+		if (
+			Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active', 'activeVersionId']))
+				.length > 0
+		) {
 			// Update the workflow's version when changing properties such as
 			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
 			// This is necessary for collaboration to work properly - even when only name or settings
