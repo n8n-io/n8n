@@ -69,8 +69,8 @@ export class CsvParserService {
 						const processed = this.processRowWithoutHeaders(row, columnNames);
 						columnNames = processed.columnNames;
 						firstDataRow ??= processed.rowObject;
-					} else {
-						firstDataRow ??= row as Record<string, string>;
+					} else if (!Array.isArray(row)) {
+						firstDataRow ??= row;
 					}
 				})
 				.on('end', () => {
@@ -118,8 +118,8 @@ export class CsvParserService {
 						const processed = this.processRowWithoutHeaders(row, columnNames);
 						columnNames = processed.columnNames;
 						rows.push(processed.rowObject);
-					} else {
-						rows.push(row as Record<string, string>);
+					} else if (!Array.isArray(row)) {
+						rows.push(row);
 					}
 				})
 				.on('end', () => {
