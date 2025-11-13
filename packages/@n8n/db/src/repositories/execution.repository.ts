@@ -30,7 +30,7 @@ import type {
 	ExecutionSummary,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { ManualExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
+import { ManualExecutionCancelledError, migrateExecutionData, UnexpectedError } from 'n8n-workflow';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import {
@@ -213,7 +213,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
-					data: parse(executionData.data) as IRunExecutionData,
+					data: migrateExecutionData(parse(executionData.data) as IRunExecutionData),
 					workflowData: executionData.workflowData,
 					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionResponse;
@@ -339,7 +339,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			...rest,
 			...(options?.includeData && {
 				data: options?.unflattenData
-					? (parse(executionData.data) as IRunExecutionData)
+					? migrateExecutionData(parse(executionData.data) as IRunExecutionData)
 					: executionData.data,
 				workflowData: executionData?.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
@@ -356,6 +356,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const { data: dataObj, workflowData: currentWorkflow, ...rest } = execution;
 		const { connections, nodes, name, settings } = currentWorkflow ?? {};
 		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
+		// Ensure new executions are marked with the current version
+		if (!dataObj.version) {
+			dataObj.version = 1;
+		}
 		const data = stringify(dataObj);
 
 		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
@@ -435,7 +439,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executionData: Partial<ExecutionData> = {};
 
 		if (workflowData) executionData.workflowData = workflowData;
-		if (data) executionData.data = stringify(data);
+		if (data) {
+			// Ensure updated executions are marked with the current version
+			if (!data.version) {
+				data.version = 1;
+			}
+			executionData.data = stringify(data);
+		}
 
 		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
 
