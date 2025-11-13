@@ -3868,8 +3868,8 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 		);
 	});
 
-	test('should not create data table if CSV file import fails', async () => {
-		// Upload a valid CSV
+	test('should create data table with partial column mapping when schema has extra columns', async () => {
+		// Upload a valid CSV with 2 columns
 		const csvContent = 'name,age\nAlice,30';
 		const uploadResponse = await authOwnerAgent
 			.post('/data-tables/uploads')
@@ -3878,9 +3878,11 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 
 		const fileId = uploadResponse.body.data.id;
 
-		// Try to create table with mismatched columns (more columns than in CSV)
+		// Create table with more columns than in CSV
+		// The system should map by index: CSV col 0 -> table col 0, CSV col 1 -> table col 1
+		// The extra table column won't have data imported
 		const payload = {
-			name: 'Failed Import Table',
+			name: 'Partial Import Table',
 			columns: [
 				{ name: 'name', type: 'string' },
 				{ name: 'age', type: 'number' },
@@ -3889,25 +3891,24 @@ describe('POST /projects/:projectId/data-tables - CSV Import', () => {
 			fileId,
 		};
 
-		// The request should fail (or succeed but with partial data - depends on implementation)
-		// Let's verify the table is not created or has no rows
 		const createResponse = await authOwnerAgent
 			.post(`/projects/${ownerProject.id}/data-tables`)
-			.send(payload);
+			.send(payload)
+			.expect(200);
 
-		if (createResponse.status === 200) {
-			const dataTableId = createResponse.body.data.id;
-			// Verify rows - should have mapped only the columns that exist
-			const rowsResponse = await authOwnerAgent
-				.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
-				.expect(200);
+		const dataTableId = createResponse.body.data.id;
 
-			// Data should be imported with only the available columns mapped
-			expect(rowsResponse.body.data.data[0]).toMatchObject({
-				name: 'Alice',
-				age: 30,
-			});
-		}
+		// Verify rows - should have mapped only the columns that exist in CSV
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		// Data should be imported with columns mapped by index position
+		// The 'extra' column should be null/empty since it doesn't exist in CSV
+		expect(rowsResponse.body.data.data[0]).toMatchObject({
+			name: 'Alice',
+			age: 30,
+		});
 	});
 
 	test('should handle empty CSV file on import', async () => {
