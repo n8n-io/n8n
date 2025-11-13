@@ -19,14 +19,29 @@ export interface CsvMetadata {
 export class CsvParserService {
 	private readonly uploadDir: string;
 
+	private readonly DEFAULT_COLUMN_PREFIX = 'Column_';
+
 	constructor(private readonly globalConfig: GlobalConfig) {
 		this.uploadDir = this.globalConfig.dataTable.uploadDir;
 	}
 
+	private processRowWithoutHeaders(
+		row: string[],
+		columnNames: string[],
+	): { rowObject: Record<string, string>; columnNames: string[] } {
+		let updatedColumnNames = columnNames;
+		if (updatedColumnNames.length === 0) {
+			updatedColumnNames = row.map((_, index) => `${this.DEFAULT_COLUMN_PREFIX}${index + 1}`);
+		}
+		const rowObject: Record<string, string> = {};
+		row.forEach((value, index) => {
+			rowObject[updatedColumnNames[index]] = value;
+		});
+		return { rowObject, columnNames: updatedColumnNames };
+	}
+
 	/**
 	 * Parses a CSV file and returns metadata including row count, column count, and inferred column types
-	 * @param fileId - The uploaded file ID
-	 * @param hasHeaders - Whether the CSV file contains a header row (default: true)
 	 */
 	async parseFile(fileId: string, hasHeaders: boolean = true): Promise<CsvMetadata> {
 		const filePath = path.join(this.uploadDir, fileId);
@@ -50,18 +65,10 @@ export class CsvParserService {
 				.on('data', (row: Record<string, string> | string[]) => {
 					rowCount++;
 
-					// If no headers, row is an array, convert to object and generate column names
 					if (!hasHeaders && Array.isArray(row)) {
-						if (columnNames.length === 0) {
-							// Generate column names on first row
-							columnNames = row.map((_, index) => `Column_${index + 1}`);
-						}
-						// Convert array to object for type inference
-						const rowObject: Record<string, string> = {};
-						row.forEach((value, index) => {
-							rowObject[columnNames[index]] = value;
-						});
-						firstDataRow ??= rowObject;
+						const processed = this.processRowWithoutHeaders(row, columnNames);
+						columnNames = processed.columnNames;
+						firstDataRow ??= processed.rowObject;
 					} else {
 						firstDataRow ??= row as Record<string, string>;
 					}
@@ -88,8 +95,6 @@ export class CsvParserService {
 
 	/**
 	 * Parses a CSV file and returns all rows as an array of objects
-	 * @param fileId - The uploaded file ID
-	 * @param hasHeaders - Whether the CSV file contains a header row (default: true)
 	 */
 	async parseFileData(
 		fileId: string,
@@ -109,18 +114,10 @@ export class CsvParserService {
 			createReadStream(filePath)
 				.pipe(parser)
 				.on('data', (row: Record<string, string> | string[]) => {
-					// If no headers, row is an array, convert to object
 					if (!hasHeaders && Array.isArray(row)) {
-						if (columnNames.length === 0) {
-							// Generate column names on first row
-							columnNames = row.map((_, index) => `Column_${index + 1}`);
-						}
-						// Convert array to object
-						const rowObject: Record<string, string> = {};
-						row.forEach((value, index) => {
-							rowObject[columnNames[index]] = value;
-						});
-						rows.push(rowObject);
+						const processed = this.processRowWithoutHeaders(row, columnNames);
+						columnNames = processed.columnNames;
+						rows.push(processed.rowObject);
 					} else {
 						rows.push(row as Record<string, string>);
 					}
@@ -141,16 +138,12 @@ export class CsvParserService {
 	): Array<'string' | 'number' | 'boolean' | 'date'> {
 		switch (detectedType) {
 			case 'date':
-				// Date can be kept as date or converted to string
 				return ['date', 'string'];
 			case 'number':
-				// Number can be kept as number or converted to string
 				return ['number', 'string'];
 			case 'boolean':
-				// Boolean can be kept as boolean or converted to string
 				return ['boolean', 'string'];
 			case 'string':
-				// String can only be string (cannot reliably convert to other types)
 				return ['string'];
 			default:
 				return ['string'];
