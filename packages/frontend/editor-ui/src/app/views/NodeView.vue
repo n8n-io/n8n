@@ -1592,8 +1592,22 @@ const heatmapValuesByNodeId = ref<
 	>
 >({});
 
-function getBucketIndex(value: number, min: number, max: number, buckets: number): number {
-	if (max === min) return 0;
+function getBucketIndex(
+	value: number,
+	min: number,
+	max: number,
+	buckets: number,
+	mode: 'memory' | 'frequency' | 'duration',
+): number {
+	if (max === min) {
+		// When all values are the same
+		if (mode === 'frequency' && value >= 0.95) {
+			// For frequency at or near 100%, use highest bucket
+			return buckets - 1;
+		}
+		// Otherwise use middle bucket
+		return Math.floor(buckets / 2) - 1;
+	}
 	const normalized = (value - min) / (max - min);
 	return Math.min(Math.floor(normalized * buckets), buckets - 1);
 }
@@ -1678,7 +1692,7 @@ function handleSetHeatmap(
 
 	// Assign buckets for nodes with data (buckets 1-10)
 	Object.entries(nodeValues).forEach(([nodeId, value]) => {
-		const bucket = getBucketIndex(value, min, max, bucketCount) + 1; // Add 1 to shift to buckets 1-10
+		const bucket = getBucketIndex(value, min, max, bucketCount, mode) + 1; // Add 1 to shift to buckets 1-10
 		heatmapNodeBuckets.value[nodeId] = bucket;
 
 		// Add heatmap class
@@ -2411,36 +2425,36 @@ onBeforeUnmount(() => {
 
 .heatmap-bucket-7 {
 	--canvas-node--color--background: #ded7f8;
-	--canvas-node--border-color: #6e58d9;
+	--canvas-node--border-color: #5a4abf;
 }
 
 .heatmap-bucket-6 {
 	--canvas-node--color--background: #e2dcf9;
-	--canvas-node--border-color: #7c66e0;
+	--canvas-node--border-color: #6e58d9;
 }
 
 .heatmap-bucket-5 {
 	--canvas-node--color--background: #e7e2fa;
-	--canvas-node--border-color: #907de5;
+	--canvas-node--border-color: #8270e0;
 }
 
 .heatmap-bucket-4 {
 	--canvas-node--color--background: #ebe7fb;
-	--canvas-node--border-color: #a495ea;
+	--canvas-node--border-color: #9687e5;
 }
 
 .heatmap-bucket-3 {
-	--canvas-node--color--background: #f0edfc;
-	--canvas-node--border-color: #b8adef;
+	--canvas-node--color--background: #efedfc;
+	--canvas-node--border-color: #aa9eea;
 }
 
 .heatmap-bucket-2 {
-	--canvas-node--color--background: #f4f2fd;
-	--canvas-node--border-color: #ccc4f3;
+	--canvas-node--color--background: #f3f1fd;
+	--canvas-node--border-color: #beb5ef;
 }
 
 .heatmap-bucket-1 {
-	--canvas-node--color--background: #f8f7fe;
-	--canvas-node--border-color: #e0dcf8;
+	--canvas-node--color--background: #f5f3fd;
+	--canvas-node--border-color: #c5baf0;
 }
 </style>
