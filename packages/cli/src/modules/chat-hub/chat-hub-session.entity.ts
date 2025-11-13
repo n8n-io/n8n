@@ -10,7 +10,7 @@ import {
 	PrimaryGeneratedColumn,
 } from '@n8n/typeorm';
 
-import { ChatHubMessage } from './chat-hub-message.entity';
+import type { ChatHubMessage } from './chat-hub-message.entity';
 
 @Entity({ name: 'chat_hub_sessions' })
 export class ChatHubSession extends WithTimestamps {
@@ -100,6 +100,6 @@ export class ChatHubSession extends WithTimestamps {
 	/**
 	 * All messages that belong to this chat session.
 	 */
-	@OneToMany(() => ChatHubMessage, 'session')
+	@OneToMany('ChatHubMessage', 'session')
 	messages?: Relation<ChatHubMessage[]>;
 }

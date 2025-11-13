@@ -47,7 +47,7 @@ export class ChatHubAgent extends WithTimestamps {
 	/**
 	 * The selected credential to use by default with the selected LLM provider (if applicable).
 	 */
-	@ManyToOne('CredentialsEntity', { onDelete: 'SET NULL', nullable: true })
+	@ManyToOne(() => CredentialsEntity, { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'credentialId' })
 	credential?: CredentialsEntity | null;
 
