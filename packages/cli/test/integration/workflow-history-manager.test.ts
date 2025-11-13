@@ -130,6 +130,36 @@ describe('Workflow History Manager', () => {
 		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
 	});
 
+	test('should not prune current or active versions when they differ', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+
+		const workflow = await createWorkflow({ active: true });
+
+		// Create old history versions
+		const workflowVersions = await createManyWorkflowHistoryItems(
+			workflow.id,
+			5,
+			DateTime.now().minus({ days: 2 }).toJSDate(),
+		);
+
+		// Set current version to one version and active version to a different version
+		workflow.versionId = workflowVersions[0].versionId;
+		workflow.activeVersionId = workflowVersions[1].versionId;
+
+		const workflowRepo = Container.get(WorkflowRepository);
+		await workflowRepo.save(workflow);
+
+		await manager.prune();
+
+		// Both current and active versions should still exist even though they are old
+		expect(await repo.count({ where: { versionId: workflow.versionId } })).toBe(1);
+		expect(await repo.count({ where: { versionId: workflow.activeVersionId } })).toBe(1);
+
+		// Other old versions should be deleted
+		const otherVersionIds = workflowVersions.slice(2).map((i) => i.versionId);
+		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
+	});
+
 	const createWorkflowHistory = async (ageInDays = 2) => {
 		const workflow = await createWorkflow();
 		const time = DateTime.now().minus({ days: ageInDays }).toJSDate();
@@ -139,7 +169,7 @@ describe('Workflow History Manager', () => {
 	const pruneAndAssertCount = async (finalCount = 10, initialCount = 10) => {
 		expect(await repo.count()).toBe(initialCount);
 
-		const deleteSpy = jest.spyOn(repo, 'deleteEarlierThanExceptCurrent');
+		const deleteSpy = jest.spyOn(repo, 'deleteEarlierThanExceptCurrentAndActive');
 		await manager.prune();
 
 		if (initialCount === finalCount) {
