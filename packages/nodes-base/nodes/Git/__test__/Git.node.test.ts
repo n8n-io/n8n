@@ -114,4 +114,30 @@ describe('Git Node', () => {
 			);
 		});
 	});
+
+	describe('Hooks Configuration', () => {
+		it('should add core.hooksPath=/dev/null when enableGitNodeHooks is false', async () => {
+			securityConfig.enableGitNodeHooks = false;
+
+			await gitNode.execute.call(executeFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: ['core.hooksPath=/dev/null'],
+				}),
+			);
+		});
+
+		it('should not add core.hooksPath=/dev/null when enableGitNodeHooks is true', async () => {
+			securityConfig.enableGitNodeHooks = true;
+
+			await gitNode.execute.call(executeFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: [],
+				}),
+			);
+		});
+	});
 });
