@@ -29,8 +29,7 @@ import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
 import { useCredentialsStore } from '../credentials.store';
-import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store.ts';
-
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
