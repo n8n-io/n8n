@@ -80,6 +80,7 @@ const containerStyle = computed(() => ({
 	gap: var(--spacing--2xs);
 	width: 100%;
 	min-height: 50px;
+	min-width: 150px;
 
 	&:hover {
 		.download {

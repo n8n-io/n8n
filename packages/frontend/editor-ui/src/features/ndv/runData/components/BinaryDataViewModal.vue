@@ -1,62 +1,144 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { IBinaryData } from 'n8n-workflow';
+import { computed, ref, watch } from 'vue';
 import Modal from '@/app/components/Modal.vue';
-import BinaryDataDisplayEmbed from './BinaryDataDisplayEmbed.vue';
+import VueJsonPretty from 'vue-json-pretty';
+import RunDataHtml from './RunDataHtml.vue';
+import RunDataMarkdown from './RunDataMarkdown.vue';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { BinaryMetadata } from '@/Interface';
 
 const i18n = useI18n();
+const workflowsStore = useWorkflowsStore();
 
 const props = defineProps<{
-	data?: {
-		binaryData?: BinaryMetadata;
+	data: {
+		binaryData: BinaryMetadata;
 	};
 }>();
 
-const binaryDataForDisplay = computed<IBinaryData | null>(() => {
-	if (!props.data?.binaryData) {
-		return null;
-	}
+const isLoading = ref(true);
+const embedSource = ref('');
+const error = ref(false);
+const displayData = ref('');
 
+const binaryData = computed(() => {
 	const { id, mimeType, fileName } = props.data.binaryData;
 	let fileType = props.data.binaryData.fileType;
 
-	if (!fileType && mimeType) {
+	if (mimeType) {
 		if (mimeType.startsWith('image/')) fileType = 'image';
 		else if (mimeType.startsWith('audio/')) fileType = 'audio';
 		else if (mimeType.startsWith('video/')) fileType = 'video';
 		else if (mimeType === 'application/pdf') fileType = 'pdf';
 		else if (mimeType === 'application/json' || mimeType === 'text/json') fileType = 'json';
 		else if (mimeType === 'text/html') fileType = 'html';
+		else if (mimeType === 'text/markdown' || mimeType.includes('markdown')) fileType = 'markdown';
 		else if (mimeType === 'text/plain') fileType = 'text';
+		else if (fileType === undefined) fileType = 'other';
 	}
 
 	return {
 		id,
 		mimeType,
 		fileName,
-		fileType,
-		data: '',
-	} as IBinaryData;
+		fileType: fileType || 'other',
+	};
 });
+
+async function loadBinaryData() {
+	isLoading.value = true;
+	error.value = false;
+	embedSource.value = '';
+	displayData.value = '';
+
+	const { id, fileName, fileType, mimeType } = binaryData.value;
+
+	try {
+		const action = ['html', 'pdf', 'text'].includes(fileType) ? 'download' : 'view';
+		const binaryUrl = workflowsStore.getBinaryUrl(id, action, fileName || '', mimeType || '');
+
+		switch (fileType) {
+			case 'json': {
+				const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
+				displayData.value = await fetchedData.json();
+				break;
+			}
+			case 'html':
+			case 'markdown':
+			case 'text': {
+				const fetchedData = await fetch(binaryUrl, { credentials: 'include' });
+				displayData.value = await fetchedData.text();
+				break;
+			}
+			default:
+				embedSource.value = binaryUrl;
+		}
+	} catch (e) {
+		error.value = true;
+	}
+
+	isLoading.value = false;
+}
+
+watch(
+	() => props.data.binaryData,
+	() => {
+		void loadBinaryData();
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
 	<Modal
-		width="80%"
-		height="80%"
-		title="Binary Data"
+		width="60%"
+		height="90%"
+		title="File Preview"
 		:name="BINARY_DATA_VIEW_MODAL_KEY"
 		:center="true"
 	>
 		<template #content>
-			<div :class="['binary-data-modal-content', binaryDataForDisplay?.fileType]">
-				<div v-if="!binaryDataForDisplay" class="no-data-message">
-					{{ i18n.baseText('binaryDataDisplay.noDataFoundToDisplay') }}
+			<div :class="['binary-data-modal-content', binaryData.fileType]">
+				<div v-if="isLoading" class="loading-message">Loading binary data...</div>
+				<div v-else-if="error" class="error-message">Error loading binary data</div>
+
+				<div v-else class="content-wrapper">
+					<video v-if="binaryData.fileType === 'video'" controls autoplay>
+						<source :src="embedSource" :type="binaryData.mimeType" />
+						{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+					</video>
+
+					<audio v-else-if="binaryData.fileType === 'audio'" controls autoplay>
+						<source :src="embedSource" :type="binaryData.mimeType" />
+						{{ i18n.baseText('binaryDataDisplay.yourBrowserDoesNotSupport') }}
+					</audio>
+
+					<img v-else-if="binaryData.fileType === 'image'" :src="embedSource" />
+
+					<VueJsonPretty
+						v-else-if="binaryData.fileType === 'json'"
+						:data="displayData"
+						:deep="3"
+						:show-length="true"
+					/>
+
+					<RunDataHtml v-else-if="binaryData.fileType === 'html'" :input-html="displayData" />
+
+					<RunDataMarkdown
+						v-else-if="binaryData.fileType === 'markdown'"
+						:input-markdown="displayData"
+					/>
+
+					<pre v-else-if="binaryData.fileType === 'text'" class="text-content">{{
+						displayData
+					}}</pre>
+
+					<embed v-else-if="binaryData.fileType === 'pdf'" :src="embedSource" class="binary-data" />
+
+					<div v-else class="error-message">Preview not available for this file type</div>
 				</div>
-				<BinaryDataDisplayEmbed v-else :binary-data="binaryDataForDisplay" />
 			</div>
 		</template>
 	</Modal>
@@ -70,11 +152,56 @@ const binaryDataForDisplay = computed<IBinaryData | null>(() => {
 	flex-direction: column;
 	overflow: hidden;
 
-	&.json {
+	&.json,
+	&.markdown &.html,
+	&.text {
+		overflow: auto;
+		.content-wrapper {
+			align-items: flex-start;
+			justify-content: flex-start;
+		}
+	}
+
+	.content-wrapper {
+		width: 100%;
+		height: 100%;
+		display: flex;
+		align-items: center;
+		justify-content: center;
 		overflow: auto;
 	}
 
-	.no-data-message {
+	image,
+	video {
+		max-height: 100%;
+		max-width: 100%;
+		display: block;
+	}
+
+	.binary-data {
+		height: 100%;
+		width: 100%;
+	}
+
+	.text-content {
+		width: 100%;
+		margin: 0;
+		white-space: pre-wrap;
+		word-wrap: break-word;
+		color: var(--color--text);
+		font-family: var(--font-family);
+		font-size: var(--font-size--md);
+	}
+
+	&:not(.markdown):not(.html):not(.pdf) {
+		padding: var(--spacing--sm) var(--spacing--md);
+		border: var(--border);
+		border-radius: var(--radius);
+		background-color: var(--color--background--light-3);
+	}
+
+	.loading-message,
+	.error-message {
 		display: flex;
 		align-items: center;
 		justify-content: center;
