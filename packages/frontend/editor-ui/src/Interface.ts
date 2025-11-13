@@ -798,12 +798,21 @@ export type SchemaType =
 	| 'undefined'
 	| 'binary';
 
+export type BinaryMetadata = {
+	id: string;
+	mimeType: string;
+	fileName?: string;
+	fileExtension?: string;
+	fileSize?: string;
+	fileType?: string;
+};
+
 export type Schema = {
 	type: SchemaType;
 	key?: string;
 	value: string | Schema[];
 	path: string;
-	binaryData?: { url: string; name: string };
+	binaryData?: BinaryMetadata;
 };
 
 export type NodeAuthenticationOption = {

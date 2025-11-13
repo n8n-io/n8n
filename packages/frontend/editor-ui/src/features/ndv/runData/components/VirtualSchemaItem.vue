@@ -2,6 +2,10 @@
 import TextWithHighlights from './TextWithHighlights.vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import { saveAs } from 'file-saver';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
+import type { BinaryMetadata } from '@/Interface';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 type Props = {
@@ -24,14 +28,26 @@ type Props = {
 	locked?: boolean;
 	lockedTooltip?: string;
 	runIndex?: number;
-	binaryData?: { url: string; name: string };
+	binaryData?: BinaryMetadata;
 };
 
 const props = defineProps<Props>();
 
 async function downloadBinaryData() {
 	if (!props.binaryData) return;
-	saveAs(props.binaryData.url, props.binaryData.name);
+	const { id, fileName, mimeType, fileExtension } = props.binaryData;
+	const url = useWorkflowsStore().getBinaryUrl(id, 'download', fileName ?? '', mimeType);
+	const name = [fileName, fileExtension].join('.');
+	saveAs(url, name);
+}
+
+function viewBinaryData() {
+	useUIStore().openModalWithData({
+		name: BINARY_DATA_VIEW_MODAL_KEY,
+		data: {
+			binaryData: props.binaryData,
+		},
+	});
 }
 
 const emit = defineEmits<{
@@ -101,6 +117,7 @@ const emit = defineEmits<{
 					'pill--preview': preview,
 					'pill--locked': locked,
 				}"
+				@click="viewBinaryData"
 			>
 				<N8nIcon class="type-icon" :icon="'eye'" size="small" />
 			</div>

@@ -8,20 +8,19 @@ interface TreeProps {
 	nodeClass?: string;
 }
 
+interface BinaryMetadata {
+	id: string;
+	mimeType: string;
+	fileName?: string;
+	fileExtension?: string;
+	fileSize?: string;
+	fileType?: string;
+}
+
 defineSlots<{
 	label(props: { label: string; path: Array<string | number> }): never;
 	value(props: { value: Value }): never;
-	binary(props: {
-		value: {
-			id: string;
-			mimeType: string;
-			fileName?: string;
-			fileExtension?: string;
-			fileSize?: string;
-		};
-		path: Array<string | number>;
-		depth?: number;
-	}): never;
+	binary(props: { value: BinaryMetadata; path: Array<string | number>; depth?: number }): never;
 }>();
 
 defineOptions({ name: 'N8nTree' });
@@ -57,15 +56,7 @@ const isSimple = (data: Value): boolean => {
 	return typeof data !== 'object';
 };
 
-const isBinary = (
-	obj: object,
-): obj is {
-	id: string;
-	mimeType: string;
-	fileName?: string;
-	fileExtension?: string;
-	fileSize?: string;
-} => 'mimeType' in obj && 'id' in obj;
+const isBinary = (obj: object): obj is BinaryMetadata => 'mimeType' in obj && 'id' in obj;
 
 const getPath = (key: string): Array<string | number> => {
 	if (Array.isArray(props.value)) {

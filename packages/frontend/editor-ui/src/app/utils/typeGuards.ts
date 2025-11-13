@@ -14,6 +14,7 @@ import type {
 	WorkflowResource,
 	WorkflowListItem,
 	WorkflowListResource,
+	BinaryMetadata,
 } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
@@ -43,8 +44,7 @@ export function isValidCredentialResponse(value: unknown): value is ICredentials
 export const isObj = (obj: unknown): obj is object =>
 	!!obj && Object.getPrototypeOf(obj) === Object.prototype;
 
-export const isBinary = (obj: object): obj is object =>
-	'data' in obj && 'mimeType' in obj && 'id' in obj;
+export const isBinary = (obj: object): obj is BinaryMetadata => 'mimeType' in obj && 'id' in obj;
 
 export function isString(value: unknown): value is string {
 	return typeof value === 'string';

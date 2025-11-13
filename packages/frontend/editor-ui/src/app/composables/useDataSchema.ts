@@ -1,5 +1,12 @@
 import { useI18n } from '@n8n/i18n';
-import type { INodeUi, Optional, Primitives, Schema, SchemaType } from '@/Interface';
+import type {
+	BinaryMetadata,
+	INodeUi,
+	Optional,
+	Primitives,
+	Schema,
+	SchemaType,
+} from '@/Interface';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { generatePath, getNodeParentExpression } from '@/app/utils/mappingUtils';
 import { isObject } from '@/app/utils/objectUtils';
@@ -66,16 +73,7 @@ export function useDataSchema() {
 						path,
 					};
 					if (type === 'binary') {
-						const { id, fileName, mimeType, fileExtension } = input as {
-							id: string;
-							fileName: string;
-							mimeType: string;
-							fileExtension: string;
-						};
-						const url = useWorkflowsStore().getBinaryUrl(id, 'download', fileName ?? '', mimeType);
-						const name = [fileName, fileExtension].join('.');
-
-						schema.binaryData = { url, name };
+						schema.binaryData = input as BinaryMetadata;
 					}
 				}
 				break;
@@ -290,7 +288,7 @@ export type RenderItem = {
 	preview?: boolean;
 	locked?: boolean;
 	lockedTooltip?: string;
-	binaryData?: { url: string; name: string };
+	binaryData?: BinaryMetadata;
 };
 
 export type RenderHeader = {

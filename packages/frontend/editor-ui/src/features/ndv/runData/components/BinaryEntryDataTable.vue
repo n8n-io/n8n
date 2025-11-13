@@ -2,21 +2,19 @@
 import { N8nIcon } from '@n8n/design-system';
 import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import { computed } from 'vue';
+import type { BinaryMetadata } from '@/Interface';
 
 interface Props {
-	value: {
-		id: string;
-		mimeType: string;
-		fileName?: string;
-		fileExtension?: string;
-		fileSize?: string;
-	};
+	value: BinaryMetadata;
 	depth?: number;
 }
 
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
+const uiStore = useUIStore();
 
 const isImage = computed(() => {
 	const mimeType = props.value.mimeType;
@@ -43,6 +41,15 @@ const downloadBinaryData = () => {
 	saveAs(fileUrl.value, fileName.value);
 };
 
+const viewBinaryData = () => {
+	uiStore.openModalWithData({
+		name: BINARY_DATA_VIEW_MODAL_KEY,
+		data: {
+			binaryData: props.value,
+		},
+	});
+};
+
 const containerStyle = computed(() => ({
 	marginLeft: props.depth ? `${props.depth * 15}px` : '0',
 }));
@@ -50,7 +57,7 @@ const containerStyle = computed(() => ({
 
 <template>
 	<div :class="$style.container" :style="containerStyle">
-		<div :class="$style.wrapper">
+		<div :class="$style.wrapper" @click="viewBinaryData">
 			<img v-if="isImage && fileUrl" :src="fileUrl" :class="$style.imagePreview" />
 			<div v-else :class="$style.iconWrapper">
 				<N8nIcon icon="file" size="xlarge" />
