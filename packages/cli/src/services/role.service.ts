@@ -246,14 +246,15 @@ export class RoleService {
 			throw new UnexpectedError('Cannot detect if entity is a workflow or credential.');
 		}
 
-		entity.scopes = this.combineResourceScopes(
-			'active' in entity ? 'workflow' : 'credential',
-			user,
-			shared,
-			userProjectRelations,
-		);
+		const entityType = 'active' in entity ? 'workflow' : 'credential';
+		entity.scopes = this.combineResourceScopes(entityType, user, shared, userProjectRelations);
 
-		if ('isGlobal' in entity && entity.isGlobal && !entity.scopes.includes('credential:read')) {
+		if (
+			entityType === 'credential' &&
+			'isGlobal' in entity &&
+			entity.isGlobal &&
+			!entity.scopes.includes('credential:read')
+		) {
 			entity.scopes.push('credential:read');
 		}
 
