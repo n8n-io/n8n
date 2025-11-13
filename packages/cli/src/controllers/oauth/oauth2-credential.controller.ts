@@ -96,17 +96,21 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				grantType,
 				authentication,
 			);
-			const { data: registerResult } = await axios.post<{
-				client_id: string;
-				client_secret?: string;
-			}>(registration_endpoint, {
+			const registerPayload = {
 				redirect_uris: [`${instanceBaseUrl}/${restEndpoint}/oauth2-credential/callback`],
 				token_endpoint_auth_method,
 				grant_types,
 				response_types: ['code'],
 				client_name: 'n8n',
 				client_uri: 'https://n8n.io/',
-			});
+			};
+
+			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);
+
+			const { data: registerResult } = await axios.post<{
+				client_id: string;
+				client_secret?: string;
+			}>(registration_endpoint, registerPayload);
 
 			const { client_id, client_secret } = registerResult;
 			oauthCredentials.clientId = client_id;
