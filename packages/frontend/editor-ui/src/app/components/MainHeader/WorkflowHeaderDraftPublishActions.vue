@@ -12,6 +12,7 @@ import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
+import { useWorkflowsStore } from '@/stores/workflows.store';
 const props = defineProps<{
 	readOnly?: boolean;
 	id: IWorkflowDb['id'];
@@ -33,6 +34,7 @@ const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsMenu>>('actions
 const pageRedirectionHelper = usePageRedirectionHelper();
 const locale = useI18n();
 const uiStore = useUIStore();
+const workflowsStore = useWorkflowsStore();
 
 const isWorkflowHistoryFeatureEnabled = computed(() => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
@@ -53,16 +55,22 @@ const onPublishButtonClick = () => {
 	});
 };
 
+const hasWorkflowChanges = computed(
+	() => workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId,
+);
+
 defineExpose({
 	importFileRef,
 });
 </script>
 
 <template>
-	<!-- TODO: add top right indicator on the button when the wf has changes -->
-	<N8nButton type="tertiary" @click="onPublishButtonClick">
-		{{ locale.baseText('workflows.publish') }}
-	</N8nButton>
+	<div class="publish-button-wrapper">
+		<N8nButton type="secondary" @click="onPublishButtonClick">
+			{{ locale.baseText('workflows.publish') }}
+		</N8nButton>
+		<span v-if="hasWorkflowChanges" class="publish-button-indicator"></span>
+	</div>
 	<WorkflowHistoryButton
 		:workflow-id="props.id"
 		:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
@@ -83,3 +91,21 @@ defineExpose({
 		@workflow:saved="$emit('workflow:saved')"
 	/>
 </template>
+
+<style lang="scss" scoped>
+.publish-button-wrapper {
+	position: relative;
+	display: inline-block;
+}
+
+.publish-button-indicator {
+	position: absolute;
+	top: -2px;
+	right: -2px;
+	width: 7px;
+	height: 7px;
+	background-color: var(--color--primary);
+	border-radius: 50%;
+	box-shadow: 0 0 0 2px var(--color--background);
+}
+</style>
