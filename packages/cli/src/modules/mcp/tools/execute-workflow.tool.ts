@@ -5,7 +5,9 @@ import {
 	WEBHOOK_NODE_TYPE,
 	type INode,
 	type IPinData,
+	type IRunExecutionData,
 	type IWorkflowExecutionDataProcess,
+	type WorkflowExecuteMode,
 	UserError,
 	UnexpectedError,
 } from 'n8n-workflow';
@@ -50,10 +52,17 @@ const inputSchema = z.object({
 		.describe('Inputs to provide to the workflow'),
 });
 
+type ExecuteWorkflowOutput = {
+	success: boolean;
+	executionId: string | null;
+	result?: IRunExecutionData['resultData'];
+	error?: unknown;
+};
+
 const outputSchema = {
 	success: z.boolean(),
 	executionId: z.string().nullable().optional(),
-	result: z.record(z.unknown()).nullable().optional(),
+	result: z.any().optional().describe('Workflow execution result data'),
 	error: z.unknown().optional(),
 } satisfies z.ZodRawShape;
 
@@ -71,48 +80,25 @@ export const createExecuteWorkflowTool = (
 		outputSchema,
 	},
 	handler: async ({ workflowId, inputs }) => {
-		const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:read',
-		]);
-
-		if (!workflow || workflow.isArchived || !workflow.settings?.availableInMCP) {
-			throw new UserError('Workflow not found');
-		}
-
-		const canExecuteWorkflow = isWorkflowEligibleForMCPAccess(workflow);
-
-		if (!canExecuteWorkflow) {
-			throw new UserError(
-				`Only workflows with the following trigger nodes can be executed: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
+		try {
+			const output = await executeWorkflow(
+				user,
+				workflowFinderService,
+				activeExecutions,
+				workflowRunner,
+				workflowId,
+				inputs,
 			);
-		}
 
-		const triggerNode = findMcpWorkflowStart(workflow.nodes);
-
-		if (!triggerNode) {
-			throw new UserError('No supported trigger node found to start the workflow execution.');
-		}
-
-		// Prepare run data for execution
-		const runData: IWorkflowExecutionDataProcess = {
-			executionMode: 'manual',
-			workflowData: workflow,
-			userId: user.id,
-		};
-
-		// Set the trigger node as the start node
-		runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
-
-		// Set inputs as pin data for the trigger node
-		runData.pinData = getPinDataForTrigger(triggerNode, inputs ?? {});
-
-		const executionId = await workflowRunner.run(runData);
-
-		if (!executionId) {
-			const payload = {
+			return {
+				content: [{ type: 'text', text: JSON.stringify(output) }],
+				structuredContent: output,
+			};
+		} catch (error) {
+			const payload: ExecuteWorkflowOutput = {
 				success: false,
 				executionId: null,
-				message: 'Failed to start execution: no execution ID returned.',
+				error,
 			};
 
 			return {
@@ -120,28 +106,89 @@ export const createExecuteWorkflowTool = (
 				structuredContent: payload,
 			};
 		}
-		const data = await activeExecutions.getPostExecutePromise(executionId);
-
-		if (data === undefined) {
-			throw new UnexpectedError('Workflow did not return any data');
-		}
-
-		return {
-			content: [{ type: 'text', text: JSON.stringify(data) }],
-			structuredContent: {
-				success: data?.status !== 'error',
-				executionId,
-				result: data?.data?.resultData,
-				error: data?.data?.resultData?.error,
-			},
-		};
 	},
 });
+
+const executeWorkflow = async (
+	user: User,
+	workflowFinderService: WorkflowFinderService,
+	activeExecutions: ActiveExecutions,
+	workflowRunner: WorkflowRunner,
+	workflowId: string,
+	inputs?: z.infer<typeof inputSchema>['inputs'],
+): Promise<ExecuteWorkflowOutput> => {
+	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
+		'workflow:read',
+	]);
+
+	if (!workflow || workflow.isArchived || !workflow.settings?.availableInMCP) {
+		throw new UserError('Workflow not found');
+	}
+
+	const canExecuteWorkflow = isWorkflowEligibleForMCPAccess(workflow);
+
+	if (!canExecuteWorkflow) {
+		throw new UserError(
+			`Only workflows with the following trigger nodes can be executed: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
+		);
+	}
+
+	const triggerNode = findMcpWorkflowStart(workflow.nodes);
+
+	if (!triggerNode) {
+		throw new UserError('No supported trigger node found to start the workflow execution.');
+	}
+
+	const runData: IWorkflowExecutionDataProcess = {
+		executionMode: getExecutionModeForTrigger(triggerNode),
+		workflowData: workflow,
+		userId: user.id,
+	};
+
+	// Set the trigger node as the start node and pin data for it
+	// This will enable us to run the workflow from the trigger node with the provided inputs without waiting for an actual trigger event
+	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
+	runData.pinData = getPinDataForTrigger(triggerNode, inputs ?? {});
+
+	const executionId = await workflowRunner.run(runData);
+
+	if (!executionId) {
+		return {
+			success: false,
+			executionId: null,
+		};
+	}
+	const data = await activeExecutions.getPostExecutePromise(executionId);
+
+	if (data === undefined) {
+		throw new UnexpectedError('Workflow did not return any data');
+	}
+
+	return {
+		success: data.status !== 'error',
+		executionId,
+		result: data.data.resultData,
+		error: data.data.resultData?.error,
+	};
+};
 
 const findMcpWorkflowStart = (nodes: INode[]): INode | undefined => {
 	return nodes.find((node) => {
 		return !node.disabled && Object.keys(SUPPORTED_MCP_TRIGGERS).includes(node.type);
 	});
+};
+
+const getExecutionModeForTrigger = (node: INode): WorkflowExecuteMode => {
+	switch (node.type) {
+		case WEBHOOK_NODE_TYPE:
+			return 'webhook';
+		case CHAT_TRIGGER_NODE_TYPE:
+			return 'chat';
+		case FORM_TRIGGER_NODE_TYPE:
+			return 'trigger';
+		default:
+			return 'trigger';
+	}
 };
 
 const getPinDataForTrigger = (
