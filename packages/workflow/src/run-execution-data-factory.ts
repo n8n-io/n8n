@@ -38,6 +38,7 @@ export interface CreateFullRunExecutionDataOptions {
 	validateSignature?: boolean;
 	waitTill?: Date;
 	manualData?: IRunExecutionData['manualData'];
+	pushRef?: IRunExecutionData['pushRef'];
 }
 
 /**
@@ -66,6 +67,7 @@ export function createRunExecutionData(
 		validateSignature: options.validateSignature,
 		waitTill: options.waitTill,
 		manualData: options.manualData,
+		pushRef: options.pushRef,
 	};
 
 	return runExecutionData;
