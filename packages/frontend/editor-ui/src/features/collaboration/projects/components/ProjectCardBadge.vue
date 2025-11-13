@@ -179,7 +179,12 @@ const projectLocation = computed(() => {
 		<slot />
 
 		<N8nTooltip v-if="global" placement="top">
-			<div :class="$style['global-badge']" theme="tertiary" bold>
+			<div
+				:class="$style['global-badge']"
+				data-test-id="credential-global-badge"
+				theme="tertiary"
+				bold
+			>
 				<ProjectIcon :icon="{ type: 'icon', value: 'globe' }" :border-less="true" size="mini" />
 				{{ i18n.baseText('projects.badge.global') }}
 			</div>
