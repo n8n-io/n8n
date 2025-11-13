@@ -18,7 +18,7 @@ export class AddActiveVersionIdColumn1762819200000 implements ReversibleMigratio
 			'activeVersionId',
 			[WORKFLOW_HISTORY_TABLE_NAME, 'versionId'],
 			undefined,
-			'SET NULL',
+			'RESTRICT',
 		);
 
 		// For existing ACTIVE workflows, set activeVersionId = versionId
