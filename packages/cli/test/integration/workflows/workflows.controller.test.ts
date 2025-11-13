@@ -2587,6 +2587,33 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(workflowsInDb!.isArchived).toBe(true);
 		expect(sharedWorkflowsInDb).toHaveLength(1);
 	});
+
+	test('should save workflow history', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const initialVersionId = workflow.versionId;
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { versionId: newVersionId },
+		} = response.body;
+
+		expect(newVersionId).not.toBe(initialVersionId);
+
+		const historyRecord = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: newVersionId,
+			},
+		});
+
+		expect(historyRecord).not.toBeNull();
+		expect(historyRecord!.nodes).toEqual(workflow.nodes);
+		expect(historyRecord!.connections).toEqual(workflow.connections);
+	});
 });
 
 describe('POST /workflows/:workflowId/unarchive', () => {
@@ -2667,6 +2694,68 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 		expect(workflowsInDb).not.toBeNull();
 		expect(workflowsInDb!.isArchived).toBe(false);
 		expect(sharedWorkflowsInDb).toHaveLength(1);
+	});
+
+	test('should save workflow history', async () => {
+		const workflow = await createWorkflowWithHistory({ isArchived: true }, owner);
+		const initialVersionId = workflow.versionId;
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/unarchive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { versionId: newVersionId },
+		} = response.body;
+
+		expect(newVersionId).not.toBe(initialVersionId);
+
+		const historyRecord = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: newVersionId,
+			},
+		});
+
+		expect(historyRecord).not.toBeNull();
+		expect(historyRecord!.nodes).toEqual(workflow.nodes);
+		expect(historyRecord!.connections).toEqual(workflow.connections);
+	});
+
+	test('should be able to activate workflow after unarchiving', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: [
+					{
+						id: 'trigger-1',
+						parameters: {},
+						name: 'Schedule Trigger',
+						type: 'n8n-nodes-base.scheduleTrigger',
+						typeVersion: 1,
+						position: [240, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
+
+		await authOwnerAgent.post(`/workflows/${workflow.id}/archive`).send().expect(200);
+
+		const unarchiveResponse = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/unarchive`)
+			.send()
+			.expect(200);
+
+		const { data: unarchivedWorkflow } = unarchiveResponse.body;
+
+		const activateResponse = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ active: true, versionId: unarchivedWorkflow.versionId })
+			.expect(200);
+
+		expect(activateResponse.body.data.active).toBe(true);
 	});
 });
 
