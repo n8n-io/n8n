@@ -74,8 +74,6 @@ export class CredentialsController {
 			includeScopes: query.includeScopes,
 			includeData: query.includeData,
 			onlySharedWithMe: query.onlySharedWithMe,
-			// defaults to returning global credentials
-			// Require excluding global credentials for pages like Personal credentials view
 			includeGlobal: query.includeGlobal,
 		});
 		credentials.forEach((c) => {
