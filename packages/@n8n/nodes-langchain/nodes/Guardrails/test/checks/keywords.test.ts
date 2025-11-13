@@ -33,10 +33,10 @@ describe('keywordsCheck', () => {
 		expect(result.info.matchedKeywords).toEqual(['w_o_r_l_d']);
 	});
 
-	it('should match in between underscore', async () => {
+	it('should not match in between underscore', async () => {
 		const checkFn = createKeywordsCheckFn({ keywords: ['world'] });
 		const result = await checkFn('Hello, test_world_test');
-		expect(result.tripwireTriggered).toEqual(true);
+		expect(result.tripwireTriggered).toEqual(false);
 	});
 
 	it('should work with chinese characters', async () => {

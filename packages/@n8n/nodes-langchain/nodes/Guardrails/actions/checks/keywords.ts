@@ -37,10 +37,10 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 	const escapedKeywords = validKeywords.map((k: string) =>
 		k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
 	);
-	// \p{L} - any unicode letter
+	// \p{L}|\p{N}|_ - any unicode letter, number, or underscore. Alternative to \b
 	// (?<!\p{L}) - not preceded by a letter
 	// (?!\p{L}) - not followed by a letter
-	const patternText = `(?<!\\p{L}|\\p{N})${escapedKeywords.join('|')}(?!\\p{L}|\\p{N})`;
+	const patternText = `(?<!\\p{L}|\\p{N}|_)${escapedKeywords.join('|')}(?!\\p{L}|\\p{N}|_)`;
 	const pattern = new RegExp(patternText, 'giu'); // case-insensitive, global
 
 	const matches: string[] = [];
