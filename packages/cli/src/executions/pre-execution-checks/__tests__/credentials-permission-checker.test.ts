@@ -3,7 +3,7 @@ import {
 	type User,
 	type SharedCredentialsRepository,
 	type CredentialsRepository,
-	CredentialsEntity,
+	type CredentialsEntity,
 	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
