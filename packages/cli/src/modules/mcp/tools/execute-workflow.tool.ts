@@ -133,7 +133,7 @@ export const createExecuteWorkflowTool = (
  * In order to "synchronously" execute the workflow,
  * it is mapping mcp tool inputs to trigger node pin data and starting execution from there.
  */
-const executeWorkflow = async (
+export const executeWorkflow = async (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
 	activeExecutions: ActiveExecutions,
