@@ -85,6 +85,12 @@ export class LdapService {
 			key: LDAP_FEATURE_NAME,
 		});
 		const ldapConfig = jsonParse<LdapConfig>(value);
+
+		// Apply secure default for new security field on existing instances
+		if (ldapConfig.enforceEmailUniqueness === undefined) {
+			ldapConfig.enforceEmailUniqueness = true;
+		}
+
 		ldapConfig.bindingAdminPassword = this.cipher.decrypt(ldapConfig.bindingAdminPassword);
 		return ldapConfig;
 	}
