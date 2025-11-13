@@ -149,7 +149,11 @@ export function datatypeCompletions(context: CompletionContext): CompletionResul
 
 /**
  * Returns a sorted array of completions by the input string.
- * Each completion is returned with its order. 0 if no match, 1 if alias match, 2 if label match.
+ * Each completion is returned with its order.
+ * 0 if no match
+ * 1 if prefix alias match
+ * 2 if exact alias match
+ * 3 if prefix label match
  */
 export function sortCompletionsByInput(options: AliasCompletion[], input: string) {
 	return options

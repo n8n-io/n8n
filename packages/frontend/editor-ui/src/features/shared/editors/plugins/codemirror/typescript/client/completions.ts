@@ -113,7 +113,8 @@ export const typescriptCompletionSource: CompletionSource = async (context) => {
 		const isStartCharacter = START_CHARACTERS.includes(word.text);
 		const isMatch = order > 0;
 
-		if (alias) {
+		// replace the default description with the alias description
+		if (alias?.info) {
 			option.info = alias.info;
 		}
 
