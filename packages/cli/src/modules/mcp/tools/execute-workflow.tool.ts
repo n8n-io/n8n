@@ -1,6 +1,14 @@
-import type { ExecutionRepository, IExecutionResponse, User } from '@n8n/db';
-import { UserError } from 'n8n-workflow';
-import type { IRun, IWorkflowExecutionDataProcess } from 'n8n-workflow';
+import type { User } from '@n8n/db';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
+	WEBHOOK_NODE_TYPE,
+	type INode,
+	type IPinData,
+	type IWorkflowExecutionDataProcess,
+	UserError,
+	UnexpectedError,
+} from 'n8n-workflow';
 import z from 'zod';
 
 import { SUPPORTED_MCP_TRIGGERS } from '../mcp.constants';
@@ -8,7 +16,6 @@ import type { ToolDefinition } from '../mcp.types';
 import { isWorkflowEligibleForMCPAccess } from '../mcp.utils';
 
 import type { ActiveExecutions } from '@/active-executions';
-import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -42,22 +49,7 @@ const inputSchema = {
 const outputSchema = {
 	success: z.boolean(),
 	executionId: z.string().nullable().optional(),
-	waitingForWebhook: z.boolean().optional(),
-	message: z.string().optional(),
-	result: z
-		.object({
-			id: z.string().optional(),
-			status: z.string(),
-			finished: z.boolean(),
-			mode: z.string(),
-			startedAt: z.string(),
-			stoppedAt: z.string().nullable(),
-			waitTill: z.string().nullable(),
-			data: z.unknown(),
-			error: z.unknown().nullable().optional(),
-		})
-		.nullable()
-		.optional(),
+	result: z.record(z.unknown()).nullable().optional(),
 	error: z.unknown().optional(),
 } satisfies z.ZodRawShape;
 
@@ -66,7 +58,6 @@ export const createExecuteWorkflowTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
 	activeExecutions: ActiveExecutions,
-	executionRepository: ExecutionRepository,
 	workflowRunner: WorkflowRunner,
 ): ToolDefinition<typeof inputSchema> => ({
 	name: 'execute_workflow',
@@ -75,8 +66,6 @@ export const createExecuteWorkflowTool = (
 		inputSchema,
 		outputSchema,
 	},
-	// TODO: Refactor
-	// eslint-disable-next-line complexity
 	handler: async ({ workflowId, inputs }) => {
 		const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
@@ -94,82 +83,24 @@ export const createExecuteWorkflowTool = (
 			);
 		}
 
+		const triggerNode = findMcpWorkflowStart(workflow.nodes);
+
+		if (!triggerNode) {
+			throw new UserError('No supported trigger node found to start the workflow execution.');
+		}
+
+		// Prepare run data for execution
 		const runData: IWorkflowExecutionDataProcess = {
 			executionMode: 'manual',
 			workflowData: workflow,
 			userId: user.id,
 		};
 
-		// For supported webhook-based triggers (webhook, form and chat),
-		// use inputs as pin data to trigger the workflow synchronously
-		const chatTriggerNode = workflow.nodes.find(
-			(node) => !node.disabled && node.type === '@n8n/n8n-nodes-langchain.chatTrigger',
-		);
-
-		// TODO: Use constants for node types
-		const formTriggerNode = workflow.nodes.find(
-			(node) => !node.disabled && node.type === 'n8n-nodes-base.formTrigger',
-		);
-
-		const webhookNode = workflow.nodes.find(
-			(node) => !node.disabled && node.type === 'n8n-nodes-base.webhook',
-		);
-
-		const scheduleTriggerNode = workflow.nodes.find(
-			(node) => !node.disabled && node.type === 'n8n-nodes-base.scheduleTrigger',
-		);
-
-		const triggerNode = chatTriggerNode ?? formTriggerNode ?? webhookNode ?? scheduleTriggerNode;
-
-		if (!triggerNode) {
-			throw new UserError('No supported trigger node found to start the workflow execution.');
-		}
-
 		// Set the trigger node as the start node
 		runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
-		// For nodes that expect input data, provide it via pinData
-		if (chatTriggerNode) {
-			runData.pinData = {
-				[chatTriggerNode.name]: [
-					{
-						json: {
-							sessionId: `mcp-session-${Date.now()}`,
-							action: 'sendMessage',
-							chatInput: inputs?.chatInput,
-						},
-					},
-				],
-			};
-		} else if (formTriggerNode) {
-			runData.pinData = {
-				[formTriggerNode.name]: [
-					{
-						json: {
-							submittedAt: new Date().toISOString(),
-							formMode: 'mcp',
-							...(inputs?.formData ?? {}),
-						},
-					},
-				],
-			};
-		} else if (webhookNode) {
-			const webhookInput = inputs?.webhookData;
-			runData.pinData = {
-				[webhookNode.name]: [
-					{
-						json: {
-							headers: webhookInput?.headers ?? {},
-							params: webhookInput?.params ?? {},
-							query: webhookInput?.query ?? {},
-							body: webhookInput?.body ?? {},
-							// TODO: Add this
-							// webhookUrl: `http://localhost:5678/webhook/${workflow.id}`,
-							executionMode: 'manual',
-						},
-					},
-				],
-			};
-		}
+
+		// Set inputs as pin data for the trigger node
+		runData.pinData = getPinDataForTrigger(triggerNode, inputs ?? {});
 
 		const executionId = await workflowRunner.run(runData);
 
@@ -185,135 +116,76 @@ export const createExecuteWorkflowTool = (
 				structuredContent: payload,
 			};
 		}
+		const data = await activeExecutions.getPostExecutePromise(executionId);
 
-		let executionResult: ReturnType<typeof serializeExecution>;
-		try {
-			// TODO: Check if we can remove serialization here
-			executionResult = serializeExecution(
-				await waitForExecutionResult(executionId, activeExecutions, executionRepository),
-			);
-		} catch (error) {
-			const message =
-				error instanceof Error
-					? error.message
-					: 'Failed while waiting for manual execution to finish.';
-
-			const payload = {
-				success: false,
-				executionId,
-				message,
-				error: serializeError(error),
-			};
-
-			return {
-				content: [{ type: 'text', text: JSON.stringify(payload) }],
-				structuredContent: payload,
-			};
-		}
-
-		// TODO: Derive this from outputSchema
-		const payload: {
-			success: boolean;
-			executionId: string;
-			result: ReturnType<typeof serializeExecution>;
-			error?: unknown;
-			message?: string;
-		} = {
-			success: executionResult?.status !== 'error',
-			executionId,
-			result: executionResult,
-			error: executionResult?.error ?? undefined,
-		};
-
-		if (!executionResult) {
-			payload.success = false;
-			Object.assign(payload, {
-				message: 'Execution finished but result could not be retrieved.',
-			});
-		}
-
-		if (executionResult?.error && typeof executionResult.error === 'object') {
-			const errorWithMessage = executionResult.error as { message?: string };
-			payload.message = errorWithMessage.message ?? 'Execution finished with an error.';
+		if (data === undefined) {
+			throw new UnexpectedError('Workflow did not return any data');
 		}
 
 		return {
-			content: [{ type: 'text', text: JSON.stringify(payload) }],
-			structuredContent: payload,
+			content: [{ type: 'text', text: JSON.stringify(data) }],
+			structuredContent: {
+				success: data?.status !== 'error',
+				executionId,
+				result: data?.data?.resultData,
+				error: data?.data?.resultData?.error,
+			},
 		};
 	},
 });
 
-// Helper functions
-const toIsoString = (value?: Date | string | null): string | null => {
-	if (!value) return null;
-	if (value instanceof Date) return value.toISOString();
-	return new Date(value).toISOString();
+const findMcpWorkflowStart = (nodes: INode[]): INode | undefined => {
+	return nodes.find((node) => {
+		return !node.disabled && Object.keys(SUPPORTED_MCP_TRIGGERS).includes(node.type);
+	});
 };
 
-const serializeError = (error: unknown) => {
-	if (error instanceof Error) {
-		return {
-			name: error.name,
-			message: error.message,
-			stack: error.stack,
-		};
-	}
-	return error;
-};
+const getPinDataForTrigger = (
+	node: INode,
+	inputs: z.infer<typeof inputSchema>['inputs'],
+): IPinData => {
+	if (!inputs) return {};
 
-const serializeExecution = (
-	execution: IRun | IExecutionResponse | null,
-): {
-	id?: string;
-	status: string;
-	finished: boolean;
-	mode: string;
-	startedAt: string;
-	stoppedAt: string | null;
-	waitTill: string | null;
-	data: unknown;
-	error: unknown;
-} | null => {
-	if (!execution) return null;
-
-	const toFinished = (): boolean => {
-		if ('finished' in execution && execution.finished !== undefined) {
-			return execution.finished;
-		}
-		return execution.status === 'success';
-	};
-
-	const error = execution.data?.resultData?.error ?? null;
-
-	return {
-		id: 'id' in execution ? execution.id : undefined,
-		status: execution.status,
-		finished: toFinished(),
-		mode: execution.mode,
-		startedAt: toIsoString(execution.startedAt) ?? new Date().toISOString(),
-		stoppedAt: toIsoString(execution.stoppedAt ?? null),
-		waitTill: toIsoString(execution.waitTill ?? null),
-		data: execution.data,
-		error,
-	};
-};
-
-const waitForExecutionResult = async (
-	executionId: string,
-	activeExecutions: ActiveExecutions,
-	executionRepository: ExecutionRepository,
-): Promise<IRun | IExecutionResponse | null> => {
-	try {
-		return (await activeExecutions.getPostExecutePromise(executionId)) ?? null;
-	} catch (error) {
-		if (error instanceof ExecutionNotFoundError) {
-			const execution = await executionRepository.findSingleExecution(executionId, {
-				includeData: true,
-				unflattenData: true,
-			});
-			return execution ?? null;
-		}
-		throw error;
+	switch (node.type) {
+		case WEBHOOK_NODE_TYPE:
+			return {
+				[node.name]: [
+					{
+						json: {
+							headers: inputs.webhookInput?.headers ?? {},
+							params: inputs.webhookInput?.params ?? {},
+							query: inputs.webhookInput?.query ?? {},
+							body: inputs.webhookInput?.body ?? {},
+							executionMode: 'manual',
+						},
+					},
+				],
+			};
+		case CHAT_TRIGGER_NODE_TYPE:
+			return {
+				[node.name]: [
+					{
+						json: {
+							sessionId: `mcp-session-${Date.now()}`,
+							action: 'sendMessage',
+							chatInput: inputs.chatInput,
+						},
+					},
+				],
+			};
+		case FORM_TRIGGER_NODE_TYPE:
+			return {
+				[node.name]: [
+					{
+						json: {
+							submittedAt: new Date().toISOString(),
+							formMode: 'mcp',
+							...(inputs?.formData ?? {}),
+						},
+					},
+				],
+			};
+		default:
+			return {};
 	}
 };
