@@ -7,7 +7,7 @@ import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import { EventMessageTypeNames } from 'n8n-workflow';
+import { EventMessageTypeNames, jsonParse } from 'n8n-workflow';
 import promClient, { type Counter, type Gauge } from 'prom-client';
 import semverParse from 'semver/functions/parse';
 
@@ -415,7 +415,7 @@ export class PrometheusMetricsService {
 		const cachedValue = await cacheService.get(fullCacheKey);
 
 		if (cachedValue !== undefined) {
-			const parsedValue = JSON.parse(String(cachedValue));
+			const parsedValue = jsonParse(String(cachedValue));
 			// Update in-memory cache
 			this.workflowStatisticsCache = {
 				data: parsedValue,
@@ -449,12 +449,12 @@ export class PrometheusMetricsService {
 		licenseMetricsRepository: LicenseMetricsRepository,
 		cacheTtl: number,
 	) {
-		const self = this;
+		const getWorkflowStatistics = this.getWorkflowStatistics.bind(this);
 		return new promClient.Gauge({
 			name: this.prefix + metricName,
 			help,
 			async collect() {
-				const metrics = await self.getWorkflowStatistics(
+				const metrics = await getWorkflowStatistics(
 					cacheService,
 					licenseMetricsRepository,
 					cacheTtl,
