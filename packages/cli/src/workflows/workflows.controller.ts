@@ -243,6 +243,7 @@ export class WorkflowsController {
 	}
 
 	@Get('/new')
+	@ProjectScope('workflow:create')
 	async getNewName(req: WorkflowRequest.NewName) {
 		const requestedName = req.query.name ?? this.globalConfig.workflows.defaultName;
 
@@ -251,6 +252,7 @@ export class WorkflowsController {
 	}
 
 	@Get('/from-url')
+	@ProjectScope('workflow:update')
 	async getFromUrl(
 		_req: AuthenticatedRequest,
 		_res: express.Response,

@@ -2041,3 +2041,79 @@ describe('POST /workflows/:workflowId/run', () => {
 		});
 	});
 });
+
+describe('GET /workflows/new', () => {
+	test('should enforce workflow:create scope for project viewers', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const response = await authMemberAgent.get('/workflows/new').query({ name: 'Test' });
+
+		expect(response.status).toBe(403);
+		expect(response.body).toMatchObject({
+			message: 'User is missing a scope required to perform this action',
+		});
+	});
+
+	test('should allow workflow:create scope for project editors', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		const response = await authMemberAgent.get('/workflows/new').query({ name: 'Test' });
+
+		expect(response.status).toBe(200);
+		expect(response.body).toHaveProperty('name');
+	});
+
+	test('should allow workflow:create scope for project admins', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:admin');
+
+		const response = await authMemberAgent.get('/workflows/new').query({ name: 'Test' });
+
+		expect(response.status).toBe(200);
+		expect(response.body).toHaveProperty('name');
+	});
+});
+
+describe('GET /workflows/from-url', () => {
+	test('should enforce workflow:update scope for project viewers', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const response = await authMemberAgent
+			.get('/workflows/from-url')
+			.query({ url: 'https://example.com/workflow.json' });
+
+		expect(response.status).toBe(403);
+		expect(response.body).toMatchObject({
+			message: 'User is missing a scope required to perform this action',
+		});
+	});
+
+	test('should allow workflow:update scope for project editors', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		// This will fail due to invalid URL, but scope check should pass
+		const response = await authMemberAgent
+			.get('/workflows/from-url')
+			.query({ url: 'https://example.com/workflow.json' });
+
+		// Either 400 (bad URL) or 200 (if mocked), but not 403
+		expect(response.status).not.toBe(403);
+	});
+
+	test('should allow workflow:update scope for project admins', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:admin');
+
+		// This will fail due to invalid URL, but scope check should pass
+		const response = await authMemberAgent
+			.get('/workflows/from-url')
+			.query({ url: 'https://example.com/workflow.json' });
+
+		// Either 400 (bad URL) or 200 (if mocked), but not 403
+		expect(response.status).not.toBe(403);
+	});
+});
