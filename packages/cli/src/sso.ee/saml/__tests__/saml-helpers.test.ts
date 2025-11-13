@@ -27,6 +27,7 @@ describe('sso/saml/samlHelpers', () => {
 				lastName: 'Nathaniel',
 				email: 'n@8.n',
 				userPrincipalName: 'Huh?',
+				n8nInstanceRole: 'n8n_instance_role',
 			};
 
 			userRepository.findOne.mockImplementationOnce(async (_) => user);
@@ -49,6 +50,199 @@ describe('sso/saml/samlHelpers', () => {
 				{ transaction: false },
 			);
 			expect(userRepository.update).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('getMappedSamlAttributesFromFlowResult', () => {
+		test('returns the mapped attributes from the flow result', () => {
+			const flowResult = {
+				extract: {
+					attributes: {
+						email: 'test@test.com',
+						firstName: 'test',
+						lastName: 'test',
+						userPrincipalName: 'test',
+					},
+				},
+			} as any;
+			const attributeMapping = {
+				email: 'email',
+				firstName: 'firstName',
+				lastName: 'lastName',
+				userPrincipalName: 'userPrincipalName',
+			};
+			const jitClaimNames = {
+				instanceRole: 'instanceRole',
+				projectRoles: 'projectRoles',
+			};
+
+			const result = helpers.getMappedSamlAttributesFromFlowResult(
+				flowResult,
+				attributeMapping,
+				jitClaimNames,
+			);
+
+			expect(result).toEqual({
+				attributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+				},
+				missingAttributes: [],
+			});
+		});
+
+		test('returns the missing attributes from the flow result', () => {
+			const flowResult = {
+				extract: {
+					attributes: {
+						email: 'test@test.com',
+					},
+				},
+			} as any;
+			const attributeMapping = {
+				email: 'email',
+				firstName: 'firstName',
+				lastName: 'lastName',
+				userPrincipalName: 'userPrincipalName',
+			};
+			const jitClaimNames = {
+				instanceRole: 'instanceRole',
+				projectRoles: 'projectRoles',
+			};
+
+			const result = helpers.getMappedSamlAttributesFromFlowResult(
+				flowResult,
+				attributeMapping,
+				jitClaimNames,
+			);
+
+			expect(result).toEqual({
+				attributes: {
+					email: 'test@test.com',
+				},
+				missingAttributes: ['userPrincipalName', 'firstName', 'lastName'],
+			});
+		});
+		test('returns the attributes from the flow result with instance role', () => {
+			const flowResult = {
+				extract: {
+					attributes: {
+						email: 'test@test.com',
+						firstName: 'test',
+						lastName: 'test',
+						userPrincipalName: 'test',
+						instanceRole: 'instanceRole',
+					},
+				},
+			} as any;
+			const attributeMapping = {
+				email: 'email',
+				instanceRole: 'instanceRole',
+				firstName: 'firstName',
+				lastName: 'lastName',
+				userPrincipalName: 'userPrincipalName',
+			};
+			const jitClaimNames = {
+				instanceRole: 'instanceRole',
+				projectRoles: 'projectRoles',
+			};
+			const result = helpers.getMappedSamlAttributesFromFlowResult(
+				flowResult,
+				attributeMapping,
+				jitClaimNames,
+			);
+			expect(result).toEqual({
+				attributes: {
+					email: 'test@test.com',
+					n8nInstanceRole: 'instanceRole',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+				},
+				missingAttributes: [],
+			});
+		});
+	});
+
+	test('returns the attributes from the flow result with project roles', () => {
+		const flowResult = {
+			extract: {
+				attributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					projectRoles: ['projectRole1', 'projectRole2'],
+				},
+			},
+		} as any;
+		const attributeMapping = {
+			email: 'email',
+			instanceRole: 'instanceRole',
+			firstName: 'firstName',
+			lastName: 'lastName',
+			userPrincipalName: 'userPrincipalName',
+		};
+		const jitClaimNames = {
+			instanceRole: 'instanceRole',
+			projectRoles: 'projectRoles',
+		};
+		const result = helpers.getMappedSamlAttributesFromFlowResult(
+			flowResult,
+			attributeMapping,
+			jitClaimNames,
+		);
+		expect(result).toEqual({
+			attributes: {
+				email: 'test@test.com',
+				firstName: 'test',
+				lastName: 'test',
+				userPrincipalName: 'test',
+				n8nProjectRoles: ['projectRole1', 'projectRole2'],
+			},
+			missingAttributes: [],
+		});
+	});
+
+	test('maps single projectRoles string to array', () => {
+		const flowResult = {
+			extract: {
+				attributes: {
+					email: 'test@test.com',
+					firstName: 'test',
+					lastName: 'test',
+					userPrincipalName: 'test',
+					projectRoles: 'projectRole1',
+				},
+			},
+		} as any;
+		const attributeMapping = {
+			email: 'email',
+			instanceRole: 'instanceRole',
+			firstName: 'firstName',
+			lastName: 'lastName',
+			userPrincipalName: 'userPrincipalName',
+		};
+		const jitClaimNames = {
+			instanceRole: 'instanceRole',
+			projectRoles: 'projectRoles',
+		};
+		const result = helpers.getMappedSamlAttributesFromFlowResult(
+			flowResult,
+			attributeMapping,
+			jitClaimNames,
+		);
+		expect(result).toEqual({
+			attributes: {
+				email: 'test@test.com',
+				firstName: 'test',
+				lastName: 'test',
+				userPrincipalName: 'test',
+				n8nProjectRoles: ['projectRole1'],
+			},
+			missingAttributes: [],
 		});
 	});
 });

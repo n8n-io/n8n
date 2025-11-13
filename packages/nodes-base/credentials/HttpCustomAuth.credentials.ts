@@ -7,7 +7,7 @@ export class HttpCustomAuth implements ICredentialType {
 
 	displayName = 'Custom Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 

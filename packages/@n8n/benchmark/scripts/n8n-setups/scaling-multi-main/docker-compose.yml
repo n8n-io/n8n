@@ -52,7 +52,9 @@ services:
       - DB_POSTGRESDB_PASSWORD=password
       # Task Runner config
       - N8N_RUNNERS_ENABLED=true
-      - N8N_RUNNERS_MODE=internal
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+      - N8N_RUNNERS_AUTH_TOKEN=test
       - N8N_NATIVE_PYTHON_RUNNER=true
     command: worker
     volumes:
@@ -67,6 +69,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  n8n_worker1_runners:
+    image: ghcr.io/n8n-io/runners:${N8N_VERSION:-latest}
+    environment:
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n_worker1:5679
+      - N8N_RUNNERS_AUTH_TOKEN=test
+    depends_on:
+      n8n_worker1:
+        condition: service_healthy
 
   n8n_worker2:
     image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
@@ -88,7 +99,9 @@ services:
       - DB_POSTGRESDB_PASSWORD=password
       # Task Runner config
       - N8N_RUNNERS_ENABLED=true
-      - N8N_RUNNERS_MODE=internal
+      - N8N_RUNNERS_MODE=external
+      - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
+      - N8N_RUNNERS_AUTH_TOKEN=test
       - N8N_NATIVE_PYTHON_RUNNER=true
     command: worker
     volumes:
@@ -106,6 +119,15 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  n8n_worker2_runners:
+    image: ghcr.io/n8n-io/runners:${N8N_VERSION:-latest}
+    environment:
+      - N8N_RUNNERS_TASK_BROKER_URI=http://n8n_worker2:5679
+      - N8N_RUNNERS_AUTH_TOKEN=test
+    depends_on:
+      n8n_worker2:
+        condition: service_healthy
 
   n8n_main2:
     image: ghcr.io/n8n-io/n8n:${N8N_VERSION:-latest}
@@ -125,10 +147,6 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
-      # Task Runner config
-      - N8N_RUNNERS_ENABLED=true
-      - N8N_RUNNERS_MODE=internal
-      - N8N_NATIVE_PYTHON_RUNNER=true
     volumes:
       - ${RUN_DIR}/n8n-main2:/n8n
     depends_on:
@@ -166,10 +184,6 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
-      # Task Runner config
-      - N8N_RUNNERS_ENABLED=true
-      - N8N_RUNNERS_MODE=internal
-      - N8N_NATIVE_PYTHON_RUNNER=true
     volumes:
       - ${RUN_DIR}/n8n-main1:/n8n
     depends_on:

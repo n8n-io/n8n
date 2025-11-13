@@ -1,11 +1,13 @@
 import type { Config } from 'stylelint';
+import { cssVarNaming } from '../rules/index.js';
 
 export const baseConfig: Config = {
 	// TODO: Extending with standard config requires a lot of manual fixes but would be great to have
 	// extends: 'stylelint-config-standard-scss',
 	// Basic SCSS support with essential rules
-	plugins: ['stylelint-scss'],
+	plugins: ['stylelint-scss', cssVarNaming],
 	rules: {
+		'@n8n/css-var-naming': [true, { severity: 'warning' }],
 		'no-empty-source': true,
 
 		// Basic syntax and consistency rules

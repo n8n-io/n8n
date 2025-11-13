@@ -10,7 +10,7 @@ import type {
 } from 'n8n-workflow';
 
 import { NodeExecutionContext } from './node-execution-context';
-import { getDataStoreHelperFunctions } from './utils/data-store-helper-functions';
+import { getDataTableHelperFunctions } from './utils/data-table-helper-functions';
 import { extractValue } from './utils/extract-value';
 import { getRequestHelperFunctions } from './utils/request-helper-functions';
 import { getSSHTunnelFunctions } from './utils/ssh-tunnel-helper-functions';
@@ -29,8 +29,12 @@ export class LoadOptionsContext extends NodeExecutionContext implements ILoadOpt
 		this.helpers = {
 			...getSSHTunnelFunctions(),
 			...getRequestHelperFunctions(workflow, node, additionalData),
-			...getDataStoreHelperFunctions(additionalData, workflow, node),
+			...getDataTableHelperFunctions(additionalData, workflow, node),
 		};
+	}
+
+	getExecutionContext() {
+		return undefined;
 	}
 
 	async getCredentials<T extends object = ICredentialDataDecryptedObject>(type: string) {

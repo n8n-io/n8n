@@ -2,6 +2,8 @@ import { CreateVariableRequestDto } from '@n8n/api-types';
 import type { AuthenticatedRequest } from '@n8n/db';
 import { VariablesRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import { IsNull } from '@n8n/typeorm';
 import type { Response } from 'express';
 
 import {
@@ -12,11 +14,7 @@ import {
 import { encodeNextCursor } from '../../shared/services/pagination.service';
 
 import { VariablesController } from '@/environments.ee/variables/variables.controller.ee';
-import type { PaginatedRequest } from '@/public-api/types';
 import type { VariablesRequest } from '@/requests';
-
-type Delete = VariablesRequest.Delete;
-type GetAll = PaginatedRequest;
 
 export = {
 	createVariable: [
@@ -48,7 +46,7 @@ export = {
 	deleteVariable: [
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:delete' }),
-		async (req: Delete, res: Response) => {
+		async (req: AuthenticatedRequest<{ id: string }>, res: Response) => {
 			await Container.get(VariablesController).deleteVariable(req);
 
 			return res.status(204).send();
@@ -58,12 +56,17 @@ export = {
 		isLicensed('feat:variables'),
 		apiKeyHasScopeWithGlobalScopeFallback({ scope: 'variable:list' }),
 		validCursor,
-		async (req: GetAll, res: Response) => {
-			const { offset = 0, limit = 100 } = req.query;
+		async (req: VariablesRequest.GetAll, res: Response) => {
+			const { offset = 0, limit = 100, projectId, state } = req.query;
 
 			const [variables, count] = await Container.get(VariablesRepository).findAndCount({
 				skip: offset,
 				take: limit,
+				where: {
+					project: projectId === 'null' ? IsNull() : { id: projectId },
+					value: state === 'empty' ? '' : undefined,
+				},
+				relations: ['project'],
 			});
 
 			return res.json({

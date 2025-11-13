@@ -58,6 +58,32 @@ describe('TaskBrokerWsServer', () => {
 
 			expect(clearIntervalSpy).toHaveBeenCalled();
 		});
+
+		it('should close connection with protocol error code when heartbeat check fails', async () => {
+			jest.useFakeTimers();
+			const server = new TaskBrokerWsServer(
+				mock(),
+				mock(),
+				mock(),
+				mock<TaskRunnersConfig>({ path: '/runners', heartbeatInterval: 30 }),
+				mock(),
+			);
+
+			const ws = mock<WebSocket>();
+			ws.isAlive = false;
+			server.runnerConnections.set('test-runner', ws);
+
+			server.start();
+
+			jest.advanceTimersByTime(30 * Time.seconds.toMilliseconds);
+
+			await Promise.resolve();
+
+			expect(ws.close).toHaveBeenCalledWith(WsStatusCodes.CloseProtocolError);
+
+			await server.stop();
+			jest.useRealTimers();
+		});
 	});
 
 	describe('sendMessage', () => {

@@ -1,12 +1,12 @@
-import { ApiKey, ApiKeyRepository, AuthenticatedRequest, User, UserRepository } from '@n8n/db';
+import { ApiKey, ApiKeyRepository, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { EntityManager } from '@n8n/typeorm';
 import { randomUUID } from 'crypto';
-import { NextFunction, Response, Request } from 'express';
 import { ApiKeyAudience } from 'n8n-workflow';
 
-import { AuthError } from '@/errors/response-errors/auth.error';
 import { JwtService } from '@/services/jwt.service';
+
+import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 
 const API_KEY_AUDIENCE: ApiKeyAudience = 'mcp-server-api';
 const API_KEY_ISSUER = 'n8n';
@@ -24,6 +24,7 @@ export class McpServerApiKeyService {
 		private readonly apiKeyRepository: ApiKeyRepository,
 		private readonly jwtService: JwtService,
 		private readonly userRepository: UserRepository,
+		private readonly accessTokenRepository: AccessTokenRepository,
 	) {}
 
 	async createMcpServerApiKey(user: User, trx?: EntityManager) {
@@ -64,13 +65,45 @@ export class McpServerApiKeyService {
 		return apiKey;
 	}
 
-	private async getUserForApiKey(apiKey: string) {
+	async getUserForApiKey(apiKey: string) {
 		return await this.userRepository.findOne({
 			where: {
 				apiKeys: {
 					apiKey,
 					audience: API_KEY_AUDIENCE,
 				},
+			},
+			relations: ['role'],
+		});
+	}
+
+	async verifyApiKey(apiKey: string): Promise<User | null> {
+		try {
+			this.jwtService.verify(apiKey, {
+				issuer: API_KEY_ISSUER,
+				audience: API_KEY_AUDIENCE,
+			});
+
+			return await this.getUserForApiKey(apiKey);
+		} catch (error) {
+			return null;
+		}
+	}
+
+	async getUserForAccessToken(token: string) {
+		const accessToken = await this.accessTokenRepository.findOne({
+			where: {
+				token,
+			},
+		});
+
+		if (!accessToken) {
+			return null;
+		}
+
+		return await this.userRepository.findOne({
+			where: {
+				id: accessToken.userId,
 			},
 			relations: ['role'],
 		});
@@ -96,60 +129,6 @@ export class McpServerApiKeyService {
 		);
 
 		return redactedPart + visiblePart;
-	}
-
-	private extractAPIKeyFromHeader(headerValue: string) {
-		if (!headerValue.startsWith('Bearer')) {
-			throw new AuthError('Invalid authorization header format');
-		}
-		const apiKeyMatch = headerValue.match(/^Bearer\s+(.+)$/i);
-		if (apiKeyMatch) {
-			return apiKeyMatch[1];
-		}
-		throw new AuthError('Invalid authorization header format');
-	}
-
-	getAuthMiddleware() {
-		return async (req: Request, res: Response, next: NextFunction) => {
-			const authorizationHeader = req.header('authorization');
-
-			if (!authorizationHeader) {
-				this.responseWithUnauthorized(res);
-				return;
-			}
-
-			const apiKey = this.extractAPIKeyFromHeader(authorizationHeader);
-
-			if (!apiKey) {
-				this.responseWithUnauthorized(res);
-				return;
-			}
-
-			const user = await this.getUserForApiKey(apiKey);
-
-			if (!user) {
-				this.responseWithUnauthorized(res);
-				return;
-			}
-
-			try {
-				this.jwtService.verify(apiKey, {
-					issuer: API_KEY_ISSUER,
-					audience: API_KEY_AUDIENCE,
-				});
-			} catch (e) {
-				this.responseWithUnauthorized(res);
-				return;
-			}
-
-			(req as AuthenticatedRequest).user = user;
-
-			next();
-		};
-	}
-
-	private responseWithUnauthorized(res: Response) {
-		res.status(401).send({ message: 'Unauthorized' });
 	}
 
 	async getOrCreateApiKey(user: User) {

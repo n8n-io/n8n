@@ -1,7 +1,7 @@
 import { Column, Entity, ManyToOne } from '@n8n/typeorm';
 
 import { WithStringId } from './abstract-entity';
-import { Project } from './project';
+import type { Project } from './project';
 
 @Entity()
 export class Variables extends WithStringId {

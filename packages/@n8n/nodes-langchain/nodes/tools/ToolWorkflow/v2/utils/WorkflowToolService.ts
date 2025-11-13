@@ -160,6 +160,8 @@ export class WorkflowToolService {
 						};
 					}
 
+					// If manualLogging is enabled we've been called by the AgentExecutor
+					// and have to return a stringified response.
 					if (manualLogging) {
 						void context.addOutputData(
 							NodeConnectionTypes.AiTool,
@@ -167,9 +169,13 @@ export class WorkflowToolService {
 							[responseData],
 							metadata,
 						);
+
+						return processedResponse;
 					}
 
-					return processedResponse;
+					// If manualLogging is false we've been called by the engine and need
+					// the structured response.
+					return responseData;
 				} catch (error) {
 					// Check if error is due to cancellation
 					if (abortSignal?.aborted) {
@@ -240,7 +246,7 @@ export class WorkflowToolService {
 		items: INodeExecutionData[],
 		workflowProxy: IWorkflowDataProxyData,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<{ response: string | IDataObject | INodeExecutionData[]; subExecutionId: string }> {
+	): Promise<{ response: IDataObject | INodeExecutionData[]; subExecutionId: string }> {
 		let receivedData: ExecuteWorkflowData;
 		try {
 			receivedData = await context.executeWorkflow(workflowInfo, items, runManager?.getChild(), {
@@ -280,7 +286,7 @@ export class WorkflowToolService {
 		query: string | IDataObject,
 		itemIndex: number,
 		runManager?: CallbackManagerForToolRun,
-	): Promise<string | IDataObject | INodeExecutionData[]> {
+	): Promise<IDataObject | INodeExecutionData[]> {
 		const source = context.getNodeParameter('source', itemIndex) as string;
 		const workflowProxy = context.getWorkflowDataProxy(0);
 

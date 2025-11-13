@@ -389,6 +389,3 @@ export async function setupTaskRunner({
 		return throwWithLogs(error);
 	}
 }
-
-// TODO: Look at Ollama container?
-// TODO: Look at MariaDB container?

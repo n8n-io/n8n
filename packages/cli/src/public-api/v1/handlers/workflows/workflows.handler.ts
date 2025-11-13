@@ -14,7 +14,7 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowHistoryService } from '@/workflows/workflow-history.ee/workflow-history.service.ee';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
@@ -299,7 +299,7 @@ export = {
 			}
 
 			try {
-				await updateWorkflow(workflow.id, updateData);
+				await updateWorkflow(workflow, updateData);
 			} catch (error) {
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });
@@ -368,6 +368,13 @@ export = {
 
 				workflow.active = true;
 
+				Container.get(EventService).emit('workflow-activated', {
+					user: req.user,
+					workflowId: workflow.id,
+					workflow,
+					publicApi: true,
+				});
+
 				return res.json(workflow);
 			}
 
@@ -401,6 +408,13 @@ export = {
 				await setWorkflowAsInactive(workflow.id);
 
 				workflow.active = false;
+
+				Container.get(EventService).emit('workflow-deactivated', {
+					user: req.user,
+					workflowId: workflow.id,
+					workflow,
+					publicApi: true,
+				});
 
 				return res.json(workflow);
 			}

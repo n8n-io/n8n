@@ -7,6 +7,9 @@ import type { Cipher } from 'n8n-core';
 
 import { ImportService } from '../import.service';
 import type { CredentialsRepository, TagRepository } from '@n8n/db';
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
+import type { DatabaseConfig } from '@n8n/config';
 
 // Mock fs/promises
 jest.mock('fs/promises');
@@ -24,6 +27,10 @@ jest.mock('@n8n/db', () => ({
 	DataSource: mock<DataSource>(),
 }));
 
+jest.mock('@/active-workflow-manager', () => ({
+	ActiveWorkflowManager: mock<ActiveWorkflowManager>(),
+}));
+
 describe('ImportService', () => {
 	let importService: ImportService;
 	let mockLogger: Logger;
@@ -32,6 +39,9 @@ describe('ImportService', () => {
 	let mockTagRepository: TagRepository;
 	let mockEntityManager: EntityManager;
 	let mockCipher: Cipher;
+	let mockActiveWorkflowManager: ActiveWorkflowManager;
+	let mockWorkflowIndexService: WorkflowIndexService;
+	let mockDatabaseConfig: DatabaseConfig;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -42,6 +52,9 @@ describe('ImportService', () => {
 		mockTagRepository = mock<TagRepository>();
 		mockEntityManager = mock<EntityManager>();
 		mockCipher = mock<Cipher>();
+		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
+		mockWorkflowIndexService = mock<WorkflowIndexService>();
+		mockDatabaseConfig = mock<DatabaseConfig>();
 
 		// Set up cipher mock
 		mockCipher.decrypt = jest.fn((data: string) => data.replace('encrypted:', ''));
@@ -86,6 +99,9 @@ describe('ImportService', () => {
 			mockTagRepository,
 			mockDataSource,
 			mockCipher,
+			mockActiveWorkflowManager,
+			mockWorkflowIndexService,
+			mockDatabaseConfig,
 		);
 	});
 
@@ -665,18 +681,6 @@ describe('ImportService', () => {
 			);
 		});
 
-		it('should throw error when migration IDs do not match', async () => {
-			const migrationsContent = '{"id":"001","timestamp":"1000","name":"TestMigration"}';
-			const dbMigrations = [{ id: '002', timestamp: '1000', name: 'TestMigration' }];
-
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration ID mismatch. Import data: TestMigration (id: 001) does not match target database TestMigration (id: 002). Cannot import data from different migration states.',
-			);
-		});
-
 		it('should pass validation when migrations match exactly', async () => {
 			const migrationsContent = '{"id":"1","timestamp":"1000","name":"TestMigration"}';
 			const dbMigrations = [{ id: '1', timestamp: '1000', name: 'TestMigration' }];
@@ -685,18 +689,6 @@ describe('ImportService', () => {
 			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
 
 			await expect(importService.validateMigrations('/test/input')).resolves.not.toThrow();
-		});
-
-		it('should throw error when migration IDs have different formats', async () => {
-			const migrationsContent = '{"id":"001","timestamp":"1000","name":"TestMigration"}';
-			const dbMigrations = [{ id: '1', timestamp: '1000', name: 'TestMigration' }];
-
-			jest.mocked(readFile).mockResolvedValue(migrationsContent);
-			jest.mocked(mockDataSource.query).mockResolvedValue(dbMigrations);
-
-			await expect(importService.validateMigrations('/test/input')).rejects.toThrow(
-				'Migration ID mismatch. Import data: TestMigration (id: 001) does not match target database TestMigration (id: 1). Cannot import data from different migration states.',
-			);
 		});
 
 		it('should handle multiple migrations and find the latest one', async () => {

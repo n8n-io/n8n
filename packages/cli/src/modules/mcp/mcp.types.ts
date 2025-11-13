@@ -16,8 +16,7 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 // Shared MCP tool types
 export type SearchWorkflowsParams = {
 	limit?: number;
-	active?: boolean;
-	name?: string;
+	query?: string;
 	projectId?: string;
 };
 
@@ -39,3 +38,37 @@ export type SearchWorkflowsResult = {
 export type WorkflowDetailsResult = z.infer<WorkflowDetailsOutputSchema>;
 export type WorkflowDetailsWorkflow = WorkflowDetailsResult['workflow'];
 export type WorkflowDetailsNode = WorkflowDetailsWorkflow['nodes'][number];
+
+// JSON-RPC types for MCP protocol
+export type JSONRPCRequest = {
+	jsonrpc?: string;
+	method?: string;
+	params?: {
+		clientInfo?: {
+			name?: string;
+			version?: string;
+		};
+		[key: string]: unknown;
+	};
+	id?: string | number | null;
+};
+
+// Telemetry payloads
+export type UserConnectedToMCPEventPayload = {
+	user_id?: string;
+	client_name?: string;
+	client_version?: string;
+	mcp_connection_status: 'success' | 'error';
+	error?: string;
+};
+
+export type UserCalledMCPToolEventPayload = {
+	user_id?: string;
+	tool_name: string;
+	parameters?: Record<string, unknown>;
+	results?: {
+		success: boolean;
+		data?: unknown;
+		error?: string;
+	};
+};

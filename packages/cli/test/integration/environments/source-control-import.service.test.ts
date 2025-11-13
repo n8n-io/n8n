@@ -1325,7 +1325,7 @@ describe('SourceControlImportService', () => {
 			expect(sharing).toBeTruthy();
 		});
 
-		it('should not change the owner if the credential is owned by somebody else on the target instance', async () => {
+		it('should change the owner to match source control when credential is owned by somebody else on the target instance', async () => {
 			cipher.encrypt.mockReturnValue('some-encrypted-data');
 
 			const importingUser = await getGlobalOwner();
@@ -1359,13 +1359,22 @@ describe('SourceControlImportService', () => {
 				importingUser.id,
 			);
 
+			// Verify the source project was created
+			const sourceProject = await projectRepository.findOne({
+				where: { id: sourceProjectId },
+			});
+			expect(sourceProject).toBeTruthy();
+			expect(sourceProject?.name).toBe('Sales');
+			expect(sourceProject?.type).toBe('team');
+
+			// Verify ownership changed to match source control
 			await expect(
 				sharedCredentialsRepository.findBy({
 					credentialsId: credential.id,
 				}),
 			).resolves.toMatchObject([
 				{
-					projectId: targetProject.id,
+					projectId: sourceProjectId,
 					role: 'credential:owner',
 				},
 			]);
