@@ -59,7 +59,7 @@ function restoreFromInitial(nodes: INode[]) {
 
 	const toolsByProvider = new Map<ChatHubAgentTool, Set<string>>();
 	Object.entries(AVAILABLE_TOOLS).forEach(([key, p]) => {
-		toolsByProvider.set(key as ChatHubAgentTool, new Set(p.tools.map((t) => t.node.id)));
+		toolsByProvider.set(key as ChatHubAgentTool, new Set(p.tools.map((t) => t.node.name)));
 	});
 
 	for (const node of nodes) {
@@ -67,14 +67,12 @@ function restoreFromInitial(nodes: INode[]) {
 		const provider = AVAILABLE_TOOLS[providerKey];
 		if (!provider) continue;
 
-		const isValid = toolsByProvider.get(providerKey)?.has(String(node.id));
+		const isValid = toolsByProvider.get(providerKey)?.has(node.name);
 		if (!isValid) continue;
 
-		selectedByProvider.value[providerKey].add(String(node.id));
-
-		const credType = provider.credentialType;
-		if (credType) {
-			const credentialId = node.credentials?.[credType].id;
+		selectedByProvider.value[providerKey].add(node.name);
+		if (provider.credentialType) {
+			const credentialId = node.credentials?.[provider.credentialType].id;
 			if (
 				credentialId &&
 				typeof credentialId === 'string' &&
@@ -162,8 +160,8 @@ const isMissingCredentials = computed(() => {
 function onConfirm() {
 	const tools: INode[] = [];
 	for (const [providerKey, provider] of providers.value) {
-		const selectedIds = selectedByProvider.value[providerKey];
-		if (!selectedIds || selectedIds.size === 0) continue;
+		const selected = selectedByProvider.value[providerKey];
+		if (!selected || selected.size === 0) continue;
 
 		const pickedId = credentialIdByProvider.value[providerKey] ?? null;
 
@@ -172,10 +170,11 @@ function onConfirm() {
 			credential = getAvailableCredentials(providerKey).find((c) => c.id === pickedId);
 		}
 
-		for (const tool of provider.tools) {
-			if (!selectedIds.has(tool.node.id)) continue;
+		for (const toolName of selected) {
+			const tool = provider.tools.find((t) => t.node.name === toolName);
+			if (!tool) continue;
 
-			const node: INode = deepCopy(tool.node);
+			const node = deepCopy(tool.node);
 
 			// If the provider defines a credentialType and user chose a credential, attach/override it
 			if (provider.credentialType && credential) {
@@ -279,8 +278,8 @@ onMounted(async () => {
 							<ElSwitch
 								size="large"
 								:aria-label="`Toggle ${tool.title || tool.node.name}`"
-								:model-value="!!selectedByProvider[key]?.has(tool.node.id)"
-								@update:model-value="(val) => toggleTool(key, tool.node.id, val)"
+								:model-value="!!selectedByProvider[key]?.has(tool.node.name)"
+								@update:model-value="(val) => toggleTool(key, tool.node.name, val)"
 							/>
 						</div>
 					</div>

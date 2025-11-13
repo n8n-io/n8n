@@ -1,5 +1,6 @@
 import { type ChatHubAgentTool } from '@n8n/api-types';
 import { type INode, JINA_AI_TOOL_NODE_TYPE, SEAR_XNG_TOOL_NODE_TYPE } from 'n8n-workflow';
+import { v4 as uuidv4 } from 'uuid';
 
 export interface ChatHubToolProvider {
 	name: string;
@@ -11,6 +12,10 @@ export interface ChatHubToolProvider {
 	}>;
 }
 
+// NOTE: Selected tools are matched by their node type (tool provider) and node name combination.
+// If you change the name of an existing tool, users who have used that tool befor will need
+// to re-select it at their current sessions. This won't affecet custom builder agents,
+// the tools defined on them are always used as-is.
 export const AVAILABLE_TOOLS: Record<ChatHubAgentTool, ChatHubToolProvider> = {
 	[JINA_AI_TOOL_NODE_TYPE]: {
 		name: 'Jina AI',
@@ -30,7 +35,7 @@ export const AVAILABLE_TOOLS: Record<ChatHubAgentTool, ChatHubToolProvider> = {
 					type: JINA_AI_TOOL_NODE_TYPE,
 					typeVersion: 1,
 					position: [0, 0],
-					id: '23214834-7382-487b-b71b-e9c339fe44aa',
+					id: uuidv4(),
 					name: 'Read URL content in Jina AI',
 				},
 			},
@@ -50,7 +55,7 @@ export const AVAILABLE_TOOLS: Record<ChatHubAgentTool, ChatHubToolProvider> = {
 					type: JINA_AI_TOOL_NODE_TYPE,
 					typeVersion: 1,
 					position: [0, 0],
-					id: '3d3532ea-b47a-457b-a02f-b0dd859d5e28',
+					id: uuidv4(),
 					name: 'Search web in Jina AI',
 				},
 			},
@@ -68,7 +73,7 @@ export const AVAILABLE_TOOLS: Record<ChatHubAgentTool, ChatHubToolProvider> = {
 					type: JINA_AI_TOOL_NODE_TYPE,
 					typeVersion: 1,
 					position: [0, 0],
-					id: 'fb5d477f-f9ee-4570-b8da-6d62bfe87d09',
+					id: uuidv4(),
 					name: 'Perform deep research in Jina AI',
 				},
 			},
@@ -95,7 +100,7 @@ export const AVAILABLE_TOOLS: Record<ChatHubAgentTool, ChatHubToolProvider> = {
 					type: SEAR_XNG_TOOL_NODE_TYPE,
 					typeVersion: 1,
 					position: [0, 0],
-					id: '58904ab3-5114-49e5-a2cd-1e8aaa200fb1',
+					id: uuidv4(),
 					name: 'Search web in SearXNG',
 				},
 			},
