@@ -1,4 +1,5 @@
 import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
+import { AddWorkflowHistoryAutoSaveFields1762847206508 } from './../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
 import { WebhookModel1592447867632 } from './1592447867632-WebhookModel';
 import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexStoppedAt';
@@ -112,7 +113,6 @@ import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
 import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/1762763704614-BackfillMissingWorkflowHistoryRecords';
 import { AddIsGlobalColumnToCredentialsTable1762771954619 } from '../common/1762771954619-IsGlobalGlobalColumnToCredentialsTable';
-import { AddWorkflowHistoryAutoSaveFields1762847206508 } from './../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
 import type { Migration } from '../migration-types';
 
 export const mysqlMigrations: Migration[] = [
