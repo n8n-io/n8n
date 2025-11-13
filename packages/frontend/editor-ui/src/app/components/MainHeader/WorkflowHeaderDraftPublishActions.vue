@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-/* eslint-disable vue/no-multiple-template-root */
 import ActionsMenu from '@/components/MainHeader/ActionsMenu.vue';
 import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
@@ -65,34 +64,40 @@ defineExpose({
 </script>
 
 <template>
-	<div class="publish-button-wrapper">
-		<N8nButton type="secondary" @click="onPublishButtonClick">
-			{{ locale.baseText('workflows.publish') }}
-		</N8nButton>
-		<span v-if="hasWorkflowChanges" class="publish-button-indicator"></span>
+	<div :class="$style.container">
+		<div :class="$style.publishButtonWrapper">
+			<N8nButton type="secondary" @click="onPublishButtonClick">
+				{{ locale.baseText('workflows.publish') }}
+			</N8nButton>
+			<span v-if="hasWorkflowChanges" :class="$style.publishButtonIndicator"></span>
+		</div>
+		<WorkflowHistoryButton
+			:workflow-id="props.id"
+			:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
+			:is-new-workflow="isNewWorkflow"
+			@upgrade="goToWorkflowHistoryUpgrade"
+		/>
+		<ActionsMenu
+			:id="id"
+			ref="actionsMenu"
+			:workflow-permissions="workflowPermissions"
+			:is-new-workflow="isNewWorkflow"
+			:read-only="readOnly"
+			:is-archived="isArchived"
+			:name="name"
+			:tags="tags"
+			:current-folder="currentFolder"
+			:meta="meta"
+			@workflow:saved="$emit('workflow:saved')"
+		/>
 	</div>
-	<WorkflowHistoryButton
-		:workflow-id="props.id"
-		:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
-		:is-new-workflow="isNewWorkflow"
-		@upgrade="goToWorkflowHistoryUpgrade"
-	/>
-	<ActionsMenu
-		:id="id"
-		ref="actionsMenu"
-		:workflow-permissions="workflowPermissions"
-		:is-new-workflow="isNewWorkflow"
-		:read-only="readOnly"
-		:is-archived="isArchived"
-		:name="name"
-		:tags="tags"
-		:current-folder="currentFolder"
-		:meta="meta"
-		@workflow:saved="$emit('workflow:saved')"
-	/>
 </template>
 
-<style lang="scss" scoped>
+<style lang="scss" module>
+.container {
+	display: contents;
+}
+
 .publish-button-wrapper {
 	position: relative;
 	display: inline-block;

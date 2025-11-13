@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-/* eslint-disable vue/no-multiple-template-root */
 import { computed, useCssModule, useTemplateRef } from 'vue';
 import { useUIStore } from '@/stores/ui.store';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
@@ -81,85 +80,97 @@ defineExpose({
 });
 </script>
 <template>
-	<span :class="[$style.activator, $style.group]">
-		<WorkflowActivator
-			:is-archived="isArchived"
-			:workflow-active="active"
-			:workflow-id="id"
-			:workflow-permissions="workflowPermissions"
-			@update:workflow-active="onWorkflowActiveToggle"
-		/>
-	</span>
-	<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
-		<div :class="$style.group">
-			<CollaborationPane v-if="!isNewWorkflow" />
-			<N8nButton type="secondary" data-test-id="workflow-share-button" @click="onShareButtonClick">
-				{{ i18n.baseText('workflowDetails.share') }}
-			</N8nButton>
-		</div>
-		<template #fallback>
-			<N8nTooltip>
-				<N8nButton type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
+	<div :class="$style.container">
+		<span :class="[$style.activator, $style.group]">
+			<WorkflowActivator
+				:is-archived="isArchived"
+				:workflow-active="active"
+				:workflow-id="id"
+				:workflow-permissions="workflowPermissions"
+				@update:workflow-active="onWorkflowActiveToggle"
+			/>
+		</span>
+		<EnterpriseEdition :features="[EnterpriseEditionFeature.Sharing]">
+			<div :class="$style.group">
+				<CollaborationPane v-if="!isNewWorkflow" />
+				<N8nButton
+					type="secondary"
+					data-test-id="workflow-share-button"
+					@click="onShareButtonClick"
+				>
 					{{ i18n.baseText('workflowDetails.share') }}
 				</N8nButton>
-				<template #content>
-					<I18nT
-						:keypath="
-							uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description.tooltip
-						"
-						tag="span"
-						scope="global"
-					>
-						<template #action>
-							<a @click="goToUpgrade">
-								{{
-									i18n.baseText(
-										uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable
-											.button as BaseTextKey,
-									)
-								}}
-							</a>
-						</template>
-					</I18nT>
-				</template>
-			</N8nTooltip>
-		</template>
-	</EnterpriseEdition>
-	<div :class="$style.group">
-		<SaveButton
-			type="primary"
-			:saved="!uiStore.stateIsDirty && !isNewWorkflow"
-			:disabled="
-				isWorkflowSaving ||
-				readOnly ||
-				isArchived ||
-				(!isNewWorkflow && !workflowPermissions.update)
-			"
-			:is-saving="isWorkflowSaving"
-			:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
-			:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
-			data-test-id="workflow-save-button"
-			@click="$emit('workflow:saved')"
-		/>
-		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
-		<ActionsMenu
-			:id="id"
-			ref="actionsMenu"
-			:workflow-permissions="workflowPermissions"
-			:is-new-workflow="isNewWorkflow"
-			:read-only="readOnly"
-			:is-archived="isArchived"
-			:name="name"
-			:tags="tags"
-			:current-folder="currentFolder"
-			:meta="meta"
-			@workflow:saved="$emit('workflow:saved')"
-		/>
+			</div>
+			<template #fallback>
+				<N8nTooltip>
+					<N8nButton type="secondary" :class="['mr-2xs', $style.disabledShareButton]">
+						{{ i18n.baseText('workflowDetails.share') }}
+					</N8nButton>
+					<template #content>
+						<I18nT
+							:keypath="
+								uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable.description
+									.tooltip
+							"
+							tag="span"
+							scope="global"
+						>
+							<template #action>
+								<a @click="goToUpgrade">
+									{{
+										i18n.baseText(
+											uiStore.contextBasedTranslationKeys.workflows.sharing.unavailable
+												.button as BaseTextKey,
+										)
+									}}
+								</a>
+							</template>
+						</I18nT>
+					</template>
+				</N8nTooltip>
+			</template>
+		</EnterpriseEdition>
+		<div :class="$style.group">
+			<SaveButton
+				type="primary"
+				:saved="!uiStore.stateIsDirty && !isNewWorkflow"
+				:disabled="
+					isWorkflowSaving ||
+					readOnly ||
+					isArchived ||
+					(!isNewWorkflow && !workflowPermissions.update)
+				"
+				:is-saving="isWorkflowSaving"
+				:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
+				:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
+				data-test-id="workflow-save-button"
+				@click="$emit('workflow:saved')"
+			/>
+			<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
+			<ActionsMenu
+				:id="id"
+				ref="actionsMenu"
+				:workflow-permissions="workflowPermissions"
+				:is-new-workflow="isNewWorkflow"
+				:read-only="readOnly"
+				:is-archived="isArchived"
+				:name="name"
+				:tags="tags"
+				:current-folder="currentFolder"
+				:meta="meta"
+				@workflow:saved="$emit('workflow:saved')"
+			/>
+		</div>
 	</div>
 </template>
 
 <style module lang="scss">
 $--text-line-height: 24px;
+
+.container {
+	display: contents;
+}
+
 .activator {
 	color: $custom-font-dark;
 	font-weight: var(--font-weight--regular);
