@@ -72,9 +72,9 @@ export function createRunExecutionData(
 }
 
 /**
- * Creates a IRunExecutionData object with only the given runData. Used
- * when we are not actually executing a workflow, but need the run data.
- * E.g. in expression evaluations.
+ * Creates a minimal IRunExecutionData object. It only contains an empty
+ * `runData` field. Used when we are not actually executing a workflow, but
+ * need the run data. E.g. in expression evaluations.
  */
 export function createEmptyRunExecutionData(): IRunExecutionData {
 	return {
