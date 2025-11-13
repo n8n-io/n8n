@@ -2405,10 +2405,15 @@ export interface IRun {
 // start restart it again after it did fail.
 // The RunData, ExecuteData and WaitForExecution contain often the same data.
 export interface IRunExecutionData {
+	/**
+	 * Version of the execution data format.
+	 * Missing or 0 = legacy format (destinationNode as string)
+	 * 1 = current format (destinationNode as IDestinationNode)
+	 */
+	version?: number;
 	startData?: {
 		startNodes?: StartNodeData[];
-		// NOTE: prefer the structured ID. The string version is only for backward compatibility.
-		destinationNode?: IDestinationNode | string;
+		destinationNode?: IDestinationNode;
 		originalDestinationNode?: IDestinationNode;
 		runNodeFilter?: string[];
 	};

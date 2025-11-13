@@ -1285,7 +1285,7 @@ describe('TelemetryEventRelay', () => {
 				mode: 'manual',
 				data: {
 					startData: {
-						destinationNode: 'OpenAI',
+						destinationNode: { nodeName: 'OpenAI', mode: 'inclusive' },
 						runNodeFilter: ['OpenAI'],
 					},
 					resultData: {
@@ -1387,7 +1387,7 @@ describe('TelemetryEventRelay', () => {
 				mode: 'manual',
 				data: {
 					startData: {
-						destinationNode: 'OpenAI',
+						destinationNode: { nodeName: 'OpenAI', mode: 'inclusive' },
 						runNodeFilter: ['OpenAI'],
 					},
 					resultData: {
@@ -1597,7 +1597,7 @@ describe('TelemetryEventRelay', () => {
 						nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
 					},
 					startData: {
-						destinationNode: 'OpenAI',
+						destinationNode: { nodeName: 'OpenAI', mode: 'inclusive' },
 						runNodeFilter: ['OpenAI'],
 					},
 					resultData: {
@@ -1707,7 +1707,7 @@ describe('TelemetryEventRelay', () => {
 				mode: 'trigger',
 				data: {
 					startData: {
-						destinationNode: 'OpenAI',
+						destinationNode: { nodeName: 'OpenAI', mode: 'inclusive' },
 						runNodeFilter: ['OpenAI'],
 					},
 					executionData: {

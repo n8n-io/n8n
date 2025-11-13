@@ -1,10 +1,6 @@
 import type { IDestinationNode } from '.';
 
-export function getNodeName(destinationNode: IDestinationNode | string): string {
-	if (typeof destinationNode === 'string') {
-		// Handle legacy format. This will be removed.
-		return destinationNode;
-	}
+export function getNodeName(destinationNode: IDestinationNode): string {
 	return destinationNode.nodeName;
 }
 
@@ -15,10 +11,10 @@ export function toDestinationNodeStruct(
 		return undefined;
 	}
 	if (typeof destinationNode === 'string') {
-		// Handle legacy format. This will be removed.
+		// Handle legacy format from API
 		return {
 			nodeName: destinationNode,
-			mode: 'inclusive', // This was the default.
+			mode: 'inclusive',
 		};
 	}
 	return destinationNode;

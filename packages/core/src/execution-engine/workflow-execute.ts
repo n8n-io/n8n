@@ -1374,18 +1374,7 @@ export class WorkflowExecute {
 		// Trigger.
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
 
-		let destinationNode: IDestinationNode | undefined;
-		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
-			if (typeof this.runExecutionData.startData.destinationNode === 'string') {
-				// Handle legacy format. This will be removed.
-				destinationNode = {
-					nodeName: this.runExecutionData.startData.destinationNode,
-					mode: 'inclusive',
-				};
-			} else {
-				destinationNode = this.runExecutionData.startData.destinationNode;
-			}
-		}
+		const destinationNode = this.runExecutionData.startData?.destinationNode;
 		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
 		const workflowIssues = this.checkReadyForExecution(workflow, {
 			startNode,
@@ -1990,15 +1979,7 @@ export class WorkflowExecute {
 						break;
 					}
 
-					let destinationNodeName: string | undefined;
-					if (this.runExecutionData?.startData?.destinationNode) {
-						if (typeof this.runExecutionData.startData.destinationNode === 'string') {
-							// Handle legacy format. This will be removed.
-							destinationNodeName = this.runExecutionData.startData.destinationNode;
-						} else {
-							destinationNodeName = this.runExecutionData.startData.destinationNode.nodeName;
-						}
-					}
+					const destinationNodeName = this.runExecutionData?.startData?.destinationNode?.nodeName;
 					if (destinationNodeName === executionNode.name) {
 						// Before stopping, make sure we are executing hooks so
 						// That frontend is notified for example for manual executions.

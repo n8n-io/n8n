@@ -100,7 +100,7 @@ const taskData: DataRequestResponse = {
 	node: codeNode,
 	runExecutionData: {
 		startData: {
-			destinationNode: codeNode.name,
+			destinationNode: { nodeName: codeNode.name, mode: 'inclusive' },
 			runNodeFilter: [triggerNode.name, debugHelperNode.name, codeNode.name],
 		},
 		resultData: {
