@@ -820,9 +820,9 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.update(WorkflowEntity)
 			.set({
 				active: true,
-				activeVersionId: () => '"versionId"',
+				activeVersionId: () => 'versionId',
 			})
-			.where('"active" = :active', { active: false })
+			.where('active = :active', { active: false })
 			.execute();
 	}
 
