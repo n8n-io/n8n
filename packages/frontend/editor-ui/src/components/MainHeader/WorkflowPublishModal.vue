@@ -122,7 +122,13 @@ watchEffect(async () => {
 						<N8nBadge v-if="currentVersionText && !wfHasAnyChanges" theme="tertiary" size="small">
 							{{ i18n.baseText('workflows.publishModal.noChanges') }}
 						</N8nBadge>
-						<N8nText v-if="currentVersionText && newVersionText" color="text-light"> -> </N8nText>
+						<N8nText
+							v-if="currentVersionText && newVersionText"
+							color="text-light"
+							:class="$style.versionSeparator"
+						>
+							->
+						</N8nText>
 						<N8nText color="text-dark">
 							{{ newVersionText }}
 						</N8nText>
@@ -173,6 +179,10 @@ watchEffect(async () => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.versionSeparator {
+	margin: 0 var(--spacing--2xs);
 }
 
 .inputButtonContainer {
