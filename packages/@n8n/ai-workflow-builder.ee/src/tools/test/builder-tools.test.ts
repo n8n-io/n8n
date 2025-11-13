@@ -12,6 +12,10 @@ import { createCategorizePromptTool, CATEGORIZE_PROMPT_TOOL } from '../categoriz
 import { CONNECT_NODES_TOOL, createConnectNodesTool } from '../connect-nodes.tool';
 import { GET_BEST_PRACTICES_TOOL, createGetBestPracticesTool } from '../get-best-practices.tool';
 import { createGetNodeParameterTool, GET_NODE_PARAMETER_TOOL } from '../get-node-parameter.tool';
+import {
+	createGetWorkflowExamplesTool,
+	GET_WORKFLOW_EXAMPLES_TOOL,
+} from '../get-workflow-examples.tool';
 import { createNodeDetailsTool, NODE_DETAILS_TOOL } from '../node-details.tool';
 import { createNodeSearchTool, NODE_SEARCH_TOOL } from '../node-search.tool';
 import { createRemoveNodeTool, REMOVE_NODE_TOOL } from '../remove-node.tool';
@@ -40,6 +44,17 @@ jest.mock('../get-best-practices.tool', () => ({
 	createGetBestPracticesTool: jest.fn().mockReturnValue({
 		name: 'getBestPracticesTool',
 		tool: { name: 'getBestPracticesTool' },
+	}),
+}));
+
+jest.mock('../get-workflow-examples.tool', () => ({
+	GET_WORKFLOW_EXAMPLES_TOOL: {
+		toolName: 'get_workflow_examples',
+		displayTitle: 'Retrieving workflow examples',
+	},
+	createGetWorkflowExamplesTool: jest.fn().mockReturnValue({
+		name: 'getWorkflowExamplesTool',
+		tool: { name: 'getWorkflowExamplesTool' },
 	}),
 }));
 
@@ -163,9 +178,10 @@ describe('builder-tools', () => {
 				instanceUrl: 'https://test.n8n.io',
 			});
 
-			expect(tools).toHaveLength(11);
+			expect(tools).toHaveLength(12);
 			expect(createCategorizePromptTool).toHaveBeenCalledWith(mockLlmComplexTask, mockLogger);
 			expect(createGetBestPracticesTool).toHaveBeenCalled();
+			expect(createGetWorkflowExamplesTool).toHaveBeenCalledWith(mockLogger);
 			expect(createNodeSearchTool).toHaveBeenCalledWith(parsedNodeTypes);
 			expect(createNodeDetailsTool).toHaveBeenCalledWith(parsedNodeTypes);
 			expect(createAddNodeTool).toHaveBeenCalledWith(parsedNodeTypes);
@@ -188,7 +204,8 @@ describe('builder-tools', () => {
 				llmComplexTask: mockLlmComplexTask,
 			});
 
-			expect(tools).toHaveLength(11);
+			expect(tools).toHaveLength(12);
+			expect(createGetWorkflowExamplesTool).toHaveBeenCalledWith(undefined);
 			expect(createConnectNodesTool).toHaveBeenCalledWith(parsedNodeTypes, undefined);
 			expect(createRemoveNodeTool).toHaveBeenCalledWith(undefined);
 			expect(createUpdateNodeParametersTool).toHaveBeenCalledWith(
@@ -224,17 +241,18 @@ describe('builder-tools', () => {
 				nodeTypes: parsedNodeTypes,
 			});
 
-			expect(tools).toHaveLength(11);
+			expect(tools).toHaveLength(12);
 			expect(tools[0]).toBe(CATEGORIZE_PROMPT_TOOL);
 			expect(tools[1]).toBe(GET_BEST_PRACTICES_TOOL);
-			expect(tools[2]).toBe(NODE_SEARCH_TOOL);
-			expect(tools[3]).toBe(NODE_DETAILS_TOOL);
-			expect(tools[5]).toBe(CONNECT_NODES_TOOL);
-			expect(tools[6]).toBe(REMOVE_CONNECTION_TOOL);
-			expect(tools[7]).toBe(REMOVE_NODE_TOOL);
-			expect(tools[8]).toBe(UPDATING_NODE_PARAMETER_TOOL);
-			expect(tools[9]).toBe(GET_NODE_PARAMETER_TOOL);
-			expect(tools[10]).toBe(VALIDATE_WORKFLOW_TOOL);
+			expect(tools[2]).toBe(GET_WORKFLOW_EXAMPLES_TOOL);
+			expect(tools[3]).toBe(NODE_SEARCH_TOOL);
+			expect(tools[4]).toBe(NODE_DETAILS_TOOL);
+			expect(tools[6]).toBe(CONNECT_NODES_TOOL);
+			expect(tools[7]).toBe(REMOVE_CONNECTION_TOOL);
+			expect(tools[8]).toBe(REMOVE_NODE_TOOL);
+			expect(tools[9]).toBe(UPDATING_NODE_PARAMETER_TOOL);
+			expect(tools[10]).toBe(GET_NODE_PARAMETER_TOOL);
+			expect(tools[11]).toBe(VALIDATE_WORKFLOW_TOOL);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
 		});
 
@@ -243,7 +261,7 @@ describe('builder-tools', () => {
 				nodeTypes: [],
 			});
 
-			expect(tools).toHaveLength(11);
+			expect(tools).toHaveLength(12);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith([]);
 		});
 
