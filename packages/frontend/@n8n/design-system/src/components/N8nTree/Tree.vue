@@ -11,7 +11,17 @@ interface TreeProps {
 defineSlots<{
 	label(props: { label: string; path: Array<string | number> }): never;
 	value(props: { value: Value }): never;
-	binary(props: { value: Record<string, Value>; path: Array<string | number> }): never;
+	binary(props: {
+		value: {
+			id: string;
+			mimeType: string;
+			fileName?: string;
+			fileExtension?: string;
+			fileSize?: string;
+		};
+		path: Array<string | number>;
+		depth?: number;
+	}): never;
 }>();
 
 defineOptions({ name: 'N8nTree' });
@@ -47,7 +57,15 @@ const isSimple = (data: Value): boolean => {
 	return typeof data !== 'object';
 };
 
-const isBinary = (obj: object): obj is object => 'mimeType' in obj && 'id' in obj;
+const isBinary = (
+	obj: object,
+): obj is {
+	id: string;
+	mimeType: string;
+	fileName?: string;
+	fileExtension?: string;
+	fileSize?: string;
+} => 'mimeType' in obj && 'id' in obj;
 
 const getPath = (key: string): Array<string | number> => {
 	if (Array.isArray(props.value)) {
@@ -89,7 +107,7 @@ const N8nTree = getCurrentInstance()?.type;
 					</template>
 
 					<template v-if="!!$slots.binary" #binary="data">
-						<slot name="binary" v-bind="data" />
+						<slot name="binary" v-bind="data" :depth="depth + 1" />
 					</template>
 
 					<template v-if="!!$slots.value" #value="data">

@@ -5,106 +5,83 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed } from 'vue';
 
 interface Props {
-	value: Record<string, unknown>;
+	value: {
+		id: string;
+		mimeType: string;
+		fileName?: string;
+		fileExtension?: string;
+		fileSize?: string;
+	};
+	depth?: number;
 }
 
 const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 
 const isImage = computed(() => {
-	const mimeType = props.value.mimeType as string | undefined;
+	const mimeType = props.value.mimeType;
 	return mimeType?.startsWith('image/') ?? false;
 });
 
-const imageUrl = computed(() => {
-	if (!isImage.value) return '';
-	const { id, fileName, mimeType } = props.value as {
-		id: string;
-		fileName?: string;
-		mimeType?: string;
-	};
-	if (!id) return '';
-	return workflowsStore.getBinaryUrl(id, 'view', fileName ?? '', mimeType ?? '');
-});
-
-const displayName = computed(() => {
-	const { fileName, fileExtension } = props.value as {
-		fileName?: string;
-		fileExtension?: string;
-	};
-
-	if (fileName?.includes('.')) {
-		return fileName;
-	}
+const fileName = computed(() => {
+	const { fileName, fileExtension } = props.value;
+	if (fileName?.includes('.')) return fileName;
 	return `${fileName}.${fileExtension}`;
 });
 
-const displayMeta = computed(() => {
-	const { mimeType, fileSize } = props.value as {
-		mimeType?: string;
-		fileSize?: string;
-	};
+const fileUrl = computed(() => {
+	const { id, mimeType } = props.value;
+	return workflowsStore.getBinaryUrl(id, 'download', fileName.value, mimeType ?? '');
+});
 
-	return `${mimeType}, ${fileSize}`;
+const fileMeta = computed(() => {
+	const { mimeType, fileSize } = props.value;
+	return mimeType + (fileSize ? `, ${fileSize}` : '');
 });
 
 const downloadBinaryData = () => {
-	const { id, fileName, mimeType, fileExtension } = props.value as {
-		id: string;
-		fileName?: string;
-		mimeType?: string;
-		fileExtension?: string;
-	};
-
-	if (!id) return;
-
-	const url = workflowsStore.getBinaryUrl(id, 'download', fileName ?? '', mimeType ?? '');
-	const name = fileName
-		? fileExtension
-			? `${fileName}.${fileExtension}`
-			: fileName
-		: `binary_${id}`;
-
-	saveAs(url, name);
+	saveAs(fileUrl.value, fileName.value);
 };
+
+const containerStyle = computed(() => ({
+	marginLeft: props.depth ? `${props.depth * 15}px` : '0',
+}));
 </script>
 
 <template>
-	<div :class="$style.binaryEntry">
-		<div :class="$style.iconWrapper">
-			<img v-if="isImage && imageUrl" :src="imageUrl" :class="$style.thumbnail" />
-			<N8nIcon v-else :class="$style.fileIcon" icon="file" size="xlarge" />
-			<div :class="$style.viewButton">
-				<N8nIcon :class="$style.viewIcon" icon="eye" size="xlarge" />
+	<div :class="$style.container" :style="containerStyle">
+		<div :class="$style.wrapper">
+			<img v-if="isImage && fileUrl" :src="fileUrl" :class="$style.imagePreview" />
+			<div v-else :class="$style.iconWrapper">
+				<N8nIcon icon="file" size="xlarge" />
 			</div>
 		</div>
-		<div :class="$style.metadata">
-			<div :class="$style.fileName">{{ displayName }}</div>
-			<div v-if="displayMeta" :class="$style.fileMeta">{{ displayMeta }}</div>
+		<div :class="$style.info">
+			<div :class="$style.filename">{{ fileName }}</div>
+			<div v-if="fileMeta" :class="$style.meta">{{ fileMeta }}</div>
 		</div>
-		<div :class="$style.downloadButton" @click="downloadBinaryData">
-			<N8nIcon :class="$style.downloadIcon" icon="download" size="xlarge" />
+		<div :class="$style.download" @click="downloadBinaryData">
+			<N8nIcon icon="download" size="large" />
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.binaryEntry {
+.container {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) 0;
 	width: 100%;
-	min-height: 48px;
+	min-height: 50px;
 
 	&:hover {
-		.downloadButton {
+		.download {
 			opacity: 1;
 		}
 	}
 }
 
-.iconWrapper {
+.wrapper {
 	position: relative;
 	display: flex;
 	align-items: center;
@@ -113,37 +90,28 @@ const downloadBinaryData = () => {
 	height: 40px;
 	flex-shrink: 0;
 	overflow: hidden;
-	&:hover {
-		.viewButton {
-			opacity: 1;
-		}
-	}
+	cursor: pointer;
 }
 
-.thumbnail {
-	width: 100%;
-	height: 100%;
-	object-fit: cover;
-}
-
-.viewButton {
-	position: absolute;
-	top: 50%;
-	left: 50%;
-	transform: translate(-50%, -50%);
+.iconWrapper {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	cursor: pointer;
-	opacity: 0;
-	transition: opacity 0.2s ease-in-out;
+	width: 40px;
+	height: 40px;
+	overflow: hidden;
+	background-color: var(--color--background--shade-1);
+	border-radius: 50%;
 }
 
-.viewIcon {
-	color: var(--color--text--tint-1);
+.imagePreview {
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: var(--radius);
 }
 
-.metadata {
+.info {
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
@@ -153,24 +121,24 @@ const downloadBinaryData = () => {
 	line-height: 1.2;
 }
 
-.fileName {
-	font-size: var(--font-size--2xs);
-	color: var(--color--text);
+.filename {
+	font-size: var(--font-size--xs);
+	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight--bold);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
 }
 
-.fileMeta {
+.meta {
 	font-size: var(--font-size--3xs);
-	color: var(--color--text--shade-1);
+	color: var(--color--text--shade-2);
 	overflow: hidden;
 	text-overflow: ellipsis;
-	white-space: nowrap;
+	white-space: wrap;
 }
 
-.downloadButton {
+.download {
 	display: flex;
 	align-items: center;
 	justify-content: center;
