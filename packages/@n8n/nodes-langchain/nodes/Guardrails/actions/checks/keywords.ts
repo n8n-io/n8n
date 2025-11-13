@@ -22,7 +22,6 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 	const sanitizedKeywords = keywords.map((k: string) => k.replace(/[.,!?;:]+$/, ''));
 
 	const validKeywords = sanitizedKeywords.filter((k: string) => k.length > 0);
-
 	if (validKeywords.length === 0) {
 		return {
 			guardrailName: 'keywords',
@@ -38,8 +37,11 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 	const escapedKeywords = validKeywords.map((k: string) =>
 		k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
 	);
-	const patternText = `\\b(?:${escapedKeywords.join('|')})\\b`;
-	const pattern = new RegExp(patternText, 'gi'); // case-insensitive, global
+	// \p{L} - any unicode letter
+	// (?<!\p{L}) - not preceded by a letter
+	// (?!\p{L}) - not followed by a letter
+	const patternText = `(?<!\\p{L}|\\p{N})${escapedKeywords.join('|')}(?!\\p{L}|\\p{N})`;
+	const pattern = new RegExp(patternText, 'giu'); // case-insensitive, global
 
 	const matches: string[] = [];
 	let match;
@@ -48,6 +50,7 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 	// Find all matches and collect unique ones (case-insensitive)
 	while ((match = pattern.exec(text)) !== null) {
 		const matchedText = match[0];
+		console.log('matchedText', matchedText);
 		if (!seen.has(matchedText.toLowerCase())) {
 			matches.push(matchedText);
 			seen.add(matchedText.toLowerCase());

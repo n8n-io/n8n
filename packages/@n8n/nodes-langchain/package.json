@@ -15,7 +15,7 @@
     "lint": "eslint nodes credentials utils --quiet",
     "lint:fix": "eslint nodes credentials utils --fix",
     "watch": "tsup --watch nodes --watch credentials --watch utils --watch types --tsconfig tsconfig.build.json --onSuccess \"node ./scripts/post-build.js\"",
-    "test": "jest",
+    "test": "jest --silent=false",
     "test:dev": "jest --watch"
   },
   "files": [
