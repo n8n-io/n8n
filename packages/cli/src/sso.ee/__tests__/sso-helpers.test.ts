@@ -4,7 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import config from '@/config';
 
-import { reloadAuthenticationMethod } from '../sso-helpers';
+import { isSsoCurrentAuthenticationMethod, reloadAuthenticationMethod } from '../sso-helpers';
 
 jest.mock('@/config');
 
@@ -90,6 +90,24 @@ describe('sso-helpers', () => {
 			await expect(reloadAuthenticationMethod()).rejects.toThrow('Database connection failed');
 
 			expect(mockConfig.set).not.toHaveBeenCalled();
+		});
+	});
+
+	describe('isSsoCurrentAuthenticationMethod', () => {
+		it('should return true if the current authentication method is SAML, LDAP, or OIDC', () => {
+			config.set('userManagement.authenticationMethod', 'saml');
+			expect(isSsoCurrentAuthenticationMethod()).toBe(true);
+
+			config.set('userManagement.authenticationMethod', 'ldap');
+			expect(isSsoCurrentAuthenticationMethod()).toBe(true);
+
+			config.set('userManagement.authenticationMethod', 'oidc');
+			expect(isSsoCurrentAuthenticationMethod()).toBe(true);
+		});
+
+		it('should return false if the current authentication method is email', () => {
+			config.set('userManagement.authenticationMethod', 'email');
+			expect(isSsoCurrentAuthenticationMethod()).toBe(false);
 		});
 	});
 });
