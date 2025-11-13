@@ -92,9 +92,10 @@ RUN set -e; \
     cd / && rm -rf /launcher-temp
 
 # ==============================================================================
-# STAGE 4: Node alpine base for JS task runner
+# STAGE 4: Node alpine base with pnpm enabled
 # ==============================================================================
 FROM node:${NODE_VERSION}-alpine AS node-alpine
+RUN corepack enable pnpm && corepack install -g pnpm@latest
 
 # ==============================================================================
 # STAGE 5: Runtime
@@ -107,7 +108,7 @@ ENV NODE_ENV=production \
     N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE} \
     SHELL=/bin/sh
 
-# Bring `uv` over from python-runner-builder
+# Bring `uv` over from python-runner-builder, to make the image easier to extend
 COPY --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
 
 # Bring node over from node-alpine
@@ -116,6 +117,11 @@ COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 # libstdc++ is required by Node
 # libc6-compat is required by task-runner-launcher
 RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat
+
+# Bring corepack and pnpm over, to make the image easier to extend
+COPY --from=node-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack && \
+    ln -s ../lib/node_modules/corepack/dist/pnpm.js /usr/local/bin/pnpm
 
 RUN addgroup -g 1000 -S runner \
  && adduser  -u 1000 -S -G runner -h /home/runner -D runner
