@@ -8,7 +8,7 @@ import type { AllRolesMap } from '@n8n/permissions';
 import { useI18n } from '@n8n/i18n';
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@n8n/i18n')>();
+	const actual: typeof import('@n8n/i18n') = await importOriginal();
 	return {
 		...actual,
 		useI18n: vi.fn(),

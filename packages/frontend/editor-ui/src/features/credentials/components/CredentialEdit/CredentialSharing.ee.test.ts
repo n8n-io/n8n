@@ -12,7 +12,7 @@ import { getDropdownItems } from '@/__tests__/utils';
 import { useI18n } from '@n8n/i18n';
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@n8n/i18n')>();
+	const actual: typeof import('@n8n/i18n') = await importOriginal();
 	return {
 		...actual,
 		useI18n: vi.fn(),
@@ -72,6 +72,7 @@ describe('CredentialSharing.ee', () => {
 	let projectsStore: ReturnType<typeof useProjectsStore>;
 	let settingsStore: ReturnType<typeof useSettingsStore>;
 	let rolesStore: ReturnType<typeof useRolesStore>;
+	let isEnterpriseFeatureEnabledSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		const pinia = createTestingPinia();
@@ -101,33 +102,35 @@ describe('CredentialSharing.ee', () => {
 				licensed: true,
 			},
 		]);
-		vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get').mockReturnValue({
-			sharing: true,
-			ldap: false,
-			saml: false,
-			oidc: false,
-			mfaEnforcement: false,
-			logStreaming: false,
-			advancedExecutionFilters: false,
-			variables: false,
-			sourceControl: false,
-			externalSecrets: false,
-			auditLogs: false,
-			debugInEditor: false,
-			binaryDataS3: false,
-			workerView: false,
-			advancedPermissions: false,
-			apiKeyScopes: false,
-			workflowDiffs: false,
-			provisioning: true,
-			showNonProdBanner: false,
-			projects: {
-				team: {
-					limit: -1,
+		isEnterpriseFeatureEnabledSpy = vi
+			.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get')
+			.mockReturnValue({
+				sharing: true,
+				ldap: false,
+				saml: false,
+				oidc: false,
+				mfaEnforcement: false,
+				logStreaming: false,
+				advancedExecutionFilters: false,
+				variables: false,
+				sourceControl: false,
+				externalSecrets: false,
+				auditLogs: false,
+				debugInEditor: false,
+				binaryDataS3: false,
+				workerView: false,
+				advancedPermissions: false,
+				apiKeyScopes: false,
+				workflowDiffs: false,
+				provisioning: true,
+				showNonProdBanner: false,
+				projects: {
+					team: {
+						limit: -1,
+					},
 				},
-			},
-			customRoles: false,
-		});
+				customRoles: false,
+			});
 	});
 
 	it('should render ProjectSharing component when sharing is enabled', () => {
@@ -244,7 +247,7 @@ describe('CredentialSharing.ee', () => {
 
 	describe('projects filtering', () => {
 		it('should show upgrade action box when sharing is not enabled', () => {
-			vi.spyOn(settingsStore, 'isEnterpriseFeatureEnabled', 'get').mockReturnValue({
+			isEnterpriseFeatureEnabledSpy.mockReturnValue({
 				sharing: false,
 				ldap: false,
 				saml: false,
