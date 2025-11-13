@@ -50,6 +50,7 @@ export class McpService {
 			this.workflowFinderService,
 			this.activeExecutions,
 			this.workflowRunner,
+			this.telemetry,
 		);
 		server.registerTool(
 			executeWorkflowTool.name,

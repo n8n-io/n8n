@@ -13,11 +13,12 @@ import {
 } from 'n8n-workflow';
 import z from 'zod';
 
-import { SUPPORTED_MCP_TRIGGERS } from '../mcp.constants';
-import type { ToolDefinition } from '../mcp.types';
+import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
 import { isWorkflowEligibleForMCPAccess } from '../mcp.utils';
 
 import type { ActiveExecutions } from '@/active-executions';
+import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
@@ -29,6 +30,12 @@ const inputSchema = z.object({
 			formData: z.record(z.unknown()).optional().describe('Input data for form-based workflows'),
 			webhookData: z
 				.object({
+					method: z
+						.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])
+						.optional()
+						.default('GET')
+						.describe('HTTP method (defaults to GET)'),
+					query: z.record(z.string()).optional().describe('Query string parameters'),
 					body: z
 						.record(z.unknown())
 						.optional()
@@ -37,13 +44,6 @@ const inputSchema = z.object({
 						.record(z.string())
 						.optional()
 						.describe('HTTP headers (e.g., authorization, content-type)'),
-					query: z.record(z.string()).optional().describe('Query string parameters'),
-					params: z.record(z.string()).optional().describe('URL path parameters'),
-					method: z
-						.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])
-						.optional()
-						.default('POST')
-						.describe('HTTP method (defaults to POST)'),
 				})
 				.optional()
 				.describe('Input data for webhook-based workflows'),
@@ -72,6 +72,7 @@ export const createExecuteWorkflowTool = (
 	workflowFinderService: WorkflowFinderService,
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
+	telemetry: Telemetry,
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'execute_workflow',
 	config: {
@@ -80,6 +81,11 @@ export const createExecuteWorkflowTool = (
 		outputSchema,
 	},
 	handler: async ({ workflowId, inputs }) => {
+		const telemetryPayload: UserCalledMCPToolEventPayload = {
+			user_id: user.id,
+			tool_name: 'execute_workflow',
+			parameters: { workflowId, inputs },
+		};
 		try {
 			const output = await executeWorkflow(
 				user,
@@ -89,6 +95,14 @@ export const createExecuteWorkflowTool = (
 				workflowId,
 				inputs,
 			);
+
+			telemetryPayload.results = {
+				success: output.success,
+				data: {
+					executionId: output.executionId,
+				},
+			};
+			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(output) }],
@@ -100,6 +114,13 @@ export const createExecuteWorkflowTool = (
 				executionId: null,
 				error,
 			};
+
+			// Track failed execution
+			telemetryPayload.results = {
+				success: false,
+				error: error instanceof Error ? error.message : String(error),
+			};
+			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
 				content: [{ type: 'text', text: JSON.stringify(payload) }],
@@ -165,7 +186,7 @@ const executeWorkflow = async (
 	}
 
 	return {
-		success: data.status !== 'error',
+		success: data.status !== 'error' && !data.data.resultData?.error,
 		executionId,
 		result: data.data.resultData,
 		error: data.data.resultData?.error,
@@ -204,10 +225,9 @@ const getPinDataForTrigger = (
 					{
 						json: {
 							headers: inputs.webhookData?.headers ?? {},
-							params: inputs.webhookData?.params ?? {},
 							query: inputs.webhookData?.query ?? {},
 							body: inputs.webhookData?.body ?? {},
-							executionMode: 'manual',
+							executionMode: 'webhook',
 						},
 					},
 				],
