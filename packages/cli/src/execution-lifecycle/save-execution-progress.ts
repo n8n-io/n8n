@@ -39,7 +39,7 @@ export async function saveExecutionProgress(
 			return;
 		}
 
-		fullExecutionData.data ??= createRunExecutionData({});
+		fullExecutionData.data ??= createRunExecutionData();
 
 		const { runData } = fullExecutionData.data.resultData;
 		(runData[nodeName] ??= []).push(data);
