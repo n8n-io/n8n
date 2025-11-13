@@ -305,7 +305,8 @@ export class KafkaTrigger implements INodeType {
 					data.message = value;
 					data.topic = messageTopic;
 
-					if (options.onlyMessage) {
+					// Skip onlyMessage when keepBinaryData is active as value is a Buffer
+					if (options.onlyMessage && !(nodeVersion >= 1.2 && options.keepBinaryData)) {
 						data = value as IDataObject;
 					}
 
