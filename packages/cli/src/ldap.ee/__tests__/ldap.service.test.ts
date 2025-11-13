@@ -1433,7 +1433,7 @@ describe('LdapService', () => {
 				expect(result).toEqual(mockUser);
 			});
 
-			it('should not check duplicates for existing users with AuthIdentity', async () => {
+			it('should not allow login when duplicates exist and enforcement is enabled', async () => {
 				const ldapService = createDefaultLdapService({
 					...ldapConfig,
 					enforceEmailUniqueness: true,
@@ -1442,7 +1442,6 @@ describe('LdapService', () => {
 				await ldapService.init();
 
 				const result = await ldapService.handleLdapLogin('jdoe', 'password');
-				console.log('result', result);
 				expect(result).toBeUndefined();
 			});
 		});
