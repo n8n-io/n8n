@@ -2,6 +2,8 @@
 
 Essential guidance for AI coding agents working with the n8n workflow automation platform.
 
+**⚠️ Security: Never commit secrets, tokens, or credentials. Use GitHub Secrets, environment variables, or `.env` files (gitignored).**
+
 ## Project Overview
 
 n8n is a TypeScript monorepo using pnpm workspaces + Turbo, combining a Node.js/Express backend with Vue 3 frontend and an extensible workflow engine.
@@ -19,22 +21,27 @@ cd packages/cli && pnpm test
 
 # Development modes
 pnpm dev           # Full stack
-pnpm dev:be        # Backend only  
+pnpm dev:be        # Backend only
 pnpm dev:ai        # AI/LangChain focused
 pnpm dev:fe        # Frontend only
 
 # Quality checks (run from package dir before PR)
 pnpm lint && pnpm typecheck
+
+# Start development servers
+cd packages/cli && pnpm dev          # Backend server
+cd packages/frontend/editor-ui && pnpm dev   # Frontend dev server
+cd packages/cli && pnpm build && pnpm start  # Production mode
 ```
 
 ## Monorepo Architecture
 
 ### Core Package Dependencies
 - `@n8n/api-types` - Shared TypeScript interfaces (FE/BE contract)
-- `packages/workflow` - Core workflow types and interfaces  
+- `packages/workflow` - Core workflow types and interfaces
 - `packages/core` - Workflow execution engine
 - `packages/cli` - Express server, REST API, CLI commands
-- `packages/editor-ui` - Vue 3 frontend
+- `packages/frontend/editor-ui` - Vue 3 frontend
 - `@n8n/design-system` - Reusable Vue components and design tokens
 
 ### Backend Module Pattern
@@ -54,7 +61,7 @@ Enabled via `N8N_ENABLED_MODULES` env var. See `scripts/backend-module/backend-m
 
 ### TypeScript Rules
 - **NEVER use `any`** - use `unknown` or proper types
-- **Avoid `as` casting** - use type guards instead  
+- **Avoid `as` casting** - use type guards instead
 - **Share interfaces via `@n8n/api-types`** for FE/BE communication
 - **Error handling**: Use `UnexpectedError`, `OperationalError`, `UserError` (NOT deprecated `ApplicationError`)
 
@@ -77,6 +84,14 @@ pnpm build && pnpm n8n-node-dev new
 - **Node tests**: JSON-based workflow tests in `packages/nodes-base/nodes/**/test/`
 - **Always work from package directory** when running tests
 - **Mock external dependencies** with `nock` for HTTP
+- **Workspace tests**: `pnpm test` (all), `pnpm test:affected` (changed only)
+
+### Code Search & Research
+When using semantic search tools, include required parameters:
+```bash
+# Example semantic search for webhook patterns
+semantic-code-search query:"webhook registration workflow" repoOwner:n8n-io repoName:n8n
+```
 
 ## Development Workflow
 
@@ -84,7 +99,7 @@ pnpm build && pnpm n8n-node-dev new
 1. Define types in `packages/@n8n/api-types`
 2. Implement backend in `packages/cli/src/modules/` (follow backend module guide)
 3. Add REST endpoints via controllers with `@RestController()` decorator
-4. Update frontend in `packages/editor-ui` with i18n support
+4. Update frontend in `packages/frontend/editor-ui` with i18n support
 5. Write tests with proper mocks
 6. **Always run `pnpm typecheck`** before committing
 
@@ -101,20 +116,27 @@ packages/
 ├── @n8n/api-types/           # Shared TypeScript interfaces
 ├── cli/src/
 │   ├── modules/              # Backend feature modules
-│   ├── controllers/          # REST API endpoints  
-│   └── services/             # Business logic
+│   ├── controllers/          # REST API endpoints
+│   ├── services/             # Business logic
+│   └── webhooks/             # Webhook handling
 ├── core/src/
 │   ├── execution-engine/     # Workflow execution
 │   └── node-execute-functions.ts
-├── editor-ui/                # Vue 3 frontend
+├── frontend/editor-ui/       # Vue 3 frontend
 ├── nodes-base/nodes/         # Built-in integration nodes
 └── workflow/                 # Core workflow types
 ```
 
+### Webhook Development Patterns
+- **Registration**: Search for "Registered webhook" in logs and `packages/cli/src/webhooks/`
+- **Testing**: Use `packages/cli/src/webhooks/test/` patterns and webhook test endpoints
+- **Database**: Webhook data stored in `workflow_entity` table (TypeORM)
+- **Execution**: Webhook → Workflow execution via `packages/core/src/execution-engine/`
+
 ## Technology Stack Notes
 
 - **DI Container**: `@n8n/di` with `Container.get(Service)`
-- **Database**: TypeORM (supports SQLite/PostgreSQL/MySQL)  
+- **Database**: TypeORM (supports SQLite/PostgreSQL/MySQL)
 - **Frontend State**: Pinia stores
 - **Build System**: Turbo for task orchestration
 - **Code Quality**: Biome (formatting) + ESLint + lefthook hooks
@@ -127,7 +149,7 @@ packages/
 - **Test failures**: Ensure you're in correct package directory
 - **Frontend**: Check `@packages/frontend/CLAUDE.md` for CSS variable usage
 
-### Performance  
+### Performance
 - Dynamic imports in module entrypoints prevent loading unused code
 - Hot reload works across full stack during `pnpm dev`
 - Use `pnpm test:affected` for faster test runs
