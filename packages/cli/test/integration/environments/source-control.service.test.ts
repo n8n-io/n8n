@@ -2,7 +2,6 @@ import type { SourceControlledFile } from '@n8n/api-types';
 import { createTeamProject, createWorkflow, testDb } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
-	CredentialsRepository,
 	type Folder,
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
