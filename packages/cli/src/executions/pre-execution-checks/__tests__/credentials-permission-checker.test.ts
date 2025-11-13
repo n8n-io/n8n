@@ -141,16 +141,16 @@ describe('CredentialsPermissionChecker', () => {
 			type: 'team',
 		});
 		// Reset and set up new mocks for this test
-		jest.clearAllMocks();
-		ownershipService.getWorkflowProjectCached.mockResolvedValueOnce(teamProject);
-		projectService.findProjectsWorkflowIsIn.mockResolvedValueOnce([teamProject.id]);
-		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
-		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
+		jest.resetAllMocks();
+		ownershipService.getWorkflowProjectCached.mockResolvedValue(teamProject);
+		projectService.findProjectsWorkflowIsIn.mockResolvedValue([teamProject.id]);
+		ownershipService.getPersonalProjectOwnerCached.mockResolvedValue(null);
+		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValue([]);
 		const globalCredential = mock<CredentialsEntity>({
 			id: credentialId,
 			isGlobal: true,
 		});
-		credentialsRepository.findBy.mockResolvedValueOnce([globalCredential]);
+		credentialsRepository.findBy.mockResolvedValue([globalCredential]);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
 

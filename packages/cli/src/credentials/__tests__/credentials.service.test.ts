@@ -426,6 +426,126 @@ describe('CredentialsService', () => {
 		});
 	});
 
+	describe('findAllCredentialIdsForWorkflow', () => {
+		const workflowId = 'workflow-1';
+		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
+
+		it('should return all personal credentials when owner has global read permissions', async () => {
+			// ARRANGE
+			const personalCred1 = mock<CredentialsEntity>({ id: 'cred-1' });
+			const personalCred2 = mock<CredentialsEntity>({ id: 'cred-2' });
+			userRepository.findPersonalOwnerForWorkflow.mockResolvedValue(ownerUser);
+			credentialsRepository.findAllPersonalCredentials.mockResolvedValue([
+				personalCred1,
+				personalCred2,
+			]);
+
+			// ACT
+			const credentials = await service.findAllCredentialIdsForWorkflow(workflowId);
+
+			// ASSERT
+			expect(userRepository.findPersonalOwnerForWorkflow).toHaveBeenCalledWith(workflowId);
+			expect(credentialsRepository.findAllPersonalCredentials).toHaveBeenCalled();
+			expect(credentials).toHaveLength(2);
+			expect(credentials).toEqual([personalCred1, personalCred2]);
+		});
+
+		it('should return workflow credentials when owner lacks global read permissions', async () => {
+			// ARRANGE
+			const workflowCred1 = mock<CredentialsEntity>({ id: 'cred-1' });
+			const workflowCred2 = mock<CredentialsEntity>({ id: 'cred-2' });
+			userRepository.findPersonalOwnerForWorkflow.mockResolvedValue(memberUser);
+			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([
+				workflowCred1,
+				workflowCred2,
+			]);
+
+			// ACT
+			const credentials = await service.findAllCredentialIdsForWorkflow(workflowId);
+
+			// ASSERT
+			expect(userRepository.findPersonalOwnerForWorkflow).toHaveBeenCalledWith(workflowId);
+			expect(credentialsRepository.findAllCredentialsForWorkflow).toHaveBeenCalledWith(workflowId);
+			expect(credentials).toHaveLength(2);
+			expect(credentials).toEqual([workflowCred1, workflowCred2]);
+		});
+
+		it('should return workflow credentials when user is not found', async () => {
+			// ARRANGE
+			const workflowCred = mock<CredentialsEntity>({ id: 'cred-1' });
+			userRepository.findPersonalOwnerForWorkflow.mockResolvedValue(null);
+			credentialsRepository.findAllCredentialsForWorkflow.mockResolvedValue([workflowCred]);
+
+			// ACT
+			const credentials = await service.findAllCredentialIdsForWorkflow(workflowId);
+
+			// ASSERT
+			expect(credentialsRepository.findAllCredentialsForWorkflow).toHaveBeenCalledWith(workflowId);
+			expect(credentials).toHaveLength(1);
+		});
+	});
+
+	describe('findAllCredentialIdsForProject', () => {
+		const projectId = 'project-1';
+		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
+		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });
+
+		it('should return all personal credentials when project owner has global read permissions', async () => {
+			// ARRANGE
+			const personalCred1 = mock<CredentialsEntity>({ id: 'cred-1' });
+			const personalCred2 = mock<CredentialsEntity>({ id: 'cred-2' });
+			userRepository.findPersonalOwnerForProject.mockResolvedValue(ownerUser);
+			credentialsRepository.findAllPersonalCredentials.mockResolvedValue([
+				personalCred1,
+				personalCred2,
+			]);
+
+			// ACT
+			const credentials = await service.findAllCredentialIdsForProject(projectId);
+
+			// ASSERT
+			expect(userRepository.findPersonalOwnerForProject).toHaveBeenCalledWith(projectId);
+			expect(credentialsRepository.findAllPersonalCredentials).toHaveBeenCalled();
+			expect(credentials).toHaveLength(2);
+			expect(credentials).toEqual([personalCred1, personalCred2]);
+		});
+
+		it('should return project credentials when owner lacks global read permissions', async () => {
+			// ARRANGE
+			const projectCred1 = mock<CredentialsEntity>({ id: 'cred-1' });
+			const projectCred2 = mock<CredentialsEntity>({ id: 'cred-2' });
+			userRepository.findPersonalOwnerForProject.mockResolvedValue(memberUser);
+			credentialsRepository.findAllCredentialsForProject.mockResolvedValue([
+				projectCred1,
+				projectCred2,
+			]);
+
+			// ACT
+			const credentials = await service.findAllCredentialIdsForProject(projectId);
+
+			// ASSERT
+			expect(userRepository.findPersonalOwnerForProject).toHaveBeenCalledWith(projectId);
+			expect(credentialsRepository.findAllCredentialsForProject).toHaveBeenCalledWith(projectId);
+			expect(credentials).toHaveLength(2);
+			expect(credentials).toEqual([projectCred1, projectCred2]);
+		});
+
+		it('should return project credentials when user is not found', async () => {
+			// ARRANGE
+			const projectCred = mock<CredentialsEntity>({ id: 'cred-1' });
+			userRepository.findPersonalOwnerForProject.mockResolvedValue(null);
+			credentialsRepository.findAllCredentialsForProject.mockResolvedValue([projectCred]);
+
+			// ACT
+			const credentials = await service.findAllCredentialIdsForProject(projectId);
+
+			// ASSERT
+			expect(credentialsRepository.findAllCredentialsForProject).toHaveBeenCalledWith(projectId);
+			expect(credentials).toHaveLength(1);
+		});
+	});
+
 	describe('createUnmanagedCredential', () => {
 		const ownerUser = mock<User>({ id: 'owner-id', role: GLOBAL_OWNER_ROLE });
 		const memberUser = mock<User>({ id: 'member-id', role: GLOBAL_MEMBER_ROLE });

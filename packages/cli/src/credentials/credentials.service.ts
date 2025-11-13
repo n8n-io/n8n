@@ -1,4 +1,3 @@
-/* eslint-disable complexity */
 import type { CreateCredentialDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';

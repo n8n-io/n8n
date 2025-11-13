@@ -246,6 +246,7 @@ describe('userHasScopes', () => {
 					role: 'workflow:owner', // Wrong namespace role
 				},
 			]);
+			findByGlobalCredentialMock.mockResolvedValue([]);
 
 			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
 			const scopes = ['credential:read'] as Scope[];
@@ -306,6 +307,7 @@ describe('userHasScopes', () => {
 					role: 'credential:owner',
 				},
 			]);
+			findByGlobalCredentialMock.mockResolvedValue([]);
 
 			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
 			const scopes = ['credential:read'] as Scope[];
@@ -406,6 +408,7 @@ describe('userHasScopes', () => {
 				.mockResolvedValueOnce([
 					{ credentialsId: credentialId2, projectId: 'projectId', role: 'credential:viewer' },
 				]);
+			findByGlobalCredentialMock.mockResolvedValue([]);
 
 			const user = { id: 'userId', scopes: [], role: GLOBAL_MEMBER_ROLE } as unknown as User;
 			const scopes = ['credential:read'] as Scope[];

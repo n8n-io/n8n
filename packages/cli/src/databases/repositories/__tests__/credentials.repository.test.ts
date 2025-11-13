@@ -188,4 +188,98 @@ describe('CredentialsRepository', () => {
 			expect(credentials).toHaveLength(1);
 		});
 	});
+
+	describe('findAllPersonalCredentials', () => {
+		test('should find all credentials owned by personal projects', async () => {
+			// ARRANGE
+			const personalCred1 = mock<CredentialsEntity>({ id: 'cred1' });
+			const personalCred2 = mock<CredentialsEntity>({ id: 'cred2' });
+			entityManager.findBy.mockResolvedValueOnce([personalCred1, personalCred2]);
+
+			// ACT
+			const credentials = await repository.findAllPersonalCredentials();
+
+			// ASSERT
+			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				shared: { project: { type: 'personal' } },
+			});
+			expect(credentials).toHaveLength(2);
+			expect(credentials).toEqual([personalCred1, personalCred2]);
+		});
+
+		test('should return empty array when no personal credentials exist', async () => {
+			// ARRANGE
+			entityManager.findBy.mockResolvedValueOnce([]);
+
+			// ACT
+			const credentials = await repository.findAllPersonalCredentials();
+
+			// ASSERT
+			expect(credentials).toHaveLength(0);
+		});
+	});
+
+	describe('findAllCredentialsForWorkflow', () => {
+		test('should find all credentials accessible to a workflow', async () => {
+			// ARRANGE
+			const workflowId = 'workflow123';
+			const cred1 = mock<CredentialsEntity>({ id: 'cred1' });
+			const cred2 = mock<CredentialsEntity>({ id: 'cred2' });
+			entityManager.findBy.mockResolvedValueOnce([cred1, cred2]);
+
+			// ACT
+			const credentials = await repository.findAllCredentialsForWorkflow(workflowId);
+
+			// ASSERT
+			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				shared: { project: { sharedWorkflows: { workflowId } } },
+			});
+			expect(credentials).toHaveLength(2);
+			expect(credentials).toEqual([cred1, cred2]);
+		});
+
+		test('should return empty array when workflow has no accessible credentials', async () => {
+			// ARRANGE
+			const workflowId = 'workflow123';
+			entityManager.findBy.mockResolvedValueOnce([]);
+
+			// ACT
+			const credentials = await repository.findAllCredentialsForWorkflow(workflowId);
+
+			// ASSERT
+			expect(credentials).toHaveLength(0);
+		});
+	});
+
+	describe('findAllCredentialsForProject', () => {
+		test('should find all credentials in a project', async () => {
+			// ARRANGE
+			const projectId = 'project123';
+			const cred1 = mock<CredentialsEntity>({ id: 'cred1' });
+			const cred2 = mock<CredentialsEntity>({ id: 'cred2' });
+			entityManager.findBy.mockResolvedValueOnce([cred1, cred2]);
+
+			// ACT
+			const credentials = await repository.findAllCredentialsForProject(projectId);
+
+			// ASSERT
+			expect(entityManager.findBy).toHaveBeenCalledWith(CredentialsEntity, {
+				shared: { projectId },
+			});
+			expect(credentials).toHaveLength(2);
+			expect(credentials).toEqual([cred1, cred2]);
+		});
+
+		test('should return empty array when project has no credentials', async () => {
+			// ARRANGE
+			const projectId = 'project123';
+			entityManager.findBy.mockResolvedValueOnce([]);
+
+			// ACT
+			const credentials = await repository.findAllCredentialsForProject(projectId);
+
+			// ASSERT
+			expect(credentials).toHaveLength(0);
+		});
+	});
 });

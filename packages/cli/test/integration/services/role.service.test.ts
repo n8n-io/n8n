@@ -1398,4 +1398,91 @@ describe('RoleService', () => {
 			}).toThrow('Cannot detect if entity is a workflow or credential.');
 		});
 	});
+
+	describe('rolesWithScope', () => {
+		it('should return built-in project roles with given scope', async () => {
+			//
+			// ACT
+			//
+			const roles = await roleService.rolesWithScope('project', ['project:read']);
+
+			//
+			// ASSERT
+			//
+			expect(roles).toBeInstanceOf(Array);
+			expect(roles.length).toBeGreaterThan(0);
+			// Should include built-in project roles that have project:read
+			expect(roles).toContain('project:admin');
+			expect(roles).toContain('project:editor');
+		});
+
+		it('should return built-in credential roles with given scope', async () => {
+			//
+			// ACT
+			//
+			const roles = await roleService.rolesWithScope('credential', ['credential:read']);
+
+			//
+			// ASSERT
+			//
+			expect(roles).toBeInstanceOf(Array);
+			expect(roles.length).toBeGreaterThan(0);
+			// Should include built-in credential roles that have credential:read
+			expect(roles).toContain('credential:owner');
+			expect(roles).toContain('credential:user');
+		});
+
+		it('should handle multiple scopes', async () => {
+			//
+			// ACT
+			//
+			const roles = await roleService.rolesWithScope('project', ['project:read', 'project:update']);
+
+			//
+			// ASSERT
+			//
+			expect(roles).toBeInstanceOf(Array);
+			expect(roles.length).toBeGreaterThan(0);
+			// Project admin should have both scopes
+			expect(roles).toContain('project:admin');
+		});
+
+		it('should handle single scope as string', async () => {
+			//
+			// ACT
+			//
+			const roles = await roleService.rolesWithScope('workflow', 'workflow:read');
+
+			//
+			// ASSERT
+			//
+			expect(roles).toBeInstanceOf(Array);
+			expect(roles.length).toBeGreaterThan(0);
+		});
+
+		it('should return empty array when no roles match the scopes', async () => {
+			//
+			// ACT
+			//
+			const roles = await roleService.rolesWithScope('project', ['nonexistent:scope' as any]);
+
+			//
+			// ASSERT
+			//
+			expect(roles).toEqual([]);
+		});
+
+		it('should cache results for repeated calls', async () => {
+			//
+			// ACT
+			//
+			const roles1 = await roleService.rolesWithScope('project', ['project:read']);
+			const roles2 = await roleService.rolesWithScope('project', ['project:read']);
+
+			//
+			// ASSERT
+			//
+			expect(roles1).toEqual(roles2);
+		});
+	});
 });
