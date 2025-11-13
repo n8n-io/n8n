@@ -1126,7 +1126,7 @@ describe('CredentialsService', () => {
 					const mockManager = {
 						save: jest.fn().mockImplementation(async (entity) => {
 							savedEntities.push(entity);
-							return Promise.resolve({ ...entity, id: 'new-cred-id' });
+							return { ...entity, id: 'new-cred-id' };
 						}),
 					};
 					return await callback(mockManager);
@@ -1154,7 +1154,7 @@ describe('CredentialsService', () => {
 					const mockManager = {
 						save: jest.fn().mockImplementation(async (entity) => {
 							savedCredential = entity;
-							return Promise.resolve({ ...entity, id: 'new-cred-id' });
+							return { ...entity, id: 'new-cred-id' };
 						}),
 					};
 					return await callback(mockManager);
@@ -1179,7 +1179,7 @@ describe('CredentialsService', () => {
 					const mockManager = {
 						save: jest.fn().mockImplementation(async (entity) => {
 							savedCredential = entity;
-							return Promise.resolve({ ...entity, id: 'new-cred-id' });
+							return { ...entity, id: 'new-cred-id' };
 						}),
 					};
 					return await callback(mockManager);
@@ -1203,7 +1203,7 @@ describe('CredentialsService', () => {
 					const mockManager = {
 						save: jest.fn().mockImplementation(async (entity) => {
 							savedCredential = entity;
-							return Promise.resolve({ ...entity, id: 'new-cred-id' });
+							return { ...entity, id: 'new-cred-id' };
 						}),
 					};
 					return await callback(mockManager);
