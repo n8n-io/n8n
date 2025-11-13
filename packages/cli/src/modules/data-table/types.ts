@@ -17,3 +17,10 @@ export type AuthenticatedRequestWithFile<
 	file?: Express.Multer.File;
 	fileUploadError?: Error;
 };
+
+export function hasStringProperty<K extends string>(
+	obj: unknown,
+	key: K,
+): obj is Record<K, string> & object {
+	return typeof obj === 'object' && obj !== null && key in obj;
+}

@@ -6,7 +6,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { CsvParserService } from './csv-parser.service';
 import { MulterUploadMiddleware } from './multer-upload-middleware';
-import { AuthenticatedRequestWithFile } from './types';
+import { AuthenticatedRequestWithFile, hasStringProperty } from './types';
 
 const uploadMiddleware = Container.get(MulterUploadMiddleware);
 
@@ -34,7 +34,8 @@ export class DataTableUploadsController {
 		}
 
 		// Extract hasHeaders parameter from request body (multer parses form fields to body), default to true
-		const hasHeaders = (req.body as { hasHeaders?: string }).hasHeaders === 'false' ? false : true;
+		const hasHeaders =
+			hasStringProperty(req.body, 'hasHeaders') && req.body.hasHeaders === 'false' ? false : true;
 
 		const metadata = await this.csvParserService.parseFile(req.file.filename, hasHeaders);
 
