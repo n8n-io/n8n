@@ -1,6 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { GlobalConfig } from '@n8n/config';
-import { User, ExecutionRepository } from '@n8n/db';
+import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
 
 import { createExecuteWorkflowTool } from './tools/execute-workflow.tool';
@@ -23,7 +23,6 @@ export class McpService {
 		private readonly urlService: UrlService,
 		private readonly credentialsService: CredentialsService,
 		private readonly activeExecutions: ActiveExecutions,
-		private readonly executionRepository: ExecutionRepository,
 		private readonly globalConfig: GlobalConfig,
 		private readonly telemetry: Telemetry,
 		private readonly workflowRunner: WorkflowRunner,
