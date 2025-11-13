@@ -30,6 +30,7 @@ describe('Git Node', () => {
 		});
 		securityConfig = mock<SecurityConfig>({
 			disableBareRepos: false,
+			enableGitNodeHooks: true,
 		});
 		Container.set(DeploymentConfig, deploymentConfig);
 		Container.set(SecurityConfig, securityConfig);
