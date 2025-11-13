@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { BINARY_ENCODING, sanitizeFilename, type IBinaryData } from 'n8n-workflow';
-import { BinaryData, BinaryDataService } from 'n8n-core';
+import { BinaryDataService } from 'n8n-core';
 import { Not, IsNull } from '@n8n/typeorm';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import type { ChatMessageId, ChatSessionId } from '@n8n/api-types';
