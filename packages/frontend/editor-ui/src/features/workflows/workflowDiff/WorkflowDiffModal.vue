@@ -861,15 +861,19 @@ const modifiers = [
 	--canvas-node--border-color: var(--diff--color--deleted);
 	--sticky--color--background: var(--diff--color--deleted--faint);
 	--sticky--border-color: var(--diff--color--deleted);
+
+	:global(> div) {
+		--canvas-node--border-width: 2px;
+	}
+
 	&::before {
 		content: 'D';
 		background-color: var(--diff--color--deleted);
 	}
-	:global(.canvas-node-handle-main-output > div:empty) {
-		background-color: var(--diff--color--deleted);
-	}
+	:global(.canvas-node-handle-main-output .source),
 	:global(.canvas-node-handle-main-input .target) {
 		background-color: var(--diff--color--deleted);
+		border: none;
 	}
 
 	/* Ensure disabled nodes still show diff border color */
@@ -883,15 +887,20 @@ const modifiers = [
 	--sticky--color--background: var(--diff--color--new--faint);
 	--sticky--border-color: var(--diff--color--new);
 	position: relative;
+
+	:global(> div) {
+		--canvas-node--border-width: 2px;
+	}
+
 	&::before {
 		content: 'N';
 		background-color: var(--diff--color--new);
 	}
-	:global(.canvas-node-handle-main-output > div:empty) {
-		background-color: var(--diff--color--new);
-	}
+
+	:global(.canvas-node-handle-main-output .source),
 	:global(.canvas-node-handle-main-input .target) {
 		background-color: var(--diff--color--new);
+		border: none;
 	}
 
 	/* Ensure disabled nodes still show diff border color */
@@ -912,20 +921,25 @@ const modifiers = [
 	}
 }
 .modified {
+	--canvas-node--border-width: 2px;
 	--canvas-node--border-color: var(--diff--color--modified);
 	--canvas-node--color--background: var(--diff--color--modified--faint);
 	--sticky--color--background: var(--diff--color--modified--faint);
 	--sticky--border-color: var(--diff--color--modified);
 	position: relative;
+
+	:global(> div) {
+		--canvas-node--border-width: 2px;
+	}
+
 	&::before {
 		content: 'M';
 		background-color: var(--diff--color--modified);
 	}
-	:global(.canvas-node-handle-main-output > div:empty) {
-		background-color: var(--diff--color--modified);
-	}
+	:global(.canvas-node-handle-main-output .source),
 	:global(.canvas-node-handle-main-input .target) {
 		background-color: var(--diff--color--modified);
+		border: none;
 	}
 
 	/* Ensure disabled nodes still show diff border color */
@@ -999,6 +1013,7 @@ const modifiers = [
 	flex: 1;
 	position: relative;
 	border-top: 1px solid var(--color--foreground);
+	background: var(--canvas--color--background);
 }
 
 .emptyWorkflow {
