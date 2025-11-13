@@ -376,4 +376,125 @@ describe('KafkaTrigger Node', () => {
 		deferredPromise?.resolve(mock());
 		await publishPromise;
 	});
+
+	it('should keep binary data when keepBinaryData is enabled in v1.2', async () => {
+		const messageBuffer = Buffer.from('binary-avro-data');
+
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				typeVersion: 1.2,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						keepBinaryData: true,
+						parallelProcessing: true,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await publishMessage({
+			value: messageBuffer,
+		});
+
+		// Verify that emit was called with binary data structure
+		expect(emit).toHaveBeenCalled();
+		const emittedData = emit.mock.calls[0][0][0][0]; // [callIndex][argumentIndex][arrayIndex][itemIndex]
+
+		// Check the structure has both json and binary properties
+		expect(emittedData).toHaveProperty('json');
+		expect(emittedData).toHaveProperty('binary');
+		expect(emittedData.json.message).toEqual(messageBuffer);
+		expect(emittedData.json.topic).toBe('test-topic');
+		expect(emittedData.binary).toHaveProperty('data');
+		// Binary data will be prepared by helpers.prepareBinaryData in actual execution
+	});
+
+	it('should not keep binary data in v1.0 and v1.1 even if option is set', async () => {
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				typeVersion: 1.1,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						keepBinaryData: true,
+						parallelProcessing: true,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await publishMessage({
+			value: Buffer.from('test-message'),
+		});
+
+		// Should emit as string, not binary data
+		expect(emit).toHaveBeenCalledWith([
+			[
+				{
+					json: {
+						message: 'test-message',
+						topic: 'test-topic',
+					},
+				},
+			],
+		]);
+	});
+
+	it('should convert to string when keepBinaryData is false in v1.2', async () => {
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				typeVersion: 1.2,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						keepBinaryData: false,
+						parallelProcessing: true,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await publishMessage({
+			value: Buffer.from('test-message'),
+		});
+
+		expect(emit).toHaveBeenCalledWith([
+			[
+				{
+					json: {
+						message: 'test-message',
+						topic: 'test-topic',
+					},
+				},
+			],
+		]);
+	});
 });

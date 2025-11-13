@@ -17,7 +17,7 @@ export class KafkaTrigger implements INodeType {
 		name: 'kafkaTrigger',
 		icon: { light: 'file:kafka.svg', dark: 'file:kafka.dark.svg' },
 		group: ['trigger'],
-		version: [1, 1.1],
+		version: [1, 1.1, 1.2],
 		description: 'Consume messages from a Kafka topic',
 		defaults: {
 			name: 'Kafka Trigger',
@@ -82,7 +82,7 @@ export class KafkaTrigger implements INodeType {
 						name: 'allowAutoTopicCreation',
 						type: 'boolean',
 						default: false,
-						description: 'Whether to allow sending message to a previously non exisiting topic',
+						description: 'Whether to allow sending message to a previously non-existing topic',
 					},
 					{
 						displayName: 'Auto Commit Threshold',
@@ -130,6 +130,19 @@ export class KafkaTrigger implements INodeType {
 						type: 'boolean',
 						default: false,
 						description: 'Whether to try to parse the message to an object',
+					},
+					{
+						displayName: 'Keep Binary Data',
+						name: 'keepBinaryData',
+						type: 'boolean',
+						default: false,
+						displayOptions: {
+							show: {
+								'@version': [1.2],
+							},
+						},
+						description:
+							'Whether to keep message value as binary data for downstream processing (e.g., Avro deserialization)',
 					},
 					{
 						displayName: 'Parallel Processing',
@@ -191,7 +204,8 @@ export class KafkaTrigger implements INodeType {
 
 		const options = this.getNodeParameter('options', {}) as IDataObject;
 
-		options.nodeVersion = this.getNode().typeVersion;
+		const nodeVersion = this.getNode().typeVersion;
+		options.nodeVersion = nodeVersion;
 
 		const config: KafkaConfig = {
 			clientId,
@@ -249,19 +263,34 @@ export class KafkaTrigger implements INodeType {
 				autoCommitThreshold: (options.autoCommitThreshold as number) || null,
 				eachMessage: async ({ topic: messageTopic, message }) => {
 					let data: IDataObject = {};
-					let value = message.value?.toString() as string;
+					let value: any;
+					let binary: { [key: string]: any } = {};
 
-					if (options.jsonParseMessage) {
-						try {
-							value = JSON.parse(value);
-						} catch (error) {}
-					}
+					// Handle binary data preservation (only in v1.2+)
+					if (nodeVersion >= 1.2 && options.keepBinaryData && message.value) {
+						// Store as binary data for downstream nodes to process
+						const binaryData = await this.helpers.prepareBinaryData(
+							message.value as Buffer,
+							'message',
+							'application/octet-stream',
+						);
+						binary.data = binaryData;
+						value = message.value;
+					} else {
+						value = message.value?.toString() as string;
 
-					if (useSchemaRegistry) {
-						try {
-							const registry = new SchemaRegistry({ host: schemaRegistryUrl });
-							value = await registry.decode(message.value as Buffer);
-						} catch (error) {}
+						if (options.jsonParseMessage) {
+							try {
+								value = JSON.parse(value);
+							} catch (error) {}
+						}
+
+						if (useSchemaRegistry) {
+							try {
+								const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+								value = await registry.decode(message.value as Buffer);
+							} catch (error) {}
+						}
 					}
 
 					if (options.returnHeaders && message.headers) {
@@ -277,15 +306,21 @@ export class KafkaTrigger implements INodeType {
 					data.topic = messageTopic;
 
 					if (options.onlyMessage) {
-						//@ts-ignore
-						data = value;
+						data = value as IDataObject;
 					}
+
+					// Construct execution data with binary if present (only in v1.2+)
+					const executionData =
+						nodeVersion >= 1.2 && options.keepBinaryData && Object.keys(binary).length > 0
+							? [{ json: data, binary }]
+							: this.helpers.returnJsonArray([data]);
+
 					let responsePromise = undefined;
 					if (!parallelProcessing && (options.nodeVersion as number) > 1) {
 						responsePromise = this.helpers.createDeferredPromise<IRun>();
-						this.emit([this.helpers.returnJsonArray([data])], undefined, responsePromise);
+						this.emit([executionData], undefined, responsePromise);
 					} else {
-						this.emit([this.helpers.returnJsonArray([data])]);
+						this.emit([executionData]);
 					}
 					if (responsePromise) {
 						await responsePromise.promise;
