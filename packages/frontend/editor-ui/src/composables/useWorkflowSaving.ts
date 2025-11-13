@@ -242,6 +242,11 @@ export function useWorkflowSaving({
 				workflowState.setWorkflowTagIds(tagIds);
 			}
 
+			// TODO: do we need this?
+			if (workflowData.activeVersion) {
+				workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion);
+			}
+
 			uiStore.stateIsDirty = false;
 			uiStore.removeActiveAction('workflowSaving');
 			void useExternalHooks().run('workflow.afterUpdate', { workflowData });
