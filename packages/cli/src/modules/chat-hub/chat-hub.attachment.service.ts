@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { BINARY_ENCODING, type IBinaryData } from 'n8n-workflow';
-import { sanitizeFilename } from '@n8n/utils/src/files/sanitize';
+import { sanitizeFilename } from '@n8n/utils';
 import { BinaryDataService } from 'n8n-core';
 import { Not, IsNull } from '@n8n/typeorm';
 import { ChatHubMessageRepository } from './chat-message.repository';

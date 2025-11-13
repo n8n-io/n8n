@@ -5,7 +5,13 @@
   "files": [
     "dist"
   ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
+    ".": {
+      "types": "./dist/index.d.ts"
+    },
     "./dist/*": {
       "types": "./dist/*.d.ts",
       "import": "./dist/*.js",

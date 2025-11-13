@@ -33,7 +33,7 @@ import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { sanitizeFilename } from '@n8n/utils/src/files/sanitize';
+import { sanitizeFilename } from '@n8n/utils';
 
 @RestController('/chat')
 export class ChatHubController {
