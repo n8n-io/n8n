@@ -180,34 +180,34 @@ export class WorkflowsController {
 
 			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
 
+			await this.workflowHistoryService.saveVersion(
+				req.user,
+				workflow,
+				workflow.id,
+				transactionManager,
+			);
+
+			if (workflow.active) {
+				workflow.activeVersionId = workflow.versionId;
+				await transactionManager.save(workflow);
+			}
+
 			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
 				req.user,
 				['workflow:read'],
-				{ em: transactionManager, includeTags: true, includeParentFolder: true },
+				{
+					em: transactionManager,
+					includeTags: true,
+					includeParentFolder: true,
+					includeActiveVersion: true,
+				},
 			);
 		});
 
 		if (!savedWorkflow) {
 			this.logger.error('Failed to create workflow', { userId: req.user.id });
 			throw new InternalServerError('Failed to save workflow');
-		}
-
-		await this.workflowHistoryService.saveVersion(req.user, savedWorkflow, savedWorkflow.id);
-
-		if (savedWorkflow.active) {
-			const activeVersion = await this.workflowHistoryService.getVersion(
-				req.user,
-				savedWorkflow.id,
-				savedWorkflow.versionId,
-			);
-
-			await this.workflowRepository.update(savedWorkflow.id, {
-				activeVersion,
-			});
-
-			// Update the in-memory object to reflect the change
-			savedWorkflow.activeVersion = activeVersion;
 		}
 
 		if (tagIds && !this.globalConfig.tags.disabled && savedWorkflow.tags) {
