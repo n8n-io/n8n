@@ -452,7 +452,7 @@ onBeforeUnmount(() => {
 .canvasNodeToolbar {
 	position: absolute;
 	bottom: 100%;
-	left: 0;
+	right: 0;
 	z-index: 1;
 }
 </style>

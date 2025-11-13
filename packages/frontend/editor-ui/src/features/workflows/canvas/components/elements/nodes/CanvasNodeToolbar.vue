@@ -194,7 +194,7 @@ function onFocusNode() {
 	padding-bottom: var(--spacing--xs);
 	display: flex;
 	justify-content: flex-end;
-	width: 100%;
+	width: fit-content;
 	cursor: default;
 
 	&.isExperimentalNdvActive {
