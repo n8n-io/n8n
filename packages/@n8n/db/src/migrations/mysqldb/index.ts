@@ -1,3 +1,5 @@
+import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
+import { AddWorkflowHistoryAutoSaveFields1762847206508 } from './../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
 import { WebhookModel1592447867632 } from './1592447867632-WebhookModel';
 import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexStoppedAt';
@@ -52,7 +54,6 @@ import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeD
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
-import { AddMfaColumns1690000000030 } from '../common/1690000000040-AddMfaColumns';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
 import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-ExecutionSoftDelete';
@@ -227,4 +228,5 @@ export const mysqlMigrations: Migration[] = [
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
 	BackfillMissingWorkflowHistoryRecords1762763704614,
+	AddWorkflowHistoryAutoSaveFields1762847206508,
 ];

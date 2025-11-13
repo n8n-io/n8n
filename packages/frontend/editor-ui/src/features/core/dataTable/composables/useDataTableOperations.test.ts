@@ -671,6 +671,7 @@ describe('useDataTableOperations', () => {
 				20,
 				'name:asc',
 				'{"status":"active"}',
+				undefined,
 			);
 			expect(rowData.value).toEqual(fetchedData.data);
 			expect(params.setTotalItems).toHaveBeenCalledWith(10);
@@ -712,6 +713,7 @@ describe('useDataTableOperations', () => {
 				1,
 				10,
 				'id:desc',
+				undefined,
 				undefined,
 			);
 		});
