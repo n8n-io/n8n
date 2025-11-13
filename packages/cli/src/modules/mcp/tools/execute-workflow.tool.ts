@@ -66,7 +66,6 @@ const outputSchema = {
 	error: z.unknown().optional(),
 } satisfies z.ZodRawShape;
 
-// TODO: Add telemetry
 export const createExecuteWorkflowTool = (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
@@ -115,7 +114,6 @@ export const createExecuteWorkflowTool = (
 				error,
 			};
 
-			// Track failed execution
 			telemetryPayload.results = {
 				success: false,
 				error: error instanceof Error ? error.message : String(error),
@@ -130,6 +128,11 @@ export const createExecuteWorkflowTool = (
 	},
 });
 
+/**
+ * Executes a workflow for the given user with provided inputs.
+ * In order to "synchronously" execute the workflow,
+ * it is mapping mcp tool inputs to trigger node pin data and starting execution from there.
+ */
 const executeWorkflow = async (
 	user: User,
 	workflowFinderService: WorkflowFinderService,
@@ -193,12 +196,18 @@ const executeWorkflow = async (
 	};
 };
 
+/**
+ * Gets the first supported trigger node from the workflow nodes.
+ */
 const findMcpWorkflowStart = (nodes: INode[]): INode | undefined => {
 	return nodes.find((node) => {
 		return !node.disabled && Object.keys(SUPPORTED_MCP_TRIGGERS).includes(node.type);
 	});
 };
 
+/**
+ * Gets the execution mode based on the trigger node type.
+ */
 const getExecutionModeForTrigger = (node: INode): WorkflowExecuteMode => {
 	switch (node.type) {
 		case WEBHOOK_NODE_TYPE:
@@ -212,6 +221,9 @@ const getExecutionModeForTrigger = (node: INode): WorkflowExecuteMode => {
 	}
 };
 
+/**
+ * Constructs pin data for the trigger node based on provided inputs.
+ */
 const getPinDataForTrigger = (
 	node: INode,
 	inputs: z.infer<typeof inputSchema>['inputs'],
