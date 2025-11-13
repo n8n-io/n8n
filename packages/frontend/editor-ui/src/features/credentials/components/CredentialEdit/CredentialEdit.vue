@@ -113,7 +113,7 @@ const hasUserSpecifiedName = ref(false);
 const isSharedWithChanged = ref(false);
 const requiredCredentials = ref(false); // Are credentials required or optional for the node
 const contentRef = ref<HTMLDivElement>();
-const isSharedWithAllUsers = ref(false);
+const isSharedGlobally = ref(false);
 
 const activeNodeType = computed(() => {
 	const activeNode = ndvStore.activeNode;
@@ -540,7 +540,7 @@ async function loadCurrentCredential() {
 		}
 
 		credentialName.value = currentCredentials.name;
-		isSharedWithAllUsers.value =
+		isSharedGlobally.value =
 			'isGlobal' in currentCredentials && typeof currentCredentials.isGlobal === 'boolean'
 				? currentCredentials.isGlobal
 				: false;
@@ -580,7 +580,7 @@ function onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 }
 
 function onShareWithAllUsersUpdate(shareWithAllUsers: boolean) {
-	isSharedWithAllUsers.value = shareWithAllUsers;
+	isSharedGlobally.value = shareWithAllUsers;
 	hasUnsavedChanges.value = true;
 }
 
@@ -711,7 +711,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		name: credentialName.value,
 		type: credentialTypeName.value,
 		data: data as unknown as ICredentialDataDecryptedObject,
-		isGlobal: isSharedWithAllUsers.value,
+		isGlobal: isSharedGlobally.value,
 	};
 
 	if (
@@ -1244,7 +1244,7 @@ const { width } = useElementSize(credNameRef);
 						:credential-data="credentialData"
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
-						:isSharedGlobally="isSharedWithAllUsers"
+						:isSharedGlobally="isSharedGlobally"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
 						@update:share-with-all-users="onShareWithAllUsersUpdate"

@@ -31,7 +31,7 @@ type Props = {
 	isSharedGlobally?: boolean;
 };
 
-const props = withDefaults(defineProps<Props>(), { credential: null, isSharedWithAllUsers: false });
+const props = withDefaults(defineProps<Props>(), { credential: null, isSharedGlobally: false });
 
 const emit = defineEmits<{
 	'update:modelValue': [value: ProjectSharingData[]];

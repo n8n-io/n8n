@@ -1265,7 +1265,6 @@ describe('SourceControlService', () => {
 				verbose: false,
 			})) as SourceControlledFile[];
 
-			console.log('result', credential.id, result);
 			const modifiedCredentials = result.filter(
 				(r: SourceControlledFile) => r.type === 'credential' && r.status === 'modified',
 			);
