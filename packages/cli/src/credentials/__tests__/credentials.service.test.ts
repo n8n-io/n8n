@@ -196,7 +196,7 @@ describe('CredentialsService', () => {
 
 		beforeEach(() => {
 			// Mock ownershipService to return credentials as-is
-			ownershipService.addOwnedByAndSharedWith.mockImplementation((c: any) => c as any);
+			ownershipService.addOwnedByAndSharedWith.mockImplementation((c: any) => c);
 		});
 
 		describe('returnAll = true (owner user)', () => {
@@ -1124,7 +1124,7 @@ describe('CredentialsService', () => {
 			credentialsRepository.manager = {
 				transaction: jest.fn().mockImplementation(async (callback) => {
 					const mockManager = {
-						save: jest.fn().mockImplementation((entity) => {
+						save: jest.fn().mockImplementation(async (entity) => {
 							savedEntities.push(entity);
 							return Promise.resolve({ ...entity, id: 'new-cred-id' });
 						}),
@@ -1152,7 +1152,7 @@ describe('CredentialsService', () => {
 			credentialsRepository.manager = {
 				transaction: jest.fn().mockImplementation(async (callback) => {
 					const mockManager = {
-						save: jest.fn().mockImplementation((entity) => {
+						save: jest.fn().mockImplementation(async (entity) => {
 							savedCredential = entity;
 							return Promise.resolve({ ...entity, id: 'new-cred-id' });
 						}),
@@ -1177,7 +1177,7 @@ describe('CredentialsService', () => {
 			credentialsRepository.manager = {
 				transaction: jest.fn().mockImplementation(async (callback) => {
 					const mockManager = {
-						save: jest.fn().mockImplementation((entity) => {
+						save: jest.fn().mockImplementation(async (entity) => {
 							savedCredential = entity;
 							return Promise.resolve({ ...entity, id: 'new-cred-id' });
 						}),
@@ -1201,7 +1201,7 @@ describe('CredentialsService', () => {
 			credentialsRepository.manager = {
 				transaction: jest.fn().mockImplementation(async (callback) => {
 					const mockManager = {
-						save: jest.fn().mockImplementation((entity) => {
+						save: jest.fn().mockImplementation(async (entity) => {
 							savedCredential = entity;
 							return Promise.resolve({ ...entity, id: 'new-cred-id' });
 						}),

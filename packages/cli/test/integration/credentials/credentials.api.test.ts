@@ -216,6 +216,7 @@ describe('GET /credentials', () => {
 					'credential:move',
 					'credential:read',
 					'credential:share',
+					'credential:shareGlobally',
 					'credential:update',
 				].sort(),
 			);
@@ -230,6 +231,7 @@ describe('GET /credentials', () => {
 					'credential:move',
 					'credential:read',
 					'credential:share',
+					'credential:shareGlobally',
 					'credential:update',
 				].sort(),
 			);
@@ -356,6 +358,7 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:shareGlobally',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -370,6 +373,7 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:shareGlobally',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -387,6 +391,7 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:shareGlobally',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -1071,6 +1076,7 @@ describe('PATCH /credentials/:id', () => {
 				'credential:move',
 				'credential:read',
 				'credential:share',
+				'credential:shareGlobally',
 				'credential:update',
 			].sort(),
 		);

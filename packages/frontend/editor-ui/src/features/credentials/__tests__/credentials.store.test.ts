@@ -72,7 +72,7 @@ describe('credentials.store', () => {
 			);
 		});
 
-		it('should pass includeGlobal as undefined when not provided', async () => {
+		it('should pass includeGlobal as true when not provided', async () => {
 			const { useCredentialsStore } = await import('../credentials.store');
 			const store = useCredentialsStore();
 
@@ -94,7 +94,7 @@ describe('credentials.store', () => {
 				undefined,
 				true,
 				false,
-				undefined,
+				true,
 			);
 		});
 
