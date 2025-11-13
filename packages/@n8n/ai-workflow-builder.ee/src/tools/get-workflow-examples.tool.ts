@@ -16,14 +16,7 @@ import { fetchTemplateList, fetchTemplateByID } from './web/templates';
  */
 const workflowExampleQuerySchema = z.object({
 	search: z.string().optional().describe('Search term to find workflow examples'),
-	rows: z.number().optional().describe('Number of results to return per page'),
-	page: z.number().optional().describe('Page number for pagination'),
 	category: z.enum(categories).optional().describe('Filter by workflow category'),
-	apps: z.string().optional().describe('Filter by apps/integrations used'),
-	nodes: z.string().optional().describe('Filter by specific nodes used'),
-	sort: z.string().optional().describe('Sort order for results'),
-	combineWith: z.string().optional().describe('Combine search with additional criteria'),
-	price: z.string().optional().describe('Filter by price (e.g., free, paid)'),
 });
 
 /**
@@ -53,7 +46,6 @@ async function fetchWorkflowExamples(
 	// First, fetch the list of workflow templates (metadata)
 	const response = await fetchTemplateList({
 		search: query.search,
-		sort: query.sort,
 		category: query.category,
 	});
 
