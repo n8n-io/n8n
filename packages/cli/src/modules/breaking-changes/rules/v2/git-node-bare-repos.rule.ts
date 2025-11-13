@@ -21,7 +21,9 @@ export class GitNodeBareReposRule implements IBreakingChangeWorkflowRule {
 			description:
 				'N8N_GIT_NODE_DISABLE_BARE_REPOS now defaults to true for security. Bare repositories are disabled to prevent RCE attacks via Git hooks',
 			category: BreakingChangeCategory.workflow,
-			severity: 'high',
+			severity: 'medium',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#change-the-default-value-of-n8n_git_node_disable_bare_repos-to-true',
 		};
 	}
 

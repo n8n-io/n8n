@@ -21,7 +21,9 @@ export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 			description:
 				'Binary files are now stored on disk by default instead of in memory, removing the 512MB file size limit',
 			category: BreakingChangeCategory.infrastructure,
-			severity: 'medium',
+			severity: 'low',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#remove-in-memory-binary-data-mode',
 		};
 	}
 

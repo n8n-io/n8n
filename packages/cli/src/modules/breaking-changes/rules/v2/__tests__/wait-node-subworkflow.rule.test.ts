@@ -14,13 +14,13 @@ describe('WaitNodeSubworkflowRule', () => {
 		it('should return correct metadata', () => {
 			const metadata = rule.getMetadata();
 
-			expect(metadata).toEqual({
+			expect(metadata).toMatchObject({
 				version: 'v2',
 				title: 'Wait node behavior change in sub-workflows',
 				description:
 					'Wait nodes in sub-workflows now return data from the last node instead of the node before the wait node',
 				category: BreakingChangeCategory.workflow,
-				severity: 'high',
+				severity: 'medium',
 			});
 		});
 	});

@@ -14,7 +14,7 @@ describe('ProcessEnvAccessRule', () => {
 		it('should return correct metadata', () => {
 			const metadata = rule.getMetadata();
 
-			expect(metadata).toEqual({
+			expect(metadata).toMatchObject({
 				version: 'v2',
 				title: 'Block process.env Access in Expressions and Code nodes',
 				description: 'Direct access to process.env is blocked by default for security',

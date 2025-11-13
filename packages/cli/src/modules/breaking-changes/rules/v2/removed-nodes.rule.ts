@@ -27,6 +27,8 @@ export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 			description: 'Several deprecated nodes have been removed and will no longer work',
 			category: BreakingChangeCategory.workflow,
 			severity: 'low',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#removed-nodes-for-retired-services',
 		};
 	}
 

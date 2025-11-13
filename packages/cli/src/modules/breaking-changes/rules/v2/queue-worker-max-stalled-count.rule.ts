@@ -22,6 +22,8 @@ export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRu
 				'The QUEUE_WORKER_MAX_STALLED_COUNT environment variable has been removed and will be ignored',
 			category: BreakingChangeCategory.environment,
 			severity: 'low',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#remove-queue_worker_max_stalled_count',
 		};
 	}
 

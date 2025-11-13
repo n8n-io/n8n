@@ -20,13 +20,13 @@ describe('GitNodeBareReposRule', () => {
 		it('should return correct metadata', () => {
 			const metadata = rule.getMetadata();
 
-			expect(metadata).toEqual({
+			expect(metadata).toMatchObject({
 				version: 'v2',
 				title: 'Git node bare repositories disabled by default',
 				description:
 					'N8N_GIT_NODE_DISABLE_BARE_REPOS now defaults to true for security. Bare repositories are disabled to prevent RCE attacks via Git hooks',
 				category: BreakingChangeCategory.workflow,
-				severity: 'high',
+				severity: 'medium',
 			});
 		});
 	});

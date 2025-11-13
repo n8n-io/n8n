@@ -20,6 +20,8 @@ export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 			description: 'Direct access to process.env is blocked by default for security',
 			category: BreakingChangeCategory.workflow,
 			severity: 'low',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#block-environment-variable-access-from-code-node-by-default',
 		};
 	}
 

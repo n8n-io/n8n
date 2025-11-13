@@ -23,6 +23,8 @@ export class FileAccessRule implements IBreakingChangeWorkflowRule {
 			description: 'File access is now restricted to a default directory for security purposes',
 			category: BreakingChangeCategory.workflow,
 			severity: 'medium',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#set-default-value-for-n8n_restrict_file_access_to',
 		};
 	}
 

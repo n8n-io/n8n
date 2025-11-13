@@ -22,6 +22,7 @@ export class RemovedDatabaseTypesRule implements IBreakingChangeInstanceRule {
 				'MySQL and MariaDB database types have been completely removed and will cause n8n to fail on startup',
 			category: BreakingChangeCategory.database,
 			severity: 'critical',
+			documentationUrl: 'https://docs.n8n.io/2-0-breaking-changes/#drop-mysqlmariadb-support',
 		};
 	}
 

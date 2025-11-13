@@ -21,7 +21,9 @@ export class PyodideRemovedRule implements IBreakingChangeWorkflowRule {
 			description:
 				'The Pyodide-based Python implementation in the Code node has been removed and replaced with a native Python task runner implementation',
 			category: BreakingChangeCategory.workflow,
-			severity: 'critical',
+			severity: 'medium',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#remove-pyodide-based-python-code-node',
 		};
 	}
 

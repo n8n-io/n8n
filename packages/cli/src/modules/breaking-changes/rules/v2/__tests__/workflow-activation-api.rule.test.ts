@@ -18,7 +18,7 @@ describe('WorkflowActivationApiRule', () => {
 				description:
 					'The workflow activation endpoint now requires an extra parameter for the version ID due to draft-publish changes',
 				category: BreakingChangeCategory.instance,
-				severity: 'high',
+				severity: 'medium',
 				documentationUrl:
 					'https://docs.n8n.io/api/api-reference/#tag/workflow/post/workflows/{id}/activate',
 			});

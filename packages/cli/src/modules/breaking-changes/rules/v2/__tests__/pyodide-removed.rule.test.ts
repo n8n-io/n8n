@@ -14,13 +14,13 @@ describe('PyodideRemovedRule', () => {
 		it('should return correct metadata', () => {
 			const metadata = rule.getMetadata();
 
-			expect(metadata).toEqual({
+			expect(metadata).toMatchObject({
 				version: 'v2',
 				title: 'Remove Pyodide-based Python in Code node',
 				description:
 					'The Pyodide-based Python implementation in the Code node has been removed and replaced with a native Python task runner implementation',
 				category: BreakingChangeCategory.workflow,
-				severity: 'critical',
+				severity: 'medium',
 			});
 		});
 	});

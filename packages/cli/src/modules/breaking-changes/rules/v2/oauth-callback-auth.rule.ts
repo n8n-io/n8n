@@ -19,6 +19,8 @@ export class OAuthCallbackAuthRule implements IBreakingChangeInstanceRule {
 				'OAuth callbacks now enforce n8n user authentication by default for improved security',
 			category: BreakingChangeCategory.instance,
 			severity: 'medium',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#require-authentication-on-oauth-callback-urls-by-default',
 		};
 	}
 

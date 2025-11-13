@@ -21,7 +21,8 @@ export class SqliteLegacyDriverRule implements IBreakingChangeInstanceRule {
 			description:
 				'SQLite now uses WAL (Write-Ahead Logging) mode exclusively, with additional database files',
 			category: BreakingChangeCategory.database,
-			severity: 'high',
+			severity: 'low',
+			documentationUrl: 'https://docs.n8n.io/2-0-breaking-changes/#remove-sqlite-legacy-driver',
 		};
 	}
 

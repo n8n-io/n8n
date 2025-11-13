@@ -21,7 +21,9 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeWorkflowRule {
 			description:
 				'Wait nodes in sub-workflows now return data from the last node instead of the node before the wait node',
 			category: BreakingChangeCategory.workflow,
-			severity: 'high',
+			severity: 'medium',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#return-expected-sub-workflow-data-when-it-contains-a-wait-node',
 		};
 	}
 
