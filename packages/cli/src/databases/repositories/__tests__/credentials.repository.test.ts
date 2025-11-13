@@ -65,7 +65,7 @@ describe('CredentialsRepository', () => {
 	});
 
 	describe('findAllGlobalCredentials', () => {
-		test('should find all global credentials with default options', async () => {
+		test('should find all global credentials without data by default', async () => {
 			// ARRANGE
 			const globalCred1 = mock<CredentialsEntity>({ id: 'global1', isGlobal: true });
 			const globalCred2 = mock<CredentialsEntity>({ id: 'global2', isGlobal: true });
@@ -89,6 +89,12 @@ describe('CredentialsRepository', () => {
 						'isGlobal',
 					]),
 					relations: ['shared', 'shared.project', 'shared.project.projectRelations'],
+				}),
+			);
+			expect(entityManager.find).toHaveBeenCalledWith(
+				CredentialsEntity,
+				expect.not.objectContaining({
+					select: expect.arrayContaining(['data']),
 				}),
 			);
 			expect(credentials).toHaveLength(2);
@@ -126,6 +132,60 @@ describe('CredentialsRepository', () => {
 				}),
 			);
 			expect(credentials[0].shared).toBeDefined();
+		});
+
+		test('should include data when includeData is true', async () => {
+			// ARRANGE
+			const globalCred = mock<CredentialsEntity>({
+				id: 'global1',
+				isGlobal: true,
+				data: 'encrypted-data',
+			});
+			entityManager.find.mockResolvedValueOnce([globalCred]);
+
+			// ACT
+			const credentials = await repository.findAllGlobalCredentials(true);
+
+			// ASSERT
+			expect(entityManager.find).toHaveBeenCalledWith(
+				CredentialsEntity,
+				expect.objectContaining({
+					where: expect.objectContaining({ isGlobal: true }),
+					select: expect.arrayContaining([
+						'id',
+						'name',
+						'type',
+						'isManaged',
+						'createdAt',
+						'updatedAt',
+						'isGlobal',
+						'data',
+					]),
+				}),
+			);
+			expect(credentials).toHaveLength(1);
+			expect(credentials[0]).toHaveProperty('data');
+		});
+
+		test('should not include data when includeData is false', async () => {
+			// ARRANGE
+			const globalCred = mock<CredentialsEntity>({
+				id: 'global1',
+				isGlobal: true,
+			});
+			entityManager.find.mockResolvedValueOnce([globalCred]);
+
+			// ACT
+			const credentials = await repository.findAllGlobalCredentials(false);
+
+			// ASSERT
+			expect(entityManager.find).toHaveBeenCalledWith(
+				CredentialsEntity,
+				expect.not.objectContaining({
+					select: expect.arrayContaining(['data']),
+				}),
+			);
+			expect(credentials).toHaveLength(1);
 		});
 	});
 });

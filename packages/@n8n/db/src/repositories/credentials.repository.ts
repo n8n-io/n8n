@@ -144,8 +144,8 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 	/**
 	 * Find all global credentials
 	 */
-	async findAllGlobalCredentials(): Promise<CredentialsEntity[]> {
-		const findManyOptions = this.toFindManyOptions({});
+	async findAllGlobalCredentials(includeData = false): Promise<CredentialsEntity[]> {
+		const findManyOptions = this.toFindManyOptions({ includeData });
 
 		findManyOptions.where = { ...findManyOptions.where, isGlobal: true };
 

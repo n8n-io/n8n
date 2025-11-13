@@ -1,3 +1,4 @@
+/* eslint-disable complexity */
 import type { CreateCredentialDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
@@ -71,8 +72,10 @@ export class CredentialsService {
 
 	private async addGlobalCredentials(
 		credentials: CredentialsEntity[],
+		includeData: boolean,
 	): Promise<CredentialsEntity[]> {
-		const globalCredentials = await this.credentialsRepository.findAllGlobalCredentials();
+		const globalCredentials =
+			await this.credentialsRepository.findAllGlobalCredentials(includeData);
 
 		// Merge and deduplicate based on credential ID
 		const credentialMap = new Map(credentials.map((c) => [c.id, c]));
@@ -145,7 +148,7 @@ export class CredentialsService {
 
 			// Also include credentials available for all users
 			if (includeGlobal) {
-				credentials = await this.addGlobalCredentials(credentials);
+				credentials = await this.addGlobalCredentials(credentials, includeData);
 			}
 
 			if (isDefaultSelect) {
@@ -203,7 +206,7 @@ export class CredentialsService {
 
 		// Also include credentials available for all users
 		if (includeGlobal) {
-			credentials = await this.addGlobalCredentials(credentials);
+			credentials = await this.addGlobalCredentials(credentials, includeData);
 		}
 
 		if (isDefaultSelect) {
