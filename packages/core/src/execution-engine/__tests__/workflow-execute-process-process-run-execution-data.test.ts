@@ -1,3 +1,4 @@
+import { NodeTypes } from '@test/helpers';
 import { mock } from 'jest-mock-extended';
 import type {
 	IDataObject,
@@ -10,8 +11,6 @@ import type {
 	INodeExecutionData,
 } from 'n8n-workflow';
 import { ApplicationError, NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
-
-import { NodeTypes } from '@test/helpers';
 
 import { DirectedGraph } from '../partial-execution-utils';
 import { createNodeData, toITaskData } from '../partial-execution-utils/__tests__/helpers';
