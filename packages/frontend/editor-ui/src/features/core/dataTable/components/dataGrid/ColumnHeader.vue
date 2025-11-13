@@ -299,6 +299,12 @@ onUnmounted(() => {
 .ag-header-cell-text {
 	@include mixins.utils-ellipsis;
 	min-width: 0;
+
+	// Remove overflow hidden when inline edit is active to show border
+	&.n8n-inline-text-edit--active,
+	&:focus-within {
+		overflow: visible;
+	}
 }
 
 .sort-indicator {
