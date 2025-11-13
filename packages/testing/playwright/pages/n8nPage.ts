@@ -1,11 +1,14 @@
 import type { Page } from '@playwright/test';
 
 import { AIAssistantPage } from './AIAssistantPage';
+import { AIBuilderPage } from './AIBuilderPage';
 import { BecomeCreatorCTAPage } from './BecomeCreatorCTAPage';
 import { CanvasPage } from './CanvasPage';
 import { CommunityNodesPage } from './CommunityNodesPage';
 import { BaseModal } from './components/BaseModal';
 import { Breadcrumbs } from './components/Breadcrumbs';
+import { ProjectTabsComponent } from './components/ProjectTabsComponent';
+import { ResourceMoveModal } from './components/ResourceMoveModal';
 import { CredentialsPage } from './CredentialsPage';
 import { DataTableDetails } from './DataTableDetails';
 import { DataTableView } from './DataTableView';
@@ -19,6 +22,7 @@ import { NodeDetailsViewPage } from './NodeDetailsViewPage';
 import { NotificationsPage } from './NotificationsPage';
 import { NpsSurveyPage } from './NpsSurveyPage';
 import { ProjectSettingsPage } from './ProjectSettingsPage';
+import { SettingsEnvironmentPage } from './SettingsEnvironmentPage';
 import { SettingsLogStreamingPage } from './SettingsLogStreamingPage';
 import { SettingsPersonalPage } from './SettingsPersonalPage';
 import { SettingsUsersPage } from './SettingsUsersPage';
@@ -56,6 +60,7 @@ export class n8nPage {
 
 	// Pages
 	readonly aiAssistant: AIAssistantPage;
+	readonly aiBuilder: AIBuilderPage;
 	readonly becomeCreatorCTA: BecomeCreatorCTAPage;
 	readonly canvas: CanvasPage;
 	readonly communityNodes: CommunityNodesPage;
@@ -83,6 +88,11 @@ export class n8nPage {
 
 	readonly signIn: SignInPage;
 	readonly settingsUsers: SettingsUsersPage;
+
+	// Components
+	readonly projectTabs: ProjectTabsComponent;
+
+	readonly settingsEnvironment: SettingsEnvironmentPage;
 	// Modals
 	readonly workflowActivationModal: WorkflowActivationModal;
 	readonly workflowCredentialSetupModal: WorkflowCredentialSetupModal;
@@ -90,6 +100,7 @@ export class n8nPage {
 	readonly workflowSharingModal: WorkflowSharingModal;
 	readonly mfaSetupModal: MfaSetupModal;
 	readonly modal: BaseModal;
+	readonly resourceMoveModal: ResourceMoveModal;
 
 	// Composables
 	readonly workflowComposer: WorkflowComposer;
@@ -115,6 +126,7 @@ export class n8nPage {
 
 		// Pages
 		this.aiAssistant = new AIAssistantPage(page);
+		this.aiBuilder = new AIBuilderPage(page);
 		this.becomeCreatorCTA = new BecomeCreatorCTAPage(page);
 		this.canvas = new CanvasPage(page);
 		this.communityNodes = new CommunityNodesPage(page);
@@ -141,14 +153,20 @@ export class n8nPage {
 		this.workflowSharingModal = new WorkflowSharingModal(page);
 		this.dataTable = new DataTableView(page);
 		this.dataTableDetails = new DataTableDetails(page);
+		this.settingsEnvironment = new SettingsEnvironmentPage(page);
 
 		this.settingsUsers = new SettingsUsersPage(page);
+
+		// Components
+		this.projectTabs = new ProjectTabsComponent(page);
+
 		// Modals
 		this.workflowActivationModal = new WorkflowActivationModal(page);
 		this.workflowCredentialSetupModal = new WorkflowCredentialSetupModal(page);
 		this.workflowSettingsModal = new WorkflowSettingsModal(page);
 		this.mfaSetupModal = new MfaSetupModal(page);
 		this.modal = new BaseModal(page);
+		this.resourceMoveModal = new ResourceMoveModal(page);
 
 		// Composables
 		this.workflowComposer = new WorkflowComposer(this);

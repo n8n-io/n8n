@@ -1,4 +1,4 @@
-import type { ChatHubProvider } from '@n8n/api-types';
+import type { ChatHubLLMProvider } from '@n8n/api-types';
 
 /* eslint-disable @typescript-eslint/naming-convention */
 
@@ -8,7 +8,7 @@ import type { ChatHubProvider } from '@n8n/api-types';
 // If the limit is set to 0, it means either the model has no defined limit or the information
 // is not availabl and no context window trimming is applied. Similarly, if the model used is
 // not listed, no limit is applied.
-export const maxContextWindowTokens: Record<ChatHubProvider, Record<string, number>> = {
+export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, number>> = {
 	openai: {
 		'chatgpt-4o-latest': 128000,
 		'codex-mini-latest': 0,
@@ -140,7 +140,7 @@ export const maxContextWindowTokens: Record<ChatHubProvider, Record<string, numb
 };
 
 export const getMaxContextWindowTokens = (
-	provider: ChatHubProvider,
+	provider: ChatHubLLMProvider,
 	model: string,
 ): number | undefined => {
 	const limit = maxContextWindowTokens[provider]?.[model] ?? 0;

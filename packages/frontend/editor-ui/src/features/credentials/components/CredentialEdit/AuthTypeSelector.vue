@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import ParameterInputFull from '@/components/ParameterInputFull.vue';
+import ParameterInputFull from '@/features/ndv/parameters/components/ParameterInputFull.vue';
 import { useI18n } from '@n8n/i18n';
 import type { IUpdateInformation, NodeAuthenticationOption } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import {
 	getAuthTypeForNodeCredential,
 	getNodeAuthFields,
 	getNodeAuthOptions,
 	isAuthRelatedParameter,
-} from '@/utils/nodeTypesUtils';
+} from '@/app/utils/nodeTypesUtils';
 import type {
 	ICredentialType,
 	INodeProperties,

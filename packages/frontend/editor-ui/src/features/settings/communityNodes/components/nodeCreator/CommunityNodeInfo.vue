@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
-import { useViewStacks } from '@/components/Node/NodeCreator/composables/useViewStacks';
+import { useViewStacks } from '@/features/shared/nodeCreator/composables/useViewStacks';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { i18n } from '@n8n/i18n';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { captureException } from '@sentry/vue';
 import ShieldIcon from 'virtual:icons/fa-solid/shield-alt';
 import ContactAdministratorToInstall from '../ContactAdministratorToInstall.vue';

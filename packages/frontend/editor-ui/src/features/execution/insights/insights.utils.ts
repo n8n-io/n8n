@@ -59,6 +59,16 @@ export const transformInsightsSummary = (data: InsightsSummary | null): Insights
 			}))
 		: [];
 
+export const timeRangeMappings = {
+	day: 1,
+	week: 7,
+	'2weeks': 14,
+	month: 30,
+	quarter: 90,
+	'6months': 180,
+	year: 365,
+};
+
 export const getTimeRangeLabels = () => {
 	const i18n = useI18n();
 

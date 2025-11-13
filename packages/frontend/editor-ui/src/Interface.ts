@@ -1,7 +1,5 @@
-import type { Component } from 'vue';
 import type { NotificationOptions as ElementNotificationOptions } from 'element-plus';
 import type {
-	BannerName,
 	FrontendSettings,
 	IUserManagementSettings,
 	IVersionNotificationSettings,
@@ -52,9 +50,9 @@ import type {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
-} from '@/constants';
+} from '@/app/constants';
 import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
-import type { BulkCommand, Undoable } from '@/models/history';
+import type { BulkCommand, Undoable } from '@/app/models/history';
 
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { IconName } from '@n8n/design-system/src/components/N8nIcon/icons';
@@ -115,7 +113,6 @@ declare global {
 			getVariant: (name: string) => string | boolean | undefined;
 			override: (name: string, value: string) => void;
 		};
-		Cypress: unknown;
 	}
 }
 
@@ -238,6 +235,7 @@ export interface INewWorkflowData {
 export interface IWorkflowDb {
 	id: string;
 	name: string;
+	description?: string | null;
 	active: boolean;
 	isArchived: boolean;
 	createdAt: number | string;
@@ -274,6 +272,7 @@ export type FolderResource = BaseFolderItem & {
 
 export type WorkflowResource = BaseResource & {
 	resourceType: 'workflow';
+	description?: string;
 	updatedAt: string;
 	createdAt: string;
 	active: boolean;
@@ -337,6 +336,7 @@ export type WorkflowListItem = Omit<
 	'nodes' | 'connections' | 'pinData' | 'usedCredentials' | 'meta'
 > & {
 	resource: 'workflow';
+	description?: string;
 };
 
 export type WorkflowListResource = WorkflowListItem | FolderListItem;
@@ -588,16 +588,6 @@ export interface SubcategorizedNodeTypes {
 	[subcategory: string]: INodeCreateElement[];
 }
 
-export interface ITagRow {
-	tag?: ITag;
-	usage?: string;
-	create?: boolean;
-	disable?: boolean;
-	update?: boolean;
-	delete?: boolean;
-	canDelete?: boolean;
-}
-
 export interface INodeMetadata {
 	parametersLastUpdatedAt?: number;
 	pinnedDataLastUpdatedAt?: number;
@@ -611,13 +601,6 @@ export interface NodeMetadataMap {
 
 export interface CommunityPackageMap {
 	[name: string]: PublicInstalledPackage;
-}
-
-export interface ITagsState {
-	tags: { [id: string]: ITag };
-	loading: boolean;
-	fetchedAll: boolean;
-	fetchedUsageCount: boolean;
 }
 
 export type Modals = {
@@ -886,17 +869,11 @@ export type UTMCampaign =
 	| 'upgrade-builder'
 	| 'upgrade-custom-roles';
 
-export type N8nBanners = {
-	[key in BannerName]: {
-		priority: number;
-		component: Component;
-	};
-};
-
 export type AddedNode = {
 	type: string;
 	openDetail?: boolean;
 	isAutoAdd?: boolean;
+	positionOffset?: XYPosition;
 	actionName?: string;
 } & Partial<INodeUi>;
 
@@ -933,7 +910,6 @@ export type EnterpriseEditionFeatureKey =
 	| 'ExternalSecrets'
 	| 'AuditLogs'
 	| 'DebugInEditor'
-	| 'WorkflowHistory'
 	| 'WorkerView'
 	| 'AdvancedPermissions'
 	| 'ApiKeyScopes'

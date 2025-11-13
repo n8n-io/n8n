@@ -17,6 +17,7 @@ import type {
 	WorkflowExecuteMode,
 	NodeConnectionType,
 	ISourceData,
+	NodeExecutionHint,
 } from 'n8n-workflow';
 import { createDeferredPromise, jsonParse, NodeConnectionTypes } from 'n8n-workflow';
 
@@ -45,6 +46,8 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 	readonly getNodeParameter: ISupplyDataFunctions['getNodeParameter'];
 
 	readonly parentNode?: INode;
+
+	readonly hints: NodeExecutionHint[] = [];
 
 	constructor(
 		workflow: Workflow,
@@ -316,6 +319,11 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			// Outputs
 			taskData.executionTime = Date.now() - taskData.startTime;
 
+			// Add hints to task data if any were collected
+			if (this.hints.length > 0) {
+				taskData.hints = this.hints;
+			}
+
 			await additionalData.hooks?.runHook('nodeExecuteAfter', [
 				nodeName,
 				taskData,
@@ -357,5 +365,9 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 		if (process.env.CODE_ENABLE_STDOUT === 'true') {
 			console.log(`[Workflow "${this.getWorkflow().id}"][Node "${this.node.name}"]`, ...args);
 		}
+	}
+
+	addExecutionHints(...hints: NodeExecutionHint[]) {
+		this.hints.push(...hints);
 	}
 }

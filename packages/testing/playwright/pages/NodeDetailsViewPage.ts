@@ -42,6 +42,10 @@ export class NodeDetailsViewPage extends BasePage {
 		return this.page.getByRole('combobox', { name: 'Select Credential' });
 	}
 
+	getCredentialSelectInput() {
+		return this.getNodeCredentialsSelect().locator('input');
+	}
+
 	async clickBackToCanvasButton() {
 		await this.clickByTestId('back-to-canvas');
 	}

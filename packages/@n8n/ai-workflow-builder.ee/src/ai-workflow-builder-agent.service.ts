@@ -49,28 +49,18 @@ export class AiWorkflowBuilderService {
 		});
 	}
 
-	private async getApiProxyAuthHeaders(user: IUser, useDeprecatedCredentials = false) {
+	private async getApiProxyAuthHeaders(user: IUser) {
 		assert(this.client);
 
-		let authHeaders: { Authorization: string };
-
-		if (useDeprecatedCredentials) {
-			const authResponse = await this.client.generateApiProxyCredentials(user);
-			authHeaders = { Authorization: authResponse.apiKey };
-		} else {
-			const authResponse = await this.client.getBuilderApiProxyToken(user);
-			authHeaders = {
-				Authorization: `${authResponse.tokenType} ${authResponse.accessToken}`,
-			};
-		}
+		const authResponse = await this.client.getBuilderApiProxyToken(user);
+		const authHeaders = {
+			Authorization: `${authResponse.tokenType} ${authResponse.accessToken}`,
+		};
 
 		return authHeaders;
 	}
 
-	private async setupModels(
-		user: IUser,
-		useDeprecatedCredentials = false,
-	): Promise<{
+	private async setupModels(user: IUser): Promise<{
 		anthropicClaude: ChatAnthropic;
 		tracingClient?: TracingClient;
 		authHeaders?: { Authorization: string };
@@ -78,7 +68,7 @@ export class AiWorkflowBuilderService {
 		try {
 			// If client is provided, use it for API proxy
 			if (this.client) {
-				const authHeaders = await this.getApiProxyAuthHeaders(user, useDeprecatedCredentials);
+				const authHeaders = await this.getApiProxyAuthHeaders(user);
 
 				// Extract baseUrl from client configuration
 				const baseUrl = this.client.getApiProxyBaseUrl();
@@ -154,11 +144,8 @@ export class AiWorkflowBuilderService {
 		});
 	}
 
-	private async getAgent(user: IUser, useDeprecatedCredentials = false) {
-		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(
-			user,
-			useDeprecatedCredentials,
-		);
+	private async getAgent(user: IUser) {
+		const { anthropicClaude, tracingClient, authHeaders } = await this.setupModels(user);
 
 		const agent = new WorkflowBuilderAgent({
 			parsedNodeTypes: this.parsedNodeTypes,
@@ -172,9 +159,7 @@ export class AiWorkflowBuilderService {
 				: undefined,
 			instanceUrl: this.instanceUrl,
 			onGenerationSuccess: async () => {
-				if (!useDeprecatedCredentials) {
-					await this.onGenerationSuccess(user, authHeaders);
-				}
+				await this.onGenerationSuccess(user, authHeaders);
 			},
 		});
 
@@ -204,7 +189,7 @@ export class AiWorkflowBuilderService {
 	}
 
 	async *chat(payload: ChatPayload, user: IUser, abortSignal?: AbortSignal) {
-		const agent = await this.getAgent(user, payload.useDeprecatedCredentials);
+		const agent = await this.getAgent(user);
 
 		for await (const output of agent.chat(payload, user?.id?.toString(), abortSignal)) {
 			yield output;

@@ -1,6 +1,6 @@
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import type {
 	AddColumnResponse,
 	DataTableColumn,
@@ -17,7 +17,7 @@ import type {
 	GridApi,
 } from 'ag-grid-community';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { MODAL_CONFIRM } from '@/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { isDataTableValue, isAGGridCellType } from '@/features/core/dataTable/typeGuards';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import { areValuesEqual } from '@/features/core/dataTable/utils/typeUtils';
