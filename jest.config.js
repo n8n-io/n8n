@@ -29,6 +29,7 @@ const config = {
 	verbose: true,
 	testEnvironment: 'node',
 	testRegex: '\\.(test|spec)\\.(js|ts)$',
+	moduleFileExtensions: ['js', 'json', 'ts', 'mjs', 'cjs'],
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
 	transform: {
 		'^.+\\.ts$': ['ts-jest', tsJestOptions],
@@ -42,11 +43,14 @@ const config = {
 	},
 	transformIgnorePatterns: [`/node_modules/(?!${esmDependenciesPattern})/`],
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
-	moduleNameMapper: compilerOptions?.paths
-		? pathsToModuleNameMapper(compilerOptions.paths, {
-				prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
-			})
-		: {},
+	moduleNameMapper: {
+		'^@n8n/utils/dist/(.+)\\.cjs$': '<rootDir>/../@n8n/utils/dist/$1.cjs',
+		...(compilerOptions?.paths
+			? pathsToModuleNameMapper(compilerOptions.paths, {
+					prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
+				})
+			: {}),
+	},
 	setupFilesAfterEnv: ['jest-expect-message'],
 	collectCoverage: isCoverageEnabled,
 	coverageReporters: ['text-summary', 'lcov', 'html-spa'],
