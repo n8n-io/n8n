@@ -9,12 +9,9 @@ import type {
 	WorkflowDetectionReport,
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
-import { NodesConfig } from '@n8n/config';
 
 @Service()
 export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
-	constructor(private readonly nodesConfig: NodesConfig) {}
-
 	private readonly DISABLED_NODES = [
 		'n8n-nodes-base.executeCommand',
 		'n8n-nodes-base.localFileTrigger',
