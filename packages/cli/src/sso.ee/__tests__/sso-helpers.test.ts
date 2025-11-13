@@ -95,18 +95,18 @@ describe('sso-helpers', () => {
 
 	describe('isSsoCurrentAuthenticationMethod', () => {
 		it('should return true if the current authentication method is SAML, LDAP, or OIDC', () => {
-			config.set('userManagement.authenticationMethod', 'saml');
+			jest.spyOn(config, 'getEnv').mockReturnValue('saml');
 			expect(isSsoCurrentAuthenticationMethod()).toBe(true);
 
-			config.set('userManagement.authenticationMethod', 'ldap');
+			jest.spyOn(config, 'getEnv').mockReturnValue('ldap');
 			expect(isSsoCurrentAuthenticationMethod()).toBe(true);
 
-			config.set('userManagement.authenticationMethod', 'oidc');
+			jest.spyOn(config, 'getEnv').mockReturnValue('oidc');
 			expect(isSsoCurrentAuthenticationMethod()).toBe(true);
 		});
 
 		it('should return false if the current authentication method is email', () => {
-			config.set('userManagement.authenticationMethod', 'email');
+			jest.spyOn(config, 'getEnv').mockReturnValue('email');
 			expect(isSsoCurrentAuthenticationMethod()).toBe(false);
 		});
 	});
