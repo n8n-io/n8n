@@ -21,7 +21,7 @@ import {
 	N8nText,
 } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
-import { ElUpload } from 'element-plus';
+import { ElUpload, ElRadio, ElRadioGroup } from 'element-plus';
 import type { UploadFile } from 'element-plus';
 
 type Props = {
@@ -80,14 +80,12 @@ const getColumnTypeOptions = (compatibleTypes: ColumnType[]) => {
 };
 
 const validateColumnName = (columnName: string): string | undefined => {
-	// Check if it's a reserved system column name
 	if (DATA_TABLE_SYSTEM_COLUMNS.includes(columnName)) {
 		return i18n.baseText('dataTable.import.systemColumnName', {
 			interpolate: { columnName },
 		});
 	}
 
-	// Validate with schema
 	const result = dataTableColumnNameSchema.safeParse(columnName);
 	if (!result.success) {
 		return i18n.baseText('dataTable.import.invalidColumnName');
@@ -132,16 +130,14 @@ onMounted(() => {
 	}, 0);
 });
 
-const selectedOption = ref<'scratch' | 'import' | null>('scratch');
+const selectedOption = ref<'scratch' | 'import'>('scratch');
 
 const proceedFromSelect = async () => {
 	if (!selectedOption.value || !dataTableName.value) return;
 
 	if (selectedOption.value === 'scratch') {
-		// Directly create the table for "From Scratch" option
 		await onSubmit();
 	} else if (selectedOption.value === 'import') {
-		// Upload the CSV file first, then go to the import screen
 		if (!selectedFile.value) return;
 		await uploadFile();
 	}
@@ -151,10 +147,8 @@ const onColumnNameChange = (index: number) => {
 	const column = csvColumns.value[index];
 	if (!column) return;
 
-	// Validate the column name
 	column.error = validateColumnName(column.name);
 
-	// Check for duplicates
 	const isDuplicate = csvColumns.value.some(
 		(col, idx) => idx !== index && col.name.toLowerCase() === column.name.toLowerCase(),
 	);
@@ -163,7 +157,6 @@ const onColumnNameChange = (index: number) => {
 		column.error = i18n.baseText('dataTable.import.duplicateColumnName');
 	}
 
-	// Revalidate other columns to clear duplicate errors if needed
 	csvColumns.value.forEach((col, idx) => {
 		if (idx !== index) {
 			const otherIsDuplicate = csvColumns.value.some(
@@ -179,8 +172,21 @@ const onColumnNameChange = (index: number) => {
 	});
 };
 
+const reset = (clearTableName = false) => {
+	if (clearTableName) {
+		dataTableName.value = '';
+	}
+	selectedFile.value = null;
+	uploadedFileId.value = null;
+	uploadedFileName.value = '';
+	csvColumns.value = [];
+	csvRowCount.value = 0;
+	csvColumnCount.value = 0;
+	selectedOption.value = 'scratch';
+	creationMode.value = 'select';
+};
+
 const handleFileChange = (uploadFile: UploadFile) => {
-	// Called by el-upload when file is selected or dropped
 	if (uploadFile.raw) {
 		selectedFile.value = uploadFile.raw;
 	}
@@ -210,14 +216,13 @@ const uploadFile = async () => {
 			};
 		});
 
-		// Set default table name from file name
 		if (!dataTableName.value) {
 			const fileName = selectedFile.value.name.replace(/\.csv$/i, '');
 			dataTableName.value = fileName;
 		}
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataTable.upload.error'));
-		resetToSelect();
+		reset();
 	} finally {
 		isUploading.value = false;
 	}
@@ -228,13 +233,11 @@ const onSubmit = async () => {
 		let newDataTable;
 
 		if (selectedOption.value === 'scratch') {
-			// Create from scratch
 			newDataTable = await dataTableStore.createDataTable(
 				dataTableName.value,
 				route.params.projectId as string,
 			);
 		} else if (creationMode.value === 'import' && uploadedFileId.value) {
-			// Create from imported CSV
 			newDataTable = await dataTableStore.createDataTable(
 				dataTableName.value,
 				route.params.projectId as string,
@@ -250,7 +253,7 @@ const onSubmit = async () => {
 				data_table_project_id: newDataTable.project?.id,
 				creation_mode: selectedOption.value,
 			});
-			resetForm();
+			reset(true);
 			uiStore.closeModal(props.modalName);
 			void router.push({
 				name: DATA_TABLE_DETAILS,
@@ -262,29 +265,6 @@ const onSubmit = async () => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('dataTable.add.error'));
 	}
-};
-
-const resetForm = () => {
-	dataTableName.value = '';
-	selectedFile.value = null;
-	uploadedFileId.value = null;
-	uploadedFileName.value = '';
-	csvColumns.value = [];
-	csvRowCount.value = 0;
-	csvColumnCount.value = 0;
-	selectedOption.value = 'scratch';
-	creationMode.value = 'select';
-};
-
-const resetToSelect = () => {
-	selectedFile.value = null;
-	uploadedFileId.value = null;
-	uploadedFileName.value = '';
-	csvColumns.value = [];
-	csvRowCount.value = 0;
-	csvColumnCount.value = 0;
-	selectedOption.value = 'scratch';
-	creationMode.value = 'select';
 };
 
 const goBack = () => {
@@ -310,7 +290,6 @@ const redirectToDataTables = () => {
 			</div>
 		</template>
 		<template #content>
-			<!-- Step 1: Selection Screen -->
 			<div v-if="creationMode === 'select'" :class="$style.selectionContent">
 				<N8nInputLabel
 					:label="i18n.baseText('dataTable.add.input.name.label')"
@@ -326,36 +305,15 @@ const redirectToDataTables = () => {
 						name="dataTableNameSelect"
 					/>
 				</N8nInputLabel>
-				<div :class="$style.radioGroup">
-					<label :class="$style.radioOption">
-						<input
-							v-model="selectedOption"
-							type="radio"
-							name="creationMode"
-							value="scratch"
-							:class="$style.radioInput"
-							data-test-id="create-from-scratch-option"
-						/>
-						<span :class="$style.radioLabel">
-							{{ i18n.baseText('dataTable.add.fromScratch') }}
-						</span>
-					</label>
-					<label :class="$style.radioOption">
-						<input
-							v-model="selectedOption"
-							type="radio"
-							name="creationMode"
-							value="import"
-							:class="$style.radioInput"
-							data-test-id="import-csv-option"
-						/>
-						<span :class="$style.radioLabel">
-							{{ i18n.baseText('dataTable.add.importCsv') }}
-						</span>
-					</label>
-				</div>
+				<ElRadioGroup v-model="selectedOption" :class="$style.radioGroup">
+					<ElRadio label="scratch" data-test-id="create-from-scratch-option">
+						{{ i18n.baseText('dataTable.add.fromScratch') }}
+					</ElRadio>
+					<ElRadio label="import" data-test-id="import-csv-option">
+						{{ i18n.baseText('dataTable.add.importCsv') }}
+					</ElRadio>
+				</ElRadioGroup>
 
-				<!-- Upload section - shown when Import from CSV is selected -->
 				<div v-if="selectedOption === 'import'" :class="$style.uploadSection">
 					<ElUpload
 						:class="$style.uploadDemo"
@@ -389,7 +347,6 @@ const redirectToDataTables = () => {
 				</div>
 			</div>
 
-			<!-- Step 3: Import CSV Column Configuration -->
 			<div v-else-if="creationMode === 'import'" :class="$style.content">
 				<div v-if="isUploading" :class="$style.uploadingMessage">
 					{{ i18n.baseText('dataTable.upload.uploading') }}
@@ -457,7 +414,6 @@ const redirectToDataTables = () => {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<!-- Select Mode Buttons -->
 				<N8nButton
 					v-if="creationMode === 'select'"
 					type="secondary"
@@ -477,7 +433,6 @@ const redirectToDataTables = () => {
 					@click="proceedFromSelect"
 				/>
 
-				<!-- Import CSV Column Configuration Buttons -->
 				<N8nButton
 					v-if="creationMode === 'import'"
 					type="secondary"
@@ -519,27 +474,39 @@ const redirectToDataTables = () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-}
 
-.radioOption {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--xs);
-	cursor: pointer;
-	user-select: none;
-}
+	:global(.el-radio) {
+		height: auto;
+		margin-right: 0;
+	}
 
-.radioInput {
-	width: 16px;
-	height: 16px;
-	cursor: pointer;
-	flex-shrink: 0;
-}
+	:global(.el-radio__input.is-checked .el-radio__inner) {
+		background-color: var(--color--primary);
+		border-color: var(--color--primary);
+	}
 
-.radioLabel {
-	font-size: var(--font-size--sm);
-	color: var(--color--text);
-	cursor: pointer;
+	:global(.el-radio__inner) {
+		width: 16px;
+		height: 16px;
+	}
+
+	:global(.el-radio__input:hover .el-radio__inner) {
+		border-color: var(--color--foreground);
+	}
+
+	:global(.el-radio__input.is-checked:hover .el-radio__inner) {
+		border-color: var(--color--primary);
+	}
+
+	:global(.el-radio__label) {
+		font-size: var(--font-size--sm);
+		color: var(--color--text) !important;
+		padding-left: var(--spacing--xs);
+	}
+
+	:global(.el-radio.is-checked .el-radio__label) {
+		color: var(--color--text) !important;
+	}
 }
 
 .uploadSection {
