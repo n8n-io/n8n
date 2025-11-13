@@ -1,11 +1,6 @@
 <script lang="ts" setup>
 import { useUserHelpers } from '@/app/composables/useUserHelpers';
-import {
-	ABOUT_MODAL_KEY,
-	MIGRATION_REPORT_EXPERIMENT,
-	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT,
-	VIEWS,
-} from '@/app/constants';
+import { ABOUT_MODAL_KEY, SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT, VIEWS } from '@/app/constants';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -150,10 +145,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		icon: 'list-checks',
 		label: i18n.baseText('settings.migrationReport'),
 		position: 'top',
-		available:
-			canUserAccessRouteByName(VIEWS.MIGRATION_REPORT) &&
-			// TODO: remove this when migration report is generally available
-			posthogStore.isFeatureEnabled(MIGRATION_REPORT_EXPERIMENT.name),
+		available: canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
 		route: { to: { name: VIEWS.MIGRATION_REPORT } },
 	});
 
