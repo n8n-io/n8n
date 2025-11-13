@@ -13,6 +13,15 @@ export class DataTableFileCleanupService {
 		this.uploadDir = this.globalConfig.dataTable.uploadDir;
 	}
 
+	private isErrnoException(error: unknown): error is NodeJS.ErrnoException {
+		return (
+			typeof error === 'object' &&
+			error !== null &&
+			'code' in error &&
+			typeof (error as { code: unknown }).code === 'string'
+		);
+	}
+
 	async start() {
 		// Run cleanup periodically to delete orphaned files
 		this.cleanupInterval = setInterval(() => {
@@ -54,7 +63,7 @@ export class DataTableFileCleanupService {
 			}
 		} catch (error) {
 			// Ignore errors if upload directory doesn't exist yet
-			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+			if (!this.isErrnoException(error) || error.code !== 'ENOENT') {
 				// Log other errors but don't throw - cleanup is best effort
 				console.error('Error cleaning up orphaned CSV files:', error);
 			}
@@ -70,7 +79,7 @@ export class DataTableFileCleanupService {
 			await fs.unlink(filePath);
 		} catch (error) {
 			// Ignore errors if file doesn't exist
-			if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+			if (!this.isErrnoException(error) || error.code !== 'ENOENT') {
 				throw error;
 			}
 		}
