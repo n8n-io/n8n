@@ -70,6 +70,10 @@ const allColumnTypeOptions = [
 	{ label: 'Datetime', value: 'date' },
 ];
 
+const isColumnType = (value: unknown): value is ColumnType => {
+	return allColumnTypeOptions.some((option) => option.value === value);
+};
+
 const getColumnTypeOptions = (compatibleTypes: ColumnType[]) => {
 	if (!compatibleTypes || compatibleTypes.length === 0) {
 		return allColumnTypeOptions;
@@ -205,11 +209,12 @@ const uploadFile = async () => {
 		csvRowCount.value = uploadResponse.rowCount;
 		csvColumnCount.value = uploadResponse.columnCount;
 		csvColumns.value = uploadResponse.columns.map((col) => {
-			const compatibleTypes = (col.compatibleTypes || [col.type]) as ColumnType[];
+			const compatibleTypes = (col.compatibleTypes || [col.type]).filter(isColumnType);
 			const sanitizedName = col.name.replace(/\s+/g, '_');
+			const colType = isColumnType(col.type) ? col.type : 'string';
 			return {
 				name: sanitizedName,
-				type: col.type as ColumnType,
+				type: colType,
 				compatibleTypes,
 				typeOptions: getColumnTypeOptions(compatibleTypes),
 				error: validateColumnName(sanitizedName),
