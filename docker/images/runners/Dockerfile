@@ -92,7 +92,7 @@ RUN set -e; \
     cd / && rm -rf /launcher-temp
 
 # ==============================================================================
-# STAGE 4: Node alpine base with pnpm enabled
+# STAGE 4: Node alpine base for JS task runner
 # ==============================================================================
 FROM node:${NODE_VERSION}-alpine AS node-alpine
 RUN corepack enable pnpm && corepack install -g pnpm@latest
