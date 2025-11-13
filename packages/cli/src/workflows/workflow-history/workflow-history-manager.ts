@@ -3,10 +3,7 @@ import { WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { DateTime } from 'luxon';
 
-import {
-	getWorkflowHistoryPruneTime,
-	isWorkflowHistoryEnabled,
-} from './workflow-history-helper.ee';
+import { getWorkflowHistoryPruneTime } from './workflow-history-helper';
 
 @Service()
 export class WorkflowHistoryManager {
@@ -30,17 +27,13 @@ export class WorkflowHistoryManager {
 	}
 
 	async prune() {
-		if (!isWorkflowHistoryEnabled()) {
-			return;
-		}
-
 		const pruneHours = getWorkflowHistoryPruneTime();
-		// No prune time set
+		// No prune time set (infinite retention)
 		if (pruneHours === -1) {
 			return;
 		}
 		const pruneDateTime = DateTime.now().minus({ hours: pruneHours }).toJSDate();
 
-		await this.workflowHistoryRepo.deleteEarlierThan(pruneDateTime);
+		await this.workflowHistoryRepo.deleteEarlierThanExceptCurrent(pruneDateTime);
 	}
 }

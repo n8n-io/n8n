@@ -35,7 +35,7 @@ import { v4 as uuid } from 'uuid';
 
 import { WorkflowExecutionService } from './workflow-execution.service';
 import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowHistoryService } from './workflow-history.ee/workflow-history.service.ee';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowRequest } from './workflow.request';
 import { WorkflowService } from './workflow.service';
 import { EnterpriseWorkflowService } from './workflow.service.ee';
