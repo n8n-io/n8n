@@ -104,6 +104,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ length: 36 })
 	versionId: string;
 
+	@Column({ name: 'activeVersionId', length: 36, nullable: true })
+	activeVersionId: string | null;
+
 	@ManyToOne('WorkflowHistory', { nullable: true })
 	@JoinColumn({ name: 'activeVersionId', referencedColumnName: 'versionId' })
 	activeVersion: WorkflowHistory | null;

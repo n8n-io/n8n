@@ -766,9 +766,17 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return await this.update({ active: true }, { active: false, activeVersion: null });
 	}
 
-	// We're planning to remove this command in V2, so for now just set activeVersion to null so that executions would use the current version
+	// We're planning to remove this command in V2, so for now set activeVersion to the current version
 	async activateAll() {
-		return await this.update({ active: false }, { active: true, activeVersion: null });
+		await this.manager
+			.createQueryBuilder()
+			.update(WorkflowEntity)
+			.set({
+				active: true,
+				activeVersionId: () => '"versionId"',
+			})
+			.where('"active" = :active', { active: false })
+			.execute();
 	}
 
 	async findByActiveState(activeState: boolean) {

@@ -243,11 +243,10 @@ export async function createWorkflowHistory(workflow: IWorkflowDb, user?: User):
  * @param versionId version ID to set as active
  */
 export async function setActiveVersion(workflowId: string, versionId: string): Promise<void> {
-	const workflowHistory = await Container.get(WorkflowHistoryRepository).findOneOrFail({
-		where: { workflowId, versionId },
-	});
-
-	await Container.get(WorkflowRepository).update(workflowId, {
-		activeVersion: workflowHistory,
-	});
+	await Container.get(WorkflowRepository)
+		.createQueryBuilder()
+		.update()
+		.set({ activeVersionId: versionId })
+		.where('id = :workflowId', { workflowId })
+		.execute();
 }
