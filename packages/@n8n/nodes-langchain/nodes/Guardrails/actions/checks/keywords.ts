@@ -41,7 +41,7 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 	// (?<!\p{L}) - not preceded by a letter
 	// (?!\p{L}) - not followed by a letter
 	const patternText = `(?<!\\p{L}|\\p{N}|_)${escapedKeywords.join('|')}(?!\\p{L}|\\p{N}|_)`;
-	const pattern = new RegExp(patternText, 'giu'); // case-insensitive, global
+	const pattern = new RegExp(patternText, 'giu'); // case-insensitive, global, unicode
 
 	const matches: string[] = [];
 	let match;
@@ -50,7 +50,6 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 	// Find all matches and collect unique ones (case-insensitive)
 	while ((match = pattern.exec(text)) !== null) {
 		const matchedText = match[0];
-		console.log('matchedText', matchedText);
 		if (!seen.has(matchedText.toLowerCase())) {
 			matches.push(matchedText);
 			seen.add(matchedText.toLowerCase());
