@@ -19,32 +19,36 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-const workflowInputs = {
-	chatInput: z.string().optional().describe('Input for chat-based workflows'),
-	formData: z.record(z.unknown()).optional().describe('Input data for form-based workflows'),
-	webhookData: z
+const inputSchema = z.object({
+	workflowId: z.string().describe('The ID of the workflow to execute'),
+	inputs: z
 		.object({
-			body: z.record(z.unknown()).optional().describe('Request body data (main webhook payload)'),
-			headers: z
-				.record(z.string())
+			chatInput: z.string().optional().describe('Input for chat-based workflows'),
+			formData: z.record(z.unknown()).optional().describe('Input data for form-based workflows'),
+			webhookData: z
+				.object({
+					body: z
+						.record(z.unknown())
+						.optional()
+						.describe('Request body data (main webhook payload)'),
+					headers: z
+						.record(z.string())
+						.optional()
+						.describe('HTTP headers (e.g., authorization, content-type)'),
+					query: z.record(z.string()).optional().describe('Query string parameters'),
+					params: z.record(z.string()).optional().describe('URL path parameters'),
+					method: z
+						.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])
+						.optional()
+						.default('POST')
+						.describe('HTTP method (defaults to POST)'),
+				})
 				.optional()
-				.describe('HTTP headers (e.g., authorization, content-type)'),
-			query: z.record(z.string()).optional().describe('Query string parameters'),
-			params: z.record(z.string()).optional().describe('URL path parameters'),
-			method: z
-				.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])
-				.optional()
-				.default('POST')
-				.describe('HTTP method (defaults to POST)'),
+				.describe('Input data for webhook-based workflows'),
 		})
 		.optional()
-		.describe('Input data for webhook-based workflows'),
-} satisfies z.ZodRawShape;
-
-const inputSchema = {
-	workflowId: z.string().describe('The ID of the workflow to execute'),
-	inputs: z.object(workflowInputs).optional().describe('Inputs to provide to the workflow'),
-} satisfies z.ZodRawShape;
+		.describe('Inputs to provide to the workflow'),
+});
 
 const outputSchema = {
 	success: z.boolean(),
@@ -59,11 +63,11 @@ export const createExecuteWorkflowTool = (
 	workflowFinderService: WorkflowFinderService,
 	activeExecutions: ActiveExecutions,
 	workflowRunner: WorkflowRunner,
-): ToolDefinition<typeof inputSchema> => ({
+): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'execute_workflow',
 	config: {
 		description: 'Execute a workflow by id',
-		inputSchema,
+		inputSchema: inputSchema.shape,
 		outputSchema,
 	},
 	handler: async ({ workflowId, inputs }) => {
@@ -152,10 +156,10 @@ const getPinDataForTrigger = (
 				[node.name]: [
 					{
 						json: {
-							headers: inputs.webhookInput?.headers ?? {},
-							params: inputs.webhookInput?.params ?? {},
-							query: inputs.webhookInput?.query ?? {},
-							body: inputs.webhookInput?.body ?? {},
+							headers: inputs.webhookData?.headers ?? {},
+							params: inputs.webhookData?.params ?? {},
+							query: inputs.webhookData?.query ?? {},
+							body: inputs.webhookData?.body ?? {},
 							executionMode: 'manual',
 						},
 					},
