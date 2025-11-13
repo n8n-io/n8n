@@ -126,12 +126,17 @@ export class CredentialsFinderService {
 		});
 
 		if (!sharedCredential && scopes.length === 1 && scopes[0] === 'credential:read') {
-			const globalCredential = await this.credentialsRepository.findBy({
-				id: credentialsId,
-				isGlobal: true,
+			const globalCredential = await this.credentialsRepository.findOne({
+				where: {
+					id: credentialsId,
+					isGlobal: true,
+				},
+				relations: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
 			});
 
-			return globalCredential.length ? globalCredential[0] : null;
+			return globalCredential;
 		}
 
 		return sharedCredential ? sharedCredential.credentials : null;

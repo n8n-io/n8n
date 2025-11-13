@@ -89,6 +89,26 @@ export class CredentialsService {
 
 	async getMany(
 		user: User,
+		options: {
+			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			includeScopes?: boolean;
+			includeData: true;
+			onlySharedWithMe?: boolean;
+			includeGlobal?: boolean;
+		},
+	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
+	async getMany(
+		user: User,
+		options?: {
+			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			includeScopes?: boolean;
+			includeData?: boolean;
+			onlySharedWithMe?: boolean;
+			includeGlobal?: boolean;
+		},
+	): Promise<CredentialsEntity[]>;
+	async getMany(
+		user: User,
 		{
 			listQueryOptions = {},
 			includeScopes = false,
@@ -212,6 +232,24 @@ export class CredentialsService {
 		}
 	}
 
+	private async enrichCredentials(
+		credentials: CredentialsEntity[],
+		user: User,
+		isDefaultSelect: boolean,
+		includeScopes: boolean,
+		includeData: true,
+		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		onlySharedWithMe: boolean,
+	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
+	private async enrichCredentials(
+		credentials: CredentialsEntity[],
+		user: User,
+		isDefaultSelect: boolean,
+		includeScopes: boolean,
+		includeData: boolean,
+		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		onlySharedWithMe: boolean,
+	): Promise<CredentialsEntity[]>;
 	private async enrichCredentials(
 		credentials: CredentialsEntity[],
 		user: User,
