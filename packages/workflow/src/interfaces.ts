@@ -927,6 +927,8 @@ export interface FunctionsBase {
 	getActivationMode?: () => WorkflowActivateMode;
 	getChatTrigger: () => INode | null;
 
+	getExecutionContext: () => IExecutionContext | undefined;
+
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
 }
