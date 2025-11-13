@@ -122,7 +122,7 @@ const iconColor = computed(() => {
 }
 
 .menuItem:hover {
-	background-color: var(--color--foreground);
+	background-color: var(--color--foreground--shade-2);
 	color: var(--color--text--shade-1);
 }
 

@@ -1,7 +1,8 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 
-import { N8nIconButton } from '@n8n/design-system/components';
+import { N8nIconButton, N8nText } from '@n8n/design-system/components';
+import N8nScrollArea from '@n8n/design-system/components/N8nScrollArea/N8nScrollArea.vue';
 import type { IMenuItem } from '@n8n/design-system/types';
 
 import MenuItem from '../MenuItem/MenuItem.vue';
@@ -98,6 +99,12 @@ const collapsed = ref(false);
 function toggleSidebar() {
 	collapsed.value = !collapsed.value;
 }
+
+const projectsVisible = ref(true);
+
+function toggleProjects() {
+	projectsVisible.value = !projectsVisible.value;
+}
 </script>
 
 <template>
@@ -130,66 +137,84 @@ function toggleSidebar() {
 				/>
 			</div>
 		</div>
-		<div class="section">
-			<MenuItem
-				:collapsed
-				:item="{
-					id: 'Overview',
-					label: 'Overview',
-					icon: 'house',
-				}"
-			/>
-			<MenuItem
-				:collapsed
-				:item="{
-					id: 'personal',
-					label: 'Personal',
-					icon: 'user',
-				}"
-			/>
-			<MenuItem
-				:collapsed
-				:item="{
-					id: 'shared',
-					label: 'Shared',
-					icon: 'share',
-				}"
-			/>
-		</div>
-		<div class="section">
-			<Tree :items="items">
-				<template #default="{ item, handleToggle, isExpanded, hasChildren }">
-					<MenuItem :key="item.value.id" :item="item.value" :collapsed>
-						<template v-if="hasChildren" #toggle>
-							<N8nIconButton
-								size="mini"
-								type="highlight"
-								:icon="isExpanded ? 'chevron-down' : 'chevron-right'"
-								icon-size="medium"
-								aria-label="Go to details"
-								@click="handleToggle"
-							/>
+		<N8nScrollArea as-child>
+			<div class="scroll">
+				<div class="section">
+					<MenuItem
+						:collapsed
+						:item="{
+							id: 'Overview',
+							label: 'Overview',
+							icon: 'house',
+						}"
+					/>
+					<MenuItem
+						:collapsed
+						:item="{
+							id: 'personal',
+							label: 'Personal',
+							icon: 'user',
+						}"
+					/>
+					<MenuItem
+						:collapsed
+						:item="{
+							id: 'shared',
+							label: 'Shared',
+							icon: 'share',
+						}"
+					/>
+				</div>
+				<div class="section">
+					<button v-if="!collapsed" class="projectToggle" @click="toggleProjects">
+						<N8nText color="foreground-xdark">Projects</N8nText>
+					</button>
+					<Tree v-if="projectsVisible" :items="items">
+						<template #default="{ item, handleToggle, isExpanded, hasChildren }">
+							<MenuItem :key="item.value.id" :item="item.value" :collapsed>
+								<template v-if="hasChildren" #toggle>
+									<N8nIconButton
+										size="mini"
+										type="highlight"
+										:icon="isExpanded ? 'chevron-down' : 'chevron-right'"
+										icon-size="medium"
+										aria-label="Go to details"
+										@click="handleToggle"
+									/>
+								</template>
+								<template #actions>
+									<N8nIconButton
+										size="mini"
+										type="highlight"
+										icon="ellipsis"
+										icon-size="medium"
+										aria-label="Go to details"
+									/>
+									<N8nIconButton
+										size="mini"
+										type="highlight"
+										icon="plus"
+										icon-size="medium"
+										aria-label="Go to details"
+									/>
+								</template>
+							</MenuItem>
 						</template>
-						<template #actions>
-							<N8nIconButton
-								size="mini"
-								type="highlight"
-								icon="ellipsis"
-								icon-size="medium"
-								aria-label="Go to details"
-							/>
-							<N8nIconButton
-								size="mini"
-								type="highlight"
-								icon="plus"
-								icon-size="medium"
-								aria-label="Go to details"
-							/>
-						</template>
-					</MenuItem>
-				</template>
-			</Tree>
-		</div>
+					</Tree>
+				</div>
+				<footer class="footer">
+					<MenuItem
+						:collapsed
+						:item="{
+							id: 'help',
+							label: 'Help',
+							icon: 'circle-help',
+						}"
+					/>
+				</footer>
+			</div>
+		</N8nScrollArea>
+		<div class="env"></div>
 	</div>
 </template>
 
@@ -208,11 +233,17 @@ function toggleSidebar() {
 .header {
 	display: flex;
 	padding: 2px;
-	margin-bottom: 8px;
+	margin-bottom: 12px;
 }
 
 .toggle {
 	margin-right: auto;
+}
+
+.scroll {
+	height: 100%;
+	display: flex;
+	flex-direction: column;
 }
 
 .actions {
@@ -222,6 +253,22 @@ function toggleSidebar() {
 
 .section {
 	margin-bottom: 16px;
-	border-bottom: 1px solid red;
+}
+
+.projectToggle {
+	padding: 2px 8px;
+	background: none;
+	border: none;
+	width: 100%;
+	text-align: left;
+	margin-bottom: 8px;
+}
+
+.env {
+	background-color: rgb(82, 150, 214);
+}
+
+.footer {
+	margin-top: auto;
 }
 </style>

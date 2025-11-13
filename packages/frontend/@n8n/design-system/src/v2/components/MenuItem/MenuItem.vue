@@ -2,7 +2,7 @@
 import type { PrimitiveProps } from 'reka-ui';
 import { Primitive } from 'reka-ui';
 import type { Component } from 'vue';
-import { computed } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 
 import { N8nIcon, N8nText } from '@n8n/design-system/components';
 import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
@@ -32,6 +32,14 @@ type MenuItemProps = MenuItemAsButton | MenuItemAsLink | MenuItemAsComponent;
 interface BaseProps {
 	item: IMenuItem;
 	collapsed?: boolean;
+	/** When `true`, prevents the user from interacting with the item. */
+	disabled?: boolean;
+	/**
+	 * Optional text used for typeahead purposes. By default the typeahead
+	 * behavior will use the `.textContent` of the item.
+	 * Use this when the content is complex, or you have non-textual content inside.
+	 */
+	textValue?: string;
 }
 
 const props = withDefaults(defineProps<MenuItemProps & BaseProps>(), {
@@ -42,6 +50,36 @@ const emit = defineEmits<{
 	click: [event: MouseEvent];
 	select: [event: Event];
 }>();
+
+const isFocused = ref(false);
+
+// Helper function to check if event is from mouse
+function isMouseEvent(event: PointerEvent): boolean {
+	return event.pointerType === 'mouse';
+}
+
+// Pointer event handlers for better mouse interaction
+async function handlePointerMove(event: PointerEvent) {
+	if (event.defaultPrevented) return;
+	if (!isMouseEvent(event)) return;
+
+	if (props.disabled || props.item.disabled) {
+		// Handle item leave if disabled
+		// TODO: Integrate with menu content context when available
+	} else {
+		// Focus the item for keyboard navigation
+		const item = event.currentTarget;
+		(item as HTMLElement)?.focus({ preventScroll: true });
+	}
+}
+
+async function handlePointerLeave(event: PointerEvent) {
+	await nextTick();
+	if (event.defaultPrevented) return;
+	if (!isMouseEvent(event)) return;
+
+	// TODO: Integrate with menu content context when available
+}
 
 const icon = computed<
 	{ value: IconName; type: 'icon' } | { value: string; type: 'emoji' } | undefined
@@ -57,13 +95,23 @@ const icon = computed<
 
 <template>
 	<Primitive
-		v-bind="props"
+		v-bind="$attrs"
 		:class="[
 			$style.MenuItem,
-			{ [$style.MenuItemCollapsed]: collapsed, [$style.MenuItemDisabled]: item.disabled },
+			{
+				[$style.MenuItemCollapsed]: collapsed,
+				[$style.MenuItemDisabled]: disabled || item.disabled,
+				[$style.MenuItemFocused]: isFocused,
+			},
 		]"
+		:disabled="disabled || item.disabled"
+		:data-textvalue="textValue || item.label"
 		@click="emit('click', $event)"
 		@select="emit('select', $event)"
+		@pointermove="handlePointerMove"
+		@pointerleave="handlePointerLeave"
+		@focus="isFocused = true"
+		@blur="isFocused = false"
 	>
 		<div v-if="icon" :class="$style.MenuItemIcon">
 			<span v-if="item.notification" :class="$style.MenuItemNotification" />
@@ -122,7 +170,7 @@ const icon = computed<
 .MenuItem:hover,
 .MenuItem:focus-visible,
 .MenuItem:has(:focus-visible) {
-	background-color: var(--color--background);
+	background-color: var(--color--background--light-1);
 	cursor: pointer;
 }
 
@@ -199,5 +247,9 @@ const icon = computed<
 	opacity: 0.75;
 	pointer-events: none;
 	cursor: not-allowed;
+}
+
+.MenuItemFocused {
+	background-color: var(--color--background);
 }
 </style>
