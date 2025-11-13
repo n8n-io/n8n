@@ -187,7 +187,8 @@ export class WorkflowsController {
 				transactionManager,
 			);
 
-			if (workflow.active) {
+			const shouldActivate = req.body.active === true;
+			if (shouldActivate) {
 				workflow.activeVersionId = workflow.versionId;
 				await transactionManager.save(workflow);
 			}

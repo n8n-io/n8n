@@ -87,8 +87,8 @@ export class ImportService {
 		const { manager: dbManager } = this.credentialsRepository;
 		await dbManager.transaction(async (tx) => {
 			for (const workflow of workflows) {
-				if (workflow.active) {
-					workflow.active = false;
+				if (workflow.activeVersionId !== null) {
+					workflow.activeVersionId = null;
 
 					this.logger.info(`Deactivating workflow "${workflow.name}". Remember to activate later.`);
 				}

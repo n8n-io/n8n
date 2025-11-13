@@ -114,7 +114,7 @@ export class JobProcessor {
 			name: execution.workflowData.name,
 			nodes: execution.workflowData.nodes,
 			connections: execution.workflowData.connections,
-			active: execution.workflowData.active,
+			active: !!execution.workflowData.activeVersionId,
 			nodeTypes: this.nodeTypes,
 			staticData,
 			settings: execution.workflowData.settings,

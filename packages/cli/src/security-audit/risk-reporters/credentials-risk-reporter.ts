@@ -94,7 +94,7 @@ export class CredentialsRiskReporter implements RiskReporter {
 
 					credsInAnyUse.add(cred.id);
 
-					if (workflow.active) credsInActiveUse.add(cred.id);
+					if (workflow.activeVersionId) credsInActiveUse.add(cred.id);
 				});
 			});
 		});

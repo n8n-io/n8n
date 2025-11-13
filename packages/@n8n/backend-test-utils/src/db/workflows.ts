@@ -15,10 +15,9 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 export function newWorkflow(attributes: Partial<IWorkflowDb> = {}): IWorkflowDb {
-	const { active, isArchived, name, nodes, connections, versionId, settings } = attributes;
+	const { isArchived, name, nodes, connections, versionId, settings } = attributes;
 
 	const workflowEntity = Container.get(WorkflowRepository).create({
-		active: active ?? false,
 		isArchived: isArchived ?? false,
 		name: name ?? 'test workflow',
 		nodes: nodes ?? [
@@ -258,7 +257,7 @@ export async function setActiveVersion(workflowId: string, versionId: string): P
  * @param user user to assign the workflow to
  */
 export async function createActiveWorkflow(attributes: Partial<IWorkflowDb> = {}, user?: User) {
-	const workflow = await createWorkflowWithTriggerAndHistory({ active: true, ...attributes }, user);
+	const workflow = await createWorkflowWithTriggerAndHistory(attributes, user);
 
 	await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -278,7 +277,7 @@ export async function createWorkflowWithActiveVersion(
 	attributes: Partial<IWorkflowDb> = {},
 	user?: User,
 ) {
-	const workflow = await createWorkflowWithTriggerAndHistory({ active: true, ...attributes }, user);
+	const workflow = await createWorkflowWithTriggerAndHistory(attributes, user);
 
 	await Container.get(WorkflowHistoryRepository).insert({
 		workflowId: workflow.id,

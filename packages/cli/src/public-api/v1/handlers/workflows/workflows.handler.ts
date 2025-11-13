@@ -46,7 +46,6 @@ export = {
 		async (req: WorkflowRequest.Create, res: express.Response): Promise<express.Response> => {
 			const workflow = req.body;
 
-			workflow.active = false;
 			workflow.versionId = uuid();
 
 			await replaceInvalidCredentials(workflow);
@@ -218,10 +217,10 @@ export = {
 				where.id = In(workflowsIds);
 			}
 
-			const selectFields: (keyof WorkflowEntity)[] = [
+			const selectFields: Array<keyof WorkflowEntity> = [
 				'id',
 				'name',
-				'active',
+				'activeVersionId',
 				'createdAt',
 				'updatedAt',
 				'isArchived',
@@ -300,7 +299,7 @@ export = {
 
 			const workflowManager = Container.get(ActiveWorkflowManager);
 
-			if (workflow.active) {
+			if (workflow.activeVersionId) {
 				// When workflow gets saved always remove it as the triggers could have been
 				// changed and so the changes would not take effect
 				await workflowManager.remove(id);
@@ -329,7 +328,7 @@ export = {
 				}
 			}
 
-			if (workflow.active) {
+			if (workflow.activeVersionId) {
 				try {
 					await workflowManager.add(workflow.id, 'update');
 				} catch (error) {
@@ -375,7 +374,7 @@ export = {
 			const newVersionIsBeingActivated =
 				activeVersionId && activeVersionId !== workflow.activeVersion?.versionId;
 
-			if (!workflow.active || newVersionIsBeingActivated) {
+			if (!workflow.activeVersionId || newVersionIsBeingActivated) {
 				try {
 					// change the status to active in the DB
 					const activeVersion = await setWorkflowAsActive(req.user, workflow.id, activeVersionId);
@@ -383,13 +382,11 @@ export = {
 					await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
 
 					// Update the workflow object for response
-					workflow.active = true;
 					workflow.activeVersion = activeVersion;
 				} catch (error) {
 					// Rollback: restore previous state
 					await Container.get(WorkflowRepository).update(workflow.id, {
-						active: workflow.active,
-						activeVersion: workflow.activeVersion,
+						activeVersionId: workflow.activeVersionId,
 						updatedAt: new Date(),
 					});
 
@@ -432,12 +429,10 @@ export = {
 
 			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
-			if (workflow.active) {
+			if (workflow.activeVersionId) {
 				await activeWorkflowManager.remove(workflow.id);
 
 				await setWorkflowAsInactive(workflow.id);
-
-				workflow.active = false;
 
 				Container.get(EventService).emit('workflow-deactivated', {
 					user: req.user,

@@ -37,7 +37,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 	const pristineWorkflowData: IWorkflowBase = pick(workflowData, [
 		'id',
 		'name',
-		'active',
+		'activeVersionId',
 		'isArchived',
 		'createdAt',
 		'updatedAt',

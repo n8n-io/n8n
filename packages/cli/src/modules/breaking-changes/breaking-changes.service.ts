@@ -91,7 +91,7 @@ export class BreakingChangeService {
 		// Process workflows in batches
 		for (let skip = 0; skip < totalWorkflows; skip += this.batchSize) {
 			const workflows = await this.workflowRepository.find({
-				select: ['id', 'name', 'active', 'nodes', 'updatedAt', 'statistics'],
+				select: ['id', 'name', 'activeVersionId', 'versionId', 'nodes', 'updatedAt', 'statistics'],
 				skip,
 				take: this.batchSize,
 				order: { id: 'ASC' },
@@ -119,7 +119,7 @@ export class BreakingChangeService {
 						const affectedWorkflow: BreakingChangeAffectedWorkflow = {
 							id: workflow.id,
 							name: workflow.name,
-							active: workflow.active,
+							active: !!workflow.activeVersionId,
 							issues: workflowDetectionResult.issues,
 							numberOfExecutions: workflow.statistics.reduce(
 								(acc, cur) => acc + (cur.count || 0),

@@ -634,7 +634,7 @@ export class SourceControlImportService {
 		const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(userId);
 		const candidateIds = candidates.map((c) => c.id);
 		const existingWorkflows = await this.workflowRepository.findByIds(candidateIds, {
-			fields: ['id', 'name', 'versionId', 'active'],
+			fields: ['id', 'name', 'versionId', 'activeVersionId'],
 		});
 
 		const folders = await this.folderRepository.find({ select: ['id'] });
@@ -662,9 +662,11 @@ export class SourceControlImportService {
 			// IWorkflowToImport having it typed as boolean. Imported workflows are always inactive if they are new,
 			// and existing workflows use the existing workflow's active status unless they have been archived on the remote.
 			// In that case, we deactivate the existing workflow on pull and turn it archived.
-			importedWorkflow.active = existingWorkflow
-				? existingWorkflow.active && !importedWorkflow.isArchived
-				: false;
+			importedWorkflow.activeVersionId = existingWorkflow
+				? existingWorkflow.activeVersionId && !importedWorkflow.isArchived
+					? (existingWorkflow.activeVersionId ?? null)
+					: null
+				: null;
 
 			const parentFolderId = importedWorkflow.parentFolderId ?? '';
 
@@ -695,7 +697,7 @@ export class SourceControlImportService {
 				repository: this.sharedWorkflowRepository,
 			});
 
-			if (existingWorkflow?.active) {
+			if (existingWorkflow?.activeVersionId) {
 				await this.activateImportedWorkflow({ existingWorkflow, importedWorkflow });
 			}
 
@@ -733,7 +735,7 @@ export class SourceControlImportService {
 			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
 			await this.activeWorkflowManager.remove(existingWorkflow.id);
 
-			if (importedWorkflow.active) {
+			if (importedWorkflow.activeVersionId) {
 				// try activating the imported workflow
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');

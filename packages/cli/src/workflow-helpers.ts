@@ -239,5 +239,5 @@ export function getActiveVersionUpdateValue(
 		return null;
 	}
 
-	return dbWorkflow.active ? updatedVersion : null;
+	return dbWorkflow.activeVersionId !== null ? updatedVersion : null;
 }

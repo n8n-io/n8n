@@ -1,6 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
-import { DataSource, Repository, In, Like } from '@n8n/typeorm';
+import { DataSource, Repository, In, Like, IsNull, Not } from '@n8n/typeorm';
 import type {
 	SelectQueryBuilder,
 	UpdateResult,
@@ -71,7 +71,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async getAllActiveIds() {
 		const result = await this.find({
 			select: { id: true },
-			where: { active: true },
+			where: { activeVersionId: Not(IsNull()) },
 			relations: { shared: { project: { projectRelations: true } } },
 		});
 
@@ -81,7 +81,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async getActiveIds({ maxResults }: { maxResults?: number } = {}) {
 		const activeWorkflows = await this.find({
 			select: ['id'],
-			where: { active: true },
+			where: { activeVersionId: Not(IsNull()) },
 			// 'take' and 'order' are only needed when maxResults is provided:
 			...(maxResults ? { take: maxResults, order: { createdAt: 'ASC' } } : {}),
 		});
@@ -90,7 +90,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async getActiveCount() {
 		return await this.count({
-			where: { active: true },
+			where: { activeVersionId: Not(IsNull()) },
 		});
 	}
 
@@ -113,7 +113,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async getActiveTriggerCount() {
 		const totalTriggerCount = await this.sum('triggerCount', {
-			active: true,
+			activeVersionId: Not(IsNull()),
 		});
 		return totalTriggerCount ?? 0;
 	}
@@ -585,7 +585,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		filter: ListQuery.Options['filter'],
 	): void {
 		if (typeof filter?.active === 'boolean') {
-			qb.andWhere('workflow.active = :active', { active: filter.active });
+			if (filter.active) {
+				qb.andWhere('workflow.activeVersionId IS NOT NULL');
+			} else {
+				qb.andWhere('workflow.activeVersionId IS NULL');
+			}
 		}
 	}
 
@@ -681,11 +685,11 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			qb.select([
 				'workflow.id',
 				'workflow.name',
-				'workflow.active',
 				'workflow.isArchived',
 				'workflow.createdAt',
 				'workflow.updatedAt',
 				'workflow.versionId',
+				'workflow.activeVersionId',
 				'workflow.settings',
 				'workflow.description',
 			]);
@@ -806,11 +810,20 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async updateActiveState(workflowId: string, newState: boolean) {
-		return await this.update({ id: workflowId }, { active: newState });
+		if (newState) {
+			// When activating, set activeVersionId to current versionId (this will change with V2)
+			const workflow = await this.findOne({ where: { id: workflowId }, select: ['versionId'] });
+			if (!workflow) {
+				throw new Error(`Workflow ${workflowId} not found`);
+			}
+			return await this.update({ id: workflowId }, { activeVersionId: workflow.versionId });
+		} else {
+			return await this.update({ id: workflowId }, { activeVersionId: null });
+		}
 	}
 
 	async deactivateAll() {
-		return await this.update({ active: true }, { active: false, activeVersion: null });
+		return await this.update({ activeVersionId: Not(IsNull()) }, { activeVersionId: null });
 	}
 
 	// We're planning to remove this command in V2, so for now set activeVersion to the current version
@@ -819,15 +832,14 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			.createQueryBuilder()
 			.update(WorkflowEntity)
 			.set({
-				active: true,
 				activeVersionId: () => 'versionId',
 			})
-			.where('active = :active', { active: false })
+			.where('activeVersionId IS NULL')
 			.execute();
 	}
 
 	async findByActiveState(activeState: boolean) {
-		return await this.findBy({ active: activeState });
+		return await this.findBy({ activeVersionId: activeState ? Not(IsNull()) : IsNull() });
 	}
 
 	async moveAllToFolder(fromFolderId: string, toFolderId: string, tx: EntityManager) {
@@ -863,12 +875,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		);
 
 		const workflows: Array<
-			Pick<WorkflowEntity, 'id' | 'name' | 'active'> & Partial<Pick<WorkflowEntity, 'nodes'>>
+			Pick<WorkflowEntity, 'id' | 'name' | 'activeVersionId'> &
+				Partial<Pick<WorkflowEntity, 'nodes'>>
 		> = await qb
 			.select([
 				'workflow.id',
 				'workflow.name',
-				'workflow.active',
+				'workflow.activeVersionId',
 				...(includeNodes ? ['workflow.nodes'] : []),
 			])
 			.where(whereClause, parameters)
