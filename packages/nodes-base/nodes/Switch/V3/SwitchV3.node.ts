@@ -52,7 +52,7 @@ export class SwitchV3 implements INodeType {
 		this.description = {
 			...baseDescription,
 			subtitle: `=mode: {{(${capitalize})($parameter["mode"])}}`,
-			version: [3, 3.1, 3.2],
+			version: [3, 3.1, 3.2, 3.3],
 			defaults: {
 				name: 'Switch',
 				color: '#506000',
@@ -84,9 +84,24 @@ export class SwitchV3 implements INodeType {
 					displayName: 'Number of Outputs',
 					name: 'numberOutputs',
 					type: 'number',
+					noDataExpression: true,
 					displayOptions: {
 						show: {
 							mode: ['expression'],
+							'@version': [{ _cnd: { gte: 3.3 } }],
+						},
+					},
+					default: 4,
+					description: 'How many outputs to create',
+				},
+				{
+					displayName: 'Number of Outputs',
+					name: 'numberOutputs',
+					type: 'number',
+					displayOptions: {
+						show: {
+							mode: ['expression'],
+							'@version': [{ _cnd: { lt: 3.3 } }],
 						},
 					},
 					default: 4,

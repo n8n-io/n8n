@@ -148,7 +148,11 @@ describe('FormTrigger', () => {
 					formFields: { values: formFields },
 				},
 			},
-			request: { method: 'POST' },
+			request: {
+				method: 'POST',
+				headers: { 'content-type': 'multipart/form-data' },
+				contentType: 'multipart/form-data',
+			},
 			bodyData,
 		});
 
@@ -207,7 +211,10 @@ describe('FormTrigger', () => {
 					],
 				}),
 			).rejects.toEqual(
-				new NodeOperationError(mock<INode>(), 'On form submission node not correctly configured'),
+				new NodeOperationError(
+					mock<INode>(),
+					'Unused Respond to Webhook node found in the workflow',
+				),
 			);
 		});
 	});
@@ -314,7 +321,11 @@ describe('FormTrigger', () => {
 					formFields: { values: formFields },
 				},
 			},
-			request: { method: 'POST' },
+			request: {
+				method: 'POST',
+				headers: { 'content-type': 'multipart/form-data' },
+				contentType: 'multipart/form-data',
+			},
 			bodyData,
 		});
 

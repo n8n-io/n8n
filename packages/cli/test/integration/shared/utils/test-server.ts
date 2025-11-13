@@ -232,7 +232,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'community-packages':
-						await import('@/community-packages/community-packages.controller');
+						await import('@/modules/community-packages/community-packages.controller');
 						break;
 
 					case 'me':
@@ -260,7 +260,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'workflowHistory':
-						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
+						await import('@/workflows/workflow-history/workflow-history.controller');
 						break;
 
 					case 'binaryData':
@@ -306,12 +306,20 @@ export const setupTestServer = ({
 						await import('@/modules/insights/insights.module');
 						break;
 
-					case 'data-store':
-						await import('@/modules/data-store/data-store.module');
+					case 'data-table':
+						await import('@/modules/data-table/data-table.module');
+						break;
+
+					case 'mcp':
+						await import('@/modules/mcp/mcp.module');
 						break;
 
 					case 'module-settings':
 						await import('@/controllers/module-settings.controller');
+						break;
+
+					case 'third-party-licenses':
+						await import('@/controllers/third-party-licenses.controller');
 						break;
 				}
 			}

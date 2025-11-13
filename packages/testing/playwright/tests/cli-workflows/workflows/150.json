@@ -71,6 +71,7 @@
 					"name": "PostHog API"
 				}
 			},
+			"disabled": true,
 			"id": "dd146375-b44f-445a-a2a4-fbaeb9028b0c"
 		},
 		{
@@ -100,6 +101,7 @@
 					"name": "PostHog API"
 				}
 			},
+			"disabled": true,
 			"id": "cb1f2644-f1a7-46b0-950e-de720819b2b7"
 		},
 		{
@@ -122,6 +124,7 @@
 					"name": "PostHog API"
 				}
 			},
+			"disabled": true,
 			"id": "88973d09-036b-41c3-a24c-d799ef0354e2"
 		},
 		{
@@ -145,6 +148,7 @@
 					"name": "PostHog API"
 				}
 			},
+			"disabled": true,
 			"id": "2677f5a4-9a15-41f2-a8c0-ea42f269f57b"
 		}
 	],

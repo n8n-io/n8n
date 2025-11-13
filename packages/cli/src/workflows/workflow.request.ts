@@ -16,6 +16,7 @@ export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
 		id: string; // deleted if sent
 		name: string;
+		description: string | null;
 		nodes: INode[];
 		connections: IConnections;
 		settings: IWorkflowSettings;
@@ -25,6 +26,7 @@ export declare namespace WorkflowRequest {
 		meta: Record<string, unknown>;
 		projectId: string;
 		parentFolderId?: string;
+		uiContext?: string;
 	}>;
 
 	type ManualRunPayload = {
@@ -52,6 +54,7 @@ export declare namespace WorkflowRequest {
 			includeScopes?: string;
 			includeFolders?: string;
 			onlySharedWithMe?: string;
+			availableInMCP?: string;
 		}
 	> & {
 		listQueryOptions: ListQuery.Options;

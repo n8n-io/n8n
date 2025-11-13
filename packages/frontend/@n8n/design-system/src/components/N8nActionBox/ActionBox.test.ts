@@ -14,7 +14,7 @@ describe('N8NActionBox', () => {
 				buttonType: 'primary',
 			},
 			global: {
-				stubs: ['n8n-heading', 'n8n-text', 'n8n-button', 'n8n-callout'],
+				stubs: ['N8nHeading', 'N8nText', 'N8nButton', 'N8nCallout'],
 			},
 		});
 		expect(wrapper.html()).toMatchSnapshot();

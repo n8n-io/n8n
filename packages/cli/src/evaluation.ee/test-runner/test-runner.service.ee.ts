@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import type { User, TestRun } from '@n8n/db';
 import { TestCaseExecutionRepository, TestRunRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -10,6 +11,7 @@ import {
 	NodeConnectionTypes,
 	metricRequiresModelConnection,
 	DEFAULT_EVALUATION_METRIC,
+	ManualExecutionCancelledError,
 } from 'n8n-workflow';
 import type {
 	IDataObject,
@@ -22,9 +24,9 @@ import type {
 	IExecuteData,
 } from 'n8n-workflow';
 import assert from 'node:assert';
+import { JsonObject } from 'openid-client';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { TestCaseExecutionError, TestRunError } from '@/evaluation.ee/test-runner/errors.ee';
 import {
 	checkNodeParameterNotEmpty,
@@ -34,7 +36,6 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { EvaluationMetrics } from './evaluation-metrics.ee';
-import { JsonObject } from 'openid-client';
 
 export interface TestRunMetadata {
 	testRunId: string;
@@ -68,6 +69,7 @@ export class TestRunnerService {
 		private readonly testRunRepository: TestRunRepository,
 		private readonly testCaseExecutionRepository: TestCaseExecutionRepository,
 		private readonly errorReporter: ErrorReporter,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {}
 
 	/**
@@ -87,12 +89,22 @@ export class TestRunnerService {
 			throw new TestRunError('EVALUATION_TRIGGER_NOT_FOUND');
 		}
 
-		if (
-			!triggerNode.credentials ||
-			!checkNodeParameterNotEmpty(triggerNode.parameters?.documentId) ||
-			!checkNodeParameterNotEmpty(triggerNode.parameters?.sheetName)
-		) {
-			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: triggerNode.name });
+		const { parameters, credentials, name, typeVersion } = triggerNode;
+		const source = parameters?.source
+			? (parameters.source as string)
+			: typeVersion >= 4.7
+				? 'dataTable'
+				: 'googleSheets';
+
+		const isConfigured =
+			source === 'dataTable'
+				? checkNodeParameterNotEmpty(parameters?.dataTableId)
+				: !!credentials &&
+					checkNodeParameterNotEmpty(parameters?.documentId) &&
+					checkNodeParameterNotEmpty(parameters?.sheetName);
+
+		if (!isConfigured) {
+			throw new TestRunError('EVALUATION_TRIGGER_NOT_CONFIGURED', { node_name: name });
 		}
 
 		if (triggerNode?.disabled) {
@@ -242,7 +254,6 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
-			partialExecutionVersion: 2,
 			triggerToStartFrom: {
 				name: triggerNode.name,
 			},
@@ -250,7 +261,7 @@ export class TestRunnerService {
 
 		// When in queue mode, we need to pass additional data to the execution
 		// the same way as it would be passed in manual mode
-		if (config.getEnv('executions.mode') === 'queue') {
+		if (this.executionsConfig.mode === 'queue') {
 			data.executionData = {
 				resultData: {
 					pinData,
@@ -258,7 +269,6 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
-					partialExecutionVersion: 2,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},
@@ -272,7 +282,10 @@ export class TestRunnerService {
 
 		// Listen to the abort signal to stop the execution in case test run is cancelled
 		abortSignal.addEventListener('abort', () => {
-			this.activeExecutions.stopExecution(executionId);
+			this.activeExecutions.stopExecution(
+				executionId,
+				new ManualExecutionCancelledError(executionId),
+			);
 		});
 
 		// Wait for the execution to finish
@@ -319,7 +332,6 @@ export class TestRunnerService {
 				},
 			},
 			userId: metadata.userId,
-			partialExecutionVersion: 2,
 			executionData: {
 				startData: {
 					destinationNode: triggerNode.name,
@@ -329,7 +341,6 @@ export class TestRunnerService {
 				},
 				manualData: {
 					userId: metadata.userId,
-					partialExecutionVersion: 2,
 					triggerToStartFrom: {
 						name: triggerNode.name,
 					},
@@ -342,7 +353,7 @@ export class TestRunnerService {
 
 		if (
 			!(
-				config.get('executions.mode') === 'queue' &&
+				this.executionsConfig.mode === 'queue' &&
 				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
 			) &&
 			data.executionData

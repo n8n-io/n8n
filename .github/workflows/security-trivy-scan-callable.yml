@@ -29,6 +29,13 @@ jobs:
     name: Security - Scan Docker Image With Trivy
     runs-on: ubuntu-latest
     steps:
+      - name: Pull Docker image with retry
+        run: |
+          for i in {1..4}; do
+            docker pull "${{ inputs.image_ref }}" && break
+            [ "$i" -lt 4 ] && echo "Retry $i failed, waiting..." && sleep 15
+          done
+
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@dc5a429b52fcf669ce959baa2c2dd26090d2a6c4 # v0.32.0
         id: trivy_scan

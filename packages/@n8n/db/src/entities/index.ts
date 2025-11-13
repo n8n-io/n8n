@@ -11,8 +11,6 @@ import { ExecutionEntity } from './execution-entity';
 import { ExecutionMetadata } from './execution-metadata';
 import { Folder } from './folder';
 import { FolderTagMapping } from './folder-tag-mapping';
-import { InstalledNodes } from './installed-nodes';
-import { InstalledPackages } from './installed-packages';
 import { InvalidAuthToken } from './invalid-auth-token';
 import { ProcessedData } from './processed-data';
 import { Project } from './project';
@@ -28,6 +26,7 @@ import { TestRun } from './test-run.ee';
 import { User } from './user';
 import { Variables } from './variables';
 import { WebhookEntity } from './webhook-entity';
+import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
 import { WorkflowStatistics } from './workflow-statistics';
@@ -35,8 +34,6 @@ import { WorkflowTagMapping } from './workflow-tag-mapping';
 
 export {
 	EventDestinations,
-	InstalledNodes,
-	InstalledPackages,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,
@@ -54,6 +51,7 @@ export {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,
@@ -72,8 +70,6 @@ export {
 
 export const entities = {
 	EventDestinations,
-	InstalledNodes,
-	InstalledPackages,
 	InvalidAuthToken,
 	ProcessedData,
 	Settings,
@@ -90,6 +86,7 @@ export const entities = {
 	SharedWorkflow,
 	TagEntity,
 	User,
+	WorkflowDependency,
 	WorkflowEntity,
 	WorkflowStatistics,
 	WorkflowTagMapping,

@@ -113,4 +113,32 @@ describe('N8nPopoverReka', () => {
 
 		expect(wrapper.props('maxHeight')).toBeUndefined();
 	});
+
+	describe('auto-focus behavior', () => {
+		it('should focus an element in the content slot by default', async () => {
+			const wrapper = render(N8nPopoverReka, {
+				props: { open: true },
+				slots: {
+					trigger: '<button />',
+					content: '<input />',
+				},
+			});
+			const popover = await wrapper.findByRole('dialog');
+
+			expect(popover.contains(document.activeElement)).toBe(true);
+		});
+
+		it('should suppress auto-focus when suppressAutoFocus is true', async () => {
+			const wrapper = render(N8nPopoverReka, {
+				props: { open: true, suppressAutoFocus: true },
+				slots: {
+					trigger: '<button />',
+					content: '<input />',
+				},
+			});
+			const popover = await wrapper.findByRole('dialog');
+
+			expect(popover.contains(document.activeElement)).toBe(false);
+		});
+	});
 });

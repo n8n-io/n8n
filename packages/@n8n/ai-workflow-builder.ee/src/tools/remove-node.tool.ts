@@ -3,6 +3,8 @@ import type { Logger } from '@n8n/backend-common';
 import type { IConnections } from 'n8n-workflow';
 import { z } from 'zod';
 
+import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
+
 import { ValidationError, ToolExecutionError } from '../errors';
 import { createProgressReporter, reportProgress } from './helpers/progress';
 import { createSuccessResponse, createErrorResponse } from './helpers/response';
@@ -69,13 +71,22 @@ function buildResponseMessage(
 	return parts.join('\n');
 }
 
+export const REMOVE_NODE_TOOL: BuilderToolBase = {
+	toolName: 'remove_node',
+	displayTitle: 'Removing node',
+};
+
 /**
  * Factory function to create the remove node tool
  */
-export function createRemoveNodeTool(_logger?: Logger) {
-	return tool(
+export function createRemoveNodeTool(_logger?: Logger): BuilderTool {
+	const dynamicTool = tool(
 		(input, config) => {
-			const reporter = createProgressReporter(config, 'remove_node');
+			const reporter = createProgressReporter(
+				config,
+				REMOVE_NODE_TOOL.toolName,
+				REMOVE_NODE_TOOL.displayTitle,
+			);
 
 			try {
 				// Validate input using Zod schema
@@ -137,7 +148,7 @@ export function createRemoveNodeTool(_logger?: Logger) {
 				const toolError = new ToolExecutionError(
 					error instanceof Error ? error.message : 'Unknown error occurred',
 					{
-						toolName: 'remove_node',
+						toolName: REMOVE_NODE_TOOL.toolName,
 						cause: error instanceof Error ? error : undefined,
 					},
 				);
@@ -146,10 +157,15 @@ export function createRemoveNodeTool(_logger?: Logger) {
 			}
 		},
 		{
-			name: 'remove_node',
+			name: REMOVE_NODE_TOOL.toolName,
 			description:
 				'Remove a node from the workflow by its ID. This will also remove all connections to and from the node. Use this tool when you need to delete a node that is no longer needed in the workflow.',
 			schema: removeNodeSchema,
 		},
 	);
+
+	return {
+		tool: dynamicTool,
+		...REMOVE_NODE_TOOL,
+	};
 }

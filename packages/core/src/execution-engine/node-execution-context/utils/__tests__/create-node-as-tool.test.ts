@@ -115,6 +115,73 @@ describe('createNodeAsTool', () => {
 			expect(tool.schema.shape.booleanWithDefault.description).toBe('Boolean with default');
 		});
 
+		it('should allow omitting parameters with default values', () => {
+			node.parameters = {
+				requiredParam: "={{ $fromAI('requiredParam', 'Required parameter', 'string') }}",
+				optionalParam:
+					"={{ $fromAI('optionalParam', 'Optional parameter', 'string', 'default value') }}",
+				optionalNumber: "={{ $fromAI('optionalNumber', 'Optional number', 'number', 42) }}",
+			};
+
+			const tool = createNodeAsTool(options).response;
+
+			// Test that the schema accepts an object with only the required field
+			// This should NOT throw an error if fields with defaults are truly optional
+			const parseResult = tool.schema.safeParse({ requiredParam: 'test' });
+
+			expect(parseResult.success).toBe(true);
+			if (parseResult.success) {
+				expect(parseResult.data.requiredParam).toBe('test');
+				expect(parseResult.data.optionalParam).toBe('default value');
+				expect(parseResult.data.optionalNumber).toBe(42);
+			}
+
+			// Test that all fields can still be provided
+			const fullParseResult = tool.schema.safeParse({
+				requiredParam: 'test',
+				optionalParam: 'custom value',
+				optionalNumber: 100,
+			});
+
+			expect(fullParseResult.success).toBe(true);
+			if (fullParseResult.success) {
+				expect(fullParseResult.data.requiredParam).toBe('test');
+				expect(fullParseResult.data.optionalParam).toBe('custom value');
+				expect(fullParseResult.data.optionalNumber).toBe(100);
+			}
+		});
+
+		it('should allow omitting parameters with default values = empty string', () => {
+			node.parameters = {
+				requiredParam: "={{ $fromAI('requiredParam', 'Required parameter', 'string') }}",
+				optionalParam: "={{ $fromAI('optionalParam', 'Optional parameter', 'string', '') }}",
+			};
+
+			const tool = createNodeAsTool(options).response;
+
+			// Test that the schema accepts an object with only the required field
+			// This should NOT throw an error if fields with defaults are truly optional
+			const parseResult = tool.schema.safeParse({ requiredParam: 'test' });
+
+			expect(parseResult.success).toBe(true);
+			if (parseResult.success) {
+				expect(parseResult.data.requiredParam).toBe('test');
+				expect(parseResult.data.optionalParam).toBe('');
+			}
+
+			// Test that all fields can still be provided
+			const fullParseResult = tool.schema.safeParse({
+				requiredParam: 'test',
+				optionalParam: 'custom value',
+			});
+
+			expect(fullParseResult.success).toBe(true);
+			if (fullParseResult.success) {
+				expect(fullParseResult.data.requiredParam).toBe('test');
+				expect(fullParseResult.data.optionalParam).toBe('custom value');
+			}
+		});
+
 		it('should handle nested parameters correctly', () => {
 			node.parameters = {
 				topLevel: "={{ $fromAI('topLevel', 'Top level parameter', 'string') }}",

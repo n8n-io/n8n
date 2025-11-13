@@ -5,24 +5,23 @@ on:
     branches:
       - '**'
       - '!release/*'
-    paths-ignore:
-      - packages/@n8n/task-runner-python/**
 
 jobs:
   install-and-build:
     name: Install & Build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     env:
-      NODE_OPTIONS: '--max-old-space-size=3072'
+      NODE_OPTIONS: '--max-old-space-size=6144'
     outputs:
       frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
+      non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
       - name: Check for frontend changes
-        uses: dorny/paths-filter@v3
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3.0.2
         id: paths-filter
         with:
           filters: |
@@ -33,13 +32,19 @@ jobs:
               - packages/@n8n/codemirror-lang/**
               - .bundlemonrc.json
               - .github/workflows/ci-pull-requests.yml
+            non-python:
+              - '**'
+              - '!packages/@n8n/task-runner-python/**'
       - name: Setup and Build
+        if: steps.paths-filter.outputs.non-python == 'true'
         uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
 
       - name: Run format check
+        if: steps.paths-filter.outputs.non-python == 'true'
         run: pnpm format:check
 
       - name: Run typecheck
+        if: steps.paths-filter.outputs.non-python == 'true'
         run: pnpm typecheck
 
       - name: Upload Frontend Build Artifacts
@@ -79,10 +84,11 @@ jobs:
           path: packages/frontend/editor-ui/dist/
 
       - name: BundleMon
-        uses: lironer/bundlemon-action@v1.2.0
+        uses: lironer/bundlemon-action@cadbdd58f86faf1900725ef69d455444124b3748 # v1.3.0
 
   unit-test:
     name: Unit tests
+    if: needs.install-and-build.outputs.non_python_changed == 'true'
     uses: ./.github/workflows/units-tests-reusable.yml
     needs: install-and-build
     with:
@@ -93,6 +99,7 @@ jobs:
 
   lint:
     name: Lint
+    if: needs.install-and-build.outputs.non_python_changed == 'true'
     uses: ./.github/workflows/linting-reusable.yml
     needs: install-and-build
     with:

@@ -32,6 +32,7 @@ import {
 	preparePrompt,
 } from '../common';
 import { SYSTEM_MESSAGE } from '../prompt';
+import { ChatOpenAI } from '@langchain/openai';
 
 /**
  * Creates an agent executor with the given configuration
@@ -104,7 +105,9 @@ async function processEventStream(
 					let chunkText = '';
 					if (Array.isArray(chunkContent)) {
 						for (const message of chunkContent) {
-							chunkText += (message as MessageContentText)?.text;
+							if (message?.type === 'text') {
+								chunkText += (message as MessageContentText)?.text;
+							}
 						}
 					} else if (typeof chunkContent === 'string') {
 						chunkText = chunkContent;
@@ -161,6 +164,16 @@ async function processEventStream(
 	return agentResult;
 }
 
+function checkIsResponsesApi(model: BaseChatModel | null | undefined): boolean {
+	try {
+		const isUsingResponsesApi =
+			!!model && model instanceof ChatOpenAI && 'useResponsesApi' in model && model.useResponsesApi;
+		return isUsingResponsesApi;
+	} catch (error) {
+		return false;
+	}
+}
+
 /* -----------------------------------------------------------
    Main Executor Function
 ----------------------------------------------------------- */
@@ -178,6 +191,7 @@ async function processEventStream(
 export async function toolsAgentExecute(
 	this: IExecuteFunctions | ISupplyDataFunctions,
 ): Promise<INodeExecutionData[][]> {
+	const version = this.getNode().typeVersion;
 	this.logger.debug('Executing Tools Agent V2');
 
 	const returnData: INodeExecutionData[] = [];
@@ -193,6 +207,22 @@ export async function toolsAgentExecute(
 	const model = await getChatModel(this, 0);
 	assert(model, 'Please connect a model to the Chat Model input');
 	const fallbackModel = needsFallback ? await getChatModel(this, 1) : null;
+
+	// FIXME: remove when this is fixed: https://github.com/langchain-ai/langchainjs/pull/9082
+	// Responses API + tools is broken when using langchain default call handling. In V3 calls are handled differently, so it works.
+	if (checkIsResponsesApi(model)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`This model is not supported in ${version} version of the Agent node. Please upgrade the Agent node to the latest version.`,
+		);
+	}
+
+	if (checkIsResponsesApi(fallbackModel)) {
+		throw new NodeOperationError(
+			this.getNode(),
+			`This fallback model is not supported in ${version} version of the Agent node. Please upgrade the Agent node to the latest version.`,
+		);
+	}
 
 	if (needsFallback && !fallbackModel) {
 		throw new NodeOperationError(
@@ -263,7 +293,13 @@ export async function toolsAgentExecute(
 				isStreamingAvailable &&
 				this.getNode().typeVersion >= 2.1
 			) {
-				const chatHistory = await memory?.chatHistory.getMessages();
+				// Get chat history respecting the context window length configured in memory
+				let chatHistory;
+				if (memory) {
+					// Load memory variables to respect context window length
+					const memoryVariables = await memory.loadMemoryVariables({});
+					chatHistory = memoryVariables['chat_history'];
+				}
 				const eventStream = executor.streamEvents(
 					{
 						...invokeParams,

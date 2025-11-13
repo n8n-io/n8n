@@ -93,7 +93,7 @@ export interface TestRequirements {
 	 * }
 	 * ```
 	 */
-	workflow?: Record<string, string>;
+	workflow?: string | Record<string, string>;
 
 	/**
 	 * Browser storage values to set before the test

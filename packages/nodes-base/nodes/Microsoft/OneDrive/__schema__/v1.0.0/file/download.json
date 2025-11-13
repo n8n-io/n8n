@@ -4,17 +4,6 @@
         "createdBy": {
             "type": "object",
             "properties": {
-                "application": {
-                    "type": "object",
-                    "properties": {
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        }
-                    }
-                },
                 "user": {
                     "type": "object",
                     "properties": {
@@ -22,9 +11,6 @@
                             "type": "string"
                         },
                         "email": {
-                            "type": "string"
-                        },
-                        "id": {
                             "type": "string"
                         }
                     }
@@ -61,20 +47,12 @@
                 }
             }
         },
+        "id": {
+            "type": "string"
+        },
         "lastModifiedBy": {
             "type": "object",
             "properties": {
-                "application": {
-                    "type": "object",
-                    "properties": {
-                        "displayName": {
-                            "type": "string"
-                        },
-                        "id": {
-                            "type": "string"
-                        }
-                    }
-                },
                 "user": {
                     "type": "object",
                     "properties": {
@@ -82,9 +60,6 @@
                             "type": "string"
                         },
                         "email": {
-                            "type": "string"
-                        },
-                        "id": {
                             "type": "string"
                         }
                     }
@@ -119,7 +94,13 @@
                     "type": "string"
                 }
             }
+        },
+        "size": {
+            "type": "integer"
+        },
+        "webUrl": {
+            "type": "string"
         }
     },
-    "version": 3
+    "version": 6
 }

@@ -12,8 +12,9 @@ Install:
 
 Set up dependencies:
 
-```
-just sync
+```sh
+just sync # or
+just sync-all
 ```
 
 See `justfile` for available commands.

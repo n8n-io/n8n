@@ -7,6 +7,7 @@ import {
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,
+	GLOBAL_OWNER_ROLE,
 } from '@n8n/db';
 import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
@@ -61,7 +62,9 @@ export class Reset extends BaseCommand {
 	}
 
 	async getInstanceOwner(): Promise<User> {
-		const owner = await Container.get(UserRepository).findOneBy({ role: 'global:owner' });
+		const owner = await Container.get(UserRepository).findOneBy({
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		});
 
 		if (owner) return owner;
 
@@ -71,7 +74,9 @@ export class Reset extends BaseCommand {
 
 		await Container.get(UserRepository).save(user);
 
-		return await Container.get(UserRepository).findOneByOrFail({ role: 'global:owner' });
+		return await Container.get(UserRepository).findOneByOrFail({
+			role: { slug: GLOBAL_OWNER_ROLE.slug },
+		});
 	}
 
 	async catch(error: Error): Promise<void> {

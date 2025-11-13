@@ -38,9 +38,8 @@ export async function isFilePathBlocked(filePath: string): Promise<boolean> {
 	let resolvedFilePath = '';
 	try {
 		resolvedFilePath = await fsRealpath(filePath);
-	} catch (error) {
-		// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
-		if (error.code === 'ENOENT') {
+	} catch (error: unknown) {
+		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
 			resolvedFilePath = resolve(filePath);
 		} else {
 			throw error;
@@ -64,6 +63,14 @@ export async function isFilePathBlocked(filePath: string): Promise<boolean> {
 
 export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
 	async createReadStream(filePath) {
+		if (await isFilePathBlocked(filePath.toString())) {
+			const allowedPaths = getAllowedPaths();
+			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
+			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
+				level: 'warning',
+			});
+		}
+
 		try {
 			await fsAccess(filePath);
 		} catch (error) {
@@ -76,13 +83,7 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 					})
 				: error;
 		}
-		if (await isFilePathBlocked(filePath as string)) {
-			const allowedPaths = getAllowedPaths();
-			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
-			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
-				level: 'warning',
-			});
-		}
+
 		return createReadStream(filePath);
 	},
 

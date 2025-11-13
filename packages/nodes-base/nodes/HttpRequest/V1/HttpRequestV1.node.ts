@@ -8,6 +8,7 @@ import type {
 	JsonObject,
 	IHttpRequestMethods,
 	IRequestOptions,
+	ICredentialDataDecryptedObject,
 } from 'n8n-workflow';
 import {
 	NodeApiError,
@@ -15,6 +16,7 @@ import {
 	sleep,
 	removeCircularRefs,
 	NodeConnectionTypes,
+	isDomainAllowed,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -675,6 +677,51 @@ export class HttpRequestV1 implements INodeType {
 
 			const options = this.getNodeParameter('options', itemIndex, {});
 			const url = this.getNodeParameter('url', itemIndex) as string;
+
+			if (!url.startsWith('http://') && !url.startsWith('https://')) {
+				throw new NodeOperationError(
+					this.getNode(),
+					`Invalid URL: ${url}. URL must start with "http" or "https".`,
+				);
+			}
+
+			const checkDomainRestrictions = async (
+				credentialData: ICredentialDataDecryptedObject,
+				url: string,
+				credentialType?: string,
+			) => {
+				if (credentialData.allowedHttpRequestDomains === 'domains') {
+					const allowedDomains = credentialData.allowedDomains as string;
+
+					if (!allowedDomains || allowedDomains.trim() === '') {
+						throw new NodeOperationError(
+							this.getNode(),
+							'No allowed domains specified. Configure allowed domains or change restriction setting.',
+						);
+					}
+
+					if (!isDomainAllowed(url, { allowedDomains })) {
+						const credentialInfo = credentialType ? ` (${credentialType})` : '';
+						throw new NodeOperationError(
+							this.getNode(),
+							`Domain not allowed: This credential${credentialInfo} is restricted from accessing ${url}. ` +
+								`Only the following domains are allowed: ${allowedDomains}`,
+						);
+					}
+				} else if (credentialData.allowedHttpRequestDomains === 'none') {
+					throw new NodeOperationError(
+						this.getNode(),
+						'This credential is configured to prevent use within an HTTP Request node',
+					);
+				}
+			};
+
+			if (httpBasicAuth) await checkDomainRestrictions(httpBasicAuth, url);
+			if (httpDigestAuth) await checkDomainRestrictions(httpDigestAuth, url);
+			if (httpHeaderAuth) await checkDomainRestrictions(httpHeaderAuth, url);
+			if (httpQueryAuth) await checkDomainRestrictions(httpQueryAuth, url);
+			if (oAuth1Api) await checkDomainRestrictions(oAuth1Api, url);
+			if (oAuth2Api) await checkDomainRestrictions(oAuth2Api, url);
 
 			if (
 				itemIndex > 0 &&

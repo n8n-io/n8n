@@ -63,6 +63,15 @@ export class GmailTrigger implements INodeType {
 		polling: true,
 		inputs: [],
 		outputs: [NodeConnectionTypes.Main],
+		hints: [
+			{
+				type: 'info',
+				message:
+					'Multiple items will be returned if multiple messages are received within the polling interval. Make sure your workflow can handle multiple items.',
+				whenToDisplay: 'beforeExecution',
+				location: 'outputPane',
+			},
+		],
 		properties: [
 			{
 				displayName: 'Authentication',
@@ -260,13 +269,17 @@ export class GmailTrigger implements INodeType {
 		}
 
 		const now = Math.floor(DateTime.now().toSeconds()).toString();
+
+		if (this.getMode() !== 'manual') {
+			nodeStaticData.lastTimeChecked ??= +now;
+		}
 		const startDate = nodeStaticData.lastTimeChecked ?? +now;
-		const endDate = +now;
 
 		const options = this.getNodeParameter('options', {}) as GmailTriggerOptions;
 		const filters = this.getNodeParameter('filters', {}) as GmailTriggerFilters;
 
 		let responseData: INodeExecutionData[] = [];
+		const allFetchedMessages: Message[] = [];
 
 		try {
 			const qs: IDataObject = {};
@@ -290,7 +303,6 @@ export class GmailTrigger implements INodeType {
 			const messages = messagesResponse.messages ?? [];
 
 			if (!messages.length) {
-				nodeStaticData.lastTimeChecked = endDate;
 				return null;
 			}
 
@@ -321,13 +333,18 @@ export class GmailTrigger implements INodeType {
 					qs,
 				)) as Message;
 
+				allFetchedMessages.push(fullMessage);
+
 				if (!includeDrafts) {
 					if (fullMessage.labelIds?.includes('DRAFT')) {
 						continue;
 					}
 				}
-
-				if (node.typeVersion > 1.2 && fullMessage.labelIds?.includes('SENT')) {
+				if (
+					node.typeVersion > 1.2 &&
+					fullMessage.labelIds?.includes('SENT') &&
+					!fullMessage.labelIds?.includes('INBOX')
+				) {
 					continue;
 				}
 
@@ -364,8 +381,8 @@ export class GmailTrigger implements INodeType {
 				},
 			);
 		}
-		if (!responseData.length) {
-			nodeStaticData.lastTimeChecked = endDate;
+
+		if (!allFetchedMessages.length) {
 			return null;
 		}
 
@@ -390,17 +407,15 @@ export class GmailTrigger implements INodeType {
 			return date;
 		};
 
-		const lastEmailDate = responseData.reduce((lastDate, { json }) => {
-			const emailDate = getEmailDateAsSeconds(json as Message);
+		const lastEmailDate = allFetchedMessages.reduce((lastDate, message) => {
+			const emailDate = getEmailDateAsSeconds(message);
 			return emailDate > lastDate ? emailDate : lastDate;
 		}, 0);
 
-		const nextPollPossibleDuplicates = responseData
-			.filter((item) => item.json)
-			.reduce((duplicates, { json }) => {
-				const emailDate = getEmailDateAsSeconds(json as Message);
-				return emailDate <= lastEmailDate ? duplicates.concat((json as Message).id) : duplicates;
-			}, Array.from(emailsWithInvalidDate));
+		const nextPollPossibleDuplicates = allFetchedMessages.reduce((duplicates, message) => {
+			const emailDate = getEmailDateAsSeconds(message);
+			return emailDate <= lastEmailDate ? duplicates.concat(message.id) : duplicates;
+		}, Array.from(emailsWithInvalidDate));
 
 		const possibleDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
 		if (possibleDuplicates.size > 0) {
@@ -411,7 +426,7 @@ export class GmailTrigger implements INodeType {
 		}
 
 		nodeStaticData.possibleDuplicates = nextPollPossibleDuplicates;
-		nodeStaticData.lastTimeChecked = lastEmailDate || endDate;
+		nodeStaticData.lastTimeChecked = lastEmailDate ?? +startDate;
 
 		if (Array.isArray(responseData) && responseData.length) {
 			return [responseData];

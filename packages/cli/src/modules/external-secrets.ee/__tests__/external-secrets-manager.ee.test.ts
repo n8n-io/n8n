@@ -201,6 +201,15 @@ describe('External Secrets Manager', () => {
 
 			expect(reloadSpy).toHaveBeenCalledWith('dummy', undefined);
 		});
+
+		test('should refresh secrets after reloading all providers', async () => {
+			await manager.init();
+			const updateSecretsSpy = jest.spyOn(manager, 'updateSecrets');
+
+			await manager.reloadAllProviders();
+
+			expect(updateSecretsSpy).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('getProviderWithSettings', () => {
@@ -274,6 +283,15 @@ describe('External Secrets Manager', () => {
 					},
 				}),
 			);
+		});
+
+		test('should refresh secrets after saving provider settings', async () => {
+			await manager.init();
+			const updateSecretsSpy = jest.spyOn(manager, 'updateSecrets');
+
+			await manager.setProviderSettings('dummy', { foo: 'bar' });
+
+			expect(updateSecretsSpy).toHaveBeenCalledTimes(1);
 		});
 	});
 

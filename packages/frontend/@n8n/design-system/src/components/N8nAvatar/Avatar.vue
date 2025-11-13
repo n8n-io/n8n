@@ -7,7 +7,7 @@ import { getInitials } from '../../utils/labelUtil';
 interface AvatarProps {
 	firstName?: string | null;
 	lastName?: string | null;
-	size?: 'xsmall' | 'small' | 'medium' | 'large';
+	size?: 'xxsmall' | 'xsmall' | 'small' | 'medium' | 'large';
 	colors?: string[];
 }
 
@@ -17,11 +17,11 @@ const props = withDefaults(defineProps<AvatarProps>(), {
 	lastName: '',
 	size: 'medium',
 	colors: () => [
-		'--color-primary',
-		'--color-secondary',
-		'--color-avatar-accent-1',
-		'--color-avatar-accent-2',
-		'--color-primary-tint-1',
+		'--color--primary',
+		'--color--secondary',
+		'--avatar--color--accent-1',
+		'--avatar--color--accent-2',
+		'--color--primary--tint-1',
 	],
 });
 
@@ -34,6 +34,7 @@ const getColors = (colors: string[]): string[] => {
 };
 
 const sizes: { [size: string]: number } = {
+	xxsmall: 16,
 	xsmall: 20,
 	small: 28,
 	large: 48,
@@ -73,26 +74,27 @@ const getSize = (size: string): number => sizes[size];
 .empty {
 	display: block;
 	border-radius: 50%;
-	background-color: var(--color-foreground-dark);
+	background-color: var(--color--foreground--shade-1);
 	opacity: 0.3;
 }
 
 .initials {
 	position: absolute;
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
-	color: var(--color-avatar-font);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
+	color: var(--avatar--color--text);
 	text-shadow: 0 1px 6px rgba(25, 11, 9, 0.3);
 	text-transform: uppercase;
 }
 
+.text-xxsmall,
 .text-xsmall {
 	font-size: 6px;
 }
 
 .xsmall {
-	height: var(--spacing-m);
-	width: var(--spacing-m);
+	height: var(--spacing--md);
+	width: var(--spacing--md);
 }
 
 .small {

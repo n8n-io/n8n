@@ -1,6 +1,6 @@
 {
 	"name": "Simple Webhook Test",
-	"active": false,
+	"active": true,
 	"nodes": [
 		{
 			"parameters": {

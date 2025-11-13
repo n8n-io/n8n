@@ -21,6 +21,8 @@ import type {
 	ISourceData,
 	AiEvent,
 	NodeConnectionType,
+	Result,
+	IExecuteFunctions,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -28,6 +30,7 @@ import {
 	NodeConnectionTypes,
 	WAIT_INDEFINITELY,
 	WorkflowDataProxy,
+	createEnvProviderState,
 } from 'n8n-workflow';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
@@ -50,6 +53,10 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		readonly abortSignal?: AbortSignal,
 	) {
 		super(workflow, node, additionalData, mode, runExecutionData, runIndex);
+	}
+
+	getExecutionContext() {
+		return this.runExecutionData.executionData?.runtimeData;
 	}
 
 	getExecutionCancelSignal() {
@@ -228,5 +235,30 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			workflowId: this.workflow.id ?? 'unsaved-workflow',
 			msg,
 		});
+	}
+
+	async startJob<T = unknown, E = unknown>(
+		jobType: string,
+		settings: unknown,
+		itemIndex: number,
+	): Promise<Result<T, E>> {
+		return await this.additionalData.startRunnerTask<T, E>(
+			this.additionalData,
+			jobType,
+			settings,
+			this as IExecuteFunctions,
+			this.inputData,
+			this.node,
+			this.workflow,
+			this.runExecutionData,
+			this.runIndex,
+			itemIndex,
+			this.node.name,
+			this.connectionInputData,
+			{},
+			this.mode,
+			createEnvProviderState(),
+			this.executeData,
+		);
 	}
 }

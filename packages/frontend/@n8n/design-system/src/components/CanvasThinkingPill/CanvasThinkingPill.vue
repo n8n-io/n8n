@@ -6,7 +6,7 @@ import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import N8nButton from '../N8nButton';
 
 defineOptions({
-	name: 'CanvasThinkingPill',
+	name: 'N8nCanvasThinkingPill',
 });
 
 defineProps<{
@@ -44,12 +44,12 @@ const $style = useCssModule();
 .thinkingPill {
 	display: flex;
 	height: 40px;
-	padding: 0 var(--spacing-s) 0 var(--spacing-xs);
+	padding: 0 var(--spacing--sm) 0 var(--spacing--xs);
 	justify-content: center;
 	align-items: center;
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 	border-radius: 22px;
-	border: 1px solid var(--prim-gray-740);
+	border: 1px solid var(--p--color--gray-740);
 	background: rgba(65, 66, 68, 0.92);
 	cursor: default;
 
@@ -71,12 +71,12 @@ const $style = useCssModule();
 }
 
 .stopButton {
-	margin-left: var(--spacing-xs);
+	margin-left: var(--spacing--xs);
 }
 .text {
 	color: white;
-	font-size: var(--font-size-s);
-	font-weight: var(--font-weight-medium);
+	font-size: var(--font-size--sm);
+	font-weight: var(--font-weight--medium);
 	white-space: nowrap;
 }
 </style>

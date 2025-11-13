@@ -3,6 +3,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 
 import { STORES } from './constants';
+import { getConfigFromMetaTag } from './metaTagConfig';
 
 const { VUE_APP_URL_BASE_API } = import.meta.env;
 
@@ -36,10 +37,7 @@ export type RootStoreState = {
 export const useRootStore = defineStore(STORES.ROOT, () => {
 	const state = ref<RootStoreState>({
 		baseUrl: VUE_APP_URL_BASE_API ?? window.BASE_PATH,
-		restEndpoint:
-			!window.REST_ENDPOINT || window.REST_ENDPOINT === '{{REST_ENDPOINT}}'
-				? 'rest'
-				: window.REST_ENDPOINT,
+		restEndpoint: getConfigFromMetaTag('rest-endpoint') ?? 'rest',
 		defaultLocale: 'en',
 		endpointForm: 'form',
 		endpointFormTest: 'form-test',

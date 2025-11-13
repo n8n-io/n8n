@@ -10,7 +10,7 @@ export class AzureEntraCognitiveServicesOAuth2Api implements ICredentialType {
 
 	extends = ['oAuth2Api'];
 
-	documentationUrl = 'azureEntraCognitiveServicesOAuth2Api';
+	documentationUrl = 'azureentracognitiveservicesoauth2api';
 
 	properties: INodeProperties[] = [
 		{

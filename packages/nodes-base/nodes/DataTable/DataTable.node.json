@@ -1,0 +1,18 @@
+{
+	"node": "n8n-nodes-base.dataTable",
+	"nodeVersion": "1.0",
+	"codexVersion": "1.0",
+	"details": "Data table",
+	"categories": ["Core Nodes", "Development"],
+	"resources": {
+		"primaryDocumentation": [
+			{
+				"url": "https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.datatable/"
+			}
+		]
+	},
+	"alias": ["data", "table", "knowledge", "data table", "table", "sheet"],
+	"subcategories": {
+		"Core Nodes": ["Helpers"]
+	}
+}

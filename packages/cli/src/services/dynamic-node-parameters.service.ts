@@ -26,6 +26,9 @@ import { Workflow, UnexpectedError } from 'n8n-workflow';
 import { NodeTypes } from '@/node-types';
 
 import { WorkflowLoaderService } from './workflow-loader.service';
+import { User } from '@n8n/db';
+import { userHasScopes } from '@/permissions.ee/check-access';
+import { Logger } from '@n8n/backend-common';
 
 type LocalResourceMappingMethod = (
 	this: ILocalLoadOptionsFunctions,
@@ -52,9 +55,28 @@ type NodeMethod =
 @Service()
 export class DynamicNodeParametersService {
 	constructor(
+		private logger: Logger,
 		private nodeTypes: NodeTypes,
 		private workflowLoaderService: WorkflowLoaderService,
 	) {}
+
+	async scrubInaccessibleProjectId(user: User, payload: { projectId?: string }) {
+		// We want to avoid relying on generic project:read permissions to enable
+		// a future with fine-grained permission control dependent on the respective resource
+		// For now we use the dataTable:listProject scope as this is the existing consumer of
+		// the project id
+		if (
+			payload.projectId &&
+			!(await userHasScopes(user, ['dataTable:listProject'], false, {
+				projectId: payload.projectId,
+			}))
+		) {
+			this.logger.warn(
+				`Scrubbed inaccessible projectId ${payload.projectId} from DynamicNodeParameters request`,
+			);
+			payload.projectId = undefined;
+		}
+	}
 
 	/** Returns the available options via a predefined method */
 	async getOptionsViaMethodName(

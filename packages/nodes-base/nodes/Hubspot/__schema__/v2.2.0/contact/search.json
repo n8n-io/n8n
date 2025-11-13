@@ -1,0 +1,32 @@
+{
+    "type": "object",
+    "properties": {
+        "archived": {
+            "type": "boolean"
+        },
+        "createdAt": {
+            "type": "string"
+        },
+        "id": {
+            "type": "string"
+        },
+        "properties": {
+            "type": "object",
+            "properties": {
+                "createdate": {
+                    "type": "string"
+                },
+                "hs_object_id": {
+                    "type": "string"
+                },
+                "lastmodifieddate": {
+                    "type": "string"
+                }
+            }
+        },
+        "updatedAt": {
+            "type": "string"
+        }
+    },
+    "version": 1
+}

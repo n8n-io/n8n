@@ -49,25 +49,29 @@ onUnmounted(() => {
 
 <template>
 	<table :class="$style.table">
-		<tr>
-			<th :class="$style.row">Name</th>
-			<th :class="$style.row">Value</th>
-		</tr>
-		<tr
-			v-for="variable in variables"
-			:key="variable"
-			:style="attr ? { [attr]: `var(${variable})` } : {}"
-		>
-			<td>{{ variable }}</td>
-			<td>{{ values[variable] }}</td>
-		</tr>
+		<thead>
+			<tr>
+				<th :class="$style.row">Name</th>
+				<th :class="$style.row">Value</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr
+				v-for="variable in variables"
+				:key="variable"
+				:style="attr ? { [attr]: `var(${variable})` } : {}"
+			>
+				<td>{{ variable }}</td>
+				<td>{{ values[variable] }}</td>
+			</tr>
+		</tbody>
 	</table>
 </template>
 
 <style lang="scss" module>
 .table {
 	text-align: center;
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 
 .row {

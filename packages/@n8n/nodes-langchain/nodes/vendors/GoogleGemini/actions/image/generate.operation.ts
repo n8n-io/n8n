@@ -1,7 +1,12 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeProperties } from 'n8n-workflow';
 import { NodeOperationError, updateDisplayOptions } from 'n8n-workflow';
 
-import type { GenerateContentResponse, ImagenResponse } from '../../helpers/interfaces';
+import {
+	type GenerateContentRequest,
+	type GenerateContentResponse,
+	type ImagenResponse,
+	Modality,
+} from '../../helpers/interfaces';
 import { apiRequest } from '../../transport';
 import { modelRLC } from '../descriptions';
 
@@ -67,9 +72,9 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	if (model.includes('gemini')) {
 		const generationConfig = {
-			responseModalities: ['IMAGE', 'TEXT'],
+			responseModalities: [Modality.IMAGE, Modality.TEXT],
 		};
-		const body = {
+		const body: GenerateContentRequest = {
 			contents: [
 				{
 					role: 'user',
@@ -103,7 +108,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		});
 
 		return await Promise.all(promises);
-	} else if (model.includes('imagen')) {
+	} else if (model.includes('imagen') || model.includes('flash-image')) {
 		// Imagen models use a different endpoint and request/response structure
 		const sampleCount = this.getNodeParameter('options.sampleCount', i, 1) as number;
 		const body = {

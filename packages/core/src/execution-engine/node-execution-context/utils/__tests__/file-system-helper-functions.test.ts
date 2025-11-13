@@ -223,6 +223,19 @@ describe('getFileSystemHelperFunctions', () => {
 			);
 		});
 
+		it('should not reveal if file exists if it is within restricted path', async () => {
+			process.env[RESTRICT_FILE_ACCESS_TO] = '/allowed/path';
+
+			const error = new Error('ENOENT');
+			// @ts-expect-error undefined property
+			error.code = 'ENOENT';
+			(fsAccess as jest.Mock).mockRejectedValueOnce(error);
+
+			await expect(helperFunctions.createReadStream('/blocked/path')).rejects.toThrow(
+				'Access to the file is not allowed',
+			);
+		});
+
 		it('should create a read stream if file access is permitted', async () => {
 			const filePath = '/allowed/path';
 			(fsAccess as jest.Mock).mockResolvedValueOnce({});

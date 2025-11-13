@@ -1,3 +1,5 @@
+import z from 'zod';
+
 import { Config, Env, Nested } from '../decorators';
 
 @Config
@@ -37,8 +39,28 @@ class QueueRecoveryConfig {
 	batchSize: number = 100;
 }
 
+const executionModeSchema = z.enum(['regular', 'queue']);
+
+export type ExecutionMode = z.infer<typeof executionModeSchema>;
+
 @Config
 export class ExecutionsConfig {
+	/** Whether to run executions in regular mode (in-process) or scaling mode (in workers). */
+	@Env('EXECUTIONS_MODE', executionModeSchema)
+	mode: ExecutionMode = 'regular';
+
+	/**
+	 * How long (seconds) a workflow execution may run for before timeout.
+	 * On timeout, the execution will be forcefully stopped. `-1` for unlimited.
+	 * Currently unlimited by default - this default will change in a future version.
+	 */
+	@Env('EXECUTIONS_TIMEOUT')
+	timeout: number = -1;
+
+	/** How long (seconds) a workflow execution may run for at most. */
+	@Env('EXECUTIONS_TIMEOUT_MAX')
+	maxTimeout: number = 3600; // 1h
+
 	/** Whether to delete past executions on a rolling basis. */
 	@Env('EXECUTIONS_DATA_PRUNE')
 	pruneData: boolean = true;
@@ -70,4 +92,20 @@ export class ExecutionsConfig {
 
 	@Nested
 	queueRecovery: QueueRecoveryConfig;
+
+	/** Whether to save execution data for failed production executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_ERROR')
+	saveDataOnError: 'all' | 'none' = 'all';
+
+	/** Whether to save execution data for successful production executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_SUCCESS')
+	saveDataOnSuccess: 'all' | 'none' = 'all';
+
+	/** Whether to save execution data as each node executes. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_ON_PROGRESS')
+	saveExecutionProgress: boolean = false;
+
+	/** Whether to save execution data for manual executions. This default can be overridden at a workflow level. */
+	@Env('EXECUTIONS_DATA_SAVE_MANUAL_EXECUTIONS')
+	saveDataManualExecutions: boolean = true;
 }

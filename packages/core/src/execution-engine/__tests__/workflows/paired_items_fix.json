@@ -21,11 +21,17 @@
 		},
 		{
 			"parameters": {
-				"jsCode": "return []"
+				"conditions": {
+					"boolean": [
+						{
+							"value1": true
+						}
+					]
+				}
 			},
-			"id": "58198a44-6b5c-4ad1-a03b-8b9e319b6c1b",
-			"name": "Return no items",
-			"type": "n8n-nodes-base.code",
+			"id": "4d4af5e5-860d-416f-b2d7-f0f87f380355",
+			"name": "IF",
+			"type": "n8n-nodes-base.if",
 			"typeVersion": 1,
 			"position": [1080, 500],
 			"alwaysOutputData": true
@@ -409,6 +415,17 @@
 				]
 			]
 		},
+		"IF": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
 		"When clicking \"Execute Workflow\"": {
 			"main": [
 				[
@@ -429,7 +446,7 @@
 			"main": [
 				[
 					{
-						"node": "Return no items",
+						"node": "IF",
 						"type": "main",
 						"index": 0
 					}
@@ -530,17 +547,6 @@
 				[
 					{
 						"node": "loop",
-						"type": "main",
-						"index": 0
-					}
-				]
-			]
-		},
-		"Return no items": {
-			"main": [
-				[
-					{
-						"node": "Set1",
 						"type": "main",
 						"index": 0
 					}

@@ -439,6 +439,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			);
 
 			const mockContextInstance = { hints: [] };
+			const mockSubNodeExecutionResults = undefined;
 			mockExecuteContext.mockImplementation(() => mockContextInstance as unknown as ExecuteContext);
 
 			const result = await workflowExecute.runNode(
@@ -450,7 +451,10 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 				'manual',
 			);
 
-			expect(nodeInstance.execute).toHaveBeenCalledWith(mockContextInstance);
+			expect(nodeInstance.execute).toHaveBeenCalledWith(
+				mockContextInstance,
+				mockSubNodeExecutionResults,
+			);
 			expect(result).toEqual({ data: mockData, hints: [] });
 		});
 
@@ -527,7 +531,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 
 			// Verify that ErrorReporter.error was called due to invalid JSON data
 			expect(mockErrorReporter.error).toHaveBeenCalledWith(
-				'node execution returned incorrect data',
+				'node execution returned incorrect output',
 				expect.objectContaining({
 					shouldBeLogged: false,
 					extra: expect.objectContaining({

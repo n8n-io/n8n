@@ -1,0 +1,8 @@
+{
+  "name": "task-runner-runtime-extras",
+  "description": "Runtime-only extra dependencies for installing packages in the JavaScript task runner image. Installed at Docker image build time. Allow usage in the Code node via 'NODE_FUNCTION_ALLOW_EXTERNAL' env variable on n8n-task-runners.json.",
+  "private": true,
+  "dependencies": {
+    "moment": "2.30.1"
+  }
+}

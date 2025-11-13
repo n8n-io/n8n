@@ -3,8 +3,14 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/no-unsafe-return */
 import type { CredentialsEntity, ICredentialsDb } from '@n8n/db';
-import { CredentialsRepository, SharedCredentialsRepository } from '@n8n/db';
+import {
+	CredentialsRepository,
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_OWNER_ROLE,
+	SharedCredentialsRepository,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { EntityNotFoundError, In } from '@n8n/typeorm';
 import { Credentials, getAdditionalKeys } from 'n8n-core';
@@ -384,6 +390,31 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.oauthTokenData = decryptedDataOriginal.oauthTokenData;
 		}
 
+		if (
+			decryptedData.allowedHttpRequestDomains === undefined &&
+			decryptedDataOriginal.allowedHttpRequestDomains !== undefined
+		) {
+			decryptedData.allowedHttpRequestDomains = decryptedDataOriginal.allowedHttpRequestDomains;
+		}
+		if (
+			decryptedData.allowedDomains === undefined &&
+			decryptedDataOriginal.allowedDomains !== undefined
+		) {
+			decryptedData.allowedDomains = decryptedDataOriginal.allowedDomains;
+		}
+
+		// When using dynamic client registration, fields
+		// for client ID, secret, auth URL, access token URL, grant type and authentication
+		// are not shown in the UI, so we need to copy them from the original data.
+		if (decryptedData.useDynamicClientRegistration) {
+			decryptedData.clientId = decryptedDataOriginal.clientId;
+			decryptedData.clientSecret = decryptedDataOriginal.clientSecret;
+			decryptedData.authUrl = decryptedDataOriginal.authUrl;
+			decryptedData.accessTokenUrl = decryptedDataOriginal.accessTokenUrl;
+			decryptedData.grantType = decryptedDataOriginal.grantType;
+			decryptedData.authentication = decryptedDataOriginal.authentication;
+		}
+
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(credential);
 		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
 			secretsEnabled: canUseExternalSecrets,
@@ -453,7 +484,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		// @ts-ignore CAT-957
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
@@ -479,7 +509,6 @@ export class CredentialsHelper extends ICredentialsHelper {
 			type,
 		};
 
-		// @ts-ignore CAT-957
 		await this.credentialsRepository.update(findQuery, newCredentialsData);
 	}
 
@@ -496,9 +525,9 @@ export class CredentialsHelper extends ICredentialsHelper {
 							role: 'credential:owner',
 							project: {
 								projectRelations: {
-									role: In(['project:personalOwner', 'project:admin']),
+									role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_ADMIN_ROLE_SLUG]) },
 									user: {
-										role: In(['global:owner', 'global:admin']),
+										role: { slug: In([GLOBAL_OWNER_ROLE.slug, GLOBAL_ADMIN_ROLE.slug]) },
 									},
 								},
 							},

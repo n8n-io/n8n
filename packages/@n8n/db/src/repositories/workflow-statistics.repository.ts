@@ -1,5 +1,6 @@
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
+import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import { DataSource, MoreThanOrEqual, QueryFailedError, Repository } from '@n8n/typeorm';
 
 import { WorkflowStatistics } from '../entities';
@@ -122,7 +123,7 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 				workflow: {
 					shared: {
 						role: 'workflow:owner',
-						project: { projectRelations: { userId, role: 'project:personalOwner' } },
+						project: { projectRelations: { userId, role: { slug: PROJECT_OWNER_ROLE_SLUG } } },
 					},
 					active: true,
 				},

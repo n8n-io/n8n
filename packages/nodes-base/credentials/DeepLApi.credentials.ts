@@ -10,7 +10,7 @@ export class DeepLApi implements ICredentialType {
 
 	displayName = 'DeepL API';
 
-	documentationUrl = 'deepL';
+	documentationUrl = 'deepl';
 
 	properties: INodeProperties[] = [
 		{
