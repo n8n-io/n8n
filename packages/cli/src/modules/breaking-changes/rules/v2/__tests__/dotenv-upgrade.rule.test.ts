@@ -19,24 +19,13 @@ describe('DotenvUpgradeRule', () => {
 	});
 
 	describe('detect()', () => {
-		it('should not be affected when no .env files exist and DOTENV_CONFIG_PATH is not set', async () => {
-			delete process.env.DOTENV_CONFIG_PATH;
+		it('should not be affected when no .env files exist', async () => {
 			(access as jest.Mock).mockRejectedValue(new Error('File not found'));
 
 			const result = await rule.detect();
 
 			expect(result.isAffected).toBe(false);
 			expect(result.instanceIssues).toHaveLength(0);
-		});
-
-		it('should be affected when DOTENV_CONFIG_PATH is set', async () => {
-			process.env.DOTENV_CONFIG_PATH = '/path/to/.env';
-
-			const result = await rule.detect();
-
-			expect(result.isAffected).toBe(true);
-			expect(result.instanceIssues).toHaveLength(1);
-			expect(result.instanceIssues[0].title).toBe('dotenv library upgrade detected');
 		});
 
 		it('should be affected when .env files exist', async () => {

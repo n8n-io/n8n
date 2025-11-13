@@ -77,7 +77,7 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeWorkflowRule {
 				{
 					title: 'Sub-workflow with Wait nodes has changed output behavior',
 					description:
-						'This workflow is a sub-workflow (contains Execute Workflow Trigger) with Wait nodes. The data returned from Wait nodes in sub-workflows has changed. Previously, Wait nodes returned data from the node before the wait node. Now they return data from the last node in the workflow.',
+						'This workflow is a sub-workflow (contains Execute Workflow Trigger) with Wait node. The data returned to the parent workflow from sub-workflows containing  Wait nodes has changed. Previously, the child workflow returned data from the node before the wait node. Now they return data from the last node in the workflow.',
 					level: 'warning',
 				},
 			],

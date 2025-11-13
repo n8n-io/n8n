@@ -41,33 +41,27 @@ export class DotenvUpgradeRule implements IBreakingChangeInstanceRule {
 			recommendations: [],
 		};
 
-		// Check if dotenv is being used by checking for DOTENV_CONFIG_PATH or common .env file locations
-		const dotenvConfigPath = process.env.DOTENV_CONFIG_PATH;
-		const isDotenvUsed = dotenvConfigPath !== undefined;
+		// check if default .env files exist and are likely being used
+		const possibleEnvPaths = [
+			join(process.cwd(), '.env'),
+			join(process.cwd(), '.env.local'),
+			join(process.cwd(), '.env.development'),
+			join(process.cwd(), '.env.production'),
+		];
 
-		if (!isDotenvUsed) {
-			// If DOTENV_CONFIG_PATH is not set, check if default .env files exist and are likely being used
-			const possibleEnvPaths = [
-				join(process.cwd(), '.env'),
-				join(process.cwd(), '.env.local'),
-				join(process.cwd(), '.env.development'),
-				join(process.cwd(), '.env.production'),
-			];
+		// Check files in parallel
+		const existsChecks = await Promise.all(
+			possibleEnvPaths.map(async (path) => ({
+				path,
+				exists: await this.fileExists(path),
+			})),
+		);
 
-			// Check files in parallel
-			const existsChecks = await Promise.all(
-				possibleEnvPaths.map(async (path) => ({
-					path,
-					exists: await this.fileExists(path),
-				})),
-			);
+		const existingEnvFiles = existsChecks.filter((check) => check.exists);
 
-			const existingEnvFiles = existsChecks.filter((check) => check.exists);
-
-			// Only flag as affected if .env files exist that could be loaded by dotenv
-			if (existingEnvFiles.length === 0) {
-				return result;
-			}
+		// Only flag as affected if .env files exist that could be loaded by dotenv
+		if (existingEnvFiles.length === 0) {
+			return result;
 		}
 
 		result.isAffected = true;

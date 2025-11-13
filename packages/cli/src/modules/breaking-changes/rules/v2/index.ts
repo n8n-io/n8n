@@ -16,8 +16,6 @@ import { TaskRunnerDockerImageRule } from './task-runner-docker-image.rule';
 import { TaskRunnersRule } from './task-runners.rule';
 import { TunnelOptionRule } from './tunnel-option.rule';
 import { WaitNodeSubworkflowRule } from './wait-node-subworkflow.rule';
-import { WorkflowActivationApiRule } from './workflow-activation-api.rule';
-import { WorkflowUpdateApiRule } from './workflow-update-api.rule';
 
 const v2Rules = [
 	// Workflow-level rules
@@ -31,8 +29,6 @@ const v2Rules = [
 	// Instance-level rules
 	DotenvUpgradeRule,
 	OAuthCallbackAuthRule,
-	WorkflowActivationApiRule,
-	WorkflowUpdateApiRule,
 	CliActivateAllWorkflowsRule,
 	QueueWorkerMaxStalledCountRule,
 	TunnelOptionRule,

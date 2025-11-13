@@ -25,32 +25,29 @@ export class OAuthCallbackAuthRule implements IBreakingChangeInstanceRule {
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
-		const result: InstanceDetectionReport = {
-			isAffected: false,
-			instanceIssues: [],
-			recommendations: [],
-		};
-
-		// Check if the instance has N8N_SKIP_AUTH_ON_OAUTH_CALLBACK set to true
-		const skipAuth = process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK === 'true';
-
-		// Always show a warning about this change
-		result.isAffected = true;
-		result.instanceIssues.push({
-			title: 'OAuth callback authentication now required',
-			description:
-				'OAuth callbacks will now enforce n8n user authentication by default unless N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is explicitly set to true.',
-			level: skipAuth ? 'info' : 'warning',
-		});
-
-		if (!skipAuth) {
-			result.recommendations.push({
-				action: 'Review OAuth workflows',
-				description:
-					'If you need to skip authentication on OAuth callbacks (e.g., for embed mode), set N8N_SKIP_AUTH_ON_OAUTH_CALLBACK=true',
-			});
+		// If the env var is set explicitly, then the instance is not affected
+		// because the user has already made a choice
+		if (process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK) {
+			return { isAffected: false, instanceIssues: [], recommendations: [] };
 		}
 
-		return result;
+		return {
+			isAffected: true,
+			instanceIssues: [
+				{
+					title: 'OAuth callback authentication now required',
+					description:
+						'OAuth callbacks will now enforce n8n user authentication by default unless N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is explicitly set to true.',
+					level: 'warning',
+				},
+			],
+			recommendations: [
+				{
+					action: 'Review OAuth workflows',
+					description:
+						'If you need to skip authentication on OAuth callbacks (e.g., for embed mode), set N8N_SKIP_AUTH_ON_OAUTH_CALLBACK=true',
+				},
+			],
+		};
 	}
 }

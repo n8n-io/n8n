@@ -1,4 +1,3 @@
-import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 
 import type {
@@ -10,8 +9,6 @@ import { BreakingChangeCategory } from '../../types';
 
 @Service()
 export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRule {
-	constructor(private readonly globalConfig: GlobalConfig) {}
-
 	id: string = 'queue-worker-max-stalled-count-v2';
 
 	getMetadata(): BreakingChangeRuleMetadata {
@@ -34,8 +31,9 @@ export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRu
 			recommendations: [],
 		};
 
-		// Check if QUEUE_WORKER_MAX_STALLED_COUNT is set to a value other than the default (1)
-		if (this.globalConfig.queue.bull.settings.maxStalledCount === 1) {
+		// If QUEUE_WORKER_MAX_STALLED_COUNT is not set, the instance is not affected
+		// because the default behavior remains unchanged
+		if (!process.env.QUEUE_WORKER_MAX_STALLED_COUNT) {
 			return result;
 		}
 

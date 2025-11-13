@@ -9,9 +9,12 @@ import type {
 	WorkflowDetectionReport,
 } from '../../types';
 import { BreakingChangeCategory } from '../../types';
+import { NodesConfig } from '@n8n/config';
 
 @Service()
 export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
+	constructor(private readonly nodesConfig: NodesConfig) {}
+
 	private readonly DISABLED_NODES = [
 		'n8n-nodes-base.executeCommand',
 		'n8n-nodes-base.localFileTrigger',
@@ -53,6 +56,10 @@ export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
 		_workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
+		if (process.env.NODES_EXCLUDE) {
+			return { isAffected: false, issues: [] };
+		}
+
 		const disabledNodes = this.DISABLED_NODES.flatMap((type) => nodesGroupedByType.get(type) ?? []);
 		if (disabledNodes.length === 0) return { isAffected: false, issues: [] };
 
@@ -60,8 +67,7 @@ export class DisabledNodesRule implements IBreakingChangeWorkflowRule {
 			isAffected: true,
 			issues: disabledNodes.map((node) => ({
 				title: `Node '${node.type}' with name '${node.name}' will be disabled`,
-				description:
-					'This node is disabled by default in v2 and will not execute unless explicitly enabled through settings or environment variables.',
+				description: `This node is disabled by default in v2. If you want to keep using ${node.type} node, you can configure NODES_EXCLUDE=[].`,
 				level: 'error',
 				nodeId: node.id,
 				nodeName: node.name,

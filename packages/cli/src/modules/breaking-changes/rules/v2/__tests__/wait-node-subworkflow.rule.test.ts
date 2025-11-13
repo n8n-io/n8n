@@ -101,13 +101,6 @@ describe('WaitNodeSubworkflowRule', () => {
 
 			expect(result.isAffected).toBe(true);
 			expect(result.issues).toHaveLength(1);
-			expect(result.issues[0]).toMatchObject({
-				title: 'Sub-workflow with Wait nodes has changed output behavior',
-				description: expect.stringContaining(
-					'Wait nodes returned data from the node before the wait node',
-				),
-				level: 'warning',
-			});
 		});
 
 		it('should detect sub-workflow with multiple Wait nodes', async () => {

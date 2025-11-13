@@ -1,21 +1,15 @@
-import type { GlobalConfig } from '@n8n/config';
-import { mock } from 'jest-mock-extended';
-
 import { QueueWorkerMaxStalledCountRule } from '../queue-worker-max-stalled-count.rule';
 
 describe('QueueWorkerMaxStalledCountRule', () => {
 	let rule: QueueWorkerMaxStalledCountRule;
-	const globalConfig = mock<GlobalConfig>({
-		queue: { bull: { settings: { maxStalledCount: 1 } } },
-	});
 
 	beforeEach(() => {
-		rule = new QueueWorkerMaxStalledCountRule(globalConfig);
+		rule = new QueueWorkerMaxStalledCountRule();
 	});
 
 	describe('detect()', () => {
-		it('should not be affected when maxStalledCount is the default one', async () => {
-			globalConfig.queue.bull.settings.maxStalledCount = 1;
+		it('should not be affected when QUEUE_WORKER_MAX_STALLED_COUNT is not defined', async () => {
+			delete process.env.QUEUE_WORKER_MAX_STALLED_COUNT;
 
 			const result = await rule.detect();
 
@@ -23,9 +17,8 @@ describe('QueueWorkerMaxStalledCountRule', () => {
 			expect(result.instanceIssues).toHaveLength(0);
 		});
 
-		it('should be affected when maxStalledCount is set', async () => {
-			globalConfig.queue.bull.settings.maxStalledCount = 10;
-
+		it('should be affected when QUEUE_WORKER_MAX_STALLED_COUNT is set', async () => {
+			process.env.QUEUE_WORKER_MAX_STALLED_COUNT = '10';
 			const result = await rule.detect();
 
 			expect(result.isAffected).toBe(true);

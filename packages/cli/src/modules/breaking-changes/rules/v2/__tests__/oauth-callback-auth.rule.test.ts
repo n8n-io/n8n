@@ -24,16 +24,17 @@ describe('OAuthCallbackAuthRule', () => {
 			expect(result.instanceIssues[0].title).toBe('OAuth callback authentication now required');
 		});
 
-		it('should be affected with info level when N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is true', async () => {
-			process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = 'true';
+		it.each(['true', 'false', '1', '0'])(
+			'should not be affected when N8N_SKIP_AUTH_ON_OAUTH_CALLBACK is set to %s',
+			async (value) => {
+				process.env.N8N_SKIP_AUTH_ON_OAUTH_CALLBACK = value;
 
-			const result = await rule.detect();
+				const result = await rule.detect();
 
-			expect(result.isAffected).toBe(true);
-			expect(result.instanceIssues).toHaveLength(1);
-			expect(result.instanceIssues[0].title).toBe('OAuth callback authentication now required');
-			expect(result.instanceIssues[0].level).toBe('info');
-			expect(result.recommendations).toHaveLength(0);
-		});
+				expect(result.isAffected).toBe(false);
+				expect(result.instanceIssues).toHaveLength(0);
+				expect(result.recommendations).toHaveLength(0);
+			},
+		);
 	});
 });
