@@ -45,7 +45,7 @@ catalog:
   picocolors: 1.0.1
   reflect-metadata: 0.2.2
   rimraf: 6.0.1
-  tsdown: ^0.15.6
+  tsdown: ^0.16.4
   tsx: ^4.19.3
   simple-git: 3.28.0
   uuid: 10.0.0
