@@ -62,10 +62,10 @@ let projectRepository: ProjectRepository;
 beforeEach(async () => {
 	await testDb.truncate([
 		'SharedWorkflow',
-		'WorkflowHistory',
 		'ProjectRelation',
 		'Folder',
 		'WorkflowEntity',
+		'WorkflowHistory',
 		'TagEntity',
 		'Project',
 		'User',
