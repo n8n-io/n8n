@@ -65,8 +65,18 @@ export function useToast() {
 				params.message.props
 			) {
 				// Extract error message from VNode props (e.g., NodeExecutionErrorMessage component)
-				const props = params.message.props as Record<string, unknown>;
-				messageForTelemetry = String(props.errorMessage || props.message || 'Unknown error');
+				const props = params.message.props;
+				const hasErrorMessage =
+					typeof props === 'object' && props !== null && 'errorMessage' in props;
+				const hasMessage = typeof props === 'object' && props !== null && 'message' in props;
+
+				if (hasErrorMessage) {
+					messageForTelemetry = String(props.errorMessage);
+				} else if (hasMessage) {
+					messageForTelemetry = String(props.message);
+				} else {
+					messageForTelemetry = 'Unknown error';
+				}
 			} else {
 				messageForTelemetry = 'Unknown error';
 			}
