@@ -1,8 +1,10 @@
+import { CredentialsEntity } from '@n8n/db';
+import { Container } from '@n8n/di';
 import type { GenericValue, IDataObject, INodeProperties } from 'n8n-workflow';
 
 import type { IDependency } from '@/public-api/types';
 
-import { toJsonSchema } from '../credentials.service';
+import { toJsonSchema, saveCredential } from '../credentials.service';
 
 describe('CredentialsService', () => {
 	describe('toJsonSchema', () => {
@@ -66,6 +68,140 @@ describe('CredentialsService', () => {
 			expect(
 				condition.else?.allOf.some((notReq: any) => notReq.not?.required?.includes('field3')),
 			).toBe(true);
+		});
+	});
+
+	describe('saveCredential', () => {
+		it('should save credential with personal project when projectId is not provided', async () => {
+			const mockUser = { id: 'user1', email: 'test@example.com' } as any;
+			const mockCredential = new CredentialsEntity();
+			mockCredential.id = 'cred1';
+			mockCredential.name = 'Test Credential';
+			mockCredential.type = 'testType';
+			mockCredential.data = 'encrypted-data';
+
+			const mockEncryptedData = { id: 'cred1', name: 'Test Credential' } as any;
+			const mockProject = { id: 'project1', type: 'personal' };
+
+			const mockTransactionManager = {
+				save: jest.fn().mockResolvedValue(mockCredential),
+			};
+
+			const mockProjectRepository = {
+				manager: { transaction: jest.fn((cb) => cb(mockTransactionManager)) },
+				getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue(mockProject),
+			};
+
+			const mockSharedCredentialsRepository = {
+				findCredentialOwningProject: jest.fn().mockResolvedValue(mockProject),
+			};
+
+			const mockExternalHooks = {
+				run: jest.fn().mockResolvedValue(undefined),
+			};
+
+			const mockEventService = {
+				emit: jest.fn(),
+			};
+
+			jest.spyOn(Container, 'get').mockImplementation((token: any) => {
+				if (token.name === 'ProjectRepository') return mockProjectRepository;
+				if (token.name === 'SharedCredentialsRepository') return mockSharedCredentialsRepository;
+				if (token.name === 'ExternalHooks') return mockExternalHooks;
+				if (token.name === 'EventService') return mockEventService;
+				return {} as any;
+			});
+
+			const result = await saveCredential(mockCredential, mockUser, mockEncryptedData);
+
+			expect(result).toBeDefined();
+			expect(result.id).toBe('cred1');
+			expect(mockTransactionManager.save).toHaveBeenCalledTimes(2);
+			expect(mockExternalHooks.run).toHaveBeenCalledWith('credentials.create', [mockEncryptedData]);
+			expect(mockEventService.emit).toHaveBeenCalledWith(
+				'credentials-created',
+				expect.objectContaining({
+					user: mockUser,
+					credentialType: mockCredential.type,
+					credentialId: mockCredential.id,
+					projectId: mockProject.id,
+					projectType: mockProject.type,
+					publicApi: true,
+				}),
+			);
+
+			jest.restoreAllMocks();
+		});
+
+		it('should save credential with specified project when projectId is provided', async () => {
+			const mockUser = { id: 'user1', email: 'test@example.com' } as any;
+			const mockCredential = new CredentialsEntity();
+			mockCredential.id = 'cred2';
+			mockCredential.name = 'Team Credential';
+			mockCredential.type = 'testType';
+			mockCredential.data = 'encrypted-data';
+
+			const mockEncryptedData = { id: 'cred2', name: 'Team Credential' } as any;
+			const mockProject = { id: 'project2', type: 'team' };
+
+			const mockTransactionManager = {
+				save: jest.fn().mockResolvedValue(mockCredential),
+			};
+
+			const mockProjectRepository = {
+				manager: { transaction: jest.fn((cb) => cb(mockTransactionManager)) },
+			};
+
+			const mockProjectService = {
+				getProjectWithScope: jest.fn().mockResolvedValue(mockProject),
+			};
+
+			const mockSharedCredentialsRepository = {
+				findCredentialOwningProject: jest.fn().mockResolvedValue(mockProject),
+			};
+
+			const mockExternalHooks = {
+				run: jest.fn().mockResolvedValue(undefined),
+			};
+
+			const mockEventService = {
+				emit: jest.fn(),
+			};
+
+			jest.spyOn(Container, 'get').mockImplementation((token: any) => {
+				if (token.name === 'ProjectRepository') return mockProjectRepository;
+				if (token.name === 'ProjectService') return mockProjectService;
+				if (token.name === 'SharedCredentialsRepository') return mockSharedCredentialsRepository;
+				if (token.name === 'ExternalHooks') return mockExternalHooks;
+				if (token.name === 'EventService') return mockEventService;
+				return {} as any;
+			});
+
+			const result = await saveCredential(mockCredential, mockUser, mockEncryptedData, 'project2');
+
+			expect(result).toBeDefined();
+			expect(result.id).toBe('cred2');
+			expect(mockProjectService.getProjectWithScope).toHaveBeenCalledWith(
+				mockUser,
+				'project2',
+				['credential:create'],
+				mockTransactionManager,
+			);
+			expect(mockTransactionManager.save).toHaveBeenCalledTimes(2);
+			expect(mockExternalHooks.run).toHaveBeenCalledWith('credentials.create', [mockEncryptedData]);
+			expect(mockEventService.emit).toHaveBeenCalledWith(
+				'credentials-created',
+				expect.objectContaining({
+					user: mockUser,
+					credentialType: mockCredential.type,
+					credentialId: mockCredential.id,
+					projectId: mockProject.id,
+					projectType: mockProject.type,
+					publicApi: true,
+				}),
+			);
+
+			jest.restoreAllMocks();
 		});
 	});
 });
