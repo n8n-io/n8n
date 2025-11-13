@@ -19,7 +19,7 @@ describe('FileAccessRule', () => {
 				title: 'File Access Restrictions',
 				description: 'File access is now restricted to a default directory for security purposes',
 				category: BreakingChangeCategory.workflow,
-				severity: 'high',
+				severity: 'medium',
 			});
 		});
 	});
