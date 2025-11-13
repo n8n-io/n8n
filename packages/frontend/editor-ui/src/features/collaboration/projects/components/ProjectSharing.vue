@@ -16,7 +16,7 @@ const GLOBAL_GROUP: ProjectListItem = {
 	id: 'all_users',
 	name: locale.baseText('projects.sharing.allUsers'),
 	type: 'public',
-	icon: { type: 'icon', value: 'users' },
+	icon: { type: 'icon', value: 'globe' },
 	role: 'member',
 	createdAt: `${Date.now()}`,
 	updatedAt: `${Date.now()}`,
