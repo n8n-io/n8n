@@ -21,7 +21,7 @@ import { AuthController } from '../auth.controller';
 import { AuthError } from '@/errors/response-errors/auth.error';
 import { v4 as uuidv4 } from 'uuid';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { AuthlessRequest } from '@/requests';
+import type { AuthlessRequest } from '@/requests';
 import * as ssoHelpers from '@/sso.ee/sso-helpers';
 import { ResolveSignupTokenQueryDto } from '@n8n/api-types';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
@@ -320,11 +320,11 @@ describe('AuthController', () => {
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([
 				mock<User>({
-					id: id,
+					id,
 					password: 'Password123!',
 				}),
 				mock<User>({
-					id: id,
+					id,
 					password: null,
 				}),
 			]);
@@ -362,12 +362,12 @@ describe('AuthController', () => {
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([
 				mock<User>({
-					id: id,
+					id,
 					email: undefined,
 					password: null,
 				}),
 				mock<User>({
-					id: id,
+					id,
 					email: undefined,
 					password: null,
 				}),
@@ -406,14 +406,14 @@ describe('AuthController', () => {
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(userRepository, 'findManyByIds').mockResolvedValue([
 				mock<User>({
-					id: id,
+					id,
 					email: 'inviter@example.com',
 					firstName: 'Inviter first name',
 					lastName: 'Inviter last name',
 					password: null,
 				}),
 				mock<User>({
-					id: id,
+					id,
 					email: 'invitee@example.com',
 					firstName: 'Invitee first name',
 					lastName: 'Invitee last name',

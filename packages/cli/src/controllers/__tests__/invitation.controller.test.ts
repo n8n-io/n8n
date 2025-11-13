@@ -20,7 +20,7 @@ import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { RESPONSE_ERROR_MESSAGES } from '@/constants';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import config from '@/config';
-import { AuthlessRequest } from '@/requests';
+import type { AuthlessRequest } from '@/requests';
 import { v4 as uuidv4 } from 'uuid';
 
 describe('InvitationController', () => {
@@ -325,7 +325,7 @@ describe('InvitationController', () => {
 			);
 
 			expect(userRepository.find).toHaveBeenCalledWith({
-				where: [{ id: id }, { id: '123' }],
+				where: [{ id }, { id: '123' }],
 				relations: ['role'],
 			});
 		});
