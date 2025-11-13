@@ -47,10 +47,9 @@ export class MulterUploadMiddleware implements UploadMiddleware {
 
 		this.upload = multer({
 			storage,
-			limits: {
-				fileSize:
-					this.globalConfig.dataTable.uploadMaxFileSize ?? this.globalConfig.dataTable.maxSize,
-			},
+			limits: this.globalConfig.dataTable.uploadMaxFileSize
+				? { fileSize: this.globalConfig.dataTable.uploadMaxFileSize }
+				: undefined,
 			fileFilter: async (req, file, cb: multer.FileFilterCallback) => {
 				if (!ALLOWED_MIME_TYPES.includes(file.mimetype)) {
 					cb(

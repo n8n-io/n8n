@@ -22,6 +22,8 @@ export class DataTableUploadsController {
 			const error = req.fileUploadError;
 			if (error instanceof multer.MulterError) {
 				throw new BadRequestError(`File upload error: ${error.message}`);
+			} else if (error instanceof BadRequestError) {
+				throw error;
 			} else {
 				throw new BadRequestError('File upload failed');
 			}
