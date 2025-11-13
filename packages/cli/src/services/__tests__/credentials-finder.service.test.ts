@@ -129,7 +129,7 @@ describe('CredentialsFinderService', () => {
 
 		test('should return null when no shared credential is found and not global', async () => {
 			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-			credentialsRepository.findBy.mockResolvedValueOnce([]);
+			credentialsRepository.findOne.mockResolvedValueOnce(null);
 			const credential = await credentialsFinderService.findCredentialForUser(
 				credentialsId,
 				member,
@@ -157,9 +157,14 @@ describe('CredentialsFinderService', () => {
 					},
 				},
 			});
-			expect(credentialsRepository.findBy).toHaveBeenCalledWith({
-				id: credentialsId,
-				isGlobal: true,
+			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
+				where: {
+					id: credentialsId,
+					isGlobal: true,
+				},
+				relations: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
 			});
 			expect(credential).toEqual(null);
 		});
@@ -167,7 +172,7 @@ describe('CredentialsFinderService', () => {
 		test('should return global credential when not shared but is global for credential:read scope', async () => {
 			const globalCredential = mock<CredentialsEntity>({ id: credentialsId, isGlobal: true });
 			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
-			credentialsRepository.findBy.mockResolvedValueOnce([globalCredential]);
+			credentialsRepository.findOne.mockResolvedValueOnce(globalCredential);
 
 			const credential = await credentialsFinderService.findCredentialForUser(
 				credentialsId,
@@ -175,9 +180,14 @@ describe('CredentialsFinderService', () => {
 				['credential:read' as const],
 			);
 
-			expect(credentialsRepository.findBy).toHaveBeenCalledWith({
-				id: credentialsId,
-				isGlobal: true,
+			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
+				where: {
+					id: credentialsId,
+					isGlobal: true,
+				},
+				relations: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
 			});
 			expect(credential).toEqual(globalCredential);
 		});
@@ -191,7 +201,7 @@ describe('CredentialsFinderService', () => {
 				['credential:update' as const],
 			);
 
-			expect(credentialsRepository.findBy).not.toHaveBeenCalled();
+			expect(credentialsRepository.findOne).not.toHaveBeenCalled();
 			expect(credential).toEqual(null);
 		});
 
@@ -204,7 +214,7 @@ describe('CredentialsFinderService', () => {
 				['credential:read' as const, 'credential:update' as const],
 			);
 
-			expect(credentialsRepository.findBy).not.toHaveBeenCalled();
+			expect(credentialsRepository.findOne).not.toHaveBeenCalled();
 			expect(credential).toEqual(null);
 		});
 

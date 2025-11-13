@@ -1556,12 +1556,12 @@ describe('RoleService', () => {
 			expect(result.scopes).not.toContain('credential:read');
 		});
 
-		it('should add credential:read scope to workflow entities with isGlobal property', async () => {
+		it('should not add credential:read scope to workflow entities even with isGlobal property', async () => {
 			//
 			// ARRANGE
 			//
-			// Note: While workflows typically don't have isGlobal, the current implementation
-			// will add credential:read scope if the property exists and is true
+			// Note: While workflows typically don't have isGlobal, the implementation
+			// only adds credential:read scope for credential entities, not workflows
 			const user = await createMember();
 			const mockWorkflowWithIsGlobal = {
 				id: 'workflow-1',
@@ -1586,8 +1586,9 @@ describe('RoleService', () => {
 			// ASSERT
 			//
 			expect(result).toHaveProperty('scopes');
-			// The current implementation adds credential:read for any entity with isGlobal: true
-			expect(result.scopes).toContain('credential:read');
+			// The implementation only adds credential:read for credential entities (entityType === 'credential')
+			// Workflows should not get credential:read scope even if they have isGlobal: true
+			expect(result.scopes).not.toContain('credential:read');
 		});
 	});
 
