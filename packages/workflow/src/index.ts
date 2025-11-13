@@ -76,7 +76,6 @@ export * from './node-parameters/parameter-type-validation';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
 export * from './workflow-diff';
-export * from './files';
 
 export type {
 	DocMetadata,

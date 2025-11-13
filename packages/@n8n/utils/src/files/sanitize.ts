@@ -1,8 +1,11 @@
 // Constants definition
+/* eslint-disable no-control-regex */
 const INVALID_CHARS_REGEX = /[<>:"/\\|?*\u0000-\u001F\u007F-\u009F]/g;
 const ZERO_WIDTH_CHARS_REGEX = /[\u200B-\u200D\u2060\uFEFF]/g;
 const UNICODE_SPACES_REGEX = /[\u00A0\u2000-\u200A]/g;
 const LEADING_TRAILING_DOTS_SPACES_REGEX = /^[\s.]+|[\s.]+$/g;
+/* eslint-enable no-control-regex */
+
 const WINDOWS_RESERVED_NAMES = new Set([
 	'CON',
 	'PRN',
