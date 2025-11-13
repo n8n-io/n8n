@@ -102,7 +102,7 @@ export class CredentialsService {
 			onlySharedWithMe?: boolean;
 			includeGlobal?: boolean;
 		} = {},
-	) {
+	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
 		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
 
@@ -127,7 +127,7 @@ export class CredentialsService {
 			);
 		}
 
-		credentials = await this.enrichCredentials(
+		return await this.enrichCredentials(
 			credentials,
 			user,
 			isDefaultSelect,
@@ -136,8 +136,6 @@ export class CredentialsService {
 			listQueryOptions,
 			onlySharedWithMe,
 		);
-
-		return credentials;
 	}
 
 	private applyOnlySharedWithMeFilter(
@@ -222,7 +220,7 @@ export class CredentialsService {
 		includeData: boolean,
 		listQueryOptions: ListQuery.Options & { includeData?: boolean },
 		onlySharedWithMe: boolean,
-	): Promise<CredentialsEntity[]> {
+	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
 		if (isDefaultSelect) {
 			// Since we're filtering using project ID as part of the relation,
 			// we end up filtering out all the other relations, meaning that if
@@ -241,7 +239,7 @@ export class CredentialsService {
 		}
 
 		if (includeData) {
-			credentials = this.addDecryptedDataToCredentials(credentials);
+			return this.addDecryptedDataToCredentials(credentials);
 		}
 
 		return credentials;
@@ -253,7 +251,11 @@ export class CredentialsService {
 		onlySharedWithMe: boolean,
 	): Promise<CredentialsEntity[]> {
 		const needsRelations =
-			(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ?? onlySharedWithMe;
+			listQueryOptions.filter?.shared &&
+			typeof listQueryOptions.filter.shared === 'object' &&
+			'projectId' in listQueryOptions.filter.shared
+				? listQueryOptions.filter.shared.projectId
+				: onlySharedWithMe;
 
 		if (needsRelations) {
 			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
@@ -275,21 +277,27 @@ export class CredentialsService {
 		return credentials.map((c) => this.roleService.addScopes(c, user, projectRelations));
 	}
 
-	private addDecryptedDataToCredentials(credentials: CredentialsEntity[]): CredentialsEntity[] {
-		return credentials.map((c: CredentialsEntity & ScopesField) => {
-			const data = c.scopes.includes('credential:update') ? this.decrypt(c) : undefined;
+	private addDecryptedDataToCredentials(
+		credentials: CredentialsEntity[],
+	): Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> {
+		return credentials.map(
+			(
+				c: CredentialsEntity & ScopesField,
+			): ICredentialsDecrypted<ICredentialDataDecryptedObject> => {
+				const data = c.scopes.includes('credential:update') ? this.decrypt(c) : undefined;
 
-			// We never want to expose the oauthTokenData to the frontend, but it
-			// expects it to check if the credential is already connected.
-			if (data?.oauthTokenData) {
-				data.oauthTokenData = true;
-			}
+				// We never want to expose the oauthTokenData to the frontend, but it
+				// expects it to check if the credential is already connected.
+				if (data?.oauthTokenData) {
+					data.oauthTokenData = true;
+				}
 
-			return {
-				...c,
-				data,
-			} as unknown as CredentialsEntity;
-		});
+				return {
+					...c,
+					data,
+				};
+			},
+		);
 	}
 
 	/**
