@@ -3,13 +3,13 @@ import ExpressionEditorModalInput from './ExpressionEditorModal/ExpressionEditor
 import { computed, ref, toRaw, watch } from 'vue';
 import Close from 'virtual:icons/mdi/close';
 
-import { useExternalHooks } from '@/composables/useExternalHooks';
+import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { createExpressionTelemetryPayload } from '@/utils/telemetryUtils';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { createExpressionTelemetryPayload } from '@/app/utils/telemetryUtils';
 
-import { useTelemetry } from '@/composables/useTelemetry';
-import type { Segment } from '@/types/expressions';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import type { Segment } from '@/app/types/expressions';
 import type { INodeProperties } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { outputTheme } from './ExpressionEditorModal/theme';
@@ -17,15 +17,22 @@ import ExpressionOutput from '@/features/shared/editors/components/InlineExpress
 import VirtualSchema from '@/features/ndv/runData/components/VirtualSchema.vue';
 import OutputItemSelect from '@/features/shared/editors/components/InlineExpressionEditor/OutputItemSelect.vue';
 import { useI18n } from '@n8n/i18n';
-import { useDebounce } from '@/composables/useDebounce';
-import DraggableTarget from '@/components/DraggableTarget.vue';
+import { useDebounce } from '@/app/composables/useDebounce';
+import DraggableTarget from '@/app/components/DraggableTarget.vue';
 import { dropInExpressionEditor } from '@/features/shared/editors/plugins/codemirror/dragAndDrop';
 
-import { APP_MODALS_ELEMENT_ID } from '@/constants';
+import { APP_MODALS_ELEMENT_ID } from '@/app/constants';
 import { useThrottleFn } from '@vueuse/core';
 
 import { ElDialog } from 'element-plus';
-import { N8nIcon, N8nInput, N8nResizeWrapper, N8nText, type ResizeData } from '@n8n/design-system';
+import {
+	N8nIcon,
+	N8nInput,
+	N8nRadioButtons,
+	N8nResizeWrapper,
+	N8nText,
+	type ResizeData,
+} from '@n8n/design-system';
 const DEFAULT_LEFT_SIDEBAR_WIDTH = 360;
 
 type Props = {
@@ -64,6 +71,7 @@ const sidebarWidth = ref(DEFAULT_LEFT_SIDEBAR_WIDTH);
 const expressionInputRef = ref<InstanceType<typeof ExpressionEditorModalInput>>();
 const expressionResultRef = ref<InstanceType<typeof ExpressionOutput>>();
 const theme = outputTheme();
+const outputRenderMode = ref<'text' | 'html' | 'markdown'>('text');
 
 const activeNode = computed(() => ndvStore.activeNode);
 const inputEditor = computed(() => expressionInputRef.value?.editor);
@@ -73,6 +81,17 @@ const parentNodes = computed(() => {
 	const nodes = workflowsStore.workflowObject.getParentNodesByDepth(node.name);
 
 	return nodes.filter(({ name }) => name !== node.name);
+});
+
+const rootNode = computed(() => {
+	if (!activeNode.value) return null;
+
+	return workflowsStore.findRootWithMainConnection(activeNode.value.name);
+});
+
+const rootNodesParents = computed(() => {
+	if (!rootNode.value) return [];
+	return workflowsStore.workflowObject.getParentNodesByDepth(rootNode.value);
 });
 
 watch(
@@ -169,7 +188,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 					<VirtualSchema
 						:class="$style.schema"
 						:search="appliedSearch"
-						:nodes="parentNodes"
+						:nodes="parentNodes.length > 0 ? parentNodes : rootNodesParents"
 						:mapping-enabled="!isReadOnly"
 						:connection-type="NodeConnectionTypes.Main"
 						pane-type="input"
@@ -216,7 +235,18 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 						<N8nText bold size="large">
 							{{ i18n.baseText('parameterInput.result') }}
 						</N8nText>
-						<OutputItemSelect />
+						<div :class="$style.headerControls">
+							<OutputItemSelect />
+							<N8nRadioButtons
+								v-model="outputRenderMode"
+								size="small"
+								:options="[
+									{ label: i18n.baseText('ndv.render.text'), value: 'text' },
+									{ label: i18n.baseText('ndv.render.html'), value: 'html' },
+									{ label: i18n.baseText('ndv.render.markdown'), value: 'markdown' },
+								]"
+							/>
+						</div>
 					</div>
 
 					<div :class="[$style.editorContainer, { 'ph-no-capture': redactValues }]">
@@ -225,6 +255,7 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 							:class="$style.editor"
 							:segments="segments"
 							:extensions="theme"
+							:render="outputRenderMode"
 							data-test-id="expression-modal-output"
 						/>
 					</div>
@@ -316,6 +347,14 @@ const onResizeThrottle = useThrottleFn(onResize, 10);
 	flex-direction: column;
 
 	gap: var(--spacing--5xs);
+}
+
+.headerControls {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+	padding-right: var(--spacing--4xs);
 }
 
 .tip {

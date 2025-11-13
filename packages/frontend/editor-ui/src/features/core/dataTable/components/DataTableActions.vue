@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useMessage } from '@/composables/useMessage';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { MODAL_CONFIRM } from '@/constants';
+import { useMessage } from '@/app/composables/useMessage';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { DATA_TABLE_CARD_ACTIONS } from '@/features/core/dataTable/constants';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';

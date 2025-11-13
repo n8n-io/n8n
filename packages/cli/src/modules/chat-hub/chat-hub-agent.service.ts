@@ -29,6 +29,8 @@ export class ChatHubAgentService {
 					provider: 'custom-agent',
 					agentId: agent.id,
 				},
+				createdAt: agent.createdAt.toISOString(),
+				updatedAt: agent.updatedAt.toISOString(),
 			})),
 		};
 	}

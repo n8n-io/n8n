@@ -1,3 +1,4 @@
+import { waitFor } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import DataTableTable from '@/features/core/dataTable/components/dataGrid/DataTableTable.vue';
 import { createPinia, setActivePinia } from 'pinia';
@@ -71,20 +72,21 @@ vi.mock('@/features/core/dataTable/components/dataGrid/AddColumnPopover.vue', ()
 }));
 
 // Mock composables
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError: vi.fn(),
 		showSuccess: vi.fn(),
 	}),
 }));
 
+const setCurrentPageMock = vi.fn();
 vi.mock('@/features/core/dataTable/composables/useDataTablePagination', () => ({
 	useDataTablePagination: () => ({
 		totalItems: 0,
 		setTotalItems: vi.fn(),
 		ensureItemOnPage: vi.fn(),
 		currentPage: 1,
-		setCurrentPage: vi.fn(),
+		setCurrentPage: setCurrentPageMock,
 	}),
 }));
 
@@ -180,6 +182,26 @@ describe('DataTableTable', () => {
 			});
 
 			expect(getByTestId('ag-grid-vue')).toBeInTheDocument();
+		});
+	});
+
+	describe('Search behavior', () => {
+		it('resets to first page when search changes', async () => {
+			const { rerender } = renderComponent({
+				props: {
+					dataTable: mockDataTable,
+					search: '',
+				},
+			});
+
+			await rerender({
+				dataTable: mockDataTable,
+				search: 'john',
+			});
+
+			await waitFor(() => {
+				expect(setCurrentPageMock).toHaveBeenCalledWith(1);
+			});
 		});
 	});
 });

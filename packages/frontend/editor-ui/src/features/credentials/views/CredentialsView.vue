@@ -1,24 +1,26 @@
 <script setup lang="ts">
-import ResourcesListLayout from '@/components/layouts/ResourcesListLayout.vue';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { EnterpriseEditionFeature, VIEWS } from '@/constants';
-import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
-import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import type { Project } from '@/features/collaboration/projects/projects.types';
+import CredentialCard from '../components/CredentialCard.vue';
 import EmptySharedSectionActionBox from '@/features/core/folders/components/EmptySharedSectionActionBox.vue';
+import ResourcesListLayout from '@/app/components/layouts/ResourcesListLayout.vue';
+import type { BaseFilters, Resource } from '@/Interface';
+import type { ICredentialTypeMap } from '../credentials.types';
+import ProjectHeader from '@/features/collaboration/projects/components/ProjectHeader.vue';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
+import { listenForModalChanges, useUIStore } from '@/app/stores/ui.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import type { BaseFilters, Resource } from '@/Interface';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { listenForModalChanges, useUIStore } from '@/stores/ui.store';
-import { isCredentialsResource } from '@/utils/typeGuards';
+import type { Project } from '@/features/collaboration/projects/projects.types';
+import { isCredentialsResource } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import pickBy from 'lodash/pickBy';
@@ -26,10 +28,9 @@ import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
-import CredentialCard from '../components/CredentialCard.vue';
-import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../credentials.constants';
 import { useCredentialsStore } from '../credentials.store';
-import type { ICredentialTypeMap } from '../credentials.types';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store.ts';
+
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{

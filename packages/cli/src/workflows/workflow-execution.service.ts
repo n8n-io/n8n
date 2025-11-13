@@ -237,8 +237,8 @@ export class WorkflowExecutionService {
 		workflowData: IWorkflowBase,
 		executionData: IRunExecutionData,
 		user: User,
-		httpResponse: Response,
-		streamingEnabled: boolean = true,
+		httpResponse?: Response,
+		streamingEnabled?: boolean,
 	) {
 		const data: IWorkflowExecutionDataProcess = {
 			executionMode: 'chat',

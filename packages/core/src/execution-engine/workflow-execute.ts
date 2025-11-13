@@ -2396,32 +2396,29 @@ export class WorkflowExecute {
 		executionError?: ExecutionBaseError,
 		closeFunction?: Promise<void>,
 	): Promise<IRun> {
-		const fullRunData = this.getFullRunData(startedAt);
-
+		// Set status before creating fullRunData
 		if (executionError !== undefined) {
 			Logger.debug('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
 			});
-			fullRunData.data.resultData.error = {
-				...executionError,
-				message: executionError.message,
-				stack: executionError.stack,
-			} as ExecutionBaseError;
-			if (executionError.message?.includes('canceled')) {
-				fullRunData.status = 'canceled';
+			if (
+				executionError.message?.includes('canceled') ||
+				executionError.name?.includes('Cancelled')
+			) {
+				this.status = 'canceled';
+			} else {
+				this.status = 'error';
 			}
 		} else if (this.runExecutionData.waitTill) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.debug(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
 			});
-			fullRunData.waitTill = this.runExecutionData.waitTill;
-			fullRunData.status = 'waiting';
+			this.status = 'waiting';
 		} else {
 			Logger.debug('Workflow execution finished successfully', { workflowId: workflow.id });
-			fullRunData.finished = true;
-			fullRunData.status = 'success';
+			this.status = 'success';
 		}
 
 		// Check if static data changed
@@ -2433,13 +2430,6 @@ export class WorkflowExecute {
 		}
 
 		this.moveNodeMetadata();
-		// Prevent from running the hook if the error is an abort error as it was already handled
-		if (!this.isCancelled) {
-			await this.additionalData.hooks?.runHook('workflowExecuteAfter', [
-				fullRunData,
-				newStaticData,
-			]);
-		}
 
 		if (closeFunction) {
 			try {
@@ -2454,15 +2444,39 @@ export class WorkflowExecute {
 			}
 		}
 
+		// Capture stoppedAt timestamp after all processing is complete
+		const stoppedAt = new Date();
+		const fullRunData = this.getFullRunData(startedAt, stoppedAt);
+
+		if (executionError !== undefined) {
+			fullRunData.data.resultData.error = {
+				...executionError,
+				message: executionError.message,
+				stack: executionError.stack,
+			} satisfies ExecutionBaseError;
+		} else if (this.runExecutionData.waitTill) {
+			fullRunData.waitTill = this.runExecutionData.waitTill;
+		} else {
+			fullRunData.finished = true;
+		}
+
+		// Prevent from running the hook if the error is an abort error as it was already handled
+		if (!this.isCancelled) {
+			await this.additionalData.hooks?.runHook('workflowExecuteAfter', [
+				fullRunData,
+				newStaticData,
+			]);
+		}
+
 		return fullRunData;
 	}
 
-	getFullRunData(startedAt: Date): IRun {
+	getFullRunData(startedAt: Date, stoppedAt?: Date): IRun {
 		return {
 			data: this.runExecutionData,
 			mode: this.mode,
 			startedAt,
-			stoppedAt: new Date(),
+			stoppedAt: stoppedAt ?? new Date(),
 			status: this.status,
 		};
 	}

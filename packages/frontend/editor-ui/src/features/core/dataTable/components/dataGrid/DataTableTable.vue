@@ -9,7 +9,7 @@ import { AgGridVue } from 'ag-grid-vue3';
 import type { GetRowIdParams, GridReadyEvent, SortChangedEvent } from 'ag-grid-community';
 import { n8nTheme } from '@/features/core/dataTable/components/dataGrid/n8nTheme';
 import { registerAgGridModulesOnce } from '@/features/core/dataTable/components/dataGrid/registerAgGridModulesOnce';
-import SelectedItemsInfo from '@/components/common/SelectedItemsInfo.vue';
+import SelectedItemsInfo from '@/app/components/common/SelectedItemsInfo.vue';
 import {
 	DATA_TABLE_HEADER_HEIGHT,
 	DATA_TABLE_ROW_HEIGHT,
@@ -24,12 +24,14 @@ import { useDataTableOperations } from '@/features/core/dataTable/composables/us
 import { useDataTableColumnFilters } from '@/features/core/dataTable/composables/useDataTableColumnFilters';
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
+import { useDebounce } from '@/app/composables/useDebounce';
 
 import { ElPagination } from 'element-plus';
 registerAgGridModulesOnce();
 
 type Props = {
 	dataTable: DataTable;
+	search?: string;
 };
 
 const props = defineProps<Props>();
@@ -41,6 +43,7 @@ const emit = defineEmits<{
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
 
 const i18n = useI18n();
+const { debounce } = useDebounce();
 const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
@@ -102,6 +105,7 @@ const dataTableOperations = useDataTableOperations({
 	selectedRowIds: selection.selectedRowIds,
 	handleCopyFocusedCell: agGrid.handleCopyFocusedCell,
 	currentFilterJSON,
+	searchQuery: computed(() => props.search),
 });
 
 async function onDeleteColumnFunction(columnId: string) {
@@ -136,6 +140,18 @@ watch([agGrid.currentSortBy, agGrid.currentSortOrder], async () => {
 watch(currentFilterJSON, async () => {
 	await setCurrentPage(1);
 });
+
+const onSearchChange = async () => {
+	await setCurrentPage(1);
+};
+const debouncedOnSearchChange = debounce(onSearchChange, { debounceTime: 250, trailing: true });
+
+watch(
+	() => props.search,
+	() => {
+		void debouncedOnSearchChange();
+	},
+);
 
 defineExpose({
 	addRow: dataTableOperations.onAddRowClick,
@@ -345,10 +361,6 @@ defineExpose({
 
 		&:global(.boolean-cell) {
 			border: var(--grid--cell--border-color--editing) !important;
-
-			&:global(.ag-cell-focus) {
-				background-color: var(--grid-cell-active-background);
-			}
 		}
 	}
 

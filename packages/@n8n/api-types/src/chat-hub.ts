@@ -67,6 +67,8 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 export type ChatHubOpenAIModel = z.infer<typeof openAIModelSchema>;
 export type ChatHubAnthropicModel = z.infer<typeof anthropicModelSchema>;
 export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
+export type ChatHubBaseLLMModel = ChatHubOpenAIModel | ChatHubAnthropicModel | ChatHubGoogleModel;
+
 export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
 export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
@@ -85,6 +87,8 @@ export interface ChatModelDto {
 	model: ChatHubConversationModel;
 	name: string;
 	description: string | null;
+	updatedAt: string | null;
+	createdAt: string | null;
 }
 
 /**
@@ -97,6 +101,14 @@ export type ChatModelsResponse = Record<
 		error?: string;
 	}
 >;
+
+export const emptyChatModelsResponse: ChatModelsResponse = {
+	openai: { models: [] },
+	anthropic: { models: [] },
+	google: { models: [] },
+	n8n: { models: [] },
+	'custom-agent': { models: [] },
+};
 
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
@@ -202,7 +214,7 @@ export interface ChatHubAgentDto {
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;
-	provider: ChatHubProvider;
+	provider: ChatHubLLMProvider;
 	model: string;
 	createdAt: string;
 	updatedAt: string;
@@ -231,5 +243,6 @@ export interface EnrichedStructuredChunk extends StructuredChunk {
 		messageId: ChatMessageId;
 		previousMessageId: ChatMessageId | null;
 		retryOfMessageId: ChatMessageId | null;
+		executionId: number | null;
 	};
 }
