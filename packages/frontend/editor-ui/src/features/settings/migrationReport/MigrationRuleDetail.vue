@@ -206,7 +206,14 @@ const sortedWorkflows = computed(() => {
 		</N8nText>
 		<N8nText tag="p" color="text-base" class="mb-2xl">
 			{{ state.ruleDescription }}
-			<N8nLink theme="text" underline href="#">
+			<N8nLink
+				v-if="state.ruleDocumentationUrl"
+				theme="text"
+				underline
+				:href="state.ruleDocumentationUrl"
+				target="_blank"
+				rel="noopener noreferrer"
+			>
 				<u :class="$style.NoLineBreak">
 					{{ i18n.baseText('settings.migrationReport.documentation') }}
 					<N8nIcon icon="external-link" />
