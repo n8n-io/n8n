@@ -1,7 +1,4 @@
-import { mock } from 'jest-mock-extended';
-import type { IRunExecutionData } from 'n8n-workflow';
-
-import { InvalidExecutionMetadataError } from '@/errors/invalid-execution-metadata.error';
+import { createRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
 
 import {
 	setWorkflowExecutionMetadata,
@@ -11,6 +8,8 @@ import {
 	getAllWorkflowExecutionMetadata,
 } from '../execution-metadata';
 
+import { InvalidExecutionMetadataError } from '@/errors/invalid-execution-metadata.error';
+
 describe('Execution Metadata functions', () => {
 	const createExecutionDataWithMetadata = (
 		metadata: Record<string, string> = {},
@@ -18,11 +17,7 @@ describe('Execution Metadata functions', () => {
 		metadata: Record<string, string>;
 		executionData: IRunExecutionData;
 	} => {
-		const executionData = mock<IRunExecutionData>({
-			resultData: {
-				metadata,
-			},
-		});
+		const executionData = createRunExecutionData({ resultData: { metadata } });
 
 		return {
 			metadata,
