@@ -28,6 +28,12 @@ vi.mock('@/app/composables/useToast', () => ({
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 	useDataTableStore: () => ({
 		deleteDataTable: mockDeleteDataTable,
+		projectPermissions: {
+			dataTable: {
+				delete: true,
+				update: true,
+			},
+		},
 	}),
 }));
 
