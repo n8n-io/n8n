@@ -262,6 +262,7 @@ export async function createActiveWorkflow(attributes: Partial<IWorkflowDb> = {}
 
 	await setActiveVersion(workflow.id, workflow.versionId);
 
+	workflow.activeVersionId = workflow.versionId;
 	return workflow;
 }
 
@@ -289,5 +290,6 @@ export async function createWorkflowWithActiveVersion(
 
 	await setActiveVersion(workflow.id, activeVersionId);
 
+	workflow.activeVersionId = activeVersionId;
 	return workflow;
 }

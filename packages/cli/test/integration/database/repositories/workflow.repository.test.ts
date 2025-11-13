@@ -1,5 +1,7 @@
 import {
-	createWorkflowWithTrigger,
+	createWorkflowWithTriggerAndHistory,
+	createActiveWorkflow,
+	createWorkflowWithActiveVersion,
 	createWorkflow,
 	getAllWorkflows,
 	testDb,
@@ -16,7 +18,7 @@ describe('WorkflowRepository', () => {
 	});
 
 	beforeEach(async () => {
-		await testDb.truncate(['WorkflowDependency', 'WorkflowEntity']);
+		await testDb.truncate(['WorkflowDependency', 'WorkflowEntity', 'WorkflowHistory']);
 	});
 
 	afterAll(async () => {
@@ -30,10 +32,12 @@ describe('WorkflowRepository', () => {
 			//
 			const workflowRepository = Container.get(WorkflowRepository);
 			const workflows = await Promise.all([
-				createWorkflowWithTrigger(),
-				createWorkflowWithTrigger(),
+				createWorkflowWithTriggerAndHistory(),
+				createWorkflowWithTriggerAndHistory(),
 			]);
 			expect(workflows).toMatchObject([{ active: false }, { active: false }]);
+			expect(workflows[0].activeVersionId).toBeNull();
+			expect(workflows[1].activeVersionId).toBeNull();
 
 			//
 			// ACT
@@ -45,20 +49,71 @@ describe('WorkflowRepository', () => {
 			//
 			const after = await getAllWorkflows();
 			expect(after).toMatchObject([{ active: true }, { active: true }]);
-		});
-	});
 
-	describe('deactivateAll', () => {
-		it('should deactivate all workflows', async () => {
+			// Verify activeVersionId is set to current versionId
+			const workflow1 = await workflowRepository.findOne({
+				where: { id: workflows[0].id },
+				relations: ['activeVersion'],
+			});
+			const workflow2 = await workflowRepository.findOne({
+				where: { id: workflows[1].id },
+				relations: ['activeVersion'],
+			});
+
+			expect(workflow1?.activeVersionId).toBe(workflows[0].versionId);
+			expect(workflow1?.activeVersion?.versionId).toBe(workflows[0].versionId);
+			expect(workflow2?.activeVersionId).toBe(workflows[1].versionId);
+			expect(workflow2?.activeVersion?.versionId).toBe(workflows[1].versionId);
+		});
+
+		it('should not change activeVersionId for already-active workflows', async () => {
 			//
 			// ARRANGE
 			//
 			const workflowRepository = Container.get(WorkflowRepository);
-			const workflows = await Promise.all([
-				createWorkflowWithTrigger({ active: true }),
-				createWorkflowWithTrigger({ active: true }),
-			]);
+			const activeVersionId = 'old-active-version-id';
+
+			// Create workflow with different active and current versions
+			const workflow = await createWorkflowWithActiveVersion(activeVersionId, {});
+			const currentVersionId = workflow.versionId;
+
+			expect(workflow.active).toBe(true);
+			expect(workflow.activeVersionId).toBe(activeVersionId);
+			expect(workflow.versionId).toBe(currentVersionId);
+
+			//
+			// ACT
+			//
+			await workflowRepository.activateAll();
+
+			//
+			// ASSERT
+			//
+			// activeVersionId should remain unchanged
+			const after = await workflowRepository.findOne({
+				where: { id: workflow.id },
+				relations: ['activeVersion'],
+			});
+
+			expect(after?.active).toBe(true);
+			expect(after?.activeVersionId).toBe(activeVersionId); // Unchanged
+			expect(after?.versionId).toBe(currentVersionId);
+			expect(after?.activeVersion?.versionId).toBe(activeVersionId);
+		});
+	});
+
+	describe('deactivateAll', () => {
+		it('should deactivate all workflows and clear activeVersionId', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflows = await Promise.all([createActiveWorkflow({}), createActiveWorkflow({})]);
 			expect(workflows).toMatchObject([{ active: true }, { active: true }]);
+
+			// Verify activeVersionId is initially set
+			expect(workflows[0].activeVersionId).not.toBeNull();
+			expect(workflows[1].activeVersionId).not.toBeNull();
 
 			//
 			// ACT
@@ -70,6 +125,21 @@ describe('WorkflowRepository', () => {
 			//
 			const after = await getAllWorkflows();
 			expect(after).toMatchObject([{ active: false }, { active: false }]);
+
+			// Verify activeVersionId is cleared
+			const workflow1 = await workflowRepository.findOne({
+				where: { id: workflows[0].id },
+				relations: ['activeVersion'],
+			});
+			const workflow2 = await workflowRepository.findOne({
+				where: { id: workflows[1].id },
+				relations: ['activeVersion'],
+			});
+
+			expect(workflow1?.activeVersionId).toBeNull();
+			expect(workflow1?.activeVersion).toBeNull();
+			expect(workflow2?.activeVersionId).toBeNull();
+			expect(workflow2?.activeVersion).toBeNull();
 		});
 	});
 

@@ -4,7 +4,6 @@ import {
 	createWorkflowWithTrigger,
 	createWorkflowWithTriggerAndHistory,
 	createActiveWorkflow,
-	createWorkflowWithActiveVersion,
 	getAllWorkflows,
 } from '@n8n/backend-test-utils';
 import { WorkflowRepository } from '@n8n/db';
@@ -59,48 +58,6 @@ test('update:workflow can activate all workflows', async () => {
 	expect(workflow1?.activeVersion?.versionId).toBe(workflows[0].versionId);
 	expect(workflow2?.activeVersionId).toBe(workflows[1].versionId);
 	expect(workflow2?.activeVersion?.versionId).toBe(workflows[1].versionId);
-});
-
-test('update:workflow does not change activeVersion for already-active workflows', async () => {
-	//
-	// ARRANGE
-	//
-	const workflowRepo = Container.get(WorkflowRepository);
-	const activeVersionId = 'old-active-version-id';
-
-	// Create a workflow where activeVersionId differs from versionId
-	// This simulates a workflow that was activated, then edited (creating a new versionId)
-	const workflow = await createWorkflowWithActiveVersion(activeVersionId, {});
-	const currentVersionId = workflow.versionId;
-
-	// Verify initial state: active with different active and current versions
-	const workflowBefore = await workflowRepo.findOne({
-		where: { id: workflow.id },
-		relations: ['activeVersion'],
-	});
-	expect(workflowBefore?.active).toBe(true);
-	expect(workflowBefore?.versionId).toBe(currentVersionId);
-	expect(workflowBefore?.activeVersionId).toBe(activeVersionId);
-	expect(workflowBefore?.activeVersion?.versionId).toBe(activeVersionId);
-
-	//
-	// ACT
-	//
-	await command.run(['--all', '--active=true']);
-
-	//
-	// ASSERT
-	//
-	// Verify activeVersionId was NOT changed by the command
-	const workflowAfter = await workflowRepo.findOne({
-		where: { id: workflow.id },
-		relations: ['activeVersion'],
-	});
-
-	expect(workflowAfter?.active).toBe(true);
-	expect(workflowAfter?.versionId).toBe(currentVersionId);
-	expect(workflowAfter?.activeVersionId).toBe(activeVersionId);
-	expect(workflowAfter?.activeVersion?.versionId).toBe(activeVersionId);
 });
 
 test('update:workflow can deactivate all workflows', async () => {
