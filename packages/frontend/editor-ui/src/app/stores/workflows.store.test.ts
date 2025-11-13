@@ -12,7 +12,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
-import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { deepCopy, NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 import type {
 	IPinData,
 	IConnection,
@@ -516,6 +516,135 @@ describe('useWorkflowsStore', () => {
 
 			const result = workflowsStore.isNodeInOutgoingNodeConnections('RootNode', 'SearchNode', 0);
 			expect(result).toBe(false);
+		});
+	});
+
+	describe('findRootWithMainConnection()', () => {
+		it('returns children connected via ai tool when they also have a main parent', () => {
+			const toolNode = createTestNode({ name: 'ToolNode' });
+			const upstreamParentNode = createTestNode({ name: 'UpstreamNode' });
+			const rootNode = createTestNode({ name: 'RootNode' });
+
+			workflowsStore.setNodes([toolNode, upstreamParentNode, rootNode]);
+
+			workflowsStore.setConnections({
+				[toolNode.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[
+							{
+								node: rootNode.name,
+								type: NodeConnectionTypes.AiTool,
+								index: 0,
+							},
+						],
+					],
+				},
+				[upstreamParentNode.name]: {
+					main: [
+						[
+							{
+								node: rootNode.name,
+								type: NodeConnectionTypes.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+			});
+
+			const result = workflowsStore.findRootWithMainConnection(toolNode.name);
+
+			expect(result).toBe(rootNode.name);
+		});
+
+		it('finds the root for a deeply nested vector tool chain', () => {
+			const embeddingsNode = createTestNode({ name: 'EmbeddingsNode' });
+			const vectorStoreNode = createTestNode({ name: 'VectorStoreNode' });
+			const vectorToolNode = createTestNode({ name: 'VectorToolNode' });
+			const agentNode = createTestNode({ name: 'AI Agent' });
+			const setNode = createTestNode({ name: 'SetNode' });
+
+			workflowsStore.setNodes([
+				embeddingsNode,
+				vectorStoreNode,
+				vectorToolNode,
+				agentNode,
+				setNode,
+			]);
+
+			workflowsStore.setConnections({
+				[embeddingsNode.name]: {
+					[NodeConnectionTypes.AiEmbedding]: [
+						[
+							{
+								node: vectorStoreNode.name,
+								type: NodeConnectionTypes.AiEmbedding,
+								index: 0,
+							},
+						],
+					],
+				},
+				[vectorStoreNode.name]: {
+					[NodeConnectionTypes.AiVectorStore]: [
+						[
+							{
+								node: vectorToolNode.name,
+								type: NodeConnectionTypes.AiVectorStore,
+								index: 0,
+							},
+						],
+					],
+				},
+				[vectorToolNode.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[
+							{
+								node: agentNode.name,
+								type: NodeConnectionTypes.AiTool,
+								index: 0,
+							},
+						],
+					],
+				},
+				[setNode.name]: {
+					main: [
+						[
+							{
+								node: agentNode.name,
+								type: NodeConnectionTypes.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+			});
+
+			expect(workflowsStore.findRootWithMainConnection(embeddingsNode.name)).toBe(agentNode.name);
+		});
+
+		it('returns null when no child has a main input connection', () => {
+			const parent = createTestNode({ name: 'ParentNode' });
+			const aiChild = createTestNode({ name: 'AiChild' });
+
+			workflowsStore.setNodes([parent, aiChild]);
+
+			workflowsStore.setConnections({
+				[parent.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[
+							{
+								node: aiChild.name,
+								type: NodeConnectionTypes.AiTool,
+								index: 0,
+							},
+						],
+					],
+				},
+			});
+
+			const result = workflowsStore.findRootWithMainConnection(parent.name);
+
+			expect(result).toBeNull();
 		});
 	});
 

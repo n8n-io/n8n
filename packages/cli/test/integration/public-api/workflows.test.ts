@@ -1,7 +1,7 @@
 import {
 	createTeamProject,
 	createWorkflow,
-	createWorkflowWithTrigger,
+	createWorkflowWithTriggerAndHistory,
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
@@ -624,7 +624,7 @@ describe('POST /workflows/:id/activate', () => {
 	});
 
 	test('should set workflow as active', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
@@ -659,7 +659,7 @@ describe('POST /workflows/:id/activate', () => {
 	});
 
 	test('should set non-owned workflow as active when owner', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`).expect(200);
 
@@ -718,7 +718,7 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 
 	test('should deactivate workflow', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 
@@ -755,7 +755,7 @@ describe('POST /workflows/:id/deactivate', () => {
 	});
 
 	test('should deactivate non-owned workflow when owner', async () => {
-		const workflow = await createWorkflowWithTrigger({}, member);
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
 

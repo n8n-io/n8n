@@ -3,6 +3,7 @@ import {
 	getPersonalProject,
 	linkUserToProject,
 	createWorkflow,
+	createWorkflowWithHistory,
 	shareWorkflowWithProjects,
 	shareWorkflowWithUsers,
 	randomCredentialPayload,
@@ -2249,7 +2250,7 @@ describe('GET /workflows?includeFolders=true', () => {
 
 describe('PATCH /workflows/:workflowId', () => {
 	test('should always create workflow history version', async () => {
-		const workflow = await createWorkflow({}, owner);
+		const workflow = await createWorkflowWithHistory({}, owner);
 		const payload = {
 			name: 'name updated',
 			versionId: workflow.versionId,
@@ -2286,7 +2287,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		const {
-			data: { id },
+			data: { id, versionId: updatedVersionId },
 		} = response.body;
 
 		expect(response.statusCode).toBe(200);
@@ -2294,10 +2295,11 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(id).toBe(workflow.id);
 		expect(
 			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-		).toBe(1);
+		).toBe(2);
 		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
 			where: {
 				workflowId: id,
+				versionId: updatedVersionId,
 			},
 		});
 		expect(historyVersion).not.toBeNull();
@@ -2326,7 +2328,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should activate workflow without changing version ID', async () => {
-		const workflow = await createWorkflow({}, owner);
+		const workflow = await createWorkflowWithHistory({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
 			active: true,
@@ -2347,7 +2349,7 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should deactivate workflow without changing version ID', async () => {
-		const workflow = await createWorkflow({ active: true }, owner);
+		const workflow = await createWorkflowWithHistory({ active: true }, owner);
 		const payload = {
 			versionId: workflow.versionId,
 			active: false,
@@ -2585,6 +2587,33 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(workflowsInDb!.isArchived).toBe(true);
 		expect(sharedWorkflowsInDb).toHaveLength(1);
 	});
+
+	test('should save workflow history', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const initialVersionId = workflow.versionId;
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/archive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { versionId: newVersionId },
+		} = response.body;
+
+		expect(newVersionId).not.toBe(initialVersionId);
+
+		const historyRecord = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: newVersionId,
+			},
+		});
+
+		expect(historyRecord).not.toBeNull();
+		expect(historyRecord!.nodes).toEqual(workflow.nodes);
+		expect(historyRecord!.connections).toEqual(workflow.connections);
+	});
 });
 
 describe('POST /workflows/:workflowId/unarchive', () => {
@@ -2665,6 +2694,68 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 		expect(workflowsInDb).not.toBeNull();
 		expect(workflowsInDb!.isArchived).toBe(false);
 		expect(sharedWorkflowsInDb).toHaveLength(1);
+	});
+
+	test('should save workflow history', async () => {
+		const workflow = await createWorkflowWithHistory({ isArchived: true }, owner);
+		const initialVersionId = workflow.versionId;
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/unarchive`)
+			.send()
+			.expect(200);
+
+		const {
+			data: { versionId: newVersionId },
+		} = response.body;
+
+		expect(newVersionId).not.toBe(initialVersionId);
+
+		const historyRecord = await Container.get(WorkflowHistoryRepository).findOne({
+			where: {
+				workflowId: workflow.id,
+				versionId: newVersionId,
+			},
+		});
+
+		expect(historyRecord).not.toBeNull();
+		expect(historyRecord!.nodes).toEqual(workflow.nodes);
+		expect(historyRecord!.connections).toEqual(workflow.connections);
+	});
+
+	test('should be able to activate workflow after unarchiving', async () => {
+		const workflow = await createWorkflowWithHistory(
+			{
+				nodes: [
+					{
+						id: 'trigger-1',
+						parameters: {},
+						name: 'Schedule Trigger',
+						type: 'n8n-nodes-base.scheduleTrigger',
+						typeVersion: 1,
+						position: [240, 300],
+					},
+				],
+				connections: {},
+			},
+			owner,
+		);
+
+		await authOwnerAgent.post(`/workflows/${workflow.id}/archive`).send().expect(200);
+
+		const unarchiveResponse = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/unarchive`)
+			.send()
+			.expect(200);
+
+		const { data: unarchivedWorkflow } = unarchiveResponse.body;
+
+		const activateResponse = await authOwnerAgent
+			.patch(`/workflows/${workflow.id}`)
+			.send({ active: true, versionId: unarchivedWorkflow.versionId })
+			.expect(200);
+
+		expect(activateResponse.body.data.active).toBe(true);
 	});
 });
 

@@ -108,10 +108,12 @@ import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRole
 import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
-import { AddWorkflowVersionIdToExecutionData1762858574621 } from '../common/1762858574621-AddWorkflowVersionIdToExecutionData';
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
 import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/1762763704614-BackfillMissingWorkflowHistoryRecords';
+import { AddWorkflowHistoryAutoSaveFields1762847206508 } from '../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
+import { AddWorkflowVersionIdToExecutionData1762858574621 } from '../common/1762858574621-AddWorkflowVersionIdToExecutionData';
 import type { Migration } from '../migration-types';
+import { ChangeDefaultForIdInUserTable1762771264000 } from './1762771264000-ChangeDefaultForIdInUserTable';
 
 export const postgresMigrations: Migration[] = [
 	InitialMigration1587669153312,
@@ -226,5 +228,7 @@ export const postgresMigrations: Migration[] = [
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
 	BackfillMissingWorkflowHistoryRecords1762763704614,
+	ChangeDefaultForIdInUserTable1762771264000,
+	AddWorkflowHistoryAutoSaveFields1762847206508,
 	AddWorkflowVersionIdToExecutionData1762858574621,
 ];

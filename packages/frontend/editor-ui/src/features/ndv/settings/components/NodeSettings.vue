@@ -632,6 +632,7 @@ function handleSelectAction(params: INodeParameters) {
 					:model-value="node.name"
 					:icon-source="iconSource"
 					:read-only="isReadOnly"
+					:node-type="nodeType"
 					@update:model-value="nameChanged"
 				/>
 				<NodeExecuteButton
