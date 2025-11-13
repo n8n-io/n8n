@@ -13,15 +13,16 @@ import { DATA_TABLE_SYSTEM_COLUMNS } from 'n8n-workflow';
 import {
 	N8nButton,
 	N8nCheckbox,
+	N8nIcon,
 	N8nInput,
 	N8nInputLabel,
 	N8nSelect,
 	N8nOption,
+	N8nText,
 } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
-import { ElUpload, ElIcon } from 'element-plus';
+import { ElUpload } from 'element-plus';
 import type { UploadFile } from 'element-plus';
-import { UploadFilled } from '@element-plus/icons-vue';
 
 type Props = {
 	modalName: string;
@@ -60,6 +61,7 @@ const csvRowCount = ref<number>(0);
 const csvColumnCount = ref<number>(0);
 const isUploading = ref(false);
 const hasHeaders = ref(true);
+const isUploadHovered = ref(false);
 
 const allColumnTypeOptions = [
 	{ label: 'String', value: 'string' },
@@ -262,12 +264,6 @@ const onSubmit = async () => {
 	}
 };
 
-// const onCancel = () => {
-// 	resetForm();
-// 	uiStore.closeModal(props.modalName);
-// 	redirectToDataTables();
-// };
-
 const resetForm = () => {
 	dataTableName.value = '';
 	selectedFile.value = null;
@@ -292,8 +288,6 @@ const resetToSelect = () => {
 };
 
 const goBack = () => {
-	// Just go back to select mode without clearing the state
-	// This preserves the selected file and radio button selection
 	creationMode.value = 'select';
 };
 
@@ -370,16 +364,21 @@ const redirectToDataTables = () => {
 						:show-file-list="false"
 						accept=".csv"
 						:on-change="handleFileChange"
+						@mouseenter="isUploadHovered = true"
+						@mouseleave="isUploadHovered = false"
 					>
-						<ElIcon :class="$style.uploadIcon">
-							<UploadFilled />
-						</ElIcon>
-						<div :class="$style.uploadText">
-							<span v-if="selectedFile" :class="$style.fileName">{{ selectedFile?.name }}</span>
-							<span v-else>
-								{{ i18n.baseText('dataTable.upload.dropOrClick') }}
-							</span>
-						</div>
+						<N8nIcon
+							icon="file"
+							:size="24"
+							:color="isUploadHovered ? 'text-dark' : 'text-light'"
+							:class="$style.uploadIcon"
+						/>
+						<N8nText v-if="selectedFile" :color="isUploadHovered ? 'text-dark' : 'text-light'">
+							{{ selectedFile?.name }}
+						</N8nText>
+						<N8nText v-else size="medium" :color="isUploadHovered ? 'text-dark' : 'text-light'">
+							{{ i18n.baseText('dataTable.upload.dropOrClick') }}
+						</N8nText>
 					</ElUpload>
 
 					<N8nCheckbox
@@ -547,7 +546,6 @@ const redirectToDataTables = () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
-	margin-top: var(--spacing--sm);
 }
 
 .uploadingMessage {
@@ -650,8 +648,8 @@ const redirectToDataTables = () => {
 	:global(.el-upload-dragger) {
 		width: 100%;
 		padding: var(--spacing--2xl) var(--spacing--lg);
-		border: 2px dashed var(--color--foreground);
-		background-color: var(--color--foreground);
+		border: 1px solid var(--color--foreground);
+		background-color: var(--color--background-base);
 		border-radius: var(--radius--lg);
 		transition: all 0.2s ease;
 		display: flex;
@@ -660,39 +658,20 @@ const redirectToDataTables = () => {
 		justify-content: center;
 
 		&:hover {
-			border-color: var(--color--primary);
-			background-color: var(--color--foreground--shade-1);
+			background-color: var(--color--background);
 		}
 	}
 
-	// Hide the default file input button
 	:global(input[type='file']) {
 		display: none !important;
 	}
 }
 
 .uploadIcon {
-	font-size: 48px;
-	color: var(--color--primary);
 	margin-bottom: var(--spacing--sm);
 }
 
-.uploadText {
-	font-size: var(--font-size--md);
-	color: var(--color--text);
-	line-height: var(--line-height--lg);
-	text-align: center;
-}
-
 .fileName {
-	font-weight: var(--font-weight--bold);
-	color: var(--color--primary);
-}
-
-.uploadTip {
-	font-size: var(--font-size--xs);
-	color: var(--color--text--tint-1);
-	margin-top: var(--spacing--xs);
-	line-height: var(--line-height--lg);
+	font-weight: var(--font-weight--regular);
 }
 </style>
