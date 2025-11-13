@@ -3,7 +3,10 @@ import { mock } from 'jest-mock-extended';
 import type { EntityManager } from '@n8n/typeorm';
 import type { INodeCredentials } from 'n8n-workflow';
 
-import { ChatHubCredentialsService, type CredentialWithProjectId } from '../chat-hub-credentials.service';
+import {
+	ChatHubCredentialsService,
+	type CredentialWithProjectId,
+} from '../chat-hub-credentials.service';
 import type { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -64,9 +67,7 @@ describe('ChatHubCredentialsService', () => {
 				openAiApi: { id: 'global-cred-123', name: 'Global OpenAI Credentials' },
 			};
 
-			credentialsFinderService.findAllCredentialsForUser.mockResolvedValue([
-				mockGlobalCredential,
-			]);
+			credentialsFinderService.findAllCredentialsForUser.mockResolvedValue([mockGlobalCredential]);
 
 			const result = await service.ensureCredentials(
 				mockUser,
@@ -201,9 +202,7 @@ describe('ChatHubCredentialsService', () => {
 				projectId: 'project-global',
 			});
 
-			credentialsFinderService.findAllCredentialsForUser.mockResolvedValue([
-				mockGlobalCredential,
-			]);
+			credentialsFinderService.findAllCredentialsForUser.mockResolvedValue([mockGlobalCredential]);
 
 			const result = await service.ensureCredentialById(mockUser, 'global-cred-123', mockTrx);
 

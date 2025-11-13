@@ -474,9 +474,7 @@ describe('CredentialsService', () => {
 					});
 
 					// ASSERT
-					expect(
-						sharedCredentialsRepository.getAllRelationsForCredentials,
-					).not.toHaveBeenCalled();
+					expect(sharedCredentialsRepository.getAllRelationsForCredentials).not.toHaveBeenCalled();
 				});
 			});
 
@@ -509,9 +507,7 @@ describe('CredentialsService', () => {
 					});
 
 					// ASSERT
-					expect(
-						sharedCredentialsRepository.getAllRelationsForCredentials,
-					).not.toHaveBeenCalled();
+					expect(sharedCredentialsRepository.getAllRelationsForCredentials).not.toHaveBeenCalled();
 				});
 			});
 		});
