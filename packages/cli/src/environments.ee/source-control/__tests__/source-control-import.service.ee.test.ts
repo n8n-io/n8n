@@ -293,6 +293,82 @@ describe('SourceControlImportService', () => {
 
 			expect(result).toHaveLength(0);
 		});
+
+		it('should parse global credentials with isGlobal flag set to true', async () => {
+			globMock.mockResolvedValue(['/mock/global-credential.json']);
+
+			const mockGlobalCredentialData = {
+				id: 'global-cred1',
+				name: 'Global Test Credential',
+				type: 'oauth2',
+				isGlobal: true,
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockGlobalCredentialData));
+
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual(
+				expect.objectContaining({
+					id: 'global-cred1',
+					name: 'Global Test Credential',
+					type: 'oauth2',
+					isGlobal: true,
+				}),
+			);
+		});
+
+		it('should parse non-global credentials with isGlobal flag set to false', async () => {
+			globMock.mockResolvedValue(['/mock/non-global-credential.json']);
+
+			const mockNonGlobalCredentialData = {
+				id: 'non-global-cred1',
+				name: 'Non-Global Test Credential',
+				type: 'oauth2',
+				isGlobal: false,
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockNonGlobalCredentialData));
+
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual(
+				expect.objectContaining({
+					id: 'non-global-cred1',
+					name: 'Non-Global Test Credential',
+					type: 'oauth2',
+					isGlobal: false,
+				}),
+			);
+		});
+
+		it('should default isGlobal to false when not specified in credential file', async () => {
+			globMock.mockResolvedValue(['/mock/credential-no-flag.json']);
+
+			const mockCredentialDataWithoutFlag = {
+				id: 'cred-no-flag',
+				name: 'Credential Without Flag',
+				type: 'oauth2',
+				// isGlobal not specified
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockCredentialDataWithoutFlag));
+
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual(
+				expect.objectContaining({
+					id: 'cred-no-flag',
+					name: 'Credential Without Flag',
+					type: 'oauth2',
+				}),
+			);
+			// isGlobal should default to false (undefined will be treated as false by the service)
+			expect(result[0].isGlobal).toBeFalsy();
+		});
 	});
 
 	describe('getRemoteVariablesFromFile', () => {

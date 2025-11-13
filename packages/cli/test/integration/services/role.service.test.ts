@@ -1397,6 +1397,198 @@ describe('RoleService', () => {
 				roleService.addScopes(mockEntity, user, userProjectRelations);
 			}).toThrow('Cannot detect if entity is a workflow or credential.');
 		});
+
+		it('should add credential:read scope to global credentials', async () => {
+			//
+			// ARRANGE
+			//
+			const user = await createMember();
+			const mockGlobalCredential = {
+				id: 'global-cred-1',
+				name: 'Global Test Credential',
+				type: 'testCredential',
+				isGlobal: true,
+				shared: [
+					{
+						projectId: 'project-1',
+						role: 'credential:owner',
+					},
+				],
+			} as any;
+			const userProjectRelations = [] as any[];
+
+			//
+			// ACT
+			//
+			const result = roleService.addScopes(mockGlobalCredential, user, userProjectRelations);
+
+			//
+			// ASSERT
+			//
+			expect(result).toHaveProperty('scopes');
+			expect(result.scopes).toContain('credential:read');
+		});
+
+		it('should add credential:read scope to global credentials even when not in initial scopes', async () => {
+			//
+			// ARRANGE
+			//
+			const user = await createMember();
+			const mockGlobalCredential = {
+				id: 'global-cred-2',
+				name: 'Global Test Credential 2',
+				type: 'testCredential',
+				isGlobal: true,
+				shared: [],
+			} as any;
+			const userProjectRelations = [] as any[];
+
+			//
+			// ACT
+			//
+			const result = roleService.addScopes(mockGlobalCredential, user, userProjectRelations);
+
+			//
+			// ASSERT
+			//
+			expect(result).toHaveProperty('scopes');
+			expect(result.scopes).toContain('credential:read');
+		});
+
+		it('should not duplicate credential:read scope if already present for global credentials', async () => {
+			//
+			// ARRANGE
+			//
+			const user = await createMember();
+			const mockGlobalCredential = {
+				id: 'global-cred-3',
+				name: 'Global Test Credential 3',
+				type: 'testCredential',
+				isGlobal: true,
+				shared: [
+					{
+						projectId: 'project-1',
+						role: 'credential:owner',
+					},
+				],
+			} as any;
+			const userProjectRelations = [] as any[];
+
+			//
+			// ACT
+			//
+			const result = roleService.addScopes(mockGlobalCredential, user, userProjectRelations);
+
+			//
+			// ASSERT
+			//
+			const readScopeCount = result.scopes.filter((s: string) => s === 'credential:read').length;
+			expect(readScopeCount).toBe(1);
+		});
+
+		it('should not add credential:read scope to non-global credentials', async () => {
+			//
+			// ARRANGE
+			//
+			const user = await createMember();
+			const mockNonGlobalCredential = {
+				id: 'non-global-cred-1',
+				name: 'Non-Global Test Credential',
+				type: 'testCredential',
+				isGlobal: false,
+				shared: [
+					{
+						projectId: 'project-1',
+						role: 'credential:user',
+					},
+				],
+			} as any;
+			const userProjectRelations = [] as any[];
+
+			//
+			// ACT
+			//
+			const result = roleService.addScopes(mockNonGlobalCredential, user, userProjectRelations);
+
+			//
+			// ASSERT
+			//
+			expect(result).toHaveProperty('scopes');
+			// Should not contain credential:read because the user only has credential:user role
+			// and isGlobal is false
+			expect(result.scopes).not.toContain('credential:read');
+		});
+
+		it('should not add credential:read scope to credentials without isGlobal property', async () => {
+			//
+			// ARRANGE
+			//
+			const user = await createMember();
+			const mockCredentialWithoutIsGlobal = {
+				id: 'cred-no-flag',
+				name: 'Credential Without isGlobal',
+				type: 'testCredential',
+				// isGlobal not specified
+				shared: [
+					{
+						projectId: 'project-1',
+						role: 'credential:user',
+					},
+				],
+			} as any;
+			const userProjectRelations = [] as any[];
+
+			//
+			// ACT
+			//
+			const result = roleService.addScopes(
+				mockCredentialWithoutIsGlobal,
+				user,
+				userProjectRelations,
+			);
+
+			//
+			// ASSERT
+			//
+			expect(result).toHaveProperty('scopes');
+			// Should not contain credential:read because the user only has credential:user role
+			// and isGlobal is not specified
+			expect(result.scopes).not.toContain('credential:read');
+		});
+
+		it('should add credential:read scope to workflow entities with isGlobal property', async () => {
+			//
+			// ARRANGE
+			//
+			// Note: While workflows typically don't have isGlobal, the current implementation
+			// will add credential:read scope if the property exists and is true
+			const user = await createMember();
+			const mockWorkflowWithIsGlobal = {
+				id: 'workflow-1',
+				name: 'Test Workflow',
+				active: true,
+				isGlobal: true,
+				shared: [
+					{
+						projectId: 'project-1',
+						role: 'workflow:editor',
+					},
+				],
+			} as any;
+			const userProjectRelations = [] as any[];
+
+			//
+			// ACT
+			//
+			const result = roleService.addScopes(mockWorkflowWithIsGlobal, user, userProjectRelations);
+
+			//
+			// ASSERT
+			//
+			expect(result).toHaveProperty('scopes');
+			// The current implementation adds credential:read for any entity with isGlobal: true
+			expect(result.scopes).toContain('credential:read');
+		});
 	});
 
 	describe('rolesWithScope', () => {
