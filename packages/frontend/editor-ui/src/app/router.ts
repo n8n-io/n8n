@@ -77,6 +77,8 @@ const TemplatesSearchView = async () =>
 const SettingsUsageAndPlan = async () =>
 	await import('@/features/settings/usage/views/SettingsUsageAndPlan.vue');
 const SettingsSso = async () => await import('@/features/settings/sso/views/SettingsSso.vue');
+const SettingsScimView = async () =>
+	await import('@/features/settings/scim/views/SettingsScimView.vue');
 const SignoutView = async () => await import('@/features/core/auth/views/SignoutView.vue');
 const SamlOnboarding = async () => await import('@/features/settings/sso/views/SamlOnboarding.vue');
 const SettingsSourceControl = async () =>
@@ -719,6 +721,29 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'sso',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'scim',
+				name: VIEWS.SCIM_SETTINGS,
+				components: {
+					settingsView: SettingsScimView,
+				},
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: 'saml:manage',
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'scim',
 							};
 						},
 					},

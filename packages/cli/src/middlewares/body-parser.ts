@@ -53,7 +53,7 @@ export const parseBody = async (req: Request) => {
 	const { rawBody, contentType, encoding } = req;
 	if (rawBody?.length) {
 		try {
-			if (contentType === 'application/json') {
+			if (contentType === 'application/json' || contentType?.endsWith('+json')) {
 				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 				req.body = jsonParse(rawBody.toString(encoding));
 			} else if (contentType?.endsWith('/xml') || contentType?.endsWith('+xml')) {

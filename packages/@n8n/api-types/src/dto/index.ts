@@ -106,3 +106,5 @@ export {
 	DeleteOAuthClientResponseDto,
 } from './oauth/oauth-client.dto';
 export { ProvisioningConfigDto, ProvisioningConfigPatchDto } from './provisioning/config.dto';
+
+export { ScimQueryDto, ScimUserCreateDto, ScimPatchRequestDto } from './scim';

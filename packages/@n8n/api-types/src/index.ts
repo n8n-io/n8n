@@ -125,3 +125,22 @@ export type {
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
 } from './schemas/breaking-changes.schema';
+
+export type {
+	ScimUser,
+	ScimUserCreate,
+	ScimPatchOp,
+	ScimPatchRequest,
+	ScimListResponse,
+	ScimError,
+	ScimMeta,
+	ScimUserName,
+	ScimEmail,
+} from './schemas/scim.schema';
+export {
+	scimUserSchema,
+	scimUserCreateSchema,
+	scimPatchRequestSchema,
+	scimListResponseSchema,
+	scimErrorSchema,
+} from './schemas/scim.schema';

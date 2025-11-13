@@ -11,6 +11,7 @@ export const MODULE_NAMES = [
 	'chat-hub',
 	'provisioning',
 	'breaking-changes',
+	'scim',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];

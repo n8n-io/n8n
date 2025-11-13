@@ -92,6 +92,14 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			route: { to: { name: VIEWS.SSO_SETTINGS } },
 		},
 		{
+			id: 'settings-scim',
+			icon: 'toolbox',
+			label: 'SCIM',
+			position: 'top',
+			available: canUserAccessRouteByName(VIEWS.SCIM_SETTINGS),
+			route: { to: { name: VIEWS.SCIM_SETTINGS } },
+		},
+		{
 			id: 'settings-ldap',
 			icon: 'network',
 			label: i18n.baseText('settings.ldap'),
