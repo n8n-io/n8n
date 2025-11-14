@@ -258,6 +258,10 @@ export class CommunityPackagesController {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
 		}
 
+		if (version && !valid(version)) {
+			throw new BadRequestError(`Invalid version: ${version}`);
+		}
+
 		const previouslyInstalledPackage =
 			await this.communityPackagesService.findInstalledPackage(name);
 

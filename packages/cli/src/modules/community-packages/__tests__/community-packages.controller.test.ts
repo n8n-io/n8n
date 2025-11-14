@@ -132,5 +132,15 @@ describe('CommunityPackagesController', () => {
 
 			expect(result).toBe(newInstalledPackage);
 		});
+
+		it.each(['foo', 'echo "hello"', '1.a.b'])(
+			'should throw error if version is invalid',
+			async (version) => {
+				const req = mock<NodeRequest.Update>({
+					body: { name: 'n8n-nodes-test', version, checksum: 'a893hfdsy7399' },
+				});
+				await expect(controller.updatePackage(req)).rejects.toThrow(`Invalid version: ${version}`);
+			},
+		);
 	});
 });
