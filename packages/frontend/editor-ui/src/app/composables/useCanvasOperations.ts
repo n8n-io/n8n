@@ -109,6 +109,7 @@ import {
 	NodeHelpers,
 	TelemetryHelpers,
 	isCommunityPackageName,
+	assertParamIsOfAnyTypes,
 } from 'n8n-workflow';
 import { computed, nextTick, ref } from 'vue';
 import { useClipboard } from '@/app/composables/useClipboard';
@@ -2142,9 +2143,14 @@ export function useCanvasOperations() {
 	async function fetchWorkflowDataFromUrl(url: string): Promise<WorkflowDataUpdate | undefined> {
 		let workflowData: WorkflowDataUpdate;
 
+		if (!projectsStore.currentProjectId) {
+			// We should never reach this point because the project should be selected before
+			throw new Error('No project selected');
+		}
+
 		canvasStore.startLoading();
 		try {
-			workflowData = await workflowsStore.getWorkflowFromUrl(url);
+			workflowData = await workflowsStore.getWorkflowFromUrl(url, projectsStore.currentProjectId);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.getWorkflowDataFromUrl.title'));
 			return;
