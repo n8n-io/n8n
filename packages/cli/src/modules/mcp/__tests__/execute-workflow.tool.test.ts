@@ -247,12 +247,10 @@ describe('execute-workflow MCP tool', () => {
 								headers: { 'content-type': 'application/json' },
 								query: { page: '1' },
 								body: { message: 'test' },
-								executionMode: 'webhook',
 							},
 						},
 					],
 				});
-				expect(runCall.executionMode).toBe('webhook');
 			});
 
 			test('executes workflow with webhook trigger and default GET method', async () => {
@@ -300,7 +298,6 @@ describe('execute-workflow MCP tool', () => {
 								headers: {},
 								query: { id: '123' },
 								body: {},
-								executionMode: 'webhook',
 							},
 						},
 					],
@@ -566,38 +563,6 @@ describe('execute-workflow MCP tool', () => {
 				});
 			});
 
-			test('handles workflow runner returning no execution ID', async () => {
-				const workflow = createWorkflow({
-					nodes: [
-						{
-							id: 'node-1',
-							name: 'WebhookNode',
-							type: WEBHOOK_NODE_TYPE,
-							typeVersion: 1,
-							position: [0, 0],
-							disabled: false,
-							parameters: {},
-						} as INode,
-					],
-				});
-				(workflowFinderService.findWorkflowForUser as jest.Mock).mockResolvedValue(workflow);
-				(workflowRunner.run as jest.Mock).mockResolvedValue(undefined);
-
-				const result = await executeWorkflow(
-					user,
-					workflowFinderService,
-					activeExecutions,
-					workflowRunner,
-					'no-exec-id-workflow',
-					undefined,
-				);
-
-				expect(result).toMatchObject({
-					success: false,
-					executionId: null,
-				});
-			});
-
 			test('handles workflow returning undefined data', async () => {
 				const workflow = createWorkflow({
 					nodes: [
@@ -680,7 +645,6 @@ describe('execute-workflow MCP tool', () => {
 								headers: {},
 								query: {},
 								body: {},
-								executionMode: 'webhook',
 							},
 						},
 					],

@@ -194,13 +194,6 @@ export const executeWorkflow = async (
 
 	const executionId = await workflowRunner.run(runData);
 
-	if (!executionId) {
-		return {
-			success: false,
-			executionId: null,
-		};
-	}
-
 	// Create a timeout promise
 	let timeoutId: NodeJS.Timeout | undefined;
 	const timeoutPromise = new Promise<never>((_, reject) => {
@@ -286,7 +279,6 @@ const getPinDataForTrigger = (
 							headers: webhookData?.headers ?? {},
 							query: webhookData?.query ?? {},
 							body: webhookData?.body ?? {},
-							executionMode: 'webhook',
 						},
 					},
 				],
