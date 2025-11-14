@@ -286,8 +286,7 @@ export const describeCommonTests = (
 
 			expect(result.data).toEqual(data);
 			expect(binaryDataService.duplicateBinaryData).toHaveBeenCalledWith(
-				workflow.id,
-				additionalData.executionId,
+				{ type: 'execution', workflowId: workflow.id, executionId: additionalData.executionId },
 				executeWorkflowData.data,
 			);
 		});

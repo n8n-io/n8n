@@ -249,6 +249,7 @@ export function createAiMessageFromStreamingState(
 		revisionOfMessageId: null,
 		responses: [],
 		alternatives: [],
+		attachments: [],
 		...(streaming?.model
 			? flattenModel(streaming.model)
 			: {

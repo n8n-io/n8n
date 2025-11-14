@@ -592,8 +592,7 @@ describe('copyBinaryFile', () => {
 
 		expect(result.fileName).toBe(fileName);
 		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
-			workflowId,
-			executionId,
+			{ type: 'execution', workflowId, executionId },
 			{
 				...binaryData,
 				fileExtension: 'txt',
@@ -614,8 +613,7 @@ describe('copyBinaryFile', () => {
 
 		expect(result.fileName).toBe(fileName);
 		expect(binaryDataService.copyBinaryFile).toHaveBeenCalledWith(
-			workflowId,
-			executionId,
+			{ type: 'execution', workflowId, executionId },
 			{
 				...binaryData,
 				fileExtension: 'bin',
@@ -635,7 +633,7 @@ describe('prepareBinaryData', () => {
 		jest.resetAllMocks();
 		Container.set(BinaryDataService, binaryDataService);
 
-		binaryDataService.store.mockImplementation(async (_w, _e, _b, binaryData) => binaryData);
+		binaryDataService.store.mockImplementation(async (_l, _b, binaryData) => binaryData);
 	});
 
 	it('parses filenames correctly', async () => {
@@ -644,13 +642,17 @@ describe('prepareBinaryData', () => {
 		const result = await prepareBinaryData(buffer, executionId, workflowId, fileName);
 
 		expect(result.fileName).toEqual(fileName);
-		expect(binaryDataService.store).toHaveBeenCalledWith(workflowId, executionId, buffer, {
-			data: '',
-			fileExtension: undefined,
-			fileName,
-			fileType: 'text',
-			mimeType: 'text/plain',
-		});
+		expect(binaryDataService.store).toHaveBeenCalledWith(
+			{ type: 'execution', executionId, workflowId },
+			buffer,
+			{
+				data: '',
+				fileExtension: undefined,
+				fileName,
+				fileType: 'text',
+				mimeType: 'text/plain',
+			},
+		);
 	});
 
 	it('handles IncomingMessage with responseUrl', async () => {

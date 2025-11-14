@@ -32,14 +32,15 @@ export namespace BinaryData {
 
 	export type PreWriteMetadata = Omit<Metadata, 'fileSize'>;
 
-	export type IdsForDeletion = Array<{ workflowId: string; executionId: string }>;
+	export type FileLocation =
+		| { type: 'execution'; workflowId: string; executionId: string }
+		| { type: 'chat-hub-message-attachment'; sessionId: string; messageId: string };
 
 	export interface Manager {
 		init(): Promise<void>;
 
 		store(
-			workflowId: string,
-			executionId: string,
+			location: FileLocation,
 			bufferOrStream: Buffer | Readable,
 			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;
@@ -52,12 +53,12 @@ export namespace BinaryData {
 		/**
 		 * Present for `FileSystem`, absent for `ObjectStore` (delegated to S3 lifecycle config)
 		 */
-		deleteMany?(ids: IdsForDeletion): Promise<void>;
+		deleteMany?(locations: FileLocation[]): Promise<void>;
+		deleteManyByFileId?(ids: string[]): Promise<void>;
 
-		copyByFileId(workflowId: string, executionId: string, sourceFileId: string): Promise<string>;
+		copyByFileId(targetLocation: FileLocation, sourceFileId: string): Promise<string>;
 		copyByFilePath(
-			workflowId: string,
-			executionId: string,
+			targetLocation: FileLocation,
 			sourcePath: string,
 			metadata: PreWriteMetadata,
 		): Promise<WriteResult>;

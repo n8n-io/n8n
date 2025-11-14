@@ -89,6 +89,7 @@ export interface ChatModelDto {
 	description: string | null;
 	updatedAt: string | null;
 	createdAt: string | null;
+	allowFileUploads: boolean;
 }
 
 /**
@@ -110,6 +111,46 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	'custom-agent': { models: [] },
 };
 
+export const binaryFileTypeSchema = z.enum([
+	'text',
+	'json',
+	'image',
+	'audio',
+	'video',
+	'pdf',
+	'html',
+]);
+
+export const binaryDataSchema = z.object({
+	data: z.string(),
+	mimeType: z
+		.string()
+		.refine(
+			(mimeType) => {
+				// Extract base MIME type (ignore parameters after semicolon)
+				const baseMimeType = mimeType.split(';')[0].trim();
+
+				// Validate MIME type format (type/subtype)
+				return /^[a-zA-Z0-9][a-zA-Z0-9!#$&^_+-]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&^_+.-]*$/.test(
+					baseMimeType,
+				);
+			},
+			{
+				message: 'Invalid MIME type format',
+			},
+		)
+		.transform((mimeType) => {
+			// Strip parameters and return only the base MIME type
+			return mimeType.split(';')[0].trim();
+		}),
+	fileType: binaryFileTypeSchema.optional(),
+	fileName: z.string().optional(),
+	directory: z.string().optional(),
+	fileExtension: z.string().optional(),
+	fileSize: z.string().optional(),
+	id: z.string().optional(),
+});
+
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
@@ -122,6 +163,7 @@ export class ChatHubSendMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
+	attachments: z.array(binaryDataSchema),
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({
@@ -194,6 +236,8 @@ export interface ChatHubMessageDto {
 	previousMessageId: ChatMessageId | null;
 	retryOfMessageId: ChatMessageId | null;
 	revisionOfMessageId: ChatMessageId | null;
+
+	attachments: Array<{ fileName?: string; mimeType?: string }>;
 }
 
 export type ChatHubConversationsResponse = ChatHubSessionDto[];

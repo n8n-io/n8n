@@ -34,6 +34,7 @@ export const NODE_NAMES = {
 	MEMORY: 'Memory',
 	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
 	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',
+	MERGE: 'Merge',
 } as const;
 
 /* eslint-disable @typescript-eslint/naming-convention */

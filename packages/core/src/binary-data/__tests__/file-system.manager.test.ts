@@ -7,6 +7,8 @@ import { Readable } from 'node:stream';
 import { FileSystemManager } from '@/binary-data/file-system.manager';
 import { toFileId, toStream } from '@test/utils';
 
+import type { BinaryData } from '../types';
+
 jest.mock('fs');
 jest.mock('fs/promises');
 
@@ -37,7 +39,11 @@ describe('store()', () => {
 	it('should store a buffer', async () => {
 		const metadata = { mimeType: 'text/plain' };
 
-		const result = await fsManager.store(workflowId, executionId, mockBuffer, metadata);
+		const result = await fsManager.store(
+			{ type: 'execution', workflowId, executionId },
+			mockBuffer,
+			metadata,
+		);
 
 		expect(result.fileSize).toBe(mockBuffer.length);
 	});
@@ -104,7 +110,10 @@ describe('copyByFileId()', () => {
 		// @ts-expect-error - private method
 		jest.spyOn(fsManager, 'toFileId').mockReturnValue(otherFileId);
 
-		const targetFileId = await fsManager.copyByFileId(workflowId, executionId, fileId);
+		const targetFileId = await fsManager.copyByFileId(
+			{ type: 'execution', workflowId, executionId },
+			fileId,
+		);
 
 		const sourcePath = toFullFilePath(fileId);
 		const targetPath = toFullFilePath(targetFileId);
@@ -133,8 +142,7 @@ describe('copyByFilePath()', () => {
 		fsp.writeFile = jest.fn().mockResolvedValue(undefined);
 
 		const result = await fsManager.copyByFilePath(
-			workflowId,
-			executionId,
+			{ type: 'execution', workflowId, executionId },
 			sourceFilePath,
 			metadata,
 		);
@@ -156,9 +164,9 @@ describe('deleteMany()', () => {
 	};
 
 	it('should delete many files by workflow ID and execution ID', async () => {
-		const ids = [
-			{ workflowId, executionId },
-			{ workflowId: otherWorkflowId, executionId: otherExecutionId },
+		const ids: BinaryData.FileLocation[] = [
+			{ type: 'execution', workflowId, executionId },
+			{ type: 'execution', workflowId: otherWorkflowId, executionId: otherExecutionId },
 		];
 
 		fsp.rm = jest.fn().mockResolvedValue(undefined);
@@ -181,7 +189,9 @@ describe('deleteMany()', () => {
 	});
 
 	it('should suppress error on non-existing filepath', async () => {
-		const ids = [{ workflowId: 'does-not-exist', executionId: 'does-not-exist' }];
+		const ids: BinaryData.FileLocation[] = [
+			{ type: 'execution', workflowId: 'does-not-exist', executionId: 'does-not-exist' },
+		];
 
 		fsp.rm = jest.fn().mockResolvedValue(undefined);
 
