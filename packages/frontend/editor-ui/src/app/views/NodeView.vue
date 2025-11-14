@@ -536,6 +536,17 @@ function updateNodesIssues() {
 }
 
 /**
+ * Updates the workflow auto-deactivated banner based on current workflow meta
+ */
+function updateWorkflowAutoDeactivatedBanner() {
+	if (workflowsStore.workflow.meta?.autoDeactivated) {
+		bannersStore.pushBannerToStack('WORKFLOW_AUTO_DEACTIVATED');
+	} else {
+		bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
+	}
+}
+
+/**
  * Workflow
  */
 
@@ -1858,6 +1869,15 @@ watch(
 		}
 	},
 );
+
+// Watch for workflow meta changes to update banner when workflow is reactivated
+watch(
+	() => workflowsStore.workflow.meta?.autoDeactivated,
+	() => {
+		updateWorkflowAutoDeactivatedBanner();
+	},
+);
+
 onBeforeRouteLeave(async (to, from, next) => {
 	const toNodeViewTab = getNodeViewTab(to);
 
@@ -1930,9 +1950,7 @@ onMounted(() => {
 				canvasStore.stopLoading();
 
 				// Check if workflow was auto-deactivated and show banner
-				if (workflowsStore.workflow.meta?.autoDeactivated) {
-					bannersStore.pushBannerToStack('WORKFLOW_AUTO_DEACTIVATED');
-				}
+				updateWorkflowAutoDeactivatedBanner();
 
 				void externalHooks.run('nodeView.mount').catch(() => {});
 
@@ -1963,11 +1981,15 @@ onMounted(() => {
 onActivated(() => {
 	addUndoRedoEventBindings();
 	showAddFirstStepIfEnabled();
+	// Check if workflow was auto-deactivated and show banner (for KeepAlive scenarios)
+	updateWorkflowAutoDeactivatedBanner();
 });
 
 onDeactivated(() => {
 	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	removeUndoRedoEventBindings();
+	// Remove workflow-specific banner when leaving the workflow view
+	bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
 });
 
 onBeforeUnmount(() => {
@@ -1979,6 +2001,8 @@ onBeforeUnmount(() => {
 	removeExecutionOpenedEventBindings();
 	removeCommandBarEventBindings();
 	unregisterCustomActions();
+	// Remove workflow-specific banner when component is unmounted
+	bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushDisconnect();
 	}
