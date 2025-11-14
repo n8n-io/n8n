@@ -203,7 +203,15 @@ export const executeWorkflow = async (
 		executionData: {
 			contextData: {},
 			metadata: {},
-			nodeExecutionStack: [],
+			nodeExecutionStack: [
+				{
+					node: triggerNode,
+					data: {
+						main: [runData.pinData[triggerNode.name]],
+					},
+					source: null,
+				},
+			],
 			waitingExecution: {},
 			waitingExecutionSource: {},
 		},
