@@ -12,7 +12,6 @@ import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import type { IUser } from 'n8n-workflow';
 import { I18nT } from 'vue-i18n';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
-
 import { N8nLoading } from '@n8n/design-system';
 const props = defineProps<{
 	items: WorkflowHistory[];
@@ -23,6 +22,7 @@ const props = defineProps<{
 	evaluatedPruneDays: number;
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
+	activeVersionId: string | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -102,6 +102,7 @@ const onItemMounted = ({
 			:index="index"
 			:item="item"
 			:is-selected="item.versionId === props.selectedItem?.versionId"
+			:is-version-active="item.versionId === props.activeVersionId"
 			:actions="getActions(index)"
 			@action="onAction"
 			@preview="onPreview"
