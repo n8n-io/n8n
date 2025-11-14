@@ -136,6 +136,7 @@ async function onSave() {
 			systemPrompt: systemPrompt.value.trim(),
 			...model,
 			credentialId,
+			tools: [],
 		};
 
 		if (isEditMode.value && props.agentId) {

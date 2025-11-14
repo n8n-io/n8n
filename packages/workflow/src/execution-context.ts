@@ -30,12 +30,33 @@ export const CredentialContextSchema = z
  */
 export type ICredentialContext = z.output<typeof CredentialContextSchema>;
 
+const WorkflowExecuteModeSchema = z.union([
+	z.literal('cli'),
+	z.literal('error'),
+	z.literal('integrated'),
+	z.literal('internal'),
+	z.literal('manual'),
+	z.literal('retry'),
+	z.literal('trigger'),
+	z.literal('webhook'),
+	z.literal('evaluation'),
+	z.literal('chat'),
+]);
+
+export type WorkflowExecuteModeValues = z.infer<typeof WorkflowExecuteModeSchema>;
+
 const ExecutionContextSchemaV1 = z.object({
 	version: z.literal(1),
 	/**
 	 * When the context was established (Unix timestamp in milliseconds)
 	 */
 	establishedAt: z.number(),
+
+	/**
+	 * The mode in which the workflow is being executed
+	 */
+	source: WorkflowExecuteModeSchema,
+
 	/**
 	 * Encrypted credential context for dynamic credential resolution
 	 * Always encrypted when stored, decrypted on-demand by credential resolver
