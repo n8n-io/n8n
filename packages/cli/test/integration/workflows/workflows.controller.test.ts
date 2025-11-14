@@ -228,12 +228,12 @@ describe('POST /workflows', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
-	test('should set activeVersion when creating workflow and activating it', async () => {
+	test('should create workflow as active when active: true is provided in POST body', async () => {
 		const payload = {
 			name: 'active workflow',
 			nodes: [
 				{
-					id: 'uuid-1234',
+					id: 'uuid-5678',
 					parameters: {},
 					name: 'Start',
 					type: 'n8n-nodes-base.start',
@@ -244,26 +244,26 @@ describe('POST /workflows', () => {
 			connections: {},
 			staticData: null,
 			settings: {},
+			active: true, // Request creation as active
 		};
 
-		const createResponse = await authOwnerAgent.post('/workflows').send(payload);
+		const response = await authOwnerAgent.post('/workflows').send(payload);
 
-		expect(createResponse.statusCode).toBe(200);
+		expect(response.statusCode).toBe(200);
 
 		const {
-			data: { id, versionId },
-		} = createResponse.body;
+			data: { id, versionId, activeVersionId },
+		} = response.body;
 
 		expect(id).toBeDefined();
 		expect(versionId).toBeDefined();
+		expect(activeVersionId).toBe(versionId); // Should be set to current version
 
-		// Activate the workflow
-		const activateResponse = await authOwnerAgent
-			.patch(`/workflows/${id}`)
-			.send({ activeVersionId: versionId, versionId });
+		// Verify in database
+		const workflow = await Container.get(WorkflowRepository).findOneBy({ id });
+		expect(workflow?.activeVersionId).toBe(versionId);
 
-		expect(activateResponse.statusCode).toBe(200);
-
+		// Verify history was created
 		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
 			where: {
 				workflowId: id,
@@ -271,17 +271,6 @@ describe('POST /workflows', () => {
 			},
 		});
 		expect(historyVersion).not.toBeNull();
-
-		const workflow = await Container.get(WorkflowRepository).findOne({
-			where: { id },
-			relations: ['activeVersion'],
-		});
-		expect(workflow).not.toBeNull();
-		expect(workflow!.activeVersionId).not.toBeNull();
-		expect(workflow!.activeVersion).not.toBeNull();
-		expect(workflow!.activeVersion!.versionId).toBe(versionId);
-		expect(workflow!.activeVersion!.nodes).toEqual(payload.nodes);
-		expect(workflow!.activeVersion!.connections).toEqual(payload.connections);
 	});
 
 	test('create workflow in personal project by default', async () => {
