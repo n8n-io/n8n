@@ -272,13 +272,15 @@ export class LmChatOpenRouter implements INodeType {
 
 					// TODO: support expressions in json, maybe with resolveRawData(jsonOutput)
 					const parsedOptions: any = jsonParse(optionsDefinedAsJson);
-					const maxRetries = parseInt(
-						parsedOptions.max_retries || parsedOptions.maxRetries || '',
-						10,
-					);
+					const maxRetries = parsedOptions.max_retries || parsedOptions.maxRetries;
+					// without these mappings, langchain will overwrite max_tokens and reasoning from modelKwargs with undefined
+					const maxTokens = parsedOptions.max_tokens ?? undefined;
+					const reasoning = parsedOptions.reasoning ?? undefined;
 					return {
 						timeout: parsedOptions.timeout ?? 60000,
-						maxRetries: maxRetries && !isNaN(maxRetries) ? maxRetries : 2,
+						maxRetries: maxRetries && typeof maxRetries === 'number' ? maxRetries : 2,
+						maxTokens,
+						reasoning,
 						modelKwargs: parsedOptions,
 					};
 				} catch (error) {
