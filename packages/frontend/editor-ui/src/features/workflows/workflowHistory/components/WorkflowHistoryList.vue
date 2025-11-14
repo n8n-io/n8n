@@ -16,7 +16,7 @@ import { useIntersectionObserver } from '@/app/composables/useIntersectionObserv
 import { N8nLoading } from '@n8n/design-system';
 const props = defineProps<{
 	items: WorkflowHistory[];
-	activeItem: WorkflowHistory | null;
+	selectedItem: WorkflowHistory | null;
 	actions: Array<UserAction<IUser>>;
 	requestNumberOfItems: number;
 	lastReceivedItemsLength: number;
@@ -74,13 +74,13 @@ const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) 
 const onItemMounted = ({
 	index,
 	offsetTop,
-	isActive,
+	isSelected,
 }: {
 	index: number;
 	offsetTop: number;
-	isActive: boolean;
+	isSelected: boolean;
 }) => {
-	if (isActive && shouldAutoScroll.value) {
+	if (isSelected && shouldAutoScroll.value) {
 		shouldAutoScroll.value = false;
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
@@ -101,7 +101,7 @@ const onItemMounted = ({
 			:key="item.versionId"
 			:index="index"
 			:item="item"
-			:is-active="item.versionId === props.activeItem?.versionId"
+			:is-selected="item.versionId === props.selectedItem?.versionId"
 			:actions="getActions(index)"
 			@action="onAction"
 			@preview="onPreview"

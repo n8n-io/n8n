@@ -33,7 +33,7 @@ describe('WorkflowHistoryListItem', () => {
 				item,
 				index: 0,
 				actions,
-				isActive: false,
+				isSelected: false,
 			},
 		});
 
@@ -45,7 +45,7 @@ describe('WorkflowHistoryListItem', () => {
 			[expect.objectContaining({ id: item.versionId, event: expect.any(MouseEvent) })],
 		]);
 
-		expect(emitted().mounted).toEqual([[{ index: 0, isActive: false, offsetTop: 0 }]]);
+		expect(emitted().mounted).toEqual([[{ index: 0, isSelected: false, offsetTop: 0 }]]);
 		expect(getByText(/Latest saved/)).toBeInTheDocument();
 	});
 
@@ -58,7 +58,7 @@ describe('WorkflowHistoryListItem', () => {
 				item,
 				index: 2,
 				actions,
-				isActive: true,
+				isSelected: true,
 			},
 		});
 
@@ -76,6 +76,6 @@ describe('WorkflowHistoryListItem', () => {
 		]);
 
 		expect(queryByText(/Latest saved/)).not.toBeInTheDocument();
-		expect(emitted().mounted).toEqual([[{ index: 2, isActive: true, offsetTop: 0 }]]);
+		expect(emitted().mounted).toEqual([[{ index: 2, isSelected: true, offsetTop: 0 }]]);
 	});
 });

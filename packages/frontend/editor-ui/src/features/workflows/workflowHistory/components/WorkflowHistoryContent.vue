@@ -77,7 +77,7 @@ const onAction = ({
 				:class="$style.card"
 				:index="-1"
 				:item="props.workflowVersion"
-				:is-active="false"
+				:is-selected="false"
 				:actions="actions"
 				@action="onAction"
 			>
