@@ -15,28 +15,6 @@ export class AzureAiSearchApi implements ICredentialType {
 
 	properties: INodeProperties[] = [
 		{
-			displayName: 'Authentication Method',
-			name: 'authType',
-			type: 'options',
-			options: [
-				{
-					name: 'API Key',
-					value: 'apiKey',
-				},
-				{
-					name: 'Managed Identity (System-Assigned)',
-					value: 'managedIdentitySystem',
-					description: 'For self-hosted n8n only',
-				},
-				{
-					name: 'Managed Identity (User-Assigned)',
-					value: 'managedIdentityUser',
-					description: 'For self-hosted n8n only',
-				},
-			],
-			default: 'apiKey',
-		},
-		{
 			displayName: 'Search Endpoint',
 			name: 'endpoint',
 			type: 'string',
@@ -51,24 +29,6 @@ export class AzureAiSearchApi implements ICredentialType {
 			typeOptions: { password: true },
 			required: true,
 			default: '',
-			displayOptions: {
-				show: {
-					authType: ['apiKey'],
-				},
-			},
-		},
-		{
-			displayName: 'Client ID',
-			name: 'managedIdentityClientId',
-			type: 'string',
-			required: true,
-			default: '',
-			description: 'Client ID of the user-assigned managed identity',
-			displayOptions: {
-				show: {
-					authType: ['managedIdentityUser'],
-				},
-			},
 		},
 	];
 
@@ -76,22 +36,13 @@ export class AzureAiSearchApi implements ICredentialType {
 		credentials: ICredentialDataDecryptedObject,
 		requestOptions: IHttpRequestOptions,
 	): Promise<IHttpRequestOptions> => {
-		const authType = credentials.authType || 'apiKey';
-
-		// Only add API key header for API key authentication
-		if (authType === 'apiKey') {
-			return {
-				...requestOptions,
-				headers: {
-					...requestOptions.headers,
-					'api-key': credentials.apiKey,
-				},
-			};
-		}
-
-		// For managed identity, don't add any auth headers
-		// The Azure SDK will handle authentication internally
-		return requestOptions;
+		return {
+			...requestOptions,
+			headers: {
+				...requestOptions.headers,
+				'api-key': credentials.apiKey,
+			},
+		};
 	};
 
 	test: ICredentialTestRequest = {

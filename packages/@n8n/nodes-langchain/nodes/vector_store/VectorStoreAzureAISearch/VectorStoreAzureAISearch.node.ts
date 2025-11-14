@@ -3,7 +3,6 @@ import {
 	AzureAISearchVectorStore,
 	AzureAISearchQueryType,
 } from '@langchain/community/vectorstores/azure_aisearch';
-import { DefaultAzureCredential } from '@azure/identity';
 import { AzureKeyCredential } from '@azure/search-documents';
 import {
 	type IDataObject,
@@ -13,8 +12,6 @@ import {
 	type IExecuteFunctions,
 	type ISupplyDataFunctions,
 } from 'n8n-workflow';
-import { metadataFilterField } from '@utils/sharedFields';
-
 import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVectorStoreNode';
 
 // User agent for usage tracking
@@ -23,7 +20,6 @@ const USER_AGENT_PREFIX = 'n8n-azure-ai-search';
 export const AZURE_AI_SEARCH_CREDENTIALS = 'azureAiSearchApi';
 export const INDEX_NAME = 'indexName';
 export const QUERY_TYPE = 'queryType';
-export const RESULTS_COUNT = 'resultsCount';
 export const FILTER = 'filter';
 export const SEMANTIC_CONFIGURATION = 'semanticConfiguration';
 
@@ -62,26 +58,15 @@ const queryTypeField: INodeProperties = {
 	],
 };
 
-const resultsCountField: INodeProperties = {
-	displayName: 'Results Count',
-	name: RESULTS_COUNT,
-	type: 'number',
-	default: 50,
-	description:
-		'Number of results to return from Azure AI Search (maximum depends on your service tier)',
-	typeOptions: {
-		minValue: 1,
-		maxValue: 1000,
-	},
-};
-
 const filterField: INodeProperties = {
 	displayName: 'Filter',
 	name: FILTER,
 	type: 'string',
 	default: '',
-	description: 'OData filter expression to apply to the search query',
-	placeholder: "category eq 'technology' and rating ge 4",
+	description:
+		'Filter results using OData syntax. Use metadata/fieldName for metadata fields. <a href="https://learn.microsoft.com/en-us/azure/search/search-query-odata-filter" target="_blank">Learn more</a>.',
+	placeholder: "metadata/category eq 'technology' and metadata/author eq 'John'",
+	hint: "Examples: metadata/source eq 'user-guide' or rating ge 4",
 };
 
 const semanticConfigurationField: INodeProperties = {
@@ -106,34 +91,11 @@ const retrieveFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [
-			queryTypeField,
-			resultsCountField,
-			filterField,
-			semanticConfigurationField,
-			metadataFilterField,
-		],
+		options: [queryTypeField, filterField, semanticConfigurationField],
 	},
 ];
 
-const insertFields: INodeProperties[] = [
-	{
-		displayName: 'Options',
-		name: 'options',
-		type: 'collection',
-		placeholder: 'Add Option',
-		default: {},
-		options: [
-			{
-				displayName: 'Clear Index',
-				name: 'clearIndex',
-				type: 'boolean',
-				default: false,
-				description: 'Whether to clear all documents in the index before inserting new data',
-			},
-		],
-	},
-];
+const insertFields: INodeProperties[] = [];
 
 type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions;
 
@@ -180,7 +142,6 @@ async function getAzureAISearchClient(
 	itemIndex: number,
 ): Promise<AzureAISearchVectorStore> {
 	const credentials = await context.getCredentials(AZURE_AI_SEARCH_CREDENTIALS);
-	const authType = credentials.authType || 'apiKey';
 
 	try {
 		const indexName = getIndexName(context, itemIndex);
@@ -194,47 +155,14 @@ async function getAzureAISearchClient(
 		}
 		const endpoint = credentials.endpoint;
 
-		// Create the appropriate credentials based on auth type
-		let azureCredentials: AzureKeyCredential | DefaultAzureCredential;
-
-		if (authType === 'apiKey') {
-			if (!credentials.apiKey || typeof credentials.apiKey !== 'string') {
-				throw new NodeOperationError(
-					context.getNode(),
-					'API Key is required for API Key authentication',
-					{ itemIndex },
-				);
-			}
-			azureCredentials = new AzureKeyCredential(credentials.apiKey);
-		} else if (authType === 'managedIdentitySystem') {
-			// Use DefaultAzureCredential which supports:
-			// 1. System-assigned MI when running on Azure
-			// 2. Microsoft Entra ID via Azure CLI for local development
-			azureCredentials = new DefaultAzureCredential();
-		} else if (authType === 'managedIdentityUser') {
-			if (
-				!credentials.managedIdentityClientId ||
-				typeof credentials.managedIdentityClientId !== 'string'
-			) {
-				throw new NodeOperationError(
-					context.getNode(),
-					'Client ID is required for User-Assigned Managed Identity',
-					{ itemIndex },
-				);
-			}
-			const clientId = credentials.managedIdentityClientId;
-			// Use DefaultAzureCredential with specific client ID for user-assigned MI
-			// This supports both Azure-hosted MI and local Microsoft Entra ID auth
-			azureCredentials = new DefaultAzureCredential({
-				managedIdentityClientId: clientId,
+		// Validate API Key
+		if (!credentials.apiKey || typeof credentials.apiKey !== 'string') {
+			throw new NodeOperationError(context.getNode(), 'API Key is required for authentication', {
+				itemIndex,
 			});
-		} else {
-			throw new NodeOperationError(
-				context.getNode(),
-				`Unsupported authentication type: ${authType}`,
-				{ itemIndex },
-			);
 		}
+
+		const azureCredentials = new AzureKeyCredential(credentials.apiKey);
 
 		// Pass endpoint, indexName, and credentials to enable automatic index creation
 		// LangChain will create the index automatically if it doesn't exist
@@ -252,7 +180,6 @@ async function getAzureAISearchClient(
 		// Set search configuration options only for execution contexts
 		if (isExecutionContext(context)) {
 			const queryType = getQueryType(context, itemIndex);
-			const filter = getOptionValue<string>('filter', context, itemIndex);
 			const semanticConfiguration = getOptionValue<string>(
 				'semanticConfiguration',
 				context,
@@ -260,10 +187,6 @@ async function getAzureAISearchClient(
 			);
 
 			config.search.type = queryType;
-
-			if (filter) {
-				config.search.filter = filter;
-			}
 
 			if (queryType === AzureAISearchQueryType.SemanticHybrid && semanticConfiguration) {
 				config.search.semanticConfigurationName = semanticConfiguration;
@@ -286,27 +209,19 @@ async function getAzureAISearchClient(
 
 		// Check for authentication errors
 		if (
-			error.message?.includes('CredentialUnavailable') ||
-			error.message?.includes('authentication failed') ||
-			error.message?.includes('No MSI credential available')
+			error.message?.includes('401') ||
+			error.message?.includes('Unauthorized') ||
+			error.message?.includes('authentication failed')
 		) {
-			if (authType === 'managedIdentitySystem' || authType === 'managedIdentityUser') {
-				throw new NodeOperationError(
-					context.getNode(),
-					'Microsoft Entra ID authentication failed.',
-					{
-						itemIndex,
-						description: `Authentication options:
-1. **API Key (simplest)**: Switch to API Key authentication in credentials
-2. **Local Microsoft Entra ID**: Run 'az login' and ensure your account has a Search role (Search Index Data Reader/Contributor)
-3. **Managed Identity (Azure only)**: Deploy n8n on Azure with MI enabled and appropriate Search permissions
-
-Required roles:
-- Read operations: Search Index Data Reader
-- Write operations: Search Index Data Contributor or Search Service Contributor`,
-					},
-				);
-			}
+			throw new NodeOperationError(
+				context.getNode(),
+				'Authentication failed - invalid API key or endpoint.',
+				{
+					itemIndex,
+					description:
+						'Please verify your API Key and Search Endpoint are correct in the credentials configuration.',
+				},
+			);
 		}
 
 		// Check for authorization errors (403)
@@ -316,13 +231,8 @@ Required roles:
 				'Authorization failed - insufficient permissions.',
 				{
 					itemIndex,
-					description: `The authenticated identity lacks required permissions.
-
-Required Azure AI Search roles:
-- **Read operations**: Search Index Data Reader (or higher)
-- **Write operations**: Search Index Data Contributor or Search Service Contributor
-
-Grant the appropriate role in Azure Portal → Your Search Service → Access control (IAM)`,
+					description:
+						'The API Key does not have sufficient permissions. Ensure the key has the required access level for this operation.',
 				},
 			);
 		}
@@ -376,19 +286,50 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 	async getVectorStoreClient(context, _filter, embeddings, itemIndex) {
 		const vectorStore = await getAzureAISearchClient(context, embeddings, itemIndex);
 
-		// Override the similaritySearch method to use the resultsCount option
+		// Apply OData filter to search methods if specified in options
 		if (isExecutionContext(context)) {
-			const resultsCount = getOptionValue<number>('resultsCount', context, itemIndex, 50);
+			const filter = getOptionValue<string>('filter', context, itemIndex);
 
-			const originalSearch = vectorStore.similaritySearch.bind(vectorStore);
-			vectorStore.similaritySearch = async (query: string, k?: number, filter?: any) => {
-				return await originalSearch(query, k ?? resultsCount, filter);
-			};
+			if (filter) {
+				// Per LangChain docs, pass filter as 3rd parameter with filterExpression
+				const filterObject = { filterExpression: filter };
 
-			const originalSearchWithScore = vectorStore.similaritySearchWithScore.bind(vectorStore);
-			vectorStore.similaritySearchWithScore = async (query: string, k?: number, filter?: any) => {
-				return await originalSearchWithScore(query, k ?? resultsCount, filter);
-			};
+				// Override similaritySearchVectorWithScore - this is the method called by n8n base node
+				const originalSearchVectorWithScore =
+					vectorStore.similaritySearchVectorWithScore.bind(vectorStore);
+				vectorStore.similaritySearchVectorWithScore = async (
+					query: number[],
+					k: number,
+					additionalFilter?: any,
+				) => {
+					// Merge our OData filter with any additional filter passed by the caller
+					const mergedFilter = additionalFilter
+						? { ...filterObject, ...additionalFilter }
+						: filterObject;
+					return await originalSearchVectorWithScore(query, k, mergedFilter);
+				};
+
+				// Override similaritySearch to pass filter as 3rd parameter
+				const originalSearch = vectorStore.similaritySearch.bind(vectorStore);
+				vectorStore.similaritySearch = async (query: string, k?: number) => {
+					return await originalSearch(query, k, filterObject);
+				};
+
+				// Override similaritySearchWithScore to pass filter as 3rd parameter
+				const originalSearchWithScore = vectorStore.similaritySearchWithScore.bind(vectorStore);
+				vectorStore.similaritySearchWithScore = async (query: string, k?: number) => {
+					return await originalSearchWithScore(query, k, filterObject);
+				};
+
+				// Override asRetriever to inject filter into retriever options
+				const originalAsRetriever = vectorStore.asRetriever.bind(vectorStore);
+				vectorStore.asRetriever = (kwargs?: any) => {
+					return originalAsRetriever({
+						...kwargs,
+						filter: filterObject,
+					});
+				};
+			}
 		}
 
 		return vectorStore;
@@ -396,18 +337,6 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		try {
 			const vectorStore = await getAzureAISearchClient(context, embeddings, itemIndex);
-
-			const clearIndex = getOptionValue<boolean>('clearIndex', context, itemIndex, false);
-
-			if (clearIndex) {
-				try {
-					// Clear all documents in the index using a filter that matches all
-					await vectorStore.delete({ filter: { filterExpression: '1 eq 1' } });
-				} catch (error) {
-					const errorMessage = error instanceof Error ? error.message : String(error);
-					context.logger.warn(`Could not clear index: ${errorMessage}`);
-				}
-			}
 
 			// Add documents to Azure AI Search (framework handles batching)
 			await vectorStore.addDocuments(documents);
@@ -423,21 +352,17 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 
 			// Check for authentication errors
 			if (
-				error.message?.includes('CredentialUnavailable') ||
-				error.message?.includes('authentication failed') ||
-				error.message?.includes('No MSI credential available')
+				error.message?.includes('401') ||
+				error.message?.includes('Unauthorized') ||
+				error.message?.includes('authentication failed')
 			) {
 				throw new NodeOperationError(
 					context.getNode(),
-					'Microsoft Entra ID authentication failed during document upload.',
+					'Authentication failed during document upload - invalid API key or endpoint.',
 					{
 						itemIndex,
-						description: `Authentication options:
-1. **API Key (simplest)**: Switch to API Key authentication in credentials
-2. **Local Microsoft Entra ID**: Run 'az login' and ensure your account has the Search Index Data Contributor role
-3. **Managed Identity (Azure only)**: Deploy n8n on Azure with MI enabled and appropriate permissions
-
-Note: Document upload requires write permissions (Search Index Data Contributor or Search Service Contributor)`,
+						description:
+							'Please verify your API Key and Search Endpoint are correct in the credentials configuration.',
 					},
 				);
 			}
@@ -454,7 +379,7 @@ Note: Document upload requires write permissions (Search Index Data Contributor 
 					{
 						itemIndex,
 						description:
-							'Document upload requires Search Index Data Contributor or Search Service Contributor role. Please grant the appropriate role in Azure Portal → Your Search Service → Access control (IAM)',
+							'The API Key does not have sufficient permissions for write operations. Ensure the key has the required access level.',
 					},
 				);
 			}
