@@ -15,7 +15,6 @@ import {
 	EnterpriseEditionFeature,
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
-	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT,
 	MIGRATION_REPORT_EXPERIMENT,
 } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -831,39 +830,6 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						rbac: {
 							scope: 'ldap:manage',
-						},
-					},
-				},
-			},
-			{
-				path: 'provisioning',
-				name: VIEWS.PROVISIONING_SETTINGS,
-				components: {
-					settingsView: SettingsProvisioningView,
-				},
-				meta: {
-					middleware: ['authenticated', 'rbac', 'custom' /* 'enterprise' */],
-					middlewareOptions: {
-						/*
-						TODO: comment this back in once the custom check using experiment is no longer used
-						enterprise: {
-							feature: EnterpriseEditionFeature.Provisioning,
-						},
-						*/
-						rbac: {
-							scope: 'provisioning:manage',
-						},
-						custom: () => {
-							const posthogStore = usePostHog();
-							return posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name);
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'provisioning',
-							};
 						},
 					},
 				},
