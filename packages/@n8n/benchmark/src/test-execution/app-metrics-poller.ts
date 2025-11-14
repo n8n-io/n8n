@@ -3,7 +3,7 @@
  * during benchmark test runs.
  */
 export class AppMetricsPoller {
-	private intervalId: NodeJS.Timeout | null = null;
+	private intervalId: NodeJS.Timeout | undefined = undefined;
 	private metricsData: string[] = [];
 	private isRunning = false;
 
@@ -19,6 +19,12 @@ export class AppMetricsPoller {
 		if (this.isRunning) {
 			console.warn('Metrics poller is already running');
 			return;
+		}
+
+		// In case the old poller is somehow still running, make sure we stop it.
+		if (this.intervalId) {
+			clearInterval(this.intervalId);
+			this.intervalId = undefined;
 		}
 
 		this.isRunning = true;
@@ -39,7 +45,7 @@ export class AppMetricsPoller {
 	stop() {
 		if (this.intervalId) {
 			clearInterval(this.intervalId);
-			this.intervalId = null;
+			this.intervalId = undefined;
 		}
 		this.isRunning = false;
 	}
