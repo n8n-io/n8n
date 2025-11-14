@@ -148,9 +148,14 @@ class ExtendedChroma extends Chroma {
 		k: number,
 		filter?: this['FilterType'],
 	): Promise<[Document, number][]> {
-		// Important: The new version of chromadb expects the query embedding to be an array of embeddings.
-		// @ts-ignore
-		return await super.similaritySearchVectorWithScore([query], k, filter);
+		const queryEmbeddings: number[][] = Array.isArray(query[0])
+			? (query as unknown as number[][])
+			: [query];
+		return await super.similaritySearchVectorWithScore(
+			queryEmbeddings as unknown as number[],
+			k,
+			filter,
+		);
 	}
 }
 
