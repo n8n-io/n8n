@@ -2141,14 +2141,16 @@ export function useCanvasOperations() {
 	async function fetchWorkflowDataFromUrl(url: string): Promise<WorkflowDataUpdate | undefined> {
 		let workflowData: WorkflowDataUpdate;
 
-		if (!projectsStore.currentProjectId) {
+		const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+		if (!projectId) {
 			// We should never reach this point because the project should be selected before
 			throw new Error('No project selected');
+			return;
 		}
 
 		canvasStore.startLoading();
 		try {
-			workflowData = await workflowsStore.getWorkflowFromUrl(url, projectsStore.currentProjectId);
+			workflowData = await workflowsStore.getWorkflowFromUrl(url, projectId);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.getWorkflowDataFromUrl.title'));
 			return;
