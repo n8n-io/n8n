@@ -189,13 +189,22 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				// Complete batch reporting
 				batchReporter.complete();
 
+				// Deduplicate results based on workflow name
+				const uniqueWorkflows = new Map<string, WorkflowMetadata>();
+				for (const workflow of allResults) {
+					if (!uniqueWorkflows.has(workflow.name)) {
+						uniqueWorkflows.set(workflow.name, workflow);
+					}
+				}
+				const deduplicatedResults = Array.from(uniqueWorkflows.values());
+
 				// Build response message
-				const responseMessage = buildResponseMessage(allResults);
+				const responseMessage = buildResponseMessage(deduplicatedResults);
 
 				// Report completion
 				const output: GetWorkflowExamplesOutput = {
-					examples: allResults.map((workflow) => formatWorkflow(workflow)),
-					totalResults: allResults.length,
+					examples: deduplicatedResults.map((workflow) => formatWorkflow(workflow)),
+					totalResults: deduplicatedResults.length,
 					message: responseMessage,
 				};
 				reporter.complete(output);
