@@ -857,7 +857,7 @@ function handleSelectAction(params: INodeParameters) {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: var(--color--background--light-3);
+	background-color: var(--ndv--background--color);
 	height: 100%;
 	width: 100%;
 
