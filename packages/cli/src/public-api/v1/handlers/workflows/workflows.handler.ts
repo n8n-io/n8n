@@ -391,12 +391,13 @@ export = {
 			if (!workflow.activeVersionId || newVersionIsBeingActivated) {
 				try {
 					// change the status to active in the DB
-					await setWorkflowAsActive(workflow.id, activeVersionId);
+					const activeVersion = await setWorkflowAsActive(req.user, workflow.id, activeVersionId);
 
 					await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
 
 					// Update the workflow object for response
 					workflow.activeVersionId = activeVersionId;
+					workflow.activeVersion = activeVersion;
 				} catch (error) {
 					// Rollback: restore previous state
 					await Container.get(WorkflowRepository).update(workflow.id, {
