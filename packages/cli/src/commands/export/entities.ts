@@ -17,6 +17,10 @@ const flagsSchema = z.object({
 			'Include execution history data tables, these are excluded by default as they can be very large',
 		)
 		.default(false),
+	keyFile: z
+		.string()
+		.describe('Optional path to a file containing a custom encryption key')
+		.optional(),
 });
 
 @Command({
@@ -27,6 +31,8 @@ const flagsSchema = z.object({
 		'--outputDir=./exports',
 		'--outputDir=/path/to/backup',
 		'--includeExecutionHistoryDataTables=true',
+		'--keyFile=/path/to/key.txt',
+		'--outputDir=./exports --keyFile=/path/to/key.txt',
 	],
 	flagsSchema,
 })
@@ -44,7 +50,11 @@ export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 			excludedDataTables.add('execution_metadata');
 		}
 
-		await Container.get(ExportService).exportEntities(outputDir, excludedDataTables);
+		await Container.get(ExportService).exportEntities(
+			outputDir,
+			excludedDataTables,
+			this.flags.keyFile,
+		);
 	}
 
 	catch(error: Error) {

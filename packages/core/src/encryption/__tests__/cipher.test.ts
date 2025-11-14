@@ -34,4 +34,25 @@ describe('Cipher', () => {
 			expect(decrypted).toEqual('');
 		});
 	});
+
+	describe('getKeyAndIv', () => {
+		it('should generate a key and iv using instance settings encryption key', () => {
+			mockInstance(InstanceSettings, { encryptionKey: 'settings-encryption-key' });
+			// @ts-expect-error - getKeyAndIv is private
+			const [key, iv] = cipher.getKeyAndIv(Buffer.from('test-salt'));
+			expect(key).toBeInstanceOf(Buffer);
+			expect(iv).toBeInstanceOf(Buffer);
+			expect(jest.spyOn(Buffer, 'from')).toHaveBeenCalledWith('settings-encryption-key', 'binary');
+		});
+
+		it('should generate a key and iv using custom encryption key', () => {
+			mockInstance(InstanceSettings, { encryptionKey: 'custom-encryption-key' });
+			// @ts-expect-error - getKeyAndIv is private
+			const [key, iv] = cipher.getKeyAndIv(Buffer.from('test-salt'), 'custom-encryption-key');
+			expect(key).toBeInstanceOf(Buffer);
+			expect(iv).toBeInstanceOf(Buffer);
+
+			expect(jest.spyOn(Buffer, 'from')).toHaveBeenCalledWith('custom-encryption-key', 'binary');
+		});
+	});
 });
