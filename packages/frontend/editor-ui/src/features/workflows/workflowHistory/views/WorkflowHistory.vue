@@ -74,6 +74,11 @@ const editorRoute = computed(() => ({
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
+
+const workflowActiveVersionId = computed(() => {
+	return workflowsStore.getWorkflowById(workflowId.value)?.activeVersion?.versionId;
+});
+
 const actions = computed<Array<UserAction<IUser>>>(() =>
 	workflowHistoryActionTypes.map((value) => ({
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
@@ -367,6 +372,7 @@ watchEffect(async () => {
 				:should-upgrade="workflowHistoryStore.shouldUpgrade"
 				:evaluated-prune-days="evaluatedPruneDays"
 				:is-list-loading="isListLoading"
+				:active-version-id="workflowActiveVersionId"
 				@action="onAction"
 				@preview="onPreview"
 				@load-more="loadMore"
