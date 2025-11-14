@@ -32,6 +32,7 @@ import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
+import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 
 const router = useRouter();
 const route = useRoute();
@@ -389,14 +390,12 @@ function handleOpenWorkflow(workflowId: string) {
 </script>
 
 <template>
-	<div
-		:class="[
-			$style.component,
-			{
-				[$style.isNewSession]: isNewSession,
-				[$style.isMobileDevice]: isMobileDevice,
-			},
-		]"
+	<ChatLayout
+		:class="{
+			[$style.isNewSession]: isNewSession,
+			[$style.isExistingSession]: !isNewSession,
+			[$style.isMobileDevice]: isMobileDevice,
+		}"
 	>
 		<ChatConversationHeader
 			ref="headerRef"
@@ -482,27 +481,10 @@ function handleOpenWorkflow(workflowId: string) {
 				</div>
 			</div>
 		</N8nScrollArea>
-	</div>
+	</ChatLayout>
 </template>
 
 <style lang="scss" module>
-.component {
-	margin: var(--spacing--4xs);
-	width: 100%;
-	background-color: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	display: flex;
-	flex-direction: column;
-	align-items: stretch;
-	overflow: hidden;
-
-	&.isMobileDevice {
-		margin: 0;
-		border: none;
-	}
-}
-
 .scrollArea {
 	flex-grow: 1;
 	flex-shrink: 1;
@@ -557,7 +539,7 @@ function handleOpenWorkflow(workflowId: string) {
 	justify-content: center;
 
 	.isMobileDevice &,
-	.component:not(.isNewSession) & {
+	.isExistingSession & {
 		position: absolute;
 		bottom: 0;
 		left: 0;
