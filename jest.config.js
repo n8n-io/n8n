@@ -1,5 +1,6 @@
 const { pathsToModuleNameMapper } = require('ts-jest');
 const { compilerOptions } = require('get-tsconfig').getTsconfig().config;
+const { resolve } = require('path');
 
 /** @type {import('ts-jest').TsJestGlobalOptions} */
 const tsJestOptions = {
@@ -44,7 +45,7 @@ const config = {
 	transformIgnorePatterns: [`/node_modules/(?!${esmDependenciesPattern})/`],
 	// This resolve the path mappings from the tsconfig relative to each jest.config.js
 	moduleNameMapper: {
-		'^@n8n/utils/dist/(.+)\\.cjs$': '<rootDir>/../@n8n/utils/dist/$1.cjs',
+		'^@n8n/utils/dist/(.+)\\.cjs$': resolve(__dirname, 'packages/@n8n/utils/dist/$1.cjs'),
 		...(compilerOptions?.paths
 			? pathsToModuleNameMapper(compilerOptions.paths, {
 					prefix: `<rootDir>${compilerOptions.baseUrl ? `/${compilerOptions.baseUrl.replace(/^\.\//, '')}` : ''}`,
