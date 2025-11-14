@@ -23,13 +23,13 @@ vi.mock('vue-router', () => ({
 	}),
 }));
 
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: () => ({
 		track: mockTrack,
 	}),
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showError: mockShowError,
 	}),
@@ -37,7 +37,7 @@ vi.mock('@/composables/useToast', () => ({
 
 const mockGetVariant = vi.fn();
 
-vi.mock('@/stores/posthog.store', () => ({
+vi.mock('@/app/stores/posthog.store', () => ({
 	usePostHog: () => ({
 		getVariant: mockGetVariant,
 	}),
@@ -54,7 +54,7 @@ vi.mock('@/features/credentials/credentials.store', () => ({
 	}),
 }));
 
-vi.mock('@/stores/workflows.store', () => ({
+vi.mock('@/app/stores/workflows.store', () => ({
 	useWorkflowsStore: () => ({
 		createNewWorkflow: mockCreateNewWorkflow,
 	}),
@@ -76,7 +76,7 @@ vi.mock('@/features/settings/users/users.store', () => ({
 
 const mockIsAiCreditsEnabled = { value: true };
 
-vi.mock('@/stores/settings.store', () => ({
+vi.mock('@/app/stores/settings.store', () => ({
 	useSettingsStore: () => ({
 		get isAiCreditsEnabled() {
 			return mockIsAiCreditsEnabled.value;
@@ -94,6 +94,7 @@ const mockLocalStorageValue = { value: '' };
 
 vi.mock('@vueuse/core', () => ({
 	useLocalStorage: () => mockLocalStorageValue,
+	useMediaQuery: () => ({ value: false }),
 }));
 
 const mockShouldShowSimplifiedLayout = vi.fn(() => false);
