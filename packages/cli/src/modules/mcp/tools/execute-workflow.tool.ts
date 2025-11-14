@@ -18,13 +18,12 @@ import z from 'zod';
 
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { hasMcpSupportedTriggers } from '../mcp.utils';
+import { findMcpSupportedTrigger } from '../mcp.utils';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { th } from 'zod/dist/types/v4/locales';
 
 const WORKFLOW_EXECUTION_TIMEOUT_MS = 1 * 60 * 1000; // 5 minutes
 
@@ -174,18 +173,12 @@ export const executeWorkflow = async (
 		);
 	}
 
-	const canExecuteWorkflow = hasMcpSupportedTriggers(workflow);
+	const triggerNode = findMcpSupportedTrigger(workflow);
 
-	if (!canExecuteWorkflow) {
+	if (!triggerNode) {
 		throw new UserError(
 			`Only workflows with the following trigger nodes can be executed: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
 		);
-	}
-
-	const triggerNode = findMcpWorkflowStart(workflow.nodes);
-
-	if (!triggerNode) {
-		throw new UserError('No supported trigger node found to start the workflow execution.');
 	}
 
 	const runData: IWorkflowExecutionDataProcess = {
@@ -257,15 +250,6 @@ export const executeWorkflow = async (
 		// Re-throw the error to be handled by the caller
 		throw error;
 	}
-};
-
-/**
- * Gets the first supported trigger node from the workflow nodes.
- */
-const findMcpWorkflowStart = (nodes: INode[]): INode | undefined => {
-	return nodes.find((node) => {
-		return !node.disabled && Object.keys(SUPPORTED_MCP_TRIGGERS).includes(node.type);
-	});
 };
 
 /**

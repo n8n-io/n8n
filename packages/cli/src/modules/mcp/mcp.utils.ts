@@ -3,6 +3,7 @@ import type { Request } from 'express';
 
 import { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
 import { isRecord, isJSONRPCRequest } from './mcp.typeguards';
+import { INode } from 'n8n-workflow';
 
 export const getClientInfo = (req: Request | AuthenticatedRequest) => {
 	let clientInfo: { name?: string; version?: string } | undefined;
@@ -47,15 +48,16 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
 };
 
 /**
- * Determines if MCP access can be toggled for a given workflow.
- * Workflow is eligible if it contains at least one of these (enabled) trigger nodes:
+ * Finds the first supported trigger node in the workflow.
+ * Workflow is eligible for MCP access if it contains at least one of these (enabled) trigger nodes:
  * - Schedule trigger
  * - Webhook trigger
  * - Form trigger
  * - Chat trigger
  * @param workflow
  */
-export const hasMcpSupportedTriggers = (workflow: WorkflowEntity): boolean => {
+export const findMcpSupportedTrigger = (workflow: WorkflowEntity): INode | undefined => {
 	const triggerNodeTypes = Object.keys(SUPPORTED_MCP_TRIGGERS);
-	return workflow.nodes.some((node) => triggerNodeTypes.includes(node.type) && !node.disabled);
+	// return workflow.nodes.some((node) => triggerNodeTypes.includes(node.type) && !node.disabled);
+	return workflow.nodes.find((node) => triggerNodeTypes.includes(node.type) && !node.disabled);
 };
