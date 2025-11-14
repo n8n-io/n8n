@@ -39,8 +39,8 @@ const flagsSchema = z.object({
 export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
 		const outputDir = this.flags.outputDir;
-
 		const excludedDataTables = new Set<string>();
+		const keyFilePath = this.flags.keyFile ? safeJoinPath(this.flags.keyFile) : undefined;
 
 		if (!this.flags.includeExecutionHistoryDataTables) {
 			excludedDataTables.add('execution_annotation_tags');
@@ -50,11 +50,7 @@ export class ExportEntitiesCommand extends BaseCommand<z.infer<typeof flagsSchem
 			excludedDataTables.add('execution_metadata');
 		}
 
-		await Container.get(ExportService).exportEntities(
-			outputDir,
-			excludedDataTables,
-			this.flags.keyFile,
-		);
+		await Container.get(ExportService).exportEntities(outputDir, excludedDataTables, keyFilePath);
 	}
 
 	catch(error: Error) {
