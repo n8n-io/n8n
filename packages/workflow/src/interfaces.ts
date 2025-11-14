@@ -1163,7 +1163,7 @@ export interface ITriggerFunctions
 	 */
 	emitExecutionError(error: ExecutionError): void;
 	/**
-	 * Log error and reactivate the workflow
+	 * Log error, reactivate the workflow, and call the error workflow if defined
 	 */
 	emitError(error: Error, responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>): void;
 	getNodeParameter(
