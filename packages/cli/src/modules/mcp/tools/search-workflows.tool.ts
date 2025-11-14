@@ -34,14 +34,23 @@ const outputSchema = {
 	data: z
 		.array(
 			z.object({
-				id: z.string(),
-				name: z.string().nullable(),
-				description: z.string().nullable(),
-				active: z.boolean().nullable(),
-				createdAt: z.string().nullable(),
-				updatedAt: z.string().nullable(),
-				triggerCount: z.number().nullable(),
-				nodes: z.array(nodeSchema),
+				id: z.string().describe('The unique identifier of the workflow'),
+				name: z.string().nullable().describe('The name of the workflow'),
+				description: z.string().optional().describe('The description of the workflow'),
+				active: z.boolean().nullable().describe('Whether the workflow is active'),
+				createdAt: z
+					.string()
+					.nullable()
+					.describe('The ISO timestamp when the workflow was created'),
+				updatedAt: z
+					.string()
+					.nullable()
+					.describe('The ISO timestamp when the workflow was last updated'),
+				triggerCount: z
+					.number()
+					.nullable()
+					.describe('The number of triggers associated with the workflow'),
+				nodes: z.array(nodeSchema).describe('List of nodes in the workflow'),
 			}),
 		)
 		.describe('List of workflows matching the query'),
