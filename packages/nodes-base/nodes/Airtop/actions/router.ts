@@ -1,6 +1,7 @@
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+import * as agent from './agent/Agent.resource';
 import { cleanOutputForToolUse } from './common/output.utils';
 import * as extraction from './extraction/Extraction.resource';
 import * as file from './file/File.resource';
@@ -28,6 +29,9 @@ export async function router(this: IExecuteFunctions): Promise<INodeExecutionDat
 	for (let i = 0; i < items.length; i++) {
 		try {
 			switch (airtopNodeData.resource) {
+				case 'agent':
+					responseData = await agent[airtopNodeData.operation].execute.call(this, i);
+					break;
 				case 'session':
 					responseData = await session[airtopNodeData.operation].execute.call(this, i);
 					break;
