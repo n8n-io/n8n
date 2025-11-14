@@ -65,10 +65,8 @@ import {
 	type IMenuItem,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { setParameterValue } from '@/app/utils/parameterUtils';
 import get from 'lodash/get';
-import set from 'lodash/set';
-import unset from 'lodash/unset';
-import toPath from 'lodash/toPath';
 
 type Props = {
 	modalName: string;
@@ -579,7 +577,6 @@ function onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 }
 
 function onDataChange({ name, value }: IUpdateInformation) {
-	// skip update if new value matches the current
 	const currentValue = get(credentialData.value, name);
 	if (currentValue === value) {
 		return;
@@ -590,25 +587,7 @@ function onDataChange({ name, value }: IUpdateInformation) {
 	const { oauthTokenData, ...credData } = credentialData.value;
 	credentialData.value = deepCopy(credData);
 
-	if (value === undefined) {
-		// for fixed collections:
-		// if the value is undefined and the name (path) ends with a number
-		// we need to remove the item from the array
-		if (name.endsWith(']')) {
-			const path = toPath(name);
-			const index = parseInt(path[path.length - 1], 10);
-			const arrayPath = path.slice(0, -1);
-			const array = get(credentialData.value, arrayPath) as unknown[];
-			if (Array.isArray(array)) {
-				array.splice(index, 1);
-				set(credentialData.value, arrayPath, array);
-			}
-		} else {
-			unset(credentialData.value, name);
-		}
-	} else {
-		set(credentialData.value, name, value);
-	}
+	setParameterValue(credentialData.value, name, value);
 }
 
 function closeDialog() {
