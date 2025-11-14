@@ -16,13 +16,13 @@ import type {
 	StartNodeData,
 } from '.';
 
-export type IDestinationNodeV0 = {
+type IDestinationNodeV0 = {
 	version: 0;
 	destinationNode?: string;
 	originalDestinationNode?: string;
 };
 
-export type IDestinationNodeV1 = {
+type IDestinationNodeV1 = {
 	version: 1;
 	destinationNode?: {
 		nodeName: string;
@@ -39,7 +39,7 @@ export type IDestinationNodeAll = IDestinationNodeV0 | IDestinationNodeV1;
 export type IDestinationNode = IDestinationNodeV1;
 
 // The RunData, ExecuteData and WaitForExecution contain often the same data.
-export interface IRunExecutionDataBase {
+interface IRunExecutionDataBase {
 	resultData: {
 		error?: ExecutionError;
 		runData: IRunData;
