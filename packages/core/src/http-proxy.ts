@@ -38,8 +38,8 @@ function getOrCreateProxyAgent<T extends HttpProxyAgent<string> | HttpsProxyAgen
 	return proxyAgent;
 }
 
-function createFallbackAgent<T extends http.Agent | https.Agent>(AgentClass: new () => T): T {
-	return new AgentClass();
+function createFallbackAgent<T extends http.Agent | https.Agent>(agentClass: new () => T): T {
+	return new agentClass();
 }
 
 /**
