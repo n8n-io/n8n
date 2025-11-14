@@ -556,7 +556,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		connections: IConnections,
 		copyData?: boolean,
 	): Workflow {
-		console.log('createWorkflowObject', nodes, connections);
 		const nodeTypes = getNodeTypes();
 
 		let id: string | undefined = workflow.value.id;

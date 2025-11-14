@@ -10,13 +10,20 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nActionToggle, N8nBadge, N8nTooltip } from '@n8n/design-system';
-const props = defineProps<{
-	item: WorkflowHistory;
-	index: number;
-	actions: Array<UserAction<IUser>>;
-	isSelected: boolean;
-}>();
+import { N8nActionToggle, N8nTooltip, N8nBadge } from '@n8n/design-system';
+
+const props = withDefaults(
+	defineProps<{
+		item: WorkflowHistory;
+		index: number;
+		actions: Array<UserAction<IUser>>;
+		isSelected: boolean;
+		isVersionActive?: boolean;
+	}>(),
+	{
+		isVersionActive: false,
+	},
+);
 const emit = defineEmits<{
 	action: [
 		value: {
@@ -83,7 +90,6 @@ const onItemClick = (event: MouseEvent) => {
 
 onMounted(() => {
 	emit('mounted', {
-		index: props.index,
 		offsetTop: itemElement.value?.offsetTop ?? 0,
 		isSelected: props.isSelected,
 	});
@@ -112,8 +118,8 @@ onMounted(() => {
 			</p>
 		</slot>
 		<div :class="$style.tail">
-			<N8nBadge v-if="props.index === 0">
-				{{ i18n.baseText('workflowHistory.item.latest') }}
+			<N8nBadge v-if="props.isVersionActive">
+				{{ i18n.baseText('workflowHistory.item.active') }}
 			</N8nBadge>
 			<N8nActionToggle
 				theme="dark"
