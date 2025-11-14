@@ -124,4 +124,5 @@ export type {
 	BreakingChangeWorkflowRuleResult,
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
+	BreakingChangeVersion,
 } from './schemas/breaking-changes.schema';
