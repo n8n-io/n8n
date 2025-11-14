@@ -10,6 +10,8 @@ import {
 	type WorkflowExecuteMode,
 	UserError,
 	UnexpectedError,
+	ensureError,
+	jsonStringify,
 } from 'n8n-workflow';
 import z from 'zod';
 
@@ -83,7 +85,7 @@ export const createExecuteWorkflowTool = (
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'execute_workflow',
 	config: {
-		description: 'Execute a workflow by id',
+		description: 'Execute a workflow by ID',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 	},
@@ -112,11 +114,12 @@ export const createExecuteWorkflowTool = (
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [{ type: 'text', text: JSON.stringify(output) }],
+				content: [{ type: 'text', text: jsonStringify(output) }],
 				structuredContent: output,
 			};
-		} catch (error) {
-			const payload: ExecuteWorkflowOutput = {
+		} catch (er) {
+			const error = ensureError(er);
+			const output: ExecuteWorkflowOutput = {
 				success: false,
 				executionId: null,
 				error,
@@ -124,13 +127,13 @@ export const createExecuteWorkflowTool = (
 
 			telemetryPayload.results = {
 				success: false,
-				error: error instanceof Error ? error.message : String(error),
+				error: error.message,
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
 			return {
-				content: [{ type: 'text', text: JSON.stringify(payload) }],
-				structuredContent: payload,
+				content: [{ type: 'text', text: jsonStringify(output) }],
+				structuredContent: output,
 			};
 		}
 	},
@@ -151,7 +154,7 @@ export const executeWorkflow = async (
 	inputs?: z.infer<typeof inputSchema>['inputs'],
 ): Promise<ExecuteWorkflowOutput> => {
 	const workflow = await workflowFinderService.findWorkflowForUser(workflowId, user, [
-		'workflow:read',
+		'workflow:execute',
 	]);
 
 	if (!workflow || workflow.isArchived || !workflow.settings?.availableInMCP) {
