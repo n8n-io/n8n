@@ -1,6 +1,6 @@
 import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
-import type { INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
