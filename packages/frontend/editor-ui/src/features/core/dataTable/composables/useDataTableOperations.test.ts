@@ -13,30 +13,30 @@ import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import { ResponseError } from '@n8n/rest-api-client';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { MODAL_CONFIRM } from '@/constants';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { MODAL_CONFIRM } from '@/app/constants';
 import type { DataTableRow } from '@/features/core/dataTable/dataTable.types';
 
 vi.mock('@/features/core/dataTable/dataTable.store', () => ({
 	useDataTableStore: vi.fn(() => ({})),
 }));
 
-vi.mock('@/composables/useMessage', () => ({
+vi.mock('@/app/composables/useMessage', () => ({
 	useMessage: vi.fn(() => ({
 		confirm: vi.fn(),
 	})),
 }));
 
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: vi.fn(() => ({
 		showError: vi.fn(),
 		showMessage: vi.fn(),
 	})),
 }));
 
-vi.mock('@/composables/useTelemetry', () => ({
+vi.mock('@/app/composables/useTelemetry', () => ({
 	useTelemetry: vi.fn(() => ({
 		track: vi.fn(),
 	})),
@@ -671,6 +671,7 @@ describe('useDataTableOperations', () => {
 				20,
 				'name:asc',
 				'{"status":"active"}',
+				undefined,
 			);
 			expect(rowData.value).toEqual(fetchedData.data);
 			expect(params.setTotalItems).toHaveBeenCalledWith(10);
@@ -712,6 +713,7 @@ describe('useDataTableOperations', () => {
 				1,
 				10,
 				'id:desc',
+				undefined,
 				undefined,
 			);
 		});

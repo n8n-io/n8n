@@ -11,7 +11,7 @@ import type {
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import type { IUser } from 'n8n-workflow';
 import { I18nT } from 'vue-i18n';
-import { useIntersectionObserver } from '@/composables/useIntersectionObserver';
+import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 
 import { N8nLoading } from '@n8n/design-system';
 const props = defineProps<{
@@ -20,7 +20,7 @@ const props = defineProps<{
 	actions: Array<UserAction<IUser>>;
 	requestNumberOfItems: number;
 	lastReceivedItemsLength: number;
-	evaluatedPruneTime: number;
+	evaluatedPruneDays: number;
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
 }>();
@@ -128,7 +128,7 @@ const onItemMounted = ({
 			<span>
 				{{
 					i18n.baseText('workflowHistory.limit', {
-						interpolate: { evaluatedPruneTime: String(props.evaluatedPruneTime) },
+						interpolate: { days: String(props.evaluatedPruneDays) },
 					})
 				}}
 			</span>

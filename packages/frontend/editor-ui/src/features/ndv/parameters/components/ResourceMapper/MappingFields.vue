@@ -18,7 +18,7 @@ import {
 	fieldCannotBeDeleted,
 	isMatchingField,
 	parseResourceMapperFieldName,
-} from '@/utils/nodeTypesUtils';
+} from '@/app/utils/nodeTypesUtils';
 import { useNodeSpecificationValues } from '../../composables/useNodeSpecificationValues';
 import {
 	N8nIcon,

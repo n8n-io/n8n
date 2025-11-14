@@ -14,6 +14,7 @@ export class WorkflowSelect extends BaseSelect {
 			'parentFolder',
 			'nodes',
 			'isArchived',
+			'description',
 		]);
 	}
 

@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { watch, reactive, toRefs, computed, onBeforeUnmount } from 'vue';
 
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import SlideTransition from '@/components/transitions/SlideTransition.vue';
+import SlideTransition from '@/app/components/transitions/SlideTransition.vue';
 
 import { useViewStacks } from '../composables/useViewStacks';
 import { useKeyboardNavigation } from '../composables/useKeyboardNavigation';
 import { useActionsGenerator } from '../composables/useActionsGeneration';
 import NodesListPanel from './Panel/NodesListPanel.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useBannersStore } from '@/stores/banners.store';
-import { DRAG_EVENT_DATA_KEY } from '@/constants';
+import { useBannersStore } from '@/features/shared/banners/banners.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { DRAG_EVENT_DATA_KEY } from '@/app/constants';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import type { NodeTypeSelectedPayload } from '@/Interface';
 import { onClickOutside } from '@vueuse/core';

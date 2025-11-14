@@ -8,7 +8,7 @@ import {
 	TRIGGER_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
-} from '@/constants';
+} from '@/app/constants';
 
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
@@ -19,8 +19,8 @@ import SearchBar from './SearchBar.vue';
 import ActionsRenderer from '../Modes/ActionsMode.vue';
 import NodesRenderer from '../Modes/NodesMode.vue';
 import { useI18n } from '@n8n/i18n';
-import { useDebounce } from '@/composables/useDebounce';
-import NodeIcon from '@/components/NodeIcon.vue';
+import { useDebounce } from '@/app/composables/useDebounce';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 
 import CommunityNodeDetails from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeDetails.vue';
 import CommunityNodeInfo from '@/features/settings/communityNodes/components/nodeCreator/CommunityNodeInfo.vue';

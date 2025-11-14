@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import type { FilterConditionValue, FilterOptionsValue } from 'n8n-workflow';
 import type { FilterOperator, FilterOperatorGroup } from './types';
-import { DATA_TYPE_ICON_MAP } from '@/constants';
+import { DATA_TYPE_ICON_MAP } from '@/app/constants';
 
 export const DEFAULT_MAX_CONDITIONS = 10;
 
@@ -281,6 +281,15 @@ export type FilterOperatorId = keyof typeof OPERATORS_BY_ID;
 
 export const DEFAULT_OPERATOR_VALUE: FilterConditionValue['operator'] =
 	OPERATORS_BY_ID['string:equals'];
+
+export const DEFAULT_OPERATOR_BY_TYPE: Record<string, FilterOperatorId> = {
+	string: 'string:equals',
+	number: 'number:equals',
+	boolean: 'boolean:equals',
+	array: 'array:contains',
+	object: 'object:notEmpty',
+	dateTime: 'dateTime:equals',
+};
 
 export const OPERATOR_GROUPS: FilterOperatorGroup[] = [
 	{

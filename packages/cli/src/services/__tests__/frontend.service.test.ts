@@ -1,9 +1,10 @@
-import { N8N_VERSION } from '@/constants';
 import type { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
 import type { GlobalConfig, SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
+
+import { N8N_VERSION } from '@/constants';
 
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
@@ -15,6 +16,12 @@ import type { PushConfig } from '@/push/push.config';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
+
+// Mock the workflow history helper functions to avoid DI container issues in tests
+jest.mock('@/workflows/workflow-history/workflow-history-helper', () => ({
+	getWorkflowHistoryLicensePruneTime: jest.fn(() => 24),
+	getWorkflowHistoryPruneTime: jest.fn(() => 24),
+}));
 
 describe('FrontendService', () => {
 	let originalEnv: NodeJS.ProcessEnv;
@@ -45,7 +52,7 @@ describe('FrontendService', () => {
 		license: { tenantId: 1 },
 		mfa: { enabled: false },
 		deployment: { type: 'default' },
-		workflowHistory: { enabled: false },
+		workflowHistory: { pruneTime: 24 },
 		path: '',
 		sso: {
 			ldap: { loginEnabled: false },
@@ -99,7 +106,6 @@ describe('FrontendService', () => {
 		isExternalSecretsEnabled: jest.fn().mockReturnValue(false),
 		isLicensed: jest.fn().mockReturnValue(false),
 		isDebugInEditorLicensed: jest.fn().mockReturnValue(false),
-		isWorkflowHistoryLicensed: jest.fn().mockReturnValue(false),
 		isWorkerViewLicensed: jest.fn().mockReturnValue(false),
 		isAdvancedPermissionsLicensed: jest.fn().mockReturnValue(false),
 		isApiKeyScopesEnabled: jest.fn().mockReturnValue(false),

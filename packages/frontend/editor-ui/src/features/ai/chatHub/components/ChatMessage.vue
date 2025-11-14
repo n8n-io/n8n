@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useClipboard } from '@/composables/useClipboard';
+import { useClipboard } from '@/app/composables/useClipboard';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
@@ -12,7 +12,7 @@ import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'v
 import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
-import { restoreConversationModelFromMessageOrSession } from '@/features/ai/chatHub/chat.utils';
+import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
@@ -48,7 +48,7 @@ const speech = useSpeechSynthesis(messageContent, {
 	volume: 1,
 });
 
-const model = computed(() => restoreConversationModelFromMessageOrSession(message));
+const model = computed(() => unflattenModel(message));
 const agent = useAgent(model);
 
 async function handleCopy() {
@@ -178,12 +178,11 @@ onBeforeMount(() => {
 				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
 				<ChatMessageActions
 					v-else
-					:type="message.type"
 					:just-copied="justCopied"
 					:is-speech-synthesis-available="speech.isSupported.value"
 					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
-					:message-id="message.id"
+					:message="message"
 					:alternatives="message.alternatives"
 					@copy="handleCopy"
 					@edit="handleEdit"

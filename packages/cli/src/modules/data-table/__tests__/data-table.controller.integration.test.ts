@@ -78,8 +78,8 @@ describe('POST /projects/:projectId/data-tables', () => {
 		};
 
 		await authMemberAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(403);
-		await authAdminAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(403);
-		await authOwnerAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(403);
+		await authAdminAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(404);
+		await authOwnerAgent.post('/projects/non-existing-id/data-tables').send(payload).expect(404);
 	});
 
 	test('should not create data table when name is empty', async () => {
@@ -229,8 +229,8 @@ describe('POST /projects/:projectId/data-tables', () => {
 describe('GET /projects/:projectId/data-tables', () => {
 	test('should not list data tables when project does not exist', async () => {
 		await authMemberAgent.get('/projects/non-existing-id/data-tables').expect(403);
-		await authAdminAgent.get('/projects/non-existing-id/data-tables').expect(403);
-		await authOwnerAgent.get('/projects/non-existing-id/data-tables').expect(403);
+		await authAdminAgent.get('/projects/non-existing-id/data-tables').expect(404);
+		await authOwnerAgent.get('/projects/non-existing-id/data-tables').expect(404);
 	});
 
 	test('should not list data tables if user has no access to project', async () => {
@@ -239,10 +239,10 @@ describe('GET /projects/:projectId/data-tables', () => {
 		await authMemberAgent.get(`/projects/${project.id}/data-tables`).expect(403);
 	});
 
-	test('should not list data tables if admin has no access to project', async () => {
+	test('should list data tables for admins', async () => {
 		const project = await createTeamProject('test project', owner);
 
-		await authAdminAgent.get(`/projects/${project.id}/data-tables`).expect(403);
+		await authAdminAgent.get(`/projects/${project.id}/data-tables`).expect(200);
 	});
 
 	test("should not list data tables from another user's personal project", async () => {
@@ -520,7 +520,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId', () => {
 		await authOwnerAgent
 			.patch('/projects/non-existing-id/data-tables/some-data-table-id')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not update data table when data table does not exist', async () => {
@@ -663,7 +663,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		await authOwnerAgent
 			.delete('/projects/non-existing-id/data-tables/some-data-table-id')
 			.send({})
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not delete data table when data table does not exist', async () => {
@@ -780,7 +780,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId', () => {
 		});
 		expect(dataTableColumnInDb).toBeNull();
 
-		await expect(dataTableRowsRepository.getManyAndCount(dataTable.id, {})).rejects.toThrow(
+		await expect(dataTableRowsRepository.getManyAndCount(dataTable.id, {}, [])).rejects.toThrow(
 			QueryFailedError,
 		);
 	});
@@ -790,7 +790,7 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/columns', () => {
 	test('should not list columns when project does not exist', async () => {
 		await authOwnerAgent
 			.get('/projects/non-existing-id/data-tables/non-existing-id/columns')
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not list columns if user has no access to project', async () => {
@@ -889,7 +889,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/columns', () => {
 		await authOwnerAgent
 			.post('/projects/non-existing-id/data-tables/some-data-table-id/columns')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not create column when data table does not exist', async () => {
@@ -1115,7 +1115,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/columns/:columnId
 		await authOwnerAgent
 			.delete('/projects/non-existing-id/data-tables/some-data-table-id/columns/some-column-id')
 			.send({})
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not delete column when data table does not exist', async () => {
@@ -1302,7 +1302,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/columns/:columnId/
 		await authOwnerAgent
 			.patch('/projects/non-existing-id/data-tables/some-data-table-id/columns/some-column-id/move')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not move column when data table does not exist', async () => {
@@ -1526,7 +1526,7 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/rows', () => {
 	test('should not list rows when project does not exist', async () => {
 		await authOwnerAgent
 			.get('/projects/non-existing-id/data-tables/some-data-table-id/rows')
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not list rows when data table does not exist', async () => {
@@ -1907,7 +1907,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 		await authOwnerAgent
 			.post('/projects/non-existing-id/data-tables/some-data-table-id/insert')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not insert rows when data table does not exist', async () => {
@@ -2026,7 +2026,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			data: [{ id: 1 }],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2067,7 +2071,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			data: [{ id: 1 }],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2105,7 +2113,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			data: [{ id: 1 }],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2162,7 +2174,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			],
 		});
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data[0]);
 	});
@@ -2197,7 +2213,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/insert', () => {
 			.expect(400);
 
 		expect(response.body.message).toContain('unknown column');
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(0);
 	});
 
@@ -2508,7 +2528,7 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 					filters: [{ columnName: 'first', condition: 'eq', value: 'test value' }],
 				}),
 			})
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not delete rows when data table does not exist', async () => {
@@ -2593,7 +2613,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(403);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 	});
 
@@ -2629,7 +2653,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(403);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 	});
 
@@ -2677,7 +2705,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject({
 			first: 'test value 2',
@@ -2722,7 +2754,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject({
 			first: 'test value 1',
@@ -2766,7 +2802,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data.map((r) => r.first)).toEqual(['test value 1']);
 	});
@@ -2809,7 +2849,11 @@ describe('DELETE /projects/:projectId/data-tables/:dataTableId/rows', () => {
 			})
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(2);
 		expect(rowsInDb.data.map((r) => r.first).sort()).toEqual(['test value 1', 'test value 3']);
 	});
@@ -2874,7 +2918,7 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 		await authOwnerAgent
 			.post('/projects/non-existing-id/data-tables/some-data-table-id/upsert')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not upsert rows when data table does not exist', async () => {
@@ -2969,7 +3013,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
@@ -3001,7 +3049,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
@@ -3030,7 +3082,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.send(payload)
 			.expect(200);
 
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(1);
 		expect(rowsInDb.data[0]).toMatchObject(payload.data);
 	});
@@ -3060,7 +3116,11 @@ describe('POST /projects/:projectId/data-tables/:dataTableId/upsert', () => {
 			.expect(400);
 
 		expect(response.body.message).toContain('unknown column');
-		const rowsInDb = await dataTableRowsRepository.getManyAndCount(dataTable.id, {});
+		const rowsInDb = await dataTableRowsRepository.getManyAndCount(
+			dataTable.id,
+			{},
+			dataTable.columns,
+		);
 		expect(rowsInDb.count).toBe(0);
 	});
 
@@ -3121,7 +3181,7 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/rows', () => {
 		await authOwnerAgent
 			.patch('/projects/non-existing-id/data-tables/some-data-table-id/rows')
 			.send(payload)
-			.expect(403);
+			.expect(404);
 	});
 
 	test('should not update row when data table does not exist', async () => {

@@ -50,6 +50,10 @@ export class ProvisioningService {
 	}
 
 	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
+		if (!(await this.isInstanceRoleProvisioningEnabled())) {
+			return;
+		}
+
 		const globalOwnerRoleSlug = 'global:owner';
 
 		if (typeof roleSlug !== 'string') {
@@ -116,6 +120,10 @@ export class ProvisioningService {
 	 * ]
 	 */
 	async provisionProjectRolesForUser(userId: string, projectIdToRoles: unknown): Promise<void> {
+		if (!(await this.isProjectRolesProvisioningEnabled())) {
+			return;
+		}
+
 		if (!Array.isArray(projectIdToRoles)) {
 			this.logger.warn(
 				`Skipping project role provisioning. Invalid projectIdToRole type: expected array, received ${typeof projectIdToRoles}`,
@@ -254,7 +262,6 @@ export class ProvisioningService {
 		const supportedPatchFields = [
 			'scopesProvisionInstanceRole',
 			'scopesProvisionProjectRoles',
-			'scopesProvisioningFrequency',
 			'scopesName',
 			'scopesInstanceRoleClaimName',
 			'scopesProjectsRolesClaimName',
@@ -330,6 +337,22 @@ export class ProvisioningService {
 		return envProvidedConfig;
 	}
 
+	async getInstanceRoleClaimName(): Promise<string | null> {
+		if (!(await this.isInstanceRoleProvisioningEnabled())) {
+			return null;
+		}
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesInstanceRoleClaimName;
+	}
+
+	async getProjectsRolesClaimName(): Promise<string | null> {
+		if (!(await this.isProjectRolesProvisioningEnabled())) {
+			return null;
+		}
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesProjectsRolesClaimName;
+	}
+
 	async isProvisioningEnabled(): Promise<boolean> {
 		const provisioningConfig = await this.getConfig();
 		return (
@@ -338,12 +361,12 @@ export class ProvisioningService {
 		);
 	}
 
-	async isInstanceRoleProvisioningEnabled(): Promise<boolean> {
+	private async isInstanceRoleProvisioningEnabled(): Promise<boolean> {
 		const provisioningConfig = await this.getConfig();
 		return provisioningConfig.scopesProvisionInstanceRole;
 	}
 
-	async isProjectRolesProvisioningEnabled(): Promise<boolean> {
+	private async isProjectRolesProvisioningEnabled(): Promise<boolean> {
 		const provisioningConfig = await this.getConfig();
 		return provisioningConfig.scopesProvisionProjectRoles;
 	}

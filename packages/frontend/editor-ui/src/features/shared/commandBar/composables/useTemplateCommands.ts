@@ -1,7 +1,7 @@
 import { computed } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import type { CommandGroup } from '../types';
 
 export function useTemplateCommands(): CommandGroup {
