@@ -17,6 +17,13 @@
       "require": "./dist/*.cjs"
     }
   },
+  "typesVersions": {
+    "*": {
+      "*": ["./dist/*"],
+      "search/sublimeSearch": ["./dist/search/sublimeSearch-C-Ajdd1E.d.ts"],
+      "search/reRankSearchResults": ["./dist/search/reRankSearchResults-EXEIUz2e.d.ts"]
+    }
+  },
   "scripts": {
     "dev": "tsdown --watch",
     "build": "tsdown",
