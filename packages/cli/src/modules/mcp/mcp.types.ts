@@ -1,6 +1,8 @@
 import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
+import type { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
 import type { WorkflowDetailsOutputSchema } from './tools/get-workflow-details.tool';
 
 export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
@@ -9,6 +11,13 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 		description?: string;
 		inputSchema?: InputArgs;
 		outputSchema?: z.ZodRawShape;
+		annotations?: {
+			title?: string;
+			readOnlyHint?: boolean;
+			destructiveHint?: boolean;
+			idempotentHint?: boolean;
+			openWorldHint?: boolean;
+		};
 	};
 	annotations?: {
 		title?: string;
@@ -83,4 +92,10 @@ export type UserCalledMCPToolEventPayload = {
 export type ExecuteWorkflowsInputMeta = {
 	type: 'webhook' | 'chat' | 'schedule' | 'form';
 	parameter_count: number;
+}
+
+type SupportedTriggerNodeTypes = keyof typeof SUPPORTED_MCP_TRIGGERS;
+
+export type MCPTriggersMap = {
+	[K in SupportedTriggerNodeTypes]: INode[];
 };

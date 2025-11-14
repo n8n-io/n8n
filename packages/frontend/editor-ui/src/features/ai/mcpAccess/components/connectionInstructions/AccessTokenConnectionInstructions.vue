@@ -35,15 +35,11 @@ const connectionString = computed(() => {
 {
   "mcpServers": {
     "n8n-mcp": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "supergateway",
-        "--streamableHttp",
-        "${props.serverUrl}",
-        "--header",
-        "authorization:Bearer ${apiKeyText.value}"
-      ]
+      "type": "http",
+      "url": "${props.serverUrl}",
+      "headers": {
+        "Authorization": "Bearer ${apiKeyText.value}"
+      }
     }
   }
 }
@@ -236,6 +232,7 @@ const apiKeyText = computed(() => {
 	}
 	code {
 		font-size: var(--font-size--xs);
+		tab-size: 1;
 	}
 
 	&:hover {
