@@ -444,7 +444,8 @@ export class WorkflowService {
 				});
 
 				// Also set it in the returned data
-				updatedWorkflow.activeVersion = workflow.activeVersion;
+				updatedWorkflow.activeVersion = null;
+				updatedWorkflow.activeVersionId = null;
 
 				// Emit deactivation event since activation failed
 				this.eventService.emit('workflow-deactivated', {
