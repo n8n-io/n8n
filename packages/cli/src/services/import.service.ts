@@ -262,15 +262,19 @@ export class ImportService {
 	/**
 	 * Read and parse JSONL file content
 	 * @param filePath - Path to the JSONL file
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Array of parsed entity objects
 	 */
-	async readEntityFile(filePath: string): Promise<Array<Record<string, unknown>>> {
+	async readEntityFile(
+		filePath: string,
+		customEncryptionKey?: string,
+	): Promise<Array<Record<string, unknown>>> {
 		const content = await readFile(filePath, 'utf8');
 		const entities: Record<string, unknown>[] = [];
 		const entitySchema = z.record(z.string(), z.unknown());
 
 		for (const block of content.split('\n')) {
-			const lines = this.cipher.decrypt(block).split(/\r?\n/);
+			const lines = this.cipher.decrypt(block, customEncryptionKey).split(/\r?\n/);
 
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i].trim();
@@ -307,11 +311,25 @@ export class ImportService {
 		this.logger.info('✅ Successfully decompressed entities.zip');
 	}
 
-	async importEntities(inputDir: string, truncateTables: boolean) {
+	async importEntities(inputDir: string, truncateTables: boolean, keyFilePath?: string) {
 		validateDbTypeForImportEntities(this.dataSource.options.type);
 
+		// Read custom encryption key from file if provided
+		let customEncryptionKey: string | undefined;
+		if (keyFilePath) {
+			try {
+				const keyFileContent = await readFile(keyFilePath, 'utf8');
+				customEncryptionKey = keyFileContent.trim();
+				this.logger.info(`🔑 Using custom encryption key from: ${keyFilePath}`);
+			} catch (error) {
+				throw new Error(
+					`Failed to read encryption key file at ${keyFilePath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+				);
+			}
+		}
+
 		await this.decompressEntitiesZip(inputDir);
-		await this.validateMigrations(inputDir);
+		await this.validateMigrations(inputDir, customEncryptionKey);
 
 		await this.dataSource.transaction(async (transactionManager: EntityManager) => {
 			await this.disableForeignKeyConstraints(transactionManager);
@@ -343,7 +361,13 @@ export class ImportService {
 			}
 
 			// Import entities from the specified directory
-			await this.importEntitiesFromFiles(inputDir, transactionManager, entityNames, entityFiles);
+			await this.importEntitiesFromFiles(
+				inputDir,
+				transactionManager,
+				entityNames,
+				entityFiles,
+				customEncryptionKey,
+			);
 
 			await this.enableForeignKeyConstraints(transactionManager);
 		});
@@ -366,6 +390,7 @@ export class ImportService {
 	 * @param transactionManager - TypeORM transaction manager
 	 * @param entityNames - Array of entity names to import
 	 * @param entityFiles - Record of entity names to their file paths
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Promise that resolves when all entities are imported
 	 */
 	async importEntitiesFromFiles(
@@ -373,6 +398,7 @@ export class ImportService {
 		transactionManager: EntityManager,
 		entityNames: string[],
 		entityFiles: Record<string, string[]>,
+		customEncryptionKey?: string,
 	): Promise<void> {
 		this.logger.info(`\n🚀 Starting entity import from directory: ${inputDir}`);
 
@@ -408,7 +434,10 @@ export class ImportService {
 					files.map(async (filePath) => {
 						this.logger.info(`   📁 Reading file: ${filePath}`);
 
-						const entities: Array<Record<string, unknown>> = await this.readEntityFile(filePath);
+						const entities: Array<Record<string, unknown>> = await this.readEntityFile(
+							filePath,
+							customEncryptionKey,
+						);
 						this.logger.info(`      Found ${entities.length} entities`);
 
 						await Promise.all(
@@ -493,9 +522,10 @@ export class ImportService {
 	/**
 	 * Validates that the migrations in the import data match the target database
 	 * @param inputDir - Directory containing exported entity files
+	 * @param customEncryptionKey - Optional custom encryption key
 	 * @returns Promise that resolves if migrations match, throws error if they don't
 	 */
-	async validateMigrations(inputDir: string): Promise<void> {
+	async validateMigrations(inputDir: string, customEncryptionKey?: string): Promise<void> {
 		const migrationsFilePath = safeJoinPath(inputDir, 'migrations.jsonl');
 
 		try {
@@ -510,7 +540,7 @@ export class ImportService {
 		// Read and parse migrations from file
 		const migrationsFileContent = await readFile(migrationsFilePath, 'utf8');
 		const importMigrations = this.cipher
-			.decrypt(migrationsFileContent)
+			.decrypt(migrationsFileContent, customEncryptionKey)
 			.trim()
 			.split('\n')
 			.filter((line) => line.trim())
