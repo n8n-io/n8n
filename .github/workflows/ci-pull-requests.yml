@@ -37,7 +37,7 @@ jobs:
               - '!packages/@n8n/task-runner-python/**'
       - name: Setup and Build
         if: steps.paths-filter.outputs.non-python == 'true'
-        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@turbo-cache
 
       - name: Run format check
         if: steps.paths-filter.outputs.non-python == 'true'
