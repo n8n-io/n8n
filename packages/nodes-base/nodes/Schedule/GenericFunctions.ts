@@ -7,21 +7,25 @@ export function validateInterval(node: INode, itemIndex: number, interval: Sched
 	let errorMessage = '';
 	if (
 		interval.field === 'seconds' &&
-		(interval.secondsInterval > 59 || interval.secondsInterval < 0)
+		(interval.secondsInterval > 59 || interval.secondsInterval < 1)
 	) {
-		errorMessage = 'Seconds must be in range 0-59';
+		errorMessage = 'Seconds must be in range 1-59';
 	}
 	if (
 		interval.field === 'minutes' &&
-		(interval.minutesInterval > 59 || interval.minutesInterval < 0)
+		(interval.minutesInterval > 59 || interval.minutesInterval < 1)
 	) {
-		errorMessage = 'Minutes must be in range 0-59';
+		errorMessage = 'Minutes must be in range 1-59';
 	}
-	if (interval.field === 'hours' && (interval.hoursInterval > 23 || interval.hoursInterval < 0)) {
-		errorMessage = 'Hours must be in range 0-23';
+	if (interval.field === 'hours' && (interval.hoursInterval > 23 || interval.hoursInterval < 1)) {
+		errorMessage = 'Hours must be in range 1-23';
 	}
-	if (interval.field === 'days' && (interval.daysInterval > 31 || interval.daysInterval < 0)) {
+	if (interval.field === 'days' && (interval.daysInterval > 31 || interval.daysInterval < 1)) {
 		errorMessage = 'Days must be in range 1-31';
+	}
+
+	if (interval.field === 'months' && interval.monthsInterval < 1) {
+		errorMessage = 'Months must be larger than 0';
 	}
 
 	if (errorMessage) {

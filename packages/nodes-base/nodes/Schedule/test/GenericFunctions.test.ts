@@ -115,16 +115,16 @@ describe('validateInterval', () => {
 
 	describe('valid intervals', () => {
 		it.each<[string, ScheduleInterval]>([
-			['seconds', { field: 'seconds', secondsInterval: 0 }],
+			['seconds', { field: 'seconds', secondsInterval: 1 }],
 			['seconds', { field: 'seconds', secondsInterval: 30 }],
 			['seconds', { field: 'seconds', secondsInterval: 59 }],
-			['minutes', { field: 'minutes', minutesInterval: 0 }],
+			['minutes', { field: 'minutes', minutesInterval: 1 }],
 			['minutes', { field: 'minutes', minutesInterval: 30 }],
 			['minutes', { field: 'minutes', minutesInterval: 59 }],
-			['hours', { field: 'hours', hoursInterval: 0 }],
+			['hours', { field: 'hours', hoursInterval: 1 }],
 			['hours', { field: 'hours', hoursInterval: 12 }],
 			['hours', { field: 'hours', hoursInterval: 23 }],
-			['days', { field: 'days', daysInterval: 0 }],
+			['days', { field: 'days', daysInterval: 1 }],
 			['days', { field: 'days', daysInterval: 15 }],
 			['days', { field: 'days', daysInterval: 31 }],
 		])('should not throw error for valid %s interval: %j', (_field, interval) => {
@@ -136,18 +136,23 @@ describe('validateInterval', () => {
 
 	describe('invalid intervals', () => {
 		it.each<[string, ScheduleInterval, string]>([
-			['seconds', { field: 'seconds', secondsInterval: 60 }, 'Seconds must be in range 0-59'],
-			['seconds', { field: 'seconds', secondsInterval: -1 }, 'Seconds must be in range 0-59'],
-			['seconds', { field: 'seconds', secondsInterval: 100 }, 'Seconds must be in range 0-59'],
-			['minutes', { field: 'minutes', minutesInterval: 60 }, 'Minutes must be in range 0-59'],
-			['minutes', { field: 'minutes', minutesInterval: -1 }, 'Minutes must be in range 0-59'],
-			['minutes', { field: 'minutes', minutesInterval: 100 }, 'Minutes must be in range 0-59'],
-			['hours', { field: 'hours', hoursInterval: 24 }, 'Hours must be in range 0-23'],
-			['hours', { field: 'hours', hoursInterval: -1 }, 'Hours must be in range 0-23'],
-			['hours', { field: 'hours', hoursInterval: 100 }, 'Hours must be in range 0-23'],
+			['seconds', { field: 'seconds', secondsInterval: 0 }, 'Seconds must be in range 1-59'],
+			['seconds', { field: 'seconds', secondsInterval: 60 }, 'Seconds must be in range 1-59'],
+			['seconds', { field: 'seconds', secondsInterval: -1 }, 'Seconds must be in range 1-59'],
+			['seconds', { field: 'seconds', secondsInterval: 100 }, 'Seconds must be in range 1-59'],
+			['minutes', { field: 'minutes', minutesInterval: 60 }, 'Minutes must be in range 1-59'],
+			['minutes', { field: 'minutes', minutesInterval: 0 }, 'Minutes must be in range 1-59'],
+			['minutes', { field: 'minutes', minutesInterval: -1 }, 'Minutes must be in range 1-59'],
+			['minutes', { field: 'minutes', minutesInterval: 100 }, 'Minutes must be in range 1-59'],
+			['hours', { field: 'hours', hoursInterval: 0 }, 'Hours must be in range 1-23'],
+			['hours', { field: 'hours', hoursInterval: 24 }, 'Hours must be in range 1-23'],
+			['hours', { field: 'hours', hoursInterval: -1 }, 'Hours must be in range 1-23'],
+			['hours', { field: 'hours', hoursInterval: 100 }, 'Hours must be in range 1-23'],
+			['days', { field: 'days', daysInterval: 0 }, 'Days must be in range 1-31'],
 			['days', { field: 'days', daysInterval: 32 }, 'Days must be in range 1-31'],
 			['days', { field: 'days', daysInterval: -1 }, 'Days must be in range 1-31'],
 			['days', { field: 'days', daysInterval: 100 }, 'Days must be in range 1-31'],
+			['months', { field: 'months', monthsInterval: 0 }, 'Months must be larger than 0'],
 		])(
 			'should throw error for invalid %s interval: %j',
 			(_field, interval, expectedDescription) => {

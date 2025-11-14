@@ -111,7 +111,7 @@ export class ScheduleTrigger implements INodeType {
 									},
 								},
 								description: 'Number of seconds between each workflow trigger',
-								hint: 'Must be in range 0-59',
+								hint: 'Must be in range 1-59',
 							},
 							{
 								displayName: 'Minutes Between Triggers',
@@ -124,7 +124,7 @@ export class ScheduleTrigger implements INodeType {
 									},
 								},
 								description: 'Number of minutes between each workflow trigger',
-								hint: 'Must be in range 0-59',
+								hint: 'Must be in range 1-59',
 							},
 							{
 								displayName: 'Hours Between Triggers',
@@ -137,7 +137,7 @@ export class ScheduleTrigger implements INodeType {
 								},
 								default: 1,
 								description: 'Number of hours between each workflow trigger',
-								hint: 'Must be in range 0-23',
+								hint: 'Must be in range 1-23',
 							},
 							{
 								displayName: 'Days Between Triggers',
@@ -175,7 +175,6 @@ export class ScheduleTrigger implements INodeType {
 								},
 								default: 1,
 								description: 'Would run every month unless specified otherwise',
-								hint: 'Must be in range 1-12',
 							},
 							{
 								displayName: 'Trigger at Day of Month',
