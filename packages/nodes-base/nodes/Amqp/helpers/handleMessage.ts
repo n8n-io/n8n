@@ -44,12 +44,6 @@ export async function handleMessage(
 
 	if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
 		// The buffer is not ready... Stringify and parse back to load it.
-		const cont = deepCopy(data.body.content);
-		data.body = String.fromCharCode.apply(null, cont.data as number[]);
-	}
-
-	if (options.jsonConvertByteArrayToString === true && data.body.content !== undefined) {
-		// The buffer is not ready... Stringify and parse back to load it.
 		const content = deepCopy(data.body.content);
 		data.body = String.fromCharCode.apply(null, content.data as number[]);
 	}
