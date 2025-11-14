@@ -19,13 +19,6 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 			openWorldHint?: boolean;
 		};
 	};
-	annotations?: {
-		title?: string;
-		readOnlyHint?: boolean;
-		destructiveHint?: boolean;
-		idempotentHint?: boolean;
-		openWorldHint?: boolean;
-	};
 	handler: ToolCallback<InputArgs>;
 };
 
