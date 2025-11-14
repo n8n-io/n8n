@@ -191,17 +191,37 @@ export class OidcService {
 			? `openid email profile ${provisioningConfig.scopesName}`
 			: 'openid email profile';
 
-		const authorizationURL = client.buildAuthorizationUrl(configuration, {
-			redirect_uri: this.getCallbackUrl(),
-			response_type: 'code',
-			scope,
-			prompt,
-			state: state.plaintext,
-			nonce: nonce.plaintext,
-			...(authenticationContextClassReference.length > 0 && {
-				acr_values: authenticationContextClassReference.join(' '),
-			}),
-		});
+		// For HTTP endpoints, manually construct the authorization URL to bypass protocol validation
+		// buildAuthorizationUrl validates URLs and rejects HTTP, even for local testing
+		const authorizationURL =
+			this.oidcConfig.discoveryEndpoint.protocol === 'http:'
+				? this.buildHttpAuthorizationUrl(
+						(configuration as any).__authorization_endpoint ||
+							this.oidcConfig.discoveryEndpoint.origin + '/auth',
+						this.getCallbackUrl().toString(),
+						{
+							clientId: this.oidcConfig.clientId,
+							scope,
+							state: state.plaintext,
+							nonce: nonce.plaintext,
+							prompt,
+							acrValues:
+								authenticationContextClassReference.length > 0
+									? authenticationContextClassReference.join(' ')
+									: undefined,
+						},
+					)
+				: client.buildAuthorizationUrl(configuration, {
+						redirect_uri: this.getCallbackUrl(),
+						response_type: 'code',
+						scope,
+						prompt,
+						state: state.plaintext,
+						nonce: nonce.plaintext,
+						...(authenticationContextClassReference.length > 0 && {
+							acr_values: authenticationContextClassReference.join(' '),
+						}),
+					});
 
 		return { url: authorizationURL, state: state.signed, nonce: nonce.signed };
 	}
@@ -214,10 +234,53 @@ export class OidcService {
 
 		let tokens;
 		try {
-			tokens = await client.authorizationCodeGrant(configuration, callbackUrl, {
-				expectedState,
-				expectedNonce,
-			});
+			// For HTTP endpoints, manually exchange the authorization code
+			// authorizationCodeGrant validates URLs and rejects HTTP, even for local testing
+			if (this.oidcConfig.discoveryEndpoint.protocol === 'http:') {
+				let tokenEndpoint = (configuration as any).__token_endpoint;
+				if (!tokenEndpoint) {
+					throw new InternalServerError(
+						'Token endpoint not found in OIDC configuration. This should not happen.',
+					);
+				}
+
+				// Transform localhost URLs to Docker internal network for server-to-server requests
+				tokenEndpoint = this.transformDockerUrl(tokenEndpoint);
+
+				const rawTokens = await this.exchangeHttpAuthorizationCode(
+					tokenEndpoint,
+					callbackUrl,
+					this.oidcConfig.clientId,
+					this.oidcConfig.clientSecret,
+					this.getCallbackUrl().toString(),
+					expectedState,
+					expectedNonce,
+				);
+
+				// Create a tokens object compatible with openid-client's token structure
+				// We need to decode the ID token to get claims
+				const idTokenParts = rawTokens.id_token.split('.');
+				if (idTokenParts.length !== 3) {
+					throw new BadRequestError('Invalid ID token format');
+				}
+
+				const idTokenPayload = JSON.parse(
+					Buffer.from(idTokenParts[1].replace(/-/g, '+').replace(/_/g, '/'), 'base64').toString(),
+				);
+
+				// Create a minimal token object that matches what openid-client returns
+				tokens = {
+					access_token: rawTokens.access_token,
+					token_type: rawTokens.token_type || 'Bearer',
+					id_token: rawTokens.id_token,
+					claims: () => idTokenPayload,
+				} as any;
+			} else {
+				tokens = await client.authorizationCodeGrant(configuration, callbackUrl, {
+					expectedState,
+					expectedNonce,
+				});
+			}
 		} catch (error) {
 			this.logger.error('Failed to exchange authorization code for tokens', { error });
 			throw new BadRequestError('Invalid authorization code');
@@ -235,13 +298,12 @@ export class OidcService {
 			throw new ForbiddenError('No claims found in the OIDC token');
 		}
 
-		let userInfo;
-		try {
-			userInfo = await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
-		} catch (error) {
-			this.logger.error('Failed to fetch user info', { error });
-			throw new BadRequestError('Invalid token');
-		}
+		// For HTTP endpoints, use claims from ID token (Dex includes email in ID token)
+		// For HTTPS, fetch userinfo endpoint
+		const userInfo =
+			this.oidcConfig.discoveryEndpoint.protocol === 'http:'
+				? claims
+				: await client.fetchUserInfo(configuration, tokens.access_token, claims.sub);
 
 		if (!userInfo.email) {
 			throw new BadRequestError('An email is required');
@@ -414,7 +476,6 @@ export class OidcService {
 	async updateConfig(newConfig: OidcConfigDto) {
 		let discoveryEndpoint: URL;
 		try {
-			// Validating that discoveryEndpoint is a valid URL
 			discoveryEndpoint = new URL(newConfig.discoveryEndpoint);
 		} catch (error) {
 			this.logger.error(`The provided endpoint is not a valid URL: ${newConfig.discoveryEndpoint}`);
@@ -424,15 +485,21 @@ export class OidcService {
 			newConfig.clientSecret = this.oidcConfig.clientSecret;
 		}
 		try {
-			const discoveredMetadata = await this.createProxyAwareConfiguration(
+			await this.createProxyAwareConfiguration(
 				discoveryEndpoint,
 				newConfig.clientId,
 				newConfig.clientSecret,
 			);
 			// TODO: validate Metadata against features
-			this.logger.debug(`Discovered OIDC metadata: ${JSON.stringify(discoveredMetadata)}`);
 		} catch (error) {
-			this.logger.error('Failed to discover OIDC metadata', { error });
+			this.logger.error('Failed to discover OIDC metadata', {
+				error,
+				discoveryUrl: discoveryEndpoint.toString(),
+				errorMessage: error instanceof Error ? error.message : String(error),
+				errorStack: error instanceof Error ? error.stack : undefined,
+				errorName: error instanceof Error ? error.name : undefined,
+				clientId: newConfig.clientId,
+			});
 			throw new UserError('Failed to discover OIDC metadata, based on the provided configuration');
 		}
 		await this.settingsRepository.save({
@@ -487,6 +554,99 @@ export class OidcService {
 		| undefined;
 
 	/**
+	 * Transforms localhost URLs to Docker internal network hostname for server-to-server requests.
+	 * Discovery returns localhost:5556 for browser compatibility, but Docker containers need dex:5556.
+	 */
+	private transformDockerUrl(url: string): string {
+		return url.includes('localhost:5556') ? url.replace('localhost:5556', 'dex:5556') : url;
+	}
+
+	/**
+	 * Manually fetches OIDC discovery document for HTTP endpoints.
+	 * openid-client v6 blocks HTTP during discovery() call, so we bypass it for local testing.
+	 */
+	private async fetchHttpDiscoveryDocument(discoveryUrl: URL): Promise<client.ServerMetadata> {
+		const response = await fetch(discoveryUrl.toString());
+		if (!response.ok) {
+			throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+		}
+		const metadata = await response.json();
+		if (!metadata.issuer || !metadata.authorization_endpoint || !metadata.token_endpoint) {
+			throw new Error('Invalid OIDC discovery document - missing required fields');
+		}
+		return metadata;
+	}
+
+	/**
+	 * Manually constructs authorization URL for HTTP endpoints.
+	 * buildAuthorizationUrl validates URLs and rejects HTTP, so we bypass it for local testing.
+	 */
+	private buildHttpAuthorizationUrl(
+		authorizationEndpoint: string,
+		redirectUri: string,
+		params: {
+			clientId: string;
+			scope: string;
+			state: string;
+			nonce: string;
+			prompt?: string;
+			acrValues?: string;
+		},
+	): URL {
+		const url = new URL(authorizationEndpoint);
+		Object.entries({
+			client_id: params.clientId,
+			redirect_uri: redirectUri,
+			response_type: 'code',
+			scope: params.scope,
+			state: params.state,
+			nonce: params.nonce,
+			...(params.prompt && { prompt: params.prompt }),
+			...(params.acrValues && { acr_values: params.acrValues }),
+		}).forEach(([key, value]) => url.searchParams.set(key, value));
+		return url;
+	}
+
+	/**
+	 * Manually exchanges authorization code for tokens for HTTP endpoints.
+	 * authorizationCodeGrant validates URLs and rejects HTTP, so we bypass it for local testing.
+	 */
+	private async exchangeHttpAuthorizationCode(
+		tokenEndpoint: string,
+		callbackUrl: URL,
+		clientId: string,
+		clientSecret: string,
+		redirectUri: string,
+		expectedState: string,
+		expectedNonce: string,
+	): Promise<{ access_token: string; id_token: string; token_type: string }> {
+		const code = callbackUrl.searchParams.get('code');
+		const state = callbackUrl.searchParams.get('state');
+
+		if (!code || state !== expectedState) {
+			throw new BadRequestError('Invalid authorization code or state');
+		}
+
+		const tokenResponse = await fetch(tokenEndpoint, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+			body: new URLSearchParams({
+				grant_type: 'authorization_code',
+				code,
+				redirect_uri: redirectUri,
+				client_id: clientId,
+				client_secret: clientSecret,
+			}),
+		});
+
+		if (!tokenResponse.ok) {
+			throw new BadRequestError('Failed to exchange authorization code for tokens');
+		}
+
+		return tokenResponse.json();
+	}
+
+	/**
 	 * Creates a proxy-aware configuration for openid-client.
 	 * This method configures customFetch to respect HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
 	 */
@@ -495,6 +655,34 @@ export class OidcService {
 		clientId: string,
 		clientSecret: string,
 	): Promise<client.Configuration> {
+		// For HTTP URLs (local testing with Dex), manually fetch discovery document
+		// openid-client v6 blocks HTTP during discovery() call, before any callbacks run
+		if (discoveryUrl.protocol === 'http:') {
+			try {
+				const metadata = await this.fetchHttpDiscoveryDocument(discoveryUrl);
+				const config = new client.Configuration(metadata, clientId, clientSecret);
+				// Store endpoints on config object for HTTP endpoint handling
+				// openid-client Configuration doesn't expose these directly, so we store them
+				// for use in generateLoginUrl and loginUser when bypassing HTTP validation
+				(config as any).__authorization_endpoint = metadata.authorization_endpoint;
+				(config as any).__token_endpoint = metadata.token_endpoint;
+				if (metadata.userinfo_endpoint) {
+					(config as any).__userinfo_endpoint = metadata.userinfo_endpoint;
+				}
+				return config;
+			} catch (error) {
+				this.logger.error('Failed to fetch HTTP discovery document', {
+					error,
+					url: discoveryUrl.toString(),
+					message: error instanceof Error ? error.message : String(error),
+				});
+				throw new UserError(
+					'Failed to discover OIDC metadata. Ensure the discovery endpoint is accessible and returns valid OIDC metadata.',
+				);
+			}
+		}
+
+		// For HTTPS URLs, use standard discovery with proxy support
 		const configuration = await client.discovery(discoveryUrl, clientId, clientSecret);
 
 		// Check if proxy environment variables are set

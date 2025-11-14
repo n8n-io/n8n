@@ -27,6 +27,7 @@ import {
 	setupProxyServer,
 	setupTaskRunner,
 } from './n8n-test-container-dependencies';
+import { setupDex } from './n8n-test-container-dex';
 import { setupGitea } from './n8n-test-container-gitea';
 import { setupMailpit, getMailpitEnvironment } from './n8n-test-container-mailpit';
 import { createSilentLogConsumer } from './n8n-test-container-utils';
@@ -89,6 +90,7 @@ export interface N8NConfig {
 	sourceControl?: boolean;
 	taskRunner?: boolean;
 	email?: boolean;
+	oidc?: boolean;
 }
 
 export interface N8NStack {
@@ -130,11 +132,13 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		taskRunner = false,
 		sourceControl = false,
 		email = false,
+		oidc = false,
 	} = config;
 	const queueConfig = normalizeQueueConfig(queueMode);
 	const taskRunnerEnabled = !!taskRunner;
 	const sourceControlEnabled = !!sourceControl;
 	const emailEnabled = !!email;
+	const oidcEnabled = !!oidc;
 	const usePostgres = postgres || !!queueConfig;
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
@@ -148,7 +152,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		proxyServerEnabled ||
 		taskRunnerEnabled ||
 		sourceControlEnabled ||
-		emailEnabled;
+		emailEnabled ||
+		oidcEnabled;
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
@@ -269,6 +274,25 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 	}
 
+	// Allocate port early if OIDC is enabled and no load balancer (optimization for callback URL)
+	// With load balancer, Dex uses fallback redirect URIs that work via the load balancer
+	let assignedPort: number | undefined;
+	if (oidcEnabled && !needsLoadBalancer) {
+		assignedPort = await getPort();
+	}
+
+	// Set up Dex BEFORE creating n8n instances so it's available on the network
+	// Dex has fallback redirect URIs (localhost:5678, host.docker.internal:5678, etc.) that work
+	// even when n8nCallbackPort is undefined (load balancer case)
+	if (oidcEnabled && network) {
+		const dexContainer = await setupDex({
+			projectName: uniqueProjectName,
+			network,
+			n8nCallbackPort: assignedPort,
+		});
+		containers.push(dexContainer);
+	}
+
 	let baseUrl: string;
 
 	if (needsLoadBalancer) {
@@ -301,12 +325,21 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		// Wait for all containers to be ready behind the load balancer
 		await pollContainerHttpEndpoint(loadBalancerContainer, '/healthz/readiness');
 	} else {
-		const assignedPort = await getPort();
+		// Reuse port if already allocated for OIDC, otherwise allocate now
+		if (!assignedPort) {
+			assignedPort = await getPort();
+		}
 		baseUrl = `http://localhost:${assignedPort}`;
+
+		// Calculate internal network alias for OIDC callbacks
+		const networkAlias = `${uniqueProjectName}-n8n-main-1`;
+
 		environment = {
 			...environment,
-			WEBHOOK_URL: baseUrl,
+			WEBHOOK_URL: baseUrl, // External access via localhost
 			N8N_PORT: '5678', // Internal port
+			// When OIDC enabled, use the external base URL so browser can access SSO endpoints
+			...(oidcEnabled ? { N8N_EDITOR_BASE_URL: baseUrl } : {}),
 		};
 
 		const instances = await createN8NInstances({
@@ -519,6 +552,15 @@ async function createN8NContainer({
 		if (networkAlias) {
 			container = container.withNetworkAliases(networkAlias);
 		}
+	}
+
+	// Add host.docker.internal mapping for OIDC containers (Linux compatibility)
+	// When N8N_EDITOR_BASE_URL is set, OIDC is enabled and needs host.docker.internal
+	if (environment.N8N_EDITOR_BASE_URL) {
+		container = container.withExtraHosts([
+			{ host: 'host.docker.internal', ipAddress: 'host-gateway' },
+			{ host: 'localhost', ipAddress: 'host-gateway' },
+		]);
 	}
 
 	if (isWorker) {
