@@ -207,6 +207,29 @@ export const executeWorkflow = async (
 	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
 	runData.pinData = getPinDataForTrigger(triggerNode, inputs);
 
+	runData.executionData = {
+		startData: {},
+		resultData: {
+			pinData: runData.pinData,
+			runData: {},
+		},
+		executionData: {
+			contextData: {},
+			metadata: {},
+			nodeExecutionStack: [
+				{
+					node: triggerNode,
+					data: {
+						main: [runData.pinData[triggerNode.name]],
+					},
+					source: null,
+				},
+			],
+			waitingExecution: {},
+			waitingExecutionSource: {},
+		},
+	};
+
 	const executionId = await workflowRunner.run(runData);
 
 	// Create a timeout promise
