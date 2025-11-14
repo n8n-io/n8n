@@ -29,17 +29,11 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const { data: pr } = await github.rest.pulls.get({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              pull_number: parseInt('${{ inputs.pr_number }}'),
-            });
-
             const { data: checkRun } = await github.rest.checks.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               name: 'Build & Unit Tests - Checks',
-              head_sha: pr.head.sha,
+              head_sha: '${{ inputs.ref }}',
               status: 'in_progress',
               output: {
                 title: 'Build & Unit Tests - Checks',
@@ -48,7 +42,7 @@ jobs:
             });
 
             core.setOutput('check_run_id', checkRun.id);
-            console.log(`Created check run ${checkRun.id} on commit ${pr.head.sha}`);
+            console.log(`Created check run ${checkRun.id} on commit ${{ inputs.ref }}`);
 
   install-and-build:
     name: Install & Build
@@ -109,9 +103,9 @@ jobs:
             const testResult = '${{ needs.unit-tests.result }}';
             const lintResult = '${{ needs.lint.result }}';
 
-            const conclusion = (buildResult === 'failure' || testResult === 'failure' || lintResult === 'failure')
-              ? 'failure'
-              : 'success';
+            const conclusion = (buildResult === 'success' && testResult === 'success' && lintResult === 'success')
+              ? 'success'
+              : 'failure';
 
             const summary = `
             **Build**: ${buildResult}
