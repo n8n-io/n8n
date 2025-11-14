@@ -1,7 +1,7 @@
 import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn } from './abstract-entity';
-import { StatisticsNames } from './types-db';
+import type { StatisticsNames } from './types-db';
 import { WorkflowEntity } from './workflow-entity';
 
 @Entity()
@@ -18,7 +18,7 @@ export class WorkflowStatistics {
 	@PrimaryColumn({ length: 128 })
 	name: StatisticsNames;
 
-	@ManyToOne('WorkflowEntity', 'shared')
+	@ManyToOne(() => WorkflowEntity, 'shared')
 	workflow: WorkflowEntity;
 
 	@PrimaryColumn()

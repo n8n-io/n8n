@@ -108,6 +108,7 @@ import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-D
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
 import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/1762763704614-BackfillMissingWorkflowHistoryRecords';
 import { AddWorkflowHistoryAutoSaveFields1762847206508 } from '../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
+import { AddWorkflowVersionIdToExecutionData1762858574621 } from '../common/1762858574621-AddWorkflowVersionIdToExecutionData';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -221,6 +222,7 @@ const sqliteMigrations: Migration[] = [
 	CreateOAuthEntities1760116750277,
 	BackfillMissingWorkflowHistoryRecords1762763704614,
 	AddWorkflowHistoryAutoSaveFields1762847206508,
+	AddWorkflowVersionIdToExecutionData1762858574621,
 ];
 
 export { sqliteMigrations };

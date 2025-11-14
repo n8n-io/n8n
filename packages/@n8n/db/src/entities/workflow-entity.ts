@@ -7,6 +7,7 @@ import {
 	ManyToMany,
 	ManyToOne,
 	OneToMany,
+	Relation,
 } from '@n8n/typeorm';
 import { Length } from 'class-validator';
 import { IConnections, IDataObject, IWorkflowSettings, WorkflowFEMeta } from 'n8n-workflow';
@@ -15,11 +16,11 @@ import type { INode } from 'n8n-workflow';
 import { JsonColumn, WithTimestampsAndStringId, dbType } from './abstract-entity';
 import { type Folder } from './folder';
 import type { SharedWorkflow } from './shared-workflow';
-import type { TagEntity } from './tag-entity';
+import { TagEntity } from './tag-entity';
 import type { TestRun } from './test-run.ee';
 import type { ISimplifiedPinData, IWorkflowDb } from './types-db';
 import type { WorkflowStatistics } from './workflow-statistics';
-import type { WorkflowTagMapping } from './workflow-tag-mapping';
+import { WorkflowTagMapping } from './workflow-tag-mapping';
 import { objectRetriever, sqlite } from '../utils/transformers';
 
 @Entity()
@@ -69,7 +70,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	})
 	meta?: WorkflowFEMeta;
 
-	@ManyToMany('TagEntity', 'workflows')
+	@ManyToMany(() => TagEntity, 'workflows')
 	@JoinTable({
 		name: 'workflows_tags', // table name for the junction table of this relation
 		joinColumn: {
@@ -83,11 +84,11 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	})
 	tags?: TagEntity[];
 
-	@OneToMany('WorkflowTagMapping', 'workflows')
+	@OneToMany(() => WorkflowTagMapping, 'workflows')
 	tagMappings: WorkflowTagMapping[];
 
 	@OneToMany('SharedWorkflow', 'workflow')
-	shared: SharedWorkflow[];
+	shared: Relation<SharedWorkflow[]>;
 
 	@OneToMany('WorkflowStatistics', 'workflow')
 	@JoinColumn({ referencedColumnName: 'workflow' })

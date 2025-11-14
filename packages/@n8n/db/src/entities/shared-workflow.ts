@@ -1,5 +1,5 @@
 import { WorkflowSharingRole } from '@n8n/permissions';
-import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, ManyToOne, PrimaryColumn, Relation } from '@n8n/typeorm';
 
 import { WithTimestamps } from './abstract-entity';
 import { Project } from './project';
@@ -10,8 +10,11 @@ export class SharedWorkflow extends WithTimestamps {
 	@Column({ type: 'varchar' })
 	role: WorkflowSharingRole;
 
-	@ManyToOne('WorkflowEntity', 'shared')
-	workflow: WorkflowEntity;
+	@ManyToOne(
+		() => WorkflowEntity,
+		(we) => we.shared,
+	)
+	workflow: Relation<WorkflowEntity>;
 
 	@PrimaryColumn()
 	workflowId: string;
