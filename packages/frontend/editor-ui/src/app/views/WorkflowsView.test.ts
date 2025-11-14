@@ -312,6 +312,7 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					active: true,
+					activeVersionId: '1',
 					isArchived: false,
 				}),
 				false, // No folders if active filter is set
@@ -456,6 +457,7 @@ describe('Folders', () => {
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		active: true,
+		activeVersionId: '1',
 		isArchived: false,
 		versionId: '1',
 		homeProject: {

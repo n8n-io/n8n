@@ -85,7 +85,7 @@ const isMcpAvailable = computed(() => {
 });
 
 const availableActions = computed(() => {
-	if (!props.workflow.active || workflowsCache.isCacheLoading.value) {
+	if (props.workflow.activeVersionId === null || workflowsCache.isCacheLoading.value) {
 		return [];
 	}
 
@@ -228,9 +228,9 @@ function handlePopoverOpenChange(open: boolean) {
 
 // Watch for workflow activation
 watch(
-	() => props.workflow.active,
-	async (isActive, wasActive) => {
-		if (isActive && !wasActive) {
+	() => props.workflow.activeVersionId,
+	async (activeVersionId, wasActiveVersionId) => {
+		if (activeVersionId !== null && wasActiveVersionId === null) {
 			// Check if this is the first activation
 			if (!cachedSettings.value?.firstActivatedAt) {
 				setTimeout(() => {

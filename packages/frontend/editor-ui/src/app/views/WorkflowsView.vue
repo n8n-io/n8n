@@ -1074,6 +1074,7 @@ const onWorkflowActiveToggle = async (data: { id: string; active: boolean }) => 
 	);
 	if (!workflow) return;
 	workflow.active = data.active;
+	workflow.activeVersionId = data.active ? workflow.versionId : null;
 
 	// Fetch the updated workflow to get the latest settings
 	try {

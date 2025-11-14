@@ -249,6 +249,7 @@ export interface IWorkflowDb {
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
 	versionId: string;
+	activeVersionId: string | null;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
 	parentFolder?: {
