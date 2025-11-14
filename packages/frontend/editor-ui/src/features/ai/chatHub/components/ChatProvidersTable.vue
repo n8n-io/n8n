@@ -25,7 +25,7 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { CHAT_CREDENTIAL_SELECTOR_MODAL_KEY } from './constants';
+import { CHAT_CREDENTIAL_SELECTOR_MODAL_KEY } from '../constants';
 
 type Props = {
 	providers: ChatProviderSettingsDto[];

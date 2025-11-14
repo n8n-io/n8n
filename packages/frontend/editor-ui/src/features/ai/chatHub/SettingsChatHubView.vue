@@ -11,7 +11,7 @@ import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { N8nHeading } from '@n8n/design-system';
 import { LOADING_INDICATOR_TIMEOUT } from './constants';
-import ChatProvidersTable from './ChatProvidersTable.vue';
+import ChatProvidersTable from './components/ChatProvidersTable.vue';
 import { ChatProviderSettingsDto } from '@n8n/api-types/dist/chat-hub';
 
 const i18n = useI18n();

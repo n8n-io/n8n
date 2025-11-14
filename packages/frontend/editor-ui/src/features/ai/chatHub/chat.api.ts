@@ -15,6 +15,7 @@ import type {
 	ChatHubUpdateAgentRequest,
 	ChatHubUpdateConversationRequest,
 	EnrichedStructuredChunk,
+	ChatHubLLMProvider,
 } from '@n8n/api-types';
 import { ChatProviderSettingsDto } from '@n8n/api-types/dist/chat-hub';
 
@@ -186,6 +187,19 @@ export const fetchChatSettingsApi = async (
 		apiEndpoint,
 	);
 	return response.providers;
+};
+
+export const fetchChatProviderSettingsApi = async (
+	context: IRestApiContext,
+	provider: ChatHubLLMProvider,
+): Promise<ChatProviderSettingsDto> => {
+	const apiEndpoint = '/chat/settings/' + provider;
+	const response = await makeRestApiRequest<{ settings: ChatProviderSettingsDto }>(
+		context,
+		'GET',
+		apiEndpoint,
+	);
+	return response.settings;
 };
 
 export const updateChatSettingsApi = async (
