@@ -139,6 +139,8 @@ export class LmChatOpenRouter implements INodeType {
 				displayName: 'Options',
 				name: 'jsonOutput',
 				type: 'json',
+				noDataExpression: true,
+				hint: 'See the <a href="https://openrouter.ai/docs/api-reference/chat/send-chat-completion-request" target="_blank">OpenRouter API documentation</a> for available options',
 				typeOptions: {
 					rows: 5,
 				},
