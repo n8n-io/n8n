@@ -20,6 +20,7 @@ import {
 import z from 'zod';
 
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
+import { McpExecutionTimeoutError } from '../mcp.errors';
 import type {
 	ExecuteWorkflowsInputMeta,
 	ToolDefinition,
@@ -129,10 +130,10 @@ export const createExecuteWorkflowTool = (
 			};
 		} catch (er) {
 			const error = ensureError(er);
-			const isTimeout = error instanceof UserError && error.message.includes('timed out');
+			const isTimeout = error instanceof McpExecutionTimeoutError;
 			const output: ExecuteWorkflowOutput = {
 				success: false,
-				executionId: null,
+				executionId: isTimeout ? error.executionId : null,
 				error: isTimeout
 					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds`
 					: error.message,
@@ -220,11 +221,7 @@ export const executeWorkflow = async (
 	let timeoutId: NodeJS.Timeout | undefined;
 	const timeoutPromise = new Promise<never>((_, reject) => {
 		timeoutId = setTimeout(() => {
-			reject(
-				new UserError(
-					`Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / 1000} seconds`,
-				),
-			);
+			reject(new McpExecutionTimeoutError(executionId, WORKFLOW_EXECUTION_TIMEOUT_MS));
 		}, WORKFLOW_EXECUTION_TIMEOUT_MS);
 	});
 
@@ -251,13 +248,13 @@ export const executeWorkflow = async (
 		if (timeoutId) clearTimeout(timeoutId);
 
 		// If we hit the timeout, attempt to stop the execution
-		if (error instanceof UserError && error.message.includes('timed out')) {
+		if (error instanceof McpExecutionTimeoutError) {
 			try {
-				const cancellationError = new TimeoutExecutionCancelledError(executionId);
-				activeExecutions.stopExecution(executionId, cancellationError);
+				const cancellationError = new TimeoutExecutionCancelledError(error.executionId!);
+				activeExecutions.stopExecution(error.executionId!, cancellationError);
 			} catch (stopError) {
 				throw new UnexpectedError(
-					`Failed to stop timed-out execution [id: ${executionId}]: ${ensureError(stopError).message}`,
+					`Failed to stop timed-out execution [id: ${error.executionId}]: ${ensureError(stopError).message}`,
 				);
 			}
 		}
