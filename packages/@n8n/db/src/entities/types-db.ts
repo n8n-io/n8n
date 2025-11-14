@@ -219,8 +219,8 @@ export namespace ListQueryDb {
 	export namespace Workflow {
 		type OptionalBaseFields =
 			| 'name'
-			| 'active'
 			| 'versionId'
+			| 'activeVersionId'
 			| 'createdAt'
 			| 'updatedAt'
 			| 'tags'

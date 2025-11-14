@@ -171,7 +171,7 @@ describe('LogStreamingEventRelay', () => {
 			const workflow = mock<IWorkflowBase>({
 				id: 'wf202',
 				name: 'Test Workflow',
-				active: true,
+				activeVersionId: 'some-version-id',
 				nodes: [],
 				connections: {},
 				staticData: undefined,
@@ -607,7 +607,7 @@ describe('LogStreamingEventRelay', () => {
 			const workflow = mock<IWorkflowBase>({
 				id: 'wf303',
 				name: 'Test Workflow with Nodes',
-				active: true,
+				activeVersionId: 'some-version-id',
 				nodes: [
 					{
 						id: 'node1',
@@ -655,7 +655,7 @@ describe('LogStreamingEventRelay', () => {
 			const workflow = mock<IWorkflowBase>({
 				id: 'wf404',
 				name: 'Test Workflow with Completed Node',
-				active: true,
+				activeVersionId: 'some-version-id',
 				nodes: [
 					{
 						id: 'node1',

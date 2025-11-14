@@ -50,6 +50,7 @@ describe('EvaluationsRootView', () => {
 		id: 'different-id',
 		name: 'Test Workflow',
 		active: false,
+		activeVersionId: null,
 		isArchived: false,
 		createdAt: Date.now(),
 		updatedAt: Date.now(),

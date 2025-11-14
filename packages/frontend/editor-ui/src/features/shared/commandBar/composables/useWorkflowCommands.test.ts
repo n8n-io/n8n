@@ -310,6 +310,7 @@ describe('useWorkflowCommands', () => {
 
 		it('should show deactivate command when workflow is active', () => {
 			mockWorkflowsStore.workflow.active = true;
+			mockWorkflowsStore.workflow.activeVersionId = '1';
 
 			const { commands } = useWorkflowCommands();
 			const activateCommand = commands.value.find((cmd) => cmd.id === 'activate-workflow');

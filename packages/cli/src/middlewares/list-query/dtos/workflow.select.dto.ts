@@ -5,7 +5,7 @@ export class WorkflowSelect extends BaseSelect {
 		return new Set([
 			'id', // always included downstream
 			'name',
-			'active',
+			'activeVersionId',
 			'tags',
 			'createdAt',
 			'updatedAt',

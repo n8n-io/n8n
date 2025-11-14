@@ -78,9 +78,9 @@ describe('LiveWebhooks', () => {
 			const workflowEntity = mock<WorkflowEntity>({
 				id: workflowId,
 				name: 'Test Workflow',
-				active: true,
 				nodes: draftNodes,
 				connections: {},
+				activeVersionId: activeVersion.versionId,
 				activeVersion,
 				shared: [{ role: 'workflow:owner', project: { id: 'project-1', projectRelations: [] } }],
 			});

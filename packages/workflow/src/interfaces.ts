@@ -2587,7 +2587,6 @@ export interface IWorkflowBase {
 	id: string;
 	name: string;
 	description?: string | null;
-	active: boolean;
 	isArchived: boolean;
 	createdAt: Date;
 	startedAt?: Date;
@@ -2598,6 +2597,7 @@ export interface IWorkflowBase {
 	staticData?: IDataObject;
 	pinData?: IPinData;
 	versionId?: string;
+	activeVersionId: string | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
 }

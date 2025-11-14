@@ -93,7 +93,7 @@ describe('WorkflowExecutionService', () => {
 	describe('runWorkflow()', () => {
 		test('should call `WorkflowRunner.run()`', async () => {
 			const node = mock<INode>();
-			const workflow = mock<IWorkflowBase>({ active: true, nodes: [node] });
+			const workflow = mock<IWorkflowBase>({ activeVersionId: 'some-version-id', nodes: [node] });
 
 			workflowRunner.run.mockResolvedValue('fake-execution-id');
 
@@ -252,7 +252,7 @@ describe('WorkflowExecutionService', () => {
 				workflowData: {
 					id: 'abc',
 					name: 'test',
-					active: false,
+					activeVersionId: null,
 					isArchived: false,
 					pinData: {
 						[pinnedTrigger.name]: [{ json: {} }],
@@ -319,7 +319,7 @@ describe('WorkflowExecutionService', () => {
 				workflowData: {
 					id: 'abc',
 					name: 'test',
-					active: false,
+					activeVersionId: null,
 					isArchived: false,
 					pinData: {
 						[pinnedTrigger.name]: [{ json: {} }],
@@ -523,7 +523,7 @@ describe('WorkflowExecutionService', () => {
 			const errorWorkflow = mock<WorkflowEntity>({
 				id: 'error-workflow-id',
 				name: 'Error Workflow',
-				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				pinData: {},
 				nodes: [errorTriggerNode],

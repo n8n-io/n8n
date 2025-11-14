@@ -1,9 +1,8 @@
 import {
 	mockInstance,
 	testDb,
-	createWorkflowWithTrigger,
 	createWorkflowWithTriggerAndHistory,
-	createActiveWorkflow,
+	createManyActiveWorkflows,
 	getAllWorkflows,
 } from '@n8n/backend-test-utils';
 import { WorkflowRepository } from '@n8n/db';
@@ -28,7 +27,6 @@ test('update:workflow can activate all workflows', async () => {
 		createWorkflowWithTriggerAndHistory({}),
 		createWorkflowWithTriggerAndHistory({}),
 	]);
-	expect(workflows).toMatchObject([{ active: false }, { active: false }]);
 	expect(workflows[0].activeVersionId).toBeNull();
 	expect(workflows[1].activeVersionId).toBeNull();
 
@@ -40,9 +38,6 @@ test('update:workflow can activate all workflows', async () => {
 	//
 	// ASSERT
 	//
-	const after = await getAllWorkflows();
-	expect(after).toMatchObject([{ active: true }, { active: true }]);
-
 	// Verify activeVersionId is now set to the current versionId
 	const workflowRepo = Container.get(WorkflowRepository);
 	const workflow1 = await workflowRepo.findOne({
@@ -64,8 +59,7 @@ test('update:workflow can deactivate all workflows', async () => {
 	//
 	// ARRANGE
 	//
-	const workflows = await Promise.all([createActiveWorkflow({}), createActiveWorkflow({})]);
-	expect(workflows).toMatchObject([{ active: true }, { active: true }]);
+	const workflows = await createManyActiveWorkflows(2);
 
 	// Verify activeVersionId is set
 	const workflowRepo = Container.get(WorkflowRepository);
@@ -82,9 +76,6 @@ test('update:workflow can deactivate all workflows', async () => {
 	//
 	// ASSERT
 	//
-	const after = await getAllWorkflows();
-	expect(after).toMatchObject([{ active: false }, { active: false }]);
-
 	// Verify activeVersionId is cleared
 	workflow1 = await workflowRepo.findOne({
 		where: { id: workflows[0].id },
@@ -107,11 +98,10 @@ test('update:workflow can activate a specific workflow', async () => {
 	//
 	const workflows = (
 		await Promise.all([
-			createWorkflowWithTrigger({ active: false }),
-			createWorkflowWithTrigger({ active: false }),
+			createWorkflowWithTriggerAndHistory(),
+			createWorkflowWithTriggerAndHistory(),
 		])
 	).sort((wf1, wf2) => wf1.id.localeCompare(wf2.id));
-	expect(workflows).toMatchObject([{ active: false }, { active: false }]);
 
 	//
 	// ACT
@@ -122,20 +112,19 @@ test('update:workflow can activate a specific workflow', async () => {
 	// ASSERT
 	//
 	const after = (await getAllWorkflows()).sort((wf1, wf2) => wf1.id.localeCompare(wf2.id));
-	expect(after).toMatchObject([{ active: true }, { active: false }]);
+	expect(after).toMatchObject([
+		{ activeVersionId: workflows[0].versionId },
+		{ activeVersionId: null },
+	]);
 });
 
 test('update:workflow can deactivate a specific workflow', async () => {
 	//
 	// ARRANGE
 	//
-	const workflows = (
-		await Promise.all([
-			createWorkflowWithTrigger({ active: true }),
-			createWorkflowWithTrigger({ active: true }),
-		])
-	).sort((wf1, wf2) => wf1.id.localeCompare(wf2.id));
-	expect(workflows).toMatchObject([{ active: true }, { active: true }]);
+	const workflows = (await createManyActiveWorkflows(2)).sort((wf1, wf2) =>
+		wf1.id.localeCompare(wf2.id),
+	);
 
 	//
 	// ACT
@@ -146,5 +135,8 @@ test('update:workflow can deactivate a specific workflow', async () => {
 	// ASSERT
 	//
 	const after = (await getAllWorkflows()).sort((wf1, wf2) => wf1.id.localeCompare(wf2.id));
-	expect(after).toMatchObject([{ active: false }, { active: true }]);
+	expect(after).toMatchObject([
+		{ activeVersionId: null },
+		{ activeVersionId: workflows[1].versionId },
+	]);
 });

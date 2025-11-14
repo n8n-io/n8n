@@ -247,7 +247,7 @@ describe('useWorkflowHelpers', () => {
 			initState(workflowData);
 
 			expect(addWorkflowSpy).toHaveBeenCalledWith(workflowData);
-			expect(setActiveSpy).toHaveBeenCalledWith(true);
+			expect(setActiveSpy).toHaveBeenCalledWith('1');
 			expect(setWorkflowIdSpy).toHaveBeenCalledWith('1');
 			expect(setWorkflowNameSpy).toHaveBeenCalledWith({
 				newName: 'Test Workflow',

@@ -64,7 +64,7 @@ describe('WorkflowIndexService Integration', () => {
 			const workflow = {
 				id: workflowId,
 				name: 'Test Workflow',
-				active: false,
+				activeVersionId: null,
 				versionCounter: 1,
 				versionId,
 				nodes: [

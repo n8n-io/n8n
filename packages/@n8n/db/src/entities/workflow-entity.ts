@@ -36,9 +36,6 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ type: 'text', nullable: true })
 	description: string | null;
 
-	@Column()
-	active: boolean;
-
 	/**
 	 * Indicates whether the workflow has been soft-deleted (`true`) or not (`false`).
 	 *
@@ -104,7 +101,7 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ length: 36 })
 	versionId: string;
 
-	@Column({ name: 'activeVersionId', length: 36, nullable: true })
+	@Column({ name: 'activeVersionId', length: 36, nullable: true, default: null })
 	activeVersionId: string | null;
 
 	@ManyToOne('WorkflowHistory', { nullable: true })

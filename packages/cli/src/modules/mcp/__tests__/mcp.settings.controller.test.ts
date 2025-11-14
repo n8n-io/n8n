@@ -202,7 +202,7 @@ describe('McpSettingsController', () => {
 		const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => {
 			const entity = new WorkflowEntity();
 			entity.id = workflowId;
-			entity.active = true;
+			entity.activeVersionId = 'some-version-id';
 			entity.nodes = [createWebhookNode()];
 			entity.settings = { saveManualExecutions: true };
 			entity.versionId = 'current-version-id';
@@ -227,7 +227,7 @@ describe('McpSettingsController', () => {
 
 		test('rejects enabling MCP for inactive workflows', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({ active: false }),
+				createWorkflow({ activeVersionId: null }),
 			);
 
 			await expect(
@@ -241,7 +241,7 @@ describe('McpSettingsController', () => {
 
 		test('allows disabling MCP for inactive workflows', async () => {
 			workflowFinderService.findWorkflowForUser.mockResolvedValue(
-				createWorkflow({ active: false }),
+				createWorkflow({ activeVersionId: null }),
 			);
 			workflowService.update.mockResolvedValue({
 				id: workflowId,

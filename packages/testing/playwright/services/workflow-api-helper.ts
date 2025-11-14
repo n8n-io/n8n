@@ -14,6 +14,11 @@ import type { ApiHelpers } from './api-helper';
 import { TestError } from '../Types';
 import { resolveFromRoot } from '../utils/path-helper';
 
+// Includes legacy `active` field for backwards compatibility with the API,
+type WorkflowPayload = Partial<IWorkflowBase> & {
+	active?: boolean;
+};
+
 type WorkflowImportResult = {
 	workflowId: string;
 	createdWorkflow: IWorkflowBase;
@@ -24,7 +29,7 @@ type WorkflowImportResult = {
 export class WorkflowApiHelper {
 	constructor(private api: ApiHelpers) {}
 
-	async createWorkflow(workflow: Partial<IWorkflowBase>) {
+	async createWorkflow(workflow: WorkflowPayload) {
 		const response = await this.api.request.post('/rest/workflows', { data: workflow });
 
 		if (!response.ok()) {
@@ -94,7 +99,7 @@ export class WorkflowApiHelper {
 	 * This ensures no conflicts when importing workflows for testing.
 	 */
 	private makeWorkflowUnique(
-		workflow: Partial<IWorkflowBase>,
+		workflow: WorkflowPayload,
 		options?: { webhookPrefix?: string; idLength?: number },
 	) {
 		const idLength = options?.idLength ?? 12;
@@ -134,7 +139,7 @@ export class WorkflowApiHelper {
 	 * Returns detailed information about what was created.
 	 */
 	async createWorkflowFromDefinition(
-		workflow: Partial<IWorkflowBase>,
+		workflow: WorkflowPayload,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
 		const { makeUnique = true, ...rest } = options ?? {};
@@ -169,7 +174,7 @@ export class WorkflowApiHelper {
 	}
 
 	async importWorkflowFromDefinition(
-		workflowDefinition: Partial<IWorkflowBase>,
+		workflowDefinition: WorkflowPayload,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);

@@ -20,6 +20,17 @@ function insertIf(condition: boolean, elements: string[]): string[] {
 	return condition ? elements : [];
 }
 
+/**
+ * Transform workflow entity to include the deprecated `active` property for backward compatibility
+ * with the public API.
+ */
+export function addActiveProperty<T extends WorkflowEntity>(workflow: T): T & { active: boolean } {
+	return {
+		...workflow,
+		active: workflow.activeVersionId !== null,
+	};
+}
+
 export async function getSharedWorkflowIds(
 	user: User,
 	scopes: Scope[],
@@ -94,7 +105,6 @@ export async function setWorkflowAsActive(user: User, workflowId: WorkflowId, ve
 	);
 
 	await Container.get(WorkflowRepository).update(workflowId, {
-		active: true,
 		activeVersion,
 		updatedAt: new Date(),
 	});
@@ -104,8 +114,7 @@ export async function setWorkflowAsActive(user: User, workflowId: WorkflowId, ve
 
 export async function setWorkflowAsInactive(workflowId: WorkflowId) {
 	return await Container.get(WorkflowRepository).update(workflowId, {
-		active: false,
-		activeVersion: null,
+		activeVersionId: null,
 		updatedAt: new Date(),
 	});
 }

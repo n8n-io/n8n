@@ -55,7 +55,7 @@ describe('search-workflows MCP tool', () => {
 				createWorkflow({
 					id: 'b',
 					name: 'Beta',
-					active: true,
+					activeVersionId: 'some-version-id',
 					nodes: [
 						{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } as INode,
 					],
@@ -91,7 +91,7 @@ describe('search-workflows MCP tool', () => {
 		});
 
 		test('applies provided filters and clamps high limit', async () => {
-			const workflows = [createWorkflow({ id: 'x', active: true })];
+			const workflows = [createWorkflow({ id: 'x', activeVersionId: 'some-version-id' })];
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
 			});

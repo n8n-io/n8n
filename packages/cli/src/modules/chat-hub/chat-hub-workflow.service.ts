@@ -73,7 +73,7 @@ export class ChatHubWorkflowService {
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId}`;
-			newWorkflow.active = false;
+			newWorkflow.activeVersionId = null;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
@@ -122,7 +122,7 @@ export class ChatHubWorkflowService {
 			const newWorkflow = new WorkflowEntity();
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId} (Title Generation)`;
-			newWorkflow.active = false;
+			newWorkflow.activeVersionId = null;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {

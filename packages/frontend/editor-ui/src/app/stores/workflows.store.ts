@@ -98,6 +98,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	name: '',
 	description: '',
 	active: false,
+	activeVersionId: null,
 	isArchived: false,
 	createdAt: -1,
 	updatedAt: -1,
@@ -171,7 +172,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const isNewWorkflow = computed(() => workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
-	const isWorkflowActive = computed(() => workflow.value.active);
+	const isWorkflowActive = computed(() => workflow.value.activeVersionId !== null);
 
 	const workflowTriggerNodes = computed(() =>
 		workflow.value.nodes.filter((node: INodeUi) => {
@@ -871,10 +872,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		if (workflowsById.value[targetWorkflowId]) {
 			workflowsById.value[targetWorkflowId].active = true;
+			workflowsById.value[targetWorkflowId].activeVersionId =
+				workflowsById.value[targetWorkflowId].versionId;
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			uiStore.stateIsDirty = false;
 			workflow.value.active = true;
+			workflow.value.activeVersionId = workflow.value.versionId;
 		}
 	}
 
@@ -885,9 +889,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		}
 		if (workflowsById.value[targetWorkflowId]) {
 			workflowsById.value[targetWorkflowId].active = false;
+			workflowsById.value[targetWorkflowId].activeVersionId = null;
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			workflow.value.active = false;
+			workflow.value.activeVersionId = null;
 		}
 	}
 

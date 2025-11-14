@@ -196,7 +196,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 				id: '1',
 				name: 'test',
 				nodes: [],
-				active: false,
 			});
 			await expect(getRunData(workflow)).rejects.toThrowError('Missing node to start execution');
 		});
@@ -209,7 +208,6 @@ describe('WorkflowExecuteAdditionalData', () => {
 					type: 'n8n-nodes-base.executeWorkflowTrigger',
 				},
 			],
-			active: false,
 		});
 
 		it('should return default data', async () => {
