@@ -63,7 +63,7 @@ describe('css-var-naming rule', () => {
 					--p--color--primary: #0d6efd;
 					--p--color--primary-500: #0d6efd;
 					--p--spacing--md: 20px;
-					--p--color--gray-740: #2e3440;
+					--color--neutral-850: #2e3440;
 				}
 			`;
 			const result = await lintCSS(namespacePattern);
