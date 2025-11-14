@@ -75,7 +75,7 @@ type ExecuteWorkflowOutput = {
 const outputSchema = {
 	success: z.boolean(),
 	executionId: z.string().nullable().optional(),
-	result: z.any().optional().describe('Workflow execution result data'),
+	result: z.unknown().optional().describe('Workflow execution result data'),
 	error: z.unknown().optional(),
 } satisfies z.ZodRawShape;
 

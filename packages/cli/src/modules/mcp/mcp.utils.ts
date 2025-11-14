@@ -1,9 +1,9 @@
 import type { AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
 import type { Request } from 'express';
+import type { INode } from 'n8n-workflow';
 
 import { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
 import { isRecord, isJSONRPCRequest } from './mcp.typeguards';
-import { INode } from 'n8n-workflow';
 
 export const getClientInfo = (req: Request | AuthenticatedRequest) => {
 	let clientInfo: { name?: string; version?: string } | undefined;
@@ -54,7 +54,6 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
  * - Webhook trigger
  * - Form trigger
  * - Chat trigger
- * @param workflow
  */
 export const findMcpSupportedTrigger = (workflow: WorkflowEntity): INode | undefined => {
 	const triggerNodeTypes = Object.keys(SUPPORTED_MCP_TRIGGERS);
