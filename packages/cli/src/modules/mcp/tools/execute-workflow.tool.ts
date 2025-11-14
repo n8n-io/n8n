@@ -164,8 +164,14 @@ export const executeWorkflow = async (
 		'workflow:execute',
 	]);
 
-	if (!workflow || workflow.isArchived || !workflow.settings?.availableInMCP) {
+	if (!workflow || workflow.isArchived) {
 		throw new UserError('Workflow not found');
+	}
+
+	if (!workflow.settings?.availableInMCP) {
+		throw new UserError(
+			'Workflow is not available for execution via MCP. Enable access in the workflow settings to make it available.',
+		);
 	}
 
 	const canExecuteWorkflow = hasMcpSupportedTriggers(workflow);
