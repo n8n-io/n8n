@@ -57,4 +57,12 @@ describe('keywordsCheck', () => {
 		const result = await checkFn('你好12345');
 		expect(result.tripwireTriggered).toEqual(false);
 	});
+
+	it('should apply word boundaries to all keywords in a multi-keyword pattern', async () => {
+		const checkFn = createKeywordsCheckFn({ keywords: ['test', 'hello', 'world'] });
+		const result = await checkFn('testing hello world');
+		expect(result.tripwireTriggered).toEqual(true);
+		// Should match 'hello' and 'world', but NOT 'test' (which is part of 'testing')
+		expect(result.info.matchedKeywords).toEqual(['hello', 'world']);
+	});
 });
