@@ -3,7 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { ElDialog } from 'element-plus';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { ref, watch } from 'vue';
-import { useAccessSettingsCsvExport } from '@/features/settings/provisioning/composables/useAccessSettingsCsvExport';
+import { useAccessSettingsCsvExport } from '@/features/settings/sso/provisioning/composables/useAccessSettingsCsvExport';
 
 const visible = defineModel<boolean>();
 const emit = defineEmits<{
