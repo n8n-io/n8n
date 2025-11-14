@@ -30,56 +30,56 @@ runs:
       with:
         run_install: true
 
-    # - name: Configure Turborepo Cache
-    #   uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
+    - name: Configure Turborepo Cache
+      uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
 
-    - name: Start MinIO
-      run: |
-        docker run -d \
-          --name minio \
-          -p 9000:9000 \
-          -e MINIO_ROOT_USER=minioadmin \
-          -e MINIO_ROOT_PASSWORD=minioadmin123 \
-          minio/minio server /data
-
-        # Wait for MinIO to be ready
-        sleep 5
-
-        # Create the bucket (commands must run in same container)
-        docker run --rm \
-          --network host \
-          --entrypoint sh \
-          minio/mc \
-          -c "mc alias set local http://localhost:9000 minioadmin minioadmin123 && mc mb local/turborepo-cache --ignore-existing"
-      shell: bash
-
-    - name: Turborepo Cache Server
-      # ALWAYS use a pinned version of the action
-      # As we don't ship the latest versions of the binary on the main branch
-      # PLEASE see the latest versions here:
-      # https://github.com/brunojppb/turbo-cache-server/releases
-      uses: brunojppb/turbo-cache-server@952f44334c0b4c914d755a4a5d5ea535c83f02ed # 2.0.6
-      env:
-        PORT: '8585'
-        S3_BUCKET_NAME: 'turborepo-cache'
-        # Region defaults to "eu-central-1"
-        S3_REGION: 'us-east-1'
-        # Optional: If you need to provide specific auth keys, separate from default AWS credentials
-        S3_ACCESS_KEY: 'minioadmin'
-        S3_SECRET_KEY: 'minioadmin123'
-        # Optional: If not using AWS, provide endpoint like `https://minio` for your instance.
-        S3_ENDPOINT: 'http://localhost:9000'
-        # Optional: If your S3-compatible store does not support requests
-        # like https://bucket.hostname.domain/. Setting `S3_USE_PATH_STYLE`
-        # to true configures the S3 client to make requests like
-        # https://hostname.domain/bucket instead.
-        # Defaults to "false"
-        S3_USE_PATH_STYLE: 'true'
-        # Max payload size for each cache object sent by Turborepo
-        # Defaults to 100 MB
-        # Requests larger than that, will get "HTTP 413: Entity Too Large" errors
-        MAX_PAYLOAD_SIZE_IN_MB: '100'
-        TURBO_TOKEN: 'secret-turbo-token'
+    # - name: Start MinIO
+    #   run: |
+    #     docker run -d \
+    #       --name minio \
+    #       -p 9000:9000 \
+    #       -e MINIO_ROOT_USER=minioadmin \
+    #       -e MINIO_ROOT_PASSWORD=minioadmin123 \
+    #       minio/minio server /data
+    #
+    #     # Wait for MinIO to be ready
+    #     sleep 5
+    #
+    #     # Create the bucket (commands must run in same container)
+    #     docker run --rm \
+    #       --network host \
+    #       --entrypoint sh \
+    #       minio/mc \
+    #       -c "mc alias set local http://localhost:9000 minioadmin minioadmin123 && mc mb local/turborepo-cache --ignore-existing"
+    #   shell: bash
+    #
+    # - name: Turborepo Cache Server
+    #   # ALWAYS use a pinned version of the action
+    #   # As we don't ship the latest versions of the binary on the main branch
+    #   # PLEASE see the latest versions here:
+    #   # https://github.com/brunojppb/turbo-cache-server/releases
+    #   uses: brunojppb/turbo-cache-server@952f44334c0b4c914d755a4a5d5ea535c83f02ed # 2.0.6
+    #   env:
+    #     PORT: '8585'
+    #     S3_BUCKET_NAME: 'turborepo-cache'
+    #     # Region defaults to "eu-central-1"
+    #     S3_REGION: 'us-east-1'
+    #     # Optional: If you need to provide specific auth keys, separate from default AWS credentials
+    #     S3_ACCESS_KEY: 'minioadmin'
+    #     S3_SECRET_KEY: 'minioadmin123'
+    #     # Optional: If not using AWS, provide endpoint like `https://minio` for your instance.
+    #     S3_ENDPOINT: 'http://localhost:9000'
+    #     # Optional: If your S3-compatible store does not support requests
+    #     # like https://bucket.hostname.domain/. Setting `S3_USE_PATH_STYLE`
+    #     # to true configures the S3 client to make requests like
+    #     # https://hostname.domain/bucket instead.
+    #     # Defaults to "false"
+    #     S3_USE_PATH_STYLE: 'true'
+    #     # Max payload size for each cache object sent by Turborepo
+    #     # Defaults to 100 MB
+    #     # Requests larger than that, will get "HTTP 413: Entity Too Large" errors
+    #     MAX_PAYLOAD_SIZE_IN_MB: '100'
+    #     TURBO_TOKEN: 'secret-turbo-token'
 
     - name: Setup Docker Builder for Docker Cache
       if: ${{ inputs.enable-docker-cache == 'true' }}
@@ -173,8 +173,8 @@ runs:
         echo "=========================================="
         echo "Build complete"
       shell: bash
-      env:
-        TURBO_API: 'http://localhost:8585'
-        TURBO_TEAM: 'turborepo-cache'
-        # The value of TURBO_TOKEN will be checked by the cache server
-        TURBO_TOKEN: 'secret-turbo-token'
+      # env:
+      #   TURBO_API: 'http://localhost:8585'
+      #   TURBO_TEAM: 'turborepo-cache'
+      #   # The value of TURBO_TOKEN will be checked by the cache server
+      #   TURBO_TOKEN: 'secret-turbo-token'
