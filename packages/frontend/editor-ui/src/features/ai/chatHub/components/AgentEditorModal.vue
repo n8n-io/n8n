@@ -78,6 +78,7 @@ function loadAgent() {
 	description.value = customAgent.description ?? '';
 	systemPrompt.value = customAgent.systemPrompt;
 	selectedModel.value = chatStore.getAgent(customAgent) ?? null;
+	tools.value = customAgent.tools || [];
 
 	if (customAgent.credentialId) {
 		agentSelectedCredentials.value[customAgent.provider] = customAgent.credentialId;
@@ -90,6 +91,7 @@ function resetForm() {
 	systemPrompt.value = '';
 	selectedModel.value = null;
 	agentSelectedCredentials.value = {};
+	tools.value = [];
 }
 
 // Watch for modal opening
