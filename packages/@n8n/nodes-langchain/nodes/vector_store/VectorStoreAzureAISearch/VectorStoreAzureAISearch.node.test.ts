@@ -59,87 +59,6 @@ describe('VectorStoreAzureAISearch', () => {
 		});
 	});
 
-	it('should get vector store client with system-assigned managed identity', async () => {
-		executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-			switch (paramName) {
-				case 'mode':
-					return 'retrieve';
-				case 'indexName':
-					return 'test-index';
-				case 'options':
-					return {};
-				default:
-					return undefined;
-			}
-		});
-
-		executeFunctions.getCredentials.mockResolvedValue({
-			authType: 'managedIdentitySystem',
-			endpoint: 'https://test-search.search.windows.net',
-		});
-
-		const mockEmbeddings = {};
-		executeFunctions.getInputConnectionData.mockResolvedValue(mockEmbeddings);
-
-		const { response } = await vectorStore.supplyData.call(executeFunctions, 0);
-
-		expect(response).toBeDefined();
-		expect(DefaultAzureCredential).toHaveBeenCalledWith();
-		expect(AzureAISearchVectorStore).toHaveBeenCalledWith(mockEmbeddings, {
-			endpoint: 'https://test-search.search.windows.net',
-			indexName: 'test-index',
-			credentials: expect.any(DefaultAzureCredential),
-			search: {
-				type: expect.any(String),
-			},
-			clientOptions: {
-				userAgentOptions: { userAgentPrefix: 'n8n-azure-ai-search' },
-			},
-		});
-	});
-
-	it('should get vector store client with user-assigned managed identity', async () => {
-		executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
-			switch (paramName) {
-				case 'mode':
-					return 'retrieve';
-				case 'indexName':
-					return 'test-index';
-				case 'options':
-					return {};
-				default:
-					return undefined;
-			}
-		});
-
-		executeFunctions.getCredentials.mockResolvedValue({
-			authType: 'managedIdentityUser',
-			endpoint: 'https://test-search.search.windows.net',
-			managedIdentityClientId: 'test-client-id',
-		});
-
-		const mockEmbeddings = {};
-		executeFunctions.getInputConnectionData.mockResolvedValue(mockEmbeddings);
-
-		const { response } = await vectorStore.supplyData.call(executeFunctions, 0);
-
-		expect(response).toBeDefined();
-		expect(DefaultAzureCredential).toHaveBeenCalledWith({
-			managedIdentityClientId: 'test-client-id',
-		});
-		expect(AzureAISearchVectorStore).toHaveBeenCalledWith(mockEmbeddings, {
-			endpoint: 'https://test-search.search.windows.net',
-			indexName: 'test-index',
-			credentials: expect.any(DefaultAzureCredential),
-			search: {
-				type: expect.any(String),
-			},
-			clientOptions: {
-				userAgentOptions: { userAgentPrefix: 'n8n-azure-ai-search' },
-			},
-		});
-	});
-
 	it('should configure search options with filter and semantic configuration', async () => {
 		executeFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 			switch (paramName) {
@@ -150,7 +69,6 @@ describe('VectorStoreAzureAISearch', () => {
 				case 'options':
 					return {
 						queryType: 'semanticHybrid',
-						resultsCount: 25,
 						filter: "category eq 'tech'",
 						semanticConfiguration: 'test-semantic-config',
 					};

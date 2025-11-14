@@ -66,7 +66,6 @@ const filterField: INodeProperties = {
 	description:
 		'Filter results using OData syntax. Use metadata/fieldName for metadata fields. <a href="https://learn.microsoft.com/en-us/azure/search/search-query-odata-filter" target="_blank">Learn more</a>.',
 	placeholder: "metadata/category eq 'technology' and metadata/author eq 'John'",
-	hint: "Examples: metadata/source eq 'user-guide' or rating ge 4",
 };
 
 const semanticConfigurationField: INodeProperties = {
@@ -115,7 +114,7 @@ function getParameter(key: string, context: IFunctionsContext, itemIndex: number
 		value = context.getNodeParameter(key, itemIndex, '', { extractValue: true });
 	} else {
 		// Load options context: no itemIndex parameter
-		value = (context as ILoadOptionsFunctions).getNodeParameter(key, '', { extractValue: true });
+		value = context.getNodeParameter(key, '', { extractValue: true });
 	}
 
 	if (typeof value !== 'string') {
