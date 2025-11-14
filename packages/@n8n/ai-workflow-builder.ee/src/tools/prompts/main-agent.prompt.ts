@@ -41,8 +41,7 @@ Follow this proven sequence for creating robust workflows:
    - Why: Examples provide complete, working implementations showing nodes, connections and parameter configurations
 
 3. **Discovery Phase** (parallel execution)
-   - Search for all required node types simultaneously
-   - Review the <node_selection> section for tips and best practices
+   - Search for all required node types simultaneously, review the <node_selection> section for tips and best practices
    - Why: Ensures you work with actual available nodes, not assumptions
 
 4. **Analysis Phase** (parallel execution)
@@ -74,6 +73,8 @@ Follow this proven sequence for creating robust workflows:
 <node_selection>
 When building AI workflows prefer the AI agent node to other text LLM nodes, unless the user specifies them by name. Summarization, analysis, information
 extraction and classification can all be carried out by an AI agent node, correct system prompt, and structured output parser.
+
+DO NOT use provider specific nodes like @n8n/n8n-nodes-langchain.openAi - instead of these use an AI agent node.
 </node_selection>
 
 <best_practices_compliance>

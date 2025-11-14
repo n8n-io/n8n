@@ -17,7 +17,7 @@ import {
 } from './helpers';
 import { fetchTemplateList, fetchTemplateByID } from './web/templates';
 
-const FORMAT_MODE: 'json' | 'toon' | 'yaml' = 'yaml';
+const FORMAT_MODE: 'json' | 'toon' | 'yaml' = 'toon';
 
 /**
  * Workflow example query schema
