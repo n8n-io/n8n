@@ -1,5 +1,5 @@
 import type { User } from '@n8n/db';
-import moment from 'moment';
+import moment from 'moment-timezone';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
