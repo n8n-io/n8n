@@ -100,7 +100,7 @@ const iconColor = computed(() => {
 
 .router-link-active,
 .active {
-	background-color: var(--menu--color--background--hover);
+	background-color: var(--color--background);
 }
 
 .menuItem {
@@ -123,7 +123,7 @@ const iconColor = computed(() => {
 }
 
 .menuItem:hover {
-	background-color: var(--color--foreground);
+	background-color: var(--color--background);
 	color: var(--color--text--shade-1);
 }
 

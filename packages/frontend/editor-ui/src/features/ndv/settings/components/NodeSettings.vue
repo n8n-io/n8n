@@ -832,7 +832,7 @@ function handleSelectAction(params: INodeParameters) {
 
 <style lang="scss" module>
 .header {
-	background-color: var(--color--background);
+	background-color: var(--ndv--header--color);
 }
 
 .featureRequest {
