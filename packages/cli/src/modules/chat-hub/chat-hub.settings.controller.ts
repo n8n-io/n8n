@@ -25,7 +25,11 @@ export class ChatHubSettingsController {
 	}
 
 	@Get('/settings/:provider')
-	async getProviderSettings(@Param('provider') provider: ChatHubLLMProvider) {
+	async getProviderSettings(
+		_req: AuthenticatedRequest,
+		_res: Response,
+		@Param('provider') provider: ChatHubLLMProvider,
+	) {
 		if (chatHubLLMProviderSchema.safeParse(provider).success === false) {
 			throw new BadRequestError(`Invalid provider: ${provider}`);
 		}

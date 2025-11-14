@@ -8,6 +8,7 @@ import {
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
 	CHAT_SETTINGS_VIEW,
+	CHAT_PROVIDER_SETTINGS_MODAL_KEY,
 } from '@/features/ai/chatHub/constants';
 import { i18n } from '@n8n/i18n';
 import SettingsChatHubView from './SettingsChatHubView.vue';
@@ -67,6 +68,16 @@ export const ChatModule: FrontendModuleDescription = {
 					provider: null,
 					initialValue: null,
 					onSelect: () => {},
+				},
+			},
+		},
+		{
+			key: CHAT_PROVIDER_SETTINGS_MODAL_KEY,
+			component: async () => await import('./components/ProviderSettingsModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					provider: null,
 				},
 			},
 		},

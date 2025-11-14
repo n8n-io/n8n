@@ -25,7 +25,11 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
-import { CHAT_CREDENTIAL_SELECTOR_MODAL_KEY } from '../constants';
+import {
+	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+	CHAT_PROVIDER_SETTINGS_MODAL_KEY,
+	providerDisplayNames,
+} from '../constants';
 
 type Props = {
 	providers: ChatProviderSettingsDto[];
@@ -62,18 +66,9 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 		},
 	},
 	{
-		title: i18n.baseText('settings.chatHub.providers.table.createdAt'),
-		key: 'createdAt',
-		width: 350,
-		disableSort: true,
-		value() {
-			return;
-		},
-	},
-	{
 		title: i18n.baseText('settings.chatHub.providers.table.updatedAt'),
 		key: 'updatedAt',
-		width: 350,
+		width: 200,
 		disableSort: true,
 		value() {
 			return;
@@ -91,17 +86,17 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 	},
 ]);
 
-const tableActions = ref<Array<UserAction<WorkflowListItem>>>([
+const tableActions = ref<Array<{ label: string; value: string }>>([
 	{
 		label: i18n.baseText('settings.chatHub.providers.table.action.editProvider'),
 		value: 'editProvider',
 	},
 ]);
 
-const onTableAction = (action: string, provider: ChatProviderSettingsDto) => {
+const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 	switch (action) {
 		case 'editProvider':
-			emit('editProvider', provider);
+			emit('editProvider', settings);
 			break;
 		default:
 			break;
@@ -120,12 +115,9 @@ function handleCreateNewCredential(provider: ChatHubLLMProvider) {
 const onAddProvider = () => {
 	console.log('Navigating to add provider');
 	uiStore.openModalWithData({
-		name: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+		name: CHAT_PROVIDER_SETTINGS_MODAL_KEY,
 		data: {
 			provider: 'openai',
-			initialValue: null,
-			onSelect: handleSelectCredentials,
-			onCreateNew: handleCreateNewCredential,
 		},
 	});
 };
@@ -181,7 +173,7 @@ const onAddProvider = () => {
 					<div :class="$style['provider-cell']" data-test-id="chat-provider-cell">
 						<span>
 							<N8nText data-test-id="chat-provider-name">
-								{{ item.provider }}
+								{{ providerDisplayNames[item.provider] }}
 							</N8nText>
 						</span>
 					</div>
@@ -189,14 +181,7 @@ const onAddProvider = () => {
 				<template #[`item.models`]="{ item }">
 					<span>
 						<N8nText data-test-id="chat-provider-name">
-							{{ item.allowedModels.join(', ') }}
-						</N8nText>
-					</span>
-				</template>
-				<template #[`item.createdAt`]="{ item }">
-					<span>
-						<N8nText data-test-id="chat-provider-name">
-							{{ item.createdAt }}
+							{{ item.allowedModels?.join(', ') }}
 						</N8nText>
 					</span>
 				</template>

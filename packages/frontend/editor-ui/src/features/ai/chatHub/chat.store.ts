@@ -49,7 +49,7 @@ import { isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { type INode } from 'n8n-workflow';
-import { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types/dist/chat-hub';
+import { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -739,7 +739,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	async function fetchProviderSettings(provider: ChatHubLLMProvider) {
 		const providerSettings = await fetchChatProviderSettingsApi(rootStore.restApiContext, provider);
 
-		settings.value = settings.value?.map((setting) =>
+		settings.value = settings.value?.map((setting: ChatProviderSettingsDto) =>
 			setting.provider === provider ? providerSettings : setting,
 		);
 

@@ -11,7 +11,7 @@ const CHAT_ENABLED_KEY = 'chat.access.enabled';
 const getDefaultProviderSettings = (provider: ChatHubLLMProvider): ChatProviderSettingsDto => ({
 	provider,
 	credentialId: null,
-	allowedModels: [],
+	limitModels: false,
 	createdAt: new Date().toISOString(),
 	updatedAt: null,
 	enabled: true,

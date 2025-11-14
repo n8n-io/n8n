@@ -295,7 +295,8 @@ const chatProviderSettingsSchema = z.object({
 	provider: chatHubProviderSchema.exclude(['n8n', 'custom-agent']),
 	enabled: z.boolean().optional(),
 	credentialId: z.string().nullable(),
-	allowedModels: z.array(z.string()),
+	limitModels: z.boolean(),
+	allowedModels: z.array(z.string()).optional(),
 	createdAt: z.string(),
 	updatedAt: z.string().nullable(),
 });

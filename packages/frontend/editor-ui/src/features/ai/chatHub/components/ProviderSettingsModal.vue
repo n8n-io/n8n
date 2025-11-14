@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { N8nButton, N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -7,30 +7,39 @@ import type { ICredentialsResponse } from '@/features/credentials/credentials.ty
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	ChatHubLLMProvider,
+	ChatModelDto,
 	ChatProviderSettingsDto,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { ElSwitch } from 'element-plus';
 import { useUIStore } from '@/app/stores/ui.store';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useI18n } from '@n8n/i18n';
 import { useChatStore } from '../chat.store';
+import { providerDisplayNames } from '../constants';
+import { fetchChatModelsApi } from '../chat.api';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import ChatProviderModelsTable from './ChatProviderModelsTable.vue';
+import { useToast } from '@/app/composables/useToast';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		provider: ChatHubLLMProvider;
-		onConfirm: (settings: ChatProviderSettingsDto) => void;
+		disabled: boolean;
 	};
 }>();
 
 const settings = ref<ChatProviderSettingsDto | null>(null);
 const modalBus = ref(createEventBus());
+const loadingSettings = ref(false);
+const loadingModels = ref(false);
+const availableModels = ref<ChatModelDto[]>([]);
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const chatStore = useChatStore();
+const toast = useToast();
 
 const availableCredentials = computed<ICredentialsResponse[]>(() => {
 	return credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[props.data.provider]);
@@ -58,9 +67,65 @@ async function loadSettings() {
 	settings.value = await chatStore.fetchProviderSettings(props.data.provider);
 }
 
-onMounted(async () => {
-	await loadSettings();
+async function loadAvailableModels(credentialId: string) {
+	loadingModels.value = true;
+	try {
+		const credentials = {
+			[props.data.provider]: credentialId,
+		};
+
+		const response = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
+
+		availableModels.value = response[props.data.provider].models || [];
+	} catch (error) {
+		toast.showError(
+			error,
+			i18n.baseText('settings.chatHub.providers.modal.edit.errorFetchingModels'),
+		);
+	} finally {
+		loadingModels.value = false;
+	}
+}
+
+const models = computed<Array<ChatModelDto & { enabled: boolean }>>(() => {
+	return availableModels.value.map((model) => {
+		const isEnabled =
+			(settings.value?.limitModels === false ||
+				settings.value?.allowedModels?.some((m) => m === model.name)) ??
+			false;
+
+		return {
+			...model,
+			enabled: isEnabled,
+		};
+	});
 });
+
+const onToggleEnabled = (value: string | number | boolean) => {
+	if (settings.value) {
+		settings.value.enabled = typeof value === 'boolean' ? value : Boolean(value);
+	}
+};
+
+onMounted(async () => {
+	loadingSettings.value = true;
+	await Promise.all([
+		loadSettings(),
+		credentialsStore.fetchCredentialTypes(false),
+		credentialsStore.fetchAllCredentials(),
+	]);
+	loadingSettings.value = false;
+});
+
+watch(
+	() => settings.value?.credentialId,
+	async (credentialId) => {
+		if (credentialId) {
+			loadAvailableModels(credentialId);
+		}
+	},
+	{ immediate: true },
+);
 </script>
 
 <template>
@@ -82,19 +147,43 @@ onMounted(async () => {
 		</template>
 
 		<template #content>
-			<div v-if="settings" :class="$style.content">
-				<div>
-					<N8nText size="small" color="text-base">
-						{{ i18n.baseText('settings.chatHub.providers.modal.edit.enabled.label') }}
-					</N8nText>
-					<ElSwitch
-						v-model="settings.enabled"
-						:active-text="i18n.baseText('settings.chatHub.providers.modal.edit.enabled.on')"
-						:inactive-text="i18n.baseText('settings.chatHub.providers.modal.edit.enabled.off')"
-					/>
+			<div :class="$style.content">
+				<div :class="$style.container">
+					<div :class="$style.enabledLabel">
+						<N8nText bold>
+							{{
+								i18n.baseText('settings.chatHub.providers.modal.edit.enabled.label', {
+									interpolate: { provider: providerDisplayNames[props.data.provider] },
+								})
+							}}
+						</N8nText>
+						<N8nText size="small" color="text-light">
+							{{
+								i18n.baseText('settings.chatHub.providers.modal.edit.enabled.description', {
+									interpolate: { provider: providerDisplayNames[props.data.provider] },
+								})
+							}}
+						</N8nText>
+					</div>
+
+					<div :class="$style.enabledToggle">
+						<N8nTooltip
+							:content="i18n.baseText('settings.chatHub.providers.modal.edit.enabled.tooltip')"
+							:disabled="!props.data.disabled"
+							placement="top"
+						>
+							<ElSwitch
+								size="large"
+								:model-value="settings?.enabled ?? false"
+								:disabled="props.data.disabled"
+								:loading="loadingSettings"
+								@update:model-value="onToggleEnabled"
+							/>
+						</N8nTooltip>
+					</div>
 				</div>
 
-				<div>
+				<div v-if="settings && settings.enabled">
 					<N8nText size="small" color="text-base">
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.credential.label') }}
 					</N8nText>
@@ -117,6 +206,10 @@ onMounted(async () => {
 						<N8nButton size="medium" type="secondary" @click="onCreateNew()">
 							{{ i18n.baseText('settings.chatHub.providers.modal.edit.credential.new') }}
 						</N8nButton>
+					</div>
+
+					<div v-if="settings && settings.enabled && settings.credentialId">
+						<ChatProviderModelsTable :models="models" :loading="loadingModels" />
 					</div>
 				</div>
 			</div>
@@ -149,6 +242,27 @@ onMounted(async () => {
 	gap: var(--spacing--lg);
 	padding: var(--spacing--sm) 0 var(--spacing--md);
 }
+
+.container {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.enabledLabel {
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+	align-items: flex-start;
+}
+
+.enabledToggle {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	flex-shrink: 0;
+}
+
 .provider {
 	display: flex;
 	flex-direction: column;

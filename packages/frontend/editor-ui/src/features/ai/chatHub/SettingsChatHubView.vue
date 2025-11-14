@@ -10,9 +10,10 @@ import { computed, onMounted, ref } from 'vue';
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { N8nHeading } from '@n8n/design-system';
-import { LOADING_INDICATOR_TIMEOUT } from './constants';
+import { CHAT_PROVIDER_SETTINGS_MODAL_KEY, LOADING_INDICATOR_TIMEOUT } from './constants';
 import ChatProvidersTable from './components/ChatProvidersTable.vue';
 import { ChatProviderSettingsDto } from '@n8n/api-types/dist/chat-hub';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -22,6 +23,7 @@ const chatStore = useChatStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const rootStore = useRootStore();
+const uiStore = useUIStore();
 
 const providersLoading = ref(false);
 const providers = ref<ChatProviderSettingsDto[]>([]);
@@ -32,7 +34,7 @@ const isAdmin = computed(() => usersStore.isAdmin);
 const fetchProviderSettings = async () => {
 	providersLoading.value = true;
 	try {
-		const settings = await chatStore.fetchChatSettings();
+		const settings = await chatStore.fetchAllChatSettings();
 		providers.value = settings;
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.chatHub.error.fetching.providerSettings'));
@@ -43,9 +45,13 @@ const fetchProviderSettings = async () => {
 	}
 };
 
-function onEditProvider(provider: ChatProviderSettingsDto) {
-	// chatStore.openEditProviderModal(provider);
-	console.log('Edit provider:', provider);
+function onEditProvider(settings: ChatProviderSettingsDto) {
+	uiStore.openModalWithData({
+		name: CHAT_PROVIDER_SETTINGS_MODAL_KEY,
+		data: {
+			provider: settings.provider,
+		},
+	});
 }
 
 function onRefreshWorkflows() {
