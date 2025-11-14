@@ -30,6 +30,7 @@ import {
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
 	CONFIRM_PASSWORD_MODAL_KEY,
 	WORKFLOW_PUBLISH_MODAL_KEY,
+	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 } from '@/app/constants';
 import {
 	ANNOTATION_TAGS_MANAGER_MODAL_KEY,
@@ -112,6 +113,7 @@ import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/com
 import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
 import WorkflowPublishModal from '@/components/MainHeader/WorkflowPublishModal.vue';
+import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryPublishModal.vue';
 </script>
 
 <template>
@@ -408,6 +410,12 @@ import WorkflowPublishModal from '@/components/MainHeader/WorkflowPublishModal.v
 		<ModalRoot :name="WORKFLOW_PUBLISH_MODAL_KEY">
 			<template #default="{ modalName, data }">
 				<WorkflowPublishModal :modal-name="modalName" :data="data" />
+			</template>
+		</ModalRoot>
+
+		<ModalRoot :name="WORKFLOW_HISTORY_PUBLISH_MODAL_KEY">
+			<template #default="{ modalName, data }">
+				<WorkflowHistoryPublishModal :modal-name="modalName" :data="data" />
 			</template>
 		</ModalRoot>
 		<!-- Dynamic modals from modules -->

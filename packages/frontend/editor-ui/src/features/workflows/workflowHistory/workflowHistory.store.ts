@@ -89,6 +89,7 @@ export const useWorkflowHistoryStore = defineStore('workflowHistory', () => {
 		const { connections, nodes } = workflowVersion;
 		const updateData: WorkflowDataUpdate = { connections, nodes };
 
+		// TODO: this should be removed as restore will not be changing the active version
 		if (shouldDeactivate) {
 			updateData.active = false;
 		}
