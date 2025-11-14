@@ -73,6 +73,13 @@ export const createSearchWorkflowsTool = (
 				'Search for workflows with optional filters. Returns a preview of each workflow.',
 			inputSchema,
 			outputSchema,
+			annotations: {
+				title: 'Search Workflows',
+				readOnlyHint: true, // This tool only reads data
+				destructiveHint: false, // No destructive operations
+				idempotentHint: true, // Safe to retry multiple times
+				openWorldHint: false, // Works with internal n8n data only
+			},
 		},
 		handler: async ({ limit = MAX_RESULTS, query, projectId }) => {
 			const parameters = { limit, query, projectId };

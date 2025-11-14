@@ -40,6 +40,13 @@ export const createWorkflowDetailsTool = (
 			description: 'Get detailed information about a specific workflow including trigger details',
 			inputSchema,
 			outputSchema,
+			annotations: {
+				title: 'Get Workflow Details',
+				readOnlyHint: true, // This tool only reads data
+				destructiveHint: false, // No destructive operations
+				idempotentHint: true, // Safe to retry multiple times
+				openWorldHint: false, // Works with internal n8n data only
+			},
 		},
 		handler: async ({ workflowId }) => {
 			const parameters = { workflowId };

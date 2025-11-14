@@ -11,6 +11,13 @@ export type ToolDefinition<InputArgs extends z.ZodRawShape = z.ZodRawShape> = {
 		description?: string;
 		inputSchema?: InputArgs;
 		outputSchema?: z.ZodRawShape;
+		annotations?: {
+			title?: string;
+			readOnlyHint?: boolean;
+			destructiveHint?: boolean;
+			idempotentHint?: boolean;
+			openWorldHint?: boolean;
+		};
 	};
 	handler: ToolCallback<InputArgs>;
 };
