@@ -62,7 +62,7 @@ runs:
       # As we don't ship the latest versions of the binary on the main branch
       # PLEASE see the latest versions here:
       # https://github.com/brunojppb/turbo-cache-server/releases
-      uses: brunojppb/turbo-cache-server@952f443 # 2.0.6
+      uses: brunojppb/turbo-cache-server@952f44334c0b4c914d755a4a5d5ea535c83f02ed # 2.0.6
       env:
         PORT: '8585'
         S3_BUCKET_NAME: 'turborepo-cache'
