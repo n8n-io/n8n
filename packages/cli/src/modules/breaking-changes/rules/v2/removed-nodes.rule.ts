@@ -26,7 +26,7 @@ export class RemovedNodesRule implements IBreakingChangeWorkflowRule {
 			title: 'Removed Deprecated Nodes',
 			description: 'Several deprecated nodes have been removed and will no longer work',
 			category: BreakingChangeCategory.workflow,
-			severity: 'critical',
+			severity: 'low',
 		};
 	}
 

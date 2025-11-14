@@ -129,6 +129,29 @@ vi.mock('@/app/composables/useWorkflowState', async () => {
 	};
 });
 
+const canPinNodeMock = vi.fn();
+const setDataMock = vi.fn();
+const unsetDataMock = vi.fn();
+const getInputDataWithPinnedMock = vi.fn();
+
+vi.mock('@/app/composables/usePinnedData', () => {
+	return {
+		usePinnedData: vi.fn(() => ({
+			canPinNode: canPinNodeMock,
+			setData: setDataMock,
+			unsetData: unsetDataMock,
+		})),
+	};
+});
+
+vi.mock('@/app/composables/useDataSchema', () => {
+	return {
+		useDataSchema: vi.fn(() => ({
+			getInputDataWithPinned: getInputDataWithPinnedMock,
+		})),
+	};
+});
+
 describe('useCanvasOperations', () => {
 	const workflowId = 'test';
 	const initialState = {
@@ -1545,6 +1568,116 @@ describe('useCanvasOperations', () => {
 					disabled: true,
 				},
 			});
+		});
+	});
+
+	describe('toggleNodesPinned', () => {
+		beforeEach(() => {
+			canPinNodeMock.mockReset();
+			setDataMock.mockReset();
+			unsetDataMock.mockReset();
+			getInputDataWithPinnedMock.mockReset();
+		});
+
+		it('should only pin pinnable nodes when mix of pinnable and non-pinnable nodes are selected', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const historyStore = mockedStore(useHistoryStore);
+
+			const pinnableNode1 = createTestNode({ id: '1', name: 'PinnableNode1' });
+			const pinnableNode2 = createTestNode({ id: '2', name: 'PinnableNode2' });
+			const nonPinnableNode = createTestNode({ id: '3', name: 'NonPinnableNode' });
+
+			const nodes = [pinnableNode1, nonPinnableNode, pinnableNode2];
+			workflowsStore.getNodesByIds.mockReturnValue(nodes);
+
+			// Initially, none have pinned data
+			workflowsStore.pinDataByNodeName = vi.fn().mockReturnValue(undefined);
+
+			let checkIndex = 0;
+			const nodeOrder: string[] = [];
+
+			// Mock canPinNode based on which node is being checked
+			canPinNodeMock.mockImplementation(() => {
+				const currentNodeIndex = checkIndex % nodes.length;
+				const currentNode = nodes[currentNodeIndex];
+				nodeOrder.push(currentNode.id);
+				checkIndex++;
+				// Make nodes with id 1 and 2 pinnable, 3 non-pinnable
+				return currentNode.id !== '3';
+			});
+
+			getInputDataWithPinnedMock.mockReturnValue([{ json: { test: 'data' } }]);
+
+			const { toggleNodesPinned } = useCanvasOperations();
+			toggleNodesPinned(['1', '2', '3'], 'pin-icon-click');
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+			expect(setDataMock).toHaveBeenCalledTimes(2);
+			expect(setDataMock).toHaveBeenCalledWith([{ json: { test: 'data' } }], 'pin-icon-click');
+			expect(unsetDataMock).not.toHaveBeenCalled();
+		});
+
+		it('should correctly unpin pinnable nodes when mix of pinnable and non-pinnable nodes are selected', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const historyStore = mockedStore(useHistoryStore);
+
+			const pinnableNode1 = createTestNode({ id: '1', name: 'PinnableNode1' });
+			const pinnableNode2 = createTestNode({ id: '2', name: 'PinnableNode2' });
+			const nonPinnableNode = createTestNode({ id: '3', name: 'NonPinnableNode' });
+
+			const nodes = [pinnableNode1, nonPinnableNode, pinnableNode2];
+			workflowsStore.getNodesByIds.mockReturnValue(nodes);
+
+			// Set some initial pinned data for pinnable nodes
+			workflowsStore.pinDataByNodeName = vi.fn().mockImplementation((nodeName: string) => {
+				if (nodeName === 'PinnableNode1' || nodeName === 'PinnableNode2') {
+					return [{ json: { pinned: 'data' } }];
+				}
+				return undefined;
+			});
+
+			let checkIndex = 0;
+
+			canPinNodeMock.mockImplementation(() => {
+				const currentNodeIndex = checkIndex % nodes.length;
+				const currentNode = nodes[currentNodeIndex];
+				checkIndex++;
+				return currentNode.id !== '3';
+			});
+
+			const { toggleNodesPinned } = useCanvasOperations();
+			toggleNodesPinned(['1', '2', '3'], 'pin-icon-click');
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+			expect(unsetDataMock).toHaveBeenCalledTimes(2);
+			expect(unsetDataMock).toHaveBeenCalledWith('pin-icon-click');
+			expect(setDataMock).not.toHaveBeenCalled();
+		});
+
+		it('should handle case where all nodes are non-pinnable', () => {
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const historyStore = mockedStore(useHistoryStore);
+
+			const nonPinnableNode1 = createTestNode({ id: '1', name: 'NonPinnableNode1' });
+			const nonPinnableNode2 = createTestNode({ id: '2', name: 'NonPinnableNode2' });
+
+			const nodes = [nonPinnableNode1, nonPinnableNode2];
+			workflowsStore.getNodesByIds.mockReturnValue(nodes);
+
+			workflowsStore.pinDataByNodeName = vi.fn().mockReturnValue(undefined);
+			canPinNodeMock.mockReturnValue(false);
+
+			const { toggleNodesPinned } = useCanvasOperations();
+			toggleNodesPinned(['1', '2'], 'pin-icon-click');
+
+			expect(historyStore.startRecordingUndo).toHaveBeenCalled();
+			expect(historyStore.stopRecordingUndo).toHaveBeenCalled();
+
+			// Verify no pinning or unpinning occurred
+			expect(setDataMock).not.toHaveBeenCalled();
+			expect(unsetDataMock).not.toHaveBeenCalled();
 		});
 	});
 

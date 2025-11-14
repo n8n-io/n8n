@@ -96,6 +96,7 @@
       "axios": "1.12.0",
       "chokidar": "4.0.3",
       "esbuild": "^0.25.0",
+      "expr-eval@2.0.2": "npm:expr-eval-fork@3.0.0",
       "multer": "^2.0.2",
       "prebuild-install": "7.1.3",
       "pug": "^3.0.3",

@@ -998,7 +998,7 @@ describe('dataTable', () => {
 
 		it('inserts a row even if it matches with the existing one', async () => {
 			// ARRANGE
-			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+			const { id: dataTableId, columns } = await dataTableService.createDataTable(project1.id, {
 				name: 'myDataTable',
 				columns: [
 					{ name: 'c1', type: 'number' },
@@ -1026,7 +1026,11 @@ describe('dataTable', () => {
 			// ASSERT
 			expect(result).toEqual([{ id: 2 }]);
 
-			const { count, data } = await dataTableRowsRepository.getManyAndCount(dataTableId, {});
+			const { count, data } = await dataTableRowsRepository.getManyAndCount(
+				dataTableId,
+				{},
+				columns,
+			);
 
 			expect(count).toEqual(2);
 			expect(data).toEqual([
@@ -1045,7 +1049,7 @@ describe('dataTable', () => {
 
 		it('return correct IDs even after deletions', async () => {
 			// ARRANGE
-			const { id: dataTableId } = await dataTableService.createDataTable(project1.id, {
+			const { id: dataTableId, columns } = await dataTableService.createDataTable(project1.id, {
 				name: 'myDataTable',
 				columns: [
 					{ name: 'c1', type: 'number' },
@@ -1086,7 +1090,11 @@ describe('dataTable', () => {
 			// ASSERT
 			expect(result).toEqual([{ id: 3 }, { id: 4 }]);
 
-			const { count, data } = await dataTableRowsRepository.getManyAndCount(dataTableId, {});
+			const { count, data } = await dataTableRowsRepository.getManyAndCount(
+				dataTableId,
+				{},
+				columns,
+			);
 
 			expect(count).toEqual(3);
 			expect(data).toEqual([
