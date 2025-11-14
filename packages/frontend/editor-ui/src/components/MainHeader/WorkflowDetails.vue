@@ -171,6 +171,7 @@ function getWorkflowId(): string | undefined {
 }
 
 async function onSaveButtonClick() {
+	console.log('onSaveButtonClick');
 	// If the workflow is saving, do not allow another save
 	if (isWorkflowSaving.value) {
 		return;
@@ -188,6 +189,7 @@ async function onSaveButtonClick() {
 	});
 
 	if (saved) {
+		console.log('saved');
 		showCreateWorkflowSuccessToast(id);
 
 		await npsSurveyStore.fetchPromptsData();
@@ -199,18 +201,6 @@ async function onSaveButtonClick() {
 			});
 		}
 	}
-}
-
-async function onSaveWorkflow() {
-	// If the workflow is saving, do not allow another save
-	if (isWorkflowSaving.value) {
-		return;
-	}
-	await workflowSaving.saveCurrentWorkflow({
-		id: getWorkflowId(),
-		name: props.name,
-		tags: props.tags as string[],
-	});
 }
 
 function onTagsEditEnable() {
@@ -573,7 +563,7 @@ onBeforeUnmount(() => {
 				:is-archived="isArchived"
 				:is-new-workflow="isNewWorkflow"
 				:workflow-permissions="workflowPermissions"
-				@workflow:saved="onSaveWorkflow"
+				@workflow:saved="onSaveButtonClick"
 			/>
 			<WorkflowHeaderActions
 				v-else

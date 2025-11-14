@@ -12,6 +12,8 @@ import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/stores/ui.store';
 import { useWorkflowsStore } from '@/stores/workflows.store';
+import SaveButton from '@/components/SaveButton.vue';
+
 const props = defineProps<{
 	readOnly?: boolean;
 	id: IWorkflowDb['id'];
@@ -34,9 +36,14 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const locale = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const i18n = useI18n();
 
 const isWorkflowHistoryFeatureEnabled = computed(() => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
+});
+
+const isWorkflowSaving = computed(() => {
+	return uiStore.isActionActive.workflowSaving;
 });
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
@@ -65,6 +72,21 @@ defineExpose({
 
 <template>
 	<div :class="$style.container">
+		<SaveButton
+			type="primary"
+			:saved="!uiStore.stateIsDirty && !isNewWorkflow"
+			:disabled="
+				isWorkflowSaving ||
+				readOnly ||
+				isArchived ||
+				(!isNewWorkflow && !workflowPermissions.update)
+			"
+			:is-saving="isWorkflowSaving"
+			:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
+			:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
+			data-test-id="workflow-save-button"
+			@click="$emit('workflow:saved')"
+		/>
 		<div :class="$style.publishButtonWrapper">
 			<N8nButton type="secondary" @click="onPublishButtonClick">
 				{{ locale.baseText('workflows.publish') }}
