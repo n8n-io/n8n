@@ -86,19 +86,95 @@ runs:
       uses: useblacksmith/setup-docker-builder@0b434dfbb431f4e3a2bcee7a773a56bd363184c5 # v1
 
     - name: Build Project
-      run: ${{ inputs.build-command }}
+      run: |
+        echo "=========================================="
+        echo "DEBUG: Before first build"
+        echo "=========================================="
+
+        # Check if cache-marker exists before first build
+        if [ -f packages/frontend/editor-ui/.build/cache-marker ]; then
+          echo "cache-marker exists before first build:"
+          cat packages/frontend/editor-ui/.build/cache-marker
+          stat packages/frontend/editor-ui/.build/cache-marker
+        else
+          echo "cache-marker does not exist before first build"
+        fi
+
+        # Get hash and inputs for fetch-popularity
+        echo "Turbo dry-run for fetch-popularity (before first build):"
+        env TURBO_API=http://localhost:8585 TURBO_TEAM=turborepo-cache TURBO_TOKEN=secret-turbo-token \
+          npx turbo run fetch-popularity --dry=json > /tmp/turbo-dry-1.json
+        cat /tmp/turbo-dry-1.json | jq '.tasks[] | select(.taskId | contains("fetch-popularity")) | {taskId, hash, cache, inputs: .inputs | keys, environmentVariables}'
+
+        echo ""
+        echo "=========================================="
+        echo "RUNNING: First build"
+        echo "=========================================="
+        pnpm build
+
+        echo ""
+        echo "=========================================="
+        echo "DEBUG: After first build"
+        echo "=========================================="
+
+        # Show cache-marker after first build
+        if [ -f packages/frontend/editor-ui/.build/cache-marker ]; then
+          echo "cache-marker after first build:"
+          cat packages/frontend/editor-ui/.build/cache-marker
+          stat packages/frontend/editor-ui/.build/cache-marker
+        fi
+
+        # Show node-popularity.json info
+        if [ -f packages/frontend/editor-ui/.build/node-popularity.json ]; then
+          echo "node-popularity.json exists (first 5 lines):"
+          head -n 5 packages/frontend/editor-ui/.build/node-popularity.json
+        fi
+
+        echo ""
+        echo "=========================================="
+        echo "DEBUG: Before second build"
+        echo "=========================================="
+
+        # Check cache-marker before second build
+        if [ -f packages/frontend/editor-ui/.build/cache-marker ]; then
+          echo "cache-marker before second build:"
+          cat packages/frontend/editor-ui/.build/cache-marker
+          stat packages/frontend/editor-ui/.build/cache-marker
+        fi
+
+        # Get hash again
+        echo "Turbo dry-run for fetch-popularity (before second build):"
+        env TURBO_API=http://localhost:8585 TURBO_TEAM=turborepo-cache TURBO_TOKEN=secret-turbo-token \
+          npx turbo run fetch-popularity --dry=json > /tmp/turbo-dry-2.json
+        cat /tmp/turbo-dry-2.json | jq '.tasks[] | select(.taskId | contains("fetch-popularity")) | {taskId, hash, cache, inputs: .inputs | keys, environmentVariables}'
+
+        # Compare hashes
+        echo ""
+        echo "Hash comparison:"
+        HASH1=$(cat /tmp/turbo-dry-1.json | jq -r '.tasks[] | select(.taskId | contains("fetch-popularity")) | .hash')
+        HASH2=$(cat /tmp/turbo-dry-2.json | jq -r '.tasks[] | select(.taskId | contains("fetch-popularity")) | .hash')
+        echo "First build hash:  $HASH1"
+        echo "Second build hash: $HASH2"
+        if [ "$HASH1" = "$HASH2" ]; then
+          echo "✓ Hashes match - cache should hit"
+        else
+          echo "✗ Hashes differ - cache will miss"
+        fi
+
+        echo ""
+        echo "=========================================="
+        echo "RUNNING: Second build (cached)"
+        echo "=========================================="
+        pnpm build
+
+        echo ""
+        echo "=========================================="
+        echo "DEBUG: After second build"
+        echo "=========================================="
+        echo "Build complete"
       shell: bash
       env:
         TURBO_API: 'http://localhost:8585'
-        TURBO_TEAM: 'NAME_OF_YOUR_REPO_HERE'
-        # The value of TURBO_TOKEN will be checked by the cache server
-        TURBO_TOKEN: 'secret-turbo-token'
-
-    - name: Build Project
-      run: ${{ inputs.build-command }}
-      shell: bash
-      env:
-        TURBO_API: 'http://127.0.0.1:8585'
         TURBO_TEAM: 'turborepo-cache'
         # The value of TURBO_TOKEN will be checked by the cache server
         TURBO_TOKEN: 'secret-turbo-token'
