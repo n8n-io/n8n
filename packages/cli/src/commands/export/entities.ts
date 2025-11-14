@@ -11,7 +11,7 @@ const flagsSchema = z.object({
 		.string()
 		.describe('Output directory path')
 		.default(safeJoinPath(__dirname, './outputs')),
-	includeExecutionHistoryDataTables: z
+	includeExecutionHistoryDataTables: z.coerce
 		.boolean()
 		.describe(
 			'Include execution history data tables, these are excluded by default as they can be very large',

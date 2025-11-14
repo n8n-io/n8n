@@ -11,7 +11,7 @@ const flagsSchema = z.object({
 		.string()
 		.describe('Input directory that holds output files for import')
 		.default('./outputs'),
-	truncateTables: z.boolean().describe('Truncate tables before import').default(false),
+	truncateTables: z.coerce.boolean().describe('Truncate tables before import').default(false),
 	keyFile: z
 		.string()
 		.describe('Optional path to a file containing a custom encryption key')
