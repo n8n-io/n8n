@@ -61,7 +61,7 @@ const requestNumberOfItems = ref(20);
 const lastReceivedItemsLength = ref(0);
 const activeWorkflow = ref<IWorkflowDb | null>(null);
 const workflowHistory = ref<WorkflowHistory[]>([]);
-const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
+const selectedWorkflowVersion = ref<WorkflowVersion | null>(null);
 
 const workflowId = computed(() => normalizeSingleRouteParam('workflowId'));
 const versionId = computed(() => normalizeSingleRouteParam('versionId'));
@@ -317,7 +317,7 @@ watchEffect(async () => {
 		]);
 
 		// Single atomic update - prevents double render of workflow preview
-		activeWorkflowVersion.value = workflowVersion;
+		selectedWorkflowVersion.value = workflowVersion;
 		activeWorkflow.value = workflow;
 
 		sendTelemetry('User selected version');
@@ -361,7 +361,7 @@ watchEffect(async () => {
 				v-if="canRender"
 				:items="workflowHistory"
 				:last-received-items-length="lastReceivedItemsLength"
-				:active-item="activeWorkflowVersion"
+				:selected-item="selectedWorkflowVersion"
 				:actions="actions"
 				:request-number-of-items="requestNumberOfItems"
 				:should-upgrade="workflowHistoryStore.shouldUpgrade"
@@ -377,7 +377,7 @@ watchEffect(async () => {
 			<WorkflowHistoryContent
 				v-if="canRender"
 				:workflow="activeWorkflow"
-				:workflow-version="activeWorkflowVersion"
+				:workflow-version="selectedWorkflowVersion"
 				:actions="actions"
 				:is-list-loading="isListLoading"
 				:is-first-item-shown="isFirstItemShown"
