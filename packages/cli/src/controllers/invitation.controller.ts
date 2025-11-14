@@ -97,6 +97,15 @@ export class InvitationController {
 		@Body payload: AcceptInvitationRequestDto,
 		@Param('id') inviteeId: string,
 	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
 		const { inviterId, firstName, lastName, password } = payload;
 
 		const users = await this.userRepository.find({
