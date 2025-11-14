@@ -695,7 +695,7 @@ describe('execute-workflow MCP tool', () => {
 						tool_name: 'execute_workflow',
 						parameters: {
 							workflowId: 'telemetry-workflow',
-							inputs: { type: 'chat', chatInput: 'test' },
+							inputs: { type: 'chat', parameter_count: 1 },
 						},
 						results: {
 							success: true,
