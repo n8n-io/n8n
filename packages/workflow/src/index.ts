@@ -27,6 +27,7 @@ export * from './workflow-data-proxy-env-provider';
 export * from './versioned-node-type';
 export * from './type-validation';
 export * from './result';
+export * from './schemas';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,
