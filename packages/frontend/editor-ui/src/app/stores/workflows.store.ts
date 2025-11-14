@@ -67,7 +67,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { dataPinningEventBus } from '@/app/event-bus';
-import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/app/utils/typesUtils';
+import { isJsonKeyObject, stringSizeInBytes, isPresent } from '@/app/utils/typesUtils';
 import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
 import {
 	unflattenExecutionData,
@@ -689,9 +689,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			isArchived,
 		};
 
+		// Check if filter has meaningful values (not just undefined, null, or empty arrays/strings)
+		const hasFilter = Object.values(filter).some(
+			(v) => isPresent(v) && (Array.isArray(v) ? v.length > 0 : v !== ''),
+		);
+
 		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
-			isEmpty(filter) ? undefined : filter,
+			hasFilter ? filter : undefined,
 			undefined,
 			select,
 		);
