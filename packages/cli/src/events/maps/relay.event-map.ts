@@ -258,6 +258,7 @@ export type RelayEventMap = {
 			| 'Reset password'
 			| 'New user invite'
 			| 'Resend invite'
+			| 'Workflow deactivated'
 			| 'Workflow shared'
 			| 'Credentials shared'
 			| 'Project shared';
@@ -296,6 +297,7 @@ export type RelayEventMap = {
 			| 'New user invite'
 			| 'Resend invite'
 			| 'Workflow shared'
+			| 'Workflow deactivated'
 			| 'Credentials shared'
 			| 'Project shared';
 		publicApi: boolean;

@@ -13,6 +13,8 @@ import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { Push } from '@/push';
+import { OwnershipService } from '@/services/ownership.service';
+import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
 
@@ -28,6 +30,8 @@ export class ExecutionRecoveryService {
 		private readonly executionRepository: ExecutionRepository,
 		private readonly globalConfig: GlobalConfig,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly userManagementMailer: UserManagementMailer,
+		private readonly ownershipService: OwnershipService,
 	) {}
 
 	/**
@@ -71,6 +75,11 @@ export class ExecutionRecoveryService {
 				// Get workflow to preserve existing meta
 				const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
 
+				if (!workflow) {
+					this.logger.error(`Workflow ${workflowId} not found, skipping workflow deactivation`);
+					return;
+				}
+
 				// Deactivate with metadata
 				await this.workflowRepository.update(
 					{ id: workflowId },
@@ -95,6 +104,17 @@ export class ExecutionRecoveryService {
 						`Marked ${pendingExecutions.length} pending executions as crashed due to workflow deactivation.`,
 					);
 				}
+				const instanceOwner = await this.ownershipService.getInstanceOwner();
+				if (!instanceOwner) {
+					this.logger.error(
+						'Instance owner not found, skipping owner notification of workflow deactivation',
+					);
+					return;
+				}
+				await this.userManagementMailer.notifyWorkflowDeactivated({
+					recipient: instanceOwner,
+					workflow,
+				});
 			}
 		}
 
