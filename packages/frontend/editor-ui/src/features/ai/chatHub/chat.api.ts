@@ -16,6 +16,7 @@ import type {
 	ChatHubUpdateConversationRequest,
 	EnrichedStructuredChunk,
 } from '@n8n/api-types';
+import { ChatProviderSettingsDto } from '@n8n/api-types/dist/chat-hub';
 
 // Workflows stream data as newline separated JSON objects (jsonl)
 const STREAM_SEPARATOR = '\n';
@@ -173,4 +174,24 @@ export const updateAgentApi = async (
 export const deleteAgentApi = async (context: IRestApiContext, agentId: string): Promise<void> => {
 	const apiEndpoint = `/chat/agents/${agentId}`;
 	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
+};
+
+export const fetchChatSettingsApi = async (
+	context: IRestApiContext,
+): Promise<ChatProviderSettingsDto[]> => {
+	const apiEndpoint = '/chat/settings';
+	const response = await makeRestApiRequest<{ providers: ChatProviderSettingsDto[] }>(
+		context,
+		'GET',
+		apiEndpoint,
+	);
+	return response.providers;
+};
+
+export const updateChatSettingsApi = async (
+	context: IRestApiContext,
+	settings: ChatProviderSettingsDto[],
+): Promise<void> => {
+	const apiEndpoint = '/chat/settings';
+	await makeRestApiRequest(context, 'POST', apiEndpoint, { providers: settings });
 };

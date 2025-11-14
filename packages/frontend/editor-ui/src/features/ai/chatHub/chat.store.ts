@@ -18,6 +18,7 @@ import {
 	updateAgentApi,
 	deleteAgentApi,
 	updateConversationApi,
+	fetchChatSettingsApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -47,6 +48,7 @@ import { isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { type INode } from 'n8n-workflow';
+import { ChatProviderSettingsDto } from '@n8n/api-types/dist/chat-hub';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -55,6 +57,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const sessions = ref<ChatHubSessionDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 	const streaming = ref<ChatStreamingState>();
+	const settings = ref<ChatProviderSettingsDto[]>([]);
 
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
 
@@ -727,6 +730,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return agent;
 	}
 
+	async function fetchChatSettings() {
+		settings.value = await fetchChatSettingsApi(rootStore.restApiContext);
+		return settings.value;
+	}
+
 	return {
 		/**
 		 * models and agents
@@ -771,5 +779,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		editMessage,
 		regenerateMessage,
 		stopStreamingMessage,
+
+		/**
+		 * settings
+		 */
+		fetchChatSettings,
 	};
 });

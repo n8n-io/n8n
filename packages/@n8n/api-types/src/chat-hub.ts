@@ -290,3 +290,18 @@ export interface EnrichedStructuredChunk extends StructuredChunk {
 		executionId: number | null;
 	};
 }
+
+const chatProviderSettingsSchema = z.object({
+	provider: chatHubProviderSchema.exclude(['n8n', 'custom-agent']),
+	enabled: z.boolean().optional(),
+	credentialId: z.string().nullable(),
+	allowedModels: z.array(z.string()),
+	createdAt: z.string(),
+	updatedAt: z.string().nullable(),
+});
+
+export type ChatProviderSettingsDto = z.infer<typeof chatProviderSettingsSchema>;
+
+export class UpdateChatSettingsRequest extends Z.class({
+	payload: chatProviderSettingsSchema,
+}) {}

@@ -7,7 +7,10 @@ import {
 	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
 	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+	CHAT_SETTINGS_VIEW,
 } from '@/features/ai/chatHub/constants';
+import { i18n } from '@n8n/i18n';
+import SettingsChatHubView from './SettingsChatHubView.vue';
 
 const ChatSidebar = async () => await import('@/features/ai/chatHub/components/ChatSidebar.vue');
 const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
@@ -102,6 +105,19 @@ export const ChatModule: FrontendModuleDescription = {
 				middleware: ['authenticated', 'custom'],
 			},
 		},
+		{
+			path: 'chat',
+			name: CHAT_SETTINGS_VIEW,
+			components: {
+				settingsView: SettingsChatHubView,
+			},
+			meta: {
+				middleware: ['authenticated', 'custom'],
+				telemetry: {
+					pageCategory: 'settings',
+				},
+			},
+		},
 	],
 	projectTabs: {
 		overview: [],
@@ -111,6 +127,15 @@ export const ChatModule: FrontendModuleDescription = {
 		{
 			key: 'chat',
 			displayName: 'Chat',
+		},
+	],
+	settingsPages: [
+		{
+			id: 'settings-chat-hub',
+			icon: 'mcp',
+			label: i18n.baseText('settings.chatHub'),
+			position: 'top',
+			route: { to: { name: CHAT_SETTINGS_VIEW } },
 		},
 	],
 };

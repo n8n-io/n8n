@@ -43,6 +43,8 @@ export {
 	ChatHubUpdateAgentRequest,
 	type EnrichedStructuredChunk,
 	type ChatHubAgentTool,
+	UpdateChatSettingsRequest,
+	type ChatProviderSettingsDto,
 } from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';
