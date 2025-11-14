@@ -3,12 +3,18 @@ import {
 	type ChatHubConversationModel,
 	type ChatModelsResponse,
 	type ChatHubSessionDto,
-	type ChatHubAgentDto,
 	type ChatModelDto,
+	type ChatSessionId,
+	type ChatMessageId,
 } from '@n8n/api-types';
-import type { ChatMessage, GroupedConversations, ChatAgentFilter } from './chat.types';
+import type {
+	ChatMessage,
+	GroupedConversations,
+	ChatAgentFilter,
+	ChatStreamingState,
+	FlattenedModel,
+} from './chat.types';
 import { CHAT_VIEW } from './constants';
-import type { IWorkflowDb } from '@/Interface';
 
 export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
@@ -101,9 +107,19 @@ export function getAgentRoute(model: ChatHubConversationModel) {
 	};
 }
 
-export function restoreConversationModelFromMessageOrSession(
-	messageOrSession: ChatHubSessionDto | ChatMessage,
-): ChatHubConversationModel | null {
+export function flattenModel(model: ChatHubConversationModel): FlattenedModel {
+	return {
+		provider: model.provider,
+		model:
+			model?.provider === 'n8n' || model?.provider === 'custom-agent'
+				? null
+				: (model?.model ?? null),
+		workflowId: model?.provider === 'n8n' ? model.workflowId : null,
+		agentId: model?.provider === 'custom-agent' ? model.agentId : null,
+	};
+}
+
+export function unflattenModel(messageOrSession: FlattenedModel): ChatHubConversationModel | null {
 	if (messageOrSession.provider === null) {
 		return null;
 	}
@@ -139,34 +155,9 @@ export function restoreConversationModelFromMessageOrSession(
 	}
 }
 
-export function getTimestamp(
-	model: ChatHubConversationModel,
-	type: 'createdAt' | 'updatedAt',
-	agents: ChatHubAgentDto[],
-	workflowsById: Partial<Record<string, IWorkflowDb>>,
-): number | null {
-	if (model.provider === 'custom-agent') {
-		const agent = agents.find((a) => model.provider === 'custom-agent' && a.id === model.agentId);
-		return agent?.[type] ? Date.parse(agent[type]) : null;
-	}
-
-	if (model.provider === 'n8n') {
-		const workflow = workflowsById[model.workflowId];
-		return workflow?.[type]
-			? typeof workflow[type] === 'string'
-				? Date.parse(workflow[type])
-				: workflow[type]
-			: null;
-	}
-
-	return null;
-}
-
 export function filterAndSortAgents(
 	models: ChatModelDto[],
 	filter: ChatAgentFilter,
-	agents: ChatHubAgentDto[],
-	workflowsById: Partial<Record<string, IWorkflowDb>>,
 ): ChatModelDto[] {
 	let filtered = models;
 
@@ -183,8 +174,10 @@ export function filterAndSortAgents(
 
 	// Apply sorting
 	filtered = [...filtered].sort((a, b) => {
-		const dateA = getTimestamp(a.model, filter.sortBy, agents, workflowsById);
-		const dateB = getTimestamp(b.model, filter.sortBy, agents, workflowsById);
+		const dateAStr = a[filter.sortBy];
+		const dateBStr = b[filter.sortBy];
+		const dateA = dateAStr ? Date.parse(dateAStr) : undefined;
+		const dateB = dateBStr ? Date.parse(dateBStr) : undefined;
 
 		// Sort by dates (newest first)
 		if (dateA && dateB) {
@@ -222,4 +215,47 @@ export function fromStringToModel(value: string): ChatHubConversationModel | und
 		: parsedProvider === 'custom-agent'
 			? { provider: 'custom-agent', agentId: identifier }
 			: { provider: parsedProvider, model: identifier };
+}
+
+export function isMatchedAgent(agent: ChatModelDto, model: ChatHubConversationModel): boolean {
+	if (model.provider === 'n8n') {
+		return agent.model.provider === 'n8n' && agent.model.workflowId === model.workflowId;
+	}
+
+	if (model.provider === 'custom-agent') {
+		return agent.model.provider === 'custom-agent' && agent.model.agentId === model.agentId;
+	}
+
+	return agent.model.provider === model.provider && agent.model.model === model.model;
+}
+
+export function createAiMessageFromStreamingState(
+	sessionId: ChatSessionId,
+	messageId: ChatMessageId,
+	streaming?: Partial<ChatStreamingState>,
+): ChatMessage {
+	return {
+		id: messageId,
+		sessionId,
+		type: 'ai',
+		name: 'AI',
+		content: '',
+		executionId: streaming?.executionId ?? null,
+		status: 'running',
+		createdAt: new Date().toISOString(),
+		updatedAt: new Date().toISOString(),
+		previousMessageId: streaming?.previousMessageId ?? null,
+		retryOfMessageId: streaming?.retryOfMessageId ?? null,
+		revisionOfMessageId: null,
+		responses: [],
+		alternatives: [],
+		...(streaming?.model
+			? flattenModel(streaming.model)
+			: {
+					provider: null,
+					model: null,
+					workflowId: null,
+					agentId: null,
+				}),
+	};
 }

@@ -183,16 +183,23 @@ export class SlackV2 implements INodeType {
 			async getChannels(
 				this: ILoadOptionsFunctions,
 				filter?: string,
+				paginationToken?: string,
 			): Promise<INodeListSearchResult> {
-				const qs = { types: 'public_channel,private_channel', limit: 1000 };
-				const channels = (await slackApiRequestAllItems.call(
+				const qs = {
+					types: 'public_channel,private_channel',
+					limit: 1000,
+					cursor: paginationToken,
+				};
+				const { channels, response_metadata } = (await slackApiRequest.call(
 					this,
-					'channels',
 					'GET',
 					'/conversations.list',
 					{},
 					qs,
-				)) as Array<{ id: string; name: string }>;
+				)) as {
+					channels: Array<{ id: string; name: string }>;
+					response_metadata?: { next_cursor?: string };
+				};
 				const results: INodeListSearchItems[] = channels
 					.map((c) => ({
 						name: c.name,
@@ -209,7 +216,8 @@ export class SlackV2 implements INodeType {
 						if (a.name.toLowerCase() > b.name.toLowerCase()) return 1;
 						return 0;
 					});
-				return { results };
+				const nextPaginationToken = response_metadata?.next_cursor || undefined;
+				return { results, paginationToken: nextPaginationToken };
 			},
 			async getUsers(this: ILoadOptionsFunctions, filter?: string): Promise<INodeListSearchResult> {
 				const users = (await slackApiRequestAllItems.call(

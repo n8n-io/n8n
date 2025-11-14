@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { NODE_CREATOR_OPEN_SOURCES } from '@/constants';
+import { NODE_CREATOR_OPEN_SOURCES } from '@/app/constants';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 import { useChatPanelStore } from '@/features/ai/assistant/chatPanel.store';
 import { useI18n } from '@n8n/i18n';

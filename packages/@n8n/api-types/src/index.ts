@@ -12,6 +12,7 @@ export {
 	type ChatHubOpenAIModel,
 	type ChatHubAnthropicModel,
 	type ChatHubGoogleModel,
+	type ChatHubBaseLLMModel,
 	type ChatHubN8nModel,
 	type ChatHubCustomAgentModel,
 	type ChatHubConversationModel,
@@ -112,3 +113,15 @@ export type {
 } from './schemas/external-secrets.schema';
 
 export type { UsageState } from './schemas/usage.schema';
+
+export type {
+	BreakingChangeRuleSeverity,
+	BreakingChangeRecommendation,
+	BreakingChangeAffectedWorkflow,
+	BreakingChangeInstanceIssue,
+	BreakingChangeWorkflowIssue,
+	BreakingChangeInstanceRuleResult,
+	BreakingChangeWorkflowRuleResult,
+	BreakingChangeReportResult,
+	BreakingChangeLightReportResult,
+} from './schemas/breaking-changes.schema';

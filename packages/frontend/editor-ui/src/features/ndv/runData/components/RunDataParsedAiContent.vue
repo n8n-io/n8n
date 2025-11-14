@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { useClipboard } from '@/composables/useClipboard';
+import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { useToast } from '@/composables/useToast';
-import { type ParsedAiContent } from '@/utils/aiUtils';
+import { useToast } from '@/app/composables/useToast';
+import { type ParsedAiContent } from '@/app/utils/aiUtils';
 import { type IDataObject } from 'n8n-workflow';
 import VueMarkdown from 'vue-markdown-render';
 import hljs from 'highlight.js/lib/core';

@@ -4,6 +4,10 @@ import {
 	type ChatMessageId,
 	type ChatHubSessionDto,
 	type ChatHubConversationDto,
+	type ChatSessionId,
+	type ChatHubConversationModel,
+	type EnrichedStructuredChunk,
+	type ChatHubProvider,
 } from '@n8n/api-types';
 import { z } from 'zod';
 
@@ -67,4 +71,17 @@ export interface ChatAgentFilter {
 	sortBy: 'updatedAt' | 'createdAt';
 	provider: 'custom-agent' | 'n8n' | '';
 	search: string;
+}
+
+export interface ChatStreamingState extends Partial<EnrichedStructuredChunk['metadata']> {
+	promptId: ChatMessageId;
+	sessionId: ChatSessionId;
+	model: ChatHubConversationModel;
+}
+
+export interface FlattenedModel {
+	provider: ChatHubProvider | null;
+	model: string | null;
+	workflowId: string | null;
+	agentId: string | null;
 }

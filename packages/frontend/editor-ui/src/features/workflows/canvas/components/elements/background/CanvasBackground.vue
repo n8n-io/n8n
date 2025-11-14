@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { GRID_SIZE } from '@/utils/nodeViewUtils';
+import { GRID_SIZE } from '@/app/utils/nodeViewUtils';
 import CanvasBackgroundStripedPattern from './CanvasBackgroundStripedPattern.vue';
 import { Background } from '@vue-flow/background';
 import type { ViewportTransform } from '@vue-flow/core';
