@@ -672,18 +672,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodeTypes,
 		tags,
 		select,
+		isArchived,
 	}: {
 		projectId?: string;
 		query?: string;
 		nodeTypes?: string[];
 		tags?: string[];
 		select?: string[];
+		isArchived?: boolean;
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
 			query,
 			nodeTypes,
 			tags,
+			isArchived,
 		};
 
 		const { data: workflows } = await workflowsApi.getWorkflows(
