@@ -97,6 +97,41 @@ const promptDescriptions: PromptDescription[] = [
 	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.create'), value: 'create' },
 ];
 
+type UserRoleProvisioningSetting = 'disabled' | 'instance_role' | 'instance_and_project_roles';
+
+const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
+
+const handleUserRoleProvisioningChange = (value: UserRoleProvisioningSetting) => {
+	userRoleProvisioning.value = value;
+};
+
+type UserRoleProvisioningDescription = {
+	label: string;
+	description: string;
+	value: UserRoleProvisioningSetting;
+};
+
+// TODO: translate
+const userRoleProvisioningDescriptions: UserRoleProvisioningDescription[] = [
+	{
+		label: 'Disabled',
+		value: 'disabled',
+		description: 'User and project roles are managed inside the n8n settings.',
+	},
+	{
+		label: 'Instance role',
+		value: 'instance_role',
+		description:
+			'The instance role of a user is configured in the "n8n_instance_role" attribute on your SSO provider. If none is set on the SSO provider, the member role is used as fallback.',
+	},
+	{
+		label: 'Instance and project roles',
+		value: 'instance_and_project_roles',
+		description:
+			'The list of projects a user has access to is configured on the "n8n_projects" string array attribute on your SSO provider. Project access cannot be granted from within n8n.',
+	},
+];
+
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 
 const authenticationContextClassReference = ref('');
@@ -193,6 +228,7 @@ const onSave = async () => {
 			ipsType.value === IdentityProviderSettingsType.URL
 				? { metadataUrl: metadataUrl.value }
 				: { metadata: metadata.value };
+		// TODO: save userRoleProvisioning setting
 		await ssoStore.saveSamlConfig(config);
 
 		// Update store with saved protocol selection
@@ -448,6 +484,37 @@ async function onOidcSettingsSave() {
 						<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
 					</div>
 					<div :class="$style.group">
+						<label>User role provisioning</label>
+						<N8nSelect
+							:model-value="userRoleProvisioning"
+							data-test-id="oidc-user-role-provisioning"
+							:class="$style.userRoleProvisioningSelect"
+							@update:model-value="handleUserRoleProvisioningChange"
+						>
+							<N8nOption
+								v-for="option in userRoleProvisioningDescriptions"
+								:key="option.value"
+								:label="option.label"
+								data-test-id="oidc-user-role-provisioning-option"
+								:value="option.value"
+							>
+								<div class="list-option">
+									<div class="option-headline">{{ option.label }}</div>
+									<div class="option-description">{{ option.description }}</div>
+								</div>
+							</N8nOption>
+						</N8nSelect>
+						<small
+							>Manage instance and project roles from your SSO provider.
+							<a
+								href="https://docs.n8n.io/user-management/oidc/setup/#setting-up-and-enabling-oidc"
+								target="_blank"
+							>
+								Link to docs
+							</a>
+						</small>
+					</div>
+					<div :class="$style.group">
 						<N8nTooltip
 							v-if="ssoStore.isEnterpriseSamlEnabled"
 							:disabled="ssoStore.isSamlLoginEnabled || ssoSettingsSaved"
@@ -569,6 +636,37 @@ async function onOidcSettingsSave() {
 					<small>The prompt parameter to use when authenticating with the OIDC provider</small>
 				</div>
 				<div :class="$style.group">
+					<label>User role provisioning</label>
+					<N8nSelect
+						:model-value="userRoleProvisioning"
+						data-test-id="oidc-user-role-provisioning"
+						:class="$style.userRoleProvisioningSelect"
+						@update:model-value="handleUserRoleProvisioningChange"
+					>
+						<N8nOption
+							v-for="option in userRoleProvisioningDescriptions"
+							:key="option.value"
+							:label="option.label"
+							data-test-id="oidc-user-role-provisioning-option"
+							:value="option.value"
+						>
+							<div class="list-option">
+								<div class="option-headline">{{ option.label }}</div>
+								<div class="option-description">{{ option.description }}</div>
+							</div>
+						</N8nOption>
+					</N8nSelect>
+					<small
+						>Manage instance and project roles from your SSO provider.
+						<a
+							href="https://docs.n8n.io/user-management/oidc/setup/#setting-up-and-enabling-oidc"
+							target="_blank"
+						>
+							Link to docs
+						</a>
+					</small>
+				</div>
+				<div :class="$style.group">
 					<label>Authentication Context Class Reference</label>
 					<N8nInput
 						:model-value="authenticationContextClassReference"
@@ -665,5 +763,10 @@ async function onOidcSettingsSave() {
 .footer {
 	color: var(--color--text);
 	font-size: var(--font-size--2xs);
+}
+
+.userRoleProvisioningSelect {
+	display: block;
+	max-width: 400px;
 }
 </style>

@@ -8,6 +8,8 @@ import { N8nHeading, N8nText, N8nSpinner, N8nInput, N8nButton } from '@n8n/desig
 import { type ProvisioningConfig } from '@n8n/rest-api-client';
 import EnableJitProvisioningDialog from '../components/EnableJitProvisioningDialog.vue';
 
+// TODO: remove this view as it's being replaced by a dropdown inside SettingsSso.vue
+
 const i18n = useI18n();
 const documentTitle = useDocumentTitle();
 const { showError, showMessage } = useToast();
