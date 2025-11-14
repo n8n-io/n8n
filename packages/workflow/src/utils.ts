@@ -371,18 +371,30 @@ export function isDomainAllowed(
 
 	try {
 		const url = new URL(urlString);
-		const hostname = url.hostname;
+
+		// Normalize hostname: lowercase and remove trailing dot
+		const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+
+		// Reject empty hostnames
+		if (!hostname) {
+			return false;
+		}
 
 		const allowedDomainsList = options.allowedDomains
 			.split(',')
-			.map((domain) => domain.trim())
+			.map((domain) => domain.trim().toLowerCase().replace(/\.$/, ''))
 			.filter(Boolean);
 
 		for (const allowedDomain of allowedDomainsList) {
 			// Handle wildcard domains (*.example.com)
 			if (allowedDomain.startsWith('*.')) {
-				const domainSuffix = allowedDomain.substring(2); // Remove the *. part
-				if (hostname.endsWith(domainSuffix)) {
+				const domainSuffix = allowedDomain.substring(2);
+				// Ensure the suffix itself is valid
+				if (!domainSuffix) continue;
+
+				// Wildcard matches only subdomains, not the base domain itself
+				// *.example.com matches sub.example.com but NOT example.com
+				if (hostname.endsWith('.' + domainSuffix)) {
 					return true;
 				}
 			}

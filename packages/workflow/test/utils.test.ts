@@ -526,6 +526,14 @@ describe('isDomainAllowed', () => {
 			).toBe(true);
 		});
 
+		it('should block correctly for wildcards', () => {
+			expect(
+				isDomainAllowed('https://domain-test.com', {
+					allowedDomains: '*.test.com,example.com',
+				}),
+			).toBe(false);
+		});
+
 		it('should allow nested subdomains with wildcards', () => {
 			expect(
 				isDomainAllowed('https://deep.nested.example.com', {
@@ -538,6 +546,43 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://example.org', {
 					allowedDomains: '*.example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should block domains that share suffix but are not subdomains', () => {
+			expect(
+				isDomainAllowed('https://malicious-example.com', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should not allow base domain with wildcard alone', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should allow base domain when explicitly specified alongside wildcard', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'example.com,*.example.com',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://sub.example.com', {
+					allowedDomains: 'example.com,*.example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle empty wildcard suffix', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: '*.',
 				}),
 			).toBe(false);
 		});
@@ -587,6 +632,45 @@ describe('isDomainAllowed', () => {
 		it('should handle empty URLs', () => {
 			expect(
 				isDomainAllowed('', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should be case-insensitive for domains', () => {
+			expect(
+				isDomainAllowed('https://EXAMPLE.COM', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'EXAMPLE.COM',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://Example.Com', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle trailing dots in hostnames', () => {
+			expect(
+				isDomainAllowed('https://example.com.', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'example.com.',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle empty hostnames', () => {
+			expect(
+				isDomainAllowed('http://', {
 					allowedDomains: 'example.com',
 				}),
 			).toBe(false);
