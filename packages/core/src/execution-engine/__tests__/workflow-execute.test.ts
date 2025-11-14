@@ -1428,6 +1428,19 @@ describe('WorkflowExecute', () => {
 				},
 			]);
 		});
+
+		test('should handle top-level error property correctly', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[{ json: {}, error: { message: 'Test error' } as NodeApiError }],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{ json: {}, error: { message: 'Test error' } as NodeApiError },
+			]);
+		});
 	});
 
 	describe('prepareWaitingToExecution', () => {
