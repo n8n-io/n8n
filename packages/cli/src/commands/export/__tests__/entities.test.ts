@@ -31,6 +31,7 @@ describe('ExportEntitiesCommand', () => {
 					'execution_entity',
 					'execution_metadata',
 				]),
+				undefined,
 			);
 		});
 
@@ -48,7 +49,11 @@ describe('ExportEntitiesCommand', () => {
 			};
 			await command.run();
 
-			expect(mockExportService.exportEntities).toHaveBeenCalledWith('./exports', new Set<string>());
+			expect(mockExportService.exportEntities).toHaveBeenCalledWith(
+				'./exports',
+				new Set<string>(),
+				undefined,
+			);
 		});
 	});
 
