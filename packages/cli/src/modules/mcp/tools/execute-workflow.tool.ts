@@ -1,4 +1,5 @@
 import type { User } from '@n8n/db';
+import moment from 'moment';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
@@ -13,6 +14,7 @@ import {
 	TimeoutExecutionCancelledError,
 	ensureError,
 	jsonStringify,
+	SCHEDULE_TRIGGER_NODE_TYPE,
 } from 'n8n-workflow';
 import z from 'zod';
 
@@ -310,6 +312,30 @@ const getPinDataForTrigger = (
 					},
 				],
 			};
+		case SCHEDULE_TRIGGER_NODE_TYPE: {
+			// For schedule triggers, we don't map any inputs but we can add expected datetime info
+			const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+			const momentTz = moment.tz(timezone);
+			return {
+				[node.name]: [
+					{
+						json: {
+							timestamp: momentTz.toISOString(true),
+							'Readable date': momentTz.format('MMMM Do YYYY, h:mm:ss a'),
+							'Readable time': momentTz.format('h:mm:ss a'),
+							'Day of week': momentTz.format('dddd'),
+							Year: momentTz.format('YYYY'),
+							Month: momentTz.format('MMMM'),
+							'Day of month': momentTz.format('DD'),
+							Hour: momentTz.format('HH'),
+							Minute: momentTz.format('mm'),
+							Second: momentTz.format('ss'),
+							Timezone: `${timezone} (UTC${momentTz.format('Z')})`,
+						},
+					},
+				],
+			};
+		}
 		default:
 			return {};
 	}
