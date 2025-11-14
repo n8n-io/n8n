@@ -370,24 +370,27 @@ export function prepareQuery(
 	}
 
 	if (qs.receivedAfter) {
-		qs.q = prepareTimestamp(
+		const timestampQuery = prepareTimestamp(
 			this.getNode(),
 			itemIndex,
 			qs.q as string,
 			qs.receivedAfter as string,
 			'after',
 		);
+		qs.q = timestampQuery;
 		delete qs.receivedAfter;
 	}
 
 	if (qs.receivedBefore) {
-		qs.q = prepareTimestamp(
+		const timestampQuery = prepareTimestamp(
 			this.getNode(),
 			itemIndex,
 			qs.q as string,
 			qs.receivedBefore as string,
 			'before',
 		);
+		// If query already exists, append to it, otherwise set it
+		qs.q = qs.q ? `${qs.q} ${timestampQuery}` : timestampQuery;
 		delete qs.receivedBefore;
 	}
 
