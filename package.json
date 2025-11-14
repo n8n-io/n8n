@@ -88,6 +88,8 @@
       "sqlite3"
     ],
     "overrides": {
+      "@swc/core": "npm:@empty",
+      "vitest>@swc/core": "1.14.0",
       "@azure/identity": "^4.3.0",
       "@lezer/common": "^1.2.0",
       "@mistralai/mistralai": "^1.10.0",
