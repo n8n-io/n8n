@@ -79,22 +79,40 @@ export function useWorkflowNavigationCommands(options: {
 
 			// Search workflows by name with minimal fields
 			const nameSearchPromise = workflowsStore.searchWorkflows({
-				name: trimmed,
-				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived'],
+				query: trimmed,
+				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived', 'description'],
 			});
 
 			const nodeTypeSearchPromise =
 				matchedNodeTypeNames.length > 0
 					? workflowsStore.searchWorkflows({
 							nodeTypes: matchedNodeTypeNames,
-							select: ['id', 'name', 'active', 'nodes', 'ownedBy', 'parentFolder', 'isArchived'],
+							select: [
+								'id',
+								'name',
+								'active',
+								'nodes',
+								'ownedBy',
+								'parentFolder',
+								'isArchived',
+								'description',
+							],
 						})
 					: Promise.resolve([]);
 
 			const tagSearchPromise = matchedTag
 				? workflowsStore.searchWorkflows({
 						tags: [matchedTag.name],
-						select: ['id', 'name', 'active', 'ownedBy', 'tags', 'parentFolder', 'isArchived'],
+						select: [
+							'id',
+							'name',
+							'active',
+							'ownedBy',
+							'tags',
+							'parentFolder',
+							'isArchived',
+							'description',
+						],
 					})
 				: Promise.resolve([]);
 
@@ -241,6 +259,10 @@ export function useWorkflowNavigationCommands(options: {
 		// Add workflow name to keywords since we're using a custom component for the title
 		const workflowName = workflow.name;
 		keywords = [...keywords, workflowName];
+
+		if (workflow.description) {
+			keywords = [...keywords, workflow.description];
+		}
 
 		if (workflow.tags && workflow.tags.length > 0) {
 			keywords = [

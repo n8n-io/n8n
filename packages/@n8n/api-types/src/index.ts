@@ -42,6 +42,7 @@ export {
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	type EnrichedStructuredChunk,
+	type ChatHubAgentTool,
 } from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';
@@ -124,4 +125,5 @@ export type {
 	BreakingChangeWorkflowRuleResult,
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
+	BreakingChangeVersion,
 } from './schemas/breaking-changes.schema';

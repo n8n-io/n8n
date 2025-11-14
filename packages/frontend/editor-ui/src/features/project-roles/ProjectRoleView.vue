@@ -17,7 +17,7 @@ import type { Role } from '@n8n/permissions';
 import { useAsyncState } from '@vueuse/core';
 import isEqual from 'lodash/isEqual';
 import sortBy from 'lodash/sortBy';
-import { computed, ref } from 'vue';
+import { computed, ref, toRaw } from 'vue';
 import { useRouter } from 'vue-router';
 
 const rolesStore = useRolesStore();
@@ -32,16 +32,11 @@ const props = defineProps<{ roleSlug?: string }>();
 const defaultForm = () => ({
 	displayName: '',
 	description: '',
-	scopes: [
-		'project:read',
-		'project:list',
-		'folder:read',
-		'folder:list',
-		'workflow:read',
-		'workflow:list',
-		'credential:read',
-		'credential:list',
-	],
+	scopes: structuredClone(
+		toRaw(
+			rolesStore.processedProjectRoles.find((role) => role.slug === 'project:viewer')?.scopes || [],
+		),
+	),
 });
 
 const initialState = ref<Role | undefined>();
@@ -105,7 +100,23 @@ const credential = (['read', 'update', 'create', 'share', 'move', 'delete'] as c
 );
 const sourceControl = (['push'] as const).map((action) => `sourceControl:${action}` as const);
 
-const scopeTypes = ['project', 'folder', 'workflow', 'credential', 'sourceControl'] as const;
+const dataTable = (['read', 'readRow', 'update', 'writeRow', 'create', 'delete'] as const).map(
+	(action) => `dataTable:${action}` as const,
+);
+
+const projectVariable = (['read', 'update', 'create', 'delete'] as const).map(
+	(action) => `projectVariable:${action}` as const,
+);
+
+const scopeTypes = [
+	'project',
+	'folder',
+	'workflow',
+	'credential',
+	'dataTable',
+	'projectVariable',
+	'sourceControl',
+] as const;
 
 const scopes = {
 	project,
@@ -113,6 +124,8 @@ const scopes = {
 	workflow,
 	credential,
 	sourceControl,
+	dataTable,
+	projectVariable,
 } as const;
 
 function toggleScope(scope: string) {
@@ -121,6 +134,11 @@ function toggleScope(scope: string) {
 		form.value.scopes.splice(index, 1);
 	} else {
 		form.value.scopes.push(scope);
+	}
+
+	if (scope.startsWith('dataTable:') && scope.endsWith(':read')) {
+		toggleScope(scope.replace(':read', ':listProject'));
+		return;
 	}
 
 	if (scope.endsWith(':read')) {
@@ -232,7 +250,7 @@ function setPreset(slug: string) {
 		return;
 	}
 
-	form.value.scopes = structuredClone(preset.scopes);
+	form.value.scopes = structuredClone(toRaw(preset.scopes));
 }
 
 async function deleteRole() {
@@ -381,6 +399,7 @@ const displayNameValidationRules = [
 								:content="i18n.baseText(`projectRoles.${scope}.tooltip`)"
 								placement="right"
 								:enterable="false"
+								:show-after="250"
 							>
 								<N8nFormInput
 									:data-test-id="`scope-checkbox-${scope}`"
@@ -399,7 +418,7 @@ const displayNameValidationRules = [
 		</div>
 
 		<div v-if="roleSlug && !initialState?.systemRole" class="mt-xl">
-			<N8nHeading tag="h2" class="mb-2xs">
+			<N8nHeading tag="h2" class="mb-2xs" size="large">
 				{{ i18n.baseText('projectRoles.dangerZone') }}
 			</N8nHeading>
 			<N8nText tag="p" class="mb-s">
