@@ -1,0 +1,128 @@
+version: "1.0"
+name: "lenient"
+description: "Lenient comparison - focus on structure over details"
+
+# Cost weights - lower penalties
+costs:
+  nodes:
+    insertion: 7.0
+    deletion: 7.0
+    substitution:
+      same_type: 0.1  # Very low cost for parameter differences
+      similar_type: 2.0
+      different_type: 8.0
+      trigger_mismatch: 20.0  # Even triggers are more forgiving
+
+  edges:
+    insertion: 3.0
+    deletion: 3.0
+    substitution: 2.0
+
+  parameters:
+    mismatch_weight: 0.2  # Low weight for parameter differences
+    nested_weight: 0.1
+
+# Node type similarity groups (same as standard)
+similarity_groups:
+  triggers:
+    - "n8n-nodes-base.webhook"
+    - "n8n-nodes-base.manualTrigger"
+    - "n8n-nodes-base.scheduleTrigger"
+
+  ai_agents:
+    - "n8n-nodes-langchain.agent"
+    - "@n8n/n8n-nodes-langchain.agent"
+    - "n8n-nodes-langchain.basicAgent"
+
+  ai_llms:
+    - "@n8n/n8n-nodes-langchain.lmChatOpenAi"
+    - "@n8n/n8n-nodes-langchain.lmChatAnthropic"
+    - "@n8n/n8n-nodes-langchain.lmChatOllama"
+    - "@n8n/n8n-nodes-langchain.lmChatMistralCloud"
+    - "@n8n/n8n-nodes-langchain.lmChatAws"
+    - "@n8n/n8n-nodes-langchain.lmChatGroq"
+
+  ai_tools:
+    - "@n8n/n8n-nodes-langchain.toolHttpRequest"
+    - "@n8n/n8n-nodes-langchain.toolCalculator"
+    - "@n8n/n8n-nodes-langchain.toolCode"
+    - "@n8n/n8n-nodes-langchain.toolWorkflow"
+
+  http_requests:
+    - "n8n-nodes-base.httpRequest"
+    - "@n8n/n8n-nodes-langchain.toolHttpRequest"
+
+# Extensive ignores - focus on high-level structure
+ignore:
+  # Ignore UI and debug nodes
+  node_types:
+    - "n8n-nodes-base.stickyNote"
+    - "n8n-nodes-base.noOp"
+
+  # Ignore many cosmetic and configuration details
+  global_parameters:
+    - "position"
+    - "id"
+    - "notes"
+    - "notesInFlow"
+    - "color"
+    - "disabled"
+    - "alwaysOutputData"
+    - "executeOnce"
+
+  # Ignore implementation details for specific node types
+  node_type_parameters:
+    "@n8n/n8n-nodes-langchain.agent":
+      - "options.*"  # Ignore all options
+
+    "@n8n/n8n-nodes-langchain.lmChatOpenAi":
+      - "options.temperature"
+      - "options.maxTokens"
+      - "model"  # Model choice is flexible
+
+    "@n8n/n8n-nodes-langchain.lmChatAnthropic":
+      - "options.temperature"
+      - "options.maxTokens"
+      - "model"
+
+    "n8n-nodes-base.httpRequest":
+      - "options.*"  # Ignore HTTP options
+
+  # Ignore credential references (might differ between environments)
+  parameter_paths:
+    - "**.credentials"
+
+# Exemptions - allow optional nodes
+exemptions:
+  optional_in_generated:
+    - name_pattern: "^Set.*"
+      reason: "Set nodes might be optimized away"
+      penalty: 1.0
+
+    - node_type: "n8n-nodes-base.merge"
+      reason: "Merge nodes might be implicit"
+      penalty: 2.0
+
+  optional_in_ground_truth:
+    - name_pattern: "^Format.*"
+      reason: "Formatting nodes are optional enhancements"
+      penalty: 1.0
+
+# Parameter comparison - very tolerant
+parameter_comparison:
+  # High tolerance for numeric values
+  numeric_tolerance:
+    - parameter: "options.temperature"
+      tolerance: 0.3
+      cost_if_exceeded: 0.5
+
+    - parameter: "options.maxTokens"
+      tolerance: 500
+      cost_if_exceeded: 0.5
+
+# Output configuration
+output:
+  max_edits: 10  # Show fewer edits since many are ignored
+  group_by: "priority"
+  include_explanations: true
+  include_suggestions: true
