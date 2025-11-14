@@ -40,3 +40,7 @@ runs:
     - name: Build Project
       run: ${{ inputs.build-command }}
       shell: bash
+
+    - name: Build Project
+      run: ${{ inputs.build-command }}
+      shell: bash
