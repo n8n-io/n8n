@@ -57,6 +57,5 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
  */
 export const findMcpSupportedTrigger = (workflow: WorkflowEntity): INode | undefined => {
 	const triggerNodeTypes = Object.keys(SUPPORTED_MCP_TRIGGERS);
-	// return workflow.nodes.some((node) => triggerNodeTypes.includes(node.type) && !node.disabled);
 	return workflow.nodes.find((node) => triggerNodeTypes.includes(node.type) && !node.disabled);
 };

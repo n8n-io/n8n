@@ -72,3 +72,8 @@ export type UserCalledMCPToolEventPayload = {
 		error?: string;
 	};
 };
+
+export type ExecuteWorkflowsInputMeta = {
+	type: 'webhook' | 'chat' | 'schedule' | 'form';
+	parameter_count: number;
+};

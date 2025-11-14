@@ -1,3 +1,4 @@
+import { Time } from '@n8n/constants';
 import type { User } from '@n8n/db';
 import moment from 'moment-timezone';
 import {
@@ -19,7 +20,11 @@ import {
 import z from 'zod';
 
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
-import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
+import type {
+	ExecuteWorkflowsInputMeta,
+	ToolDefinition,
+	UserCalledMCPToolEventPayload,
+} from '../mcp.types';
 import { findMcpSupportedTrigger } from '../mcp.utils';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -27,7 +32,7 @@ import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
-const WORKFLOW_EXECUTION_TIMEOUT_MS = 1 * 60 * 1000; // 5 minutes
+const WORKFLOW_EXECUTION_TIMEOUT_MS = 5 * Time.minutes.toMilliseconds; // 5 minutes
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to execute'),
@@ -98,7 +103,7 @@ export const createExecuteWorkflowTool = (
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
 			tool_name: 'execute_workflow',
-			parameters: { workflowId, inputs },
+			parameters: { workflowId, inputs: getInputMetaData(inputs) },
 		};
 		try {
 			const output = await executeWorkflow(
@@ -129,7 +134,7 @@ export const createExecuteWorkflowTool = (
 				success: false,
 				executionId: null,
 				error: isTimeout
-					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / 1000} seconds`
+					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / Time.milliseconds.toSeconds} seconds`
 					: error.message,
 			};
 
@@ -209,14 +214,13 @@ export const executeWorkflow = async (
 	});
 
 	try {
-		// Race between the execution completion and the timeout
 		const data = await Promise.race([
 			activeExecutions.getPostExecutePromise(executionId),
 			timeoutPromise,
 		]);
 
 		// Executed successfully before timeout: clear the timeout
-		if (timeoutId) clearTimeout(timeoutId);
+		clearTimeout(timeoutId);
 
 		if (data === undefined) {
 			throw new UnexpectedError('Workflow did not return any data');
@@ -338,5 +342,39 @@ const getPinDataForTrigger = (
 		}
 		default:
 			return {};
+	}
+};
+
+/**
+ * Reduce inputs to metadata that will be sent to telemetry.
+ */
+const getInputMetaData = (
+	inputs: z.infer<typeof inputSchema>['inputs'],
+): ExecuteWorkflowsInputMeta | undefined => {
+	if (!inputs) {
+		return undefined;
+	}
+	switch (inputs.type) {
+		case 'chat':
+			return {
+				type: 'chat',
+				parameter_count: 1,
+			};
+		case 'form':
+			return {
+				type: 'form',
+				parameter_count: Object.keys(inputs.formData ?? {}).length,
+			};
+		case 'webhook':
+			return {
+				type: 'webhook',
+				parameter_count: [
+					inputs.webhookData?.body ? Object.keys(inputs.webhookData.body).length : 0,
+					inputs.webhookData?.query ? Object.keys(inputs.webhookData.query).length : 0,
+					inputs.webhookData?.headers ? Object.keys(inputs.webhookData.headers).length : 0,
+				].reduce((a, b) => a + b, 0),
+			};
+		default:
+			return undefined;
 	}
 };
