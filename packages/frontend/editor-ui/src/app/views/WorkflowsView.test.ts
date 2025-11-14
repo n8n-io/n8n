@@ -290,7 +290,7 @@ describe('WorkflowsView', () => {
 				expect.any(Number),
 				expect.any(String),
 				expect.objectContaining({
-					name: 'one',
+					query: 'one',
 					isArchived: false,
 				}),
 				expect.any(Boolean),

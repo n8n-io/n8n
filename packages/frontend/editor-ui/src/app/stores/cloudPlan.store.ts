@@ -22,12 +22,17 @@ const DEFAULT_STATE: CloudPlanState = {
 	loadingPlan: false,
 };
 
+const DYNAMIC_TRIAL_BANNER_DISMISSED_KEY = 'n8n-dynamic-trial-banner-dismissed';
+
 export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	const rootStore = useRootStore();
 	const settingsStore = useSettingsStore();
 
 	const state = reactive<CloudPlanState>(DEFAULT_STATE);
 	const currentUserCloudInfo = ref<Cloud.UserAccount | null>(null);
+	const isDynamicTrialBannerDismissed = ref<boolean>(
+		localStorage.getItem(DYNAMIC_TRIAL_BANNER_DISMISSED_KEY) === 'true',
+	);
 
 	const reset = () => {
 		currentUserCloudInfo.value = null;
@@ -60,6 +65,23 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 
 		return information.which_of_these_do_you_feel_comfortable_doing.length;
 	});
+
+	const dynamicTrialBannerText = computed(() => {
+		return currentUserCloudInfo.value?.trialBannerData?.bannerText;
+	});
+
+	const shouldShowDynamicTrialBanner = computed(() => {
+		return (
+			dynamicTrialBannerText.value !== undefined &&
+			dynamicTrialBannerText.value !== '' &&
+			!isDynamicTrialBannerDismissed.value
+		);
+	});
+
+	const dismissDynamicTrialBanner = () => {
+		isDynamicTrialBannerDismissed.value = true;
+		localStorage.setItem(DYNAMIC_TRIAL_BANNER_DISMISSED_KEY, 'true');
+	};
 
 	const trialExpired = computed(
 		() =>
@@ -217,5 +239,8 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		getAutoLoginCode,
 		selectedApps,
 		codingSkill,
+		dynamicTrialBannerText,
+		shouldShowDynamicTrialBanner,
+		dismissDynamicTrialBanner,
 	};
 });

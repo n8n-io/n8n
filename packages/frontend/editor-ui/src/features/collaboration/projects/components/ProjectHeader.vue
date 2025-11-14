@@ -77,7 +77,10 @@ const projectName = computed(() => {
 const projectPermissions = computed(
 	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
 );
-const globalPermissions = computed(
+const projectVariablePermissions = computed(
+	() => getResourcePermissions(projectsStore.currentProject?.scopes).projectVariable,
+);
+const globalVariablesPermissions = computed(
 	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
 );
 
@@ -164,7 +167,7 @@ const createVariableButton = computed(() => ({
 	size: 'mini' as const,
 	disabled:
 		sourceControlStore.preferences.branchReadOnly ||
-		(!projectPermissions.value.create && !globalPermissions.value.create),
+		(!projectVariablePermissions.value.create && !globalVariablesPermissions.value.create),
 }));
 
 const selectedMainButtonType = computed(() => props.mainButton ?? ACTION_TYPES.WORKFLOW);

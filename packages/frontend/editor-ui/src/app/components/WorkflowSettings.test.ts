@@ -137,7 +137,7 @@ describe('WorkflowSettingsVue', () => {
 		expect(searchWorkflowsSpy).toHaveBeenCalledTimes(1);
 		expect(searchWorkflowsSpy).toHaveBeenCalledWith(
 			expect.objectContaining({
-				name: undefined,
+				query: undefined,
 			}),
 		);
 	});

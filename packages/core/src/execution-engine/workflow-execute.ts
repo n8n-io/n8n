@@ -59,8 +59,10 @@ import PCancelable from 'p-cancelable';
 import { ErrorReporter } from '@/errors/error-reporter';
 import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { assertExecutionDataExists } from '@/utils/assertions';
 import { isJsonCompatible } from '@/utils/is-json-compatible';
 
+import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import { ExecuteContext, PollContext } from './node-execution-context';
 import {
@@ -1325,22 +1327,6 @@ export class WorkflowExecute {
 		);
 	}
 
-	private assertExecutionDataExists(
-		this: WorkflowExecute,
-		executionData: IRunExecutionData['executionData'],
-		workflow: Workflow,
-	): asserts executionData is NonNullable<IRunExecutionData['executionData']> {
-		if (!executionData) {
-			throw new UnexpectedError('Failed to run workflow due to missing execution data', {
-				extra: {
-					workflowId: workflow.id,
-					executionId: this.additionalData.executionId,
-					mode: this.mode,
-				},
-			});
-		}
-	}
-
 	/**
 	 * Handles executions that have been waiting by
 	 * 1. unsetting the `waitTill`
@@ -1354,7 +1340,12 @@ export class WorkflowExecute {
 		if (this.runExecutionData.waitTill) {
 			this.runExecutionData.waitTill = undefined;
 
-			this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
+			assertExecutionDataExists(
+				this.runExecutionData.executionData,
+				workflow,
+				this.additionalData,
+				this.mode,
+			);
 			this.runExecutionData.executionData.nodeExecutionStack[0].node.disabled = true;
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
@@ -1363,7 +1354,12 @@ export class WorkflowExecute {
 	}
 
 	private checkForWorkflowIssues(workflow: Workflow): void {
-		this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
+		assertExecutionDataExists(
+			this.runExecutionData.executionData,
+			workflow,
+			this.additionalData,
+			this.mode,
+		);
 		// Node execution stack will be empty for an execution containing only Chat
 		// Trigger.
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
@@ -1487,6 +1483,14 @@ export class WorkflowExecute {
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				try {
+					// Establish the execution context
+					await establishExecutionContext(
+						workflow,
+						this.runExecutionData,
+						this.additionalData,
+						this.mode,
+					);
+
 					if (!this.additionalData.restartExecutionId) {
 						await hooks.runHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
 					}
@@ -2396,32 +2400,29 @@ export class WorkflowExecute {
 		executionError?: ExecutionBaseError,
 		closeFunction?: Promise<void>,
 	): Promise<IRun> {
-		const fullRunData = this.getFullRunData(startedAt);
-
+		// Set status before creating fullRunData
 		if (executionError !== undefined) {
 			Logger.debug('Workflow execution finished with error', {
 				error: executionError,
 				workflowId: workflow.id,
 			});
-			fullRunData.data.resultData.error = {
-				...executionError,
-				message: executionError.message,
-				stack: executionError.stack,
-			} as ExecutionBaseError;
-			if (executionError.message?.includes('canceled')) {
-				fullRunData.status = 'canceled';
+			if (
+				executionError.message?.includes('canceled') ||
+				executionError.name?.includes('Cancelled')
+			) {
+				this.status = 'canceled';
+			} else {
+				this.status = 'error';
 			}
 		} else if (this.runExecutionData.waitTill) {
 			// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 			Logger.debug(`Workflow execution will wait until ${this.runExecutionData.waitTill}`, {
 				workflowId: workflow.id,
 			});
-			fullRunData.waitTill = this.runExecutionData.waitTill;
-			fullRunData.status = 'waiting';
+			this.status = 'waiting';
 		} else {
 			Logger.debug('Workflow execution finished successfully', { workflowId: workflow.id });
-			fullRunData.finished = true;
-			fullRunData.status = 'success';
+			this.status = 'success';
 		}
 
 		// Check if static data changed
@@ -2433,13 +2434,6 @@ export class WorkflowExecute {
 		}
 
 		this.moveNodeMetadata();
-		// Prevent from running the hook if the error is an abort error as it was already handled
-		if (!this.isCancelled) {
-			await this.additionalData.hooks?.runHook('workflowExecuteAfter', [
-				fullRunData,
-				newStaticData,
-			]);
-		}
 
 		if (closeFunction) {
 			try {
@@ -2454,15 +2448,39 @@ export class WorkflowExecute {
 			}
 		}
 
+		// Capture stoppedAt timestamp after all processing is complete
+		const stoppedAt = new Date();
+		const fullRunData = this.getFullRunData(startedAt, stoppedAt);
+
+		if (executionError !== undefined) {
+			fullRunData.data.resultData.error = {
+				...executionError,
+				message: executionError.message,
+				stack: executionError.stack,
+			} satisfies ExecutionBaseError;
+		} else if (this.runExecutionData.waitTill) {
+			fullRunData.waitTill = this.runExecutionData.waitTill;
+		} else {
+			fullRunData.finished = true;
+		}
+
+		// Prevent from running the hook if the error is an abort error as it was already handled
+		if (!this.isCancelled) {
+			await this.additionalData.hooks?.runHook('workflowExecuteAfter', [
+				fullRunData,
+				newStaticData,
+			]);
+		}
+
 		return fullRunData;
 	}
 
-	getFullRunData(startedAt: Date): IRun {
+	getFullRunData(startedAt: Date, stoppedAt?: Date): IRun {
 		return {
 			data: this.runExecutionData,
 			mode: this.mode,
 			startedAt,
-			stoppedAt: new Date(),
+			stoppedAt: stoppedAt ?? new Date(),
 			status: this.status,
 		};
 	}
@@ -2515,7 +2533,6 @@ export class WorkflowExecute {
 				let errorData: GenericValue | undefined;
 				if (item.error) {
 					errorData = item.error;
-					item.error = undefined;
 				} else if (item.json.error && Object.keys(item.json).length === 1) {
 					errorData = item.json.error;
 				} else if (item.json.error && item.json.message && Object.keys(item.json).length === 2) {

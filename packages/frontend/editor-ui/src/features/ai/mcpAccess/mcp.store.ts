@@ -8,11 +8,13 @@ import {
 	toggleWorkflowMcpAccessApi,
 	fetchApiKey,
 	rotateApiKey,
+	fetchOAuthClients,
+	deleteOAuthClient,
 } from '@/features/ai/mcpAccess/mcp.api';
 import { computed, ref } from 'vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { isWorkflowListItem } from '@/app/utils/typeGuards';
-import type { ApiKey } from '@n8n/api-types';
+import type { ApiKey, OAuthClientResponseDto, DeleteOAuthClientResponseDto } from '@n8n/api-types';
 
 export const useMCPStore = defineStore(MCP_STORE, () => {
 	const workflowsStore = useWorkflowsStore();
@@ -20,6 +22,7 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 	const settingsStore = useSettingsStore();
 
 	const currentUserMCPKey = ref<ApiKey | null>(null);
+	const oauthClients = ref<OAuthClientResponseDto[]>([]);
 
 	const mcpAccessEnabled = computed(() => !!settingsStore.moduleSettings.mcp?.mcpAccessEnabled);
 
@@ -97,6 +100,19 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		return apiKey;
 	}
 
+	async function getAllOAuthClients(): Promise<OAuthClientResponseDto[]> {
+		const response = await fetchOAuthClients(rootStore.restApiContext);
+		oauthClients.value = response.data;
+		return response.data;
+	}
+
+	async function removeOAuthClient(clientId: string): Promise<DeleteOAuthClientResponseDto> {
+		const response = await deleteOAuthClient(rootStore.restApiContext, clientId);
+		// Remove the client from the local store
+		oauthClients.value = oauthClients.value.filter((client) => client.id !== clientId);
+		return response;
+	}
+
 	return {
 		mcpAccessEnabled,
 		fetchWorkflowsAvailableForMCP,
@@ -105,5 +121,8 @@ export const useMCPStore = defineStore(MCP_STORE, () => {
 		currentUserMCPKey,
 		getOrCreateApiKey,
 		generateNewApiKey,
+		oauthClients,
+		getAllOAuthClients,
+		removeOAuthClient,
 	};
 });
