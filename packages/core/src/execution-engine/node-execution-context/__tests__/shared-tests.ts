@@ -54,6 +54,7 @@ export const describeCommonTests = (
 			const mockContext: IExecutionContext = {
 				version: 1,
 				establishedAt: Date.now(),
+				source: 'manual',
 				credentials: 'encrypted-credential-data',
 			};
 
@@ -96,6 +97,7 @@ export const describeCommonTests = (
 			const contextWithoutCredentials: IExecutionContext = {
 				version: 1,
 				establishedAt: Date.now(),
+				source: 'manual',
 			};
 
 			runExecutionData.executionData = {
