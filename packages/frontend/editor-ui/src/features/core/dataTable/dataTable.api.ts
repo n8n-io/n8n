@@ -138,6 +138,7 @@ export const getDataTableRowsApi = async (
 		take?: number;
 		sortBy?: string;
 		filter?: string;
+		search?: string;
 	},
 ) => {
 	return await makeRestApiRequest<{
