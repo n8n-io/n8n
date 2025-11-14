@@ -2,12 +2,13 @@ import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
 import { Body, Post, Get, Patch, RestController, GlobalScope, Param } from '@n8n/decorators';
 import type { Response } from 'express';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
 import { UpdateWorkflowAvailabilityDto } from './dto/update-workflow-availability.dto';
 import { McpServerApiKeyService } from './mcp-api-key.service';
+import { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
 import { McpSettingsService } from './mcp.settings.service';
+import { isWorkflowEligibleForMCPAccess } from './mcp.utils';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -82,12 +83,12 @@ export class McpSettingsController {
 			throw new BadRequestError('MCP access can only be set for active workflows');
 		}
 
-		const hasWebhooks = workflow.nodes.some(
-			(node) => node.type === WEBHOOK_NODE_TYPE && node.disabled !== true,
-		);
+		const isEligible = isWorkflowEligibleForMCPAccess(workflow);
 
-		if (!hasWebhooks) {
-			throw new BadRequestError('MCP access can only be set for webhook-triggered workflows');
+		if (!isEligible) {
+			throw new BadRequestError(
+				`MCP access can only be set for active workflows with one of the following trigger nodes: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
+			);
 		}
 
 		const workflowUpdate = new WorkflowEntity();
