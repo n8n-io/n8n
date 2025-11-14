@@ -45,16 +45,12 @@ runs:
         # Wait for MinIO to be ready
         sleep 5
 
-        # Create the bucket
+        # Create the bucket (commands must run in same container)
         docker run --rm \
           --network host \
+          --entrypoint sh \
           minio/mc \
-          alias set local http://localhost:9000 minioadmin minioadmin123
-
-        docker run --rm \
-          --network host \
-          minio/mc \
-          mb local/turborepo-cache --ignore-existing
+          -c "mc alias set local http://localhost:9000 minioadmin minioadmin123 && mc mb local/turborepo-cache --ignore-existing"
       shell: bash
 
     - name: Turborepo Cache Server
