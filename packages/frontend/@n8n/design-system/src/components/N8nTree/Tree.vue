@@ -8,14 +8,22 @@ interface TreeProps {
 	nodeClass?: string;
 }
 
-interface BinaryMetadata {
-	id: string;
-	mimeType: string;
-	fileName?: string;
-	fileExtension?: string;
-	fileSize?: string;
-	fileType?: string;
-}
+const BINARY_METADATA_KEYS = [
+	'data',
+	'mimeType',
+	'fileType',
+	'fileName',
+	'directory',
+	'fileExtension',
+	'fileSize',
+	'id',
+] as const;
+
+type BinaryMetadata = {
+	[K in (typeof BINARY_METADATA_KEYS)[number]]: K extends 'mimeType' | 'id'
+		? string
+		: string | undefined;
+};
 
 defineSlots<{
 	label(props: { label: string; path: Array<string | number> }): never;
@@ -56,7 +64,25 @@ const isSimple = (data: Value): boolean => {
 	return typeof data !== 'object';
 };
 
-const isBinary = (obj: object): obj is BinaryMetadata => 'mimeType' in obj && 'id' in obj;
+const isBinary = (obj: unknown): obj is BinaryMetadata => {
+	if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return false;
+
+	const entry = obj as Record<string, unknown>;
+
+	if (typeof entry.mimeType !== 'string') return false;
+	if (typeof entry.id !== 'string') return false;
+
+	for (const key of Object.keys(entry)) {
+		if (key === 'mimeType' || key === 'id') continue;
+
+		const value = entry[key];
+
+		if (!(BINARY_METADATA_KEYS as readonly string[]).includes(key)) return false;
+		if (value !== undefined && typeof value !== 'string') return false;
+	}
+
+	return true;
+};
 
 const getPath = (key: string): Array<string | number> => {
 	if (Array.isArray(props.value)) {

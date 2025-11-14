@@ -2743,6 +2743,8 @@ export namespace WorkflowSettings {
 	export type SaveDataExecution = 'DEFAULT' | 'all' | 'none';
 }
 
+export type WorkflowSettingsBinaryMode = 'separate' | 'combined';
+
 export interface IWorkflowSettings {
 	timezone?: 'DEFAULT' | string;
 	errorWorkflow?: string;
@@ -2754,6 +2756,7 @@ export interface IWorkflowSettings {
 	saveExecutionProgress?: 'DEFAULT' | boolean;
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
+	binaryMode?: WorkflowSettingsBinaryMode;
 	timeSavedPerExecution?: number;
 	availableInMCP?: boolean;
 }

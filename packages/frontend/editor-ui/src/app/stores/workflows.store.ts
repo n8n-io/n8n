@@ -105,6 +105,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	nodes: [],
 	settings: {
 		executionOrder: 'v1',
+		binaryMode: 'separate',
 	},
 	tags: [],
 	pinData: {},

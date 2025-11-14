@@ -54,6 +54,10 @@ const executionOrderOptions = ref<Array<{ key: string; value: string }>>([
 	{ key: 'v0', value: 'v0 (legacy)' },
 	{ key: 'v1', value: 'v1 (recommended)' },
 ]);
+const binaryModeOptions = ref<Array<{ key: string; value: string }>>([
+	{ key: 'separate', value: 'separate (legacy)' },
+	{ key: 'combined', value: 'combined (recommended)' },
+]);
 const timezones = ref<Array<{ key: string; value: string }>>([]);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
 const workflows = ref<IWorkflowShortResponse[]>([]);
@@ -500,6 +504,9 @@ onMounted(async () => {
 	if (workflowSettingsData.executionOrder === undefined) {
 		workflowSettingsData.executionOrder = 'v0';
 	}
+	if (workflowSettingsData.binaryMode === undefined) {
+		workflowSettingsData.binaryMode = 'separate';
+	}
 	if (workflowSettingsData.availableInMCP === undefined) {
 		workflowSettingsData.availableInMCP = defaultValues.value.availableInMCP;
 	}
@@ -556,6 +563,31 @@ onBeforeUnmount(() => {
 						>
 							<N8nOption
 								v-for="option in executionOrderOptions"
+								:key="option.key"
+								:label="option.value"
+								:value="option.key"
+							>
+							</N8nOption>
+						</N8nSelect>
+					</ElCol>
+				</ElRow>
+
+				<ElRow>
+					<ElCol :span="10" :class="$style['setting-name']">
+						{{ i18n.baseText('workflowSettings.binaryMode') }}
+					</ElCol>
+					<ElCol :span="14" class="ignore-key-press-canvas">
+						<N8nSelect
+							v-model="workflowSettings.binaryMode"
+							placeholder="Select Binary Mode"
+							size="medium"
+							filterable
+							:disabled="readOnlyEnv || !workflowPermissions.update"
+							:limit-popper-width="true"
+							data-test-id="workflow-settings-binary-mode"
+						>
+							<N8nOption
+								v-for="option in binaryModeOptions"
 								:key="option.key"
 								:label="option.value"
 								:value="option.key"

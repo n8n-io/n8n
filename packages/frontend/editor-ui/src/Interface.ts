@@ -26,6 +26,7 @@ import type {
 	FeatureFlags,
 	ITelemetryTrackProperties,
 	WorkflowSettings,
+	WorkflowSettingsBinaryMode,
 	INodeExecutionData,
 	NodeConnectionType,
 	StartNodeData,
@@ -50,6 +51,7 @@ import type {
 	AI_OTHERS_NODE_CREATOR_VIEW,
 	AI_UNCATEGORIZED_CATEGORY,
 	AI_EVALUATION,
+	BINARY_METADATA_KEYS,
 } from '@/app/constants';
 import type { CREDENTIAL_EDIT_MODAL_KEY } from '@/features/credentials/credentials.constants';
 import type { BulkCommand, Undoable } from '@/app/models/history';
@@ -413,6 +415,7 @@ export interface IWorkflowSettings extends IWorkflowSettingsWorkflow {
 	callerIds?: string;
 	callerPolicy?: WorkflowSettings.CallerPolicy;
 	executionOrder: NonNullable<IWorkflowSettingsWorkflow['executionOrder']>;
+	binaryMode?: WorkflowSettingsBinaryMode;
 	availableInMCP?: boolean;
 }
 
@@ -799,12 +802,9 @@ export type SchemaType =
 	| 'binary';
 
 export type BinaryMetadata = {
-	id: string;
-	mimeType: string;
-	fileName?: string;
-	fileExtension?: string;
-	fileSize?: string;
-	fileType?: string;
+	[K in (typeof BINARY_METADATA_KEYS)[number]]: K extends 'mimeType' | 'id'
+		? string
+		: string | undefined;
 };
 
 export type Schema = {
