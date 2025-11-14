@@ -46,7 +46,7 @@ const dismissQueueModeWarning = () => {
 };
 
 const shouldShowQueueModeWarning = computed(() => {
-	return !settingsStore.isQueueModeEnabled && !isQueueModeWarningDismissed.value;
+	return settingsStore.isQueueModeEnabled && !isQueueModeWarningDismissed.value;
 });
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({

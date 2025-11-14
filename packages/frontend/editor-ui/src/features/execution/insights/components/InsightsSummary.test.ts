@@ -2,6 +2,8 @@ import { reactive } from 'vue';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
+import { createTestingPinia } from '@pinia/testing';
+import { defaultSettings } from '@/__tests__/defaults';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -23,6 +25,12 @@ const renderComponent = createComponentRenderer(InsightsSummary, {
 });
 
 describe('InsightsSummary', () => {
+	beforeEach(() => {
+		createTestingPinia({
+			initialState: { settings: { settings: defaultSettings } },
+		});
+	});
+
 	it('should render without error', () => {
 		expect(() =>
 			renderComponent({
