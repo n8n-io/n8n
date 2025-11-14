@@ -10,17 +10,11 @@
         "costMicros": {
             "type": "string"
         },
-        "ctr": {
-            "type": "number"
-        },
         "id": {
             "type": "string"
         },
         "impressions": {
             "type": "string"
-        },
-        "interactionRate": {
-            "type": "number"
         },
         "interactions": {
             "type": "string"
@@ -41,5 +35,5 @@
             "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }

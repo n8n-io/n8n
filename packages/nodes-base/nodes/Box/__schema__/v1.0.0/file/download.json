@@ -3,10 +3,7 @@
     "properties": {
         "created_at": {
             "type": "string"
-        },
-        "id": {
-            "type": "string"
         }
     },
-    "version": 4
+    "version": 5
 }

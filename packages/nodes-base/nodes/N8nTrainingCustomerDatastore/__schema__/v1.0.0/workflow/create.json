@@ -33,18 +33,23 @@
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "content": {
+                            "operation": {
                                 "type": "string"
+                            },
+                            "options": {
+                                "type": "object",
+                                "properties": {
+                                    "systemMessage": {
+                                        "type": "string"
+                                    }
+                                }
                             }
                         }
                     },
-                    "position": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
-                        }
-                    },
                     "type": {
+                        "type": "string"
+                    },
+                    "webhookId": {
                         "type": "string"
                     }
                 }
@@ -71,5 +76,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }

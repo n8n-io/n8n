@@ -71,6 +71,9 @@
                 "received-spf": {
                     "type": "string"
                 },
+                "reply-to": {
+                    "type": "string"
+                },
                 "return-path": {
                     "type": "string"
                 },
@@ -141,5 +144,5 @@
             }
         }
     },
-    "version": 7
+    "version": 8
 }
