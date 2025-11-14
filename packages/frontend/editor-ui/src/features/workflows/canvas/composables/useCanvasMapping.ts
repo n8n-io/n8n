@@ -367,9 +367,9 @@ export function useCanvasMapping({
 	const nodeExecutionRunDataOutputMapById = ref<Record<string, ExecutionOutputMap>>({});
 
 	throttledWatch(
-		nodeExecutionRunDataById,
-		(value) => {
-			nodeExecutionRunDataOutputMapById.value = Object.keys(value).reduce<
+		() => workflowsStore.workflowExecutionResultDataLastUpdate,
+		() => {
+			nodeExecutionRunDataOutputMapById.value = Object.keys(nodeExecutionRunDataById.value).reduce<
 				Record<string, ExecutionOutputMap>
 			>((acc, nodeId) => {
 				acc[nodeId] = {};

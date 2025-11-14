@@ -25,6 +25,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { reorderItem } from '@/features/core/dataTable/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { getResourcePermissions } from '@n8n/permissions';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
@@ -36,6 +37,12 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const dataTableSize = ref(0);
 	const dataTableSizeLimitState = ref<DataTableSizeStatus>('ok');
 	const dataTableTableSizes = ref<Record<string, number>>({});
+
+	const projectPermissions = computed(() =>
+		getResourcePermissions(
+			projectStore.currentProject?.scopes ?? projectStore.personalProject?.scopes,
+		),
+	);
 
 	const formatSize = (sizeBytes: number) => {
 		return Number((sizeBytes / 1024 / 1024).toFixed(2));
@@ -194,12 +201,14 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		pageSize: number,
 		sortBy: string,
 		filter?: string,
+		search?: string,
 	) => {
 		return await getDataTableRowsApi(rootStore.restApiContext, dataTableId, projectId, {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
 			sortBy,
 			filter,
+			search,
 		});
 	};
 
@@ -267,5 +276,6 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		insertEmptyRow,
 		updateRow,
 		deleteRows,
+		projectPermissions,
 	};
 });

@@ -15,8 +15,16 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import DataTableTable from './components/dataGrid/DataTableTable.vue';
 import { useDebounce } from '@/app/composables/useDebounce';
 import AddColumnButton from './components/dataGrid/AddColumnButton.vue';
+import {
+	N8nButton,
+	N8nInput,
+	N8nLoading,
+	N8nSpinner,
+	N8nText,
+	N8nIcon,
+	N8nTooltip,
+} from '@n8n/design-system';
 
-import { N8nButton, N8nLoading, N8nSpinner, N8nText } from '@n8n/design-system';
 type Props = {
 	id: string;
 	projectId: string;
@@ -35,6 +43,7 @@ const loading = ref(false);
 const saving = ref(false);
 const dataTable = ref<DataTable | null>(null);
 const dataTableTableRef = ref<InstanceType<typeof DataTableTable>>();
+const searchQuery = ref('');
 
 const { debounce } = useDebounce();
 
@@ -123,6 +132,27 @@ onMounted(async () => {
 					<N8nText>{{ i18n.baseText('generic.saving') }}...</N8nText>
 				</div>
 				<div :class="$style.actions">
+					<N8nInput
+						v-model="searchQuery"
+						data-test-id="data-table-search-input"
+						size="small"
+						:class="$style.search"
+						:placeholder="i18n.baseText('generic.search')"
+					>
+						<template #prefix>
+							<N8nIcon icon="search" />
+						</template>
+						<template #suffix>
+							<N8nTooltip placement="bottom">
+								<template #content>
+									{{ i18n.baseText('dataTable.search.dateSearchInfo') }}
+								</template>
+								<span :class="$style.infoIcon">
+									<N8nIcon icon="info" size="small" />
+								</span>
+							</N8nTooltip>
+						</template>
+					</N8nInput>
 					<N8nButton
 						data-test-id="data-table-header-add-row-button"
 						@click="dataTableTableRef?.addRow"
@@ -139,6 +169,7 @@ onMounted(async () => {
 				<DataTableTable
 					ref="dataTableTableRef"
 					:data-table="dataTable"
+					:search="searchQuery"
 					@toggle-save="onToggleSave"
 				/>
 			</div>
@@ -184,5 +215,20 @@ onMounted(async () => {
 	display: flex;
 	gap: var(--spacing--3xs);
 	margin-left: auto;
+}
+
+.search {
+	max-width: 196px;
+}
+
+.infoIcon {
+	display: inline-flex;
+	align-items: center;
+	color: var(--color--text--tint-2);
+	cursor: help;
+
+	&:hover {
+		color: var(--color--primary);
+	}
 }
 </style>

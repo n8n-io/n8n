@@ -493,18 +493,20 @@ export class WorkflowService {
 		}
 
 		const versionId = uuid();
+		workflow.versionId = versionId;
+		workflow.isArchived = true;
+		workflow.active = false;
+
 		await this.workflowRepository.update(workflowId, {
 			isArchived: true,
 			active: false,
 			versionId,
 		});
 
+		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
+
 		this.eventService.emit('workflow-archived', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterArchive', [workflowId]);
-
-		workflow.isArchived = true;
-		workflow.active = false;
-		workflow.versionId = versionId;
 
 		return workflow;
 	}
@@ -523,13 +525,15 @@ export class WorkflowService {
 		}
 
 		const versionId = uuid();
+		workflow.versionId = versionId;
+		workflow.isArchived = false;
+
 		await this.workflowRepository.update(workflowId, { isArchived: false, versionId });
+
+		await this.workflowHistoryService.saveVersion(user, workflow, workflowId);
 
 		this.eventService.emit('workflow-unarchived', { user, workflowId, publicApi: false });
 		await this.externalHooks.run('workflow.afterUnarchive', [workflowId]);
-
-		workflow.isArchived = false;
-		workflow.versionId = versionId;
 
 		return workflow;
 	}

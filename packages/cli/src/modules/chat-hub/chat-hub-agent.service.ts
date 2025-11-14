@@ -9,6 +9,7 @@ import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import { INode } from 'n8n-workflow';
 
 @Service()
 export class ChatHubAgentService {
@@ -56,6 +57,7 @@ export class ChatHubAgentService {
 			credentialId: string;
 			provider: ChatHubAgent['provider'];
 			model: string;
+			tools: INode[];
 		},
 	): Promise<ChatHubAgent> {
 		// Ensure user has access to credentials if provided
@@ -72,6 +74,7 @@ export class ChatHubAgentService {
 			credentialId: data.credentialId,
 			provider: data.provider,
 			model: data.model,
+			tools: data.tools,
 		});
 
 		this.logger.info(`Chat agent created: ${id} by user ${user.id}`);
@@ -88,6 +91,7 @@ export class ChatHubAgentService {
 			credentialId?: string;
 			provider?: string;
 			model?: string;
+			tools?: INode[];
 		},
 	): Promise<ChatHubAgent> {
 		// First check if the agent exists and belongs to the user
@@ -109,6 +113,7 @@ export class ChatHubAgentService {
 		if (updates.provider !== undefined)
 			updateData.provider = updates.provider as ChatHubAgent['provider'];
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
+		if (updates.tools !== undefined) updateData.tools = updates.tools;
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 
