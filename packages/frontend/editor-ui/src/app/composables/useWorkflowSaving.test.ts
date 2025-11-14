@@ -22,6 +22,12 @@ vi.mock('@/app/composables/useMessage', () => {
 	};
 });
 
+vi.mock('@n8n/permissions', () => ({
+	getResourcePermissions: () => ({
+		workflow: { update: true },
+	}),
+}));
+
 const getDuplicateTestWorkflow = (): WorkflowDataUpdate => ({
 	name: 'Duplicate webhook test',
 	active: false,
