@@ -278,11 +278,14 @@ export class LmChatOpenRouter implements INodeType {
 					// without these mappings, langchain will overwrite max_tokens and reasoning from modelKwargs with undefined
 					const maxTokens = parsedOptions.max_tokens ?? undefined;
 					const reasoning = parsedOptions.reasoning ?? undefined;
+					// needs to be set because of broken logic for parsing reasoning options in langchain in https://github.com/konstantintieber/langchainjs/commit/02bfa2c6b869fba1cd193842557486f07a8624c2 (was removed in newer version)
+					const reasoningEffort = parsedOptions.reasoning?.effort ?? undefined;
 					return {
 						timeout: parsedOptions.timeout ?? 60000,
 						maxRetries: maxRetries && typeof maxRetries === 'number' ? maxRetries : 2,
 						maxTokens,
 						reasoning,
+						reasoningEffort,
 						modelKwargs: parsedOptions,
 					};
 				} catch (error) {
