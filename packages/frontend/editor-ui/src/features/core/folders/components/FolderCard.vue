@@ -22,10 +22,11 @@ import {
 	N8nIcon,
 	N8nText,
 } from '@n8n/design-system';
+
 type Props = {
 	data: FolderResource;
 	personalProject: Project | null;
-	actions: Array<UserAction<IUser>>;
+	actions?: Array<UserAction<IUser>>;
 	readOnly?: boolean;
 	showOwnershipBadge?: boolean;
 };
