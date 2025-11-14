@@ -100,6 +100,13 @@ export const createExecuteWorkflowTool = (
 		inputSchema: inputSchema.shape,
 		outputSchema,
 	},
+	annotations: {
+		title: 'Execute Workflow',
+		readOnlyHint: false, // Can read and write data via workflows
+		destructiveHint: true, // Can cause changes in external systems via workflows
+		idempotentHint: true, // Safe to retry multiple times
+		openWorldHint: true, // Can access external systems via workflows
+	},
 	handler: async ({ workflowId, inputs }) => {
 		const telemetryPayload: UserCalledMCPToolEventPayload = {
 			user_id: user.id,
