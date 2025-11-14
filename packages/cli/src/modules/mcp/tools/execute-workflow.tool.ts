@@ -10,6 +10,7 @@ import {
 	type WorkflowExecuteMode,
 	UserError,
 	UnexpectedError,
+	TimeoutExecutionCancelledError,
 	ensureError,
 	jsonStringify,
 } from 'n8n-workflow';
@@ -23,6 +24,9 @@ import type { ActiveExecutions } from '@/active-executions';
 import type { Telemetry } from '@/telemetry';
 import type { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { th } from 'zod/dist/types/v4/locales';
+
+const WORKFLOW_EXECUTION_TIMEOUT_MS = 1 * 60 * 1000; // 5 minutes
 
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to execute'),
@@ -119,15 +123,18 @@ export const createExecuteWorkflowTool = (
 			};
 		} catch (er) {
 			const error = ensureError(er);
+			const isTimeout = error instanceof UserError && error.message.includes('timed out');
 			const output: ExecuteWorkflowOutput = {
 				success: false,
 				executionId: null,
-				error,
+				error: isTimeout
+					? `Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / 1000} seconds`
+					: error.message,
 			};
 
 			telemetryPayload.results = {
 				success: false,
-				error: error.message,
+				error: isTimeout ? 'Workflow execution timed out' : error.message,
 			};
 			telemetry.track(USER_CALLED_MCP_TOOL_EVENT, telemetryPayload);
 
@@ -194,18 +201,56 @@ export const executeWorkflow = async (
 			executionId: null,
 		};
 	}
-	const data = await activeExecutions.getPostExecutePromise(executionId);
 
-	if (data === undefined) {
-		throw new UnexpectedError('Workflow did not return any data');
+	// Create a timeout promise
+	let timeoutId: NodeJS.Timeout | undefined;
+	const timeoutPromise = new Promise<never>((_, reject) => {
+		timeoutId = setTimeout(() => {
+			reject(
+				new UserError(
+					`Workflow execution timed out after ${WORKFLOW_EXECUTION_TIMEOUT_MS / 1000} seconds`,
+				),
+			);
+		}, WORKFLOW_EXECUTION_TIMEOUT_MS);
+	});
+
+	try {
+		// Race between the execution completion and the timeout
+		const data = await Promise.race([
+			activeExecutions.getPostExecutePromise(executionId),
+			timeoutPromise,
+		]);
+
+		// Executed successfully before timeout: clear the timeout
+		if (timeoutId) clearTimeout(timeoutId);
+
+		if (data === undefined) {
+			throw new UnexpectedError('Workflow did not return any data');
+		}
+
+		return {
+			success: data.status !== 'error' && !data.data.resultData?.error,
+			executionId,
+			result: data.data.resultData,
+			error: data.data.resultData?.error,
+		};
+	} catch (error) {
+		if (timeoutId) clearTimeout(timeoutId);
+
+		// If we hit the timeout, attempt to stop the execution
+		if (error instanceof UserError && error.message.includes('timed out')) {
+			try {
+				const cancellationError = new TimeoutExecutionCancelledError(executionId);
+				activeExecutions.stopExecution(executionId, cancellationError);
+			} catch (stopError) {
+				throw new UnexpectedError(
+					`Failed to stop timed-out execution [id: ${executionId}]: ${ensureError(stopError).message}`,
+				);
+			}
+		}
+		// Re-throw the error to be handled by the caller
+		throw error;
 	}
-
-	return {
-		success: data.status !== 'error' && !data.data.resultData?.error,
-		executionId,
-		result: data.data.resultData,
-		error: data.data.resultData?.error,
-	};
 };
 
 /**
