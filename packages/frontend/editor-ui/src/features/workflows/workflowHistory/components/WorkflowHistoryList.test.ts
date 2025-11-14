@@ -46,7 +46,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items: [],
 				actions,
-				activeItem: null,
+				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 0,
 				evaluatedPruneDays: -1,
@@ -63,7 +63,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items: [],
 				actions,
-				activeItem: null,
+				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 0,
 				evaluatedPruneDays: -1,
@@ -84,7 +84,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items,
 				actions,
-				activeItem: null,
+				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneDays: -1,
@@ -108,7 +108,7 @@ describe('WorkflowHistoryList', () => {
 		expect(listItems).toHaveLength(numberOfItems);
 	});
 
-	it('should scroll to active item', async () => {
+	it('should scroll to selected item', async () => {
 		const items = Array.from({ length: 30 }, workflowHistoryDataFactory);
 
 		const { getByTestId } = renderComponent({
@@ -116,7 +116,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items,
 				actions,
-				activeItem: items[0],
+				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneDays: -1,
@@ -134,7 +134,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items,
 				actions,
-				activeItem: null,
+				selectedItem: null,
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneDays: -1,
@@ -167,7 +167,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items,
 				actions,
-				activeItem: items[0],
+				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneDays: 1,

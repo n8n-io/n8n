@@ -15,7 +15,7 @@ const props = defineProps<{
 	item: WorkflowHistory;
 	index: number;
 	actions: Array<UserAction<IUser>>;
-	isActive: boolean;
+	isSelected: boolean;
 }>();
 const emit = defineEmits<{
 	action: [
@@ -26,7 +26,7 @@ const emit = defineEmits<{
 		},
 	];
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
-	mounted: [value: { index: number; offsetTop: number; isActive: boolean }];
+	mounted: [value: { index: number; offsetTop: number; isSelected: boolean }];
 }>();
 
 const i18n = useI18n();
@@ -85,7 +85,7 @@ onMounted(() => {
 	emit('mounted', {
 		index: props.index,
 		offsetTop: itemElement.value?.offsetTop ?? 0,
-		isActive: props.isActive,
+		isSelected: props.isSelected,
 	});
 	isAuthorElementTruncated.value =
 		(authorElement.value?.scrollWidth ?? 0) > (authorElement.value?.clientWidth ?? 0);
@@ -97,7 +97,7 @@ onMounted(() => {
 		data-test-id="workflow-history-list-item"
 		:class="{
 			[$style.item]: true,
-			[$style.active]: props.isActive,
+			[$style.selected]: props.isSelected,
 			[$style.actionsVisible]: actionsVisible,
 		}"
 	>
@@ -171,7 +171,7 @@ onMounted(() => {
 		justify-content: space-between;
 	}
 
-	&.active {
+	&.selected {
 		background-color: var(--color--background);
 		border-left-color: var(--color--primary);
 
