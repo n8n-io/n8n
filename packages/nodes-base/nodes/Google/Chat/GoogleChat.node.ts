@@ -408,6 +408,9 @@ export class GoogleChat implements INodeType {
 						if (additionalFields.requestId) {
 							qs.requestId = additionalFields.requestId;
 						}
+						if (additionalFields.messageReplyOption) {
+							qs.messageReplyOption = additionalFields.messageReplyOption;
+						}
 
 						let message: IMessage = {};
 						const jsonParameters = this.getNodeParameter('jsonParameters', i);
