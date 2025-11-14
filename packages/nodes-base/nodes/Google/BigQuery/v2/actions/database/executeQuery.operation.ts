@@ -401,13 +401,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	}
 
 	let waitTime = 1000;
-	while (jobs.length > 0) {
-		if (abortSignal?.aborted) {
-			break;
-		}
+	outerLoop: while (jobs.length > 0) {
 		const settledJobs: string[] = [];
 
 		for (const job of jobs) {
+			if (abortSignal?.aborted) {
+				break outerLoop;
+			}
 			try {
 				const qs: IDataObject = job.location ? { location: job.location } : {};
 
