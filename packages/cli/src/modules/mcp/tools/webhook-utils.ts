@@ -123,7 +123,7 @@ const getScheduleTriggerDetails = (scheduleTriggers: INode[]): string => {
 const getFormTriggerDetails = (formTriggers: INode[]): string => {
 	const header = 'Form trigger(s):\n\n';
 	const footer =
-		'\n\nUse the following input format when directly executing this workflow using any of the chat triggers: { inputs { formData: Array<{ FIELD_NAME: VALUE }> } }';
+		'\n\nUse the following input format when directly executing this workflow using any of the form triggers: { inputs { formData: Array<{ FIELD_NAME: VALUE }> } }';
 	const triggers = formTriggers
 		.map(
 			(node, index) => `

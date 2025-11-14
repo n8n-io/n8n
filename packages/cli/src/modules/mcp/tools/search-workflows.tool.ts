@@ -36,7 +36,7 @@ const outputSchema = {
 			z.object({
 				id: z.string().describe('The unique identifier of the workflow'),
 				name: z.string().nullable().describe('The name of the workflow'),
-				description: z.string().optional().describe('The description of the workflow'),
+				description: z.string().nullable().optional().describe('The description of the workflow'),
 				active: z.boolean().nullable().describe('Whether the workflow is active'),
 				createdAt: z
 					.string()
