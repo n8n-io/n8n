@@ -30,7 +30,6 @@ const config = {
 	verbose: true,
 	testEnvironment: 'node',
 	testRegex: '\\.(test|spec)\\.(js|ts)$',
-	moduleFileExtensions: ['js', 'json', 'ts', 'mjs', 'cjs'],
 	testPathIgnorePatterns: ['/dist/', '/node_modules/'],
 	transform: {
 		'^.+\\.ts$': ['ts-jest', tsJestOptions],
