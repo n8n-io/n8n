@@ -2,7 +2,10 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
 
 export class BackfillMissingWorkflowHistoryRecords1762763704614 implements IrreversibleMigration {
 	/**
-	 * 1. Generate versionIds for workflows with NULL versionId (only possible for manual inserts)
+	 * 1. Generate/regenerate versionIds for workflows that need them:
+	 *    - NULL/empty versionId
+	 *    - duplicate versionIds that do not own the history record
+	 *    (i.e., no history record with matching versionId AND workflowId)
 	 * 2. Create workflow_history records for all workflows missing them
 	 * 3. Make versionId NOT NULL to ensure data consistency
 	 */
@@ -18,15 +21,35 @@ export class BackfillMissingWorkflowHistoryRecords1762763704614 implements Irrev
 		const createdAtColumn = escape.columnName('createdAt');
 		const updatedAtColumn = escape.columnName('updatedAt');
 
-		// Step 1: Generate versionIds for workflows that have NULL or empty versionId
-		const workflowsWithoutVersionId = await runQuery<Array<{ id: string }>>(`
-			SELECT ${idColumn} as id
-			FROM ${workflowTable}
-			WHERE ${versionIdColumn} IS NULL OR ${versionIdColumn} = ''
+		// Step 1: Generate versionIds that do not exist in workflow history
+		const workflowsNeedingNewVersionId = await runQuery<Array<{ id: string }>>(`
+			-- Find duplicate versionIds (appear in more than one workflow)
+			WITH dup_version AS (
+				SELECT ${versionIdColumn}
+				FROM ${workflowTable}
+				WHERE ${versionIdColumn} IS NOT NULL AND ${versionIdColumn} <> ''
+				GROUP BY ${versionIdColumn}
+				HAVING COUNT(*) > 1
+			)
+			SELECT w.${idColumn} AS id
+			FROM ${workflowTable} w
+			LEFT JOIN ${historyTable} wh
+				ON wh.${versionIdColumn} = w.${versionIdColumn}
+				AND wh.${workflowIdColumn} = w.${idColumn}
+			LEFT JOIN dup_version d
+				ON d.${versionIdColumn} = w.${versionIdColumn}
+			WHERE
+				-- missing or empty versionId
+				w.${versionIdColumn} IS NULL OR w.${versionIdColumn} = ''
+				-- duplicate versionId without matching history entry by both versionId and workflowId
+				OR (
+					d.${versionIdColumn} IS NOT NULL
+					AND wh.${workflowIdColumn} IS NULL
+				);
 		`);
 
 		// Running in a loop to avoid using DB-specific syntax for generating UUIDs
-		for (const workflow of workflowsWithoutVersionId) {
+		for (const workflow of workflowsNeedingNewVersionId) {
 			const versionId = crypto.randomUUID();
 			await runQuery(
 				`

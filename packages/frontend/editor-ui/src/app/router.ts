@@ -16,6 +16,7 @@ import {
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
 	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT,
+	MIGRATION_REPORT_EXPERIMENT,
 } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
@@ -98,6 +99,12 @@ const EvaluationRootView = async () =>
 	await import('@/features/ai/evaluation.ee/views/EvaluationsRootView.vue');
 const PrebuiltAgentTemplatesView = async () =>
 	await import('@/app/views/PrebuiltAgentTemplatesView.vue');
+
+const MigrationReportView = async () =>
+	await import('@/features/settings/migrationReport/MigrationRules.vue');
+
+const MigrationRuleReportView = async () =>
+	await import('@/features/settings/migrationReport/MigrationRuleDetail.vue');
 
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
@@ -549,6 +556,45 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'usage',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'migration-report',
+				components: {
+					settingsView: RouterView,
+				},
+				children: [
+					{
+						path: '',
+						name: VIEWS.MIGRATION_REPORT,
+						component: MigrationReportView,
+					},
+					{
+						path: ':migrationRuleId',
+						name: VIEWS.MIGRATION_RULE_REPORT,
+						component: MigrationRuleReportView,
+						props: true,
+					},
+				],
+				meta: {
+					middleware: ['authenticated', 'rbac', 'custom'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['breakingChanges:list'],
+						},
+						custom: () => {
+							const posthogStore = usePostHog();
+							return posthogStore.isFeatureEnabled(MIGRATION_REPORT_EXPERIMENT.name);
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'migration-report',
 							};
 						},
 					},

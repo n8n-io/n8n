@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 
-import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import type { IUpdateInformation } from '@/Interface';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 
-import CredentialIcon from '../CredentialIcon.vue';
 import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
@@ -15,6 +14,7 @@ import type {
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
 import { deepCopy, NodeHelpers } from 'n8n-workflow';
+import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
@@ -1173,7 +1173,12 @@ const { width } = useElementSize(credNameRef);
 							:model-value="credentialName"
 							:max-width="width - 10"
 							:readonly="
-								!credentialPermissions.update || !credentialType || isEditingManagedCredential
+								!(
+									(credentialPermissions.create && props.mode === 'new') ||
+									credentialPermissions.update
+								) ||
+								!credentialType ||
+								isEditingManagedCredential
 							"
 							@update:model-value="onNameEdit"
 						/>
