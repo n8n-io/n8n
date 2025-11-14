@@ -1,6 +1,6 @@
 import { nanoid } from 'nanoid';
 
-import { PrometheusMetricsParser } from '@/test-execution/app-metrics-poller';
+import { PrometheusMetricsParser } from '@/test-execution/prometheus-metrics-parser';
 import type { Scenario } from '@/types/scenario';
 
 export type K6Tag = {
