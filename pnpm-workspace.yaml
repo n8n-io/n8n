@@ -11,6 +11,11 @@ minimumReleaseAgeExclude:
   - '@n8n_io/*'
   - eslint-plugin-storybook
 
+packageExtensions:
+  ts-node:
+    optionalDependencies:
+      '@swc/core': "-"
+
 catalog:
   '@n8n/typeorm': 0.3.20-15
   '@n8n_io/ai-assistant-sdk': 1.17.0
