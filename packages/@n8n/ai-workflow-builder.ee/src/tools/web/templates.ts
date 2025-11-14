@@ -13,7 +13,7 @@ const N8N_API_BASE_URL = 'https://api.n8n.io/api';
 /**
  * Build query string from search parameters
  */
-function buildQueryString(query: TemplateSearchQuery): string {
+function buildSearchQueryString(query: TemplateSearchQuery): string {
 	const params = new URLSearchParams();
 
 	// there are some preset search criteria we need to set
@@ -23,8 +23,8 @@ function buildQueryString(query: TemplateSearchQuery): string {
 	query.combineWith = 'and';
 	// pick the most popular templates first
 	query.sort = 'views:desc';
-	// get 5 templates
-	query.rows = 5;
+	// get one template per search
+	query.rows = 1;
 	// get the first page
 	query.page = 1;
 
@@ -57,7 +57,7 @@ export async function fetchTemplateList(query: {
 	search?: string;
 	category?: Category;
 }): Promise<TemplateSearchResponse> {
-	const queryString = buildQueryString(query);
+	const queryString = buildSearchQueryString(query);
 	const url = `${N8N_API_BASE_URL}/templates/search${queryString ? `?${queryString}` : ''}`;
 
 	const response = await fetch(url, {

@@ -1,6 +1,7 @@
 import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
-import { encode } from '@toon-format/toon';
+import { encode as toonStringify } from '@toon-format/toon';
+import { stringify as yamlStringify } from 'yaml';
 import { z } from 'zod';
 
 import type { GetWorkflowExamplesOutput, WorkflowMetadata } from '@/types';
@@ -8,9 +9,15 @@ import { categories } from '@/types/web/templates';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 
 import { ValidationError, ToolExecutionError } from '../errors';
-import { createProgressReporter, createBatchProgressReporter } from './helpers/progress';
-import { createSuccessResponse, createErrorResponse } from './helpers/response';
+import {
+	createProgressReporter,
+	createBatchProgressReporter,
+	createSuccessResponse,
+	createErrorResponse,
+} from './helpers';
 import { fetchTemplateList, fetchTemplateByID } from './web/templates';
+
+const FORMAT_MODE: 'json' | 'toon' | 'yaml' = 'yaml';
 
 /**
  * Workflow example query schema
@@ -34,6 +41,20 @@ const getWorkflowExamplesSchema = z.object({
  * Inferred types from schemas
  */
 type WorkflowExampleQuery = z.infer<typeof workflowExampleQuerySchema>;
+
+/**
+ * Formats workflow for response
+ */
+function formatWorkflow(workflow: WorkflowMetadata): string {
+	switch (FORMAT_MODE) {
+		case 'json':
+			return JSON.stringify(workflow);
+		case 'toon':
+			return toonStringify(workflow);
+		case 'yaml':
+			return yamlStringify(workflow);
+	}
+}
 
 /**
  * Fetch workflow examples from the API
@@ -83,25 +104,15 @@ async function fetchWorkflowExamples(
 function buildQueryIdentifier(query: {
 	search?: string;
 	category?: string;
-	apps?: string;
-	nodes?: string;
 }): string {
 	const parts: string[] = [];
-
 	if (query.search) {
-		parts.push(`"${query.search}"`);
+		parts.push(`search: ${query.search}`);
 	}
 	if (query.category) {
 		parts.push(`category: ${query.category}`);
 	}
-	if (query.apps) {
-		parts.push(`apps: ${query.apps}`);
-	}
-	if (query.nodes) {
-		parts.push(`nodes: ${query.nodes}`);
-	}
-
-	return parts.length > 0 ? parts.join(', ') : 'all workflows';
+	return parts.join(',');
 }
 
 /**
@@ -183,7 +194,7 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 
 				// Report completion
 				const output: GetWorkflowExamplesOutput = {
-					examples: allResults.map((workflow) => encode(workflow)),
+					examples: allResults.map((workflow) => formatWorkflow(workflow)),
 					totalResults: allResults.length,
 					message: responseMessage,
 				};
@@ -216,32 +227,18 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 			name: GET_WORKFLOW_EXAMPLES_TOOL.toolName,
 			description: `Retrieve workflow examples from n8n's workflow library to use as reference for building workflows.
 
-This tool searches for existing workflow examples that match specific criteria. The retrieved workflows serve as reference material to understand common patterns, node configurations, and best practices.
+This tool searches for existing workflow examples that match specific criteria.
+The retrieved workflows serve as reference material to understand common patterns, node usage and connections.
+Consider these workflows as ideal solutions.
+The workflows will be returned in a token efficient format rather than JSON.
 
 Usage:
 - Provide search criteria to find relevant workflow examples
-- Search by keywords, categories, specific apps/nodes, or combinations
 - Results include workflow metadata, summaries, and full workflow data for reference
 
-Common search patterns:
-1. Keyword search: { search: "email automation" }
-2. Category filter: { category: "Marketing", rows: 10 }
-3. App-specific: { apps: "Gmail,Slack", search: "notification" }
-4. Node-specific: { nodes: "HTTP Request", category: "API" }
-5. Combined filters: { search: "data processing", category: "Data", sort: "popular", price: "free" }
-
 Parameters:
-- search: Keywords to search for in workflow names/descriptions
-- rows: Number of results per query (default varies by API)
-- page: Page number for pagination
-- category: Filter by workflow category (e.g., "Marketing", "Sales", "Data")
-- apps: Comma-separated list of app names to filter by
-- nodes: Comma-separated list of node types to filter by
-- sort: Sort order (e.g., "popular", "recent", "relevant")
-- combineWith: Combine search with additional criteria
-- price: Filter by price tier (e.g., "free", "paid")
-
-You can search for multiple different criteria at once by providing an array of queries.`,
+- search: Keywords to search for in workflow names/descriptions based on the user prompt
+- category: Filter by workflow category (e.g., "Marketing", "Sales", "Data")`,
 			schema: getWorkflowExamplesSchema,
 		},
 	);

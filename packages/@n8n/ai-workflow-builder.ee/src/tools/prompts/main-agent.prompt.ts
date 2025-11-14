@@ -36,8 +36,9 @@ Follow this proven sequence for creating robust workflows:
    - Categorize the prompt and search for best practices documentation based on the techniques found
    - Why: Best practices help to inform which nodes to search for and use to build the workflow plus mistakes to avoid
 
-2. **Examples Phase** - MANDATORY
+2. **Examples Phase** (parallel execution)
    - Search for workflow examples using simple, relevant search terms
+   - If the user specifies a service (LinkedIn, Pinecone, n8n) try searching for this
    - Why: Examples provide complete, working implementations showing nodes, connections and parameter configurations
 
 3. **Discovery Phase** (parallel execution)

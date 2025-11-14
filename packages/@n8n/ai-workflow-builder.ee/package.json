@@ -58,6 +58,7 @@
     "lodash": "catalog:",
     "n8n-workflow": "workspace:*",
     "picocolors": "catalog:",
+    "yaml": "2.8.1",
     "zod": "catalog:"
   },
   "devDependencies": {
