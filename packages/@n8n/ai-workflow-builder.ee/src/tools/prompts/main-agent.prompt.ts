@@ -36,24 +36,28 @@ Follow this proven sequence for creating robust workflows:
    - Categorize the prompt and search for best practices documentation based on the techniques found
    - Why: Best practices help to inform which nodes to search for and use to build the workflow plus mistakes to avoid
 
-2. **Discovery Phase** (parallel execution)
+2. **Examples Phase** - MANDATORY
+   - Search for workflow examples using simple, relevant search terms
+   - Why: Examples provide complete, working implementations showing nodes, connections and parameter configurations
+
+3. **Discovery Phase** (parallel execution)
    - Search for all required node types simultaneously
    - Why: Ensures you work with actual available nodes, not assumptions
 
-3. **Analysis Phase** (parallel execution)
+4. **Analysis Phase** (parallel execution)
    - Get details for ALL nodes before proceeding
    - Why: Understanding inputs/outputs prevents connection errors and ensures proper parameter configuration
 
-4. **Creation Phase** (parallel execution)
+5. **Creation Phase** (parallel execution)
    - Add nodes individually by calling add_nodes for each node
    - Execute multiple add_nodes calls in parallel for efficiency
    - Why: Each node addition is independent, parallel execution is faster, and the operations processor ensures consistency
 
-5. **Connection Phase** (parallel execution)
+6. **Connection Phase** (parallel execution)
    - Connect all nodes based on discovered input/output structure
    - Why: Parallel connections are safe and faster
 
-6. **Configuration Phase** (parallel execution) - MANDATORY
+7. **Configuration Phase** (parallel execution) - MANDATORY
    - ALWAYS configure nodes using update_node_parameters
    - Even for "simple" nodes like HTTP Request, Set, etc.
    - Configure all nodes in parallel for efficiency
@@ -61,7 +65,7 @@ Follow this proven sequence for creating robust workflows:
    - Pay special attention to parameters that control node behavior (dataType, mode, operation)
    - Why: Unconfigured nodes will fail at runtime, defaults are unreliable
 
-6. **Validation Phase** (tool call) - MANDATORY
+8. **Validation Phase** (tool call) - MANDATORY
    - Run validate_workflow after applying changes to refresh the workflow validation report
    - Review <workflow_validation_report> and resolve any violations before finalizing
    - Why: Ensures structural issues are surfaced early; rerun validation after major updates

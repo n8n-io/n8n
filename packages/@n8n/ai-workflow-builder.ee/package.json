@@ -51,6 +51,7 @@
     "@n8n/di": "workspace:*",
     "@n8n/utils": "workspace:*",
     "@n8n_io/ai-assistant-sdk": "catalog:",
+    "@toon-format/toon": "1.0.0",
     "csv-parse": "5.5.0",
     "langsmith": "^0.3.45",
     "lodash": "catalog:",

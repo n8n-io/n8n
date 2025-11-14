@@ -1,5 +1,6 @@
 import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
+import { encode } from '@toon-format/toon';
 import { z } from 'zod';
 
 import type { GetWorkflowExamplesOutput, WorkflowMetadata } from '@/types';
@@ -182,7 +183,7 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 
 				// Report completion
 				const output: GetWorkflowExamplesOutput = {
-					examples: allResults,
+					examples: allResults.map((workflow) => encode(workflow)),
 					totalResults: allResults.length,
 					message: responseMessage,
 				};

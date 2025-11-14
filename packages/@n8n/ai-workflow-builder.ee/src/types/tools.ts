@@ -167,7 +167,7 @@ export interface WorkflowMetadata {
  * Output type for get workflow examples tool
  */
 export interface GetWorkflowExamplesOutput {
-	examples: WorkflowMetadata[];
+	examples: string[];
 	totalResults: number;
 	message: string;
 }
