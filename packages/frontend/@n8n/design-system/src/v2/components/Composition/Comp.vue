@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { ref } from 'vue';
 
-import { N8nIconButton, N8nText } from '@n8n/design-system/components';
+import { N8nIcon, N8nIconButton, N8nText } from '@n8n/design-system/components';
 import N8nScrollArea from '@n8n/design-system/components/N8nScrollArea/N8nScrollArea.vue';
 import type { IMenuItem } from '@n8n/design-system/types';
 
@@ -206,6 +206,22 @@ function toggleProjects() {
 					<MenuItem
 						:collapsed
 						:item="{
+							id: 'templates',
+							label: 'Templates',
+							icon: 'box',
+						}"
+					/>
+					<MenuItem
+						:collapsed
+						:item="{
+							id: 'insights',
+							label: 'Insights',
+							icon: 'chart-bar',
+						}"
+					/>
+					<MenuItem
+						:collapsed
+						:item="{
 							id: 'help',
 							label: 'Help',
 							icon: 'circle-help',
@@ -214,7 +230,10 @@ function toggleProjects() {
 				</footer>
 			</div>
 		</N8nScrollArea>
-		<div class="env"></div>
+		<div class="env">
+			<N8nIcon icon="git-branch" class="branch" size="medium" />
+			<N8nText class="branch-text">main</N8nText>
+		</div>
 	</div>
 </template>
 
@@ -224,7 +243,7 @@ function toggleProjects() {
 	flex-direction: column;
 	gap: 1px;
 	width: 250px;
-	padding: 4px;
+
 	border-right: 1px solid var(--color--foreground--tint-1);
 	overflow: hidden;
 	height: 100vh;
@@ -232,8 +251,8 @@ function toggleProjects() {
 
 .header {
 	display: flex;
-	padding: 2px;
-	margin-bottom: 12px;
+	padding: 6px;
+	margin-bottom: 2px;
 }
 
 .toggle {
@@ -244,6 +263,8 @@ function toggleProjects() {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
+	padding: 4px;
+	padding-top: 12px;
 }
 
 .actions {
@@ -266,6 +287,17 @@ function toggleProjects() {
 
 .env {
 	background-color: rgb(82, 150, 214);
+	height: 21px;
+	margin-top: 12px;
+	gap: 4px;
+	display: flex;
+	align-items: center;
+
+	padding: 0 12px;
+
+	* {
+		color: black;
+	}
 }
 
 .footer {
