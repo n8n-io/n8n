@@ -312,7 +312,6 @@ describe('WorkflowsView', () => {
 				expect.any(String),
 				expect.objectContaining({
 					active: true,
-					activeVersionId: '1',
 					isArchived: false,
 				}),
 				false, // No folders if active filter is set
