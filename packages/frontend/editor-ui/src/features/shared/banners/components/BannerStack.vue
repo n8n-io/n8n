@@ -47,6 +47,10 @@ const getBannerForName = (bannerName: BannerName) => {
 	return N8N_BANNERS[bannerName] || bannersStore.dynamicBannersMap[bannerName];
 };
 
+const removeUndefinedValues = (obj: Record<string, unknown>) => {
+	return Object.fromEntries(Object.entries(obj).filter(([_, value]) => value !== undefined));
+};
+
 const currentlyShownBanner = computed(() => {
 	void updateCurrentBannerHeight();
 	if (bannersStore.bannerStack.length === 0) return null;
@@ -64,15 +68,13 @@ const currentlyShownBanner = computed(() => {
 
 	return {
 		component: currentBanner.component,
-		props: Object.fromEntries(
-			Object.entries({
-				name: currentBannerName,
-				content: currentBanner.content,
-				theme: currentBanner.theme,
-				isDismissible: currentBanner.isDismissible,
-				dismissPermanently: currentBanner.dismissPermanently,
-			}).filter(([_, value]) => value !== undefined),
-		),
+		props: removeUndefinedValues({
+			name: currentBannerName,
+			content: currentBanner.content,
+			theme: currentBanner.theme,
+			isDismissible: currentBanner.isDismissible,
+			dismissPermanently: currentBanner.dismissPermanently,
+		}),
 	};
 });
 
