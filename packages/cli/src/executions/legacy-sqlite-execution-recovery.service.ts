@@ -1,9 +1,8 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { DbConnection, ExecutionRepository, In, WorkflowRepository } from '@n8n/db';
+import { DbConnection, ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import assert from 'assert';
-import { ExecutionStatus } from 'n8n-workflow';
 
 /**
  * Service for recovering executions that are missing execution data, this should only happen
@@ -16,7 +15,6 @@ export class LegacySqliteExecutionRecoveryService {
 	constructor(
 		logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
 		private readonly dbConnection: DbConnection,
 	) {
@@ -46,56 +44,6 @@ export class LegacySqliteExecutionRecoveryService {
 			this.logger.debug(
 				`Marked ${invalidExecutions.length} executions as crashed due to missing execution data.`,
 			);
-
-			if (this.globalConfig.executions.legacyRecovery.enableWorkflowDeactivation) {
-				const uniqueWorkflowIds = [...new Set(invalidExecutions.map((e) => e.workflowId))];
-				const maxLastExecutions = this.globalConfig.executions.legacyRecovery.maxLastExecutions;
-
-				for (const workflowId of uniqueWorkflowIds) {
-					const lastExecutions = await this.executionRepository.findMultipleExecutions({
-						where: { workflowId },
-						order: { startedAt: 'DESC' },
-						take: maxLastExecutions,
-					});
-					const numberOfCrashedExecutions = lastExecutions.filter(
-						(e) => e.status === 'crashed',
-					).length;
-
-					// If all of the last N executions are crashed, deactivate the workflow
-					if (
-						lastExecutions.length >= maxLastExecutions &&
-						lastExecutions.length === numberOfCrashedExecutions
-					) {
-						// Get workflow to preserve existing meta
-						const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
-
-						// Deactivate with metadata
-						await this.workflowRepository.update(
-							{ id: workflowId },
-							{
-								active: false,
-								meta: {
-									...workflow?.meta,
-									autoDeactivated: {
-										timestamp: new Date().toISOString(),
-										crashedExecutions: numberOfCrashedExecutions,
-									},
-								},
-							},
-						);
-						this.logger.warn(`Disabled workflow ${workflowId} due to too many crashed executions.`);
-						const pendingExecutions = await this.executionRepository.findMultipleExecutions({
-							where: { workflowId, status: In(['running', 'new'] as ExecutionStatus[]) },
-						});
-						if (pendingExecutions.length > 0) {
-							await this.executionRepository.markAsCrashed(pendingExecutions.map((e) => e.id));
-							this.logger.debug(
-								`Marked ${pendingExecutions.length} pending executions as crashed due to workflow deactivation.`,
-							);
-						}
-					}
-				}
-			}
 		}
 
 		this.logger.debug('Legacy SQLite execution recovery completed.');

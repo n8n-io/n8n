@@ -188,10 +188,10 @@ export class MessageEventBus extends EventEmitter {
 					const recoveredIds: string[] = [];
 
 					for (const executionId of unfinishedExecutionIds) {
-						const logMesssages = unsentAndUnfinished.unfinishedExecutions[executionId];
+						const logMessages = unsentAndUnfinished.unfinishedExecutions[executionId];
 						const recoveredExecution = await this.recoveryService.recoverFromLogs(
 							executionId,
-							logMesssages ?? [],
+							logMessages ?? [],
 						);
 						if (recoveredExecution) recoveredIds.push(executionId);
 					}

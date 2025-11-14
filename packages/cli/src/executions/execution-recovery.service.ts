@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import { In, type IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -14,7 +15,6 @@ import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution
 import { Push } from '@/push';
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
-import { GlobalConfig } from '@n8n/config';
 
 /**
  * Service for recovering key properties in executions.
@@ -53,9 +53,9 @@ export class ExecutionRecoveryService {
 			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
 		});
 
-		if (this.globalConfig.executions.legacyRecovery.enableWorkflowDeactivation) {
+		if (this.globalConfig.executions.recovery.enableWorkflowDeactivation) {
 			const workflowId = amendedExecution.workflowId;
-			const maxLastExecutions = this.globalConfig.executions.legacyRecovery.maxLastExecutions;
+			const maxLastExecutions = this.globalConfig.executions.recovery.maxLastExecutions;
 			const lastExecutions = await this.executionRepository.findMultipleExecutions({
 				where: { workflowId },
 				order: { startedAt: 'DESC' },

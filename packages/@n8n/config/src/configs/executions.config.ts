@@ -40,19 +40,19 @@ class QueueRecoveryConfig {
 }
 
 @Config
-class LegacyRecoveryConfig {
+class RecoveryConfig {
 	/**
 	 * Number of last executions to check when determining if a workflow should be deactivated
 	 * due to too many crashed executions. Only applies to legacy SQLite databases.
 	 */
-	@Env('EXECUTIONS_RECOVERY_MAX_LAST_EXECUTIONS')
+	@Env('N8N_EXECUTIONS_RECOVERY_MAX_LAST_EXECUTIONS')
 	maxLastExecutions: number = 3;
 
 	/**
 	 * Whether to automatically deactivate workflows that have all their last executions crashed.
 	 * Only applies to legacy SQLite databases.
 	 */
-	@Env('EXECUTIONS_RECOVERY_ENABLE_WORKFLOW_DEACTIVATION')
+	@Env('N8N_EXECUTIONS_RECOVERY_ENABLE_WORKFLOW_DEACTIVATION')
 	enableWorkflowDeactivation: boolean = true;
 }
 
@@ -111,7 +111,7 @@ export class ExecutionsConfig {
 	queueRecovery: QueueRecoveryConfig;
 
 	@Nested
-	legacyRecovery: LegacyRecoveryConfig;
+	recovery: RecoveryConfig;
 
 	/** Whether to save execution data for failed production executions. This default can be overridden at a workflow level. */
 	@Env('EXECUTIONS_DATA_SAVE_ON_ERROR')
