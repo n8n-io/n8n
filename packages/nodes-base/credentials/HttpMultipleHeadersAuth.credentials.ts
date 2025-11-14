@@ -9,8 +9,6 @@ export class HttpMultipleHeadersAuth implements ICredentialType {
 
 	documentationUrl = 'httprequest';
 
-	genericAuth = true;
-
 	icon: Icon = 'node:n8n-nodes-base.httpRequest';
 
 	properties: INodeProperties[] = [
