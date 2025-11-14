@@ -80,21 +80,36 @@ export class ExecutionRecoveryService {
 					return;
 				}
 
-				// Deactivate with metadata
-				await this.workflowRepository.update(
-					{ id: workflowId },
-					{
-						active: false,
-						meta: {
-							...workflow?.meta,
-							autoDeactivated: {
-								timestamp: new Date().toISOString(),
-								crashedExecutions: numberOfCrashedExecutions,
+				if (workflow.active) {
+					// Deactivate with metadata
+					await this.workflowRepository.update(
+						{ id: workflowId },
+						{
+							active: false,
+							meta: {
+								...workflow?.meta,
+								autoDeactivated: {
+									timestamp: new Date().toISOString(),
+									crashedExecutions: numberOfCrashedExecutions,
+								},
 							},
 						},
-					},
-				);
-				this.logger.warn(`Disabled workflow ${workflowId} due to too many crashed executions.`);
+					);
+					this.logger.warn(`Disabled workflow ${workflowId} due to too many crashed executions.`);
+
+					const instanceOwner = await this.ownershipService.getInstanceOwner();
+					if (!instanceOwner) {
+						this.logger.error(
+							'Instance owner not found, skipping owner notification of workflow deactivation',
+						);
+						return;
+					}
+					await this.userManagementMailer.notifyWorkflowDeactivated({
+						recipient: instanceOwner,
+						workflow,
+					});
+				}
+
 				const pendingExecutions = await this.executionRepository.findMultipleExecutions({
 					where: { workflowId, status: In(['running', 'new'] as ExecutionStatus[]) },
 				});
@@ -104,17 +119,6 @@ export class ExecutionRecoveryService {
 						`Marked ${pendingExecutions.length} pending executions as crashed due to workflow deactivation.`,
 					);
 				}
-				const instanceOwner = await this.ownershipService.getInstanceOwner();
-				if (!instanceOwner) {
-					this.logger.error(
-						'Instance owner not found, skipping owner notification of workflow deactivation',
-					);
-					return;
-				}
-				await this.userManagementMailer.notifyWorkflowDeactivated({
-					recipient: instanceOwner,
-					workflow,
-				});
 			}
 		}
 
