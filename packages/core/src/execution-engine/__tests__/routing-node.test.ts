@@ -20,7 +20,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 } from 'n8n-workflow';
 import { Workflow } from 'n8n-workflow';
-import type { ICredentialsDecrypted } from 'n8n-workflow/src';
+import type { ICredentialsDecrypted } from 'n8n-workflow';
 
 import * as executionContexts from '@/execution-engine/node-execution-context';
 import { DirectoryLoader } from '@/nodes-loader';

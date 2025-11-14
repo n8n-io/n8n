@@ -5,6 +5,7 @@ import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import type { IUser } from 'n8n-workflow';
+import { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
@@ -12,7 +13,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
 import { UrlService } from '@/services/url.service';
 import { Telemetry } from '@/telemetry';
-import { ITelemetryTrackProperties } from 'n8n-workflow/src';
 
 /**
  * This service wraps the actual AiWorkflowBuilderService to avoid circular dependencies.

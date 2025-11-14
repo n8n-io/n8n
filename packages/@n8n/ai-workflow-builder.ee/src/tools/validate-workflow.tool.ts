@@ -1,12 +1,16 @@
 import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import type { ITelemetryTrackProperties } from 'n8n-workflow/src';
+import type { INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 import { z } from 'zod';
 
 import type { BuilderTool, BuilderToolBase } from '@/utils/stream-processor';
 import { programmaticValidation } from '@/validation/programmatic';
-import type { ProgrammaticChecksResult, ProgrammaticViolation } from '@/validation/types';
+import type {
+	ProgrammaticViolation,
+	ProgrammaticChecksResult,
+	TelemetryValidationStatus,
+} from '@/validation/types';
+import { PROGRAMMATIC_VIOLATION_NAMES } from '@/validation/types';
 
 import { ToolExecutionError, ValidationError } from '../errors';
 import { formatWorkflowValidation } from '../utils/workflow-validation';
@@ -21,26 +25,29 @@ export const VALIDATE_WORKFLOW_TOOL: BuilderToolBase = {
 	displayTitle: 'Validating workflow',
 };
 
-function collectTelemetryEventProps(results: ProgrammaticChecksResult) {
-	const props = {
-		validation_failed: [] as string[],
-	};
+/**
+ * Creates a compacted validation result for use in telemetry
+ * @returns `{ X: 'pass' | 'fail', Y: 'pass' | 'fail', ... }`
+ */
+function collectValidationResultForTelemetry(
+	results: ProgrammaticChecksResult,
+): TelemetryValidationStatus {
+	const status = Object.fromEntries(
+		PROGRAMMATIC_VIOLATION_NAMES.map((name) => [name, 'pass' as const]),
+	) as TelemetryValidationStatus;
 
 	Object.values(results).forEach((violations: ProgrammaticViolation[]) => {
-		violations.forEach((violation) => {
-			if (violation?.name) {
-				props.validation_failed.push(violation.name);
-			}
+		violations?.forEach((violation) => {
+			status[violation.name] = 'fail';
 		});
 	});
 
-	return props;
+	return status;
 }
 
 export function createValidateWorkflowTool(
 	parsedNodeTypes: INodeTypeDescription[],
 	logger?: Logger,
-	onTelemetryEvent?: (event: string, properties: ITelemetryTrackProperties) => void,
 ): BuilderTool {
 	const dynamicTool = tool(
 		async (input, config) => {
@@ -64,8 +71,7 @@ export function createValidateWorkflowTool(
 					parsedNodeTypes,
 				);
 
-				const telemetryProps = collectTelemetryEventProps(violations);
-				onTelemetryEvent?.('Builder validation check failed', telemetryProps);
+				const validationResultForTelemetry = collectValidationResultForTelemetry(violations);
 
 				const message = formatWorkflowValidation(violations);
 
@@ -73,6 +79,7 @@ export function createValidateWorkflowTool(
 
 				return createSuccessResponse(config, message, {
 					workflowValidation: violations,
+					validationHistory: [validationResultForTelemetry],
 				});
 			} catch (error) {
 				if (error instanceof z.ZodError) {
