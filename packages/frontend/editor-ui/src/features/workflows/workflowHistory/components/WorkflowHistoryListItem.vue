@@ -118,7 +118,12 @@ onMounted(() => {
 			</p>
 		</slot>
 		<div :class="$style.tail">
-			<N8nBadge v-if="props.isVersionActive">
+			<N8nBadge
+				v-if="props.isVersionActive"
+				size="medium"
+				:class="$style.publishedBadge"
+				:show-border="false"
+			>
 				{{ i18n.baseText('workflowHistory.item.active') }}
 			</N8nBadge>
 			<N8nActionToggle
@@ -195,5 +200,15 @@ onMounted(() => {
 .actions {
 	display: block;
 	padding: var(--spacing--3xs);
+}
+
+.publishedBadge {
+	background-color: var(--color--success);
+	color: var(--color--foreground--tint-2);
+
+	:global(.n8n-text) {
+		font-size: var(--font-size--2xs);
+		line-height: var(--line-height--sm);
+	}
 }
 </style>
