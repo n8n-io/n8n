@@ -266,31 +266,30 @@ export class KafkaTrigger implements INodeType {
 					let value: any;
 					let binary: { [key: string]: any } = {};
 
-					// Handle binary data preservation (only in v1.2+)
+					// Always perform parsing/decoding flow
+					value = message.value?.toString() as string;
+
+					if (options.jsonParseMessage) {
+						try {
+							value = JSON.parse(value);
+						} catch (error) {}
+					}
+
+					if (useSchemaRegistry) {
+						try {
+							const registry = new SchemaRegistry({ host: schemaRegistryUrl });
+							value = await registry.decode(message.value as Buffer);
+						} catch (error) {}
+					}
+
+					// Additionally, preserve raw binary data for downstream processing (only in v1.2+)
 					if (nodeVersion >= 1.2 && options.keepBinaryData && message.value) {
-						// Store as binary data for downstream nodes to process
 						const binaryData = await this.helpers.prepareBinaryData(
 							message.value as Buffer,
 							'message',
 							'application/octet-stream',
 						);
 						binary.data = binaryData;
-						value = message.value;
-					} else {
-						value = message.value?.toString() as string;
-
-						if (options.jsonParseMessage) {
-							try {
-								value = JSON.parse(value);
-							} catch (error) {}
-						}
-
-						if (useSchemaRegistry) {
-							try {
-								const registry = new SchemaRegistry({ host: schemaRegistryUrl });
-								value = await registry.decode(message.value as Buffer);
-							} catch (error) {}
-						}
 					}
 
 					if (options.returnHeaders && message.headers) {
@@ -305,8 +304,7 @@ export class KafkaTrigger implements INodeType {
 					data.message = value;
 					data.topic = messageTopic;
 
-					// Skip onlyMessage when keepBinaryData is active as value is a Buffer
-					if (options.onlyMessage && !(nodeVersion >= 1.2 && options.keepBinaryData)) {
+					if (options.onlyMessage) {
 						data = value as IDataObject;
 					}
 

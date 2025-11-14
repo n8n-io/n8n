@@ -413,10 +413,11 @@ describe('KafkaTrigger Node', () => {
 		// Check the structure has both json and binary properties
 		expect(emittedData).toHaveProperty('json');
 		expect(emittedData).toHaveProperty('binary');
-		expect(emittedData.json.message).toEqual(messageBuffer);
+		// Message is converted to string for the json field
+		expect(emittedData.json.message).toBe('binary-avro-data');
 		expect(emittedData.json.topic).toBe('test-topic');
+		// Raw buffer is preserved in binary data for downstream processing
 		expect(emittedData.binary).toHaveProperty('data');
-		// Binary data will be prepared by helpers.prepareBinaryData in actual execution
 	});
 
 	it('should not keep binary data in v1.0 and v1.1 even if option is set', async () => {
@@ -496,5 +497,180 @@ describe('KafkaTrigger Node', () => {
 				},
 			],
 		]);
+	});
+
+	it('should parse JSON and keep binary data when both options are enabled', async () => {
+		const jsonData = { foo: 'bar', nested: { value: 123 } };
+		const messageBuffer = Buffer.from(JSON.stringify(jsonData));
+
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				typeVersion: 1.2,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						keepBinaryData: true,
+						jsonParseMessage: true,
+						parallelProcessing: true,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await publishMessage({
+			value: messageBuffer,
+		});
+
+		expect(emit).toHaveBeenCalled();
+		const emittedData = emit.mock.calls[0][0][0][0];
+
+		// Should have parsed JSON in the message field
+		expect(emittedData.json.message).toEqual(jsonData);
+		expect(emittedData.json.topic).toBe('test-topic');
+		// Should also have binary data attached
+		expect(emittedData.binary).toHaveProperty('data');
+	});
+
+	it('should decode with schema registry and keep binary data when both are enabled', async () => {
+		const messageBuffer = Buffer.from('avro-encoded-data');
+		const decodedData = { userId: 123, userName: 'test-user' };
+		mockRegistryDecode.mockResolvedValue(decodedData);
+
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				typeVersion: 1.2,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: true,
+					schemaRegistryUrl: 'http://localhost:8081',
+					options: {
+						keepBinaryData: true,
+						parallelProcessing: true,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await publishMessage({
+			value: messageBuffer,
+		});
+
+		// Should call schema registry decode
+		expect(mockRegistryDecode).toHaveBeenCalledWith(messageBuffer);
+
+		expect(emit).toHaveBeenCalled();
+		const emittedData = emit.mock.calls[0][0][0][0];
+
+		// Should have decoded data in the message field
+		expect(emittedData.json.message).toEqual(decodedData);
+		expect(emittedData.json.topic).toBe('test-topic');
+		// Should also have binary data attached
+		expect(emittedData.binary).toHaveProperty('data');
+	});
+
+	it('should work with keepBinaryData and onlyMessage together', async () => {
+		const jsonData = { result: 'success', data: [1, 2, 3] };
+		const messageBuffer = Buffer.from(JSON.stringify(jsonData));
+
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				typeVersion: 1.2,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						keepBinaryData: true,
+						jsonParseMessage: true,
+						onlyMessage: true,
+						parallelProcessing: true,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await publishMessage({
+			value: messageBuffer,
+		});
+
+		expect(emit).toHaveBeenCalled();
+		const emittedData = emit.mock.calls[0][0][0][0];
+
+		// onlyMessage should return just the parsed JSON (not wrapped in message/topic)
+		expect(emittedData.json).toEqual(jsonData);
+		// Should still have binary data attached
+		expect(emittedData.binary).toHaveProperty('data');
+	});
+
+	it('should keep binary data with returnHeaders enabled', async () => {
+		const messageBuffer = Buffer.from('test-data');
+
+		const { emit } = await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				typeVersion: 1.2,
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+					options: {
+						keepBinaryData: true,
+						returnHeaders: true,
+						parallelProcessing: true,
+					},
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: false,
+				authentication: false,
+			},
+		});
+
+		await publishMessage({
+			value: messageBuffer,
+			headers: {
+				'content-type': Buffer.from('application/octet-stream'),
+				'message-id': Buffer.from('msg-123'),
+			},
+		});
+
+		expect(emit).toHaveBeenCalled();
+		const emittedData = emit.mock.calls[0][0][0][0];
+
+		// Should have message and headers (message converted to string)
+		expect(emittedData.json.message).toBe('test-data');
+		expect(emittedData.json.topic).toBe('test-topic');
+		expect(emittedData.json.headers).toEqual({
+			'content-type': 'application/octet-stream',
+			'message-id': 'msg-123',
+		});
+		// Raw buffer is preserved in binary data for downstream processing
+		expect(emittedData.binary).toHaveProperty('data');
 	});
 });
