@@ -9,6 +9,7 @@ export * from './common';
 export * from './cron';
 export * from './data-table.types';
 export * from './deferred-promise';
+export * from './execution-context';
 export * from './global-state';
 export * from './interfaces';
 export * from './message-event-bus';
@@ -26,6 +27,7 @@ export * from './workflow-data-proxy-env-provider';
 export * from './versioned-node-type';
 export * from './type-validation';
 export * from './result';
+export * from './schemas';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,
@@ -74,6 +76,7 @@ export * from './node-parameters/filter-parameter';
 export * from './node-parameters/parameter-type-validation';
 export * from './node-parameters/path-utils';
 export * from './evaluation-helpers';
+export * from './workflow-diff';
 
 export type {
 	DocMetadata,

@@ -55,6 +55,10 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		super(workflow, node, additionalData, mode, runExecutionData, runIndex);
 	}
 
+	getExecutionContext() {
+		return this.runExecutionData.executionData?.runtimeData;
+	}
+
 	getExecutionCancelSignal() {
 		return this.abortSignal;
 	}

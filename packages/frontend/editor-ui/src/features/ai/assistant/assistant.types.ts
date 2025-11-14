@@ -1,4 +1,4 @@
-import type { VIEWS } from '@/constants';
+import type { VIEWS } from '@/app/constants';
 import type { IWorkflowDb, NodeAuthenticationOption, Schema } from '@/Interface';
 import type {
 	ExecutionError,

@@ -235,13 +235,37 @@ export class Telemetry {
 			context: {},
 		};
 
-		this.postHog?.track(payload);
-
-		return this.rudderStack.track({
+		// Build the actual payload that will be sent to RudderStack (with fake IP)
+		const rudderStackPayload = {
 			...payload,
 			// provide a fake IP address to instruct RudderStack to not use the user's IP address
 			context: { ...payload.context, ip: '0.0.0.0' },
-		});
+		};
+
+		// Limiting payload size to 32 KB - measure the actual payload sent to RudderStack
+		const payloadSize = Buffer.byteLength(JSON.stringify(rudderStackPayload), 'utf8');
+		const maxPayloadSize = 32 << 10; // 32 KB
+
+		if (payloadSize > maxPayloadSize) {
+			this.errorReporter.warn(
+				new Error(
+					`Telemetry event "${eventName}" payload size (${payloadSize} bytes) exceeds limit (${maxPayloadSize} bytes). Skipping event.`,
+				),
+				{
+					extra: {
+						eventName,
+						payloadSize,
+						maxPayloadSize,
+						userId: payload.userId,
+					},
+				},
+			);
+			return;
+		}
+
+		this.postHog?.track(payload);
+
+		return this.rudderStack.track(rudderStackPayload);
 	}
 
 	// test helpers

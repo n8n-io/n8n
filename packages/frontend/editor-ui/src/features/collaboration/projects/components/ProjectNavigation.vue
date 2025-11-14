@@ -1,9 +1,9 @@
 <script lang="ts" setup>
-import { useGlobalEntityCreation } from '@/composables/useGlobalEntityCreation';
-import { VIEWS } from '@/constants';
+import { useGlobalEntityCreation } from '@/app/composables/useGlobalEntityCreation';
+import { VIEWS } from '@/app/constants';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useUsersStore } from '@/features/settings/users/users.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { IMenuItem } from '@n8n/design-system/types';
 import { useI18n } from '@n8n/i18n';
 import { computed, onBeforeMount, onBeforeUnmount } from 'vue';

@@ -335,3 +335,103 @@ async def test_cannot_bypass_import_restrictions_via_sys_builtins_spec_leader(
 
     assert error_msg["taskId"] == task_id
     assert "error" in error_msg
+
+
+@pytest.mark.asyncio
+async def test_env_blocked_by_default_all_items(
+    broker, manager_with_env_access_blocked
+):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        import os
+        path = os.environ.get('PATH', 'NOT_FOUND')
+        home = os.environ.get('HOME', 'NOT_FOUND')
+        env_dict = dict(os.environ)
+        return [{"json": {
+            "path": path,
+            "home": home,
+            "env_count": len(env_dict)
+        }}]
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert result["data"]["result"][0]["json"]["path"] == "NOT_FOUND"
+    assert result["data"]["result"][0]["json"]["home"] == "NOT_FOUND"
+    assert result["data"]["result"][0]["json"]["env_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_env_blocked_by_default_per_item(broker, manager_with_env_access_blocked):
+    task_id = nanoid()
+    items = [
+        {"json": {"index": 0}},
+        {"json": {"index": 1}},
+    ]
+    code = textwrap.dedent("""
+        import os
+        path = os.environ.get('PATH', 'NOT_FOUND')
+        return {"path": path, "env_count": len(dict(os.environ))}
+    """)
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert len(result["data"]["result"]) == 2
+    for item in result["data"]["result"]:
+        assert item["json"]["path"] == "NOT_FOUND"
+        assert item["json"]["env_count"] == 0
+
+
+@pytest.mark.asyncio
+async def test_env_accessible_when_allowed_all_items(
+    broker, manager_with_env_access_allowed
+):
+    task_id = nanoid()
+    code = textwrap.dedent("""
+        import os
+        path = os.environ.get('PATH', 'NOT_FOUND')
+        env_dict = dict(os.environ)
+        return [{"json": {
+            "has_path": path != 'NOT_FOUND',
+            "env_count": len(env_dict)
+        }}]
+    """)
+    task_settings = create_task_settings(code=code, node_mode="all_items")
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert result["data"]["result"][0]["json"]["has_path"] is True
+    assert result["data"]["result"][0]["json"]["env_count"] > 0
+
+
+@pytest.mark.asyncio
+async def test_env_accessible_when_allowed_per_item(
+    broker, manager_with_env_access_allowed
+):
+    task_id = nanoid()
+    items = [
+        {"json": {"index": 0}},
+        {"json": {"index": 1}},
+    ]
+    code = textwrap.dedent("""
+        import os
+        path = os.environ.get('PATH', 'NOT_FOUND')
+        return {
+            "has_path": path != 'NOT_FOUND',
+            "env_count": len(dict(os.environ))
+        }
+    """)
+    task_settings = create_task_settings(code=code, node_mode="per_item", items=items)
+    await broker.send_task(task_id=task_id, task_settings=task_settings)
+
+    result = await wait_for_task_done(broker, task_id)
+
+    assert len(result["data"]["result"]) == 2
+    for item in result["data"]["result"]:
+        assert item["json"]["has_path"] is True
+        assert item["json"]["env_count"] > 0

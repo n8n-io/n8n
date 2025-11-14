@@ -87,21 +87,27 @@ export function useDataTableNavigationCommands(options: {
 		return dataTable.project?.name ?? '';
 	};
 
-	const createDataTableCommand = (dataTable: DataTable): CommandBarItem => {
+	const createDataTableCommand = (dataTable: DataTable, isRoot: boolean): CommandBarItem => {
 		// Add data table name to keywords since we're using a custom component for the title
 		const keywords = [dataTable.name];
+
+		const title = isRoot
+			? i18n.baseText('generic.openResource', { interpolate: { resource: dataTable.name } })
+			: dataTable.name;
+		const section = isRoot
+			? i18n.baseText('commandBar.sections.dataTables')
+			: i18n.baseText('commandBar.dataTables.open');
 
 		return {
 			id: dataTable.id,
 			title: {
 				component: CommandBarItemTitle,
 				props: {
-					title: dataTable.name,
+					title,
 					suffix: getDataTableProjectSuffix(dataTable),
-					actionText: i18n.baseText('generic.open'),
 				},
 			},
-			section: i18n.baseText('commandBar.sections.dataTables'),
+			section,
 			keywords,
 			handler: () => {
 				void router.push({
@@ -116,14 +122,14 @@ export function useDataTableNavigationCommands(options: {
 	};
 
 	const openDataTableCommands = computed<CommandBarItem[]>(() => {
-		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable));
+		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable, false));
 	});
 
 	const rootDataTableItems = computed<CommandBarItem[]>(() => {
 		if (lastQuery.value.length <= 2) {
 			return [];
 		}
-		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable));
+		return dataTableResults.value.map((dataTable) => createDataTableCommand(dataTable, true));
 	});
 
 	const dataTableNavigationCommands = computed<CommandBarItem[]>(() => {

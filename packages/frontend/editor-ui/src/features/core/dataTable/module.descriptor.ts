@@ -1,15 +1,16 @@
 import { useI18n } from '@n8n/i18n';
-import { type FrontendModuleDescription } from '@/moduleInitializer/module.types';
+import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import {
 	ADD_DATA_TABLE_MODAL_KEY,
 	DATA_TABLE_DETAILS,
 	DATA_TABLE_VIEW,
 	PROJECT_DATA_TABLES,
 } from '@/features/core/dataTable/constants';
+import { useInsightsStore } from '@/features/execution/insights/insights.store';
 
 const i18n = useI18n();
 
-const MainSidebar = async () => await import('@/components/MainSidebar.vue');
+const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
 const DataTableView = async () => await import('@/features/core/dataTable/DataTableView.vue');
 const DataTableDetailsView = async () =>
 	await import('@/features/core/dataTable/DataTableDetailsView.vue');
@@ -36,6 +37,14 @@ export const DataTableModule: FrontendModuleDescription = {
 			},
 			meta: {
 				middleware: ['authenticated', 'custom'],
+			},
+			beforeEnter: (_to, _from, next) => {
+				const insightsStore = useInsightsStore();
+				if (insightsStore.isSummaryEnabled) {
+					// refresh the weekly summary when entering the datatables route
+					void insightsStore.weeklySummary.execute();
+				}
+				next();
 			},
 		},
 		{
@@ -70,7 +79,6 @@ export const DataTableModule: FrontendModuleDescription = {
 			{
 				label: i18n.baseText('dataTable.dataTables'),
 				value: DATA_TABLE_VIEW,
-				tag: i18n.baseText('generic.betaProper'),
 				to: {
 					name: DATA_TABLE_VIEW,
 				},
@@ -80,7 +88,6 @@ export const DataTableModule: FrontendModuleDescription = {
 			{
 				label: i18n.baseText('dataTable.dataTables'),
 				value: PROJECT_DATA_TABLES,
-				tag: i18n.baseText('generic.betaProper'),
 				dynamicRoute: {
 					name: PROJECT_DATA_TABLES,
 					includeProjectId: true,
