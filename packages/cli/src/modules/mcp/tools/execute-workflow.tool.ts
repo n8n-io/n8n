@@ -25,29 +25,37 @@ import type { WorkflowFinderService } from '@/workflows/workflow-finder.service'
 const inputSchema = z.object({
 	workflowId: z.string().describe('The ID of the workflow to execute'),
 	inputs: z
-		.object({
-			chatInput: z.string().optional().describe('Input for chat-based workflows'),
-			formData: z.record(z.unknown()).optional().describe('Input data for form-based workflows'),
-			webhookData: z
-				.object({
-					method: z
-						.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])
-						.optional()
-						.default('GET')
-						.describe('HTTP method (defaults to GET)'),
-					query: z.record(z.string()).optional().describe('Query string parameters'),
-					body: z
-						.record(z.unknown())
-						.optional()
-						.describe('Request body data (main webhook payload)'),
-					headers: z
-						.record(z.string())
-						.optional()
-						.describe('HTTP headers (e.g., authorization, content-type)'),
-				})
-				.optional()
-				.describe('Input data for webhook-based workflows'),
-		})
+		.discriminatedUnion('type', [
+			z.object({
+				type: z.literal('chat'),
+				chatInput: z.string().describe('Input for chat-based workflows'),
+			}),
+			z.object({
+				type: z.literal('form'),
+				formData: z.record(z.unknown()).describe('Input data for form-based workflows'),
+			}),
+			z.object({
+				type: z.literal('webhook'),
+				webhookData: z
+					.object({
+						method: z
+							.enum(['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'HEAD', 'OPTIONS'])
+							.optional()
+							.default('GET')
+							.describe('HTTP method (defaults to GET)'),
+						query: z.record(z.string()).optional().describe('Query string parameters'),
+						body: z
+							.record(z.unknown())
+							.optional()
+							.describe('Request body data (main webhook payload)'),
+						headers: z
+							.record(z.string())
+							.optional()
+							.describe('HTTP headers (e.g., authorization, content-type)'),
+					})
+					.describe('Input data for webhook-based workflows'),
+			}),
+		])
 		.optional()
 		.describe('Inputs to provide to the workflow'),
 });
@@ -173,7 +181,7 @@ export const executeWorkflow = async (
 	// Set the trigger node as the start node and pin data for it
 	// This will enable us to run the workflow from the trigger node with the provided inputs without waiting for an actual trigger event
 	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
-	runData.pinData = getPinDataForTrigger(triggerNode, inputs ?? {});
+	runData.pinData = getPinDataForTrigger(triggerNode, inputs);
 
 	const executionId = await workflowRunner.run(runData);
 
@@ -229,23 +237,25 @@ const getPinDataForTrigger = (
 	node: INode,
 	inputs: z.infer<typeof inputSchema>['inputs'],
 ): IPinData => {
-	if (!inputs) return {};
-
 	switch (node.type) {
-		case WEBHOOK_NODE_TYPE:
+		case WEBHOOK_NODE_TYPE: {
+			// For webhook triggers, provide default empty values if no inputs or wrong type
+			const webhookData = inputs?.type === 'webhook' ? inputs.webhookData : undefined;
 			return {
 				[node.name]: [
 					{
 						json: {
-							headers: inputs.webhookData?.headers ?? {},
-							query: inputs.webhookData?.query ?? {},
-							body: inputs.webhookData?.body ?? {},
+							headers: webhookData?.headers ?? {},
+							query: webhookData?.query ?? {},
+							body: webhookData?.body ?? {},
 							executionMode: 'webhook',
 						},
 					},
 				],
 			};
+		}
 		case CHAT_TRIGGER_NODE_TYPE:
+			if (!inputs || inputs.type !== 'chat') return {};
 			return {
 				[node.name]: [
 					{
@@ -258,13 +268,14 @@ const getPinDataForTrigger = (
 				],
 			};
 		case FORM_TRIGGER_NODE_TYPE:
+			if (!inputs || inputs.type !== 'form') return {};
 			return {
 				[node.name]: [
 					{
 						json: {
 							submittedAt: new Date().toISOString(),
 							formMode: 'mcp',
-							...(inputs?.formData ?? {}),
+							...(inputs.formData ?? {}),
 						},
 					},
 				],

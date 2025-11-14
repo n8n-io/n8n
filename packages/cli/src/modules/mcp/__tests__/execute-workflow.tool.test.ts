@@ -218,6 +218,7 @@ describe('execute-workflow MCP tool', () => {
 					workflowRunner,
 					'webhook-workflow',
 					{
+						type: 'webhook',
 						webhookData: {
 							method: 'POST',
 							headers: { 'content-type': 'application/json' },
@@ -282,6 +283,7 @@ describe('execute-workflow MCP tool', () => {
 					workflowRunner,
 					'webhook-workflow',
 					{
+						type: 'webhook',
 						webhookData: {
 							method: 'GET',
 							query: { id: '123' },
@@ -335,6 +337,7 @@ describe('execute-workflow MCP tool', () => {
 					workflowRunner,
 					'chat-workflow',
 					{
+						type: 'chat',
 						chatInput: 'Hello, how can I help?',
 					},
 				);
@@ -390,6 +393,7 @@ describe('execute-workflow MCP tool', () => {
 					workflowRunner,
 					'form-workflow',
 					{
+						type: 'form',
 						formData: {
 							name: 'John Doe',
 							email: 'john@example.com',
@@ -716,7 +720,7 @@ describe('execute-workflow MCP tool', () => {
 
 				// Call through the tool handler to test telemetry
 				await tool.handler(
-					{ workflowId: 'telemetry-workflow', inputs: { chatInput: 'test' } },
+					{ workflowId: 'telemetry-workflow', inputs: { type: 'chat', chatInput: 'test' } },
 					{} as any,
 				);
 
@@ -727,7 +731,7 @@ describe('execute-workflow MCP tool', () => {
 						tool_name: 'execute_workflow',
 						parameters: {
 							workflowId: 'telemetry-workflow',
-							inputs: { chatInput: 'test' },
+							inputs: { type: 'chat', chatInput: 'test' },
 						},
 						results: {
 							success: true,
