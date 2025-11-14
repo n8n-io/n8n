@@ -55,4 +55,10 @@ export class SecurityConfig {
 	/** Whether to allow access to AWS system credentials, e.g. in awsAssumeRole credentials */
 	@Env('N8N_AWS_SYSTEM_CREDENTIALS_ACCESS_ENABLED')
 	awsSystemCredentialsAccess: boolean = false;
+
+	/**
+	 * Whether to enable hooks (like pre-commit hooks) for the Git node.
+	 */
+	@Env('N8N_GIT_NODE_ENABLE_HOOKS')
+	enableGitNodeHooks: boolean = false;
 }

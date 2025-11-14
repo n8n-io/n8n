@@ -509,7 +509,7 @@
 									>
 										{{#each multiSelectOptions}}
 											<div class='multiselect-option'>
-												<input type='checkbox' class='multiselect-checkbox' id='{{id}}' />
+												<input type='checkbox' class='multiselect-checkbox' id='{{id}}' value='{{label}}' />
 												<label for='{{id}}'>{{label}}</label>
 											</div>
 										{{/each}}
@@ -724,8 +724,7 @@
 
 				checkboxes.forEach((checkbox, index) => {
 					if (checkbox.checked) {
-						const label = input.querySelectorAll('label')[index];
-						selectedValues.push(label.textContent.trim());
+						selectedValues.push(checkbox.value.trim());
 					}
 				});
 
