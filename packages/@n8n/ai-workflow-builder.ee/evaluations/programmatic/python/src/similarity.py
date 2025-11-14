@@ -42,38 +42,43 @@ def calculate_graph_edit_distance(
             "top_edits": [],
         }
 
+    # Relabel graphs to use structural IDs instead of node names
+    # This ensures nodes are matched by type/position, not by name
+    g1_relabeled, g1_mapping = _relabel_graph_by_structure(g1)
+    g2_relabeled, g2_mapping = _relabel_graph_by_structure(g2)
+
     # Create cost function closures with config
     # NetworkX passes node ATTRIBUTE DICTS, not node names
     def node_subst_cost(n1_attrs, n2_attrs):
-        return node_substitution_cost(n1_attrs, n2_attrs, config)
+        cost = node_substitution_cost(n1_attrs, n2_attrs, config)
+        print(f"DEBUG node_subst_cost: {cost}", file=__import__("sys").stderr)
+        return cost
 
     def node_del_cost(n_attrs):
-        return node_deletion_cost(n_attrs, config)
+        cost = node_deletion_cost(n_attrs, config)
+        print(f"DEBUG node_del_cost: {cost}", file=__import__("sys").stderr)
+        return cost
 
     def node_ins_cost(n_attrs):
-        return node_insertion_cost(n_attrs, config)
+        cost = node_insertion_cost(n_attrs, config)
+        print(f"DEBUG node_ins_cost: {cost}")
+        return cost
 
     # Edge cost functions receive edge attribute dicts from NetworkX
     def edge_subst_cost(e1_attrs, e2_attrs):
-        return edge_substitution_cost(e1_attrs, e2_attrs, config)
+        cost = edge_substitution_cost(e1_attrs, e2_attrs, config)
+        print(f"DEBUG edge_subst_cost: {cost}")
+        return cost
 
     def edge_del_cost(e_attrs):
-        return edge_deletion_cost(e_attrs, config)
+        cost = edge_deletion_cost(e_attrs, config)
+        print(f"DEBUG edge_del_cost: {cost}")
+        return cost
 
     def edge_ins_cost(e_attrs):
-        return edge_insertion_cost(e_attrs, config)
-
-    # Node match function that compares hashable attributes
-    def node_match(n1_attrs, n2_attrs):
-        """Compare nodes using only hashable attributes"""
-        return n1_attrs.get("type") == n2_attrs.get("type") and n1_attrs.get(
-            "parameters_hash"
-        ) == n2_attrs.get("parameters_hash")
-
-    # Edge match function
-    def edge_match(e1_attrs, e2_attrs):
-        """Compare edges using hashable attributes"""
-        return e1_attrs.get("connection_type") == e2_attrs.get("connection_type")
+        cost = edge_insertion_cost(e_attrs, config)
+        print(f"DEBUG edge_ins_cost: {cost}")
+        return cost
 
     # Calculate GED using NetworkX
     # Note: This can be slow for large graphs, but workflow graphs are typically small
@@ -82,10 +87,8 @@ def calculate_graph_edit_distance(
         # This returns an iterator of possible edit costs
         edit_paths = list(
             nx.optimize_graph_edit_distance(
-                g1,
-                g2,
-                node_match=node_match,
-                edge_match=edge_match,
+                g1_relabeled,
+                g2_relabeled,
                 node_subst_cost=node_subst_cost,
                 node_del_cost=node_del_cost,
                 node_ins_cost=node_ins_cost,
@@ -96,11 +99,18 @@ def calculate_graph_edit_distance(
             )
         )
 
+        print(f"DEBUG: edit_paths = {edit_paths}", file=__import__("sys").stderr)
+
         if not edit_paths:
             # Fallback to basic calculation
+            print("DEBUG: Using fallback", file=__import__("sys").stderr)
             edit_cost = _calculate_basic_edit_cost(g1, g2, config)
         else:
             edit_cost = min(edit_paths)  # Best (lowest cost) path
+            print(
+                f"DEBUG: Using NetworkX GED, min cost = {edit_cost}",
+                file=__import__("sys").stderr,
+            )
 
     except Exception as e:
         # Fallback if NetworkX GED fails
@@ -118,7 +128,10 @@ def calculate_graph_edit_distance(
         similarity_score = max(0.0, min(1.0, 1.0 - (edit_cost / max_cost)))
 
     # Extract and rank edit operations
-    edit_ops = _extract_edit_operations(g1, g2, config)
+    # Use relabeled graphs for structural matching, but keep original names for display
+    edit_ops = _extract_edit_operations(
+        g1_relabeled, g2_relabeled, config, g1_mapping, g2_mapping
+    )
 
     return {
         "similarity_score": similarity_score,
@@ -205,20 +218,33 @@ def _calculate_max_cost(
 
 
 def _extract_edit_operations(
-    g1: nx.DiGraph, g2: nx.DiGraph, config: WorkflowComparisonConfig
+    g1: nx.DiGraph,
+    g2: nx.DiGraph,
+    config: WorkflowComparisonConfig,
+    g1_name_mapping: Dict[str, str] = None,
+    g2_name_mapping: Dict[str, str] = None,
 ) -> List[Dict[str, Any]]:
     """
     Extract and describe edit operations needed to transform g1 to g2.
 
     Args:
-        g1: First graph (generated)
-        g2: Second graph (ground truth)
+        g1: First graph (generated, possibly relabeled)
+        g2: Second graph (ground truth, possibly relabeled)
         config: Configuration
+        g1_name_mapping: Optional mapping from structural IDs to original names for g1
+        g2_name_mapping: Optional mapping from structural IDs to original names for g2
 
     Returns:
         List of edit operations with descriptions and costs
     """
     operations = []
+
+    # Helper to get display name
+    def get_display_name(node_id: str, mapping: Dict[str, str], graph: nx.DiGraph) -> str:
+        if mapping and node_id in mapping:
+            return mapping[node_id]
+        # Fallback to _original_name attribute or the ID itself
+        return graph.nodes[node_id].get("_original_name", node_id)
 
     nodes1 = set(g1.nodes())
     nodes2 = set(g2.nodes())
@@ -226,28 +252,30 @@ def _extract_edit_operations(
     # Node deletions (in generated but not in ground truth)
     for node in nodes1 - nodes2:
         node_data = g1.nodes[node]
+        display_name = get_display_name(node, g1_name_mapping, g1)
         cost = node_deletion_cost(node_data, config)
         operations.append(
             {
                 "type": "node_delete",
-                "description": f"Remove node '{node}' (type: {node_data.get('type', 'unknown')})",
+                "description": f"Remove node '{display_name}' (type: {node_data.get('type', 'unknown')})",
                 "cost": cost,
                 "priority": _determine_priority(cost, config),
-                "node_name": node,
+                "node_name": display_name,
             }
         )
 
     # Node insertions (in ground truth but not in generated)
     for node in nodes2 - nodes1:
         node_data = g2.nodes[node]
+        display_name = get_display_name(node, g2_name_mapping, g2)
         cost = node_insertion_cost(node_data, config)
         operations.append(
             {
                 "type": "node_insert",
-                "description": f"Add missing node '{node}' (type: {node_data.get('type', 'unknown')})",
+                "description": f"Add missing node '{display_name}' (type: {node_data.get('type', 'unknown')})",
                 "cost": cost,
                 "priority": _determine_priority(cost, config),
-                "node_name": node,
+                "node_name": display_name,
             }
         )
 
@@ -255,6 +283,7 @@ def _extract_edit_operations(
     for node in nodes1 & nodes2:
         node1_data = g1.nodes[node]
         node2_data = g2.nodes[node]
+        display_name = get_display_name(node, g1_name_mapping, g1)
         cost = node_substitution_cost(node1_data, node2_data, config)
 
         if cost > 0:
@@ -262,9 +291,9 @@ def _extract_edit_operations(
             type2 = node2_data.get("type", "unknown")
 
             if type1 != type2:
-                desc = f"Change node '{node}' from type '{type1}' to '{type2}'"
+                desc = f"Change node '{display_name}' from type '{type1}' to '{type2}'"
             else:
-                desc = f"Update parameters of node '{node}' (type: {type1})"
+                desc = f"Update parameters of node '{display_name}' (type: {type1})"
 
             operations.append(
                 {
@@ -272,7 +301,7 @@ def _extract_edit_operations(
                     "description": desc,
                     "cost": cost,
                     "priority": _determine_priority(cost, config),
-                    "node_name": node,
+                    "node_name": display_name,
                 }
             )
 
@@ -285,10 +314,12 @@ def _extract_edit_operations(
         edge_data = g1.edges[edge]
         cost = edge_deletion_cost(edge_data, config)
         source, target = edge
+        source_display = get_display_name(source, g1_name_mapping, g1)
+        target_display = get_display_name(target, g1_name_mapping, g1)
         operations.append(
             {
                 "type": "edge_delete",
-                "description": f"Remove connection from '{source}' to '{target}'",
+                "description": f"Remove connection from '{source_display}' to '{target_display}'",
                 "cost": cost,
                 "priority": _determine_priority(cost, config),
             }
@@ -299,10 +330,12 @@ def _extract_edit_operations(
         edge_data = g2.edges[edge]
         cost = edge_insertion_cost(edge_data, config)
         source, target = edge
+        source_display = get_display_name(source, g2_name_mapping, g2)
+        target_display = get_display_name(target, g2_name_mapping, g2)
         operations.append(
             {
                 "type": "edge_insert",
-                "description": f"Add missing connection from '{source}' to '{target}'",
+                "description": f"Add missing connection from '{source_display}' to '{target_display}'",
                 "cost": cost,
                 "priority": _determine_priority(cost, config),
             }
@@ -329,3 +362,50 @@ def _determine_priority(cost: float, config: WorkflowComparisonConfig) -> str:
         return "major"
     else:
         return "minor"
+
+
+def _relabel_graph_by_structure(graph: nx.DiGraph) -> tuple[nx.DiGraph, Dict[str, str]]:
+    """
+    Relabel graph nodes using structural IDs instead of names.
+
+    This ensures nodes are matched by their type and position in the workflow,
+    not by their display names. The original name is preserved as a node attribute.
+
+    Args:
+        graph: Original graph with name-based node IDs
+
+    Returns:
+        Tuple of (relabeled_graph, mapping_dict) where:
+        - relabeled_graph: Graph with structural IDs
+        - mapping_dict: Maps new IDs back to original names
+    """
+    # Sort nodes by type (triggers first) and then by their original order
+    nodes_with_data = list(graph.nodes(data=True))
+
+    # Separate triggers and non-triggers
+    triggers = [(name, data) for name, data in nodes_with_data if data.get("is_trigger", False)]
+    non_triggers = [(name, data) for name, data in nodes_with_data if not data.get("is_trigger", False)]
+
+    # Create new labels: trigger_0, trigger_1, node_0, node_1, etc.
+    mapping = {}
+    reverse_mapping = {}
+
+    for i, (original_name, _) in enumerate(triggers):
+        new_label = f"trigger_{i}"
+        mapping[original_name] = new_label
+        reverse_mapping[new_label] = original_name
+
+    for i, (original_name, _) in enumerate(non_triggers):
+        new_label = f"node_{i}"
+        mapping[original_name] = new_label
+        reverse_mapping[new_label] = original_name
+
+    # Create relabeled graph
+    relabeled = nx.relabel_nodes(graph, mapping, copy=True)
+
+    # Store original names in node attributes
+    for new_label, original_name in reverse_mapping.items():
+        if new_label in relabeled.nodes:
+            relabeled.nodes[new_label]["_original_name"] = original_name
+
+    return relabeled, reverse_mapping

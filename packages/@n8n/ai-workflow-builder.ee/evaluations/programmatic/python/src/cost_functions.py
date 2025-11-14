@@ -135,18 +135,28 @@ def edge_substitution_cost(
     Returns:
         Cost value
     """
-    # Check if connection types are equivalent
+    source_name1 = edge1_data.get("source_node", "main")
+    source_name2 = edge2_data.get("source_node", "main")
+    target_name1 = edge1_data.get("target_node", "main")
+    target_name2 = edge2_data.get("target_node", "main")
     conn_type1 = edge1_data.get("connection_type", "main")
     conn_type2 = edge2_data.get("connection_type", "main")
+
+    if (
+        source_name1 == source_name2
+        and target_name1 == target_name2
+        and conn_type1 == conn_type2
+    ):
+        return 0.0
+
+    # No cost if edges are identical
+    if conn_type1 == conn_type2:
+        return 0.0
 
     # Check for equivalent types in config
     for equiv_group in config.equivalent_connection_types:
         if conn_type1 in equiv_group and conn_type2 in equiv_group:
             return 0.0  # No cost for equivalent types
-
-    # Lower cost if connection type stays the same
-    if conn_type1 == conn_type2:
-        return config.edge_substitution_cost * 0.5
 
     return config.edge_substitution_cost
 

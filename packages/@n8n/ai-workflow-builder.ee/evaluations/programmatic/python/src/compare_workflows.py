@@ -18,9 +18,9 @@ import json
 import sys
 from typing import Dict, Any
 
-from graph_builder import build_workflow_graph, graph_stats
-from similarity import calculate_graph_edit_distance
-from config_loader import load_config
+from src.graph_builder import build_workflow_graph, graph_stats
+from src.similarity import calculate_graph_edit_distance
+from src.config_loader import load_config
 
 
 def parse_args():

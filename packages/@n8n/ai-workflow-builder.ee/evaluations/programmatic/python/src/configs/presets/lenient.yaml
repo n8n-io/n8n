@@ -11,7 +11,7 @@ costs:
       same_type: 0.1  # Very low cost for parameter differences
       similar_type: 2.0
       different_type: 8.0
-      trigger_mismatch: 20.0  # Even triggers are more forgiving
+      trigger_mismatch: 50.0
 
   edges:
     insertion: 3.0
@@ -29,11 +29,6 @@ similarity_groups:
     - "n8n-nodes-base.manualTrigger"
     - "n8n-nodes-base.scheduleTrigger"
 
-  ai_agents:
-    - "n8n-nodes-langchain.agent"
-    - "@n8n/n8n-nodes-langchain.agent"
-    - "n8n-nodes-langchain.basicAgent"
-
   ai_llms:
     - "@n8n/n8n-nodes-langchain.lmChatOpenAi"
     - "@n8n/n8n-nodes-langchain.lmChatAnthropic"
@@ -42,15 +37,6 @@ similarity_groups:
     - "@n8n/n8n-nodes-langchain.lmChatAws"
     - "@n8n/n8n-nodes-langchain.lmChatGroq"
 
-  ai_tools:
-    - "@n8n/n8n-nodes-langchain.toolHttpRequest"
-    - "@n8n/n8n-nodes-langchain.toolCalculator"
-    - "@n8n/n8n-nodes-langchain.toolCode"
-    - "@n8n/n8n-nodes-langchain.toolWorkflow"
-
-  http_requests:
-    - "n8n-nodes-base.httpRequest"
-    - "@n8n/n8n-nodes-langchain.toolHttpRequest"
 
 # Extensive ignores - focus on high-level structure
 ignore:
@@ -59,9 +45,10 @@ ignore:
     - "n8n-nodes-base.stickyNote"
     - "n8n-nodes-base.noOp"
 
-  # Ignore many cosmetic and configuration details
+  # Ignore cosmetics and configuration details
   global_parameters:
     - "position"
+    - "name"
     - "id"
     - "notes"
     - "notesInFlow"
@@ -91,22 +78,6 @@ ignore:
   # Ignore credential references (might differ between environments)
   parameter_paths:
     - "**.credentials"
-
-# Exemptions - allow optional nodes
-exemptions:
-  optional_in_generated:
-    - name_pattern: "^Set.*"
-      reason: "Set nodes might be optimized away"
-      penalty: 1.0
-
-    - node_type: "n8n-nodes-base.merge"
-      reason: "Merge nodes might be implicit"
-      penalty: 2.0
-
-  optional_in_ground_truth:
-    - name_pattern: "^Format.*"
-      reason: "Formatting nodes are optional enhancements"
-      penalty: 1.0
 
 # Parameter comparison - very tolerant
 parameter_comparison:
