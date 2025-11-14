@@ -15,7 +15,7 @@ import z from 'zod';
 
 import { SUPPORTED_MCP_TRIGGERS, USER_CALLED_MCP_TOOL_EVENT } from '../mcp.constants';
 import type { ToolDefinition, UserCalledMCPToolEventPayload } from '../mcp.types';
-import { isWorkflowEligibleForMCPAccess } from '../mcp.utils';
+import { hasMcpSupportedTriggers } from '../mcp.utils';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { Telemetry } from '@/telemetry';
@@ -150,7 +150,7 @@ export const executeWorkflow = async (
 		throw new UserError('Workflow not found');
 	}
 
-	const canExecuteWorkflow = isWorkflowEligibleForMCPAccess(workflow);
+	const canExecuteWorkflow = hasMcpSupportedTriggers(workflow);
 
 	if (!canExecuteWorkflow) {
 		throw new UserError(

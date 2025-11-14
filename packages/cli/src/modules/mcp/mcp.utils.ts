@@ -55,7 +55,7 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
  * - Chat trigger
  * @param workflow
  */
-export const isWorkflowEligibleForMCPAccess = (workflow: WorkflowEntity): boolean => {
+export const hasMcpSupportedTriggers = (workflow: WorkflowEntity): boolean => {
 	const triggerNodeTypes = Object.keys(SUPPORTED_MCP_TRIGGERS);
 	return workflow.nodes.some((node) => triggerNodeTypes.includes(node.type) && !node.disabled);
 };
