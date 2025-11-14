@@ -402,6 +402,9 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 	let waitTime = 1000;
 	while (jobs.length > 0) {
+		if (abortSignal?.aborted) {
+			break;
+		}
 		const settledJobs: string[] = [];
 
 		for (const job of jobs) {
@@ -454,9 +457,6 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 		jobs = jobs.filter((job) => !settledJobs.includes(job.jobId));
 
 		if (jobs.length > 0) {
-			if (abortSignal?.aborted) {
-				break;
-			}
 			await sleep(waitTime);
 			if (waitTime < 30000) {
 				waitTime = waitTime * 2;
