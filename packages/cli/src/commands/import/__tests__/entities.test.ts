@@ -79,6 +79,26 @@ describe('ImportEntitiesCommand', () => {
 			expect(mockImportService.importEntities).toHaveBeenCalledWith('./outputs', true, undefined);
 		});
 
+		it('should import entities with a custom encryption key', async () => {
+			const command = new ImportEntitiesCommand();
+			// @ts-expect-error Protected property
+			command.flags = {
+				inputDir: './outputs',
+				truncateTables: false,
+				keyFile: './key.txt',
+			};
+
+			// @ts-expect-error Protected property
+			command.logger = {
+				info: jest.fn(),
+				error: jest.fn(),
+			};
+
+			await command.run();
+
+			expect(mockImportService.importEntities).toHaveBeenCalledWith('./outputs', false, 'key.txt');
+		});
+
 		it('should handle service errors gracefully', async () => {
 			const command = new ImportEntitiesCommand();
 			// @ts-expect-error Protected property
