@@ -2,7 +2,8 @@ import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
-import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
+import type { SimpleWorkflow, WorkflowOperation } from './types';
+import type { ProgrammaticEvaluationResult } from './validation/types';
 import type { ChatPayload } from './workflow-builder-agent';
 
 /**
@@ -78,6 +79,10 @@ export const WorkflowState = Annotation.Root({
 	// Latest workflow context
 	workflowContext: Annotation<ChatPayload['workflowContext'] | undefined>({
 		reducer: (x, y) => y ?? x,
+	}),
+	workflowValidation: Annotation<ProgrammaticEvaluationResult | null>({
+		reducer: (x, y) => (y === undefined ? x : y),
+		default: () => null,
 	}),
 
 	// Previous conversation summary (used for compressing long conversations)

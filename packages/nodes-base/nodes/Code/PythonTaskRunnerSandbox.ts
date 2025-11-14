@@ -5,7 +5,13 @@ import {
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
+import type { TextKeys } from './result-validation';
+import { validateRunCodeAllItems, validateRunCodeEachItem } from './result-validation';
 import { throwExecutionError } from './throw-execution-error';
+
+const PYTHON_TEXT_KEYS: TextKeys = {
+	object: { singular: 'dictionary', plural: 'dictionaries' },
+};
 
 export class PythonTaskRunnerSandbox {
 	constructor(
@@ -46,8 +52,25 @@ export class PythonTaskRunnerSandbox {
 			itemIndex,
 		);
 
-		return executionResult.ok
-			? executionResult.result
-			: throwExecutionError('error' in executionResult ? executionResult.error : {});
+		if (!executionResult.ok) {
+			return throwExecutionError('error' in executionResult ? executionResult.error : {});
+		}
+
+		if (this.nodeMode === 'runOnceForAllItems') {
+			return validateRunCodeAllItems(
+				executionResult.result,
+				PYTHON_TEXT_KEYS,
+				this.executeFunctions.helpers.normalizeItems.bind(this.executeFunctions.helpers),
+			);
+		}
+
+		return executionResult.result.map((item, index) =>
+			validateRunCodeEachItem(
+				item,
+				index,
+				PYTHON_TEXT_KEYS,
+				this.executeFunctions.helpers.normalizeItems.bind(this.executeFunctions.helpers),
+			),
+		);
 	}
 }

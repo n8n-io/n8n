@@ -7,7 +7,7 @@
 	border: 1px solid var.$datepicker-border-color;
 	box-shadow: var.$box-shadow-light;
 	background: var.$color-white;
-	border-radius: var(--border-radius-base);
+	border-radius: var(--radius);
 	line-height: 30px;
 	margin: 5px 0;
 
@@ -106,7 +106,7 @@
 
 		& {
 			vertical-align: middle;
-			margin-left: var(--spacing-2xs);
+			margin-left: var(--spacing--2xs);
 		}
 	}
 }

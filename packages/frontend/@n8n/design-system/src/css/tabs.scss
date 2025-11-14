@@ -51,7 +51,7 @@
 			bottom: 0;
 			width: 100%;
 			height: 2px;
-			background-color: var(--border-color-base);
+			background-color: var(--border-color);
 			z-index: var.$index-normal;
 		}
 
@@ -100,7 +100,7 @@
 		display: inline-block;
 		list-style: none;
 		font-size: 14px;
-		font-weight: var(--font-weight-medium);
+		font-weight: var(--font-weight--medium);
 		color: var(--color--text--shade-1);
 		position: relative;
 
@@ -150,13 +150,13 @@
 	}
 	@include mixins.m(card) {
 		> .el-tabs__header {
-			border-bottom: 1px solid var(--border-color-base);
+			border-bottom: 1px solid var(--border-color);
 		}
 		> .el-tabs__header .el-tabs__nav-wrap::after {
 			content: none;
 		}
 		> .el-tabs__header .el-tabs__nav {
-			border: 1px solid var(--border-color-base);
+			border: 1px solid var(--border-color);
 			border-bottom: none;
 			border-radius: 4px 4px 0 0;
 			box-sizing: border-box;
@@ -178,7 +178,7 @@
 		}
 		> .el-tabs__header .el-tabs__item {
 			border-bottom: 1px solid transparent;
-			border-left: 1px solid var(--border-color-base);
+			border-left: 1px solid var(--border-color);
 			transition:
 				color 0.3s cubic-bezier(0.645, 0.045, 0.355, 1),
 				padding 0.3s cubic-bezier(0.645, 0.045, 0.355, 1);
@@ -211,7 +211,7 @@
 	}
 	@include mixins.m(border-card) {
 		background: var.$color-white;
-		border: 1px solid var(--border-color-base);
+		border: 1px solid var(--border-color);
 		box-shadow:
 			0 2px 4px 0 rgba(0, 0, 0, 0.12),
 			0 0 6px 0 rgba(0, 0, 0, 0.04);
@@ -221,7 +221,7 @@
 		}
 		> .el-tabs__header {
 			background-color: var.$background-color-base;
-			border-bottom: 1px solid var(--border-color-base);
+			border-bottom: 1px solid var(--border-color);
 			margin: 0;
 		}
 		> .el-tabs__header .el-tabs__nav-wrap::after {
@@ -244,8 +244,8 @@
 			&.is-active {
 				color: var(--color--primary);
 				background-color: var.$color-white;
-				border-right-color: var(--border-color-base);
-				border-left-color: var(--border-color-base);
+				border-right-color: var(--border-color);
+				border-left-color: var(--border-color);
 			}
 			&:not(.is-disabled):hover {
 				color: var(--color--primary);
@@ -291,7 +291,7 @@
 		&.el-tabs--border-card {
 			.el-tabs__header.is-bottom {
 				border-bottom: 0;
-				border-top: 1px solid var(--border-color-base);
+				border-top: 1px solid var(--border-color);
 			}
 			.el-tabs__nav-wrap.is-bottom {
 				margin-top: -1px;
@@ -397,17 +397,17 @@
 			}
 			.el-tabs__item.is-left {
 				border-left: none;
-				border-right: 1px solid var(--border-color-base);
+				border-right: 1px solid var(--border-color);
 				border-bottom: none;
-				border-top: 1px solid var(--border-color-base);
+				border-top: 1px solid var(--border-color);
 				text-align: left;
 			}
 			.el-tabs__item.is-left:first-child {
-				border-right: 1px solid var(--border-color-base);
+				border-right: 1px solid var(--border-color);
 				border-top: none;
 			}
 			.el-tabs__item.is-left.is-active {
-				border: 1px solid var(--border-color-base);
+				border: 1px solid var(--border-color);
 				border-right-color: var(--color--foreground--tint-2);
 				border-left: none;
 				border-bottom: none;
@@ -422,7 +422,7 @@
 
 			.el-tabs__nav {
 				border-radius: 4px 0 0 4px;
-				border-bottom: 1px solid var(--border-color-base);
+				border-bottom: 1px solid var(--border-color);
 				border-right: none;
 			}
 
@@ -472,14 +472,14 @@
 			}
 			.el-tabs__item.is-right {
 				border-bottom: none;
-				border-top: 1px solid var(--border-color-base);
+				border-top: 1px solid var(--border-color);
 			}
 			.el-tabs__item.is-right:first-child {
-				border-left: 1px solid var(--border-color-base);
+				border-left: 1px solid var(--border-color);
 				border-top: none;
 			}
 			.el-tabs__item.is-right.is-active {
-				border: 1px solid var(--border-color-base);
+				border: 1px solid var(--border-color);
 				border-left-color: var(--color--foreground--tint-2);
 				border-right: none;
 				border-bottom: none;
@@ -494,7 +494,7 @@
 
 			.el-tabs__nav {
 				border-radius: 0 4px 4px 0;
-				border-bottom: 1px solid var(--border-color-base);
+				border-bottom: 1px solid var(--border-color);
 				border-left: none;
 			}
 		}

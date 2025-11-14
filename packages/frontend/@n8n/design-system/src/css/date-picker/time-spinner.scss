@@ -99,7 +99,7 @@
 
 		&.active:not(.disabled) {
 			color: var(--color--text--shade-1);
-			font-weight: var(--font-weight-bold);
+			font-weight: var(--font-weight--bold);
 		}
 
 		&.disabled {

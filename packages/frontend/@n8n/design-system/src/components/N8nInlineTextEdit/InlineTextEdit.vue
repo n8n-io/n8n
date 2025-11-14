@@ -139,11 +139,11 @@ defineExpose({ forceFocus, forceCancel });
 	&::after {
 		content: '';
 		position: absolute;
-		top: calc(var(--spacing-4xs) * -1);
-		left: calc(var(--spacing-3xs) * -1);
-		width: calc(100% + var(--spacing-xs));
-		height: calc(100% + var(--spacing-2xs));
-		border-radius: var(--border-radius-base);
+		top: calc(var(--spacing--4xs) * -1);
+		left: calc(var(--spacing--3xs) * -1);
+		width: calc(100% + var(--spacing--xs));
+		height: calc(100% + var(--spacing--2xs));
+		border-radius: var(--radius);
 		background-color: var(--color--foreground--tint-2);
 		opacity: 0;
 		z-index: 0;

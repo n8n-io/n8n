@@ -95,7 +95,7 @@ const iconColor = computed(() => {
 	position: relative;
 	width: 100%;
 	max-width: 100%;
-	margin-bottom: var(--spacing-5xs);
+	margin-bottom: var(--spacing--5xs);
 }
 
 .router-link-active,
@@ -107,11 +107,11 @@ const iconColor = computed(() => {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-3xs);
-	gap: var(--spacing-3xs);
+	padding: var(--spacing--3xs);
+	gap: var(--spacing--3xs);
 	cursor: pointer;
 	color: var(--color--text);
-	border-radius: var(--spacing-4xs);
+	border-radius: var(--spacing--4xs);
 	cursor: pointer;
 	min-width: 0;
 	width: 100%;
@@ -137,7 +137,7 @@ const iconColor = computed(() => {
 	text-overflow: ellipsis;
 	overflow: hidden;
 	flex: 1;
-	line-height: var(--font-size-l);
+	line-height: var(--font-size--lg);
 	min-width: 0;
 }
 
@@ -147,24 +147,24 @@ const iconColor = computed(() => {
 
 .menuItemIcon {
 	position: relative;
-	width: var(--spacing-s);
-	height: var(--spacing-s);
-	min-width: var(--spacing-s);
+	width: var(--spacing--sm);
+	height: var(--spacing--sm);
+	min-width: var(--spacing--sm);
 
 	&.notification::after {
 		content: '';
 		position: absolute;
-		top: calc(var(--spacing-5xs) * -1);
-		right: calc(var(--spacing-5xs) * -1);
-		width: var(--spacing-4xs);
-		height: var(--spacing-4xs);
+		top: calc(var(--spacing--5xs) * -1);
+		right: calc(var(--spacing--5xs) * -1);
+		width: var(--spacing--4xs);
+		height: var(--spacing--4xs);
 		background-color: var(--color--danger);
 		border-radius: 50%;
 	}
 }
 
 .menuItemEmoji {
-	font-size: var(--spacing-s);
+	font-size: var(--spacing--sm);
 	line-height: 1;
 }
 

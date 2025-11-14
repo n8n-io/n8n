@@ -1,5 +1,3 @@
-import { library } from '@fortawesome/fontawesome-svg-core';
-import { fas } from '@fortawesome/free-solid-svg-icons';
 import { sharedTags } from '@n8n/storybook/main';
 import { withThemeByDataAttribute } from '@storybook/addon-themes';
 import { setup } from '@storybook/vue3';
@@ -13,8 +11,6 @@ import './storybook.scss';
 // import '../src/css/tailwind/index.css';
 
 setup((app) => {
-	library.add(fas);
-
 	app.use(ElementPlus, {
 		locale: lang,
 	});

@@ -35,6 +35,7 @@ import { UnexpectedError, UserError } from 'n8n-workflow';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleCacheService } from './role-cache.service';
+import { isUniqueConstraintError } from '@/response-helper';
 
 @Service()
 export class RoleService {
@@ -143,6 +144,11 @@ export class RoleService {
 			if (error instanceof UserError && error.message === 'Cannot update system roles') {
 				throw new BadRequestError('Cannot update system roles');
 			}
+
+			if (error instanceof Error && isUniqueConstraintError(error)) {
+				throw new BadRequestError(`A role with the name "${displayName}" already exists`);
+			}
+
 			throw error;
 		}
 	}
@@ -159,12 +165,20 @@ export class RoleService {
 		role.systemRole = false;
 		role.roleType = newRole.roleType;
 		role.slug = `${newRole.roleType}:${newRole.displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Math.random().toString(36).substring(2, 8)}`;
-		const createdRole = await this.roleRepository.save(role);
 
-		// Invalidate cache after role creation
-		await this.roleCacheService.invalidateCache();
+		try {
+			const createdRole = await this.roleRepository.save(role);
 
-		return this.dbRoleToRoleDTO(createdRole);
+			// Invalidate cache after role creation
+			await this.roleCacheService.invalidateCache();
+
+			return this.dbRoleToRoleDTO(createdRole);
+		} catch (error) {
+			if (error instanceof Error && isUniqueConstraintError(error)) {
+				throw new BadRequestError(`A role with the name "${newRole.displayName}" already exists`);
+			}
+			throw error;
+		}
 	}
 
 	async checkRolesExist(

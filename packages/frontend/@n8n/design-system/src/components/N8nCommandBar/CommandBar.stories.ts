@@ -113,6 +113,9 @@ export default {
 		items: {
 			control: 'object',
 		},
+		isLoading: {
+			control: 'boolean',
+		},
 	},
 	parameters: {
 		backgrounds: { default: '--color--background--light-2' },
@@ -126,11 +129,10 @@ const Template: StoryFn = (args, { argTypes }) => ({
 		N8nCommandBar,
 	},
 	template:
-		'<n8n-command-bar v-bind="args" @input-change="onInputChange" @navigate-to="onNavigateTo" @load-more="onLoadMore" />',
+		'<n8n-command-bar v-bind="args" @input-change="onInputChange" @navigate-to="onNavigateTo" />',
 	methods: {
 		onInputChange: action('input-change'),
 		onNavigateTo: action('navigate-to'),
-		onLoadMore: action('load-more'),
 	},
 });
 
@@ -178,14 +180,12 @@ export const KeyboardShortcut: StoryFn = () => ({
 				:items="items"
 				@input-change="onInputChange"
 				@navigate-to="onNavigateTo"
-				@load-more="onLoadMore"
 			/>
 		</div>
 	`,
 	methods: {
 		onInputChange: action('input-change'),
 		onNavigateTo: action('navigate-to'),
-		onLoadMore: action('load-more'),
 	},
 });
 
@@ -208,13 +208,35 @@ export const SectionGrouping: StoryFn = () => ({
 				:items="items"
 				@input-change="onInputChange"
 				@navigate-to="onNavigateTo"
-				@load-more="onLoadMore"
 			/>
 		</div>
 	`,
 	methods: {
 		onInputChange: action('input-change'),
 		onNavigateTo: action('navigate-to'),
-		onLoadMore: action('load-more'),
+	},
+});
+
+export const Loading: StoryFn = () => ({
+	components: {
+		N8nCommandBar,
+	},
+	template: `
+		<div>
+			<p style="margin-bottom: 20px; color: var(--color--text);">
+				This example shows the loading state with skeleton loaders.
+			</p>
+			<n8n-command-bar
+				placeholder="Loading commands..."
+				:items="[]"
+				:is-loading="true"
+				@input-change="onInputChange"
+				@navigate-to="onNavigateTo"
+			/>
+		</div>
+	`,
+	methods: {
+		onInputChange: action('input-change'),
+		onNavigateTo: action('navigate-to'),
 	},
 });

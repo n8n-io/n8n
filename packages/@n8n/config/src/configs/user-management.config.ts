@@ -103,6 +103,16 @@ export class UserManagementConfig {
 	jwtSessionDurationHours: number = 168;
 
 	/**
+	 * Security Control: Invite Link Exposure Prevention
+	 *
+	 * When enabled, prevents exposure of invite URLs in API responses to users
+	 * with 'user:create' permission, mitigating account takeover risks via
+	 * invite link leakage (e.g., compromised admin accounts, network interception).
+	 */
+	@Env('N8N_INVITE_LINKS_EMAIL_ONLY')
+	inviteLinksEmailOnly: boolean = false;
+
+	/**
 	 * How long (in hours) before expiration to automatically refresh it.
 	 * - `0` means 25% of `N8N_USER_MANAGEMENT_JWT_DURATION_HOURS`.
 	 * - `-1` means it will never refresh. This forces users to log back in after expiration.

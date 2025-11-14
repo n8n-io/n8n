@@ -18,8 +18,8 @@
 
 	@include mixins.when(bordered) {
 		padding: var.$radio-bordered-padding;
-		border-radius: var(--border-radius-base);
-		border: var(--border-base);
+		border-radius: var(--radius);
+		border: var(--border);
 		box-sizing: border-box;
 		height: var.$radio-bordered-height;
 
@@ -29,7 +29,7 @@
 
 		&.is-disabled {
 			cursor: not-allowed;
-			border-color: var(--border-color-light);
+			border-color: var(--border-color--light);
 		}
 
 		& + .el-radio.is-bordered {

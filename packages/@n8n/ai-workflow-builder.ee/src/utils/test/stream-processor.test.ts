@@ -155,6 +155,35 @@ describe('stream-processor', () => {
 
 				expect(result).toBeNull();
 			});
+
+			it('should return null for chunks with invalid structure', () => {
+				const chunk = {
+					invalid: 'structure',
+					random: 'data',
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for null chunks', () => {
+				const result = processStreamChunk('updates', null);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for undefined chunks', () => {
+				const result = processStreamChunk('updates', undefined);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for primitive chunks', () => {
+				expect(processStreamChunk('updates', 'string')).toBeNull();
+				expect(processStreamChunk('updates', 123)).toBeNull();
+				expect(processStreamChunk('updates', true)).toBeNull();
+			});
 		});
 
 		describe('custom mode', () => {
@@ -190,6 +219,28 @@ describe('stream-processor', () => {
 				const result = processStreamChunk('custom', chunk);
 
 				expect(result).toBeNull();
+			});
+
+			it('should return null for chunks missing type property', () => {
+				const chunk = {
+					id: 'tool-1',
+					toolName: 'add_nodes',
+				};
+
+				const result = processStreamChunk('custom', chunk);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for null chunks in custom mode', () => {
+				const result = processStreamChunk('custom', null);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for primitive values in custom mode', () => {
+				expect(processStreamChunk('custom', 'string')).toBeNull();
+				expect(processStreamChunk('custom', 123)).toBeNull();
 			});
 		});
 
@@ -271,6 +322,82 @@ describe('stream-processor', () => {
 				role: 'user',
 				type: 'message',
 				text: 'Hello from user',
+			});
+		});
+
+		it('should format HumanMessage with array content (multi-part messages)', () => {
+			const messages = [
+				new HumanMessage({
+					content: [
+						{ type: 'text', text: 'Part 1' },
+						{ type: 'text', text: 'Part 2' },
+						{ type: 'image_url', image_url: 'http://example.com/image.png' },
+					],
+				}),
+			];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Part 1\nPart 2',
+			});
+		});
+
+		it('should strip context tags from HumanMessage content', () => {
+			const messageWithContext = `User question here
+<current_workflow_json>
+{"nodes": [], "connections": {}}
+</current_workflow_json>
+<current_simplified_execution_data>
+{"runData": {}}
+</current_simplified_execution_data>
+<current_execution_nodes_schemas>
+[{"nodeName": "test"}]
+</current_execution_nodes_schemas>`;
+
+			const messages = [new HumanMessage(messageWithContext)];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'User question here',
+			});
+		});
+
+		it('should strip context tags from HumanMessage array content', () => {
+			const messages = [
+				new HumanMessage({
+					content: [
+						{
+							type: 'text',
+							text: `Workflow executed successfully.
+<current_workflow_json>
+{"nodes": []}
+</current_workflow_json>
+<current_simplified_execution_data>
+{"runData": {}}
+</current_simplified_execution_data>
+<current_execution_nodes_schemas>
+[{"nodeName": "Manual Trigger"}]
+</current_execution_nodes_schemas>`,
+						},
+					],
+				}),
+			];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Workflow executed successfully.',
 			});
 		});
 

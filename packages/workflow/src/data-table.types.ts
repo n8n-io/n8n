@@ -92,13 +92,26 @@ export const DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP: Record<string, DataTableColumnTy
 export const DATA_TABLE_SYSTEM_COLUMNS = Object.keys(DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP);
 export const DATA_TABLE_SYSTEM_TESTING_COLUMN = 'dryRunState';
 
+// Raw database result type (before normalization)
+export type DataTableRawRowReturnBase = {
+	id: number;
+	createdAt: string | number | Date;
+	updatedAt: string | number | Date;
+};
+
 export type DataTableRowReturnBase = {
 	id: number;
 	createdAt: Date;
 	updatedAt: Date;
 };
+
 export type DataTableRow = Record<string, DataTableColumnJsType>;
 export type DataTableRows = DataTableRow[];
+
+// Raw database results (before normalization)
+export type DataTableRawRowReturn = DataTableRow & DataTableRawRowReturnBase;
+export type DataTableRawRowsReturn = DataTableRawRowReturn[];
+
 export type DataTableRowReturn = DataTableRow & DataTableRowReturnBase;
 export type DataTableRowsReturn = DataTableRowReturn[];
 

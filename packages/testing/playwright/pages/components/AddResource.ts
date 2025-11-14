@@ -18,22 +18,6 @@ export class AddResource {
 		return this.page.getByTestId('add-resource-workflow');
 	}
 
-	getDropdownButton(): Locator {
-		return this.page.getByTestId('add-resource');
-	}
-
-	getCredentialAction(): Locator {
-		return this.page.getByTestId('action-credential');
-	}
-
-	getFolderAction(): Locator {
-		return this.page.getByTestId('action-folder');
-	}
-
-	getDataTableAction(): Locator {
-		return this.page.getByTestId('action-dataTable');
-	}
-
 	getAction(actionType: string): Locator {
 		return this.page.getByTestId(`action-${actionType}`);
 	}
@@ -43,17 +27,20 @@ export class AddResource {
 	}
 
 	async credential(): Promise<void> {
-		await this.getDropdownButton().click();
-		await this.getCredentialAction().click();
+		await this.page.getByTestId('add-resource-credential').click();
 	}
 
 	async folder(): Promise<void> {
-		await this.getDropdownButton().click();
-		await this.getFolderAction().click();
+		await this.page.getByTestId('add-resource').click();
+		await this.page.getByTestId('action-folder').click();
 	}
 
-	async dataTable(): Promise<void> {
-		await this.getDropdownButton().click();
-		await this.getDataTableAction().click();
+	async dataTable(fromDataTableTab: boolean = true): Promise<void> {
+		if (fromDataTableTab) {
+			await this.page.getByTestId('add-resource-dataTable').click();
+		} else {
+			await this.page.getByTestId('add-resource').click();
+			await this.page.getByTestId('action-dataTable').click();
+		}
 	}
 }

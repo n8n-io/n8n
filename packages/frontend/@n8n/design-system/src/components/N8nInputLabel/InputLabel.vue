@@ -8,6 +8,7 @@ const SIZE = ['small', 'medium', 'large'] as const;
 
 interface InputLabelProps {
 	compact?: boolean;
+	// @TODO Tech debt - property value should be updated to match token names (text-shade-2 instead of text-dark for example)
 	color?: TextColor;
 	label?: string;
 	tooltipText?: string;
@@ -148,7 +149,7 @@ const addTargetBlank = (html: string) =>
 
 .trailing-content {
 	display: flex;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 
 	* {
 		align-self: center;
@@ -192,7 +193,7 @@ const addTargetBlank = (html: string) =>
 	display: flex;
 	align-items: center;
 	color: var(--color--text--tint-1);
-	margin-left: var(--spacing-4xs);
+	margin-left: var(--spacing--4xs);
 	z-index: 1;
 }
 
@@ -252,31 +253,31 @@ const addTargetBlank = (html: string) =>
 	display: flex;
 
 	&.small {
-		padding-bottom: var(--spacing-5xs);
+		padding-bottom: var(--spacing--5xs);
 	}
 	&.medium {
-		padding-bottom: var(--spacing-2xs);
+		padding-bottom: var(--spacing--2xs);
 	}
 }
 
 .underline {
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 }
 
 :root .tooltipPopper {
-	line-height: var(--font-line-height-compact);
+	line-height: var(--line-height--sm);
 	max-width: 400px;
 
 	li {
-		margin-left: var(--spacing-s);
+		margin-left: var(--spacing--sm);
 	}
 
 	code {
 		color: var(--color--text--shade-1);
-		font-size: var(--font-size-3xs);
+		font-size: var(--font-size--3xs);
 		background: var(--color--background--shade-1);
-		padding: var(--spacing-5xs);
-		border-radius: var(--border-radius-base);
+		padding: var(--spacing--5xs);
+		border-radius: var(--radius);
 	}
 }
 </style>

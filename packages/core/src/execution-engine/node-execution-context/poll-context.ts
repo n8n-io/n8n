@@ -46,6 +46,10 @@ export class PollContext extends NodeExecutionContext implements IPollFunctions 
 		};
 	}
 
+	getExecutionContext() {
+		return undefined;
+	}
+
 	getActivationMode() {
 		return this.activation;
 	}

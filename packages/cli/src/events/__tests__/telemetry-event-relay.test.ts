@@ -333,7 +333,25 @@ describe('TelemetryEventRelay', () => {
 		it('should track on `variable-created` event', () => {
 			eventService.emit('variable-created', {});
 
-			expect(telemetry.track).toHaveBeenCalledWith('User created variable');
+			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {});
+
+			eventService.emit('variable-created', { projectId: 'projectId' });
+
+			expect(telemetry.track).toHaveBeenCalledWith('User created variable', {
+				project_id: 'projectId',
+			});
+		});
+
+		it('should track on `variable-updated` event', () => {
+			eventService.emit('variable-updated', {});
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {});
+
+			eventService.emit('variable-updated', { projectId: 'projectId' });
+
+			expect(telemetry.track).toHaveBeenCalledWith('User updated variable', {
+				project_id: 'projectId',
+			});
 		});
 	});
 

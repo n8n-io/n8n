@@ -80,8 +80,8 @@ export class DataTableView extends BasePage {
 		await this.getEmptyStateActionBoxButton().click();
 	}
 
-	async clickAddDataTableAction() {
-		await this.addResource.dataTable();
+	async clickAddDataTableAction(fromDataTableTab: boolean = true) {
+		await this.addResource.dataTable(fromDataTableTab);
 	}
 
 	async clickDataTableCardActionsButton(dataTableName: string) {

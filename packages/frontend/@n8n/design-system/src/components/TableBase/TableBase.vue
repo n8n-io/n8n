@@ -21,7 +21,7 @@
 	border-radius: 8px;
 	border: 1px solid var(--color--foreground);
 	overflow: hidden;
-	font-size: var(--font-size-s);
+	font-size: var(--font-size--sm);
 
 	table {
 		width: 100%;

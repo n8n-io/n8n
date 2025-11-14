@@ -178,6 +178,11 @@ const createContext = (queryRunner: QueryRunner, migration: Migration): Migratio
 });
 
 export const wrapMigration = (migration: Migration) => {
+	const prototype = migration.prototype as unknown as { __n8n_wrapped?: boolean };
+	if (prototype.__n8n_wrapped === true) {
+		return;
+	}
+	prototype.__n8n_wrapped = true;
 	const { up, down } = migration.prototype;
 	if (up) {
 		Object.assign(migration.prototype, {

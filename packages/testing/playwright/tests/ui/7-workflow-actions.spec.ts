@@ -208,13 +208,13 @@ test.describe('Workflow Actions', () => {
 
 		await expect(n8n.canvas.nodeCreator.getRoot()).not.toBeAttached();
 
-		await n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
+		await n8n.clipboard.grant();
 
 		await n8n.canvas.selectAll();
 		await n8n.canvas.copyNodes();
 
 		await n8n.notifications.waitForNotificationAndClose('Copied to clipboard');
-		const clipboardText = await n8n.page.evaluate(() => navigator.clipboard.readText());
+		const clipboardText = await n8n.clipboard.readText();
 		const copiedWorkflow = JSON.parse(clipboardText);
 
 		expect(copiedWorkflow.nodes).toHaveLength(2);
@@ -226,13 +226,8 @@ test.describe('Workflow Actions', () => {
 			'utf-8',
 		);
 
-		await n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-		await n8n.page.evaluate(async (data) => {
-			await navigator.clipboard.writeText(data);
-		}, workflowJson);
-
 		await n8n.canvas.canvasPane().click();
-		await n8n.canvas.hitPaste();
+		await n8n.clipboard.paste(workflowJson);
 		await n8n.canvas.clickZoomToFitButton();
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(5);
@@ -245,13 +240,8 @@ test.describe('Workflow Actions', () => {
 			'utf-8',
 		);
 
-		await n8n.page.context().grantPermissions(['clipboard-read', 'clipboard-write']);
-		await n8n.page.evaluate(async (data) => {
-			await navigator.clipboard.writeText(data);
-		}, workflowJson);
-
 		await n8n.canvas.canvasPane().click();
-		await n8n.canvas.hitPaste();
+		await n8n.clipboard.paste(workflowJson);
 		await n8n.canvas.clickZoomToFitButton();
 
 		await expect(n8n.canvas.getCanvasNodes()).toHaveCount(3);

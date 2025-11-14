@@ -46,10 +46,10 @@ const classes = computed(() => ({
 
 <style lang="scss" module>
 .card {
-	border-radius: var(--border-radius-large);
-	border: var(--border-base);
+	border-radius: var(--radius--lg);
+	border: var(--border);
 	background-color: var(--color--background--light-3);
-	padding: var(--card--padding, var(--spacing-s));
+	padding: var(--card--padding, var(--spacing--sm));
 	display: flex;
 	flex-direction: row;
 	width: 100%;
@@ -85,7 +85,7 @@ const classes = computed(() => ({
 	display: inline-flex;
 	justify-content: center;
 	align-items: center;
-	margin-right: var(--spacing-s);
+	margin-right: var(--spacing--sm);
 }
 
 .hoverable {

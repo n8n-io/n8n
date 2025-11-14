@@ -32,8 +32,8 @@
 			box-sizing: border-box;
 			padding-top: 6px;
 			text-align: left;
-			border-top: 1px solid var(--border-color-base);
-			border-bottom: 1px solid var(--border-color-base);
+			border-top: 1px solid var(--border-color);
+			border-bottom: 1px solid var(--border-color);
 		}
 
 		&::after {
@@ -80,7 +80,7 @@
 		color: var(--color--text--shade-1);
 
 		&.confirm {
-			font-weight: var(--font-weight-bold);
+			font-weight: var(--font-weight--bold);
 			color: var.$datepicker-active-color;
 		}
 	}

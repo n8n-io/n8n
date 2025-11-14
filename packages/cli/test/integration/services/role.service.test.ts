@@ -53,8 +53,8 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-	await cleanupRolesAndScopes();
 	await testDb.truncate(['User']);
+	await cleanupRolesAndScopes();
 });
 
 describe('RoleService', () => {
@@ -909,6 +909,25 @@ describe('RoleService', () => {
 			expect(result.slug).toContain('role');
 			expect(result.slug).toContain('name');
 		});
+
+		it('should throw BadRequestError when a role with the same display name already exists', async () => {
+			const testScopes = await createTestScopes();
+			const createRoleDto: CreateRoleDto = {
+				displayName: 'Existing Role',
+				roleType: 'project',
+				scopes: [testScopes.readScope.slug],
+			};
+
+			await roleService.createCustomRole(createRoleDto);
+
+			const duplicateRoleDto: CreateRoleDto = {
+				displayName: 'Existing Role',
+				roleType: 'project',
+				scopes: [testScopes.writeScope.slug],
+			};
+
+			await expect(roleService.createCustomRole(duplicateRoleDto)).rejects.toThrow(BadRequestError);
+		});
 	});
 
 	describe('updateCustomRole', () => {
@@ -1031,6 +1050,25 @@ describe('RoleService', () => {
 			await expect(roleService.updateCustomRole(existingRole.slug, updateRoleDto)).rejects.toThrow(
 				'The following scopes are invalid: invalid:scope',
 			);
+		});
+
+		it('should throw error when a role with the same display name already exists', async () => {
+			//
+			// ARRANGE
+			//
+			const existingRole = await createRole();
+			const otherExistingRole = await createRole();
+
+			const updateRoleDto: UpdateRoleDto = {
+				displayName: existingRole.displayName,
+			};
+
+			//
+			// ACT & ASSERT
+			//
+			await expect(
+				roleService.updateCustomRole(otherExistingRole.slug, updateRoleDto),
+			).rejects.toThrow(`A role with the name "${existingRole.displayName}" already exists`);
 		});
 	});
 

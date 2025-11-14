@@ -36,13 +36,13 @@ withDefaults(defineProps<ExternalLinkProps>(), {
 	text-decoration: none;
 	display: inline-flex;
 	align-items: center;
-	gap: var(--spacing-4xs);
+	gap: var(--spacing--4xs);
 	background: none;
 	border: none;
-	padding: var(--spacing-4xs) var(--spacing-2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	cursor: pointer;
-	border-radius: var(--border-radius-base);
-	font-weight: var(--font-weight-regular);
+	border-radius: var(--radius);
+	font-weight: var(--font-weight--regular);
 
 	svg {
 		color: var(--color--text--tint-1);

@@ -225,7 +225,7 @@
 		@include button.button-small();
 
 		& {
-			margin-right: var(--spacing-2xs);
+			margin-right: var(--spacing--2xs);
 		}
 	}
 }
@@ -324,7 +324,7 @@
 		display: block;
 		box-sizing: border-box;
 		border: 1px solid #999;
-		border-radius: var(--border-radius-small);
+		border-radius: var(--radius--sm);
 		width: 100%;
 		height: 100%;
 		text-align: center;
@@ -369,8 +369,8 @@
 		padding: 6px;
 		box-sizing: content-box;
 		background-color: var.$color-white;
-		border: 1px solid var(--border-color-light);
-		border-radius: var(--border-radius-base);
+		border: 1px solid var(--border-color--light);
+		border-radius: var(--radius);
 		box-shadow: var.$dropdown-menu-box-shadow;
 	}
 }
