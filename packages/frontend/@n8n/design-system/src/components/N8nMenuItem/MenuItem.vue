@@ -63,12 +63,12 @@ const iconColor = computed(() => {
 			<template v-if="compact" #content>{{ item.label }}</template>
 
 			<N8nRoute
+				:id="item.id"
 				:to="to"
 				role="menuitem"
 				:class="[$style.menuItem, { [$style.active]: active }]"
 				:aria-label="props.ariaLabel"
 				data-test-id="menu-item"
-				:id="item.id"
 				@click="emit('click')"
 			>
 				<div
@@ -100,7 +100,7 @@ const iconColor = computed(() => {
 
 .router-link-active,
 .active {
-	background-color: var(--color--foreground);
+	background-color: var(--menu--color--background--hover);
 }
 
 .menuItem {
