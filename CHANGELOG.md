@@ -1,3 +1,13 @@
+## [1.120.3](https://github.com/n8n-io/n8n/compare/n8n@1.120.2...n8n@1.120.3) (2025-11-14)
+
+
+### Bug Fixes
+
+* **core:** Validate package version when installing community node ([#21886](https://github.com/n8n-io/n8n/issues/21886)) ([ae0669a](https://github.com/n8n-io/n8n/commit/ae0669a736cc496beeb296e115267862727ae838))
+* **Git Node:** Disable git hooks by default ([#21797](https://github.com/n8n-io/n8n/issues/21797)) ([eea9bb4](https://github.com/n8n-io/n8n/commit/eea9bb4014d31f05f132061053c8b1cb208b884f))
+
+
+
 ## [1.120.2](https://github.com/n8n-io/n8n/compare/n8n@1.120.1...n8n@1.120.2) (2025-11-14)
 
 
