@@ -1,3 +1,13 @@
+## [1.120.2](https://github.com/n8n-io/n8n/compare/n8n@1.120.1...n8n@1.120.2) (2025-11-14)
+
+
+### Bug Fixes
+
+* Fix expr-eval dependency for CVE-2025-12735 ([#21862](https://github.com/n8n-io/n8n/issues/21862)) ([e9336b3](https://github.com/n8n-io/n8n/commit/e9336b342eefc270b2cf6e27ca0a60b584f75b04))
+* **MCP Client Tool Node:** DCR not working on cloud ([#21808](https://github.com/n8n-io/n8n/issues/21808)) ([acfaff0](https://github.com/n8n-io/n8n/commit/acfaff0d3787f9a0b48f3ade414acc9f015df1a1))
+
+
+
 ## [1.120.1](https://github.com/n8n-io/n8n/compare/n8n@1.120.0...n8n@1.120.1) (2025-11-11)
 
 
