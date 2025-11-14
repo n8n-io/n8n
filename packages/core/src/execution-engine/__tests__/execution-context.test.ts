@@ -615,14 +615,6 @@ describe('establishExecutionContext', () => {
 		});
 
 		it('should work with nested sub-workflows (grandchild)', async () => {
-			// Grandparent context
-			const grandparentContext: IExecutionContext = {
-				version: 1,
-				establishedAt: 1000000000,
-				source: 'manual',
-				credentials: 'grandparent-credentials',
-			};
-
 			// Parent context (already has parentExecutionId from grandparent)
 			const parentContext: IExecutionContext = {
 				version: 1,
