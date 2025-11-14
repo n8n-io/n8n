@@ -7,3 +7,4 @@ RUN npm install -g pnpm
 
 USER node
 RUN mkdir -p ~/.pnpm-store && pnpm config set store-dir ~/.pnpm-store --global
+CMD ["n8n"]
