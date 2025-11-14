@@ -12,9 +12,6 @@ import { CREDENTIAL_EDIT_MODAL_KEY, CREDENTIAL_SELECT_MODAL_KEY } from '../crede
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import InsightsSummary from '@/features/execution/insights/components/InsightsSummary.vue';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
-import { getResourcePermissions } from '@n8n/permissions';
-import { useCredentialsStore } from '../credentials.store';
-import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import { useExternalSecretsStore } from '@/features/integrations/externalSecrets.ee/externalSecrets.ee.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -25,11 +22,14 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
 import { isCredentialsResource } from '@/app/utils/typeGuards';
 import { useI18n } from '@n8n/i18n';
+import { getResourcePermissions } from '@n8n/permissions';
 import pickBy from 'lodash/pickBy';
 import type { ICredentialType, ICredentialsDecrypted } from 'n8n-workflow';
 import { CREDENTIAL_EMPTY_VALUE } from 'n8n-workflow';
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter, type LocationQueryRaw } from 'vue-router';
+import { useCredentialsStore } from '../credentials.store';
+import { useEnvironmentsStore } from '@/features/settings/environments.ee/environments.store';
 
 import { N8nActionBox, N8nCheckbox, N8nInputLabel, N8nOption, N8nSelect } from '@n8n/design-system';
 const props = defineProps<{
@@ -342,7 +342,7 @@ onMounted(() => {
 				:button-text="i18n.baseText('credentials.empty.button')"
 				button-type="secondary"
 				:button-disabled="readOnlyEnv || !projectPermissions.credential.create"
-				:button-icon="readOnlyEnv ? 'lock' : undefined"
+				:button-icon="readOnlyEnv || !projectPermissions.credential.create ? 'lock' : undefined"
 				@click:button="addCredential"
 			>
 				<template #disabledButtonTooltip>
