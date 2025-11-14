@@ -352,7 +352,9 @@ export class Webhook extends Node {
 				if (binaryPropertyName.endsWith('[]')) {
 					binaryPropertyName = binaryPropertyName.slice(0, -2);
 				}
-				if (multiFile) {
+				if (!binaryPropertyName.trim().length) {
+					binaryPropertyName = `data${count}`;
+				} else if (multiFile) {
 					binaryPropertyName += fileCount++;
 				}
 				if (options.binaryPropertyName) {
