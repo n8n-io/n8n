@@ -142,8 +142,8 @@ export class LmChatOpenRouter implements INodeType {
 				typeOptions: {
 					rows: 5,
 				},
-				// TODO: come up with default schema
-				default: '{\n}',
+				default:
+					'{\n    "max_retries": 2,\n    "timeout": 60000,\n    "temparature": 1.0,\n    "response_format": {\n        "type": "text"\n    }\n}',
 				displayOptions: {
 					show: {
 						defineOptions: ['json'],
@@ -253,44 +253,6 @@ export class LmChatOpenRouter implements INodeType {
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
-		const defineOptions = this.getNodeParameter('defineOptions', itemIndex) as 'json' | 'fields';
-
-		let jsonOptions = {};
-		let options: {
-			frequencyPenalty?: number;
-			maxTokens?: number;
-			maxRetries: number;
-			timeout: number;
-			presencePenalty?: number;
-			temperature?: number;
-			topP?: number;
-			responseFormat?: 'text' | 'json_object';
-		} = {} as any;
-		if (defineOptions === 'json') {
-			try {
-				const jsonOutput = this.getNodeParameter('jsonOutput', itemIndex, {
-					rawExpressions: true,
-				}) as string;
-
-				// TODO: support expressions in json, maybe with resolveRawData(jsonOutput)
-				jsonOptions = jsonParse(jsonOutput);
-			} catch (error) {
-				throw new NodeOperationError(this.getNode(), error.message, {
-					description: error.message,
-				});
-			}
-		} else {
-			options = this.getNodeParameter('options', itemIndex, {}) as any;
-			options = {
-				...options,
-			};
-			if (options.responseFormat) {
-				jsonOptions = {
-					response_format: { type: options.responseFormat },
-				};
-			}
-		}
-
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
 			fetchOptions: {
@@ -298,15 +260,62 @@ export class LmChatOpenRouter implements INodeType {
 			},
 		};
 
+		const getChatModelOptions = (): any => {
+			const defineOptions = this.getNodeParameter('defineOptions', itemIndex) as 'json' | 'fields';
+
+			if (defineOptions === 'json') {
+				try {
+					// Spec: https://openrouter.ai/docs/api-reference/chat/send-chat-completion-request
+					const optionsDefinedAsJson = this.getNodeParameter('jsonOutput', itemIndex, {
+						rawExpressions: true,
+					}) as string;
+
+					// TODO: support expressions in json, maybe with resolveRawData(jsonOutput)
+					const parsedOptions: any = jsonParse(optionsDefinedAsJson);
+					const maxRetries = parseInt(
+						parsedOptions.max_retries || parsedOptions.maxRetries || '',
+						10,
+					);
+					return {
+						timeout: parsedOptions.timeout ?? 60000,
+						maxRetries: maxRetries && !isNaN(maxRetries) ? maxRetries : 2,
+						modelKwargs: parsedOptions,
+					};
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), error.message, {
+						description: error.message,
+					});
+				}
+			} else {
+				const options: {
+					frequencyPenalty?: number;
+					maxTokens?: number;
+					maxRetries: number;
+					timeout: number;
+					presencePenalty?: number;
+					temperature?: number;
+					topP?: number;
+					responseFormat?: 'text' | 'json_object';
+				} = this.getNodeParameter('options', itemIndex, {}) as any;
+				return {
+					...options,
+					timeout: options.timeout ?? 60000,
+					maxRetries: options.maxRetries ?? 2,
+					modelKwargs: options.responseFormat
+						? {
+								response_format: { type: options.responseFormat },
+							}
+						: undefined,
+				};
+			}
+		};
+
 		const model = new ChatOpenAI({
+			...getChatModelOptions(),
 			apiKey: credentials.apiKey,
 			model: modelName,
-			...options,
-			timeout: options.timeout ?? 60000,
-			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: jsonOptions,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
