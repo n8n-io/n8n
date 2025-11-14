@@ -2,7 +2,11 @@
 import { onBeforeMount, ref, watchEffect, computed, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
-import { VIEWS, WORKFLOW_HISTORY_VERSION_RESTORE } from '@/app/constants';
+import {
+	VIEWS,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
+	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+} from '@/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import type {
@@ -36,6 +40,7 @@ const enum WorkflowHistoryVersionRestoreModalActions {
 
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'restore',
+	'publish',
 	'clone',
 	'open',
 	'download',
@@ -84,7 +89,8 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
 		disabled:
 			(value === 'clone' && !workflowPermissions.value.create) ||
-			(value === 'restore' && !workflowPermissions.value.update),
+			(value === 'restore' && !workflowPermissions.value.update) ||
+			(value === 'publish' && !workflowPermissions.value.update),
 		value,
 	})),
 );
@@ -250,6 +256,20 @@ const restoreWorkflowVersion = async (
 	});
 };
 
+const publishWorkflowVersion = async (
+	id: WorkflowVersionId,
+	data: { formattedCreatedAt: string },
+) => {
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+		data: {
+			versionId: id,
+			workflowId: workflowId.value,
+			formattedCreatedAt: data.formattedCreatedAt,
+		},
+	});
+};
+
 const onAction = async ({
 	action,
 	id,
@@ -276,6 +296,11 @@ const onAction = async ({
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
 				await restoreWorkflowVersion(id, data);
 				sendTelemetry('User restored version');
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.PUBLISH:
+				await publishWorkflowVersion(id, data);
+				// TODO: document this event
+				sendTelemetry('User published version from history');
 				break;
 		}
 	} catch (error) {
