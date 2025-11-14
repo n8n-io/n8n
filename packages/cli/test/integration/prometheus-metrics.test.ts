@@ -37,6 +37,8 @@ globalConfig.endpoints.metrics = {
 	includeQueueMetrics: true,
 	queueMetricsInterval: 20,
 	activeWorkflowCountInterval: 60,
+	includeWorkflowStatistics: false,
+	workflowStatisticsInterval: 300,
 };
 
 const server = setupTestServer({ endpointGroups: ['metrics'] });
@@ -382,5 +384,65 @@ describe('PrometheusMetricsService', () => {
 		lines = toLines(response);
 
 		expect(lines).toContain('n8n_test_active_workflow_count 1');
+	});
+
+	it('should return workflow statistics metrics if enabled', async () => {
+		/**
+		 * Arrange
+		 */
+		prometheusService.enableMetric('workflowStatistics');
+		await prometheusService.init(server.app);
+
+		/**
+		 * Act
+		 */
+		const response = await agent.get('/metrics');
+
+		/**
+		 * Assert
+		 */
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		const lines = toLines(response);
+
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_production_executions'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_production_root_executions'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_manual_executions'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_enabled_users'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_users'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_workflows'));
+		expect(lines).toContainEqual(expect.stringContaining('n8n_test_credentials'));
+	});
+
+	it('should not return workflow statistics metrics if disabled', async () => {
+		/**
+		 * Arrange
+		 */
+		prometheusService.disableMetric('workflowStatistics');
+		await prometheusService.init(server.app);
+
+		/**
+		 * Act
+		 */
+		const response = await agent.get('/metrics');
+
+		/**
+		 * Assert
+		 */
+		expect(response.status).toEqual(200);
+		expect(response.type).toEqual('text/plain');
+
+		const lines = toLines(response);
+
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_production_executions'));
+		expect(lines).not.toContainEqual(
+			expect.stringContaining('n8n_test_production_root_executions'),
+		);
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_manual_executions'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_enabled_users'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_users'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_workflows'));
+		expect(lines).not.toContainEqual(expect.stringContaining('n8n_test_credentials'));
 	});
 });
