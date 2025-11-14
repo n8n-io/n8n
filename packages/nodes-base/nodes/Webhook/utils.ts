@@ -1,4 +1,5 @@
 import basicAuth from 'basic-auth';
+import { rm } from 'fs/promises';
 import jwt from 'jsonwebtoken';
 import { WorkflowConfigurationError } from 'n8n-workflow';
 import type {
@@ -6,7 +7,9 @@ import type {
 	INodeExecutionData,
 	IDataObject,
 	ICredentialDataDecryptedObject,
+	MultiPartFormData,
 } from 'n8n-workflow';
+import * as a from 'node:assert';
 
 import { WebhookAuthorizationError } from './error';
 import { formatPrivateKey } from '../../utils/utilities';
@@ -283,4 +286,69 @@ export async function validateWebhookAuthentication(
 			throw new WebhookAuthorizationError(403, error.message);
 		}
 	}
+}
+
+export async function handleFormData(
+	context: IWebhookFunctions,
+	prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
+) {
+	const req = context.getRequestObject() as MultiPartFormData.Request;
+	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
+	const options = context.getNodeParameter('options', {}) as IDataObject;
+	const { data, files } = req.body;
+
+	const returnItem: INodeExecutionData = {
+		json: {
+			headers: req.headers,
+			params: req.params,
+			query: req.query,
+			body: data,
+		},
+	};
+
+	if (files && Object.keys(files).length) {
+		returnItem.binary = {};
+	}
+
+	let count = 0;
+
+	for (const key of Object.keys(files)) {
+		const processFiles: MultiPartFormData.File[] = [];
+		let multiFile = false;
+		if (Array.isArray(files[key])) {
+			processFiles.push.apply(processFiles, files[key]);
+			multiFile = true;
+		} else {
+			processFiles.push(files[key]);
+		}
+
+		let fileCount = 0;
+		for (const file of processFiles) {
+			let binaryPropertyName = key;
+			if (binaryPropertyName.endsWith('[]')) {
+				binaryPropertyName = binaryPropertyName.slice(0, -2);
+			}
+			if (!binaryPropertyName.trim().length) {
+				binaryPropertyName = `data${count}`;
+			} else if (multiFile) {
+				binaryPropertyName += fileCount++;
+			}
+			if (options.binaryPropertyName) {
+				binaryPropertyName = `${options.binaryPropertyName}${count}`;
+			}
+
+			returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
+				file.filepath,
+				file.originalFilename ?? file.newFilename,
+				file.mimetype,
+			);
+
+			// Delete original file to prevent tmp directory from growing too large
+			await rm(file.filepath, { force: true });
+
+			count += 1;
+		}
+	}
+
+	return { workflowData: prepareOutput(returnItem) };
 }
