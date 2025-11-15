@@ -130,6 +130,160 @@ describe('Workflow History Manager', () => {
 		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
 	});
 
+	describe('Race condition prevention and error handling', () => {
+		test('should prevent overlapping prune operations', async () => {
+			globalConfig.workflowHistory.pruneTime = 24;
+			await createWorkflowHistory();
+
+			const logger = Container.get(WorkflowHistoryManager)['logger'];
+			const debugSpy = jest.spyOn(logger, 'debug');
+
+			// Mock the repository method to delay completion
+			const deleteSpy = jest.spyOn(repo, 'deleteEarlierThanExceptCurrent').mockImplementation(
+				() =>
+					new Promise((resolve) => {
+						setTimeout(resolve, 100);
+					}),
+			);
+
+			// Start first prune operation
+			const firstPrunePromise = manager.prune();
+
+			// Immediately try to start second prune operation while first is running
+			const secondPrunePromise = manager.prune();
+
+			// Wait for both to complete
+			await Promise.all([firstPrunePromise, secondPrunePromise]);
+
+			// Second prune should have been skipped
+			expect(debugSpy).toHaveBeenCalledWith(
+				'Prune operation already in progress, skipping this cycle.',
+			);
+
+			// Only one actual delete should have been called
+			expect(deleteSpy).toHaveBeenCalledTimes(1);
+
+			deleteSpy.mockRestore();
+			debugSpy.mockRestore();
+		});
+
+		test('should log warning when init() is called multiple times', () => {
+			const logger = Container.get(WorkflowHistoryManager)['logger'];
+			const warnSpy = jest.spyOn(logger, 'warn');
+
+			jest.useFakeTimers();
+			manager.init();
+
+			// Call init() again
+			manager.init();
+
+			expect(warnSpy).toHaveBeenCalledWith(
+				'WorkflowHistoryManager.init() called multiple times. Restarting prune timer.',
+			);
+
+			manager.shutdown();
+			jest.clearAllTimers();
+			jest.useRealTimers();
+			warnSpy.mockRestore();
+		});
+
+		test('should handle errors during prune and reset isPruning flag', async () => {
+			globalConfig.workflowHistory.pruneTime = 24;
+			await createWorkflowHistory();
+
+			const logger = Container.get(WorkflowHistoryManager)['logger'];
+			const errorSpy = jest.spyOn(logger, 'error');
+			const debugSpy = jest.spyOn(logger, 'debug');
+
+			// Mock repository to throw an error
+			const deleteSpy = jest
+				.spyOn(repo, 'deleteEarlierThanExceptCurrent')
+				.mockRejectedValueOnce(new Error('Database error'));
+
+			await manager.prune();
+
+			// Error should be logged
+			expect(errorSpy).toHaveBeenCalledWith('Failed to prune workflow history', {
+				error: expect.objectContaining({
+					message: 'Database error',
+					name: 'Error',
+				}),
+			});
+
+			// Reset mock to allow successful second prune
+			deleteSpy.mockRestore();
+
+			// isPruning flag should be reset, allowing another prune
+			await manager.prune();
+
+			// Should not log "already in progress" message
+			expect(debugSpy).not.toHaveBeenCalledWith(
+				'Prune operation already in progress, skipping this cycle.',
+			);
+
+			errorSpy.mockRestore();
+			debugSpy.mockRestore();
+		});
+
+		test('should reset isPruning flag even when pruneHours is -1 (early return)', async () => {
+			globalConfig.workflowHistory.pruneTime = -1;
+			license.getWorkflowHistoryPruneLimit.mockReturnValue(-1);
+
+			const logger = Container.get(WorkflowHistoryManager)['logger'];
+
+			// First call with -1 should return early
+			await manager.prune();
+
+			// Second call should not be blocked (isPruning should be reset)
+			const debugSpy = jest.spyOn(logger, 'debug');
+			await manager.prune();
+
+			// Should not log "already in progress" message
+			expect(debugSpy).not.toHaveBeenCalledWith(
+				'Prune operation already in progress, skipping this cycle.',
+			);
+
+			debugSpy.mockRestore();
+		});
+
+		test('should allow prune after previous prune completes', async () => {
+			globalConfig.workflowHistory.pruneTime = 24;
+			await createWorkflowHistory();
+
+			const logger = Container.get(WorkflowHistoryManager)['logger'];
+			const debugSpy = jest.spyOn(logger, 'debug');
+
+			// First prune
+			await manager.prune();
+
+			// Second prune after first completes
+			await manager.prune();
+
+			// Should not log "already in progress" message
+			expect(debugSpy).not.toHaveBeenCalledWith(
+				'Prune operation already in progress, skipping this cycle.',
+			);
+
+			debugSpy.mockRestore();
+		});
+
+		test('should properly cleanup interval on shutdown', () => {
+			jest.useFakeTimers();
+			manager.init();
+
+			// Verify timer exists
+			expect(manager['pruneTimer']).toBeDefined();
+
+			manager.shutdown();
+
+			// Timer should be cleared
+			expect(manager['pruneTimer']).toBeUndefined();
+
+			jest.clearAllTimers();
+			jest.useRealTimers();
+		});
+	});
+
 	const createWorkflowHistory = async (ageInDays = 2) => {
 		const workflow = await createWorkflow();
 		const time = DateTime.now().minus({ days: ageInDays }).toJSDate();
