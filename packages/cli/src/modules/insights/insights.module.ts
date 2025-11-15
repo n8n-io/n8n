@@ -15,7 +15,7 @@ export class InsightsModule implements ModuleInterface {
 		await import('./insights.controller');
 
 		const { InsightsService } = await import('./insights.service');
-		Container.get(InsightsService).startTimers();
+		await Container.get(InsightsService).init();
 	}
 
 	async entities() {
@@ -27,9 +27,9 @@ export class InsightsModule implements ModuleInterface {
 	}
 
 	async settings() {
-		const { InsightsService } = await import('./insights.service');
+		const { InsightsSettings } = await import('./insights.settings');
 
-		return Container.get(InsightsService).settings();
+		return Container.get(InsightsSettings).settings();
 	}
 
 	@OnShutdown()
