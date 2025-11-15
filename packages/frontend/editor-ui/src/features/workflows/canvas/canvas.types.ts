@@ -221,6 +221,12 @@ export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position']
 export type ExecutionOutputMapData = {
 	total: number;
 	iterations: number;
+	byTarget?: {
+		[targetNodeId: string]: {
+			total: number;
+			iterations: number;
+		};
+	};
 };
 
 export type ExecutionOutputMap = {
