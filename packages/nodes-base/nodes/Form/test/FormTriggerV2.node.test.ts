@@ -148,7 +148,11 @@ describe('FormTrigger', () => {
 					formFields: { values: formFields },
 				},
 			},
-			request: { method: 'POST' },
+			request: {
+				method: 'POST',
+				headers: { 'content-type': 'multipart/form-data' },
+				contentType: 'multipart/form-data',
+			},
 			bodyData,
 		});
 
@@ -317,7 +321,11 @@ describe('FormTrigger', () => {
 					formFields: { values: formFields },
 				},
 			},
-			request: { method: 'POST' },
+			request: {
+				method: 'POST',
+				headers: { 'content-type': 'multipart/form-data' },
+				contentType: 'multipart/form-data',
+			},
 			bodyData,
 		});
 

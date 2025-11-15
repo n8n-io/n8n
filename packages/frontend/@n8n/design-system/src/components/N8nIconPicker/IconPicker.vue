@@ -160,7 +160,7 @@ const togglePopup = () => {
 }
 .popup {
 	position: absolute;
-	z-index: 1;
+	z-index: 9999;
 	width: 426px;
 	max-height: 300px;
 	display: flex;

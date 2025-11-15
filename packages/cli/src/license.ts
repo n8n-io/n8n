@@ -2,6 +2,7 @@ import type { LicenseProvider } from '@n8n/backend-common';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import {
+	DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT,
 	LICENSE_FEATURES,
 	LICENSE_QUOTAS,
 	Time,
@@ -16,7 +17,6 @@ import type { TEntitlement, TLicenseBlock } from '@n8n_io/license-sdk';
 import { LicenseManager } from '@n8n_io/license-sdk';
 import { InstanceSettings } from 'n8n-core';
 
-import config from '@/config';
 import { LicenseMetricsService } from '@/metrics/license-metrics.service';
 
 import { N8N_VERSION, SETTINGS_LICENSE_CERT_KEY } from './constants';
@@ -148,7 +148,7 @@ export class License implements LicenseProvider {
 	}
 
 	private async broadcastReloadLicenseCommand() {
-		if (config.getEnv('executions.mode') === 'queue' && this.instanceSettings.isLeader) {
+		if (this.globalConfig.executions.mode === 'queue' && this.instanceSettings.isLeader) {
 			const { Publisher } = await import('@/scaling/pubsub/publisher.service');
 			await Container.get(Publisher).publishCommand({ command: 'reload-license' });
 		}
@@ -167,12 +167,12 @@ export class License implements LicenseProvider {
 		);
 	}
 
-	async activate(activationKey: string): Promise<void> {
+	async activate(activationKey: string, eulaUri?: string): Promise<void> {
 		if (!this.manager) {
 			return;
 		}
 
-		await this.manager.activate(activationKey);
+		await this.manager.activate(activationKey, eulaUri);
 		this.logger.debug('License activated');
 	}
 
@@ -301,11 +301,6 @@ export class License implements LicenseProvider {
 		return this.isLicensed(LICENSE_FEATURES.EXTERNAL_SECRETS);
 	}
 
-	/** @deprecated Use `LicenseState.isWorkflowHistoryLicensed` instead. */
-	isWorkflowHistoryLicensed() {
-		return this.isLicensed(LICENSE_FEATURES.WORKFLOW_HISTORY);
-	}
-
 	/** @deprecated Use `LicenseState.isAPIDisabled` instead. */
 	isAPIDisabled() {
 		return this.isLicensed(LICENSE_FEATURES.API_DISABLED);
@@ -404,7 +399,10 @@ export class License implements LicenseProvider {
 
 	/** @deprecated Use `LicenseState` instead. */
 	getWorkflowHistoryPruneLimit() {
-		return this.getValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ?? UNLIMITED_LICENSE_QUOTA;
+		return (
+			this.getValue(LICENSE_QUOTAS.WORKFLOW_HISTORY_PRUNE_LIMIT) ??
+			DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT
+		);
 	}
 
 	/** @deprecated Use `LicenseState` instead. */

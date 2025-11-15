@@ -184,8 +184,13 @@ async function getAzureAISearchClient(
 				context,
 				itemIndex,
 			);
+			const filter = getOptionValue<string>('filter', context, itemIndex);
 
 			config.search.type = queryType;
+
+			if (filter) {
+				config.search.filter = filter;
+			}
 
 			if (queryType === AzureAISearchQueryType.SemanticHybrid && semanticConfiguration) {
 				config.search.semanticConfigurationName = semanticConfiguration;

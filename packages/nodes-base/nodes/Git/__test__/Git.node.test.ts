@@ -30,6 +30,7 @@ describe('Git Node', () => {
 		});
 		securityConfig = mock<SecurityConfig>({
 			disableBareRepos: false,
+			enableGitNodeHooks: true,
 		});
 		Container.set(DeploymentConfig, deploymentConfig);
 		Container.set(SecurityConfig, securityConfig);
@@ -104,6 +105,32 @@ describe('Git Node', () => {
 		it('should not add safe.bareRepository=explicit when neither cloud nor disableBareRepos is true', async () => {
 			deploymentConfig.type = 'default';
 			securityConfig.disableBareRepos = false;
+
+			await gitNode.execute.call(executeFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: [],
+				}),
+			);
+		});
+	});
+
+	describe('Hooks Configuration', () => {
+		it('should add core.hooksPath=/dev/null when enableGitNodeHooks is false', async () => {
+			securityConfig.enableGitNodeHooks = false;
+
+			await gitNode.execute.call(executeFunctions);
+
+			expect(mockSimpleGit).toHaveBeenCalledWith(
+				expect.objectContaining({
+					config: ['core.hooksPath=/dev/null'],
+				}),
+			);
+		});
+
+		it('should not add core.hooksPath=/dev/null when enableGitNodeHooks is true', async () => {
+			securityConfig.enableGitNodeHooks = true;
 
 			await gitNode.execute.call(executeFunctions);
 
