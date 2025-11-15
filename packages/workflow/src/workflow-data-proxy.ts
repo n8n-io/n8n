@@ -794,19 +794,6 @@ export class WorkflowDataProxy {
 			});
 		};
 
-		const createInvalidPairedItemError = ({ nodeName }: { nodeName: string }) => {
-			return createExpressionError("Can't get data for expression", {
-				messageTemplate: 'Expression info invalid',
-				functionality: 'pairedItem',
-				functionOverrides: {
-					message: "Can't get data",
-				},
-				nodeCause: nodeName,
-				descriptionKey: 'pairedItemInvalidInfo',
-				type: 'paired_item_invalid_info',
-			});
-		};
-
 		const createMissingPairedItemError = (
 			nodeCause: string,
 			usedMethodName: PairedItemMethod = PAIRED_ITEM_METHOD.PAIRED_ITEM,
@@ -962,7 +949,7 @@ export class WorkflowDataProxy {
 			// Done: reached the destination node in the ancestry chain
 			if (sourceData.previousNode === destinationNodeName) {
 				if (pairedItem.item >= outputData.length) {
-					throw createInvalidPairedItemError({ nodeName: sourceData.previousNode });
+					throw createMissingPairedItemError(sourceData.previousNode, usedMethodName);
 				}
 
 				return item;
