@@ -22,7 +22,6 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 	const sanitizedKeywords = keywords.map((k: string) => k.replace(/[.,!?;:]+$/, ''));
 
 	const validKeywords = sanitizedKeywords.filter((k: string) => k.length > 0);
-
 	if (validKeywords.length === 0) {
 		return {
 			guardrailName: 'keywords',
@@ -38,8 +37,11 @@ const keywordsCheck = (text: string, config: KeywordsConfig): GuardrailResult =>
 	const escapedKeywords = validKeywords.map((k: string) =>
 		k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'),
 	);
-	const patternText = `\\b(?:${escapedKeywords.join('|')})\\b`;
-	const pattern = new RegExp(patternText, 'gi'); // case-insensitive, global
+	// \p{L}|\p{N}|_ - any unicode letter, number, or underscore. Alternative to \b
+	// (?<!\p{L}) - not preceded by a letter
+	// (?!\p{L}) - not followed by a letter
+	const patternText = `(?<!\\p{L}|\\p{N}|_)(?:${escapedKeywords.join('|')})(?!\\p{L}|\\p{N}|_)`;
+	const pattern = new RegExp(patternText, 'giu'); // case-insensitive, global, unicode
 
 	const matches: string[] = [];
 	let match;
