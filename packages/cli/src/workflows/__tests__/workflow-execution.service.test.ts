@@ -453,11 +453,14 @@ describe('WorkflowExecutionService', () => {
 				const originalEnv = process.env;
 				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
-				const configMock = { getEnv: jest.fn() };
-				configMock.getEnv.mockReturnValue('queue');
-
 				const workflowRunnerMock = mock<WorkflowRunner>();
 				workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+				const globalConfigMock = mock<GlobalConfig>({
+					executions: {
+						mode: 'queue',
+					},
+				});
 
 				const service = new WorkflowExecutionService(
 					mock(),
@@ -467,7 +470,7 @@ describe('WorkflowExecutionService', () => {
 					nodeTypes,
 					mock(),
 					workflowRunnerMock,
-					mock(),
+					globalConfigMock,
 					mock(),
 					mock(),
 				);

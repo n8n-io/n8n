@@ -53,6 +53,7 @@ import {
 	OperationalError,
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
@@ -90,20 +91,7 @@ export class WorkflowExecute {
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
-		private runExecutionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-				pinData: {},
-			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		},
+		private runExecutionData: IRunExecutionData = createRunExecutionData(),
 	) {}
 
 	/**
@@ -157,23 +145,18 @@ export class WorkflowExecute {
 			},
 		];
 
-		this.runExecutionData = {
+		this.runExecutionData = createRunExecutionData({
 			startData: {
 				destinationNode,
 				runNodeFilter,
 			},
+			executionData: {
+				nodeExecutionStack,
+			},
 			resultData: {
-				runData: {},
 				pinData,
 			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack,
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		};
+		});
 
 		return this.processRunExecutionData(workflow);
 	}
@@ -236,7 +219,7 @@ export class WorkflowExecute {
 					recreateNodeExecutionStack(graph, new Set([destination]), runData, pinData ?? {});
 
 				this.status = 'running';
-				this.runExecutionData = {
+				this.runExecutionData = createRunExecutionData({
 					startData: {
 						destinationNode: destinationNodeName,
 						runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
@@ -246,13 +229,11 @@ export class WorkflowExecute {
 						pinData,
 					},
 					executionData: {
-						contextData: {},
 						nodeExecutionStack,
-						metadata: {},
 						waitingExecution,
 						waitingExecutionSource,
 					},
-				};
+				});
 
 				return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
 			}
@@ -308,7 +289,7 @@ export class WorkflowExecute {
 		this.additionalData.currentNodeExecutionIndex = getNextExecutionIndex(runData);
 
 		this.status = 'running';
-		this.runExecutionData = {
+		this.runExecutionData = createRunExecutionData({
 			startData: {
 				destinationNode: destinationNodeName,
 				originalDestinationNode: originalDestination,
@@ -319,13 +300,11 @@ export class WorkflowExecute {
 				pinData,
 			},
 			executionData: {
-				contextData: {},
 				nodeExecutionStack,
-				metadata: {},
 				waitingExecution,
 				waitingExecutionSource,
 			},
-		};
+		});
 
 		// Still passing the original workflow here, because the WorkflowDataProxy
 		// needs it to create more useful error messages, e.g. differentiate
@@ -1365,7 +1344,7 @@ export class WorkflowExecute {
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
 
 		let destinationNode: string | undefined;
-		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
+		if (this.runExecutionData.startData?.destinationNode) {
 			destinationNode = this.runExecutionData.startData.destinationNode;
 		}
 		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});

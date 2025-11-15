@@ -7,7 +7,6 @@ import type {
 
 import type {
 	IRunData,
-	IRunExecutionData,
 	ITaskData,
 	IPinData,
 	Workflow,
@@ -16,7 +15,7 @@ import type {
 	IDataObject,
 	IWorkflowBase,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
 
 import { useToast } from '@/app/composables/useToast';
@@ -360,13 +359,12 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				workflowId: workflowObject.value.id,
 				executedNode,
 				triggerNode: triggerToStartFrom?.name,
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: startRunData.runData ?? {},
 						pinData: workflowData.pinData,
-						workflowData,
 					},
-				} as IRunExecutionData,
+				}),
 				workflowData: {
 					id: workflowsStore.workflowId,
 					name: workflowData.name!,

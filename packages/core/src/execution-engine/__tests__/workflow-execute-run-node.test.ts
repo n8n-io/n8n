@@ -68,7 +68,7 @@ import type {
 	IWorkflowExecuteAdditionalData,
 	Workflow,
 } from 'n8n-workflow';
-import { NodeApiError, NodeOperationError, Node } from 'n8n-workflow';
+import { NodeApiError, NodeOperationError, Node, createRunExecutionData } from 'n8n-workflow';
 
 import { ExecuteContext, PollContext } from '../node-execution-context';
 import { RoutingNode } from '../routing-node';
@@ -114,20 +114,7 @@ describe('WorkflowExecute.runNode - Real Implementation', () => {
 			executionId: 'test-execution-id',
 		});
 
-		mockRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-				pinData: {},
-			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		};
+		mockRunExecutionData = createRunExecutionData();
 
 		mockNode = {
 			id: 'test-node-id',

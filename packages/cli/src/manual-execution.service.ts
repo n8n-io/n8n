@@ -9,12 +9,11 @@ import {
 	WorkflowExecute,
 	rewireGraph,
 } from 'n8n-core';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, createRunExecutionData } from 'n8n-workflow';
 import type {
 	IExecuteData,
 	IPinData,
 	IRun,
-	IRunExecutionData,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 	IWorkflowExecuteAdditionalData,
@@ -82,16 +81,17 @@ export class ManualExecutionService {
 				waitingExecutionSource = recreatedStack.waitingExecutionSource;
 			}
 
-			const executionData: IRunExecutionData = {
-				resultData: { runData, pinData },
+			const executionData = createRunExecutionData({
+				resultData: {
+					runData,
+					pinData,
+				},
 				executionData: {
-					contextData: {},
-					metadata: {},
 					nodeExecutionStack,
 					waitingExecution,
 					waitingExecutionSource,
 				},
-			};
+			});
 
 			if (data.destinationNode) {
 				executionData.startData = { destinationNode: data.destinationNode };
