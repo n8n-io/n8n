@@ -67,7 +67,7 @@ export declare namespace WorkflowRequest {
 		{ forceSave?: string }
 	>;
 
-	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
+	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string; projectId: string }>;
 
 	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload, {}>;
 

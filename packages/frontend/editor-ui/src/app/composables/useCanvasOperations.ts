@@ -114,7 +114,7 @@ import { computed, nextTick, ref } from 'vue';
 import { useClipboard } from '@/app/composables/useClipboard';
 import { useUniqueNodeName } from '@/app/composables/useUniqueNodeName';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
-import { isPresent } from '@/app/utils/typesUtils';
+import { isPresent, tryToParseNumber } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { CanvasLayoutEvent } from '@/features/workflows/canvas/composables/useCanvasLayout';
 import { chatEventBus } from '@n8n/chat/event-buses';
@@ -128,7 +128,6 @@ import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import type { TelemetryNdvSource, TelemetryNdvType } from '@/app/types/telemetry';
 import { useRoute, useRouter } from 'vue-router';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
-import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import { useParentFolder } from '@/features/core/folders/composables/useParentFolder';
 
@@ -2142,9 +2141,16 @@ export function useCanvasOperations() {
 	async function fetchWorkflowDataFromUrl(url: string): Promise<WorkflowDataUpdate | undefined> {
 		let workflowData: WorkflowDataUpdate;
 
+		const projectId = projectsStore.currentProjectId ?? projectsStore.personalProject?.id;
+		if (!projectId) {
+			// We should never reach this point because the project should be selected before
+			throw new Error('No project selected');
+			return;
+		}
+
 		canvasStore.startLoading();
 		try {
-			workflowData = await workflowsStore.getWorkflowFromUrl(url);
+			workflowData = await workflowsStore.getWorkflowFromUrl(url, projectId);
 		} catch (error) {
 			toast.showError(error, i18n.baseText('nodeView.showError.getWorkflowDataFromUrl.title'));
 			return;

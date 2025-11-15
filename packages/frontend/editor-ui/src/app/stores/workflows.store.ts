@@ -581,9 +581,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return createWorkflowObject(nodes, connections);
 	}
 
-	async function getWorkflowFromUrl(url: string): Promise<IWorkflowDb> {
+	async function getWorkflowFromUrl(url: string, projectId: string): Promise<IWorkflowDb> {
 		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/workflows/from-url', {
 			url,
+			projectId,
 		});
 	}
 
