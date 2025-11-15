@@ -25,6 +25,7 @@
     "n8nNodesApiVersion": 1,
     "credentials": [
       "dist/credentials/AnthropicApi.credentials.js",
+      "dist/credentials/AzureAiSearchApi.credentials.js",
       "dist/credentials/AzureOpenAiApi.credentials.js",
       "dist/credentials/AzureEntraCognitiveServicesOAuth2Api.credentials.js",
       "dist/credentials/CohereApi.credentials.js",
@@ -134,6 +135,7 @@
       "dist/nodes/trigger/ManualChatTrigger/ManualChatTrigger.node.js",
       "dist/nodes/trigger/ChatTrigger/ChatTrigger.node.js",
       "dist/nodes/trigger/ChatTrigger/Chat.node.js",
+      "dist/nodes/vector_store/VectorStoreAzureAISearch/VectorStoreAzureAISearch.node.js",
       "dist/nodes/vector_store/VectorStoreInMemory/VectorStoreInMemory.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryInsert/VectorStoreInMemoryInsert.node.js",
       "dist/nodes/vector_store/VectorStoreInMemoryLoad/VectorStoreInMemoryLoad.node.js",
@@ -175,6 +177,7 @@
   "dependencies": {
     "@aws-sdk/client-sso-oidc": "3.808.0",
     "@azure/identity": "4.3.0",
+    "@azure/search-documents": "12.1.0",
     "@getzep/zep-cloud": "1.0.12",
     "@getzep/zep-js": "0.9.0",
     "@google-cloud/resource-manager": "5.3.0",
