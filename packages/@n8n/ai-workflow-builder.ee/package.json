@@ -1,10 +1,11 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "0.29.0",
+  "version": "0.30.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p ./tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+    "build:with-cli": "pnpm build && pnpm --filter=n8n build",
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",

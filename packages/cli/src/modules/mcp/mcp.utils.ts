@@ -1,6 +1,7 @@
-import type { AuthenticatedRequest } from '@n8n/db';
+import type { AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
 import type { Request } from 'express';
 
+import { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
 import { isRecord, isJSONRPCRequest } from './mcp.typeguards';
 
 export const getClientInfo = (req: Request | AuthenticatedRequest) => {
@@ -43,4 +44,20 @@ export const getToolArguments = (body: unknown): Record<string, unknown> => {
 	}
 
 	return {};
+};
+
+/**
+ * Determines if MCP access can be toggled for a given workflow.
+ * Workflow is eligible if it contains at least one of these (enabled) trigger nodes:
+ * - Schedule trigger
+ * - Webhook trigger
+ * - Form trigger
+ * - Chat trigger
+ * @param workflow
+ */
+export const isWorkflowEligibleForMCPAccess = (workflow: WorkflowEntity): boolean => {
+	const triggerNodeTypes = Object.keys(SUPPORTED_MCP_TRIGGERS);
+	return workflow.nodes.some(
+		(node) => triggerNodeTypes.includes(node.type) && node.disabled !== true,
+	);
 };

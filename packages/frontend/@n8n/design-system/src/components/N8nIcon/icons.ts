@@ -154,6 +154,7 @@ import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
+import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
 import IconLucidePackageOpen from '~icons/lucide/package-open';
 import IconLucidePalette from '~icons/lucide/palette';
 import IconLucidePanelLeft from '~icons/lucide/panel-left';
@@ -180,6 +181,7 @@ import IconLucideSearch from '~icons/lucide/search';
 import IconLucideSend from '~icons/lucide/send';
 import IconLucideServer from '~icons/lucide/server';
 import IconLucideSettings from '~icons/lucide/settings';
+import IconLucideSettings2 from '~icons/lucide/settings-2';
 import IconLucideShare from '~icons/lucide/share';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
@@ -589,6 +591,7 @@ export const updatedIconSet = {
 	milestone: IconLucideMilestone,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
+	'notebook-pen': IconLucideNotebookPen,
 	'package-open': IconLucidePackageOpen,
 	palette: IconLucidePalette,
 	'panel-left': IconLucidePanelLeft,
@@ -614,6 +617,7 @@ export const updatedIconSet = {
 	scissors: IconLucideScissors,
 	search: IconLucideSearch,
 	settings: IconLucideSettings,
+	settings2: IconLucideSettings2,
 	send: IconLucideSend,
 	server: IconLucideServer,
 	share: IconLucideShare,

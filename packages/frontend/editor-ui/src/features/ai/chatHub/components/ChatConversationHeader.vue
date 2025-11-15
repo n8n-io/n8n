@@ -66,7 +66,7 @@ defineExpose({
 			<ModelSelector
 				v-if="readyToShowModelSelector"
 				ref="modelSelectorRef"
-				:selectedAgent="selectedModel"
+				:selected-agent="selectedModel"
 				:credentials="credentials"
 				@change="onModelChange"
 				@create-custom-agent="emit('createCustomAgent')"
