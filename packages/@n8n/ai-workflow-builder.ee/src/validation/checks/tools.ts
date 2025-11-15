@@ -34,6 +34,7 @@ export function validateTools(
 		if (isTool(nodeType) && !toolsWithoutParameters.includes(node.type)) {
 			if (!node.parameters || Object.keys(node.parameters).length === 0) {
 				violations.push({
+					name: 'tool-node-has-no-parameters',
 					type: 'major',
 					description: `Tool node "${node.name}" has no parameters set.`,
 					pointsDeducted: 20,
@@ -43,6 +44,7 @@ export function validateTools(
 
 			if (!nodeParametersContainExpression(node.parameters)) {
 				violations.push({
+					name: 'tool-node-static-parameters',
 					type: 'major',
 					description: `Tool node "${node.name}" has no expressions in its parameters. This likely means it is not using dynamic input.`,
 					pointsDeducted: 20,

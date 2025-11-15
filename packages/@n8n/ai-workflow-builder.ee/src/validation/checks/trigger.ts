@@ -20,6 +20,7 @@ export function validateTrigger(
 
 	if (!workflow.nodes || workflow.nodes.length === 0) {
 		violations.push({
+			name: 'workflow-has-no-nodes',
 			type: 'critical',
 			description: 'Workflow has no nodes',
 			pointsDeducted: 50,
@@ -44,6 +45,7 @@ export function validateTrigger(
 
 	if (!hasTrigger) {
 		violations.push({
+			name: 'workflow-has-no-trigger',
 			type: 'critical',
 			description: 'Workflow must have at least one trigger node to start execution',
 			pointsDeducted: 50,

@@ -593,6 +593,7 @@ describe('operations-processor', () => {
 			messages: [],
 			workflowContext: {},
 			workflowValidation: null,
+			validationHistory: [],
 			previousSummary: 'EMPTY',
 		});
 

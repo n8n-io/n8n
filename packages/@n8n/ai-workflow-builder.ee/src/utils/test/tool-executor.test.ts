@@ -49,6 +49,7 @@ describe('tool-executor', () => {
 			messages,
 			workflowContext: {},
 			workflowValidation: null,
+			validationHistory: [],
 			previousSummary: 'EMPTY',
 		});
 

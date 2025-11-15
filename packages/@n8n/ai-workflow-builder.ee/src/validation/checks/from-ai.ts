@@ -65,6 +65,7 @@ export function validateFromAi(
 
 		if (node.parameters && parametersContainFromAi(node.parameters)) {
 			violations.push({
+				name: 'non-tool-node-uses-fromai',
 				type: 'major',
 				description: `Non-tool node "${node.name}" (${node.type}) uses $fromAI in its parameters. $fromAI is only for tool nodes connected to AI agents.`,
 				pointsDeducted: 20,
