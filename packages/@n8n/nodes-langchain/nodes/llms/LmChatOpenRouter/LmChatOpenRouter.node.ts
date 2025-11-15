@@ -1,4 +1,5 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import pick from 'lodash/pick';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -145,6 +146,32 @@ export class LmChatOpenRouter implements INodeType {
 						},
 					},
 					{
+						displayName: 'Reasoning Effort',
+						name: 'reasoningEffort',
+						default: '',
+						description:
+							'Controls the amount of reasoning tokens to use. A value of "low" will favor speed and economical token usage, "high" will favor more complete reasoning at the cost of more tokens generated and slower responses. Not all reasoning models support "minimal".',
+						type: 'options',
+						options: [
+							{
+								name: 'High',
+								value: 'high',
+							},
+							{
+								name: 'Medium',
+								value: 'medium',
+							},
+							{
+								name: 'Low',
+								value: 'low',
+							},
+							{
+								name: 'Minimal',
+								value: 'minimal',
+							},
+						],
+					},
+					{
 						displayName: 'Response Format',
 						name: 'responseFormat',
 						default: 'text',
@@ -223,6 +250,7 @@ export class LmChatOpenRouter implements INodeType {
 			temperature?: number;
 			topP?: number;
 			responseFormat?: 'text' | 'json_object';
+			reasoningEffort?: 'minimal' | 'low' | 'medium' | 'high';
 		};
 
 		const configuration: ClientOptions = {
@@ -232,10 +260,20 @@ export class LmChatOpenRouter implements INodeType {
 			},
 		};
 
+		const includedOptions = pick(options, [
+			'frequencyPenalty',
+			'maxTokens',
+			'presencePenalty',
+			'temperature',
+			'topP',
+			'responseFormat',
+			'reasoningEffort',
+		]);
+
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey,
 			model: modelName,
-			...options,
+			...includedOptions,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
