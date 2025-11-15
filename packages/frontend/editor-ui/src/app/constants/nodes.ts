@@ -14,3 +14,14 @@ export const NODE_CONNECTION_TYPE_ALLOW_MULTIPLE: NodeConnectionType[] = [
 ];
 
 export const RUN_DATA_DEFAULT_PAGE_SIZE = 25;
+
+export const BINARY_METADATA_KEYS = [
+	'data',
+	'mimeType',
+	'fileType',
+	'fileName',
+	'directory',
+	'fileExtension',
+	'fileSize',
+	'id',
+] as const;
