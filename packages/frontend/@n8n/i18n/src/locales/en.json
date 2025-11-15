@@ -308,6 +308,7 @@
 	"chatHub.agent.editor.systemPrompt.label": "System Prompt",
 	"chatHub.agent.editor.systemPrompt.placeholder": "Enter system prompt",
 	"chatHub.agent.editor.model.label": "Model",
+	"chatHub.agent.editor.tools.label": "Tools",
 	"chatHub.agent.editor.loading": "Loading agent...",
 	"chatHub.agent.editor.saving": "Saving...",
 	"chatHub.agent.editor.save": "Save",
