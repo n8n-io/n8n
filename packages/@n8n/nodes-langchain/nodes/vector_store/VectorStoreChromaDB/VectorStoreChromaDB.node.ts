@@ -25,20 +25,33 @@ async function getChromaClient(
 
 	if (deploymentType === 'cloud') {
 		// Use CloudClient for Chroma Cloud
+		const cloudApiKey = credentials.cloudApiKey as string;
+
+		// Validate API key format
+		if (!cloudApiKey || typeof cloudApiKey !== 'string' || cloudApiKey.trim().length === 0) {
+			throw new Error('Invalid or missing Cloud API key');
+		}
+
 		const config: {
 			apiKey: string;
 			tenant?: string;
 			database?: string;
 		} = {
-			apiKey: credentials.cloudApiKey as string,
+			apiKey: cloudApiKey.trim(),
 		};
 
-		// Add optional tenant and database if provided
+		// Add optional tenant and database if provided (with validation)
 		if (credentials.tenant) {
-			config.tenant = credentials.tenant as string;
+			const tenant = String(credentials.tenant).trim();
+			if (tenant.length > 0) {
+				config.tenant = tenant;
+			}
 		}
 		if (credentials.database) {
-			config.database = credentials.database as string;
+			const database = String(credentials.database).trim();
+			if (database.length > 0) {
+				config.database = database;
+			}
 		}
 
 		return new CloudClient(config);
@@ -47,7 +60,24 @@ async function getChromaClient(
 		const baseUrl = credentials.baseUrl as string;
 		const authentication = credentials.authentication as string;
 
-		const url = new URL(baseUrl);
+		// Validate and parse URL
+		if (!baseUrl || typeof baseUrl !== 'string') {
+			throw new Error('Invalid or missing base URL');
+		}
+
+		let url: URL;
+		try {
+			url = new URL(baseUrl.trim());
+		} catch (error) {
+			throw new Error(
+				`Invalid base URL format: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			);
+		}
+
+		// Validate protocol
+		if (!['http:', 'https:'].includes(url.protocol)) {
+			throw new Error('Base URL must use http:// or https:// protocol');
+		}
 
 		const config: {
 			host: string;
@@ -61,13 +91,19 @@ async function getChromaClient(
 		};
 
 		if (authentication === 'apiKey' && credentials.apiKey) {
-			config.headers = {
-				Authorization: `Bearer ${credentials.apiKey}`,
-			};
+			const apiKey = String(credentials.apiKey).trim();
+			if (apiKey.length > 0) {
+				config.headers = {
+					Authorization: `Bearer ${apiKey}`,
+				};
+			}
 		} else if (authentication === 'token' && credentials.token) {
-			config.headers = {
-				'X-Chroma-Token': credentials.token as string,
-			};
+			const token = String(credentials.token).trim();
+			if (token.length > 0) {
+				config.headers = {
+					'X-Chroma-Token': token,
+				};
+			}
 		}
 
 		return new ChromaClient(config);
@@ -82,26 +118,45 @@ async function getChromaLibConfig(
 	const credentials = await context.getCredentials('chromaApi', itemIndex);
 	const deploymentType = credentials.deploymentType as string;
 
+	// Validate collection name
+	if (!collectionName || typeof collectionName !== 'string' || collectionName.trim().length === 0) {
+		throw new Error('Invalid or missing collection name');
+	}
+
+	const sanitizedCollectionName = collectionName.trim();
+
 	if (deploymentType === 'cloud') {
 		// Configuration for Chroma Cloud
+		const cloudApiKey = credentials.cloudApiKey as string;
+
+		if (!cloudApiKey || typeof cloudApiKey !== 'string' || cloudApiKey.trim().length === 0) {
+			throw new Error('Invalid or missing Cloud API key');
+		}
+
 		const config: ChromaLibArgs = {
-			collectionName,
+			collectionName: sanitizedCollectionName,
 			clientParams: {
-				apiKey: credentials.cloudApiKey as string,
+				apiKey: cloudApiKey.trim(),
 			},
 		};
 
 		if (credentials.tenant) {
-			config.clientParams = {
-				...config.clientParams,
-				tenant: credentials.tenant as string,
-			};
+			const tenant = String(credentials.tenant).trim();
+			if (tenant.length > 0) {
+				config.clientParams = {
+					...config.clientParams,
+					tenant,
+				};
+			}
 		}
 		if (credentials.database) {
-			config.clientParams = {
-				...config.clientParams,
-				database: credentials.database as string,
-			};
+			const database = String(credentials.database).trim();
+			if (database.length > 0) {
+				config.clientParams = {
+					...config.clientParams,
+					database,
+				};
+			}
 		}
 
 		return config;
@@ -110,7 +165,22 @@ async function getChromaLibConfig(
 		const baseUrl = credentials.baseUrl as string;
 		const authentication = credentials.authentication as string;
 
-		const url = new URL(baseUrl);
+		if (!baseUrl || typeof baseUrl !== 'string') {
+			throw new Error('Invalid or missing base URL');
+		}
+
+		let url: URL;
+		try {
+			url = new URL(baseUrl.trim());
+		} catch (error) {
+			throw new Error(
+				`Invalid base URL format: ${error instanceof Error ? error.message : 'Unknown error'}`,
+			);
+		}
+
+		if (!['http:', 'https:'].includes(url.protocol)) {
+			throw new Error('Base URL must use http:// or https:// protocol');
+		}
 
 		const clientParams: {
 			host: string;
@@ -124,17 +194,23 @@ async function getChromaLibConfig(
 		};
 
 		if (authentication === 'apiKey' && credentials.apiKey) {
-			clientParams.headers = {
-				Authorization: `Bearer ${credentials.apiKey}`,
-			};
+			const apiKey = String(credentials.apiKey).trim();
+			if (apiKey.length > 0) {
+				clientParams.headers = {
+					Authorization: `Bearer ${apiKey}`,
+				};
+			}
 		} else if (authentication === 'token' && credentials.token) {
-			clientParams.headers = {
-				'X-Chroma-Token': credentials.token as string,
-			};
+			const token = String(credentials.token).trim();
+			if (token.length > 0) {
+				clientParams.headers = {
+					'X-Chroma-Token': token,
+				};
+			}
 		}
 
 		const config: ChromaLibArgs = {
-			collectionName,
+			collectionName: sanitizedCollectionName,
 			clientParams,
 		};
 
@@ -224,7 +300,10 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 
 					return { results: [] };
 				} catch (error) {
-					const errorMessage = error?.message || String(error);
+					this.logger.error('ChromaDB collection listing error:', error);
+
+					// Provide user-friendly error
+					const errorMessage = error instanceof Error ? error.message : String(error);
 
 					// Check for connection errors
 					if (errorMessage.includes('ECONNREFUSED') || errorMessage.includes('Failed to connect')) {
@@ -234,14 +313,28 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 					}
 
 					// Check for authentication errors
-					if (errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
+					if (
+						errorMessage.includes('Unauthorized') ||
+						errorMessage.includes('401') ||
+						errorMessage.includes('403') ||
+						errorMessage.includes('Authentication')
+					) {
 						throw new Error(
 							'Authentication failed. Please check your API key or token in the credentials.',
 						);
 					}
 
-					console.error('ChromaDB collection listing error:', error);
-					throw new Error(`Failed to list ChromaDB collections: ${errorMessage}`);
+					// Check for invalid URL errors
+					if (errorMessage.includes('Invalid') && errorMessage.includes('URL')) {
+						throw new Error(
+							'Invalid URL configuration. Please check your base URL in the credentials.',
+						);
+					}
+
+					// Generic error message without exposing internal details
+					throw new Error(
+						'Failed to list ChromaDB collections. Please check your configuration and try again.',
+					);
 				}
 			},
 		},
@@ -260,9 +353,19 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 			const config = await getChromaLibConfig(context, collection, itemIndex);
 			return ExtendedChroma.fromExistingCollection(embeddings, config);
 		} catch (error) {
+			context.logger.error('ChromaDB connection error:', error);
+
+			const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+			if (errorMessage.includes('Invalid') || errorMessage.includes('missing')) {
+				throw new NodeOperationError(context.getNode(), `Configuration error: ${errorMessage}`, {
+					itemIndex,
+				});
+			}
+
 			throw new NodeOperationError(
 				context.getNode(),
-				`Error connecting to ChromaDB: ${error?.message || 'Unknown error'}`,
+				'Failed to connect to ChromaDB. Please verify your credentials and collection name.',
 				{ itemIndex },
 			);
 		}
@@ -280,11 +383,9 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 			try {
 				const client = await getChromaClient(context, itemIndex);
 				await client.deleteCollection({ name: collection });
-				context.logger.info(`Collection ${collection} deleted`);
+				context.logger.info(`Collection deleted successfully`);
 			} catch (error) {
-				context.logger.info(
-					`Collection ${collection} does not exist yet or could not be deleted (continuing)`,
-				);
+				context.logger.debug('Collection does not exist or could not be deleted (continuing)');
 			}
 		}
 
@@ -292,15 +393,19 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 			const config = await getChromaLibConfig(context, collection, itemIndex);
 			await ExtendedChroma.fromDocuments(documents, embeddings, config);
 		} catch (error) {
+			context.logger.error('ChromaDB document insertion error:', error);
+
+			const errorMessage = error instanceof Error ? error.message : String(error);
+			const responseDetail = (error as any)?.response?.data?.detail;
+
 			// Handle dimension mismatch error specifically
 			if (
-				error?.message?.includes('embedding with dimension') ||
-				error?.response?.data?.detail?.includes('embedding with dimension')
+				errorMessage.includes('embedding with dimension') ||
+				(responseDetail && String(responseDetail).includes('embedding with dimension'))
 			) {
-				const errorMessage = error?.response?.data?.detail || error?.message || error;
 				throw new NodeOperationError(
 					context.getNode(),
-					`ChromaDB embedding dimension mismatch: ${errorMessage}`,
+					'ChromaDB embedding dimension mismatch detected.',
 					{
 						itemIndex,
 						description:
@@ -308,9 +413,18 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 					},
 				);
 			}
+
+			// Handle configuration errors
+			if (errorMessage.includes('Invalid') || errorMessage.includes('missing')) {
+				throw new NodeOperationError(context.getNode(), `Configuration error: ${errorMessage}`, {
+					itemIndex,
+				});
+			}
+
+			// Generic error
 			throw new NodeOperationError(
 				context.getNode(),
-				`Error inserting documents into ChromaDB: ${error?.message || 'Unknown error'}`,
+				'Failed to insert documents into ChromaDB. Please check your configuration and try again.',
 				{ itemIndex },
 			);
 		}

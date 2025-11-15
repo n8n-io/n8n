@@ -1,9 +1,4 @@
-import type {
-	IAuthenticateGeneric,
-	ICredentialTestRequest,
-	ICredentialType,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { ICredentialTestRequest, ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class ChromaApi implements ICredentialType {
 	name = 'chromaApi';
@@ -39,11 +34,13 @@ export class ChromaApi implements ICredentialType {
 			default: 'http://localhost:8000',
 			placeholder: 'http://localhost:8000',
 			description: 'The URL of your ChromaDB instance',
+			required: true,
 			displayOptions: {
 				show: {
 					deploymentType: ['selfHosted'],
 				},
 			},
+			validateType: 'url',
 		},
 		{
 			displayName: 'Authentication',
@@ -137,24 +134,19 @@ export class ChromaApi implements ICredentialType {
 		},
 	];
 
-	authenticate: IAuthenticateGeneric = {
-		type: 'generic',
-		properties: {
-			headers: {
-				Authorization:
-					'={{$credentials.deploymentType === "selfHosted" && $credentials.authentication === "apiKey" && $credentials.apiKey ? "Bearer " + $credentials.apiKey : ""}}',
-				'X-Chroma-Token':
-					'={{$credentials.deploymentType === "selfHosted" && $credentials.authentication === "token" && $credentials.token ? $credentials.token : ""}}',
-			},
-		},
-	};
-
 	test: ICredentialTestRequest = {
 		request: {
 			baseURL:
 				'={{$credentials.deploymentType === "selfHosted" ? $credentials.baseUrl : "https://api.trychroma.com"}}',
-			url: '={{$credentials.deploymentType === "selfHosted" ? "/api/v2/heartbeat" : "/api/v1"}}',
+			url: '={{$credentials.deploymentType === "selfHosted" ? "/api/v1/heartbeat" : "/api/v1"}}',
 			method: 'GET',
+			headers: {
+				'api-key': '={{$credentials.deploymentType === "cloud" ? $credentials.cloudApiKey : ""}}',
+				Authorization:
+					'={{$credentials.deploymentType === "selfHosted" && $credentials.authentication === "apiKey" ? "Bearer " + $credentials.apiKey : ""}}',
+				'X-Chroma-Token':
+					'={{$credentials.deploymentType === "selfHosted" && $credentials.authentication === "token" ? $credentials.token : ""}}',
+			},
 		},
 	};
 }
