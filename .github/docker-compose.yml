@@ -31,3 +31,25 @@ services:
       - 5432:5432
     tmpfs:
       - /var/lib/postgresql/data
+
+  postgres-18:
+    image: postgres:18
+    restart: always
+    environment:
+      - POSTGRES_DB=n8n
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+    ports:
+      - 5432:5432
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  postgres-18-fips:
+    image: bitnami/postgresql:latest
+    environment:
+      - POSTGRESQL_DATABASE=n8n
+      - POSTGRESQL_USERNAME=postgres
+      - POSTGRESQL_PASSWORD=password
+      - OPENSSL_FIPS=yes
+    ports:
+      - 5432:5432
