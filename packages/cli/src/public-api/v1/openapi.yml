@@ -74,6 +74,8 @@ paths:
     $ref: './handlers/users/spec/paths/users.id.yml'
   /users/{id}/role:
     $ref: './handlers/users/spec/paths/users.id.role.yml'
+  /users/{id}/api-keys:
+    $ref: './handlers/users/spec/paths/users.id.api-keys.yml'
   /source-control/pull:
     $ref: './handlers/source-control/spec/paths/sourceControl.yml'
   /variables:
