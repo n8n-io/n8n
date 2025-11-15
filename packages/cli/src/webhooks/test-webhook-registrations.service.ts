@@ -26,6 +26,12 @@ export class TestWebhookRegistrationsService {
 
 		await this.cacheService.setHash(this.cacheKey, { [hashKey]: registration });
 
+		const isCached = await this.cacheService.exists(this.cacheKey);
+
+		if (!isCached) {
+			throw new Error('Test webhook registration failed: workflow is too big. Remove pinned data');
+		}
+
 		if (this.instanceSettings.isSingleMain) return;
 
 		/**
