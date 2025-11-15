@@ -2115,7 +2115,7 @@ onBeforeUnmount(() => {
 			</Suspense>
 			<Suspense>
 				<LazyNodeDetailsView
-					v-if="false"
+					v-if="!isNDVV2"
 					:workflow-object="editableWorkflowObject"
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="isProductionExecutionPreview"
@@ -2129,7 +2129,7 @@ onBeforeUnmount(() => {
 			</Suspense>
 			<Suspense>
 				<LazyNodeDetailsViewV2
-					v-if="true"
+					v-if="isNDVV2"
 					:workflow-object="editableWorkflowObject"
 					:read-only="isCanvasReadOnly"
 					:is-production-execution-preview="isProductionExecutionPreview"
