@@ -926,6 +926,7 @@ onBeforeUnmount(() => {
 }
 
 .header {
+	background-color: var(--ndv--background--color);
 	border-bottom: var(--border);
 	border-top-left-radius: var(--radius--lg);
 	border-top-right-radius: var(--radius--lg);

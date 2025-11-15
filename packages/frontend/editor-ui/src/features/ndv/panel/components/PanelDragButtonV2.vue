@@ -52,7 +52,7 @@ const onDragStart = () => {
 	cursor: ew-resize;
 	border: none;
 	outline: none;
-	background: var(--color--background--light-3);
+	background: var(--ndv--background--color);
 
 	display: flex;
 	align-items: baseline;
