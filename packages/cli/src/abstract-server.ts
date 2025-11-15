@@ -121,7 +121,7 @@ export abstract class AbstractServer {
 
 	protected setupPushServer() {}
 
-	private async setupHealthCheck() {
+	private setupHealthCheck() {
 		// main health check should not care about DB connections
 		this.app.get('/healthz', (_req, res) => {
 			res.send({ status: 'ok' });
@@ -200,7 +200,7 @@ export abstract class AbstractServer {
 
 		this.externalHooks = Container.get(ExternalHooks);
 
-		await this.setupHealthCheck();
+		this.setupHealthCheck();
 
 		this.logger.info(`n8n ready on ${address}, port ${port}`);
 	}
@@ -296,7 +296,7 @@ export abstract class AbstractServer {
 	 * then closes them forcefully.
 	 */
 	@OnShutdown()
-	async onShutdown(): Promise<void> {
+	onShutdown(): void {
 		if (!this.server) {
 			return;
 		}
