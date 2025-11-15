@@ -100,17 +100,6 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			route: { to: { name: VIEWS.LDAP_SETTINGS } },
 		},
 		{
-			id: 'settings-provisioning',
-			icon: 'toolbox',
-			label: i18n.baseText('settings.provisioning.title'),
-			position: 'top',
-			available:
-				canUserAccessRouteByName(VIEWS.PROVISIONING_SETTINGS) &&
-				// TODO: comment this back one once posthog experiment is done: settingsStore.isEnterpriseFeatureEnabled.provisioning,
-				posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name),
-			route: { to: { name: VIEWS.PROVISIONING_SETTINGS } },
-		},
-		{
 			id: 'settings-workersview',
 			icon: 'waypoints',
 			label: i18n.baseText('mainSidebar.workersView'),
