@@ -56,7 +56,7 @@ export class SlackV2 implements INodeType {
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
-			version: [2, 2.1, 2.2, 2.3],
+			version: [2, 2.1, 2.2, 2.3, 2.4],
 			defaults: {
 				name: 'Slack',
 			},
@@ -573,6 +573,12 @@ export class SlackV2 implements INodeType {
 								qs,
 							);
 							responseData = responseData.messages;
+						}
+
+						// Slack API "feature" - messages sorting breaks in-between pages when oldest is provided
+						// Always sort manually in descending order to ensure consistent sorting
+						if (nodeVersion >= 2.4) {
+							responseData.sort((a: IDataObject, b: IDataObject) => +(b.ts ?? 0) - +(a.ts ?? 0));
 						}
 					}
 					//https://api.slack.com/methods/conversations.invite
