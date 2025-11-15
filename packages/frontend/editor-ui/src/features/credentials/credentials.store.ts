@@ -267,6 +267,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		projectId?: string,
 		includeScopes = true,
 		onlySharedWithMe = false,
+		includeGlobal = true,
 	): Promise<ICredentialsResponse[]> => {
 		const filter = {
 			projectId,
@@ -277,6 +278,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			isEmpty(filter) ? undefined : filter,
 			includeScopes,
 			onlySharedWithMe,
+			includeGlobal,
 		);
 		setCredentials(credentials);
 		return credentials;
@@ -326,6 +328,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			data: data.data ?? {},
 			projectId,
 			uiContext,
+			isGlobal: data.isGlobal,
 		});
 
 		if (data?.homeProject && !credential.homeProject) {
@@ -400,6 +403,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 	const setCredentialSharedWith = async (payload: {
 		sharedWithProjects: ProjectSharingData[];
 		credentialId: string;
+		isGlobal?: boolean;
 	}): Promise<ICredentialsResponse> => {
 		if (useSettingsStore().isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing]) {
 			await credentialsEeApi.setCredentialSharedWith(

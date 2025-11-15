@@ -185,6 +185,164 @@ describe('SourceControlExportService', () => {
 			expect(result.missingIds).toHaveLength(1);
 			expect(result.missingIds?.[0]).toBe('cred1');
 		});
+
+		it('should export global credentials with isGlobal flag set to true', async () => {
+			// Arrange
+			const mockGlobalCredential = mock({
+				id: 'global-cred1',
+				name: 'Global Test Credential',
+				type: 'oauth2',
+				data: cipher.encrypt(credentialData),
+				isGlobal: true,
+			});
+
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentials: mockGlobalCredential,
+					project: mock({
+						type: 'team',
+						id: 'team1',
+						name: 'Test Team',
+					}),
+				}),
+			]);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'global-cred1' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+			expect(result.files).toHaveLength(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/global-cred1.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			expect(exportedData).toEqual({
+				id: 'global-cred1',
+				name: 'Global Test Credential',
+				type: 'oauth2',
+				data: {
+					authUrl: '',
+					accessTokenUrl: '',
+					clientId: '',
+					clientSecret: '',
+				},
+				ownedBy: {
+					type: 'team',
+					teamId: 'team1',
+					teamName: 'Test Team',
+				},
+				isGlobal: true,
+			});
+		});
+
+		it('should export non-global credentials with isGlobal flag set to false', async () => {
+			// Arrange
+			const mockNonGlobalCredential = mock({
+				id: 'non-global-cred1',
+				name: 'Non-Global Test Credential',
+				type: 'oauth2',
+				data: cipher.encrypt(credentialData),
+				isGlobal: false,
+			});
+
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentials: mockNonGlobalCredential,
+					project: mock({
+						type: 'personal',
+						projectRelations: [
+							{
+								role: PROJECT_OWNER_ROLE,
+								user: mock({ email: 'user@example.com' }),
+							},
+						],
+					}),
+				}),
+			]);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'non-global-cred1' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/non-global-cred1.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			expect(exportedData).toEqual({
+				id: 'non-global-cred1',
+				name: 'Non-Global Test Credential',
+				type: 'oauth2',
+				data: {
+					authUrl: '',
+					accessTokenUrl: '',
+					clientId: '',
+					clientSecret: '',
+				},
+				ownedBy: {
+					type: 'personal',
+					personalEmail: 'user@example.com',
+				},
+				isGlobal: false,
+			});
+		});
+
+		it('should default isGlobal to false when not specified', async () => {
+			// Arrange
+			const mockCredentialWithoutIsGlobal = mock({
+				id: 'cred-no-flag',
+				name: 'Credential Without Flag',
+				type: 'oauth2',
+				data: cipher.encrypt(credentialData),
+				isGlobal: undefined, // explicitly undefined to test the default
+			});
+
+			sharedCredentialsRepository.findByCredentialIds.mockResolvedValue([
+				mock<SharedCredentials>({
+					credentials: mockCredentialWithoutIsGlobal,
+					project: mock({
+						type: 'personal',
+						projectRelations: [
+							{
+								role: PROJECT_OWNER_ROLE,
+								user: mock({ email: 'user@example.com' }),
+							},
+						],
+					}),
+				}),
+			]);
+
+			// Act
+			const result = await service.exportCredentialsToWorkFolder([
+				mock<SourceControlledFile>({ id: 'cred-no-flag' }),
+			]);
+
+			// Assert
+			expect(result.count).toBe(1);
+
+			const dataCaptor = captor<string>();
+			expect(fsWriteFile).toHaveBeenCalledWith(
+				'/mock/n8n/git/credential_stubs/cred-no-flag.json',
+				dataCaptor,
+			);
+
+			const exportedData = JSON.parse(dataCaptor.value);
+			// When isGlobal is undefined, the service defaults it to false via destructuring
+			expect(exportedData.isGlobal).toBe(false);
+		});
 	});
 
 	describe('exportTagsToWorkFolder', () => {

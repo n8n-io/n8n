@@ -38,7 +38,15 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 		type Select = Array<keyof CredentialsEntity>;
 
 		const defaultRelations = ['shared', 'shared.project', 'shared.project.projectRelations'];
-		const defaultSelect: Select = ['id', 'name', 'type', 'isManaged', 'createdAt', 'updatedAt'];
+		const defaultSelect: Select = [
+			'id',
+			'name',
+			'type',
+			'isManaged',
+			'createdAt',
+			'updatedAt',
+			'isGlobal',
+		];
 
 		if (!listQueryOptions) return { select: defaultSelect, relations: defaultRelations };
 
@@ -129,6 +137,17 @@ export class CredentialsRepository extends Repository<CredentialsEntity> {
 				},
 			};
 		}
+
+		return await this.find(findManyOptions);
+	}
+
+	/**
+	 * Find all global credentials
+	 */
+	async findAllGlobalCredentials(includeData = false): Promise<CredentialsEntity[]> {
+		const findManyOptions = this.toFindManyOptions({ includeData });
+
+		findManyOptions.where = { ...findManyOptions.where, isGlobal: true };
 
 		return await this.find(findManyOptions);
 	}

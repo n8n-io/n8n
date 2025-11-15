@@ -1390,5 +1390,75 @@ describe('SourceControlImportService', () => {
 				},
 			]);
 		});
+
+		it('should import global credentials with isGlobal flag set to true', async () => {
+			const importingUser = await getGlobalOwner();
+
+			fsp.readFile = jest.fn().mockResolvedValue(Buffer.from('some-content'));
+
+			const CREDENTIAL_ID = nanoid();
+
+			const stub: ExportableCredential = {
+				id: CREDENTIAL_ID,
+				name: 'Global Test Credential',
+				type: 'globalCredentialType',
+				data: {},
+				ownedBy: null,
+				isGlobal: true,
+			};
+
+			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+
+			cipher.encrypt.mockReturnValue('some-encrypted-data');
+
+			await service.importCredentialsFromWorkFolder(
+				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
+				importingUser.id,
+			);
+
+			const importedCredential = await credentialsRepository.findOneBy({
+				id: CREDENTIAL_ID,
+			});
+
+			expect(importedCredential).toBeTruthy();
+			expect(importedCredential?.isGlobal).toBe(true);
+			expect(importedCredential?.name).toBe('Global Test Credential');
+			expect(importedCredential?.type).toBe('globalCredentialType');
+		});
+
+		it('should import non-global credentials with isGlobal flag set to false', async () => {
+			const importingUser = await getGlobalOwner();
+
+			fsp.readFile = jest.fn().mockResolvedValue(Buffer.from('some-content'));
+
+			const CREDENTIAL_ID = nanoid();
+
+			const stub: ExportableCredential = {
+				id: CREDENTIAL_ID,
+				name: 'Standard Credential',
+				type: 'standardCredentialType',
+				data: {},
+				ownedBy: null,
+				isGlobal: false,
+			};
+
+			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+
+			cipher.encrypt.mockReturnValue('some-encrypted-data');
+
+			await service.importCredentialsFromWorkFolder(
+				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
+				importingUser.id,
+			);
+
+			const importedCredential = await credentialsRepository.findOneBy({
+				id: CREDENTIAL_ID,
+			});
+
+			expect(importedCredential).toBeTruthy();
+			expect(importedCredential?.isGlobal).toBe(false);
+			expect(importedCredential?.name).toBe('Standard Credential');
+			expect(importedCredential?.type).toBe('standardCredentialType');
+		});
 	});
 });

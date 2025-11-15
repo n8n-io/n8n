@@ -9,7 +9,18 @@ import { ProjectTypes, type ProjectListItem, type ProjectSharingData } from '../
 import ProjectSharingInfo from './ProjectSharingInfo.vue';
 
 import { N8nBadge, N8nButton, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+
 const locale = useI18n();
+
+const GLOBAL_GROUP: ProjectListItem = {
+	id: 'all_users',
+	name: locale.baseText('projects.sharing.allUsers'),
+	type: 'public',
+	icon: { type: 'icon', value: 'globe' },
+	role: 'member',
+	createdAt: `${Date.now()}`,
+	updatedAt: `${Date.now()}`,
+};
 
 type Props = {
 	projects: ProjectListItem[];
@@ -21,19 +32,32 @@ type Props = {
 	emptyOptionsText?: string;
 	size?: SelectSize;
 	clearable?: boolean;
+	canShareGlobally?: boolean;
+	isSharedGlobally?: boolean;
 };
 
 const props = defineProps<Props>();
 const model = defineModel<(ProjectSharingData | null) | ProjectSharingData[]>({
 	required: true,
 });
+
 const emit = defineEmits<{
 	projectAdded: [value: ProjectSharingData];
 	projectRemoved: [value: ProjectSharingData];
 	clear: [];
+	'update:shareWithAllUsers': [value: boolean];
 }>();
 
 const selectedProject = ref(Array.isArray(model.value) ? '' : (model.value?.id ?? ''));
+
+const selectedProjects = computed((): ProjectSharingData[] | null => {
+	if (!Array.isArray(model.value)) {
+		return null;
+	}
+
+	return props.isSharedGlobally ? [GLOBAL_GROUP, ...model.value] : model.value;
+});
+
 const filter = ref('');
 const selectPlaceholder = computed(
 	() => props.placeholder ?? locale.baseText('projects.sharing.select.placeholder'),
@@ -50,13 +74,14 @@ const filteredProjects = computed(() =>
 	),
 );
 
-const sortedProjects = computed(() =>
-	orderBy(
+const sortedProjects = computed((): ProjectListItem[] => [
+	...(props.canShareGlobally && !props.isSharedGlobally ? [GLOBAL_GROUP] : []),
+	...orderBy(
 		filteredProjects.value,
 		['type', (project) => project.name?.toLowerCase()],
 		['desc', 'asc'],
 	),
-);
+]);
 
 const projectIcon = computed<IconOrEmoji>(() => {
 	const defaultIcon: IconOrEmoji = { type: 'icon', value: 'layers' };
@@ -76,6 +101,11 @@ const setFilter = (query: string) => {
 };
 
 const onProjectSelected = (projectId: string) => {
+	if (projectId === GLOBAL_GROUP.id) {
+		emit('update:shareWithAllUsers', true);
+		return;
+	}
+
 	const project = props.projects.find((p) => p.id === projectId);
 
 	if (!project) {
@@ -92,6 +122,12 @@ const onProjectSelected = (projectId: string) => {
 
 const onRoleAction = (project: ProjectSharingData, role: string) => {
 	if (!Array.isArray(model.value) || props.readonly) {
+		return;
+	}
+
+	if (project.id === GLOBAL_GROUP.id && role === 'remove') {
+		emit('update:shareWithAllUsers', false);
+
 		return;
 	}
 
@@ -151,7 +187,7 @@ watch(
 				<ProjectSharingInfo :project="project" />
 			</N8nOption>
 		</N8nSelect>
-		<ul v-if="Array.isArray(model)" :class="$style.selectedProjects">
+		<ul v-if="selectedProjects" :class="$style.selectedProjects">
 			<li v-if="props.homeProject" :class="$style.project" data-test-id="project-sharing-owner">
 				<ProjectSharingInfo :project="props.homeProject">
 					<N8nBadge theme="tertiary" bold>
@@ -160,14 +196,18 @@ watch(
 				>
 			</li>
 			<li
-				v-for="project in model"
+				v-for="project in selectedProjects"
 				:key="project.id"
 				:class="$style.project"
 				data-test-id="project-sharing-list-item"
 			>
 				<ProjectSharingInfo :project="project" />
 				<N8nSelect
-					v-if="props.roles?.length && !props.static"
+					v-if="
+						props.roles?.length &&
+						!props.static &&
+						!(project.id === GLOBAL_GROUP.id && !canShareGlobally)
+					"
 					:class="$style.projectRoleSelect"
 					:model-value="props.roles[0]"
 					:disabled="props.readonly"
@@ -182,7 +222,7 @@ watch(
 					/>
 				</N8nSelect>
 				<N8nButton
-					v-if="!props.static"
+					v-if="!props.static && !(project.id === GLOBAL_GROUP.id && !canShareGlobally)"
 					type="tertiary"
 					native-type="button"
 					square

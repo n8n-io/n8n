@@ -4,8 +4,9 @@ import {
 	type SharedCredentials,
 	CredentialsRepository,
 	SharedCredentialsRepository,
+	CredentialsEntity,
 } from '@n8n/db';
-import type { CredentialsEntity, User } from '@n8n/db';
+import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import {
 	PROJECT_ADMIN_ROLE_SLUG,
@@ -34,6 +35,13 @@ describe('CredentialsFinderService', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+
+		// Setup manager mock for global credentials fetching
+		// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+		// @ts-ignore
+		credentialsRepository.manager = {
+			find: jest.fn().mockResolvedValue([]),
+		} as any;
 
 		// Default mock implementation for all tests
 		roleService.rolesWithScope.mockImplementation(async (namespace) => {
@@ -119,8 +127,9 @@ describe('CredentialsFinderService', () => {
 			expect(credential).toEqual(sharedCredential.credentials);
 		});
 
-		test('should return null when no shared credential is found', async () => {
+		test('should return null when no shared credential is found and not global', async () => {
 			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+			credentialsRepository.findOne.mockResolvedValueOnce(null);
 			const credential = await credentialsFinderService.findCredentialForUser(
 				credentialsId,
 				member,
@@ -148,6 +157,64 @@ describe('CredentialsFinderService', () => {
 					},
 				},
 			});
+			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
+				where: {
+					id: credentialsId,
+					isGlobal: true,
+				},
+				relations: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
+			});
+			expect(credential).toEqual(null);
+		});
+
+		test('should return global credential when not shared but is global for credential:read scope', async () => {
+			const globalCredential = mock<CredentialsEntity>({ id: credentialsId, isGlobal: true });
+			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+			credentialsRepository.findOne.mockResolvedValueOnce(globalCredential);
+
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialsId,
+				member,
+				['credential:read' as const],
+			);
+
+			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
+				where: {
+					id: credentialsId,
+					isGlobal: true,
+				},
+				relations: {
+					shared: { project: { projectRelations: { user: true } } },
+				},
+			});
+			expect(credential).toEqual(globalCredential);
+		});
+
+		test('should not fallback to global credential for write scopes', async () => {
+			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialsId,
+				member,
+				['credential:update' as const],
+			);
+
+			expect(credentialsRepository.findOne).not.toHaveBeenCalled();
+			expect(credential).toEqual(null);
+		});
+
+		test('should not fallback to global credential for multiple scopes', async () => {
+			sharedCredentialsRepository.findOne.mockResolvedValueOnce(null);
+
+			const credential = await credentialsFinderService.findCredentialForUser(
+				credentialsId,
+				member,
+				['credential:read' as const, 'credential:update' as const],
+			);
+
+			expect(credentialsRepository.findOne).not.toHaveBeenCalled();
 			expect(credential).toEqual(null);
 		});
 
@@ -215,7 +282,6 @@ describe('CredentialsFinderService', () => {
 
 		test('should allow global owner access to all credentials without role filtering', async () => {
 			credentialsRepository.find.mockResolvedValueOnce(credentials);
-
 			const result = await credentialsFinderService.findCredentialsForUser(owner, [
 				'credential:read' as const,
 			]);
@@ -224,8 +290,12 @@ describe('CredentialsFinderService', () => {
 				where: {},
 				relations: { shared: true },
 			});
+			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { isGlobal: true },
+				relations: { shared: true },
+			});
 			expect(roleService.rolesWithScope).not.toHaveBeenCalled();
-			expect(result).toEqual(credentials);
+			expect(result).toEqual([...credentials]);
 		});
 
 		test('should filter credentials by roles for regular members', async () => {
@@ -256,6 +326,40 @@ describe('CredentialsFinderService', () => {
 				},
 				relations: { shared: true },
 			});
+			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { isGlobal: true },
+				relations: { shared: true },
+			});
+			expect(result).toEqual([...credentials]);
+		});
+
+		test('should include global credentials and deduplicate when user already has access', async () => {
+			const sharedGlobalCred = mock<CredentialsEntity>({ id: 'cred1', isGlobal: true, shared: [] });
+			const mockGlobalCredentials = [
+				sharedGlobalCred, // This one is already in credentials list
+				mock<CredentialsEntity>({ id: 'global1', isGlobal: true }),
+			];
+			credentialsRepository.find.mockResolvedValueOnce(credentials);
+			(credentialsRepository.manager.find as jest.Mock).mockResolvedValueOnce(
+				mockGlobalCredentials,
+			);
+
+			const result = await credentialsFinderService.findCredentialsForUser(member, [
+				'credential:read' as const,
+			]);
+
+			// Should not duplicate cred1, only add global1
+			expect(result).toHaveLength(3);
+			expect(result.map((c) => c.id)).toEqual(['cred1', 'cred2', 'global1']);
+		});
+
+		test('should handle empty global credentials list', async () => {
+			credentialsRepository.find.mockResolvedValueOnce(credentials);
+
+			const result = await credentialsFinderService.findCredentialsForUser(member, [
+				'credential:read' as const,
+			]);
+
 			expect(result).toEqual(credentials);
 		});
 
@@ -393,6 +497,167 @@ describe('CredentialsFinderService', () => {
 				expect.any(Object),
 				mockTrx,
 			);
+		});
+
+		test('should include global credentials when includeGlobalCredentials flag is true', async () => {
+			const globalCredential = mock<CredentialsEntity>({
+				id: 'global1',
+				isGlobal: true,
+				shared: [
+					mock<SharedCredentials>({
+						credentialsId: 'global1',
+						role: 'credential:owner',
+						projectId: 'proj-owner',
+					}),
+				],
+			});
+
+			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce(
+				sharedCredentials,
+			);
+			credentialsRepository.manager.find = jest.fn().mockResolvedValueOnce([globalCredential]);
+
+			const result = await credentialsFinderService.findAllCredentialsForUser(
+				member,
+				['credential:read' as const],
+				undefined,
+				{ includeGlobalCredentials: true },
+			);
+
+			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { isGlobal: true },
+				relations: { shared: true },
+			});
+			expect(result).toHaveLength(3);
+			expect(result[2]).toEqual({ ...globalCredential, projectId: 'proj-owner' });
+		});
+
+		test('should not include global credentials when includeGlobalCredentials flag is false', async () => {
+			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce(
+				sharedCredentials,
+			);
+
+			const result = await credentialsFinderService.findAllCredentialsForUser(
+				member,
+				['credential:read' as const],
+				undefined,
+				{ includeGlobalCredentials: false },
+			);
+
+			expect(credentialsRepository.manager.find).not.toHaveBeenCalled();
+			expect(result).toHaveLength(2);
+		});
+
+		test('should not include global credentials when no options provided', async () => {
+			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce(
+				sharedCredentials,
+			);
+
+			const result = await credentialsFinderService.findAllCredentialsForUser(member, [
+				'credential:read' as const,
+			]);
+
+			expect(credentialsRepository.manager.find).not.toHaveBeenCalled();
+			expect(result).toHaveLength(2);
+		});
+
+		test('should skip global credentials without valid projectId', async () => {
+			const globalCredentialWithoutProject = mock<CredentialsEntity>({
+				id: 'global-no-proj',
+				isGlobal: true,
+				shared: [
+					mock<SharedCredentials>({
+						credentialsId: 'global-no-proj',
+						role: 'credential:user',
+						projectId: undefined as any,
+					}),
+				],
+			});
+
+			const globalCredentialWithProject = mock<CredentialsEntity>({
+				id: 'global-with-proj',
+				isGlobal: true,
+				shared: [
+					mock<SharedCredentials>({
+						credentialsId: 'global-with-proj',
+						role: 'credential:owner',
+						projectId: 'proj-owner',
+					}),
+				],
+			});
+
+			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([]);
+			credentialsRepository.manager.find = jest
+				.fn()
+				.mockResolvedValueOnce([globalCredentialWithoutProject, globalCredentialWithProject]);
+
+			const result = await credentialsFinderService.findAllCredentialsForUser(
+				member,
+				['credential:read' as const],
+				undefined,
+				{ includeGlobalCredentials: true },
+			);
+
+			// Should only include the credential with valid projectId
+			expect(result).toHaveLength(1);
+			expect(result[0].id).toEqual('global-with-proj');
+		});
+
+		test('should deduplicate global credentials with shared credentials', async () => {
+			const sharedGlobalCred = mock<SharedCredentials>({
+				credentials: mock<CredentialsEntity>({ id: 'cred1' }),
+				projectId: 'proj1',
+				credentialsId: 'cred1',
+				role: 'credential:owner',
+			});
+
+			const globalCredential = mock<CredentialsEntity>({
+				id: 'cred1', // Same ID as shared credential
+				isGlobal: true,
+				shared: [
+					mock<SharedCredentials>({
+						credentialsId: 'cred1',
+						role: 'credential:owner',
+						projectId: 'proj-owner',
+					}),
+				],
+			});
+
+			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([
+				sharedGlobalCred,
+			]);
+			credentialsRepository.manager.find = jest.fn().mockResolvedValueOnce([globalCredential]);
+
+			const result = await credentialsFinderService.findAllCredentialsForUser(
+				member,
+				['credential:read' as const],
+				undefined,
+				{ includeGlobalCredentials: true },
+			);
+
+			// Should not duplicate cred1
+			expect(result).toHaveLength(1);
+			expect(result[0].id).toEqual('cred1');
+		});
+
+		test('should use transaction manager for fetching global credentials', async () => {
+			const mockTrx = mock<any>();
+			const mockFind = jest.fn().mockResolvedValueOnce([]);
+			mockTrx.find = mockFind;
+
+			sharedCredentialsRepository.findCredentialsWithOptions.mockResolvedValueOnce([]);
+
+			await credentialsFinderService.findAllCredentialsForUser(
+				member,
+				['credential:read' as const],
+				mockTrx,
+				{ includeGlobalCredentials: true },
+			);
+
+			expect(mockFind).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { isGlobal: true },
+				relations: { shared: true },
+			});
 		});
 	});
 

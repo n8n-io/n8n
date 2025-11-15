@@ -303,6 +303,7 @@ export type CredentialsResource = BaseResource & {
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	needsSetup: boolean;
+	isGlobal?: boolean;
 };
 
 // Base resource types that are always available

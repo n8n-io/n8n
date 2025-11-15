@@ -307,13 +307,14 @@ export class SourceControlStatusService {
 
 		const credModifiedInEither: StatusExportableCredential[] = [];
 		credLocalIds.forEach((local) => {
-			// Compare name, type and owner since those are the synced properties for credentials
+			// Compare name, type, owner and isGlobal since those are the synced properties for credentials
 			const mismatchingCreds = credRemoteIds.find((remote) => {
 				return (
 					remote.id === local.id &&
 					(remote.name !== local.name ||
 						remote.type !== local.type ||
-						hasOwnerChanged(remote.ownedBy, local.ownedBy))
+						hasOwnerChanged(remote.ownedBy, local.ownedBy) ||
+						(remote.isGlobal ?? false) !== (local.isGlobal ?? false))
 				);
 			});
 
