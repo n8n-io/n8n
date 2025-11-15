@@ -9,6 +9,7 @@ import {
 	type EntityManager,
 	type EntityMetadata,
 } from '@n8n/typeorm';
+import { createUser } from '@test-integration/db/users';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import {
@@ -18,12 +19,10 @@ import {
 	type WorkflowExecuteMode,
 } from 'n8n-workflow';
 
-import config from '@/config';
 import { EventService } from '@/events/event.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { UserService } from '@/services/user.service';
 import { WorkflowStatisticsService } from '@/services/workflow-statistics.service';
-import { createUser } from '@test-integration/db/users';
 
 describe('WorkflowStatisticsService', () => {
 	describe('workflowExecutionCompleted', () => {
@@ -282,7 +281,7 @@ describe('WorkflowStatisticsService', () => {
 				eventService,
 			);
 			globalConfig.diagnostics.enabled = true;
-			config.set('deployment.type', 'n8n-testing');
+			globalConfig.deployment.type = 'n8n-testing';
 			mocked(ownershipService.getWorkflowProjectCached).mockResolvedValue(project);
 			mocked(ownershipService.getPersonalProjectOwnerCached).mockResolvedValue(user);
 		});

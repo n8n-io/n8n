@@ -27,6 +27,8 @@ describe('eligibleModules', () => {
 			'external-secrets',
 			'community-packages',
 			'data-table',
+			'provisioning',
+			'breaking-changes',
 		]);
 	});
 
@@ -37,6 +39,8 @@ describe('eligibleModules', () => {
 			'external-secrets',
 			'community-packages',
 			'data-table',
+			'provisioning',
+			'breaking-changes',
 		]);
 	});
 

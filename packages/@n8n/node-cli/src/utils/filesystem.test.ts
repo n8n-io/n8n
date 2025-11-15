@@ -10,6 +10,7 @@ import {
 	ensureFolder,
 	renameFilesInDirectory,
 	renameDirectory,
+	createSymlink,
 } from './filesystem';
 
 vi.mock('node:fs/promises');
@@ -227,6 +228,69 @@ describe('file system utils', () => {
 			const result = await renameDirectory('/oldDir', 'newDir');
 
 			expect(result).toBe('/newDir');
+		});
+	});
+
+	describe('createSymlink', () => {
+		it('should create parent directory and symlink', async () => {
+			mockFs.mkdir.mockResolvedValue(undefined);
+			const enoentError = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+			mockFs.lstat.mockRejectedValue(enoentError);
+			mockFs.stat.mockResolvedValue(mock<Stats>({ isDirectory: () => true }));
+			mockFs.symlink.mockResolvedValue();
+
+			await createSymlink('/source/path', '/link/path');
+
+			expect(mockFs.mkdir).toHaveBeenCalledWith('/link', { recursive: true });
+			expect(mockFs.symlink).toHaveBeenCalledWith('/source/path', '/link/path', 'dir');
+		});
+
+		it('should remove existing symlink before creating new one', async () => {
+			mockFs.mkdir.mockResolvedValue(undefined);
+			mockFs.lstat.mockResolvedValue(mock<Stats>({ isSymbolicLink: () => true }));
+			mockFs.unlink.mockResolvedValue();
+			mockFs.stat.mockResolvedValue(mock<Stats>({ isDirectory: () => false }));
+			mockFs.symlink.mockResolvedValue();
+
+			await createSymlink('/source/file', '/link/file');
+
+			expect(mockFs.unlink).toHaveBeenCalledWith('/link/file');
+			expect(mockFs.symlink).toHaveBeenCalledWith('/source/file', '/link/file', 'file');
+		});
+
+		it('should remove existing directory before creating symlink', async () => {
+			mockFs.mkdir.mockResolvedValue(undefined);
+			mockFs.lstat.mockResolvedValue(
+				mock<Stats>({ isSymbolicLink: () => false, isDirectory: () => true }),
+			);
+			mockFs.rm.mockResolvedValue();
+			mockFs.stat.mockResolvedValue(mock<Stats>({ isDirectory: () => true }));
+			mockFs.symlink.mockResolvedValue();
+
+			await createSymlink('/source', '/link');
+
+			expect(mockFs.rm).toHaveBeenCalledWith('/link', { recursive: true, force: true });
+			expect(mockFs.symlink).toHaveBeenCalledWith('/source', '/link', 'dir');
+		});
+
+		it('should fallback to junction on Windows when type detection fails', async () => {
+			mockFs.mkdir.mockResolvedValue(undefined);
+			const enoentError = Object.assign(new Error('ENOENT'), { code: 'ENOENT' });
+			mockFs.lstat.mockRejectedValue(enoentError);
+			mockFs.stat.mockRejectedValue(new Error('Access denied'));
+			mockFs.symlink.mockResolvedValue();
+
+			await createSymlink('/source', '/link');
+
+			expect(mockFs.symlink).toHaveBeenCalledWith('/source', '/link', 'junction');
+		});
+
+		it('should throw error if lstat fails with non-ENOENT error', async () => {
+			mockFs.mkdir.mockResolvedValue(undefined);
+			const error = new Error('Permission denied');
+			mockFs.lstat.mockRejectedValue(error);
+
+			await expect(createSymlink('/source', '/link')).rejects.toThrow('Permission denied');
 		});
 	});
 });

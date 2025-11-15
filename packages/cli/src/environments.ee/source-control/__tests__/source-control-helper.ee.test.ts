@@ -10,7 +10,7 @@ import {
 	SOURCE_CONTROL_GIT_FOLDER,
 } from '@/environments.ee/source-control/constants';
 import {
-	areOwnersDifferent,
+	hasOwnerChanged,
 	generateSshKeyPair,
 	getRepoType,
 	getTrackingInformationFromPostPushResult,
@@ -334,53 +334,119 @@ describe('isWorkflowModified', () => {
 	});
 });
 
-describe('areOwnersDifferent', () => {
-	it('should return true if the owners are different', () => {
-		const owner1 = {
-			type: 'personal' as const,
-			projectId: 'personal1',
-			projectName: 'Personal 1',
-		};
-		const owner2 = {
-			type: 'team' as const,
-			projectId: 'team1',
-			projectName: 'Team 1',
-		};
+describe('hasOwnerChanged', () => {
+	describe('team project comparisons', () => {
+		it('should return true when team projects have different IDs', () => {
+			const owner1 = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+			const owner2 = {
+				type: 'team' as const,
+				projectId: 'team2',
+				projectName: 'Team 2',
+			};
 
-		expect(areOwnersDifferent(owner1, owner2)).toBe(true);
+			expect(hasOwnerChanged(owner1, owner2)).toBe(true);
+		});
+
+		it('should return false when team projects have the same ID', () => {
+			const owner = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+
+			expect(hasOwnerChanged(owner, { ...owner })).toBe(false);
+		});
+
+		it('should return true when personal project changes to team project', () => {
+			const owner1 = {
+				type: 'personal' as const,
+				projectId: 'personal1',
+				projectName: 'Personal 1',
+			};
+			const owner2 = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+
+			expect(hasOwnerChanged(owner1, owner2)).toBe(true);
+		});
+
+		it('should return true when team project changes to personal project', () => {
+			const owner1 = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
+			const owner2 = {
+				type: 'personal' as const,
+				projectId: 'personal1',
+				projectName: 'Personal 1',
+			};
+
+			expect(hasOwnerChanged(owner1, owner2)).toBe(true);
+		});
 	});
 
-	it('should return false if the owners are the same', () => {
-		const owner = {
-			type: 'personal' as const,
-			projectId: 'personal1',
-			projectName: 'Personal 1',
-		};
+	describe('personal project comparisons (always ignored)', () => {
+		it('should return false when both are personal projects with different IDs', () => {
+			const owner1 = {
+				type: 'personal' as const,
+				projectId: 'personal1',
+				projectName: 'Personal 1',
+			};
+			const owner2 = {
+				type: 'personal' as const,
+				projectId: 'personal2',
+				projectName: 'Personal 2',
+			};
 
-		expect(areOwnersDifferent(owner, { ...owner })).toBe(false);
-	});
+			// Personal projects are not synced via source control
+			expect(hasOwnerChanged(owner1, owner2)).toBe(false);
+		});
 
-	describe('both owners undefined/null', () => {
+		it('should return false when both are personal projects with same ID', () => {
+			const owner = {
+				type: 'personal' as const,
+				projectId: 'personal1',
+				projectName: 'Personal 1',
+			};
+
+			expect(hasOwnerChanged(owner, { ...owner })).toBe(false);
+		});
+
 		it('should return false when both owners are undefined', () => {
-			expect(areOwnersDifferent(undefined, undefined)).toBe(false);
-			expect(areOwnersDifferent(undefined, null as any)).toBe(false);
-			expect(areOwnersDifferent(null as any, null as any)).toBe(false);
+			expect(hasOwnerChanged(undefined, undefined)).toBe(false);
+		});
+
+		it('should return false when personal owner compared to undefined', () => {
+			const owner = {
+				type: 'personal' as const,
+				projectId: 'personal1',
+				projectName: 'Personal 1',
+			};
+
+			// Personal projects are local-only, so undefined vs personal is not a real change
+			expect(hasOwnerChanged(undefined, owner)).toBe(false);
+			expect(hasOwnerChanged(owner, undefined)).toBe(false);
 		});
 	});
 
-	describe('one owner undefined', () => {
-		const owner = {
-			type: 'personal' as const,
-			projectId: 'project1',
-			projectName: 'Project 1',
-		};
+	describe('team project with undefined', () => {
+		it('should return true when team owner compared to undefined', () => {
+			const teamOwner = {
+				type: 'team' as const,
+				projectId: 'team1',
+				projectName: 'Team 1',
+			};
 
-		it('should return true when owner1 is undefined and owner2 is defined', () => {
-			expect(areOwnersDifferent(undefined, owner)).toBe(true);
-		});
-
-		it('should return true when owner1 is defined and owner2 is undefined', () => {
-			expect(areOwnersDifferent(owner, undefined)).toBe(true);
+			// Team projects are synced, so undefined vs team is a real change
+			expect(hasOwnerChanged(undefined, teamOwner)).toBe(true);
+			expect(hasOwnerChanged(teamOwner, undefined)).toBe(true);
 		});
 	});
 });

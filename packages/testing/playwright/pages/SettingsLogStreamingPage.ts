@@ -103,6 +103,10 @@ export class SettingsLogStreamingPage extends BasePage {
 		await this.clickByTestId('subtitle-showing-type');
 	}
 
+	async writeUrlToDestinationUrlInput(url: string): Promise<void> {
+		await this.page.getByTestId('parameter-input-field').fill(url);
+	}
+
 	async clickInlineEditPreview(): Promise<void> {
 		// First click on the destination name input to activate it
 		await this.getDestinationNameInput().click();
@@ -166,6 +170,7 @@ export class SettingsLogStreamingPage extends BasePage {
 		await this.clickDestinationNameInput();
 		await this.clickInlineEditPreview();
 		await this.typeDestinationName(destinationName);
+		await this.writeUrlToDestinationUrlInput('https://www.example.com');
 		await this.saveDestination();
 		await this.closeModalByClickingOverlay();
 	}
