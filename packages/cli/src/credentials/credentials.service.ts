@@ -23,9 +23,17 @@ import type {
 	ICredentialDataDecryptedObject,
 	ICredentialsDecrypted,
 	ICredentialType,
+	IDataObject,
 	INodeProperties,
+	INodePropertyCollection,
 } from 'n8n-workflow';
-import { CREDENTIAL_EMPTY_VALUE, deepCopy, NodeHelpers, UnexpectedError } from 'n8n-workflow';
+import {
+	CREDENTIAL_EMPTY_VALUE,
+	deepCopy,
+	isINodePropertyCollection,
+	NodeHelpers,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import { CredentialsFinderService } from './credentials-finder.service';
 
@@ -506,34 +514,63 @@ export class CredentialsService {
 			return props;
 		};
 		const properties = getExtendedProps(credType);
+		return this.redactValues(copiedData, properties);
+	}
 
-		for (const dataKey of Object.keys(copiedData)) {
+	private redactValues(data: ICredentialDataDecryptedObject, props: INodeProperties[]) {
+		for (const dataKey of Object.keys(data)) {
 			// The frontend only cares that this value isn't falsy.
 			if (dataKey === 'oauthTokenData' || dataKey === 'csrfSecret') {
-				if (copiedData[dataKey].toString().length > 0) {
-					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				if (data[dataKey].toString().length > 0) {
+					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
-					copiedData[dataKey] = CREDENTIAL_EMPTY_VALUE;
+					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
 				}
 				continue;
 			}
-			const prop = properties.find((v) => v.name === dataKey);
+
+			const prop = props.find((v) => v.name === dataKey);
 			if (!prop) {
 				continue;
 			}
+
+			if (prop.type === 'fixedCollection' && prop.options?.length) {
+				const dataObject = data[dataKey] as IDataObject;
+				for (const option of prop.options) {
+					if (isINodePropertyCollection(option)) {
+						this.redactCollectionOption(dataObject, option);
+					}
+				}
+			}
+
 			if (
 				prop.typeOptions?.password &&
-				(!(copiedData[dataKey] as string).startsWith('={{') || prop.noDataExpression)
+				(!(data[dataKey] as string).startsWith('={{') || prop.noDataExpression)
 			) {
-				if (copiedData[dataKey].toString().length > 0) {
-					copiedData[dataKey] = CREDENTIAL_BLANKING_VALUE;
+				if (data[dataKey].toString().length > 0) {
+					data[dataKey] = CREDENTIAL_BLANKING_VALUE;
 				} else {
-					copiedData[dataKey] = CREDENTIAL_EMPTY_VALUE;
+					data[dataKey] = CREDENTIAL_EMPTY_VALUE;
 				}
 			}
 		}
 
-		return copiedData;
+		return data;
+	}
+
+	private redactCollectionOption(data: IDataObject, option: INodePropertyCollection) {
+		const collectionValuesKey = option.name;
+		const values = data?.[collectionValuesKey];
+		if (Array.isArray(values)) {
+			for (let i = 0; i < values.length; i++) {
+				values[i] = this.redactValues(values[i] as ICredentialDataDecryptedObject, option.values);
+			}
+		} else if (typeof values === 'object' && values !== null) {
+			data[collectionValuesKey] = this.redactValues(
+				values as ICredentialDataDecryptedObject,
+				option.values,
+			);
+		}
 	}
 
 	private unredactRestoreValues(unmerged: any, replacement: any) {

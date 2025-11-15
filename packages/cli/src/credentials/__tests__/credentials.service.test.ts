@@ -75,6 +75,280 @@ describe('CredentialsService', () => {
 				csrfSecret: CREDENTIAL_BLANKING_VALUE,
 			});
 		});
+
+		it('should redact sensitive values in a fixed collection with multiple values', () => {
+			const fixedCollectionCredType = {
+				properties: [
+					{
+						name: 'headers',
+						type: 'fixedCollection',
+						typeOptions: { multipleValues: true },
+						options: [
+							{
+								displayName: 'Header',
+								name: 'values',
+								values: [
+									{
+										name: 'name',
+										type: 'string',
+									},
+									{
+										name: 'value',
+										type: 'string',
+										typeOptions: { password: true },
+									},
+								],
+							},
+						],
+					},
+				],
+			} as unknown as ICredentialType;
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+			const decryptedData = {
+				headers: {
+					values: [
+						{
+							name: 'Authorization',
+							value: 'Bearer sensitiveSecret',
+						},
+						{
+							name: 'Test',
+							value: '123',
+						},
+					],
+				},
+			};
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(fixedCollectionCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				headers: {
+					values: [
+						{ name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE },
+						{ name: 'Test', value: CREDENTIAL_BLANKING_VALUE },
+					],
+				},
+			});
+		});
+
+		it('should redact sensitive values in a fixed collection with single value', () => {
+			const fixedCollectionCredType = {
+				properties: [
+					{
+						name: 'headers',
+						type: 'fixedCollection',
+						typeOptions: { multipleValues: false },
+						options: [
+							{
+								displayName: 'Header',
+								name: 'values',
+								values: [
+									{
+										name: 'name',
+										type: 'string',
+									},
+									{
+										name: 'value',
+										type: 'string',
+										typeOptions: { password: true },
+									},
+								],
+							},
+						],
+					},
+				],
+			} as unknown as ICredentialType;
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+			const decryptedData = {
+				headers: {
+					values: {
+						name: 'Authorization',
+						value: 'Bearer sensitiveSecret',
+					},
+				},
+			};
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(fixedCollectionCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				headers: {
+					values: { name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE },
+				},
+			});
+		});
+
+		it('should redact sensitive values in a fixed collection with multiple options', () => {
+			const fixedCollectionCredType = {
+				properties: [
+					{
+						name: 'headers',
+						type: 'fixedCollection',
+						typeOptions: { multipleValues: true },
+						options: [
+							{
+								displayName: 'Header',
+								name: 'values1',
+								values: [
+									{
+										name: 'name',
+										type: 'string',
+									},
+									{
+										name: 'value',
+										type: 'string',
+										typeOptions: { password: true },
+									},
+								],
+							},
+							{
+								displayName: 'Header',
+								name: 'values2',
+								values: [
+									{
+										name: 'name',
+										type: 'string',
+									},
+									{
+										name: 'value',
+										type: 'string',
+										typeOptions: { password: true },
+									},
+								],
+							},
+						],
+					},
+				],
+			} as unknown as ICredentialType;
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+			const decryptedData = {
+				headers: {
+					values1: [
+						{
+							name: 'Authorization',
+							value: 'Bearer sensitiveSecret',
+						},
+						{
+							name: 'Test',
+							value: '123',
+						},
+					],
+					values2: [
+						{
+							name: 'Foo',
+							value: 'Bar',
+						},
+						{
+							name: 'Baz',
+							value: 'Qux',
+						},
+					],
+				},
+			};
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(fixedCollectionCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				headers: {
+					values1: [
+						{ name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE },
+						{ name: 'Test', value: CREDENTIAL_BLANKING_VALUE },
+					],
+					values2: [
+						{ name: 'Foo', value: CREDENTIAL_BLANKING_VALUE },
+						{ name: 'Baz', value: CREDENTIAL_BLANKING_VALUE },
+					],
+				},
+			});
+		});
+
+		it('should redact sensitive values in a fixed collection with multiple options and a single value', () => {
+			const fixedCollectionCredType = {
+				properties: [
+					{
+						name: 'headers',
+						type: 'fixedCollection',
+						typeOptions: { multipleValues: false },
+						options: [
+							{
+								displayName: 'Header',
+								name: 'values1',
+								values: [
+									{
+										name: 'name',
+										type: 'string',
+									},
+									{
+										name: 'value',
+										type: 'string',
+										typeOptions: { password: true },
+									},
+								],
+							},
+							{
+								displayName: 'Header',
+								name: 'values2',
+								values: [
+									{
+										name: 'name',
+										type: 'string',
+									},
+									{
+										name: 'value',
+										type: 'string',
+										typeOptions: { password: true },
+									},
+								],
+							},
+						],
+					},
+				],
+			} as unknown as ICredentialType;
+			const credential = mock<CredentialsEntity>({
+				id: '123',
+				name: 'Test Credential',
+				type: 'oauth2',
+			});
+			const decryptedData = {
+				headers: {
+					values2: {
+						name: 'Authorization',
+						value: 'Bearer sensitiveSecret',
+					},
+				},
+			};
+			credentialTypes.getByName
+				.calledWith(credential.type)
+				.mockReturnValueOnce(fixedCollectionCredType);
+
+			const redactedData = service.redact(decryptedData, credential);
+
+			expect(redactedData).toEqual({
+				headers: {
+					values2: { name: 'Authorization', value: CREDENTIAL_BLANKING_VALUE },
+				},
+			});
+		});
 	});
 
 	describe('decrypt', () => {

@@ -5,22 +5,30 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { isValueExpression as isValueExpressionUtil } from '@/app/utils/nodeTypesUtils';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type {
-	INodeParameterResourceLocator,
-	INodeProperties,
-	IParameterLabel,
-	NodeParameterValueType,
+import {
+	isINodePropertyCollection,
+	type INodeParameterResourceLocator,
+	type INodeParameters,
+	type INodeProperties,
+	type IParameterLabel,
+	type NodeParameterValueType,
 } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, defineAsyncComponent, ref } from 'vue';
 import ParameterInputWrapper from './ParameterInputWrapper.vue';
 import ParameterOptions from './ParameterOptions.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { storeToRefs } from 'pinia';
 
 import { N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
+
+const LazyFixedCollectionParameter = defineAsyncComponent(
+	async () => await import('./FixedCollectionParameter.vue'),
+);
+
 type Props = {
 	parameter: INodeProperties;
 	value: NodeParameterValueType;
+	nodeValues?: INodeParameters;
 	showValidationWarnings?: boolean;
 	documentationUrl?: string;
 	eventSource?: string;
@@ -29,6 +37,9 @@ type Props = {
 
 const props = withDefaults(defineProps<Props>(), {
 	label: () => ({ size: 'small' }),
+	nodeValues: () => ({}),
+	documentationUrl: undefined,
+	eventSource: undefined,
 });
 const emit = defineEmits<{
 	update: [value: IUpdateInformation];
@@ -46,6 +57,37 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 
 const { activeCredentialType } = storeToRefs(uiStore);
+
+const isFixedCollectionType = computed(() => {
+	return props.parameter.type === 'fixedCollection';
+});
+
+const hiddenIssuesInputs = computed(() => {
+	if (!isFixedCollectionType.value) {
+		return [];
+	}
+
+	if (!props.parameter.options?.length) {
+		return [];
+	}
+
+	const names = [];
+	for (const option of props.parameter.options) {
+		if (isINodePropertyCollection(option)) {
+			names.push(...option.values.map((value) => value.name));
+		}
+	}
+
+	return names;
+});
+
+const fixedCollectionValues = computed(() => {
+	if (!isFixedCollectionType.value || !props.value) {
+		return {};
+	}
+
+	return props.value as Record<string, INodeParameters[]>;
+});
 
 const showRequiredErrors = computed(() => {
 	if (!props.parameter.required) {
@@ -102,7 +144,16 @@ function optionSelected(command: string) {
 }
 
 function valueChanged(parameterData: IUpdateInformation) {
-	emit('update', parameterData);
+	let name = parameterData.name;
+	// for fixed collection, we need to keep the full path
+	if (!isFixedCollectionType.value) {
+		name = name.split('.').pop() ?? name;
+	}
+
+	emit('update', {
+		name,
+		value: parameterData.value,
+	});
 }
 
 function onDocumentationUrlClick(): void {
@@ -115,59 +166,77 @@ function onDocumentationUrlClick(): void {
 </script>
 
 <template>
-	<N8nInputLabel
-		:label="i18n.credText(activeCredentialType).inputLabelDisplayName(parameter)"
-		:tooltip-text="i18n.credText(activeCredentialType).inputLabelDescription(parameter)"
-		:required="parameter.required"
-		:show-tooltip="focused"
-		:show-options="menuExpanded"
-		:data-test-id="parameter.name"
-		:size="label.size"
-	>
-		<template #options>
-			<ParameterOptions
+	<div>
+		<N8nInputLabel
+			:label="i18n.credText(activeCredentialType).inputLabelDisplayName(parameter)"
+			:tooltip-text="i18n.credText(activeCredentialType).inputLabelDescription(parameter)"
+			:required="parameter.required"
+			:show-tooltip="focused"
+			:show-options="menuExpanded"
+			:data-test-id="parameter.name"
+			:size="label.size"
+		>
+			<template #options>
+				<ParameterOptions
+					:parameter="parameter"
+					:value="value"
+					:is-read-only="false"
+					:show-options="!isFixedCollectionType"
+					:show-expression-selector="!isFixedCollectionType"
+					:is-value-expression="isValueExpression"
+					@update:model-value="optionSelected"
+					@menu-expanded="onMenuExpanded"
+				/>
+			</template>
+			<ParameterInputWrapper
+				v-if="!isFixedCollectionType"
+				ref="param"
+				input-size="large"
 				:parameter="parameter"
-				:value="value"
-				:is-read-only="false"
-				:show-options="true"
-				:is-value-expression="isValueExpression"
-				@update:model-value="optionSelected"
-				@menu-expanded="onMenuExpanded"
+				:model-value="value"
+				:path="parameter.name"
+				:hide-issues="true"
+				:documentation-url="documentationUrl"
+				:error-highlight="showRequiredErrors"
+				:is-for-credential="true"
+				:event-source="eventSource"
+				:hint="!showRequiredErrors && hint ? hint : ''"
+				:event-bus="eventBus"
+				@focus="onFocus"
+				@blur="onBlur"
+				@text-input="valueChanged"
+				@update="valueChanged"
 			/>
-		</template>
-		<ParameterInputWrapper
-			ref="param"
-			input-size="large"
-			:parameter="parameter"
-			:model-value="value"
-			:path="parameter.name"
-			:hide-issues="true"
-			:documentation-url="documentationUrl"
-			:error-highlight="showRequiredErrors"
-			:is-for-credential="true"
-			:event-source="eventSource"
-			:hint="!showRequiredErrors && hint ? hint : ''"
-			:event-bus="eventBus"
-			@focus="onFocus"
-			@blur="onBlur"
-			@text-input="valueChanged"
-			@update="valueChanged"
-		/>
-		<div v-if="showRequiredErrors" :class="$style.errors">
-			<N8nText color="danger" size="small">
-				{{ i18n.baseText('parameterInputExpanded.thisFieldIsRequired') }}
-				<N8nLink
-					v-if="documentationUrl"
-					:to="documentationUrl"
-					size="small"
-					:underline="true"
-					@click="onDocumentationUrlClick"
-				>
-					{{ i18n.baseText('parameterInputExpanded.openDocs') }}
-				</N8nLink>
-			</N8nText>
+			<div v-if="showRequiredErrors" :class="$style.errors">
+				<N8nText color="danger" size="small">
+					{{ i18n.baseText('parameterInputExpanded.thisFieldIsRequired') }}
+					<N8nLink
+						v-if="documentationUrl"
+						:to="documentationUrl"
+						size="small"
+						:underline="true"
+						@click="onDocumentationUrlClick"
+					>
+						{{ i18n.baseText('parameterInputExpanded.openDocs') }}
+					</N8nLink>
+				</N8nText>
+			</div>
+		</N8nInputLabel>
+		<div
+			v-if="isFixedCollectionType"
+			class="fixed-collection-wrapper"
+			data-test-id="fixed-collection-wrapper"
+		>
+			<LazyFixedCollectionParameter
+				:parameter="parameter"
+				:values="fixedCollectionValues"
+				:node-values="nodeValues"
+				:path="parameter.name"
+				:hidden-issues-inputs="hiddenIssuesInputs"
+				@value-changed="valueChanged"
+			/>
 		</div>
-	</N8nInputLabel>
+	</div>
 </template>
 
 <style lang="scss" module>
@@ -176,5 +245,23 @@ function onDocumentationUrlClick(): void {
 }
 .hint {
 	margin-top: var(--spacing--4xs);
+}
+</style>
+
+<style lang="scss">
+.fixed-collection-wrapper {
+	.icon-button {
+		position: absolute;
+		opacity: 0;
+		top: -3px;
+		left: calc(-0.5 * var(--spacing--xs));
+		transition: opacity 100ms ease-in;
+		Button {
+			color: var(--icon--color);
+		}
+	}
+	.icon-button > Button:hover {
+		color: var(--icon--color--hover);
+	}
 }
 </style>

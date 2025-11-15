@@ -36,6 +36,7 @@ export type Props = {
 	path: string;
 	values?: Record<string, INodeParameters[]>;
 	isReadOnly?: boolean;
+	hiddenIssuesInputs?: string[];
 };
 
 type ValueChangedEvent = {
@@ -47,6 +48,7 @@ type ValueChangedEvent = {
 const props = withDefaults(defineProps<Props>(), {
 	values: () => ({}),
 	isReadOnly: false,
+	hiddenIssuesInputs: () => [],
 });
 
 const emit = defineEmits<{
@@ -310,6 +312,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 										:path="getPropertyPath(property.name, index)"
 										:hide-delete="true"
 										:is-read-only="isReadOnly"
+										:hidden-issues-inputs="hiddenIssuesInputs"
 										@value-changed="valueChanged"
 									/>
 								</Suspense>
@@ -338,6 +341,7 @@ function getItemKey(item: INodeParameters, property: INodePropertyCollection) {
 						:is-read-only="isReadOnly"
 						class="parameter-item"
 						:hide-delete="true"
+						:hidden-issues-inputs="hiddenIssuesInputs"
 						@value-changed="valueChanged"
 					/>
 				</div>

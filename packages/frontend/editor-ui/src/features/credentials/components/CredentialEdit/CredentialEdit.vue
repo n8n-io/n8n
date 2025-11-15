@@ -13,7 +13,7 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { deepCopy, NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
@@ -65,6 +65,8 @@ import {
 	type IMenuItem,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { setParameterValue } from '@/app/utils/parameterUtils';
+import get from 'lodash/get';
 
 type Props = {
 	modalName: string;
@@ -575,17 +577,17 @@ function onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 }
 
 function onDataChange({ name, value }: IUpdateInformation) {
-	// skip update if new value matches the current
-	if (credentialData.value[name] === value) return;
+	const currentValue = get(credentialData.value, name);
+	if (currentValue === value) {
+		return;
+	}
 
 	hasUnsavedChanges.value = true;
 
 	const { oauthTokenData, ...credData } = credentialData.value;
+	credentialData.value = deepCopy(credData);
 
-	credentialData.value = {
-		...credData,
-		[name]: value as CredentialInformation,
-	};
+	setParameterValue(credentialData.value, name, value);
 }
 
 function closeDialog() {
