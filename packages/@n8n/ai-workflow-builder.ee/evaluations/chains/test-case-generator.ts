@@ -95,52 +95,52 @@ export async function generateTestCases(
 
 export const basicTestCases: TestCase[] = [
 	{
-		id: 'invoice-pipeline',
-		name: 'Invoice processing pipeline',
+		id: 'multi-agent-research',
+		name: 'Multi-agent research workflow',
 		prompt:
-			'Create an invoice parsing workflow using n8n forms. Extract key information (vendor, date, amount, line items) using AI, validate the data, and store structured information in Airtable. Generate a weekly spending report every Sunday at 6 PM using AI analysis and send via email.',
-	},
-	{
-		id: 'ai-news-digest',
-		name: 'Daily AI news digest',
-		prompt:
-			'Create a workflow that fetches the latest AI news every morning at 8 AM. It should aggregate news from multiple sources, use LLM to summarize the top 5 stories, generate a relevant image using AI, and send everything as a structured Telegram message with article links. I should be able to chat about the news with the LLM so at least 40 last messages should be stored.',
-	},
-	{
-		id: 'rag-assistant',
-		name: 'RAG knowledge assistant',
-		prompt:
-			'Build a pipeline that accepts PDF, CSV, or JSON files through an n8n form. Chunk documents into 1000-token segments, generate embeddings, and store in a vector database. Use the filename as the document key and add metadata including upload date and file type. Include a chatbot that can answer questions based on a knowledge base.',
+			'Create a multi-agent AI workflow using GPT-4.1-mini where several agents work together to research a topic, fact-check the findings, and write a report that\'s sent as an HTML email. One agent should gather recent, credible information about the topic. Another agent should verify the facts and only mark something as "verified" if it appears in at least two independent sources. A third agent should combine the verified information into a clear, well-written report under 1,000 words. A final agent should edit and format the report to make it look clean and professional in the body of the email. Use Gmail to send the report.',
 	},
 	{
 		id: 'email-summary',
 		name: 'Summarize emails with AI',
 		prompt:
-			'Build a workflow that retrieves the last 50 emails from multiple email accounts. Merge all emails, perform AI analysis to identify action items, priorities, and sentiment. Generate a brief summary and send to Slack with categorized insights and recommended actions.',
+			'Create an automation that runs on Monday mornings. It reads my Gmail inbox from the weekend, analyzes them with GPT-4.1-mini to find action items and priorities, and emails me a structured email using Gmail.',
 	},
 	{
-		id: 'youtube-auto-chapters',
-		name: 'YouTube video chapters',
+		id: 'ai-news-digest',
+		name: 'Daily AI news digest',
 		prompt:
-			"I want to build an n8n workflow that automatically creates YouTube chapter timestamps by analyzing the video captions. When I trigger it manually, it should take a video ID as input, fetch the existing video metadata and captions from YouTube, use an AI language model like Google Gemini to parse the transcript into chapters with timestamps, and then update the video's description with these chapters appended. The goal is to save time and improve SEO by automating the whole process.",
+			'Build an automation that runs every night 8pm. Use the NewsAPI "/everything" endpoint to search for AI-related news from the day. Pick the top 5 articles and use OpenAI GPT-4.1-mini to summarize each in two sentences. Generate an image using OpenAI based on the top article\'s summary. Send a structured Telegram message.',
 	},
 	{
-		id: 'pizza-delivery',
-		name: 'Pizza delivery chatbot',
+		id: 'daily-weather-report',
+		name: 'Daily weather report',
 		prompt:
-			"I need an n8n workflow that creates a chatbot for my pizza delivery service. The bot should be able to answer customer questions about our pizza menu, take their orders accurately by capturing pizza type, quantity, and customer details, and also provide real-time updates when customers ask about their order status. It should use OpenAI's gpt-4.1-mini to handle conversations and integrate with HTTP APIs to get product info and manage orders. The workflow must maintain conversation context so the chatbot feels natural and can process multiple user queries sequentially.",
+			'Create an automation that checks the weather for my location every morning at 5 a.m using OpenWeather. Send me a short weather report by email using Gmail. Use OpenAI GPT-4.1-mini to write a short, fun formatted email body by adding personality when describing the weather and how the day might feel. Include all details relevant to decide on my plans and clothes for the day.',
+	},
+	{
+		id: 'invoice-pipeline',
+		name: 'Invoice processing pipeline',
+		prompt:
+			'Create an invoice processing workflow using an n8n Form. When a user submits an invoice file (PDF or image) with their email address, use OpenAI GPT-4.1-mini to extract invoice data. Then, validate the date format is correct, the currency is valid, and the total amount is greater than zero. If validation fails, email the user a clear error message that explains which check failed from my Gmail. If the data passes validation, store the structured result in a datatable plus email the user. Every Monday morning, generate a weekly spending report using GPT-4.1-mini based on stored invoices and send a clean email using Gmail.',
+	},
+	{
+		id: 'rag-assistant',
+		name: 'RAG knowledge assistant',
+		prompt:
+			'Build an automation that creates a document-to-chat RAG pipeline. The workflow starts with an n8n Form where a user uploads one or more files (PDF, CSV, or JSON). Each upload should trigger a process that reads the file, splits it into chunks, and generates embeddings using OpenAI GPT-4.1-mini model, saved in one Pinecone table. Add a second part of the workflow for querying: use a Chat Message Trigger to act as a chatbot interface. When a user sends a question, retrieve the top 5 most relevant chunks from Pinecone, pass them into GPT-4.1-mini as context, and have it answer naturally using only the retrieved information. If a question can\'t be answered confidently, the bot should respond with: "I couldn\'t find that in the uploaded documents." Log each chat interaction in a Data Table with the user query, matched file(s), and timestamp. Send a daily summary email through Gmail showing total questions asked, top files referenced, and any failed lookups.',
 	},
 	{
 		id: 'lead-qualification',
 		name: 'Lead qualification and call scheduling',
 		prompt:
-			'Create a form with fields for email, company, and role. Build an automation that processes form submissions, enrich with company data from their website, uses AI to qualify the lead, sends data to Google Sheets. For high-score leads it should also schedule a 15-min call in a free slot in my calendar and send a confirmation email to both me and the lead.',
+			'Create an n8n form with a lead generation form I can embed on my website homepage. Build an automation that processes form submissions, uses AI to qualify the lead, sends data to an n8n data table. For high-score leads, it should also email them to offer to schedule a 15-min call in a free slot in my calendar.',
 	},
 	{
-		id: 'multi-agent-research',
-		name: 'Multi-agent research workflow',
+		id: 'youtube-auto-chapters',
+		name: 'YouTube video chapters',
 		prompt:
-			'Create a multi-agent AI workflow where different AI agents collaborate to research a topic, fact-check information, and compile comprehensive reports.',
+			"Build an n8n workflow that automatically generates YouTube chapter timestamps from video captions. Use the n8n chat trigger for me to enter the URL of the YouTube video. Use the YouTube Get a video node to get the video title, description, and existing metadata. Use the YouTube Captions API to download the transcript for the given video ID. Send the transcript to AI agent using Anthropic's Claude model. Prompt the model to identify topic shifts and return structured output in timestamp - chapter format. Append the generated chapter list to the existing video description. Use the YouTube Update a video node to update the video description. Respond back with the updates using the respond to chat node.",
 	},
 	{
 		id: 'google-sheets-processing',

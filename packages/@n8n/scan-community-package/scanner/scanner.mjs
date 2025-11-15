@@ -119,7 +119,9 @@ const analyzePackage = async (packageDir) => {
 		cwd: packageDir,
 		allowInlineConfig: false,
 		overrideConfigFile: true,
-		overrideConfig: defineConfig(n8nCommunityNodesPlugin.configs.recommended),
+		overrideConfig: defineConfig(n8nCommunityNodesPlugin.configs.recommended, {
+			rules: { 'no-console': 'error' },
+		}),
 	});
 
 	try {
