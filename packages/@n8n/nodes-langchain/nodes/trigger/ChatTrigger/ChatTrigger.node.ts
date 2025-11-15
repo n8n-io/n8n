@@ -521,7 +521,7 @@ export class ChatTrigger extends Node {
 						displayName: 'Response Mode',
 						name: 'responseMode',
 						type: 'options',
-						options: [lastNodeResponseMode, respondNodesResponseMode],
+						options: [lastNodeResponseMode, respondNodesResponseMode, streamingResponseMode],
 						default: 'lastNode',
 						description: 'When and how to respond to the chat',
 					},
@@ -637,7 +637,10 @@ export class ChatTrigger extends Node {
 		const nodeMode = ctx.getNodeParameter('mode', 'hostedChat');
 		assertParamIsString('mode', nodeMode, ctx.getNode());
 
-		if (!isPublic) {
+		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
+
+		// Allow execution in manual mode (test) even when not public
+		if (!isPublic && mode !== 'test') {
 			res.status(404).end();
 			return {
 				noWebhookResponse: true,
@@ -669,7 +672,6 @@ export class ChatTrigger extends Node {
 
 		const req = ctx.getRequestObject();
 		const webhookName = ctx.getWebhookName();
-		const mode = ctx.getMode() === 'manual' ? 'test' : 'production';
 		const bodyData = ctx.getBodyData() ?? {};
 
 		try {

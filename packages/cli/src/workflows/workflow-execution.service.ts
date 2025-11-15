@@ -108,6 +108,7 @@ export class WorkflowExecutionService {
 			dirtyNodeNames,
 			triggerToStartFrom,
 			agentRequest,
+			chatSessionId,
 		}: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
@@ -166,6 +167,7 @@ export class WorkflowExecutionService {
 				pushRef,
 				destinationNode,
 				triggerToStartFrom,
+				chatSessionId,
 			});
 
 			if (needsWebhook) return { waitingForWebhook: true };

@@ -40,6 +40,7 @@ export declare namespace WorkflowRequest {
 			data?: ITaskData;
 		};
 		agentRequest?: AiAgentRequest;
+		chatSessionId?: string;
 	};
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
