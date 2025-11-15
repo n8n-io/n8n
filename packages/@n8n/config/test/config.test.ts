@@ -1,6 +1,8 @@
 import { Container } from '@n8n/di';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import type { UserManagementConfig } from '../src/configs/user-management.config';
 import { GlobalConfig } from '../src/index';
@@ -55,6 +57,9 @@ describe('GlobalConfig', () => {
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
 			sizeCheckCacheDuration: 60000,
+			cleanupIntervalMs: 60 * 1000,
+			fileMaxAgeMs: 2 * 60 * 1000,
+			uploadDir: path.join(tmpdir(), 'n8nDataTableUploads'),
 		},
 		database: {
 			logging: {

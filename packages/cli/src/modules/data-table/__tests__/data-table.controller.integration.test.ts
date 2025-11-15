@@ -3761,3 +3761,429 @@ describe('PATCH /projects/:projectId/data-tables/:dataTableId/rows', () => {
 		},
 	);
 });
+
+describe('POST /projects/:projectId/data-tables - CSV Import', () => {
+	test('should create data table and import rows from CSV file', async () => {
+		// First upload a CSV file
+		const csvContent = 'name,age,email\nAlice,30,alice@example.com\nBob,25,bob@example.com';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Create data table with fileId to trigger import
+		const payload = {
+			name: 'Imported Data Table',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'email', type: 'string' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Verify data was imported
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toHaveLength(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+					email: 'alice@example.com',
+				}),
+				expect.objectContaining({
+					name: 'Bob',
+					age: 25,
+					email: 'bob@example.com',
+				}),
+			]),
+		);
+	});
+
+	test('should map CSV columns to table columns by position', async () => {
+		// Upload CSV with column names that have spaces
+		const csvContent =
+			'Customer Id,Full Name,Email Address\n1001,John Doe,john@example.com\n1002,Jane Smith,jane@example.com';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'customers.csv',
+				contentType: 'text/csv',
+			})
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Create table with different column names (without spaces)
+		const payload = {
+			name: 'Customers',
+			columns: [
+				{ name: 'customerId', type: 'string' },
+				{ name: 'fullName', type: 'string' },
+				{ name: 'emailAddress', type: 'string' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Verify data was mapped correctly by position
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					customerId: '1001',
+					fullName: 'John Doe',
+					emailAddress: 'john@example.com',
+				}),
+				expect.objectContaining({
+					customerId: '1002',
+					fullName: 'Jane Smith',
+					emailAddress: 'jane@example.com',
+				}),
+			]),
+		);
+	});
+
+	test('should create data table with partial column mapping when schema has extra columns', async () => {
+		// Upload a valid CSV with 2 columns
+		const csvContent = 'name,age\nAlice,30';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'test.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		// Create table with more columns than in CSV
+		// The system should map by index: CSV col 0 -> table col 0, CSV col 1 -> table col 1
+		// The extra table column won't have data imported
+		const payload = {
+			name: 'Partial Import Table',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'extra', type: 'string' }, // Extra column not in CSV
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Verify rows - should have mapped only the columns that exist in CSV
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		// Data should be imported with columns mapped by index position
+		// The 'extra' column should be null/empty since it doesn't exist in CSV
+		expect(rowsResponse.body.data.data[0]).toMatchObject({
+			name: 'Alice',
+			age: 30,
+		});
+	});
+
+	test('should handle empty CSV file on import', async () => {
+		// Upload empty CSV
+		const csvContent = '';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'empty.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Empty CSV Import',
+			columns: [{ name: 'name', type: 'string' }],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload);
+
+		// Should either fail or create table with no rows
+		if (createResponse.status === 200) {
+			const dataTableId = createResponse.body.data.id;
+			const rowsResponse = await authOwnerAgent
+				.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+				.expect(200);
+
+			expect(rowsResponse.body.data.count).toBe(0);
+		}
+	});
+
+	test('should handle CSV with only headers on import', async () => {
+		// Upload CSV with only headers
+		const csvContent = 'name,age,city';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'headers-only.csv',
+				contentType: 'text/csv',
+			})
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Headers Only Import',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'city', type: 'string' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Should create table with no rows
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(0);
+	});
+
+	test('should import CSV file with multiple rows', async () => {
+		const csvContent =
+			'itemId,itemName,itemValue\n1,Item 1,10\n2,Item 2,20\n3,Item 3,30\n4,Item 4,40\n5,Item 5,50';
+
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'multiple-rows.csv',
+				contentType: 'text/csv',
+			})
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Multiple Rows Import',
+			columns: [
+				{ name: 'itemId', type: 'string' },
+				{ name: 'itemName', type: 'string' },
+				{ name: 'itemValue', type: 'number' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Verify all rows were imported
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(5);
+	});
+
+	test('should create table without import when fileId is not provided', async () => {
+		const payload = {
+			name: 'Table Without Import',
+			columns: [
+				{ name: 'col1', type: 'string' },
+				{ name: 'col2', type: 'number' },
+			],
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		// Should create empty table
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(0);
+	});
+
+	test('should handle CSV with quoted values containing commas', async () => {
+		const csvContent =
+			'name,address\n"John Doe","123 Main St, Apt 4"\n"Jane Smith","456 Oak Ave, Suite 10"';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'quoted.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Quoted Values Import',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'address', type: 'string' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'John Doe',
+					address: '123 Main St, Apt 4',
+				}),
+				expect.objectContaining({
+					name: 'Jane Smith',
+					address: '456 Oak Ave, Suite 10',
+				}),
+			]),
+		);
+	});
+
+	test('should handle CSV with Unicode characters', async () => {
+		const csvContent = 'name,city\nJohn Müller,München\nMaría García,São Paulo';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), { filename: 'unicode.csv', contentType: 'text/csv' })
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Unicode Import',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'city', type: 'string' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'John Müller',
+					city: 'München',
+				}),
+				expect.objectContaining({
+					name: 'María García',
+					city: 'São Paulo',
+				}),
+			]),
+		);
+	});
+
+	test('should handle CSV with different data types', async () => {
+		const csvContent =
+			'name,age,active,joinDate\nAlice,30,true,2024-01-15\nBob,25,false,2024-02-20';
+		const uploadResponse = await authOwnerAgent
+			.post('/data-tables/uploads')
+			.attach('file', Buffer.from(csvContent), {
+				filename: 'mixed-types.csv',
+				contentType: 'text/csv',
+			})
+			.expect(200);
+
+		const fileId = uploadResponse.body.data.id;
+
+		const payload = {
+			name: 'Mixed Types Import',
+			columns: [
+				{ name: 'name', type: 'string' },
+				{ name: 'age', type: 'number' },
+				{ name: 'active', type: 'boolean' },
+				{ name: 'joinDate', type: 'date' },
+			],
+			fileId,
+		};
+
+		const createResponse = await authOwnerAgent
+			.post(`/projects/${ownerProject.id}/data-tables`)
+			.send(payload)
+			.expect(200);
+
+		const dataTableId = createResponse.body.data.id;
+
+		const rowsResponse = await authOwnerAgent
+			.get(`/projects/${ownerProject.id}/data-tables/${dataTableId}/rows`)
+			.expect(200);
+
+		expect(rowsResponse.body.data.count).toBe(2);
+		// Data types are converted based on column type definitions
+		expect(rowsResponse.body.data.data).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					name: 'Alice',
+					age: 30,
+					active: true,
+					joinDate: expect.stringContaining('2024-01-15'),
+				}),
+				expect.objectContaining({
+					name: 'Bob',
+					age: 25,
+					active: false,
+					joinDate: expect.stringContaining('2024-02-20'),
+				}),
+			]),
+		);
+	});
+});
