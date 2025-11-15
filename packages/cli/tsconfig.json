@@ -34,6 +34,7 @@
 		{ "path": "../@n8n/backend-test-utils/tsconfig.build.json" },
 		{ "path": "../@n8n/di/tsconfig.build.json" },
 		{ "path": "../@n8n/nodes-langchain/tsconfig.build.json" },
+		{ "path": "../@n8n/utils/tsconfig.build.json" },
 		{ "path": "../@n8n/permissions/tsconfig.build.json" }
 	]
 }
