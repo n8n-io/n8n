@@ -1427,6 +1427,20 @@ describe('prepareFormReturnItem', () => {
 		expect(DateTime.fromFormat).toHaveBeenCalledWith('2023-04-01', 'yyyy-mm-dd');
 	});
 
+	it('should not format date fields when formatDate is undefined', async () => {
+		mockContext.getBodyData.mockReturnValue({
+			data: { 'field-0': '2023-04-01' },
+			files: {},
+		});
+
+		const formFields = [{ fieldLabel: 'Date Field', fieldType: 'date', formatDate: undefined }];
+		const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+		expect(DateTime.fromFormat).not.toHaveBeenCalled();
+		expect(result.json['Date Field']).toBe('2023-04-01');
+		expect(DateTime.fromFormat).toHaveBeenCalledWith('2023-04-01', 'yyyy-mm-dd');
+	});
+
 	it('should handle multiselect fields', async () => {
 		mockContext.getBodyData.mockReturnValue({
 			data: { 'field-0': '["option1", "option2"]' },
