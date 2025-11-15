@@ -8,6 +8,7 @@ permissions:
   pull-requests: read
   contents: read
   actions: write
+  issues: write
 
 jobs:
   validate_and_dispatch:
@@ -91,7 +92,9 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HEAD_SHA: ${{ steps.check_permissions.outputs.headSha }}
+          PR_NUMBER: ${{ steps.check_permissions.outputs.prNumber }}
         run: |
           gh workflow run ci-manual-build-unit-tests.yml \
             --repo "${{ github.repository }}" \
-            -f ref="${HEAD_SHA}"
+            -f ref="${HEAD_SHA}" \
+            -f pr_number="${PR_NUMBER}"
