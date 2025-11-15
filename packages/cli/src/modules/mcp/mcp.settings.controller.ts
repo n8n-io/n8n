@@ -8,7 +8,7 @@ import { UpdateWorkflowAvailabilityDto } from './dto/update-workflow-availabilit
 import { McpServerApiKeyService } from './mcp-api-key.service';
 import { SUPPORTED_MCP_TRIGGERS } from './mcp.constants';
 import { McpSettingsService } from './mcp.settings.service';
-import { isWorkflowEligibleForMCPAccess } from './mcp.utils';
+import { findMcpSupportedTrigger } from './mcp.utils';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -83,9 +83,9 @@ export class McpSettingsController {
 			throw new BadRequestError('MCP access can only be set for active workflows');
 		}
 
-		const isEligible = isWorkflowEligibleForMCPAccess(workflow);
+		const supportedTrigger = findMcpSupportedTrigger(workflow);
 
-		if (!isEligible) {
+		if (!supportedTrigger) {
 			throw new BadRequestError(
 				`MCP access can only be set for active workflows with one of the following trigger nodes: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
 			);
