@@ -94,8 +94,44 @@ type EntityName =
  */
 export async function truncate(entities: EntityName[]) {
 	const connection = Container.get(Connection);
+	const dbType = connection.options.type;
 
-	for (const name of entities) {
-		await connection.getRepository(name).delete({});
+	// Disable FK checks for MySQL/MariaDB to handle circular dependencies
+	if (dbType === 'mysql' || dbType === 'mariadb') {
+		await connection.query('SET FOREIGN_KEY_CHECKS=0');
+	}
+
+	try {
+		// Collect junction tables to clean
+		const junctionTablesToClean = new Set<string>();
+
+		// Find all junction tables associated with the entities being truncated
+		for (const name of entities) {
+			try {
+				const metadata = connection.getMetadata(name);
+				for (const relation of metadata.manyToManyRelations) {
+					if (relation.junctionEntityMetadata) {
+						const junctionTableName = relation.junctionEntityMetadata.tablePath;
+						junctionTablesToClean.add(junctionTableName);
+					}
+				}
+			} catch (error) {
+				// Skip
+			}
+		}
+
+		// Clean junction tables first (since they reference the entities)
+		for (const tableName of junctionTablesToClean) {
+			await connection.query(`DELETE FROM ${tableName}`);
+		}
+
+		for (const name of entities) {
+			await connection.getRepository(name).delete({});
+		}
+	} finally {
+		// Re-enable FK checks
+		if (dbType === 'mysql' || dbType === 'mariadb') {
+			await connection.query('SET FOREIGN_KEY_CHECKS=1');
+		}
 	}
 }

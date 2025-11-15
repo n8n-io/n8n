@@ -248,17 +248,26 @@ export class ActiveWorkflowManager {
 	async clearWebhooks(workflowId: WorkflowId) {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
+			relations: { activeVersion: true },
 		});
 
 		if (workflowData === null) {
 			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
 		}
 
+		if (!workflowData.activeVersion) {
+			throw new UnexpectedError('Active version not found for workflow', {
+				extra: { workflowId },
+			});
+		}
+
+		const { nodes, connections } = workflowData.activeVersion;
+
 		const workflow = new Workflow({
 			id: workflowId,
 			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
+			nodes,
+			connections,
 			active: workflowData.active,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
@@ -488,8 +497,17 @@ export class ActiveWorkflowManager {
 				},
 			);
 
+			if (!dbWorkflow.activeVersion) {
+				throw new UnexpectedError('Active version not found for workflow', {
+					extra: { workflowId: dbWorkflow.id },
+				});
+			}
+
+			const { nodes, connections } = dbWorkflow.activeVersion;
+			const workflowForError = { ...dbWorkflow, nodes, connections };
+
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			this.executeErrorWorkflow(error, dbWorkflow, 'internal');
+			this.executeErrorWorkflow(error, workflowForError, 'internal');
 
 			// do not keep trying to activate on authorization error
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -577,11 +595,22 @@ export class ActiveWorkflowManager {
 				return added;
 			}
 
+			// Get workflow data from the active version
+			if (!dbWorkflow.activeVersion) {
+				throw new UnexpectedError('Active version not found for workflow', {
+					extra: { workflowId: dbWorkflow.id },
+				});
+			}
+
+			const { nodes, connections } = dbWorkflow.activeVersion;
+			dbWorkflow.nodes = nodes;
+			dbWorkflow.connections = connections;
+
 			workflow = new Workflow({
 				id: dbWorkflow.id,
 				name: dbWorkflow.name,
-				nodes: dbWorkflow.nodes,
-				connections: dbWorkflow.connections,
+				nodes,
+				connections,
 				active: dbWorkflow.active,
 				nodeTypes: this.nodeTypes,
 				staticData: dbWorkflow.staticData,

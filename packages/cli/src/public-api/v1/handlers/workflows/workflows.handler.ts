@@ -12,7 +12,11 @@ import { z } from 'zod';
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
+import {
+	addNodeIds,
+	getActiveVersionUpdateValue,
+	replaceInvalidCredentials,
+} from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -116,7 +120,10 @@ export = {
 				id,
 				req.user,
 				['workflow:read'],
-				{ includeTags: !Container.get(GlobalConfig).tags.disabled },
+				{
+					includeTags: !Container.get(GlobalConfig).tags.disabled,
+					includeActiveVersion: true,
+				},
 			);
 
 			if (!workflow) {
@@ -232,7 +239,7 @@ export = {
 				selectFields.push('pinData');
 			}
 
-			const relations = ['shared'];
+			const relations = ['shared', 'activeVersion'];
 			if (!Container.get(GlobalConfig).tags.disabled) {
 				relations.push('tags');
 			}
@@ -279,6 +286,7 @@ export = {
 				id,
 				req.user,
 				['workflow:update'],
+				{ includeActiveVersion: true },
 			);
 
 			if (!workflow) {
@@ -299,6 +307,21 @@ export = {
 			}
 
 			try {
+				// First add a record to workflow history to be able to get the full version object during the update
+				await Container.get(WorkflowHistoryService).saveVersion(req.user, updateData, workflow.id);
+
+				const updatedVersion = await Container.get(WorkflowHistoryService).getVersion(
+					req.user,
+					id,
+					updateData.versionId,
+				);
+
+				updateData.activeVersion = getActiveVersionUpdateValue(
+					workflow,
+					updatedVersion,
+					undefined, // active is read-only
+				);
+
 				await updateWorkflow(workflow, updateData);
 			} catch (error) {
 				if (error instanceof Error) {
@@ -317,14 +340,6 @@ export = {
 			}
 
 			const updatedWorkflow = await getWorkflowById(workflow.id);
-
-			if (updatedWorkflow) {
-				await Container.get(WorkflowHistoryService).saveVersion(
-					req.user,
-					updatedWorkflow,
-					workflow.id,
-				);
-			}
 
 			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
 			Container.get(EventService).emit('workflow-saved', {
@@ -346,6 +361,7 @@ export = {
 				id,
 				req.user,
 				['workflow:update'],
+				{ includeActiveVersion: true },
 			);
 
 			if (!workflow) {
@@ -354,19 +370,33 @@ export = {
 				return res.status(404).json({ message: 'Not Found' });
 			}
 
-			if (!workflow.active) {
+			const activeVersionId = workflow.versionId;
+
+			const newVersionIsBeingActivated =
+				activeVersionId && activeVersionId !== workflow.activeVersion?.versionId;
+
+			if (!workflow.active || newVersionIsBeingActivated) {
 				try {
+					// change the status to active in the DB
+					const activeVersion = await setWorkflowAsActive(req.user, workflow.id, activeVersionId);
+
 					await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
+
+					// Update the workflow object for response
+					workflow.active = true;
+					workflow.activeVersion = activeVersion;
 				} catch (error) {
+					// Rollback: restore previous state
+					await Container.get(WorkflowRepository).update(workflow.id, {
+						active: workflow.active,
+						activeVersion: workflow.activeVersion,
+						updatedAt: new Date(),
+					});
+
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
 					}
 				}
-
-				// change the status to active in the DB
-				await setWorkflowAsActive(workflow.id);
-
-				workflow.active = true;
 
 				Container.get(EventService).emit('workflow-activated', {
 					user: req.user,
@@ -378,7 +408,7 @@ export = {
 				return res.json(workflow);
 			}
 
-			// nothing to do as the workflow is already active
+			// nothing to do as this version is already active
 			return res.json(workflow);
 		},
 	],

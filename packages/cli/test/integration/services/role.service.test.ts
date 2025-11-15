@@ -53,7 +53,7 @@ afterAll(async () => {
 });
 
 afterEach(async () => {
-	await testDb.truncate(['User']);
+	await testDb.truncate(['User', 'ProjectRelation']);
 	await cleanupRolesAndScopes();
 });
 

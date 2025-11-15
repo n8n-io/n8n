@@ -427,6 +427,58 @@ describe('GET /workflows', () => {
 			expect(pinData).not.toBeDefined();
 		}
 	});
+
+	test('should return activeVersion for all workflows', async () => {
+		const inactiveWorkflow = await createWorkflow({}, member);
+		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
+
+		const response = await authMemberAgent.get('/workflows');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(2);
+
+		const inactiveInResponse = response.body.data.find(
+			(w: { id: string }) => w.id === inactiveWorkflow.id,
+		);
+		const activeInResponse = response.body.data.find(
+			(w: { id: string }) => w.id === activeWorkflow.id,
+		);
+
+		// Inactive workflow should have null activeVersion
+		expect(inactiveInResponse).toBeDefined();
+		expect(inactiveInResponse.active).toBe(false);
+		expect(inactiveInResponse.activeVersion).toBeNull();
+
+		// Active workflow should have populated activeVersion
+		expect(activeInResponse).toBeDefined();
+		expect(activeInResponse.active).toBe(true);
+		expect(activeInResponse.activeVersion).toBeDefined();
+		expect(activeInResponse.activeVersion).not.toBeNull();
+		expect(activeInResponse.activeVersion.versionId).toBe(activeWorkflow.versionId);
+		expect(activeInResponse.activeVersion.nodes).toEqual(activeWorkflow.nodes);
+		expect(activeInResponse.activeVersion.connections).toEqual(activeWorkflow.connections);
+	});
+
+	test('should return activeVersion when filtering by active=true', async () => {
+		await createWorkflow({}, member);
+		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
+
+		const response = await authMemberAgent.get('/workflows?active=true');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(1);
+
+		const workflow = response.body.data[0];
+		expect(workflow.id).toBe(activeWorkflow.id);
+		expect(workflow.active).toBe(true);
+		expect(workflow.activeVersion).toBeDefined();
+		expect(workflow.activeVersion).not.toBeNull();
+		expect(workflow.activeVersion.versionId).toBe(activeWorkflow.versionId);
+	});
 });
 
 describe('GET /workflows/:id', () => {
@@ -512,6 +564,32 @@ describe('GET /workflows/:id', () => {
 		const { pinData } = response.body;
 
 		expect(pinData).not.toBeDefined();
+	});
+
+	test('should return activeVersion as null for inactive workflow', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.active).toBe(false);
+		expect(response.body.activeVersion).toBeNull();
+	});
+
+	test('should return activeVersion for active workflow', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.active).toBe(true);
+		expect(response.body.activeVersion).toBeDefined();
+		expect(response.body.activeVersion).not.toBeNull();
+		expect(response.body.activeVersion.versionId).toBe(workflow.versionId);
+		expect(response.body.activeVersion.nodes).toEqual(workflow.nodes);
+		expect(response.body.activeVersion.connections).toEqual(workflow.connections);
 	});
 });
 
@@ -658,6 +736,29 @@ describe('POST /workflows/:id/activate', () => {
 		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
 	});
 
+	test('should set activeVersionId when activating workflow', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const response = await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.active).toBe(true);
+
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow', 'workflow.activeVersion'],
+		});
+
+		expect(sharedWorkflow?.workflow.active).toBe(true);
+		expect(sharedWorkflow?.workflow.activeVersion).not.toBeNull();
+		expect(sharedWorkflow?.workflow.activeVersion?.versionId).toBe(workflow.versionId);
+		expect(sharedWorkflow?.workflow.activeVersion?.nodes).toEqual(workflow.nodes);
+		expect(sharedWorkflow?.workflow.activeVersion?.connections).toEqual(workflow.connections);
+	});
+
 	test('should set non-owned workflow as active when owner', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
@@ -752,6 +853,38 @@ describe('POST /workflows/:id/deactivate', () => {
 		expect(sharedWorkflow?.workflow.active).toBe(false);
 
 		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
+	});
+
+	test('should clear activeVersionId when deactivating workflow', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		let sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow', 'workflow.activeVersion'],
+		});
+
+		expect(sharedWorkflow?.workflow.active).toBe(true);
+		expect(sharedWorkflow?.workflow.activeVersion).not.toBeNull();
+
+		const deactivateResponse = await authMemberAgent.post(`/workflows/${workflow.id}/deactivate`);
+
+		expect(deactivateResponse.statusCode).toBe(200);
+		expect(deactivateResponse.body.active).toBe(false);
+
+		sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow', 'workflow.activeVersion'],
+		});
+
+		expect(sharedWorkflow?.workflow.active).toBe(false);
+		expect(sharedWorkflow?.workflow.activeVersion).toBeNull();
 	});
 
 	test('should deactivate non-owned workflow when owner', async () => {
@@ -1124,6 +1257,133 @@ describe('PUT /workflows/:id', () => {
 		expect(historyVersion).not.toBeNull();
 		expect(historyVersion!.connections).toEqual(payload.connections);
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
+	});
+
+	test('should update activeVersionId when updating an active workflow', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+		let sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow', 'workflow.activeVersion'],
+		});
+
+		const initialActiveVersionId = sharedWorkflow?.workflow.activeVersion?.versionId;
+		expect(initialActiveVersionId).toBe(workflow.versionId);
+
+		const updatedPayload = {
+			name: 'Updated active workflow',
+			nodes: [
+				{
+					id: 'uuid-updated',
+					parameters: { triggerTimes: { item: [{ mode: 'everyMinute' }] } },
+					name: 'Updated Cron',
+					type: 'n8n-nodes-base.cron',
+					typeVersion: 1,
+					position: [300, 400],
+				},
+			],
+			connections: {},
+			staticData: workflow.staticData,
+			settings: workflow.settings,
+		};
+
+		const updateResponse = await authMemberAgent
+			.put(`/workflows/${workflow.id}`)
+			.send(updatedPayload);
+
+		expect(updateResponse.statusCode).toBe(200);
+
+		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
+
+		sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow', 'workflow.activeVersion'],
+		});
+
+		expect(sharedWorkflow?.workflow.active).toBe(true);
+		expect(sharedWorkflow?.workflow.activeVersion).not.toBeNull();
+		expect(sharedWorkflow?.workflow.activeVersion?.versionId).toBe(updateResponse.body.versionId);
+		expect(sharedWorkflow?.workflow.activeVersion?.versionId).not.toBe(initialActiveVersionId);
+		expect(sharedWorkflow?.workflow.activeVersion?.nodes).toEqual(updatedPayload.nodes);
+	});
+
+	test('should not update activeVersionId when updating an inactive workflow', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		// Update workflow without activating it
+		const updatedPayload = {
+			name: 'Updated inactive workflow',
+			nodes: [
+				{
+					id: 'uuid-inactive',
+					parameters: {},
+					name: 'Start Node',
+					type: 'n8n-nodes-base.start',
+					typeVersion: 1,
+					position: [200, 300],
+				},
+			],
+			connections: {},
+			staticData: workflow.staticData,
+			settings: workflow.settings,
+		};
+
+		const updateResponse = await authMemberAgent
+			.put(`/workflows/${workflow.id}`)
+			.send(updatedPayload);
+
+		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.active).toBe(false);
+
+		// Verify activeVersion is still null
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow', 'workflow.activeVersion'],
+		});
+
+		expect(sharedWorkflow?.workflow.active).toBe(false);
+		expect(sharedWorkflow?.workflow.activeVersion).toBeNull();
+	});
+
+	test('should not allow setting active field via PUT request', async () => {
+		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
+
+		const updatePayload = {
+			name: 'Try to activate via update',
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+			staticData: workflow.staticData,
+			settings: workflow.settings,
+			active: true,
+		};
+
+		const updateResponse = await authMemberAgent
+			.put(`/workflows/${workflow.id}`)
+			.send(updatePayload);
+
+		expect(updateResponse.statusCode).toBe(400);
+		expect(updateResponse.body.message).toContain('active');
+		expect(updateResponse.body.message).toContain('read-only');
+
+		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+			where: {
+				projectId: memberPersonalProject.id,
+				workflowId: workflow.id,
+			},
+			relations: ['workflow'],
+		});
+
+		expect(sharedWorkflow?.workflow.active).toBe(false);
 	});
 
 	test('should update non-owned workflow if owner', async () => {

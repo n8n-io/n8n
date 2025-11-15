@@ -1,6 +1,7 @@
 import {
 	createTeamProject,
 	createWorkflowWithTriggerAndHistory,
+	setActiveVersion,
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
@@ -40,6 +41,7 @@ describe('PUT /:workflowId/transfer', () => {
 		const destinationProject = await createTeamProject('Team Project', member);
 
 		const workflow = await createWorkflowWithTriggerAndHistory({ active: true }, member);
+		await setActiveVersion(workflow.id, workflow.versionId);
 
 		//
 		// ACT

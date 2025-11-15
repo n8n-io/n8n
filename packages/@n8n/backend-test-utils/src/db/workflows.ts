@@ -236,3 +236,60 @@ export async function createWorkflowHistory(workflow: IWorkflowDb, user?: User):
 		authors: user?.email ?? 'test@example.com',
 	});
 }
+
+/**
+ * Set the active version for a workflow
+ * @param workflowId workflow ID
+ * @param versionId version ID to set as active
+ */
+export async function setActiveVersion(workflowId: string, versionId: string): Promise<void> {
+	await Container.get(WorkflowRepository)
+		.createQueryBuilder()
+		.update()
+		.set({ activeVersionId: versionId })
+		.where('id = :workflowId', { workflowId })
+		.execute();
+}
+
+/**
+ * Create an active workflow with trigger, history, and activeVersionId set to the current version.
+ * This simulates a workflow that has been activated and is running.
+ * @param attributes workflow attributes
+ * @param user user to assign the workflow to
+ */
+export async function createActiveWorkflow(attributes: Partial<IWorkflowDb> = {}, user?: User) {
+	const workflow = await createWorkflowWithTriggerAndHistory({ active: true, ...attributes }, user);
+
+	await setActiveVersion(workflow.id, workflow.versionId);
+
+	workflow.activeVersionId = workflow.versionId;
+	return workflow;
+}
+
+/**
+ * Create a workflow with a specific active version.
+ * This simulates a workflow where the active version differs from the current version.
+ * @param activeVersionId the version ID to set as active
+ * @param attributes workflow attributes
+ * @param user user to assign the workflow to
+ */
+export async function createWorkflowWithActiveVersion(
+	activeVersionId: string,
+	attributes: Partial<IWorkflowDb> = {},
+	user?: User,
+) {
+	const workflow = await createWorkflowWithTriggerAndHistory({ active: true, ...attributes }, user);
+
+	await Container.get(WorkflowHistoryRepository).insert({
+		workflowId: workflow.id,
+		versionId: activeVersionId,
+		nodes: workflow.nodes,
+		connections: workflow.connections,
+		authors: user?.email ?? 'test@example.com',
+	});
+
+	await setActiveVersion(workflow.id, activeVersionId);
+
+	workflow.activeVersionId = activeVersionId;
+	return workflow;
+}

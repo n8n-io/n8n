@@ -97,7 +97,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	async findById(workflowId: string) {
 		return await this.findOne({
 			where: { id: workflowId },
-			relations: { shared: { project: { projectRelations: true } } },
+			relations: { shared: { project: { projectRelations: true } }, activeVersion: true },
 		});
 	}
 
@@ -810,11 +810,20 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async deactivateAll() {
-		return await this.update({ active: true }, { active: false });
+		return await this.update({ active: true }, { active: false, activeVersion: null });
 	}
 
+	// We're planning to remove this command in V2, so for now set activeVersion to the current version
 	async activateAll() {
-		return await this.update({ active: false }, { active: true });
+		await this.manager
+			.createQueryBuilder()
+			.update(WorkflowEntity)
+			.set({
+				active: true,
+				activeVersionId: () => 'versionId',
+			})
+			.where('active = :active', { active: false })
+			.execute();
 	}
 
 	async findByActiveState(activeState: boolean) {

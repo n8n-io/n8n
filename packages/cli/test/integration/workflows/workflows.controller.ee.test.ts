@@ -1294,7 +1294,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 	describe('activate workflow', () => {
 		test('should activate workflow without changing version ID', async () => {
-			const workflow = await createWorkflow({}, owner);
+			const workflow = await createWorkflowWithHistory({}, owner);
 			const payload = {
 				versionId: workflow.versionId,
 				active: true,
