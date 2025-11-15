@@ -1799,6 +1799,23 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		selectedTriggerNodeName.value = value;
 	}
 
+	/**
+	 * Get the webhook URL for a node
+	 * @param nodeId - The ID of the node
+	 * @param webhookType - The type of webhook ('test' or 'production')
+	 * @returns The webhook URL or undefined if the node doesn't have webhooks
+	 */
+	function getWebhookUrl(nodeId: string, webhookType: 'test' | 'production'): string | undefined {
+		const node = getNodeById(nodeId);
+		if (!node) return undefined;
+
+		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+		if (!nodeType?.webhooks?.length) return undefined;
+
+		const webhook = nodeType.webhooks[0];
+		return workflowHelpers.getWebhookUrl(webhook, node, webhookType);
+	}
+
 	watch(
 		[selectableTriggerNodes, workflowExecutionTriggerNodeName],
 		([newSelectable, currentTrigger], [oldSelectable]) => {
@@ -1972,6 +1989,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		totalWorkflowCount,
 		fetchLastSuccessfulExecution,
 		lastSuccessfulExecution,
+		getWebhookUrl,
 		defaults,
 		// This is exposed to ease the refactoring to the injected workflowState composable
 		// Please do not use outside this context
