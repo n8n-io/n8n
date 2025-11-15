@@ -1,14 +1,11 @@
 #!/usr/bin/env python3
 """
-Workflow comparison script using graph edit distance.
-
-Usage:
-    python compare_workflows.py <generated> <ground_truth> [options]
+Workflow comparison using graph edit distance.
 
 Options:
-    --config PATH           Path to custom config file (.yaml or .json)
+    --config PATH          Path to custom config file (.yaml or .json)
     --preset NAME          Use built-in preset (strict|standard|lenient)
-    --output-format FORMAT Output format (json|yaml|summary) [default: json]
+    --output-format FORMAT Output format (json|summary) [default: json]
     --verbose              Show detailed comparison info
     --help                 Show this help message
 """

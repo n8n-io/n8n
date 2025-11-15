@@ -3,7 +3,7 @@ Calculate workflow similarity using graph edit distance.
 """
 
 import networkx as nx
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Optional
 from src.config_loader import WorkflowComparisonConfig
 from src.cost_functions import (
     node_substitution_cost,
@@ -50,72 +50,80 @@ def calculate_graph_edit_distance(
     # Create cost function closures with config
     # NetworkX passes node ATTRIBUTE DICTS, not node names
     def node_subst_cost(n1_attrs, n2_attrs):
-        cost = node_substitution_cost(n1_attrs, n2_attrs, config)
-        print(f"DEBUG node_subst_cost: {cost}", file=__import__("sys").stderr)
-        return cost
+        return node_substitution_cost(n1_attrs, n2_attrs, config)
 
     def node_del_cost(n_attrs):
-        cost = node_deletion_cost(n_attrs, config)
-        print(f"DEBUG node_del_cost: {cost}", file=__import__("sys").stderr)
-        return cost
+        return node_deletion_cost(n_attrs, config)
 
     def node_ins_cost(n_attrs):
-        cost = node_insertion_cost(n_attrs, config)
-        print(f"DEBUG node_ins_cost: {cost}")
-        return cost
+        return node_insertion_cost(n_attrs, config)
 
     # Edge cost functions receive edge attribute dicts from NetworkX
     def edge_subst_cost(e1_attrs, e2_attrs):
-        cost = edge_substitution_cost(e1_attrs, e2_attrs, config)
-        print(f"DEBUG edge_subst_cost: {cost}")
-        return cost
+        return edge_substitution_cost(e1_attrs, e2_attrs, config)
 
     def edge_del_cost(e_attrs):
-        cost = edge_deletion_cost(e_attrs, config)
-        print(f"DEBUG edge_del_cost: {cost}")
-        return cost
+        return edge_deletion_cost(e_attrs, config)
 
     def edge_ins_cost(e_attrs):
-        cost = edge_insertion_cost(e_attrs, config)
-        print(f"DEBUG edge_ins_cost: {cost}")
-        return cost
+        return edge_insertion_cost(e_attrs, config)
 
     # Calculate GED using NetworkX
     # Note: This can be slow for large graphs, but workflow graphs are typically small
     try:
-        # Use optimize_graph_edit_distance for better performance
-        # This returns an iterator of possible edit costs
-        edit_paths = list(
-            nx.optimize_graph_edit_distance(
-                g1_relabeled,
-                g2_relabeled,
-                node_subst_cost=node_subst_cost,
-                node_del_cost=node_del_cost,
-                node_ins_cost=node_ins_cost,
-                edge_subst_cost=edge_subst_cost,
-                edge_del_cost=edge_del_cost,
-                edge_ins_cost=edge_ins_cost,
-                upper_bound=None,  # Calculate exact
-            )
+        # Use optimize_edit_paths to get the actual edit operations
+        # This returns tuples of (node_edit_path, edge_edit_path, cost)
+        edit_path_generator = nx.optimize_edit_paths(
+            g1_relabeled,
+            g2_relabeled,
+            node_subst_cost=node_subst_cost,
+            node_del_cost=node_del_cost,
+            node_ins_cost=node_ins_cost,
+            edge_subst_cost=edge_subst_cost,
+            edge_del_cost=edge_del_cost,
+            edge_ins_cost=edge_ins_cost,
+            upper_bound=None,  # Calculate exact
         )
 
-        print(f"DEBUG: edit_paths = {edit_paths}", file=__import__("sys").stderr)
+        # Get the best (first) edit path
+        best_edit_path = None
+        for node_edit_path, edge_edit_path, cost in edit_path_generator:
+            best_edit_path = (node_edit_path, edge_edit_path, cost)
+            break  # Take the first (best) path
 
-        if not edit_paths:
+        if not best_edit_path:
             # Fallback to basic calculation
-            print("DEBUG: Using fallback", file=__import__("sys").stderr)
             edit_cost = _calculate_basic_edit_cost(g1, g2, config)
+            node_edit_path = []
+            edge_edit_path = []
         else:
-            edit_cost = min(edit_paths)  # Best (lowest cost) path
-            print(
-                f"DEBUG: Using NetworkX GED, min cost = {edit_cost}",
-                file=__import__("sys").stderr,
-            )
+            node_edit_path, edge_edit_path, edit_cost = best_edit_path
 
+        # Extract and rank edit operations
+        # Use the actual edit path from NetworkX if available
+        if best_edit_path:
+            edit_ops = _extract_operations_from_path(
+                node_edit_path,
+                edge_edit_path,
+                g1_relabeled,
+                g2_relabeled,
+                config,
+                g1_mapping,
+                g2_mapping,
+            )
+        else:
+            # Fallback to heuristic extraction
+            edit_ops = _extract_edit_operations(
+                g1_relabeled, g2_relabeled, config, g1_mapping, g2_mapping
+            )
     except Exception as e:
         # Fallback if NetworkX GED fails
         print(f"Warning: GED calculation failed, using fallback: {e}")
         edit_cost = _calculate_basic_edit_cost(g1, g2, config)
+        # Fallback to heuristic extraction
+        edit_ops = _extract_edit_operations(
+            g1_relabeled, g2_relabeled, config, g1_mapping, g2_mapping
+        )
 
     # Calculate theoretical maximum cost
     max_cost = _calculate_max_cost(g1, g2, config)
@@ -126,12 +134,6 @@ def calculate_graph_edit_distance(
     else:
         # Similarity score: 1 - (cost / max_cost)
         similarity_score = max(0.0, min(1.0, 1.0 - (edit_cost / max_cost)))
-
-    # Extract and rank edit operations
-    # Use relabeled graphs for structural matching, but keep original names for display
-    edit_ops = _extract_edit_operations(
-        g1_relabeled, g2_relabeled, config, g1_mapping, g2_mapping
-    )
 
     return {
         "similarity_score": similarity_score,
@@ -217,12 +219,169 @@ def _calculate_max_cost(
     return delete_cost + insert_cost
 
 
+def _extract_operations_from_path(
+    node_edit_path: List[tuple],
+    edge_edit_path: List[tuple],
+    g1: nx.DiGraph,
+    g2: nx.DiGraph,
+    config: WorkflowComparisonConfig,
+    g1_name_mapping: Dict[str, str],
+    g2_name_mapping: Dict[str, str],
+) -> List[Dict[str, Any]]:
+    """
+    Extract edit operations from NetworkX's edit path.
+
+    Args:
+        node_edit_path: List of node edit tuples (u, v) where:
+            - (u, v): nodes u in g1 and v in g2 are matched/substituted
+            - (u, None): node u in g1 is deleted
+            - (None, v): node v in g2 is inserted
+        edge_edit_path: List of edge edit tuples ((u1, v1), (u2, v2))
+        g1, g2: Relabeled graphs
+        config: Configuration
+        g1_name_mapping, g2_name_mapping: Mappings to original names
+
+    Returns:
+        List of edit operations with descriptions and costs
+    """
+    operations = []
+
+    # Helper to get display name
+    def get_display_name(
+        node_id: str, mapping: Dict[str, str], graph: nx.DiGraph
+    ) -> str:
+        if mapping and node_id in mapping:
+            return mapping[node_id]
+        return graph.nodes[node_id].get("_original_name", node_id)
+
+    # Process node edits
+    for u, v in node_edit_path:
+        if u is None:
+            # Node insertion (v in g2 is inserted)
+            node_data = g2.nodes[v]
+            display_name = get_display_name(v, g2_name_mapping, g2)
+            cost = node_insertion_cost(node_data, config)
+            if cost > 0:
+                operations.append(
+                    {
+                        "type": "node_insert",
+                        "description": f"Add missing node '{display_name}' (type: {node_data.get('type', 'unknown')})",
+                        "cost": cost,
+                        "priority": _determine_priority(
+                            cost, config, node_data, "node_insert"
+                        ),
+                        "node_name": display_name,
+                    }
+                )
+        elif v is None:
+            # Node deletion (u in g1 is deleted)
+            node_data = g1.nodes[u]
+            display_name = get_display_name(u, g1_name_mapping, g1)
+            cost = node_deletion_cost(node_data, config)
+            if cost > 0:
+                operations.append(
+                    {
+                        "type": "node_delete",
+                        "description": f"Remove node '{display_name}' (type: {node_data.get('type', 'unknown')})",
+                        "cost": cost,
+                        "priority": _determine_priority(
+                            cost, config, node_data, "node_delete"
+                        ),
+                        "node_name": display_name,
+                    }
+                )
+        else:
+            # Node substitution (u in g1 matched to v in g2)
+            node1_data = g1.nodes[u]
+            node2_data = g2.nodes[v]
+            display_name = get_display_name(u, g1_name_mapping, g1)
+            cost = node_substitution_cost(node1_data, node2_data, config)
+            if cost > 0:
+                type1 = node1_data.get("type", "unknown")
+                type2 = node2_data.get("type", "unknown")
+
+                if type1 != type2:
+                    desc = (
+                        f"Change node '{display_name}' from type '{type1}' to '{type2}'"
+                    )
+                else:
+                    desc = f"Update parameters of node '{display_name}' (type: {type1})"
+
+                # Use node1 data for priority check (either could work for trigger check)
+                operations.append(
+                    {
+                        "type": "node_substitute",
+                        "description": desc,
+                        "cost": cost,
+                        "priority": _determine_priority(
+                            cost, config, node1_data, "node_substitute"
+                        ),
+                        "node_name": display_name,
+                    }
+                )
+
+    # Process edge edits
+    for e1, e2 in edge_edit_path:
+        if e1 is None:
+            # Edge insertion
+            u2, v2 = e2
+            edge_data = g2.edges[e2]
+            source_display = get_display_name(u2, g2_name_mapping, g2)
+            target_display = get_display_name(v2, g2_name_mapping, g2)
+            cost = edge_insertion_cost(edge_data, config)
+            if cost > 0:
+                operations.append(
+                    {
+                        "type": "edge_insert",
+                        "description": f"Add missing connection from '{source_display}' to '{target_display}'",
+                        "cost": cost,
+                        "priority": _determine_priority(cost, config),
+                    }
+                )
+        elif e2 is None:
+            # Edge deletion
+            u1, v1 = e1
+            edge_data = g1.edges[e1]
+            source_display = get_display_name(u1, g1_name_mapping, g1)
+            target_display = get_display_name(v1, g1_name_mapping, g1)
+            cost = edge_deletion_cost(edge_data, config)
+            if cost > 0:
+                operations.append(
+                    {
+                        "type": "edge_delete",
+                        "description": f"Remove connection from '{source_display}' to '{target_display}'",
+                        "cost": cost,
+                        "priority": _determine_priority(cost, config),
+                    }
+                )
+        else:
+            # Edge substitution
+            u1, v1 = e1
+            u2, v2 = e2
+            edge1_data = g1.edges[e1]
+            edge2_data = g2.edges[e2]
+            cost = edge_substitution_cost(edge1_data, edge2_data, config)
+            if cost > 0:
+                source_display = get_display_name(u1, g1_name_mapping, g1)
+                target_display = get_display_name(v1, g1_name_mapping, g1)
+                operations.append(
+                    {
+                        "type": "edge_substitute",
+                        "description": f"Update connection from '{source_display}' to '{target_display}'",
+                        "cost": cost,
+                        "priority": _determine_priority(cost, config),
+                    }
+                )
+
+    return operations
+
+
 def _extract_edit_operations(
     g1: nx.DiGraph,
     g2: nx.DiGraph,
     config: WorkflowComparisonConfig,
-    g1_name_mapping: Dict[str, str] = None,
-    g2_name_mapping: Dict[str, str] = None,
+    g1_name_mapping: Dict[str, str],
+    g2_name_mapping: Dict[str, str],
 ) -> List[Dict[str, Any]]:
     """
     Extract and describe edit operations needed to transform g1 to g2.
@@ -240,7 +399,9 @@ def _extract_edit_operations(
     operations = []
 
     # Helper to get display name
-    def get_display_name(node_id: str, mapping: Dict[str, str], graph: nx.DiGraph) -> str:
+    def get_display_name(
+        node_id: str, mapping: Dict[str, str], graph: nx.DiGraph
+    ) -> str:
         if mapping and node_id in mapping:
             return mapping[node_id]
         # Fallback to _original_name attribute or the ID itself
@@ -259,7 +420,7 @@ def _extract_edit_operations(
                 "type": "node_delete",
                 "description": f"Remove node '{display_name}' (type: {node_data.get('type', 'unknown')})",
                 "cost": cost,
-                "priority": _determine_priority(cost, config),
+                "priority": _determine_priority(cost, config, node_data, "node_delete"),
                 "node_name": display_name,
             }
         )
@@ -274,7 +435,7 @@ def _extract_edit_operations(
                 "type": "node_insert",
                 "description": f"Add missing node '{display_name}' (type: {node_data.get('type', 'unknown')})",
                 "cost": cost,
-                "priority": _determine_priority(cost, config),
+                "priority": _determine_priority(cost, config, node_data, "node_insert"),
                 "node_name": display_name,
             }
         )
@@ -300,7 +461,9 @@ def _extract_edit_operations(
                     "type": "node_substitute",
                     "description": desc,
                     "cost": cost,
-                    "priority": _determine_priority(cost, config),
+                    "priority": _determine_priority(
+                        cost, config, node1_data, "node_substitute"
+                    ),
                     "node_name": display_name,
                 }
             )
@@ -344,17 +507,29 @@ def _extract_edit_operations(
     return operations
 
 
-def _determine_priority(cost: float, config: WorkflowComparisonConfig) -> str:
+def _determine_priority(
+    cost: float,
+    config: WorkflowComparisonConfig,
+    node_data: Optional[Dict[str, Any]] = None,
+    operation_type: Optional[str] = None,
+) -> str:
     """
-    Determine priority level based on cost.
+    Determine priority level based on cost, node type, and operation.
 
     Args:
         cost: Edit operation cost
         config: Configuration
+        node_data: Optional node data to check if it's a trigger
+        operation_type: Type of operation (node_insert, node_delete, node_substitute, etc.)
 
     Returns:
         Priority level: 'critical', 'major', or 'minor'
     """
+    # Critical: trigger deletions/insertions (but not minor parameter updates)
+    if node_data and node_data.get("is_trigger", False):
+        if operation_type in ("node_insert", "node_delete"):
+            return "critical"
+
     # Critical: trigger mismatches and high-cost operations
     if cost >= config.node_substitution_trigger * 0.8:
         return "critical"
@@ -379,12 +554,36 @@ def _relabel_graph_by_structure(graph: nx.DiGraph) -> tuple[nx.DiGraph, Dict[str
         - relabeled_graph: Graph with structural IDs
         - mapping_dict: Maps new IDs back to original names
     """
-    # Sort nodes by type (triggers first) and then by their original order
+    # Sort nodes by structural properties for consistent matching
     nodes_with_data = list(graph.nodes(data=True))
 
-    # Separate triggers and non-triggers
-    triggers = [(name, data) for name, data in nodes_with_data if data.get("is_trigger", False)]
-    non_triggers = [(name, data) for name, data in nodes_with_data if not data.get("is_trigger", False)]
+    # Define sorting key based on structural properties
+    def node_sort_key(node_tuple):
+        name, data = node_tuple
+        return (
+            data.get("type", ""),  # Sort by type for consistency
+            -graph.out_degree(name),  # Then by out-degree (descending)
+            -graph.in_degree(name),  # Then by in-degree (descending)
+            name,  # Finally by name for deterministic ordering
+        )
+
+    # Separate and sort triggers and non-triggers
+    triggers = sorted(
+        [
+            (name, data)
+            for name, data in nodes_with_data
+            if data.get("is_trigger", False)
+        ],
+        key=node_sort_key,
+    )
+    non_triggers = sorted(
+        [
+            (name, data)
+            for name, data in nodes_with_data
+            if not data.get("is_trigger", False)
+        ],
+        key=node_sort_key,
+    )
 
     # Create new labels: trigger_0, trigger_1, node_0, node_1, etc.
     mapping = {}

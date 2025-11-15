@@ -198,3 +198,131 @@ def test_connection_difference():
     assert result["similarity_score"] < 1.0
     # Should have edge insertion in edits
     assert any(edit["type"] == "edge_insert" for edit in result["top_edits"])
+
+
+def test_trigger_parameter_update_priority():
+    """Test that minor trigger parameter updates are not marked as critical."""
+    from src.config_loader import load_config
+
+    workflow1 = {
+        "name": "Test1",
+        "nodes": [
+            {
+                "id": "1",
+                "name": "Webhook",
+                "type": "n8n-nodes-base.webhook",
+                "parameters": {"path": "test1"},
+            }
+        ],
+        "connections": {},
+    }
+
+    workflow2 = {
+        "name": "Test2",
+        "nodes": [
+            {
+                "id": "1",
+                "name": "Webhook",
+                "type": "n8n-nodes-base.webhook",
+                "parameters": {"path": "test2"},
+            }
+        ],
+        "connections": {},
+    }
+
+    config = load_config("preset:lenient")
+    g1 = build_workflow_graph(workflow1, config)
+    g2 = build_workflow_graph(workflow2, config)
+
+    result = calculate_graph_edit_distance(g1, g2, config)
+
+    # Should have high similarity (just parameter change)
+    assert result["similarity_score"] > 0.9
+
+    # Should have one edit (parameter update)
+    assert len(result["top_edits"]) == 1
+    edit = result["top_edits"][0]
+
+    # Should NOT be critical priority (just a minor parameter change)
+    assert edit["priority"] != "critical"
+    assert edit["type"] == "node_substitute"
+
+
+def test_trigger_deletion_is_critical():
+    """Test that trigger deletions are marked as critical."""
+    from src.config_loader import WorkflowComparisonConfig
+
+    workflow1 = {
+        "name": "Test1",
+        "nodes": [
+            {
+                "id": "1",
+                "name": "Webhook",
+                "type": "n8n-nodes-base.webhook",
+                "parameters": {},
+            },
+            {"id": "2", "name": "Node", "type": "test.node", "parameters": {}},
+        ],
+        "connections": {},
+    }
+
+    workflow2 = {
+        "name": "Test2",
+        "nodes": [{"id": "2", "name": "Node", "type": "test.node", "parameters": {}}],
+        "connections": {},
+    }
+
+    config = WorkflowComparisonConfig()
+    g1 = build_workflow_graph(workflow1, config)
+    g2 = build_workflow_graph(workflow2, config)
+
+    result = calculate_graph_edit_distance(g1, g2, config)
+
+    # Should have lower similarity
+    assert result["similarity_score"] < 0.8
+
+    # Should have a critical priority edit (trigger deletion)
+    assert any(
+        edit["priority"] == "critical" and edit["type"] == "node_delete"
+        for edit in result["top_edits"]
+    )
+
+
+def test_trigger_insertion_is_critical():
+    """Test that trigger insertions are marked as critical."""
+    from src.config_loader import WorkflowComparisonConfig
+
+    workflow1 = {
+        "name": "Test1",
+        "nodes": [{"id": "1", "name": "Node", "type": "test.node", "parameters": {}}],
+        "connections": {},
+    }
+
+    workflow2 = {
+        "name": "Test2",
+        "nodes": [
+            {
+                "id": "1",
+                "name": "Webhook",
+                "type": "n8n-nodes-base.webhook",
+                "parameters": {},
+            },
+            {"id": "2", "name": "Node", "type": "test.node", "parameters": {}},
+        ],
+        "connections": {},
+    }
+
+    config = WorkflowComparisonConfig()
+    g1 = build_workflow_graph(workflow1, config)
+    g2 = build_workflow_graph(workflow2, config)
+
+    result = calculate_graph_edit_distance(g1, g2, config)
+
+    # Should have lower similarity
+    assert result["similarity_score"] < 0.8
+
+    # Should have a critical priority edit (trigger insertion)
+    assert any(
+        edit["priority"] == "critical" and edit["type"] == "node_insert"
+        for edit in result["top_edits"]
+    )
