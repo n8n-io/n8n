@@ -1,5 +1,4 @@
 import { AzureAISearchVectorStore } from '@langchain/community/vectorstores/azure_aisearch';
-import { DefaultAzureCredential } from '@azure/identity';
 import { AzureKeyCredential } from '@azure/search-documents';
 import { mock } from 'jest-mock-extended';
 import type { ISupplyDataFunctions, ILoadOptionsFunctions, INode } from 'n8n-workflow';
