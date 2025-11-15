@@ -4,7 +4,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as provisioningApi from '@n8n/rest-api-client/api/provisioning';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 
-export const useProvisioningStore = defineStore('provisioning', () => {
+export const useUserRoleProvisioningStore = defineStore('userRolePovisioning', () => {
 	const rootStore = useRootStore();
 
 	const provisioningConfig = ref<ProvisioningConfig | undefined>();

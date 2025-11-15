@@ -5,7 +5,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
-import { MODAL_CONFIRM } from '@/app/constants';
+import { MODAL_CONFIRM, SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT } from '@/app/constants';
 import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -23,6 +23,9 @@ import {
 	N8nSelect,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { useUserRoleProvisioningStore } from '../user-role-provisioning.store';
+import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
+import { usePostHog } from '@/app/stores/posthog.store';
 const IdentityProviderSettingsType = {
 	URL: 'url',
 	XML: 'xml',
@@ -32,6 +35,8 @@ const i18n = useI18n();
 const telemetry = useTelemetry();
 const rootStore = useRootStore();
 const ssoStore = useSSOStore();
+const userRoleProvisioningStore = useUserRoleProvisioningStore();
+const posthogStore = usePostHog();
 const message = useMessage();
 const toast = useToast();
 const documentTitle = useDocumentTitle();
@@ -47,6 +52,11 @@ const oidcActivatedLabel = computed(() =>
 	ssoStore.isOidcLoginEnabled
 		? i18n.baseText('settings.sso.activated')
 		: i18n.baseText('settings.sso.deactivated'),
+);
+
+// TODO: also check for 'provisioning:manage' permission scope
+const isUserRoleProvisioningFeatureEnabled = posthogStore.isFeatureEnabled(
+	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name,
 );
 
 const options = computed(() => {
@@ -97,6 +107,76 @@ const promptDescriptions: PromptDescription[] = [
 	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.create'), value: 'create' },
 ];
 
+type UserRoleProvisioningSetting = 'disabled' | 'instance_role' | 'instance_and_project_roles';
+
+const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
+
+const handleUserRoleProvisioningChange = (value: UserRoleProvisioningSetting) => {
+	userRoleProvisioning.value = value;
+};
+
+const getUserRoleProvisioningValueFromConfig = (
+	config?: ProvisioningConfig,
+): UserRoleProvisioningSetting => {
+	if (!config) {
+		return 'disabled';
+	}
+	if (config.scopesProvisionInstanceRole && config.scopesProvisionProjectRoles) {
+		return 'instance_and_project_roles';
+	} else if (config.scopesProvisionInstanceRole) {
+		return 'instance_role';
+	} else {
+		return 'disabled';
+	}
+};
+const getProvisioningConfigFromFormValue = (
+	formValue: UserRoleProvisioningSetting,
+): Pick<ProvisioningConfig, 'scopesProvisionInstanceRole' | 'scopesProvisionProjectRoles'> => {
+	if (formValue === 'instance_role') {
+		return {
+			scopesProvisionInstanceRole: true,
+			scopesProvisionProjectRoles: false,
+		};
+	} else if (formValue === 'instance_and_project_roles') {
+		return {
+			scopesProvisionInstanceRole: true,
+			scopesProvisionProjectRoles: true,
+		};
+	} else {
+		return {
+			scopesProvisionInstanceRole: false,
+			scopesProvisionProjectRoles: false,
+		};
+	}
+};
+
+type UserRoleProvisioningDescription = {
+	label: string;
+	description: string;
+	value: UserRoleProvisioningSetting;
+};
+
+// TODO: translate
+const userRoleProvisioningDescriptions: UserRoleProvisioningDescription[] = [
+	{
+		label: 'Disabled',
+		value: 'disabled',
+		description: 'User and project roles are managed inside the n8n settings.',
+	},
+	{
+		label: 'Instance role',
+		value: 'instance_role',
+		description:
+			'The instance role of a user is configured in the "n8n_instance_role" attribute on your SSO provider. If none is set on the SSO provider, the member role is used as fallback.',
+	},
+	{
+		label: 'Instance and project roles',
+		value: 'instance_and_project_roles',
+		description:
+			'The list of projects a user has access to is configured on the "n8n_projects" string array attribute on your SSO provider. Project access cannot be granted from within n8n.',
+	},
+];
+
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 
 const authenticationContextClassReference = ref('');
@@ -119,7 +199,9 @@ const metadata = ref();
 const redirectUrl = ref();
 
 const isSaveEnabled = computed(() => {
-	if (ipsType.value === IdentityProviderSettingsType.URL) {
+	if (isUserRoleProvisioningChanged()) {
+		return true;
+	} else if (ipsType.value === IdentityProviderSettingsType.URL) {
 		return !!metadataUrl.value && metadataUrl.value !== ssoStore.samlConfig?.metadataUrl;
 	} else if (ipsType.value === IdentityProviderSettingsType.XML) {
 		return !!metadata.value && metadata.value !== ssoStore.samlConfig?.metadata;
@@ -188,12 +270,21 @@ const trackUpdateSettings = () => {
 
 const onSave = async () => {
 	try {
-		validateInput();
+		validateSamlInput();
+
+		if (isUserRoleProvisioningChanged()) {
+			// TODO: show dialog to download access settings csv
+		}
+
 		const config =
 			ipsType.value === IdentityProviderSettingsType.URL
 				? { metadataUrl: metadataUrl.value }
 				: { metadata: metadata.value };
 		await ssoStore.saveSamlConfig(config);
+
+		if (isUserRoleProvisioningChanged()) {
+			await saveUserRoleProvisioningSettings(userRoleProvisioning.value);
+		}
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = authProtocol.value;
@@ -234,7 +325,7 @@ const onTest = async () => {
 	}
 };
 
-const validateInput = () => {
+const validateSamlInput = () => {
 	if (ipsType.value === IdentityProviderSettingsType.URL) {
 		// In case the user wants to set the metadata url we want to be sure that
 		// the provided url is at least a valid http, https url.
@@ -268,7 +359,7 @@ const isToggleSsoDisabled = computed(() => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.sso.title'));
-	await Promise.all([loadSamlConfig(), loadOidcConfig()]);
+	await Promise.all([loadSamlConfig(), loadOidcConfig(), loadUserRoleProvisioningConfig()]);
 	ssoStore.initializeSelectedProtocol();
 	authProtocol.value = ssoStore.selectedAuthProtocol || SupportedProtocols.SAML;
 });
@@ -295,6 +386,11 @@ async function loadOidcConfig() {
 	}
 }
 
+async function loadUserRoleProvisioningConfig() {
+	const config = await userRoleProvisioningStore.getProvisioningConfig();
+	userRoleProvisioning.value = getUserRoleProvisioningValueFromConfig(config);
+}
+
 function onAuthProtocolUpdated(value: SupportedProtocolType) {
 	authProtocol.value = value;
 }
@@ -314,10 +410,27 @@ const cannotSaveOidcSettings = computed(() => {
 		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
 		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
 		ssoStore.oidcConfig?.prompt === prompt.value &&
+		!isUserRoleProvisioningChanged() &&
 		storedAcrString === authenticationContextClassReference.value &&
 		currentAcrString === storedAcrString
 	);
 });
+
+function isUserRoleProvisioningChanged() {
+	if (isUserRoleProvisioningFeatureEnabled) {
+		return false;
+	}
+	return (
+		getUserRoleProvisioningValueFromConfig(userRoleProvisioningStore.provisioningConfig) !==
+		userRoleProvisioning.value
+	);
+}
+
+async function saveUserRoleProvisioningSettings(formValue: UserRoleProvisioningSetting) {
+	await userRoleProvisioningStore.saveProvisioningConfig(
+		getProvisioningConfigFromFormValue(formValue),
+	);
+}
 
 async function onOidcSettingsSave() {
 	if (ssoStore.oidcConfig?.loginEnabled && !ssoStore.isOidcLoginEnabled) {
@@ -336,6 +449,10 @@ async function onOidcSettingsSave() {
 		if (confirmAction !== MODAL_CONFIRM) return;
 	}
 
+	if (isUserRoleProvisioningChanged()) {
+		// TODO: show dialog to download access settings csv
+	}
+
 	const acrArray = authenticationContextClassReference.value
 		.split(',')
 		.map((s) => s.trim())
@@ -351,6 +468,9 @@ async function onOidcSettingsSave() {
 			authenticationContextClassReference: acrArray,
 		});
 
+		if (isUserRoleProvisioningChanged()) {
+			await saveUserRoleProvisioningSettings(userRoleProvisioning.value);
+		}
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = authProtocol.value;
 
@@ -446,6 +566,37 @@ async function onOidcSettingsSave() {
 							data-test-id="sso-provider-xml"
 						/>
 						<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
+					</div>
+					<div v-if="isUserRoleProvisioningFeatureEnabled" :class="$style.group">
+						<label>User role provisioning</label>
+						<N8nSelect
+							:model-value="userRoleProvisioning"
+							data-test-id="oidc-user-role-provisioning"
+							:class="$style.userRoleProvisioningSelect"
+							@update:model-value="handleUserRoleProvisioningChange"
+						>
+							<N8nOption
+								v-for="option in userRoleProvisioningDescriptions"
+								:key="option.value"
+								:label="option.label"
+								data-test-id="oidc-user-role-provisioning-option"
+								:value="option.value"
+							>
+								<div class="list-option">
+									<div class="option-headline">{{ option.label }}</div>
+									<div class="option-description">{{ option.description }}</div>
+								</div>
+							</N8nOption>
+						</N8nSelect>
+						<small
+							>Manage instance and project roles from your SSO provider.
+							<a
+								href="https://docs.n8n.io/user-management/oidc/setup/#setting-up-and-enabling-oidc"
+								target="_blank"
+							>
+								Link to docs
+							</a>
+						</small>
 					</div>
 					<div :class="$style.group">
 						<N8nTooltip
@@ -568,6 +719,37 @@ async function onOidcSettingsSave() {
 					</N8nSelect>
 					<small>The prompt parameter to use when authenticating with the OIDC provider</small>
 				</div>
+				<div v-if="isUserRoleProvisioningFeatureEnabled" :class="$style.group">
+					<label>User role provisioning</label>
+					<N8nSelect
+						:model-value="userRoleProvisioning"
+						data-test-id="oidc-user-role-provisioning"
+						:class="$style.userRoleProvisioningSelect"
+						@update:model-value="handleUserRoleProvisioningChange"
+					>
+						<N8nOption
+							v-for="option in userRoleProvisioningDescriptions"
+							:key="option.value"
+							:label="option.label"
+							data-test-id="oidc-user-role-provisioning-option"
+							:value="option.value"
+						>
+							<div class="list-option">
+								<div class="option-headline">{{ option.label }}</div>
+								<div class="option-description">{{ option.description }}</div>
+							</div>
+						</N8nOption>
+					</N8nSelect>
+					<small
+						>Manage instance and project roles from your SSO provider.
+						<a
+							href="https://docs.n8n.io/user-management/oidc/setup/#setting-up-and-enabling-oidc"
+							target="_blank"
+						>
+							Link to docs
+						</a>
+					</small>
+				</div>
 				<div :class="$style.group">
 					<label>Authentication Context Class Reference</label>
 					<N8nInput
@@ -665,5 +847,10 @@ async function onOidcSettingsSave() {
 .footer {
 	color: var(--color--text);
 	font-size: var(--font-size--2xs);
+}
+
+.userRoleProvisioningSelect {
+	display: block;
+	max-width: 400px;
 }
 </style>
