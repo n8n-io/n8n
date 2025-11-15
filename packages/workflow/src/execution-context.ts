@@ -58,6 +58,12 @@ const ExecutionContextSchemaV1 = z.object({
 	source: WorkflowExecuteModeSchema,
 
 	/**
+	 * Optional ID of the parent execution, if this is set this
+	 * execution context inherited from the mentioned parent execution context.
+	 */
+	parentExecutionId: z.string().optional(),
+
+	/**
 	 * Encrypted credential context for dynamic credential resolution
 	 * Always encrypted when stored, decrypted on-demand by credential resolver
 	 * @see ICredentialContext for decrypted structure

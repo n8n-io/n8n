@@ -48,10 +48,6 @@ export class TriggerContext extends NodeExecutionContext implements ITriggerFunc
 		};
 	}
 
-	getExecutionContext() {
-		return undefined;
-	}
-
 	getActivationMode() {
 		return this.activation;
 	}
