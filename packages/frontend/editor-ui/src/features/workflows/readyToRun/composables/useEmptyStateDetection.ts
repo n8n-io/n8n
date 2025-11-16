@@ -22,7 +22,7 @@ export function useEmptyStateDetection() {
 	const isTrulyEmpty = (currentRoute: RouteLocationNormalized = route) => {
 		const hasNoWorkflows = foldersStore.totalWorkflowCount === 0;
 		const isNotInSpecificFolder = !currentRoute.params?.folderId;
-		const isMainWorkflowsPage = projectPages.isOverviewSubPage || !projectPages.isSharedSubPage;
+		const isMainWorkflowsPage = projectPages.isOverviewSubPage;
 
 		// Check for any search or filter parameters that would indicate filtering is active
 		const hasSearchQuery = !!currentRoute.query?.search;

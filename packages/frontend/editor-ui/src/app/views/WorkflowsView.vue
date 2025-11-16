@@ -634,24 +634,30 @@ const initialize = async () => {
 
 	isInitializing.value = true;
 	loading.value = true;
-	await setFiltersFromQueryString();
 
-	currentFolderId.value = route.params.folderId as string | null;
-	const [, resourcesPage] = await Promise.all([
-		usersStore.fetchUsers(),
-		fetchWorkflows(),
-		workflowsStore.fetchActiveWorkflows(),
-		usageStore.getLicenseInfo(),
-		foldersStore.fetchTotalWorkflowsAndFoldersCount(
-			route.params.projectId as string | undefined,
-			currentFolderId.value ?? undefined,
-		),
-	]);
-	breadcrumbsLoading.value = false;
-	workflowsAndFolders.value = resourcesPage;
-	loading.value = false;
-	isInitializing.value = false;
-	hasInitialized.value = true;
+	try {
+		await setFiltersFromQueryString();
+
+		currentFolderId.value = route.params.folderId as string | null;
+		const [, resourcesPage] = await Promise.all([
+			usersStore.fetchUsers(),
+			fetchWorkflows(),
+			workflowsStore.fetchActiveWorkflows(),
+			usageStore.getLicenseInfo(),
+			foldersStore.fetchTotalWorkflowsAndFoldersCount(
+				route.params.projectId as string | undefined,
+				currentFolderId.value ?? undefined,
+			),
+		]);
+		breadcrumbsLoading.value = false;
+		workflowsAndFolders.value = resourcesPage;
+	} catch (error) {
+		console.error('Error initializing workflows view:', error);
+	} finally {
+		loading.value = false;
+		isInitializing.value = false;
+		hasInitialized.value = true;
+	}
 };
 
 /**
