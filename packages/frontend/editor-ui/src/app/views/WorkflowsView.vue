@@ -528,7 +528,10 @@ watch(
 
 sourceControlStore.$onAction(({ name, after }) => {
 	if (name !== 'pullWorkfolder') return;
-	after(async () => await initialize());
+	after(async () => {
+		hasInitialized.value = false;
+		await initialize();
+	});
 });
 
 const refreshWorkflows = async () => {

@@ -89,29 +89,4 @@ describe('useEmptyStateDetection', () => {
 			expect(isTrulyEmpty(route)).toBe(false);
 		});
 	});
-
-	describe('shouldShowSimplifiedLayout', () => {
-		it('should return true when not loading and truly empty', () => {
-			const { shouldShowSimplifiedLayout } = useEmptyStateDetection();
-			const route = mockRoute();
-
-			expect(shouldShowSimplifiedLayout(route, false)).toBe(true);
-		});
-
-		it('should return false when loading', () => {
-			const { shouldShowSimplifiedLayout } = useEmptyStateDetection();
-			const route = mockRoute();
-
-			expect(shouldShowSimplifiedLayout(route, true)).toBe(false);
-		});
-
-		it('should return false when not truly empty', () => {
-			const { shouldShowSimplifiedLayout } = useEmptyStateDetection();
-			const route = mockRoute({
-				params: { folderId: 'folder-123' },
-			});
-
-			expect(shouldShowSimplifiedLayout(route, false)).toBe(false);
-		});
-	});
 });

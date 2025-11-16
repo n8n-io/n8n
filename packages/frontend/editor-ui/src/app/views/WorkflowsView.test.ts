@@ -434,6 +434,7 @@ describe('WorkflowsView', () => {
 			const sourceControl = useSourceControlStore();
 
 			renderComponent({ pinia });
+			await waitAllPromises();
 
 			await sourceControl.pullWorkfolder(true);
 			expect(userStore.fetchUsers).toHaveBeenCalledTimes(2);
@@ -566,7 +567,6 @@ describe('Simplified Layout', () => {
 		expect(getSimplifiedLayoutVisibility).toHaveBeenCalled();
 		const callArgs = getSimplifiedLayoutVisibility.mock.calls[0];
 		expect(callArgs[0]).toBeDefined(); // route
-		expect(typeof callArgs[1]).toBe('boolean'); // loading
 	});
 
 	it('should call addWorkflow when EmptyStateLayout new workflow card is clicked', async () => {
@@ -605,6 +605,5 @@ describe('Simplified Layout', () => {
 		// The computed should be called with the current route and loading state
 		const lastCall = getSimplifiedLayoutVisibility.mock.calls[initialCallCount - 1];
 		expect(lastCall[0]).toHaveProperty('params'); // route object
-		expect(typeof lastCall[1]).toBe('boolean'); // loading boolean
 	});
 });

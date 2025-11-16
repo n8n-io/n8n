@@ -97,11 +97,11 @@ vi.mock('@vueuse/core', () => ({
 	useMediaQuery: () => ({ value: false }),
 }));
 
-const mockShouldShowSimplifiedLayout = vi.fn(() => false);
+const mockIsTrulyEmpty = vi.fn(() => false);
 
 vi.mock('../composables/useEmptyStateDetection', () => ({
 	useEmptyStateDetection: () => ({
-		shouldShowSimplifiedLayout: mockShouldShowSimplifiedLayout,
+		isTrulyEmpty: mockIsTrulyEmpty,
 	}),
 }));
 
@@ -115,7 +115,7 @@ describe('useReadyToRunStore', () => {
 		mockCurrentUser.value = { settings: {} };
 		mockIsAiCreditsEnabled.value = true;
 		mockLocalStorageValue.value = '';
-		mockShouldShowSimplifiedLayout.mockReturnValue(false);
+		mockIsTrulyEmpty.mockReturnValue(false);
 
 		setActivePinia(createPinia());
 		store = useReadyToRunStore();
@@ -288,29 +288,28 @@ describe('useReadyToRunStore', () => {
 	});
 
 	describe('getSimplifiedLayoutVisibility', () => {
-		it('should call shouldShowSimplifiedLayout with route and loading', () => {
+		it('should call isTrulyEmpty with route', () => {
 			const mockRoute = { name: 'test', params: {} } as RouteLocationNormalized;
-			const loading = true;
 
-			store.getSimplifiedLayoutVisibility(mockRoute, loading);
+			store.getSimplifiedLayoutVisibility(mockRoute);
 
-			expect(mockShouldShowSimplifiedLayout).toHaveBeenCalledWith(mockRoute, loading);
+			expect(mockIsTrulyEmpty).toHaveBeenCalledWith(mockRoute);
 		});
 
-		it('should return the result from shouldShowSimplifiedLayout', () => {
+		it('should return the result from isTrulyEmpty', () => {
 			const mockRoute = { name: 'test', params: {} } as RouteLocationNormalized;
-			mockShouldShowSimplifiedLayout.mockReturnValueOnce(true);
+			mockIsTrulyEmpty.mockReturnValueOnce(true);
 
-			const result = store.getSimplifiedLayoutVisibility(mockRoute, false);
+			const result = store.getSimplifiedLayoutVisibility(mockRoute);
 
 			expect(result).toBe(true);
 		});
 
-		it('should return false when shouldShowSimplifiedLayout returns false', () => {
+		it('should return false when isTrulyEmpty returns false', () => {
 			const mockRoute = { name: 'test', params: {} } as RouteLocationNormalized;
-			mockShouldShowSimplifiedLayout.mockReturnValueOnce(false);
+			mockIsTrulyEmpty.mockReturnValueOnce(false);
 
-			const result = store.getSimplifiedLayoutVisibility(mockRoute, true);
+			const result = store.getSimplifiedLayoutVisibility(mockRoute);
 
 			expect(result).toBe(false);
 		});
