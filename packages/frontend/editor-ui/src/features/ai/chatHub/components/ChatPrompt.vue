@@ -11,9 +11,10 @@ import ToolsSelector from './ToolsSelector.vue';
 const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
 	isNewSession: boolean;
+	isToolsSelectable: boolean;
+	isMissingCredentials: boolean;
 	selectedModel: ChatModelDto | null;
 	selectedTools: INode[] | null;
-	isMissingCredentials: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -149,7 +150,7 @@ defineExpose({
 				@keydown="handleKeydownTextarea"
 			/>
 
-			<div :class="$style.tools">
+			<div v-if="isToolsSelectable" :class="$style.tools">
 				<ToolsSelector
 					:selected="selectedTools ?? []"
 					:disabled="isMissingCredentials || !selectedModel || isResponding"

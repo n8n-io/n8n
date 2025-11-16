@@ -64,6 +64,13 @@ const currentConversation = computed(() =>
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 const readyToShowMessages = computed(() => chatStore.agentsReady);
 
+// TODO: This also depends on the model, not all base LLM models support tools.
+const canSelectTools = computed(
+	() =>
+		selectedModel.value?.model.provider !== 'custom-agent' &&
+		selectedModel.value?.model.provider !== 'n8n',
+);
+
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
 	offset: { bottom: 100 },
@@ -313,7 +320,7 @@ function onSubmit(message: string) {
 		message,
 		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
-		selectedTools.value,
+		canSelectTools.value ? selectedTools.value : [],
 	);
 
 	inputRef.value?.setText('');
@@ -530,9 +537,10 @@ function handleOpenWorkflow(workflowId: string) {
 					<ChatPrompt
 						ref="inputRef"
 						:class="$style.prompt"
-						:is-responding="isResponding"
 						:selected-model="selectedModel ?? null"
 						:selected-tools="selectedTools"
+						:is-responding="isResponding"
+						:is-tools-selectable="canSelectTools"
 						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
 						@submit="onSubmit"
