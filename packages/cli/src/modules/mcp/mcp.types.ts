@@ -39,3 +39,49 @@ export type SearchWorkflowsResult = {
 export type WorkflowDetailsResult = z.infer<WorkflowDetailsOutputSchema>;
 export type WorkflowDetailsWorkflow = WorkflowDetailsResult['workflow'];
 export type WorkflowDetailsNode = WorkflowDetailsWorkflow['nodes'][number];
+
+// Prompt-related types
+export type PromptOperation = 'create' | 'update' | 'delete' | 'search';
+
+export type PromptData = {
+	id: string;
+	name: string;
+	content: string;
+	description: string;
+	category: string;
+	tags: string;
+	version: string;
+	availableInMCP: boolean;
+	isPublic: boolean;
+	createdAt: string;
+	updatedAt: string;
+};
+
+export type PromptListItem = {
+	uri: string;
+	name: string;
+	description: string;
+	category: string;
+	tags: string[];
+	version: string;
+	projectId: string;
+	projectName?: string;
+};
+
+export type ManagePromptsParams = {
+	operation: PromptOperation;
+	projectId?: string;
+	promptName?: string;
+	content?: string;
+	description?: string;
+	category?: string;
+	tags?: string;
+	version?: string;
+	searchQuery?: string;
+};
+
+export type ManagePromptsResult = {
+	success: boolean;
+	message: string;
+	data?: unknown;
+};
