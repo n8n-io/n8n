@@ -1,15 +1,25 @@
 import { ProvisioningConfigDto, ProvisioningConfigPatchDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
-import { RoleRepository, SettingsRepository, User, UserRepository, Role } from '@n8n/db';
+import {
+	RoleRepository,
+	SettingsRepository,
+	User,
+	UserRepository,
+	Role,
+	ProjectRepository,
+	ProjectRelation,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
-import { Not } from '@n8n/typeorm';
+import { Not, In } from '@n8n/typeorm';
 import { OnPubSubEvent } from '@n8n/decorators';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ZodError } from 'zod';
+import { ProjectService } from '@/services/project.service.ee';
+import { InstanceSettings } from 'n8n-core';
 
 @Service()
 export class ProvisioningService {
@@ -18,10 +28,13 @@ export class ProvisioningService {
 	constructor(
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
+		private readonly projectRepository: ProjectRepository,
+		private readonly projectService: ProjectService,
 		private readonly roleRepository: RoleRepository,
 		private readonly userRepository: UserRepository,
 		private readonly logger: Logger,
 		private readonly publisher: Publisher,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async init() {
@@ -37,6 +50,10 @@ export class ProvisioningService {
 	}
 
 	async provisionInstanceRoleForUser(user: User, roleSlug: unknown) {
+		if (!(await this.isInstanceRoleProvisioningEnabled())) {
+			return;
+		}
+
 		const globalOwnerRoleSlug = 'global:owner';
 
 		if (typeof roleSlug !== 'string') {
@@ -94,6 +111,139 @@ export class ProvisioningService {
 		}
 	}
 
+	/**
+	 * @param projectIdToRole expected to be an array of strings like this:
+	 * [
+	 *   "<projectUuid>:<projectRoleDisplayName>",
+	 *   "<projectUuid>:<projectRoleDisplayName>",
+	 *   ...
+	 * ]
+	 */
+	async provisionProjectRolesForUser(userId: string, projectIdToRoles: unknown): Promise<void> {
+		if (!(await this.isProjectRolesProvisioningEnabled())) {
+			return;
+		}
+
+		if (!Array.isArray(projectIdToRoles)) {
+			this.logger.warn(
+				`Skipping project role provisioning. Invalid projectIdToRole type: expected array, received ${typeof projectIdToRoles}`,
+				{ userId, projectIdToRoles },
+			);
+			return;
+		}
+
+		let projectRoleMap: Record<string, string>;
+		try {
+			projectRoleMap = {};
+			for (const entry of projectIdToRoles) {
+				if (typeof entry !== 'string') {
+					this.logger.warn(
+						`Skipping invalid project role mapping entry. Expected string, received ${typeof entry}.`,
+						{ userId, entry },
+					);
+					continue;
+				}
+
+				const [projectId, roleSlugSuffix] = entry.split(':');
+				if (!projectId || !roleSlugSuffix) {
+					this.logger.warn(
+						`Skipping invalid project role mapping entry. Expected format "projectId:displayName", received "${entry}".`,
+						{ userId, entry },
+					);
+					continue;
+				}
+
+				// This means that if the external SSO setup has two roles configured
+				// for the same projectId, we only provision the one we see last in the sent list.
+				projectRoleMap[projectId] = `project:${roleSlugSuffix}`;
+			}
+		} catch (error) {
+			this.logger.warn(
+				'Skipping project role provisioning. Failed to parse project to role mapping.',
+				{ userId, projectIdToRoles },
+			);
+			return;
+		}
+
+		const projectIds = Object.keys(projectRoleMap);
+		const roleSlugs = [...new Set(Object.values(projectRoleMap))];
+
+		if (projectIds.length === 0) {
+			return;
+		}
+
+		const [existingProjects, existingRoles] = await Promise.all([
+			this.projectRepository.find({
+				where: { id: In(projectIds), type: Not('personal') },
+				select: ['id'],
+			}),
+			this.roleRepository.find({
+				where: {
+					slug: In(roleSlugs),
+					roleType: 'project',
+				},
+				select: ['displayName', 'slug'],
+			}),
+		]);
+		const existingProjectIds = new Set(existingProjects.map((project) => project.id));
+
+		const validProjectToRoleMappings: Array<{ projectId: string; roleSlug: string }> = [];
+
+		// populate validProjectToRoleMappings
+		for (const [projectId, roleSlug] of Object.entries(projectRoleMap)) {
+			if (!existingProjectIds.has(projectId)) {
+				this.logger.warn(
+					`Skipped provisioning project role for project with ID ${projectId}, because project does not exist or is a personal project.`,
+					{ userId, projectId, roleSlug },
+				);
+				continue;
+			}
+			const role = existingRoles.find((role) => role.slug === roleSlug);
+			if (!role) {
+				this.logger.warn(
+					`Skipping project role provisioning for role with slug ${roleSlug}, because role does not exist or is not specific to projects.`,
+					{ userId, projectId, roleSlug },
+				);
+				continue;
+			}
+
+			validProjectToRoleMappings.push({ projectId, roleSlug: role.slug });
+		}
+
+		if (validProjectToRoleMappings.length === 0) {
+			this.logger.warn(
+				'Skipping project role provisioning altogether. No valid project to role mappings found.',
+				{ userId, projectRoleMap },
+			);
+			return;
+		}
+
+		const currentlyAccessibleProjects = await this.projectRepository.find({
+			where: {
+				type: Not('personal'),
+				projectRelations: {
+					userId,
+				},
+			},
+			relations: ['projectRelations'],
+		});
+
+		const validProjectIds = new Set(validProjectToRoleMappings.map((m) => m.projectId));
+		const projectsToRemoveAccessFrom = currentlyAccessibleProjects.filter(
+			(project) => !validProjectIds.has(project.id),
+		);
+
+		await this.projectRepository.manager.transaction(async (tx) => {
+			for (const project of projectsToRemoveAccessFrom) {
+				await tx.delete(ProjectRelation, { projectId: project.id, userId });
+			}
+
+			for (const { projectId, roleSlug } of validProjectToRoleMappings) {
+				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
+			}
+		});
+	}
+
 	async patchConfig(rawConfig: unknown): Promise<ProvisioningConfigDto> {
 		let patchConfig: ProvisioningConfigPatchDto;
 
@@ -112,7 +262,6 @@ export class ProvisioningService {
 		const supportedPatchFields = [
 			'scopesProvisionInstanceRole',
 			'scopesProvisionProjectRoles',
-			'scopesProvisioningFrequency',
 			'scopesName',
 			'scopesInstanceRoleClaimName',
 			'scopesProjectsRolesClaimName',
@@ -131,13 +280,21 @@ export class ProvisioningService {
 
 		ProvisioningConfigDto.parse(updatedConfig);
 
-		await this.settingsRepository.update(
-			{ key: PROVISIONING_PREFERENCES_DB_KEY },
-			{ value: JSON.stringify(updatedConfig) },
+		await this.settingsRepository.upsert(
+			{
+				key: PROVISIONING_PREFERENCES_DB_KEY,
+				value: JSON.stringify(updatedConfig),
+				loadOnStartup: true,
+			},
+			{ conflictPaths: ['key'] },
 		);
 
-		await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
 		this.provisioningConfig = await this.loadConfig();
+
+		if (this.instanceSettings.isMultiMain) {
+			await this.publisher.publishCommand({ command: 'reload-sso-provisioning-configuration' });
+		}
+
 		return await this.getConfig();
 	}
 
@@ -178,5 +335,39 @@ export class ProvisioningService {
 		}
 
 		return envProvidedConfig;
+	}
+
+	async getInstanceRoleClaimName(): Promise<string | null> {
+		if (!(await this.isInstanceRoleProvisioningEnabled())) {
+			return null;
+		}
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesInstanceRoleClaimName;
+	}
+
+	async getProjectsRolesClaimName(): Promise<string | null> {
+		if (!(await this.isProjectRolesProvisioningEnabled())) {
+			return null;
+		}
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesProjectsRolesClaimName;
+	}
+
+	async isProvisioningEnabled(): Promise<boolean> {
+		const provisioningConfig = await this.getConfig();
+		return (
+			provisioningConfig.scopesProvisionInstanceRole ||
+			provisioningConfig.scopesProvisionProjectRoles
+		);
+	}
+
+	private async isInstanceRoleProvisioningEnabled(): Promise<boolean> {
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesProvisionInstanceRole;
+	}
+
+	private async isProjectRolesProvisioningEnabled(): Promise<boolean> {
+		const provisioningConfig = await this.getConfig();
+		return provisioningConfig.scopesProvisionProjectRoles;
 	}
 }

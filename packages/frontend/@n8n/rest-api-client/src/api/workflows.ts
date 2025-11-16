@@ -26,6 +26,7 @@ export interface WorkflowData {
 export interface WorkflowDataUpdate {
 	id?: string;
 	name?: string;
+	description?: string | null;
 	nodes?: INode[];
 	connections?: IConnections;
 	settings?: IWorkflowSettings;

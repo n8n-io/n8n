@@ -77,6 +77,13 @@ export class ChatHubMessage extends WithTimestamps {
 	workflow?: Relation<WorkflowEntity> | null;
 
 	/**
+	 * ID of the custom agent that produced this message (if applicable).
+	 * Only set when provider is 'custom-agent'.
+	 */
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	agentId: string | null;
+
+	/**
 	 * ID of an execution that produced this message (reset to null when the execution is deleted).
 	 */
 	@Column({ type: 'int', nullable: true })

@@ -41,6 +41,7 @@ test('should report expressions in queries', async () => {
 			active: false,
 			connections: {},
 			nodeTypes: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,
@@ -94,6 +95,7 @@ test('should report expressions in query params', async () => {
 			active: false,
 			connections: {},
 			nodeTypes: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,
@@ -149,6 +151,7 @@ test('should report unused query params', async () => {
 			active: false,
 			connections: {},
 			nodeTypes: {},
+			versionId: uuid(),
 			nodes: [
 				{
 					id: nodeId,

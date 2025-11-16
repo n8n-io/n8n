@@ -85,6 +85,16 @@ async function createEngineRequests(
 }
 
 /**
+ * Uses provided tools and tried to get tools from model metadata
+ * Some chat model nodes can define built-in tools in their metadata
+ */
+function getAllTools(model: BaseChatModel, tools: Array<DynamicStructuredTool | Tool>) {
+	const modelTools = (model.metadata?.tools as Tool[]) ?? [];
+	const allTools = [...tools, ...modelTools];
+	return allTools;
+}
+
+/**
  * Creates an agent executor with the given configuration
  */
 function createAgentSequence(
@@ -98,7 +108,7 @@ function createAgentSequence(
 ) {
 	const agent = createToolCallingAgent({
 		llm: model,
-		tools,
+		tools: getAllTools(model, tools),
 		prompt,
 		streamRunnable: false,
 	});
@@ -107,7 +117,7 @@ function createAgentSequence(
 	if (fallbackModel) {
 		fallbackAgent = createToolCallingAgent({
 			llm: fallbackModel,
-			tools,
+			tools: getAllTools(fallbackModel, tools),
 			prompt,
 			streamRunnable: false,
 		});
@@ -262,6 +272,7 @@ async function processEventStream(
 export type RequestResponseMetadata = {
 	itemIndex?: number;
 	previousRequests: ToolCallData[];
+	iterationCount?: number;
 };
 
 type ToolCallData = {
@@ -326,7 +337,7 @@ function buildSteps(
 					toolCallId: toolInput?.id,
 					type: toolInput.type || 'tool_call',
 				},
-				observation: JSON.stringify(tool.data),
+				observation: JSON.stringify(tool.data?.data?.ai_tool?.[0]?.map((item) => item?.json) ?? ''),
 			};
 
 			steps.push(toolResult);
@@ -477,11 +488,21 @@ export async function toolsAgentExecute(
 
 				// If result contains tool calls, build the request object like the normal flow
 				if (result.toolCalls && result.toolCalls.length > 0) {
+					const currentIteration = (response?.metadata?.iterationCount ?? 0) + 1;
+
+					// Check if we've exceeded maxIterations
+					if (options.maxIterations && currentIteration > options.maxIterations) {
+						throw new NodeOperationError(this.getNode(), 'Maximum iterations reached');
+					}
+
 					const actions = await createEngineRequests(result.toolCalls, itemIndex, tools);
 
 					return {
 						actions,
-						metadata: { previousRequests: buildSteps(response, itemIndex) },
+						metadata: {
+							previousRequests: buildSteps(response, itemIndex),
+							iterationCount: currentIteration,
+						},
 					};
 				}
 
@@ -525,12 +546,21 @@ export async function toolsAgentExecute(
 					return result;
 				}
 
-				// If response contains tool calls, we need to return this in the right format
+				const currentIteration = (response?.metadata?.iterationCount ?? 0) + 1;
+
+				// Check if we've exceeded maxIterations
+				if (options.maxIterations && currentIteration > options.maxIterations) {
+					throw new NodeOperationError(this.getNode(), 'Maximum iterations reached');
+				}
+
 				const actions = await createEngineRequests(modelResponse, itemIndex, tools);
 
 				return {
 					actions,
-					metadata: { previousRequests: buildSteps(response, itemIndex) },
+					metadata: {
+						previousRequests: buildSteps(response, itemIndex),
+						iterationCount: currentIteration,
+					},
 				};
 			}
 		});

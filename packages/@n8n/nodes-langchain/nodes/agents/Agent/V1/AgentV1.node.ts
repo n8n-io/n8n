@@ -11,7 +11,12 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+import {
+	promptTypeOptions,
+	textFromGuardrailsNode,
+	textFromPreviousNode,
+	textInput,
+} from '@utils/descriptions';
 
 import { conversationalAgentProperties } from '../agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from '../agents/ConversationalAgent/execute';
@@ -375,6 +380,12 @@ export class AgentV1 implements INodeType {
 							'@version': [{ _cnd: { lte: 1.2 } }],
 							agent: ['sqlAgent'],
 						},
+					},
+				},
+				{
+					...textFromGuardrailsNode,
+					displayOptions: {
+						show: { promptType: ['guardrails'], '@version': [{ _cnd: { gte: 1.7 } }] },
 					},
 				},
 				{

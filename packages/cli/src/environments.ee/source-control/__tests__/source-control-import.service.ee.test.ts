@@ -1,6 +1,8 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
+	type Variables,
+	type VariablesRepository,
 	type FolderRepository,
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
@@ -16,6 +18,8 @@ import * as fastGlob from 'fast-glob';
 import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
+
+import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
 import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
@@ -44,10 +48,12 @@ describe('SourceControlImportService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const mockLogger = mock<Logger>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
+	const variableService = mock<VariablesService>();
+	const variablesRepository = mock<VariablesRepository>();
 	const service = new SourceControlImportService(
 		mockLogger,
 		mock(),
-		mock(),
+		variableService,
 		mock(),
 		mock(),
 		projectRepository,
@@ -55,7 +61,7 @@ describe('SourceControlImportService', () => {
 		sharedWorkflowRepository,
 		mock(),
 		mock(),
-		mock(),
+		variablesRepository,
 		workflowRepository,
 		mock(),
 		mock(),
@@ -570,6 +576,7 @@ describe('SourceControlImportService', () => {
 						type: 'team',
 						teamId: 'project2',
 					},
+					variableStubs: [{ id: 'var1', key: 'VAR1', value: 'value1' }],
 				};
 				const candidates = [
 					mock<SourceControlledFile>({ file: mockProjectFile1, id: mockProjectData1.id }),
@@ -579,6 +586,8 @@ describe('SourceControlImportService', () => {
 				fsReadFile
 					.mockResolvedValueOnce(JSON.stringify(mockProjectData1))
 					.mockResolvedValueOnce(JSON.stringify(mockProjectData2));
+
+				variableService.getAllCached.mockResolvedValue([]);
 
 				// Act
 				const result = await service.importTeamProjectsFromWorkFolder(candidates);
@@ -603,6 +612,14 @@ describe('SourceControlImportService', () => {
 						icon: mockProjectData2.icon,
 						description: mockProjectData2.description,
 						type: mockProjectData2.type,
+					}),
+					['id'],
+				);
+				expect(variablesRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						id: 'var1',
+						key: 'VAR1',
+						value: 'value1',
 					}),
 					['id'],
 				);
@@ -699,6 +716,44 @@ describe('SourceControlImportService', () => {
 					},
 				]);
 			});
+
+			it('should delete project variables not in the imported stubs', async () => {
+				// Arrange
+				const mockProjectFile = '/mock/team-project.json';
+				const mockProjectData = {
+					id: 'project1',
+					name: 'Team Project 1',
+					icon: 'icon1.png',
+					description: 'First team project',
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: 'project1',
+					},
+					variableStubs: [{ id: 'var1', key: 'VAR1', value: 'value1' }],
+				};
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockProjectFile, id: mockProjectData.id }),
+				];
+
+				fsReadFile.mockResolvedValueOnce(JSON.stringify(mockProjectData));
+
+				variableService.getAllCached.mockResolvedValue([
+					{
+						id: 'var2',
+						key: 'VAR2',
+						value: 'value2',
+						type: 'string',
+						project: { id: 'project1' } as Project,
+					} as Variables,
+				]);
+
+				// Act
+				await service.importTeamProjectsFromWorkFolder(candidates);
+
+				// Assert
+				expect(variableService.deleteByIds).toHaveBeenCalledWith(['var2']);
+			});
 		});
 
 		describe('getRemoteProjectsFromFiles', () => {
@@ -725,6 +780,7 @@ describe('SourceControlImportService', () => {
 					teamId: 'project2',
 					teamName: 'Team Project 2',
 				},
+				variableStubs: [{ id: 'var1', key: 'VAR1', value: 'value1', type: 'string' }],
 			};
 
 			it('should return all projects if the user has access to all projects', async () => {
@@ -795,6 +851,7 @@ describe('SourceControlImportService', () => {
 					type: 'team',
 					createdAt: new Date(),
 					updatedAt: new Date(),
+					variables: [],
 				});
 				const mockProjectData2: Project = mock<Project>({
 					id: 'project2',
@@ -804,6 +861,7 @@ describe('SourceControlImportService', () => {
 					type: 'team',
 					createdAt: new Date(),
 					updatedAt: new Date(),
+					variables: [],
 				});
 
 				const mockFilter = { id: 'test' };
@@ -820,6 +878,7 @@ describe('SourceControlImportService', () => {
 				// making sure the correct filter is used
 				expect(projectRepository.find).toHaveBeenCalledWith({
 					select: ['id', 'name', 'description', 'icon', 'type'],
+					relations: ['variables'],
 					where: {
 						type: 'team',
 						...mockFilter,
@@ -865,6 +924,7 @@ describe('SourceControlImportService', () => {
 					type: 'team',
 					createdAt: new Date(),
 					updatedAt: new Date(),
+					variables: [{ id: 'var1', key: 'VAR1', value: 'value1', type: 'string' }],
 				});
 
 				projectRepository.find.mockResolvedValue([mockProjectData1]);
@@ -877,6 +937,7 @@ describe('SourceControlImportService', () => {
 				// making sure the correct filter is used
 				expect(projectRepository.find).toHaveBeenCalledWith({
 					select: ['id', 'name', 'description', 'icon', 'type'],
+					relations: ['variables'],
 					where: { type: 'team' },
 				});
 

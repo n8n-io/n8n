@@ -1,6 +1,6 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { FolderRepository, type TagEntity, TagRepository, type User, Variables } from '@n8n/db';
+import { FolderRepository, type TagEntity, TagRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
@@ -23,6 +23,7 @@ import { SourceControlPreferencesService } from './source-control-preferences.se
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProjectWithFileName } from './types/exportable-project';
+import { ExportableVariable } from './types/exportable-variable';
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
@@ -378,7 +379,7 @@ export class SourceControlStatusService {
 		sourceControlledFiles: SourceControlledFile[],
 	) {
 		const varRemoteIds = await this.sourceControlImportService.getRemoteVariablesFromFile();
-		const varLocalIds = await this.sourceControlImportService.getLocalVariablesFromDb();
+		const varLocalIds = await this.sourceControlImportService.getLocalGlobalVariablesFromDb();
 
 		const varMissingInLocal = varRemoteIds.filter(
 			(remote) => varLocalIds.findIndex((local) => local.id === remote.id) === -1,
@@ -388,7 +389,7 @@ export class SourceControlStatusService {
 			(local) => varRemoteIds.findIndex((remote) => remote.id === local.id) === -1,
 		);
 
-		const varModifiedInEither: Variables[] = [];
+		const varModifiedInEither: ExportableVariable[] = [];
 		varLocalIds.forEach((local) => {
 			const mismatchingIds = varRemoteIds.find(
 				(remote) =>
@@ -737,6 +738,9 @@ export class SourceControlStatusService {
 						? localProject.description
 						: remoteProjectWithSameId.description,
 					icon: options.preferLocalVersion ? localProject.icon : remoteProjectWithSameId.icon,
+					variableStubs: options.preferLocalVersion
+						? localProject.variableStubs
+						: remoteProjectWithSameId.variableStubs,
 				});
 			}
 		});
@@ -806,6 +810,29 @@ export class SourceControlStatusService {
 		};
 	}
 
+	private areVariablesEqual(
+		localVariables: ExportableProjectWithFileName['variableStubs'],
+		remoteVariables: ExportableProjectWithFileName['variableStubs'],
+	): boolean {
+		if (Array.isArray(localVariables) !== Array.isArray(remoteVariables)) {
+			return false;
+		}
+
+		if (localVariables?.length !== remoteVariables?.length) {
+			return false;
+		}
+
+		const sortedLocalVars = [...(localVariables ?? [])].sort((a, b) => a.key.localeCompare(b.key));
+		const sortedRemoteVars = [...(remoteVariables ?? [])].sort((a, b) =>
+			a.key.localeCompare(b.key),
+		);
+
+		return sortedLocalVars.every((localVar, index) => {
+			const remoteVar = sortedRemoteVars[index];
+			return localVar.key === remoteVar.key && localVar.type === remoteVar.type;
+		});
+	}
+
 	private isProjectModified(
 		local: ExportableProjectWithFileName,
 		remote: ExportableProjectWithFileName,
@@ -819,7 +846,8 @@ export class SourceControlStatusService {
 			isIconModified ||
 			remote.type !== local.type ||
 			remote.name !== local.name ||
-			remote.description !== local.description
+			remote.description !== local.description ||
+			!this.areVariablesEqual(local.variableStubs, remote.variableStubs)
 		);
 	}
 

@@ -403,6 +403,18 @@ export class CredentialsHelper extends ICredentialsHelper {
 			decryptedData.allowedDomains = decryptedDataOriginal.allowedDomains;
 		}
 
+		// When using dynamic client registration, fields
+		// for client ID, secret, auth URL, access token URL, grant type and authentication
+		// are not shown in the UI, so we need to copy them from the original data.
+		if (decryptedData.useDynamicClientRegistration) {
+			decryptedData.clientId = decryptedDataOriginal.clientId;
+			decryptedData.clientSecret = decryptedDataOriginal.clientSecret;
+			decryptedData.authUrl = decryptedDataOriginal.authUrl;
+			decryptedData.accessTokenUrl = decryptedDataOriginal.accessTokenUrl;
+			decryptedData.grantType = decryptedDataOriginal.grantType;
+			decryptedData.authentication = decryptedDataOriginal.authentication;
+		}
+
 		const canUseExternalSecrets = await this.credentialCanUseExternalSecrets(credential);
 		const additionalKeys = getAdditionalKeys(additionalData, mode, null, {
 			secretsEnabled: canUseExternalSecrets,
