@@ -15,6 +15,7 @@ import { createSearchWorkflowsTool } from './tools/search-workflows.tool';
 
 import { CredentialsService } from '@/credentials/credentials.service';
 import { DataStoreService } from '@/modules/data-table/data-store.service';
+import { ProjectService } from '@/services/project.service.ee';
 import { UrlService } from '@/services/url.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
@@ -28,6 +29,7 @@ export class McpService {
 		private readonly credentialsService: CredentialsService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly dataStoreService: DataStoreService,
+		private readonly projectService: ProjectService,
 	) {}
 
 	getServer(user: User) {
@@ -61,7 +63,11 @@ export class McpService {
 		);
 
 		// ========== PROMPT RESOURCES ==========
-		const listPromptsResource = createListPromptsResource(user, this.dataStoreService);
+		const listPromptsResource = createListPromptsResource(
+			user,
+			this.dataStoreService,
+			this.projectService,
+		);
 		const getPromptResource = createGetPromptResource(user, this.dataStoreService);
 
 		// List all available resources

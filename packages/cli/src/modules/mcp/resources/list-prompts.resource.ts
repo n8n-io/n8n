@@ -2,6 +2,7 @@ import type { User } from '@n8n/db';
 import type { ListCallback } from '@modelcontextprotocol/sdk/types.js';
 
 import type { DataStoreService } from '@/modules/data-table/data-store.service';
+import type { ProjectService } from '@/services/project.service.ee';
 
 const PROMPTS_TABLE_NAME = 'mcp_prompts';
 
@@ -22,6 +23,7 @@ export type ResourceDefinition = {
 export const createListPromptsResource = (
 	user: User,
 	dataStoreService: DataStoreService,
+	projectService: ProjectService,
 ): ResourceDefinition => {
 	return {
 		uri: 'prompts://list',
@@ -32,13 +34,37 @@ export const createListPromptsResource = (
 		},
 		handler: async () => {
 			try {
+				// Get accessible projects for the user
+				const accessibleProjects = await projectService.getAccessibleProjects(user);
+				const accessibleProjectIds = accessibleProjects.map((project) => project.id);
+
+				if (accessibleProjectIds.length === 0) {
+					return {
+						contents: [
+							{
+								uri: 'prompts://list',
+								mimeType: 'application/json',
+								text: JSON.stringify({
+									prompts: [],
+									message: 'No accessible projects found.',
+								}),
+							},
+						],
+					};
+				}
+
 				// Buscar tabla de prompts en proyectos del usuario
 				const { data: tables } = await dataStoreService.getManyAndCount({
 					filter: { name: PROMPTS_TABLE_NAME },
 					take: 100,
 				});
 
-				if (tables.length === 0) {
+				// Filter tables to only include accessible projects
+				const accessibleTables = tables.filter((table) =>
+					accessibleProjectIds.includes(table.projectId),
+				);
+
+				if (accessibleTables.length === 0) {
 					return {
 						contents: [
 							{
@@ -56,7 +82,7 @@ export const createListPromptsResource = (
 				// Obtener prompts de todas las tablas encontradas
 				const allPrompts: any[] = [];
 
-				for (const table of tables) {
+				for (const table of accessibleTables) {
 					try {
 						const { data } = await dataStoreService.getManyRowsAndCount(
 							table.id,
