@@ -339,11 +339,39 @@ export class OpenAiAssistant implements INodeType {
 					throw new NodeOperationError(this.getNode(), 'The ‘text‘ parameter is empty.');
 				}
 
+				// Build custom headers from credentials
+				const defaultHeaders: Record<string, string> = {};
+
+				// Legacy single header support (backward compatibility)
+				if (
+					credentials.header &&
+					typeof credentials.headerName === 'string' &&
+					credentials.headerName &&
+					typeof credentials.headerValue === 'string'
+				) {
+					defaultHeaders[credentials.headerName] = credentials.headerValue;
+				}
+
+				// New multiple custom headers support
+				if (credentials.customHeaders && typeof credentials.customHeaders === 'object') {
+					const customHeaders = credentials.customHeaders as {
+						headers?: Array<{ name: string; value: string }>;
+					};
+					if (Array.isArray(customHeaders.headers)) {
+						for (const header of customHeaders.headers) {
+							if (header.name && typeof header.name === 'string' && header.value) {
+								defaultHeaders[header.name] = header.value;
+							}
+						}
+					}
+				}
+
 				const client = new OpenAIClient({
 					apiKey: credentials.apiKey as string,
 					maxRetries: options.maxRetries ?? 2,
 					timeout: options.timeout ?? 10000,
 					baseURL: options.baseURL,
+					...(Object.keys(defaultHeaders).length > 0 && { defaultHeaders }),
 				});
 				let agent;
 				const nativeToolsParsed: OpenAIToolType = nativeTools.map((tool) => ({ type: tool }));

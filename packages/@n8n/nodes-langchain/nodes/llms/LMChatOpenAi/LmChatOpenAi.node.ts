@@ -752,15 +752,35 @@ export class LmChatOpenAi implements INodeType {
 				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
 			};
 		}
+		// Build custom headers from credentials
+		const defaultHeaders: Record<string, string> = {};
+
+		// Legacy single header support (backward compatibility)
 		if (
 			credentials.header &&
 			typeof credentials.headerName === 'string' &&
 			credentials.headerName &&
 			typeof credentials.headerValue === 'string'
 		) {
-			configuration.defaultHeaders = {
-				[credentials.headerName]: credentials.headerValue,
+			defaultHeaders[credentials.headerName] = credentials.headerValue;
+		}
+
+		// New multiple custom headers support
+		if (credentials.customHeaders && typeof credentials.customHeaders === 'object') {
+			const customHeaders = credentials.customHeaders as {
+				headers?: Array<{ name: string; value: string }>;
 			};
+			if (Array.isArray(customHeaders.headers)) {
+				for (const header of customHeaders.headers) {
+					if (header.name && typeof header.name === 'string' && header.value) {
+						defaultHeaders[header.name] = header.value;
+					}
+				}
+			}
+		}
+
+		if (Object.keys(defaultHeaders).length > 0) {
+			configuration.defaultHeaders = defaultHeaders;
 		}
 
 		// Extra options to send to OpenAI, that are not directly supported by LangChain
