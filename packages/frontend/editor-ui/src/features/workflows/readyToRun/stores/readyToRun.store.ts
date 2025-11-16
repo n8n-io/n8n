@@ -147,10 +147,10 @@ export const useReadyToRunStore = defineStore(STORES.READY_TO_RUN, () => {
 		return userCanClaimOpenAiCredits.value && !readOnlyEnv && canCreate && hasWorkflows;
 	};
 
-	const { shouldShowSimplifiedLayout } = useEmptyStateDetection();
+	const { isTrulyEmpty } = useEmptyStateDetection();
 
-	const getSimplifiedLayoutVisibility = (route: RouteLocationNormalized, loading: boolean) => {
-		return shouldShowSimplifiedLayout(route, loading);
+	const getSimplifiedLayoutVisibility = (route: RouteLocationNormalized) => {
+		return isTrulyEmpty(route);
 	};
 
 	return {
