@@ -41,39 +41,14 @@ export class OpenAiApi implements ICredentialType {
 		{
 			displayName: 'Custom Headers',
 			name: 'customHeaders',
-			type: 'fixedCollection',
+			type: 'json',
 			typeOptions: {
-				multipleValues: true,
+				alwaysOpenEditWindow: true,
 			},
-			default: {},
-			placeholder: 'Add Header',
-			description: 'Custom HTTP headers to include with requests (useful for vLLM instances behind security proxies like Akamai or Cloudflare)',
-			options: [
-				{
-					name: 'headers',
-					displayName: 'Header',
-					values: [
-						{
-							displayName: 'Name',
-							name: 'name',
-							type: 'string',
-							default: '',
-							placeholder: 'X-Client-ID',
-							description: 'Header name',
-						},
-						{
-							displayName: 'Value',
-							name: 'value',
-							type: 'string',
-							typeOptions: {
-								password: true,
-							},
-							default: '',
-							description: 'Header value',
-						},
-					],
-				},
-			],
+			default: '{}',
+			placeholder: '{ "X-Client-ID": "your-client-id", "X-Secret-ID": "your-secret-id" }',
+			description: 'Custom HTTP headers as JSON object. Useful for vLLM instances behind security proxies like Akamai or Cloudflare that require multiple authentication headers.',
+			hint: 'Enter headers as a JSON object with header names as keys and values as strings',
 		},
 	];
 
@@ -93,37 +68,54 @@ export class OpenAiApi implements ICredentialType {
 		requestOptions.headers['Authorization'] = `Bearer ${credentials.apiKey}`;
 		requestOptions.headers['OpenAI-Organization'] = credentials.organizationId;
 
-		// Collect all custom headers (legacy + new)
-		const headersToApply: Array<{ name: string; value: string }> = [];
-
 		// Legacy single header support (backward compatibility)
-		// If legacy header exists, automatically migrate it to new format
 		if (
 			credentials.header &&
 			typeof credentials.headerName === 'string' &&
 			credentials.headerName &&
 			typeof credentials.headerValue === 'string'
 		) {
-			headersToApply.push({
-				name: credentials.headerName,
-				value: credentials.headerValue,
-			});
+			requestOptions.headers[credentials.headerName] = credentials.headerValue;
 		}
 
-		// New multiple custom headers support
-		if (credentials.customHeaders && typeof credentials.customHeaders === 'object') {
-			const customHeaders = credentials.customHeaders as {
-				headers?: Array<{ name: string; value: string }>;
-			};
-			if (Array.isArray(customHeaders.headers)) {
-				headersToApply.push(...customHeaders.headers);
-			}
-		}
+		// New JSON-based custom headers support
+		if (credentials.customHeaders) {
+			try {
+				let customHeaders: Record<string, string> = {};
 
-		// Apply all collected headers
-		for (const header of headersToApply) {
-			if (header.name && typeof header.name === 'string' && header.value) {
-				requestOptions.headers[header.name] = header.value;
+				// Handle different formats of customHeaders
+				if (typeof credentials.customHeaders === 'string') {
+					// Parse JSON string
+					const parsed = JSON.parse(credentials.customHeaders);
+					if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+						customHeaders = parsed;
+					}
+				} else if (typeof credentials.customHeaders === 'object' && credentials.customHeaders !== null) {
+					// Handle legacy fixedCollection format for backward compatibility
+					const legacyFormat = credentials.customHeaders as {
+						headers?: Array<{ name: string; value: string }>;
+					};
+					if (Array.isArray(legacyFormat.headers)) {
+						// Convert array format to object format
+						for (const header of legacyFormat.headers) {
+							if (header.name && typeof header.name === 'string' && header.value) {
+								customHeaders[header.name] = header.value;
+							}
+						}
+					} else {
+						// Direct object format
+						customHeaders = credentials.customHeaders as Record<string, string>;
+					}
+				}
+
+				// Apply all custom headers
+				for (const [headerName, headerValue] of Object.entries(customHeaders)) {
+					if (headerName && typeof headerName === 'string' && headerValue) {
+						requestOptions.headers[headerName] = String(headerValue);
+					}
+				}
+			} catch (error) {
+				// Silently ignore JSON parsing errors to maintain backward compatibility
 			}
 		}
 

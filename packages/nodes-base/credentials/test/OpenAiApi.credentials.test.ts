@@ -200,14 +200,34 @@ describe('OpenAiApi Credential', () => {
 			});
 		});
 
-		it('should add multiple custom headers using customHeaders field', async () => {
+		it('should add multiple custom headers using customHeaders field (JSON string)', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				customHeaders: '{"X-Client-ID": "client-123", "X-Secret-ID": "secret-456"}',
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {},
+				url: '/models',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sk-test123456789',
+				'OpenAI-Organization': undefined,
+				'X-Client-ID': 'client-123',
+				'X-Secret-ID': 'secret-456',
+			});
+		});
+
+		it('should add multiple custom headers using customHeaders field (object)', async () => {
 			const credentials: ICredentialDataDecryptedObject = {
 				apiKey: 'sk-test123456789',
 				customHeaders: {
-					headers: [
-						{ name: 'X-Client-ID', value: 'client-123' },
-						{ name: 'X-Secret-ID', value: 'secret-456' },
-					],
+					'X-Client-ID': 'client-123',
+					'X-Secret-ID': 'secret-456',
 				},
 			};
 
@@ -233,12 +253,7 @@ describe('OpenAiApi Credential', () => {
 				header: true,
 				headerName: 'X-Legacy-Header',
 				headerValue: 'legacy-value',
-				customHeaders: {
-					headers: [
-						{ name: 'X-Client-ID', value: 'client-123' },
-						{ name: 'X-Secret-ID', value: 'secret-456' },
-					],
-				},
+				customHeaders: '{"X-Client-ID": "client-123", "X-Secret-ID": "secret-456"}',
 			};
 
 			const requestOptions: IHttpRequestOptions = {
@@ -258,65 +273,79 @@ describe('OpenAiApi Credential', () => {
 			});
 		});
 
-		it('should handle empty customHeaders array', async () => {
+		it('should handle legacy fixedCollection format for backward compatibility', async () => {
 			const credentials: ICredentialDataDecryptedObject = {
 				apiKey: 'sk-test123456789',
-				customHeaders: {
-					headers: [],
-				},
-			};
-
-			const requestOptions: IHttpRequestOptions = {
-				headers: {},
-				url: '/models',
-				baseURL: 'https://api.openai.com/v1',
-			};
-
-			const result = await openAiApi.authenticate(credentials, requestOptions);
-
-			expect(result.headers).toEqual({
-				Authorization: 'Bearer sk-test123456789',
-				'OpenAI-Organization': undefined,
-			});
-		});
-
-		it('should ignore custom headers with empty names', async () => {
-			const credentials: ICredentialDataDecryptedObject = {
-				apiKey: 'sk-test123456789',
-				customHeaders: {
-					headers: [
-						{ name: '', value: 'should-be-ignored' },
-						{ name: 'X-Valid-Header', value: 'valid-value' },
-					],
-				},
-			};
-
-			const requestOptions: IHttpRequestOptions = {
-				headers: {},
-				url: '/models',
-				baseURL: 'https://api.openai.com/v1',
-			};
-
-			const result = await openAiApi.authenticate(credentials, requestOptions);
-
-			expect(result.headers).toEqual({
-				Authorization: 'Bearer sk-test123456789',
-				'OpenAI-Organization': undefined,
-				'X-Valid-Header': 'valid-value',
-			});
-			expect(result.headers?.['']).toBeUndefined();
-		});
-
-		it('should handle customHeaders with organization ID', async () => {
-			const credentials: ICredentialDataDecryptedObject = {
-				apiKey: 'sk-test123456789',
-				organizationId: 'org-123',
 				customHeaders: {
 					headers: [
 						{ name: 'X-Client-ID', value: 'client-123' },
 						{ name: 'X-Secret-ID', value: 'secret-456' },
 					],
 				},
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {},
+				url: '/models',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sk-test123456789',
+				'OpenAI-Organization': undefined,
+				'X-Client-ID': 'client-123',
+				'X-Secret-ID': 'secret-456',
+			});
+		});
+
+		it('should handle empty customHeaders JSON', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				customHeaders: '{}',
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {},
+				url: '/models',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sk-test123456789',
+				'OpenAI-Organization': undefined,
+			});
+		});
+
+		it('should ignore invalid JSON in customHeaders', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				customHeaders: 'invalid json{',
+			};
+
+			const requestOptions: IHttpRequestOptions = {
+				headers: {},
+				url: '/models',
+				baseURL: 'https://api.openai.com/v1',
+			};
+
+			const result = await openAiApi.authenticate(credentials, requestOptions);
+
+			// Should not throw, just ignore invalid JSON
+			expect(result.headers).toEqual({
+				Authorization: 'Bearer sk-test123456789',
+				'OpenAI-Organization': undefined,
+			});
+		});
+
+		it('should handle customHeaders with organization ID', async () => {
+			const credentials: ICredentialDataDecryptedObject = {
+				apiKey: 'sk-test123456789',
+				organizationId: 'org-123',
+				customHeaders: '{"X-Client-ID": "client-123", "X-Secret-ID": "secret-456"}',
 			};
 
 			const requestOptions: IHttpRequestOptions = {
@@ -338,11 +367,7 @@ describe('OpenAiApi Credential', () => {
 		it('should preserve existing headers when using customHeaders', async () => {
 			const credentials: ICredentialDataDecryptedObject = {
 				apiKey: 'sk-test123456789',
-				customHeaders: {
-					headers: [
-						{ name: 'X-Client-ID', value: 'client-123' },
-					],
-				},
+				customHeaders: '{"X-Client-ID": "client-123"}',
 			};
 
 			const requestOptions: IHttpRequestOptions = {

@@ -271,17 +271,35 @@ export class EmbeddingsOpenAi implements INodeType {
 			defaultHeaders[credentials.headerName] = credentials.headerValue;
 		}
 
-		// New multiple custom headers support
-		if (credentials.customHeaders && typeof credentials.customHeaders === 'object') {
-			const customHeaders = credentials.customHeaders as {
-				headers?: Array<{ name: string; value: string }>;
-			};
-			if (Array.isArray(customHeaders.headers)) {
-				for (const header of customHeaders.headers) {
-					if (header.name && typeof header.name === 'string' && header.value) {
-						defaultHeaders[header.name] = header.value;
+		// New JSON-based custom headers support
+		if (credentials.customHeaders) {
+			try {
+				let customHeaders: Record<string, string> = {};
+
+				if (typeof credentials.customHeaders === 'string') {
+					const parsed = JSON.parse(credentials.customHeaders);
+					if (typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)) {
+						customHeaders = parsed;
+					}
+				} else if (typeof credentials.customHeaders === 'object' && credentials.customHeaders !== null) {
+					// Handle legacy fixedCollection format
+					const legacyFormat = credentials.customHeaders as {
+						headers?: Array<{ name: string; value: string }>;
+					};
+					if (Array.isArray(legacyFormat.headers)) {
+						for (const header of legacyFormat.headers) {
+							if (header.name && header.value) {
+								customHeaders[header.name] = header.value;
+							}
+						}
+					} else {
+						customHeaders = credentials.customHeaders as Record<string, string>;
 					}
 				}
+
+				Object.assign(defaultHeaders, customHeaders);
+			} catch (error) {
+				// Silently ignore JSON parsing errors
 			}
 		}
 
