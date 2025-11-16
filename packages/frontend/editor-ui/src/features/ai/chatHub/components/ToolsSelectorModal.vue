@@ -280,7 +280,9 @@ onMounted(async () => {
 								size="large"
 								:aria-label="`Toggle ${tool.title || tool.node.name}`"
 								:model-value="!!selectedByProvider[key]?.has(tool.node.name)"
-								@update:model-value="(val) => toggleTool(key, tool.node.name, val)"
+								@update:model-value="
+									(val: string | number | boolean) => toggleTool(key, tool.node.name, val)
+								"
 							/>
 						</div>
 					</div>

@@ -4,13 +4,12 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import { useUIStore } from '@/app/stores/ui.store';
 import type { ChatHubProvider, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
@@ -26,7 +25,6 @@ const props = defineProps<{
 }>();
 
 const chatStore = useChatStore();
-const uiStore = useUIStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
@@ -85,28 +83,11 @@ function loadAgent() {
 	}
 }
 
-function resetForm() {
-	name.value = '';
-	description.value = '';
-	systemPrompt.value = '';
-	selectedModel.value = null;
-	agentSelectedCredentials.value = {};
-	tools.value = [];
-}
-
-// Watch for modal opening
-watch(
-	() => uiStore.modalsById.agentEditor?.open,
-	(isOpen) => {
-		if (isOpen) {
-			if (props.data.agentId) {
-				loadAgent();
-			} else {
-				resetForm();
-			}
-		}
-	},
-);
+onMounted(() => {
+	if (props.data.agentId) {
+		loadAgent();
+	}
+});
 
 function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
 	agentSelectedCredentials.value = {
