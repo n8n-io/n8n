@@ -219,6 +219,7 @@ const displayOptions = {
 export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions): Promise<INodeExecutionData[]> {
+	const abortSignal = this.getExecutionCancelSignal();
 	const items = this.getInputData();
 	const length = items.length;
 
@@ -400,10 +401,13 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 	}
 
 	let waitTime = 1000;
-	while (jobs.length > 0) {
-		const completedJobs: string[] = [];
+	outerLoop: while (jobs.length > 0) {
+		const settledJobs: string[] = [];
 
 		for (const job of jobs) {
+			if (abortSignal?.aborted) {
+				break outerLoop;
+			}
 			try {
 				const qs: IDataObject = job.location ? { location: job.location } : {};
 
@@ -420,7 +424,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				);
 
 				if (response.jobComplete) {
-					completedJobs.push(job.jobId);
+					settledJobs.push(job.jobId);
 
 					returnData.push(...prepareOutput.call(this, response, job.i, job.raw, job.includeSchema));
 				}
@@ -435,6 +439,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 				}
 			} catch (error) {
 				if (this.continueOnFail()) {
+					settledJobs.push(job.jobId);
 					const executionErrorData = this.helpers.constructExecutionMetaData(
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: job.i } },
@@ -449,7 +454,7 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 			}
 		}
 
-		jobs = jobs.filter((job) => !completedJobs.includes(job.jobId));
+		jobs = jobs.filter((job) => !settledJobs.includes(job.jobId));
 
 		if (jobs.length > 0) {
 			await sleep(waitTime);
