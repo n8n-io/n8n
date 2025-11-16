@@ -1084,12 +1084,13 @@ describe('Test PostgresV2, upsert operation', () => {
 			[
 				{
 					query:
-						'INSERT INTO $1:name.$2:name($4:name) VALUES($4:csv) ON CONFLICT ($3:name) DO UPDATE  SET $5:name = $6, $7:name = $8 RETURNING $9:name',
+						'INSERT INTO $1:name.$2:name($3:name) VALUES($4:csv) ON CONFLICT ($5:name) DO UPDATE  SET $6:name = $7, $8:name = $9 RETURNING $10:name',
 					values: [
 						'public',
 						'my_table',
+						['id', 'json', 'foo'],
+						['5', '{ "test": 5 }', 'data 5'],
 						'id',
-						{ json: '{ "test": 5 }', foo: 'data 5', id: '5' },
 						'json',
 						'{ "test": 5 }',
 						'foo',
@@ -1170,12 +1171,13 @@ describe('Test PostgresV2, upsert operation', () => {
 			[
 				{
 					query:
-						'INSERT INTO $1:name.$2:name($4:name) VALUES($4:csv) ON CONFLICT ($3:name) DO UPDATE  SET $5:name = $6, $7:name = $8 RETURNING *',
+						'INSERT INTO $1:name.$2:name($3:name) VALUES($4:csv) ON CONFLICT ($5:name) DO UPDATE  SET $6:name = $7, $8:name = $9 RETURNING *',
 					values: [
 						'public',
 						'my_table',
+						['id', 'json', 'foo'],
+						[1, { test: 15 }, 'data 1'],
 						'id',
-						{ id: 1, json: { test: 15 }, foo: 'data 1' },
 						'json',
 						{ test: 15 },
 						'foo',
@@ -1184,12 +1186,13 @@ describe('Test PostgresV2, upsert operation', () => {
 				},
 				{
 					query:
-						'INSERT INTO $1:name.$2:name($4:name) VALUES($4:csv) ON CONFLICT ($3:name) DO UPDATE  SET $5:name = $6, $7:name = $8 RETURNING *',
+						'INSERT INTO $1:name.$2:name($3:name) VALUES($4:csv) ON CONFLICT ($5:name) DO UPDATE  SET $6:name = $7, $8:name = $9 RETURNING *',
 					values: [
 						'public',
 						'my_table',
+						['id', 'json', 'foo'],
+						[2, { test: 10 }, 'data 2'],
 						'id',
-						{ id: 2, json: { test: 10 }, foo: 'data 2' },
 						'json',
 						{ test: 10 },
 						'foo',
@@ -1198,12 +1201,13 @@ describe('Test PostgresV2, upsert operation', () => {
 				},
 				{
 					query:
-						'INSERT INTO $1:name.$2:name($4:name) VALUES($4:csv) ON CONFLICT ($3:name) DO UPDATE  SET $5:name = $6, $7:name = $8 RETURNING *',
+						'INSERT INTO $1:name.$2:name($3:name) VALUES($4:csv) ON CONFLICT ($5:name) DO UPDATE  SET $6:name = $7, $8:name = $9 RETURNING *',
 					values: [
 						'public',
 						'my_table',
+						['id', 'json', 'foo'],
+						[3, { test: 5 }, 'data 3'],
 						'id',
-						{ id: 3, json: { test: 5 }, foo: 'data 3' },
 						'json',
 						{ test: 5 },
 						'foo',
@@ -1271,14 +1275,15 @@ describe('When matching on all columns', () => {
 			[
 				{
 					query:
-						'INSERT INTO $1:name.$2:name($6:name) VALUES($6:csv) ON CONFLICT ($3:name,$4:name,$5:name) DO NOTHING  RETURNING $7:name',
+						'INSERT INTO $1:name.$2:name($3:name) VALUES($4:csv) ON CONFLICT ($5:name,$6:name,$7:name) DO NOTHING  RETURNING $8:name',
 					values: [
 						'public',
 						'my_table',
+						['id', 'json', 'foo'],
+						['5', '{ "test": 5 }', 'data 5'],
 						'id',
 						'json',
 						'foo',
-						{ id: '5', json: '{ "test": 5 }', foo: 'data 5' },
 						['json'],
 					],
 				},
@@ -1357,38 +1362,41 @@ describe('When matching on all columns', () => {
 			[
 				{
 					query:
-						'INSERT INTO $1:name.$2:name($6:name) VALUES($6:csv) ON CONFLICT ($3:name,$4:name,$5:name) DO NOTHING  RETURNING *',
+						'INSERT INTO $1:name.$2:name($3:name) VALUES($4:csv) ON CONFLICT ($5:name,$6:name,$7:name) DO NOTHING  RETURNING *',
 					values: [
 						'public',
 						'my_table',
+						['id', 'json', 'foo'],
+						[1, { test: 15 }, 'data 1'],
 						'id',
 						'json',
 						'foo',
-						{ id: 1, json: { test: 15 }, foo: 'data 1' },
 					],
 				},
 				{
 					query:
-						'INSERT INTO $1:name.$2:name($6:name) VALUES($6:csv) ON CONFLICT ($3:name,$4:name,$5:name) DO NOTHING  RETURNING *',
+						'INSERT INTO $1:name.$2:name($3:name) VALUES($4:csv) ON CONFLICT ($5:name,$6:name,$7:name) DO NOTHING  RETURNING *',
 					values: [
 						'public',
 						'my_table',
+						['id', 'json', 'foo'],
+						[2, { test: 10 }, 'data 2'],
 						'id',
 						'json',
 						'foo',
-						{ id: 2, json: { test: 10 }, foo: 'data 2' },
 					],
 				},
 				{
 					query:
-						'INSERT INTO $1:name.$2:name($6:name) VALUES($6:csv) ON CONFLICT ($3:name,$4:name,$5:name) DO NOTHING  RETURNING *',
+						'INSERT INTO $1:name.$2:name($3:name) VALUES($4:csv) ON CONFLICT ($5:name,$6:name,$7:name) DO NOTHING  RETURNING *',
 					values: [
 						'public',
 						'my_table',
+						['id', 'json', 'foo'],
+						[3, { test: 5 }, 'data 3'],
 						'id',
 						'json',
 						'foo',
-						{ id: 3, json: { test: 5 }, foo: 'data 3' },
 					],
 				},
 			],
