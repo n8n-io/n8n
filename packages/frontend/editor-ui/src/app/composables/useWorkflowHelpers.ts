@@ -951,6 +951,7 @@ export function useWorkflowHelpers() {
 		workflowsStore.addWorkflow(workflowData);
 		workflowState.setActive(workflowData.active || false);
 		workflowsStore.setIsArchived(workflowData.isArchived);
+		workflowsStore.setDescription(workflowData.description);
 		workflowState.setWorkflowId(workflowData.id);
 		workflowState.setWorkflowName({
 			newName: workflowData.name,

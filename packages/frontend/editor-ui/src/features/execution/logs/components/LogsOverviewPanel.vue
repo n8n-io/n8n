@@ -142,6 +142,7 @@ function handleSwitchView(value: 'overview' | 'details') {
 					:latest-node-info="latestNodeInfo"
 					:flat-log-entries="flatLogEntries"
 					:can-open-ndv="true"
+					:execution="execution"
 					@toggle-expanded="emit('toggleExpanded', $event)"
 					@open-ndv="emit('openNdv', $event)"
 					@select="emit('select', $event)"
@@ -159,7 +160,7 @@ function handleSwitchView(value: 'overview' | 'details') {
 </template>
 
 <style lang="scss" module>
-@use '@/app/styles/variables' as vars;
+@use '@/app/css/variables' as vars;
 
 .container {
 	flex-grow: 1;

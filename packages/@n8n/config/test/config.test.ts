@@ -265,6 +265,7 @@ describe('GlobalConfig', () => {
 			maxOldSpaceSize: '',
 			maxConcurrency: 10,
 			taskTimeout: 300,
+			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
 			insecureMode: false,
 			isNativePythonRunnerEnabled: false,
@@ -316,6 +317,7 @@ describe('GlobalConfig', () => {
 			disableWebhookHtmlSandboxing: false,
 			disableBareRepos: false,
 			awsSystemCredentialsAccess: false,
+			enableGitNodeHooks: false,
 		},
 		executions: {
 			mode: 'regular',
@@ -361,7 +363,6 @@ describe('GlobalConfig', () => {
 			disabled: false,
 		},
 		workflowHistory: {
-			enabled: true,
 			pruneTime: -1,
 		},
 		sso: {
@@ -381,7 +382,6 @@ describe('GlobalConfig', () => {
 			provisioning: {
 				scopesProvisionInstanceRole: false,
 				scopesProvisionProjectRoles: false,
-				scopesProvisioningFrequency: 'never',
 				scopesName: 'n8n',
 				scopesInstanceRoleClaimName: 'n8n_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_projects',

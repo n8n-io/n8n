@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
-import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL, VIEWS } from '@/app/constants';
+import {
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS,
+	VIEWS,
+} from '@/app/constants';
 import { findOneFromModelsResponse, unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
@@ -33,6 +37,8 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
+import ToolsSelector from './components/ToolsSelector.vue';
+import { INodesSchema, type INode } from 'n8n-workflow';
 
 const router = useRouter();
 const route = useRoute();
@@ -64,6 +70,7 @@ const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
 	offset: { bottom: 100 },
 });
+
 const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
@@ -82,6 +89,41 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 		},
 	},
 );
+
+const defaultTools = useLocalStorage<INode[] | null>(
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS(usersStore.currentUserId ?? 'anonymous'),
+	null,
+	{
+		writeDefaults: false,
+		shallow: true,
+		serializer: {
+			read: (value) => {
+				try {
+					return INodesSchema.parse(JSON.parse(value));
+				} catch (error) {
+					return null;
+				}
+			},
+			write: (value) => JSON.stringify(value),
+		},
+	},
+);
+
+const toolsSelection = ref<INode[] | null>(null);
+
+const selectedTools = computed<INode[]>(() => {
+	if (currentConversation.value?.tools) {
+		return currentConversation.value.tools;
+	}
+
+	// As soon as the user selects tools use the selection over the default
+	if (toolsSelection.value !== null) {
+		return toolsSelection.value;
+	}
+
+	return defaultTools.value ?? [];
+});
+
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
 	const workflowId = route.query.workflowId;
@@ -159,6 +201,7 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 const editingAgentId = ref<string | undefined>(undefined);
+const isToolsSelectorOpen = ref(false);
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
@@ -274,6 +317,7 @@ function onSubmit(message: string) {
 		message,
 		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
+		selectedTools.value,
 	);
 
 	inputRef.value?.setText('');
@@ -362,6 +406,24 @@ function handleConfigureModel() {
 	headerRef.value?.openModelSelector();
 }
 
+function handleConfigureTools() {
+	isToolsSelectorOpen.value = true;
+	uiStore.openModal('toolsSelector');
+}
+
+async function onUpdateTools(newTools: INode[]) {
+	toolsSelection.value = newTools;
+	defaultTools.value = newTools;
+
+	if (currentConversation.value) {
+		try {
+			await chatStore.updateToolsInSession(sessionId.value, newTools);
+		} catch (error) {
+			toast.showError(error, 'Could not update selected tools');
+		}
+	}
+}
+
 async function handleEditAgent(agentId: string) {
 	try {
 		await chatStore.fetchCustomAgent(agentId);
@@ -415,6 +477,12 @@ function handleOpenWorkflow(workflowId: string) {
 			:credentials="credentialsByProvider"
 			@create-custom-agent="handleSelectModel"
 			@close="closeAgentEditor"
+		/>
+
+		<ToolsSelector
+			v-if="isToolsSelectorOpen"
+			:initial-value="selectedTools"
+			@update="onUpdateTools"
 		/>
 
 		<N8nScrollArea
@@ -471,11 +539,13 @@ function handleOpenWorkflow(workflowId: string) {
 						:class="$style.prompt"
 						:is-responding="isResponding"
 						:selected-model="selectedModel ?? null"
+						:selected-tools="selectedTools"
 						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
+						@select-tools="handleConfigureTools"
 						@set-credentials="handleConfigureCredentials"
 					/>
 				</div>

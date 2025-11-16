@@ -31,7 +31,14 @@ function onRename(newNodeName: string) {
 <template>
 	<header :class="$style.ndvHeader">
 		<div :class="$style.content">
-			<NodeIcon v-if="icon" :class="$style.icon" :size="20" :icon-source="icon" />
+			<NodeIcon
+				v-if="icon"
+				:class="$style.icon"
+				:size="20"
+				:icon-source="icon"
+				:node-name="props.nodeTypeName"
+				:show-tooltip="true"
+			/>
 			<div :class="$style.title">
 				<N8nInlineTextEdit
 					:model-value="nodeName"
