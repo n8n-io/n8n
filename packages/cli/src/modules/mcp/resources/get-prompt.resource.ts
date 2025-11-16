@@ -39,7 +39,8 @@ export const createGetPromptResource = (
 					throw new UserError('Invalid prompt URI format. Expected: prompts://projectId/promptName');
 				}
 
-				const [, projectId, promptName] = match;
+				const [, projectId, encodedPromptName] = match;
+				const promptName = decodeURIComponent(encodedPromptName);
 
 				// Buscar tabla de prompts en el proyecto
 				const { data: tables } = await dataStoreService.getManyAndCount({
@@ -56,7 +57,7 @@ export const createGetPromptResource = (
 				const table = tables[0];
 
 				// Buscar prompt por nombre
-				const { rows } = await dataStoreService.getManyRowsAndCount(table.id, projectId, {
+				const { data } = await dataStoreService.getManyRowsAndCount(table.id, projectId, {
 					filter: {
 						type: 'and',
 						filters: [
@@ -67,16 +68,16 @@ export const createGetPromptResource = (
 					take: 1,
 				});
 
-				if (rows.length === 0) {
+				if (data.length === 0) {
 					throw new UserError(`Prompt "${promptName}" not found or not available in MCP`);
 				}
 
-				const prompt = rows[0];
+				const prompt = data[0];
 
 				return {
 					contents: [
 						{
-							uri: `prompts://${projectId}/${promptName}`,
+							uri: `prompts://${projectId}/${encodeURIComponent(promptName)}`,
 							mimeType: 'text/plain',
 							text: prompt.content,
 						},

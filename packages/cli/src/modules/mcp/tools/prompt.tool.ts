@@ -131,7 +131,7 @@ async function createPrompt(projectId: string, params: any, dataStoreService: Da
 	const tableId = await ensurePromptsTableExists(projectId, dataStoreService);
 
 	// Verificar que no exista prompt con el mismo nombre
-	const { rows: existing } = await dataStoreService.getManyRowsAndCount(
+	const { data: existing } = await dataStoreService.getManyRowsAndCount(
 		tableId,
 		projectId,
 		{
@@ -175,7 +175,7 @@ async function createPrompt(projectId: string, params: any, dataStoreService: Da
 					message: `Prompt "${promptName}" created successfully`,
 					data: {
 						id: result[0].id,
-						uri: `prompts://${projectId}/${promptName}`,
+						uri: `prompts://${projectId}/${encodeURIComponent(promptName)}`,
 						...result[0],
 					},
 				}),
@@ -213,13 +213,12 @@ async function updatePrompt(projectId: string, params: any, dataStoreService: Da
 				filters: [{ columnName: 'name', condition: 'eq', value: promptName }],
 			},
 			data: updateData,
-			returnData: true,
 		},
 		true, // returnData
 		false, // dryRun
 	);
 
-	if (result.updatedRows === 0) {
+	if (!Array.isArray(result) || result.length === 0) {
 		throw new UserError(`Prompt "${promptName}" not found`);
 	}
 
@@ -231,8 +230,8 @@ async function updatePrompt(projectId: string, params: any, dataStoreService: Da
 					success: true,
 					message: `Prompt "${promptName}" updated successfully`,
 					data: {
-						updatedRows: result.updatedRows,
-						rows: result.rows,
+						updatedRows: result.length,
+						rows: result,
 					},
 				}),
 			},
@@ -257,12 +256,11 @@ async function deletePrompt(projectId: string, params: any, dataStoreService: Da
 				type: 'and',
 				filters: [{ columnName: 'name', condition: 'eq', value: promptName }],
 			},
-			returnData: true,
 		},
 		true, // returnData
 	);
 
-	if (result.deletedRows === 0) {
+	if (!Array.isArray(result) || result.length === 0) {
 		throw new UserError(`Prompt "${promptName}" not found`);
 	}
 
@@ -274,7 +272,7 @@ async function deletePrompt(projectId: string, params: any, dataStoreService: Da
 					success: true,
 					message: `Prompt "${promptName}" deleted successfully`,
 					data: {
-						deletedRows: result.deletedRows,
+						deletedRows: result.length,
 					},
 				}),
 			},
@@ -288,7 +286,7 @@ async function searchPrompts(projectId: string, params: any, dataStoreService: D
 	const tableId = await ensurePromptsTableExists(projectId, dataStoreService);
 
 	// Obtener todos los prompts disponibles en MCP
-	const { rows } = await dataStoreService.getManyRowsAndCount(tableId, projectId, {
+	const { data } = await dataStoreService.getManyRowsAndCount(tableId, projectId, {
 		filter: {
 			type: 'and',
 			filters: [{ columnName: 'availableInMCP', condition: 'eq', value: true }],
@@ -296,10 +294,10 @@ async function searchPrompts(projectId: string, params: any, dataStoreService: D
 		take: 200,
 	});
 
-	let filteredRows = rows;
+	let filteredRows = data;
 	if (searchQuery) {
 		const query = searchQuery.toLowerCase();
-		filteredRows = rows.filter(
+		filteredRows = data.filter(
 			(row: any) =>
 				row.name?.toLowerCase().includes(query) ||
 				row.description?.toLowerCase().includes(query) ||
@@ -311,7 +309,7 @@ async function searchPrompts(projectId: string, params: any, dataStoreService: D
 
 	const formattedPrompts = filteredRows.map((row: any) => ({
 		id: row.id,
-		uri: `prompts://${projectId}/${row.name}`,
+		uri: `prompts://${projectId}/${encodeURIComponent(row.name)}`,
 		name: row.name,
 		description: row.description,
 		category: row.category,

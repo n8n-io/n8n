@@ -1,4 +1,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import {
+	ListResourcesRequestSchema,
+	ReadResourceRequestSchema,
+} from '@modelcontextprotocol/sdk/types.js';
 import { GlobalConfig } from '@n8n/config';
 import { User } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -58,10 +62,38 @@ export class McpService {
 
 		// ========== PROMPT RESOURCES ==========
 		const listPromptsResource = createListPromptsResource(user, this.dataStoreService);
-		server.setResourceHandler(listPromptsResource.handler);
-
 		const getPromptResource = createGetPromptResource(user, this.dataStoreService);
-		server.setResourceHandler(getPromptResource.handler);
+
+		// List all available resources
+		server.setRequestHandler(ListResourcesRequestSchema, async () => {
+			return {
+				resources: [
+					{
+						uri: listPromptsResource.uri,
+						name: listPromptsResource.config.name,
+						description: listPromptsResource.config.description,
+						mimeType: listPromptsResource.config.mimeType,
+					},
+				],
+			};
+		});
+
+		// Read specific resource by URI
+		server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
+			const uri = request.params.uri;
+
+			// Handle list prompts resource
+			if (uri === 'prompts://list') {
+				return await listPromptsResource.handler();
+			}
+
+			// Handle get prompt resource (matches prompts://projectId/promptName)
+			if (uri.startsWith('prompts://') && uri !== 'prompts://list') {
+				return await getPromptResource.handler({ uri });
+			}
+
+			throw new Error(`Resource not found: ${uri}`);
+		});
 
 		// ========== PROMPT TOOL ==========
 		const promptTool = createPromptTool(user, this.dataStoreService);

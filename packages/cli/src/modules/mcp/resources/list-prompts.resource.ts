@@ -58,17 +58,20 @@ export const createListPromptsResource = (
 
 				for (const table of tables) {
 					try {
-						const { rows } = await dataStoreService.getManyRowsAndCount(
+						const { data } = await dataStoreService.getManyRowsAndCount(
 							table.id,
 							table.projectId,
 							{
-								filter: { availableInMCP: true },
+								filter: {
+									type: 'and',
+									filters: [{ columnName: 'availableInMCP', condition: 'eq', value: true }],
+								},
 								take: 200,
 							},
 						);
 
-						const formattedPrompts = rows.map((row: any) => ({
-							uri: `prompts://${table.projectId}/${row.name}`,
+						const formattedPrompts = data.map((row: any) => ({
+							uri: `prompts://${table.projectId}/${encodeURIComponent(row.name)}`,
 							name: row.name,
 							description: row.description || '',
 							category: row.category || 'general',

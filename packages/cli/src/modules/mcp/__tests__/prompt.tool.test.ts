@@ -27,7 +27,7 @@ describe('PromptTool', () => {
 
 			// Mock no existing prompt
 			mockDataStoreService.getManyRowsAndCount.mockResolvedValue({
-				rows: [],
+				data: [],
 				count: 0,
 			});
 
@@ -91,7 +91,7 @@ describe('PromptTool', () => {
 			});
 
 			mockDataStoreService.getManyRowsAndCount.mockResolvedValue({
-				rows: [
+				data: [
 					{
 						id: 'prompt1',
 						name: 'python-helper',
@@ -145,17 +145,14 @@ describe('PromptTool', () => {
 				count: 1,
 			});
 
-			mockDataStoreService.updateRows.mockResolvedValue({
-				updatedRows: 1,
-				rows: [
-					{
-						id: 'prompt123',
-						name: promptName,
-						content: 'Updated content',
-						version: '1.1.0',
-					},
-				],
-			});
+			mockDataStoreService.updateRows.mockResolvedValue([
+				{
+					id: 'prompt123',
+					name: promptName,
+					content: 'Updated content',
+					version: '1.1.0',
+				},
+			]);
 
 			const tool = createPromptTool(mockUser, mockDataStoreService);
 
@@ -183,9 +180,12 @@ describe('PromptTool', () => {
 				count: 1,
 			});
 
-			mockDataStoreService.deleteRows.mockResolvedValue({
-				deletedRows: 1,
-			});
+			mockDataStoreService.deleteRows.mockResolvedValue([
+				{
+					id: 'prompt123',
+					name: promptName,
+				},
+			]);
 
 			const tool = createPromptTool(mockUser, mockDataStoreService);
 
