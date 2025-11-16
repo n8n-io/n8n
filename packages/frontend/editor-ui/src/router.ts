@@ -638,6 +638,25 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			{
+				path: 'prompts',
+				name: VIEWS.PROMPT_LIBRARY,
+				components: {
+					settingsView: async () =>
+						await import('@/features/promptLibrary/views/PromptLibraryView.vue'),
+				},
+				meta: {
+					middleware: ['authenticated'],
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'prompts',
+							};
+						},
+					},
+				},
+			},
+			{
 				path: 'sso',
 				name: VIEWS.SSO_SETTINGS,
 				components: {
