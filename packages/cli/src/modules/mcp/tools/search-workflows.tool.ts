@@ -60,6 +60,13 @@ export const createSearchWorkflowsTool = (
 				'Search for workflows with optional filters. Returns a preview of each workflow.',
 			inputSchema,
 			outputSchema,
+			annotations: {
+				title: 'Search Workflows',
+				readOnlyHint: true,
+				destructiveHint: false,
+				idempotentHint: true,
+				openWorldHint: false,
+			},
 		},
 		handler: async ({ limit = MAX_RESULTS, active, name, projectId }) => {
 			const payload: SearchWorkflowsResult = await searchWorkflows(user, workflowService, {

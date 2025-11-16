@@ -45,6 +45,13 @@ export const createPromptTool = (
 				'Create, update, delete, or search prompts in n8n. Prompts can be used as reusable templates for AI interactions.',
 			inputSchema,
 			outputSchema,
+			annotations: {
+				title: 'Manage Prompts',
+				readOnlyHint: false,
+				destructiveHint: true,
+				idempotentHint: false,
+				openWorldHint: false,
+			},
 		},
 		handler: async (params) => {
 			const { operation, projectId } = params;
