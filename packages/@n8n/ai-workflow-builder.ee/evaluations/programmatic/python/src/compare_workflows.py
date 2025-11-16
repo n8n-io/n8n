@@ -248,8 +248,8 @@ def main():
         output = format_output_summary(result, metadata)
         print(output)
 
-    # Exit code based on similarity (70% threshold)
-    sys.exit(0 if result["similarity_score"] >= 0.7 else 1)
+    # Always exit with 0 - let the caller interpret the similarity score
+    sys.exit(0)
 
 
 if __name__ == "__main__":
