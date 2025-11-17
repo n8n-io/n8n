@@ -292,6 +292,17 @@ export class GmailTrigger implements INodeType {
 
 			Object.assign(qs, prepareQuery.call(this, allFilters, 0), options);
 
+			// Extract and log the timestamp from the query string for debugging
+			const queryString = qs.q as string;
+			const timestampMatch = queryString?.match(/after:(\d+)/);
+			const filterTimestamp = timestampMatch ? parseInt(timestampMatch[1], 10) : 0;
+			const filterDate = DateTime.fromMillis(filterTimestamp * 1000);
+
+			this.logger.debug(
+				`[GMAIL TRIGGER]: Gmail query parameters - Query: ${JSON.stringify(qs)}, Filter Date: ${filterDate.toLocaleString(DateTime.DATETIME_SHORT_WITH_SECONDS)}, Current Date: ${DateTime.now().toLocaleString(DateTime.DATETIME_SHORT_WITH_SECONDS)}`,
+			);
+
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 			const messagesResponse: MessageListResponse = await googleApiRequest.call(
 				this,
 				'GET',
@@ -301,6 +312,8 @@ export class GmailTrigger implements INodeType {
 			);
 
 			const messages = messagesResponse.messages ?? [];
+
+			this.logger.debug(`[GMAIL TRIGGER]: Found ${messages.length} message(s) matching query`);
 
 			if (!messages.length) {
 				return null;
@@ -325,6 +338,10 @@ export class GmailTrigger implements INodeType {
 			delete qs.includeDrafts;
 
 			for (const message of messages) {
+				this.logger.debug(
+					`[GMAIL TRIGGER]: Fetching Gmail message - ID: ${message.id}, Thread ID: ${message.threadId}`,
+				);
+
 				const fullMessage = (await googleApiRequest.call(
 					this,
 					'GET',
@@ -333,10 +350,22 @@ export class GmailTrigger implements INodeType {
 					qs,
 				)) as Message;
 
+				const messageDate = new Date(parseInt(fullMessage.internalDate ?? '0'));
+				const subjectHeader = fullMessage.payload?.headers?.find(
+					(header: { name: string; value: string }) => header.name === 'Subject',
+				);
+
+				this.logger.debug(
+					`[GMAIL TRIGGER]: Gmail message details - ID: ${fullMessage.id}, Subject: ${subjectHeader?.value ?? 'No subject'}, Labels: ${fullMessage.labelIds?.join(', ') || 'None'}, Date: ${messageDate.toLocaleString()}`,
+				);
+
 				allFetchedMessages.push(fullMessage);
 
 				if (!includeDrafts) {
 					if (fullMessage.labelIds?.includes('DRAFT')) {
+						this.logger.debug(
+							`[GMAIL TRIGGER]: Gmail message ID: ${fullMessage.id} is a draft, skipping`,
+						);
 						continue;
 					}
 				}
@@ -345,6 +374,9 @@ export class GmailTrigger implements INodeType {
 					fullMessage.labelIds?.includes('SENT') &&
 					!fullMessage.labelIds?.includes('INBOX')
 				) {
+					this.logger.debug(
+						`[GMAIL TRIGGER]: Gmail message ID: ${fullMessage.id} is a sent message, skipping`,
+					);
 					continue;
 				}
 
@@ -360,6 +392,7 @@ export class GmailTrigger implements INodeType {
 			}
 
 			if (simple) {
+				this.logger.debug('[GMAIL TRIGGER]: Simplifying and returning output');
 				responseData = this.helpers.returnJsonArray(
 					await simplifyOutput.call(
 						this,
@@ -383,6 +416,7 @@ export class GmailTrigger implements INodeType {
 		}
 
 		if (!allFetchedMessages.length) {
+			this.logger.debug('[GMAIL TRIGGER]: No messages found, no execution is expected');
 			return null;
 		}
 
@@ -401,6 +435,7 @@ export class GmailTrigger implements INodeType {
 
 			if (!date || isNaN(date)) {
 				emailsWithInvalidDate.add(email.id);
+				this.logger.debug(`[GMAIL TRIGGER]: Email ID: ${email.id} has invalid date, skipping`);
 				return +startDate;
 			}
 
@@ -412,10 +447,18 @@ export class GmailTrigger implements INodeType {
 			return emailDate > lastDate ? emailDate : lastDate;
 		}, 0);
 
+		this.logger.debug(
+			`[GMAIL TRIGGER]: After reducing the last email date (${lastEmailDate}), ${allFetchedMessages.length} messages remaining`,
+		);
+
 		const nextPollPossibleDuplicates = allFetchedMessages.reduce((duplicates, message) => {
 			const emailDate = getEmailDateAsSeconds(message);
 			return emailDate <= lastEmailDate ? duplicates.concat(message.id) : duplicates;
 		}, Array.from(emailsWithInvalidDate));
+
+		this.logger.debug(
+			`[GMAIL TRIGGER]: After reducing the possible duplicates, ${nextPollPossibleDuplicates.length} duplicates remaining`,
+		);
 
 		const possibleDuplicates = new Set(nodeStaticData.possibleDuplicates ?? []);
 		if (possibleDuplicates.size > 0) {
@@ -425,13 +468,24 @@ export class GmailTrigger implements INodeType {
 			});
 		}
 
+		this.logger.debug(
+			`[GMAIL TRIGGER]: After filtering the possible duplicates, ${responseData.length} messages remaining`,
+		);
+
 		nodeStaticData.possibleDuplicates = nextPollPossibleDuplicates;
+
+		const lastCheckedTimestamp = lastEmailDate ?? +startDate;
+		const lastCheckedDate = DateTime.fromSeconds(lastCheckedTimestamp);
+		this.logger.debug(
+			`[GMAIL TRIGGER]: Updating last time checked - Timestamp: ${lastCheckedTimestamp}, Date: ${lastCheckedDate.toLocaleString(DateTime.DATETIME_SHORT_WITH_SECONDS)}`,
+		);
 		nodeStaticData.lastTimeChecked = lastEmailDate ?? +startDate;
 
 		if (Array.isArray(responseData) && responseData.length) {
+			this.logger.debug(`[GMAIL TRIGGER]: Returning ${responseData.length} messages`);
 			return [responseData];
 		}
-
+		this.logger.debug('[GMAIL TRIGGER]: No execution is expected');
 		return null;
 	}
 }
