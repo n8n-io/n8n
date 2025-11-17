@@ -47,9 +47,13 @@ class ParameterComparisonRule:
         """Check if this rule applies to a parameter path"""
         # Support wildcards like "options.*" or "*Message"
         # Use placeholders to preserve wildcards during escaping
-        pattern = self.parameter.replace("**", "\x00DOUBLE_STAR\x00").replace("*", "\x00STAR\x00")
+        pattern = self.parameter.replace("**", "\x00DOUBLE_STAR\x00").replace(
+            "*", "\x00STAR\x00"
+        )
         pattern = pattern.replace(".", r"\.")
-        pattern = pattern.replace("\x00DOUBLE_STAR\x00", ".*").replace("\x00STAR\x00", "[^.]*")
+        pattern = pattern.replace("\x00DOUBLE_STAR\x00", ".*").replace(
+            "\x00STAR\x00", "[^.]*"
+        )
         return bool(re.match(f"^{pattern}$", param_path))
 
 
