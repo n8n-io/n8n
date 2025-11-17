@@ -164,9 +164,14 @@ export class FileSystemManager implements BinaryData.Manager {
 
 	async deleteManyByFileId(ids: string[]): Promise<void> {
 		const parsedIds = ids.flatMap((id) => {
-			const parsed = this.parseFileId(id);
+			try {
+				const parsed = this.parseFileId(id);
 
-			return parsed ? [parsed] : [];
+				return [parsed];
+			} catch (e) {
+				Container.get(ErrorReporter).warn(`Could not parse file ID ${id}. Skip deletion`);
+				return [];
+			}
 		});
 
 		await this.deleteMany(parsedIds);
@@ -197,7 +202,7 @@ export class FileSystemManager implements BinaryData.Manager {
 		}
 	}
 
-	private parseFileId(fileId: string): BinaryData.FileLocation | null {
+	private parseFileId(fileId: string): BinaryData.FileLocation {
 		const executionMatch = fileId.match(EXECUTION_PATH_MATCHER);
 
 		if (executionMatch) {
@@ -218,9 +223,7 @@ export class FileSystemManager implements BinaryData.Manager {
 			};
 		}
 
-		Container.get(ErrorReporter).warn(`File ID ${fileId} is invalid`);
-
-		return null;
+		throw Error(`File ID ${fileId} has invalid format.`);
 	}
 
 	private resolvePath(...args: string[]) {
