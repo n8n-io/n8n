@@ -7,7 +7,7 @@ import type { Readable } from 'stream';
 import { v4 as uuid } from 'uuid';
 
 import type { BinaryData } from './types';
-import { assertDir, doesNotExist } from './utils';
+import { assertDir, doesNotExist, FileLocation } from './utils';
 import { DisallowedFilepathError } from '../errors/disallowed-filepath.error';
 import { FileNotFoundError } from '../errors/file-not-found.error';
 
@@ -206,21 +206,13 @@ export class FileSystemManager implements BinaryData.Manager {
 		const executionMatch = fileId.match(EXECUTION_PATH_MATCHER);
 
 		if (executionMatch) {
-			return {
-				type: 'execution',
-				workflowId: executionMatch[1],
-				executionId: executionMatch[2],
-			};
+			return FileLocation.ofExecution(executionMatch[1], executionMatch[2]);
 		}
 
 		const chatHubMatch = fileId.match(CHAT_HUB_ATTACHMENT_PATH_MATCHER);
 
 		if (chatHubMatch) {
-			return {
-				type: 'chat-hub-message-attachment',
-				sessionId: chatHubMatch[1],
-				messageId: chatHubMatch[2],
-			};
+			return FileLocation.ofChatHubMessageAttachment(chatHubMatch[1], chatHubMatch[2]);
 		}
 
 		throw Error(`File ID ${fileId} has invalid format.`);

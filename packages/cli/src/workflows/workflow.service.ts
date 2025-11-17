@@ -41,6 +41,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
+import { FileLocation } from 'n8n-core/src/binary-data/utils';
 
 @Service()
 export class WorkflowService {
@@ -457,11 +458,7 @@ export class WorkflowService {
 				where: { workflowId },
 			})
 			.then((rows) =>
-				rows.map<BinaryData.FileLocation>(({ id: executionId }) => ({
-					type: 'execution',
-					workflowId,
-					executionId,
-				})),
+				rows.map(({ id: executionId }) => FileLocation.ofExecution(workflowId, executionId)),
 			);
 
 		await this.workflowRepository.delete(workflowId);

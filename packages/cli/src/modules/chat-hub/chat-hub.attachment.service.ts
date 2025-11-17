@@ -9,6 +9,7 @@ import type { ChatHubMessage } from './chat-hub-message.entity';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type Stream from 'node:stream';
+import { FileLocation } from 'n8n-core/src/binary-data/utils';
 
 @Service()
 export class ChatHubAttachmentService {
@@ -59,7 +60,7 @@ export class ChatHubAttachmentService {
 			attachmentsWithBuffer.map(
 				async ([attachment, buffer]) =>
 					await this.binaryDataService.store(
-						{ type: 'chat-hub-message-attachment', sessionId, messageId },
+						FileLocation.ofChatHubMessageAttachment(sessionId, messageId),
 						buffer,
 						attachment,
 					),
