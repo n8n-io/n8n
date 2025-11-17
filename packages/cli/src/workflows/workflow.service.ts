@@ -41,6 +41,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
+import { toWorkflow } from './workflow.utils';
 
 /**
  * Type for (soon to be legacy) workflow update data
@@ -138,6 +139,9 @@ export class WorkflowService {
 		if (includeFolders) {
 			workflows = this.mergeProcessedWorkflows(workflowsAndFolders, workflows);
 		}
+
+		// Add active field to all workflows (skip folders if present)
+		workflows = workflows.map((item) => ('activeVersionId' in item ? toWorkflow(item) : item));
 
 		return {
 			workflows,

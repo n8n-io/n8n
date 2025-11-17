@@ -61,6 +61,8 @@ import { UserManagementMailer } from '@/user-management/email';
 import * as utils from '@/utils';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
+import { toWorkflow } from './workflow.utils';
+
 @RestController('/workflows')
 export class WorkflowsController {
 	constructor(
@@ -236,7 +238,7 @@ export class WorkflowsController {
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, savedWorkflow.id);
 
-		return { ...savedWorkflowWithMetaData, scopes };
+		return { ...toWorkflow(savedWorkflowWithMetaData), scopes };
 	}
 
 	@Get('/', { middlewares: listQueryMiddleware })
@@ -337,7 +339,7 @@ export class WorkflowsController {
 
 			const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 
-			return { ...workflowWithMetaData, scopes };
+			return { ...toWorkflow(workflowWithMetaData), scopes };
 		}
 
 		// sharing disabled
@@ -361,7 +363,7 @@ export class WorkflowsController {
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 
-		return { ...workflow, scopes };
+		return { ...toWorkflow(workflow), scopes };
 	}
 
 	@Patch('/:workflowId')
@@ -394,7 +396,7 @@ export class WorkflowsController {
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 
-		return { ...updatedWorkflow, scopes };
+		return { ...toWorkflow(updatedWorkflow), scopes };
 	}
 
 	@Delete('/:workflowId')
@@ -432,7 +434,7 @@ export class WorkflowsController {
 			);
 		}
 
-		return workflow;
+		return toWorkflow(workflow);
 	}
 
 	@Post('/:workflowId/unarchive')
@@ -453,7 +455,7 @@ export class WorkflowsController {
 			);
 		}
 
-		return workflow;
+		return toWorkflow(workflow);
 	}
 
 	@Post('/:workflowId/run')
