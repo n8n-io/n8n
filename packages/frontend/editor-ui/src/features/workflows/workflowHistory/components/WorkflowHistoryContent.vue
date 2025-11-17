@@ -58,11 +58,18 @@ const formattedPublishedAt = computed<string | null>(() => {
 	return 'Published at X';
 });
 
-const actions = computed(() =>
-	props.isFirstItemShown
-		? props.actions.filter((action) => action.value !== 'restore')
-		: props.actions,
-);
+const actions = computed(() => {
+	let filteredActions = props.actions;
+	if (props.isFirstItemShown) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
+	}
+
+	if (props.isVersionActive) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
+	}
+
+	return filteredActions;
+});
 
 const onAction = ({
 	action,
