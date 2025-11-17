@@ -5,7 +5,7 @@ import { Service } from '@n8n/di';
 import { AiAssistantClient, AiAssistantSDK } from '@n8n_io/ai-assistant-sdk';
 import assert from 'assert';
 import { Client as TracingClient } from 'langsmith';
-import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
+import type { IUser, INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
 import { anthropicClaudeSonnet45 } from '@/llm-config';
@@ -13,8 +13,6 @@ import { SessionManagerService } from '@/session-manager.service';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
 type OnCreditsUpdated = (userId: string, creditsQuota: number, creditsClaimed: number) => void;
-
-type OnTelemetryEvent = (event: string, properties: ITelemetryTrackProperties) => void;
 
 @Service()
 export class AiWorkflowBuilderService {
