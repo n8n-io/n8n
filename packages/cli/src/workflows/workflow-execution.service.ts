@@ -352,6 +352,7 @@ export class WorkflowExecutionService {
 					? {
 							executionId: workflowErrorData.execution.id,
 							workflowId: workflowErrorData.workflow.id,
+							executionContext: workflowErrorData.execution.executionContext,
 						}
 					: undefined;
 
