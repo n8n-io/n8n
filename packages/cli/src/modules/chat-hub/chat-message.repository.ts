@@ -20,6 +20,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 			this.manager,
 			trx,
 			async (em) => {
+				// @ts-ignore Type too complex to infer
 				await em.insert(ChatHubMessage, message);
 				const saved = await em.findOneOrFail(ChatHubMessage, {
 					where: { id: message.id },

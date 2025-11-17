@@ -37,7 +37,9 @@ export class CommandRegistry {
 		// Try to load regular commands
 		try {
 			await import(`./commands/${this.commandName.replaceAll(':', '/')}.js`);
-		} catch {}
+		} catch (err) {
+			console.error(err);
+		}
 
 		// Load modules to ensure all module commands are registered
 		await this.moduleRegistry.loadModules();
