@@ -1,4 +1,4 @@
-ARG NODE_VERSION=22.21.0
+ARG NODE_VERSION=25.2.1
 ARG N8N_VERSION=snapshot
 ARG LAUNCHER_VERSION=1.4.1
 ARG TARGETPLATFORM
@@ -11,7 +11,7 @@ FROM n8nio/base:${NODE_VERSION} AS system-deps
 # ==============================================================================
 # STAGE 2: Application Artifact Processor
 # ==============================================================================
-FROM alpine:3.22.0 AS app-artifact-processor
+FROM alpine:3.22.2 AS app-artifact-processor
 
 COPY ./compiled /app/
 
