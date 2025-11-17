@@ -17,7 +17,6 @@ import type {
 	INodeExecutionData,
 	INodeParameterResourceLocator,
 	INodeParameters,
-	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	NodeParameterValue,
@@ -26,6 +25,7 @@ import type {
 } from './interfaces';
 import type { Workflow } from './workflow';
 import { WorkflowDataProxy } from './workflow-data-proxy';
+import type { IRunExecutionData } from '.';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&

@@ -17,7 +17,6 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	IPairedItemData,
-	IRunExecutionData,
 	ISourceData,
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -35,6 +34,7 @@ import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
 import { createEnvProvider, createEnvProviderState } from './workflow-data-proxy-env-provider';
 import { getPinDataIfManualExecution } from './workflow-data-proxy-helpers';
+import type { IRunExecutionData } from '.';
 
 const isScriptingNode = (nodeName: string, workflow: Workflow) => {
 	const node = workflow.getNode(nodeName);

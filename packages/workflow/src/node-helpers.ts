@@ -25,7 +25,6 @@ import type {
 	INodePropertyRegexValidation,
 	INodeType,
 	IParameterDependencies,
-	IRunExecutionData,
 	IVersionedNodeType,
 	NodeParameterValue,
 	ResourceMapperValue,
@@ -47,6 +46,7 @@ import {
 import { validateFieldType } from './type-validation';
 import { deepCopy } from './utils';
 import type { Workflow } from './workflow';
+import type { IRunExecutionData } from '.';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{
