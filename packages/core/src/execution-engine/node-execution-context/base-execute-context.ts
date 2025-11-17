@@ -33,10 +33,10 @@ import {
 	createEnvProviderState,
 } from 'n8n-workflow';
 
-import { NodeExecutionContext } from './node-execution-context';
-
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 import { FileLocation } from '@/binary-data/utils';
+
+import { NodeExecutionContext } from './node-execution-context';
 
 export class BaseExecuteContext extends NodeExecutionContext {
 	protected readonly binaryDataService = Container.get(BinaryDataService);
