@@ -6,6 +6,7 @@ import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
 import { computed, h, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { useRoute } from 'vue-router';
 import type { PermissionsRecord } from '@n8n/permissions';
 import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
@@ -41,6 +42,7 @@ const uiStore = useUIStore();
 const workflowHelpers = useWorkflowHelpers();
 
 const i18n = useI18n();
+const route = useRoute();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 
@@ -81,9 +83,7 @@ const containsOnlyExecuteWorkflowTrigger = computed((): boolean => {
 });
 
 const isNewWorkflow = computed(() => {
-	if (!props.workflowId) return true;
-	const workflow = workflowsStore.workflowsById[props.workflowId];
-	return !workflow || !workflow.id;
+	return route.query.new === 'true';
 });
 
 const disabled = computed((): boolean => {

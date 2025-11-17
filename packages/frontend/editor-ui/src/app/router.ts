@@ -400,7 +400,7 @@ export const routes: RouteRecordRaw[] = [
 		beforeEnter: () => {
 			// Generate a unique workflow ID using nanoid and redirect to it
 			const newWorkflowId = nanoid();
-			return { name: VIEWS.WORKFLOW, params: { name: newWorkflowId } };
+			return { name: VIEWS.WORKFLOW, params: { name: newWorkflowId }, query: { new: 'true' } };
 		},
 	},
 	{

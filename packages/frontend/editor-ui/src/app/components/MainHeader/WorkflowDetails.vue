@@ -144,9 +144,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 };
 
 const isNewWorkflow = computed(() => {
-	if (!props.id) return true;
-	const workflow = workflowsStore.workflowsById[props.id];
-	return !workflow || !workflow.id;
+	return route.query.new === 'true';
 });
 
 const isWorkflowSaving = computed(() => {
@@ -313,6 +311,9 @@ async function onSaveButtonClick() {
 	const name = props.name;
 	const tags = props.tags as string[];
 
+	// Capture the "new" state before saving, as the route will be replaced during save
+	const wasNewWorkflow = route.query.new === 'true';
+
 	const saved = await workflowSaving.saveCurrentWorkflow({
 		id,
 		name,
@@ -320,7 +321,7 @@ async function onSaveButtonClick() {
 	});
 
 	if (saved) {
-		showCreateWorkflowSuccessToast(id);
+		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 
 		await npsSurveyStore.fetchPromptsData();
 
@@ -413,9 +414,13 @@ async function onNameSubmit(name: string) {
 
 	uiStore.addActiveAction('workflowSaving');
 	const id = getWorkflowId();
+
+	// Capture the "new" state before saving, as the route will be replaced during save
+	const wasNewWorkflow = route.query.new === 'true';
+
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
-		showCreateWorkflowSuccessToast(id);
+		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 		documentTitle.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
@@ -709,12 +714,11 @@ function getToastContent() {
 	return { title, toastMessage };
 }
 
-function showCreateWorkflowSuccessToast(id?: string) {
+function showCreateWorkflowSuccessToast(id?: string, wasNewWorkflow?: boolean) {
 	if (!id) return;
 
-	// Only show toast if this is a newly created workflow (doesn't exist in store yet)
-	const workflow = workflowsStore.workflowsById[id];
-	const shouldShowToast = !workflow || !workflow.id;
+	// Only show toast if this is a newly created workflow
+	const shouldShowToast = wasNewWorkflow ?? false;
 
 	if (!shouldShowToast) return;
 
