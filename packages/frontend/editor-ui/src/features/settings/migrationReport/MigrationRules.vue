@@ -216,7 +216,14 @@ const compatibleWorkflowsCount = computed(() => {
 						</div>
 						<N8nText tag="p" color="text-base">
 							{{ issue.ruleDescription }}
-							<N8nLink theme="text" underline href="#">
+							<N8nLink
+								v-if="issue.ruleDocumentationUrl"
+								theme="text"
+								underline
+								:href="issue.ruleDocumentationUrl"
+								target="_blank"
+								rel="noopener noreferrer"
+							>
 								<u :class="$style.NoLineBreak">
 									{{ i18n.baseText('settings.migrationReport.documentation') }}
 									<N8nIcon icon="external-link" />
