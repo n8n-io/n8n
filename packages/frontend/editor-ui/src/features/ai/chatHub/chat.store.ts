@@ -753,6 +753,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function updateProviderSettings(updated: ChatProviderSettingsDto) {
+		if (!updated.enabled || !updated.limitModels) {
+			updated.allowedModels = [];
+		}
+
 		const saved = await updateChatSettingsApi(rootStore.restApiContext, updated);
 
 		settings.value = settings.value?.map((previous: ChatProviderSettingsDto) =>
