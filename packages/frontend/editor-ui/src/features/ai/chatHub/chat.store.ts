@@ -55,14 +55,13 @@ import { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
 	const telemetry = useTelemetry();
+
 	const agents = ref<ChatModelsResponse>();
 	const sessions = ref<ChatHubSessionDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 	const streaming = ref<ChatStreamingState>();
-
 	const settingsLoading = ref(false);
 	const settings = ref<ChatProviderSettingsDto[]>([]);
-
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
 
 	const getConversation = (sessionId: ChatSessionId): ChatConversation | undefined =>

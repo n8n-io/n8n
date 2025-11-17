@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, watch } from 'vue';
 import {
 	N8nButton,
+	N8nCallout,
 	N8nHeading,
 	N8nIcon,
 	N8nOption,
@@ -45,6 +46,7 @@ const modalBus = ref(createEventBus());
 const loadingSettings = ref(false);
 const loadingModels = ref(false);
 const availableModels = ref<ChatModelDto[]>([]);
+const calloutDismissed = ref(false);
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
@@ -123,22 +125,26 @@ const models = computed(() => {
 		});
 });
 
-const onToggleEnabled = (value: string | number | boolean) => {
+function onToggleEnabled(value: string | number | boolean) {
 	if (settings.value) {
 		settings.value.enabled = typeof value === 'boolean' ? value : Boolean(value);
 	}
-};
+}
 
-const onToggleLimitModels = (value: string | number | boolean) => {
+function onToggleLimitModels(value: string | number | boolean) {
 	if (settings.value) {
 		settings.value.limitModels = typeof value === 'boolean' ? value : Boolean(value);
 	}
-};
+}
 
 function onSelectModels(selectedModelNames: Array<{ model: string; displayName: string }>) {
 	if (settings.value) {
 		settings.value.allowedModels = selectedModelNames;
 	}
+}
+
+function onCalloutDismiss() {
+	calloutDismissed.value = true;
 }
 
 onMounted(async () => {
@@ -167,7 +173,7 @@ watch(
 		:name="modalName"
 		:event-bus="modalBus"
 		width="50%"
-		max-width="720px"
+		max-width="860px"
 		min-height="340px"
 		:center="true"
 	>
@@ -216,6 +222,29 @@ watch(
 						</N8nTooltip>
 					</div>
 				</div>
+
+				<N8nCallout
+					v-if="settings && settings.enabled && !calloutDismissed"
+					icon="info"
+					icon-size="large"
+					theme="secondary"
+				>
+					<N8nText
+						size="small"
+						v-n8n-html="i18n.baseText('settings.chatHub.providers.modal.edit.credential.callout')"
+					/>
+
+					<template #trailingContent>
+						<N8nIcon
+							icon="x"
+							title="Dismiss"
+							size="medium"
+							type="secondary"
+							class="callout-dismiss"
+							@click="onCalloutDismiss()"
+						/>
+					</template>
+				</N8nCallout>
 
 				<div v-if="settings && settings.enabled">
 					<N8nText size="small" color="text-base">
@@ -324,6 +353,10 @@ watch(
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+
+	padding: var(--spacing--sm);
+	border-radius: var(--radius);
+	border: var(--border);
 }
 
 .label {

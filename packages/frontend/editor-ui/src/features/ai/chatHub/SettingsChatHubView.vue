@@ -63,6 +63,7 @@ function onEditProvider(settings: ChatProviderSettingsDto) {
 						title: i18n.baseText('settings.chatHub.providers.updated.success'),
 						type: 'success',
 					});
+					await settingsStore.getModuleSettings();
 				} catch (error) {
 					toast.showError(error, i18n.baseText('settings.chatHub.providers.updated.error'));
 				}

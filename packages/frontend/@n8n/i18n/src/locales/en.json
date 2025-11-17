@@ -2293,6 +2293,7 @@
 	"settings.chatHub.providers.table.empty.title": "No chat providers configured",
 	"settings.chatHub.providers.table.empty.description": "Configure chat providers to restrict available models and credentials.",
 	"settings.chatHub.providers.modal.edit.title": "Edit provider",
+	"settings.chatHub.providers.modal.edit.credential.callout": "<b>Tip:</b> To make this provider easy to use, share the credential with the appropriate users or make it available to all users via sharing options.",
 	"settings.chatHub.providers.modal.edit.credential.label": "Default credential",
 	"settings.chatHub.providers.modal.edit.credential.placeholder": "Select a credential",
 	"settings.chatHub.providers.modal.edit.credential.new": "New credential",
