@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.117.0",
+  "version": "1.119.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -156,7 +156,8 @@
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
-      "dist/nodes/ModelSelector/ModelSelector.node.js"
+      "dist/nodes/ModelSelector/ModelSelector.node.js",
+      "dist/nodes/Guardrails/Guardrails.node.js"
     ]
   },
   "devDependencies": {

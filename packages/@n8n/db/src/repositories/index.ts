@@ -29,5 +29,9 @@ export { WorkflowTagMappingRepository } from './workflow-tag-mapping.repository'
 export { SharedWorkflowRepository } from './shared-workflow.repository';
 export { SharedCredentialsRepository } from './shared-credentials.repository';
 export { WorkflowRepository } from './workflow.repository';
+export {
+	WorkflowDependencyRepository,
+	WorkflowDependencies,
+} from './workflow-dependency.repository';
 export { WebhookRepository } from './webhook.repository';
 export { UserRepository } from './user.repository';

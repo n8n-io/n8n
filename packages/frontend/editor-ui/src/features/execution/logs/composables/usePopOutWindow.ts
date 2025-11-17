@@ -1,5 +1,5 @@
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { PopOutWindowKey } from '@/constants';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { PopOutWindowKey } from '@/app/constants';
 import { useProvideTooltipAppendTo } from '@n8n/design-system/composables/useTooltipAppendTo';
 import {
 	computed,

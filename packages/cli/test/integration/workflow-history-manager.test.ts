@@ -1,12 +1,12 @@
 import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { WorkflowHistoryRepository } from '@n8n/db';
+import { WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
 
 import { License } from '@/license';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
 import { createManyWorkflowHistoryItems } from './shared/db/workflow-history';
 
@@ -27,10 +27,8 @@ describe('Workflow History Manager', () => {
 		await testDb.truncate(['WorkflowEntity']);
 		jest.clearAllMocks();
 
-		globalConfig.workflowHistory.enabled = true;
 		globalConfig.workflowHistory.pruneTime = -1;
 
-		license.isWorkflowHistoryLicensed.mockReturnValue(true);
 		license.getWorkflowHistoryPruneLimit.mockReturnValue(-1);
 	});
 
@@ -55,18 +53,6 @@ describe('Workflow History Manager', () => {
 		jest.clearAllTimers();
 		jest.useRealTimers();
 		pruneSpy.mockRestore();
-	});
-
-	test('should not prune when not licensed', async () => {
-		license.isWorkflowHistoryLicensed.mockReturnValue(false);
-		await createWorkflowHistory();
-		await pruneAndAssertCount();
-	});
-
-	test('should not prune when licensed but disabled', async () => {
-		globalConfig.workflowHistory.enabled = false;
-		await createWorkflowHistory();
-		await pruneAndAssertCount();
 	});
 
 	test('should not prune when both prune times are -1 (infinite)', async () => {
@@ -103,6 +89,47 @@ describe('Workflow History Manager', () => {
 		).toBe(0);
 	});
 
+	test('should not prune current versions', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+
+		const activeWorkflow = await createWorkflow({ active: true });
+		const inactiveWorkflow = await createWorkflow({ active: false });
+
+		// Create old history versions for the active workflow
+		const activeWorkflowVersions = await createManyWorkflowHistoryItems(
+			activeWorkflow.id,
+			5,
+			DateTime.now().minus({ days: 2 }).toJSDate(),
+		);
+
+		// Create old history versions for the inactive workflow
+		const inactiveWorkflowVersions = await createManyWorkflowHistoryItems(
+			inactiveWorkflow.id,
+			5,
+			DateTime.now().minus({ days: 2 }).toJSDate(),
+		);
+
+		// Set the current version for each workflow
+		activeWorkflow.versionId = activeWorkflowVersions[0].versionId;
+		inactiveWorkflow.versionId = inactiveWorkflowVersions[0].versionId;
+
+		const workflowRepo = Container.get(WorkflowRepository);
+		await workflowRepo.save([activeWorkflow, inactiveWorkflow]);
+
+		await manager.prune();
+
+		// Both workflows' current versions should still exist even though they are old
+		expect(await repo.count({ where: { versionId: activeWorkflow.versionId } })).toBe(1);
+		expect(await repo.count({ where: { versionId: inactiveWorkflow.versionId } })).toBe(1);
+
+		// Other old versions should be deleted
+		const otherVersionIds = [
+			...activeWorkflowVersions.slice(1).map((i) => i.versionId),
+			...inactiveWorkflowVersions.slice(1).map((i) => i.versionId),
+		];
+		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
+	});
+
 	const createWorkflowHistory = async (ageInDays = 2) => {
 		const workflow = await createWorkflow();
 		const time = DateTime.now().minus({ days: ageInDays }).toJSDate();
@@ -112,7 +139,7 @@ describe('Workflow History Manager', () => {
 	const pruneAndAssertCount = async (finalCount = 10, initialCount = 10) => {
 		expect(await repo.count()).toBe(initialCount);
 
-		const deleteSpy = jest.spyOn(repo, 'delete');
+		const deleteSpy = jest.spyOn(repo, 'deleteEarlierThanExceptCurrent');
 		await manager.prune();
 
 		if (initialCount === finalCount) {

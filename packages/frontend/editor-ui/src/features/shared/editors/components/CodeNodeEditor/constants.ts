@@ -1,4 +1,4 @@
-import { STICKY_NODE_TYPE } from '@/constants';
+import { STICKY_NODE_TYPE } from '@/app/constants';
 import type { Diagnostic } from '@codemirror/lint';
 import type { CodeExecutionMode } from 'n8n-workflow';
 import type { CodeNodeLanguageOption } from './CodeNodeEditor.vue';

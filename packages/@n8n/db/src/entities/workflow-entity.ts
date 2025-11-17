@@ -32,6 +32,9 @@ export class WorkflowEntity extends WithTimestampsAndStringId implements IWorkfl
 	@Column({ length: 128 })
 	name: string;
 
+	@Column({ type: 'text', nullable: true })
+	description: string | null;
+
 	@Column()
 	active: boolean;
 

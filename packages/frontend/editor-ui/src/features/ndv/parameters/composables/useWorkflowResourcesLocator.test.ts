@@ -4,7 +4,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-argument */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { useWorkflowResourcesLocator } from './useWorkflowResourcesLocator';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
@@ -13,7 +13,7 @@ import { createTestingPinia } from '@pinia/testing';
 
 const useCanvasOperations = vi.hoisted(() => vi.fn());
 
-vi.mock('@/composables/useCanvasOperations', () => ({
+vi.mock('@/app/composables/useCanvasOperations', () => ({
 	useCanvasOperations,
 }));
 
@@ -173,7 +173,7 @@ describe('useWorkflowResourcesLocator', () => {
 				1,
 				40,
 				'updatedAt:desc',
-				{ name: 'test search' },
+				{ query: 'test search' },
 			);
 
 			// Should reset workflows array and populate with filtered results

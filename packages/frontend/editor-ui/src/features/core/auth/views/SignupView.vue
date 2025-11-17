@@ -1,10 +1,10 @@
 <script lang="ts" setup>
 import AuthView from './AuthView.vue';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 
 import { computed, onMounted, ref } from 'vue';
 import type { IFormBoxConfig } from '@/Interface';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, useRouter } from 'vue-router';

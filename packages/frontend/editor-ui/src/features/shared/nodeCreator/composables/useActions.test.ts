@@ -1,8 +1,8 @@
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useActions } from './useActions';
 import {
 	AGENT_NODE_TYPE,
@@ -16,7 +16,7 @@ import {
 	SPLIT_IN_BATCHES_NODE_TYPE,
 	TRIGGER_NODE_CREATOR_VIEW,
 	WEBHOOK_NODE_TYPE,
-} from '@/constants';
+} from '@/app/constants';
 import { CHAT_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
 describe('useActions', () => {
@@ -188,7 +188,7 @@ describe('useActions', () => {
 				nodes: [
 					{ isAutoAdd: true, type: MANUAL_TRIGGER_NODE_TYPE },
 					{ openDetail: true, type: SPLIT_IN_BATCHES_NODE_TYPE },
-					{ isAutoAdd: true, name: 'Replace Me', type: NO_OP_NODE_TYPE },
+					{ isAutoAdd: true, name: 'Replace Me', type: NO_OP_NODE_TYPE, positionOffset: [0, 208] },
 				],
 			});
 		});

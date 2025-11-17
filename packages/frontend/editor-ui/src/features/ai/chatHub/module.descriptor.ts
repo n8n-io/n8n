@@ -1,4 +1,4 @@
-import { type FrontendModuleDescription } from '@/moduleInitializer/module.types';
+import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
 import { CHAT_VIEW, CHAT_CONVERSATION_VIEW, CHAT_AGENTS_VIEW } from './constants';
 
 const ChatSidebar = async () => await import('@/features/ai/chatHub/components/ChatSidebar.vue');

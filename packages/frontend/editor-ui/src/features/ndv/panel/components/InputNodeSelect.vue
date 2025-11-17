@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeTypesStore } from '@/stores/nodeTypes.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { isPresent } from '@/utils/typesUtils';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { isPresent } from '@/app/utils/typesUtils';
 import type { IConnectedNode, Workflow } from 'n8n-workflow';
 import { computed } from 'vue';
-import NodeIcon from '@/components/NodeIcon.vue';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { truncate } from '@n8n/utils/string/truncate';
 
 import { N8nOption, N8nSelect } from '@n8n/design-system';
@@ -167,8 +167,8 @@ function onInputNodeChange(value: string) {
 
 <style lang="scss" module>
 .select {
-	--max-select-width: 224px;
-	max-width: var(--max-select-width);
+	--node-input--select--max-width: 224px;
+	max-width: var(--node-input--select--max-width);
 
 	:global(.el-input--suffix .el-input__inner) {
 		padding-left: calc(var(--spacing--lg) + var(--spacing--4xs));
@@ -191,7 +191,7 @@ function onInputNodeChange(value: string) {
 .title {
 	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight--regular);
-	max-width: var(--max-select-width);
+	max-width: var(--node-input--select--max-width);
 	overflow: hidden;
 	white-space: nowrap;
 	text-overflow: ellipsis;

@@ -1,4 +1,10 @@
-import type { StructuredChunk } from 'n8n-workflow';
+import {
+	type StructuredChunk,
+	type JINA_AI_TOOL_NODE_TYPE,
+	type SEAR_XNG_TOOL_NODE_TYPE,
+	type INode,
+	INodeSchema,
+} from 'n8n-workflow';
 import { z } from 'zod';
 import { Z } from 'zod-class';
 
@@ -27,6 +33,8 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
 };
+
+export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE | typeof SEAR_XNG_TOOL_NODE_TYPE;
 
 /**
  * Chat Hub conversation model configuration
@@ -67,6 +75,8 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 export type ChatHubOpenAIModel = z.infer<typeof openAIModelSchema>;
 export type ChatHubAnthropicModel = z.infer<typeof anthropicModelSchema>;
 export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
+export type ChatHubBaseLLMModel = ChatHubOpenAIModel | ChatHubAnthropicModel | ChatHubGoogleModel;
+
 export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
 export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
 export type ChatHubConversationModel = z.infer<typeof chatHubConversationModelSchema>;
@@ -85,6 +95,8 @@ export interface ChatModelDto {
 	model: ChatHubConversationModel;
 	name: string;
 	description: string | null;
+	updatedAt: string | null;
+	createdAt: string | null;
 }
 
 /**
@@ -98,6 +110,15 @@ export type ChatModelsResponse = Record<
 	}
 >;
 
+export const emptyChatModelsResponse: ChatModelsResponse = {
+	openai: { models: [] },
+	anthropic: { models: [] },
+	google: { models: [] },
+	n8n: { models: [] },
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'custom-agent': { models: [] },
+};
+
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
@@ -110,6 +131,7 @@ export class ChatHubSendMessageRequest extends Z.class({
 			name: z.string(),
 		}),
 	),
+	tools: z.array(INodeSchema),
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({
@@ -141,6 +163,7 @@ export class ChatHubUpdateConversationRequest extends Z.class({
 	model: z.string().max(64).optional(),
 	workflowId: z.string().max(36).optional(),
 	agentId: z.string().uuid().optional(),
+	tools: z.array(INodeSchema).optional(),
 }) {}
 
 export type ChatHubMessageType = 'human' | 'ai' | 'system' | 'tool' | 'generic';
@@ -162,6 +185,7 @@ export interface ChatHubSessionDto {
 	agentName: string | null;
 	createdAt: string;
 	updatedAt: string;
+	tools: INode[];
 }
 
 export interface ChatHubMessageDto {
@@ -202,8 +226,9 @@ export interface ChatHubAgentDto {
 	systemPrompt: string;
 	ownerId: string;
 	credentialId: string | null;
-	provider: ChatHubProvider;
+	provider: ChatHubLLMProvider;
 	model: string;
+	tools: INode[];
 	createdAt: string;
 	updatedAt: string;
 }
@@ -215,6 +240,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	credentialId: z.string(),
 	provider: chatHubProviderSchema.exclude(['n8n', 'custom-agent']),
 	model: z.string().max(64),
+	tools: z.array(INodeSchema),
 }) {}
 
 export class ChatHubUpdateAgentRequest extends Z.class({
@@ -224,6 +250,7 @@ export class ChatHubUpdateAgentRequest extends Z.class({
 	credentialId: z.string().optional(),
 	provider: chatHubProviderSchema.optional(),
 	model: z.string().max(64).optional(),
+	tools: z.array(INodeSchema).optional(),
 }) {}
 
 export interface EnrichedStructuredChunk extends StructuredChunk {
@@ -231,5 +258,6 @@ export interface EnrichedStructuredChunk extends StructuredChunk {
 		messageId: ChatMessageId;
 		previousMessageId: ChatMessageId | null;
 		retryOfMessageId: ChatMessageId | null;
+		executionId: number | null;
 	};
 }

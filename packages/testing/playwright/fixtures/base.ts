@@ -39,6 +39,11 @@ interface ContainerConfig {
 	proxyServerEnabled?: boolean;
 	taskRunner?: boolean;
 	sourceControl?: boolean;
+	email?: boolean;
+	resourceQuota?: {
+		memory?: number; // in GB
+		cpu?: number; // in cores
+	};
 }
 
 /**
@@ -65,12 +70,11 @@ export const test = base.extend<
 	// Container configuration from the project use options
 	containerConfig: [
 		async ({ addContainerCapability }, use, workerInfo) => {
-			const baseConfig =
-				(workerInfo.project.use as unknown as { containerConfig?: ContainerConfig })
-					?.containerConfig ?? {};
+			const projectConfig = workerInfo.project.use as { containerConfig?: ContainerConfig };
+			const baseConfig = projectConfig?.containerConfig ?? {};
 
-			// Merge addContainerCapability with base config
-			const config: ContainerConfig = {
+			// Build merged configuration
+			const merged: ContainerConfig = {
 				...baseConfig,
 				...addContainerCapability,
 				env: {
@@ -80,7 +84,7 @@ export const test = base.extend<
 				},
 			};
 
-			await use(config);
+			await use(merged);
 		},
 		{ scope: 'worker', box: true },
 	],
