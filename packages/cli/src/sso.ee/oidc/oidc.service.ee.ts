@@ -414,6 +414,7 @@ export class OidcService {
 	async updateConfig(newConfig: OidcConfigDto) {
 		let discoveryEndpoint: URL;
 		try {
+			// Validating that discoveryEndpoint is a valid URL
 			discoveryEndpoint = new URL(newConfig.discoveryEndpoint);
 		} catch (error) {
 			this.logger.error(`The provided endpoint is not a valid URL: ${newConfig.discoveryEndpoint}`);
@@ -423,7 +424,7 @@ export class OidcService {
 			newConfig.clientSecret = this.oidcConfig.clientSecret;
 		}
 		try {
-			await this.createProxyAwareConfiguration(
+			const discoveredMetadata = await this.createProxyAwareConfiguration(
 				discoveryEndpoint,
 				newConfig.clientId,
 				newConfig.clientSecret,
