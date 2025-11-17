@@ -3,14 +3,14 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const workflowPublishHistoryTableName = 'workflow_publish_history';
 
 export class CreateWorkflowPublishHistoryTable1763387043735 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column }, runQuery }: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column }, runQuery, escape }: MigrationContext) {
 		await createTable(workflowPublishHistoryTableName)
 			.withColumns(
 				column('workflowId').varchar(36).notNull,
 				column('versionId').varchar(36).notNull,
 				column('status').varchar(36).notNull,
 			)
-			.withUpdatedAt.withForeignKey('workflowId', {
+			.withCreatedAt.withForeignKey('workflowId', {
 				tableName: 'workflow_entity',
 				columnName: 'id',
 				onDelete: 'CASCADE',
@@ -20,11 +20,13 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 				columnName: 'versionId',
 				onDelete: 'CASCADE',
 			})
-			.withUniqueConstraintOn(['workflowId', 'versionId'])
+			.withUniqueConstraintOn(['workflowId', 'versionId', 'updatedAt'])
 			.withIndexOn(['workflowId', 'versionId']);
 
+		const workflowEntityTableName = escape.tableName('workflow_entity');
+
 		const activeWorkflows = await runQuery<Array<{ id: string; versionId: string }>>(
-			'SELECT we.id, we.versionId FROM workflow_entity we WHERE we.active;',
+			`SELECT we.id, we.versionId FROM ${workflowEntityTableName} we WHERE we.active;`,
 		);
 		console.log(activeWorkflows);
 
