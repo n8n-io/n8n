@@ -1,14 +1,14 @@
 <script setup lang="ts">
+import { useMessage } from '@/app/composables/useMessage';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM } from '@/app/constants';
+import { DATA_TABLE_CARD_ACTIONS } from '@/features/core/dataTable/constants';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 import type { IUser, UserAction } from '@n8n/design-system';
-import { DATA_TABLE_CARD_ACTIONS } from '@/features/core/dataTable/constants';
 import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
-import { useMessage } from '@/app/composables/useMessage';
-import { MODAL_CONFIRM } from '@/app/constants';
-import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { useToast } from '@/app/composables/useToast';
-import { useTelemetry } from '@/app/composables/useTelemetry';
 
 import { N8nActionToggle } from '@n8n/design-system';
 type Props = {
@@ -43,14 +43,14 @@ const actions = computed<Array<UserAction<IUser>>>(() => {
 		{
 			label: i18n.baseText('generic.delete'),
 			value: DATA_TABLE_CARD_ACTIONS.DELETE,
-			disabled: props.isReadOnly,
+			disabled: !dataTableStore.projectPermissions.dataTable.delete || props.isReadOnly,
 		},
 	];
 	if (props.location === 'breadcrumbs') {
 		availableActions.unshift({
 			label: i18n.baseText('generic.rename'),
 			value: DATA_TABLE_CARD_ACTIONS.RENAME,
-			disabled: props.isReadOnly,
+			disabled: !dataTableStore.projectPermissions.dataTable.update || props.isReadOnly,
 		});
 	}
 	return availableActions;
