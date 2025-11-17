@@ -134,8 +134,12 @@ async function initializeRoute() {
 
 async function fetchWorkflow() {
 	if (workflowId.value) {
+		// Check if this is a new workflow using the query param
+		const isNewWorkflow = route.query.new === 'true';
+
 		// Check if we are loading the Executions tab directly, without having loaded the workflow
-		if (!workflowsStore.workflow.id) {
+		// Skip fetching if it's a new workflow that hasn't been saved yet
+		if (!workflowsStore.workflow.id && !isNewWorkflow) {
 			try {
 				await workflowsStore.fetchActiveWorkflows();
 				const data = await workflowsStore.fetchWorkflow(workflowId.value);
@@ -143,6 +147,12 @@ async function fetchWorkflow() {
 			} catch (error) {
 				toast.showError(error, i18n.baseText('nodeView.showError.openWorkflow.title'));
 			}
+		}
+
+		// For new workflows, use the current workflow from the store
+		if (isNewWorkflow) {
+			workflow.value = workflowsStore.workflow;
+			return;
 		}
 
 		workflow.value = workflowsStore.getWorkflowById(workflowId.value);

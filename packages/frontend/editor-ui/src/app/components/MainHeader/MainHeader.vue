@@ -179,9 +179,13 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 		routeToNavigateTo = {
 			name: VIEWS.WORKFLOW,
 			params: { name: workflowToReturnTo.value },
+			query: route.query,
 		};
 	} else {
-		routeToNavigateTo = { name: VIEWS.NEW_WORKFLOW };
+		routeToNavigateTo = {
+			name: VIEWS.NEW_WORKFLOW,
+			query: route.query,
+		};
 	}
 
 	if (openInNewTab) {
@@ -199,14 +203,17 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 async function navigateToExecutionsView(openInNewTab: boolean) {
 	const routeWorkflowId = workflowId.value || 'new';
 	const executionToReturnToValue = executionsStore.activeExecution?.id || executionToReturnTo.value;
+
 	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
 		? {
 				name: VIEWS.EXECUTION_PREVIEW,
 				params: { name: routeWorkflowId, executionId: executionToReturnToValue },
+				query: route.query,
 			}
 		: {
 				name: VIEWS.EXECUTION_HOME,
 				params: { name: routeWorkflowId },
+				query: route.query,
 			};
 
 	if (openInNewTab) {
@@ -222,9 +229,11 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 
 async function navigateToEvaluationsView(openInNewTab: boolean) {
 	const routeWorkflowId = workflowId.value || 'new';
+
 	const routeToNavigateTo: RouteLocationRaw = {
 		name: VIEWS.EVALUATION_EDIT,
 		params: { name: routeWorkflowId },
+		query: route.query,
 	};
 
 	if (openInNewTab) {

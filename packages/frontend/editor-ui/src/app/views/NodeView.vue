@@ -1780,6 +1780,7 @@ function updateNodeRoute(nodeId: string) {
 		void router.replace({
 			name: route.name,
 			params: { name: workflowId.value },
+			query: route.query,
 		});
 	}
 }
@@ -1853,6 +1854,7 @@ watch(
 			await router.replace({
 				name: route.name,
 				params: { name: workflowId.value, nodeId },
+				query: route.query,
 			});
 		}
 	},
