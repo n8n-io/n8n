@@ -58,6 +58,11 @@ export const isBinary = (obj: unknown): obj is BinaryMetadata => {
 
 		const value = entry[key];
 
+		if (key === 'bytes') {
+			if (value !== undefined && typeof value !== 'number') return false;
+			continue;
+		}
+
 		if (!(BINARY_METADATA_KEYS as readonly string[]).includes(key)) return false;
 		if (value !== undefined && typeof value !== 'string') return false;
 	}

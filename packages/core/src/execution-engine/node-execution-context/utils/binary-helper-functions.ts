@@ -3,6 +3,7 @@ import chardet from 'chardet';
 import FileType from 'file-type';
 import { IncomingMessage } from 'http';
 import iconv from 'iconv-lite';
+import get from 'lodash/get';
 import { extension, lookup } from 'mime-types';
 import type { StringValue as TimeUnitValue } from 'ms';
 import type {
@@ -22,11 +23,11 @@ import path from 'path';
 import type { Readable } from 'stream';
 import { URL } from 'url';
 
+import { parseIncomingMessage } from './parse-incoming-message';
+
 import { BinaryDataService } from '@/binary-data/binary-data.service';
 import type { BinaryData } from '@/binary-data/types';
 import { binaryToBuffer } from '@/binary-data/utils';
-
-import { parseIncomingMessage } from './parse-incoming-message';
 
 export async function binaryToString(body: Buffer | Readable, encoding?: string) {
 	if (!encoding && body instanceof IncomingMessage) {
@@ -73,6 +74,7 @@ export function assertBinaryData(
 	itemIndex: number,
 	parameterData: string | IBinaryData,
 	inputIndex: number,
+	binaryMode: 'separate' | 'combined' | undefined = undefined,
 ): IBinaryData {
 	if (isBinaryData(parameterData)) {
 		return parameterData;
@@ -88,32 +90,49 @@ export function assertBinaryData(
 			},
 		);
 	}
-	const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
-	if (binaryKeyData === undefined) {
-		throw new NodeOperationError(
-			node,
-			`This operation expects the node's input data to contain a binary file '${parameterData}', but none was found [item ${itemIndex}]`,
-			{
-				itemIndex,
-				description: 'Make sure that the previous node outputs a binary file',
-			},
-		);
-	}
 
-	const binaryPropertyData = binaryKeyData[parameterData];
-	if (binaryPropertyData === undefined) {
-		throw new NodeOperationError(
-			node,
-			`The item has no binary field '${parameterData}' [item ${itemIndex}]`,
-			{
-				itemIndex,
-				description:
-					'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
-			},
-		);
-	}
+	if (binaryMode === 'separate' && binaryMode === undefined) {
+		const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
+		if (binaryKeyData === undefined) {
+			throw new NodeOperationError(
+				node,
+				`This operation expects the node's input data to contain a binary file '${parameterData}', but none was found [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description: 'Make sure that the previous node outputs a binary file',
+				},
+			);
+		}
 
-	return binaryPropertyData;
+		const binaryPropertyData = binaryKeyData[parameterData];
+		if (binaryPropertyData === undefined) {
+			throw new NodeOperationError(
+				node,
+				`The item has no binary field '${parameterData}' [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description:
+						'Check that the parameter where you specified the input binary field name is correct, and that it matches a field in the binary input',
+				},
+			);
+		}
+
+		return binaryPropertyData;
+	} else {
+		const itemData = inputData.main[inputIndex]![itemIndex].json;
+		const binaryData = get(itemData, parameterData);
+		if (binaryData === undefined || !isBinaryData(binaryData)) {
+			throw new NodeOperationError(
+				node,
+				`The path '${parameterData}' does not resolve to a binary data object in the input data [item ${itemIndex}]`,
+				{
+					itemIndex,
+					description: `Check that the path '${parameterData}' is correct, and that it resolves to a binary data object in the input data`,
+				},
+			);
+		}
+		return binaryData;
+	}
 }
 
 /**

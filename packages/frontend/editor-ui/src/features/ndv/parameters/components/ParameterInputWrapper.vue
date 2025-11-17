@@ -20,8 +20,6 @@ import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { computed, useTemplateRef } from 'vue';
 
-import { BINARY_DATA_ACCESS_TOOLTIP } from '@/app/constants';
-
 import { N8nTooltip } from '@n8n/design-system';
 type Props = {
 	parameter: INodeProperties;
@@ -170,7 +168,7 @@ defineExpose({
 	<div :class="$style.parameterInput" data-test-id="parameter-input">
 		<N8nTooltip placement="left" :disabled="!expectsBinaryData">
 			<template #content>
-				{{ BINARY_DATA_ACCESS_TOOLTIP }}
+				{{ ndvStore.binaryDataAccessTooltip }}
 			</template>
 			<ParameterInput
 				ref="param"

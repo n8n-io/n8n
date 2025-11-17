@@ -1,15 +1,23 @@
+import { Container } from '@n8n/di';
 import type {
 	IBinaryKeyData,
 	IDataObject,
 	IRunNodeResponse,
 	WorkflowSettingsBinaryMode,
 } from 'n8n-workflow';
+import { BINARY_ENCODING, BINARY_IN_JSON_PROPERTY } from 'n8n-workflow';
 
-export function convertBinaryData(
+import { BinaryDataConfig } from '../binary-data/binary-data.config';
+import { prepareBinaryData } from '../execution-engine/node-execution-context/utils/binary-helper-functions';
+
+export async function convertBinaryData(
+	workflowId: string,
+	executionId: string | undefined,
 	responseData: IRunNodeResponse,
 	binaryMode: WorkflowSettingsBinaryMode | undefined,
-): IRunNodeResponse {
-	if (binaryMode !== 'combined') return responseData;
+) {
+	const { mode } = Container.get(BinaryDataConfig);
+	if (binaryMode !== 'combined' || mode === 'default') return responseData;
 
 	if (!responseData.data?.length) return responseData;
 
@@ -25,13 +33,33 @@ export function convertBinaryData(
 			for (const [key, value] of Object.entries(item.binary)) {
 				if (value?.id) {
 					jsonBinaries[key] = value;
-				} else {
-					embededBinaries[key] = value;
+					continue;
 				}
+
+				if (!executionId) {
+					embededBinaries[key] = value;
+					continue;
+				}
+
+				const buffer = Buffer.from(value.data, BINARY_ENCODING);
+				const binaryData = await prepareBinaryData(
+					buffer,
+					executionId,
+					workflowId,
+					undefined,
+					value?.mimeType,
+				);
+
+				if (value.fileName) {
+					binaryData.fileName = value.fileName;
+				}
+
+				jsonBinaries[key] = binaryData;
 			}
 
 			if (Object.keys(jsonBinaries).length) {
-				item.json.binaries = jsonBinaries;
+				const existingJsonBinaries = (item.json[BINARY_IN_JSON_PROPERTY] as IBinaryKeyData) ?? {};
+				item.json[BINARY_IN_JSON_PROPERTY] = { ...existingJsonBinaries, ...jsonBinaries };
 			}
 
 			item.binary = Object.keys(embededBinaries).length ? embededBinaries : undefined;

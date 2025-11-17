@@ -16,9 +16,13 @@ const props = defineProps<Props>();
 const workflowsStore = useWorkflowsStore();
 const uiStore = useUIStore();
 
-const isImage = computed(() => {
+const tablePreview = computed(() => {
+	if (!fileUrl.value) return false;
 	const mimeType = props.value.mimeType;
-	return mimeType?.startsWith('image/') ?? false;
+	const bytes = Number(props.value.bytes);
+	const isImageType = mimeType?.startsWith('image/') ?? false;
+	const passThreshold = bytes === undefined ? false : bytes < 1048576;
+	return isImageType && passThreshold;
 });
 
 const fileName = computed(() => {
@@ -58,7 +62,7 @@ const containerStyle = computed(() => ({
 <template>
 	<div :class="$style.container" :style="containerStyle">
 		<div :class="$style.wrapper" @click="viewBinaryData">
-			<img v-if="isImage && fileUrl" :src="fileUrl" :class="$style.imagePreview" />
+			<img v-if="tablePreview" :src="fileUrl" :class="$style.imagePreview" />
 			<div v-else :class="$style.iconWrapper">
 				<N8nIcon icon="file" size="xlarge" />
 			</div>

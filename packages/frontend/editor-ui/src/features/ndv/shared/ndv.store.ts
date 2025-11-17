@@ -216,6 +216,14 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 
 	const isNDVOpen = computed(() => activeNodeName.value !== null);
 
+	const binaryDataAccessTooltip = computed(() => {
+		if (workflowsStore.workflow.settings?.binaryMode === 'combined') {
+			return "Specify the path to the binary data entry in the input item or use an expression to access the binary data in previous nodes, e.g. {{ $('Target Node').item.json.binaryName }}";
+		}
+
+		return "Specify the property name of the binary data in the input item or use an expression to access the binary data in previous nodes, e.g. {{ $('Target Node').item.binary.data }}";
+	});
+
 	const unsetActiveNodeName = (): void => {
 		activeNodeName.value = null;
 		lastSetActiveNodeSource.value = undefined;
@@ -423,6 +431,7 @@ export const useNDVStore = defineStore(STORES.NDV, () => {
 		isTableHoverOnboarded,
 		mainPanelDimensions,
 		lastSetActiveNodeSource,
+		binaryDataAccessTooltip,
 		setActiveNodeName,
 		unsetActiveNodeName,
 		setInputNodeName,

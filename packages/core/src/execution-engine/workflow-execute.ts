@@ -1758,7 +1758,13 @@ export class WorkflowExecute {
 									continue executionLoop;
 								}
 
-								runNodeData = convertBinaryData(runNodeData, workflow.settings.binaryMode);
+								runNodeData = await convertBinaryData(
+									workflow.id,
+									this.additionalData.executionId,
+									runNodeData,
+									workflow.settings.binaryMode,
+								);
+
 								nodeSuccessData = runNodeData.data;
 
 								if (runNodeData.hints?.length) {

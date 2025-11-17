@@ -17,6 +17,7 @@ const BINARY_METADATA_KEYS = [
 	'fileExtension',
 	'fileSize',
 	'id',
+	'bytes',
 ] as const;
 
 type BinaryMetadata = {
@@ -76,6 +77,11 @@ const isBinary = (obj: unknown): obj is BinaryMetadata => {
 		if (key === 'mimeType' || key === 'id') continue;
 
 		const value = entry[key];
+
+		if (key === 'bytes') {
+			if (value !== undefined && typeof value !== 'number') return false;
+			continue;
+		}
 
 		if (!(BINARY_METADATA_KEYS as readonly string[]).includes(key)) return false;
 		if (value !== undefined && typeof value !== 'string') return false;

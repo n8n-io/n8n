@@ -24,4 +24,5 @@ export const BINARY_METADATA_KEYS = [
 	'fileExtension',
 	'fileSize',
 	'id',
+	'bytes',
 ] as const;

@@ -55,8 +55,17 @@ const executionOrderOptions = ref<Array<{ key: string; value: string }>>([
 	{ key: 'v1', value: 'v1 (recommended)' },
 ]);
 const binaryModeOptions = ref<Array<{ key: string; value: string }>>([
-	{ key: 'separate', value: 'separate (legacy)' },
-	{ key: 'combined', value: 'combined (recommended)' },
+	{
+		key: 'separate',
+		value: rootStore.binaryDataMode === 'default' ? 'separate' : 'separate (legacy)',
+	},
+	{
+		key: 'combined',
+		value:
+			rootStore.binaryDataMode === 'default'
+				? 'combined (not supported with "default"(current) binary data mode)'
+				: 'combined (recommended)',
+	},
 ]);
 const timezones = ref<Array<{ key: string; value: string }>>([]);
 const workflowSettings = ref<IWorkflowSettings>({} as IWorkflowSettings);
@@ -436,6 +445,18 @@ const updateTimeSavedPerExecution = (value: string) => {
 			: numValue;
 };
 
+const onBinaryModeChange = (value: string) => {
+	if (value === 'separate' || value === 'combined') {
+		workflowSettings.value.binaryMode = value;
+		toast.showMessage({
+			title: 'Binary mode changed',
+			message: 'Please update expressions that reference binary data to match the new binary mode.',
+			type: 'warning',
+			duration: 0,
+		});
+	}
+};
+
 onMounted(async () => {
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
@@ -589,6 +610,7 @@ onBeforeUnmount(() => {
 							:disabled="readOnlyEnv || !workflowPermissions.update"
 							:limit-popper-width="true"
 							data-test-id="workflow-settings-binary-mode"
+							@update:model-value="onBinaryModeChange"
 						>
 							<N8nOption
 								v-for="option in binaryModeOptions"
