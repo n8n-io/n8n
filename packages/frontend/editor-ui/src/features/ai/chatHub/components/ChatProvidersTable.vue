@@ -12,14 +12,15 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { ChatProviderSettingsDto } from '@n8n/api-types';
+import { ChatProviderSettingsDto, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { providerDisplayNames } from '../constants';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 
 const TRUNCATE_MODELS_AFTER = 4;
 
 type Props = {
-	providers: ChatProviderSettingsDto[];
+	settings: ChatProviderSettingsDto[];
 	loading: boolean;
 };
 
@@ -36,7 +37,7 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 	{
 		title: i18n.baseText('settings.chatHub.providers.table.provider'),
 		key: 'provider',
-		width: 150,
+		width: 80,
 		disableSort: true,
 		value() {
 			return;
@@ -45,7 +46,7 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 	{
 		title: i18n.baseText('settings.chatHub.providers.table.models'),
 		key: 'models',
-		width: 250,
+		width: 300,
 		disableSort: true,
 		value() {
 			return;
@@ -55,6 +56,7 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 		title: i18n.baseText('settings.chatHub.providers.table.updatedAt'),
 		key: 'updatedAt',
 		disableSort: true,
+		width: 80,
 		value() {
 			return;
 		},
@@ -115,7 +117,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 </script>
 
 <template>
-	<div :class="$style['table-container']">
+	<div :class="$style.tableContainer">
 		<div v-if="props.loading">
 			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
@@ -138,37 +140,40 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 				</div>
 			</div>
 			<N8nActionBox
-				v-if="props.providers.length === 0"
+				v-if="props.settings.length === 0"
 				:heading="i18n.baseText('settings.chatHub.providers.table.empty.title')"
 				:description="i18n.baseText('settings.chatHub.providers.table.empty.description')"
 			/>
 			<N8nDataTableServer
 				v-else
-				:class="$style['chat-providers-table']"
+				:class="$style.chatProvidersTable"
 				:headers="tableHeaders"
-				:items="props.providers"
-				:items-length="props.providers.length"
+				:items="props.settings"
+				:items-length="props.settings.length"
 			>
 				<template #[`item.provider`]="{ item }">
-					<div :class="$style['provider-cell']">
-						<span>
-							<N8nText>
-								{{ providerDisplayNames[item.provider] }}
-							</N8nText>
-						</span>
+					<div :class="$style.providerCell">
+						<CredentialIcon
+							v-if="item.provider in PROVIDER_CREDENTIAL_TYPE_MAP"
+							:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[item.provider]"
+							:size="16"
+							:class="$style.menuIcon"
+						/>
+						<N8nText bold>
+							{{ providerDisplayNames[item.provider] }}
+						</N8nText>
 					</div>
 				</template>
 				<template #[`item.models`]="{ item }">
 					<N8nTooltip
 						v-if="item.allowedModels?.length && item.allowedModels?.length > TRUNCATE_MODELS_AFTER"
 						:content="item.allowedModels?.map((m) => m.displayName).join(', ')"
-						placement="top"
 					>
-						<N8nText>
+						<N8nText :color="item.enabled ? 'text-base' : 'primary'">
 							{{ modelsText(item) }}
 						</N8nText>
 					</N8nTooltip>
-					<N8nText v-else>
+					<N8nText v-else :color="item.enabled ? 'text-base' : 'primary'">
 						{{ modelsText(item) }}
 					</N8nText>
 				</template>
@@ -192,7 +197,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 </template>
 
 <style module lang="scss">
-.table-container {
+.tableContainer {
 	:global(.table-pagination) {
 		display: none;
 	}
@@ -210,16 +215,20 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 	align-items: center;
 }
 
-.chat-providers-table {
+.chatProvidersTable {
 	tr:last-child {
 		border-bottom: none !important;
 	}
 }
 
-.provider-cell {
+.menuIcon {
+	flex-shrink: 0;
+}
+
+.providerCell {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing--4xs);
+	gap: var(--spacing--xs);
 
 	.separator,
 	.ellipsis {

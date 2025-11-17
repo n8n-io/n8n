@@ -90,7 +90,7 @@ onMounted(async () => {
 		<div :class="$style.container">
 			<ChatProvidersTable
 				:data-test-id="'chat-providers-table'"
-				:providers="chatStore.settings"
+				:settings="chatStore.settings"
 				:loading="chatStore.settingsLoading"
 				@edit-provider="onEditProvider"
 				@refresh="onRefreshWorkflows"
