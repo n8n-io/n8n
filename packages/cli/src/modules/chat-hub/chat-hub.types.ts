@@ -3,8 +3,9 @@ import type {
 	ChatHubProvider,
 	ChatMessageId,
 	ChatSessionId,
+	ChatAttachment,
 } from '@n8n/api-types';
-import type { INode, IBinaryData, INodeCredentials } from 'n8n-workflow';
+import type { INode, INodeCredentials } from 'n8n-workflow';
 import { z } from 'zod';
 
 export interface ModelWithCredentials {
@@ -27,7 +28,7 @@ export interface HumanMessagePayload extends BaseMessagePayload {
 	messageId: ChatMessageId;
 	message: string;
 	previousMessageId: ChatMessageId | null;
-	attachments: IBinaryData[];
+	attachments: ChatAttachment[];
 	tools: INode[];
 }
 export interface RegenerateMessagePayload extends BaseMessagePayload {

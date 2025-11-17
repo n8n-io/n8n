@@ -4,12 +4,13 @@ import { sanitizeFilename } from '@n8n/utils';
 import { BinaryDataService } from 'n8n-core';
 import { Not, IsNull } from '@n8n/typeorm';
 import { ChatHubMessageRepository } from './chat-message.repository';
-import type { ChatMessageId, ChatSessionId } from '@n8n/api-types';
+import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-types';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type Stream from 'node:stream';
 import { FileLocation } from 'n8n-core/src/binary-data/utils';
+import FileType from 'file-type';
 
 @Service()
 export class ChatHubAttachmentService {
@@ -22,13 +23,13 @@ export class ChatHubAttachmentService {
 
 	/**
 	 * Stores attachments through BinaryDataService.
-	 * This populates the 'id' field for attachments. When external storage is used,
+	 * This populates the 'id' and other metadata for attachments. When external storage is used,
 	 * BinaryDataService replaces base64 data with the storage mode string (e.g., "filesystem-v2").
 	 */
 	async store(
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
-		attachments: IBinaryData[],
+		attachments: ChatAttachment[],
 	): Promise<IBinaryData[]> {
 		let totalSize = 0;
 		const storedAttachments: IBinaryData[] = [];
@@ -49,15 +50,7 @@ export class ChatHubAttachmentService {
 				);
 			}
 
-			if (attachment.fileName) {
-				attachment.fileName = sanitizeFilename(attachment.fileName);
-			}
-
-			const stored = await this.binaryDataService.store(
-				FileLocation.ofChatHubMessageAttachment(sessionId, messageId),
-				buffer,
-				attachment,
-			);
+			const stored = await this.processAttachment(sessionId, messageId, attachment, buffer);
 			storedAttachments.push(stored);
 		}
 
@@ -147,5 +140,36 @@ export class ChatHubAttachmentService {
 		}
 
 		await this.binaryDataService.deleteManyByBinaryDataId(Array.from(attachmentIds.values()));
+	}
+
+	/**
+	 * Processes a single attachment by populating metadata and storing it.
+	 */
+	private async processAttachment(
+		sessionId: ChatSessionId,
+		messageId: ChatMessageId,
+		attachment: ChatAttachment,
+		buffer: Buffer,
+	): Promise<IBinaryData> {
+		const sanitizedFileName = sanitizeFilename(attachment.fileName);
+		const fileTypeData = await FileType.fromBuffer(buffer);
+
+		// Only trust content-based detection for security
+		const mimeType = fileTypeData?.mime ?? 'application/octet-stream';
+
+		// Construct IBinaryData with all required fields
+		const binaryData: IBinaryData = {
+			data: attachment.data,
+			mimeType,
+			fileName: sanitizedFileName,
+			fileSize: `${buffer.length}`,
+			fileExtension: fileTypeData?.ext,
+		};
+
+		return await this.binaryDataService.store(
+			FileLocation.ofChatHubMessageAttachment(sessionId, messageId),
+			buffer,
+			binaryData,
+		);
 	}
 }

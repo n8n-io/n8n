@@ -120,45 +120,17 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	'custom-agent': { models: [] },
 };
 
-export const binaryFileTypeSchema = z.enum([
-	'text',
-	'json',
-	'image',
-	'audio',
-	'video',
-	'pdf',
-	'html',
-]);
-
-export const binaryDataSchema = z.object({
+/**
+ * Chat attachment schema for incoming requests.
+ * Requires base64 data and fileName.
+ * MimeType, fileType, fileExtension, and fileSize are populated server-side.
+ */
+export const chatAttachmentSchema = z.object({
 	data: z.string(),
-	mimeType: z
-		.string()
-		.refine(
-			(mimeType) => {
-				// Extract base MIME type (ignore parameters after semicolon)
-				const baseMimeType = mimeType.split(';')[0].trim();
-
-				// Validate MIME type format (type/subtype)
-				return /^[a-zA-Z0-9][a-zA-Z0-9!#$&^_+-]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&^_+.-]*$/.test(
-					baseMimeType,
-				);
-			},
-			{
-				message: 'Invalid MIME type format',
-			},
-		)
-		.transform((mimeType) => {
-			// Strip parameters and return only the base MIME type
-			return mimeType.split(';')[0].trim();
-		}),
-	fileType: binaryFileTypeSchema.optional(),
-	fileName: z.string().optional(),
-	directory: z.string().optional(),
-	fileExtension: z.string().optional(),
-	fileSize: z.string().optional(),
-	id: z.string().optional(),
+	fileName: z.string(),
 });
+
+export type ChatAttachment = z.infer<typeof chatAttachmentSchema>;
 
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
@@ -173,7 +145,7 @@ export class ChatHubSendMessageRequest extends Z.class({
 		}),
 	),
 	tools: z.array(INodeSchema),
-	attachments: z.array(binaryDataSchema),
+	attachments: z.array(chatAttachmentSchema),
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({

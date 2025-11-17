@@ -43,7 +43,7 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
-import { convertFileToBinaryData } from '@/app/utils/fileUtils';
+import { convertFileToChatAttachment } from '@/app/utils/fileUtils';
 import { isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
@@ -445,7 +445,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
 			: null;
 
-		const attachments = await Promise.all(files.map(convertFileToBinaryData));
+		const attachments = await Promise.all(files.map(convertFileToChatAttachment));
 
 		addMessage(sessionId, {
 			id: messageId,
