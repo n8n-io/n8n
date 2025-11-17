@@ -2,6 +2,28 @@
 
 Extra information, specific to the frontend codebase.
 
+## Frontend Architecture
+
+The frontend is organized into multiple packages under `packages/frontend/`:
+
+- **`editor-ui`**: Main Vue 3 application (workflow editor, settings, etc.)
+- **`@n8n/design-system`**: Reusable Vue components and design tokens
+- **`@n8n/i18n`**: Internationalization strings for all UI text
+- **`@n8n/chat`**: Chat UI component for conversational interfaces
+- **`@n8n/composables`**: Shared Vue composables (reusable composition functions)
+- **`@n8n/stores`**: Pinia stores for centralized state management
+- **`@n8n/rest-api-client`**: Type-safe REST API client for backend communication
+- **`@n8n/storybook`**: Storybook configuration for component documentation
+
+## Development Guidelines
+
+- **Component Location**: Pure, reusable Vue components belong in `@n8n/design-system`
+- **State Management**: Use Pinia stores from `@n8n/stores` package
+- **API Calls**: Use the type-safe client from `@n8n/rest-api-client`
+- **Composables**: Shared logic should be extracted to `@n8n/composables`
+- **Internationalization**: ALL UI text must use i18n from `@n8n/i18n` package
+- **Testing**: Use Vitest for unit tests, ensure proper mocking of external dependencies
+
 ### CSS Variables Reference
 
 Use the following CSS variables to maintain consistency across the
