@@ -1,8 +1,8 @@
 import { HumanMessage, AIMessage as AssistantMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 
-import { createTrimMessagesReducer, WorkflowState } from '../workflow-state';
 import type { TelemetryValidationStatus } from '../validation/types';
+import { createTrimMessagesReducer, WorkflowState } from '../workflow-state';
 
 describe('createTrimMessagesReducer', () => {
 	it('should return messages unchanged when human messages are within limit', () => {
@@ -155,36 +155,62 @@ describe('createTrimMessagesReducer', () => {
 });
 
 describe('WorkflowState.validationHistory reducer', () => {
-	// Extract the reducer function from the annotation
-	const getReducer = () => {
-		const channels = WorkflowState.spec as any;
-		return channels.validationHistory?.operator;
+	// Helper to create TelemetryValidationStatus avoiding ESLint naming-convention warnings
+	const createValidationStatus = (
+		violations: Array<{ name: string; result: 'pass' | 'fail' }>,
+	): TelemetryValidationStatus => {
+		const status: Record<string, 'pass' | 'fail'> = {};
+		for (const violation of violations) {
+			status[violation.name] = violation.result;
+		}
+		return status as TelemetryValidationStatus;
 	};
 
 	it('should append new validation history to existing history', () => {
-		const existingHistory: TelemetryValidationStatus[] = [
-			{ status: 'valid', errorCount: 0 },
-			{ status: 'invalid', errorCount: 2 },
-		];
-		const newHistory: TelemetryValidationStatus[] = [{ status: 'valid', errorCount: 0 }];
+		const reducer = WorkflowState.spec.validationHistory.operator;
 
-		const reducer = getReducer();
+		const existingHistory: TelemetryValidationStatus[] = [
+			createValidationStatus([
+				{ name: 'tool-node-has-no-parameters', result: 'pass' },
+				{ name: 'agent-static-prompt', result: 'fail' },
+				{ name: 'workflow-has-no-nodes', result: 'pass' },
+			]),
+			createValidationStatus([
+				{ name: 'tool-node-has-no-parameters', result: 'fail' },
+				{ name: 'agent-static-prompt', result: 'pass' },
+				{ name: 'workflow-has-no-nodes', result: 'pass' },
+			]),
+		];
+		const newHistory: TelemetryValidationStatus[] = [
+			createValidationStatus([
+				{ name: 'tool-node-has-no-parameters', result: 'pass' },
+				{ name: 'agent-static-prompt', result: 'pass' },
+				{ name: 'workflow-has-no-nodes', result: 'pass' },
+			]),
+		];
+
 		const result = reducer(existingHistory, newHistory);
 
-		expect(result).toEqual([
-			{ status: 'valid', errorCount: 0 },
-			{ status: 'invalid', errorCount: 2 },
-			{ status: 'valid', errorCount: 0 },
-		]);
+		expect(result).toHaveLength(3);
+		expect(result[0]).toBe(existingHistory[0]);
+		expect(result[1]).toBe(existingHistory[1]);
+		expect(result[2]).toBe(newHistory[0]);
 	});
 
 	it('should return existing history when update is undefined', () => {
+		type ReducerFn = (
+			x: TelemetryValidationStatus[],
+			y: TelemetryValidationStatus[] | undefined | null,
+		) => TelemetryValidationStatus[];
+		const reducer = WorkflowState.spec.validationHistory.operator as ReducerFn;
+
 		const existingHistory: TelemetryValidationStatus[] = [
-			{ status: 'valid', errorCount: 0 },
-			{ status: 'invalid', errorCount: 2 },
+			createValidationStatus([
+				{ name: 'tool-node-has-no-parameters', result: 'pass' },
+				{ name: 'agent-static-prompt', result: 'fail' },
+			]),
 		];
 
-		const reducer = getReducer();
 		const result = reducer(existingHistory, undefined);
 
 		expect(result).toEqual(existingHistory);
@@ -192,9 +218,16 @@ describe('WorkflowState.validationHistory reducer', () => {
 	});
 
 	it('should return existing history when update is null', () => {
-		const existingHistory: TelemetryValidationStatus[] = [{ status: 'valid', errorCount: 0 }];
+		type ReducerFn = (
+			x: TelemetryValidationStatus[],
+			y: TelemetryValidationStatus[] | undefined | null,
+		) => TelemetryValidationStatus[];
+		const reducer = WorkflowState.spec.validationHistory.operator as ReducerFn;
 
-		const reducer = getReducer();
+		const existingHistory: TelemetryValidationStatus[] = [
+			createValidationStatus([{ name: 'workflow-has-no-nodes', result: 'pass' }]),
+		];
+
 		const result = reducer(existingHistory, null);
 
 		expect(result).toEqual(existingHistory);
@@ -202,9 +235,12 @@ describe('WorkflowState.validationHistory reducer', () => {
 	});
 
 	it('should return existing history when update is empty array', () => {
-		const existingHistory: TelemetryValidationStatus[] = [{ status: 'valid', errorCount: 0 }];
+		const reducer = WorkflowState.spec.validationHistory.operator;
 
-		const reducer = getReducer();
+		const existingHistory: TelemetryValidationStatus[] = [
+			createValidationStatus([{ name: 'workflow-has-no-trigger', result: 'fail' }]),
+		];
+
 		const result = reducer(existingHistory, []);
 
 		expect(result).toEqual(existingHistory);
@@ -212,42 +248,57 @@ describe('WorkflowState.validationHistory reducer', () => {
 	});
 
 	it('should handle empty existing history with new updates', () => {
+		const reducer = WorkflowState.spec.validationHistory.operator;
+
 		const newHistory: TelemetryValidationStatus[] = [
-			{ status: 'valid', errorCount: 0 },
-			{ status: 'invalid', errorCount: 1 },
+			createValidationStatus([
+				{ name: 'node-missing-required-input', result: 'pass' },
+				{ name: 'node-merge-single-input', result: 'fail' },
+			]),
 		];
 
-		const reducer = getReducer();
 		const result = reducer([], newHistory);
 
 		expect(result).toEqual(newHistory);
+		expect(result[0]).toBe(newHistory[0]);
 	});
 
 	it('should handle multiple updates sequentially', () => {
-		const reducer = getReducer();
+		type ReducerFn = (
+			x: TelemetryValidationStatus[],
+			y: TelemetryValidationStatus[] | undefined | null,
+		) => TelemetryValidationStatus[];
+		const reducer = WorkflowState.spec.validationHistory.operator as ReducerFn;
 
 		let history: TelemetryValidationStatus[] = [];
 
 		// First update
-		history = reducer(history, [{ status: 'valid', errorCount: 0 }]);
-		expect(history).toEqual([{ status: 'valid', errorCount: 0 }]);
+		const update1: TelemetryValidationStatus[] = [
+			createValidationStatus([{ name: 'tool-node-has-no-parameters', result: 'pass' }]),
+		];
+		history = reducer(history, update1);
+		expect(history).toHaveLength(1);
+		expect(history[0]).toBe(update1[0]);
 
 		// Second update (undefined - should not change)
+		const prevHistory = history;
 		history = reducer(history, undefined);
-		expect(history).toEqual([{ status: 'valid', errorCount: 0 }]);
+		expect(history).toBe(prevHistory);
+		expect(history).toHaveLength(1);
 
 		// Third update
-		history = reducer(history, [{ status: 'invalid', errorCount: 2 }]);
-		expect(history).toEqual([
-			{ status: 'valid', errorCount: 0 },
-			{ status: 'invalid', errorCount: 2 },
-		]);
+		const update2: TelemetryValidationStatus[] = [
+			createValidationStatus([{ name: 'agent-static-prompt', result: 'fail' }]),
+		];
+		history = reducer(history, update2);
+		expect(history).toHaveLength(2);
+		expect(history[0]).toBe(update1[0]);
+		expect(history[1]).toBe(update2[0]);
 
 		// Fourth update (empty array - should not change)
+		const prevHistory2 = history;
 		history = reducer(history, []);
-		expect(history).toEqual([
-			{ status: 'valid', errorCount: 0 },
-			{ status: 'invalid', errorCount: 2 },
-		]);
+		expect(history).toBe(prevHistory2);
+		expect(history).toHaveLength(2);
 	});
 });
