@@ -82,7 +82,7 @@ function mergeAllOfSchemas(schemas: JSONSchema7Definition[]): JSONSchema7Definit
 	);
 }
 
-function jsonSchemaTypeToDefaultValue(
+export function jsonSchemaTypeToDefaultValue(
 	schema: JSONSchema7Definition,
 ): string | number | boolean | object | null {
 	if (schema === false) {
@@ -136,11 +136,11 @@ function jsonSchemaTypeToDefaultValue(
 
 	if (schema.type === 'number' || schema.type === 'integer') {
 		if (schema.minimum !== undefined) {
-			return schema.minimum.toString();
+			return schema.minimum;
 		}
 
 		if (schema.maximum !== undefined) {
-			return schema.maximum.toString();
+			return schema.maximum;
 		}
 
 		return 0;
