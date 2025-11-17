@@ -206,9 +206,8 @@ watch(
 				@create-custom-agent="handleAgentCreatedOrUpdated"
 				@close="handleCloseAgentEditor"
 			/>
-
-			<ChatSidebarOpener :class="$style.menuButton" />
 		</div>
+		<ChatSidebarOpener :class="$style.menuButton" />
 	</ChatLayout>
 </template>
 
@@ -227,7 +226,7 @@ watch(
 }
 
 .menuButton {
-	position: fixed;
+	position: absolute;
 	top: 0;
 	left: 0;
 	margin: var(--spacing--sm);
