@@ -91,31 +91,28 @@ export class ChatHubController {
 		// Verify user has access to this session
 		await this.chatService.getConversation(req.user.id, sessionId);
 
-		const [{ mimeType, fileName }, data] = await this.chatAttachmentService.getAttachment(
-			sessionId,
-			messageId,
-			attachmentIndex,
-		);
+		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
+			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
 
 		res.setHeader('Content-Type', mimeType ?? 'application/octet-stream');
 
-		if (data.fileSize) {
-			res.setHeader('Content-Length', data.fileSize);
+		if (attachmentAsStreamOrBuffer.fileSize) {
+			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
 		}
 
 		if (fileName) {
 			res.setHeader('Content-Disposition', `inline; filename="${sanitizeFilename(fileName)}"`);
 		}
 
-		if (data.type === 'buffer') {
-			res.send(data.buffer);
+		if (attachmentAsStreamOrBuffer.type === 'buffer') {
+			res.send(attachmentAsStreamOrBuffer.buffer);
 			return;
 		}
 
 		return await new Promise<void>((resolve, reject) => {
-			data.stream.on('end', resolve);
-			data.stream.on('error', reject);
-			data.stream.pipe(res);
+			attachmentAsStreamOrBuffer.stream.on('end', resolve);
+			attachmentAsStreamOrBuffer.stream.on('error', reject);
+			attachmentAsStreamOrBuffer.stream.pipe(res);
 		});
 	}
 
