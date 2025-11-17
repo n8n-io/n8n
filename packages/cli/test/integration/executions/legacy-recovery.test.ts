@@ -25,7 +25,6 @@ if (globalConfig.database.isLegacySqlite) {
 			legacySqliteExecutionRecoveryService = new LegacySqliteExecutionRecoveryService(
 				Container.get(Logger),
 				executionRepository,
-				Container.get(WorkflowRepository),
 				globalConfig,
 				dbConnection,
 			);

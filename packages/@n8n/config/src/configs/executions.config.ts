@@ -53,7 +53,7 @@ class RecoveryConfig {
 	 * Only applies to legacy SQLite databases.
 	 */
 	@Env('N8N_EXECUTIONS_RECOVERY_ENABLE_WORKFLOW_DEACTIVATION')
-	enableWorkflowDeactivation: boolean = true;
+	enableWorkflowDeactivation: boolean = false;
 }
 
 const executionModeSchema = z.enum(['regular', 'queue']);
