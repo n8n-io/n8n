@@ -1,5 +1,7 @@
 import { createRunExecutionData, type IRunExecutionData } from 'n8n-workflow';
 
+import { InvalidExecutionMetadataError } from '@/errors/invalid-execution-metadata.error';
+
 import {
 	setWorkflowExecutionMetadata,
 	setAllWorkflowExecutionMetadata,
@@ -7,8 +9,6 @@ import {
 	getWorkflowExecutionMetadata,
 	getAllWorkflowExecutionMetadata,
 } from '../execution-metadata';
-
-import { InvalidExecutionMetadataError } from '@/errors/invalid-execution-metadata.error';
 
 describe('Execution Metadata functions', () => {
 	const createExecutionDataWithMetadata = (
