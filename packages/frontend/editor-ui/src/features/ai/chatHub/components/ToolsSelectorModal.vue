@@ -97,12 +97,12 @@ const providers = computed<Array<[ChatHubAgentTool, ChatHubToolProvider]>>(() =>
 	return Object.entries(AVAILABLE_TOOLS) as Array<[ChatHubAgentTool, ChatHubToolProvider]>;
 });
 
-function getSelectedCount(): number {
+const selectedCount = computed(() => {
 	return providers.value.reduce(
 		(acc, [key]) => acc + (selectedByProvider.value[key]?.size ?? 0),
 		0,
 	);
-}
+});
 
 const getNodeIcon = (nodeType: ChatHubAgentTool) => {
 	return nodeTypesStore.getNodeType(nodeType);
@@ -295,7 +295,7 @@ onMounted(async () => {
 				<N8nText color="text-base">
 					{{
 						i18n.baseText('chatHub.tools.editor.selectedCount', {
-							interpolate: { count: getSelectedCount() },
+							interpolate: { count: selectedCount },
 						})
 					}}
 				</N8nText>
