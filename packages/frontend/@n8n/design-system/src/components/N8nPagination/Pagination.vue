@@ -255,7 +255,7 @@ const shouldShowPagination = computed(() => {
 .n8n-pagination {
 	display: flex;
 	align-items: center;
-	gap: 4px;
+	gap: 6px;
 	font-size: var(--font-size--sm);
 
 	&.is-small {
@@ -291,6 +291,7 @@ const shouldShowPagination = computed(() => {
 	min-width: 28px;
 	height: 28px;
 	padding: 0 6px;
+	margin: 0 2px;
 	border: none;
 	background: transparent !important;
 	border-radius: var(--radius);
@@ -298,7 +299,8 @@ const shouldShowPagination = computed(() => {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	font-size: var(--font-size--sm);
+	font-size: 11px;
+	font-weight: normal;
 	color: var(--color--text--inverse);
 	transition: color 0.2s ease;
 	user-select: none;
@@ -336,7 +338,7 @@ const shouldShowPagination = computed(() => {
 		background: transparent !important;
 		color: var(--color--primary);
 		border: 1px solid var(--color--primary);
-		font-weight: 600;
+		font-weight: normal;
 
 		:deep(button) {
 			background: transparent !important;
