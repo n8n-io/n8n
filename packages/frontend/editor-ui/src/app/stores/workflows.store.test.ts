@@ -5,7 +5,6 @@ import {
 	FORM_NODE_TYPE,
 	MANUAL_TRIGGER_NODE_TYPE,
 	MAX_WORKFLOW_NAME_LENGTH,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WAIT_NODE_TYPE,
 } from '@/app/constants';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -108,7 +107,7 @@ describe('useWorkflowsStore', () => {
 
 	it('should initialize with default state', () => {
 		expect(workflowsStore.workflow.name).toBe('');
-		expect(workflowsStore.workflow.id).toBe(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+		expect(workflowsStore.workflow.id).toBe('');
 	});
 
 	describe('isWaitingExecution', () => {
@@ -2164,7 +2163,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should not fetch when workflow is placeholder empty workflow', async () => {
 			workflowsStore.workflow = createTestWorkflow({
-				id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+				id: '',
 				scopes: ['workflow:update'],
 			});
 

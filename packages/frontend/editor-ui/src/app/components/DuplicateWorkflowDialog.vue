@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ref, watch, onMounted, nextTick } from 'vue';
-import { MAX_WORKFLOW_NAME_LENGTH, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
+import { MAX_WORKFLOW_NAME_LENGTH } from '@/app/constants';
 import { useToast } from '@/app/composables/useToast';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import Modal from '@/app/components/Modal.vue';
@@ -88,7 +88,11 @@ const save = async (): Promise<void> => {
 
 	try {
 		let workflowToUpdate: WorkflowDataUpdate | undefined;
-		if (currentWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		// Check if workflow exists in store
+		const existingWorkflow = currentWorkflowId
+			? workflowsStore.workflowsById[currentWorkflowId]
+			: null;
+		if (currentWorkflowId && existingWorkflow?.id) {
 			const {
 				createdAt,
 				updatedAt,

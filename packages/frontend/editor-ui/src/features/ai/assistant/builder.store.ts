@@ -1,5 +1,5 @@
 import type { VIEWS } from '@/app/constants';
-import { DEFAULT_NEW_WORKFLOW_NAME, PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
+import { DEFAULT_NEW_WORKFLOW_NAME } from '@/app/constants';
 import { BUILDER_ENABLED_VIEWS } from './constants';
 import { STORES } from '@n8n/stores';
 import type { ChatUI } from '@n8n/design-system/types/assistant';
@@ -522,11 +522,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		() => workflowsStore.workflowId,
 		(newWorkflowId) => {
 			// Only fetch if we have a valid workflow ID, and we're in a builder-enabled view
-			if (
-				newWorkflowId &&
-				newWorkflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID &&
-				BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS)
-			) {
+			if (newWorkflowId && BUILDER_ENABLED_VIEWS.includes(route.name as VIEWS)) {
 				void fetchSessionsMetadata();
 			} else {
 				hasMessages.value = false;

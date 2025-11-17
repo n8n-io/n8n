@@ -57,9 +57,7 @@ import {
 	MAIN_HEADER_TABS,
 	MANUAL_CHAT_TRIGGER_NODE_TYPE,
 	MODAL_CONFIRM,
-	NEW_WORKFLOW_ID,
 	NODE_CREATOR_OPEN_SOURCES,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	START_NODE_TYPE,
 	STICKY_NODE_TYPE,
 	VALID_WORKFLOW_IMPORT_URL_REGEX,
@@ -281,14 +279,16 @@ const fallbackNodes = ref<INodeUi[]>([]);
 
 const initializedWorkflowId = ref<string | undefined>();
 const workflowId = computed(() => {
-	const workflowIdParam = route.params.name as string;
-	return [PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID].includes(workflowIdParam)
-		? undefined
-		: workflowIdParam;
+	return route.params.name as string | undefined;
 });
 const routeNodeId = computed(() => route.params.nodeId as string | undefined);
 
-const isNewWorkflowRoute = computed(() => route.name === VIEWS.NEW_WORKFLOW || !workflowId.value);
+const isNewWorkflowRoute = computed(() => {
+	// Check if this is a new workflow by verifying if the workflow exists in the store
+	if (!workflowId.value) return true;
+	const workflow = workflowsStore.workflowsById[workflowId.value];
+	return !workflow || !workflow.id;
+});
 const isWorkflowRoute = computed(() => !!route?.meta?.nodeView || isDemoRoute.value);
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
 const isReadOnlyRoute = computed(() => !!route?.meta?.readOnlyCanvas);
@@ -393,9 +393,7 @@ async function initializeRoute(force = false) {
 	}
 
 	const isAlreadyInitialized =
-		!force &&
-		initializedWorkflowId.value &&
-		[NEW_WORKFLOW_ID, workflowId.value].includes(initializedWorkflowId.value);
+		!force && initializedWorkflowId.value && initializedWorkflowId.value === workflowId.value;
 
 	// This function is called on route change as well, so we need to do the following:
 	// - if the redirect is blank, then do nothing
@@ -469,7 +467,7 @@ async function initializeWorkspaceForNewWorkflow() {
 	await fetchAndSetParentFolder(parentFolderId);
 
 	uiStore.nodeViewInitialized = true;
-	initializedWorkflowId.value = NEW_WORKFLOW_ID;
+	initializedWorkflowId.value = workflowId.value;
 }
 
 async function initializeWorkspaceForExistingWorkflow(id: string) {
@@ -1886,7 +1884,7 @@ onBeforeRouteLeave(async (to, from, next) => {
 			}
 
 			// Make sure workflow id is empty when leaving the editor
-			workflowState.setWorkflowId(PLACEHOLDER_EMPTY_WORKFLOW_ID);
+			workflowState.setWorkflowId('');
 
 			return true;
 		},

@@ -6,7 +6,6 @@ import { usePushConnection } from '@/app/composables/usePushConnection';
 import {
 	LOCAL_STORAGE_HIDE_GITHUB_STAR_BUTTON,
 	MAIN_HEADER_TABS,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	STICKY_NODE_TYPE,
 	VIEWS,
 	N8N_MAIN_GITHUB_REPO_URL,
@@ -71,9 +70,7 @@ const hideMenuBar = computed(() =>
 	Boolean(activeNode.value && activeNode.value.type !== STICKY_NODE_TYPE),
 );
 const workflow = computed(() => workflowsStore.workflow);
-const workflowId = computed(() =>
-	String(router.currentRoute.value.params.name || workflowsStore.workflowId),
-);
+const workflowId = computed(() => String(route.params.name || workflowsStore.workflowId));
 const onWorkflowPage = computed(() => !!(route.meta.nodeView || route.meta.keepWorkflowAlive));
 const readOnly = computed(() => sourceControlStore.preferences.branchReadOnly);
 const isEnterprise = computed(
@@ -178,7 +175,7 @@ function onTabSelected(tab: MAIN_HEADER_TABS, event: MouseEvent) {
 
 async function navigateToWorkflowView(openInNewTab: boolean) {
 	let routeToNavigateTo: RouteLocationRaw;
-	if (!['', 'new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(workflowToReturnTo.value)) {
+	if (workflowToReturnTo.value && workflowToReturnTo.value !== '') {
 		routeToNavigateTo = {
 			name: VIEWS.WORKFLOW,
 			params: { name: workflowToReturnTo.value },
@@ -200,8 +197,7 @@ async function navigateToWorkflowView(openInNewTab: boolean) {
 }
 
 async function navigateToExecutionsView(openInNewTab: boolean) {
-	const routeWorkflowId =
-		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
+	const routeWorkflowId = workflowId.value || 'new';
 	const executionToReturnToValue = executionsStore.activeExecution?.id || executionToReturnTo.value;
 	const routeToNavigateTo: RouteLocationRaw = executionToReturnToValue
 		? {
@@ -225,8 +221,7 @@ async function navigateToExecutionsView(openInNewTab: boolean) {
 }
 
 async function navigateToEvaluationsView(openInNewTab: boolean) {
-	const routeWorkflowId =
-		workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ? 'new' : workflowId.value;
+	const routeWorkflowId = workflowId.value || 'new';
 	const routeToNavigateTo: RouteLocationRaw = {
 		name: VIEWS.EVALUATION_EDIT,
 		params: { name: routeWorkflowId },

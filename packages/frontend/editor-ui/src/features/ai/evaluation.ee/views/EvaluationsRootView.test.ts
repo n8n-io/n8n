@@ -12,7 +12,6 @@ import { mockedStore } from '@/__tests__/utils';
 import type { IWorkflowDb } from '@/Interface';
 import { waitFor } from '@testing-library/vue';
 import type { TestRunRecord } from '../evaluation.api';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { EVALUATION_NODE_TYPE, EVALUATION_TRIGGER_NODE_TYPE, NodeHelpers } from 'n8n-workflow';
 import { mockNodeTypeDescription } from '@/__tests__/mocks';
@@ -87,7 +86,7 @@ describe('EvaluationsRootView', () => {
 
 	it('should initialize workflow on mount if not already initialized', async () => {
 		const workflowsStore = mockedStore(useWorkflowsStore);
-		const uninitializedWorkflow = { ...mockWorkflow, id: PLACEHOLDER_EMPTY_WORKFLOW_ID };
+		const uninitializedWorkflow = { ...mockWorkflow, id: '' };
 		workflowsStore.workflow = uninitializedWorkflow;
 		const newWorkflowId = 'workflow123';
 

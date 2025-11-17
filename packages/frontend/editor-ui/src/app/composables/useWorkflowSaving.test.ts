@@ -1,5 +1,5 @@
 import { useUIStore } from '@/app/stores/ui.store';
-import { MODAL_CANCEL, MODAL_CONFIRM, PLACEHOLDER_EMPTY_WORKFLOW_ID, VIEWS } from '@/app/constants';
+import { MODAL_CANCEL, MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import router from '@/app/router';
 import { createTestingPinia } from '@pinia/testing';
@@ -216,7 +216,7 @@ describe('useWorkflowSaving', () => {
 			uiStore.stateIsDirty = true;
 
 			const workflowStore = useWorkflowsStore();
-			workflowStore.workflow.id = PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			workflowStore.workflow.id = '';
 
 			// Mock message.confirm
 			modalConfirmSpy.mockResolvedValue('close');

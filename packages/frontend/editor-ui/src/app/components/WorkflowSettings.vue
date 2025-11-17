@@ -5,11 +5,7 @@ import { useToast } from '@/app/composables/useToast';
 import type { ITimeoutHMS, IWorkflowSettings, IWorkflowShortResponse } from '@/Interface';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import Modal from '@/app/components/Modal.vue';
-import {
-	EnterpriseEditionFeature,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	WORKFLOW_SETTINGS_MODAL_KEY,
-} from '@/app/constants';
+import { EnterpriseEditionFeature, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -437,7 +433,20 @@ onMounted(async () => {
 	executionTimeout.value = rootStore.executionTimeout;
 	maxExecutionTimeout.value = rootStore.maxExecutionTimeout;
 
-	if (!workflowId.value || workflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+	if (!workflowId.value) {
+		toast.showMessage({
+			title: 'No workflow active',
+			message: 'No workflow active to display settings of.',
+			type: 'error',
+			duration: 0,
+		});
+		closeDialog();
+		return;
+	}
+
+	// Check if workflow exists in store
+	const workflow = workflowsStore.workflowsById[workflowId.value];
+	if (!workflow || !workflow.id) {
 		toast.showMessage({
 			title: 'No workflow active',
 			message: 'No workflow active to display settings of.',

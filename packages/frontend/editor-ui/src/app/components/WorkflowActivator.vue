@@ -10,7 +10,6 @@ import type { PermissionsRecord } from '@n8n/permissions';
 import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/app/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -81,12 +80,11 @@ const containsOnlyExecuteWorkflowTrigger = computed((): boolean => {
 	return foundTriggers.length > 0 && foundTriggers.length === foundActiveTriggers.length;
 });
 
-const isNewWorkflow = computed(
-	() =>
-		!props.workflowId ||
-		props.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-		props.workflowId === 'new',
-);
+const isNewWorkflow = computed(() => {
+	if (!props.workflowId) return true;
+	const workflow = workflowsStore.workflowsById[props.workflowId];
+	return !workflow || !workflow.id;
+});
 
 const disabled = computed((): boolean => {
 	if (props.isArchived) {

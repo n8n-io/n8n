@@ -1,8 +1,4 @@
-import {
-	HTTP_REQUEST_NODE_TYPE,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-	PLACEHOLDER_FILLED_AT_EXECUTION_TIME,
-} from '@/app/constants';
+import { HTTP_REQUEST_NODE_TYPE, PLACEHOLDER_FILLED_AT_EXECUTION_TIME } from '@/app/constants';
 
 import type {
 	IConnections,
@@ -601,7 +597,8 @@ export function useWorkflowHelpers() {
 		};
 
 		const workflowId = workflowsStore.workflowId;
-		if (workflowId !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		// Always include workflow ID if it exists
+		if (workflowId) {
 			data.id = workflowId;
 		}
 
@@ -931,10 +928,9 @@ export function useWorkflowHelpers() {
 	function getWorkflowProjectRole(workflowId: string): 'owner' | 'sharee' | 'member' {
 		const workflow = workflowsStore.workflowsById[workflowId];
 
-		if (
-			workflow?.homeProject?.id === projectsStore.personalProject?.id ||
-			workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
-		) {
+		// Check if workflow is new (not saved) or belongs to personal project
+		const isNewWorkflow = !workflow || !workflow.id;
+		if (workflow?.homeProject?.id === projectsStore.personalProject?.id || isNewWorkflow) {
 			return 'owner';
 		} else if (
 			workflow?.sharedWithProjects?.some(

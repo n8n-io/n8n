@@ -9,7 +9,6 @@ import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore, getDropdownItems } from '@/__tests__/utils';
 import { createComponentRenderer } from '@/__tests__/render';
 import WorkflowShareModal from './WorkflowShareModal.ee.vue';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useWorkflowsEEStore } from '@/app/stores/workflows.ee.store';
@@ -113,7 +112,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 
 	it('should share new, unsaved workflow after saving it first', async () => {
 		workflowsStore.workflow = {
-			id: PLACEHOLDER_EMPTY_WORKFLOW_ID,
+			id: '',
 			name: 'My workflow',
 			active: false,
 			isArchived: false,
@@ -128,7 +127,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 		const saveWorkflowSharedWithSpy = vi.spyOn(workflowsEEStore, 'saveWorkflowSharedWith');
 
 		const props = {
-			data: { id: PLACEHOLDER_EMPTY_WORKFLOW_ID },
+			data: { id: '' },
 		};
 		const { getByTestId, getByRole, getByText } = renderComponent({ props });
 

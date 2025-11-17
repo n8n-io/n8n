@@ -16,7 +16,6 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -145,7 +144,9 @@ const hasChanged = (prev: string[], curr: string[]) => {
 };
 
 const isNewWorkflow = computed(() => {
-	return !props.id || props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID || props.id === 'new';
+	if (!props.id) return true;
+	const workflow = workflowsStore.workflowsById[props.id];
+	return !workflow || !workflow.id;
 });
 
 const isWorkflowSaving = computed(() => {
@@ -293,14 +294,12 @@ watch(
 );
 
 function getWorkflowId(): string | undefined {
-	let id: string | undefined = undefined;
-	if (props.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		id = props.id;
+	if (props.id) {
+		return props.id;
 	} else if (route.params.name && route.params.name !== 'new') {
-		id = route.params.name as string;
+		return route.params.name as string;
 	}
-
-	return id;
+	return undefined;
 }
 
 async function onSaveButtonClick() {
@@ -711,7 +710,11 @@ function getToastContent() {
 }
 
 function showCreateWorkflowSuccessToast(id?: string) {
-	const shouldShowToast = !id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id);
+	if (!id) return;
+
+	// Only show toast if this is a newly created workflow (doesn't exist in store yet)
+	const workflow = workflowsStore.workflowsById[id];
+	const shouldShowToast = !workflow || !workflow.id;
 
 	if (!shouldShowToast) return;
 

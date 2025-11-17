@@ -13,7 +13,6 @@ import type { IWorkflowDb, INodeUi } from '@/Interface';
 import type { Ref } from 'vue';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID } from '@/app/constants';
 
 vi.mock('@/app/composables/useCanvasOperations');
 vi.mock('@/app/composables/useWorkflowHelpers');
@@ -493,7 +492,7 @@ describe('useWorkflowCommands', () => {
 		});
 
 		it('should allow actions for new workflows regardless of permissions', () => {
-			mockWorkflowsStore.workflow.id = PLACEHOLDER_EMPTY_WORKFLOW_ID;
+			mockWorkflowsStore.workflow.id = '';
 			mockWorkflowsStore.workflow.scopes = ['workflow:read'];
 
 			const { commands } = useWorkflowCommands();
