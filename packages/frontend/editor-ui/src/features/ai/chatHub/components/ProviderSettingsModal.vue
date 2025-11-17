@@ -14,6 +14,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
+	ChatHubBaseLLMModel,
 	ChatHubLLMProvider,
 	ChatModelDto,
 	ChatProviderSettingsDto,
@@ -103,18 +104,23 @@ async function loadAvailableModels(credentialId: string) {
 	}
 }
 
-const models = computed<Array<ChatModelDto & { enabled: boolean }>>(() => {
-	return availableModels.value.map((model) => {
-		const isEnabled =
-			(settings.value?.limitModels === false ||
-				settings.value?.allowedModels?.some((m) => m === model.name)) ??
-			false;
+const models = computed(() => {
+	return availableModels.value
+		.filter((model) => model.model.provider !== 'custom-agent' && model.model.provider !== 'n8n')
+		.map((model) => {
+			const isEnabled =
+				(settings.value?.limitModels === false ||
+					settings.value?.allowedModels?.some(
+						(m) => m.model === (model.model as ChatHubBaseLLMModel).model,
+					)) ??
+				false;
 
-		return {
-			...model,
-			enabled: isEnabled,
-		};
-	});
+			return {
+				model: (model.model as ChatHubBaseLLMModel).model,
+				displayName: model.name,
+				enabled: isEnabled,
+			};
+		});
 });
 
 const onToggleEnabled = (value: string | number | boolean) => {
@@ -129,7 +135,7 @@ const onToggleLimitModels = (value: string | number | boolean) => {
 	}
 };
 
-function onSelectModels(selectedModelNames: string[]) {
+function onSelectModels(selectedModelNames: Array<{ model: string; displayName: string }>) {
 	if (settings.value) {
 		settings.value.allowedModels = selectedModelNames;
 	}

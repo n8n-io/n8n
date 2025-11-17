@@ -88,7 +88,10 @@ const modelsText = (settings: ChatProviderSettingsDto) => {
 	} else {
 		if (settings.allowedModels.length > TRUNCATE_MODELS_AFTER) {
 			return (
-				settings.allowedModels.slice(0, TRUNCATE_MODELS_AFTER).join(', ') +
+				settings.allowedModels
+					.slice(0, TRUNCATE_MODELS_AFTER)
+					.map((m) => m.displayName)
+					.join(', ') +
 				i18n.baseText('settings.chatHub.providers.table.models.more', {
 					interpolate: {
 						count: settings.allowedModels.length - TRUNCATE_MODELS_AFTER,
@@ -96,7 +99,7 @@ const modelsText = (settings: ChatProviderSettingsDto) => {
 				})
 			);
 		}
-		return settings.allowedModels.join(', ');
+		return settings.allowedModels.map((m) => m.displayName).join(', ');
 	}
 };
 
@@ -158,7 +161,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 				<template #[`item.models`]="{ item }">
 					<N8nTooltip
 						v-if="item.allowedModels?.length && item.allowedModels?.length > TRUNCATE_MODELS_AFTER"
-						:content="item.allowedModels?.join(', ')"
+						:content="item.allowedModels?.map((m) => m.displayName).join(', ')"
 						placement="top"
 					>
 						<N8nText>

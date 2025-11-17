@@ -12,6 +12,7 @@ import type {
 	ChatHubLLMProvider,
 	ChatModelDto,
 	ChatModelsResponse,
+	ChatHubBaseLLMModel,
 } from '@n8n/api-types';
 import {
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
@@ -132,6 +133,16 @@ const menu = computed(() => {
 			theAgents.length > 0
 				? theAgents
 						.filter((agent) => agent.model.provider !== 'custom-agent')
+						.filter(
+							(agent) =>
+								agent.model.provider === 'n8n' ||
+								// Filter out models not allowed in settings
+								!settings ||
+								!settings.limitModels ||
+								settings.allowedModels?.some(
+									(m) => m.model === (agent.model as ChatHubBaseLLMModel).model,
+								),
+						)
 						.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
 							id: stringifyModel(agent.model),
 							title: agent.name,

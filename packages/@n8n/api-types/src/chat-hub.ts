@@ -296,7 +296,12 @@ const chatProviderSettingsSchema = z.object({
 	enabled: z.boolean().optional(),
 	credentialId: z.string().nullable(),
 	limitModels: z.boolean(),
-	allowedModels: z.array(z.string()),
+	allowedModels: z.array(
+		z.object({
+			displayName: z.string(),
+			model: z.string(),
+		}),
+	),
 	createdAt: z.string(),
 	updatedAt: z.string().nullable(),
 });

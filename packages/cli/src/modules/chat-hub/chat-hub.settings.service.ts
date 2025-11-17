@@ -1,4 +1,6 @@
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import {
+	ChatHubConversationModel,
 	ChatHubLLMProvider,
 	chatHubLLMProviderSchema,
 	ChatProviderSettingsDto,
@@ -38,6 +40,24 @@ export class ChatHubSettingsService {
 		await this.settingsRepository.upsert({ key: CHAT_ENABLED_KEY, value, loadOnStartup: true }, [
 			'key',
 		]);
+	}
+
+	async ensureModelIsAllowed(model: ChatHubConversationModel): Promise<void> {
+		if (model.provider === 'custom-agent' || model.provider === 'n8n') {
+			// Custom agents and n8n models are always allowed, for now
+			return;
+		}
+
+		const settings = await this.getProviderSettings(model.provider);
+		if (!settings.enabled) {
+			throw new BadRequestError('Provider is not enabled');
+		}
+
+		if (settings.limitModels && !settings.allowedModels.some((m) => m.model === model.model)) {
+			throw new BadRequestError(`Model ${model.model} is not allowed`);
+		}
+
+		return;
 	}
 
 	async getProviderSettings(provider: ChatHubLLMProvider): Promise<ChatProviderSettingsDto> {

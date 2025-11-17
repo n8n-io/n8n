@@ -3,29 +3,30 @@ import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import { N8nActionBox, N8nDataTableServer, N8nLoading, N8nText } from '@n8n/design-system';
-import { ChatModelDto } from '@n8n/api-types';
 
-interface Model extends ChatModelDto {
+interface ChatModel {
+	model: string;
+	displayName: string;
 	enabled: boolean;
 }
 
 type Props = {
-	models: Array<Model>;
+	models: Array<ChatModel>;
 	loading: boolean;
 };
 
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-	selectModels: [string[]];
+	selectModels: [Array<{ model: string; displayName: string }>];
 }>();
 
 const i18n = useI18n();
 
-const tableHeaders = ref<Array<TableHeader<Model>>>([
+const tableHeaders = ref<Array<TableHeader<ChatModel>>>([
 	{
 		title: i18n.baseText('settings.chatHub.models.table.model'),
-		key: 'name',
+		key: 'displayName',
 		width: 150,
 		disableSort: true,
 		value() {
@@ -35,10 +36,10 @@ const tableHeaders = ref<Array<TableHeader<Model>>>([
 ]);
 
 const initialSelection = computed<string[]>(() =>
-	props.models.filter((model) => model.enabled).map((model) => model.name),
+	props.models.filter((model) => model.enabled).map(({ model }) => model),
 );
 
-function onSelectionChange(newSelection: string[] | Model[] | undefined) {
+function onSelectionChange(newSelection: string[] | ChatModel[] | undefined) {
 	if (!newSelection) return;
 
 	if (newSelection.length === 0) {
@@ -47,7 +48,11 @@ function onSelectionChange(newSelection: string[] | Model[] | undefined) {
 	}
 
 	if (typeof newSelection[0] === 'string') {
-		emit('selectModels', newSelection as string[]);
+		const selected = props.models
+			.filter((model) => (newSelection as string[]).includes(model.model))
+			.map(({ model, displayName }) => ({ model, displayName }));
+
+		emit('selectModels', selected);
 	}
 }
 </script>
@@ -78,15 +83,15 @@ function onSelectionChange(newSelection: string[] | Model[] | undefined) {
 				:items="props.models"
 				:items-length="props.models.length"
 				:showSelect="true"
-				:itemValue="'name'"
+				:itemValue="'model'"
 				:selection="initialSelection"
 				@update:selection="onSelectionChange"
 			>
-				<template #[`item.name`]="{ item }">
+				<template #[`item.displayName`]="{ item }">
 					<div :class="$style['model-cell']">
 						<span>
 							<N8nText>
-								{{ item.name }}
+								{{ item.displayName }}
 							</N8nText>
 						</span>
 					</div>

@@ -59,6 +59,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const sessions = ref<ChatHubSessionDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 	const streaming = ref<ChatStreamingState>();
+
+	const settingsLoading = ref(false);
 	const settings = ref<ChatProviderSettingsDto[]>([]);
 
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
@@ -733,7 +735,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function fetchAllChatSettings() {
+		settingsLoading.value = true;
 		settings.value = await fetchChatSettingsApi(rootStore.restApiContext);
+		settingsLoading.value = false;
+
 		return settings.value;
 	}
 
@@ -747,14 +752,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return providerSettings;
 	}
 
-	async function updateProviderSettings(updatedSettings: ChatProviderSettingsDto) {
-		const response = await updateChatSettingsApi(rootStore.restApiContext, updatedSettings);
+	async function updateProviderSettings(updated: ChatProviderSettingsDto) {
+		const saved = await updateChatSettingsApi(rootStore.restApiContext, updated);
 
-		// settings.value = settings.value?.map((setting: ChatProviderSettingsDto) =>
-		// 	setting.provider === updatedSettings.provider ? updatedSettings : setting,
-		// );
+		settings.value = settings.value?.map((previous: ChatProviderSettingsDto) =>
+			previous.provider === updated.provider ? saved : previous,
+		);
 
-		// return providerSettings;
+		return saved;
 	}
 
 	return {
@@ -805,6 +810,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		/**
 		 * settings
 		 */
+		settings,
+		settingsLoading,
 		fetchAllChatSettings,
 		fetchProviderSettings,
 		updateProviderSettings,

@@ -3,11 +3,11 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted } from 'vue';
 import { useChatStore } from './chat.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { N8nHeading } from '@n8n/design-system';
-import { CHAT_PROVIDER_SETTINGS_MODAL_KEY, LOADING_INDICATOR_TIMEOUT } from './constants';
+import { CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
 import ChatProvidersTable from './components/ChatProvidersTable.vue';
 import {
 	ChatHubLLMProvider,
@@ -15,6 +15,7 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -24,24 +25,16 @@ const chatStore = useChatStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
-
-const providersLoading = ref(false);
-const providers = ref<ChatProviderSettingsDto[]>([]);
+const telemetry = useTelemetry();
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
-const fetchProviderSettings = async () => {
-	providersLoading.value = true;
+const fetchSettings = async () => {
 	try {
-		const settings = await chatStore.fetchAllChatSettings();
-		providers.value = settings;
+		await chatStore.fetchAllChatSettings();
 	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.chatHub.error.fetching.providerSettings'));
-	} finally {
-		setTimeout(() => {
-			providersLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
+		toast.showError(error, i18n.baseText('settings.chatHub.providers.fetching.error'));
 	}
 };
 
@@ -54,22 +47,24 @@ function onEditProvider(settings: ChatProviderSettingsDto) {
 			onNewCredential: (provider: ChatHubLLMProvider) => {
 				const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
 
-				// telemetry.track('User opened Credential modal', {
-				// 	credential_type: credentialType,
-				// 	source: 'chat_hub_settings',
-				// 	new_credential: true,
-				// 	workflow_id: null,
-				// });
+				telemetry.track('User opened Credential modal', {
+					credential_type: credentialType,
+					source: 'chat_hub_settings',
+					new_credential: true,
+					workflow_id: null,
+				});
 
 				uiStore.openNewCredential(credentialType);
 			},
 			onConfirm: async (updatedSettings: ChatProviderSettingsDto) => {
 				try {
 					await chatStore.updateProviderSettings(updatedSettings);
-					// toast.showMessage(i18n.baseText('settings.chatHub.success.providerSettings.updated'));
-					await fetchProviderSettings();
+					toast.showMessage({
+						title: i18n.baseText('settings.chatHub.providers.updated.success'),
+						type: 'success',
+					});
 				} catch (error) {
-					// toast.showError(error, i18n.baseText('settings.chatHub.error.updating.providerSettings'));
+					toast.showError(error, i18n.baseText('settings.chatHub.providers.updated.error'));
 				}
 			},
 			onCancel: () => {},
@@ -78,7 +73,7 @@ function onEditProvider(settings: ChatProviderSettingsDto) {
 }
 
 function onRefreshWorkflows() {
-	fetchProviderSettings();
+	fetchSettings();
 }
 
 onMounted(async () => {
@@ -86,7 +81,7 @@ onMounted(async () => {
 	if (!settingsStore.isChatFeatureEnabled) {
 		return;
 	}
-	await fetchProviderSettings();
+	await fetchSettings();
 });
 </script>
 <template>
@@ -95,8 +90,8 @@ onMounted(async () => {
 		<div :class="$style.container">
 			<ChatProvidersTable
 				:data-test-id="'chat-providers-table'"
-				:providers="providers"
-				:loading="providersLoading"
+				:providers="chatStore.settings"
+				:loading="chatStore.settingsLoading"
 				@edit-provider="onEditProvider"
 				@refresh="onRefreshWorkflows"
 			/>

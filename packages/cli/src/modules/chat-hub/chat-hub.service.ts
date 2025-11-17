@@ -155,28 +155,6 @@ export class ChatHubService {
 				return await this.fetchAgentWorkflowsAsModels(user);
 			case 'custom-agent':
 				return await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id);
-		}
-
-		const settings = await this.chatHubSettingsService.getProviderSettings(provider);
-		if (!settings.enabled) {
-			return { models: [] };
-		}
-
-		const { models, error } = await this.fetchLLMModels(provider, credentials, additionalData);
-		const allowedModels = new Set(settings.allowedModels);
-
-		return {
-			models: models.filter((model) => !settings.limitModels || allowedModels.has(model.name)),
-			error,
-		};
-	}
-
-	private async fetchLLMModels(
-		provider: ChatHubLLMProvider,
-		credentials: INodeCredentials,
-		additionalData: IWorkflowExecuteAdditionalData,
-	) {
-		switch (provider) {
 			case 'openai':
 				return await this.fetchOpenAiModels(credentials, additionalData);
 			case 'anthropic':
@@ -475,6 +453,7 @@ export class ChatHubService {
 	async sendHumanMessage(res: Response, user: User, payload: HumanMessagePayload) {
 		const { sessionId, messageId, message, model, credentials, previousMessageId, tools } = payload;
 
+		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 		const credentialId = this.getModelCredential(model, credentials);
 
 		const { executionData, workflowData } = await this.messageRepository.manager.transaction(
@@ -540,6 +519,7 @@ export class ChatHubService {
 
 	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
 		const { sessionId, editId, messageId, message, model, credentials } = payload;
+		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
 			const session = await this.getChatSession(user, sessionId, trx);
@@ -625,6 +605,7 @@ export class ChatHubService {
 	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
 		const { sessionId, retryId, model, credentials } = payload;
 		const { provider } = model;
+		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 
 		const {
 			workflow: { workflowData, executionData },

@@ -205,7 +205,10 @@ export const fetchChatProviderSettingsApi = async (
 export const updateChatSettingsApi = async (
 	context: IRestApiContext,
 	settings: ChatProviderSettingsDto,
-): Promise<void> => {
+): Promise<ChatProviderSettingsDto> => {
 	const apiEndpoint = '/chat/settings';
-	await makeRestApiRequest(context, 'POST', apiEndpoint, { payload: settings });
+
+	return await makeRestApiRequest<ChatProviderSettingsDto>(context, 'POST', apiEndpoint, {
+		payload: settings,
+	});
 };
