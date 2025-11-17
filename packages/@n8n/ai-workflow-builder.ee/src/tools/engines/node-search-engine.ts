@@ -1,4 +1,5 @@
-import { sublimeSearch } from '@n8n/utils';
+// @ts-expect-error - Temporary workaround for build order issue with @n8n/utils
+import { sublimeSearch } from '@n8n/utils/src/search/sublimeSearch';
 import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
