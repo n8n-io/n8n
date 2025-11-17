@@ -88,6 +88,7 @@ export async function executeToolsInParallel(
 				return new ToolMessage({
 					content: errorContent,
 					tool_call_id: toolCall.id ?? '',
+					name: toolCall.name,
 					// Include error flag so tools can handle errors appropriately
 					additional_kwargs: { error: true },
 				});
