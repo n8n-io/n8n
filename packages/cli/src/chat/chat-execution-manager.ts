@@ -64,7 +64,7 @@ export class ChatExecutionManager {
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
-			active: !!workflowData.activeVersionId,
+			active: workflowData.active,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,

@@ -46,10 +46,12 @@ import {
 import type {
 	CreateExecutionPayload,
 	ExecutionSummaries,
+	ExecutionUpdatePayload,
 	IExecutionBase,
 	IExecutionFlattedDb,
 	IExecutionResponse,
 } from '../entities/types-db';
+import { normalizeWorkflowData } from '../utils/normalize-workflow-data';
 import { separate } from '../utils/separate';
 
 class PostgresLiveRowsRetrievalError extends UnexpectedError {
@@ -214,7 +216,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				return {
 					...rest,
 					data: parse(executionData.data) as IRunExecutionData,
-					workflowData: executionData.workflowData,
+					workflowData: normalizeWorkflowData(executionData.workflowData),
 					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionResponse;
 			});
@@ -226,7 +228,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				return {
 					...rest,
 					data: execution.executionData.data,
-					workflowData: execution.executionData.workflowData,
+					workflowData: normalizeWorkflowData(execution.executionData.workflowData),
 					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionFlattedDb;
 			});
@@ -341,7 +343,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				data: options?.unflattenData
 					? (parse(executionData.data) as IRunExecutionData)
 					: executionData.data,
-				workflowData: executionData?.workflowData,
+				workflowData: normalizeWorkflowData(executionData?.workflowData),
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			}),
 			...(options?.includeAnnotation &&
@@ -420,7 +422,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return startedAt;
 	}
 
-	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
+	async updateExistingExecution(executionId: string, execution: ExecutionUpdatePayload) {
 		const {
 			id,
 			data,

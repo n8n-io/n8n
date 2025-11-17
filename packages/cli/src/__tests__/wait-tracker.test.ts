@@ -1,8 +1,13 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import type {
+	Project,
+	IExecutionResponse,
+	ExecutionRepository,
+	NormalizedWorkflowData,
+} from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import type { IRun, IWorkflowBase } from 'n8n-workflow';
+import type { IRun } from 'n8n-workflow';
 import { createDeferredPromise } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
@@ -33,7 +38,7 @@ describe('WaitTracker', () => {
 		}),
 		startedAt: undefined,
 	});
-	execution.workflowData = mock<IWorkflowBase>({ id: 'abcd' });
+	execution.workflowData = mock<NormalizedWorkflowData>({ id: 'abcd', active: true });
 
 	let waitTracker: WaitTracker;
 	beforeEach(() => {
@@ -151,7 +156,10 @@ describe('WaitTracker', () => {
 					id: 'parent_execution_id',
 					finished: false,
 				});
-				parentExecution.workflowData = mock<IWorkflowBase>({ id: 'parent_workflow_id' });
+				parentExecution.workflowData = mock<NormalizedWorkflowData>({
+					id: 'parent_workflow_id',
+					active: true,
+				});
 				execution.data.parentExecution = {
 					executionId: parentExecution.id,
 					workflowId: parentExecution.workflowData.id,

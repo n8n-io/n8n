@@ -87,17 +87,43 @@ export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted 
 	shared?: SharedCredentials[];
 }
 
+type StoredWorkflowDataBase = Omit<IWorkflowBase, 'pinData' | 'active'> & {
+	pinData?: ISimplifiedPinData;
+};
+
+/**
+ * Workflow data stored in executions.
+ *
+ * Uses IWorkflowBase (not IWorkflowDb) because manual executions of unsaved workflows have no workflow id.
+ * Uses simplified pinData to avoid deep type instantiation errors in TypeORM queries.
+ * During migration from `active` to `activeVersionId`: old executions have `active`, new ones have `activeVersionId`.
+ */
+export type StoredWorkflowData =
+	| (StoredWorkflowDataBase & { active: boolean })
+	| (StoredWorkflowDataBase & { active?: boolean });
+
+/** Workflow data after normalization - always includes `active` flag. */
+export type NormalizedWorkflowData = StoredWorkflowData & {
+	active: boolean;
+};
+
 export interface IExecutionResponse extends IExecutionBase {
-	id: string;
 	data: IRunExecutionData;
-	retryOf?: string;
-	retrySuccessId?: string;
-	workflowData: IWorkflowBase | WorkflowWithSharingsAndCredentials;
+	workflowData: NormalizedWorkflowData;
 	customData: Record<string, string>;
 	annotation: {
 		tags: ITagBase[];
 	};
 }
+
+/** Payload for updating an existing execution. */
+export type ExecutionUpdatePayload = Partial<
+	IExecutionBase & {
+		data?: IRunExecutionData;
+		workflowData?: IWorkflowBase;
+		customData?: Record<string, string>;
+	}
+>;
 
 export interface PublicUser {
 	id: string;
@@ -159,7 +185,7 @@ export interface IExecutionDb extends IExecutionBase {
 export interface IExecutionFlattedDb extends IExecutionBase {
 	id: string;
 	data: string;
-	workflowData: Omit<IWorkflowBase, 'pinData'>;
+	workflowData: NormalizedWorkflowData;
 	customData: Record<string, string>;
 }
 

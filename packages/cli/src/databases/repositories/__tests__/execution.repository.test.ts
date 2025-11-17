@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { SqliteConfig } from '@n8n/config';
-import type { IExecutionResponse } from '@n8n/db';
+import type { ExecutionUpdatePayload } from '@n8n/db';
 import { ExecutionEntity, ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { SelectQueryBuilder } from '@n8n/typeorm';
@@ -80,8 +80,7 @@ describe('ExecutionRepository', () => {
 				globalConfig.database.sqlite = mock<SqliteConfig>({ poolSize: 1 });
 
 				const executionId = '1';
-				const execution = mock<IExecutionResponse>({
-					id: executionId,
+				const execution = mock<ExecutionUpdatePayload>({
 					data: mock<IRunExecutionData>(),
 					workflowData: mock<IWorkflowBase>(),
 					status: 'success',
