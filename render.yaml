@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: n8n
+    env: node
+    buildCommand: pnpm install && pnpm run build
+    startCommand: pnpm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS
+        value: false
