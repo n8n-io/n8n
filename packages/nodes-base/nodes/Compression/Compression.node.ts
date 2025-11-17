@@ -2,6 +2,7 @@ import * as fflate from 'fflate';
 import * as mime from 'mime-types';
 import {
 	NodeConnectionTypes,
+	NodeOperationError,
 	type IBinaryKeyData,
 	type IExecuteFunctions,
 	type INodeExecutionData,
@@ -276,8 +277,16 @@ export class Compression implements INodeType {
 					for (const [index, binaryPropertyName] of binaryPropertyNames.entries()) {
 						const binaryData = this.helpers.assertBinaryData(i, binaryPropertyName);
 						const binaryDataBuffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+						const fileExtension = binaryData.fileExtension?.toLowerCase();
 
-						if (binaryData.fileExtension?.toLowerCase() === 'zip') {
+						if (!fileExtension) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`File extension not found for binary data ${binaryPropertyName}`,
+							);
+						}
+
+						if (fileExtension === 'zip') {
 							const files = await unzip(binaryDataBuffer);
 
 							for (const key of Object.keys(files)) {
@@ -293,7 +302,7 @@ export class Compression implements INodeType {
 
 								binaryObject[`${outputPrefix}${zipIndex++}`] = data;
 							}
-						} else if (['gz', 'gzip'].includes(binaryData.fileExtension?.toLowerCase() as string)) {
+						} else if (['gz', 'gzip'].includes(fileExtension)) {
 							const file = await gunzip(binaryDataBuffer);
 
 							const fileName = binaryData.fileName?.split('.')[0];
