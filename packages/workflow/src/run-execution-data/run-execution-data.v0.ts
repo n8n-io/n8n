@@ -14,7 +14,7 @@ import type {
 } from '..';
 
 export interface IRunExecutionDataV0 {
-	version: 0;
+	version?: 0; // Missing version means version 0
 	startData?: {
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
