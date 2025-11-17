@@ -304,7 +304,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {
 						content:
-							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 					},
 					id: '03e85c3e-4303-4f93-8d62-e05d457e8f70',
 					name: 'Sticky Note',
@@ -760,7 +760,7 @@ describe('generateNodesGraph', () => {
 				{
 					parameters: {
 						content:
-							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+							"test\n\n## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/components/sticky-notes/)",
 						height: 488,
 						width: 645,
 					},
