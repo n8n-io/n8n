@@ -32,6 +32,7 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
+			.mockReturnValueOnce('') // triggerNodeName
 			.mockReturnValueOnce({}) // workflowInputs.value
 			.mockReturnValueOnce([]) // workflowInputs.schema
 			.mockReturnValueOnce(true); // waitForSubWorkflow
@@ -72,6 +73,7 @@ describe('ExecuteWorkflow', () => {
 					workflowId: 'workflowId',
 					shouldResume: true,
 				},
+				triggerNodeName: '',
 			},
 		);
 	});
@@ -80,6 +82,7 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('once') // mode
+			.mockReturnValueOnce('') // triggerNodeName
 			.mockReturnValueOnce({}) // workflowInputs.value
 			.mockReturnValueOnce([]) // workflowInputs.schema
 			.mockReturnValueOnce(false); // waitForSubWorkflow
@@ -110,6 +113,7 @@ describe('ExecuteWorkflow', () => {
 					workflowId: 'workflowId',
 					shouldResume: false,
 				},
+				triggerNodeName: '',
 			},
 		);
 	});
@@ -118,6 +122,7 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
+			.mockReturnValueOnce('') // triggerNodeName
 			.mockReturnValueOnce({}) // workflowInputs.value
 			.mockReturnValueOnce([]) // workflowInputs.schema
 			.mockReturnValueOnce(true); // waitForSubWorkflow
@@ -136,6 +141,7 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
+			.mockReturnValueOnce('') // triggerNodeName
 			.mockReturnValueOnce({}) // workflowInputs.value (item 0)
 			.mockReturnValueOnce({}) // workflowInputs.value (item 1)
 			.mockReturnValueOnce({}) // workflowInputs.value (item 2)
@@ -167,6 +173,7 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
+			.mockReturnValueOnce('') // triggerNodeName
 			.mockReturnValueOnce({}) // workflowInputs.value
 			.mockReturnValueOnce([]) // workflowInputs.schema
 			.mockReturnValueOnce(true); // waitForSubWorkflow
@@ -185,6 +192,7 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
+			.mockReturnValueOnce('') // triggerNodeName
 			.mockReturnValueOnce({}) // workflowInputs.value (item 0)
 			.mockReturnValueOnce({}) // workflowInputs.value (item 1)
 			.mockReturnValueOnce({}) // workflowInputs.value (item 2)
@@ -218,6 +226,7 @@ describe('ExecuteWorkflow', () => {
 		executeFunctions.getNodeParameter
 			.mockReturnValueOnce('database') // source
 			.mockReturnValueOnce('each') // mode
+			.mockReturnValueOnce('') // triggerNodeName
 			.mockReturnValueOnce({}) // workflowInputs.value
 			.mockReturnValueOnce([]) // workflowInputs.schema
 			.mockReturnValueOnce(true); // waitForSubWorkflow
