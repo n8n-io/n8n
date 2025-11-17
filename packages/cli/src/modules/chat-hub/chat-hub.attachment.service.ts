@@ -31,7 +31,7 @@ export class ChatHubAttachmentService {
 		attachments: IBinaryData[],
 	): Promise<IBinaryData[]> {
 		let totalSize = 0;
-		const attachmentsWithBuffer: Array<[IBinaryData, Buffer<ArrayBuffer>]> = [];
+		const storedAttachments: IBinaryData[] = [];
 
 		for (const attachment of attachments) {
 			if (attachment.id || !attachment.data) {
@@ -53,19 +53,15 @@ export class ChatHubAttachmentService {
 				attachment.fileName = sanitizeFilename(attachment.fileName);
 			}
 
-			attachmentsWithBuffer.push([attachment, buffer]);
+			const stored = await this.binaryDataService.store(
+				FileLocation.ofChatHubMessageAttachment(sessionId, messageId),
+				buffer,
+				attachment,
+			);
+			storedAttachments.push(stored);
 		}
 
-		return await Promise.all(
-			attachmentsWithBuffer.map(
-				async ([attachment, buffer]) =>
-					await this.binaryDataService.store(
-						FileLocation.ofChatHubMessageAttachment(sessionId, messageId),
-						buffer,
-						attachment,
-					),
-			),
-		);
+		return storedAttachments;
 	}
 
 	/*
