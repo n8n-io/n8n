@@ -19,8 +19,8 @@ const props = defineProps<{
 	data: {
 		agentId?: string;
 		credentials: CredentialsMap;
-		onClose: () => void;
-		onCreateCustomAgent: (selection: ChatModelDto) => void;
+		onClose?: () => void;
+		onCreateCustomAgent?: (selection: ChatModelDto) => void;
 	};
 }>();
 
@@ -133,7 +133,7 @@ async function onSave() {
 			});
 		} else {
 			const agent = await chatStore.createCustomAgent(payload, props.data.credentials);
-			props.data.onCreateCustomAgent(agent);
+			props.data.onCreateCustomAgent?.(agent);
 
 			toast.showMessage({
 				title: i18n.baseText('chatHub.agent.editor.success.create'),
@@ -172,7 +172,7 @@ async function onDelete() {
 			title: i18n.baseText('chatHub.agent.editor.success.delete'),
 			type: 'success',
 		});
-		props.data.onClose();
+		props.data.onClose?.();
 		modalBus.value.emit('close');
 	} catch (error) {
 		const errorMessage = error instanceof Error ? error.message : '';

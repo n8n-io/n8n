@@ -422,10 +422,6 @@ async function handleUpdateTools(newTools: INode[]) {
 	}
 }
 
-function closeAgentEditor() {
-	// TODO: Do we need some handling here?
-}
-
 async function handleEditAgent(agentId: string) {
 	try {
 		await chatStore.fetchCustomAgent(agentId);
@@ -435,7 +431,6 @@ async function handleEditAgent(agentId: string) {
 			data: {
 				agentId,
 				credentials: credentialsByProvider,
-				onClose: closeAgentEditor,
 				onCreateCustomAgent: handleSelectModel,
 			},
 		});
@@ -450,7 +445,6 @@ function openNewAgentCreator() {
 		name: AGENT_EDITOR_MODAL_KEY,
 		data: {
 			credentials: credentialsByProvider,
-			onClose: closeAgentEditor,
 			onCreateCustomAgent: handleSelectModel,
 		},
 	});

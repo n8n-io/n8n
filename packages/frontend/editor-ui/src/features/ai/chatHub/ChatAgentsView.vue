@@ -60,22 +60,12 @@ const sortOptions = [
 	{ label: 'Sort by created', value: 'createdAt' },
 ];
 
-function handleCloseAgentEditor() {
-	// TODO: Do we need some handling here?
-}
-
-async function handleAgentCreatedOrUpdated() {
-	// TODO: Do we need some handling here?
-}
-
 function handleCreateAgent() {
 	chatStore.currentEditingAgent = null;
 	uiStore.openModalWithData({
 		name: AGENT_EDITOR_MODAL_KEY,
 		data: {
 			credentials: credentialsByProvider,
-			onClose: handleCloseAgentEditor,
-			onCreateCustomAgent: handleAgentCreatedOrUpdated,
 		},
 	});
 }
@@ -101,8 +91,6 @@ async function handleEditAgent(model: ChatHubConversationModel) {
 				data: {
 					agentId: model.agentId,
 					credentials: credentialsByProvider,
-					onClose: handleCloseAgentEditor,
-					onCreateCustomAgent: handleAgentCreatedOrUpdated,
 				},
 			});
 		} catch (error) {
