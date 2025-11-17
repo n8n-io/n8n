@@ -216,48 +216,52 @@ defineExpose({
 
 				<div :class="$style.footer">
 					<div v-if="isToolsSelectable" :class="$style.tools">
-						<ToolsSelector :selected="selectedTools ?? []" @select="onSelectTools" />
-						<div :class="$style.actions">
-							<N8nIconButton
-								v-if="selectedModel?.allowFileUploads"
-								native-type="button"
-								type="secondary"
-								title="Attach"
-								:disabled="isMissingCredentials || isResponding"
-								icon="paperclip"
-								icon-size="large"
-								text
-								@click.stop="onAttach"
-							/>
-							<N8nIconButton
-								v-if="speechInput.isSupported"
-								native-type="button"
-								:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
-								type="secondary"
-								:disabled="isMissingCredentials || !selectedModel || isResponding"
-								:icon="speechInput.isListening.value ? 'square' : 'mic'"
-								:class="{ [$style.recording]: speechInput.isListening.value }"
-								icon-size="large"
-								@click.stop="onMic"
-							/>
-							<N8nIconButton
-								v-if="!isResponding"
-								native-type="submit"
-								:disabled="isMissingCredentials || !selectedModel || !message.trim()"
-								title="Send"
-								icon="arrow-up"
-								icon-size="large"
-								@click.stop
-							/>
-							<N8nIconButton
-								v-else
-								native-type="button"
-								title="Stop generating"
-								icon="square"
-								icon-size="large"
-								@click.stop="onStop"
-							/>
-						</div>
+						<ToolsSelector
+							:selected="selectedTools ?? []"
+							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							@select="onSelectTools"
+						/>
+					</div>
+					<div :class="$style.actions">
+						<N8nIconButton
+							v-if="selectedModel?.allowFileUploads"
+							native-type="button"
+							type="secondary"
+							title="Attach"
+							:disabled="isMissingCredentials || isResponding"
+							icon="paperclip"
+							icon-size="large"
+							text
+							@click.stop="onAttach"
+						/>
+						<N8nIconButton
+							v-if="speechInput.isSupported"
+							native-type="button"
+							:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
+							type="secondary"
+							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							:icon="speechInput.isListening.value ? 'square' : 'mic'"
+							:class="{ [$style.recording]: speechInput.isListening.value }"
+							icon-size="large"
+							@click.stop="onMic"
+						/>
+						<N8nIconButton
+							v-if="!isResponding"
+							native-type="submit"
+							:disabled="isMissingCredentials || !selectedModel || !message.trim()"
+							title="Send"
+							icon="arrow-up"
+							icon-size="large"
+							@click.stop
+						/>
+						<N8nIconButton
+							v-else
+							native-type="button"
+							title="Stop generating"
+							icon="square"
+							icon-size="large"
+							@click.stop="onStop"
+						/>
 					</div>
 				</div>
 			</div>
@@ -335,13 +339,7 @@ defineExpose({
 }
 
 .tools {
-	position: absolute;
-	left: 0;
-	bottom: 0;
-	padding: var(--spacing--sm);
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+	flex-grow: 1;
 }
 
 .toolsButton {

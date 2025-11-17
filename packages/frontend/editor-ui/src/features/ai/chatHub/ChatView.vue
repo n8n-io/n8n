@@ -27,7 +27,7 @@ import {
 	type ChatHubSendMessageRequest,
 	type ChatModelDto,
 } from '@n8n/api-types';
-import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
+import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
@@ -38,6 +38,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import { INodesSchema, type INode } from 'n8n-workflow';
+import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 
 const router = useRouter();
 const route = useRoute();
@@ -207,6 +208,15 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 
+const canAcceptFiles = computed(
+	() =>
+		editingMessageId.value === undefined &&
+		!!selectedModel.value?.allowFileUploads &&
+		!isMissingSelectedCredential.value,
+);
+
+const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
+
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
 		top: scrollableRef.value?.scrollHeight,
@@ -304,7 +314,7 @@ watch(
 	{ immediate: true },
 );
 
-function onSubmit(message: string) {
+function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
 		isResponding.value ||
@@ -316,12 +326,13 @@ function onSubmit(message: string) {
 
 	didSubmitInCurrentSession.value = true;
 
-	chatStore.sendMessage(
+	void chatStore.sendMessage(
 		sessionId.value,
 		message,
 		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
 		canSelectTools.value ? selectedTools.value : [],
+		attachments,
 	);
 
 	inputRef.value?.setText('');
@@ -456,6 +467,10 @@ function handleOpenWorkflow(workflowId: string) {
 
 	window.open(routeData.href, '_blank');
 }
+
+function onFilesDropped(files: File[]) {
+	inputRef.value?.addAttachments(files);
+}
 </script>
 
 <template>
@@ -464,8 +479,18 @@ function handleOpenWorkflow(workflowId: string) {
 			[$style.isNewSession]: isNewSession,
 			[$style.isExistingSession]: !isNewSession,
 			[$style.isMobileDevice]: isMobileDevice,
+			[$style.isDraggingFile]: fileDrop.isDragging.value,
 		}"
+		@dragenter="fileDrop.handleDragEnter"
+		@dragleave="fileDrop.handleDragLeave"
+		@dragover="fileDrop.handleDragOver"
+		@drop="fileDrop.handleDrop"
+		@paste="fileDrop.handlePaste"
 	>
+		<div v-if="fileDrop.isDragging.value" :class="$style.dropOverlay">
+			<N8nText size="large" color="text-dark">Drop files here to attach</N8nText>
+		</div>
+
 		<ChatConversationHeader
 			ref="headerRef"
 			:selected-model="selectedModel ?? null"
@@ -629,5 +654,23 @@ function handleOpenWorkflow(workflowId: string) {
 	left: auto;
 	box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
 	border-radius: 50%;
+}
+
+.isDraggingFile {
+	border-color: var(--color--secondary);
+}
+
+.dropOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: rgba(255, 255, 255, 0.95);
+	pointer-events: none;
 }
 </style>
