@@ -66,9 +66,8 @@ function onUpdate(value: boolean | 'indeterminate') {
 		cursor: not-allowed;
 	}
 }
-/* --p--color--primary-320 */
+
 .CheckboxRoot {
-	/* background-color: var(--p--color--primary-320); */
 	background: transparent;
 	width: 16px;
 	height: 16px;
@@ -76,7 +75,6 @@ function onUpdate(value: boolean | 'indeterminate') {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	/* box-shadow: 0 2px 10px var(--black-a7); */
 	border: var(--border);
 	color: white;
 	cursor: inherit;
@@ -98,12 +96,6 @@ function onUpdate(value: boolean | 'indeterminate') {
 		z-index: 1;
 	}
 }
-/* .CheckboxRoot:hover {
-	background-color: var(--grass-3);
-}
-.CheckboxRoot:focus {
-	box-shadow: 0 0 0 2px black;
-} */
 
 .CheckboxIndicator {
 	display: flex;
