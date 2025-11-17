@@ -247,16 +247,26 @@ export class JobProcessor {
 
 		delete this.runningJobs[job.id];
 
+		const fullRunData = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		const hasErrors =
+			fullRunData?.status === 'error' || fullRunData?.data?.resultData?.error !== undefined;
+
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
 			executionId,
 			workflowId,
 			jobId: job.id,
+			success: !hasErrors,
 		});
 
 		const msg: JobFinishedMessage = {
 			kind: 'job-finished',
 			executionId,
 			workerId: this.instanceSettings.hostId,
+			success: !hasErrors,
 		};
 
 		await job.progress(msg);
