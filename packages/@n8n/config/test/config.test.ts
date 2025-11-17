@@ -317,6 +317,7 @@ describe('GlobalConfig', () => {
 			disableWebhookHtmlSandboxing: false,
 			disableBareRepos: false,
 			awsSystemCredentialsAccess: false,
+			enableGitNodeHooks: false,
 		},
 		executions: {
 			mode: 'regular',
