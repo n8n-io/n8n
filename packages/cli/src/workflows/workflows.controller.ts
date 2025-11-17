@@ -458,6 +458,40 @@ export class WorkflowsController {
 		return toWorkflow(workflow);
 	}
 
+	@Post('/:workflowId/activate')
+	@ProjectScope('workflow:update')
+	async activate(req: WorkflowRequest.Activate) {
+		const { workflowId } = req.params;
+		const { versionId } = req.body;
+
+		if (!versionId) {
+			throw new BadRequestError('versionId is required');
+		}
+
+		const workflow = await this.workflowService.activateWorkflow(
+			req.user,
+			workflowId,
+			versionId,
+			'activate',
+		);
+
+		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+
+		return { ...toWorkflow(workflow), scopes };
+	}
+
+	@Post('/:workflowId/deactivate')
+	@ProjectScope('workflow:update')
+	async deactivate(req: WorkflowRequest.Deactivate) {
+		const { workflowId } = req.params;
+
+		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId);
+
+		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+
+		return { ...toWorkflow(workflow), scopes };
+	}
+
 	@Post('/:workflowId/run')
 	@ProjectScope('workflow:execute')
 	async runManually(req: WorkflowRequest.ManualRun, _res: unknown) {
