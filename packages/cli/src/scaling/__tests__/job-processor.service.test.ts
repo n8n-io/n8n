@@ -110,9 +110,18 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			await jobProcessor.processJob(mock<Job>());
+			const job = mock<Job>();
+
+			await jobProcessor.processJob(job);
 
 			expect(manualExecutionService.runManually).toHaveBeenCalledTimes(1);
+
+			expect(job.progress).toHaveBeenCalledWith(
+				expect.objectContaining({
+					kind: 'job-finished',
+					success: true,
+				}),
+			);
 		},
 	);
 
