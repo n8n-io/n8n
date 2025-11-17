@@ -16,6 +16,7 @@ import type { IRunExecutionDataV0 } from './run-execution-data.v0';
 
 // DIFF: switches startData.destinationNode to a structured object, rather than just the name of the string.
 export interface IRunExecutionDataV1 {
+	version: 1;
 	startData?: {
 		startNodes?: StartNodeData[];
 		destinationNode?: {
@@ -68,6 +69,7 @@ export function runExecutionDataV0ToV1(data: IRunExecutionDataV0): IRunExecution
 
 	return {
 		...data,
+		version: 1,
 		startData: {
 			...data.startData,
 			destinationNode: destinationNodeV0

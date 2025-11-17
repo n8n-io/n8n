@@ -14,6 +14,7 @@ import type {
 } from '..';
 
 export interface IRunExecutionDataV0 {
+	version: 0;
 	startData?: {
 		startNodes?: StartNodeData[];
 		destinationNode?: string;
