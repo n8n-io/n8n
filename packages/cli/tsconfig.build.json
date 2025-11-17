@@ -2,9 +2,7 @@
 	"extends": ["./tsconfig.json", "@n8n/typescript-config/tsconfig.build.json"],
 	"compilerOptions": {
 		"rootDir": "src",
-		"module": "nodenext",
 		"outDir": "dist",
-		"moduleResolution": "nodenext",
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
 	"include": ["src/**/*.ts"],
