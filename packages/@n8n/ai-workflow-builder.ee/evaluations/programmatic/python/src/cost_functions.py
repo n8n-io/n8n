@@ -142,6 +142,7 @@ def edge_substitution_cost(
     conn_type1 = edge1_data.get("connection_type", "main")
     conn_type2 = edge2_data.get("connection_type", "main")
 
+    # If edges have the same type, source and target they don't need substitution
     if (
         source_name1 == source_name2
         and target_name1 == target_name2
@@ -292,7 +293,7 @@ def apply_comparison_rule(val1: Any, val2: Any, rule: ParameterComparisonRule) -
             return rule.cost_if_exceeded
         except (ValueError, TypeError):
             # Not numeric, count as different
-            return 1.0
+            return rule.cost_if_exceeded
 
     elif rule.type == "normalized":
         # Normalized comparison (e.g., URLs)
