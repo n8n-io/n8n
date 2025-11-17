@@ -8,7 +8,7 @@ Graph-based workflow similarity comparison using NetworkX and graph edit distanc
 - **Configurable Cost Functions**: Customize costs for different types of edits (node/edge insertion, deletion, substitution)
 - **Special Case Handling**: Higher penalties for trigger mismatches, similar node types grouped together
 - **Parameter Comparison**: Deep comparison of node parameters with configurable ignore rules
-- **External Configuration**: YAML/JSON config files for easy customization without code changes
+- **External Configuration**: YAML/JSON config files for easy customization without code changes ([see CONFIGURATION.md](CONFIGURATION.md))
 - **Built-in Presets**: Strict, standard, and lenient comparison modes
 - **Detailed Output**: Returns similarity score and top edit operations needed
 
@@ -92,13 +92,15 @@ console.log(`Violations: ${result.violations.length}`);
 
 ## Configuration
 
+> **📖 For detailed configuration documentation, see [CONFIGURATION.md](CONFIGURATION.md)**
+
 ### Built-in Presets
 
 - **strict**: High penalties, exact matching required
 - **standard**: Balanced comparison (default)
 - **lenient**: Low penalties, focus on structure over details
 
-### Custom Configuration
+### Quick Start
 
 Create a YAML or JSON file with your custom rules:
 
@@ -128,20 +130,11 @@ similarity_groups:
     - "n8n-nodes-base.manualTrigger"
 
 ignore:
-  # Ignore UI-only nodes
   node_types:
     - "n8n-nodes-base.stickyNote"
-
-  # Ignore cosmetic parameters
   global_parameters:
     - "position"
     - "id"
-    - "notes"
-
-  # Node-specific ignores
-  node_type_parameters:
-    "@n8n/n8n-nodes-langchain.agent":
-      - "options.systemMessage"
 
 parameter_comparison:
   numeric_tolerance:
@@ -150,38 +143,15 @@ parameter_comparison:
       cost_if_exceeded: 2.0
 ```
 
-### Configuration Options
+**For comprehensive documentation including:**
+- Complete field reference
+- Cost configuration strategies
+- Advanced ignore rules and wildcards
+- Parameter comparison rules
+- Exemptions and conditional logic
+- Real-world examples
 
-#### Cost Weights
-- `node_insertion_cost`: Cost of adding a missing node
-- `node_deletion_cost`: Cost of removing an extra node
-- `node_substitution_same_type`: Cost for parameter differences (same node type)
-- `node_substitution_similar_type`: Cost for similar node types
-- `node_substitution_different_type`: Cost for completely different node types
-- `node_substitution_trigger`: Cost for trigger mismatches (critical!)
-- `edge_insertion_cost`: Cost of adding a missing connection
-- `edge_deletion_cost`: Cost of removing an extra connection
-- `edge_substitution_cost`: Cost of changing connection type
-
-#### Ignore Rules
-
-**Node Ignoring:**
-- `ignore.node_types`: List of node types to completely ignore
-- `ignore.nodes`: Pattern-based rules for ignoring specific nodes
-
-**Parameter Ignoring:**
-- `ignore.global_parameters`: Parameters to ignore for all nodes
-- `ignore.node_type_parameters`: Parameters to ignore for specific node types
-- `ignore.parameter_paths`: JSONPath-like patterns (supports `*` and `**`)
-
-#### Parameter Comparison
-- `fuzzy_match`: Semantic similarity for text parameters
-- `numeric_tolerance`: Tolerance ranges for numeric parameters
-- `exact_match`: Parameters that must match exactly
-
-#### Exemptions
-- `optional_in_generated`: Nodes that can be missing with reduced penalty
-- `optional_in_ground_truth`: Extra nodes that are acceptable with reduced penalty
+See **[CONFIGURATION.md](CONFIGURATION.md)**
 
 ## Output Format
 
@@ -256,6 +226,7 @@ uv run pytest --cov
 
 ### Graph Representation
 - Each workflow node becomes a graph node with attributes (type, parameters, etc.)
+- Node and edge get a generated ID based on their position in the workflow
 - Each workflow connection becomes a directed edge with connection type
 - Nodes and edges are filtered based on configuration rules
 
@@ -272,17 +243,7 @@ similarity = 1 - (edit_cost / max_possible_cost)
 
 Where `max_possible_cost` is the cost of deleting all nodes/edges from g1 and inserting all from g2.
 
-## Performance
-
-- **Typical workflow size**: 5-50 nodes
-- **Algorithm complexity**: O(n³) for exact GED
-- **Expected runtime**: < 5 seconds for typical workflows
-- **Timeout**: 30 seconds (configurable in TypeScript wrapper)
-
 ## Troubleshooting
-
-### uvx not found
-Install `uv`: https://docs.astral.sh/uv/getting-started/installation/
 
 ### Timeout errors
 For very large or complex workflows, the comparison may timeout. Consider:
@@ -294,15 +255,3 @@ For very large or complex workflows, the comparison may timeout. Consider:
 - Ensure YAML/JSON syntax is valid
 - Check that node types and parameter paths are correct
 - Use `--verbose` flag to see detailed configuration info
-
-## Contributing
-
-When adding new features:
-1. Update configuration schema in `config_loader.py`
-2. Add tests in `tests/`
-3. Update this README with new options
-4. Update TypeScript types if needed
-
-## License
-
-Part of the n8n project.
