@@ -1,5 +1,5 @@
 export type ElasticsearchApiCredentials = {
-	authType: 'apiKey' | 'basicAuth';
+	authType?: 'apiKey' | 'basicAuth';
 	apiKey?: string;
 	username?: string;
 	password?: string;
