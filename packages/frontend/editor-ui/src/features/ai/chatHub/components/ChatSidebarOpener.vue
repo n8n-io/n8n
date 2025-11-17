@@ -9,7 +9,7 @@ const sidebar = useChatHubSidebarState();
 	<N8nIconButton
 		v-if="!sidebar.isStatic.value"
 		type="secondary"
-		:icon="sidebar.isStatic.value || sidebar.isCollapsed.value ? 'panel-left' : 'menu'"
+		:icon="sidebar.canBeStatic.value ? 'panel-left' : 'menu'"
 		text
 		icon-size="large"
 		@click="sidebar.toggleStatic(true)"
