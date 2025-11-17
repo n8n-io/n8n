@@ -295,10 +295,6 @@ watch(
 defineExpose({
 	open: () => dropdownRef.value?.open(),
 });
-
-onMounted(async () => {
-	await settingStore.getModuleSettings();
-});
 </script>
 
 <template>
