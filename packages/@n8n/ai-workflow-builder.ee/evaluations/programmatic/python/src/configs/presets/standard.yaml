@@ -11,45 +11,16 @@ costs:
       same_type: 1.0
       similar_type: 5.0
       different_type: 15.0
-      trigger_mismatch: 50.0  # Triggers are critical
+      trigger_mismatch: 50.0
 
   edges:
-    insertion: 5.0
-    deletion: 5.0
-    substitution: 3.0
+    insertion: 2.0
+    deletion: 2.0
+    substitution: 1.0
 
   parameters:
     mismatch_weight: 0.5
     nested_weight: 0.3
-
-# Node type similarity groups
-similarity_groups:
-  triggers:
-    - "n8n-nodes-base.webhook"
-    - "n8n-nodes-base.manualTrigger"
-    - "n8n-nodes-base.scheduleTrigger"
-
-  ai_agents:
-    - "n8n-nodes-langchain.agent"
-    - "@n8n/n8n-nodes-langchain.agent"
-    - "n8n-nodes-langchain.basicAgent"
-
-  ai_llms:
-    - "@n8n/n8n-nodes-langchain.lmChatOpenAi"
-    - "@n8n/n8n-nodes-langchain.lmChatAnthropic"
-    - "@n8n/n8n-nodes-langchain.lmChatOllama"
-    - "@n8n/n8n-nodes-langchain.lmChatMistralCloud"
-    - "@n8n/n8n-nodes-langchain.lmChatAws"
-
-  ai_tools:
-    - "@n8n/n8n-nodes-langchain.toolHttpRequest"
-    - "@n8n/n8n-nodes-langchain.toolCalculator"
-    - "@n8n/n8n-nodes-langchain.toolCode"
-    - "@n8n/n8n-nodes-langchain.toolWorkflow"
-
-  http_requests:
-    - "n8n-nodes-base.httpRequest"
-    - "@n8n/n8n-nodes-langchain.toolHttpRequest"
 
 # Ignore rules
 ignore:
@@ -65,11 +36,10 @@ ignore:
     - "notesInFlow"
     - "color"
 
-  # Node-specific parameter ignores
-  node_type_parameters:
-    # Agent nodes - ignore UI-specific options
-    "@n8n/n8n-nodes-langchain.agent":
-      - "options.systemMessage"  # Prompts can vary
+
+# Ignore credential references (might differ between environments)
+parameter_paths:
+  - "**.credentials"
 
 # Parameter comparison rules
 parameter_comparison:
@@ -85,7 +55,6 @@ parameter_comparison:
 
 # Output configuration
 output:
-  max_edits: 15
+  max_edits: 29
   group_by: "priority"
   include_explanations: true
-  include_suggestions: true

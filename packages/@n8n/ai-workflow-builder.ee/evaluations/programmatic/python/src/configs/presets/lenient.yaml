@@ -24,11 +24,6 @@ costs:
 
 # Node type similarity groups (same as standard)
 similarity_groups:
-  triggers:
-    - "n8n-nodes-base.webhook"
-    - "n8n-nodes-base.manualTrigger"
-    - "n8n-nodes-base.scheduleTrigger"
-
   ai_llms:
     - "@n8n/n8n-nodes-langchain.lmChatOpenAi"
     - "@n8n/n8n-nodes-langchain.lmChatAnthropic"
@@ -38,14 +33,11 @@ similarity_groups:
     - "@n8n/n8n-nodes-langchain.lmChatGroq"
 
 
-# Extensive ignores - focus on high-level structure
 ignore:
-  # Ignore UI and debug nodes
   node_types:
     - "n8n-nodes-base.stickyNote"
     - "n8n-nodes-base.noOp"
 
-  # Ignore cosmetics and configuration details
   global_parameters:
     - "position"
     - "name"
@@ -53,7 +45,6 @@ ignore:
     - "notes"
     - "notesInFlow"
     - "color"
-    - "disabled"
     - "alwaysOutputData"
     - "executeOnce"
 
@@ -63,17 +54,10 @@ ignore:
       - "options.*"  # Ignore all options
 
     "@n8n/n8n-nodes-langchain.lmChatOpenAi":
-      - "options.temperature"
-      - "options.maxTokens"
       - "model"  # Model choice is flexible
 
     "@n8n/n8n-nodes-langchain.lmChatAnthropic":
-      - "options.temperature"
-      - "options.maxTokens"
       - "model"
-
-    "n8n-nodes-base.httpRequest":
-      - "options.*"  # Ignore HTTP options
 
   # Ignore credential references (might differ between environments)
   parameter_paths:
