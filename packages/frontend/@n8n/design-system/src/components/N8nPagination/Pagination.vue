@@ -118,9 +118,14 @@ watch(pageSizeModel, (newValue) => {
 // Compute siblingCount from pagerCount
 // pagerCount in ElementPlus is total visible page numbers
 // siblingCount in Reka UI is pages on each side of current
-// Approximate conversion: siblingCount ≈ (pagerCount - 1) / 2
+// Limit to max 6 pages visible in the middle section before ellipses
+// With siblingCount = 3: shows current-3, current-2, current-1, current, current+1, current+2 = 6 pages
 const siblingCount = computed(() => {
-	return Math.max(1, Math.floor((props.pagerCount - 1) / 2));
+	// Limit to max 6 pages in middle section before ellipses appear
+	// siblingCount of 3 gives: current-3, current-2, current-1, current, current+1, current+2 = 6 pages
+	const maxSiblingCount = 2;
+	const calculated = Math.max(1, Math.floor((props.pagerCount - 1) / 2));
+	return Math.min(calculated, maxSiblingCount);
 });
 
 // Parse layout string to determine which components to show
