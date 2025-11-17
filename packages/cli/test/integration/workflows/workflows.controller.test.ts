@@ -10,7 +10,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import type { User, ListQueryDb, WorkflowFolderUnionFull } from '@n8n/db';
+import type { User, ListQueryDb, WorkflowFolderUnionFull, Role } from '@n8n/db';
 import {
 	ProjectRepository,
 	WorkflowHistoryRepository,
@@ -19,22 +19,23 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
-import { createFolder } from '@test-integration/db/folders';
 import { DateTime } from 'luxon';
 import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
-
-import { saveCredential } from '../shared/db/credentials';
-import { assignTagToWorkflow, createTag } from '../shared/db/tags';
-import { createManyUsers, createMember, createOwner } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
-import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
+import { createFolder } from '@test-integration/db/folders';
+
+import { saveCredential } from '../shared/db/credentials';
+import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
+import { assignTagToWorkflow, createTag } from '../shared/db/tags';
+import { createManyUsers, createMember, createOwner } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
+import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 let owner: User;
 let member: User;
@@ -56,6 +57,7 @@ const { objectContaining, arrayContaining, any } = expect;
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 
 let projectRepository: ProjectRepository;
+let folderListMissingRole: Role;
 
 beforeEach(async () => {
 	await testDb.truncate([
@@ -68,12 +70,19 @@ beforeEach(async () => {
 		'Project',
 		'User',
 	]);
+	await cleanupRolesAndScopes();
 	projectRepository = Container.get(ProjectRepository);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
 	authMemberAgent = testServer.authAgentFor(member);
 	anotherMember = await createMember();
+
+	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
+		roleType: 'project',
+		displayName: 'Workflow Read-Only',
+		description: 'Can only read and list workflows',
+	});
 });
 
 afterEach(() => {
@@ -1596,6 +1605,65 @@ describe('GET /workflows?includeFolders=true', () => {
 		expect(found.nodes).toBeUndefined();
 		expect(found.sharedWithProjects).toHaveLength(0);
 		expect(found.usedCredentials).toBeUndefined();
+	});
+
+	test('should NOT returns folders without folder:list scope', async () => {
+		const [member1, member2] = await createManyUsers(2, {
+			role: { slug: 'global:member' },
+		});
+
+		const teamProject = await createTeamProject(undefined, member1);
+		await linkUserToProject(member2, teamProject, folderListMissingRole.slug);
+
+		const [savedWorkflow1, savedWorkflow2, savedFolder1] = await Promise.all([
+			createWorkflow({ name: 'First' }, teamProject),
+			createWorkflow({ name: 'Second' }, teamProject),
+			createFolder(teamProject, { name: 'Folder' }),
+		]);
+
+		{
+			const response = await testServer
+				.authAgentFor(member1)
+				.get(
+					`/workflows?filter={ "projectId": "${teamProject.id}" }&includeScopes=true&includeFolders=true`,
+				);
+
+			expect(response.statusCode).toBe(200);
+			// project owner
+			expect(response.body.data.length).toBe(3);
+
+			const workflows = response.body.data as Array<WorkflowFolderUnionFull & { scopes: Scope[] }>;
+			const wf1 = workflows.find((wf) => wf.id === savedWorkflow1.id)!;
+			const wf2 = workflows.find((wf) => wf.id === savedWorkflow2.id)!;
+			const f1 = workflows.find((wf) => wf.id === savedFolder1.id)!;
+
+			// Team workflow
+			expect(wf1.id).toBe(savedWorkflow1.id);
+			expect(wf2.id).toBe(savedWorkflow2.id);
+			expect(f1.id).toBe(savedFolder1.id);
+		}
+
+		{
+			const response = await testServer
+				.authAgentFor(member2)
+				.get(
+					`/workflows?filter={ "projectId": "${teamProject.id}" }&includeScopes=true&includeFolders=true`,
+				);
+
+			expect(response.statusCode).toBe(200);
+			// project member
+			expect(response.body.data.length).toBe(2);
+
+			const workflows = response.body.data as Array<WorkflowFolderUnionFull & { scopes: Scope[] }>;
+			const wf1 = workflows.find((w) => w.id === savedWorkflow1.id)!;
+			const wf2 = workflows.find((w) => w.id === savedWorkflow2.id)!;
+			const f1 = workflows.find((wf) => wf.id === savedFolder1.id)!;
+
+			// Team workflow
+			expect(wf1.id).toBe(savedWorkflow1.id);
+			expect(wf2.id).toBe(savedWorkflow2.id);
+			expect(f1).toBeUndefined();
+		}
 	});
 
 	test('should return workflows with scopes and folders when ?includeScopes=true', async () => {
