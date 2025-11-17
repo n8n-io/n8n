@@ -88,7 +88,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 	}
 
 	async exists(key: string) {
-		const ttl = await this.cache.store.ttl(key);
+		const ttl = await this.cache?.store.ttl(key);
 		return !!ttl;
 	}
 
