@@ -37,16 +37,14 @@ export class CredentialsFinderService {
 		credentials: T[],
 		globalCredentials: CredentialsEntity[],
 		mapGlobalCredential: (cred: CredentialsEntity) => T | null,
-	): void {
-		const credentialMap = new Map(credentials.map((c) => [c.id, c]));
-		for (const globalCred of globalCredentials) {
-			if (!credentialMap.has(globalCred.id)) {
-				const mapped = mapGlobalCredential(globalCred);
-				if (mapped) {
-					credentials.push(mapped);
-				}
-			}
-		}
+	): T[] {
+		const credentialIds = new Set(credentials.map((c) => c.id));
+		const newGlobalCreds = globalCredentials
+			.filter((gc) => !credentialIds.has(gc.id))
+			.map(mapGlobalCredential)
+			.filter((mapped): mapped is T => mapped !== null);
+
+		return [...credentials, ...newGlobalCreds];
 	}
 
 	/**
@@ -85,9 +83,13 @@ export class CredentialsFinderService {
 
 		// Also include global credentials
 		const globalCredentials = await this.fetchGlobalCredentials();
-		this.mergeAndDeduplicateCredentials(credentials, globalCredentials, (cred) => cred);
+		const mergedCredentials = this.mergeAndDeduplicateCredentials(
+			credentials,
+			globalCredentials,
+			(cred) => cred,
+		);
 
-		return credentials;
+		return mergedCredentials;
 	}
 
 	/** Get a credential if it has been shared with a user */
@@ -172,7 +174,7 @@ export class CredentialsFinderService {
 			trx,
 		);
 
-		const sharedCredentialsList = sharedCredential.map((sc) => ({
+		let sharedCredentialsList = sharedCredential.map((sc) => ({
 			...sc.credentials,
 			projectId: sc.projectId,
 		}));
@@ -180,7 +182,7 @@ export class CredentialsFinderService {
 		// Include global credentials if flag is set
 		if (options?.includeGlobalCredentials) {
 			const globalCredentials = await this.fetchGlobalCredentials(trx);
-			this.mergeAndDeduplicateCredentials(
+			sharedCredentialsList = this.mergeAndDeduplicateCredentials(
 				sharedCredentialsList,
 				globalCredentials,
 				(globalCred) => {

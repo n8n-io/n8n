@@ -77,14 +77,10 @@ export class CredentialsService {
 			await this.credentialsRepository.findAllGlobalCredentials(includeData);
 
 		// Merge and deduplicate based on credential ID
-		const credentialMap = new Map(credentials.map((c) => [c.id, c]));
-		for (const globalCred of globalCredentials) {
-			if (!credentialMap.has(globalCred.id)) {
-				credentials.push(globalCred);
-			}
-		}
+		const credentialIds = new Set(credentials.map((c) => c.id));
+		const newGlobalCreds = globalCredentials.filter((gc) => !credentialIds.has(gc.id));
 
-		return credentials;
+		return [...credentials, ...newGlobalCreds];
 	}
 
 	async getMany(
