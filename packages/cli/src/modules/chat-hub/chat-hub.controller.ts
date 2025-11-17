@@ -101,7 +101,7 @@ export class ChatHubController {
 		}
 
 		if (fileName) {
-			res.setHeader('Content-Disposition', `inline; filename="${sanitizeFilename(fileName)}"`);
+			res.setHeader('Content-Disposition', `attachment; filename="${sanitizeFilename(fileName)}"`);
 		}
 
 		if (attachmentAsStreamOrBuffer.type === 'buffer') {
