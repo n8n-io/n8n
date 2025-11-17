@@ -90,6 +90,7 @@ const onItemClick = (event: MouseEvent) => {
 
 onMounted(() => {
 	emit('mounted', {
+		index: props.index,
 		offsetTop: itemElement.value?.offsetTop ?? 0,
 		isSelected: props.isSelected,
 	});
