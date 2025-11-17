@@ -143,7 +143,7 @@ export const ChatModule: FrontendModuleDescription = {
 	settingsPages: [
 		{
 			id: 'settings-chat-hub',
-			icon: 'mcp',
+			icon: 'message-circle',
 			label: i18n.baseText('settings.chatHub'),
 			position: 'top',
 			route: { to: { name: CHAT_SETTINGS_VIEW } },

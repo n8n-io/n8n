@@ -20,6 +20,7 @@ import {
 	updateConversationApi,
 	fetchChatSettingsApi,
 	fetchChatProviderSettingsApi,
+	updateChatSettingsApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -746,6 +747,16 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return providerSettings;
 	}
 
+	async function updateProviderSettings(updatedSettings: ChatProviderSettingsDto) {
+		const response = await updateChatSettingsApi(rootStore.restApiContext, updatedSettings);
+
+		// settings.value = settings.value?.map((setting: ChatProviderSettingsDto) =>
+		// 	setting.provider === updatedSettings.provider ? updatedSettings : setting,
+		// );
+
+		// return providerSettings;
+	}
+
 	return {
 		/**
 		 * models and agents
@@ -796,5 +807,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		 */
 		fetchAllChatSettings,
 		fetchProviderSettings,
+		updateProviderSettings,
 	};
 });

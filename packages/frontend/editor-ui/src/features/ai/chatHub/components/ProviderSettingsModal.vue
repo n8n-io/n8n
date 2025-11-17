@@ -1,6 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { N8nButton, N8nHeading, N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nIcon,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
@@ -12,7 +20,6 @@ import {
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { ElSwitch } from 'element-plus';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useI18n } from '@n8n/i18n';
 import { useChatStore } from '../chat.store';
 import { providerDisplayNames } from '../constants';
@@ -26,6 +33,9 @@ const props = defineProps<{
 	data: {
 		provider: ChatHubLLMProvider;
 		disabled: boolean;
+		onNewCredential: (provider: ChatHubLLMProvider) => void;
+		onConfirm: (settings: ChatProviderSettingsDto) => void;
+		onCancel: () => void;
 	};
 }>();
 
@@ -37,7 +47,6 @@ const availableModels = ref<ChatModelDto[]>([]);
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
-const uiStore = useUIStore();
 const chatStore = useChatStore();
 const toast = useToast();
 
@@ -52,14 +61,21 @@ function onCredentialSelect(credentialId: string) {
 }
 
 function onConfirm() {
+	if (settings.value) {
+		props.data.onConfirm(settings.value);
+	} else {
+		props.data.onCancel();
+	}
+
 	modalBus.value.emit('close');
 }
 
-function onCreateNew() {
-	modalBus.value.emit('close');
+function onNewCredential() {
+	props.data.onNewCredential(props.data.provider);
 }
 
 function onCancel() {
+	props.data.onCancel();
 	modalBus.value.emit('close');
 }
 
@@ -107,6 +123,18 @@ const onToggleEnabled = (value: string | number | boolean) => {
 	}
 };
 
+const onToggleLimitModels = (value: string | number | boolean) => {
+	if (settings.value) {
+		settings.value.limitModels = typeof value === 'boolean' ? value : Boolean(value);
+	}
+};
+
+function onSelectModels(selectedModelNames: string[]) {
+	if (settings.value) {
+		settings.value.allowedModels = selectedModelNames;
+	}
+}
+
 onMounted(async () => {
 	loadingSettings.value = true;
 	await Promise.all([
@@ -149,7 +177,7 @@ watch(
 		<template #content>
 			<div :class="$style.content">
 				<div :class="$style.container">
-					<div :class="$style.enabledLabel">
+					<div :class="$style.label">
 						<N8nText bold>
 							{{
 								i18n.baseText('settings.chatHub.providers.modal.edit.enabled.label', {
@@ -166,7 +194,7 @@ watch(
 						</N8nText>
 					</div>
 
-					<div :class="$style.enabledToggle">
+					<div :class="$style.toggle">
 						<N8nTooltip
 							:content="i18n.baseText('settings.chatHub.providers.modal.edit.enabled.tooltip')"
 							:disabled="!props.data.disabled"
@@ -203,13 +231,56 @@ watch(
 								:label="c.name"
 							/>
 						</N8nSelect>
-						<N8nButton size="medium" type="secondary" @click="onCreateNew()">
+						<N8nButton size="medium" type="secondary" @click="onNewCredential()">
 							{{ i18n.baseText('settings.chatHub.providers.modal.edit.credential.new') }}
 						</N8nButton>
 					</div>
+				</div>
 
-					<div v-if="settings && settings.enabled && settings.credentialId">
-						<ChatProviderModelsTable :models="models" :loading="loadingModels" />
+				<div v-if="settings && settings.enabled && settings.credentialId">
+					<div :class="$style.container">
+						<div :class="$style.label">
+							<N8nText bold>
+								{{
+									i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.label', {
+										interpolate: { provider: providerDisplayNames[props.data.provider] },
+									})
+								}}
+							</N8nText>
+							<N8nText size="small" color="text-light">
+								{{
+									i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.description', {
+										interpolate: { provider: providerDisplayNames[props.data.provider] },
+									})
+								}}
+							</N8nText>
+						</div>
+
+						<div :class="$style.toggle">
+							<N8nTooltip
+								:content="
+									i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.tooltip')
+								"
+								:disabled="!props.data.disabled"
+								placement="top"
+							>
+								<ElSwitch
+									size="large"
+									:model-value="settings?.limitModels ?? false"
+									:disabled="props.data.disabled"
+									:loading="loadingSettings"
+									@update:model-value="onToggleLimitModels"
+								/>
+							</N8nTooltip>
+						</div>
+					</div>
+
+					<div v-if="settings && settings.enabled && settings.credentialId && settings.limitModels">
+						<ChatProviderModelsTable
+							:models="models"
+							:loading="loadingModels"
+							@select-models="onSelectModels"
+						/>
 					</div>
 				</div>
 			</div>
@@ -249,14 +320,14 @@ watch(
 	justify-content: space-between;
 }
 
-.enabledLabel {
+.label {
 	display: flex;
 	flex-direction: column;
 	justify-content: center;
 	align-items: flex-start;
 }
 
-.enabledToggle {
+.toggle {
 	display: flex;
 	justify-content: flex-end;
 	align-items: center;

@@ -60,7 +60,12 @@ export class ChatHubSettingsService {
 		provider: ChatHubLLMProvider,
 		settings: ChatProviderSettingsDto,
 	): Promise<void> {
-		const value = JSON.stringify(settings);
+		const value = JSON.stringify({
+			...settings,
+			createdAt: settings.createdAt ?? new Date().toISOString(),
+			updatedAt: new Date().toISOString(),
+		});
+
 		await this.settingsRepository.upsert(
 			{ key: CHAT_PROVIDER_SETTINGS_KEY(provider), value, loadOnStartup: true },
 			['key'],

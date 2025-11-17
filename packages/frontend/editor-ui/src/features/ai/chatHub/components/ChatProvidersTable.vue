@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import type { WorkflowListItem, UserAction } from '@/Interface';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
@@ -30,6 +30,9 @@ import {
 	CHAT_PROVIDER_SETTINGS_MODAL_KEY,
 	providerDisplayNames,
 } from '../constants';
+import TimeAgo from '@/app/components/TimeAgo.vue';
+
+const TRUNCATE_MODELS_AFTER = 4;
 
 type Props = {
 	providers: ChatProviderSettingsDto[];
@@ -93,6 +96,26 @@ const tableActions = ref<Array<{ label: string; value: string }>>([
 	},
 ]);
 
+const modelsText = (settings: ChatProviderSettingsDto) => {
+	if (!settings.limitModels) {
+		return i18n.baseText('settings.chatHub.providers.table.models.allModels');
+	} else if (!settings.allowedModels || settings.allowedModels.length === 0) {
+		return i18n.baseText('settings.chatHub.providers.table.models.noModels');
+	} else {
+		if (settings.allowedModels.length > TRUNCATE_MODELS_AFTER) {
+			return (
+				settings.allowedModels.slice(0, TRUNCATE_MODELS_AFTER).join(', ') +
+				i18n.baseText('settings.chatHub.providers.table.models.more', {
+					interpolate: {
+						count: settings.allowedModels.length - TRUNCATE_MODELS_AFTER,
+					},
+				})
+			);
+		}
+		return settings.allowedModels.join(', ');
+	}
+};
+
 const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 	switch (action) {
 		case 'editProvider':
@@ -102,15 +125,6 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 			break;
 	}
 };
-
-function handleSelectCredentials(provider: ChatHubProvider, id: string) {
-	console.log('selectCredential', provider, id);
-}
-
-function handleCreateNewCredential(provider: ChatHubLLMProvider) {
-	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-	uiStore.openNewCredential(credentialType);
-}
 
 const onAddProvider = () => {
 	console.log('Navigating to add provider');
@@ -137,7 +151,6 @@ const onAddProvider = () => {
 				<div :class="$style.actions">
 					<N8nTooltip :content="i18n.baseText('settings.chatHub.providers.table.refresh.tooltip')">
 						<N8nButton
-							data-test-id="chat-providers-refresh-button"
 							size="small"
 							type="tertiary"
 							icon="refresh-cw"
@@ -145,56 +158,54 @@ const onAddProvider = () => {
 							@click="$emit('refresh')"
 						/>
 					</N8nTooltip>
-					<N8nButton
-						data-test-id="chat-providers-add-provider-button"
-						size="small"
-						type="primary"
-						@click="onAddProvider"
-					>
+					<N8nButton size="small" type="primary" @click="onAddProvider">
 						{{ i18n.baseText('settings.chatHub.providers.table.addProvider.button') }}
 					</N8nButton>
 				</div>
 			</div>
 			<N8nActionBox
 				v-if="props.providers.length === 0"
-				data-test-id="empty-provider-list-box"
 				:heading="i18n.baseText('settings.chatHub.providers.table.empty.title')"
 				:description="i18n.baseText('settings.chatHub.providers.table.empty.description')"
 			/>
 			<N8nDataTableServer
 				v-else
 				:class="$style['chat-providers-table']"
-				data-test-id="chat-providers-table"
 				:headers="tableHeaders"
 				:items="props.providers"
 				:items-length="props.providers.length"
 			>
 				<template #[`item.provider`]="{ item }">
-					<div :class="$style['provider-cell']" data-test-id="chat-provider-cell">
+					<div :class="$style['provider-cell']">
 						<span>
-							<N8nText data-test-id="chat-provider-name">
+							<N8nText>
 								{{ providerDisplayNames[item.provider] }}
 							</N8nText>
 						</span>
 					</div>
 				</template>
 				<template #[`item.models`]="{ item }">
-					<span>
-						<N8nText data-test-id="chat-provider-name">
-							{{ item.allowedModels?.join(', ') }}
+					<N8nTooltip
+						v-if="item.allowedModels?.length && item.allowedModels?.length > TRUNCATE_MODELS_AFTER"
+						:content="item.allowedModels?.join(', ')"
+						placement="top"
+					>
+						<N8nText>
+							{{ modelsText(item) }}
 						</N8nText>
-					</span>
+					</N8nTooltip>
+					<N8nText v-else>
+						{{ modelsText(item) }}
+					</N8nText>
 				</template>
 				<template #[`item.updatedAt`]="{ item }">
 					<span>
-						<N8nText data-test-id="chat-provider-name">
-							{{ item.updatedAt ?? '-' }}
-						</N8nText>
+						<TimeAgo v-if="item.updatedAt" :date="item.updatedAt" />
+						<N8nText v-else>-</N8nText>
 					</span>
 				</template>
 				<template #[`item.actions`]="{ item }">
 					<N8nActionToggle
-						data-test-id="chat-provider-action-toggle"
 						placement="bottom"
 						:actions="tableActions"
 						theme="dark"

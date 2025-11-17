@@ -1,32 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { WorkflowListItem, UserAction } from '@/Interface';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
-import {
-	N8nActionBox,
-	N8nActionToggle,
-	N8nButton,
-	N8nDataTableServer,
-	N8nHeading,
-	N8nIcon,
-	N8nLink,
-	N8nLoading,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
-import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
-import { VIEWS } from '@/app/constants';
-import router from '@/app/router';
-import {
-	ChatHubLLMProvider,
-	ChatHubProvider,
-	ChatModelDto,
-	ChatProviderSettingsDto,
-	PROVIDER_CREDENTIAL_TYPE_MAP,
-} from '@n8n/api-types';
-import { useUIStore } from '@/app/stores/ui.store';
-import { CHAT_CREDENTIAL_SELECTOR_MODAL_KEY, CHAT_PROVIDER_SETTINGS_MODAL_KEY } from '../constants';
+import { N8nActionBox, N8nDataTableServer, N8nLoading, N8nText } from '@n8n/design-system';
+import { ChatModelDto } from '@n8n/api-types';
 
 interface Model extends ChatModelDto {
 	enabled: boolean;
@@ -40,10 +17,9 @@ type Props = {
 const props = defineProps<Props>();
 
 const emit = defineEmits<{
-	toggleModel: [provider: ChatModelDto, enabled: boolean];
+	selectModels: [string[]];
 }>();
 
-const uiStore = useUIStore();
 const i18n = useI18n();
 
 const tableHeaders = ref<Array<TableHeader<Model>>>([
@@ -58,9 +34,22 @@ const tableHeaders = ref<Array<TableHeader<Model>>>([
 	},
 ]);
 
-const initialSelection = computed<string[]>(() => {
-	return props.models.filter((model) => model.enabled).map((model) => model.name);
-});
+const initialSelection = computed<string[]>(() =>
+	props.models.filter((model) => model.enabled).map((model) => model.name),
+);
+
+function onSelectionChange(newSelection: string[] | Model[] | undefined) {
+	if (!newSelection) return;
+
+	if (newSelection.length === 0) {
+		emit('selectModels', []);
+		return;
+	}
+
+	if (typeof newSelection[0] === 'string') {
+		emit('selectModels', newSelection as string[]);
+	}
+}
 </script>
 
 <template>
@@ -90,7 +79,8 @@ const initialSelection = computed<string[]>(() => {
 				:items-length="props.models.length"
 				:showSelect="true"
 				:itemValue="'name'"
-				v-model:selection="initialSelection"
+				:selection="initialSelection"
+				@update:selection="onSelectionChange"
 			>
 				<template #[`item.name`]="{ item }">
 					<div :class="$style['model-cell']">

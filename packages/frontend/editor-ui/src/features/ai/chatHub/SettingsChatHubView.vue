@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
-import type { WorkflowListItem } from '@/Interface';
-import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
@@ -12,7 +10,11 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { N8nHeading } from '@n8n/design-system';
 import { CHAT_PROVIDER_SETTINGS_MODAL_KEY, LOADING_INDICATOR_TIMEOUT } from './constants';
 import ChatProvidersTable from './components/ChatProvidersTable.vue';
-import { ChatProviderSettingsDto } from '@n8n/api-types/dist/chat-hub';
+import {
+	ChatHubLLMProvider,
+	ChatProviderSettingsDto,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+} from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 
 const i18n = useI18n();
@@ -22,7 +24,6 @@ const documentTitle = useDocumentTitle();
 const chatStore = useChatStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
-const rootStore = useRootStore();
 const uiStore = useUIStore();
 
 const providersLoading = ref(false);
@@ -50,6 +51,29 @@ function onEditProvider(settings: ChatProviderSettingsDto) {
 		name: CHAT_PROVIDER_SETTINGS_MODAL_KEY,
 		data: {
 			provider: settings.provider,
+			disabled: !isOwner.value && !isAdmin.value,
+			onNewCredential: (provider: ChatHubLLMProvider) => {
+				const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+
+				// telemetry.track('User opened Credential modal', {
+				// 	credential_type: credentialType,
+				// 	source: 'chat_hub_settings',
+				// 	new_credential: true,
+				// 	workflow_id: null,
+				// });
+
+				uiStore.openNewCredential(credentialType);
+			},
+			onConfirm: async (updatedSettings: ChatProviderSettingsDto) => {
+				try {
+					await chatStore.updateProviderSettings(updatedSettings);
+					// toast.showMessage(i18n.baseText('settings.chatHub.success.providerSettings.updated'));
+					await fetchProviderSettings();
+				} catch (error) {
+					// toast.showError(error, i18n.baseText('settings.chatHub.error.updating.providerSettings'));
+				}
+			},
+			onCancel: () => {},
 		},
 	});
 }
