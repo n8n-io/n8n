@@ -188,17 +188,17 @@ export class FileSystemManager implements BinaryData.Manager {
 	 * no longer used on write, only when reading old stored execution data.
 	 */
 	private toFileId(location: BinaryData.FileLocation) {
-		return `${this.toRelativePath(location)}/${uuid()}`;
+		return `${this.toRelativePath(location)}/binary_data/${uuid()}`;
 	}
 
 	private toRelativePath(location: BinaryData.FileLocation) {
 		switch (location.type) {
 			case 'execution': {
 				const executionId = location.executionId || 'temp'; // missing only in edge case, see PR #7244
-				return `workflows/${location.workflowId}/executions/${executionId}/binary_data`;
+				return `workflows/${location.workflowId}/executions/${executionId}`;
 			}
 			case 'chat-hub-message-attachment':
-				return `chat-hub/sessions/${location.sessionId}/messages/${location.messageId}/binary_data`;
+				return `chat-hub/sessions/${location.sessionId}/messages/${location.messageId}`;
 		}
 	}
 
