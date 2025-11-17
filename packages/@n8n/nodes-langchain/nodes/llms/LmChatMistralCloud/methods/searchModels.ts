@@ -21,28 +21,26 @@ export async function searchModels(
 	})) as { data: MistralModel[] };
 
 	const models = response.data || [];
-	let results: INodeListSearchItems[] = [];
 
 	// Filter out embedding models
 	const chatModels = models.filter((model) => !model.id.includes('embed'));
 
-	if (filter) {
-		for (const model of chatModels) {
-			if (model.id.toLowerCase().includes(filter.toLowerCase())) {
-				results.push({
-					name: model.id,
-					value: model.id,
-					metadata: loadModelMetadata('mistral', model.id),
-				});
-			}
-		}
-	} else {
-		results = chatModels.map((model) => ({
-			name: model.id,
-			value: model.id,
-			metadata: loadModelMetadata('mistral', model.id),
-		}));
-	}
+	// Apply filter if provided
+	const filteredModels = filter
+		? chatModels.filter((model) => model.id.toLowerCase().includes(filter.toLowerCase()))
+		: chatModels;
+
+	// Load metadata for all models in parallel
+	const metadataResults = await Promise.all(
+		filteredModels.map(async (model) => await loadModelMetadata('mistral', model.id)),
+	);
+
+	// Combine models with their metadata
+	let results: INodeListSearchItems[] = filteredModels.map((model, idx) => ({
+		name: model.id,
+		value: model.id,
+		metadata: metadataResults[idx],
+	}));
 
 	// Sort models alphabetically
 	results = results.sort((a, b) => {

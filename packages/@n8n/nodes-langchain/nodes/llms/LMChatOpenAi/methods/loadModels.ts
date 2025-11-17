@@ -38,11 +38,18 @@ export async function searchModels(
 
 	filteredModels.sort((a, b) => a.id.localeCompare(b.id));
 
+	// Load metadata for all models in parallel
+	const metadataResults = await Promise.all(
+		filteredModels.map(async (model) => await loadModelMetadata('openai', model.id)),
+	);
+
 	return {
-		results: filteredModels.map((model: { id: string; created?: number; owned_by?: string }) => ({
-			name: model.id,
-			value: model.id,
-			metadata: loadModelMetadata('openai', model.id),
-		})),
+		results: filteredModels.map(
+			(model: { id: string; created?: number; owned_by?: string }, idx) => ({
+				name: model.id,
+				value: model.id,
+				metadata: metadataResults[idx],
+			}),
+		),
 	};
 }

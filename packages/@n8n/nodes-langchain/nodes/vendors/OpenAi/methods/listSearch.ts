@@ -49,25 +49,22 @@ const getModelSearch =
 
 		data = data?.filter((model) => filterCondition(model));
 
-		let results: INodeListSearchItems[] = [];
+		// Apply filter if provided
+		const filteredModels = filter
+			? (data || []).filter((model) => model.id?.toLowerCase().includes(filter.toLowerCase()))
+			: data || [];
 
-		if (filter) {
-			for (const model of data || []) {
-				if (model.id?.toLowerCase().includes(filter.toLowerCase())) {
-					results.push({
-						name: model.id.toUpperCase(),
-						value: model.id,
-						metadata: loadModelMetadata('openai', model.id),
-					});
-				}
-			}
-		} else {
-			results = (data || []).map((model) => ({
-				name: model.id.toUpperCase(),
-				value: model.id,
-				metadata: loadModelMetadata('openai', model.id),
-			}));
-		}
+		// Load metadata for all models in parallel
+		const metadataResults = await Promise.all(
+			filteredModels.map(async (model) => await loadModelMetadata('openai', model.id)),
+		);
+
+		// Combine models with their metadata
+		let results: INodeListSearchItems[] = filteredModels.map((model, idx) => ({
+			name: model.id.toUpperCase(),
+			value: model.id,
+			metadata: metadataResults[idx],
+		}));
 
 		results = results.sort((a, b) => a.name.localeCompare(b.name));
 		return {

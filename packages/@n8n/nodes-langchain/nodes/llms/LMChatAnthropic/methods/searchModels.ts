@@ -27,25 +27,21 @@ export async function searchModels(
 	})) as { data: AnthropicModel[] };
 
 	const models = response.data || [];
-	let results: INodeListSearchItems[] = [];
+	let filteredModels = filter
+		? models.filter((model) => model.id.toLowerCase().includes(filter.toLowerCase()))
+		: models;
 
-	if (filter) {
-		for (const model of models) {
-			if (model.id.toLowerCase().includes(filter.toLowerCase())) {
-				results.push({
-					name: model.display_name,
-					value: model.id,
-					metadata: loadModelMetadata('anthropic', model.id),
-				});
-			}
-		}
-	} else {
-		results = models.map((model) => ({
-			name: model.display_name,
-			value: model.id,
-			metadata: loadModelMetadata('anthropic', model.id),
-		}));
-	}
+	// Load metadata for all models in parallel
+	const metadataResults = await Promise.all(
+		filteredModels.map(async (model) => await loadModelMetadata('anthropic', model.id)),
+	);
+
+	// Combine models with their metadata
+	let results: INodeListSearchItems[] = filteredModels.map((model, idx) => ({
+		name: model.display_name,
+		value: model.id,
+		metadata: metadataResults[idx],
+	}));
 
 	// Sort models with more recent ones first (claude-3 before claude-2)
 	results = results.sort((a, b) => {

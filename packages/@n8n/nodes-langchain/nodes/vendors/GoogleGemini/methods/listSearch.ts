@@ -21,14 +21,20 @@ async function baseModelSearch(
 		models = models.filter((model) => model.name.toLowerCase().includes(filter.toLowerCase()));
 	}
 
-	return {
-		results: models.map((model) => {
-			// Extract model ID from "models/gemini-1.5-pro" format
+	// Load metadata for all models in parallel
+	const metadataResults = await Promise.all(
+		models.map(async (model) => {
 			const modelId = model.name.replace(/^models\//, '');
+			return await loadModelMetadata('google', modelId);
+		}),
+	);
+
+	return {
+		results: models.map((model, idx) => {
 			return {
 				name: model.name,
 				value: model.name,
-				metadata: loadModelMetadata('google', modelId),
+				metadata: metadataResults[idx],
 			};
 		}),
 	};
