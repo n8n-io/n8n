@@ -43,15 +43,17 @@ const itemElement = ref<HTMLElement | null>(null);
 const authorElement = ref<HTMLElement | null>(null);
 const isAuthorElementTruncated = ref(false);
 
-const formattedCreatedAt = computed<string>(() => {
+const formatTimestamp = (value: string) => {
 	const currentYear = new Date().getFullYear().toString();
 	const [date, time] = dateformat(
-		props.item.createdAt,
-		`${props.item.createdAt.startsWith(currentYear) ? '' : 'yyyy '}mmm d"#"HH:MM:ss`,
+		value,
+		`${value.startsWith(currentYear) ? '' : 'yyyy '}mmm d"#"HH:MM:ss`,
 	).split('#');
 
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
-});
+};
+
+const formattedCreatedAt = computed<string>(() => formatTimestamp(props.item.createdAt));
 
 const authors = computed<{ size: number; label: string }>(() => {
 	const allAuthors = props.item.authors.split(', ');
@@ -67,9 +69,15 @@ const authors = computed<{ size: number; label: string }>(() => {
 	};
 });
 
-const idLabel = computed<string>(() =>
-	i18n.baseText('workflowHistory.item.id', { interpolate: { id: props.item.versionId } }),
-);
+const versionName = computed(() => {
+	// TODO: this should be returned as part of the history item payload
+	return props.isVersionActive ? 'Version X' : null;
+});
+
+const publishedAt = computed(() => {
+	// TODO: replace with the actual published timestamp once available
+	return props.isVersionActive ? 'Published at X' : null;
+});
 
 const onAction = (value: string) => {
 	const action = value as WorkflowHistoryActionTypes[number];
@@ -110,12 +118,17 @@ onMounted(() => {
 	>
 		<slot :formatted-created-at="formattedCreatedAt">
 			<p @click="onItemClick">
-				<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>
+				<span v-if="versionName" :class="$style.mainLine">{{ versionName }}</span>
+				<time v-if="publishedAt" :datetime="item.updatedAt" :class="$style.metaItem">
+					{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }} {{ publishedAt }}
+				</time>
+				<time :datetime="item.createdAt" :class="$style.metaItem">
+					{{ i18n.baseText('workflowHistory.item.createdAtLabel') }} {{ formattedCreatedAt }}
+				</time>
 				<N8nTooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
 					<template #content>{{ props.item.authors }}</template>
-					<span ref="authorElement">{{ authors.label }}</span>
+					<span ref="authorElement" :class="$style.metaItem">{{ authors.label }}</span>
 				</N8nTooltip>
-				<data :value="item.versionId">{{ idLabel }}</data>
 			</p>
 		</slot>
 		<div :class="$style.tail">
@@ -158,15 +171,14 @@ onMounted(() => {
 		cursor: pointer;
 		flex: 1 1 auto;
 
-		time {
+		.mainLine {
 			padding: 0 0 var(--spacing--5xs);
 			color: var(--color--text--shade-1);
 			font-size: var(--font-size--sm);
 			font-weight: var(--font-weight--bold);
 		}
 
-		span,
-		data {
+		.metaItem {
 			justify-self: start;
 			max-width: 160px;
 			white-space: nowrap;
