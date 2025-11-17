@@ -46,6 +46,11 @@ export class CreateTable extends TableOperation {
 		return this;
 	}
 
+	get withUpdatedAt() {
+		this.columns.push(new Column('updatedAt').timestampTimezone().notNull.default('NOW()'));
+		return this;
+	}
+
 	withIndexOn(columnName: string | string[], isUnique = false) {
 		const columnNames = Array.isArray(columnName) ? columnName : [columnName];
 		this.indices.add({ columnNames, isUnique });
