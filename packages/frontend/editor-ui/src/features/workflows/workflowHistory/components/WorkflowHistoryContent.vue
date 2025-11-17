@@ -18,6 +18,7 @@ const props = defineProps<{
 	workflow: IWorkflowDb | null;
 	workflowVersion: WorkflowVersion | null;
 	actions: Array<UserAction<IUser>>;
+	isVersionActive?: boolean;
 	isListLoading?: boolean;
 	isFirstItemShown?: boolean;
 }>();
@@ -42,6 +43,19 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 		nodes: props.workflowVersion.nodes,
 		connections: props.workflowVersion.connections,
 	};
+});
+
+const versionName = computed(() => {
+	// TODO: this should be returned as part of the history item payload
+	return props.isVersionActive ? 'Version X' : null;
+});
+
+const formattedPublishedAt = computed<string | null>(() => {
+	if (!props.isVersionActive || !props.workflowVersion) {
+		return null;
+	}
+
+	return 'Published at X';
 });
 
 const actions = computed(() =>
@@ -83,19 +97,28 @@ const onAction = ({
 			>
 				<template #default="{ formattedCreatedAt }">
 					<section :class="$style.text">
-						<p>
+						<p v-if="versionName" :class="$style.mainLine">
+							{{ versionName }}
+						</p>
+						<p v-if="formattedPublishedAt" :class="$style.metaItem">
 							<span :class="$style.label">
-								{{ i18n.baseText('workflowHistory.content.title') }}:
+								{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }}
+							</span>
+							<time :datetime="props.workflowVersion.updatedAt">{{ formattedPublishedAt }}</time>
+						</p>
+						<p :class="$style.metaItem">
+							<span :class="$style.label">
+								{{ i18n.baseText('workflowHistory.item.createdAtLabel') }}
 							</span>
 							<time :datetime="props.workflowVersion.createdAt">{{ formattedCreatedAt }}</time>
 						</p>
-						<p>
+						<p :class="$style.metaItem">
 							<span :class="$style.label">
 								{{ i18n.baseText('workflowHistory.content.editedBy') }}:
 							</span>
 							<span>{{ props.workflowVersion.authors }}</span>
 						</p>
-						<p>
+						<p :class="$style.metaItem">
 							<span :class="$style.label">
 								{{ i18n.baseText('workflowHistory.content.versionId') }}:
 							</span>
@@ -149,39 +172,37 @@ const onAction = ({
 			display: flex;
 			align-items: center;
 			padding: 0;
+			margin: 0;
 			cursor: default;
+			gap: var(--spacing--5xs);
+		}
 
-			&:first-child {
-				padding-top: var(--spacing--3xs);
-				padding-bottom: var(--spacing--4xs);
-				* {
-					margin-top: auto;
-					font-size: var(--font-size--md);
-				}
-			}
+		.mainLine {
+			font-size: var(--font-size--md);
+			font-weight: var(--font-weight--bold);
+			color: var(--color--text--shade-1);
+		}
 
-			&:last-child {
-				padding-top: var(--spacing--3xs);
+		.metaItem {
+			font-size: var(--font-size--sm);
+			color: var(--color--text);
+		}
 
-				* {
-					font-size: var(--font-size--2xs);
-				}
-			}
+		.label {
+			color: var(--color--text--tint-1);
+			padding-right: var(--spacing--4xs);
+		}
 
-			.label {
-				color: var(--color--text--tint-1);
-				padding-right: var(--spacing--4xs);
-			}
-
-			* {
-				max-width: unset;
-				justify-self: unset;
-				white-space: unset;
-				overflow: hidden;
-				text-overflow: unset;
-				padding: 0;
-				font-size: var(--font-size--sm);
-			}
+		time,
+		span,
+		data {
+			max-width: unset;
+			justify-self: unset;
+			white-space: unset;
+			overflow: visible;
+			text-overflow: unset;
+			padding: 0;
+			font-size: var(--font-size--sm);
 		}
 	}
 }
