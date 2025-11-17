@@ -22,7 +22,7 @@ export interface CreateFullRunExecutionDataOptions {
 	};
 	resultData?: {
 		error?: ExecutionError;
-		runData?: IRunData;
+		runData?: IRunData | null;
 		pinData?: IPinData;
 		lastNodeExecuted?: string;
 		metadata?: Record<string, string>;
@@ -33,7 +33,7 @@ export interface CreateFullRunExecutionDataOptions {
 		metadata?: Record<string, ITaskMetadata[]>;
 		waitingExecution?: IWaitingForExecution;
 		waitingExecutionSource?: IWaitingForExecutionSource | null;
-	};
+	} | null;
 	parentExecution?: RelatedExecution;
 	validateSignature?: boolean;
 	waitTill?: Date;
@@ -42,7 +42,9 @@ export interface CreateFullRunExecutionDataOptions {
 }
 
 /**
- * Creates a complete IRunExecutionData object with all properties initialized
+ * Creates a complete IRunExecutionData object with all properties initialized.
+ * You can pass `executionData: null` and `resultData.runData: null` if you
+ * don't want them initialized.
  */
 export function createRunExecutionData(
 	options: CreateFullRunExecutionDataOptions = {},
@@ -51,18 +53,23 @@ export function createRunExecutionData(
 		startData: options.startData ?? {},
 		resultData: {
 			error: options.resultData?.error,
-			runData: options.resultData?.runData ?? {},
+			// @ts-expect-error CAT-752
+			runData:
+				options.resultData?.runData === null ? undefined : (options.resultData?.runData ?? {}),
 			pinData: options.resultData?.pinData,
 			lastNodeExecuted: options.resultData?.lastNodeExecuted,
 			metadata: options.resultData?.metadata,
 		},
-		executionData: {
-			contextData: options.executionData?.contextData ?? {},
-			nodeExecutionStack: options.executionData?.nodeExecutionStack ?? [],
-			metadata: options.executionData?.metadata ?? {},
-			waitingExecution: options.executionData?.waitingExecution ?? {},
-			waitingExecutionSource: options.executionData?.waitingExecutionSource ?? {},
-		},
+		executionData:
+			options.executionData === null
+				? undefined
+				: {
+						contextData: options.executionData?.contextData ?? {},
+						nodeExecutionStack: options.executionData?.nodeExecutionStack ?? [],
+						metadata: options.executionData?.metadata ?? {},
+						waitingExecution: options.executionData?.waitingExecution ?? {},
+						waitingExecutionSource: options.executionData?.waitingExecutionSource ?? {},
+					},
 		parentExecution: options.parentExecution,
 		validateSignature: options.validateSignature,
 		waitTill: options.waitTill,

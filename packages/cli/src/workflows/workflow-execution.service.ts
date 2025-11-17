@@ -208,16 +208,24 @@ export class WorkflowExecutionService {
 				},
 				resultData: {
 					pinData,
-					runData,
+					// If `runData` is initialized to an empty object the execution will
+					// be treated like a partial manual execution instead of a full
+					// manual execution.
+					// So we have to set this to null to instruct
+					// `createRunExecutionData` to not Initialize it.
+					runData: runData ?? null,
 				},
 				manualData: {
 					userId: data.userId,
 					dirtyNodeNames,
 					triggerToStartFrom,
 				},
+				// If `executionData` is initialized the execution will be treated like
+				// a a resumed execution after waiting, instead of a manual execution.
+				// So we have to set this to null to instruct `createRunExecutionData`
+				// to not Initialize it.
+				executionData: null,
 			});
-			// @ts-expect-error CAT-752
-			delete data.executionData.resultData.runData;
 		}
 
 		const executionId = await this.workflowRunner.run(data);
