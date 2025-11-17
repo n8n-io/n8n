@@ -112,18 +112,12 @@ def calculate_graph_edit_distance(
                 g2_mapping,
             )
         else:
-            # Fallback to heuristic extraction
-            edit_ops = _extract_edit_operations(
-                g1_relabeled, g2_relabeled, config, g1_mapping, g2_mapping
-            )
+            edit_ops = []
     except Exception as e:
         # Fallback if NetworkX GED fails
         print(f"Warning: GED calculation failed, using fallback: {e}")
         edit_cost = _calculate_basic_edit_cost(g1, g2, config)
-        # Fallback to heuristic extraction
-        edit_ops = _extract_edit_operations(
-            g1_relabeled, g2_relabeled, config, g1_mapping, g2_mapping
-        )
+        edit_ops = []
 
     # Calculate theoretical maximum cost
     max_cost = _calculate_max_cost(g1, g2, config)
@@ -372,137 +366,6 @@ def _extract_operations_from_path(
                         "priority": _determine_priority(cost, config),
                     }
                 )
-
-    return operations
-
-
-def _extract_edit_operations(
-    g1: nx.DiGraph,
-    g2: nx.DiGraph,
-    config: WorkflowComparisonConfig,
-    g1_name_mapping: Dict[str, str],
-    g2_name_mapping: Dict[str, str],
-) -> List[Dict[str, Any]]:
-    """
-    Extract and describe edit operations needed to transform g1 to g2.
-
-    Args:
-        g1: First graph (generated, possibly relabeled)
-        g2: Second graph (ground truth, possibly relabeled)
-        config: Configuration
-        g1_name_mapping: Optional mapping from structural IDs to original names for g1
-        g2_name_mapping: Optional mapping from structural IDs to original names for g2
-
-    Returns:
-        List of edit operations with descriptions and costs
-    """
-    operations = []
-
-    # Helper to get display name
-    def get_display_name(
-        node_id: str, mapping: Dict[str, str], graph: nx.DiGraph
-    ) -> str:
-        if mapping and node_id in mapping:
-            return mapping[node_id]
-        # Fallback to _original_name attribute or the ID itself
-        return graph.nodes[node_id].get("_original_name", node_id)
-
-    nodes1 = set(g1.nodes())
-    nodes2 = set(g2.nodes())
-
-    # Node deletions (in generated but not in ground truth)
-    for node in nodes1 - nodes2:
-        node_data = g1.nodes[node]
-        display_name = get_display_name(node, g1_name_mapping, g1)
-        cost = node_deletion_cost(node_data, config)
-        operations.append(
-            {
-                "type": "node_delete",
-                "description": f"Remove node '{display_name}' (type: {node_data.get('type', 'unknown')})",
-                "cost": cost,
-                "priority": _determine_priority(cost, config, node_data, "node_delete"),
-                "node_name": display_name,
-            }
-        )
-
-    # Node insertions (in ground truth but not in generated)
-    for node in nodes2 - nodes1:
-        node_data = g2.nodes[node]
-        display_name = get_display_name(node, g2_name_mapping, g2)
-        cost = node_insertion_cost(node_data, config)
-        operations.append(
-            {
-                "type": "node_insert",
-                "description": f"Add missing node '{display_name}' (type: {node_data.get('type', 'unknown')})",
-                "cost": cost,
-                "priority": _determine_priority(cost, config, node_data, "node_insert"),
-                "node_name": display_name,
-            }
-        )
-
-    # Node substitutions (in both but potentially different)
-    for node in nodes1 & nodes2:
-        node1_data = g1.nodes[node]
-        node2_data = g2.nodes[node]
-        display_name = get_display_name(node, g1_name_mapping, g1)
-        cost = node_substitution_cost(node1_data, node2_data, config)
-
-        if cost > 0:
-            type1 = node1_data.get("type", "unknown")
-            type2 = node2_data.get("type", "unknown")
-
-            if type1 != type2:
-                desc = f"Change node '{display_name}' from type '{type1}' to '{type2}'"
-            else:
-                desc = f"Update parameters of node '{display_name}' (type: {type1})"
-
-            operations.append(
-                {
-                    "type": "node_substitute",
-                    "description": desc,
-                    "cost": cost,
-                    "priority": _determine_priority(
-                        cost, config, node1_data, "node_substitute"
-                    ),
-                    "node_name": display_name,
-                }
-            )
-
-    # Edge operations
-    edges1 = set(g1.edges())
-    edges2 = set(g2.edges())
-
-    # Edge deletions
-    for edge in edges1 - edges2:
-        edge_data = g1.edges[edge]
-        cost = edge_deletion_cost(edge_data, config)
-        source, target = edge
-        source_display = get_display_name(source, g1_name_mapping, g1)
-        target_display = get_display_name(target, g1_name_mapping, g1)
-        operations.append(
-            {
-                "type": "edge_delete",
-                "description": f"Remove connection from '{source_display}' to '{target_display}'",
-                "cost": cost,
-                "priority": _determine_priority(cost, config),
-            }
-        )
-
-    # Edge insertions
-    for edge in edges2 - edges1:
-        edge_data = g2.edges[edge]
-        cost = edge_insertion_cost(edge_data, config)
-        source, target = edge
-        source_display = get_display_name(source, g2_name_mapping, g2)
-        target_display = get_display_name(target, g2_name_mapping, g2)
-        operations.append(
-            {
-                "type": "edge_insert",
-                "description": f"Add missing connection from '{source_display}' to '{target_display}'",
-                "cost": cost,
-                "priority": _determine_priority(cost, config),
-            }
-        )
 
     return operations
 
