@@ -14,6 +14,7 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 import { getAdditionalOptions } from '../gemini-common/additional-options';
 import { makeN8nLlmFailedAttemptHandler } from '../n8nLlmFailedAttemptHandler';
 import { N8nLlmTracing } from '../N8nLlmTracing';
+import { listSearch } from './methods';
 
 function errorDescriptionMapper(error: NodeError) {
 	if (error.description?.includes('properties: should be non-empty for OBJECT type')) {
@@ -68,56 +69,31 @@ export class LmChatGoogleGemini implements INodeType {
 			{
 				displayName: 'Model',
 				name: 'modelName',
-				type: 'options',
+				type: 'resourceLocator',
+				default: {
+					mode: 'list',
+					value: 'models/gemini-2.5-flash',
+				},
+				required: true,
 				description:
 					'The model which will generate the completion. <a href="https://developers.generativeai.google/api/rest/generativelanguage/models/list">Learn more</a>.',
-				typeOptions: {
-					loadOptions: {
-						routing: {
-							request: {
-								method: 'GET',
-								url: '/v1beta/models',
-							},
-							output: {
-								postReceive: [
-									{
-										type: 'rootProperty',
-										properties: {
-											property: 'models',
-										},
-									},
-									{
-										type: 'filter',
-										properties: {
-											pass: "={{ !$responseItem.name.includes('embedding') }}",
-										},
-									},
-									{
-										type: 'setKeyValue',
-										properties: {
-											name: '={{$responseItem.name}}',
-											value: '={{$responseItem.name}}',
-											description: '={{$responseItem.description}}',
-										},
-									},
-									{
-										type: 'sort',
-										properties: {
-											key: 'name',
-										},
-									},
-								],
-							},
+				modes: [
+					{
+						displayName: 'From List',
+						name: 'list',
+						type: 'list',
+						typeOptions: {
+							searchListMethod: 'modelSearch',
+							searchable: true,
 						},
 					},
-				},
-				routing: {
-					send: {
-						type: 'body',
-						property: 'model',
+					{
+						displayName: 'ID',
+						name: 'id',
+						type: 'string',
+						placeholder: 'models/gemini-2.5-flash',
 					},
-				},
-				default: 'models/gemini-2.5-flash',
+				],
 			},
 			// thinking budget not supported in @langchain/google-genai
 			// as it utilises the old google generative ai SDK
@@ -125,10 +101,22 @@ export class LmChatGoogleGemini implements INodeType {
 		],
 	};
 
+	methods = {
+		listSearch: {
+			modelSearch: listSearch.modelSearch,
+		},
+	};
+
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
 		const credentials = await this.getCredentials('googlePalmApi');
 
-		const modelName = this.getNodeParameter('modelName', itemIndex) as string;
+		const modelNameLocator = this.getNodeParameter('modelName', itemIndex, {
+			mode: 'list',
+			value: 'models/gemini-2.5-flash',
+		}) as { mode: string; value: string };
+
+		const modelName = modelNameLocator.value;
+
 		const options = this.getNodeParameter('options', itemIndex, {
 			maxOutputTokens: 1024,
 			temperature: 0.7,
