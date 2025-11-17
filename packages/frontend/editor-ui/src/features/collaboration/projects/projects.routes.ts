@@ -2,6 +2,7 @@ import type { RouteLocationNormalized, RouteRecordRaw } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from './projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
+import { useInsightsStore } from '@/features/execution/insights/insights.store';
 
 const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
 const WorkflowsView = async () => await import('@/app/views/WorkflowsView.vue');
@@ -178,6 +179,14 @@ export const projectsRoutes: RouteRecordRaw[] = [
 			middleware: ['authenticated'],
 		},
 		redirect: '/home/workflows',
+		beforeEnter: (_to, _from, next) => {
+			const insightsStore = useInsightsStore();
+			if (insightsStore.isSummaryEnabled) {
+				// refresh the weekly summary when entering the home route
+				void insightsStore.weeklySummary.execute();
+			}
+			next();
+		},
 		children: commonChildRoutes.map((route, idx) => ({
 			...route,
 			name: commonChildRouteExtensions.home[idx].name,

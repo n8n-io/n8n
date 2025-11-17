@@ -61,7 +61,7 @@ export async function setupTestRequirements(
 			try {
 				// Import workflow using the n8n page object
 				await n8n.goHome();
-				await n8n.workflows.addResource.workflow();
+				await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 				await n8n.canvas.importWorkflow(name, workflowData);
 			} catch (error) {
 				throw new TestError(`Failed to create workflow ${name}: ${String(error)}`);
