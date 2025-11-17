@@ -180,7 +180,6 @@ const capabilities = computed(() => {
 
 .metadataText {
 	white-space: nowrap;
-	text-transform: capitalize;
 }
 
 .capabilities {

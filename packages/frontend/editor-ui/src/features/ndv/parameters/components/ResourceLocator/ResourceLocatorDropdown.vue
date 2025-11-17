@@ -441,7 +441,7 @@ watch(
 
 	&.modelItem {
 		height: auto;
-		min-height: 48px;
+		min-height: var(--spacing--2xl);
 		padding: var(--spacing--xs);
 		white-space: normal;
 		align-items: flex-start;
