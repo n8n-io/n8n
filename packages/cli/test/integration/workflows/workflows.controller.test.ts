@@ -132,10 +132,11 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(200);
 
 		const {
-			data: { id, scopes },
+			data: { id, scopes, active },
 		} = response.body;
 
 		expect(id).toBeDefined();
+		expect(active).toBe(false);
 		expect(scopes).toEqual(
 			[
 				'workflow:delete',
@@ -173,11 +174,12 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(200);
 
 		const {
-			data: { id, name },
+			data: { id, name, active },
 		} = response.body;
 
 		expect(id).toBeDefined();
 		expect(name).toBe('testing with context');
+		expect(active).toBe(false);
 	});
 
 	test('should always create workflow history version', async () => {
@@ -252,12 +254,13 @@ describe('POST /workflows', () => {
 		expect(response.statusCode).toBe(200);
 
 		const {
-			data: { id, versionId, activeVersionId },
+			data: { id, versionId, activeVersionId, active },
 		} = response.body;
 
 		expect(id).toBeDefined();
 		expect(versionId).toBeDefined();
 		expect(activeVersionId).toBe(versionId); // Should be set to current version
+		expect(active).toBe(true);
 
 		// Verify in database
 		const workflow = await Container.get(WorkflowRepository).findOneBy({ id });
@@ -300,6 +303,7 @@ describe('POST /workflows', () => {
 		});
 		expect(response.body.data).toMatchObject({
 			activeVersionId: null,
+			active: false,
 			id: expect.any(String),
 			name: workflow.name,
 			sharedWithProjects: [],
@@ -350,6 +354,7 @@ describe('POST /workflows', () => {
 		});
 		expect(response.body.data).toMatchObject({
 			activeVersionId: null,
+			active: false,
 			id: expect.any(String),
 			name: workflow.name,
 			sharedWithProjects: [],
@@ -446,6 +451,7 @@ describe('POST /workflows', () => {
 
 		expect(response.body.data).toMatchObject({
 			activeVersionId: null,
+			active: false,
 			id: expect.any(String),
 			name: workflow.name,
 			sharedWithProjects: [],
@@ -484,6 +490,7 @@ describe('POST /workflows', () => {
 
 		expect(response.body.data).toMatchObject({
 			activeVersionId: null,
+			active: false,
 			id: expect.any(String),
 			name: workflow.name,
 			sharedWithProjects: [],
@@ -519,6 +526,7 @@ describe('POST /workflows', () => {
 
 		expect(response.body.data).toMatchObject({
 			activeVersionId: null,
+			active: false,
 			id: expect.any(String),
 			name: workflow.name,
 			sharedWithProjects: [],
@@ -554,6 +562,7 @@ describe('GET /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
 
 		expect(response.body.data).toMatchObject({
+			active: false,
 			tags: [expect.objectContaining({ id: tag.id, name: tag.name })],
 		});
 	});
@@ -2335,12 +2344,13 @@ describe('PATCH /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		const {
-			data: { id, versionId: updatedVersionId },
+			data: { id, versionId: updatedVersionId, active },
 		} = response.body;
 
 		expect(response.statusCode).toBe(200);
 
 		expect(id).toBe(workflow.id);
+		expect(active).toBe(false);
 		expect(
 			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
 		).toBe(2);
@@ -2654,11 +2664,12 @@ describe('POST /workflows/:workflowId/archive', () => {
 			.expect(200);
 
 		const {
-			data: { isArchived, versionId },
+			data: { isArchived, versionId, active },
 		} = response.body;
 
 		expect(isArchived).toBe(true);
 		expect(versionId).not.toBe(workflow.versionId);
+		expect(active).toBe(false);
 
 		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
@@ -2673,11 +2684,12 @@ describe('POST /workflows/:workflowId/archive', () => {
 			.expect(200);
 
 		const {
-			data: { isArchived, versionId, activeVersionId },
+			data: { isArchived, versionId, activeVersionId, active },
 		} = response.body;
 
 		expect(isArchived).toBe(true);
 		expect(activeVersionId).toBeNull();
+		expect(active).toBe(false);
 		expect(versionId).not.toBe(workflow.versionId);
 		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
 
@@ -2735,11 +2747,12 @@ describe('POST /workflows/:workflowId/archive', () => {
 			.expect(200);
 
 		const {
-			data: { isArchived, versionId },
+			data: { isArchived, versionId, active },
 		} = response.body;
 
 		expect(isArchived).toBe(true);
 		expect(versionId).not.toBe(workflow.versionId);
+		expect(active).toBe(false);
 
 		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
@@ -2788,11 +2801,12 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 			.expect(200);
 
 		const {
-			data: { isArchived, versionId },
+			data: { isArchived, versionId, active },
 		} = response.body;
 
 		expect(isArchived).toBe(false);
 		expect(versionId).not.toBe(workflow.versionId);
+		expect(active).toBe(false);
 
 		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
@@ -2843,11 +2857,12 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 			.expect(200);
 
 		const {
-			data: { isArchived, versionId },
+			data: { isArchived, versionId, active },
 		} = response.body;
 
 		expect(isArchived).toBe(false);
 		expect(versionId).not.toBe(workflow.versionId);
+		expect(active).toBe(false);
 
 		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
