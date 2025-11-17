@@ -1159,7 +1159,7 @@ describe('GET /workflows', () => {
 			});
 		});
 
-		test('should select workflow field: active', async () => {
+		test('should select workflow field: activeVersionId', async () => {
 			const activeWorkflow = await createActiveWorkflow({}, owner);
 			await createWorkflow({}, owner);
 
@@ -1171,8 +1171,8 @@ describe('GET /workflows', () => {
 			expect(response.body).toEqual({
 				count: 2,
 				data: arrayContaining([
-					{ id: any(String), activeVersionId: activeWorkflow.versionId },
-					{ id: any(String), activeVersionId: null },
+					{ id: any(String), activeVersionId: activeWorkflow.versionId, active: true },
+					{ id: any(String), activeVersionId: null, active: false },
 				]),
 			});
 		});

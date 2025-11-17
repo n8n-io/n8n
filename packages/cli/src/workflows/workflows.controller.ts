@@ -605,7 +605,7 @@ export class WorkflowsController {
 			);
 
 			res.json({
-				data: workflows,
+				data: workflows.map(toWorkflow),
 				count: workflows.length,
 			});
 		} catch (maybeError) {
