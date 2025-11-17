@@ -136,6 +136,6 @@
     }
   },
   "dependencies": {
-    "@lezer/common": "^1.0.4"
+    "@lezer/common": "^1.2.0"
   }
 }
