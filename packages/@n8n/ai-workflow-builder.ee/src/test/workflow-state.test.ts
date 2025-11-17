@@ -1,7 +1,8 @@
 import { HumanMessage, AIMessage as AssistantMessage, ToolMessage } from '@langchain/core/messages';
 import type { BaseMessage } from '@langchain/core/messages';
 
-import { createTrimMessagesReducer } from '../workflow-state';
+import { createTrimMessagesReducer, WorkflowState } from '../workflow-state';
+import type { TelemetryValidationStatus } from '../validation/types';
 
 describe('createTrimMessagesReducer', () => {
 	it('should return messages unchanged when human messages are within limit', () => {
@@ -150,5 +151,103 @@ describe('createTrimMessagesReducer', () => {
 
 		// Should only include User 3 and Assistant 3
 		expect(result.length).toBe(2);
+	});
+});
+
+describe('WorkflowState.validationHistory reducer', () => {
+	// Extract the reducer function from the annotation
+	const getReducer = () => {
+		const channels = WorkflowState.spec as any;
+		return channels.validationHistory?.operator;
+	};
+
+	it('should append new validation history to existing history', () => {
+		const existingHistory: TelemetryValidationStatus[] = [
+			{ status: 'valid', errorCount: 0 },
+			{ status: 'invalid', errorCount: 2 },
+		];
+		const newHistory: TelemetryValidationStatus[] = [{ status: 'valid', errorCount: 0 }];
+
+		const reducer = getReducer();
+		const result = reducer(existingHistory, newHistory);
+
+		expect(result).toEqual([
+			{ status: 'valid', errorCount: 0 },
+			{ status: 'invalid', errorCount: 2 },
+			{ status: 'valid', errorCount: 0 },
+		]);
+	});
+
+	it('should return existing history when update is undefined', () => {
+		const existingHistory: TelemetryValidationStatus[] = [
+			{ status: 'valid', errorCount: 0 },
+			{ status: 'invalid', errorCount: 2 },
+		];
+
+		const reducer = getReducer();
+		const result = reducer(existingHistory, undefined);
+
+		expect(result).toEqual(existingHistory);
+		expect(result).toBe(existingHistory); // Should be the same reference
+	});
+
+	it('should return existing history when update is null', () => {
+		const existingHistory: TelemetryValidationStatus[] = [{ status: 'valid', errorCount: 0 }];
+
+		const reducer = getReducer();
+		const result = reducer(existingHistory, null);
+
+		expect(result).toEqual(existingHistory);
+		expect(result).toBe(existingHistory); // Should be the same reference
+	});
+
+	it('should return existing history when update is empty array', () => {
+		const existingHistory: TelemetryValidationStatus[] = [{ status: 'valid', errorCount: 0 }];
+
+		const reducer = getReducer();
+		const result = reducer(existingHistory, []);
+
+		expect(result).toEqual(existingHistory);
+		expect(result).toBe(existingHistory); // Should be the same reference
+	});
+
+	it('should handle empty existing history with new updates', () => {
+		const newHistory: TelemetryValidationStatus[] = [
+			{ status: 'valid', errorCount: 0 },
+			{ status: 'invalid', errorCount: 1 },
+		];
+
+		const reducer = getReducer();
+		const result = reducer([], newHistory);
+
+		expect(result).toEqual(newHistory);
+	});
+
+	it('should handle multiple updates sequentially', () => {
+		const reducer = getReducer();
+
+		let history: TelemetryValidationStatus[] = [];
+
+		// First update
+		history = reducer(history, [{ status: 'valid', errorCount: 0 }]);
+		expect(history).toEqual([{ status: 'valid', errorCount: 0 }]);
+
+		// Second update (undefined - should not change)
+		history = reducer(history, undefined);
+		expect(history).toEqual([{ status: 'valid', errorCount: 0 }]);
+
+		// Third update
+		history = reducer(history, [{ status: 'invalid', errorCount: 2 }]);
+		expect(history).toEqual([
+			{ status: 'valid', errorCount: 0 },
+			{ status: 'invalid', errorCount: 2 },
+		]);
+
+		// Fourth update (empty array - should not change)
+		history = reducer(history, []);
+		expect(history).toEqual([
+			{ status: 'valid', errorCount: 0 },
+			{ status: 'invalid', errorCount: 2 },
+		]);
 	});
 });

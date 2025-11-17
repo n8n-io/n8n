@@ -87,7 +87,7 @@ export const WorkflowState = Annotation.Root({
 	}),
 	// Compacted programmatic validations history for telemetry
 	validationHistory: Annotation<TelemetryValidationStatus[]>({
-		reducer: (x, y) => [...x, ...y],
+		reducer: (x, y) => (y && y.length > 0 ? [...x, ...y] : x),
 		default: () => [],
 	}),
 
