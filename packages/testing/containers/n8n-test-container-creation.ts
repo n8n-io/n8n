@@ -282,21 +282,19 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		};
 	}
 
-	// Allocate port early if OIDC is enabled and no load balancer (optimization for callback URL)
-	// With load balancer, Dex uses fallback redirect URIs that work via the load balancer
+	// For OIDC: allocate port early so Dex can be configured with the correct n8n callback URL
+	// (Load balancer uses port 5678, so Dex's default redirect URIs work without early allocation)
 	let assignedPort: number | undefined;
 	if (oidcEnabled && !needsLoadBalancer) {
 		assignedPort = await getPort();
 	}
 
-	// Set up Dex OIDC provider BEFORE creating n8n instances so it's available on the network
-	// Dex has fallback redirect URIs (localhost:5678, host.docker.internal:5678, etc.) that work
-	// even when n8nCallbackPort is undefined (load balancer case)
+	// Set up Dex OIDC provider before n8n instances so it's available on the Docker network
 	if (oidcEnabled && network) {
 		const dexContainer = await setupDex({
 			projectName: uniqueProjectName,
 			network,
-			n8nCallbackPort: assignedPort,
+			n8nCallbackPort: assignedPort, // Adds http://localhost:{port}/rest/sso/oidc/callback to Dex config
 		});
 		containers.push(dexContainer);
 	}
