@@ -288,9 +288,9 @@ const shouldShowPagination = computed(() => {
 }
 
 .n8n-pagination__button {
-	min-width: 32px;
-	height: 32px;
-	padding: 0 8px;
+	min-width: 28px;
+	height: 28px;
+	padding: 0 6px;
 	border: none;
 	background: transparent !important;
 	border-radius: var(--radius);
@@ -362,8 +362,8 @@ const shouldShowPagination = computed(() => {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	min-width: 32px;
-	height: 32px;
+	min-width: 28px;
+	height: 28px;
 	color: var(--color--text--inverse);
 	user-select: none;
 	background: transparent !important;
