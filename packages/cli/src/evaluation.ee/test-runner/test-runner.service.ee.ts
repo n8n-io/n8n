@@ -358,10 +358,12 @@ export class TestRunnerService {
 			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
 
 		if (offloadingManualExecutionsInQueueMode) {
-			// In regular mode we need this to be passed, but when offloading manual
-			// execution to workers the workflow evaluation fails if this is present,
-			// so we remove it in  this case.
-			data.executionData = undefined;
+			// In regular mode we need executionData.executionData to be passed, but when
+			// offloading manual execution to workers the workflow evaluation fails if
+			// executionData.executionData is present, so we remove it in this case.
+			// We keep executionData itself (with startData, manualData) intact.
+			// @ts-expect-error - Removing nested executionData property for queue mode
+			delete data.executionData.executionData;
 		}
 
 		// Trigger the workflow under test with mocked data

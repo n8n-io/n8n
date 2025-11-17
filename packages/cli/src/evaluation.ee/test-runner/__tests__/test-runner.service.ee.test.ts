@@ -538,8 +538,20 @@ describe('TestRunnerService', () => {
 			expect(runCallArg).toHaveProperty('workflowData.settings.saveExecutionProgress', false);
 			expect(runCallArg).toHaveProperty('userId', metadata.userId);
 
+			// In queue mode with offloading, executionData.executionData should not exist
 			expect(runCallArg).not.toHaveProperty('executionData.executionData');
 			expect(runCallArg).not.toHaveProperty('executionData.executionData.nodeExecutionStack');
+
+			// But executionData itself should still exist with startData and manualData
+			expect(runCallArg).toHaveProperty('executionData');
+			expect(runCallArg.executionData).toBeDefined();
+			expect(runCallArg).toHaveProperty('executionData.startData.destinationNode', triggerNodeName);
+			expect(runCallArg).toHaveProperty('executionData.manualData.userId', metadata.userId);
+			expect(runCallArg).toHaveProperty(
+				'executionData.manualData.triggerToStartFrom.name',
+				triggerNodeName,
+			);
+
 			expect(runCallArg).toHaveProperty('workflowData.nodes[0].forceCustomOperation', {
 				resource: 'dataset',
 				operation: 'getRows',
