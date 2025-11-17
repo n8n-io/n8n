@@ -76,7 +76,7 @@ export class ExecutionRecoveryService {
 				const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
 
 				if (!workflow) {
-					this.logger.error(`Workflow ${workflowId} not found, skipping workflow deactivation`);
+					this.logger.warn(`Workflow ${workflowId} not found, skipping workflow deactivation`);
 					return;
 				}
 
