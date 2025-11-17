@@ -343,10 +343,12 @@ export class ChatHubService {
 	}
 
 	private async fetchAzureOpenAiModels(
-		credentials: INodeCredentials,
-		additionalData: IWorkflowExecuteAdditionalData,
+		_credentials: INodeCredentials,
+		_additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<ChatModelsResponse['azureOpenAi']> {
-		// TODO
+		// Azure doesn't appear to offer a way to list available models via API.
+		// If we add support for this in the future on the Azure OpenAI node we should copy that
+		// implementation here too.
 		return {
 			models: [],
 		};
