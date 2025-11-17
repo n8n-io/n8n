@@ -11,7 +11,7 @@ test.describe('Code node', () => {
 	test.describe('Code editor', () => {
 		test.beforeEach(async ({ n8n }) => {
 			await n8n.goHome();
-			await n8n.workflows.addResource.workflow();
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
 		});
@@ -95,7 +95,7 @@ return
 		.serial('Run Once for Each Item', () => {
 			test('should show lint errors in `runOnceForEachItem` mode', async ({ n8n }) => {
 				await n8n.start.fromHome();
-				await n8n.workflows.addResource.workflow();
+				await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 				await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 				await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
 				await n8n.ndv.toggleCodeMode('Run Once for Each Item');
@@ -120,7 +120,7 @@ return []
 			test.beforeEach(async ({ api, n8n }) => {
 				await api.enableFeature('askAi');
 				await n8n.goHome();
-				await n8n.workflows.addResource.workflow();
+				await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 				await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 				await n8n.canvas.addNode(CODE_NODE_NAME, { action: 'Code in JavaScript' });
 			});
