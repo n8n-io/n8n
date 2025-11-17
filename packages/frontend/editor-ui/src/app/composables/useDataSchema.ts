@@ -23,6 +23,7 @@ export function useDataSchema() {
 		input: Optional<Primitives | object>,
 		path = '',
 		excludeValues = false,
+		collapseArrays = false,
 	): Schema {
 		let schema: Schema = { type: 'undefined', value: 'undefined', path };
 		switch (typeof input) {
@@ -34,10 +35,24 @@ export function useDataSchema() {
 				} else if (Array.isArray(input)) {
 					schema = {
 						type: 'array',
-						value: input.map((item, index) => ({
-							key: index.toString(),
-							...getSchema(item, `${path}[${index}]`, excludeValues),
-						})),
+						value:
+							collapseArrays && input.length > 0
+								? [
+										{
+											key: '0',
+											...getSchema(
+												// If array contains objects, merge all their keys into one
+												input.every((item) => isObj(item)) ? merge({}, ...input) : input[0],
+												`${path}[0]`,
+												excludeValues,
+												collapseArrays,
+											),
+										},
+									]
+								: input.map((item, index) => ({
+										key: index.toString(),
+										...getSchema(item, `${path}[${index}]`, excludeValues, collapseArrays),
+									})),
 						path,
 					};
 				} else if (isObj(input)) {
@@ -45,7 +60,7 @@ export function useDataSchema() {
 						type: 'object',
 						value: Object.entries(input).map(([k, v]) => ({
 							key: k,
-							...getSchema(v, generatePath(path, [k]), excludeValues),
+							...getSchema(v, generatePath(path, [k]), excludeValues, collapseArrays),
 						})),
 						path,
 					};
@@ -65,10 +80,14 @@ export function useDataSchema() {
 		return schema;
 	}
 
-	function getSchemaForExecutionData(data: IDataObject[], excludeValues = false) {
+	function getSchemaForExecutionData(
+		data: IDataObject[],
+		excludeValues = false,
+		collapseArrays = false,
+	) {
 		const [head, ...tail] = data;
 
-		return getSchema(merge({}, head, ...tail, head), undefined, excludeValues);
+		return getSchema(merge({}, head, ...tail, head), undefined, excludeValues, collapseArrays);
 	}
 
 	function getSchemaForJsonSchema(schema: JSONSchema7 | JSONSchema7Definition, path = ''): Schema {
