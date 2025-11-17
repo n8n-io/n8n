@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { getModelMetadata, type GetModelMetadataOptions } from '@/api/modelMetadata';
+import { getModelMetadata, type GetModelMetadataOptions } from '@/app/api/modelMetadata';
 import type { IModelMetadata } from 'n8n-workflow';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
@@ -14,11 +14,11 @@ export const useModelMetadataStore = defineStore('modelMetadata', {
 
 	actions: {
 		async getModelMetadata(options: GetModelMetadataOptions): Promise<IModelMetadata | null> {
-			const cacheKey = `${options.provider}_${options.modelId}_${options.nodeType || ''}`;
+			const cacheKey = `${options.provider}_${options.modelId}_${options.nodeType ?? ''}`;
 
 			// Check cache first
 			if (this.cache.has(cacheKey)) {
-				return this.cache.get(cacheKey) || null;
+				return this.cache.get(cacheKey) ?? null;
 			}
 
 			// Fetch from API

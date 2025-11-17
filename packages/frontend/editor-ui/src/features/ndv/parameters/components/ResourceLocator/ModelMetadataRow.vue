@@ -142,7 +142,7 @@ const capabilities = computed(() => {
 }
 
 .separator {
-	font-size: var(--font-size-3xs);
+	font-size: var(--font-size--3xs);
 	font-weight: bold;
 	line-height: 1;
 }

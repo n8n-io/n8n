@@ -1,44 +1,6 @@
 import type { IModelMetadata } from 'n8n-workflow';
 
 /**
- * OpenRouter API model structure
- */
-export interface OpenRouterModel {
-	slug: string;
-	name: string;
-	short_name?: string;
-	author: string;
-	description?: string;
-	context_length: number;
-	input_modalities?: string[];
-	output_modalities?: string[];
-	endpoint?: {
-		provider_display_name?: string;
-		provider_name?: string;
-		max_completion_tokens?: number;
-		supported_parameters?: string[];
-		supports_reasoning?: boolean;
-		pricing?: {
-			prompt?: string;
-			completion?: string;
-		};
-		features?: {
-			supports_tool_choice?: {
-				literal_none?: boolean;
-				literal_auto?: boolean;
-				literal_required?: boolean;
-				type_function?: boolean;
-			};
-			supported_parameters?: {
-				response_format?: boolean;
-				structured_outputs?: boolean;
-			};
-			supports_input_audio?: boolean;
-		};
-	};
-}
-
-/**
  * OpenAI API model structure (basic)
  */
 export interface OpenAIModel {
@@ -65,73 +27,6 @@ export interface MistralModel {
 	object: string;
 	created: number;
 	owned_by: string;
-}
-
-/**
- * Maps an OpenRouter API model to IModelMetadata
- */
-export function mapOpenRouterModel(model: OpenRouterModel): IModelMetadata {
-	const endpoint = model.endpoint;
-	const pricing = endpoint?.pricing;
-	const features = endpoint?.features;
-
-	// Simple heuristic for intelligence level based on model name
-	const determineIntelligenceLevel = (modelName: string): 'low' | 'medium' | 'high' => {
-		const lowerName = modelName.toLowerCase();
-		// High intelligence: o1, opus, pro, gpt-4, claude-3-5-sonnet
-		if (
-			lowerName.includes('opus') ||
-			lowerName.includes(' pro') ||
-			lowerName.includes('gpt-4') ||
-			lowerName.includes('o1') ||
-			lowerName.includes('o3') ||
-			lowerName.includes('3.5-sonnet') ||
-			lowerName.includes('3-5-sonnet')
-		) {
-			return 'high';
-		}
-		// Low intelligence: older models, small models
-		if (
-			lowerName.includes('gpt-3.5') ||
-			lowerName.includes('claude-2') ||
-			lowerName.includes('llama-2')
-		) {
-			return 'low';
-		}
-		// Default to medium
-		return 'medium';
-	};
-
-	return {
-		id: model.slug,
-		name: model.name,
-		shortName: model.short_name,
-		provider: endpoint?.provider_display_name || model.author,
-		pricing: {
-			promptPerMilTokenUsd: pricing?.prompt ? parseFloat(pricing.prompt) * 1_000_000 : 0,
-			completionPerMilTokenUsd: pricing?.completion
-				? parseFloat(pricing.completion) * 1_000_000
-				: 0,
-		},
-		contextLength: model.context_length || 0,
-		maxOutputTokens: endpoint?.max_completion_tokens,
-		intelligenceLevel: determineIntelligenceLevel(model.name),
-		capabilities: {
-			functionCalling:
-				endpoint?.supported_parameters?.includes('tools') ||
-				features?.supports_tool_choice?.type_function === true,
-			structuredOutput:
-				endpoint?.supported_parameters?.includes('structured_outputs') ||
-				features?.supported_parameters?.structured_outputs === true,
-			vision: model.input_modalities?.includes('image'),
-			imageGeneration: model.output_modalities?.includes('image'),
-			audio: model.input_modalities?.includes('audio') || features?.supports_input_audio === true,
-			extendedThinking: endpoint?.supports_reasoning === true,
-		},
-		inputModalities: model.input_modalities,
-		outputModalities: model.output_modalities,
-		description: model.description,
-	};
 }
 
 /**
@@ -479,31 +374,4 @@ export function mapMistralModel(model: MistralModel): IModelMetadata {
 
 	// Fallback for unknown models
 	return createGenericMetadata(model.id, 'Mistral');
-}
-
-/**
- * Generic mapper that tries to detect the API type and map accordingly
- */
-export function mapToModelMetadata(
-	model: OpenRouterModel | OpenAIModel | AnthropicModel | any,
-	provider?: string,
-): IModelMetadata {
-	// Try to detect OpenRouter format
-	if ('endpoint' in model && model.endpoint?.pricing) {
-		return mapOpenRouterModel(model as OpenRouterModel);
-	}
-
-	// Try to detect Anthropic format
-	if ('display_name' in model) {
-		return mapAnthropicModel(model as AnthropicModel);
-	}
-
-	// Try to detect OpenAI format
-	if ('id' in model && !('display_name' in model)) {
-		return mapOpenAIModel(model as OpenAIModel);
-	}
-
-	// Fallback to generic
-	const modelId = (model as any).id || (model as any).slug || 'Unknown Model';
-	return createGenericMetadata(modelId, provider);
 }

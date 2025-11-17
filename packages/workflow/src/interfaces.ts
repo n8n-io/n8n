@@ -1673,11 +1673,6 @@ export interface IModelMetadata {
 	inputModalities?: string[];
 	outputModalities?: string[];
 	intelligenceLevel: 'low' | 'medium' | 'high';
-	recommendedFor?: string[];
-	description?: string;
-	trainingCutoff?: string;
-	notes?: string;
-	intelligenceScore?: number; // Deprecated - kept for backward compatibility
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {
