@@ -25,8 +25,7 @@ def node_substitution_cost(
         Cost value (0 = identical, higher = more different)
     """
     # Check for exemptions
-    original_json = node1_data.get("_original_data_json", "{}")
-    original_data = json.loads(original_json)
+    original_data = node1_data.get("parameters", "{}")
     exemption_penalty = config.get_exemption_penalty(original_data, "generated")
     if exemption_penalty is not None:
         return exemption_penalty
@@ -50,9 +49,9 @@ def node_substitution_cost(
     # Same type: compare parameters
 
     if type1 == type2:
-        # Parse parameters from JSON
-        params1 = json.loads(node1_data.get("_parameters_json", "{}"))
-        params2 = json.loads(node2_data.get("_parameters_json", "{}"))
+        # Get parameters directly from node data
+        params1 = node1_data.get("parameters", {})
+        params2 = node2_data.get("parameters", {})
 
         param_diff = compare_parameters(params1, params2, type1, config)
 
@@ -87,8 +86,7 @@ def node_deletion_cost(
         Cost value
     """
     # Check for exemptions
-    original_json = node_data.get("_original_data_json", "{}")
-    original_data = json.loads(original_json)
+    original_data = node_data.get("parameters", "{}")
     exemption_penalty = config.get_exemption_penalty(original_data, "generated")
     if exemption_penalty is not None:
         return exemption_penalty
@@ -110,8 +108,7 @@ def node_insertion_cost(
         Cost value
     """
     # Check for exemptions
-    original_json = node_data.get("_original_data_json", "{}")
-    original_data = json.loads(original_json)
+    original_data = node_data.get("parameters", "{}")
     exemption_penalty = config.get_exemption_penalty(original_data, "ground_truth")
     if exemption_penalty is not None:
         return exemption_penalty
@@ -343,7 +340,7 @@ def normalize_value(value: Any, options: Dict[str, Any]) -> Any:
 
     Args:
         value: Value to normalize
-        options: Normalization options
+        options: Normalization options [ignore_trailing_slash, case_insensitive]
 
     Returns:
         Normalized value

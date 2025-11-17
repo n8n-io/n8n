@@ -96,10 +96,7 @@ def test_parameter_filtering():
     graph = build_workflow_graph(workflow, config)
 
     node_data = graph.nodes["Node1"]
-    # Parameters are stored as JSON string
-    import json
-
-    params = json.loads(node_data["_parameters_json"])
+    params = node_data["parameters"]
 
     assert "important" in params
     assert "position" not in params

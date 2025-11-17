@@ -3,7 +3,6 @@ Build NetworkX graphs from n8n workflow JSON structures.
 """
 
 import networkx as nx
-import json
 from typing import Dict, Any, Optional
 from src.config_loader import WorkflowComparisonConfig
 
@@ -39,21 +38,13 @@ def build_workflow_graph(
             node.get("parameters", {}), node.get("type", ""), config
         )
 
-        # Convert parameters to hashable format for NetworkX
-        # This allows NetworkX's graph edit distance to work properly
-        params_hash = json.dumps(filtered_params, sort_keys=True)
-
-        # Store ONLY hashable attributes to avoid "unhashable type" errors in NetworkX
-        # Dict attributes like _parameters are stored as JSON strings
+        # Add node with filtered parameters
         G.add_node(
             node_name,
             type=node.get("type", ""),
             type_version=node.get("typeVersion", 1),
-            parameters_hash=params_hash,  # Hashable version for GED
+            parameters=filtered_params,
             is_trigger=_is_trigger_node(node),
-            # Store dicts as JSON strings to keep everything hashable
-            _parameters_json=json.dumps(filtered_params),
-            _original_data_json=json.dumps(node, default=str),
         )
 
     # Add edges from connections
