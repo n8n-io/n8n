@@ -82,22 +82,6 @@ function validateMetadataFile(filePath) {
 			errors.push('Invalid contextLength: must be a positive number');
 		}
 
-		// Validate recommendedFor values
-		if (data.recommendedFor) {
-			if (!Array.isArray(data.recommendedFor)) {
-				errors.push('recommendedFor must be an array');
-			} else {
-				data.recommendedFor.forEach((value) => {
-					if (!validRecommendedFor.includes(value)) {
-						warnings.push(
-							`Non-standard recommendedFor value: "${value}". ` +
-								`Recommended values: ${validRecommendedFor.join(', ')}`,
-						);
-					}
-				});
-			}
-		}
-
 		// Validate capabilities object
 		if (data.capabilities && typeof data.capabilities !== 'object') {
 			errors.push('capabilities must be an object');

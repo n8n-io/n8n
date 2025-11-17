@@ -1,4 +1,4 @@
-import { mapGoogleGeminiModel } from '@utils/modelMetadataMapper';
+import { loadModelMetadata } from '@utils/modelMetadataLoader';
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
 
 import { apiRequest } from '../transport';
@@ -28,8 +28,7 @@ async function baseModelSearch(
 			return {
 				name: model.name,
 				value: model.name,
-				metadata: mapGoogleGeminiModel(modelId),
-				_metadataProvider: 'google',
+				metadata: loadModelMetadata('google', modelId),
 			};
 		}),
 	};

@@ -3,7 +3,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-import { mapMistralModel } from '@utils/modelMetadataMapper';
+import { loadModelMetadata } from '@utils/modelMetadataLoader';
 
 export interface MistralModel {
 	id: string;
@@ -32,8 +32,7 @@ export async function searchModels(
 				results.push({
 					name: model.id,
 					value: model.id,
-					metadata: mapMistralModel(model),
-					_metadataProvider: 'mistral',
+					metadata: loadModelMetadata('mistral', model.id),
 				});
 			}
 		}
@@ -41,8 +40,7 @@ export async function searchModels(
 		results = chatModels.map((model) => ({
 			name: model.id,
 			value: model.id,
-			metadata: mapMistralModel(model),
-			_metadataProvider: 'mistral',
+			metadata: loadModelMetadata('mistral', model.id),
 		}));
 	}
 

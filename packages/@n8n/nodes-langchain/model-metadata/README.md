@@ -16,7 +16,15 @@ model-metadata/
 │   ├── claude-3-5-sonnet-20241022.json
 │   ├── claude-3-opus-20240229.json
 │   └── ...
-└── google/          # Google Gemini models (future)
+├── google/          # Google Gemini models
+│   ├── gemini-2.5-flash.json
+│   ├── gemini-2.5-pro.json
+│   ├── _aliases.json
+│   └── ...
+└── mistral/         # Mistral AI models
+    ├── mistral-large-latest.json
+    ├── mistral-small-latest.json
+    ├── _aliases.json
     └── ...
 ```
 
@@ -28,6 +36,7 @@ Each model metadata file must follow this structure:
 {
   "id": "model-identifier",
   "name": "Display Name",
+  "shortName": "Short",
   "provider": "Provider Name",
   "pricing": {
     "promptPerMilTokenUsd": 2.5,
@@ -45,8 +54,9 @@ Each model metadata file must follow this structure:
   },
   "inputModalities": ["text", "image"],
   "outputModalities": ["text"],
-  "intelligenceLevel": "high",
-  "recommendedFor": ["complex-reasoning", "coding", "analysis"]}```
+  "intelligenceLevel": "high"
+}
+```
 
 ## Field Definitions
 
@@ -54,24 +64,21 @@ Each model metadata file must follow this structure:
 |-------|------|----------|-------------|----------------|
 | `id` | string | ✅ | Model identifier (must match API) | `"gpt-4o"`, `"claude-3-5-sonnet-20241022"` |
 | `name` | string | ✅ | Human-readable display name | `"GPT-4o"`, `"Claude 3.5 Sonnet"` |
+| `shortName` | string | ❌ | Abbreviated name for compact display | `"GPT-4o"`, `"Claude 3.5S"` |
 | `provider` | string | ✅ | Provider/company name | `"OpenAI"`, `"Anthropic"`, `"Google"` |
 | `pricing.promptPerMilTokenUsd` | number | ✅ | Input price per 1M tokens (USD) | `2.5`, `0.15` |
 | `pricing.completionPerMilTokenUsd` | number | ✅ | Output price per 1M tokens (USD) | `10.0`, `0.6` |
 | `contextLength` | number | ✅ | Maximum context window in tokens | `128000`, `200000` |
 | `maxOutputTokens` | number | ❌ | Maximum output tokens | `16384`, `4096` |
-| `capabilities.functionCalling` | boolean | ✅ | Supports tool/function calling | `true`, `false` |
-| `capabilities.structuredOutput` | boolean | ✅ | Supports JSON schema output | `true`, `false` |
-| `capabilities.vision` | boolean | ✅ | Accepts image inputs | `true`, `false` |
-| `capabilities.imageGeneration` | boolean | ✅ | Can generate images | `true`, `false` |
-| `capabilities.audio` | boolean | ✅ | Accepts audio inputs | `true`, `false` |
-| `capabilities.extendedThinking` | boolean | ✅ | Extended reasoning (o1-style) | `true`, `false` |
+| `capabilities.functionCalling` | boolean | ❌ | Supports tool/function calling | `true`, `false` |
+| `capabilities.structuredOutput` | boolean | ❌ | Supports JSON schema output | `true`, `false` |
+| `capabilities.vision` | boolean | ❌ | Accepts image inputs | `true`, `false` |
+| `capabilities.imageGeneration` | boolean | ❌ | Can generate images | `true`, `false` |
+| `capabilities.audio` | boolean | ❌ | Accepts audio inputs | `true`, `false` |
+| `capabilities.extendedThinking` | boolean | ❌ | Extended reasoning (o1-style) | `true`, `false` |
 | `inputModalities` | string[] | ❌ | Accepted input types | `["text", "image", "audio"]` |
 | `outputModalities` | string[] | ❌ | Generated output types | `["text"]`, `["text", "image"]` |
-| `intelligenceLevel` | enum | ✅ | Simple capability hint | `"low"`, `"medium"`, `"high"` |
-| `recommendedFor` | string[] | ❌ | Use case recommendations | See section below |
-| `description` | string | ❌ | Brief model description | Full text (1-2 sentences) |
-| `trainingCutoff` | string | ❌ | Knowledge cutoff date | `"2023-10"`, `"2024-04"` (YYYY-MM format) |
-| `notes` | string | ❌ | Additional notes/limitations | Full text |
+| `intelligenceLevel` | enum | ✅ | Capability level | `"low"`, `"medium"`, `"high"` |
 
 ## Intelligence Levels
 
@@ -88,28 +95,6 @@ Use these standardized values for `intelligenceLevel`:
 - **`"high"`** - Advanced models, best reasoning and complex tasks
   - Examples: GPT-4o, Claude 3.5 Sonnet, Claude 3 Opus, o1
   - Use when: Maximum accuracy and capability required
-
-## Recommended Use Cases
-
-Use these standardized values for `recommendedFor` (array):
-
-- `"coding"` - Code generation, debugging, and refactoring
-- `"analysis"` - Data analysis, interpretation, and insights
-- `"creative-writing"` - Content creation, storytelling, copywriting
-- `"complex-reasoning"` - Multi-step problem solving, strategic thinking
-- `"conversation"` - Chat, dialogue, customer service
-- `"summarization"` - Text summarization and condensation
-- `"translation"` - Language translation
-- `"multimodal"` - Image/audio understanding and processing
-- `"function-calling"` - Tool use, API integration, workflow automation
-- `"structured-output"` - JSON generation, schema-based responses
-
-## Training Cutoff Format
-
-Use `"YYYY-MM"` format for `trainingCutoff`:
-- `"2023-10"` - October 2023
-- `"2024-04"` - April 2024
-- `"2024-12"` - December 2024
 
 ## Adding New Models
 
@@ -155,40 +140,20 @@ The metadata files will be copied to `dist/model-metadata/` automatically.
 
 ### 5. Test in the UI
 
-1. Start n8n in development mode
-2. Open an OpenAI Chat Model or Anthropic Chat Model node
-3. Select "Browse Models" mode
+1. Start n8n in development mode: `pnpm dev`
+2. Add a Chat Model node (OpenAI, Anthropic, Google Gemini, or Mistral)
+3. Click the model selector dropdown
 4. Search for your model
-5. Verify the metadata displays correctly
-
-## Per-Node Overrides
-
-Individual nodes can override global metadata by creating a `__model_metadata__/` directory in their node folder:
-
-```
-packages/@n8n/nodes-langchain/nodes/llms/YourNode/
-├── YourNode.node.ts
-└── __model_metadata__/
-    └── custom-model.json
-```
-
-**Priority**: Per-node overrides take precedence over global metadata.
-
-**Use case**: Custom fine-tuned models or node-specific model configurations.
+5. Verify the metadata displays correctly (pricing, capabilities, context length)
 
 ## Development Workflow
 
 ### During Development
 
-When you use a model that doesn't have a metadata file, the system:
-1. Falls back to hardcoded metadata in `utils/modelMetadataMapper.ts`
-2. Displays a console warning (development only):
-   ```
-   [DEV] Using fallback metadata for OpenAI model: gpt-5
-   Consider adding metadata file: model-metadata/openai/gpt-5.json
-   ```
-
-This helps identify missing metadata files during development.
+When you use a model that doesn't have a metadata file:
+- The model will appear in the dropdown without metadata (name and value only)
+- No metadata will be displayed in the UI (capabilities, pricing, etc.)
+- To add metadata: Create a JSON file for the model following the schema above
 
 ### Validation on Build
 
@@ -208,25 +173,41 @@ Validation errors will fail the build and must be fixed before proceeding.
    └─> copy-model-metadata copies to dist/
 
 2. Runtime (Backend)
-   └─> LoadNodesAndCredentials.resolveModelMetadata()
-       ├─ Checks per-node __model_metadata__/ (if nodeType provided)
-       └─ Checks global model-metadata/{provider}/ directory
-   └─> Express endpoint: GET /model-metadata/:provider/:modelId.json
-       └─ Serves file with caching headers
+   Node listSearch methods:
+   └─> Call provider API to get available models
+   └─> For each model, load metadata via loadModelMetadata()
+       ├─ Check in-memory cache first
+       ├─ Load from model-metadata/{provider}/{modelId}.json
+       ├─ Support alias resolution via _aliases.json
+       └─ Return undefined if not found
+   └─> Return results with complete metadata to frontend
 
 3. Frontend
-   └─> ModelBrowser component loads models
-   └─> Calls modelMetadataStore.getModelMetadata() for each model
-   └─> Fetches from API: /model-metadata/openai/gpt-4o.json
-   └─> Caches in Pinia store
-   └─> Enriches model data with file metadata (preferred) or fallback
+   └─> Receives model list with metadata included
+   └─> Displays metadata in ResourceLocator dropdown
+   └─> No additional API calls needed
 ```
 
-### Security
+### Performance
 
-- Path validation via `isContainedWithin()` prevents directory traversal
-- Metadata files must be within package or node directory
-- Same security model as schema files (`__schema__/`)
+- **In-memory cache**: Metadata cached after first load
+- **Node.js caching**: File reads cached by Node.js
+- **Load time**: ~1ms first load, <0.01ms cached
+- **Memory footprint**: ~100KB for all 176 models
+- **Network efficiency**: Single API call (no metadata waterfall)
+
+### Alias Resolution
+
+The `_aliases.json` file maps model aliases to canonical IDs:
+
+```json
+{
+  "chatgpt-4o-latest": "gpt-4o",
+  "gpt-4-turbo-preview": "gpt-4-turbo"
+}
+```
+
+This allows users to use common aliases while maintaining a single metadata file.
 
 ## Maintenance
 
@@ -258,35 +239,22 @@ pnpm validate-metadata
 # Build and copy
 pnpm build
 
-# Test specific model API endpoint (when n8n is running)
-curl http://localhost:5678/model-metadata/openai/gpt-4o.json
+# Test in development
+pnpm dev
+# Open a model node in the UI and verify metadata displays in the dropdown
 ```
 
 ### Unit Tests
 
 Model metadata loading is tested as part of:
 - Node integration tests
-- Frontend component tests
-- API endpoint tests
+- listSearch method tests
 
 ## Contributing
 
 When adding new model metadata:
 
 1. Use the exact model ID from the provider's API
-2. Fill all required fields
-3. Use standardized `recommendedFor` values
-4. Keep descriptions concise (1-2 sentences)
-5. Validate before committing
-6. Test in the UI browse mode
-
-## Future Enhancements
-
-Potential future additions to the schema:
-- `deprecated: boolean` - Mark deprecated models
-- `speed: string` - Performance tier (fast, medium, slow)
-- `releaseDate: string` - When the model was released
-- `capabilities.streaming: boolean` - Supports streaming responses
-- `capabilities.caching: boolean` - Supports context caching
-
-These can be added without breaking existing metadata files.
+2. Fill all required fields (id, name, provider, pricing, contextLength, intelligenceLevel, capabilities)
+3. Validate before committing: `pnpm validate-metadata`
+4. Test in the UI model selection dropdown

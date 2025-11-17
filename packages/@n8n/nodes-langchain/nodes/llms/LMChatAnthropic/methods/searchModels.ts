@@ -3,7 +3,7 @@ import type {
 	INodeListSearchItems,
 	INodeListSearchResult,
 } from 'n8n-workflow';
-import { mapAnthropicModel } from '@utils/modelMetadataMapper';
+import { loadModelMetadata } from '@utils/modelMetadataLoader';
 
 export interface AnthropicModel {
 	id: string;
@@ -35,8 +35,7 @@ export async function searchModels(
 				results.push({
 					name: model.display_name,
 					value: model.id,
-					metadata: mapAnthropicModel(model),
-					_metadataProvider: 'anthropic',
+					metadata: loadModelMetadata('anthropic', model.id),
 				});
 			}
 		}
@@ -44,8 +43,7 @@ export async function searchModels(
 		results = models.map((model) => ({
 			name: model.display_name,
 			value: model.id,
-			metadata: mapAnthropicModel(model),
-			_metadataProvider: 'anthropic',
+			metadata: loadModelMetadata('anthropic', model.id),
 		}));
 	}
 

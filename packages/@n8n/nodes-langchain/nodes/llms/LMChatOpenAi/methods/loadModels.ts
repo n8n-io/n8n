@@ -2,7 +2,7 @@ import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow'
 import OpenAI from 'openai';
 
 import { getProxyAgent } from '@utils/httpProxyAgent';
-import { mapOpenAIModel } from '@utils/modelMetadataMapper';
+import { loadModelMetadata } from '@utils/modelMetadataLoader';
 
 import { shouldIncludeModel } from '../../../vendors/OpenAi/helpers/modelFiltering';
 
@@ -42,8 +42,7 @@ export async function searchModels(
 		results: filteredModels.map((model: { id: string; created?: number; owned_by?: string }) => ({
 			name: model.id,
 			value: model.id,
-			metadata: mapOpenAIModel({ id: model.id, created: model.created, owned_by: model.owned_by }),
-			_metadataProvider: 'openai',
+			metadata: loadModelMetadata('openai', model.id),
 		})),
 	};
 }

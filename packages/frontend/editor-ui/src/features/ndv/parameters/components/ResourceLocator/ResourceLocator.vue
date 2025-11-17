@@ -14,7 +14,6 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useModelMetadataStore } from '@/app/stores/modelMetadata.store';
 import {
 	getAppNameFromNodeName,
 	getMainAuthField,
@@ -158,9 +157,6 @@ const rootStore = useRootStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
-const modelMetadataStore = useModelMetadataStore();
-
-const enrichedResults = ref<IResourceLocatorResultExpanded[]>([]);
 
 const appName = computed(() => {
 	if (!props.node) {
@@ -506,16 +502,6 @@ watch(
 	},
 );
 
-watch(
-	() => [currentQueryResults.value, isListMode.value],
-	() => {
-		if (isListMode.value && currentQueryResults.value.length > 0) {
-			void enrichResultsWithMetadata();
-		}
-	},
-	{ immediate: true },
-);
-
 onMounted(() => {
 	props.eventBus.on('refreshList', refreshList);
 	window.addEventListener('resize', setWidth);
@@ -833,47 +819,6 @@ async function loadResources() {
 	}
 }
 
-async function enrichResultsWithMetadata() {
-	if (!currentQueryResults.value.length || !isListMode.value) {
-		enrichedResults.value = [];
-		return;
-	}
-
-	const enriched = await Promise.all(
-		currentQueryResults.value.map(async (result) => {
-			// Skip if no metadata provider hint or no metadata
-			if (!(result as any)._metadataProvider || !result.metadata) {
-				return result;
-			}
-
-			try {
-				// Extract clean model ID (trim "models/" prefix from Google)
-				let modelId = result.value.toString();
-				if ((result as any)._metadataProvider === 'google') {
-					modelId = modelId.replace(/^models\//, '');
-				}
-
-				// Try to fetch file-based metadata
-				const fileMetadata = await modelMetadataStore.getModelMetadata({
-					provider: (result as any)._metadataProvider,
-					modelId,
-				});
-
-				// Prefer file metadata over hardcoded fallback
-				return {
-					...result,
-					metadata: fileMetadata || result.metadata,
-				};
-			} catch (error) {
-				// On error, keep original metadata
-				return result;
-			}
-		}),
-	);
-
-	enrichedResults.value = enriched;
-}
-
 /**
  * Removes duplicate credential-related sentences from error messages.
  * We are already showing a link to create/check the credentials, so we don't need to repeat the same message.
@@ -1009,7 +954,7 @@ function removeOverride() {
 			:show="resourceDropdownVisible"
 			:filterable="isSearchable"
 			:filter-required="requiresSearchFilter"
-			:resources="enrichedResults.length > 0 ? enrichedResults : currentQueryResults"
+			:resources="currentQueryResults"
 			:loading="currentQueryLoading"
 			:filter="searchFilter"
 			:has-more="currentQueryHasMore"
