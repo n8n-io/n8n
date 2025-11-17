@@ -7,7 +7,8 @@ import IntersectionObserved from '@/app/components/IntersectionObserved.vue';
 import { createEventBus } from '@n8n/utils/event-bus';
 import debounce from 'lodash/debounce';
 
-import { ElTag } from 'element-plus';
+import { N8nTag } from '@n8n/design-system';
+
 interface TagsContainerProps {
 	tagIds: string[];
 	tagsById: { [id: string]: ITag };
@@ -137,16 +138,13 @@ onBeforeUnmount(() => {
 				:class="{ clickable: !tag.hidden }"
 				@click="(e) => onClick(e, tag)"
 			>
-				<ElTag
+				<N8nTag
 					v-if="tag.isCount"
 					:title="tag.title"
-					type="info"
-					size="small"
+					:text="tag.name"
+					:clickable="false"
 					class="count-container"
-					:disable-transitions="true"
-				>
-					{{ tag.name }}
-				</ElTag>
+				/>
 				<IntersectionObserved
 					v-else
 					:class="{ hideTag: tag.hidden }"
@@ -154,15 +152,12 @@ onBeforeUnmount(() => {
 					:enabled="responsive"
 					:event-bus="intersectionEventBus"
 				>
-					<ElTag
+					<N8nTag
 						:title="tag.name"
-						type="info"
-						size="small"
+						:text="tag.name"
+						:clickable="clickable"
 						:class="{ hoverable }"
-						:disable-transitions="true"
-					>
-						{{ tag.name }}
-					</ElTag>
+					/>
 				</IntersectionObserved>
 			</span>
 		</span>
@@ -175,23 +170,8 @@ onBeforeUnmount(() => {
 	max-width: 300px;
 }
 
-.tags {
-	display: block;
-	white-space: nowrap;
-	overflow: hidden;
-	max-width: 100%;
-
-	> span {
-		padding-right: 4px; // why not margin? for space between tags to be clickable
-	}
-}
-
 .hideTag {
 	visibility: hidden;
-}
-
-.el-tag.hoverable:hover {
-	border-color: $color-primary;
 }
 
 .count-container {
