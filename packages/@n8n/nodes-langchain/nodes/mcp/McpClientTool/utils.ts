@@ -8,16 +8,17 @@ import { Toolkit } from 'langchain/agents';
 import {
 	createResultError,
 	createResultOk,
-	type ILoadOptionsFunctions,
-	type ISupplyDataFunctions,
 	type IDataObject,
 	type IExecuteFunctions,
+	type ILoadOptionsFunctions,
+	type ISupplyDataFunctions,
 	type Result,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
 import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
+import { proxyFetch } from '@utils/httpProxyAgent';
 import type {
 	McpAuthenticationOption,
 	McpServerTransport,
@@ -203,6 +204,7 @@ export async function connectMcpClient({
 		try {
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
 				requestInit: { headers },
+				fetch: proxyFetch,
 			});
 			await client.connect(transport);
 			return createResultOk(client);
@@ -229,7 +231,7 @@ export async function connectMcpClient({
 		const sseTransport = new SSEClientTransport(endpoint.result, {
 			eventSourceInit: {
 				fetch: async (url, init) =>
-					await fetch(url, {
+					await proxyFetch(url, {
 						...init,
 						headers: {
 							...headers,
@@ -237,6 +239,7 @@ export async function connectMcpClient({
 						},
 					}),
 			},
+			fetch: proxyFetch,
 			requestInit: { headers },
 		});
 		await client.connect(sseTransport);
