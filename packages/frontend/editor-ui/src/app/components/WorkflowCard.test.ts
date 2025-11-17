@@ -61,6 +61,7 @@ const createWorkflow = (overrides = {}): WorkflowResource => ({
 	createdAt: new Date().toISOString(),
 	updatedAt: new Date().toISOString(),
 	active: true,
+	activeVersionId: 'version-1',
 	isArchived: false,
 	readOnly: false,
 	...overrides,

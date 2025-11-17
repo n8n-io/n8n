@@ -277,6 +277,7 @@ export type WorkflowResource = BaseResource & {
 	updatedAt: string;
 	createdAt: string;
 	active: boolean;
+	activeVersionId: string | null;
 	isArchived: boolean;
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
