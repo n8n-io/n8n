@@ -2,18 +2,11 @@
 	"id": "magistral-small-latest",
 	"name": "Magistral Small",
 	"provider": "Mistral",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.5,
-		"completionPerMilTokenUsd": 1.5
-	},
+	"pricing": { "promptPerMilTokenUsd": 0.5, "completionPerMilTokenUsd": 1.5 },
 	"contextLength": 40000,
-	"maxOutputTokens": 4096,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text", "image"],
+	"maxOutputTokens": 40000,
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": true },
+	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": ["reasoning", "cost-effective", "multi-step-logic", "multimodal"]

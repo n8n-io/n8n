@@ -2,19 +2,12 @@
 	"id": "gemini-2.0-flash-001",
 	"name": "Gemini 2.0 Flash-001",
 	"provider": "Google",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.1,
-		"completionPerMilTokenUsd": 0.4
-	},
-	"contextLength": 1000000,
+	"pricing": { "promptPerMilTokenUsd": 0.1, "completionPerMilTokenUsd": 0.4 },
+	"contextLength": 1048576,
 	"maxOutputTokens": 8192,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false
-	},
-	"inputModalities": ["text", "image", "audio", "video"],
-	"outputModalities": ["text", "image", "audio"],
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
+	"inputModalities": ["text", "image", "file", "audio", "video"],
+	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": ["general-purpose", "multimodal", "coding", "agentic", "real-time"]
 }

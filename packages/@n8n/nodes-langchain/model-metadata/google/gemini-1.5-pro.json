@@ -2,18 +2,11 @@
 	"id": "gemini-1.5-pro",
 	"name": "Gemini 1.5 Pro",
 	"provider": "Google",
-	"pricing": {
-		"promptPerMilTokenUsd": 1.25,
-		"completionPerMilTokenUsd": 5
-	},
-	"contextLength": 2000000,
-	"maxOutputTokens": 8192,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false
-	},
-	"inputModalities": ["text", "image", "audio", "video"],
+	"pricing": { "promptPerMilTokenUsd": null, "completionPerMilTokenUsd": null },
+	"contextLength": 1000000,
+	"maxOutputTokens": null,
+	"capabilities": { "functionCalling": null, "structuredOutput": null, "extendedThinking": null },
+	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["complex-reasoning", "long-context", "multimodal", "analysis", "coding"]

@@ -2,17 +2,10 @@
 	"id": "codestral-latest",
 	"name": "Codestral",
 	"provider": "Mistral",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.3,
-		"completionPerMilTokenUsd": 0.9
-	},
+	"pricing": { "promptPerMilTokenUsd": 0.3, "completionPerMilTokenUsd": 0.9 },
 	"contextLength": 256000,
-	"maxOutputTokens": 8192,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false
-	},
+	"maxOutputTokens": null,
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": false },
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",

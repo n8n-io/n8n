@@ -2,18 +2,11 @@
 	"id": "claude-haiku-4-5-20251001",
 	"name": "Claude Haiku 4.5",
 	"provider": "Anthropic",
-	"pricing": {
-		"promptPerMilTokenUsd": 1,
-		"completionPerMilTokenUsd": 5
-	},
+	"pricing": { "promptPerMilTokenUsd": 1, "completionPerMilTokenUsd": 5 },
 	"contextLength": 200000,
 	"maxOutputTokens": 64000,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": false,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text", "image"],
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": true },
+	"inputModalities": ["image", "text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": ["conversation", "summarization", "function-calling", "coding"]

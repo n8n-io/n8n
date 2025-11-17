@@ -2,17 +2,10 @@
 	"id": "claude-3-opus-20240229",
 	"name": "Claude 3 Opus",
 	"provider": "Anthropic",
-	"pricing": {
-		"promptPerMilTokenUsd": 15,
-		"completionPerMilTokenUsd": 75
-	},
+	"pricing": { "promptPerMilTokenUsd": 15, "completionPerMilTokenUsd": 75 },
 	"contextLength": 200000,
 	"maxOutputTokens": 4096,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": false,
-		"extendedThinking": false
-	},
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",

@@ -2,17 +2,10 @@
 	"id": "open-mistral-7b",
 	"name": "Open Mistral 7B",
 	"provider": "Mistral",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.04,
-		"completionPerMilTokenUsd": 0.04
-	},
-	"contextLength": 32000,
-	"maxOutputTokens": 4096,
-	"capabilities": {
-		"functionCalling": false,
-		"structuredOutput": false,
-		"extendedThinking": false
-	},
+	"pricing": { "promptPerMilTokenUsd": null, "completionPerMilTokenUsd": null },
+	"contextLength": 4096,
+	"maxOutputTokens": null,
+	"capabilities": { "functionCalling": null, "structuredOutput": null, "extendedThinking": null },
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "low",

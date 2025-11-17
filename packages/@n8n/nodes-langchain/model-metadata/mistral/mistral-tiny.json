@@ -2,17 +2,10 @@
 	"id": "mistral-tiny",
 	"name": "Mistral Tiny",
 	"provider": "Mistral",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.04,
-		"completionPerMilTokenUsd": 0.04
-	},
-	"contextLength": 32000,
-	"maxOutputTokens": 4096,
-	"capabilities": {
-		"functionCalling": false,
-		"structuredOutput": false,
-		"extendedThinking": false
-	},
+	"pricing": { "promptPerMilTokenUsd": 0.25, "completionPerMilTokenUsd": 0.25 },
+	"contextLength": 32768,
+	"maxOutputTokens": null,
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "low",

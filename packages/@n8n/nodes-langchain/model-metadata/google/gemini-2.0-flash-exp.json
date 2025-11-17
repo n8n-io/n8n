@@ -2,19 +2,12 @@
 	"id": "gemini-2.0-flash-exp",
 	"name": "Gemini 2.0 Flash Experimental",
 	"provider": "Google",
-	"pricing": {
-		"promptPerMilTokenUsd": 0,
-		"completionPerMilTokenUsd": 0
-	},
-	"contextLength": 1000000,
+	"pricing": { "promptPerMilTokenUsd": 0, "completionPerMilTokenUsd": 0 },
+	"contextLength": 1048576,
 	"maxOutputTokens": 8192,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false
-	},
-	"inputModalities": ["text", "image", "audio", "video"],
-	"outputModalities": ["text", "image", "audio"],
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
+	"inputModalities": ["text", "image"],
+	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": ["testing", "experimentation", "multimodal", "agentic"]
 }

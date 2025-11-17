@@ -2,18 +2,11 @@
 	"id": "gemini-2.5-flash-lite",
 	"name": "Gemini 2.5 Flash-Lite",
 	"provider": "Google",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.1,
-		"completionPerMilTokenUsd": 0.4
-	},
-	"contextLength": 1000000,
-	"maxOutputTokens": 8192,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false
-	},
-	"inputModalities": ["text", "image", "audio", "video"],
+	"pricing": { "promptPerMilTokenUsd": 0.1, "completionPerMilTokenUsd": 0.4 },
+	"contextLength": 1048576,
+	"maxOutputTokens": 65535,
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": true },
+	"inputModalities": ["text", "image", "file", "audio", "video"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": ["high-volume", "cost-effective", "general-purpose", "batch-processing"]

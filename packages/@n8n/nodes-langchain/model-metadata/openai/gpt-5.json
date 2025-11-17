@@ -2,18 +2,11 @@
 	"id": "gpt-5",
 	"name": "GPT-5",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 1.25,
-		"completionPerMilTokenUsd": 10
-	},
-	"contextLength": 272000,
+	"pricing": { "promptPerMilTokenUsd": 0.25, "completionPerMilTokenUsd": 2 },
+	"contextLength": 400000,
 	"maxOutputTokens": 128000,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text", "image"],
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": true },
+	"inputModalities": ["text", "image", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": [

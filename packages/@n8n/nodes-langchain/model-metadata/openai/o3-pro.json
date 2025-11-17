@@ -2,18 +2,11 @@
 	"id": "o3-pro",
 	"name": "o3-pro",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 20,
-		"completionPerMilTokenUsd": 80
-	},
+	"pricing": { "promptPerMilTokenUsd": 20, "completionPerMilTokenUsd": 80 },
 	"contextLength": 200000,
 	"maxOutputTokens": 100000,
-	"capabilities": {
-		"functionCalling": false,
-		"structuredOutput": false,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text"],
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": true },
+	"inputModalities": ["text", "file", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["coding", "complex-reasoning", "analysis"]

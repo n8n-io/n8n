@@ -2,19 +2,13 @@
 	"id": "gpt-4o-mini-search-preview",
 	"name": "GPT-4o Mini Search Preview",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.15,
-		"completionPerMilTokenUsd": 0.6,
-		"searchPerThousandUsd": 25,
-		"searchTokenPerMilUsd": 2
-	},
+	"pricing": { "promptPerMilTokenUsd": 0.15, "completionPerMilTokenUsd": 0.6 },
 	"contextLength": 128000,
 	"maxOutputTokens": 16384,
 	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false,
-		"webSearch": true
+		"functionCalling": false,
+		"structuredOutput": false,
+		"extendedThinking": false
 	},
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],

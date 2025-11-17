@@ -2,19 +2,12 @@
 	"id": "gpt-audio",
 	"name": "GPT Audio",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 32,
-		"completionPerMilTokenUsd": 64
-	},
+	"pricing": { "promptPerMilTokenUsd": 2.5, "completionPerMilTokenUsd": 10 },
 	"contextLength": 128000,
 	"maxOutputTokens": 16384,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": false,
-		"extendedThinking": false
-	},
-	"inputModalities": ["text", "audio", "image"],
-	"outputModalities": ["text", "audio"],
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
+	"inputModalities": ["audio", "text"],
+	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": [
 		"conversation",

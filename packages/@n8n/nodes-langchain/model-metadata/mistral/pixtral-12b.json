@@ -2,12 +2,9 @@
 	"id": "pixtral-12b",
 	"name": "Pixtral 12B",
 	"provider": "Mistral",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.15,
-		"completionPerMilTokenUsd": 0.15
-	},
-	"contextLength": 128000,
-	"maxOutputTokens": 4096,
+	"pricing": { "promptPerMilTokenUsd": 0.1, "completionPerMilTokenUsd": 0.1 },
+	"contextLength": 32768,
+	"maxOutputTokens": null,
 	"capabilities": {
 		"functionCalling": false,
 		"structuredOutput": false,

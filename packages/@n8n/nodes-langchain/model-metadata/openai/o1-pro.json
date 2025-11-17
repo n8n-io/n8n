@@ -2,18 +2,11 @@
 	"id": "o1-pro",
 	"name": "o1-pro",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 150,
-		"completionPerMilTokenUsd": 600
-	},
+	"pricing": { "promptPerMilTokenUsd": 150, "completionPerMilTokenUsd": 600 },
 	"contextLength": 200000,
 	"maxOutputTokens": 100000,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text", "image"],
+	"capabilities": { "functionCalling": false, "structuredOutput": false, "extendedThinking": true },
+	"inputModalities": ["text", "image", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["complex-reasoning", "coding", "analysis", "research"]

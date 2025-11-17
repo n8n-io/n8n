@@ -2,18 +2,11 @@
 	"id": "claude-opus-4-20250514",
 	"name": "Claude Opus 4",
 	"provider": "Anthropic",
-	"pricing": {
-		"promptPerMilTokenUsd": 15,
-		"completionPerMilTokenUsd": 75
-	},
+	"pricing": { "promptPerMilTokenUsd": 15, "completionPerMilTokenUsd": 75 },
 	"contextLength": 200000,
 	"maxOutputTokens": 32000,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": false,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text", "image"],
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": true },
+	"inputModalities": ["image", "text", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["complex-reasoning", "analysis", "creative-writing", "multimodal"]

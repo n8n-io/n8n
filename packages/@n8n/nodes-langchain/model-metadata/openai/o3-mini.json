@@ -2,18 +2,11 @@
 	"id": "o3-mini",
 	"name": "o3-mini",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 1.1,
-		"completionPerMilTokenUsd": 4.4
-	},
+	"pricing": { "promptPerMilTokenUsd": 1.1, "completionPerMilTokenUsd": 4.4 },
 	"contextLength": 200000,
 	"maxOutputTokens": 100000,
-	"capabilities": {
-		"functionCalling": false,
-		"structuredOutput": false,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text"],
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
+	"inputModalities": ["text", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["coding", "complex-reasoning", "analysis"]

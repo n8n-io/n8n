@@ -2,18 +2,11 @@
 	"id": "claude-3-5-sonnet-20241022",
 	"name": "Claude 3.5 Sonnet",
 	"provider": "Anthropic",
-	"pricing": {
-		"promptPerMilTokenUsd": 3,
-		"completionPerMilTokenUsd": 15
-	},
+	"pricing": { "promptPerMilTokenUsd": 3, "completionPerMilTokenUsd": 15 },
 	"contextLength": 200000,
 	"maxOutputTokens": 8192,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": false,
-		"extendedThinking": false
-	},
-	"inputModalities": ["text", "image"],
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
+	"inputModalities": ["text", "image", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["complex-reasoning", "coding", "analysis", "creative-writing", "multimodal"]

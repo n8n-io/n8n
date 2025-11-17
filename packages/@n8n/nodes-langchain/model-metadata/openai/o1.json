@@ -2,16 +2,13 @@
 	"id": "o1",
 	"name": "o1",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 15,
-		"completionPerMilTokenUsd": 60
-	},
-	"contextLength": 200000,
-	"maxOutputTokens": 100000,
+	"pricing": { "promptPerMilTokenUsd": 0.04, "completionPerMilTokenUsd": 0.05 },
+	"contextLength": 8192,
+	"maxOutputTokens": null,
 	"capabilities": {
 		"functionCalling": false,
 		"structuredOutput": false,
-		"extendedThinking": true
+		"extendedThinking": false
 	},
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],

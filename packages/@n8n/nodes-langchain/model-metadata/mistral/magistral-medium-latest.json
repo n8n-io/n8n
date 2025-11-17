@@ -2,17 +2,10 @@
 	"id": "magistral-medium-latest",
 	"name": "Magistral Medium",
 	"provider": "Mistral",
-	"pricing": {
-		"promptPerMilTokenUsd": 2,
-		"completionPerMilTokenUsd": 5
-	},
-	"contextLength": 40000,
-	"maxOutputTokens": 4096,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": true
-	},
+	"pricing": { "promptPerMilTokenUsd": 2, "completionPerMilTokenUsd": 5 },
+	"contextLength": 40960,
+	"maxOutputTokens": 40000,
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": true },
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",

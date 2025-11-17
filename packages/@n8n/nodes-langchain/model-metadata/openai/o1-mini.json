@@ -2,17 +2,10 @@
 	"id": "o1-mini",
 	"name": "o1-mini",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 3,
-		"completionPerMilTokenUsd": 12
-	},
+	"pricing": { "promptPerMilTokenUsd": null, "completionPerMilTokenUsd": null },
 	"contextLength": 128000,
-	"maxOutputTokens": 65536,
-	"capabilities": {
-		"functionCalling": false,
-		"structuredOutput": false,
-		"extendedThinking": true
-	},
+	"maxOutputTokens": null,
+	"capabilities": { "functionCalling": null, "structuredOutput": null, "extendedThinking": null },
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",

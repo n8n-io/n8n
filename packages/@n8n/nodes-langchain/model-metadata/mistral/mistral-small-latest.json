@@ -2,18 +2,11 @@
 	"id": "mistral-small-latest",
 	"name": "Mistral Small 3",
 	"provider": "Mistral",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.1,
-		"completionPerMilTokenUsd": 0.3
-	},
-	"contextLength": 128000,
-	"maxOutputTokens": 4096,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false
-	},
-	"inputModalities": ["text", "image"],
+	"pricing": { "promptPerMilTokenUsd": 0.06, "completionPerMilTokenUsd": 0.18 },
+	"contextLength": 131072,
+	"maxOutputTokens": 131072,
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": false },
+	"inputModalities": ["image", "text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": ["general-purpose", "high-volume", "cost-effective", "multimodal"]

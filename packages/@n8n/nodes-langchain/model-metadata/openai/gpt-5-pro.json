@@ -2,18 +2,11 @@
 	"id": "gpt-5-pro",
 	"name": "GPT-5 Pro",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 15,
-		"completionPerMilTokenUsd": 120
-	},
+	"pricing": { "promptPerMilTokenUsd": 15, "completionPerMilTokenUsd": 120 },
 	"contextLength": 400000,
-	"maxOutputTokens": 272000,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text", "image"],
+	"maxOutputTokens": 128000,
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": true },
+	"inputModalities": ["image", "text", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": [

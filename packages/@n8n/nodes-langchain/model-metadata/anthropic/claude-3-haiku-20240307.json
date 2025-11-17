@@ -2,17 +2,10 @@
 	"id": "claude-3-haiku-20240307",
 	"name": "Claude 3 Haiku",
 	"provider": "Anthropic",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.25,
-		"completionPerMilTokenUsd": 1.25
-	},
+	"pricing": { "promptPerMilTokenUsd": 0.8, "completionPerMilTokenUsd": 4 },
 	"contextLength": 200000,
-	"maxOutputTokens": 4096,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": false,
-		"extendedThinking": false
-	},
+	"maxOutputTokens": 8192,
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",

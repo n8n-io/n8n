@@ -2,18 +2,11 @@
 	"id": "gemini-2.5-flash",
 	"name": "Gemini 2.5 Flash",
 	"provider": "Google",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.3,
-		"completionPerMilTokenUsd": 2.5
-	},
-	"contextLength": 1000000,
-	"maxOutputTokens": 8192,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text", "image", "audio", "video"],
+	"pricing": { "promptPerMilTokenUsd": 0.3, "completionPerMilTokenUsd": 2.5 },
+	"contextLength": 1048576,
+	"maxOutputTokens": 65535,
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": true },
+	"inputModalities": ["file", "image", "text", "audio", "video"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": ["general-purpose", "coding", "analysis", "multimodal", "cost-effective"]

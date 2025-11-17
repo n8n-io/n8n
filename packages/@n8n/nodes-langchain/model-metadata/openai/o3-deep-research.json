@@ -2,18 +2,11 @@
 	"id": "o3-deep-research",
 	"name": "o3-deep-research",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 10,
-		"completionPerMilTokenUsd": 40
-	},
+	"pricing": { "promptPerMilTokenUsd": 10, "completionPerMilTokenUsd": 40 },
 	"contextLength": 200000,
 	"maxOutputTokens": 100000,
-	"capabilities": {
-		"functionCalling": false,
-		"structuredOutput": false,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text"],
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": true },
+	"inputModalities": ["image", "text", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["research", "complex-reasoning", "analysis", "synthesis"]

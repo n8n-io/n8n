@@ -2,18 +2,11 @@
 	"id": "o4-mini-deep-research",
 	"name": "o4-mini-deep-research",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 2,
-		"completionPerMilTokenUsd": 8
-	},
+	"pricing": { "promptPerMilTokenUsd": 2, "completionPerMilTokenUsd": 8 },
 	"contextLength": 200000,
 	"maxOutputTokens": 100000,
-	"capabilities": {
-		"functionCalling": false,
-		"structuredOutput": false,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text"],
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": true },
+	"inputModalities": ["file", "image", "text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["research", "complex-reasoning", "analysis", "synthesis"]

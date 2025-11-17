@@ -2,17 +2,10 @@
 	"id": "mistral-medium-latest",
 	"name": "Mistral Medium 3",
 	"provider": "Mistral",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.4,
-		"completionPerMilTokenUsd": 2
-	},
-	"contextLength": 128000,
-	"maxOutputTokens": 4096,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false
-	},
+	"pricing": { "promptPerMilTokenUsd": 0.4, "completionPerMilTokenUsd": 2 },
+	"contextLength": 131072,
+	"maxOutputTokens": null,
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",

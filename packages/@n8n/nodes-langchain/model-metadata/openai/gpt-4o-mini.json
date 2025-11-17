@@ -2,18 +2,11 @@
 	"id": "gpt-4o-mini",
 	"name": "GPT-4o Mini",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.15,
-		"completionPerMilTokenUsd": 0.6
-	},
+	"pricing": { "promptPerMilTokenUsd": 0.15, "completionPerMilTokenUsd": 0.6 },
 	"contextLength": 128000,
 	"maxOutputTokens": 16384,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false
-	},
-	"inputModalities": ["text", "image"],
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
+	"inputModalities": ["text", "image", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": ["conversation", "summarization", "function-calling", "coding", "multimodal"]

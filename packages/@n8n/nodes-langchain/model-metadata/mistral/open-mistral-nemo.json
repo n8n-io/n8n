@@ -2,14 +2,11 @@
 	"id": "open-mistral-nemo",
 	"name": "Mistral NeMo",
 	"provider": "Mistral",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.15,
-		"completionPerMilTokenUsd": 0.15
-	},
-	"contextLength": 128000,
-	"maxOutputTokens": 4096,
+	"pricing": { "promptPerMilTokenUsd": 0.02, "completionPerMilTokenUsd": 0.04 },
+	"contextLength": 131072,
+	"maxOutputTokens": 16384,
 	"capabilities": {
-		"functionCalling": true,
+		"functionCalling": false,
 		"structuredOutput": false,
 		"extendedThinking": false
 	},

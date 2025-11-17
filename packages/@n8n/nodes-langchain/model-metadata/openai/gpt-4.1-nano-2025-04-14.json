@@ -2,18 +2,11 @@
 	"id": "gpt-4.1-nano-2025-04-14",
 	"name": "GPT-4.1 nano",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.1,
-		"completionPerMilTokenUsd": 0.4
-	},
-	"contextLength": 1000000,
-	"maxOutputTokens": 32000,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false
-	},
-	"inputModalities": ["text", "image"],
+	"pricing": { "promptPerMilTokenUsd": 0.1, "completionPerMilTokenUsd": 0.4 },
+	"contextLength": 1047576,
+	"maxOutputTokens": 32768,
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
+	"inputModalities": ["image", "text", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": [

@@ -2,18 +2,11 @@
 	"id": "gpt-4",
 	"name": "GPT-4",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 30,
-		"completionPerMilTokenUsd": 60
-	},
-	"contextLength": 8192,
-	"maxOutputTokens": 8192,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": false,
-		"extendedThinking": false
-	},
-	"inputModalities": ["text"],
+	"pricing": { "promptPerMilTokenUsd": 0.15, "completionPerMilTokenUsd": 0.6 },
+	"contextLength": 128000,
+	"maxOutputTokens": 16384,
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
+	"inputModalities": ["text", "image", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["complex-reasoning", "coding", "analysis"]

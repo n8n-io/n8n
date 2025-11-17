@@ -2,17 +2,10 @@
 	"id": "pixtral-large-latest",
 	"name": "Pixtral Large",
 	"provider": "Mistral",
-	"pricing": {
-		"promptPerMilTokenUsd": 2,
-		"completionPerMilTokenUsd": 6
-	},
-	"contextLength": 128000,
-	"maxOutputTokens": 4096,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false
-	},
+	"pricing": { "promptPerMilTokenUsd": 2, "completionPerMilTokenUsd": 6 },
+	"contextLength": 131072,
+	"maxOutputTokens": null,
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",

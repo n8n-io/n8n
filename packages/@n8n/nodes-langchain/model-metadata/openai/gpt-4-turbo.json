@@ -2,17 +2,10 @@
 	"id": "gpt-4-turbo",
 	"name": "GPT-4 Turbo",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 10,
-		"completionPerMilTokenUsd": 30
-	},
+	"pricing": { "promptPerMilTokenUsd": 10, "completionPerMilTokenUsd": 30 },
 	"contextLength": 128000,
 	"maxOutputTokens": 4096,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": false
-	},
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": false },
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",

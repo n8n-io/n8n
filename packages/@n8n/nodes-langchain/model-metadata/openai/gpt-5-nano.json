@@ -2,18 +2,11 @@
 	"id": "gpt-5-nano",
 	"name": "GPT-5 nano",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 0.05,
-		"completionPerMilTokenUsd": 0.4
-	},
-	"contextLength": 272000,
+	"pricing": { "promptPerMilTokenUsd": 0.05, "completionPerMilTokenUsd": 0.4 },
+	"contextLength": 400000,
 	"maxOutputTokens": 128000,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text", "image"],
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": true },
+	"inputModalities": ["text", "image", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": ["high-volume", "batch-processing", "simple-tasks", "mobile", "edge-computing"]

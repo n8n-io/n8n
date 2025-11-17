@@ -2,18 +2,11 @@
 	"id": "o4-mini",
 	"name": "o4-mini",
 	"provider": "OpenAI",
-	"pricing": {
-		"promptPerMilTokenUsd": 1.1,
-		"completionPerMilTokenUsd": 4.4
-	},
+	"pricing": { "promptPerMilTokenUsd": 1.1, "completionPerMilTokenUsd": 4.4 },
 	"contextLength": 200000,
 	"maxOutputTokens": 100000,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": true,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text", "image"],
+	"capabilities": { "functionCalling": true, "structuredOutput": true, "extendedThinking": true },
+	"inputModalities": ["image", "text", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["coding", "complex-reasoning", "math", "data-science", "multimodal"]

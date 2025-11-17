@@ -2,18 +2,11 @@
 	"id": "claude-sonnet-4-5-20250929",
 	"name": "Claude Sonnet 4.5",
 	"provider": "Anthropic",
-	"pricing": {
-		"promptPerMilTokenUsd": 3,
-		"completionPerMilTokenUsd": 15
-	},
-	"contextLength": 200000,
+	"pricing": { "promptPerMilTokenUsd": 3, "completionPerMilTokenUsd": 15 },
+	"contextLength": 1000000,
 	"maxOutputTokens": 64000,
-	"capabilities": {
-		"functionCalling": true,
-		"structuredOutput": false,
-		"extendedThinking": true
-	},
-	"inputModalities": ["text", "image"],
+	"capabilities": { "functionCalling": true, "structuredOutput": false, "extendedThinking": true },
+	"inputModalities": ["text", "image", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
 	"recommendedFor": ["coding", "complex-reasoning", "analysis", "function-calling", "multimodal"]
