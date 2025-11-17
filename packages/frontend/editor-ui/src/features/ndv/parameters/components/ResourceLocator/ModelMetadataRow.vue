@@ -87,10 +87,10 @@ const capabilities = computed(() => {
 		caps.push({ icon: 'video' as const, label: 'Video' });
 	}
 
-	// File handling = file input
-	if (inputMods.includes('file')) {
-		caps.push({ icon: 'file' as const, label: 'File Support' });
-	}
+	// File handling = file input not yet supported by LLM nodes
+	// if (inputMods.includes('file')) {
+	// 	caps.push({ icon: 'file' as const, label: 'File Support' });
+	// }
 
 	return caps;
 });
