@@ -16,13 +16,13 @@
       "require": "./n8n.manifest.json"
     },
     "./backend": {
-      "types": "./dist/backend/index.d.ts",
-      "import": "./dist/backend/index.js",
+      "types": "./dist/backend/index.d.mts",
+      "import": "./dist/backend/index.mjs",
       "require": "./dist/backend/index.cjs"
     },
     "./frontend": {
-      "types": "./dist/frontend/index.d.ts",
-      "import": "./dist/frontend/index.js",
+      "types": "./dist/frontend/index.d.mts",
+      "import": "./dist/frontend/index.mjs",
       "require": "./dist/frontend/index.umd.cjs"
     },
     "./*": "./*"

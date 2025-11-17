@@ -35,11 +35,15 @@ const connectionString = computed(() => {
 {
   "mcpServers": {
     "n8n-mcp": {
-      "type": "http",
-      "url": "${props.serverUrl}",
-      "headers": {
-        "Authorization": "Bearer ${apiKeyText.value}"
-      }
+      "command": "npx",
+      "args": [
+        "-y",
+        "supergateway",
+        "--streamableHttp",
+        "${props.serverUrl}",
+        "--header",
+        "authorization:Bearer ${apiKeyText.value}"
+      ]
     }
   }
 }

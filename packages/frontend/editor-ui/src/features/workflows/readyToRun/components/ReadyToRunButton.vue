@@ -9,7 +9,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useToast } from '@/app/composables/useToast';
-import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
+import { useReadyToRunStore } from '../stores/readyToRun.store';
 
 const props = defineProps<{
 	hasActiveCallouts?: boolean;
@@ -22,7 +22,7 @@ const projectPages = useProjectPages();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const foldersStore = useFoldersStore();
-const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
+const readyToRunStore = useReadyToRunStore();
 
 const projectPermissions = computed(() => {
 	return getResourcePermissions(
@@ -32,7 +32,7 @@ const projectPermissions = computed(() => {
 
 const showButton = computed(() => {
 	return (
-		readyToRunWorkflowsV2Store.getButtonVisibility(
+		readyToRunStore.getButtonVisibility(
 			foldersStore.totalWorkflowCount > 0, // Has workflows
 			projectPermissions.value.workflow.create,
 			sourceControlStore.preferences.branchReadOnly,
@@ -46,7 +46,7 @@ const handleClick = async () => {
 		: (route.params.projectId as string);
 
 	try {
-		await readyToRunWorkflowsV2Store.claimCreditsAndOpenWorkflow(
+		await readyToRunStore.claimCreditsAndOpenWorkflow(
 			'button',
 			route.params.folderId as string,
 			projectId,
@@ -60,15 +60,13 @@ const handleClick = async () => {
 <template>
 	<N8nButton
 		v-if="showButton"
-		data-test-id="ready-to-run-v2-button"
+		data-test-id="ready-to-run-button"
 		type="secondary"
 		icon="sparkles"
-		:loading="readyToRunWorkflowsV2Store.claimingCredits"
-		:disabled="
-			sourceControlStore.preferences.branchReadOnly || readyToRunWorkflowsV2Store.claimingCredits
-		"
+		:loading="readyToRunStore.claimingCredits"
+		:disabled="sourceControlStore.preferences.branchReadOnly || readyToRunStore.claimingCredits"
 		@click="handleClick"
 	>
-		{{ i18n.baseText('workflows.empty.readyToRunV2') }}
+		{{ i18n.baseText('workflows.empty.readyToRun') }}
 	</N8nButton>
 </template>
