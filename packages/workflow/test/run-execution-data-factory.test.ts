@@ -67,6 +67,34 @@ describe('RunExecutionDataFactory', () => {
 			expect(result.validateSignature).toBe(true);
 			expect(result.waitTill).toEqual(options.waitTill);
 		});
+
+		it('should omit `executionData` if null is passed', () => {
+			const result = createRunExecutionData({
+				executionData: null,
+			});
+
+			expect(result.executionData).toBeUndefined();
+			expect(result.startData).toEqual({});
+			expect(result.resultData.runData).toEqual({});
+		});
+
+		it('should omit `resultData.runData` if null is passed', () => {
+			const result = createRunExecutionData({
+				resultData: {
+					runData: null,
+				},
+			});
+
+			expect(result.resultData.runData).toBeUndefined();
+			expect(result.startData).toEqual({});
+			expect(result.executionData).toEqual({
+				contextData: {},
+				nodeExecutionStack: [],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: {},
+			});
+		});
 	});
 
 	describe('createMinimalRunExecutionData', () => {
