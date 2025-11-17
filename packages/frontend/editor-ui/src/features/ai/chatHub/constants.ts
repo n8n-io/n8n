@@ -16,3 +16,6 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 };
 
 export const MOBILE_MEDIA_QUERY = '(max-width: 768px)';
+
+export const TOOLS_SELECTOR_MODAL_KEY = 'toolsSelectorModal';
+export const AGENT_EDITOR_MODAL_KEY = 'agentEditorModal';
