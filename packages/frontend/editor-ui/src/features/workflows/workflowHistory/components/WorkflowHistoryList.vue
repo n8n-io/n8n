@@ -50,8 +50,17 @@ const { observe: observeForLoadMore } = useIntersectionObserver({
 		emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length }),
 });
 
-const getActions = (index: number) =>
-	index === 0 ? props.actions.filter((action) => action.value !== 'restore') : props.actions;
+const getActions = (item: WorkflowHistory, index: number) => {
+	let filteredActions = props.actions;
+	if (index === 0) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
+	}
+	if (item.versionId === props.activeVersionId) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
+	}
+
+	return filteredActions;
+};
 
 const onAction = ({
 	action,
@@ -103,7 +112,7 @@ const onItemMounted = ({
 			:item="item"
 			:is-selected="item.versionId === props.selectedItem?.versionId"
 			:is-version-active="item.versionId === props.activeVersionId"
-			:actions="getActions(index)"
+			:actions="getActions(item, index)"
 			@action="onAction"
 			@preview="onPreview"
 			@mounted="onItemMounted"
