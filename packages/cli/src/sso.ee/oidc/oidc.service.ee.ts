@@ -430,6 +430,7 @@ export class OidcService {
 				newConfig.clientSecret,
 			);
 			// TODO: validate Metadata against features
+			this.logger.debug(`Discovered OIDC metadata: ${JSON.stringify(discoveredMetadata)}`);
 		} catch (error) {
 			this.logger.error('Failed to discover OIDC metadata', {
 				error,
