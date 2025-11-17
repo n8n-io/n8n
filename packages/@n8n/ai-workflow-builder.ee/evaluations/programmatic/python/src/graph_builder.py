@@ -145,6 +145,7 @@ def _is_trigger_node(node: Dict[str, Any]) -> bool:
         "webhooktrigger",
         "manualtrigger",
         "scheduletrigger",
+        "chattrigger",
         "cron",  # n8n-nodes-base.cron
     ]
 

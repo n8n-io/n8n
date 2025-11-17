@@ -90,6 +90,10 @@ def node_deletion_cost(
     if exemption_penalty is not None:
         return exemption_penalty
 
+    is_trigger = node_data.get("is_trigger", False)
+    if is_trigger:
+        return config.node_substitution_trigger / 2
+
     return config.node_deletion_cost
 
 
@@ -111,6 +115,9 @@ def node_insertion_cost(
     exemption_penalty = config.get_exemption_penalty(original_data, "ground_truth")
     if exemption_penalty is not None:
         return exemption_penalty
+    is_trigger = node_data.get("is_trigger", False)
+    if is_trigger:
+        return config.node_substitution_trigger / 2
 
     return config.node_insertion_cost
 
