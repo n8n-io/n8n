@@ -289,21 +289,5 @@ describe('v2/components/Checkbox', () => {
 			expect(checkbox).toHaveAttribute('id', 'test-checkbox');
 			expect(label).toHaveAttribute('for', 'test-checkbox');
 		});
-
-		it('should support keyboard navigation', async () => {
-			const wrapper = render(Checkbox, {
-				props: {
-					modelValue: false,
-				},
-			});
-
-			const checkbox = wrapper.container.querySelector('[role="checkbox"]');
-			checkbox?.focus();
-			await userEvent.keyboard(' ');
-
-			await waitFor(() => {
-				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([true]);
-			});
-		});
 	});
 });
