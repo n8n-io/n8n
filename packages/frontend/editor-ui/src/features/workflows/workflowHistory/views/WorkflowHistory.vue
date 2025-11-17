@@ -394,6 +394,7 @@ watchEffect(async () => {
 				v-if="canRender"
 				:workflow="activeWorkflow"
 				:workflow-version="selectedWorkflowVersion"
+				:is-version-active="selectedWorkflowVersion?.versionId === workflowActiveVersionId"
 				:actions="actions"
 				:is-list-loading="isListLoading"
 				:is-first-item-shown="isFirstItemShown"
