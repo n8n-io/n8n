@@ -3,6 +3,7 @@ import type { Logger } from '@n8n/backend-common';
 import type { GlobalConfig } from '@n8n/config';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
 import { mock } from 'jest-mock-extended';
+import type { InstanceSettings } from 'n8n-core';
 import type { IUser, INodeTypeDescription, ITelemetryTrackProperties } from 'n8n-workflow';
 
 import type { License } from '@/license';
@@ -30,6 +31,7 @@ describe('WorkflowBuilderService', () => {
 	let mockUrlService: UrlService;
 	let mockPush: Push;
 	let mockTelemetry: Telemetry;
+	let mockInstanceSettings: InstanceSettings;
 	let mockUser: IUser;
 
 	beforeEach(() => {
@@ -62,6 +64,7 @@ describe('WorkflowBuilderService', () => {
 		mockUrlService = mock<UrlService>();
 		mockPush = mock<Push>();
 		mockTelemetry = mock<Telemetry>();
+		mockInstanceSettings = mock<InstanceSettings>();
 		mockUser = mock<IUser>();
 		mockUser.id = 'test-user-id';
 
@@ -69,6 +72,7 @@ describe('WorkflowBuilderService', () => {
 		(mockUrlService.getInstanceBaseUrl as jest.Mock).mockReturnValue('https://instance.test.com');
 		(mockLicense.loadCertStr as jest.Mock).mockResolvedValue('test-cert');
 		(mockLicense.getConsumerId as jest.Mock).mockReturnValue('test-consumer-id');
+		(mockInstanceSettings.instanceId as unknown) = 'test-instance-id';
 		mockConfig.aiAssistant = { baseUrl: '' };
 
 		// Reset the mocked AiWorkflowBuilderService
@@ -83,6 +87,7 @@ describe('WorkflowBuilderService', () => {
 			mockUrlService,
 			mockPush,
 			mockTelemetry,
+			mockInstanceSettings,
 		);
 	});
 
@@ -114,7 +119,8 @@ describe('WorkflowBuilderService', () => {
 				mockNodeTypeDescriptions,
 				undefined, // No client when baseUrl is not set
 				mockLogger,
-				'https://instance.test.com',
+				'test-instance-id', // instanceId
+				'https://instance.test.com', // instanceUrl
 				expect.any(Function), // onCreditsUpdated callback
 				expect.any(Function), // onTelemetryEvent callback
 			);
@@ -152,7 +158,8 @@ describe('WorkflowBuilderService', () => {
 				mockNodeTypeDescriptions,
 				expect.any(AiAssistantClient),
 				mockLogger,
-				'https://instance.test.com',
+				'test-instance-id', // instanceId
+				'https://instance.test.com', // instanceUrl
 				expect.any(Function), // onCreditsUpdated callback
 				expect.any(Function), // onTelemetryEvent callback
 			);
@@ -270,12 +277,13 @@ describe('WorkflowBuilderService', () => {
 				| ((userId: string, creditsQuota: number, creditsClaimed: number) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(
-				(_parsedNodeTypes, _client, _logger, _instanceUrl, callback, _telemetryCallback) => {
-					capturedCallback = callback;
-					return mockAiService;
-				},
-			);
+			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const callback = args[5]; // onCreditsUpdated is the 6th parameter
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				capturedCallback = callback;
+				return mockAiService;
+			}) as any);
 
 			// Trigger service creation
 			const generator = service.chat(mockPayload, mockUser);
@@ -317,12 +325,13 @@ describe('WorkflowBuilderService', () => {
 				| ((userId: string, creditsQuota: number, creditsClaimed: number) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(
-				(_parsedNodeTypes, _client, _logger, _instanceUrl, callback, _telemetryCallback) => {
-					capturedCallback = callback;
-					return mockAiService;
-				},
-			);
+			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const callback = args[5]; // onCreditsUpdated is the 6th parameter
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				capturedCallback = callback;
+				return mockAiService;
+			}) as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -376,12 +385,13 @@ describe('WorkflowBuilderService', () => {
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(
-				(_parsedNodeTypes, _client, _logger, _instanceUrl, _creditsCallback, telemetryCallback) => {
-					capturedTelemetryCallback = telemetryCallback;
-					return mockAiService;
-				},
-			);
+			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const telemetryCallback = args[6]; // onTelemetryEvent is the 7th parameter
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				capturedTelemetryCallback = telemetryCallback;
+				return mockAiService;
+			}) as any);
 
 			// Trigger service creation
 			const generator = service.chat(mockPayload, mockUser);
@@ -421,12 +431,13 @@ describe('WorkflowBuilderService', () => {
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(
-				(_parsedNodeTypes, _client, _logger, _instanceUrl, _creditsCallback, telemetryCallback) => {
-					capturedTelemetryCallback = telemetryCallback;
-					return mockAiService;
-				},
-			);
+			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const telemetryCallback = args[6]; // onTelemetryEvent is the 7th parameter
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				capturedTelemetryCallback = telemetryCallback;
+				return mockAiService;
+			}) as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
@@ -464,12 +475,13 @@ describe('WorkflowBuilderService', () => {
 				| ((event: string, properties: ITelemetryTrackProperties) => void)
 				| undefined;
 
-			MockedAiWorkflowBuilderService.mockImplementation(
-				(_parsedNodeTypes, _client, _logger, _instanceUrl, _creditsCallback, telemetryCallback) => {
-					capturedTelemetryCallback = telemetryCallback;
-					return mockAiService;
-				},
-			);
+			MockedAiWorkflowBuilderService.mockImplementation(((...args: any[]) => {
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				const telemetryCallback = args[6]; // onTelemetryEvent is the 7th parameter
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				capturedTelemetryCallback = telemetryCallback;
+				return mockAiService;
+			}) as any);
 
 			const generator = service.chat(mockPayload, mockUser);
 			await generator.next();
