@@ -3,7 +3,6 @@ Cost functions for graph edit distance operations.
 Configuration-aware costs for node and edge operations.
 """
 
-import json
 from typing import Dict, Any
 from src.config_loader import WorkflowComparisonConfig, ParameterComparisonRule
 
