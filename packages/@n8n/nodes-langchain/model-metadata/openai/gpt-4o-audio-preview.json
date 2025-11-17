@@ -3,17 +3,14 @@
 	"name": "GPT-4o Audio Preview",
 	"provider": "OpenAI",
 	"pricing": {
-		"promptPerMilTokenUsd": 40.0,
-		"completionPerMilTokenUsd": 80.0
+		"promptPerMilTokenUsd": 40,
+		"completionPerMilTokenUsd": 80
 	},
 	"contextLength": 128000,
 	"maxOutputTokens": 16384,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": true,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": true,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text", "audio"],

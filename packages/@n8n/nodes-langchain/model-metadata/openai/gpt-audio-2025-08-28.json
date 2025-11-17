@@ -3,17 +3,14 @@
 	"name": "GPT Audio (2025-08-28)",
 	"provider": "OpenAI",
 	"pricing": {
-		"promptPerMilTokenUsd": 32.0,
-		"completionPerMilTokenUsd": 64.0
+		"promptPerMilTokenUsd": 32,
+		"completionPerMilTokenUsd": 64
 	},
 	"contextLength": 128000,
 	"maxOutputTokens": 16384,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": false,
-		"vision": true,
-		"imageGeneration": false,
-		"audio": true,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text", "audio", "image"],

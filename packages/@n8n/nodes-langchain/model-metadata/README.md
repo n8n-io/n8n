@@ -47,9 +47,6 @@ Each model metadata file must follow this structure:
   "capabilities": {
     "functionCalling": true,
     "structuredOutput": true,
-    "vision": false,
-    "imageGeneration": false,
-    "audio": false,
     "extendedThinking": false
   },
   "inputModalities": ["text", "image"],
@@ -72,13 +69,46 @@ Each model metadata file must follow this structure:
 | `maxOutputTokens` | number | ❌ | Maximum output tokens | `16384`, `4096` |
 | `capabilities.functionCalling` | boolean | ❌ | Supports tool/function calling | `true`, `false` |
 | `capabilities.structuredOutput` | boolean | ❌ | Supports JSON schema output | `true`, `false` |
-| `capabilities.vision` | boolean | ❌ | Accepts image inputs | `true`, `false` |
-| `capabilities.imageGeneration` | boolean | ❌ | Can generate images | `true`, `false` |
-| `capabilities.audio` | boolean | ❌ | Accepts audio inputs | `true`, `false` |
 | `capabilities.extendedThinking` | boolean | ❌ | Extended reasoning (o1-style) | `true`, `false` |
-| `inputModalities` | string[] | ❌ | Accepted input types | `["text", "image", "audio"]` |
-| `outputModalities` | string[] | ❌ | Generated output types | `["text"]`, `["text", "image"]` |
+| `inputModalities` | enum[] | ❌ | Accepted input types | `["text", "image", "audio", "video"]` |
+| `outputModalities` | enum[] | ❌ | Generated output types | `["text"]`, `["text", "image"]` |
 | `intelligenceLevel` | enum | ✅ | Capability level | `"low"`, `"medium"`, `"high"` |
+| `recommendedFor` | string[] | ❌ | Use case recommendations | `["coding", "analysis", "multimodal"]` |
+
+## Modalities
+
+Modalities define what types of input the model accepts and what it can output. Visual capabilities (vision, image generation, audio, video) are automatically derived from these fields in the UI.
+
+### Valid Modality Values
+
+- **`"text"`** - Text input/output (all models support this)
+- **`"image"`** - Image input (vision) or output (generation)
+- **`"audio"`** - Audio input (transcription/understanding) or output (TTS)
+- **`"video"`** - Video input (understanding)
+- **`"file"`** - File/document input (PDF, etc.)
+
+### Examples
+
+```json
+// Vision model (image input)
+"inputModalities": ["text", "image"],
+"outputModalities": ["text"]
+
+// Image generation model (image output)
+"inputModalities": ["text"],
+"outputModalities": ["text", "image"]
+
+// Multimodal model (audio + vision)
+"inputModalities": ["text", "image", "audio", "video"],
+"outputModalities": ["text", "audio"]
+```
+
+**UI Display**: The frontend automatically shows capability icons based on modalities:
+- 👁️ Vision = `"image"` in `inputModalities`
+- 🎨 Image Generation = `"image"` in `outputModalities`
+- 🎤 Audio = `"audio"` in input or output modalities
+- 📹 Video = `"video"` in `inputModalities`
+- 📄 File Support = `"file"` in `inputModalities`
 
 ## Intelligence Levels
 

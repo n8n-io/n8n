@@ -3,17 +3,14 @@
 	"name": "GPT-4",
 	"provider": "OpenAI",
 	"pricing": {
-		"promptPerMilTokenUsd": 30.0,
-		"completionPerMilTokenUsd": 60.0
+		"promptPerMilTokenUsd": 30,
+		"completionPerMilTokenUsd": 60
 	},
 	"contextLength": 8192,
 	"maxOutputTokens": 8192,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": false,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text"],

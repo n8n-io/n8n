@@ -4,16 +4,13 @@
 	"provider": "OpenAI",
 	"pricing": {
 		"promptPerMilTokenUsd": 1.5,
-		"completionPerMilTokenUsd": 12.0
+		"completionPerMilTokenUsd": 12
 	},
 	"contextLength": 272000,
 	"maxOutputTokens": 128000,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": true,
-		"vision": true,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": true
 	},
 	"inputModalities": ["text", "image"],

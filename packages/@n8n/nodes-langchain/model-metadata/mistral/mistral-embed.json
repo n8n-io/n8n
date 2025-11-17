@@ -11,13 +11,10 @@
 	"capabilities": {
 		"functionCalling": false,
 		"structuredOutput": false,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text"],
-	"outputModalities": ["embedding"],
+	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": ["embeddings", "semantic-search", "retrieval"]
 }

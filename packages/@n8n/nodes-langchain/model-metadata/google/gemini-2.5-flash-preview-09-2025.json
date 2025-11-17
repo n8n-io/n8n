@@ -11,12 +11,9 @@
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": true,
-		"vision": true,
-		"imageGeneration": false,
-		"audio": true,
 		"extendedThinking": true
 	},
-	"inputModalities": ["text", "image", "audio", "video", "pdf"],
+	"inputModalities": ["text", "image", "audio", "video", "file"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
 	"recommendedFor": [

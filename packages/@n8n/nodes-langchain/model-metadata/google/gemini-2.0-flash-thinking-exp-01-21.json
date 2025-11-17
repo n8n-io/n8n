@@ -3,17 +3,14 @@
 	"name": "Gemini 2.0 Flash Thinking Experimental (01-21)",
 	"provider": "Google",
 	"pricing": {
-		"promptPerMilTokenUsd": 0.0,
-		"completionPerMilTokenUsd": 0.0
+		"promptPerMilTokenUsd": 0,
+		"completionPerMilTokenUsd": 0
 	},
 	"contextLength": 1000000,
 	"maxOutputTokens": 64000,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": true,
-		"vision": true,
-		"imageGeneration": false,
-		"audio": true,
 		"extendedThinking": true
 	},
 	"inputModalities": ["text", "image", "audio", "video"],

@@ -3,17 +3,14 @@
 	"name": "Claude Haiku 4.5",
 	"provider": "Anthropic",
 	"pricing": {
-		"promptPerMilTokenUsd": 1.0,
-		"completionPerMilTokenUsd": 5.0
+		"promptPerMilTokenUsd": 1,
+		"completionPerMilTokenUsd": 5
 	},
 	"contextLength": 200000,
 	"maxOutputTokens": 64000,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": false,
-		"vision": true,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": true
 	},
 	"inputModalities": ["text", "image"],

@@ -3,17 +3,14 @@
 	"name": "Claude 3.5 Sonnet",
 	"provider": "Anthropic",
 	"pricing": {
-		"promptPerMilTokenUsd": 3.0,
-		"completionPerMilTokenUsd": 15.0
+		"promptPerMilTokenUsd": 3,
+		"completionPerMilTokenUsd": 15
 	},
 	"contextLength": 200000,
 	"maxOutputTokens": 8192,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": false,
-		"vision": true,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text", "image"],

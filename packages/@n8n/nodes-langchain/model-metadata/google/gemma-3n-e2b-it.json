@@ -3,17 +3,14 @@
 	"name": "Gemma 3n E2B (Instruct)",
 	"provider": "Google",
 	"pricing": {
-		"promptPerMilTokenUsd": 0.0,
-		"completionPerMilTokenUsd": 0.0
+		"promptPerMilTokenUsd": 0,
+		"completionPerMilTokenUsd": 0
 	},
 	"contextLength": 32000,
 	"maxOutputTokens": 8192,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": false,
-		"vision": true,
-		"imageGeneration": false,
-		"audio": true,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text", "image", "audio"],

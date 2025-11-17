@@ -4,16 +4,13 @@
 	"provider": "Anthropic",
 	"pricing": {
 		"promptPerMilTokenUsd": 0.8,
-		"completionPerMilTokenUsd": 4.0
+		"completionPerMilTokenUsd": 4
 	},
 	"contextLength": 200000,
 	"maxOutputTokens": 8192,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": false,
-		"vision": true,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text", "image"],

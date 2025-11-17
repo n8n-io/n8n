@@ -17,6 +17,9 @@ const requiredFields = [
 
 const validIntelligenceLevels = ['low', 'medium', 'high'];
 
+// Valid modality values
+const validModalities = ['text', 'image', 'file', 'audio', 'video'];
+
 // Standardized recommendedFor values
 const validRecommendedFor = [
 	'coding',
@@ -29,6 +32,12 @@ const validRecommendedFor = [
 	'multimodal',
 	'function-calling',
 	'structured-output',
+	'general-purpose',
+	'cost-effective',
+	'agentic',
+	'real-time',
+	'vision',
+	'document-understanding',
 ];
 
 function getNestedValue(obj, path) {
@@ -86,6 +95,45 @@ function validateMetadataFile(filePath) {
 		if (data.capabilities && typeof data.capabilities !== 'object') {
 			errors.push('capabilities must be an object');
 		}
+
+		// Validate modalities
+		if (data.inputModalities) {
+			if (!Array.isArray(data.inputModalities)) {
+				errors.push('inputModalities must be an array');
+			} else {
+				data.inputModalities.forEach((modality) => {
+					if (!validModalities.includes(modality)) {
+						errors.push(
+							`Invalid inputModality: "${modality}". Must be one of: ${validModalities.join(', ')}`,
+						);
+					}
+				});
+			}
+		}
+
+		if (data.outputModalities) {
+			if (!Array.isArray(data.outputModalities)) {
+				errors.push('outputModalities must be an array');
+			} else {
+				data.outputModalities.forEach((modality) => {
+					if (!validModalities.includes(modality)) {
+						errors.push(
+							`Invalid outputModality: "${modality}". Must be one of: ${validModalities.join(', ')}`,
+						);
+					}
+				});
+			}
+		}
+
+		// Warn if deprecated capability flags are still present
+		const deprecatedCapabilities = ['vision', 'imageGeneration', 'audio'];
+		deprecatedCapabilities.forEach((cap) => {
+			if (data.capabilities?.[cap] !== undefined) {
+				warnings.push(
+					`Deprecated capability "${cap}" found. This should be removed and derived from modalities instead.`,
+				);
+			}
+		});
 
 		// Check id matches filename
 		const filename = path.basename(filePath, '.json');

@@ -3,17 +3,14 @@
 	"name": "GPT Realtime",
 	"provider": "OpenAI",
 	"pricing": {
-		"promptPerMilTokenUsd": 32.0,
-		"completionPerMilTokenUsd": 64.0
+		"promptPerMilTokenUsd": 32,
+		"completionPerMilTokenUsd": 64
 	},
 	"contextLength": 32768,
 	"maxOutputTokens": 4096,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": false,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": true,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text", "audio"],

@@ -3,17 +3,14 @@
 	"name": "o1-pro-2025-03-19",
 	"provider": "OpenAI",
 	"pricing": {
-		"promptPerMilTokenUsd": 150.0,
-		"completionPerMilTokenUsd": 600.0
+		"promptPerMilTokenUsd": 150,
+		"completionPerMilTokenUsd": 600
 	},
 	"contextLength": 200000,
 	"maxOutputTokens": 100000,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": true,
-		"vision": true,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": true
 	},
 	"inputModalities": ["text", "image"],

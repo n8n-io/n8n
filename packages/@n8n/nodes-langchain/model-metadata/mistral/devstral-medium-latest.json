@@ -4,16 +4,13 @@
 	"provider": "Mistral",
 	"pricing": {
 		"promptPerMilTokenUsd": 0.4,
-		"completionPerMilTokenUsd": 2.0
+		"completionPerMilTokenUsd": 2
 	},
 	"contextLength": 128000,
 	"maxOutputTokens": 4096,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": true,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text"],

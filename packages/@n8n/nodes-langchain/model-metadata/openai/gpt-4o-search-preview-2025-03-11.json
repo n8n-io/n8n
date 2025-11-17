@@ -3,18 +3,15 @@
 	"name": "GPT-4o Search Preview (Mar 2025)",
 	"provider": "OpenAI",
 	"pricing": {
-		"promptPerMilTokenUsd": 30.0,
-		"completionPerMilTokenUsd": 30.0,
-		"searchPerThousandUsd": 25.0
+		"promptPerMilTokenUsd": 30,
+		"completionPerMilTokenUsd": 30,
+		"searchPerThousandUsd": 25
 	},
 	"contextLength": 128000,
 	"maxOutputTokens": 16384,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": true,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": false,
 		"webSearch": true
 	},

@@ -3,17 +3,14 @@
 	"name": "gpt-image-1-mini",
 	"provider": "OpenAI",
 	"pricing": {
-		"promptPerMilTokenUsd": 2.0,
-		"completionPerMilTokenUsd": 8.0
+		"promptPerMilTokenUsd": 2,
+		"completionPerMilTokenUsd": 8
 	},
 	"contextLength": 128000,
 	"maxOutputTokens": 16384,
 	"capabilities": {
 		"functionCalling": false,
 		"structuredOutput": false,
-		"vision": true,
-		"imageGeneration": true,
-		"audio": false,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text", "image"],

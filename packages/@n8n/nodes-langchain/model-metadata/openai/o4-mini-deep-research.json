@@ -3,17 +3,14 @@
 	"name": "o4-mini-deep-research",
 	"provider": "OpenAI",
 	"pricing": {
-		"promptPerMilTokenUsd": 2.0,
-		"completionPerMilTokenUsd": 8.0
+		"promptPerMilTokenUsd": 2,
+		"completionPerMilTokenUsd": 8
 	},
 	"contextLength": 200000,
 	"maxOutputTokens": 100000,
 	"capabilities": {
 		"functionCalling": false,
 		"structuredOutput": false,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": true
 	},
 	"inputModalities": ["text"],

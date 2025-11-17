@@ -4,16 +4,13 @@
 	"provider": "Google",
 	"pricing": {
 		"promptPerMilTokenUsd": 1.25,
-		"completionPerMilTokenUsd": 5.0
+		"completionPerMilTokenUsd": 5
 	},
 	"contextLength": 2000000,
 	"maxOutputTokens": 8192,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": true,
-		"vision": true,
-		"imageGeneration": false,
-		"audio": true,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text", "image", "audio", "video"],

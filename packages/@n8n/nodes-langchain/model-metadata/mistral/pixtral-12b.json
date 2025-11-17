@@ -11,9 +11,6 @@
 	"capabilities": {
 		"functionCalling": false,
 		"structuredOutput": false,
-		"vision": true,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text", "image"],

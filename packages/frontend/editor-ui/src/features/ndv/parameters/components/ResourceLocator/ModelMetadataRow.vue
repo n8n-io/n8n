@@ -39,28 +39,59 @@ const formatPrice = (inputPrice: number, outputPrice: number): string => {
 	return `${input}→${output}/1M`;
 };
 
-type CapabilityIcon = 'wrench' | 'eye' | 'code' | 'palette' | 'mic' | 'lightbulb';
+type CapabilityIcon =
+	| 'wrench'
+	| 'eye'
+	| 'code'
+	| 'palette'
+	| 'mic'
+	| 'lightbulb'
+	| 'video'
+	| 'file';
 
 const capabilities = computed(() => {
 	const caps: Array<{ icon: CapabilityIcon; label: string }> = [];
+
+	// Capability-based icons
 	if (props.metadata.capabilities.functionCalling) {
 		caps.push({ icon: 'wrench' as const, label: 'Tool Calling' });
-	}
-	if (props.metadata.capabilities.vision) {
-		caps.push({ icon: 'eye' as const, label: 'Vision' });
 	}
 	if (props.metadata.capabilities.structuredOutput) {
 		caps.push({ icon: 'code' as const, label: 'Structured Output' });
 	}
-	if (props.metadata.capabilities.imageGeneration) {
-		caps.push({ icon: 'palette' as const, label: 'Image Generation' });
-	}
-	if (props.metadata.capabilities.audio) {
-		caps.push({ icon: 'mic' as const, label: 'Audio' });
-	}
 	if (props.metadata.capabilities.extendedThinking) {
 		caps.push({ icon: 'lightbulb' as const, label: 'Extended Thinking' });
 	}
+
+	// Modality-based icons (derived from inputModalities/outputModalities)
+	const inputMods = props.metadata.inputModalities || [];
+	const outputMods = props.metadata.outputModalities || [];
+
+	// Vision = image input
+	if (inputMods.includes('image')) {
+		caps.push({ icon: 'eye' as const, label: 'Vision' });
+	}
+
+	// Image Generation = image output
+	if (outputMods.includes('image')) {
+		caps.push({ icon: 'palette' as const, label: 'Image Generation' });
+	}
+
+	// Audio = audio input OR output
+	if (inputMods.includes('audio') || outputMods.includes('audio')) {
+		caps.push({ icon: 'mic' as const, label: 'Audio' });
+	}
+
+	// Video = video input
+	if (inputMods.includes('video')) {
+		caps.push({ icon: 'video' as const, label: 'Video' });
+	}
+
+	// File handling = file input
+	if (inputMods.includes('file')) {
+		caps.push({ icon: 'file' as const, label: 'File Support' });
+	}
+
 	return caps;
 });
 </script>

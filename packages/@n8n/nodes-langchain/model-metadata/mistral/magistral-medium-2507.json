@@ -3,17 +3,14 @@
 	"name": "Magistral Medium 1.1 (2507)",
 	"provider": "Mistral",
 	"pricing": {
-		"promptPerMilTokenUsd": 2.0,
-		"completionPerMilTokenUsd": 5.0
+		"promptPerMilTokenUsd": 2,
+		"completionPerMilTokenUsd": 5
 	},
 	"contextLength": 40000,
 	"maxOutputTokens": 4096,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": true,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": true
 	},
 	"inputModalities": ["text"],

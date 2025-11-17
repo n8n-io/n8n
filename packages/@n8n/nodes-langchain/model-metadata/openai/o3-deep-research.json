@@ -3,17 +3,14 @@
 	"name": "o3-deep-research",
 	"provider": "OpenAI",
 	"pricing": {
-		"promptPerMilTokenUsd": 10.0,
-		"completionPerMilTokenUsd": 40.0
+		"promptPerMilTokenUsd": 10,
+		"completionPerMilTokenUsd": 40
 	},
 	"contextLength": 200000,
 	"maxOutputTokens": 100000,
 	"capabilities": {
 		"functionCalling": false,
 		"structuredOutput": false,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": true
 	},
 	"inputModalities": ["text"],

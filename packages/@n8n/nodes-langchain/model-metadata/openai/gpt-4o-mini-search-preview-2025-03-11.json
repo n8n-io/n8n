@@ -5,17 +5,14 @@
 	"pricing": {
 		"promptPerMilTokenUsd": 0.15,
 		"completionPerMilTokenUsd": 0.6,
-		"searchPerThousandUsd": 25.0,
-		"searchTokenPerMilUsd": 2.0
+		"searchPerThousandUsd": 25,
+		"searchTokenPerMilUsd": 2
 	},
 	"contextLength": 128000,
 	"maxOutputTokens": 16384,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": true,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": false,
 		"extendedThinking": false,
 		"webSearch": true
 	},

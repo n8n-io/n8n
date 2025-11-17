@@ -1651,6 +1651,8 @@ export interface INodePropertyOptions {
 	disabledOptions?: undefined;
 }
 
+export type ModelModality = 'text' | 'image' | 'file' | 'audio' | 'video';
+
 export interface IModelMetadata {
 	id: string;
 	name: string;
@@ -1665,14 +1667,12 @@ export interface IModelMetadata {
 	capabilities: {
 		functionCalling?: boolean;
 		structuredOutput?: boolean;
-		vision?: boolean;
-		imageGeneration?: boolean;
-		audio?: boolean;
 		extendedThinking?: boolean;
 	};
-	inputModalities?: string[];
-	outputModalities?: string[];
+	inputModalities?: ModelModality[];
+	outputModalities?: ModelModality[];
 	intelligenceLevel: 'low' | 'medium' | 'high';
+	recommendedFor?: string[];
 }
 
 export interface INodeListSearchItems extends INodePropertyOptions {

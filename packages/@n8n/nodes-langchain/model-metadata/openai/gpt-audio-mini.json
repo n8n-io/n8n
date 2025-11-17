@@ -3,17 +3,14 @@
 	"name": "GPT Audio Mini",
 	"provider": "OpenAI",
 	"pricing": {
-		"promptPerMilTokenUsd": 8.0,
-		"completionPerMilTokenUsd": 16.0
+		"promptPerMilTokenUsd": 8,
+		"completionPerMilTokenUsd": 16
 	},
 	"contextLength": 128000,
 	"maxOutputTokens": 16384,
 	"capabilities": {
 		"functionCalling": true,
 		"structuredOutput": false,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": true,
 		"extendedThinking": false
 	},
 	"inputModalities": ["text", "audio"],

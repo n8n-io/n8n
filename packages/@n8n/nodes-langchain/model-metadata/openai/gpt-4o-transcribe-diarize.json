@@ -3,17 +3,14 @@
 	"name": "GPT-4o Transcribe Diarize",
 	"provider": "OpenAI",
 	"pricing": {
-		"promptPerMilTokenUsd": 6.0,
-		"completionPerMilTokenUsd": 0.0
+		"promptPerMilTokenUsd": 6,
+		"completionPerMilTokenUsd": 0
 	},
 	"contextLength": 128000,
 	"maxOutputTokens": 16384,
 	"capabilities": {
 		"functionCalling": false,
 		"structuredOutput": true,
-		"vision": false,
-		"imageGeneration": false,
-		"audio": true,
 		"extendedThinking": false,
 		"transcription": true,
 		"speakerDiarization": true
