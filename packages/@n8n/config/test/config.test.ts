@@ -338,7 +338,7 @@ describe('GlobalConfig', () => {
 				interval: 180,
 				batchSize: 100,
 			},
-			legacyRecovery: {
+			recovery: {
 				maxLastExecutions: 3,
 				enableWorkflowDeactivation: true,
 			},
