@@ -41,7 +41,7 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
-import { FileLocation } from 'n8n-core/src/binary-data/utils';
+import { FileLocation } from 'n8n-core';
 
 @Service()
 export class WorkflowService {
