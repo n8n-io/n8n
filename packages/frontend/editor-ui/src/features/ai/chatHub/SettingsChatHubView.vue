@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useToast } from '@/app/composables/useToast';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
 import { computed, onMounted, ref } from 'vue';

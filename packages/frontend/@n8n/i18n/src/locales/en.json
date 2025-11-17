@@ -2302,6 +2302,7 @@
 	"settings.chatHub.providers.modal.edit.limitModels.label": "Limit models",
 	"settings.chatHub.providers.modal.edit.limitModels.description": "Only allow selected models",
 	"settings.chatHub.providers.modal.edit.limitModels.tooltip": "When enabled only selected models will be available for use in Chat.",
+	"settings.chatHub.providers.table.models.disabled": "Disabled",
 	"settings.chatHub.providers.table.models.allModels": "All models",
 	"settings.chatHub.providers.table.models.noModels": "No models",
 	"settings.chatHub.providers.table.models.more": " and {count} more",

@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
-import type { WorkflowListItem, UserAction } from '@/Interface';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import {
 	N8nActionBox,
@@ -9,27 +8,12 @@ import {
 	N8nButton,
 	N8nDataTableServer,
 	N8nHeading,
-	N8nIcon,
-	N8nLink,
 	N8nLoading,
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import ProjectIcon from '@/features/collaboration/projects/components/ProjectIcon.vue';
-import { VIEWS } from '@/app/constants';
-import router from '@/app/router';
-import {
-	ChatHubLLMProvider,
-	ChatHubProvider,
-	ChatProviderSettingsDto,
-	PROVIDER_CREDENTIAL_TYPE_MAP,
-} from '@n8n/api-types';
-import { useUIStore } from '@/app/stores/ui.store';
-import {
-	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
-	CHAT_PROVIDER_SETTINGS_MODAL_KEY,
-	providerDisplayNames,
-} from '../constants';
+import { ChatProviderSettingsDto } from '@n8n/api-types';
+import { providerDisplayNames } from '../constants';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 
 const TRUNCATE_MODELS_AFTER = 4;
@@ -46,7 +30,6 @@ const emit = defineEmits<{
 	refresh: [];
 }>();
 
-const uiStore = useUIStore();
 const i18n = useI18n();
 
 const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
@@ -62,7 +45,7 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 	{
 		title: i18n.baseText('settings.chatHub.providers.table.models'),
 		key: 'models',
-		width: 200,
+		width: 250,
 		disableSort: true,
 		value() {
 			return;
@@ -71,7 +54,6 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 	{
 		title: i18n.baseText('settings.chatHub.providers.table.updatedAt'),
 		key: 'updatedAt',
-		width: 200,
 		disableSort: true,
 		value() {
 			return;
@@ -97,7 +79,9 @@ const tableActions = ref<Array<{ label: string; value: string }>>([
 ]);
 
 const modelsText = (settings: ChatProviderSettingsDto) => {
-	if (!settings.limitModels) {
+	if (!settings.enabled) {
+		return i18n.baseText('settings.chatHub.providers.table.models.disabled');
+	} else if (!settings.limitModels) {
 		return i18n.baseText('settings.chatHub.providers.table.models.allModels');
 	} else if (!settings.allowedModels || settings.allowedModels.length === 0) {
 		return i18n.baseText('settings.chatHub.providers.table.models.noModels');
@@ -125,16 +109,6 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 			break;
 	}
 };
-
-const onAddProvider = () => {
-	console.log('Navigating to add provider');
-	uiStore.openModalWithData({
-		name: CHAT_PROVIDER_SETTINGS_MODAL_KEY,
-		data: {
-			provider: 'openai',
-		},
-	});
-};
 </script>
 
 <template>
@@ -158,9 +132,6 @@ const onAddProvider = () => {
 							@click="$emit('refresh')"
 						/>
 					</N8nTooltip>
-					<N8nButton size="small" type="primary" @click="onAddProvider">
-						{{ i18n.baseText('settings.chatHub.providers.table.addProvider.button') }}
-					</N8nButton>
 				</div>
 			</div>
 			<N8nActionBox

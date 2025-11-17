@@ -53,7 +53,7 @@ function onSelectionChange(newSelection: string[] | Model[] | undefined) {
 </script>
 
 <template>
-	<div :class="$style['table-container']">
+	<div :class="$style.tableContainer">
 		<div v-if="props.loading">
 			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
@@ -72,7 +72,7 @@ function onSelectionChange(newSelection: string[] | Model[] | undefined) {
 			/>
 			<N8nDataTableServer
 				v-else
-				:class="$style['chat-models-table']"
+				:class="$style.chatModelsTable"
 				data-test-id="chat-models-table"
 				:headers="tableHeaders"
 				:items="props.models"
@@ -103,13 +103,13 @@ function onSelectionChange(newSelection: string[] | Model[] | undefined) {
 	align-items: center;
 }
 
-.table-container {
+.tableContainer {
 	:global(.table-pagination) {
 		display: none;
 	}
 }
 
-.chat-models-table {
+.chatModelsTable {
 	tr:last-child {
 		border-bottom: none !important;
 	}

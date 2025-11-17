@@ -1,4 +1,8 @@
-import { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
+import {
+	ChatHubLLMProvider,
+	chatHubLLMProviderSchema,
+	ChatProviderSettingsDto,
+} from '@n8n/api-types';
 import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
@@ -49,11 +53,22 @@ export class ChatHubSettingsService {
 			CHAT_PROVIDER_SETTINGS_KEY(WILDCARD),
 		);
 
-		if (!settings) {
-			return [];
+		const parsedSettings = (settings ?? []).map((setting) =>
+			jsonParse<ChatProviderSettingsDto>(setting.value),
+		);
+
+		// Ensure each provider has settings, even if none are stored yet
+		for (const provider of Object.values(chatHubLLMProviderSchema.options)) {
+			const hasSettings = parsedSettings.some((setting) => {
+				return setting.provider === provider;
+			});
+
+			if (!hasSettings) {
+				parsedSettings?.push(getDefaultProviderSettings(provider));
+			}
 		}
 
-		return settings.map((setting) => jsonParse<ChatProviderSettingsDto>(setting.value));
+		return parsedSettings;
 	}
 
 	async setProviderSettings(
