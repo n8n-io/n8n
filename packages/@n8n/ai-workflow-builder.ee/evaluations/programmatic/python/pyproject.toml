@@ -10,12 +10,6 @@ dependencies = [
     "scipy>=1.16.3",
 ]
 
-[project.optional-dependencies]
-dev = [
-    "pytest>=7.4.0",
-    "pytest-cov>=4.1.0",
-]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
