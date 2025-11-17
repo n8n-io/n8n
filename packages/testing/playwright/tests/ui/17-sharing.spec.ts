@@ -203,7 +203,7 @@ test.describe('@isolated', () => {
 
 			await expect(
 				n8n.credentials.credentialModal.getVisibleDropdown().getByTestId('project-sharing-info'),
-			).toHaveCount(3);
+			).toHaveCount(4);
 
 			// Admin can share with self
 			await expect(

@@ -10,9 +10,10 @@ import type { ICredentialsResponse } from '../../credentials.types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { getDropdownItems } from '@/__tests__/utils';
 import { useI18n } from '@n8n/i18n';
+import type * as I18nModule from '@n8n/i18n';
 
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual: typeof import('@n8n/i18n') = await importOriginal();
+	const actual = await importOriginal<typeof I18nModule>();
 	return {
 		...actual,
 		useI18n: vi.fn(),
