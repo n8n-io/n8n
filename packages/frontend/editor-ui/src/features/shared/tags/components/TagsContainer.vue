@@ -15,14 +15,12 @@ interface TagsContainerProps {
 	limit?: number;
 	clickable?: boolean;
 	responsive?: boolean;
-	hoverable?: boolean;
 }
 
 const props = withDefaults(defineProps<TagsContainerProps>(), {
 	limit: 20,
 	clickable: false,
 	responsive: false,
-	hoverable: false,
 });
 
 const emit = defineEmits<{
@@ -81,8 +79,8 @@ const tags = computed(() => {
 
 // Methods
 const setMaxWidth = () => {
-	const container = tagsContainer.value?.$el as HTMLElement;
-	const parent = container?.parentNode as HTMLElement;
+	const container = (tagsContainer.value as { $el?: HTMLElement })?.$el;
+	const parent = container?.parentNode as HTMLElement | null;
 
 	if (parent) {
 		maxWidth.value = 0;
@@ -152,12 +150,7 @@ onBeforeUnmount(() => {
 					:enabled="responsive"
 					:event-bus="intersectionEventBus"
 				>
-					<N8nTag
-						:title="tag.name"
-						:text="tag.name"
-						:clickable="clickable"
-						:class="{ hoverable }"
-					/>
+					<N8nTag :title="tag.name" :text="tag.name" :clickable="clickable" />
 				</IntersectionObserved>
 			</span>
 		</span>
