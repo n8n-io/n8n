@@ -22,7 +22,6 @@ import type {
 	INodeExecutionData,
 	AssignmentCollectionValue,
 	GenericValue,
-	IExecuteData,
 } from 'n8n-workflow';
 import assert from 'node:assert';
 import { JsonObject } from 'openid-client';
