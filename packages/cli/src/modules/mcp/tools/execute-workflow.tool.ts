@@ -70,7 +70,7 @@ const inputSchema = z.object({
 			}),
 		])
 		.optional()
-		.describe('Inputs to provide to the workflow'),
+		.describe('Inputs to provide to the workflow.'),
 });
 
 type ExecuteWorkflowOutput = {
@@ -96,7 +96,8 @@ export const createExecuteWorkflowTool = (
 ): ToolDefinition<typeof inputSchema.shape> => ({
 	name: 'execute_workflow',
 	config: {
-		description: 'Execute a workflow by ID',
+		description:
+			'Execute a workflow by ID. Before executing always ensure you know the input schema by first using the get_workflow_details tool and consulting workflow description',
 		inputSchema: inputSchema.shape,
 		outputSchema,
 		annotations: {
