@@ -312,12 +312,14 @@ const shouldShowPagination = computed(() => {
 	}
 
 	&:hover:not(:disabled):not(.is-active) {
-		background: transparent !important;
+		background: var(--color--background--light-3) !important;
 		color: var(--color--primary);
+		border: 1px solid var(--color--foreground);
 
 		:deep(button) {
-			background: transparent !important;
+			background: var(--color--background--light-3) !important;
 			color: var(--color--primary);
+			border: 1px solid var(--color--foreground);
 		}
 	}
 
@@ -333,22 +335,24 @@ const shouldShowPagination = computed(() => {
 	&.is-active {
 		background: transparent !important;
 		color: var(--color--primary);
-		border: none;
+		border: 1px solid var(--color--primary);
 		font-weight: 600;
 
 		:deep(button) {
 			background: transparent !important;
 			color: var(--color--primary);
-			border: none;
+			border: 1px solid var(--color--primary);
 		}
 
 		&:hover {
-			background: transparent !important;
+			background: var(--color--background--light-3) !important;
 			color: var(--color--primary);
+			border: 1px solid var(--color--primary);
 
 			:deep(button) {
-				background: transparent !important;
+				background: var(--color--background--light-3) !important;
 				color: var(--color--primary);
+				border: 1px solid var(--color--primary);
 			}
 		}
 	}
