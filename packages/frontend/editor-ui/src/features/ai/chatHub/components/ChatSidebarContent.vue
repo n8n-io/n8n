@@ -1,19 +1,20 @@
 <script setup lang="ts">
-import MainSidebarUserArea from '@/components/MainSidebarUserArea.vue';
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { MODAL_CONFIRM, VIEWS } from '@/constants';
+import MainSidebarUserArea from '@/app/components/MainSidebarUserArea.vue';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
+import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import { groupConversationsByDate } from '@/features/ai/chatHub/chat.utils';
 import ChatSidebarLink from '@/features/ai/chatHub/components/ChatSidebarLink.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
-import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
-import { useSettingsStore } from '@/stores/settings.store';
+import { CHAT_VIEW, CHAT_AGENTS_VIEW } from '@/features/ai/chatHub/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import Logo from '@n8n/design-system/components/N8nLogo';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 defineProps<{ isMobileDevice: boolean }>();
 
@@ -24,12 +25,14 @@ const toast = useToast();
 const message = useMessage();
 const sidebar = useChatHubSidebarState();
 const settingsStore = useSettingsStore();
+const telemetry = useTelemetry();
 
 const renamingSessionId = ref<string>();
 
 const currentSessionId = computed(() =>
 	typeof route.params.id === 'string' ? route.params.id : undefined,
 );
+const readyToShowConversations = computed(() => chatStore.agentsReady && chatStore.sessionsReady);
 
 const groupedConversations = computed(() => groupConversationsByDate(chatStore.sessions));
 
@@ -76,8 +79,13 @@ async function handleDeleteSession(sessionId: string) {
 	}
 }
 
-onMounted(async () => {
-	await chatStore.fetchSessions();
+function handleNewChatClick() {
+	telemetry.track('User clicked new chat button', {});
+	sidebar.toggleOpen(false);
+}
+
+onMounted(() => {
+	void chatStore.fetchSessions();
 });
 </script>
 
@@ -112,11 +120,18 @@ onMounted(async () => {
 				label="New Chat"
 				icon="square-pen"
 				:active="route.name === CHAT_VIEW"
+				@click="handleNewChatClick"
+			/>
+			<ChatSidebarLink
+				:to="{ name: CHAT_AGENTS_VIEW }"
+				label="Custom Agents"
+				icon="robot"
+				:active="route.name === CHAT_AGENTS_VIEW"
 				@click="sidebar.toggleOpen(false)"
 			/>
 		</div>
 		<N8nScrollArea as-child type="scroll">
-			<div :class="$style.items">
+			<div v-if="readyToShowConversations" :class="$style.items">
 				<div v-for="group in groupedConversations" :key="group.group" :class="$style.group">
 					<N8nText :class="$style.groupHeader" size="small" bold color="text-light">
 						{{ group.group }}

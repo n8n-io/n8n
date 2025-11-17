@@ -53,4 +53,13 @@ export const credentials: INodeCredentialDescription[] = [
 			},
 		},
 	},
+	{
+		name: 'httpMultipleHeadersAuth',
+		required: true,
+		displayOptions: {
+			show: {
+				authentication: ['multipleHeadersAuth'],
+			},
+		},
+	},
 ];

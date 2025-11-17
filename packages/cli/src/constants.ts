@@ -86,6 +86,7 @@ export const GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE = [
 	'googleOAuth2Api',
 	'microsoftOAuth2Api',
 	'highLevelOAuth2Api',
+	'mcpOAuth2Api',
 ];
 
 export const ARTIFICIAL_TASK_DATA = {

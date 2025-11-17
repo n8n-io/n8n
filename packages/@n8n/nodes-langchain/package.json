@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.116.0",
+  "version": "1.119.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -154,7 +154,8 @@
       "dist/nodes/vector_store/VectorStoreZepInsert/VectorStoreZepInsert.node.js",
       "dist/nodes/vector_store/VectorStoreZepLoad/VectorStoreZepLoad.node.js",
       "dist/nodes/ToolExecutor/ToolExecutor.node.js",
-      "dist/nodes/ModelSelector/ModelSelector.node.js"
+      "dist/nodes/ModelSelector/ModelSelector.node.js",
+      "dist/nodes/Guardrails/Guardrails.node.js"
     ]
   },
   "devDependencies": {
@@ -163,7 +164,7 @@
     "@types/cheerio": "^0.22.15",
     "@types/html-to-text": "^9.0.1",
     "@types/json-schema": "^7.0.15",
-    "@types/mime-types": "^2.1.0",
+    "@types/mime-types": "catalog:",
     "@types/pg": "^8.11.6",
     "@types/sanitize-html": "^2.11.0",
     "@types/temp": "^0.9.1",
@@ -228,7 +229,7 @@
     "langchain": "0.3.33",
     "lodash": "catalog:",
     "mammoth": "1.11.0",
-    "mime-types": "2.1.35",
+    "mime-types": "catalog:",
     "mongodb": "6.11.0",
     "n8n-nodes-base": "workspace:*",
     "n8n-workflow": "workspace:*",

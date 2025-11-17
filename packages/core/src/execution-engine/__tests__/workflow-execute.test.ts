@@ -122,6 +122,14 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				expect(result.data.executionData!.contextData).toEqual({});
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(result.data.executionData!.runtimeData).toHaveProperty('source');
+				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});
@@ -191,6 +199,15 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				expect(result.data.executionData!.contextData).toEqual({});
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(result.data.executionData!.runtimeData).toHaveProperty('source');
+				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});
@@ -405,6 +422,15 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				// expect(result.data.executionData!.contextData).toEqual({}); //Fails when test workflow Includes splitInbatches
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(result.data.executionData!.runtimeData).toHaveProperty('source');
+				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});
@@ -1402,6 +1428,19 @@ describe('WorkflowExecute', () => {
 				},
 			]);
 		});
+
+		test('should handle top-level error property correctly', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[{ json: {}, error: { message: 'Test error' } as NodeApiError }],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{ json: {}, error: { message: 'Test error' } as NodeApiError },
+			]);
+		});
 	});
 
 	describe('prepareWaitingToExecution', () => {
@@ -1862,6 +1901,58 @@ describe('WorkflowExecute', () => {
 			// Verify cleanup was called
 			await mockCleanupPromise;
 			expect(cleanupCalled).toBe(true);
+		});
+
+		test('should capture stoppedAt timestamp after all processing completes', async () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+
+			let cleanupExecuted = false;
+			let cleanupTimestamp: Date | null = null;
+			const closeFunction = new Promise<void>((resolve) => {
+				setTimeout(() => {
+					cleanupExecuted = true;
+					cleanupTimestamp = new Date();
+					resolve();
+				}, 50);
+			});
+
+			const result = await workflowExecute.processSuccessExecution(
+				startedAt,
+				workflow,
+				undefined,
+				closeFunction,
+			);
+
+			// Verify cleanup was executed
+			expect(cleanupExecuted).toBe(true);
+			// Verify stoppedAt is after cleanup completed
+			expect(result.stoppedAt!.getTime()).toBeGreaterThanOrEqual(cleanupTimestamp!.getTime());
+			// Verify stoppedAt is after startedAt
+			expect(result.stoppedAt!.getTime()).toBeGreaterThan(result.startedAt.getTime());
+		});
+
+		test('should use explicit stoppedAt when provided to getFullRunData', () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+			const explicitStoppedAt = new Date('2023-01-01T00:00:05.500Z');
+
+			const result = workflowExecute.getFullRunData(startedAt, explicitStoppedAt);
+
+			expect(result.startedAt).toEqual(startedAt);
+			expect(result.stoppedAt).toEqual(explicitStoppedAt);
+			expect(result.stoppedAt!.getTime() - result.startedAt.getTime()).toBe(5500);
+		});
+
+		test('should default to current time when stoppedAt not provided to getFullRunData', () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+			const currentTime = new Date('2023-01-01T00:00:03.250Z');
+			jest.useFakeTimers().setSystemTime(currentTime);
+
+			const result = workflowExecute.getFullRunData(startedAt);
+
+			expect(result.startedAt).toEqual(startedAt);
+			expect(result.stoppedAt).toEqual(currentTime);
+
+			jest.useRealTimers();
 		});
 	});
 

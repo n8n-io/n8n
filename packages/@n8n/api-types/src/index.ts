@@ -8,14 +8,23 @@ export type * from './api-keys';
 export type * from './community-node-types';
 export {
 	chatHubConversationModelSchema,
+	type ChatModelDto,
+	type ChatHubOpenAIModel,
+	type ChatHubAnthropicModel,
+	type ChatHubGoogleModel,
+	type ChatHubBaseLLMModel,
+	type ChatHubN8nModel,
+	type ChatHubCustomAgentModel,
 	type ChatHubConversationModel,
 	chatHubProviderSchema,
+	chatHubLLMProviderSchema,
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
 	type ChatHubMessageType,
 	type ChatHubMessageStatus,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	chatModelsRequestSchema,
+	emptyChatModelsResponse,
 	type ChatModelsRequest,
 	type ChatModelsResponse,
 	ChatHubSendMessageRequest,
@@ -33,6 +42,7 @@ export {
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	type EnrichedStructuredChunk,
+	type ChatHubAgentTool,
 } from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';
@@ -104,3 +114,16 @@ export type {
 } from './schemas/external-secrets.schema';
 
 export type { UsageState } from './schemas/usage.schema';
+
+export type {
+	BreakingChangeRuleSeverity,
+	BreakingChangeRecommendation,
+	BreakingChangeAffectedWorkflow,
+	BreakingChangeInstanceIssue,
+	BreakingChangeWorkflowIssue,
+	BreakingChangeInstanceRuleResult,
+	BreakingChangeWorkflowRuleResult,
+	BreakingChangeReportResult,
+	BreakingChangeLightReportResult,
+	BreakingChangeVersion,
+} from './schemas/breaking-changes.schema';

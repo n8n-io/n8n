@@ -27,7 +27,7 @@ import {
 import type { LogEntrySelection } from './logs.types';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 import { createTestLogEntry } from './__test__/mocks';
-import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/constants';
+import { AGENT_NODE_TYPE, CHAT_TRIGGER_NODE_TYPE } from '@/app/constants';
 
 describe(getTreeNodeData, () => {
 	it('should generate one node per execution', () => {

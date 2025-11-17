@@ -10,6 +10,8 @@ import type {
 } from 'n8n-workflow';
 import { createResultError, createResultOk } from 'n8n-workflow';
 
+import { proxyFetch } from '@utils/httpProxyAgent';
+
 import type { McpAuthenticationOption, McpServerTransport, McpTool } from './types';
 
 export async function getAllTools(client: Client, cursor?: string): Promise<McpTool[]> {
@@ -85,6 +87,7 @@ export async function connectMcpClient({
 		try {
 			const transport = new StreamableHTTPClientTransport(endpoint.result, {
 				requestInit: { headers },
+				fetch: proxyFetch,
 			});
 			await client.connect(transport);
 			return createResultOk(client);
@@ -111,7 +114,7 @@ export async function connectMcpClient({
 		const sseTransport = new SSEClientTransport(endpoint.result, {
 			eventSourceInit: {
 				fetch: async (url, init) =>
-					await fetch(url, {
+					await proxyFetch(url, {
 						...init,
 						headers: {
 							...headers,
@@ -173,6 +176,25 @@ export async function getAuthHeaders(
 			if (!result) return {};
 
 			return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
+		}
+		case 'multipleHeadersAuth': {
+			const result = await ctx
+				.getCredentials<{ headers: { values: Array<{ name: string; value: string }> } }>(
+					'httpMultipleHeadersAuth',
+				)
+				.catch(() => null);
+
+			if (!result) return {};
+
+			return {
+				headers: result.headers.values.reduce(
+					(acc, cur) => {
+						acc[cur.name] = cur.value;
+						return acc;
+					},
+					{} as Record<string, string>,
+				),
+			};
 		}
 		case 'none':
 		default: {

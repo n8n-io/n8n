@@ -2,6 +2,7 @@ import type { BaseMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
 import type { OpenAIClient } from '@langchain/openai';
 import type { BufferWindowMemory } from 'langchain/memory';
+import { isObjectEmpty } from 'n8n-workflow';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 
 // Copied from langchain(`langchain/src/tools/convert_to_openai.ts`)
@@ -65,6 +66,16 @@ const requireStrict = (schema: any) => {
 export function formatToOpenAIResponsesTool(tool: Tool): OpenAIClient.Responses.FunctionTool {
 	const schema = zodToJsonSchema(tool.schema) as any;
 	const strict = requireStrict(schema);
+
+	// when strict:true, Responses API requires `additionalProperties` either to be true/false or an object with properties
+	const isAdditionalPropertiesEmpty =
+		schema.additionalProperties &&
+		typeof schema.additionalProperties === 'object' &&
+		isObjectEmpty(schema.additionalProperties);
+	if (isAdditionalPropertiesEmpty && strict) {
+		schema.additionalProperties = false;
+	}
+
 	return {
 		type: 'function',
 		name: tool.name,

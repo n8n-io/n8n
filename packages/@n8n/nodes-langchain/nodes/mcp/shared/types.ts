@@ -4,4 +4,9 @@ export type McpTool = { name: string; description?: string; inputSchema: JSONSch
 
 export type McpServerTransport = 'sse' | 'httpStreamable';
 
-export type McpAuthenticationOption = 'none' | 'headerAuth' | 'bearerAuth' | 'mcpOAuth2Api';
+export type McpAuthenticationOption =
+	| 'none'
+	| 'headerAuth'
+	| 'bearerAuth'
+	| 'mcpOAuth2Api'
+	| 'multipleHeadersAuth';

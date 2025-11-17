@@ -233,6 +233,29 @@ export class WorkflowExecutionService {
 		};
 	}
 
+	async executeChatWorkflow(
+		workflowData: IWorkflowBase,
+		executionData: IRunExecutionData,
+		user: User,
+		httpResponse?: Response,
+		streamingEnabled?: boolean,
+	) {
+		const data: IWorkflowExecutionDataProcess = {
+			executionMode: 'chat',
+			workflowData,
+			userId: user.id,
+			executionData,
+			streamingEnabled,
+			httpResponse,
+		};
+
+		const executionId = await this.workflowRunner.run(data, undefined, true);
+
+		return {
+			executionId,
+		};
+	}
+
 	/** Executes an error workflow */
 	async executeErrorWorkflow(
 		workflowId: string,
@@ -329,6 +352,7 @@ export class WorkflowExecutionService {
 					? {
 							executionId: workflowErrorData.execution.id,
 							workflowId: workflowErrorData.workflow.id,
+							executionContext: workflowErrorData.execution.executionContext,
 						}
 					: undefined;
 
