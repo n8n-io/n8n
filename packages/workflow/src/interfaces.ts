@@ -2487,6 +2487,7 @@ export interface RelatedExecution {
 	workflowId: string;
 	// In the case of a parent execution, whether the parent should be resumed when the sub execution finishes.
 	shouldResume?: boolean;
+	executionContext?: IExecutionContext;
 }
 
 type SubNodeExecutionDataAction = {
