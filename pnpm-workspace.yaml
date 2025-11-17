@@ -46,7 +46,7 @@ catalog:
   rimraf: 6.0.1
   run-script-os: 1.1.6
   simple-git: 3.28.0
-  tsdown: ^0.15.6
+  tsdown: ^0.16.5
   tsx: ^4.19.3
   typescript: 5.9.2
   uuid: 10.0.0
@@ -70,7 +70,7 @@ catalogs:
     '@vue/tsconfig': ^0.7.0
     '@vueuse/core': ^10.11.0
     element-plus: 2.4.3
-    highlight.js: ^11.8.0
+    highlight.js: 11.8.0
     pinia: ^2.2.4
     unplugin-icons: ^0.19.0
     vue: ^3.5.13
