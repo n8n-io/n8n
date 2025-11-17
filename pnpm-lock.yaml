@@ -39,6 +39,9 @@ catalogs:
     '@types/lodash':
       specifier: 4.17.17
       version: 4.17.17
+    '@types/mime-types':
+      specifier: 3.0.1
+      version: 3.0.1
     '@types/uuid':
       specifier: ^10.0.0
       version: 10.0.0
@@ -87,6 +90,9 @@ catalogs:
     luxon:
       specifier: 3.4.4
       version: 3.4.4
+    mime-types:
+      specifier: 3.0.1
+      version: 3.0.1
     mysql2:
       specifier: 3.15.0
       version: 3.15.0
@@ -1056,7 +1062,7 @@ importers:
         version: 12.1.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))
+        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -1083,7 +1089,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.50(071f2de44c6bccc3a8cd2fadf2db3e78)
+        version: 0.3.50(ba725e6da5f3cda58245f84e6fe2ecaf)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1206,7 +1212,7 @@ importers:
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       langchain:
         specifier: 0.3.33
-        version: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
+        version: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1214,8 +1220,8 @@ importers:
         specifier: 1.11.0
         version: 1.11.0
       mime-types:
-        specifier: 2.1.35
-        version: 2.1.35
+        specifier: 'catalog:'
+        version: 3.0.1
       mongodb:
         specifier: 6.11.0
         version: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
@@ -1281,8 +1287,8 @@ importers:
         specifier: ^7.0.15
         version: 7.0.15
       '@types/mime-types':
-        specifier: ^2.1.0
-        version: 2.1.1
+        specifier: 'catalog:'
+        version: 3.0.1
       '@types/pg':
         specifier: ^8.11.6
         version: 8.11.6
@@ -1929,8 +1935,8 @@ importers:
         specifier: 'catalog:'
         version: 3.4.4
       mime-types:
-        specifier: 2.1.35
-        version: 2.1.35
+        specifier: 'catalog:'
+        version: 3.0.1
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -1987,8 +1993,8 @@ importers:
         specifier: 'catalog:'
         version: 4.17.17
       '@types/mime-types':
-        specifier: ^2.1.0
-        version: 2.1.1
+        specifier: 'catalog:'
+        version: 3.0.1
       '@types/proxy-from-env':
         specifier: ^1.0.4
         version: 1.0.4
@@ -3002,6 +3008,9 @@ importers:
       mailparser:
         specifier: 3.6.7
         version: 3.6.7
+      mime-types:
+        specifier: 'catalog:'
+        version: 3.0.1
       minifaker:
         specifier: 1.34.1
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
@@ -3151,8 +3160,8 @@ importers:
         specifier: ^3.4.4
         version: 3.4.4
       '@types/mime-types':
-        specifier: ^2.1.0
-        version: 2.1.1
+        specifier: 'catalog:'
+        version: 3.0.1
       '@types/mssql':
         specifier: ^9.1.5
         version: 9.1.5
@@ -3213,6 +3222,9 @@ importers:
       '@n8n/api-types':
         specifier: workspace:^
         version: link:../../@n8n/api-types
+      '@n8n/constants':
+        specifier: workspace:^
+        version: link:../../@n8n/constants
       '@n8n/db':
         specifier: workspace:*
         version: link:../../@n8n/db
@@ -3723,6 +3735,10 @@ packages:
   '@azure/abort-controller@1.1.0':
     resolution: {integrity: sha512-TrRLIoSQVzfAJX9H1JeFjzAoDGcoK1IYX1UImfceTZpsyYfWr09Ss1aHW1y5TrrR3iq6RZLBwJ3E24uwPhwahw==}
     engines: {node: '>=12.0.0'}
+
+  '@azure/abort-controller@2.0.0':
+    resolution: {integrity: sha512-RP/mR/WJchR+g+nQFJGOec+nzeN/VvjlwbinccoqfhTsTHbb8X5+mLDp48kHT0ueyum0BNSwGm0kX0UZuIqTGg==}
+    engines: {node: '>=18.0.0'}
 
   '@azure/abort-controller@2.1.2':
     resolution: {integrity: sha512-nBrLsEWm4J2u5LpAPjxADTlq3trDgVZZXHNKabeXZtpq3d3AbN/KGO82R87rdDz5/lYB024rtEf10/q0urNgsA==}
@@ -8339,8 +8355,8 @@ packages:
   '@types/methods@1.1.4':
     resolution: {integrity: sha512-ymXWVrDiCxTBE3+RIrrP533E70eA+9qu7zdWoHuOmGujkYtzf4HQF96b8nwHLqhuf4ykX61IGRIB38CC6/sImQ==}
 
-  '@types/mime-types@2.1.1':
-    resolution: {integrity: sha512-vXOTGVSLR2jMw440moWTC7H19iUyLtP3Z1YTj7cSsubOICinjMxFeb/V57v9QdyyPGbbWolUFSSmSiRSn94tFw==}
+  '@types/mime-types@3.0.1':
+    resolution: {integrity: sha512-xRMsfuQbnRq1Ef+C+RKaENOxXX87Ygl38W1vDfPHRku02TgQr+Qd8iivLtAMcR0KF5/29xlnFihkTlbqFrGOVQ==}
 
   '@types/mime@1.3.5':
     resolution: {integrity: sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w==}
@@ -19403,17 +19419,19 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
+  '@azure/abort-controller@2.0.0':
+    dependencies:
+      tslib: 2.8.1
+
   '@azure/abort-controller@2.1.2':
     dependencies:
       tslib: 2.8.1
 
   '@azure/core-auth@1.6.0':
     dependencies:
-      '@azure/abort-controller': 2.1.2
-      '@azure/core-util': 1.12.0
+      '@azure/abort-controller': 2.0.0
+      '@azure/core-util': 1.7.0
       tslib: 2.8.1
-    transitivePeerDependencies:
-      - supports-color
 
   '@azure/core-auth@1.9.0':
     dependencies:
@@ -19425,11 +19443,11 @@ snapshots:
 
   '@azure/core-client@1.9.2':
     dependencies:
-      '@azure/abort-controller': 2.1.2
-      '@azure/core-auth': 1.9.0
-      '@azure/core-rest-pipeline': 1.20.0
-      '@azure/core-tracing': 1.2.0
-      '@azure/core-util': 1.12.0
+      '@azure/abort-controller': 2.0.0
+      '@azure/core-auth': 1.6.0
+      '@azure/core-rest-pipeline': 1.9.2
+      '@azure/core-tracing': 1.0.1
+      '@azure/core-util': 1.7.0
       '@azure/logger': 1.0.3
       tslib: 2.8.1
     transitivePeerDependencies:
@@ -19445,9 +19463,9 @@ snapshots:
 
   '@azure/core-http-compat@2.1.2':
     dependencies:
-      '@azure/abort-controller': 2.1.2
+      '@azure/abort-controller': 2.0.0
       '@azure/core-client': 1.9.2
-      '@azure/core-rest-pipeline': 1.20.0
+      '@azure/core-rest-pipeline': 1.9.2
     transitivePeerDependencies:
       - supports-color
 
@@ -19476,9 +19494,9 @@ snapshots:
   '@azure/core-rest-pipeline@1.9.2':
     dependencies:
       '@azure/abort-controller': 1.1.0
-      '@azure/core-auth': 1.9.0
-      '@azure/core-tracing': 1.2.0
-      '@azure/core-util': 1.12.0
+      '@azure/core-auth': 1.6.0
+      '@azure/core-tracing': 1.0.1
+      '@azure/core-util': 1.7.0
       '@azure/logger': 1.0.3
       form-data: 4.0.4
       http-proxy-agent: 5.0.0
@@ -19506,7 +19524,7 @@ snapshots:
 
   '@azure/core-util@1.7.0':
     dependencies:
-      '@azure/abort-controller': 2.1.2
+      '@azure/abort-controller': 2.0.0
       tslib: 2.8.1
 
   '@azure/core-xml@1.4.5':
@@ -20990,7 +21008,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))':
     dependencies:
       form-data: 4.0.4
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -20999,7 +21017,7 @@ snapshots:
       zod: 3.25.67
     optionalDependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
-      langchain: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
+      langchain: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
     transitivePeerDependencies:
       - encoding
 
@@ -21690,7 +21708,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.50(071f2de44c6bccc3a8cd2fadf2db3e78)':
+  '@langchain/community@0.3.50(ba725e6da5f3cda58245f84e6fe2ecaf)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.56.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@16.6.1)(encoding@0.1.13)(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -21702,7 +21720,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
+      langchain: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
       langsmith: 0.3.55(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       openai: 5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       uuid: 10.0.0
@@ -21717,7 +21735,7 @@ snapshots:
       '@azure/search-documents': 12.1.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 3.4.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -24533,7 +24551,7 @@ snapshots:
 
   '@types/methods@1.1.4': {}
 
-  '@types/mime-types@2.1.1': {}
+  '@types/mime-types@3.0.1': {}
 
   '@types/mime@1.3.5': {}
 
@@ -25846,14 +25864,6 @@ snapshots:
   axios@1.12.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.1)
-      form-data: 4.0.4
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
-  axios@1.12.0(debug@4.4.3):
-    dependencies:
-      follow-redirects: 1.15.11(debug@4.4.3)
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -28635,10 +28645,6 @@ snapshots:
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
 
-  follow-redirects@1.15.11(debug@4.4.3):
-    optionalDependencies:
-      debug: 4.4.3
-
   for-each@0.3.5:
     dependencies:
       is-callable: 1.2.7
@@ -29335,7 +29341,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
       camelcase: 6.3.0
       debug: 4.4.3
       dotenv: 16.6.1
@@ -29345,7 +29351,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0)
+      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -30801,7 +30807,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d):
+  langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621):
     dependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       '@langchain/openai': 0.6.16(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -33688,7 +33694,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0):
+  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
 
