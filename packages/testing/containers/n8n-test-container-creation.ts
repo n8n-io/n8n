@@ -238,6 +238,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			// Configure n8n to proxy all HTTP requests through ProxyServer
 			HTTP_PROXY: url,
 			HTTPS_PROXY: url,
+			// Ensure https requests can be proxied without SSL issues
+			NODE_TLS_REJECT_UNAUTHORIZED: '0',
 		};
 	}
 
@@ -553,15 +555,6 @@ async function createN8NContainer({
 		if (networkAlias) {
 			container = container.withNetworkAliases(networkAlias);
 		}
-	}
-
-	// Add host.docker.internal mapping for OIDC containers (Linux compatibility)
-	// When N8N_EDITOR_BASE_URL is set, OIDC is enabled and needs host.docker.internal
-	if (environment.N8N_EDITOR_BASE_URL) {
-		container = container.withExtraHosts([
-			{ host: 'host.docker.internal', ipAddress: 'host-gateway' },
-			{ host: 'localhost', ipAddress: 'host-gateway' },
-		]);
 	}
 
 	if (isWorker) {
