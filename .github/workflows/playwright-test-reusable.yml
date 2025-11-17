@@ -76,7 +76,6 @@ jobs:
           INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
 
       - name: Install Browsers
-        if: inputs.test-mode == 'docker-build'
         run: pnpm turbo install-browsers:ci
 
       - name: Prepare Test Image
