@@ -12,6 +12,7 @@ import { EntityManager } from '@n8n/typeorm';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
 	IConnections,
 	IExecuteData,
 	INode,
@@ -326,22 +327,14 @@ export class ChatHubWorkflowService {
 			attachments,
 		);
 
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
+		const executionData = createRunExecutionData({
 			executionData: {
-				contextData: {},
-				metadata: {},
 				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
 			manualData: {
 				userId,
 			},
-		};
+		});
 
 		return { nodes, connections, executionData };
 	}
@@ -398,22 +391,14 @@ export class ChatHubWorkflowService {
 			},
 		];
 
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
+		const executionData = createRunExecutionData({
 			executionData: {
-				contextData: {},
-				metadata: {},
 				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
 			manualData: {
 				userId,
 			},
-		};
+		});
 		return { nodes, connections, executionData };
 	}
 
