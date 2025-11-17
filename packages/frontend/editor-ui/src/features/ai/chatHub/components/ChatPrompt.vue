@@ -1,28 +1,28 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
-import NodeIcon from '@/app/components/NodeIcon.vue';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nButton, N8nIcon, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
+import ToolsSelector from './ToolsSelector.vue';
 
 const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
 	isNewSession: boolean;
+	isToolsSelectable: boolean;
+	isMissingCredentials: boolean;
 	selectedModel: ChatModelDto | null;
 	selectedTools: INode[] | null;
-	isMissingCredentials: boolean;
 }>();
 
 const emit = defineEmits<{
 	submit: [message: string, attachments: File[]];
 	stop: [];
 	selectModel: [];
-	selectTools: [];
+	selectTools: [INode[]];
 	setCredentials: [ChatHubLLMProvider];
 }>();
 
@@ -31,7 +31,6 @@ const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const message = ref('');
 const attachments = ref<File[]>([]);
 
-const nodeTypesStore = useNodeTypesStore();
 const toast = useToast();
 
 const speechInput = useSpeechRecognition({
@@ -141,27 +140,9 @@ watch(speechInput.error, (event) => {
 	}
 });
 
-function onSelectTools() {
-	emit('selectTools');
+function onSelectTools(tools: INode[]) {
+	emit('selectTools', tools);
 }
-
-onMounted(async () => {
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
-});
-
-const toolCount = computed(() => selectedTools?.length ?? 0);
-
-const displayToolNodeTypes = computed(() => {
-	const tools = selectedTools ?? [];
-	return tools
-		.slice(0, 3)
-		.map((t) => nodeTypesStore.getNodeType(t.type))
-		.filter(Boolean);
-});
-
-const toolsLabel = computed(() =>
-	toolCount.value > 0 ? `${toolCount.value} Tool${toolCount.value > 1 ? 's' : ''}` : 'Tools',
-);
 
 defineExpose({
 	focus: () => inputRef.value?.focus(),
@@ -234,71 +215,49 @@ defineExpose({
 				/>
 
 				<div :class="$style.footer">
-					<div :class="$style.tools">
-						<N8nButton
-							:class="$style.toolsButton"
-							:disabled="isMissingCredentials || !selectedModel || isResponding"
-							aria-label="Select tools"
-							@click="onSelectTools"
-						>
-							<span v-if="toolCount" :class="$style.iconStack" aria-hidden="true">
-								<NodeIcon
-									v-for="(nodeType, i) in displayToolNodeTypes"
-									:key="`${nodeType?.name}-${i}`"
-									:style="{ zIndex: displayToolNodeTypes.length - i }"
-									:node-type="nodeType"
-									:class="[$style.icon, { [$style.iconOverlap]: i !== 0 }]"
-									:circle="true"
-									:size="12"
-								/>
-							</span>
-							<span v-else :class="$style.iconFallback" aria-hidden="true">
-								<N8nIcon icon="plus" :size="12" />
-							</span>
-
-							<N8nText size="small" bold>{{ toolsLabel }}</N8nText>
-						</N8nButton>
-					</div>
-					<div :class="$style.actions">
-						<N8nIconButton
-							v-if="selectedModel?.allowFileUploads"
-							native-type="button"
-							type="secondary"
-							title="Attach"
-							:disabled="isMissingCredentials || isResponding"
-							icon="paperclip"
-							icon-size="large"
-							text
-							@click.stop="onAttach"
-						/>
-						<N8nIconButton
-							v-if="speechInput.isSupported"
-							native-type="button"
-							:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
-							type="secondary"
-							:disabled="isMissingCredentials || !selectedModel || isResponding"
-							:icon="speechInput.isListening.value ? 'square' : 'mic'"
-							:class="{ [$style.recording]: speechInput.isListening.value }"
-							icon-size="large"
-							@click.stop="onMic"
-						/>
-						<N8nIconButton
-							v-if="!isResponding"
-							native-type="submit"
-							:disabled="isMissingCredentials || !selectedModel || !message.trim()"
-							title="Send"
-							icon="arrow-up"
-							icon-size="large"
-							@click.stop
-						/>
-						<N8nIconButton
-							v-else
-							native-type="button"
-							title="Stop generating"
-							icon="square"
-							icon-size="large"
-							@click.stop="onStop"
-						/>
+					<div v-if="isToolsSelectable" :class="$style.tools">
+						<ToolsSelector :selected="selectedTools ?? []" @select="onSelectTools" />
+						<div :class="$style.actions">
+							<N8nIconButton
+								v-if="selectedModel?.allowFileUploads"
+								native-type="button"
+								type="secondary"
+								title="Attach"
+								:disabled="isMissingCredentials || isResponding"
+								icon="paperclip"
+								icon-size="large"
+								text
+								@click.stop="onAttach"
+							/>
+							<N8nIconButton
+								v-if="speechInput.isSupported"
+								native-type="button"
+								:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
+								type="secondary"
+								:disabled="isMissingCredentials || !selectedModel || isResponding"
+								:icon="speechInput.isListening.value ? 'square' : 'mic'"
+								:class="{ [$style.recording]: speechInput.isListening.value }"
+								icon-size="large"
+								@click.stop="onMic"
+							/>
+							<N8nIconButton
+								v-if="!isResponding"
+								native-type="submit"
+								:disabled="isMissingCredentials || !selectedModel || !message.trim()"
+								title="Send"
+								icon="arrow-up"
+								icon-size="large"
+								@click.stop
+							/>
+							<N8nIconButton
+								v-else
+								native-type="button"
+								title="Stop generating"
+								icon="square"
+								icon-size="large"
+								@click.stop="onStop"
+							/>
+						</div>
 					</div>
 				</div>
 			</div>

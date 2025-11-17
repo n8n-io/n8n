@@ -10,8 +10,8 @@ import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConvers
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
 import ChatStarter from '@/features/ai/chatHub/components/ChatStarter.vue';
-import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import {
+	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
 	MOBILE_MEDIA_QUERY,
@@ -27,7 +27,7 @@ import {
 	type ChatHubSendMessageRequest,
 	type ChatModelDto,
 } from '@n8n/api-types';
-import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
+import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
@@ -36,8 +36,7 @@ import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
-import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
-import ToolsSelector from './components/ToolsSelector.vue';
+import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import { INodesSchema, type INode } from 'n8n-workflow';
 
 const router = useRouter();
@@ -65,6 +64,13 @@ const currentConversation = computed(() =>
 );
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 const readyToShowMessages = computed(() => chatStore.agentsReady);
+
+// TODO: This also depends on the model, not all base LLM models support tools.
+const canSelectTools = computed(
+	() =>
+		selectedModel.value?.model.provider !== 'custom-agent' &&
+		selectedModel.value?.model.provider !== 'n8n',
+);
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
@@ -200,18 +206,6 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
-const editingAgentId = ref<string | undefined>(undefined);
-const isToolsSelectorOpen = ref(false);
-
-const canAcceptFiles = computed(
-	() =>
-		editingAgentId.value === undefined &&
-		editingMessageId.value === undefined &&
-		!!selectedModel.value?.allowFileUploads &&
-		!isMissingSelectedCredential.value,
-);
-
-const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
@@ -310,7 +304,7 @@ watch(
 	{ immediate: true },
 );
 
-function onSubmit(message: string, attachments?: File[]) {
+function onSubmit(message: string) {
 	if (
 		!message.trim() ||
 		isResponding.value ||
@@ -322,13 +316,12 @@ function onSubmit(message: string, attachments?: File[]) {
 
 	didSubmitInCurrentSession.value = true;
 
-	void chatStore.sendMessage(
+	chatStore.sendMessage(
 		sessionId.value,
 		message,
 		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
-		selectedTools.value,
-		attachments,
+		canSelectTools.value ? selectedTools.value : [],
 	);
 
 	inputRef.value?.setText('');
@@ -417,12 +410,7 @@ function handleConfigureModel() {
 	headerRef.value?.openModelSelector();
 }
 
-function handleConfigureTools() {
-	isToolsSelectorOpen.value = true;
-	uiStore.openModal('toolsSelector');
-}
-
-async function onUpdateTools(newTools: INode[]) {
+async function handleUpdateTools(newTools: INode[]) {
 	toolsSelection.value = newTools;
 	defaultTools.value = newTools;
 
@@ -438,8 +426,15 @@ async function onUpdateTools(newTools: INode[]) {
 async function handleEditAgent(agentId: string) {
 	try {
 		await chatStore.fetchCustomAgent(agentId);
-		editingAgentId.value = agentId;
-		uiStore.openModal('agentEditor');
+
+		uiStore.openModalWithData({
+			name: AGENT_EDITOR_MODAL_KEY,
+			data: {
+				agentId,
+				credentials: credentialsByProvider,
+				onCreateCustomAgent: handleSelectModel,
+			},
+		});
 	} catch (error) {
 		toast.showError(error, 'Failed to load agent');
 	}
@@ -447,12 +442,13 @@ async function handleEditAgent(agentId: string) {
 
 function openNewAgentCreator() {
 	chatStore.currentEditingAgent = null;
-	editingAgentId.value = undefined;
-	uiStore.openModal('agentEditor');
-}
-
-function closeAgentEditor() {
-	editingAgentId.value = undefined;
+	uiStore.openModalWithData({
+		name: AGENT_EDITOR_MODAL_KEY,
+		data: {
+			credentials: credentialsByProvider,
+			onCreateCustomAgent: handleSelectModel,
+		},
+	});
 }
 
 function handleOpenWorkflow(workflowId: string) {
@@ -460,32 +456,16 @@ function handleOpenWorkflow(workflowId: string) {
 
 	window.open(routeData.href, '_blank');
 }
-
-function onFilesDropped(files: File[]) {
-	inputRef.value?.addAttachments(files);
-}
 </script>
 
 <template>
-	<div
-		:class="[
-			$style.component,
-			{
-				[$style.isNewSession]: isNewSession,
-				[$style.isMobileDevice]: isMobileDevice,
-				[$style.isDraggingFile]: fileDrop.isDragging.value,
-			},
-		]"
-		@dragenter="fileDrop.handleDragEnter"
-		@dragleave="fileDrop.handleDragLeave"
-		@dragover="fileDrop.handleDragOver"
-		@drop="fileDrop.handleDrop"
-		@paste="fileDrop.handlePaste"
+	<ChatLayout
+		:class="{
+			[$style.isNewSession]: isNewSession,
+			[$style.isExistingSession]: !isNewSession,
+			[$style.isMobileDevice]: isMobileDevice,
+		}"
 	>
-		<div v-if="fileDrop.isDragging.value" :class="$style.dropOverlay">
-			<N8nText size="large" color="text-dark">Drop files here to attach</N8nText>
-		</div>
-
 		<ChatConversationHeader
 			ref="headerRef"
 			:selected-model="selectedModel ?? null"
@@ -496,20 +476,6 @@ function onFilesDropped(files: File[]) {
 			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"
 			@open-workflow="handleOpenWorkflow"
-		/>
-
-		<AgentEditorModal
-			v-if="credentialsByProvider"
-			:agent-id="editingAgentId"
-			:credentials="credentialsByProvider"
-			@create-custom-agent="handleSelectModel"
-			@close="closeAgentEditor"
-		/>
-
-		<ToolsSelector
-			v-if="isToolsSelectorOpen"
-			:initial-value="selectedTools"
-			@update="onUpdateTools"
 		/>
 
 		<N8nScrollArea
@@ -564,71 +530,25 @@ function onFilesDropped(files: File[]) {
 					<ChatPrompt
 						ref="inputRef"
 						:class="$style.prompt"
-						:is-responding="isResponding"
 						:selected-model="selectedModel ?? null"
 						:selected-tools="selectedTools"
+						:is-responding="isResponding"
+						:is-tools-selectable="canSelectTools"
 						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
-						@select-tools="handleConfigureTools"
+						@select-tools="handleUpdateTools"
 						@set-credentials="handleConfigureCredentials"
 					/>
 				</div>
 			</div>
 		</N8nScrollArea>
-	</div>
+	</ChatLayout>
 </template>
 
 <style lang="scss" module>
-.component {
-	margin: var(--spacing--4xs);
-	width: 100%;
-	background-color: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	display: flex;
-	flex-direction: column;
-	align-items: stretch;
-	overflow: hidden;
-	position: relative;
-
-	&.isMobileDevice {
-		margin: 0;
-		border: none;
-	}
-
-	&.isDraggingFile {
-		border-color: var(--color--secondary);
-	}
-}
-
-.dropOverlay {
-	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	z-index: 9999;
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	backdrop-filter: blur(6px);
-
-	&::before {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background-color: var(--color--background--light-2);
-		opacity: 0.5;
-		z-index: -1;
-	}
-}
-
 .scrollArea {
 	flex-grow: 1;
 	flex-shrink: 1;
@@ -683,7 +603,7 @@ function onFilesDropped(files: File[]) {
 	justify-content: center;
 
 	.isMobileDevice &,
-	.component:not(.isNewSession) & {
+	.isExistingSession & {
 		position: absolute;
 		bottom: 0;
 		left: 0;
