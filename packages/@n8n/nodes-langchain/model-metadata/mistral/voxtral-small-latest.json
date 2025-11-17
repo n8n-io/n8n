@@ -19,8 +19,5 @@
 	"inputModalities": ["audio"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["analysis", "conversation", "summarization"],
-	"description": "Latest Voxtral Small model. 24B parameters for production audio understanding.",
-	"trainingCutoff": "2025-07",
-	"notes": "Pointer to latest Voxtral Small version. Currently maps to voxtral-small-2507."
+	"recommendedFor": ["analysis", "conversation", "summarization"]
 }

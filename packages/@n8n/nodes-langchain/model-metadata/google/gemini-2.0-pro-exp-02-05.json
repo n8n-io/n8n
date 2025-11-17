@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image", "audio", "video"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "testing", "research"],
-	"description": "Experimental snapshot (February 5, 2025) of best-in-class Gemini model for coding and complex prompts. Supports 2M token context and advanced tool use including code execution and search.",
-	"trainingCutoff": "2024-11",
-	"notes": "EXPERIMENTAL - Free via Google AI Studio and Vertex AI. Released February 5, 2025. Strongest coding performance of any Gemini model. 50% improvement on SimpleQA benchmark over 2.0 Flash. Supports advanced tool calling including Google Search and code execution. Available in Gemini app for Advanced users."
+	"recommendedFor": ["complex-reasoning", "coding", "testing", "research"]
 }

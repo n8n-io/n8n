@@ -19,8 +19,5 @@
 	"inputModalities": ["image", "text"],
 	"outputModalities": ["text", "image"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["multimodal", "document-understanding", "analysis"],
-	"description": "Enhanced Document AI/OCR service released May 2025. Improved understanding of complex document structures.",
-	"trainingCutoff": "2025-05",
-	"notes": "Updated version with better handling of tables, charts, and mixed content layouts. Supports both image and document inputs."
+	"recommendedFor": ["multimodal", "document-understanding", "analysis"]
 }

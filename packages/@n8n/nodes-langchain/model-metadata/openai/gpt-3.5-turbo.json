@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["conversation", "summarization", "function-calling"],
-	"description": "Fast and affordable model for simple tasks and high-volume applications.",
-	"trainingCutoff": "2021-09",
-	"notes": "Good for straightforward tasks. Consider GPT-4o Mini for better quality at similar cost."
+	"recommendedFor": ["conversation", "summarization", "function-calling"]
 }

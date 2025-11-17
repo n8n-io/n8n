@@ -19,14 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": [
-		"search",
-		"research",
-		"information-retrieval",
-		"complex-reasoning",
-		"analysis"
-	],
-	"description": "GPT-5 Search API is a specialized variant that embeds web search functionality directly into AI responses. Released in October 2025, it enables applications to fetch real-time information from the internet, process it intelligently, and deliver cited answers.",
-	"trainingCutoff": "2024-09",
-	"notes": "Supports three search modes: non-reasoning for quick lookups, agentic search for iterative reasoning, and deep research for exhaustive investigations. Provides cited sources for all information. This is the timestamped version from October 14, 2025."
+	"recommendedFor": ["search", "research", "information-retrieval", "complex-reasoning", "analysis"]
 }

@@ -46,12 +46,7 @@ Each model metadata file must follow this structure:
   "inputModalities": ["text", "image"],
   "outputModalities": ["text"],
   "intelligenceLevel": "high",
-  "recommendedFor": ["complex-reasoning", "coding", "analysis"],
-  "description": "Brief description of the model...",
-  "trainingCutoff": "2023-10",
-  "notes": "Additional notes or limitations..."
-}
-```
+  "recommendedFor": ["complex-reasoning", "coding", "analysis"]}```
 
 ## Field Definitions
 
@@ -251,17 +246,6 @@ To add a new provider (e.g., Google):
 2. Add model files: `touch model-metadata/google/gemini-pro.json`
 3. Update validation script if needed (usually not required)
 4. Build and test
-
-### Deprecating Models
-
-For deprecated models:
-- Keep the metadata file but add a note:
-  ```json
-  {
-    "notes": "DEPRECATED: This model is no longer recommended. Use gpt-4o instead."
-  }
-  ```
-- Consider adding a `deprecated: true` field (future enhancement)
 
 ## Testing
 

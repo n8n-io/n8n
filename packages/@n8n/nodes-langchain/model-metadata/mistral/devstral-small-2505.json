@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "analysis", "function-calling"],
-	"description": "24B parameter open-weight model for software engineering agents. Achieves 53.6% on SWE-Bench Verified. Runs on single 4090 GPU.",
-	"trainingCutoff": "2025-05",
-	"notes": "Released May 2025 under Apache 2.0. Fine-tuned from Mistral Small 3.1. Optimized for agentic coding workflows, codebase exploration, multi-file edits."
+	"recommendedFor": ["coding", "analysis", "function-calling"]
 }

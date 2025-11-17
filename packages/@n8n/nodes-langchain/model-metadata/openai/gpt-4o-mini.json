@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["conversation", "summarization", "function-calling", "coding", "multimodal"],
-	"description": "Fast and affordable model that's more capable than GPT-3.5 Turbo with vision and function calling support.",
-	"trainingCutoff": "2023-10",
-	"notes": "Excellent cost-performance ratio for most everyday tasks. Great for high-volume applications."
+	"recommendedFor": ["conversation", "summarization", "function-calling", "coding", "multimodal"]
 }

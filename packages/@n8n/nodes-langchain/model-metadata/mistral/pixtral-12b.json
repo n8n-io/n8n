@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["multimodal", "cost-effective", "vision", "document-understanding"],
-	"description": "12B parameter multimodal model with 400M vision encoder. Processes any number of images with arbitrary sizes. Achieves 52.5% on MMMU reasoning benchmark.",
-	"trainingCutoff": "2024-09",
-	"notes": "Released September 2024 under Apache 2.0 license. Supports JPEG, PNG, GIF, WebP formats (max 20MB). New vision encoder trained from scratch with native variable image size support."
+	"recommendedFor": ["multimodal", "cost-effective", "vision", "document-understanding"]
 }

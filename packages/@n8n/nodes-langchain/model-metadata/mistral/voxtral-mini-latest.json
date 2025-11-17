@@ -19,8 +19,5 @@
 	"inputModalities": ["audio"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["conversation", "summarization", "translation"],
-	"description": "Latest Voxtral Mini model. 3B parameters for edge deployment with audio understanding.",
-	"trainingCutoff": "2025-07",
-	"notes": "Pointer to latest Voxtral Mini version. Currently maps to voxtral-mini-2507."
+	"recommendedFor": ["conversation", "summarization", "translation"]
 }

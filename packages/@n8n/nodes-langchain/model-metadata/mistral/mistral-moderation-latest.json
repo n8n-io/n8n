@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["analysis"],
-	"description": "Latest Mistral Moderation model for content safety and guardrailing.",
-	"trainingCutoff": "2024-11",
-	"notes": "Pointer to latest Moderation version. Currently maps to mistral-moderation-2411."
+	"recommendedFor": ["analysis"]
 }

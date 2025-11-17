@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image", "audio", "video"],
 	"outputModalities": ["text", "image", "audio"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["testing", "experimentation", "multimodal", "agentic"],
-	"description": "Experimental version of Gemini 2.0 Flash with cutting-edge features. Free to use but may have instability and feature limitations.",
-	"trainingCutoff": "2024-11",
-	"notes": "EXPERIMENTAL - Free via Google AI Studio. Native image generation, multimodal Live API, complex function calling. May lack real-time info and some Gemini features. Performance may be inconsistent."
+	"recommendedFor": ["testing", "experimentation", "multimodal", "agentic"]
 }

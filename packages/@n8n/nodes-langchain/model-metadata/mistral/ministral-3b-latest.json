@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "low",
-	"recommendedFor": ["conversation", "summarization", "translation"],
-	"description": "Latest Ministral 3B model. Ultra-lightweight for edge deployment on phones and laptops.",
-	"trainingCutoff": "2024-10",
-	"notes": "Pointer to latest Ministral 3B version. Currently maps to ministral-3b-2410."
+	"recommendedFor": ["conversation", "summarization", "translation"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["multimodal", "vision", "document-understanding"],
-	"description": "Same as pixtral-12b. 12B parameters with 400M vision encoder. Released September 2024.",
-	"trainingCutoff": "2024-09",
-	"notes": "Dated version identifier. Achieves 52.5% on MMMU reasoning benchmark. Supports variable image sizes."
+	"recommendedFor": ["multimodal", "vision", "document-understanding"]
 }

@@ -21,8 +21,5 @@
 	"inputModalities": ["text", "audio"],
 	"outputModalities": ["text", "audio"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["real-time", "conversational", "voice-interaction", "live-streaming"],
-	"description": "Enables low-latency, real-time voice and audio interactions via Live API. Processes continuous streams of audio with immediate, natural-sounding spoken responses. Supports proactive audio and affective dialog.",
-	"trainingCutoff": "2025-01",
-	"notes": "PREVIEW - Deprecated model, replaced by gemini-2.5-flash-native-audio-preview-09-2025. Live API with 25 tokens per second of audio (input/output). Audio input priced at $3.00/1M tokens, audio output at $12.00/1M tokens. Voice Activity Detection and multilingual support included."
+	"recommendedFor": ["real-time", "conversational", "voice-interaction", "live-streaming"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image", "audio", "video"],
 	"outputModalities": ["text", "image", "audio"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["general-purpose", "multimodal", "coding", "agentic", "real-time"],
-	"description": "Second-generation multimodal model for the agentic era. Features native tool use, multimodal generation including image and audio output, and superior speed.",
-	"trainingCutoff": "2024-11",
-	"notes": "Generally available with higher rate limits. Single price for all input types ($0.10/1M input, $0.40/1M output). Native image generation and text-to-speech. Supports Multimodal Live API for real-time audio/video streaming."
+	"recommendedFor": ["general-purpose", "multimodal", "coding", "agentic", "real-time"]
 }

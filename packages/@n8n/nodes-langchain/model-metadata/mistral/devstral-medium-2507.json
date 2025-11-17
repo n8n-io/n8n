@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "complex-reasoning", "analysis"],
-	"description": "Enterprise-grade text model for software engineering use cases. Optimized for deep integration with agent frameworks like OpenHands and SWE-Agent.",
-	"trainingCutoff": "2025-07",
-	"notes": "Released July 2025. Features 24B parameters with 128K context. Achieves 61.6% on SWE-Bench Verified, outperforming Gemini 2.5 Pro and GPT 4.1."
+	"recommendedFor": ["coding", "complex-reasoning", "analysis"]
 }

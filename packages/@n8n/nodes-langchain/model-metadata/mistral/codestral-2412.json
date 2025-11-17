@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "code-generation", "fill-in-middle"],
-	"description": "Codestral version from December 2024. Code generation model with 256K context window.",
-	"trainingCutoff": "2024-12",
-	"notes": "December 2024 version. Optimized for code generation across 80+ programming languages."
+	"recommendedFor": ["coding", "code-generation", "fill-in-middle"]
 }

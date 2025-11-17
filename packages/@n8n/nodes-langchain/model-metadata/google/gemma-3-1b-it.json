@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "low",
-	"recommendedFor": ["cost-effective", "simple-tasks", "edge-deployment"],
-	"description": "Ultra-lightweight open-source Gemma model optimized for edge devices and resource-constrained environments. Text-only with 32K context.",
-	"trainingCutoff": "2025-03",
-	"notes": "Open-source model (free to use). Benchmarks: MMLU 38.8, HumanEval 41.5, GSM8K 62.8. Trained on 2T tokens. Available via Google AI Studio free tier or self-hosted. 140+ language support. Requires ~1.5GB memory for inference."
+	"recommendedFor": ["cost-effective", "simple-tasks", "edge-deployment"]
 }

@@ -25,8 +25,5 @@
 		"transcription",
 		"cost-efficient-transcription",
 		"multilingual-audio"
-	],
-	"description": "Cost-efficient speech-to-text model offering excellent transcription accuracy at 50% the cost of gpt-4o-transcribe. Fast and affordable option for high-volume transcription tasks with good performance on standard audio quality.",
-	"trainingCutoff": "2024-10",
-	"notes": "Released March 2025. Supports 100+ languages and dialects. Half the cost of OpenAI's Whisper endpoint at approximately $0.003 per minute of audio. Excellent cost-performance ratio for batch transcription and high-volume applications. Fast transcription: converts 10 minutes of audio in ~15 seconds. File uploads limited to 25MB."
+	]
 }

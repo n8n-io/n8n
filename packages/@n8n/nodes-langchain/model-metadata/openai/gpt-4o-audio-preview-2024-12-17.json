@@ -20,13 +20,5 @@
 	"inputModalities": ["text", "audio"],
 	"outputModalities": ["text", "audio"],
 	"intelligenceLevel": "high",
-	"recommendedFor": [
-		"audio-processing",
-		"speech-interaction",
-		"sentiment-analysis",
-		"voice-agents"
-	],
-	"description": "GPT-4o Audio Preview December 2024 release with 60% reduced audio token pricing and support for prompt caching, optimized for asynchronous audio input and output.",
-	"trainingCutoff": "2023-10",
-	"notes": "December 17, 2024 update reduced audio token pricing by 60% (from $100/$200 to $40/$80 per 1M tokens). Added support for prompt caching at $2.50 per 1M tokens (87.5% reduction). Focused on text and audio modalities only - does not support image/vision capabilities."
+	"recommendedFor": ["audio-processing", "speech-interaction", "sentiment-analysis", "voice-agents"]
 }

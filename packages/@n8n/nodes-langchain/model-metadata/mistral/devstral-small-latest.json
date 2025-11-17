@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "analysis", "function-calling"],
-	"description": "Latest Devstral Small model. 24B parameters for software engineering agents with agentic coding workflows.",
-	"trainingCutoff": "2025-07",
-	"notes": "Pointer to latest Devstral Small version. Currently maps to devstral-small-2507. Optimized for multi-file editing and codebase exploration."
+	"recommendedFor": ["coding", "analysis", "function-calling"]
 }

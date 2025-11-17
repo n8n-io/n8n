@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image", "audio", "video"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["high-volume", "cost-effective", "general-purpose", "batch-processing"],
-	"description": "Most cost-efficient Gemini model with same speed as 1.5 Flash but better quality. Ideal for high-volume applications requiring good performance at minimal cost.",
-	"trainingCutoff": "2025-01",
-	"notes": "Cheapest Gemini API access at $0.10/1M input, $0.40/1M output. Supports 1M token context. Can caption ~40,000 photos for under $1. Generally available as stable model."
+	"recommendedFor": ["high-volume", "cost-effective", "general-purpose", "batch-processing"]
 }

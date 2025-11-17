@@ -20,8 +20,5 @@
 	"inputModalities": ["audio"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["speech-to-text", "transcription", "multilingual-audio"],
-	"description": "Specialized speech-to-text model trained with reinforcement learning for state-of-the-art transcription accuracy. Achieves improved Word Error Rate (WER) over Whisper V3, with better handling of accented speech, diverse dialects, and challenging audio environments.",
-	"trainingCutoff": "2024-10",
-	"notes": "Released March 2025. Supports 100+ languages and dialects. Fast transcription: converts 10 minutes of audio in ~15 seconds. File uploads limited to 25MB. Trained on diverse, high-quality audio datasets with RL-heavy paradigm for improved accuracy. Does not support speaker diarization - use gpt-4o-transcribe-diarize for that. Approximately $0.006 per minute of audio."
+	"recommendedFor": ["speech-to-text", "transcription", "multilingual-audio"]
 }

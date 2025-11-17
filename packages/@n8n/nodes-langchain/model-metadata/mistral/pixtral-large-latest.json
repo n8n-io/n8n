@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["multimodal", "complex-reasoning", "document-understanding", "vision"],
-	"description": "First frontier-class multimodal model from Mistral. Advanced vision and text understanding with function calling support.",
-	"trainingCutoff": "2024-11",
-	"notes": "Released November 2024. Premium multimodal model with enterprise-grade performance. Supports chat completions and batching."
+	"recommendedFor": ["multimodal", "complex-reasoning", "document-understanding", "vision"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "complex-reasoning", "analysis", "creative-writing"],
-	"description": "Pioneering hybrid AI reasoning model offering choice between rapid responses and extended step-by-step thinking visible to users. Supports up to 128K output tokens.",
-	"trainingCutoff": "2024-10",
-	"notes": "Legacy model - migration to Claude Sonnet 4.5 recommended. First hybrid reasoning model combining instant responses with visible extended thinking. Requires beta header 'output-128k-2025-02-19' for 128K output capability."
+	"recommendedFor": ["coding", "complex-reasoning", "analysis", "creative-writing"]
 }

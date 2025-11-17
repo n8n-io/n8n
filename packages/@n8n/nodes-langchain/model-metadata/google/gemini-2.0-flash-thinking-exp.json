@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image", "audio", "video"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "testing", "problem-solving", "research"],
-	"description": "Experimental 2.0 Flash variant with extended thinking capabilities for complex reasoning tasks. Free for testing and experimentation.",
-	"trainingCutoff": "2024-11",
-	"notes": "EXPERIMENTAL - Free via Google AI Studio. Features extended reasoning mode for complex problems. Updated in January 2025. May have inconsistent performance."
+	"recommendedFor": ["complex-reasoning", "testing", "problem-solving", "research"]
 }

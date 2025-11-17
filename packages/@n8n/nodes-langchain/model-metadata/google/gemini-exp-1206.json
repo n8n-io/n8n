@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "mathematics", "research", "testing"],
-	"description": "Experimental model with 2M+ token context achieving highest LMArena score. Exceptional performance on coding, math, and complex reasoning tasks.",
-	"trainingCutoff": "2024-12",
-	"notes": "EXPERIMENTAL - Free via Google AI Studio and API. Highest Arena Score (1379) on LMArena. Available to Gemini Advanced subscribers. Enhanced RL processes. May lack real-time info and some features. Performance inconsistencies possible."
+	"recommendedFor": ["complex-reasoning", "coding", "mathematics", "research", "testing"]
 }

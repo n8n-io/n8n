@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "complex-reasoning", "analysis"],
-	"description": "Latest Devstral Medium model. Enterprise-grade for advanced software engineering workflows and agent frameworks.",
-	"trainingCutoff": "2025-07",
-	"notes": "Pointer to latest Devstral Medium version. Currently maps to devstral-medium-2507."
+	"recommendedFor": ["coding", "complex-reasoning", "analysis"]
 }

@@ -25,8 +25,5 @@
 		"general-purpose",
 		"batch-processing",
 		"testing"
-	],
-	"description": "Latest preview version of Gemini 2.0 Flash-Lite. Most cost-efficient 2.0 model optimized for speed and scale with multimodal capabilities.",
-	"trainingCutoff": "2024-11",
-	"notes": "Preview model - points to latest preview version. Available in Google AI Studio and Vertex AI. Better quality than 1.5 Flash at same speed and cost. Half the price of GPT-4o mini. May update with new improvements."
+	]
 }

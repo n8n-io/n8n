@@ -26,8 +26,5 @@
 		"research",
 		"analysis",
 		"critical-tasks"
-	],
-	"description": "GPT-5 Pro is OpenAI's most advanced model optimized for complex tasks requiring step-by-step reasoning, instruction following, and accuracy in high-stakes use cases. Released in October 2025, it offers major improvements in reasoning quality, code generation, and test-time routing capabilities.",
-	"trainingCutoff": "2024-09",
-	"notes": "Most capable model for critical workloads requiring maximum accuracy. Supports test-time routing features and advanced prompt understanding, including user-specified reasoning depth. Significantly slower than GPT-5 due to extended reasoning process. Can process up to 400K context window."
+	]
 }

@@ -27,8 +27,5 @@
 		"multimodal",
 		"voice-interaction",
 		"live-streaming"
-	],
-	"description": "Latest real-time streaming model with 1M token context for low-latency multimodal interactions via Live API. Enhanced audio quality with 30 HD voices in 24 languages. Supports proactive audio and affective dialog.",
-	"trainingCutoff": "2025-01",
-	"notes": "PREVIEW - Latest Live API model with native audio. Enhanced conversational capabilities with emotional understanding. Voice Activity Detection, multilingual support, tool use. Audio input $3.00/1M, audio output $12.00/1M tokens. 25 tokens/sec audio, 258 tokens/sec video."
+	]
 }

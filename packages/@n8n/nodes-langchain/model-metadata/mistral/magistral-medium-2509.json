@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis", "multimodal"],
-	"description": "Latest Magistral Medium with multimodal reasoning capabilities. Frontier-class multimodal reasoning model.",
-	"trainingCutoff": "2025-09",
-	"notes": "Released September 2025 (v25.09). First multimodal reasoning model from Mistral. Supports both text and image inputs."
+	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis", "multimodal"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["reasoning", "cost-effective", "multi-step-logic", "multimodal"],
-	"description": "Small multimodal reasoning model with transparent step-by-step thinking. 24B parameters, fully open-source under Apache 2.0.",
-	"trainingCutoff": "2025-09",
-	"notes": "Released September 2025 (v1.2). Budget-friendly reasoning model with image understanding. Recommended max context: 40K tokens. GPU requirements: 56GB (bf16), 28GB (fp8), 14GB (fp4)."
+	"recommendedFor": ["reasoning", "cost-effective", "multi-step-logic", "multimodal"]
 }

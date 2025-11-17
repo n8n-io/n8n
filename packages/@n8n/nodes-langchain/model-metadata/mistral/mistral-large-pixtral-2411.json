@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["multimodal", "complex-reasoning", "vision", "document-understanding"],
-	"description": "Combination of Mistral Large and Pixtral vision capabilities. Released November 2024.",
-	"trainingCutoff": "2024-11",
-	"notes": "Merged model combining Mistral Large's reasoning with Pixtral's vision capabilities. Alias for pixtral-large-2411."
+	"recommendedFor": ["multimodal", "complex-reasoning", "vision", "document-understanding"]
 }

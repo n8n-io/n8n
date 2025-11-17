@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image", "audio", "video"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "long-context", "multimodal", "analysis", "coding"],
-	"description": "Legacy Gemini Pro model with massive 2M token context window. Strong performance on complex reasoning and multimodal tasks.",
-	"trainingCutoff": "2024-04",
-	"notes": "DEPRECATED - All Gemini 1.5 models retired. Migrate to 2.5 models. Pricing: ≤128K: $1.25/1M prompt, $5/1M completion; >128K: $2.50/1M prompt, $10/1M completion. Context caching available for 75% cost reduction."
+	"recommendedFor": ["complex-reasoning", "long-context", "multimodal", "analysis", "coding"]
 }

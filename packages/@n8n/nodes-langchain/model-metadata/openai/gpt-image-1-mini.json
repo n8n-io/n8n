@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["image"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["image-generation", "creative", "visual-design"],
-	"description": "Smaller image generation model that's 80% less expensive than gpt-image-1, optimized for cost-efficient image creation and editing.",
-	"trainingCutoff": "2023-10",
-	"notes": "Released October 2025. More affordable alternative to gpt-image-1 with similar capabilities. Supports image generation and editing via API endpoints. Includes C2PA metadata and safety guardrails."
+	"recommendedFor": ["image-generation", "creative", "visual-design"]
 }

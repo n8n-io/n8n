@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image", "audio"],
 	"outputModalities": ["text", "audio"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal", "function-calling"],
-	"description": "GPT-4o November 2024 release with increased output capacity (16,384 tokens), enhanced multimodal capabilities, and improved performance in non-English languages and vision tasks.",
-	"trainingCutoff": "2023-10",
-	"notes": "November 20, 2024 update significantly expanded output capacity from 4,096 to 16,384 tokens while maintaining the same pricing structure. Faster and cheaper than GPT-4 Turbo with stronger vision capabilities."
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal", "function-calling"]
 }

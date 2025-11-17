@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["multimodal", "function-calling", "document-understanding"],
-	"description": "Frontier-class multimodal model released August 2025. Supports document Q&A, chat completions, and batching.",
-	"trainingCutoff": "2025-08",
-	"notes": "Latest Medium 3.1 with multimodal support. Excellent balance between performance and cost for vision tasks."
+	"recommendedFor": ["multimodal", "function-calling", "document-understanding"]
 }

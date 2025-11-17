@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["image"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["image-generation", "creative", "visual-design"],
-	"description": "High-quality image generation model capable of producing professional-grade images up to 4096x4096 pixels based on natural language prompts.",
-	"trainingCutoff": "2023-10",
-	"notes": "Released April 2025. Supports native sizes up to 1024x1536 pixels with 4K upscaling. Features in-painting capabilities for image editing. Includes enterprise-grade safety guardrails and C2PA metadata."
+	"recommendedFor": ["image-generation", "creative", "visual-design"]
 }

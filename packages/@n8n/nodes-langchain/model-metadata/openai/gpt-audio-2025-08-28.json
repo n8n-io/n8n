@@ -25,8 +25,5 @@
 		"speech-interaction",
 		"multimodal",
 		"function-calling"
-	],
-	"description": "GPT Audio (gpt-realtime) snapshot released August 28, 2025. This advanced speech-to-speech model features 26.3% improvement in accuracy over previous versions, with support for image inputs, SIP phone calls, and MCP servers. Includes exclusive Cedar and Marin voices.",
-	"trainingCutoff": "2024-05",
-	"notes": "Released August 28, 2025 with significant performance improvements. Achieved 82.8% accuracy on Big Bench Audio Evaluation (up from 65.6%). Supports real-time audio streaming, function calling, and can execute complex instructions precisely. 20% price reduction compared to previous models. Processes and generates audio directly without speech-to-text-to-speech conversion chains."
+	]
 }

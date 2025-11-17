@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["general-purpose", "high-volume", "cost-effective", "multimodal"],
-	"description": "Cost-effective small model with multimodal capabilities and low-latency function calling. 24B parameters with 50% price reduction from previous version.",
-	"trainingCutoff": "2025-06",
-	"notes": "Updated June 2025 (Small 3.2). Supports image understanding and delivers 150 tokens/sec inference. Best for high-volume use cases requiring cost efficiency."
+	"recommendedFor": ["general-purpose", "high-volume", "cost-effective", "multimodal"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "complex-reasoning", "analysis", "function-calling"],
-	"description": "Advanced Claude 4 model with hybrid reasoning approach combining rapid responses with extended thinking. Excellent coding performance (72.7% on SWE-bench).",
-	"trainingCutoff": "2025-01",
-	"notes": "Legacy model - consider upgrading to Claude Sonnet 4.5 for improved performance. Supports 1M context window with beta header and code execution capabilities."
+	"recommendedFor": ["coding", "complex-reasoning", "analysis", "function-calling"]
 }

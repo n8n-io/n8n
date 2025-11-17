@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "low",
-	"recommendedFor": ["conversation", "summarization"],
-	"description": "Open-source 7B parameter model. Same as mistral-tiny-2407. Released under Apache 2.0 license.",
-	"trainingCutoff": "2024-07",
-	"notes": "Open-weight variant of Mistral Tiny. Freely available for commercial use."
+	"recommendedFor": ["conversation", "summarization"]
 }

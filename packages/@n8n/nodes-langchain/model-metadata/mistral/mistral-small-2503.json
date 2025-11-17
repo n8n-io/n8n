@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["multimodal", "function-calling", "cost-effective"],
-	"description": "Mistral Small 3.1 with image understanding. Released March 2025. Small leader with multimodal capabilities.",
-	"trainingCutoff": "2025-03",
-	"notes": "First Small model with vision support. 24B parameters. Supports low-latency function calling for automated workflows."
+	"recommendedFor": ["multimodal", "function-calling", "cost-effective"]
 }

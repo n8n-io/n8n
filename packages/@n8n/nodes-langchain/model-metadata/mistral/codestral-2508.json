@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "code-generation", "fill-in-middle"],
-	"description": "Latest Codestral with +30% increase in accepted code completions. Enterprise-ready coding model supporting 80+ languages.",
-	"trainingCutoff": "2025-08",
-	"notes": "Released August 2025. Significant improvements in code completion acceptance rate. Part of complete Mistral coding stack for enterprise."
+	"recommendedFor": ["coding", "code-generation", "fill-in-middle"]
 }

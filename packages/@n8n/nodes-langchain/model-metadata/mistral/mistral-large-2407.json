@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "analysis", "function-calling"],
-	"description": "Mistral Large 2 released July 2024. 123B parameters with large 128K context window. Top-tier performance for complex tasks.",
-	"trainingCutoff": "2024-07",
-	"notes": "Version 2407 of Mistral Large. Supports function calling and structured outputs. Superseded by mistral-large-2411."
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "function-calling"]
 }

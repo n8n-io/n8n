@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis"],
-	"description": "Magistral Medium 1.0 released June 2025. First enterprise reasoning model with chain-of-thought capabilities.",
-	"trainingCutoff": "2025-06",
-	"notes": "Deprecated model with text output format. Includes <think></think> chunks as part of text content. Use magistral-medium-2507+ for JSON output."
+	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["embedding"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["embeddings", "semantic-search", "retrieval"],
-	"description": "State-of-the-art semantic embeddings model optimized for generating high-quality text representations.",
-	"trainingCutoff": "2023-12",
-	"notes": "Released December 2023. Specialized embedding model for semantic search and retrieval-augmented generation (RAG) applications."
+	"recommendedFor": ["embeddings", "semantic-search", "retrieval"]
 }

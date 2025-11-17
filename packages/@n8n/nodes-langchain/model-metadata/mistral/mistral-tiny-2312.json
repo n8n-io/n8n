@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "low",
-	"recommendedFor": ["conversation", "summarization"],
-	"description": "Original Mistral Tiny from December 2023. Also known as open-mistral-7b. 7B parameters with 32K context.",
-	"trainingCutoff": "2023-12",
-	"notes": "Deprecated - Legacy model from December 2023. Superseded by mistral-tiny-2407."
+	"recommendedFor": ["conversation", "summarization"]
 }

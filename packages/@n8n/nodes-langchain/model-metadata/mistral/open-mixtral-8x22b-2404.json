@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "function-calling"],
-	"description": "Same as open-mixtral-8x22b. Large MoE model released April 2024 with function calling.",
-	"trainingCutoff": "2024-04",
-	"notes": "Dated version identifier. Same as open-mixtral-8x22b."
+	"recommendedFor": ["complex-reasoning", "coding", "function-calling"]
 }

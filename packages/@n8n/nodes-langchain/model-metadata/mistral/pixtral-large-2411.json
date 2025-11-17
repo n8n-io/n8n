@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["multimodal", "complex-reasoning", "vision", "document-understanding"],
-	"description": "Same as pixtral-large-latest and mistral-large-pixtral-2411. Released November 2024.",
-	"trainingCutoff": "2024-11",
-	"notes": "Dated version identifier for Pixtral Large. First frontier-class multimodal model."
+	"recommendedFor": ["multimodal", "complex-reasoning", "vision", "document-understanding"]
 }

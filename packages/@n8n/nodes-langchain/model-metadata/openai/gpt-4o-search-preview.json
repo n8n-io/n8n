@@ -21,8 +21,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["web-search", "real-time-information", "research", "fact-checking"],
-	"description": "GPT-4o Search Preview is a specialized variant optimized for web search queries, with direct access to live web data and trained to understand and execute search operations.",
-	"trainingCutoff": "2023-10",
-	"notes": "Dual pricing structure: $25 per 1K searches plus $30 per 1M tokens. Supports geolocation-based search customization. Generates responses in JSON format for API integration. Designed specifically for Chat Completions API with web_search_options parameter."
+	"recommendedFor": ["web-search", "real-time-information", "research", "fact-checking"]
 }

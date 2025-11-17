@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image", "audio", "video"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["general-purpose", "coding", "analysis", "multimodal", "cost-effective"],
-	"description": "Balanced Gemini 2.5 model offering excellent performance at lower cost. Features optional thinking mode for complex reasoning tasks.",
-	"trainingCutoff": "2025-01",
-	"notes": "Unified pricing: $0.30/1M input, $2.50/1M output (non-thinking), $3.50/1M thinking output. Audio input: $1.00/1M tokens. Supports 1M token context. Best balance of speed, quality, and cost."
+	"recommendedFor": ["general-purpose", "coding", "analysis", "multimodal", "cost-effective"]
 }

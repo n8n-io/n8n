@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "analysis", "function-calling", "enterprise"],
-	"description": "Mistral's flagship model excelling at complex reasoning, coding, and enterprise tasks. Top-tier performance with 123B parameters.",
-	"trainingCutoff": "2024-11",
-	"notes": "Best for high-complexity tasks requiring advanced reasoning. Supports function calling and structured outputs. Version 2.1 released November 2024."
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "function-calling", "enterprise"]
 }

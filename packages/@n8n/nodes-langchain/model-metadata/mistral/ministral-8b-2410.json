@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["conversation", "analysis", "function-calling"],
-	"description": "8B parameter edge computing model with function calling. Optimized for on-device AI with specialized attention mechanism for faster inference.",
-	"trainingCutoff": "2024-10",
-	"notes": "Released October 2024 under Apache 2.0. Balances performance and efficiency for edge computing. Outperforms rivals in small-scale AI benchmarks."
+	"recommendedFor": ["conversation", "analysis", "function-calling"]
 }

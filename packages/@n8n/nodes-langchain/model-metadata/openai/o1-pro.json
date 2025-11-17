@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "analysis", "research"],
-	"description": "Most expensive reasoning model designed to think longer and provide the most reliable responses for complex tasks requiring extensive computational power.",
-	"trainingCutoff": "2023-09",
-	"notes": "Released March 2025. Available only via Responses API to developers who've spent at least $5 on OpenAI services. Does not support streaming. 10x the price of regular o1 for outputs."
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "research"]
 }

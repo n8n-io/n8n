@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["reasoning", "cost-effective", "multi-step-logic"],
-	"description": "Magistral Small 1.1 with JSON output format. 24B parameters, open-source under Apache 2.0.",
-	"trainingCutoff": "2025-07",
-	"notes": "Released July 2025. Returns JSON output with 'thinking' types. GPU requirements: 56GB (bf16), 28GB (fp8), 14GB (fp4)."
+	"recommendedFor": ["reasoning", "cost-effective", "multi-step-logic"]
 }

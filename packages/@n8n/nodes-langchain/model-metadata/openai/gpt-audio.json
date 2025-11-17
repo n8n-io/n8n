@@ -25,8 +25,5 @@
 		"speech-interaction",
 		"multimodal",
 		"function-calling"
-	],
-	"description": "GPT Audio (gpt-realtime) is an advanced speech-to-speech model optimized for real-time voice conversations with natural and expressive speech. Released in August 2025, it provides rich audio understanding and generation capabilities for building sophisticated voice applications with support for image inputs, SIP phone calls, and MCP servers.",
-	"trainingCutoff": "2024-05",
-	"notes": "Latest version released August 28, 2025 with significant performance improvements. Achieved 82.8% accuracy on Big Bench Audio Evaluation (26.3% improvement over previous versions). Supports real-time audio streaming, function calling, image inputs, SIP phone calls, and MCP servers. Includes exclusive Cedar and Marin voices. 20% price reduction from previous models. Better at capturing nuances of speech and reducing misrecognitions in challenging scenarios."
+	]
 }

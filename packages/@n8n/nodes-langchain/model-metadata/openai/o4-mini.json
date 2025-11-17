@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "complex-reasoning", "math", "data-science", "multimodal"],
-	"description": "o4-mini is a reasoning model released in April 2025 with enhanced performance on coding, math, and visual tasks. For the first time, reasoning models can independently use ChatGPT tools including web browsing, Python execution, and image analysis. Best-performing on AIME 2024 and 2025.",
-	"trainingCutoff": "2024-06",
-	"notes": "Cost-efficient reasoning model with tool use capabilities. Supports caching and batching to reduce costs. Multimodal by default unlike earlier o-series models. Same pricing as o3-mini but with enhanced tool-using capabilities."
+	"recommendedFor": ["coding", "complex-reasoning", "math", "data-science", "multimodal"]
 }

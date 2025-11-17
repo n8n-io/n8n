@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis"],
-	"description": "Magistral Medium 1.1 with JSON output format. Enhanced reasoning model with transparent step-by-step thinking.",
-	"trainingCutoff": "2025-07",
-	"notes": "Released July 2025. Returns JSON output with 'thinking' types. Built on Medium 3 base model using reinforcement learning."
+	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis"]
 }

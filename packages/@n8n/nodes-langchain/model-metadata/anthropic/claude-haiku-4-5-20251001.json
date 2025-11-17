@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["conversation", "summarization", "function-calling", "coding"],
-	"description": "Fastest Claude model with near-frontier intelligence and lowest latency. Ideal for high-volume applications requiring quick responses.",
-	"trainingCutoff": "2025-02",
-	"notes": "Best choice for real-time applications and high-throughput workloads where speed and cost efficiency are critical. Supports extended thinking and vision capabilities."
+	"recommendedFor": ["conversation", "summarization", "function-calling", "coding"]
 }

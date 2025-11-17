@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["conversation", "function-calling", "cost-effective"],
-	"description": "Mistral Small 3 released January 2025. 24B parameters, latency-optimized with 50% price reduction. 81% MMLU accuracy, 150 tokens/sec.",
-	"trainingCutoff": "2025-01",
-	"notes": "Released under Apache 2.0. Major performance improvements with 32K context. Superseded by mistral-small-2503 with multimodal capabilities."
+	"recommendedFor": ["conversation", "function-calling", "cost-effective"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "low",
-	"recommendedFor": ["conversation", "summarization"],
-	"description": "Latest Mistral Tiny model. Ultra-lightweight 7B parameter model for basic tasks.",
-	"trainingCutoff": "2024-07",
-	"notes": "Pointer to latest Mistral Tiny version. Currently maps to mistral-tiny-2407."
+	"recommendedFor": ["conversation", "summarization"]
 }

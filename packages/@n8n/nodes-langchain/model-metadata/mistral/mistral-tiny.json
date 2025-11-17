@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "low",
-	"recommendedFor": ["conversation", "summarization"],
-	"description": "Alias for mistral-tiny-latest. Ultra-lightweight model for basic tasks.",
-	"trainingCutoff": "2024-07",
-	"notes": "Pointer to latest tiny model version. Currently maps to mistral-tiny-2407 / open-mistral-7b."
+	"recommendedFor": ["conversation", "summarization"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image", "audio", "video"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal", "function-calling"],
-	"description": "May 2025 I/O Edition preview of Gemini 2.5 Pro with significant improvements to code generation and function calling. Announced at Google I/O 2025 with enhanced coding performance.",
-	"trainingCutoff": "2025-01",
-	"notes": "Preview model released May 6, 2025 (I/O Edition). Major improvements to coding and function calling over 03-25 version. The 03-25 version automatically redirects to this model. Pricing: ≤200K input: $1.25/1M prompt, $10/1M completion; >200K input: $2.50/1M prompt, $15/1M completion. Superseded by 06-05 version with adaptive thinking."
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal", "function-calling"]
 }

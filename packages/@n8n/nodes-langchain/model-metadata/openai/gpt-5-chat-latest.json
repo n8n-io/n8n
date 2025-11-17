@@ -27,8 +27,5 @@
 		"function-calling",
 		"health",
 		"math"
-	],
-	"description": "GPT-5 Chat Latest is an alias pointing to the latest GPT-5 model optimized for chat and conversational applications. It automatically updates to use the most recent GPT-5 version, ensuring access to the latest improvements and capabilities.",
-	"trainingCutoff": "2024-09",
-	"notes": "Dynamic alias that always points to the current GPT-5 model. Provides the same capabilities as GPT-5 with automatic version updates. Ideal for applications that want to stay current without manually updating model versions."
+	]
 }

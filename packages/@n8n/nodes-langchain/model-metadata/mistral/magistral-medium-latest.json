@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis"],
-	"description": "Enterprise reasoning model with transparent step-by-step thinking. Excels at multi-step logic and complex problem-solving.",
-	"trainingCutoff": "2025-09",
-	"notes": "Released September 2025. Uses reinforcement learning for chain-of-thought reasoning. Recommended max context: 40K tokens for optimal performance."
+	"recommendedFor": ["complex-reasoning", "multi-step-logic", "analysis"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["conversation", "analysis", "function-calling"],
-	"description": "Latest Ministral 8B model. Balanced edge computing model with function calling support.",
-	"trainingCutoff": "2024-10",
-	"notes": "Pointer to latest Ministral 8B version. Currently maps to ministral-8b-2410."
+	"recommendedFor": ["conversation", "analysis", "function-calling"]
 }

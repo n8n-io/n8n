@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["multimodal", "function-calling", "cost-effective"],
-	"description": "Latest Mistral Small 3.2 released June 2025. Enhanced multimodal understanding with improved text performance.",
-	"trainingCutoff": "2025-06",
-	"notes": "Updated version with better image understanding and text capabilities. Expanded context window to 128K tokens. Delivers 150 tokens/sec inference."
+	"recommendedFor": ["multimodal", "function-calling", "cost-effective"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "code-generation"],
-	"description": "Release candidate 5 of Codestral 24.11. Testing version before final release.",
-	"trainingCutoff": "2024-11",
-	"notes": "Release candidate version. May have experimental features or changes before final 24.11 release."
+	"recommendedFor": ["coding", "code-generation"]
 }

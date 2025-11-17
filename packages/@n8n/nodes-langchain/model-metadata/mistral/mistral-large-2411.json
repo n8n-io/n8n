@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "analysis", "function-calling"],
-	"description": "Mistral Large 2.1 released November 2024. Enhanced version with improved performance. 123B parameters.",
-	"trainingCutoff": "2024-11",
-	"notes": "Latest version of Mistral Large. Top-tier performance with advanced function calling and structured outputs."
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "function-calling"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image", "audio", "video"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal", "long-context"],
-	"description": "June 2025 preview of Gemini 2.5 Pro introducing adaptive thinking capabilities. Final preview version before stable release, featuring improved control over thinking budget and reasoning depth.",
-	"trainingCutoff": "2025-01",
-	"notes": "Preview model released June 5, 2025. Introduced adaptive thinking with configurable thinking budget. Users can update to stable 'gemini-2.5-pro' for the same capabilities. Pricing: ≤200K input: $1.25/1M prompt, $10/1M completion; >200K input: $2.50/1M prompt, $15/1M completion. This preview became the basis for the stable gemini-2.5-pro release."
+	"recommendedFor": ["complex-reasoning", "coding", "analysis", "multimodal", "long-context"]
 }

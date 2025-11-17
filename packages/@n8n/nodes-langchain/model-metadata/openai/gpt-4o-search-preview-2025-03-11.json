@@ -21,8 +21,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["web-search", "real-time-information", "research", "fact-checking"],
-	"description": "GPT-4o Search Preview March 2025 release optimized for web search queries, with direct access to live web data and trained to understand and execute search operations.",
-	"trainingCutoff": "2023-10",
-	"notes": "March 11, 2025 release. Dual pricing structure: $25 per 1K searches plus $30 per 1M tokens for both input and output. Supports geolocation-based search customization via 'user_location' parameter. Generates responses in JSON format for API integration. Designed for Chat Completions API with web_search_options parameter."
+	"recommendedFor": ["web-search", "real-time-information", "research", "fact-checking"]
 }

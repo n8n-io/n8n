@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "code-generation", "fill-in-middle"],
-	"description": "Codestral 25.01 with improved architecture and tokenizer. Less than 100B parameters. 2x faster code generation than previous versions.",
-	"trainingCutoff": "2025-01",
-	"notes": "Released January 2025. Optimized for code generation with 256K context. Supports Fill-In-the-Middle (FIM) completion."
+	"recommendedFor": ["coding", "code-generation", "fill-in-middle"]
 }

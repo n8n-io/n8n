@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image", "audio", "video"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "testing", "research"],
-	"description": "Experimental best-in-class Gemini model for coding and complex prompts. Supports huge 2M token context and advanced tool use including code execution and search.",
-	"trainingCutoff": "2024-11",
-	"notes": "EXPERIMENTAL - Free via Google AI Studio. Best Gemini model for coding performance. Significant improvement over 2.0 Flash on benchmarks, especially SimpleQA (50% improvement). Advanced tool use capabilities."
+	"recommendedFor": ["complex-reasoning", "coding", "testing", "research"]
 }

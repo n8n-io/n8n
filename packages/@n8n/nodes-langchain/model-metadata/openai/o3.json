@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["coding", "complex-reasoning", "analysis"],
-	"description": "Most powerful reasoning model pushing the frontier across coding, math, science, and visual perception with extended thinking capabilities.",
-	"trainingCutoff": "2023-10",
-	"notes": "OpenAI's most advanced reasoning model with 80% price reduction. Sets new state-of-the-art on benchmarks including Codeforces and SWE-bench. Released June 2025."
+	"recommendedFor": ["coding", "complex-reasoning", "analysis"]
 }

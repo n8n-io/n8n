@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "medium",
-	"recommendedFor": ["reasoning", "cost-effective", "multi-step-logic"],
-	"description": "Magistral Small 1.0 released June 2025. Budget-friendly reasoning model. 24B parameters, Apache 2.0 license.",
-	"trainingCutoff": "2025-06",
-	"notes": "Deprecated model with text output format. Includes <think></think> chunks as part of text content. Use magistral-small-2507+ for JSON output."
+	"recommendedFor": ["reasoning", "cost-effective", "multi-step-logic"]
 }

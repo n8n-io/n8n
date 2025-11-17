@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "coding", "analysis"],
-	"description": "Original GPT-4 model with strong reasoning and coding capabilities.",
-	"trainingCutoff": "2021-09",
-	"notes": "Limited context window. Consider using GPT-4 Turbo or GPT-4o for better performance and larger context."
+	"recommendedFor": ["complex-reasoning", "coding", "analysis"]
 }

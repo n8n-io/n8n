@@ -21,8 +21,5 @@
 	"inputModalities": ["text", "image", "audio", "video"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["robotics", "spatial-reasoning", "physical-world", "agentic", "task-planning"],
-	"description": "First thinking model optimized for embodied reasoning in robotics. Excels at spatial understanding, task planning, and reasoning about physical constraints. Tunable thinking budget balances latency vs accuracy.",
-	"trainingCutoff": "2024-11",
-	"notes": "PREVIEW - Specialized for robotics with state-of-the-art spatial understanding. Native tool calling including Google Search. Flexible thinking budget for latency/accuracy tradeoff. Output tokens include thinking tokens. Audio input priced at $1.00/1M tokens. Free tier available."
+	"recommendedFor": ["robotics", "spatial-reasoning", "physical-world", "agentic", "task-planning"]
 }

@@ -19,8 +19,5 @@
 	"inputModalities": ["image", "text"],
 	"outputModalities": ["text", "image"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["multimodal", "document-understanding", "analysis"],
-	"description": "Document AI/OCR service released March 2025. Excels at complex document elements including interleaved imagery and mathematical expressions.",
-	"trainingCutoff": "2025-03",
-	"notes": "Specialized for OCR, understanding tables, advanced layouts, and mathematical expressions in documents."
+	"recommendedFor": ["multimodal", "document-understanding", "analysis"]
 }

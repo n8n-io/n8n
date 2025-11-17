@@ -19,8 +19,5 @@
 	"inputModalities": ["text"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "low",
-	"recommendedFor": ["conversation", "summarization"],
-	"description": "Mistral Tiny from July 2024. 7B parameters for lightweight tasks. Also available as open-mistral-7b.",
-	"trainingCutoff": "2024-07",
-	"notes": "Updated version with improved performance. Ultra-cost-effective for simple tasks."
+	"recommendedFor": ["conversation", "summarization"]
 }

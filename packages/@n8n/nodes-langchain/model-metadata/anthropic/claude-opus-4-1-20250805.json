@@ -19,8 +19,5 @@
 	"inputModalities": ["text", "image"],
 	"outputModalities": ["text"],
 	"intelligenceLevel": "high",
-	"recommendedFor": ["complex-reasoning", "analysis", "creative-writing", "multimodal"],
-	"description": "Exceptional model for specialized reasoning tasks requiring the deepest level of understanding and complex problem-solving.",
-	"trainingCutoff": "2025-01",
-	"notes": "Premium model optimized for agentic tasks, real-world coding, and advanced reasoning. Upgrade to Claude Opus 4 focused on tasks where accuracy and nuanced understanding are paramount."
+	"recommendedFor": ["complex-reasoning", "analysis", "creative-writing", "multimodal"]
 }
