@@ -18,7 +18,7 @@ import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
-import { BinaryDataService, type BinaryData } from 'n8n-core';
+import { FileLocation, BinaryDataService } from 'n8n-core';
 import { NodeApiError, PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -41,7 +41,6 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
-import { FileLocation } from 'n8n-core';
 
 @Service()
 export class WorkflowService {
