@@ -9,6 +9,7 @@ import type {
 	IHttpRequestMethods,
 } from 'n8n-workflow';
 import { NodeApiError } from 'n8n-workflow';
+// @ts-ignore - qs module missing types
 import qs from 'qs';
 
 export async function unleashedApiRequest(
