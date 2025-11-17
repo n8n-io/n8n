@@ -148,6 +148,23 @@ n8n-node lint
 n8n-node lint --fix
 ```
 
+#### `n8n-node cloud-support`
+
+Manage n8n Cloud eligibility.
+
+```bash
+n8n-node cloud-support [enable|disable]
+```
+
+**Arguments:**
+| Argument | Description |
+|----------|-------------|
+| _(none)_ | Show current cloud support status |
+| `enable` | Enable strict mode + default ESLint config |
+| `disable` | Allow custom ESLint config (disables cloud eligibility) |
+
+Strict mode enforces the default ESLint configuration and community node rules required for n8n Cloud verification. When disabled, you can customize your ESLint config but your node won't be eligible for n8n Cloud verification.
+
 #### `n8n-node release`
 
 Publish your community node package to npm.

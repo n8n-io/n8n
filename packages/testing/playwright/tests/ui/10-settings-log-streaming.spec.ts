@@ -10,8 +10,8 @@ const MODAL_MAX_WIDTH = 500;
 test.describe('Log Streaming Settings', () => {
 	test.describe.configure({ mode: 'serial' });
 	test.describe('unlicensed', () => {
-		test.beforeEach(async ({ api }) => {
-			await api.disableFeature('logStreaming');
+		test.beforeEach(async ({ n8n }) => {
+			await n8n.api.disableFeature('logStreaming');
 		});
 
 		test('should show the unlicensed view when the feature is disabled', async ({ n8n }) => {
@@ -23,8 +23,8 @@ test.describe('Log Streaming Settings', () => {
 	});
 
 	test.describe('licensed', () => {
-		test.beforeEach(async ({ api, n8n }) => {
-			await api.enableFeature('logStreaming');
+		test.beforeEach(async ({ n8n }) => {
+			await n8n.api.enableFeature('logStreaming');
 			await n8n.navigate.toLogStreaming();
 		});
 

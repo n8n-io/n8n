@@ -5,7 +5,7 @@ import N8nButton from './Button.vue';
 const slots = {
 	default: 'Button',
 };
-const stubs = ['n8n-spinner', 'n8n-icon'];
+const stubs = ['N8nSpinner', 'N8nIcon'];
 
 describe('components', () => {
 	describe('N8nButton', () => {

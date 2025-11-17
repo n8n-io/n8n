@@ -29,7 +29,7 @@ put:
     content:
       application/json:
         schema:
-          $ref: '../schemas/variable.yml'
+          $ref: '../schemas/variable.create.yml'
     required: true
   responses:
     '204':

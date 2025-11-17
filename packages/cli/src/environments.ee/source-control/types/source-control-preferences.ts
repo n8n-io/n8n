@@ -1,4 +1,4 @@
-import { IsBoolean, IsHexColor, IsOptional, IsString } from 'class-validator';
+import { IsBoolean, IsHexColor, IsOptional, IsString, IsIn } from 'class-validator';
 
 import { KeyPairType } from './key-pair-type';
 
@@ -34,6 +34,18 @@ export class SourceControlPreferences {
 	@IsString()
 	readonly keyGeneratorType?: KeyPairType;
 
+	@IsOptional()
+	@IsIn(['ssh', 'https'])
+	connectionType?: 'ssh' | 'https' = 'ssh';
+
+	@IsOptional()
+	@IsString()
+	httpsUsername?: string;
+
+	@IsOptional()
+	@IsString()
+	httpsPassword?: string;
+
 	static fromJSON(json: Partial<SourceControlPreferences>): SourceControlPreferences {
 		return new SourceControlPreferences(json);
 	}
@@ -49,6 +61,9 @@ export class SourceControlPreferences {
 			branchReadOnly: preferences.branchReadOnly ?? defaultPreferences.branchReadOnly,
 			branchColor: preferences.branchColor ?? defaultPreferences.branchColor,
 			keyGeneratorType: preferences.keyGeneratorType ?? defaultPreferences.keyGeneratorType,
+			connectionType: preferences.connectionType ?? defaultPreferences.connectionType,
+			httpsUsername: preferences.httpsUsername ?? defaultPreferences.httpsUsername,
+			httpsPassword: preferences.httpsPassword ?? defaultPreferences.httpsPassword,
 		});
 	}
 }

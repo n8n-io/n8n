@@ -1,18 +1,16 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import {
-	type Variables,
-	type TagEntity,
-	FolderRepository,
-	TagRepository,
-	type User,
-} from '@n8n/db';
+import { FolderRepository, type TagEntity, TagRepository, type User } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope } from '@n8n/permissions';
 import { UserError } from 'n8n-workflow';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { EventService } from '@/events/event.service';
+
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {
+	hasOwnerChanged,
 	getFoldersPath,
 	getTagsPath,
 	getTrackingInformationFromPrePushResult,
@@ -24,12 +22,11 @@ import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
+import type { ExportableProjectWithFileName } from './types/exportable-project';
+import { ExportableVariable } from './types/exportable-variable';
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
 import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
-
-import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
-import { EventService } from '@/events/event.service';
 
 @Service()
 export class SourceControlStatusService {
@@ -95,6 +92,14 @@ export class SourceControlStatusService {
 		const { foldersMissingInLocal, foldersMissingInRemote, foldersModifiedInEither } =
 			await this.getStatusFoldersMapping(options, context, sourceControlledFiles);
 
+		const {
+			projectsRemote,
+			projectsLocal,
+			projectsMissingInLocal,
+			projectsMissingInRemote,
+			projectsModifiedInEither,
+		} = await this.getStatusProjects(options, context, sourceControlledFiles);
+
 		// #region Tracking Information
 		if (options.direction === 'push') {
 			this.eventService.emit(
@@ -130,6 +135,11 @@ export class SourceControlStatusService {
 				foldersMissingInLocal,
 				foldersMissingInRemote,
 				foldersModifiedInEither,
+				projectsRemote,
+				projectsLocal,
+				projectsMissingInLocal,
+				projectsMissingInRemote,
+				projectsModifiedInEither,
 				sourceControlledFiles,
 			};
 		} else {
@@ -204,6 +214,7 @@ export class SourceControlStatusService {
 				let name =
 					(options?.preferLocalVersion ? localWorkflow?.name : remoteWorkflowWithSameId?.name) ??
 					'Workflow';
+
 				if (
 					localWorkflow.name &&
 					remoteWorkflowWithSameId?.name &&
@@ -213,6 +224,7 @@ export class SourceControlStatusService {
 						? `${localWorkflow.name} (Remote: ${remoteWorkflowWithSameId.name})`
 						: (name = `${remoteWorkflowWithSameId.name} (Local: ${localWorkflow.name})`);
 				}
+
 				wfModifiedInEither.push({
 					...localWorkflow,
 					name,
@@ -293,12 +305,18 @@ export class SourceControlStatusService {
 			(local) => credRemoteIds.findIndex((remote) => remote.id === local.id) === -1,
 		);
 
-		// only compares the name, since that is the only change synced for credentials
 		const credModifiedInEither: StatusExportableCredential[] = [];
 		credLocalIds.forEach((local) => {
+			// Compare name, type and owner since those are the synced properties for credentials
 			const mismatchingCreds = credRemoteIds.find((remote) => {
-				return remote.id === local.id && (remote.name !== local.name || remote.type !== local.type);
+				return (
+					remote.id === local.id &&
+					(remote.name !== local.name ||
+						remote.type !== local.type ||
+						hasOwnerChanged(remote.ownedBy, local.ownedBy))
+				);
 			});
+
 			if (mismatchingCreds) {
 				credModifiedInEither.push({
 					...local,
@@ -348,6 +366,7 @@ export class SourceControlStatusService {
 				owner: item.ownedBy,
 			});
 		});
+
 		return {
 			credMissingInLocal,
 			credMissingInRemote,
@@ -360,7 +379,7 @@ export class SourceControlStatusService {
 		sourceControlledFiles: SourceControlledFile[],
 	) {
 		const varRemoteIds = await this.sourceControlImportService.getRemoteVariablesFromFile();
-		const varLocalIds = await this.sourceControlImportService.getLocalVariablesFromDb();
+		const varLocalIds = await this.sourceControlImportService.getLocalGlobalVariablesFromDb();
 
 		const varMissingInLocal = varRemoteIds.filter(
 			(remote) => varLocalIds.findIndex((local) => local.id === remote.id) === -1,
@@ -370,7 +389,7 @@ export class SourceControlStatusService {
 			(local) => varRemoteIds.findIndex((remote) => remote.id === local.id) === -1,
 		);
 
-		const varModifiedInEither: Variables[] = [];
+		const varModifiedInEither: ExportableVariable[] = [];
 		varLocalIds.forEach((local) => {
 			const mismatchingIds = varRemoteIds.find(
 				(remote) =>
@@ -554,17 +573,50 @@ export class SourceControlStatusService {
 			(local) => foldersMappingsRemote.folders.findIndex((remote) => remote.id === local.id) === -1,
 		);
 
+		const allTeamProjects = await this.sourceControlImportService.getLocalTeamProjectsFromDb();
+
 		const foldersModifiedInEither: ExportableFolder[] = [];
+
 		foldersMappingsLocal.folders.forEach((local) => {
-			const mismatchingIds = foldersMappingsRemote.folders.find(
-				(remote) =>
-					remote.id === local.id &&
-					(remote.name !== local.name || remote.parentFolderId !== local.parentFolderId),
+			const localHomeProject = allTeamProjects.find(
+				(project) => project.id === local.homeProjectId,
 			);
+
+			const mismatchingIds = foldersMappingsRemote.folders.find((remote) => {
+				const remoteHomeProject = allTeamProjects.find(
+					(project) => project.id === remote.homeProjectId,
+				);
+
+				const localOwner = localHomeProject
+					? {
+							type: 'team' as const,
+							projectId: localHomeProject.id,
+							projectName: localHomeProject.name,
+						}
+					: undefined;
+
+				const remoteOwner = remoteHomeProject
+					? {
+							type: 'team' as const,
+							projectId: remoteHomeProject?.id,
+							projectName: remoteHomeProject?.name,
+						}
+					: undefined;
+
+				const ownerChanged = hasOwnerChanged(localOwner, remoteOwner);
+
+				return (
+					remote.id === local.id &&
+					(remote.name !== local.name ||
+						remote.parentFolderId !== local.parentFolderId ||
+						ownerChanged)
+				);
+			});
 
 			if (!mismatchingIds) {
 				return;
 			}
+
 			foldersModifiedInEither.push(options.preferLocalVersion ? local : mismatchingIds);
 		});
 
@@ -611,5 +663,211 @@ export class SourceControlStatusService {
 			foldersMissingInRemote,
 			foldersModifiedInEither,
 		};
+	}
+
+	private async getStatusProjects(
+		options: SourceControlGetStatus,
+		context: SourceControlContext,
+		sourceControlledFiles: SourceControlledFile[],
+	) {
+		const projectsRemote =
+			await this.sourceControlImportService.getRemoteProjectsFromFiles(context);
+		const projectsLocal = await this.sourceControlImportService.getLocalTeamProjectsFromDb(context);
+
+		let outOfScopeProjects: ExportableProjectWithFileName[] = [];
+
+		if (!context.hasAccessToAllProjects()) {
+			// we need to query for all projects in the DB to hide possible deletions,
+			// when a project went out of scope locally
+			outOfScopeProjects = await this.sourceControlImportService.getLocalTeamProjectsFromDb();
+			outOfScopeProjects = outOfScopeProjects.filter(
+				(project) => !projectsLocal.some((local) => local.id === project.id),
+			);
+		}
+
+		const projectsMissingInLocal = projectsRemote
+			.filter((remote) => !projectsLocal.some((local) => local.id === remote.id))
+			.filter(
+				// If we have out of scope projects, these are projects that are not
+				// visible locally, but exist locally and are available in remote
+				// we skip them and hide them from deletion from the user.
+				(remote) => !outOfScopeProjects.some((outOfScope) => outOfScope.id === remote.id),
+			);
+
+		// BACKWARD COMPATIBILITY: When there are no remote projects we can't safely delete local projects
+		// because we don't know if it's the first pull or if all team projects have been removed
+		// As a downside this means that it's not possible to delete all team projects via source control sync
+		const areRemoteProjectsEmpty = projectsRemote.length === 0;
+		let projectsMissingInRemote = projectsLocal.filter(
+			(local) => !projectsRemote.some((remote) => remote.id === local.id),
+		);
+		if (options.direction === 'pull' && areRemoteProjectsEmpty) {
+			projectsMissingInRemote = [];
+		}
+
+		const projectsModifiedInEither: ExportableProjectWithFileName[] = [];
+
+		projectsLocal.forEach((localProject) => {
+			const remoteProjectWithSameId = projectsRemote.find(
+				(remoteProject) => remoteProject.id === localProject.id,
+			);
+
+			if (!remoteProjectWithSameId) {
+				return;
+			}
+
+			if (this.isProjectModified(localProject, remoteProjectWithSameId)) {
+				let name =
+					(options?.preferLocalVersion ? localProject?.name : remoteProjectWithSameId?.name) ??
+					'Project';
+
+				if (
+					localProject.name &&
+					remoteProjectWithSameId?.name &&
+					localProject.name !== remoteProjectWithSameId.name
+				) {
+					name = options?.preferLocalVersion
+						? `${localProject.name} (Remote: ${remoteProjectWithSameId.name})`
+						: `${remoteProjectWithSameId.name} (Local: ${localProject.name})`;
+				}
+
+				projectsModifiedInEither.push({
+					...localProject,
+					name,
+					description: options.preferLocalVersion
+						? localProject.description
+						: remoteProjectWithSameId.description,
+					icon: options.preferLocalVersion ? localProject.icon : remoteProjectWithSameId.icon,
+					variableStubs: options.preferLocalVersion
+						? localProject.variableStubs
+						: remoteProjectWithSameId.variableStubs,
+				});
+			}
+		});
+
+		const mapExportableProjectWithFileNameToSourceControlledFile = ({
+			project,
+			status,
+			conflict,
+		}: {
+			project: ExportableProjectWithFileName;
+			status: SourceControlledFile['status'];
+			conflict: boolean;
+		}): SourceControlledFile => {
+			return {
+				id: project.id,
+				name: project.name ?? 'Project',
+				type: 'project',
+				status,
+				location: options.direction === 'push' ? 'local' : 'remote',
+				conflict,
+				file: project.filename,
+				updatedAt: new Date().toISOString(),
+				owner: {
+					type: project.owner.type,
+					projectId: project.owner.teamId,
+					projectName: project.owner.teamName,
+				},
+			};
+		};
+
+		projectsMissingInLocal.forEach((item) => {
+			sourceControlledFiles.push(
+				mapExportableProjectWithFileNameToSourceControlledFile({
+					project: item,
+					status: options.direction === 'push' ? 'deleted' : 'created',
+					conflict: false,
+				}),
+			);
+		});
+
+		projectsMissingInRemote.forEach((item) => {
+			sourceControlledFiles.push(
+				mapExportableProjectWithFileNameToSourceControlledFile({
+					project: item,
+					status: options.direction === 'push' ? 'created' : 'deleted',
+					conflict: options.direction === 'push' ? false : true,
+				}),
+			);
+		});
+
+		projectsModifiedInEither.forEach((item) => {
+			sourceControlledFiles.push(
+				mapExportableProjectWithFileNameToSourceControlledFile({
+					project: item,
+					status: 'modified',
+					conflict: true,
+				}),
+			);
+		});
+
+		return {
+			projectsRemote,
+			projectsLocal,
+			projectsMissingInLocal,
+			projectsMissingInRemote,
+			projectsModifiedInEither,
+		};
+	}
+
+	private areVariablesEqual(
+		localVariables: ExportableProjectWithFileName['variableStubs'],
+		remoteVariables: ExportableProjectWithFileName['variableStubs'],
+	): boolean {
+		if (Array.isArray(localVariables) !== Array.isArray(remoteVariables)) {
+			return false;
+		}
+
+		if (localVariables?.length !== remoteVariables?.length) {
+			return false;
+		}
+
+		const sortedLocalVars = [...(localVariables ?? [])].sort((a, b) => a.key.localeCompare(b.key));
+		const sortedRemoteVars = [...(remoteVariables ?? [])].sort((a, b) =>
+			a.key.localeCompare(b.key),
+		);
+
+		return sortedLocalVars.every((localVar, index) => {
+			const remoteVar = sortedRemoteVars[index];
+			return localVar.key === remoteVar.key && localVar.type === remoteVar.type;
+		});
+	}
+
+	private isProjectModified(
+		local: ExportableProjectWithFileName,
+		remote: ExportableProjectWithFileName,
+	): boolean {
+		const isIconModified = this.isProjectIconModified({
+			localIcon: local.icon,
+			remoteIcon: remote.icon,
+		});
+
+		return (
+			isIconModified ||
+			remote.type !== local.type ||
+			remote.name !== local.name ||
+			remote.description !== local.description ||
+			!this.areVariablesEqual(local.variableStubs, remote.variableStubs)
+		);
+	}
+
+	private isProjectIconModified({
+		localIcon,
+		remoteIcon,
+	}: {
+		localIcon: ExportableProjectWithFileName['icon'];
+		remoteIcon: ExportableProjectWithFileName['icon'];
+	}): boolean {
+		// If one has an icon and the other doesn't, it's modified
+		if (!remoteIcon && !!localIcon) return true;
+		if (!!remoteIcon && !localIcon) return true;
+
+		// If both have icons, compare their properties
+		if (!!remoteIcon && !!localIcon) {
+			return remoteIcon.type !== localIcon.type || remoteIcon.value !== localIcon.value;
+		}
+
+		// Neither has an icon, so no modification
+		return false;
 	}
 }

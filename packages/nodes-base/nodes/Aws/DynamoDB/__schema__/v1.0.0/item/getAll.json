@@ -1,9 +1,14 @@
 {
     "type": "object",
     "properties": {
-        "date": {
-            "type": "string"
+        "name": {
+            "type": "object",
+            "properties": {
+                "S": {
+                    "type": "string"
+                }
+            }
         }
     },
-    "version": 1
+    "version": 2
 }

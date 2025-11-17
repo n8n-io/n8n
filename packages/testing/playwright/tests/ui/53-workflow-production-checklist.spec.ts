@@ -30,14 +30,13 @@ test.describe('Workflow Production Checklist', () => {
 
 	test('should display evaluations action when AI node exists and feature is enabled', async ({
 		n8n,
-		api,
 	}) => {
-		await api.enableFeature('evaluation');
+		await n8n.api.enableFeature('evaluation');
 
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.addNode('OpenAI', { action: 'Create an assistant', closeNDV: true });
+		await n8n.canvas.addNode('OpenAI', { action: 'Message a model', closeNDV: true });
 
-		await n8n.canvas.nodeDisableButton('Create an assistant').click();
+		await n8n.canvas.nodeDisableButton('Message a model').click();
 
 		await n8n.canvas.saveWorkflow();
 		await n8n.canvas.activateWorkflow();

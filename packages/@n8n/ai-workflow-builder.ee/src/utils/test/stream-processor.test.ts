@@ -1,5 +1,4 @@
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
-import type { DynamicStructuredTool } from '@langchain/core/tools';
 
 import type {
 	AgentMessageChunk,
@@ -7,6 +6,7 @@ import type {
 	WorkflowUpdateChunk,
 	StreamOutput,
 } from '../../types/streaming';
+import type { BuilderToolBase } from '../stream-processor';
 import { processStreamChunk, createStreamProcessor, formatMessages } from '../stream-processor';
 
 describe('stream-processor', () => {
@@ -155,6 +155,35 @@ describe('stream-processor', () => {
 
 				expect(result).toBeNull();
 			});
+
+			it('should return null for chunks with invalid structure', () => {
+				const chunk = {
+					invalid: 'structure',
+					random: 'data',
+				};
+
+				const result = processStreamChunk('updates', chunk);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for null chunks', () => {
+				const result = processStreamChunk('updates', null);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for undefined chunks', () => {
+				const result = processStreamChunk('updates', undefined);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for primitive chunks', () => {
+				expect(processStreamChunk('updates', 'string')).toBeNull();
+				expect(processStreamChunk('updates', 123)).toBeNull();
+				expect(processStreamChunk('updates', true)).toBeNull();
+			});
 		});
 
 		describe('custom mode', () => {
@@ -190,6 +219,28 @@ describe('stream-processor', () => {
 				const result = processStreamChunk('custom', chunk);
 
 				expect(result).toBeNull();
+			});
+
+			it('should return null for chunks missing type property', () => {
+				const chunk = {
+					id: 'tool-1',
+					toolName: 'add_nodes',
+				};
+
+				const result = processStreamChunk('custom', chunk);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for null chunks in custom mode', () => {
+				const result = processStreamChunk('custom', null);
+
+				expect(result).toBeNull();
+			});
+
+			it('should return null for primitive values in custom mode', () => {
+				expect(processStreamChunk('custom', 'string')).toBeNull();
+				expect(processStreamChunk('custom', 123)).toBeNull();
 			});
 		});
 
@@ -271,6 +322,82 @@ describe('stream-processor', () => {
 				role: 'user',
 				type: 'message',
 				text: 'Hello from user',
+			});
+		});
+
+		it('should format HumanMessage with array content (multi-part messages)', () => {
+			const messages = [
+				new HumanMessage({
+					content: [
+						{ type: 'text', text: 'Part 1' },
+						{ type: 'text', text: 'Part 2' },
+						{ type: 'image_url', image_url: 'http://example.com/image.png' },
+					],
+				}),
+			];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Part 1\nPart 2',
+			});
+		});
+
+		it('should strip context tags from HumanMessage content', () => {
+			const messageWithContext = `User question here
+<current_workflow_json>
+{"nodes": [], "connections": {}}
+</current_workflow_json>
+<current_simplified_execution_data>
+{"runData": {}}
+</current_simplified_execution_data>
+<current_execution_nodes_schemas>
+[{"nodeName": "test"}]
+</current_execution_nodes_schemas>`;
+
+			const messages = [new HumanMessage(messageWithContext)];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'User question here',
+			});
+		});
+
+		it('should strip context tags from HumanMessage array content', () => {
+			const messages = [
+				new HumanMessage({
+					content: [
+						{
+							type: 'text',
+							text: `Workflow executed successfully.
+<current_workflow_json>
+{"nodes": []}
+</current_workflow_json>
+<current_simplified_execution_data>
+{"runData": {}}
+</current_simplified_execution_data>
+<current_execution_nodes_schemas>
+[{"nodeName": "Manual Trigger"}]
+</current_execution_nodes_schemas>`,
+						},
+					],
+				}),
+			];
+
+			const result = formatMessages(messages);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual({
+				role: 'user',
+				type: 'message',
+				text: 'Workflow executed successfully.',
 			});
 		});
 
@@ -557,13 +684,13 @@ describe('stream-processor', () => {
 		});
 
 		it('should use builder tool display titles', () => {
-			const builderTools = [
+			const builderTools: BuilderToolBase[] = [
 				{
-					tool: { name: 'add_nodes' } as DynamicStructuredTool,
+					toolName: 'add_nodes',
 					displayTitle: 'Add Node',
 				},
 				{
-					tool: { name: 'connect_nodes' } as DynamicStructuredTool,
+					toolName: 'connect_nodes',
 					displayTitle: 'Connect Nodes',
 				},
 			];
@@ -601,9 +728,9 @@ describe('stream-processor', () => {
 		});
 
 		it('should use custom display titles from builder tools', () => {
-			const builderTools = [
+			const builderTools: BuilderToolBase[] = [
 				{
-					tool: { name: 'add_nodes' } as DynamicStructuredTool,
+					toolName: 'add_nodes',
 					displayTitle: 'Add Node',
 					getCustomDisplayTitle: (values: Record<string, unknown>) =>
 						// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
@@ -645,9 +772,9 @@ describe('stream-processor', () => {
 		});
 
 		it('should handle custom display title when args is null/undefined', () => {
-			const builderTools = [
+			const builderTools: BuilderToolBase[] = [
 				{
-					tool: { name: 'clear_workflow' } as DynamicStructuredTool,
+					toolName: 'clear_workflow',
 					displayTitle: 'Clear Workflow',
 					getCustomDisplayTitle: (values: Record<string, unknown>) =>
 						`Custom: ${Object.keys(values).length} args`,
@@ -824,15 +951,15 @@ describe('stream-processor', () => {
 		});
 
 		it('should handle complex scenario with multiple message types and builder tools', () => {
-			const builderTools = [
+			const builderTools: BuilderToolBase[] = [
 				{
-					tool: { name: 'add_nodes' } as DynamicStructuredTool,
+					toolName: 'add_nodes',
 					displayTitle: 'Add Node',
 					// eslint-disable-next-line @typescript-eslint/restrict-template-expressions
 					getCustomDisplayTitle: (values: Record<string, unknown>) => `Add ${values.nodeType} Node`,
 				},
 				{
-					tool: { name: 'connect_nodes' } as DynamicStructuredTool,
+					toolName: 'connect_nodes',
 					displayTitle: 'Connect Nodes',
 				},
 			];

@@ -12,3 +12,15 @@ export type Credential = {
 	name: string;
 	type: string;
 };
+
+export type DataTableColumn = {
+	name: string;
+	type: 'string' | 'number' | 'boolean' | 'date';
+};
+
+export type DataTable = {
+	id?: string;
+	projectId?: number;
+	name: string;
+	columns: DataTableColumn[];
+};

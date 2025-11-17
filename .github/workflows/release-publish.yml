@@ -20,10 +20,13 @@ jobs:
 
       - name: Setup and Build ARM64
         uses: ./.github/actions/setup-nodejs-blacksmith
+        env:
+          N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
 
   publish-to-npm:
     name: Publish to NPM
     runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
     timeout-minutes: 20
     permissions:
       id-token: write
@@ -40,6 +43,8 @@ jobs:
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs-github
+        env:
+          N8N_FAIL_ON_POPULARITY_FETCH_ERROR: true
 
       - name: Dry-run publishing
         run: |

@@ -98,9 +98,9 @@ describe('ActiveWorkflowManager', () => {
 				expect(result).toBe(true);
 			});
 
-			test('should return `false` for `leadershipChange`', () => {
+			test('should return `true` for `leadershipChange`', () => {
 				const result = activeWorkflowManager.shouldAddWebhooks('leadershipChange');
-				expect(result).toBe(false);
+				expect(result).toBe(true);
 			});
 
 			test('should return `true` for `update` or `activate`', () => {

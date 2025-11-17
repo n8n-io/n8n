@@ -2,9 +2,8 @@
 import { ElTooltip } from 'element-plus';
 import type { PropType } from 'vue';
 
-import type { IN8nButton } from '@n8n/design-system/types';
-
 import { useInjectTooltipAppendTo } from '../../composables/useTooltipAppendTo';
+import type { IN8nButton } from '../../types';
 import N8nButton from '../N8nButton';
 
 export type Justify =
@@ -72,7 +71,7 @@ const appendTo = useInjectTooltipAppendTo();
 .buttons {
 	display: flex;
 	align-items: center;
-	margin-top: var(--spacing-s);
-	gap: var(--spacing-2xs);
+	margin-top: var(--spacing--sm);
+	gap: var(--spacing--2xs);
 }
 </style>

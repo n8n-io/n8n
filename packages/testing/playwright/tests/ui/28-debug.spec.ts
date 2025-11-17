@@ -17,8 +17,8 @@ test.describe('Debug mode', () => {
 		DATA_NOT_IMPORTED: "Some execution data wasn't imported",
 	};
 
-	test.beforeEach(async ({ api, n8n }) => {
-		await api.enableFeature('debugInEditor');
+	test.beforeEach(async ({ n8n }) => {
+		await n8n.api.enableFeature('debugInEditor');
 		await n8n.goHome();
 	});
 

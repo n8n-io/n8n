@@ -5,7 +5,7 @@ export class MicrosoftSql implements ICredentialType {
 
 	displayName = 'Microsoft SQL';
 
-	documentationUrl = 'microsoftSql';
+	documentationUrl = 'microsoftsql';
 
 	properties: INodeProperties[] = [
 		{

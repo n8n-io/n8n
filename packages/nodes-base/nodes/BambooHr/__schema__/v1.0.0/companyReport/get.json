@@ -6,7 +6,7 @@
             "items": {
                 "type": "object",
                 "properties": {
-                    "hireDate": {
+                    "fullName2": {
                         "type": "string"
                     },
                     "id": {
@@ -33,5 +33,5 @@
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

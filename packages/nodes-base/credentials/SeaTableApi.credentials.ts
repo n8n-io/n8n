@@ -21,7 +21,7 @@ export class SeaTableApi implements ICredentialType {
 
 	displayName = 'SeaTable API';
 
-	documentationUrl = 'seaTable';
+	documentationUrl = 'seatable';
 
 	properties: INodeProperties[] = [
 		{

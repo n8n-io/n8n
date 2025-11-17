@@ -18,6 +18,7 @@ import type {
 	IBinaryData,
 	INodeProperties,
 } from 'n8n-workflow';
+import * as a from 'node:assert';
 
 import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
@@ -219,8 +220,8 @@ export class ChatTrigger extends Node {
 		icon: 'fa:comments',
 		iconColor: 'black',
 		group: ['trigger'],
-		version: [1, 1.1, 1.2, 1.3],
-		defaultVersion: 1.3,
+		version: [1, 1.1, 1.2, 1.3, 1.4],
+		defaultVersion: 1.4,
 		description: 'Runs the workflow when an n8n generated webchat is submitted',
 		defaults: {
 			name: 'When chat message received',
@@ -393,6 +394,49 @@ export class ChatTrigger extends Node {
 				description: 'Default messages shown at the start of the chat, one per line',
 			},
 			{
+				// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+				displayName: 'Make Available in n8n Chat',
+				name: 'availableInChat',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: 'Whether to make the agent available in n8n Chat',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.4 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Agent Name',
+				name: 'agentName',
+				type: 'string',
+				default: '',
+				noDataExpression: true,
+				description: 'The name of the agent on n8n Chat',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+					},
+				},
+			},
+			{
+				displayName: 'Agent Description',
+				name: 'agentDescription',
+				type: 'string',
+				typeOptions: {
+					rows: 2,
+				},
+				default: '',
+				noDataExpression: true,
+				description: 'The description of the agent on n8n Chat',
+				displayOptions: {
+					show: {
+						availableInChat: [true],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				type: 'collection',
@@ -523,6 +567,7 @@ export class ChatTrigger extends Node {
 
 	private async handleFormData(context: IWebhookFunctions) {
 		const req = context.getRequestObject() as MultiPartFormData.Request;
+		a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 		const { data, files } = req.body;
 

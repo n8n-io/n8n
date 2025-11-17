@@ -1,3 +1,4 @@
+import { FREE_AI_CREDITS_CREDENTIAL_NAME, STREAM_SEPARATOR } from '@/constants';
 import type { CreateCredentialDto } from '@n8n/api-types';
 import {
 	AiChatRequestDto,
@@ -6,16 +7,16 @@ import {
 	AiFreeCreditsRequestDto,
 	AiBuilderChatRequestDto,
 	AiSessionRetrievalRequestDto,
+	AiSessionMetadataResponseDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
-import { Body, Post, RestController } from '@n8n/decorators';
+import { Body, Get, Licensed, Post, RestController } from '@n8n/decorators';
 import { type AiAssistantSDK, APIResponseError } from '@n8n_io/ai-assistant-sdk';
 import { Response } from 'express';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
 import { WritableStream } from 'node:stream/web';
 
-import { FREE_AI_CREDITS_CREDENTIAL_NAME } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ContentTooLargeError } from '@/errors/response-errors/content-too-large.error';
@@ -39,6 +40,7 @@ export class AiController {
 	// Use usesTemplates flag to bypass the send() wrapper which would cause
 	// "Cannot set headers after they are sent" error for streaming responses.
 	// This ensures errors during streaming are handled within the stream itself.
+	@Licensed('feat:aiBuilder')
 	@Post('/build', { rateLimit: { limit: 100 }, usesTemplates: true })
 	async build(
 		req: AuthenticatedRequest,
@@ -61,6 +63,7 @@ export class AiController {
 						currentWorkflow: workflowContext.currentWorkflow,
 						executionData: workflowContext.executionData,
 						executionSchema: workflowContext.executionSchema,
+						expressionValues: workflowContext.expressionValues,
 					},
 				},
 				req.user,
@@ -73,7 +76,7 @@ export class AiController {
 				// Handle the stream
 				for await (const chunk of aiResponse) {
 					res.flush();
-					res.write(JSON.stringify(chunk) + '⧉⇋⇋➽⌑⧉§§\n');
+					res.write(JSON.stringify(chunk) + STREAM_SEPARATOR);
 				}
 			} catch (streamError) {
 				// If an error occurs during streaming, send it as part of the stream
@@ -90,7 +93,7 @@ export class AiController {
 						},
 					],
 				};
-				res.write(JSON.stringify(errorChunk) + '⧉⇋⇋➽⌑⧉§§\n');
+				res.write(JSON.stringify(errorChunk) + STREAM_SEPARATOR);
 			} finally {
 				// Clean up event listener
 				res.off('close', handleClose);
@@ -207,6 +210,7 @@ export class AiController {
 		}
 	}
 
+	@Licensed('feat:aiBuilder')
 	@Post('/sessions', { rateLimit: { limit: 100 } })
 	async getSessions(
 		req: AuthenticatedRequest,
@@ -216,6 +220,39 @@ export class AiController {
 		try {
 			const sessions = await this.workflowBuilderService.getSessions(payload.workflowId, req.user);
 			return sessions;
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiBuilder')
+	@Post('/sessions/metadata', { rateLimit: { limit: 100 } })
+	async getSessionsMetadata(
+		req: AuthenticatedRequest,
+		_: Response,
+		@Body payload: AiSessionRetrievalRequestDto,
+	): Promise<AiSessionMetadataResponseDto> {
+		try {
+			const metadata = await this.workflowBuilderService.getSessionsMetadata(
+				payload.workflowId,
+				req.user,
+			);
+			return metadata;
+		} catch (e) {
+			assert(e instanceof Error);
+			throw new InternalServerError(e.message, e);
+		}
+	}
+
+	@Licensed('feat:aiBuilder')
+	@Get('/build/credits')
+	async getBuilderCredits(
+		req: AuthenticatedRequest,
+		_: Response,
+	): Promise<AiAssistantSDK.BuilderInstanceCreditsResponse> {
+		try {
+			return await this.workflowBuilderService.getBuilderInstanceCredits(req.user);
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);

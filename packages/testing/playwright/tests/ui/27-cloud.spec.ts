@@ -32,17 +32,6 @@ const cloudTrialRequirements = {
 	},
 };
 
-const firstVisitRequirements: TestRequirements = {
-	...cloudTrialRequirements,
-};
-
-const subsequentVisitRequirements: TestRequirements = {
-	...cloudTrialRequirements,
-	storage: {
-		'n8n-trial-visit-count': '1',
-	},
-};
-
 const setupCloudTest = async (
 	n8n: n8nPage,
 	setupRequirements: (requirements: TestRequirements) => Promise<void>,
@@ -54,14 +43,8 @@ const setupCloudTest = async (
 
 test.describe('Cloud @db:reset @auth:owner', () => {
 	test.describe('Trial Banner', () => {
-		test('should not render trial banner on first visit', async ({ n8n, setupRequirements }) => {
-			await setupCloudTest(n8n, setupRequirements, firstVisitRequirements);
-			await n8n.start.fromBlankCanvas();
-			await expect(n8n.sideBar.getTrialBanner()).toBeHidden();
-		});
-
-		test('should render trial banner on subsequent visits', async ({ n8n, setupRequirements }) => {
-			await setupCloudTest(n8n, setupRequirements, subsequentVisitRequirements);
+		test('should render trial banner for opt-in cloud user', async ({ n8n, setupRequirements }) => {
+			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
 
@@ -89,17 +72,16 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 
 			await n8n.page.waitForLoadState();
 
-			await expect(n8n.settings.getUpgradeCta()).toBeVisible();
+			await expect(n8n.settingsPersonal.getUpgradeCta()).toBeVisible();
 		});
 	});
 
 	test.describe('Easy AI workflow experiment', () => {
 		test('should not show option to take you to the easy AI workflow if experiment is control', async ({
 			n8n,
-			api,
 			setupRequirements,
 		}) => {
-			await api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'control' });
+			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'control' });
 
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.navigate.toWorkflows();
@@ -109,10 +91,9 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 
 		test('should show option to take you to the easy AI workflow if experiment is variant', async ({
 			n8n,
-			api,
 			setupRequirements,
 		}) => {
-			await api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
+			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
 
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.navigate.toWorkflows();
@@ -122,10 +103,9 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 
 		test('should show default instructions if free AI credits experiment is control', async ({
 			n8n,
-			api,
 			setupRequirements,
 		}) => {
-			await api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
+			await n8n.api.setEnvFeatureFlags({ '026_easy_ai_workflow': 'variant' });
 
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.navigate.toWorkflows();

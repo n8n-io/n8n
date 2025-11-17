@@ -53,6 +53,7 @@ export async function setupPostgres({
 			'com.docker.compose.service': 'postgres',
 		})
 		.withName(`${projectName}-postgres`)
+		.withAddedCapabilities('NET_ADMIN') // Allows us to drop IP tables and block traffic
 		.withReuse()
 		.start();
 
@@ -389,6 +390,3 @@ export async function setupTaskRunner({
 		return throwWithLogs(error);
 	}
 }
-
-// TODO: Look at Ollama container?
-// TODO: Look at MariaDB container?

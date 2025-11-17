@@ -5,7 +5,7 @@ import FormData from 'form-data';
 import merge from 'lodash/merge';
 
 import { ALPHABET } from './constants';
-import { ExecutionCancelledError } from './errors/execution-cancelled.error';
+import { ManualExecutionCancelledError } from './errors/execution-cancelled.error';
 import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
 import * as LoggerProxy from './logger-proxy';
 
@@ -211,7 +211,7 @@ export const sleep = async (ms: number): Promise<void> =>
 export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Promise<void> =>
 	await new Promise((resolve, reject) => {
 		if (abortSignal?.aborted) {
-			reject(new ExecutionCancelledError(''));
+			reject(new ManualExecutionCancelledError(''));
 			return;
 		}
 
@@ -219,7 +219,7 @@ export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Pro
 
 		const abortHandler = () => {
 			clearTimeout(timeout);
-			reject(new ExecutionCancelledError(''));
+			reject(new ManualExecutionCancelledError(''));
 		};
 
 		abortSignal?.addEventListener('abort', abortHandler, { once: true });
@@ -371,18 +371,30 @@ export function isDomainAllowed(
 
 	try {
 		const url = new URL(urlString);
-		const hostname = url.hostname;
+
+		// Normalize hostname: lowercase and remove trailing dot
+		const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+
+		// Reject empty hostnames
+		if (!hostname) {
+			return false;
+		}
 
 		const allowedDomainsList = options.allowedDomains
 			.split(',')
-			.map((domain) => domain.trim())
+			.map((domain) => domain.trim().toLowerCase().replace(/\.$/, ''))
 			.filter(Boolean);
 
 		for (const allowedDomain of allowedDomainsList) {
 			// Handle wildcard domains (*.example.com)
 			if (allowedDomain.startsWith('*.')) {
-				const domainSuffix = allowedDomain.substring(2); // Remove the *. part
-				if (hostname.endsWith(domainSuffix)) {
+				const domainSuffix = allowedDomain.substring(2);
+				// Ensure the suffix itself is valid
+				if (!domainSuffix) continue;
+
+				// Wildcard matches only subdomains, not the base domain itself
+				// *.example.com matches sub.example.com but NOT example.com
+				if (hostname.endsWith('.' + domainSuffix)) {
 					return true;
 				}
 			}
@@ -397,4 +409,14 @@ export function isDomainAllowed(
 		// If URL parsing fails, deny access to be safe
 		return false;
 	}
+}
+
+const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+
+export function isCommunityPackageName(packageName: string): boolean {
+	COMMUNITY_PACKAGE_NAME_REGEX.lastIndex = 0;
+	// Community packages names start with <@username/>n8n-nodes- not followed by word 'base'
+	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
+
+	return !!nameMatch;
 }

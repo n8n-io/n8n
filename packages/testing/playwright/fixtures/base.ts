@@ -1,4 +1,6 @@
-import { test as base, expect } from '@playwright/test';
+import type { CurrentsFixtures, CurrentsWorkerFixtures } from '@currents/playwright';
+import { fixtures as currentsFixtures } from '@currents/playwright';
+import { test as base, expect, request } from '@playwright/test';
 import type { N8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { createN8NStack } from 'n8n-containers/n8n-test-container-creation';
 import { ContainerTestHelpers } from 'n8n-containers/n8n-test-container-helpers';
@@ -24,6 +26,7 @@ type WorkerFixtures = {
 	chaos: ContainerTestHelpers;
 	n8nContainer: N8NStack;
 	containerConfig: ContainerConfig;
+	addContainerCapability: ContainerConfig;
 };
 
 interface ContainerConfig {
@@ -35,6 +38,12 @@ interface ContainerConfig {
 	env?: Record<string, string>;
 	proxyServerEnabled?: boolean;
 	taskRunner?: boolean;
+	sourceControl?: boolean;
+	email?: boolean;
+	resourceQuota?: {
+		memory?: number; // in GB
+		cpu?: number; // in cores
+	};
 }
 
 /**
@@ -42,21 +51,42 @@ interface ContainerConfig {
  * Supports both external n8n instances (via N8N_BASE_URL) and containerized testing.
  * Provides tag-driven authentication and database management.
  */
-export const test = base.extend<TestFixtures, WorkerFixtures>({
+export const test = base.extend<
+	TestFixtures & CurrentsFixtures,
+	WorkerFixtures & CurrentsWorkerFixtures
+>({
+	...currentsFixtures.baseFixtures,
+	...currentsFixtures.coverageFixtures,
+	...currentsFixtures.actionFixtures,
+
+	// Add a container capability to the test e.g proxy server, task runner, etc
+	addContainerCapability: [
+		async ({}, use) => {
+			await use({});
+		},
+		{ scope: 'worker', box: true },
+	],
+
 	// Container configuration from the project use options
 	containerConfig: [
-		async ({}, use, workerInfo) => {
-			const config =
-				(workerInfo.project.use as unknown as { containerConfig?: ContainerConfig })
-					?.containerConfig ?? {};
-			config.env = {
-				...config.env,
-				E2E_TESTS: 'true',
+		async ({ addContainerCapability }, use, workerInfo) => {
+			const projectConfig = workerInfo.project.use as { containerConfig?: ContainerConfig };
+			const baseConfig = projectConfig?.containerConfig ?? {};
+
+			// Build merged configuration
+			const merged: ContainerConfig = {
+				...baseConfig,
+				...addContainerCapability,
+				env: {
+					...baseConfig.env,
+					...addContainerCapability.env,
+					E2E_TESTS: 'true',
+				},
 			};
 
-			await use(config);
+			await use(merged);
 		},
-		{ scope: 'worker' },
+		{ scope: 'worker', box: true },
 	],
 
 	// Create a new n8n container if N8N_BASE_URL is not set, otherwise use the existing n8n instance
@@ -77,7 +107,7 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 			await use(container);
 			await container.stop();
 		},
-		{ scope: 'worker' },
+		{ scope: 'worker', box: true },
 	],
 
 	// Set the n8n URL for based on the N8N_BASE_URL environment variable or the n8n container
@@ -91,13 +121,13 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 
 	// Reset the database for the new container
 	dbSetup: [
-		async ({ n8nUrl, n8nContainer, browser }, use) => {
+		async ({ n8nUrl, n8nContainer }, use) => {
 			if (n8nContainer) {
 				console.log('Resetting database for new container');
-				const context = await browser.newContext({ baseURL: n8nUrl });
-				const api = new ApiHelpers(context.request);
+				const apiContext = await request.newContext({ baseURL: n8nUrl });
+				const api = new ApiHelpers(apiContext);
 				await api.resetDatabase();
-				await context.close();
+				await apiContext.dispose();
 			}
 			await use(undefined);
 		},
@@ -118,46 +148,33 @@ export const test = base.extend<TestFixtures, WorkerFixtures>({
 		{ scope: 'worker' },
 	],
 
-	baseURL: async ({ n8nUrl }, use) => {
+	baseURL: async ({ n8nUrl, dbSetup }, use) => {
+		void dbSetup; // Ensure dbSetup runs first
 		await use(n8nUrl);
 	},
 
-	// Browser, baseURL, and dbSetup are required here to ensure they run first.
-	// This is how Playwright does dependency graphs
-	context: async ({ context, browser, baseURL, dbSetup }, use) => {
-		// Dependencies: browser, baseURL, dbSetup (ensure they run first)
-		void browser;
-		void baseURL;
-		void dbSetup;
-
+	n8n: async ({ context }, use, testInfo) => {
 		await setupDefaultInterceptors(context);
-		await use(context);
-	},
-
-	page: async ({ context }, use, testInfo) => {
 		const page = await context.newPage();
-		const api = new ApiHelpers(context.request);
-
-		await api.setupFromTags(testInfo.tags);
-
-		await use(page);
-		await page.close();
-	},
-
-	n8n: async ({ page, api }, use) => {
-		const n8nInstance = new n8nPage(page, api);
+		const n8nInstance = new n8nPage(page);
+		await n8nInstance.api.setupFromTags(testInfo.tags);
+		// Enable project features for the tests, this is used in several tests, but is never disabled in tests, so we can have it on by default
+		await n8nInstance.start.withProjectFeatures();
 		await use(n8nInstance);
 	},
 
-	api: async ({ context }, use, testInfo) => {
-		const api = new ApiHelpers(context.request);
+	// This is a completely isolated API context for tests that don't need the browser
+	api: async ({ baseURL }, use, testInfo) => {
+		const context = await request.newContext({ baseURL });
+		const api = new ApiHelpers(context);
 		await api.setupFromTags(testInfo.tags);
 		await use(api);
+		await context.dispose();
 	},
 
-	setupRequirements: async ({ page, context }, use) => {
+	setupRequirements: async ({ n8n, context }, use) => {
 		const setupFunction = async (requirements: TestRequirements): Promise<void> => {
-			await setupTestRequirements(page, context, requirements);
+			await setupTestRequirements(n8n, context, requirements);
 		};
 
 		await use(setupFunction);
@@ -193,5 +210,9 @@ export { expect };
 /*
 Dependency Graph:
 Worker Scope: containerConfig → n8nContainer → [n8nUrl, chaos] → dbSetup
-Test Scope: n8nUrl → baseURL → context → page → [n8n, api]
+Test Scope:
+  - UI Stream: dbSetup → baseURL → context → page → n8n
+  - API Stream: dbSetup → baseURL → api
+Note: baseURL depends on dbSetup to ensure database is ready before tests run
+Both streams are independent after baseURL, allowing for pure API tests or combined UI+API tests
 */

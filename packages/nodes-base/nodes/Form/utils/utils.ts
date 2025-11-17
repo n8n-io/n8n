@@ -1,5 +1,6 @@
 import type { Response } from 'express';
 import isbot from 'isbot';
+import * as a from 'node:assert';
 import { DateTime } from 'luxon';
 import type {
 	INodeExecutionData,
@@ -352,6 +353,8 @@ export async function prepareFormReturnItem(
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
 ) {
+	const req = context.getRequestObject() as MultiPartFormData.Request;
+	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
 	const files = (context.getBodyData().files as IDataObject) ?? {};
 

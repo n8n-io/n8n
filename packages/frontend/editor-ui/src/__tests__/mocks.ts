@@ -27,11 +27,12 @@ import {
 	SET_NODE_TYPE,
 	SIMULATE_NODE_TYPE,
 	STICKY_NODE_TYPE,
-} from '@/constants';
-import type { IExecutionResponse, INodeUi, IWorkflowDb } from '@/Interface';
-import { CanvasNodeRenderType } from '@/types';
+} from '@/app/constants';
+import type { INodeUi, IWorkflowDb } from '@/Interface';
+import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
+import { CanvasNodeRenderType } from '@/features/workflows/canvas/canvas.types';
 import type { FrontendSettings } from '@n8n/api-types';
-import type { ExpressionLocalResolveContext } from '@/types/expressions';
+import type { ExpressionLocalResolveContext } from '@/app/types/expressions';
 
 export const mockNode = ({
 	id = uuid(),
@@ -236,6 +237,7 @@ export function createMockEnterpriseSettings(
 		ldap: false,
 		saml: false,
 		oidc: false,
+		provisioning: false,
 		mfaEnforcement: false,
 		logStreaming: false,
 		advancedExecutionFilters: false,
@@ -246,7 +248,6 @@ export function createMockEnterpriseSettings(
 		showNonProdBanner: false,
 		debugInEditor: false,
 		binaryDataS3: false,
-		workflowHistory: false,
 		workerView: false,
 		advancedPermissions: false,
 		apiKeyScopes: false,
@@ -256,6 +257,7 @@ export function createMockEnterpriseSettings(
 				limit: 0,
 			},
 		},
+		customRoles: false,
 		...overrides, // Override with any passed properties
 	};
 }

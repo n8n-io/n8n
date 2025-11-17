@@ -3,9 +3,10 @@ import { test, expect } from '../../fixtures/base';
 test.describe
 	.serial('Worker View', () => {
 		test.describe('unlicensed', () => {
-			test.beforeEach(async ({ api }) => {
-				await api.disableFeature('workerView');
-				await api.setQueueMode(false);
+			test.beforeEach(async ({ n8n }) => {
+				await n8n.api.disableFeature('workerView');
+				await n8n.api.disableFeature('workerView');
+				await n8n.api.setQueueMode(false);
 			});
 
 			test('should not show up in the menu sidebar', async ({ n8n }) => {
@@ -20,9 +21,9 @@ test.describe
 		});
 
 		test.describe('licensed', () => {
-			test.beforeEach(async ({ api }) => {
-				await api.enableFeature('workerView');
-				await api.setQueueMode(true);
+			test.beforeEach(async ({ n8n }) => {
+				await n8n.api.enableFeature('workerView');
+				await n8n.api.setQueueMode(true);
 			});
 
 			test('should show up in the menu sidebar', async ({ n8n }) => {

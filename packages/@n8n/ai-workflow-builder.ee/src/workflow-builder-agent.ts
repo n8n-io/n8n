@@ -1,9 +1,10 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { ToolMessage } from '@langchain/core/messages';
 import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import type { ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import { StateGraph, MemorySaver, END, GraphRecursionError } from '@langchain/langgraph';
+import type { MemorySaver } from '@langchain/langgraph';
+import { StateGraph, END, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import {
 	ApplicationError,
@@ -18,35 +19,122 @@ import {
 	MAX_AI_BUILDER_PROMPT_LENGTH,
 	MAX_INPUT_TOKENS,
 } from '@/constants';
-import { createGetNodeParameterTool } from '@/tools/get-node-parameter.tool';
 import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
-import { createAddNodeTool } from './tools/add-node.tool';
-import { createConnectNodesTool } from './tools/connect-nodes.tool';
-import { createNodeDetailsTool } from './tools/node-details.tool';
-import { createNodeSearchTool } from './tools/node-search.tool';
+import { SessionManagerService } from './session-manager.service';
+import { getBuilderTools } from './tools/builder-tools';
 import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
-import { createRemoveNodeTool } from './tools/remove-node.tool';
-import { createUpdateNodeParametersTool } from './tools/update-node-parameters.tool';
 import type { SimpleWorkflow } from './types/workflow';
+import {
+	applyCacheControlMarkers,
+	cleanStaleWorkflowContext,
+	findUserToolMessageIndices,
+} from './utils/cache-control/helpers';
+import { cleanupDanglingToolCallMessages } from './utils/cleanup-dangling-tool-call-messages';
 import { processOperations } from './utils/operations-processor';
-import { createStreamProcessor, formatMessages, type BuilderTool } from './utils/stream-processor';
-import { estimateTokenCountFromMessages, extractLastTokenUsage } from './utils/token-usage';
+import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
+import { estimateTokenCountFromMessages } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
+
+/**
+ * Determines which node to execute next based on the current state.
+ * This function decides if the workflow should:
+ * - Compact messages (manual or auto)
+ * - Delete messages
+ * - Create a workflow name
+ * - Continue to agent
+ */
+export function shouldModifyState(
+	state: typeof WorkflowState.State,
+	autoCompactThresholdTokens: number,
+):
+	| 'compact_messages'
+	| 'delete_messages'
+	| 'create_workflow_name'
+	| 'auto_compact_messages'
+	| 'agent' {
+	const { messages, workflowContext } = state;
+	const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!; // There always should be at least one human message in the array
+
+	if (lastHumanMessage.content === '/compact') {
+		return 'compact_messages';
+	}
+
+	if (lastHumanMessage.content === '/clear') {
+		return 'delete_messages';
+	}
+
+	// If the workflow is empty (no nodes) and the name is using the default pattern
+	// (e.g., "My workflow" or "My workflow 1"), we consider it initial generation request
+	// and auto-generate a name for the workflow.
+	const workflowName = workflowContext?.currentWorkflow?.name;
+	const nodesLength = workflowContext?.currentWorkflow?.nodes?.length ?? 0;
+	const isDefaultName = !workflowName || /^My workflow( \d+)?$/.test(workflowName);
+	if (isDefaultName && nodesLength === 0 && messages.length === 1) {
+		return 'create_workflow_name';
+	}
+
+	const workflowContextToAppend = getWorkflowContext(state);
+
+	// Check if we should auto-compact based on token count
+	const estimatedTokens = estimateTokenCountFromMessages([
+		...messages,
+		// appended later to last message
+		new HumanMessage(workflowContextToAppend),
+	]);
+	if (estimatedTokens > autoCompactThresholdTokens) {
+		return 'auto_compact_messages';
+	}
+
+	return 'agent';
+}
+
+function getWorkflowContext(state: typeof WorkflowState.State) {
+	const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
+	const executionData = state.workflowContext?.executionData ?? {};
+	const executionSchema = state.workflowContext?.executionSchema ?? [];
+	const workflowContext = [
+		'',
+		'<current_workflow_json>',
+		JSON.stringify(trimmedWorkflow),
+		'</current_workflow_json>',
+		'<trimmed_workflow_json_note>',
+		'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
+		'Use get_node_parameter tool to get full details when needed.',
+		'</trimmed_workflow_json_note>',
+		'',
+		'<current_simplified_execution_data>',
+		JSON.stringify(executionData),
+		'</current_simplified_execution_data>',
+		'',
+		'<current_execution_nodes_schemas>',
+		JSON.stringify(executionSchema),
+		'</current_execution_nodes_schemas>',
+	].join('\n');
+
+	return workflowContext;
+}
 
 export interface WorkflowBuilderAgentConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llmSimpleTask: BaseChatModel;
 	llmComplexTask: BaseChatModel;
 	logger?: Logger;
-	checkpointer?: MemorySaver;
+	checkpointer: MemorySaver;
 	tracer?: LangChainTracer;
 	autoCompactThresholdTokens?: number;
 	instanceUrl?: string;
+	onGenerationSuccess?: () => Promise<void>;
+}
+
+export interface ExpressionValue {
+	expression: string;
+	resolvedValue: unknown;
+	nodeType?: string;
 }
 
 export interface ChatPayload {
@@ -55,6 +143,7 @@ export interface ChatPayload {
 		executionSchema?: NodeExecutionSchema[];
 		currentWorkflow?: Partial<IWorkflowBase>;
 		executionData?: IRunExecutionData['resultData'];
+		expressionValues?: Record<string, ExpressionValue[]>;
 	};
 }
 
@@ -67,34 +156,28 @@ export class WorkflowBuilderAgent {
 	private tracer?: LangChainTracer;
 	private autoCompactThresholdTokens: number;
 	private instanceUrl?: string;
+	private onGenerationSuccess?: () => Promise<void>;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
 		this.llmSimpleTask = config.llmSimpleTask;
 		this.llmComplexTask = config.llmComplexTask;
 		this.logger = config.logger;
-		this.checkpointer = config.checkpointer ?? new MemorySaver();
+		this.checkpointer = config.checkpointer;
 		this.tracer = config.tracer;
 		this.autoCompactThresholdTokens =
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
 		this.instanceUrl = config.instanceUrl;
+		this.onGenerationSuccess = config.onGenerationSuccess;
 	}
 
 	private getBuilderTools(): BuilderTool[] {
-		return [
-			createNodeSearchTool(this.parsedNodeTypes),
-			createNodeDetailsTool(this.parsedNodeTypes),
-			createAddNodeTool(this.parsedNodeTypes),
-			createConnectNodesTool(this.parsedNodeTypes, this.logger),
-			createRemoveNodeTool(this.logger),
-			createUpdateNodeParametersTool(
-				this.parsedNodeTypes,
-				this.llmComplexTask,
-				this.logger,
-				this.instanceUrl,
-			),
-			createGetNodeParameterTool(),
-		];
+		return getBuilderTools({
+			parsedNodeTypes: this.parsedNodeTypes,
+			instanceUrl: this.instanceUrl,
+			llmComplexTask: this.llmComplexTask,
+			logger: this.logger,
+		});
 	}
 
 	private createWorkflow() {
@@ -116,13 +199,27 @@ export class WorkflowBuilderAgent {
 				});
 			}
 
+			const hasPreviousSummary = state.previousSummary && state.previousSummary !== 'EMPTY';
+
 			const prompt = await mainAgentPrompt.invoke({
 				...state,
 				workflowJSON: trimWorkflowJSON(state.workflowJSON),
 				executionData: state.workflowContext?.executionData ?? {},
 				executionSchema: state.workflowContext?.executionSchema ?? [],
+				resolvedExpressions: state.workflowContext?.expressionValues,
 				instanceUrl: this.instanceUrl,
+				previousSummary: hasPreviousSummary ? state.previousSummary : '',
 			});
+
+			const workflowContext = getWorkflowContext(state);
+
+			// Optimize prompts for Anthropic's caching by:
+			// 1. Finding all user/tool message positions (cache breakpoints)
+			// 2. Removing stale workflow context from old messages
+			// 3. Adding current workflow context and cache markers to recent messages
+			const userToolIndices = findUserToolMessageIndices(prompt.messages);
+			cleanStaleWorkflowContext(prompt.messages, userToolIndices);
+			applyCacheControlMarkers(prompt.messages, userToolIndices, workflowContext);
 
 			const estimatedTokens = estimateTokenCountFromMessages(prompt.messages);
 
@@ -137,48 +234,8 @@ export class WorkflowBuilderAgent {
 			return { messages: [response] };
 		};
 
-		const shouldAutoCompact = ({ messages }: typeof WorkflowState.State) => {
-			const tokenUsage = extractLastTokenUsage(messages);
-
-			if (!tokenUsage) {
-				this.logger?.debug('No token usage metadata found');
-				return false;
-			}
-
-			const tokensUsed = tokenUsage.input_tokens + tokenUsage.output_tokens;
-
-			this.logger?.debug('Token usage', {
-				inputTokens: tokenUsage.input_tokens,
-				outputTokens: tokenUsage.output_tokens,
-				totalTokens: tokensUsed,
-			});
-
-			return tokensUsed > this.autoCompactThresholdTokens;
-		};
-
-		const shouldModifyState = (state: typeof WorkflowState.State) => {
-			const { messages, workflowContext } = state;
-			const lastHumanMessage = messages.findLast((m) => m instanceof HumanMessage)!; // There always should be at least one human message in the array
-
-			if (lastHumanMessage.content === '/compact') {
-				return 'compact_messages';
-			}
-
-			if (lastHumanMessage.content === '/clear') {
-				return 'delete_messages';
-			}
-
-			// If the workflow is empty (no nodes),
-			// we consider it initial generation request and auto-generate a name for the workflow.
-			if (workflowContext?.currentWorkflow?.nodes?.length === 0 && messages.length === 1) {
-				return 'create_workflow_name';
-			}
-
-			if (shouldAutoCompact(state)) {
-				return 'auto_compact_messages';
-			}
-
-			return 'agent';
+		const shouldModifyStateInternal = (state: typeof WorkflowState.State) => {
+			return shouldModifyState(state, this.autoCompactThresholdTokens);
 		};
 
 		const shouldContinue = ({ messages }: typeof WorkflowState.State) => {
@@ -186,6 +243,13 @@ export class WorkflowBuilderAgent {
 
 			if (lastMessage.tool_calls?.length) {
 				return 'tools';
+			}
+
+			// Call success callback when agent finishes without tool calls (successful generation)
+			if (this.onGenerationSuccess) {
+				void Promise.resolve(this.onGenerationSuccess()).catch((error) => {
+					this.logger?.warn('Failed to execute onGenerationSuccess callback', { error });
+				});
 			}
 			return END;
 		};
@@ -224,10 +288,6 @@ export class WorkflowBuilderAgent {
 			const { messages, previousSummary } = state;
 			const lastHumanMessage = messages[messages.length - 1] satisfies HumanMessage;
 			const isAutoCompact = lastHumanMessage.content !== '/compact';
-
-			this.logger?.debug('Compacting conversation history', {
-				isAutoCompact,
-			});
 
 			const compactedMessages = await conversationCompactChain(
 				this.llmSimpleTask,
@@ -285,6 +345,24 @@ export class WorkflowBuilderAgent {
 			return {};
 		};
 
+		/**
+		 * Cleans up dangling tool calls from the state
+		 * that might have been left due to unexpected interruptions during tool execution.
+		 */
+		const cleanupDanglingToolCalls = (state: typeof WorkflowState.State) => {
+			const messagesToRemove = cleanupDanglingToolCallMessages(state.messages);
+
+			if (messagesToRemove.length > 0) {
+				this.logger?.warn('Cleaning up dangling tool call messages', {
+					messagesToRemove: messagesToRemove.map((m) => m.id),
+				});
+			}
+
+			return {
+				messages: messagesToRemove,
+			};
+		};
+
 		const workflow = new StateGraph(WorkflowState)
 			.addNode('agent', callModel)
 			.addNode('tools', customToolExecutor)
@@ -293,7 +371,9 @@ export class WorkflowBuilderAgent {
 			.addNode('compact_messages', compactSession)
 			.addNode('auto_compact_messages', compactSession)
 			.addNode('create_workflow_name', createWorkflowName)
-			.addConditionalEdges('__start__', shouldModifyState)
+			.addNode('cleanup_dangling_tool_calls', cleanupDanglingToolCalls)
+			.addEdge('__start__', 'cleanup_dangling_tool_calls')
+			.addConditionalEdges('cleanup_dangling_tool_calls', shouldModifyStateInternal)
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent')
 			.addEdge('auto_compact_messages', 'agent')
@@ -311,12 +391,6 @@ export class WorkflowBuilderAgent {
 		return await agent.getState({
 			configurable: { thread_id: `workflow-${workflowId}-user-${userId ?? new Date().getTime()}` },
 		});
-	}
-
-	static generateThreadId(workflowId?: string, userId?: string) {
-		return workflowId
-			? `workflow-${workflowId}-user-${userId ?? new Date().getTime()}`
-			: crypto.randomUUID();
 	}
 
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
@@ -363,7 +437,7 @@ export class WorkflowBuilderAgent {
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
-		const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 		const threadConfig: RunnableConfig = {
 			configurable: {
 				thread_id: threadId,
@@ -440,7 +514,7 @@ export class WorkflowBuilderAgent {
 
 			// Handle abort errors gracefully
 			const abortedAiMessage = new AIMessage({
-				content: '[Task aborted]',
+				content: 'Task aborted',
 				id: crypto.randomUUID(),
 			});
 			// TODO: Should we clear tool calls that are in progress?
@@ -481,44 +555,5 @@ export class WorkflowBuilderAgent {
 		}
 
 		return undefined;
-	}
-
-	async getSessions(workflowId: string | undefined, userId?: string) {
-		// For now, we'll return the current session if we have a workflowId
-		// MemorySaver doesn't expose a way to list all threads, so we'll need to
-		// track this differently if we want to list all sessions
-		const sessions = [];
-
-		if (workflowId) {
-			const threadId = WorkflowBuilderAgent.generateThreadId(workflowId, userId);
-			const threadConfig: RunnableConfig = {
-				configurable: {
-					thread_id: threadId,
-				},
-			};
-
-			try {
-				// Try to get the checkpoint for this thread
-				const checkpoint = await this.checkpointer.getTuple(threadConfig);
-
-				if (checkpoint?.checkpoint) {
-					const messages =
-						(checkpoint.checkpoint.channel_values?.messages as Array<
-							AIMessage | HumanMessage | ToolMessage
-						>) ?? [];
-
-					sessions.push({
-						sessionId: threadId,
-						messages: formatMessages(messages, this.getBuilderTools()),
-						lastUpdated: checkpoint.checkpoint.ts,
-					});
-				}
-			} catch (error) {
-				// Thread doesn't exist yet
-				this.logger?.debug('No session found for workflow:', { workflowId, error });
-			}
-		}
-
-		return { sessions };
 	}
 }

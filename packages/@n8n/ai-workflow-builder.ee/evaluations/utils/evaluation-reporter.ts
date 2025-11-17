@@ -1,6 +1,9 @@
 import Table from 'cli-table3';
 import pc from 'picocolors';
 
+import type { ProgrammaticViolation } from '@/validation/types';
+
+import { aggregateCacheStats, formatCacheStats } from './cache-analyzer.js';
 import {
 	formatColoredScore,
 	formatHeader,
@@ -10,7 +13,7 @@ import {
 	formatViolationType,
 } from './evaluation-helpers.js';
 import type { Violation } from '../types/evaluation.js';
-import type { TestResult } from '../types/test-result.js';
+import type { TestResult, CacheStatistics } from '../types/test-result.js';
 
 /**
  * Generates a markdown report from evaluation results
@@ -30,6 +33,13 @@ export function generateMarkdownReport(
 ): string {
 	const { totalTests, successfulTests, averageScore, categoryAverages, violationCounts } = metrics;
 
+	// Calculate aggregate cache statistics
+	const cacheStats = results
+		.map((r) => r.cacheStats)
+		.filter((r): r is CacheStatistics => r !== undefined);
+
+	const aggregateCache = cacheStats.length > 0 ? aggregateCacheStats(cacheStats) : null;
+
 	let report = `# AI Workflow Builder Evaluation Report
 
 ## Summary
@@ -43,24 +53,50 @@ export function generateMarkdownReport(
 - Connections: ${formatPercentage(categoryAverages.connections)}
 - Expressions: ${formatPercentage(categoryAverages.expressions)}
 - Node Configuration: ${formatPercentage(categoryAverages.nodeConfiguration)}
+- Best Practices: ${formatPercentage(categoryAverages.bestPractices ?? 0)}
 
 ## Violations Summary
 - Critical: ${violationCounts.critical}
 - Major: ${violationCounts.major}
 - Minor: ${violationCounts.minor}
 
-## Detailed Results
+`;
+
+	// Add cache statistics section if available
+	if (aggregateCache) {
+		const formatted = formatCacheStats(aggregateCache);
+		report += `## Prompt Caching Statistics
+- Input Tokens: ${formatted.inputTokens}
+- Output Tokens: ${formatted.outputTokens}
+- Cache Creation Tokens: ${formatted.cacheCreationTokens}
+- Cache Read Tokens: ${formatted.cacheReadTokens}
+- Cache Hit Rate: ${formatted.cacheHitRate}
+
+`;
+	}
+
+	report += `## Detailed Results
 
 `;
 
 	results.forEach((result) => {
+		const techniques = result.evaluationResult.bestPractices.techniques ?? [];
+		const techniquesDisplay = techniques.length > 0 ? techniques.join(', ') : 'None identified';
+
 		report += `### ${result.testCase.name} (${result.testCase.id})
 - **Score**: ${formatPercentage(result.evaluationResult.overallScore)}
 - **Generation Time**: ${result.generationTime}ms
 - **Nodes Generated**: ${result.generatedWorkflow.nodes.length}
+- **Techniques**: ${techniquesDisplay}
 - **Summary**: ${result.evaluationResult.summary}
 
 `;
+
+		// Add cache stats for this test if available
+		if (result.cacheStats) {
+			const formatted = formatCacheStats(result.cacheStats);
+			report += `- **Cache Hit Rate**: ${formatted.cacheHitRate}`;
+		}
 
 		if (
 			result.evaluationResult.criticalIssues &&
@@ -89,6 +125,10 @@ export function generateMarkdownReport(
 			...result.evaluationResult.nodeConfiguration.violations.map((v) => ({
 				...v,
 				category: 'Node Configuration',
+			})),
+			...result.evaluationResult.bestPractices.violations.map((v) => ({
+				...v,
+				category: 'Best Practices',
 			})),
 		];
 
@@ -122,11 +162,36 @@ export function displayTestResults(
 		if (result) {
 			const status = result.error ? 'fail' : 'pass';
 			const badge = formatStatusBadge(status);
-			const score = result.error ? 'N/A' : formatColoredScore(result.evaluationResult.overallScore);
+			const llmScore = result.error
+				? 'N/A'
+				: formatColoredScore(result.evaluationResult.overallScore);
+			const progScore = result.error
+				? 'N/A'
+				: formatColoredScore(result.programmaticEvaluationResult.overallScore);
 			console.log(`  ${badge} ${formatTestName(testCase.name, testCase.id)}`);
 			console.log(
-				`     Score: ${score} | Nodes: ${result.generatedWorkflow?.nodes?.length} | Time: ${result.generationTime}ms`,
+				`     LLM Score: ${llmScore} | Prog Score: ${progScore} | Nodes: ${result.generatedWorkflow?.nodes?.length} | Time: ${result.generationTime}ms`,
 			);
+
+			// Display techniques if available
+			if (
+				!result.error &&
+				result.evaluationResult.bestPractices.techniques &&
+				result.evaluationResult.bestPractices.techniques.length > 0
+			) {
+				const techniques = result.evaluationResult.bestPractices.techniques.join(', ');
+				console.log(`     ${pc.dim('Techniques:')} ${pc.cyan(techniques)}`);
+			}
+
+			// Display best practices score
+			if (!result.error) {
+				const bpScore = formatColoredScore(result.evaluationResult.bestPractices.score);
+				const bpViolations = result.evaluationResult.bestPractices.violations.length;
+				console.log(
+					`     ${pc.dim('Best Practices:')} ${bpScore} ${pc.dim(`(${bpViolations} violations)`)}`,
+				);
+			}
+
 			if (result.error) {
 				console.log(`     ${pc.red('Error:')} ${pc.dim(result.error)}`);
 			}
@@ -136,20 +201,26 @@ export function displayTestResults(
 
 /**
  * Displays the evaluation summary table
- * @param results - Array of test results
  * @param metrics - Calculated metrics
  */
-export function displaySummaryTable(
-	_results: TestResult[],
-	metrics: {
-		totalTests: number;
-		successfulTests: number;
-		averageScore: number;
-		categoryAverages: Record<string, number>;
-		violationCounts: { critical: number; major: number; minor: number };
-	},
-): void {
-	const { totalTests, successfulTests, averageScore, categoryAverages, violationCounts } = metrics;
+export function displaySummaryTable(metrics: {
+	totalTests: number;
+	successfulTests: number;
+	averageScore: number;
+	categoryAverages: Record<string, number>;
+	violationCounts: { critical: number; major: number; minor: number };
+	programmaticAverages?: Record<string, number>;
+	programmaticViolationCounts?: { critical: number; major: number; minor: number };
+}): void {
+	const {
+		totalTests,
+		successfulTests,
+		averageScore,
+		categoryAverages,
+		violationCounts,
+		programmaticAverages,
+		programmaticViolationCounts,
+	} = metrics;
 	const failedTests = totalTests - successfulTests;
 
 	const summaryTable = new Table({
@@ -161,24 +232,115 @@ export function displaySummaryTable(
 		['Total Tests', totalTests.toString()],
 		['Successful', pc.green(successfulTests.toString())],
 		['Failed', failedTests > 0 ? pc.red(failedTests.toString()) : '0'],
-		['Average Score', formatColoredScore(averageScore)],
 		[pc.dim('─'.repeat(20)), pc.dim('─'.repeat(20))],
-		['Functionality', formatColoredScore(categoryAverages.functionality)],
-		['Connections', formatColoredScore(categoryAverages.connections)],
-		['Expressions', formatColoredScore(categoryAverages.expressions)],
-		['Node Config', formatColoredScore(categoryAverages.nodeConfiguration)],
-		[pc.dim('─'.repeat(20)), pc.dim('─'.repeat(20))],
+		[pc.magenta('LLM Evaluation'), ''],
+		['  Overall Score', formatColoredScore(averageScore)],
+		['  Functionality', formatColoredScore(categoryAverages.functionality)],
+		['  Connections', formatColoredScore(categoryAverages.connections)],
+		['  Expressions', formatColoredScore(categoryAverages.expressions)],
+		['  Node Config', formatColoredScore(categoryAverages.nodeConfiguration)],
+		['  Best Practices', formatColoredScore(categoryAverages.bestPractices ?? 0)],
+		['  Violations', ''],
 		[
-			'Critical Issues',
+			'    Critical',
 			violationCounts.critical > 0 ? pc.red(violationCounts.critical.toString()) : '0',
 		],
-		['Major Issues', violationCounts.major > 0 ? pc.yellow(violationCounts.major.toString()) : '0'],
-		['Minor Issues', pc.dim(violationCounts.minor.toString())],
+		['    Major', violationCounts.major > 0 ? pc.yellow(violationCounts.major.toString()) : '0'],
+		['    Minor', pc.dim(violationCounts.minor.toString())],
 	);
+
+	// Add programmatic evaluation section if available
+	if (programmaticAverages && programmaticViolationCounts) {
+		summaryTable.push(
+			[pc.dim('─'.repeat(20)), pc.dim('─'.repeat(20))],
+			[pc.cyan('Programmatic'), ''],
+			['  Overall Score', formatColoredScore(programmaticAverages.overall)],
+			['  Connections', formatColoredScore(programmaticAverages.connections)],
+			['  Trigger', formatColoredScore(programmaticAverages.trigger)],
+			['  Agent Prompt', formatColoredScore(programmaticAverages.agentPrompt)],
+			['  Tools', formatColoredScore(programmaticAverages.tools)],
+			['  FromAI', formatColoredScore(programmaticAverages.fromAi)],
+			['  Violations', ''],
+			[
+				'    Critical',
+				programmaticViolationCounts.critical > 0
+					? pc.red(programmaticViolationCounts.critical.toString())
+					: '0',
+			],
+			[
+				'    Major',
+				programmaticViolationCounts.major > 0
+					? pc.yellow(programmaticViolationCounts.major.toString())
+					: '0',
+			],
+			['    Minor', pc.dim(programmaticViolationCounts.minor.toString())],
+		);
+	}
 
 	console.log();
 	console.log(formatHeader('Summary', 70));
 	console.log(summaryTable.toString());
+}
+
+/**
+ * Displays cache statistics table
+ * @param results - Array of test results
+ */
+export function displayCacheStatistics(results: TestResult[]): void {
+	const resultsWithCache = results.filter((r) => r.cacheStats !== undefined);
+
+	if (resultsWithCache.length === 0) return;
+
+	const cacheStats = resultsWithCache.map((r) => r.cacheStats!);
+	const aggregateCache = aggregateCacheStats(cacheStats);
+	const formatted = formatCacheStats(aggregateCache);
+
+	console.log();
+	console.log(formatHeader('Prompt Caching Statistics', 70));
+
+	// Determine cache quality color function
+	const hitRateColor = (rate: number) => (rate > 0.6 ? pc.green : rate > 0.3 ? pc.yellow : pc.red);
+
+	// Aggregate statistics table
+	const aggregateTable = new Table({
+		head: ['Aggregate Metric', 'Value'],
+		style: { head: ['cyan'] },
+	});
+
+	aggregateTable.push(
+		['Input Tokens', formatted.inputTokens],
+		['Output Tokens', formatted.outputTokens],
+		['Cache Creation', formatted.cacheCreationTokens],
+		['Cache Read', formatted.cacheReadTokens],
+		[pc.dim('─'.repeat(25)), pc.dim('─'.repeat(25))],
+		['Cache Hit Rate', hitRateColor(aggregateCache.cacheHitRate)(formatted.cacheHitRate)],
+	);
+
+	console.log(aggregateTable.toString());
+
+	// Per-test breakdown table
+	console.log();
+	console.log(pc.cyan('Per-Test Breakdown:'));
+
+	const perTestTable = new Table({
+		head: ['Test Name', 'Hit Rate', 'Cache Reads'],
+		style: { head: ['cyan'] },
+	});
+
+	resultsWithCache.forEach((result) => {
+		const stats = result.cacheStats!;
+		const testName =
+			result.testCase.name.length > 30
+				? result.testCase.name.substring(0, 27) + '...'
+				: result.testCase.name;
+		const hitRate = (stats.cacheHitRate * 100).toFixed(1) + '%';
+		const hitRateColored = hitRateColor(stats.cacheHitRate)(hitRate);
+		const cacheReads = stats.cacheReadTokens.toLocaleString();
+
+		perTestTable.push([testName, hitRateColored, cacheReads]);
+	});
+
+	console.log(perTestTable.toString());
 }
 
 /**
@@ -190,29 +352,80 @@ export function displayViolationsDetail(results: TestResult[]): void {
 	const allViolations: Array<{
 		violation: Violation & { category: string };
 		testName: string;
+		source: 'llm' | 'programmatic';
 	}> = [];
 
 	results.forEach((result) => {
 		if (!result.error) {
-			const testViolations = [
-				...result.evaluationResult.functionality.violations.map((v) => ({
-					violation: { ...v, category: 'Functionality' },
+			// LLM evaluation violations
+			const llmViolations = [
+				...result.evaluationResult.functionality.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Functionality' },
 					testName: result.testCase.name,
+					source: 'llm' as const,
 				})),
-				...result.evaluationResult.connections.violations.map((v) => ({
-					violation: { ...v, category: 'Connections' },
+				...result.evaluationResult.connections.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Connections (LLM)' },
 					testName: result.testCase.name,
+					source: 'llm' as const,
 				})),
-				...result.evaluationResult.expressions.violations.map((v) => ({
-					violation: { ...v, category: 'Expressions' },
+				...result.evaluationResult.expressions.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Expressions' },
 					testName: result.testCase.name,
+					source: 'llm' as const,
 				})),
-				...result.evaluationResult.nodeConfiguration.violations.map((v) => ({
-					violation: { ...v, category: 'Node Config' },
+				...result.evaluationResult.nodeConfiguration.violations.map((violation: Violation) => ({
+					violation: { ...violation, category: 'Node Config' },
 					testName: result.testCase.name,
+					source: 'llm' as const,
+				})),
+				...result.evaluationResult.bestPractices.violations.map((v) => ({
+					violation: { ...v, category: 'Best Practices' },
+					testName: result.testCase.name,
+					source: 'llm' as const,
 				})),
 			];
-			allViolations.push.apply(allViolations, testViolations);
+
+			// Programmatic evaluation violations
+			const progViolations = [
+				...result.programmaticEvaluationResult.connections.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Connections' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.trigger.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Trigger' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.agentPrompt.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Agent Prompt' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.tools.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'Tools' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+				...result.programmaticEvaluationResult.fromAi.violations.map(
+					(violation: ProgrammaticViolation) => ({
+						violation: { ...violation, category: 'FromAI' },
+						testName: result.testCase.name,
+						source: 'programmatic' as const,
+					}),
+				),
+			];
+
+			allViolations.push(...llmViolations, ...progViolations);
 		}
 	});
 
@@ -230,9 +443,10 @@ export function displayViolationsDetail(results: TestResult[]): void {
 	if (criticalViolations.length > 0) {
 		console.log();
 		console.log(pc.red('Critical Violations:'));
-		criticalViolations.forEach(({ violation, testName }) => {
+		criticalViolations.forEach(({ violation, testName, source }) => {
+			const sourceLabel = source === 'programmatic' ? pc.cyan('[PROG]') : pc.magenta('[LLM]');
 			console.log(
-				`  ${formatViolationType('critical')} [${violation.category}] ${violation.description}`,
+				`  ${formatViolationType('critical')} ${sourceLabel} [${violation.category}] ${violation.description}`,
 			);
 			console.log(`     ${pc.dim(`Test: ${testName} | Points: -${violation.pointsDeducted}`)}`);
 		});
@@ -242,9 +456,10 @@ export function displayViolationsDetail(results: TestResult[]): void {
 	if (majorViolations.length > 0) {
 		console.log();
 		console.log(pc.yellow('Major Violations:'));
-		majorViolations.forEach(({ violation, testName }) => {
+		majorViolations.forEach(({ violation, testName, source }) => {
+			const sourceLabel = source === 'programmatic' ? pc.cyan('[PROG]') : pc.magenta('[LLM]');
 			console.log(
-				`  ${formatViolationType('major')} [${violation.category}] ${violation.description}`,
+				`  ${formatViolationType('major')} ${sourceLabel} [${violation.category}] ${violation.description}`,
 			);
 			console.log(`     ${pc.dim(`Test: ${testName} | Points: -${violation.pointsDeducted}`)}`);
 		});
@@ -254,9 +469,10 @@ export function displayViolationsDetail(results: TestResult[]): void {
 	if (minorViolations.length > 0) {
 		console.log();
 		console.log(pc.gray('Minor Violations:'));
-		minorViolations.forEach(({ violation, testName }) => {
+		minorViolations.forEach(({ violation, testName, source }) => {
+			const sourceLabel = source === 'programmatic' ? pc.cyan('[PROG]') : pc.magenta('[LLM]');
 			console.log(
-				`  ${formatViolationType('minor')} [${violation.category}] ${violation.description}`,
+				`  ${formatViolationType('minor')} ${sourceLabel} [${violation.category}] ${violation.description}`,
 			);
 			console.log(`     ${pc.dim(`Test: ${testName} | Points: -${violation.pointsDeducted}`)}`);
 		});

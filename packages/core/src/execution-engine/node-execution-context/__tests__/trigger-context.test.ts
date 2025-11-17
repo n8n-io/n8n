@@ -93,4 +93,10 @@ describe('TriggerContext', () => {
 			expect(parameter).toBe('fallback');
 		});
 	});
+
+	describe('getExecutionContext', () => {
+		it('should return undefined', () => {
+			expect(triggerContext.getExecutionContext()).toBeUndefined();
+		});
+	});
 });

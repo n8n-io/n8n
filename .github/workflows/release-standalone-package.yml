@@ -11,6 +11,7 @@ on:
           - '@n8n/node-cli'
           - '@n8n/create-node'
           - '@n8n/scan-community-package'
+          - '@n8n/eslint-plugin-community-nodes'
 
 concurrency:
   group: release-package-${{ github.event.inputs.package }}

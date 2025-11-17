@@ -1,9 +1,9 @@
 import { test, expect } from '../../fixtures/base';
 
 test.describe('OAuth Credentials', () => {
-	test('should create and connect with Google OAuth2', async ({ n8n, page }) => {
+	test('should create and connect with Google OAuth2', async ({ n8n }) => {
 		const projectId = await n8n.start.fromNewProjectBlankCanvas();
-		await page.goto(`projects/${projectId}/credentials`);
+		await n8n.navigate.toCredentials(projectId);
 		await n8n.credentials.emptyListCreateCredentialButton.click();
 		await n8n.credentials.createCredentialFromCredentialPicker(
 			'Google OAuth2 API',
@@ -14,7 +14,7 @@ test.describe('OAuth Credentials', () => {
 			{ closeDialog: false },
 		);
 
-		const popupPromise = page.waitForEvent('popup');
+		const popupPromise = n8n.page.waitForEvent('popup');
 		await n8n.credentials.credentialModal.oauthConnectButton.click();
 
 		const popup = await popupPromise;
@@ -24,7 +24,7 @@ test.describe('OAuth Credentials', () => {
 
 		await popup.close();
 
-		await page.evaluate(() => {
+		await n8n.page.evaluate(() => {
 			const channel = new BroadcastChannel('oauth-callback');
 			channel.postMessage('success');
 		});

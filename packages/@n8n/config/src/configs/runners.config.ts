@@ -25,7 +25,7 @@ export class TaskRunnersConfig {
 	@Env('N8N_RUNNERS_AUTH_TOKEN')
 	authToken: string = '';
 
-	/** IP address task runners broker should listen on */
+	/** Port task runners broker should listen on */
 	@Env('N8N_RUNNERS_BROKER_PORT')
 	port: number = 5679;
 
@@ -58,6 +58,14 @@ export class TaskRunnersConfig {
 	 */
 	@Env('N8N_RUNNERS_TASK_TIMEOUT')
 	taskTimeout: number = 300; // 5 minutes
+
+	/**
+	 * How long (in seconds) a task request can wait for a runner to become
+	 * available before timing out. This prevents workflows from hanging
+	 * indefinitely when no runners are available. Must be greater than 0.
+	 */
+	@Env('N8N_RUNNERS_TASK_REQUEST_TIMEOUT')
+	taskRequestTimeout: number = 60;
 
 	/** How often (in seconds) the runner must send a heartbeat to the broker, else the task will be aborted. (In internal mode, the runner will also  be restarted.) Must be greater than 0. */
 	@Env('N8N_RUNNERS_HEARTBEAT_INTERVAL')

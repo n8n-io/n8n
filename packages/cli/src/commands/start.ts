@@ -33,6 +33,8 @@ import { WaitTracker } from '@/wait-tracker';
 import { WorkflowRunner } from '@/workflow-runner';
 
 import { BaseCommand } from './base-command';
+import { CredentialsOverwrites } from '@/credentials-overwrites';
+import { DeprecationService } from '@/deprecation/deprecation.service';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -99,7 +101,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 				await Container.get(MultiMainSetup).shutdown();
 			}
 
-			if (config.getEnv('executions.mode') === 'queue') {
+			if (this.globalConfig.executions.mode === 'queue') {
 				Container.get(Publisher).shutdown();
 				Container.get(Subscriber).shutdown();
 			}
@@ -191,7 +193,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.initCrashJournal();
 
 		this.logger.info('Initializing n8n process');
-		if (config.getEnv('executions.mode') === 'queue') {
+		if (this.globalConfig.executions.mode === 'queue') {
 			const scopedLogger = this.logger.scoped('scaling');
 			scopedLogger.debug('Starting main instance in scaling mode');
 			scopedLogger.debug(`Host ID: ${this.instanceSettings.hostId}`);
@@ -199,10 +201,12 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		await super.init();
 
+		Container.get(DeprecationService).warn();
+
 		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 		const isMultiMainEnabled =
-			config.getEnv('executions.mode') === 'queue' && this.globalConfig.multiMainSetup.enabled;
+			this.globalConfig.executions.mode === 'queue' && this.globalConfig.multiMainSetup.enabled;
 
 		this.instanceSettings.setMultiMainEnabled(isMultiMainEnabled);
 
@@ -213,7 +217,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		 */
 		if (isMultiMainEnabled) this.instanceSettings.setMultiMainLicensed(true);
 
-		if (config.getEnv('executions.mode') === 'regular') {
+		if (this.globalConfig.executions.mode === 'regular') {
 			this.instanceSettings.markAsLeader();
 		} else {
 			await this.initOrchestration();
@@ -227,6 +231,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(WaitTracker).init();
 		this.logger.debug('Wait tracker init complete');
+		await Container.get(CredentialsOverwrites).init();
+		this.logger.debug('Credentials overwrites init complete');
 		await this.initBinaryDataService();
 		this.logger.debug('Binary data service init complete');
 		await this.initDataDeduplicationService();
@@ -334,7 +340,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(ExecutionsPruningService).init();
 
-		if (config.getEnv('executions.mode') === 'regular') {
+		if (this.globalConfig.executions.mode === 'regular') {
 			await this.runEnqueuedExecutions();
 		}
 

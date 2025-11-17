@@ -20,7 +20,6 @@ export class CredentialsComposer {
 			await this.n8n.navigate.toCredentials();
 		}
 
-		// Open the "new credential" chooser: open add resource -> credential
 		await this.n8n.credentials.addResource.credential();
 		await this.n8n.credentials.createCredentialFromCredentialPicker(credentialType, fields, {
 			name: options?.name,
@@ -47,6 +46,20 @@ export class CredentialsComposer {
 	 * Create a credential directly via API. Returns created credential object.
 	 */
 	async createFromApi(payload: CreateCredentialDto & { projectId?: string }) {
-		return await this.n8n.api.credentialApi.createCredential(payload);
+		return await this.n8n.api.credentials.createCredential(payload);
+	}
+
+	/**
+	 * Moves a credential to a different project.
+	 * @param credentialName - The name of the credential to move
+	 * @param projectNameOrEmail - The destination project name or user email
+	 */
+	async moveToProject(credentialName: string, projectNameOrEmail: string): Promise<void> {
+		const credentialCard = this.n8n.credentials.cards.getCredential(credentialName);
+		await this.n8n.credentials.cards.openCardActions(credentialCard);
+		await this.n8n.credentials.cards.getCardAction('move').click();
+		await this.n8n.resourceMoveModal.getProjectSelectCredential().locator('input').click();
+		await this.n8n.resourceMoveModal.selectProjectOption(projectNameOrEmail);
+		await this.n8n.resourceMoveModal.clickMoveCredentialButton();
 	}
 }

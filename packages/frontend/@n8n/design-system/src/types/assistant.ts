@@ -7,6 +7,11 @@ export namespace ChatUI {
 		codeSnippet?: string;
 	}
 
+	export interface TaskAbortedMessage extends Omit<TextMessage, 'role' | 'codeSnippet'> {
+		role: 'assistant';
+		aborted: true;
+	}
+
 	export interface SummaryBlock {
 		role: 'assistant';
 		type: 'block';
@@ -107,6 +112,7 @@ export namespace ChatUI {
 
 	export type AssistantMessage = (
 		| TextMessage
+		| TaskAbortedMessage
 		| MessagesWithReplies
 		| ErrorMessage
 		| EndSessionMessage
@@ -131,7 +137,13 @@ export type RatingFeedback = { rating?: 'up' | 'down'; feedback?: string };
 export function isTextMessage(
 	msg: ChatUI.AssistantMessage,
 ): msg is ChatUI.TextMessage & { id?: string; read?: boolean; quickReplies?: ChatUI.QuickReply[] } {
-	return msg.type === 'text';
+	return msg.type === 'text' && !('aborted' in msg);
+}
+
+export function isTaskAbortedMessage(
+	msg: ChatUI.AssistantMessage,
+): msg is ChatUI.TaskAbortedMessage & { id?: string; read?: boolean } {
+	return msg.type === 'text' && 'aborted' in msg && msg.aborted;
 }
 
 export function isSummaryBlock(msg: ChatUI.AssistantMessage): msg is ChatUI.SummaryBlock & {
@@ -207,4 +219,11 @@ export function hasRequiredProps<T extends ChatUI.AssistantMessage>(
 	msg: T,
 ): msg is T & { id: string; read: boolean } {
 	return typeof msg.id === 'string' && typeof msg.read === 'boolean';
+}
+
+// Workflow suggestion interface for the N8nPromptInputSuggestions component
+export interface WorkflowSuggestion {
+	id: string;
+	summary: string;
+	prompt: string;
 }

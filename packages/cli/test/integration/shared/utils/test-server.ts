@@ -260,7 +260,7 @@ export const setupTestServer = ({
 						break;
 
 					case 'workflowHistory':
-						await import('@/workflows/workflow-history.ee/workflow-history.controller.ee');
+						await import('@/workflows/workflow-history/workflow-history.controller');
 						break;
 
 					case 'binaryData':
@@ -308,6 +308,10 @@ export const setupTestServer = ({
 
 					case 'data-table':
 						await import('@/modules/data-table/data-table.module');
+						break;
+
+					case 'mcp':
+						await import('@/modules/mcp/mcp.module');
 						break;
 
 					case 'module-settings':

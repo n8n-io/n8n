@@ -1,6 +1,6 @@
 import { ALPHABET } from '../src/constants';
 import { ApplicationError } from '@n8n/errors';
-import { ExecutionCancelledError } from '../src/errors/execution-cancelled.error';
+import { ManualExecutionCancelledError } from '../src/errors/execution-cancelled.error';
 import {
 	jsonParse,
 	jsonStringify,
@@ -14,6 +14,7 @@ import {
 	isSafeObjectProperty,
 	setSafeObjectProperty,
 	sleepWithAbort,
+	isCommunityPackageName,
 } from '../src/utils';
 
 describe('isObjectEmpty', () => {
@@ -415,7 +416,7 @@ describe('sleepWithAbort', () => {
 		abortController.abort();
 
 		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
-			ExecutionCancelledError,
+			ManualExecutionCancelledError,
 		);
 	});
 
@@ -427,7 +428,7 @@ describe('sleepWithAbort', () => {
 
 		const start = Date.now();
 		await expect(sleepWithAbort(1000, abortController.signal)).rejects.toThrow(
-			ExecutionCancelledError,
+			ManualExecutionCancelledError,
 		);
 		const end = Date.now();
 		const elapsed = end - start;
@@ -454,7 +455,7 @@ describe('sleepWithAbort', () => {
 		const sleepPromise = sleepWithAbort(1000, abortController.signal);
 		setTimeout(() => abortController.abort(), 50);
 
-		await expect(sleepPromise).rejects.toThrow(ExecutionCancelledError);
+		await expect(sleepPromise).rejects.toThrow(ManualExecutionCancelledError);
 
 		// clearTimeout should have been called to clean up
 		expect(clearTimeoutSpy).toHaveBeenCalled();
@@ -525,6 +526,14 @@ describe('isDomainAllowed', () => {
 			).toBe(true);
 		});
 
+		it('should block correctly for wildcards', () => {
+			expect(
+				isDomainAllowed('https://domain-test.com', {
+					allowedDomains: '*.test.com,example.com',
+				}),
+			).toBe(false);
+		});
+
 		it('should allow nested subdomains with wildcards', () => {
 			expect(
 				isDomainAllowed('https://deep.nested.example.com', {
@@ -537,6 +546,43 @@ describe('isDomainAllowed', () => {
 			expect(
 				isDomainAllowed('https://example.org', {
 					allowedDomains: '*.example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should block domains that share suffix but are not subdomains', () => {
+			expect(
+				isDomainAllowed('https://malicious-example.com', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should not allow base domain with wildcard alone', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: '*.example.com',
+				}),
+			).toBe(false);
+		});
+
+		it('should allow base domain when explicitly specified alongside wildcard', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'example.com,*.example.com',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://sub.example.com', {
+					allowedDomains: 'example.com,*.example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle empty wildcard suffix', () => {
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: '*.',
 				}),
 			).toBe(false);
 		});
@@ -590,5 +636,98 @@ describe('isDomainAllowed', () => {
 				}),
 			).toBe(false);
 		});
+
+		it('should be case-insensitive for domains', () => {
+			expect(
+				isDomainAllowed('https://EXAMPLE.COM', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'EXAMPLE.COM',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://Example.Com', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle trailing dots in hostnames', () => {
+			expect(
+				isDomainAllowed('https://example.com.', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(true);
+			expect(
+				isDomainAllowed('https://example.com', {
+					allowedDomains: 'example.com.',
+				}),
+			).toBe(true);
+		});
+
+		it('should handle empty hostnames', () => {
+			expect(
+				isDomainAllowed('http://', {
+					allowedDomains: 'example.com',
+				}),
+			).toBe(false);
+		});
+	});
+});
+
+describe('isCommunityPackageName', () => {
+	// Standard community package names
+	it('should identify standard community node package names', () => {
+		expect(isCommunityPackageName('n8n-nodes-example')).toBe(true);
+		expect(isCommunityPackageName('n8n-nodes-custom')).toBe(true);
+		expect(isCommunityPackageName('n8n-nodes-test')).toBe(true);
+	});
+
+	// Scoped package names
+	it('should identify scoped community node package names', () => {
+		expect(isCommunityPackageName('@username/n8n-nodes-example')).toBe(true);
+		expect(isCommunityPackageName('@org/n8n-nodes-custom')).toBe(true);
+		expect(isCommunityPackageName('@test-scope/n8n-nodes-test-name')).toBe(true);
+	});
+
+	it('should identify scoped packages with other characters', () => {
+		expect(isCommunityPackageName('n8n-nodes-my_package')).toBe(true);
+		expect(isCommunityPackageName('@user/n8n-nodes-with_underscore')).toBe(true);
+		expect(isCommunityPackageName('@user_name/n8n-nodes-example')).toBe(true);
+		expect(isCommunityPackageName('@n8n-io/n8n-nodes-test')).toBe(true);
+		expect(isCommunityPackageName('@n8n.io/n8n-nodes-test')).toBe(true);
+	});
+
+	it('should handle mixed cases', () => {
+		expect(isCommunityPackageName('@user-name_org/n8n-nodes-mixed-case_example')).toBe(true);
+		expect(isCommunityPackageName('@mixed_style-org/n8n-nodes-complex_name-format')).toBe(true);
+		expect(isCommunityPackageName('@my.mixed_style-org/n8n-nodes-complex_name-format')).toBe(true);
+	});
+
+	// Official n8n packages that should not be identified as community packages
+	it('should not identify official n8n packages as community nodes', () => {
+		expect(isCommunityPackageName('@n8n/n8n-nodes-example')).toBe(false);
+		expect(isCommunityPackageName('n8n-nodes-base')).toBe(false);
+	});
+
+	// Additional edge cases
+	it('should handle edge cases correctly', () => {
+		// Non-matching patterns
+		expect(isCommunityPackageName('not-n8n-nodes')).toBe(false);
+		expect(isCommunityPackageName('n8n-core')).toBe(false);
+
+		// With node name after package
+		expect(isCommunityPackageName('n8n-nodes-example.NodeName')).toBe(true);
+		expect(isCommunityPackageName('@user/n8n-nodes-example.NodeName')).toBe(true);
+	});
+
+	// Multiple executions to test regex state
+	it('should work correctly with multiple consecutive calls', () => {
+		expect(isCommunityPackageName('@user/n8n-nodes-example')).toBe(true);
+		expect(isCommunityPackageName('n8n-nodes-base')).toBe(false);
+		expect(isCommunityPackageName('@test-scope/n8n-nodes-test')).toBe(true);
 	});
 });

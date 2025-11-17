@@ -12,10 +12,17 @@ export type PubSubCommandMap = {
 
 	// #endregion
 
+	// # region Credentials
+	'reload-overwrite-credentials': never;
+	// #endregion
+
 	// # region SSO
 
 	'reload-oidc-config': never;
 	'reload-saml-config': never;
+
+	// # sso provisioning
+	'reload-sso-provisioning-configuration': never;
 
 	// #endregion
 

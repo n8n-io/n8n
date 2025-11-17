@@ -109,7 +109,8 @@ jobs:
 
       - name: Test MySQL
         working-directory: packages/cli
-        run: pnpm test:mysql --testTimeout 120000
+        # We sleep here due to flakiness with DB tests if we connect to the database too soon
+        run: sleep 2s && pnpm test:mysql --testTimeout 120000
 
   postgres:
     name: Postgres

@@ -7,7 +7,7 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { join } from 'path';
 import pc from 'picocolors';
 
-import { anthropicClaudeSonnet4 } from '../../src/llm-config';
+import { anthropicClaudeSonnet45 } from '../../src/llm-config';
 import type { ChatPayload } from '../../src/workflow-builder-agent';
 import { WorkflowBuilderAgent } from '../../src/workflow-builder-agent';
 import type { Violation } from '../types/evaluation';
@@ -23,7 +23,7 @@ export async function setupLLM(): Promise<BaseChatModel> {
 	if (!apiKey) {
 		throw new Error('N8N_AI_ANTHROPIC_KEY environment variable is required');
 	}
-	return await anthropicClaudeSonnet4({ apiKey });
+	return await anthropicClaudeSonnet45({ apiKey });
 }
 
 /**
@@ -55,12 +55,13 @@ export function createAgent(
 	parsedNodeTypes: INodeTypeDescription[],
 	llm: BaseChatModel,
 	tracer?: LangChainTracer,
+	checkpointer?: MemorySaver,
 ): WorkflowBuilderAgent {
 	return new WorkflowBuilderAgent({
 		parsedNodeTypes,
 		llmSimpleTask: llm,
 		llmComplexTask: llm,
-		checkpointer: new MemorySaver(),
+		checkpointer: checkpointer ?? new MemorySaver(),
 		tracer,
 	});
 }

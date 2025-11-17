@@ -28,6 +28,15 @@ import { getRefs, getRepositories, getUsers, getWorkflows } from './SearchFuncti
 import { removeTrailingSlash } from '../../utils/utilities';
 import { defaultWebhookDescription } from '../Webhook/description';
 
+const waitingTooltip = (parameters: { operation: string }, resumeUrl: string) => {
+	if (parameters?.operation === 'dispatchAndWait') {
+		const message = 'Execution will continue when the following webhook URL is called: ';
+		return `${message}<a href="${resumeUrl}" target="_blank">${resumeUrl}</a>`;
+	}
+
+	return '';
+};
+
 export class Github implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'GitHub',
@@ -46,6 +55,7 @@ export class Github implements INodeType {
 		usableAsTool: true,
 		inputs: [NodeConnectionTypes.Main],
 		outputs: [NodeConnectionTypes.Main],
+		waitingNodeTooltip: `={{ (${waitingTooltip})($parameter, $execution.resumeUrl) }}`,
 		webhooks: [
 			{
 				...defaultWebhookDescription,
@@ -325,6 +335,12 @@ export class Github implements INodeType {
 						action: "Get a user's repositories",
 					},
 					{
+						name: 'Get Issues',
+						value: 'getUserIssues',
+						description: 'Returns the issues assigned to the user',
+						action: "Get a user's issues",
+					},
+					{
 						name: 'Invite',
 						value: 'invite',
 						description: 'Invites a user to an organization',
@@ -548,7 +564,7 @@ export class Github implements INodeType {
 				],
 				displayOptions: {
 					hide: {
-						operation: ['invite'],
+						operation: ['invite', 'getUserIssues'],
 					},
 				},
 			},
@@ -2093,6 +2109,144 @@ export class Github implements INodeType {
 				default: 50,
 				description: 'Max number of results to return',
 			},
+
+			// ----------------------------------
+			//         user:getIssues
+			// ----------------------------------
+			{
+				displayName: 'Return All',
+				name: 'returnAll',
+				type: 'boolean',
+				displayOptions: {
+					show: {
+						operation: ['getUserIssues'],
+					},
+				},
+				default: false,
+				description: 'Whether to return all results or only up to a given limit',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				type: 'number',
+				displayOptions: {
+					show: {
+						operation: ['getUserIssues'],
+						returnAll: [false],
+					},
+				},
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+				default: 50,
+				description: 'Max number of results to return',
+			},
+			{
+				displayName: 'Filters',
+				name: 'getUserIssuesFilters',
+				type: 'collection',
+				typeOptions: {
+					multipleValueButtonText: 'Add Filter',
+				},
+				displayOptions: {
+					show: {
+						operation: ['getUserIssues'],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'Mentioned',
+						name: 'mentioned',
+						type: 'string',
+						default: '',
+						description: 'Return only issues in which a specific user was mentioned',
+					},
+					{
+						displayName: 'Labels',
+						name: 'labels',
+						type: 'string',
+						default: '',
+						description:
+							'Return only issues with the given labels. Multiple labels can be separated by comma.',
+					},
+					{
+						displayName: 'Updated Since',
+						name: 'since',
+						type: 'dateTime',
+						default: '',
+						description: 'Return only issues updated at or after this time',
+					},
+					{
+						displayName: 'State',
+						name: 'state',
+						type: 'options',
+						options: [
+							{
+								name: 'All',
+								value: 'all',
+								description: 'Returns issues with any state',
+							},
+							{
+								name: 'Closed',
+								value: 'closed',
+								description: 'Return issues with "closed" state',
+							},
+							{
+								name: 'Open',
+								value: 'open',
+								description: 'Return issues with "open" state',
+							},
+						],
+						default: 'open',
+						description: 'The state to set',
+					},
+					{
+						displayName: 'Sort',
+						name: 'sort',
+						type: 'options',
+						options: [
+							{
+								name: 'Created',
+								value: 'created',
+								description: 'Sort by created date',
+							},
+							{
+								name: 'Updated',
+								value: 'updated',
+								description: 'Sort by updated date',
+							},
+							{
+								name: 'Comments',
+								value: 'comments',
+								description: 'Sort by comments',
+							},
+						],
+						default: 'created',
+						description: 'The order the issues should be returned in',
+					},
+					{
+						displayName: 'Direction',
+						name: 'direction',
+						type: 'options',
+						options: [
+							{
+								name: 'Ascending',
+								value: 'asc',
+								description: 'Sort in ascending order',
+							},
+							{
+								name: 'Descending',
+								value: 'desc',
+								description: 'Sort in descending order',
+							},
+						],
+						default: 'desc',
+						description: 'The sort order',
+					},
+				],
+			},
 		],
 	};
 
@@ -2158,6 +2312,7 @@ export class Github implements INodeType {
 			'repository:listPopularPaths',
 			'repository:listReferrers',
 			'user:getRepositories',
+			'user:getUserIssues',
 			'release:getAll',
 			'review:getAll',
 			'organization:getRepositories',
@@ -2231,7 +2386,7 @@ export class Github implements INodeType {
 				qs = {};
 
 				let owner = '';
-				if (fullOperation !== 'user:invite') {
+				if (fullOperation !== 'user:invite' && fullOperation !== 'user:getUserIssues') {
 					// Request the parameters which almost all operations need
 					owner = this.getNodeParameter('owner', i, '', { extractValue: true }) as string;
 				}
@@ -2239,6 +2394,7 @@ export class Github implements INodeType {
 				let repository = '';
 				if (
 					fullOperation !== 'user:getRepositories' &&
+					fullOperation !== 'user:getUserIssues' &&
 					fullOperation !== 'user:invite' &&
 					fullOperation !== 'organization:getRepositories'
 				) {
@@ -2629,6 +2785,20 @@ export class Github implements INodeType {
 
 						returnAll = this.getNodeParameter('returnAll', 0);
 
+						if (!returnAll) {
+							qs.per_page = this.getNodeParameter('limit', 0);
+						}
+					} else if (operation === 'getUserIssues') {
+						// ----------------------------------
+						//         getIssues
+						// ----------------------------------
+						requestMethod = 'GET';
+
+						endpoint = '/issues';
+
+						qs = this.getNodeParameter('getUserIssuesFilters', i, {}) as IDataObject;
+
+						returnAll = this.getNodeParameter('returnAll', 0);
 						if (!returnAll) {
 							qs.per_page = this.getNodeParameter('limit', 0);
 						}
