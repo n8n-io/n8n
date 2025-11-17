@@ -101,6 +101,12 @@ describe('CommunityPackagesService', () => {
 			).toThrowError();
 		});
 
+		test.each(['invalid', '1.a.b'])('should fail with invalid version', (version) => {
+			expect(() =>
+				communityPackagesService.parseNpmPackageName(`n8n-nodes-test@${version}`),
+			).toThrow(`Invalid version: ${version}`);
+		});
+
 		test('should parse valid package name', () => {
 			const name = mockPackageName();
 			const parsed = communityPackagesService.parseNpmPackageName(name);

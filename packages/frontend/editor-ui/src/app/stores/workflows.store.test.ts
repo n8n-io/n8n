@@ -698,6 +698,193 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('searchWorkflows()', () => {
+		beforeEach(() => {
+			vi.mocked(workflowsApi).getWorkflows.mockClear();
+		});
+
+		it('should search workflows with no filters', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Workflow 1', isArchived: false },
+				{ id: '2', name: 'Workflow 2', isArchived: false },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				undefined,
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with query filter', async () => {
+			const mockWorkflows = [{ id: '1', name: 'Test Workflow' }] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({ query: 'test' });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ query: 'test' },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with isArchived filter set to false', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Active Workflow 1', isArchived: false },
+				{ id: '2', name: 'Active Workflow 2', isArchived: false },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({ isArchived: false });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ isArchived: false },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with isArchived filter set to true', async () => {
+			const mockWorkflows = [
+				{ id: '3', name: 'Archived Workflow 1', isArchived: true },
+				{ id: '4', name: 'Archived Workflow 2', isArchived: true },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({ isArchived: true });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ isArchived: true },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with multiple filters including isArchived', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Test Workflow', isArchived: false },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({
+				query: 'test',
+				isArchived: false,
+				projectId: 'project-123',
+				tags: ['tag1', 'tag2'],
+				nodeTypes: ['n8n-nodes-base.httpRequest'],
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{
+					query: 'test',
+					isArchived: false,
+					projectId: 'project-123',
+					tags: ['tag1', 'tag2'],
+					nodeTypes: ['n8n-nodes-base.httpRequest'],
+				},
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with select fields', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Workflow 1' },
+				{ id: '2', name: 'Workflow 2' },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({
+				select: ['id', 'name'],
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				undefined,
+				undefined,
+				['id', 'name'],
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should handle empty filter object correctly', async () => {
+			const mockWorkflows = [] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: 0,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({
+				projectId: undefined,
+				query: undefined,
+				nodeTypes: undefined,
+				tags: undefined,
+				isArchived: undefined,
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				undefined,
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should pass isArchived as undefined when not specified', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Workflow 1', isArchived: false },
+				{ id: '2', name: 'Workflow 2', isArchived: true },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({ query: 'workflow' });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ query: 'workflow', isArchived: undefined },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+	});
+
 	describe('setWorkflowActive()', () => {
 		it('should set workflow as active when it is not already active', () => {
 			uiStore.stateIsDirty = true;
