@@ -3,7 +3,7 @@ import { defineFrontendExtension } from '@n8n/extension-sdk/frontend';
 import InsightsDashboard from './InsightsDashboard.vue';
 
 export default defineFrontendExtension({
-	setup(n8n) {
+	setup(n8n: any) {
 		n8n.registerComponent('InsightsDashboard', markRaw(InsightsDashboard));
 	},
 });
