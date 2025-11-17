@@ -299,7 +299,7 @@ const shouldShowPagination = computed(() => {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 11px;
+	font-size: var(--font-size--2xs);
 	font-weight: normal;
 	color: var(--color--text--inverse);
 	transition: color 0.2s ease;
