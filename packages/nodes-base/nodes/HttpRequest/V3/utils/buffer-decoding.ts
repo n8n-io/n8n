@@ -1,7 +1,5 @@
-import type { BinaryHelperFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-workflow';
 import type { Readable } from 'stream';
-
-import * as chardet from 'chardet';
 
 const CHINESE_ENCODINGS = ['gb18030', 'gbk', 'gb2312'] as const;
 const REPLACEMENT_CHAR = '�';
@@ -38,7 +36,7 @@ function detectEncoding(contentType?: string): BufferEncoding | undefined {
 export async function binaryToStringWithEncodingDetection(
 	body: Buffer | Readable,
 	contentType: string,
-	helpers: BinaryHelperFunctions,
+	helpers: IExecuteFunctions['helpers'],
 ): Promise<string> {
 	let bufferedData: Buffer;
 
@@ -57,7 +55,7 @@ export async function binaryToStringWithEncodingDetection(
 	const decodedString = await helpers.binaryToString(bufferedData);
 
 	if (decodedString.includes(REPLACEMENT_CHAR) || HIGH_ASCII_PATTERN.test(decodedString)) {
-		const detected = chardet.detect(bufferedData)?.toLowerCase() as BufferEncoding;
+		const detected = helpers.detectBinaryEncoding(bufferedData).toLowerCase() as BufferEncoding;
 		if (detected && detected !== DEFAULT_ENCODING) {
 			return await helpers.binaryToString(bufferedData, detected);
 		}

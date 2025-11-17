@@ -1,31 +1,26 @@
 import { Readable } from 'stream';
-import type { BinaryHelperFunctions } from 'n8n-workflow';
+import type { IExecuteFunctions } from 'n8n-workflow';
 
 import { binaryToStringWithEncodingDetection } from '../buffer-decoding';
 
-// Mock chardet module
-jest.mock('chardet', () => ({
-	detect: jest.fn(),
-}));
-
-import * as chardet from 'chardet';
-const mockChardetDetect = jest.mocked(chardet.detect);
-
 describe('buffer-decoding utils', () => {
-	let mockHelpers: BinaryHelperFunctions;
+	let mockHelpers: IExecuteFunctions['helpers'];
 	let mockBinaryToString: jest.MockedFunction<
 		(body: Buffer | Readable, encoding?: BufferEncoding) => Promise<string>
 	>;
 	let mockBinaryToBuffer: jest.MockedFunction<(body: Buffer | Readable) => Promise<Buffer>>;
+	let mockDetectBinaryEncoding: jest.MockedFunction<(buffer: Buffer) => string>;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 		mockBinaryToString = jest.fn();
 		mockBinaryToBuffer = jest.fn();
+		mockDetectBinaryEncoding = jest.fn();
 		mockHelpers = {
 			binaryToString: mockBinaryToString,
 			binaryToBuffer: mockBinaryToBuffer,
-		} as unknown as BinaryHelperFunctions;
+			detectBinaryEncoding: mockDetectBinaryEncoding,
+		} as unknown as IExecuteFunctions['helpers'];
 	});
 
 	describe('binaryToStringWithEncodingDetection', () => {
@@ -134,11 +129,11 @@ describe('buffer-decoding utils', () => {
 					.mockResolvedValueOnce('test content with �') // First UTF-8 attempt
 					.mockResolvedValueOnce('test content with proper chars'); // Second attempt with detected encoding
 
-				mockChardetDetect.mockReturnValue('iso-8859-1');
+				mockDetectBinaryEncoding.mockReturnValue('iso-8859-1');
 
 				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
 
-				expect(mockChardetDetect).toHaveBeenCalledWith(buffer);
+				expect(mockDetectBinaryEncoding).toHaveBeenCalledWith(buffer);
 				expect(mockBinaryToString).toHaveBeenCalledTimes(2);
 				expect(mockBinaryToString).toHaveBeenNthCalledWith(1, buffer);
 				expect(mockBinaryToString).toHaveBeenNthCalledWith(2, buffer, 'iso-8859-1');
@@ -154,11 +149,11 @@ describe('buffer-decoding utils', () => {
 					.mockResolvedValueOnce(highAsciiString) // First UTF-8 attempt
 					.mockResolvedValueOnce('proper decoded content'); // Second attempt with detected encoding
 
-				mockChardetDetect.mockReturnValue('windows-1252');
+				mockDetectBinaryEncoding.mockReturnValue('windows-1252');
 
 				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
 
-				expect(mockChardetDetect).toHaveBeenCalledWith(buffer);
+				expect(mockDetectBinaryEncoding).toHaveBeenCalledWith(buffer);
 				expect(mockBinaryToString).toHaveBeenCalledTimes(2);
 				expect(mockBinaryToString).toHaveBeenNthCalledWith(2, buffer, 'windows-1252');
 				expect(result).toBe('proper decoded content');
@@ -176,8 +171,8 @@ describe('buffer-decoding utils', () => {
 					.mockResolvedValueOnce('content with �') // First UTF-8 attempt
 					.mockResolvedValueOnce('content with proper chars'); // gb18030 attempt (success)
 
-				// Mock chardet to return null so it tries Chinese encodings
-				mockChardetDetect.mockReturnValue(null);
+				// Mock chardet to return empty string so it tries Chinese encodings
+				mockDetectBinaryEncoding.mockReturnValue('');
 
 				const result = await binaryToStringWithEncodingDetection(
 					readable,
@@ -204,8 +199,8 @@ describe('buffer-decoding utils', () => {
 					.mockResolvedValueOnce('content with �') // gb18030 attempt
 					.mockResolvedValueOnce('content with proper chars'); // gbk attempt (success)
 
-				// Mock chardet to return null so it tries Chinese encodings
-				mockChardetDetect.mockReturnValue(null);
+				// Mock chardet to return empty string so it tries Chinese encodings
+				mockDetectBinaryEncoding.mockReturnValue('');
 
 				const result = await binaryToStringWithEncodingDetection(
 					readable,
@@ -232,6 +227,8 @@ describe('buffer-decoding utils', () => {
 					.mockResolvedValueOnce('content with �') // gbk attempt
 					.mockResolvedValueOnce('content with �'); // gb2312 attempt
 
+				mockDetectBinaryEncoding.mockReturnValue('');
+
 				const result = await binaryToStringWithEncodingDetection(
 					readable,
 					contentType,
@@ -249,7 +246,7 @@ describe('buffer-decoding utils', () => {
 
 				mockBinaryToBuffer.mockResolvedValue(buffer);
 				mockBinaryToString.mockResolvedValue('test content with �');
-				mockChardetDetect.mockReturnValue(null);
+				mockDetectBinaryEncoding.mockReturnValue('');
 
 				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
 
@@ -263,7 +260,7 @@ describe('buffer-decoding utils', () => {
 
 				mockBinaryToBuffer.mockResolvedValue(buffer);
 				mockBinaryToString.mockResolvedValue('test content with �');
-				mockChardetDetect.mockReturnValue('utf-8');
+				mockDetectBinaryEncoding.mockReturnValue('utf-8');
 
 				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
 
@@ -283,6 +280,8 @@ describe('buffer-decoding utils', () => {
 					.mockResolvedValueOnce('content with �') // First UTF-8 attempt
 					.mockRejectedValueOnce(new Error('Encoding error')) // gb18030 error
 					.mockResolvedValueOnce('content with proper chars'); // gbk success
+
+				mockDetectBinaryEncoding.mockReturnValue('');
 
 				const result = await binaryToStringWithEncodingDetection(
 					readable,
@@ -304,6 +303,8 @@ describe('buffer-decoding utils', () => {
 				mockBinaryToString
 					.mockResolvedValueOnce('content with �') // First UTF-8 attempt
 					.mockRejectedValue(new Error('Encoding error')); // All Chinese encodings fail
+
+				mockDetectBinaryEncoding.mockReturnValue('');
 
 				const result = await binaryToStringWithEncodingDetection(
 					readable,
@@ -358,6 +359,8 @@ describe('buffer-decoding utils', () => {
 					.mockResolvedValueOnce('content with �') // First UTF-8 attempt
 					.mockResolvedValueOnce(''); // gb18030 returns empty
 
+				mockDetectBinaryEncoding.mockReturnValue('');
+
 				const result = await binaryToStringWithEncodingDetection(
 					readable,
 					contentType,
@@ -379,7 +382,7 @@ describe('buffer-decoding utils', () => {
 
 				expect(result).toBe(shortHighAsciiString);
 				expect(mockBinaryToString).toHaveBeenCalledTimes(1); // Should not trigger re-encoding
-				expect(mockChardetDetect).not.toHaveBeenCalled();
+				expect(mockDetectBinaryEncoding).not.toHaveBeenCalled();
 			});
 
 			it('should handle mixed content with both replacement chars and high ASCII', async () => {
@@ -393,12 +396,12 @@ describe('buffer-decoding utils', () => {
 					.mockResolvedValueOnce('test � content ' + String.fromCharCode(0x80, 0x81, 0x82))
 					.mockResolvedValueOnce('test proper content decoded');
 
-				mockChardetDetect.mockReturnValue('windows-1252');
+				mockDetectBinaryEncoding.mockReturnValue('windows-1252');
 
 				const result = await binaryToStringWithEncodingDetection(buffer, contentType, mockHelpers);
 
 				expect(result).toBe('test proper content decoded');
-				expect(mockChardetDetect).toHaveBeenCalledWith(buffer);
+				expect(mockDetectBinaryEncoding).toHaveBeenCalledWith(buffer);
 			});
 		});
 
@@ -414,7 +417,7 @@ describe('buffer-decoding utils', () => {
 				expect(result).toBe('test content');
 				expect(mockBinaryToString).toHaveBeenCalledTimes(1);
 				expect(mockBinaryToString).toHaveBeenCalledWith(buffer, 'iso-8859-1');
-				expect(mockChardetDetect).not.toHaveBeenCalled();
+				expect(mockDetectBinaryEncoding).not.toHaveBeenCalled();
 			});
 
 			it('should return result from specified encoding even if it contains replacement chars', async () => {
@@ -429,7 +432,7 @@ describe('buffer-decoding utils', () => {
 				expect(result).toBe('test content with �');
 				expect(mockBinaryToString).toHaveBeenCalledTimes(1);
 				expect(mockBinaryToString).toHaveBeenCalledWith(buffer, 'iso-8859-1');
-				expect(mockChardetDetect).not.toHaveBeenCalled();
+				expect(mockDetectBinaryEncoding).not.toHaveBeenCalled();
 			});
 		});
 	});
