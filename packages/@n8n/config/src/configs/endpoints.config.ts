@@ -54,6 +54,10 @@ class PrometheusMetricsConfig {
 	@Env('N8N_METRICS_INCLUDE_QUEUE_METRICS')
 	includeQueueMetrics: boolean = false;
 
+	/** Whether to include metrics from n8n Insights */
+	@Env('N8N_METRICS_INCLUDE_INSIGHTS_METRICS')
+	includeInsightsMetrics: boolean = false;
+
 	/** How often (in seconds) to update queue metrics. */
 	@Env('N8N_METRICS_QUEUE_METRICS_INTERVAL')
 	queueMetricsInterval: number = 20;
