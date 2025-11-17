@@ -33,7 +33,7 @@
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
-    "@types/mime-types": "^2.1.0",
+    "@types/mime-types": "catalog:",
     "@types/proxy-from-env": "^1.0.4",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:"
@@ -63,7 +63,7 @@
     "jsonwebtoken": "catalog:",
     "lodash": "catalog:",
     "luxon": "catalog:",
-    "mime-types": "2.1.35",
+    "mime-types": "catalog:",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "oauth-1.0a": "2.2.6",

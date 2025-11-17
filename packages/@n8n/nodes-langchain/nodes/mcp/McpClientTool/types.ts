@@ -6,4 +6,9 @@ export type McpServerTransport = 'sse' | 'httpStreamable';
 
 export type McpToolIncludeMode = 'all' | 'selected' | 'except';
 
-export type McpAuthenticationOption = 'none' | 'headerAuth' | 'bearerAuth' | 'mcpOAuth2Api';
+export type McpAuthenticationOption =
+	| 'none'
+	| 'headerAuth'
+	| 'bearerAuth'
+	| 'mcpOAuth2Api'
+	| 'multipleHeadersAuth';
