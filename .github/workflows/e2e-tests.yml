@@ -41,7 +41,6 @@ jobs:
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
       branch: ${{ github.event.inputs.branch || 'master' }}
-      test-mode: 'docker-build'
     secrets: inherit
 
   calls-success-url-notify:

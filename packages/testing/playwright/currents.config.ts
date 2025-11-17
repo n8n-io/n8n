@@ -3,9 +3,11 @@ import type { CurrentsConfig } from '@currents/playwright';
 const config: CurrentsConfig = {
 	recordKey: process.env.CURRENTS_RECORD_KEY ?? '',
 	projectId: process.env.CURRENTS_PROJECT_ID ?? 'I0yzoc',
-	ciBuildId: process.env.GITHUB_RUN_ID
-		? `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT || '1'}`
-		: `local-${Date.now()}`,
+	ciBuildId:
+		process.env.CURRENTS_CI_BUILD_ID ||
+		(process.env.GITHUB_RUN_ID
+			? `${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_RUN_ATTEMPT || '1'}`
+			: `local-${Date.now()}`),
 	coverage: {
 		projects: true,
 	},

@@ -26,6 +26,8 @@ jobs:
       always() &&
       ((github.event_name == 'pull_request_review' && needs.eligibility_check.outputs.should_run == 'true') ||
        (github.event_name == 'workflow_dispatch'))
+    with:
+      branch: ${{ github.head_ref }}
     secrets: inherit
 
   post-e2e-tests:
