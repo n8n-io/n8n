@@ -39,6 +39,9 @@ catalogs:
     '@types/lodash':
       specifier: 4.17.17
       version: 4.17.17
+    '@types/mime-types':
+      specifier: 3.0.1
+      version: 3.0.1
     '@types/uuid':
       specifier: ^10.0.0
       version: 10.0.0
@@ -87,6 +90,9 @@ catalogs:
     luxon:
       specifier: 3.4.4
       version: 3.4.4
+    mime-types:
+      specifier: 3.0.1
+      version: 3.0.1
     mysql2:
       specifier: 3.15.0
       version: 3.15.0
@@ -1211,8 +1217,8 @@ importers:
         specifier: 1.11.0
         version: 1.11.0
       mime-types:
-        specifier: 2.1.35
-        version: 2.1.35
+        specifier: 'catalog:'
+        version: 3.0.1
       mongodb:
         specifier: 6.11.0
         version: 6.11.0(@aws-sdk/credential-providers@3.808.0)(gcp-metadata@5.3.0)(socks@2.8.3)
@@ -1278,8 +1284,8 @@ importers:
         specifier: ^7.0.15
         version: 7.0.15
       '@types/mime-types':
-        specifier: ^2.1.0
-        version: 2.1.1
+        specifier: 'catalog:'
+        version: 3.0.1
       '@types/pg':
         specifier: ^8.11.6
         version: 8.11.6
@@ -1926,8 +1932,8 @@ importers:
         specifier: 'catalog:'
         version: 3.4.4
       mime-types:
-        specifier: 2.1.35
-        version: 2.1.35
+        specifier: 'catalog:'
+        version: 3.0.1
       n8n-workflow:
         specifier: workspace:*
         version: link:../workflow
@@ -1984,8 +1990,8 @@ importers:
         specifier: 'catalog:'
         version: 4.17.17
       '@types/mime-types':
-        specifier: ^2.1.0
-        version: 2.1.1
+        specifier: 'catalog:'
+        version: 3.0.1
       '@types/proxy-from-env':
         specifier: ^1.0.4
         version: 1.0.4
@@ -2999,6 +3005,9 @@ importers:
       mailparser:
         specifier: 3.6.7
         version: 3.6.7
+      mime-types:
+        specifier: 'catalog:'
+        version: 3.0.1
       minifaker:
         specifier: 1.34.1
         version: 1.34.1(patch_hash=bc707e2c34a2464da2c9c93ead33e80fd9883a00434ef64907ddc45208a08b33)
@@ -3148,8 +3157,8 @@ importers:
         specifier: ^3.4.4
         version: 3.4.4
       '@types/mime-types':
-        specifier: ^2.1.0
-        version: 2.1.1
+        specifier: 'catalog:'
+        version: 3.0.1
       '@types/mssql':
         specifier: ^9.1.5
         version: 9.1.5
@@ -8317,8 +8326,8 @@ packages:
   '@types/methods@1.1.4':
     resolution: {integrity: sha512-ymXWVrDiCxTBE3+RIrrP533E70eA+9qu7zdWoHuOmGujkYtzf4HQF96b8nwHLqhuf4ykX61IGRIB38CC6/sImQ==}
 
-  '@types/mime-types@2.1.1':
-    resolution: {integrity: sha512-vXOTGVSLR2jMw440moWTC7H19iUyLtP3Z1YTj7cSsubOICinjMxFeb/V57v9QdyyPGbbWolUFSSmSiRSn94tFw==}
+  '@types/mime-types@3.0.1':
+    resolution: {integrity: sha512-xRMsfuQbnRq1Ef+C+RKaENOxXX87Ygl38W1vDfPHRku02TgQr+Qd8iivLtAMcR0KF5/29xlnFihkTlbqFrGOVQ==}
 
   '@types/mime@1.3.5':
     resolution: {integrity: sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w==}
@@ -24492,7 +24501,7 @@ snapshots:
 
   '@types/methods@1.1.4': {}
 
-  '@types/mime-types@2.1.1': {}
+  '@types/mime-types@3.0.1': {}
 
   '@types/mime@1.3.5': {}
 

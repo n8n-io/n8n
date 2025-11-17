@@ -292,6 +292,25 @@ export async function getAuthHeaders(
 
 			return { headers: { Authorization: `Bearer ${result.oauthTokenData.access_token}` } };
 		}
+		case 'multipleHeadersAuth': {
+			const result = await ctx
+				.getCredentials<{ headers: { values: Array<{ name: string; value: string }> } }>(
+					'httpMultipleHeadersAuth',
+				)
+				.catch(() => null);
+
+			if (!result) return {};
+
+			return {
+				headers: result.headers.values.reduce(
+					(acc, cur) => {
+						acc[cur.name] = cur.value;
+						return acc;
+					},
+					{} as Record<string, string>,
+				),
+			};
+		}
 		case 'none':
 		default: {
 			return {};
