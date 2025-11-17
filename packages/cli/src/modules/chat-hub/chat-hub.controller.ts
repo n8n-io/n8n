@@ -26,14 +26,14 @@ import {
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-
-import { ChatHubService } from './chat-hub.service';
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { sanitizeFilename } from '@n8n/utils';
+
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
 @RestController('/chat')
 export class ChatHubController {

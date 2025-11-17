@@ -48,6 +48,7 @@ import { isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { type INode } from 'n8n-workflow';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -316,6 +317,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				agentName: null,
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
+				tools: [],
 				...flattenModel(streaming.value.model),
 			},
 		];
@@ -434,6 +436,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
+		tools: INode[],
 		files: File[] = [],
 	) {
 		const messageId = uuidv4();
@@ -477,6 +480,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				message,
 				credentials,
 				previousMessageId,
+				tools,
 				attachments,
 			},
 			onStreamMessage,
@@ -598,6 +602,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 	}
 
+	async function updateToolsInSession(sessionId: ChatSessionId, tools: INode[]) {
+		const session = sessions.value?.find((s) => s.id === sessionId);
+		if (!session) {
+			throw new Error(`Session with ID ${sessionId} not found`);
+		}
+
+		const updated = await updateConversationApi(rootStore.restApiContext, sessionId, {
+			tools,
+		});
+
+		updateSession(sessionId, updated.session);
+	}
+
 	async function renameSession(sessionId: ChatSessionId, title: string) {
 		const updated = await updateConversationTitleApi(rootStore.restApiContext, sessionId, title);
 
@@ -653,6 +670,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			description: agent.description ?? null,
 			createdAt: agent.createdAt,
 			updatedAt: agent.updatedAt,
+			tools: agent.tools,
 			allowFileUploads: true,
 		};
 		agents.value?.['custom-agent'].models.push(agentModel);
@@ -726,6 +744,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		renameSession,
 		updateSessionModel,
 		deleteSession,
+		updateToolsInSession,
 
 		/**
 		 * conversation

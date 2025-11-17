@@ -136,7 +136,7 @@ function onEdit(id: string) {
 					<template #webhookAction>
 						<a
 							data-test-id="webhook-docs-link"
-							href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/"
+							href="https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/"
 							target="_blank"
 							v-text="i18n.baseText('settings.api.view.info.webhook')"
 						/>

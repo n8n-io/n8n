@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
+import NodeIcon from '@/app/components/NodeIcon.vue';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import type { INode } from 'n8n-workflow';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 
-const { selectedModel, isMissingCredentials } = defineProps<{
+const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
 	isNewSession: boolean;
 	selectedModel: ChatModelDto | null;
+	selectedTools: INode[] | null;
 	isMissingCredentials: boolean;
 }>();
 
@@ -18,6 +22,7 @@ const emit = defineEmits<{
 	submit: [message: string, attachments: File[]];
 	stop: [];
 	selectModel: [];
+	selectTools: [];
 	setCredentials: [ChatHubLLMProvider];
 }>();
 
@@ -26,6 +31,7 @@ const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const message = ref('');
 const attachments = ref<File[]>([]);
 
+const nodeTypesStore = useNodeTypesStore();
 const toast = useToast();
 
 const speechInput = useSpeechRecognition({
@@ -135,6 +141,28 @@ watch(speechInput.error, (event) => {
 	}
 });
 
+function onSelectTools() {
+	emit('selectTools');
+}
+
+onMounted(async () => {
+	await nodeTypesStore.loadNodeTypesIfNotLoaded();
+});
+
+const toolCount = computed(() => selectedTools?.length ?? 0);
+
+const displayToolNodeTypes = computed(() => {
+	const tools = selectedTools ?? [];
+	return tools
+		.slice(0, 3)
+		.map((t) => nodeTypesStore.getNodeType(t.type))
+		.filter(Boolean);
+});
+
+const toolsLabel = computed(() =>
+	toolCount.value > 0 ? `${toolCount.value} Tool${toolCount.value > 1 ? 's' : ''}` : 'Tools',
+);
+
 defineExpose({
 	focus: () => inputRef.value?.focus(),
 	setText: (text: string) => {
@@ -206,6 +234,31 @@ defineExpose({
 				/>
 
 				<div :class="$style.footer">
+					<div :class="$style.tools">
+						<N8nButton
+							:class="$style.toolsButton"
+							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							aria-label="Select tools"
+							@click="onSelectTools"
+						>
+							<span v-if="toolCount" :class="$style.iconStack" aria-hidden="true">
+								<NodeIcon
+									v-for="(nodeType, i) in displayToolNodeTypes"
+									:key="`${nodeType?.name}-${i}`"
+									:style="{ zIndex: displayToolNodeTypes.length - i }"
+									:node-type="nodeType"
+									:class="[$style.icon, { [$style.iconOverlap]: i !== 0 }]"
+									:circle="true"
+									:size="12"
+								/>
+							</span>
+							<span v-else :class="$style.iconFallback" aria-hidden="true">
+								<N8nIcon icon="plus" :size="12" />
+							</span>
+
+							<N8nText size="small" bold>{{ toolsLabel }}</N8nText>
+						</N8nButton>
+					</div>
 					<div :class="$style.actions">
 						<N8nIconButton
 							v-if="selectedModel?.allowFileUploads"
@@ -320,6 +373,57 @@ defineExpose({
 	align-items: flex-end;
 	justify-content: flex-end;
 	gap: var(--spacing--sm);
+}
+
+.tools {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	padding: var(--spacing--sm);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+}
+
+.toolsButton {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	padding: var(--spacing--3xs) var(--spacing--xs);
+	color: var(--color--text);
+	cursor: pointer;
+
+	border-radius: var(--radius);
+	border: var(--border);
+	background: var(--color--background--light-3);
+
+	&:disabled {
+		opacity: 0.6;
+		cursor: not-allowed;
+	}
+}
+
+.iconStack {
+	display: flex;
+	align-items: center;
+	position: relative;
+}
+
+.icon {
+	padding: var(--spacing--4xs);
+	background-color: var(--button--color--background--secondary);
+	border-radius: 50%;
+	outline: 2px var(--color--background--light-3) solid;
+}
+
+.iconOverlap {
+	margin-left: -6px;
+}
+
+.iconFallback {
+	display: flex;
+	align-items: center;
+	justify-content: center;
 }
 
 .actions {

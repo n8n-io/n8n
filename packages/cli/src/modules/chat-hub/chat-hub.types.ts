@@ -4,7 +4,7 @@ import type {
 	ChatMessageId,
 	ChatSessionId,
 } from '@n8n/api-types';
-import type { IBinaryData, INodeCredentials } from 'n8n-workflow';
+import type { INode, IBinaryData, INodeCredentials } from 'n8n-workflow';
 import { z } from 'zod';
 
 export interface ModelWithCredentials {
@@ -28,6 +28,7 @@ export interface HumanMessagePayload extends BaseMessagePayload {
 	message: string;
 	previousMessageId: ChatMessageId | null;
 	attachments: IBinaryData[];
+	tools: INode[];
 }
 export interface RegenerateMessagePayload extends BaseMessagePayload {
 	retryId: ChatMessageId;
