@@ -212,7 +212,7 @@ export class WorkflowExecutionService {
 					// be treated like a partial manual execution instead of a full
 					// manual execution.
 					// So we have to set this to null to instruct
-					// `createRunExecutionData` to not Initialize it.
+					// `createRunExecutionData` to not initialize it.
 					runData: runData ?? null,
 				},
 				manualData: {
@@ -221,9 +221,9 @@ export class WorkflowExecutionService {
 					triggerToStartFrom,
 				},
 				// If `executionData` is initialized the execution will be treated like
-				// a a resumed execution after waiting, instead of a manual execution.
+				// a resumed execution after waiting, instead of a manual execution.
 				// So we have to set this to null to instruct `createRunExecutionData`
-				// to not Initialize it.
+				// to not initialize it.
 				executionData: null,
 			});
 		}
