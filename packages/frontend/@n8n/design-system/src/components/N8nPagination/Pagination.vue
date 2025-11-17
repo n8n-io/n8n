@@ -257,6 +257,8 @@ const shouldShowPagination = computed(() => {
 	align-items: center;
 	gap: 6px;
 	font-size: var(--font-size--sm);
+	height: 32px;
+	padding: 2px 0;
 
 	&.is-small {
 		font-size: 12px;
@@ -289,7 +291,7 @@ const shouldShowPagination = computed(() => {
 
 .n8n-pagination__button {
 	min-width: 28px;
-	height: 30px;
+	height: 28px;
 	padding: 0 6px;
 	margin: 0 2px;
 	border: none;
@@ -380,7 +382,7 @@ const shouldShowPagination = computed(() => {
 	align-items: center;
 	justify-content: center;
 	min-width: 28px;
-	height: 30px;
+	height: 28px;
 	color: var(--color--text--inverse);
 	user-select: none;
 	background: transparent !important;
