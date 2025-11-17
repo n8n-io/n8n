@@ -44,8 +44,9 @@ describe('InsightsModule', () => {
 			// Clear it from cache to ensure a clean test
 			delete require.cache[collectionServicePath];
 
-			// ACT - Call init which should NOT load InsightsCollectionService for workers
+			// ACT - Call init AND setttings which should NOT load InsightsCollectionService for workers
 			await insightsModule.init();
+			await insightsModule.settings();
 
 			// ASSERT - Module should not be loaded
 			expect(require.cache[collectionServicePath]).toBeUndefined();

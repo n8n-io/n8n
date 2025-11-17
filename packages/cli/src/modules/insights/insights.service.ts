@@ -26,7 +26,11 @@ export class InsightsService {
 	}
 
 	private async toggleCollectionService(enable: boolean) {
-		if (this.instanceSettings.instanceType === 'worker') {
+		if (
+			this.instanceSettings.instanceType !== 'main' &&
+			this.instanceSettings.instanceType !== 'webhook'
+		) {
+			this.logger.debug('Instance is not main or webhook, skipping collection');
 			return;
 		}
 

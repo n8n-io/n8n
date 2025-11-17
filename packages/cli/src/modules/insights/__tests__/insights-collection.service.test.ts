@@ -74,6 +74,7 @@ describe('initialization safeguards', () => {
 		});
 
 		// ACT - Try to flush without initialization
+		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
 
 		// ASSERT - no insights in the buffer should have been saved

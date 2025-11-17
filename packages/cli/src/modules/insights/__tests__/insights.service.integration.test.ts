@@ -1085,7 +1085,7 @@ describe('InsightsService (Integration)', () => {
 				mockCompactionService,
 				mockPruningService,
 				mock<LicenseState>(),
-				mock<InstanceSettings>(),
+				mock<InstanceSettings>({ instanceType: 'main' }),
 				mockLogger(),
 			);
 		});
