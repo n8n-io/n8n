@@ -27,6 +27,7 @@ export class AiWorkflowBuilderService {
 		parsedNodeTypes: INodeTypeDescription[],
 		private readonly client?: AiAssistantClient,
 		private readonly logger?: Logger,
+		private readonly instanceId?: string,
 		private readonly instanceUrl?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
@@ -207,7 +208,7 @@ export class AiWorkflowBuilderService {
 		}
 
 		// After the stream completes, track telemetry
-		if (this.onTelemetryEvent && userId && workflowId) {
+		if (this.onTelemetryEvent && userId) {
 			try {
 				await this.trackBuilderReplyTelemetry(agent, workflowId, userId);
 			} catch (error) {
@@ -218,7 +219,7 @@ export class AiWorkflowBuilderService {
 
 	private async trackBuilderReplyTelemetry(
 		agent: WorkflowBuilderAgent,
-		workflowId: string,
+		workflowId: string | undefined,
 		userId: string,
 	): Promise<void> {
 		if (!this.onTelemetryEvent) return;
@@ -249,13 +250,10 @@ export class AiWorkflowBuilderService {
 			),
 		];
 
-		// Extract instance ID from instanceUrl
-		const instanceId = this.instanceUrl ? new URL(this.instanceUrl).hostname : 'unknown';
-
 		// Build telemetry properties
 		const properties: ITelemetryTrackProperties = {
 			user_id: userId,
-			instance_id: instanceId,
+			instance_id: this.instanceId,
 			workflow_id: workflowId,
 			sequence_id: threadId,
 			message_ai: messageAi,

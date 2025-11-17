@@ -137,6 +137,15 @@ export async function executeToolsInParallel(
 		}
 	}
 
+	// Collect all validation history
+	const allValidationHistory: Array<(typeof WorkflowState.State.validationHistory)[number]> = [];
+
+	for (const update of stateUpdates) {
+		if (update.validationHistory && Array.isArray(update.validationHistory)) {
+			allValidationHistory.push(...update.validationHistory);
+		}
+	}
+
 	// Return the combined update
 	const finalUpdate: Partial<typeof WorkflowState.State> = {
 		messages: allMessages,
@@ -148,6 +157,10 @@ export async function executeToolsInParallel(
 
 	if (allTechniqueCategories.length > 0) {
 		finalUpdate.techniqueCategories = allTechniqueCategories;
+	}
+
+	if (allValidationHistory.length > 0) {
+		finalUpdate.validationHistory = allValidationHistory;
 	}
 
 	return finalUpdate;

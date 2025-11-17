@@ -392,11 +392,12 @@ export class WorkflowBuilderAgent {
 		return workflow;
 	}
 
-	async getState(workflowId: string, userId?: string): Promise<TypedStateSnapshot> {
+	async getState(workflowId?: string, userId?: string): Promise<TypedStateSnapshot> {
 		const workflow = this.createWorkflow();
 		const agent = workflow.compile({ checkpointer: this.checkpointer });
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 		return (await agent.getState({
-			configurable: { thread_id: `workflow-${workflowId}-user-${userId ?? new Date().getTime()}` },
+			configurable: { thread_id: threadId },
 		})) as TypedStateSnapshot;
 	}
 

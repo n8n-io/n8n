@@ -4,6 +4,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
+import { InstanceSettings } from 'n8n-core';
 import type { IUser } from 'n8n-workflow';
 import { ITelemetryTrackProperties } from 'n8n-workflow';
 
@@ -30,6 +31,7 @@ export class WorkflowBuilderService {
 		private readonly urlService: UrlService,
 		private readonly push: Push,
 		private readonly telemetry: Telemetry,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	private async getService(): Promise<AiWorkflowBuilderService> {
@@ -75,6 +77,7 @@ export class WorkflowBuilderService {
 				nodeTypeDescriptions,
 				client,
 				this.logger,
+				this.instanceSettings.instanceId,
 				this.urlService.getInstanceBaseUrl(),
 				onCreditsUpdated,
 				onTelemetryEvent,
