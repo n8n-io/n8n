@@ -1,5 +1,11 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { SharedWorkflowRepository, IWorkflowDb, WorkflowEntity } from '@n8n/db';
+import type {
+	Project,
+	SharedWorkflow,
+	SharedWorkflowRepository,
+	IWorkflowDb,
+	WorkflowEntity,
+} from '@n8n/db';
 import type { WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
@@ -14,6 +20,7 @@ describe('initialization safeguards', () => {
 	let insightsCollectionService: InsightsCollectionService;
 	let insightsRawRepository: InsightsRawRepository;
 	let insightsMetadataRepository: InsightsMetadataRepository;
+	let sharedWorkflowRepository: ReturnType<typeof mock<SharedWorkflowRepository>>;
 
 	const workflow = mock<WorkflowEntity & IWorkflowDb>({
 		id: 'workflow-id',
@@ -23,8 +30,9 @@ describe('initialization safeguards', () => {
 	beforeAll(async () => {
 		insightsRawRepository = mock<InsightsRawRepository>();
 		insightsMetadataRepository = mock<InsightsMetadataRepository>();
+		sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 		insightsCollectionService = new InsightsCollectionService(
-			mock<SharedWorkflowRepository>(),
+			sharedWorkflowRepository,
 			insightsRawRepository,
 			insightsMetadataRepository,
 			mock<InsightsConfig>(),
@@ -54,11 +62,9 @@ describe('initialization safeguards', () => {
 
 		// ACT - Call handler without init()
 		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
-		await insightsCollectionService.flushEvents();
 
-		// ASSERT - no insights in the buffer should have been saved
-		expect(insightsMetadataRepository.upsert).not.toHaveBeenCalled();
-		expect(insightsRawRepository.insert).not.toHaveBeenCalled();
+		// expect private buffer to be empty
+		expect(insightsCollectionService['bufferedInsights'].size).toBe(0);
 	});
 
 	test('does not flush events when not initialized', async () => {
@@ -72,6 +78,13 @@ describe('initialization safeguards', () => {
 			startedAt: startedAt.toJSDate(),
 			stoppedAt: stoppedAt.toJSDate(),
 		});
+		sharedWorkflowRepository.find.mockResolvedValueOnce([
+			mock<SharedWorkflow>({
+				workflow,
+				project: mock<Project>(),
+				role: 'workflow:editor',
+			}),
+		]);
 
 		// ACT - Try to flush without initialization
 		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
