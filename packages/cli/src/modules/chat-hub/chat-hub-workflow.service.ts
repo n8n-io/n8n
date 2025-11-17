@@ -574,7 +574,7 @@ export class ChatHubWorkflowService {
 			},
 			type: MERGE_NODE_TYPE,
 			typeVersion: 3.2,
-			position: [976, 0],
+			position: [224, -100],
 			id: uuidv4(),
 			name: NODE_NAMES.MERGE,
 		};
