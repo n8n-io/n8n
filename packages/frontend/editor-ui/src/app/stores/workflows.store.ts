@@ -67,7 +67,7 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { dataPinningEventBus } from '@/app/event-bus';
-import { isJsonKeyObject, isEmpty, stringSizeInBytes, isPresent } from '@/app/utils/typesUtils';
+import { isJsonKeyObject, stringSizeInBytes, isPresent } from '@/app/utils/typesUtils';
 import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
 import {
 	unflattenExecutionData,
@@ -433,6 +433,21 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return workflow.value.nodes.find((node) => node.id === nodeId);
 	}
 
+	function findRootWithMainConnection(nodeName: string): string | null {
+		const children = workflowObject.value.getChildNodes(nodeName, 'ALL');
+
+		for (let i = children.length - 1; i >= 0; i--) {
+			const childName = children[i];
+			const parentNodes = workflowObject.value.getParentNodes(childName, NodeConnectionTypes.Main);
+
+			if (parentNodes.length > 0) {
+				return childName;
+			}
+		}
+
+		return null;
+	}
+
 	// Finds the full id for a given partial id for a node, relying on order for uniqueness in edge cases
 	function findNodeByPartialId(partialId: string): INodeUi | undefined {
 		return workflow.value.nodes.find((node) => node.id.startsWith(partialId));
@@ -657,23 +672,31 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		nodeTypes,
 		tags,
 		select,
+		isArchived,
 	}: {
 		projectId?: string;
 		query?: string;
 		nodeTypes?: string[];
 		tags?: string[];
 		select?: string[];
+		isArchived?: boolean;
 	}): Promise<IWorkflowDb[]> {
 		const filter = {
 			projectId,
 			query,
 			nodeTypes,
 			tags,
+			isArchived,
 		};
+
+		// Check if filter has meaningful values (not just undefined, null, or empty arrays/strings)
+		const hasFilter = Object.values(filter).some(
+			(v) => isPresent(v) && (Array.isArray(v) ? v.length > 0 : v !== ''),
+		);
 
 		const { data: workflows } = await workflowsApi.getWorkflows(
 			rootStore.restApiContext,
-			isEmpty(filter) ? undefined : filter,
+			hasFilter ? filter : undefined,
 			undefined,
 			select,
 		);
@@ -1869,6 +1892,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		isNodeInOutgoingNodeConnections,
 		getWorkflowById,
 		getNodeByName,
+		findRootWithMainConnection,
 		getNodeById,
 		getNodesByIds,
 		getParametersLastUpdate,

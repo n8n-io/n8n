@@ -1,17 +1,25 @@
+import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
 import { createComponentRenderer, type RenderOptions } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import FilterConditions from './FilterConditions.vue';
-import { STORES } from '@n8n/stores';
+import * as workFlowHelpers from '@/app/composables/useWorkflowHelpers';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { within, waitFor } from '@testing-library/vue';
-import { getFilterOperator } from './utils';
+import { cleanup, waitFor, within } from '@testing-library/vue';
 import get from 'lodash/get';
-import * as workFlowHelpers from '@/app/composables/useWorkflowHelpers';
-import { createTestNode, createTestNodeProperties } from '@/__tests__/mocks';
-import type { FilterTypeOptions, FilterValue } from 'n8n-workflow';
+import type { FilterOptionsValue, FilterTypeOptions, FilterValue } from 'n8n-workflow';
+import FilterConditions from './FilterConditions.vue';
+import { getFilterOperator } from './utils';
 
+vi.mock('vue-router');
+
+const DEFAULT_OPTIONS: FilterOptionsValue = {
+	caseSensitive: true,
+	leftValue: '',
+	typeValidation: 'loose',
+	version: 2,
+};
 const DEFAULT_SETUP = {
 	pinia: createTestingPinia({
 		initialState: {
@@ -30,14 +38,18 @@ const DEFAULT_SETUP = {
 			credentials: {},
 			disabled: false,
 		},
-		parameter: createTestNodeProperties({ name: 'conditions', displayName: 'Conditions' }),
-		value: {} as FilterValue,
+		parameter: createTestNodeProperties({
+			name: 'conditions',
+			displayName: 'Conditions',
+		}),
 	},
 } satisfies RenderOptions<typeof FilterConditions>;
 
 const renderComponent = createComponentRenderer(FilterConditions, DEFAULT_SETUP);
 
 describe('FilterConditions.vue', () => {
+	beforeEach(cleanup);
+
 	afterEach(() => {
 		vi.clearAllMocks();
 	});
@@ -59,12 +71,7 @@ describe('FilterConditions.vue', () => {
 			props: {
 				...DEFAULT_SETUP.props,
 				value: {
-					options: {
-						caseSensitive: true,
-						leftValue: '',
-						typeValidation: 'loose',
-						version: 2,
-					},
+					options: DEFAULT_OPTIONS,
 					conditions: [
 						{
 							id: '1',
@@ -296,12 +303,7 @@ describe('FilterConditions.vue', () => {
 			props: {
 				...DEFAULT_SETUP.props,
 				value: {
-					options: {
-						caseSensitive: true,
-						leftValue: '',
-						typeValidation: 'loose',
-						version: 2,
-					},
+					options: DEFAULT_OPTIONS,
 					conditions: [
 						{
 							id: '1',
@@ -504,5 +506,42 @@ describe('FilterConditions.vue', () => {
 
 		const events = emitted('valueChanged') ?? [];
 		expect(get(events[0], '0.value.options.caseSensitive')).toBe(false);
+	});
+
+	it('should auto-change operator type when dropping a value', async () => {
+		vi.spyOn(workFlowHelpers, 'resolveParameter').mockReturnValue({
+			leftValue: 42,
+			rightValue: 42,
+		});
+
+		const { emitted } = renderComponent({
+			...DEFAULT_SETUP,
+			props: {
+				...DEFAULT_SETUP.props,
+				value: {
+					conditions: [
+						{
+							id: '1',
+							leftValue: '',
+							rightValue: '',
+							operator: getFilterOperator('string:equals'),
+						},
+					],
+					combinator: 'and',
+				} as Partial<FilterValue> as FilterValue,
+			},
+			global: {
+				stubs: {
+					ParameterInputFull: {
+						setup(_props, { emit }) {
+							emit('drop', '={{ 42 }}');
+						},
+						template: '<div></div>',
+					},
+				},
+			},
+		});
+
+		expect(get(emitted('valueChanged'), '0.0.value.conditions.0.operator.type')).toBe('number');
 	});
 });
