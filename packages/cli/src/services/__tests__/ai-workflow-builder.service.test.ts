@@ -271,7 +271,7 @@ describe('WorkflowBuilderService', () => {
 				| undefined;
 
 			MockedAiWorkflowBuilderService.mockImplementation(
-				(_parsedNodeTypes, _client, _logger, _instanceUrl, callback) => {
+				(_parsedNodeTypes, _client, _logger, _instanceUrl, callback, _telemetryCallback) => {
 					capturedCallback = callback;
 					return mockAiService;
 				},
@@ -318,7 +318,7 @@ describe('WorkflowBuilderService', () => {
 				| undefined;
 
 			MockedAiWorkflowBuilderService.mockImplementation(
-				(_parsedNodeTypes, _client, _logger, _instanceUrl, callback) => {
+				(_parsedNodeTypes, _client, _logger, _instanceUrl, callback, _telemetryCallback) => {
 					capturedCallback = callback;
 					return mockAiService;
 				},

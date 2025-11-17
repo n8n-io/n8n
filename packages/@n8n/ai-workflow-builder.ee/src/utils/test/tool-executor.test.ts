@@ -50,6 +50,7 @@ describe('tool-executor', () => {
 			workflowContext: {},
 			workflowValidation: null,
 			validationHistory: [],
+			techniqueCategories: [],
 			previousSummary: 'EMPTY',
 		});
 

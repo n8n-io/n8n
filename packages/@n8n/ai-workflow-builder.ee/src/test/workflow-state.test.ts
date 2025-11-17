@@ -302,3 +302,94 @@ describe('WorkflowState.validationHistory reducer', () => {
 		expect(history).toHaveLength(2);
 	});
 });
+
+describe('WorkflowState.techniqueCategories reducer', () => {
+	it('should append new technique categories to existing categories', () => {
+		const reducer = WorkflowState.spec.techniqueCategories.operator;
+
+		const existingCategories = ['scraping', 'data-transformation'];
+		const newCategories = ['notifications', 'scheduling'];
+
+		const result = reducer(existingCategories, newCategories);
+
+		expect(result).toHaveLength(4);
+		expect(result).toEqual(['scraping', 'data-transformation', 'notifications', 'scheduling']);
+	});
+
+	it('should return existing categories when update is undefined', () => {
+		type ReducerFn = (x: string[], y: string[] | undefined | null) => string[];
+		const reducer = WorkflowState.spec.techniqueCategories.operator as ReducerFn;
+
+		const existingCategories = ['api-integration', 'webhook'];
+
+		const result = reducer(existingCategories, undefined);
+
+		expect(result).toEqual(existingCategories);
+		expect(result).toBe(existingCategories);
+	});
+
+	it('should return existing categories when update is null', () => {
+		type ReducerFn = (x: string[], y: string[] | undefined | null) => string[];
+		const reducer = WorkflowState.spec.techniqueCategories.operator as ReducerFn;
+
+		const existingCategories = ['error-handling'];
+
+		const result = reducer(existingCategories, null);
+
+		expect(result).toEqual(existingCategories);
+		expect(result).toBe(existingCategories);
+	});
+
+	it('should return existing categories when update is empty array', () => {
+		const reducer = WorkflowState.spec.techniqueCategories.operator;
+
+		const existingCategories = ['database-operations'];
+
+		const result = reducer(existingCategories, []);
+
+		expect(result).toEqual(existingCategories);
+		expect(result).toBe(existingCategories);
+	});
+
+	it('should handle empty existing categories with new updates', () => {
+		const reducer = WorkflowState.spec.techniqueCategories.operator;
+
+		const newCategories = ['email-automation', 'file-processing'];
+
+		const result = reducer([], newCategories);
+
+		expect(result).toEqual(newCategories);
+		expect(result[0]).toBe(newCategories[0]);
+	});
+
+	it('should handle multiple updates sequentially', () => {
+		type ReducerFn = (x: string[], y: string[] | undefined | null) => string[];
+		const reducer = WorkflowState.spec.techniqueCategories.operator as ReducerFn;
+
+		let categories: string[] = [];
+
+		// First update
+		const update1 = ['authentication'];
+		categories = reducer(categories, update1);
+		expect(categories).toHaveLength(1);
+		expect(categories[0]).toBe(update1[0]);
+
+		// Second update (undefined - should not change)
+		const prevCategories = categories;
+		categories = reducer(categories, undefined);
+		expect(categories).toBe(prevCategories);
+		expect(categories).toHaveLength(1);
+
+		// Third update
+		const update2 = ['logging', 'monitoring'];
+		categories = reducer(categories, update2);
+		expect(categories).toHaveLength(3);
+		expect(categories).toEqual(['authentication', 'logging', 'monitoring']);
+
+		// Fourth update (empty array - should not change)
+		const prevCategories2 = categories;
+		categories = reducer(categories, []);
+		expect(categories).toBe(prevCategories2);
+		expect(categories).toHaveLength(3);
+	});
+});

@@ -128,6 +128,15 @@ export async function executeToolsInParallel(
 		}
 	}
 
+	// Collect all technique categories
+	const allTechniqueCategories: string[] = [];
+
+	for (const update of stateUpdates) {
+		if (update.techniqueCategories && Array.isArray(update.techniqueCategories)) {
+			allTechniqueCategories.push(...update.techniqueCategories);
+		}
+	}
+
 	// Return the combined update
 	const finalUpdate: Partial<typeof WorkflowState.State> = {
 		messages: allMessages,
@@ -135,6 +144,10 @@ export async function executeToolsInParallel(
 
 	if (allOperations.length > 0) {
 		finalUpdate.workflowOperations = allOperations;
+	}
+
+	if (allTechniqueCategories.length > 0) {
+		finalUpdate.techniqueCategories = allTechniqueCategories;
 	}
 
 	return finalUpdate;
