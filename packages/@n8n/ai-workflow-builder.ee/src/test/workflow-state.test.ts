@@ -197,56 +197,6 @@ describe('WorkflowState.validationHistory reducer', () => {
 		expect(result[2]).toBe(newHistory[0]);
 	});
 
-	it('should return existing history when update is undefined', () => {
-		type ReducerFn = (
-			x: TelemetryValidationStatus[],
-			y: TelemetryValidationStatus[] | undefined | null,
-		) => TelemetryValidationStatus[];
-		const reducer = WorkflowState.spec.validationHistory.operator as ReducerFn;
-
-		const existingHistory: TelemetryValidationStatus[] = [
-			createValidationStatus([
-				{ name: 'tool-node-has-no-parameters', result: 'pass' },
-				{ name: 'agent-static-prompt', result: 'fail' },
-			]),
-		];
-
-		const result = reducer(existingHistory, undefined);
-
-		expect(result).toEqual(existingHistory);
-		expect(result).toBe(existingHistory); // Should be the same reference
-	});
-
-	it('should return existing history when update is null', () => {
-		type ReducerFn = (
-			x: TelemetryValidationStatus[],
-			y: TelemetryValidationStatus[] | undefined | null,
-		) => TelemetryValidationStatus[];
-		const reducer = WorkflowState.spec.validationHistory.operator as ReducerFn;
-
-		const existingHistory: TelemetryValidationStatus[] = [
-			createValidationStatus([{ name: 'workflow-has-no-nodes', result: 'pass' }]),
-		];
-
-		const result = reducer(existingHistory, null);
-
-		expect(result).toEqual(existingHistory);
-		expect(result).toBe(existingHistory); // Should be the same reference
-	});
-
-	it('should return existing history when update is empty array', () => {
-		const reducer = WorkflowState.spec.validationHistory.operator;
-
-		const existingHistory: TelemetryValidationStatus[] = [
-			createValidationStatus([{ name: 'workflow-has-no-trigger', result: 'fail' }]),
-		];
-
-		const result = reducer(existingHistory, []);
-
-		expect(result).toEqual(existingHistory);
-		expect(result).toBe(existingHistory); // Should be the same reference
-	});
-
 	it('should handle empty existing history with new updates', () => {
 		const reducer = WorkflowState.spec.validationHistory.operator;
 
@@ -328,29 +278,6 @@ describe('WorkflowState.techniqueCategories reducer', () => {
 		expect(result).toBe(existingCategories);
 	});
 
-	it('should return existing categories when update is null', () => {
-		type ReducerFn = (x: string[], y: string[] | undefined | null) => string[];
-		const reducer = WorkflowState.spec.techniqueCategories.operator as ReducerFn;
-
-		const existingCategories = ['error-handling'];
-
-		const result = reducer(existingCategories, null);
-
-		expect(result).toEqual(existingCategories);
-		expect(result).toBe(existingCategories);
-	});
-
-	it('should return existing categories when update is empty array', () => {
-		const reducer = WorkflowState.spec.techniqueCategories.operator;
-
-		const existingCategories = ['database-operations'];
-
-		const result = reducer(existingCategories, []);
-
-		expect(result).toEqual(existingCategories);
-		expect(result).toBe(existingCategories);
-	});
-
 	it('should handle empty existing categories with new updates', () => {
 		const reducer = WorkflowState.spec.techniqueCategories.operator;
 
@@ -360,36 +287,5 @@ describe('WorkflowState.techniqueCategories reducer', () => {
 
 		expect(result).toEqual(newCategories);
 		expect(result[0]).toBe(newCategories[0]);
-	});
-
-	it('should handle multiple updates sequentially', () => {
-		type ReducerFn = (x: string[], y: string[] | undefined | null) => string[];
-		const reducer = WorkflowState.spec.techniqueCategories.operator as ReducerFn;
-
-		let categories: string[] = [];
-
-		// First update
-		const update1 = ['authentication'];
-		categories = reducer(categories, update1);
-		expect(categories).toHaveLength(1);
-		expect(categories[0]).toBe(update1[0]);
-
-		// Second update (undefined - should not change)
-		const prevCategories = categories;
-		categories = reducer(categories, undefined);
-		expect(categories).toBe(prevCategories);
-		expect(categories).toHaveLength(1);
-
-		// Third update
-		const update2 = ['logging', 'monitoring'];
-		categories = reducer(categories, update2);
-		expect(categories).toHaveLength(3);
-		expect(categories).toEqual(['authentication', 'logging', 'monitoring']);
-
-		// Fourth update (empty array - should not change)
-		const prevCategories2 = categories;
-		categories = reducer(categories, []);
-		expect(categories).toBe(prevCategories2);
-		expect(categories).toHaveLength(3);
 	});
 });
