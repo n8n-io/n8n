@@ -431,7 +431,7 @@ test.describe('@isolated', () => {
 			await n8n.navigate.toCredentials();
 			await n8n.credentialsComposer.createFromList('Notion API', { apiKey: 'test' });
 			await n8n.navigate.toWorkflows();
-			await n8n.workflows.addResource.workflow();
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 			await n8n.canvas.setWorkflowName(workflowName);
 			await n8n.page.keyboard.press('Enter');
 			await n8n.canvas.openShareModal();
