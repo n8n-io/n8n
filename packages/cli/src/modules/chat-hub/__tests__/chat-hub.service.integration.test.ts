@@ -56,24 +56,28 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
+				tools: [],
 			});
 			const session2 = await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 2',
 				lastMessageAt: new Date('2025-01-02T00:00:00Z'),
+				tools: [],
 			});
 			const session3 = await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: member.id,
 				title: 'session 3',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
+				tools: [],
 			});
 			await sessionsRepository.createChatSession({
 				id: crypto.randomUUID(),
 				ownerId: admin.id,
 				title: 'admin session',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
+				tools: [],
 			});
 
 			const conversations = await chatHubService.getConversations(member.id);
@@ -97,6 +101,7 @@ describe('chatHub', () => {
 				ownerId: admin.id,
 				title: 'admin session',
 				lastMessageAt: new Date('2025-01-01T00:00:00Z'),
+				tools: [],
 			});
 			await expect(chatHubService.getConversation(member.id, session.id)).rejects.toThrow(
 				'Chat session not found',
@@ -109,6 +114,7 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
+				tools: [],
 			});
 			const conversation = await chatHubService.getConversation(member.id, session.id);
 			expect(conversation).toBeDefined();
@@ -122,6 +128,7 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
+				tools: [],
 			});
 			const ids = [
 				crypto.randomUUID(),
@@ -200,6 +207,7 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
+				tools: [],
 			});
 			const msg1 = await messagesRepository.createChatMessage({
 				id: ids[0],
@@ -287,6 +295,7 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
+				tools: [],
 			});
 
 			const msg1 = await messagesRepository.createChatMessage({
@@ -352,6 +361,7 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
+				tools: [],
 			});
 			const msg1 = await messagesRepository.createChatMessage({
 				id: ids[0],
@@ -441,6 +451,7 @@ describe('chatHub', () => {
 				ownerId: member.id,
 				title: 'session 1',
 				lastMessageAt: new Date('2025-01-03T00:00:00Z'),
+				tools: [],
 			});
 			const msg1 = await messagesRepository.createChatMessage({
 				id: ids[0],

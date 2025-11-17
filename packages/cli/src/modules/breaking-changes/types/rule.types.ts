@@ -1,12 +1,13 @@
+import type {
+	BreakingChangeAffectedWorkflow,
+	BreakingChangeRecommendation,
+	BreakingChangeRuleSeverity,
+	BreakingChangeVersion,
+} from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 
-export const enum BreakingChangeSeverity {
-	critical = 'critical',
-	high = 'high',
-	medium = 'medium',
-	low = 'low',
-}
+import type { InstanceDetectionReport, WorkflowDetectionReport } from './detection.types';
 
 export const enum BreakingChangeCategory {
 	workflow = 'workflow',
@@ -16,74 +17,32 @@ export const enum BreakingChangeCategory {
 	infrastructure = 'infrastructure',
 }
 
-export const enum IssueLevel {
-	error = 'error',
-	warning = 'warning',
-	info = 'info',
-}
-
-export type BreakingChangeVersion = 'v2';
-
-export interface BreakingChangeMetadata {
+export interface BreakingChangeRuleMetadata {
 	version: BreakingChangeVersion;
 	title: string;
 	description: string;
 	category: BreakingChangeCategory;
-	severity: BreakingChangeSeverity;
-	documentationUrl?: string;
-}
-
-export interface WorkflowDetectionResult {
-	isAffected: boolean;
-	issues: DetectionIssue[]; // List of issues affecting this workflow
-}
-
-export interface InstanceDetectionResult {
-	isAffected: boolean;
-	instanceIssues: DetectionIssue[];
-	recommendations: Recommendation[];
-}
-
-export type AffectedWorkflow = Omit<WorkflowDetectionResult, 'isAffected'> & {
-	id: string;
-	name: string;
-	active: boolean;
-};
-
-export interface DetectionResult {
-	ruleId: string;
-	affectedWorkflows: AffectedWorkflow[];
-	instanceIssues: DetectionIssue[];
-	recommendations: Recommendation[];
-}
-
-export interface DetectionIssue {
-	title: string; // e.g., "Environment Variables", "Database Configuration"
-	description: string;
-	level: IssueLevel; // error, warning, info
-}
-
-export interface Recommendation {
-	action: string;
-	description: string;
+	severity: BreakingChangeRuleSeverity;
 	documentationUrl?: string;
 }
 
 export interface IBreakingChangeInstanceRule {
 	id: string;
-	getMetadata(): BreakingChangeMetadata;
-	detect(): Promise<InstanceDetectionResult>;
+	getMetadata(): BreakingChangeRuleMetadata;
+	detect(): Promise<InstanceDetectionReport>;
 }
 
 export interface IBreakingChangeWorkflowRule {
 	id: string;
-	getMetadata(): BreakingChangeMetadata;
-	getRecommendations(workflowResults: AffectedWorkflow[]): Promise<Recommendation[]>;
+	getMetadata(): BreakingChangeRuleMetadata;
+	getRecommendations(
+		workflowResults: BreakingChangeAffectedWorkflow[],
+	): Promise<BreakingChangeRecommendation[]>;
 	// The detectWorkflow function includes the nodes grouped by type for more efficient processing
 	detectWorkflow(
 		workflow: WorkflowEntity,
 		nodesGroupedByType: Map<string, INode[]>,
-	): Promise<WorkflowDetectionResult>;
+	): Promise<WorkflowDetectionReport>;
 }
 
 export type IBreakingChangeRule = IBreakingChangeInstanceRule | IBreakingChangeWorkflowRule;

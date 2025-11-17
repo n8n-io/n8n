@@ -14,6 +14,7 @@ import Logo from '@n8n/design-system/components/N8nLogo';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 defineProps<{ isMobileDevice: boolean }>();
 
@@ -24,6 +25,7 @@ const toast = useToast();
 const message = useMessage();
 const sidebar = useChatHubSidebarState();
 const settingsStore = useSettingsStore();
+const telemetry = useTelemetry();
 
 const renamingSessionId = ref<string>();
 
@@ -77,6 +79,11 @@ async function handleDeleteSession(sessionId: string) {
 	}
 }
 
+function handleNewChatClick() {
+	telemetry.track('User clicked new chat button', {});
+	sidebar.toggleOpen(false);
+}
+
 onMounted(() => {
 	void chatStore.fetchSessions();
 });
@@ -113,7 +120,7 @@ onMounted(() => {
 				label="New Chat"
 				icon="square-pen"
 				:active="route.name === CHAT_VIEW"
-				@click="sidebar.toggleOpen(false)"
+				@click="handleNewChatClick"
 			/>
 			<ChatSidebarLink
 				:to="{ name: CHAT_AGENTS_VIEW }"

@@ -170,7 +170,7 @@ export function createUpdateNodeParametersTool(
 				}
 
 				// Find the node type
-				const nodeType = findNodeType(node.type, nodeTypes);
+				const nodeType = findNodeType(node.type, node.typeVersion, nodeTypes);
 				if (!nodeType) {
 					const error = createNodeTypeNotFoundError(node.type);
 					reporter.error(error);

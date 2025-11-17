@@ -4,6 +4,8 @@ import { createTestingPinia } from '@pinia/testing';
 import { vi } from 'vitest';
 import DataTableBreadcrumbs from '@/features/core/dataTable/components/DataTableBreadcrumbs.vue';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
+import { type MockedStore, mockedStore } from '@/__tests__/utils';
+import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
 
 const mockRouter = {
 	push: vi.fn(),
@@ -12,8 +14,6 @@ const mockRouter = {
 const mockToast = {
 	showError: vi.fn(),
 };
-
-const mockUpdateDataTable = vi.fn();
 
 vi.mock('vue-router', async (importOriginal) => {
 	const actual = await importOriginal();
@@ -25,12 +25,6 @@ vi.mock('vue-router', async (importOriginal) => {
 
 vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => mockToast,
-}));
-
-vi.mock('@/features/core/dataTable/dataTable.store', () => ({
-	useDataTableStore: () => ({
-		updateDataTable: mockUpdateDataTable,
-	}),
 }));
 
 vi.mock('@n8n/i18n', async (importOriginal) => ({
@@ -79,20 +73,19 @@ const renderComponent = createComponentRenderer(DataTableBreadcrumbs, {
 	},
 });
 
+let dataTableStore: MockedStore<typeof useDataTableStore>;
+
 describe('DataTableBreadcrumbs', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
-		mockUpdateDataTable.mockResolvedValue(true);
+
+		createTestingPinia();
+		dataTableStore = mockedStore(useDataTableStore);
 	});
 
 	describe('Breadcrumbs rendering', () => {
 		it('should render breadcrumbs with project data', () => {
-			const { getByText, getAllByText } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByText, getAllByText } = renderComponent();
 
 			expect(getByText('Data Tables')).toBeInTheDocument();
 			const separators = getAllByText('/');
@@ -104,10 +97,6 @@ describe('DataTableBreadcrumbs', () => {
 				props: {
 					dataTable: mockDataTableWithoutProject,
 				},
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
 			});
 
 			// Should still render the breadcrumbs container even without project
@@ -116,24 +105,14 @@ describe('DataTableBreadcrumbs', () => {
 		});
 
 		it('should render inline text edit for data table name', () => {
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			const nameInput = getByTestId('data-table-header-name-input');
 			expect(nameInput).toBeInTheDocument();
 		});
 
 		it('should render DataTableActions component', () => {
-			const { container } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { container } = renderComponent();
 
 			const actionsComponent = container.querySelector('[data-test-id="data-table-card-actions"]');
 			expect(actionsComponent).toBeInTheDocument();
@@ -142,12 +121,7 @@ describe('DataTableBreadcrumbs', () => {
 
 	describe('Navigation', () => {
 		it('should navigate to data tables list when breadcrumb item is clicked', async () => {
-			const { getByText } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByText } = renderComponent();
 
 			const dataTablesLink = getByText('Data Tables');
 			await userEvent.click(dataTablesLink);
@@ -156,12 +130,7 @@ describe('DataTableBreadcrumbs', () => {
 		});
 
 		it('should render DataTableActions component that can trigger navigation', () => {
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			// Verify DataTableActions component is rendered
 			const actionsComponent = getByTestId('data-table-card-actions');
@@ -171,12 +140,7 @@ describe('DataTableBreadcrumbs', () => {
 
 	describe('Name editing', () => {
 		it('should show current data table name in preview', () => {
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			const preview = getByTestId('inline-edit-preview');
 			expect(preview).toBeInTheDocument();
@@ -184,12 +148,7 @@ describe('DataTableBreadcrumbs', () => {
 		});
 
 		it('should have editable name input with correct attributes', () => {
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			const input = getByTestId('inline-edit-input');
 			expect(input).toBeInTheDocument();
@@ -198,26 +157,17 @@ describe('DataTableBreadcrumbs', () => {
 		});
 
 		it('should render placeholder for name input', () => {
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			const input = getByTestId('inline-edit-input');
 			expect(input).toHaveAttribute('placeholder', 'Data table name');
 		});
 
 		it('should call updateDataTable when name is changed and submitted', async () => {
-			mockUpdateDataTable.mockResolvedValue({ id: '1', name: 'Renamed Table' });
+			// @ts-expect-error partial data match
+			dataTableStore.updateDataTable.mockResolvedValue({ id: '1', name: 'Renamed Table' });
 
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			// Click to activate edit mode
 			const editableArea = getByTestId('inline-editable-area');
@@ -229,18 +179,17 @@ describe('DataTableBreadcrumbs', () => {
 			await userEvent.type(input, 'Renamed Table{Enter}');
 
 			// Check that updateDataTable was called
-			expect(mockUpdateDataTable).toHaveBeenCalledWith('1', 'Renamed Table', 'project-1');
+			expect(dataTableStore.updateDataTable).toHaveBeenCalledWith(
+				'1',
+				'Renamed Table',
+				'project-1',
+			);
 		});
 
 		it('should show error toast when rename fails', async () => {
-			mockUpdateDataTable.mockRejectedValue(new Error('Update failed'));
+			dataTableStore.updateDataTable.mockRejectedValue(new Error('Update failed'));
 
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			const editableArea = getByTestId('inline-editable-area');
 			await userEvent.click(editableArea);
@@ -253,14 +202,10 @@ describe('DataTableBreadcrumbs', () => {
 		});
 
 		it('should revert to original name when update returns null', async () => {
-			mockUpdateDataTable.mockResolvedValue(null);
+			// @ts-expect-error partial data match
+			dataTableStore.updateDataTable.mockResolvedValue(null);
 
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			const editableArea = getByTestId('inline-editable-area');
 			await userEvent.click(editableArea);
@@ -273,12 +218,7 @@ describe('DataTableBreadcrumbs', () => {
 		});
 
 		it('should not call updateDataTable when name is empty', async () => {
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			const editableArea = getByTestId('inline-editable-area');
 			await userEvent.click(editableArea);
@@ -287,16 +227,11 @@ describe('DataTableBreadcrumbs', () => {
 			await userEvent.clear(input);
 			await userEvent.type(input, '{Enter}');
 
-			expect(mockUpdateDataTable).not.toHaveBeenCalled();
+			expect(dataTableStore.updateDataTable).not.toHaveBeenCalled();
 		});
 
 		it('should not call updateDataTable when name is unchanged', async () => {
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			const editableArea = getByTestId('inline-editable-area');
 			await userEvent.click(editableArea);
@@ -304,18 +239,13 @@ describe('DataTableBreadcrumbs', () => {
 			const input = getByTestId('inline-edit-input');
 			await userEvent.type(input, '{Enter}');
 
-			expect(mockUpdateDataTable).not.toHaveBeenCalled();
+			expect(dataTableStore.updateDataTable).not.toHaveBeenCalled();
 		});
 	});
 
 	describe('Component integration', () => {
 		it('should render component structure correctly', () => {
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			// Check name input
 			const nameInput = getByTestId('data-table-header-name-input');
@@ -327,24 +257,14 @@ describe('DataTableBreadcrumbs', () => {
 		});
 
 		it('should display correct data table name', () => {
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			const preview = getByTestId('inline-edit-preview');
 			expect(preview).toHaveTextContent('Test DataTable');
 		});
 
 		it('should show breadcrumbs separator', () => {
-			const { getAllByText } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getAllByText } = renderComponent();
 
 			const separators = getAllByText('/');
 			expect(separators.length).toBeGreaterThan(0);
@@ -353,12 +273,7 @@ describe('DataTableBreadcrumbs', () => {
 
 	describe('Delete functionality', () => {
 		it('should render delete action component', () => {
-			const { getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { getByTestId } = renderComponent();
 
 			const actionsComponent = getByTestId('data-table-card-actions');
 			expect(actionsComponent).toBeInTheDocument();
@@ -367,12 +282,7 @@ describe('DataTableBreadcrumbs', () => {
 
 	describe('Props watching', () => {
 		it('should update editableName when dataTable name prop changes', async () => {
-			const { rerender, getByTestId } = renderComponent({
-				pinia: createTestingPinia({
-					initialState: {},
-					stubActions: false,
-				}),
-			});
+			const { rerender, getByTestId } = renderComponent();
 
 			const preview = getByTestId('inline-edit-preview');
 			expect(preview).toHaveTextContent('Test DataTable');
