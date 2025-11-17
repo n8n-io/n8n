@@ -66,7 +66,6 @@ export class WorkflowBuilderService {
 
 			// Callback for AI Builder to send telemetry events
 			const onTelemetryEvent = (event: string, properties: ITelemetryTrackProperties) => {
-				console.log(event, properties);
 				this.telemetry.track(event, properties);
 			};
 
