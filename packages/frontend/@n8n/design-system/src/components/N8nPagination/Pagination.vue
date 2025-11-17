@@ -336,6 +336,14 @@ const shouldShowPagination = computed(() => {
 		cursor: not-allowed;
 	}
 
+	// Make prev/next arrows bigger
+	&--prev,
+	&--next,
+	&--first,
+	&--last {
+		font-size: 14px;
+	}
+
 	&.is-active {
 		background: transparent !important;
 		color: var(--color--primary);
