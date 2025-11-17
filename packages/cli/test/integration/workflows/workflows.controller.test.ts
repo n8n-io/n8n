@@ -107,6 +107,40 @@ describe('POST /workflows', () => {
 		expect(pinData).toBeNull();
 	});
 
+	test('should retain accept `workflow.id`', async () => {
+		const payload = {
+			id: 'HDssU5Ce250UWyLg_MNG4',
+			name: 'name',
+			nodes: [],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+		};
+
+		const response = await authMemberAgent.post('/workflows').send(payload).expect(200);
+
+		expect(response.body.data.id).toBe(payload.id);
+	});
+
+	test('fails if a workflow with that id already exists', async () => {
+		const payload1 = {
+			id: 'HDssU5Ce250UWyLg_MNG4',
+			name: 'testing with context',
+			nodes: [],
+			connections: {},
+			staticData: null,
+			settings: {},
+			active: false,
+		};
+		const payload2 = { ...payload1, name: 'different name' };
+
+		await authMemberAgent.post('/workflows').send(payload1).expect(200);
+		const response = await authMemberAgent.post('/workflows').send(payload2);
+
+		expect(response.status).toBe(500);
+	});
+
 	test('should return scopes on created workflow', async () => {
 		const payload = {
 			name: 'testing',
