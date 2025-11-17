@@ -15,6 +15,7 @@ import { CommunityNodeTypesService } from './community-node-types.service';
 import { CommunityPackagesService } from './community-packages.service';
 import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
+import { valid } from 'semver';
 
 const {
 	PACKAGE_NOT_INSTALLED,
@@ -49,6 +50,10 @@ export class CommunityPackagesController {
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
+		}
+
+		if (version && !valid(version)) {
+			throw new BadRequestError(`Invalid version: ${version}`);
 		}
 
 		let checksum: string | undefined = undefined;
@@ -251,6 +256,10 @@ export class CommunityPackagesController {
 
 		if (!name) {
 			throw new BadRequestError(PACKAGE_NAME_NOT_PROVIDED);
+		}
+
+		if (version && !valid(version)) {
+			throw new BadRequestError(`Invalid version: ${version}`);
 		}
 
 		const previouslyInstalledPackage =

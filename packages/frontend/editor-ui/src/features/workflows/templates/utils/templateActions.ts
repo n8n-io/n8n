@@ -1,23 +1,23 @@
 import type { INodeUi } from '@/Interface';
 import type { ITemplatesWorkflowFull, IWorkflowTemplate } from '@n8n/rest-api-client/api/templates';
 import type { WorkflowData } from '@n8n/rest-api-client/api/workflows';
-import { getNewWorkflow } from '@/api/workflows';
-import { VIEWS } from '@/constants';
+import { getNewWorkflow } from '@/app/api/workflows';
+import { VIEWS } from '@/app/constants';
 import type { useRootStore } from '@n8n/stores/useRootStore';
-import type { useWorkflowsStore } from '@/stores/workflows.store';
-import { getNodesWithNormalizedPosition } from '@/utils/nodeViewUtils';
-import type { NodeTypeProvider } from '@/utils/nodeTypes/nodeTypeTransforms';
+import type { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { getNodesWithNormalizedPosition } from '@/app/utils/nodeViewUtils';
+import type { NodeTypeProvider } from '@/app/utils/nodeTypes/nodeTypeTransforms';
 import type { TemplateCredentialKey } from './templateTransforms';
 import { replaceAllTemplateNodeCredentials } from './templateTransforms';
 import type { INodeCredentialsDetails } from 'n8n-workflow';
 import type { RouteLocationRaw, Router } from 'vue-router';
 import type { TemplatesStore } from '@/features/workflows/templates/templates.store';
-import type { NodeTypesStore } from '@/stores/nodeTypes.store';
-import type { Telemetry } from '@/plugins/telemetry';
-import type { useExternalHooks } from '@/composables/useExternalHooks';
+import type { NodeTypesStore } from '@/app/stores/nodeTypes.store';
+import type { Telemetry } from '@/app/plugins/telemetry';
+import type { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { assert } from '@n8n/utils/assert';
-import { doesNodeHaveCredentialsToFill } from '@/utils/nodes/nodeTransforms';
-import { tryToParseNumber } from '@/utils/typesUtils';
+import { doesNodeHaveCredentialsToFill } from '@/app/utils/nodes/nodeTransforms';
+import { tryToParseNumber } from '@/app/utils/typesUtils';
 
 type ExternalHooks = ReturnType<typeof useExternalHooks>;
 

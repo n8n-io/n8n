@@ -22,18 +22,12 @@ export type WebSearchTool = Omit<OpenAIChatWebSearchTool, 'type'> & {
 		allowed_domains?: string[];
 	};
 };
-export type McpTool = Tool.Mcp & {
-	type: 'mcp';
-	authorization?: string;
-	connector_id?: string;
-};
 
 export type ChatTool =
 	| FunctionTool
 	| FileSearchTool
 	| WebSearchTool
 	| ComputerTool
-	| McpTool
 	| Tool.CodeInterpreter
 	| Tool.ImageGeneration
 	| Tool.LocalShell

@@ -1,3 +1,4 @@
+import { CallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
 import {
 	type IDataObject,
 	type IExecuteFunctions,
@@ -24,6 +25,7 @@ import {
 	getSelectedTools,
 	McpToolkit,
 	mcpToolToDynamicTool,
+	tryRefreshOAuth2Token,
 } from './utils';
 
 /**
@@ -89,6 +91,8 @@ async function connectAndGetTools(
 		headers,
 		name: node.type,
 		version: node.typeVersion,
+		onUnauthorized: async (headers) =>
+			await tryRefreshOAuth2Token(ctx, config.authentication, headers),
 	});
 
 	if (!client.ok) {
@@ -153,6 +157,24 @@ export class McpClientTool implements INodeType {
 				displayOptions: {
 					show: {
 						authentication: ['headerAuth'],
+					},
+				},
+			},
+			{
+				name: 'httpMultipleHeadersAuth',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['multipleHeadersAuth'],
+					},
+				},
+			},
+			{
+				name: 'mcpOAuth2Api',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['mcpOAuth2Api'],
 					},
 				},
 			},
@@ -223,6 +245,45 @@ export class McpClientTool implements INodeType {
 				],
 				default: 'none',
 				description: 'The way to authenticate with your endpoint',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.2 } }],
+					},
+				},
+			},
+			{
+				displayName: 'Authentication',
+				name: 'authentication',
+				type: 'options',
+				options: [
+					{
+						name: 'Bearer Auth',
+						value: 'bearerAuth',
+					},
+					{
+						name: 'Header Auth',
+						value: 'headerAuth',
+					},
+					{
+						name: 'MCP OAuth2',
+						value: 'mcpOAuth2Api',
+					},
+					{
+						name: 'Multiple Headers Auth',
+						value: 'multipleHeadersAuth',
+					},
+					{
+						name: 'None',
+						value: 'none',
+					},
+				],
+				default: 'none',
+				description: 'The way to authenticate with your endpoint',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { gte: 1.2 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Credentials',
@@ -231,7 +292,7 @@ export class McpClientTool implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth', 'bearerAuth'],
+						authentication: ['headerAuth', 'bearerAuth', 'mcpOAuth2Api', 'multipleHeadersAuth'],
 					},
 				},
 			},
@@ -347,7 +408,7 @@ export class McpClientTool implements INodeType {
 
 		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
 
-		if (!mcpTools || !mcpTools.length) {
+		if (!mcpTools?.length) {
 			return setError(
 				'MCP Server returned no tools',
 				'Connected successfully to your MCP server but it returned an empty list of tools.',
@@ -414,7 +475,9 @@ export class McpClientTool implements INodeType {
 						name: tool.name,
 						arguments: toolArguments,
 					};
-					const result = await client.callTool(params);
+					const result = await client.callTool(params, CallToolResultSchema, {
+						timeout: config.timeout,
+					});
 					returnData.push({
 						json: {
 							response: result.content as IDataObject,

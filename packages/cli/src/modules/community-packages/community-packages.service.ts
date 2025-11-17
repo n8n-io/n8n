@@ -29,6 +29,7 @@ import type { CommunityPackages } from './community-packages.types';
 import { InstalledPackages } from './installed-packages.entity';
 import { InstalledPackagesRepository } from './installed-packages.repository';
 import { checkIfVersionExistsOrThrow, verifyIntegrity } from './npm-utils';
+import { valid } from 'semver';
 
 const DEFAULT_REGISTRY = 'https://registry.npmjs.org';
 const NPM_COMMON_ARGS = ['--audit=false', '--fund=false'];
@@ -144,6 +145,10 @@ export class CommunityPackagesService {
 		const version = packageNameWithoutScope.includes('@')
 			? packageNameWithoutScope.split('@')[1]
 			: undefined;
+
+		if (version && !valid(version)) {
+			throw new UnexpectedError(`Invalid version: ${version}`);
+		}
 
 		const packageName = version ? rawString.replace(`@${version}`, '') : rawString;
 
