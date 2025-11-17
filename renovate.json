@@ -69,6 +69,12 @@
 			"description": "Group TypeScript packages",
 			"matchPackageNames": ["typescript", "*tsx*", "*tsup*"],
 			"groupName": "TypeScript"
+		},
+		{
+			"description": "Exclude tsdown@0.16.5 from minimum release age",
+			"matchPackageNames": ["tsdown"],
+			"matchCurrentVersion": "0.16.5",
+			"minimumReleaseAge": null
 		}
 	],
 	"lockFileMaintenance": {
