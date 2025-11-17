@@ -1,6 +1,7 @@
 import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
 import { type InsightsDateRange } from './schemas/insights.schema';
+import { type ChatProviderSettingsDto } from './chat-hub';
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
@@ -244,6 +245,14 @@ export type FrontendModuleSettings = {
 	mcp?: {
 		/** Whether MCP access is enabled in the instance. */
 		mcpAccessEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for Chat module.
+	 */
+	'chat-hub'?: {
+		enabled: boolean;
+		providers: ChatProviderSettingsDto[];
 	};
 };
 

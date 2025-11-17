@@ -64,6 +64,7 @@ import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
 
 @Service()
 export class ChatHubService {
@@ -83,6 +84,7 @@ export class ChatHubService {
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
+		private readonly chatHubSettingsService: ChatHubSettingsService,
 	) {}
 
 	async getModels(
@@ -149,6 +151,32 @@ export class ChatHubService {
 		additionalData: IWorkflowExecuteAdditionalData,
 	): Promise<ChatModelsResponse[ChatHubProvider]> {
 		switch (provider) {
+			case 'n8n':
+				return await this.fetchAgentWorkflowsAsModels(user);
+			case 'custom-agent':
+				return await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id);
+		}
+
+		const settings = await this.chatHubSettingsService.getProviderSettings(provider);
+		if (!settings.enabled) {
+			return { models: [] };
+		}
+
+		const { models, error } = await this.fetchLLMModels(provider, credentials, additionalData);
+		const allowedModels = new Set(settings.allowedModels);
+
+		return {
+			models: models.filter((model) => !settings.limitModels || allowedModels.has(model.name)),
+			error,
+		};
+	}
+
+	private async fetchLLMModels(
+		provider: ChatHubLLMProvider,
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	) {
+		switch (provider) {
 			case 'openai':
 				return await this.fetchOpenAiModels(credentials, additionalData);
 			case 'anthropic':
@@ -159,10 +187,6 @@ export class ChatHubService {
 				return await this.fetchOllamaModels(credentials, additionalData);
 			case 'azureOpenAi':
 				return await this.fetchAzureOpenAiModels(credentials, additionalData);
-			case 'n8n':
-				return await this.fetchAgentWorkflowsAsModels(user);
-			case 'custom-agent':
-				return await this.chatHubAgentService.getAgentsByUserIdAsModels(user.id);
 		}
 	}
 

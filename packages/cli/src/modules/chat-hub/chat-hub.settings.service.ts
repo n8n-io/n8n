@@ -16,6 +16,7 @@ const getDefaultProviderSettings = (provider: ChatHubLLMProvider): ChatProviderS
 	provider,
 	credentialId: null,
 	limitModels: false,
+	allowedModels: [],
 	createdAt: new Date().toISOString(),
 	updatedAt: null,
 	enabled: true,
@@ -39,13 +40,15 @@ export class ChatHubSettingsService {
 		]);
 	}
 
-	async getProviderSettings(provider: ChatHubLLMProvider): Promise<ChatProviderSettingsDto | null> {
+	async getProviderSettings(provider: ChatHubLLMProvider): Promise<ChatProviderSettingsDto> {
 		const settings = await this.settingsRepository.findByKey(CHAT_PROVIDER_SETTINGS_KEY(provider));
 		if (!settings) {
 			return getDefaultProviderSettings(provider);
 		}
 
-		return jsonParse<ChatProviderSettingsDto | null>(settings.value, { fallbackValue: null });
+		return jsonParse<ChatProviderSettingsDto>(settings.value, {
+			fallbackValue: getDefaultProviderSettings(provider),
+		});
 	}
 
 	async getAllProviderSettings(): Promise<ChatProviderSettingsDto[]> {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, useTemplateRef, watch } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 import { N8nNavigationDropdown, N8nIcon, N8nButton, N8nText, N8nAvatar } from '@n8n/design-system';
 import { type ComponentProps } from 'vue-component-type-helpers';
 import {
@@ -35,6 +35,7 @@ import {
 import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
 
@@ -75,6 +76,7 @@ const i18n = useI18n();
 const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const dropdownRef = useTemplateRef('dropdownRef');
 const uiStore = useUIStore();
+const settingStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();
 
@@ -117,6 +119,13 @@ const menu = computed(() => {
 	}
 
 	for (const provider of chatHubLLMProviderSchema.options) {
+		const settings = settingStore.moduleSettings?.['chat-hub']?.providers.find(
+			(setting) => setting.provider === provider,
+		);
+
+		// Filter out disabled providers from the menu
+		if (settings && !settings.enabled) continue;
+
 		const theAgents = agents.value[provider].models;
 		const error = agents.value[provider].error;
 		const agentOptions =
@@ -134,12 +143,17 @@ const menu = computed(() => {
 
 		const submenu = agentOptions.concat([
 			...(agentOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
-			{
-				id: `${provider}::add-model`,
-				icon: 'plus',
-				title: i18n.baseText('chatHub.agent.addModel'),
-				disabled: false,
-			},
+			...(settings && !settings.limitModels
+				? [
+						// Disallow "Add model" if models are limited in settings
+						{
+							id: `${provider}::add-model`,
+							icon: 'plus',
+							title: i18n.baseText('chatHub.agent.addModel'),
+							disabled: false,
+						} as const,
+					]
+				: []),
 			{
 				id: `${provider}::configure`,
 				icon: 'settings',
@@ -269,6 +283,10 @@ watch(
 
 defineExpose({
 	open: () => dropdownRef.value?.open(),
+});
+
+onMounted(async () => {
+	await settingStore.getModuleSettings();
 });
 </script>
 
