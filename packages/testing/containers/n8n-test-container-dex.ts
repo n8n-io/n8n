@@ -36,6 +36,7 @@ export async function setupDex({
 		const container = await new GenericContainer(dexImage)
 			.withNetwork(network)
 			.withNetworkAliases(hostname)
+			// Map port to host so browser (Playwright) can access discovery endpoint
 			.withExposedPorts({ container: port, host: port })
 			.withEnvironment({
 				DEX_LOG_LEVEL: 'debug',
@@ -88,7 +89,7 @@ export function getDexEnvironment(
 }
 
 /**
- * Get Dex discovery endpoint URL (external, for host access)
+ * Get Dex discovery endpoint URL (external, for host/browser access)
  */
 export function getDexDiscoveryUrl(
 	container: StartedTestContainer,
@@ -98,7 +99,7 @@ export function getDexDiscoveryUrl(
 }
 
 /**
- * Get Dex issuer URL (internal network)
+ * Get Dex issuer URL (internal Docker network)
  */
 export function getDexIssuerUrl(hostname = 'dex', port = DEFAULT_DEX_PORT): string {
 	return `http://${hostname}:${port}`;

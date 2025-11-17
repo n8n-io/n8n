@@ -21,7 +21,7 @@ test.describe('OIDC authentication', () => {
 		await api.enableFeature('oidc');
 
 		await n8n.oidcComposer.configureOidc(
-			'http://dex:5556/.well-known/openid-configuration',
+			'http://localhost:5556/.well-known/openid-configuration',
 			DEX_TEST_CLIENT_ID,
 			DEX_TEST_CLIENT_SECRET,
 		);

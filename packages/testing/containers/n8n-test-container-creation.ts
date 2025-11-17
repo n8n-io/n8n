@@ -238,8 +238,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			// Configure n8n to proxy all HTTP requests through ProxyServer
 			HTTP_PROXY: url,
 			HTTPS_PROXY: url,
-			// Ensure https requests can be proxied without SSL issues
-			...(proxyServerEnabled ? { NODE_TLS_REJECT_UNAUTHORIZED: '0' } : {}),
+		};
+	}
+
+	// Enable E2E test mode for OIDC URL rewriting
+	if (oidcEnabled) {
+		environment = {
+			...environment,
+			E2E_TESTS: 'true',
 		};
 	}
 
@@ -281,7 +287,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		assignedPort = await getPort();
 	}
 
-	// Set up Dex BEFORE creating n8n instances so it's available on the network
+	// Set up Dex OIDC provider BEFORE creating n8n instances so it's available on the network
 	// Dex has fallback redirect URIs (localhost:5678, host.docker.internal:5678, etc.) that work
 	// even when n8nCallbackPort is undefined (load balancer case)
 	if (oidcEnabled && network) {
