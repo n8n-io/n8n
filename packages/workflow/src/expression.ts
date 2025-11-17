@@ -10,6 +10,7 @@ import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
 import { getGlobalState } from './global-state';
+import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -371,11 +372,7 @@ export class Expression {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
+		const runData = createEmptyRunExecutionData();
 
 		return this.getParameterValue(
 			parameterValue,
@@ -414,11 +411,7 @@ export class Expression {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
+		const runData = createEmptyRunExecutionData();
 
 		// Resolve the "outer" main values
 		const returnData = this.getParameterValue(
