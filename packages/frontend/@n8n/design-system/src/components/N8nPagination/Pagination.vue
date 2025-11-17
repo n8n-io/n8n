@@ -172,6 +172,7 @@ const shouldShowPagination = computed(() => {
 		:items-per-page="itemsPerPage"
 		:page="page"
 		:sibling-count="siblingCount"
+		:show-edges="true"
 		:disabled="disabled"
 		:class="{
 			'n8n-pagination': true,
