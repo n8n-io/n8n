@@ -35,10 +35,6 @@ export class ChatHubAttachmentService {
 		const storedAttachments: IBinaryData[] = [];
 
 		for (const attachment of attachments) {
-			if (attachment.id || !attachment.data) {
-				continue;
-			}
-
 			const buffer = Buffer.from(attachment.data, BINARY_ENCODING);
 			totalSize += buffer.length;
 

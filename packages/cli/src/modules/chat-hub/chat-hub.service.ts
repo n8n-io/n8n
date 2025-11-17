@@ -406,7 +406,8 @@ export class ChatHubService {
 				const history = this.buildMessageHistory(messages, previousMessageId);
 
 				await this.saveHumanMessage(
-					{ ...payload, attachments: processedAttachments },
+					payload,
+					processedAttachments,
 					user,
 					previousMessageId,
 					model,
@@ -477,11 +478,8 @@ export class ChatHubService {
 				const attachments = messageToEdit.attachments ?? [];
 
 				await this.saveHumanMessage(
-					{
-						...payload,
-						// TODO: should we allow to update attachments as well when editing?
-						attachments,
-					},
+					payload,
+					attachments,
 					user,
 					messageToEdit.previousMessageId,
 					model,
@@ -1283,7 +1281,8 @@ export class ChatHubService {
 	}
 
 	private async saveHumanMessage(
-		payload: (HumanMessagePayload | EditMessagePayload) & { attachments: IBinaryData[] },
+		payload: HumanMessagePayload | EditMessagePayload,
+		attachments: IBinaryData[],
 		user: User,
 		previousMessageId: ChatMessageId | null,
 		model: ChatHubConversationModel,
@@ -1300,7 +1299,7 @@ export class ChatHubService {
 				previousMessageId,
 				revisionOfMessageId,
 				name: user.firstName || 'User',
-				attachments: payload.attachments,
+				attachments,
 				...model,
 			},
 			trx,
