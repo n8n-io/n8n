@@ -391,7 +391,7 @@ export class CommunityPackagesService {
 			| { installedPackage: InstalledPackages; version?: string; checksum?: string } = {},
 	) {
 		const isUpdate = 'installedPackage' in options;
-		const packageVersion = options.version ?? 'latest';
+		const packageVersion = !options.version ? 'latest' : options.version;
 
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
 		this.checkInstallPermissions(shouldValidateChecksum);
