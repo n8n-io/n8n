@@ -85,6 +85,7 @@ jobs:
       - name: Run Tests (Orchestrated)
         run: pnpm --filter=n8n-playwright exec npx pwc-p -- --project=ui --project=ui:isolated --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
+          RESET_E2E_DB: true
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           CURRENTS_PROJECT_ID: I0yzoc
           CURRENTS_CI_BUILD_ID: n8n-${{ github.run_id }}-${{ github.run_attempt }}
