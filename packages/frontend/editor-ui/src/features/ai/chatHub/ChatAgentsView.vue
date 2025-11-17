@@ -6,7 +6,6 @@ import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import ChatAgentCard from '@/features/ai/chatHub/components/ChatAgentCard.vue';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import { useUsersStore } from '@/features/settings/users/users.store';
@@ -14,7 +13,7 @@ import { type ChatHubConversationModel } from '@n8n/api-types';
 import { filterAndSortAgents, stringifyModel } from '@/features/ai/chatHub/chat.utils';
 import type { ChatAgentFilter } from '@/features/ai/chatHub/chat.types';
 import { useMediaQuery } from '@vueuse/core';
-import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
+import { AGENT_EDITOR_MODAL_KEY, MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
 import { useRouter } from 'vue-router';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import ChatSidebarOpener from '@/features/ai/chatHub/components/ChatSidebarOpener.vue';
@@ -26,8 +25,6 @@ const message = useMessage();
 const usersStore = useUsersStore();
 const router = useRouter();
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
-
-const editingAgentId = ref<string | undefined>(undefined);
 
 const agentFilter = ref<ChatAgentFilter>({
 	search: '',
@@ -57,8 +54,12 @@ const sortOptions = [
 
 function handleCreateAgent() {
 	chatStore.currentEditingAgent = null;
-	editingAgentId.value = undefined;
-	uiStore.openModal('agentEditor');
+	uiStore.openModalWithData({
+		name: AGENT_EDITOR_MODAL_KEY,
+		data: {
+			credentials: credentialsByProvider,
+		},
+	});
 }
 
 async function handleEditAgent(model: ChatHubConversationModel) {
@@ -77,20 +78,17 @@ async function handleEditAgent(model: ChatHubConversationModel) {
 	if (model.provider === 'custom-agent') {
 		try {
 			await chatStore.fetchCustomAgent(model.agentId);
-			editingAgentId.value = model.agentId;
-			uiStore.openModal('agentEditor');
+			uiStore.openModalWithData({
+				name: AGENT_EDITOR_MODAL_KEY,
+				data: {
+					agentId: model.agentId,
+					credentials: credentialsByProvider,
+				},
+			});
 		} catch (error) {
 			toast.showError(error, 'Failed to load agent');
 		}
 	}
-}
-
-function handleCloseAgentEditor() {
-	editingAgentId.value = undefined;
-}
-
-async function handleAgentCreatedOrUpdated() {
-	editingAgentId.value = undefined;
 }
 
 async function handleDeleteAgent(agentId: string) {
@@ -198,14 +196,6 @@ watch(
 					"
 				/>
 			</div>
-
-			<AgentEditorModal
-				v-if="credentialsByProvider"
-				:agent-id="editingAgentId"
-				:credentials="credentialsByProvider"
-				@create-custom-agent="handleAgentCreatedOrUpdated"
-				@close="handleCloseAgentEditor"
-			/>
 		</div>
 		<ChatSidebarOpener :class="$style.menuButton" />
 	</ChatLayout>

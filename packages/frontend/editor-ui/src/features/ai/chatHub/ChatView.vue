@@ -10,8 +10,8 @@ import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConvers
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
 import ChatStarter from '@/features/ai/chatHub/components/ChatStarter.vue';
-import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import {
+	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
 	MOBILE_MEDIA_QUERY,
@@ -37,7 +37,6 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
-import ToolsSelector from './components/ToolsSelector.vue';
 import { INodesSchema, type INode } from 'n8n-workflow';
 
 const router = useRouter();
@@ -65,6 +64,13 @@ const currentConversation = computed(() =>
 );
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 const readyToShowMessages = computed(() => chatStore.agentsReady);
+
+// TODO: This also depends on the model, not all base LLM models support tools.
+const canSelectTools = computed(
+	() =>
+		selectedModel.value?.model.provider !== 'custom-agent' &&
+		selectedModel.value?.model.provider !== 'n8n',
+);
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
@@ -200,8 +206,6 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
-const editingAgentId = ref<string | undefined>(undefined);
-const isToolsSelectorOpen = ref(false);
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
@@ -317,7 +321,7 @@ function onSubmit(message: string) {
 		message,
 		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
-		selectedTools.value,
+		canSelectTools.value ? selectedTools.value : [],
 	);
 
 	inputRef.value?.setText('');
@@ -406,12 +410,7 @@ function handleConfigureModel() {
 	headerRef.value?.openModelSelector();
 }
 
-function handleConfigureTools() {
-	isToolsSelectorOpen.value = true;
-	uiStore.openModal('toolsSelector');
-}
-
-async function onUpdateTools(newTools: INode[]) {
+async function handleUpdateTools(newTools: INode[]) {
 	toolsSelection.value = newTools;
 	defaultTools.value = newTools;
 
@@ -427,8 +426,15 @@ async function onUpdateTools(newTools: INode[]) {
 async function handleEditAgent(agentId: string) {
 	try {
 		await chatStore.fetchCustomAgent(agentId);
-		editingAgentId.value = agentId;
-		uiStore.openModal('agentEditor');
+
+		uiStore.openModalWithData({
+			name: AGENT_EDITOR_MODAL_KEY,
+			data: {
+				agentId,
+				credentials: credentialsByProvider,
+				onCreateCustomAgent: handleSelectModel,
+			},
+		});
 	} catch (error) {
 		toast.showError(error, 'Failed to load agent');
 	}
@@ -436,12 +442,13 @@ async function handleEditAgent(agentId: string) {
 
 function openNewAgentCreator() {
 	chatStore.currentEditingAgent = null;
-	editingAgentId.value = undefined;
-	uiStore.openModal('agentEditor');
-}
-
-function closeAgentEditor() {
-	editingAgentId.value = undefined;
+	uiStore.openModalWithData({
+		name: AGENT_EDITOR_MODAL_KEY,
+		data: {
+			credentials: credentialsByProvider,
+			onCreateCustomAgent: handleSelectModel,
+		},
+	});
 }
 
 function handleOpenWorkflow(workflowId: string) {
@@ -469,20 +476,6 @@ function handleOpenWorkflow(workflowId: string) {
 			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"
 			@open-workflow="handleOpenWorkflow"
-		/>
-
-		<AgentEditorModal
-			v-if="credentialsByProvider"
-			:agent-id="editingAgentId"
-			:credentials="credentialsByProvider"
-			@create-custom-agent="handleSelectModel"
-			@close="closeAgentEditor"
-		/>
-
-		<ToolsSelector
-			v-if="isToolsSelectorOpen"
-			:initial-value="selectedTools"
-			@update="onUpdateTools"
 		/>
 
 		<N8nScrollArea
@@ -537,15 +530,16 @@ function handleOpenWorkflow(workflowId: string) {
 					<ChatPrompt
 						ref="inputRef"
 						:class="$style.prompt"
-						:is-responding="isResponding"
 						:selected-model="selectedModel ?? null"
 						:selected-tools="selectedTools"
+						:is-responding="isResponding"
+						:is-tools-selectable="canSelectTools"
 						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
-						@select-tools="handleConfigureTools"
+						@select-tools="handleUpdateTools"
 						@set-credentials="handleConfigureCredentials"
 					/>
 				</div>
