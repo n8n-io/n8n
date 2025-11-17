@@ -1,3 +1,4 @@
+import { Container } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
@@ -9,6 +10,8 @@ import type { BinaryData } from './types';
 import { assertDir, doesNotExist } from './utils';
 import { DisallowedFilepathError } from '../errors/disallowed-filepath.error';
 import { FileNotFoundError } from '../errors/file-not-found.error';
+
+import { ErrorReporter } from '@/errors';
 
 const EXECUTION_ID_EXTRACTOR =
 	/^(\w+)(?:[0-9a-fA-F]{8}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{4}\b-[0-9a-fA-F]{12})$/;
@@ -97,19 +100,9 @@ export class FileSystemManager implements BinaryData.Manager {
 
 		// binary files stored in nested dirs - `filesystem-v2`
 
-		const binaryDataDirs: string[] = [];
-
-		for (const id of locations) {
-			if (id.type === 'execution') {
-				binaryDataDirs.push(
-					this.resolvePath(`workflows/${id.workflowId}/executions/${id.executionId}`),
-				);
-			} else if (id.type === 'chat-hub-message-attachment') {
-				binaryDataDirs.push(
-					this.resolvePath(`chat-hub/sessions/${id.sessionId}/messages/${id.messageId}`),
-				);
-			}
-		}
+		const binaryDataDirs = locations.map((location) =>
+			this.resolvePath(this.toRelativePath(location)),
+		);
 
 		await Promise.all(
 			binaryDataDirs.map(async (dir) => {
@@ -190,13 +183,17 @@ export class FileSystemManager implements BinaryData.Manager {
 	 * no longer used on write, only when reading old stored execution data.
 	 */
 	private toFileId(location: BinaryData.FileLocation) {
+		return `${this.toRelativePath(location)}/${uuid()}`;
+	}
+
+	private toRelativePath(location: BinaryData.FileLocation) {
 		switch (location.type) {
 			case 'execution': {
 				const executionId = location.executionId || 'temp'; // missing only in edge case, see PR #7244
-				return `workflows/${location.workflowId}/executions/${executionId}/binary_data/${uuid()}`;
+				return `workflows/${location.workflowId}/executions/${executionId}/binary_data`;
 			}
 			case 'chat-hub-message-attachment':
-				return `chat-hub/sessions/${location.sessionId}/messages/${location.messageId}/binary_data/${uuid()}`;
+				return `chat-hub/sessions/${location.sessionId}/messages/${location.messageId}/binary_data`;
 		}
 	}
 
@@ -220,6 +217,8 @@ export class FileSystemManager implements BinaryData.Manager {
 				messageId: chatHubMatch[2],
 			};
 		}
+
+		Container.get(ErrorReporter).warn(`File ID ${fileId} is invalid`);
 
 		return null;
 	}
