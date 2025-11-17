@@ -49,6 +49,8 @@ export const rawBodyReader: RequestHandler = async (req, _res, next) => {
 };
 
 export const parseBody = async (req: Request) => {
+	// Skip multipart requests (e.g., file uploads) - these need specialized parsing by multer.
+	// Reading the body stream here would consume it, making it unavailable for multer processing.
 	if (req.contentType?.startsWith('multipart/')) {
 		return;
 	}
