@@ -1,5 +1,5 @@
 import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
@@ -25,16 +25,20 @@ describe('ExecutionRecoveryService', () => {
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;
+	let workflowRepository: WorkflowRepository;
 
 	beforeAll(async () => {
 		await testDb.init();
 		executionRepository = Container.get(ExecutionRepository);
+		workflowRepository = Container.get(WorkflowRepository);
 
 		executionRecoveryService = new ExecutionRecoveryService(
 			mock(),
 			instanceSettings,
 			push,
 			executionRepository,
+			mock(),
+			workflowRepository,
 			mock(),
 			mock(),
 		);
