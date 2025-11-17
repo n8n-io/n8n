@@ -4,8 +4,10 @@ import type { DeepPartial } from 'ts-essentials';
 
 export const mockInstance = <T>(
 	serviceClass: Constructable<T>,
+	// @ts-expect-error - ts-essentials version conflict
 	data: DeepPartial<T> | undefined = undefined,
 ) => {
+	// @ts-expect-error - ts-essentials version conflict
 	const instance = mock<T>(data);
 	Container.set(serviceClass, instance);
 	return instance;
