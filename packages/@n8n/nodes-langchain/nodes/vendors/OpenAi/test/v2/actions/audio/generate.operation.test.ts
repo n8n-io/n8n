@@ -424,7 +424,7 @@ describe('Audio Generate Operation', () => {
 		it('should include stream_format when set to audio', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params = {
-					model: 'tts-1',
+					model: 'gpt-4o-mini-tts',
 					input: 'Test',
 					voice: 'alloy',
 					options: {

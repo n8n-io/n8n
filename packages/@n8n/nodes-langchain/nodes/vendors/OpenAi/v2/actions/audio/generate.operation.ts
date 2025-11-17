@@ -156,6 +156,11 @@ const properties: INodeProperties[] = [
 				type: 'options',
 				default: 'audio',
 				description: 'The format to stream the audio in',
+				displayOptions: {
+					show: {
+						'/model': ['gpt-4o-mini-tts'],
+					},
+				},
 				options: [
 					{
 						name: 'Audio',
@@ -164,7 +169,7 @@ const properties: INodeProperties[] = [
 					{
 						name: 'SSE',
 						value: 'sse',
-						description: 'Server-Sent Events format (only for gpt-4o-mini-tts)',
+						description: 'Server-Sent Events format',
 					},
 				],
 			},
