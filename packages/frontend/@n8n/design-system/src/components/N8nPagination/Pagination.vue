@@ -313,7 +313,9 @@ const shouldShowPagination = computed(() => {
 		padding: 0;
 	}
 
-	&:hover:not(:disabled):not(.is-active) {
+	&:hover:not(:disabled):not(.is-active):not(.n8n-pagination__button--prev):not(
+			.n8n-pagination__button--next
+		):not(.n8n-pagination__button--first):not(.n8n-pagination__button--last) {
 		background: var(--color--background--light-3) !important;
 		color: var(--color--primary);
 		border: 1px solid var(--color--foreground);
