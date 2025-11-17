@@ -27,7 +27,6 @@ export class AiWorkflowBuilderService {
 		private readonly logger?: Logger,
 		private readonly instanceUrl?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
-		private readonly onTelemetryEvent?: OnTelemetryEvent,
 	) {
 		this.parsedNodeTypes = this.filterNodeTypes(parsedNodeTypes);
 		this.sessionManager = new SessionManagerService(this.parsedNodeTypes, logger);
