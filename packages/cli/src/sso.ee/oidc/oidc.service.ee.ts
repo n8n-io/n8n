@@ -496,7 +496,11 @@ export class OidcService {
 	 * Discovery returns localhost:5556 for browser compatibility, but Docker containers need dex:5556.
 	 */
 	private transformDockerUrl(url: string): string {
-		return url.replace('localhost:5556', 'dex:5556');
+		// Only transform URLs that start with localhost:5556 to avoid unintended replacements
+		if (url.startsWith('http://localhost:5556')) {
+			return url.replace('http://localhost:5556', 'http://dex:5556');
+		}
+		return url;
 	}
 
 	/**

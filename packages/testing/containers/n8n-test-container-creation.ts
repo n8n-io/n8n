@@ -332,13 +332,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		await pollContainerHttpEndpoint(loadBalancerContainer, '/healthz/readiness');
 	} else {
 		// Reuse port if already allocated for OIDC, otherwise allocate now
-		if (!assignedPort) {
-			assignedPort = await getPort();
-		}
+		assignedPort ??= await getPort();
 		baseUrl = `http://localhost:${assignedPort}`;
-
-		// Calculate internal network alias for OIDC callbacks
-		const networkAlias = `${uniqueProjectName}-n8n-main-1`;
 
 		environment = {
 			...environment,
