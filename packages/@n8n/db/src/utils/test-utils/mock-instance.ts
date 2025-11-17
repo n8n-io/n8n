@@ -6,7 +6,7 @@ export const mockInstance = <T>(
 	serviceClass: Constructable<T>,
 	data: DeepPartial<T> | undefined = undefined,
 ) => {
-	// @ts-expect-error - ts-essentials version conflict
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
 	const instance = mock<T>(data as any);
 	Container.set(serviceClass, instance);
 	return instance;
