@@ -156,8 +156,6 @@ const projectPages = useProjectPages();
 // We render component in a loading state until initialization is done
 // This will prevent any additional workflow fetches while initializing
 const loading = ref(true);
-const isInitializing = ref(false);
-const hasInitialized = ref(false);
 const breadcrumbsLoading = ref(false);
 const filters = ref<Filters>({
 	search: '',
@@ -487,9 +485,7 @@ const showPersonalizedTemplates = computed(
 );
 
 const shouldUseSimplifiedLayout = computed(() => {
-	return (
-		loading.value || !hasInitialized.value || readyToRunStore.getSimplifiedLayoutVisibility(route)
-	);
+	return !loading.value && readyToRunStore.getSimplifiedLayoutVisibility(route);
 });
 
 const hasActiveCallouts = computed(() => {
@@ -506,8 +502,7 @@ const hasActiveCallouts = computed(() => {
  */
 
 watch([() => route.params?.projectId, () => route.name], async () => {
-	hasInitialized.value = false;
-	await initialize();
+	loading.value = true;
 });
 
 watch(
@@ -528,10 +523,7 @@ watch(
 
 sourceControlStore.$onAction(({ name, after }) => {
 	if (name !== 'pullWorkfolder') return;
-	after(async () => {
-		hasInitialized.value = false;
-		await initialize();
-	});
+	after(async () => await initialize());
 });
 
 const refreshWorkflows = async () => {
@@ -610,9 +602,6 @@ onMounted(async () => {
 	workflowListEventBus.on('folder-transferred', onFolderTransferred);
 	workflowListEventBus.on('workflow-moved', onWorkflowMoved);
 	workflowListEventBus.on('workflow-transferred', onWorkflowTransferred);
-
-	// Initialize on mount to determine which layout to show
-	await initialize();
 });
 
 onBeforeUnmount(() => {
@@ -631,36 +620,23 @@ onBeforeUnmount(() => {
 
 // Main component fetch methods
 const initialize = async () => {
-	// Prevent concurrent initialization calls and skip if already initialized
-	if (isInitializing.value) return;
-	if (hasInitialized.value) return;
-
-	isInitializing.value = true;
 	loading.value = true;
+	await setFiltersFromQueryString();
 
-	try {
-		await setFiltersFromQueryString();
-
-		currentFolderId.value = route.params.folderId as string | null;
-		const [, resourcesPage] = await Promise.all([
-			usersStore.fetchUsers(),
-			fetchWorkflows(),
-			workflowsStore.fetchActiveWorkflows(),
-			usageStore.getLicenseInfo(),
-			foldersStore.fetchTotalWorkflowsAndFoldersCount(
-				route.params.projectId as string | undefined,
-				currentFolderId.value ?? undefined,
-			),
-		]);
-		breadcrumbsLoading.value = false;
-		workflowsAndFolders.value = resourcesPage;
-	} catch (error) {
-		console.error('Error initializing workflows view:', error);
-	} finally {
-		loading.value = false;
-		isInitializing.value = false;
-		hasInitialized.value = true;
-	}
+	currentFolderId.value = route.params.folderId as string | null;
+	const [, resourcesPage] = await Promise.all([
+		usersStore.fetchUsers(),
+		fetchWorkflows(),
+		workflowsStore.fetchActiveWorkflows(),
+		usageStore.getLicenseInfo(),
+		foldersStore.fetchTotalWorkflowsAndFoldersCount(
+			route.params.projectId as string | undefined,
+			currentFolderId.value ?? undefined,
+		),
+	]);
+	breadcrumbsLoading.value = false;
+	workflowsAndFolders.value = resourcesPage;
+	loading.value = false;
 };
 
 /**
@@ -1843,12 +1819,7 @@ const onNameSubmit = async (name: string) => {
 </script>
 
 <template>
-	<EmptyStateLayout
-		v-if="shouldUseSimplifiedLayout"
-		:loading="loading"
-		:has-initialized="hasInitialized"
-		@click:add="addWorkflow"
-	/>
+	<EmptyStateLayout v-if="shouldUseSimplifiedLayout" @click:add="addWorkflow" />
 
 	<ResourcesListLayout
 		v-else

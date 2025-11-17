@@ -77,19 +77,10 @@ const handleReadyToRunClick = async () => {
 const addWorkflow = () => {
 	emit('click:add');
 };
-
-const props = defineProps<{
-	loading: boolean;
-	hasInitialized: boolean;
-}>();
 </script>
 
 <template>
-	<div v-if="props.loading || !props.hasInitialized" :class="$style.workflowsLoadingContainer">
-		<div :class="$style.workflowsLoadingBar"></div>
-	</div>
-
-	<div v-else :class="$style.emptyStateLayout">
+	<div :class="$style.emptyStateLayout">
 		<div :class="$style.content">
 			<div :class="$style.welcome">
 				<N8nHeading tag="h1" size="2xlarge" :class="$style.welcomeTitle">
@@ -155,43 +146,6 @@ const props = defineProps<{
 </template>
 
 <style lang="scss" module>
-.workflowsLoadingContainer {
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	min-height: 200px;
-}
-
-.workflowsLoadingBar {
-	width: 100px;
-	height: 6px;
-	background-color: var(--color--foreground--tint-2);
-	border-radius: var(--radius);
-	position: relative;
-	overflow: hidden;
-
-	&::after {
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 40%;
-		height: 100%;
-		background-color: var(--color--primary);
-		border-radius: var(--radius);
-		animation: loadingBarProgress 1.2s ease-in-out infinite;
-	}
-}
-
-@keyframes loadingBarProgress {
-	0% {
-		transform: translateX(-100%);
-	}
-	100% {
-		transform: translateX(350%);
-	}
-}
-
 .emptyStateLayout {
 	display: flex;
 	flex-direction: column;
