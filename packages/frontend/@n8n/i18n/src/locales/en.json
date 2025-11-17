@@ -3023,6 +3023,8 @@
 	"workflowHistory.content.actions": "Actions",
 	"workflowHistory.item.id": "ID: {id}",
 	"workflowHistory.item.createdAt": "{date} at {time}",
+	"workflowHistory.item.createdAtLabel": "Created:",
+	"workflowHistory.item.publishedAtLabel": "Published:",
 	"workflowHistory.item.actions.restore": "Restore this version",
 	"workflowHistory.item.actions.publish": "Publish this version",
 	"workflowHistory.item.actions.clone": "Clone to new workflow",
