@@ -35,7 +35,7 @@ const externalHooks = useExternalHooks();
 const toast = useToast();
 const modalBus = createEventBus();
 const telemetry = useTelemetry();
-const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow } = useMcp();
+const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow, mcpTriggerMap } = useMcp();
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -107,13 +107,17 @@ const mcpToggleDisabled = computed(() => {
 
 const mcpToggleTooltip = computed(() => {
 	if (!isEligibleForMcp.value) {
-		return i18n.baseText('mcp.workflowNotEligable.description');
+		return i18n.baseText('mcp.workflowNotEligable.description', {
+			interpolate: {
+				triggers: Object.values(mcpTriggerMap).join(', '),
+			},
+		});
 	}
 	return i18n.baseText('workflowSettings.availableInMCP.tooltip');
 });
 
 const isEligibleForMcp = computed(() => {
-	if (!workflow?.value) return false;
+	if (!workflow?.value?.active) return false;
 	return isEligibleForMcpAccess(workflow.value);
 });
 
