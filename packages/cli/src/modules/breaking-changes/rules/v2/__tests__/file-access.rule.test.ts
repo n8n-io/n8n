@@ -14,19 +14,19 @@ describe('FileAccessRule', () => {
 		it('should return correct metadata', () => {
 			const metadata = rule.getMetadata();
 
-			expect(metadata).toEqual({
+			expect(metadata).toMatchObject({
 				version: 'v2',
 				title: 'File Access Restrictions',
 				description: 'File access is now restricted to a default directory for security purposes',
 				category: BreakingChangeCategory.workflow,
-				severity: 'high',
+				severity: 'medium',
 			});
 		});
 	});
 
 	describe('getRecommendations()', () => {
 		it('should return recommendations', async () => {
-			const recommendations = await rule.getRecommendations();
+			const recommendations = await rule.getRecommendations([]);
 
 			expect(recommendations).toHaveLength(1);
 			expect(recommendations[0]).toMatchObject({

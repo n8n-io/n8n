@@ -2362,4 +2362,347 @@ describe('dataTable filters', () => {
 			});
 		});
 	});
+
+	describe('search query', () => {
+		it('should search across all columns', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'email', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ name: 'John Doe', email: 'john@example.com', age: 30 },
+				{ name: 'Jane Smith', email: 'jane@example.com', age: 25 },
+				{ name: 'Bob Johnson', email: 'bob@test.com', age: 35 },
+			]);
+
+			// ACT - Search for 'john' should match name and email columns
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: 'john',
+			});
+
+			// ASSERT
+			expect(result.count).toEqual(2);
+			expect(result.data).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ name: 'John Doe' }),
+					expect.objectContaining({ name: 'Bob Johnson' }),
+				]),
+			);
+		});
+
+		it('should perform case-insensitive search', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ name: 'Alice' },
+				{ name: 'ALICE' },
+				{ name: 'alice' },
+				{ name: 'Bob' },
+			]);
+
+			// ACT
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: 'ALICE',
+			});
+
+			// ASSERT
+			expect(result.count).toEqual(3);
+			expect(
+				result.data.every((row) => (row.name as string)?.toLowerCase().includes('alice')),
+			).toBe(true);
+		});
+
+		it('should search across number columns', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ name: 'John', age: 25 },
+				{ name: 'Jane', age: 30 },
+				{ name: 'Bob', age: 250 },
+			]);
+
+			// ACT - Search for '25' should match age column
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: '25',
+			});
+
+			// ASSERT - Should match at least these 2 rows (might also match system columns)
+			expect(result.count).toBeGreaterThanOrEqual(2);
+			expect(result.data).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ name: 'John', age: 25 }),
+					expect.objectContaining({ name: 'Bob', age: 250 }),
+				]),
+			);
+		});
+
+		it('should return empty result when search has no matches', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ name: 'Alice' },
+				{ name: 'Bob' },
+			]);
+
+			// ACT
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: 'xyz123notfound',
+			});
+
+			// ASSERT
+			expect(result.count).toEqual(0);
+			expect(result.data).toEqual([]);
+		});
+
+		it('should combine search with filters', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'isActive', type: 'boolean' },
+				],
+			});
+
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ name: 'John Doe', age: 25, isActive: true },
+				{ name: 'John Smith', age: 30, isActive: false },
+				{ name: 'Jane Doe', age: 35, isActive: true },
+				{ name: 'Bob Johnson', age: 40, isActive: true },
+			]);
+
+			// ACT - Search for 'john' AND filter by isActive = true
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: 'john',
+				filter: {
+					type: 'and',
+					filters: [{ columnName: 'isActive', condition: 'eq', value: true }],
+				},
+			});
+
+			// ASSERT
+			expect(result.count).toEqual(2);
+			expect(result.data).toEqual(
+				expect.arrayContaining([
+					expect.objectContaining({ name: 'John Doe', isActive: true }),
+					expect.objectContaining({ name: 'Bob Johnson', isActive: true }),
+				]),
+			);
+		});
+
+		it('should combine search with sorting', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+				],
+			});
+
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ name: 'Alice', age: 30 },
+				{ name: 'Charlie', age: 25 },
+				{ name: 'Bob', age: 35 },
+			]);
+
+			// ACT - Search for 'a' (matches Alice and Charlie) and sort by age DESC
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: 'a',
+				sortBy: ['age', 'DESC'],
+			});
+
+			// ASSERT
+			expect(result.count).toEqual(2);
+			expect(result.data[0].name).toBe('Alice');
+			expect(result.data[0].age).toBe(30);
+			expect(result.data[1].name).toBe('Charlie');
+			expect(result.data[1].age).toBe(25);
+		});
+
+		it('should work with pagination', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ name: 'User 1' },
+				{ name: 'User 2' },
+				{ name: 'User 3' },
+				{ name: 'User 4' },
+				{ name: 'User 5' },
+				{ name: 'Different' },
+			]);
+
+			// ACT - Search for 'user' with pagination
+			const page1 = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: 'user',
+				take: 2,
+				skip: 0,
+			});
+
+			const page2 = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: 'user',
+				take: 2,
+				skip: 2,
+			});
+
+			// ASSERT
+			expect(page1.count).toEqual(5);
+			expect(page1.data).toHaveLength(2);
+
+			expect(page2.count).toEqual(5);
+			expect(page2.data).toHaveLength(2);
+		});
+
+		it('should handle empty search string', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ name: 'Alice' },
+				{ name: 'Bob' },
+				{ name: 'Charlie' },
+			]);
+
+			// ACT
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: '',
+			});
+
+			// ASSERT - Empty search should return all rows
+			expect(result.count).toEqual(3);
+			expect(result.data).toHaveLength(3);
+		});
+
+		it('should handle whitespace-only search string', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [{ name: 'name', type: 'string' }],
+			});
+
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ name: 'Alice' },
+				{ name: 'Bob' },
+			]);
+
+			// ACT
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: '   ',
+			});
+
+			// ASSERT - Whitespace-only search should return all rows
+			expect(result.count).toEqual(2);
+			expect(result.data).toHaveLength(2);
+		});
+
+		it('should search with special characters', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [{ name: 'text', type: 'string' }],
+			});
+
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ text: 'test_data' },
+				{ text: 'test-data' },
+				{ text: 'test.data' },
+				{ text: 'normal' },
+			]);
+
+			// ACT - Search for underscore
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: 'test_',
+			});
+
+			// ASSERT
+			expect(result.count).toEqual(1);
+			expect(result.data).toEqual([expect.objectContaining({ text: 'test_data' })]);
+		});
+
+		it('should search and find rows with null values in other columns', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'description', type: 'string' },
+				],
+			});
+
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ name: 'John', description: null },
+				{ name: 'Jane', description: 'Developer' },
+				{ name: 'Bob', description: null },
+			]);
+
+			// ACT
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: 'John',
+			});
+
+			// ASSERT
+			expect(result.count).toEqual(1);
+			expect(result.data).toEqual([expect.objectContaining({ name: 'John', description: null })]);
+		});
+
+		it('should work with all column types together', async () => {
+			// ARRANGE
+			const { id: dataTableId } = await dataTableService.createDataTable(project.id, {
+				name: 'dataTable',
+				columns: [
+					{ name: 'name', type: 'string' },
+					{ name: 'age', type: 'number' },
+					{ name: 'isActive', type: 'boolean' },
+					{ name: 'birthday', type: 'date' },
+				],
+			});
+
+			const birthday = new Date('1990-05-15');
+			await dataTableService.insertRows(dataTableId, project.id, [
+				{ name: 'John', age: 30, isActive: true, birthday },
+				{ name: 'Jane', age: 25, isActive: false, birthday: new Date('1995-08-20') },
+				{ name: 'Bob', age: 35, isActive: true, birthday: new Date('1988-12-05') },
+			]);
+
+			// ACT - Search for partial name
+			const result = await dataTableService.getManyRowsAndCount(dataTableId, project.id, {
+				search: 'jo',
+			});
+
+			// ASSERT
+			expect(result.count).toEqual(1);
+			expect(result.data).toEqual([
+				expect.objectContaining({ name: 'John', age: 30, isActive: true }),
+			]);
+		});
+	});
 });

@@ -261,10 +261,6 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	return actions;
 });
 
-const isWorkflowHistoryFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
-});
-
 const workflowTagIds = computed(() => {
 	return (props.tags ?? []).map((tag) => (typeof tag === 'string' ? tag : tag.id));
 });
@@ -491,7 +487,16 @@ async function handleArchiveWorkflow() {
 		type: 'success',
 	});
 
-	await router.push({ name: VIEWS.WORKFLOWS });
+	// Navigate to the appropriate project's workflow list
+	const workflow = workflowsStore.getWorkflowById(props.id);
+	if (workflow?.homeProject?.type === ProjectTypes.Team) {
+		await router.push({
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: workflow.homeProject.id },
+		});
+	} else {
+		await router.push({ name: VIEWS.WORKFLOWS });
+	}
 }
 
 async function handleUnarchiveWorkflow() {
@@ -525,6 +530,10 @@ async function handleDeleteWorkflow() {
 		return;
 	}
 
+	// Get workflow before deletion to know which project to navigate to
+	const workflow = workflowsStore.getWorkflowById(props.id);
+	const isTeamProject = workflow?.homeProject?.type === ProjectTypes.Team;
+
 	try {
 		await workflowsStore.deleteWorkflow(props.id);
 	} catch (error) {
@@ -541,7 +550,15 @@ async function handleDeleteWorkflow() {
 		type: 'success',
 	});
 
-	await router.push({ name: VIEWS.WORKFLOWS });
+	// Navigate to the appropriate project's workflow list
+	if (isTeamProject && workflow?.homeProject) {
+		await router.push({
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: workflow.homeProject.id },
+		});
+	} else {
+		await router.push({ name: VIEWS.WORKFLOWS });
+	}
 }
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {
@@ -669,10 +686,6 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 
 function goToUpgrade() {
 	void pageRedirectionHelper.goToUpgrade('workflow_sharing', 'upgrade-workflow-sharing');
-}
-
-function goToWorkflowHistoryUpgrade() {
-	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
 }
 
 function getPersonalProjectToastContent() {
@@ -931,12 +944,7 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 					data-test-id="workflow-save-button"
 					@click="onSaveButtonClick"
 				/>
-				<WorkflowHistoryButton
-					:workflow-id="props.id"
-					:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
-					:is-new-workflow="isNewWorkflow"
-					@upgrade="goToWorkflowHistoryUpgrade"
-				/>
+				<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 			</div>
 			<div :class="[$style.workflowMenuContainer, $style.group]">
 				<input

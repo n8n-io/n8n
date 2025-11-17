@@ -99,6 +99,12 @@ const EvaluationRootView = async () =>
 const PrebuiltAgentTemplatesView = async () =>
 	await import('@/app/views/PrebuiltAgentTemplatesView.vue');
 
+const MigrationReportView = async () =>
+	await import('@/features/settings/migrationReport/MigrationRules.vue');
+
+const MigrationRuleReportView = async () =>
+	await import('@/features/settings/migrationReport/MigrationRuleDetail.vue');
+
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
@@ -343,12 +349,7 @@ export const routes: RouteRecordRaw[] = [
 			sidebar: MainSidebar,
 		},
 		meta: {
-			middleware: ['authenticated', 'enterprise'],
-			middlewareOptions: {
-				enterprise: {
-					feature: [EnterpriseEditionFeature.WorkflowHistory],
-				},
-			},
+			middleware: ['authenticated'],
 		},
 	},
 	{
@@ -554,6 +555,41 @@ export const routes: RouteRecordRaw[] = [
 						getProperties() {
 							return {
 								feature: 'usage',
+							};
+						},
+					},
+				},
+			},
+			{
+				path: 'migration-report',
+				components: {
+					settingsView: RouterView,
+				},
+				children: [
+					{
+						path: '',
+						name: VIEWS.MIGRATION_REPORT,
+						component: MigrationReportView,
+					},
+					{
+						path: ':migrationRuleId',
+						name: VIEWS.MIGRATION_RULE_REPORT,
+						component: MigrationRuleReportView,
+						props: true,
+					},
+				],
+				meta: {
+					middleware: ['authenticated', 'rbac'],
+					middlewareOptions: {
+						rbac: {
+							scope: ['breakingChanges:list'],
+						},
+					},
+					telemetry: {
+						pageCategory: 'settings',
+						getProperties() {
+							return {
+								feature: 'migration-report',
 							};
 						},
 					},
