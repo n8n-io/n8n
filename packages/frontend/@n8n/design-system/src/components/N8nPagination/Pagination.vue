@@ -289,7 +289,7 @@ const shouldShowPagination = computed(() => {
 
 .n8n-pagination__button {
 	min-width: 28px;
-	height: 28px;
+	height: 29px;
 	padding: 0 6px;
 	margin: 0 2px;
 	border: none;
@@ -344,6 +344,11 @@ const shouldShowPagination = computed(() => {
 		font-size: 14px;
 	}
 
+	// Add margin to next arrow to space it out
+	&--next {
+		margin-right: 8px;
+	}
+
 	&.is-active {
 		background: transparent !important;
 		color: var(--color--primary);
@@ -375,7 +380,7 @@ const shouldShowPagination = computed(() => {
 	align-items: center;
 	justify-content: center;
 	min-width: 28px;
-	height: 28px;
+	height: 29px;
 	color: var(--color--text--inverse);
 	user-select: none;
 	background: transparent !important;
