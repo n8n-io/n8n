@@ -1,4 +1,4 @@
-import { sublimeSearch } from '@n8n/utils/dist/search/sublimeSearch.mjs';
+import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
 import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 

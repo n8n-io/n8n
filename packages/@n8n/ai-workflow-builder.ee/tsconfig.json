@@ -5,8 +5,10 @@
 	],
 	"compilerOptions": {
 		"target": "es2023",
+		"module": "nodenext",
 		"lib": ["es2023"],
 		"rootDir": ".",
+		"moduleResolution": "nodenext",
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
 		"baseUrl": "src",
