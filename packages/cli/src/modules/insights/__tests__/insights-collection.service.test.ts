@@ -11,6 +11,7 @@ import { mock } from 'jest-mock-extended';
 import { DateTime } from 'luxon';
 import type { IRun } from 'n8n-workflow';
 
+import type { InsightsMetadata } from '../database/entities/insights-metadata';
 import type { InsightsMetadataRepository } from '../database/repositories/insights-metadata.repository';
 import type { InsightsRawRepository } from '../database/repositories/insights-raw.repository';
 import { InsightsCollectionService } from '../insights-collection.service';
@@ -19,7 +20,7 @@ import type { InsightsConfig } from '../insights.config';
 describe('initialization safeguards', () => {
 	let insightsCollectionService: InsightsCollectionService;
 	let insightsRawRepository: InsightsRawRepository;
-	let insightsMetadataRepository: InsightsMetadataRepository;
+	let insightsMetadataRepository: ReturnType<typeof mock<InsightsMetadataRepository>>;
 	let sharedWorkflowRepository: ReturnType<typeof mock<SharedWorkflowRepository>>;
 
 	const workflow = mock<WorkflowEntity & IWorkflowDb>({
@@ -78,6 +79,17 @@ describe('initialization safeguards', () => {
 			startedAt: startedAt.toJSDate(),
 			stoppedAt: stoppedAt.toJSDate(),
 		});
+
+		// simulate events in the buffer
+		insightsCollectionService['bufferedInsights'].add({
+			workflowId: ctx.workflow.id,
+			workflowName: ctx.workflow.name,
+			timestamp: DateTime.utc().toJSDate(),
+			type: 'success',
+			value: 1,
+		});
+
+		// mock shared workflow repository for the flushing process
 		sharedWorkflowRepository.find.mockResolvedValueOnce([
 			mock<SharedWorkflow>({
 				workflow,
@@ -85,12 +97,15 @@ describe('initialization safeguards', () => {
 				role: 'workflow:editor',
 			}),
 		]);
+		// mock insights metadata repository for the flushing process
+		insightsMetadataRepository.findBy.mockResolvedValueOnce([
+			mock<InsightsMetadata>({ workflowId: ctx.workflow.id, metaId: 1 }),
+		]);
 
 		// ACT - Try to flush without initialization
-		await insightsCollectionService.handleWorkflowExecuteAfter(ctx);
 		await insightsCollectionService.flushEvents();
 
-		// ASSERT - no insights in the buffer should have been saved
+		// ASSERT - no insights raw and metadata in the buffer should have been saved
 		expect(insightsMetadataRepository.upsert).not.toHaveBeenCalled();
 		expect(insightsRawRepository.insert).not.toHaveBeenCalled();
 	});
