@@ -811,12 +811,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async updateActiveState(workflowId: string, newState: boolean) {
 		if (newState) {
-			// When activating, set activeVersionId to current versionId (this will change with V2)
-			const workflow = await this.findOne({ where: { id: workflowId }, select: ['versionId'] });
-			if (!workflow) {
-				throw new Error(`Workflow ${workflowId} not found`);
-			}
-			return await this.update({ id: workflowId }, { activeVersionId: workflow.versionId });
+			return await this.createQueryBuilder()
+				.update(WorkflowEntity)
+				.set({
+					activeVersionId: () => 'versionId',
+				})
+				.where('id = :workflowId', { workflowId })
+				.execute();
 		} else {
 			return await this.update({ id: workflowId }, { activeVersionId: null });
 		}
