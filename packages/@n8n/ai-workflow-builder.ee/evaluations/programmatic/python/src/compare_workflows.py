@@ -98,7 +98,7 @@ def format_output_json(
     output: Dict[str, Any] = {
         "similarity_score": result["similarity_score"],
         "similarity_percentage": f"{result['similarity_score'] * 100:.1f}%",
-        "edit_cost": result["edit_cost"],
+				"edit_cost": result["edit_cost"] ,
         "max_possible_cost": result["max_possible_cost"],
         "top_edits": result["top_edits"],
         "metadata": metadata,
@@ -108,12 +108,17 @@ def format_output_json(
         metadata_dict = output["metadata"]
         assert isinstance(metadata_dict, dict)
         metadata_dict["verbose"] = True
+    else:
+        for edit in output["top_edits"]:
+            del edit["parameter_diff"]
 
     return json.dumps(output, indent=2)
 
 
 def _format_parameter_diff(
-    diff: Dict[str, Any], indent: str = "", max_value_length: int = 50
+    diff: Dict[str, Any],
+    indent: str = "",
+    max_value_length: int = 50,
 ) -> list:
     """
     Format parameter diff for human-readable display.
@@ -167,7 +172,7 @@ def _format_parameter_diff(
     return lines
 
 
-def format_output_summary(result: Dict[str, Any], metadata: Dict[str, Any]) -> str:
+def format_output_summary(result: Dict[str, Any], metadata: Dict[str, Any], verbose: bool = False) -> str:
     """Format result as human-readable summary"""
     lines = []
 
@@ -225,7 +230,7 @@ def format_output_summary(result: Dict[str, Any], metadata: Dict[str, Any]) -> s
             lines.append(f"   {desc}")
 
             # Add parameter diff if present
-            if "parameter_diff" in edit:
+            if verbose and "parameter_diff" in edit:
                 lines.append("")
                 lines.extend(
                     _format_parameter_diff(edit["parameter_diff"], indent="   ")
@@ -308,7 +313,7 @@ def main():
         output = format_output_json(result, metadata, args.verbose)
         print(output)
     elif args.output_format == "summary":
-        output = format_output_summary(result, metadata)
+        output = format_output_summary(result, metadata, args.verbose)
         print(output)
 
     # Always exit with 0 - let the caller interpret the similarity score
