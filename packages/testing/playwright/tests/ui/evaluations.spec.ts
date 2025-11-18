@@ -53,7 +53,7 @@ m82JpEptTfAxFHtd8+Sb0U2G
 			},
 		});
 
-		await n8n.workflows.addResource.workflow();
+		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 		// Import the evaluations workflow
 		await n8n.canvas.importWorkflow('evaluations_loop.json', 'Evaluations');
 

@@ -125,6 +125,19 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			parentExecution?: RelatedExecution;
 		},
 	): Promise<ExecuteWorkflowData> {
+		if (options?.parentExecution) {
+			// We inject the execution context of the current execution
+			// to the sub-workflow so that it can be accessed there
+			// this should only happen for the direct parent execution
+			// if a workflow starts a sub-workflow for a workflow that is not itself
+			// then the context should not be passed down
+			if (
+				!options.parentExecution.executionContext &&
+				options.parentExecution.executionId === this.getExecutionId()
+			) {
+				options.parentExecution.executionContext = this.getExecutionContext();
+			}
+		}
 		const result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
 			...options,
 			parentWorkflowId: this.workflow.id,

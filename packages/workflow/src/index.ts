@@ -12,6 +12,7 @@ export * from './deferred-promise';
 export * from './execution-context';
 export * from './global-state';
 export * from './interfaces';
+export * from './run-execution-data-factory';
 export * from './message-event-bus';
 export * from './execution-status';
 export * from './expression';
