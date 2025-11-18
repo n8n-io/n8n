@@ -17,7 +17,6 @@ interface TreeItem {
 }
 ```
 
-By default, it uses `IMenuItem` but can be used with custom types for different use cases.
 
 ## Public API Definition
 
@@ -42,7 +41,7 @@ By default, it uses `IMenuItem` but can be used with custom types for different 
 - `default`: `{ item: FlattenedItem<T>; handleToggle: () => void; handleSelect: () => void; isExpanded: boolean, hasChildren: boolean }` - Main content for each tree item.
 ### Template usage example
 
-#### Basic Usage (with IMenuItem - and MenuItem component)
+#### Basic Usage
 
 ```vue
 <script setup lang="ts">
@@ -53,23 +52,11 @@ const items = ref<IMenuItem[]>([...])
 </script>
 
 <template>
-  <N8nTree :items="items">
-		<template #default="{ item, handleToggle, isExpanded, hasChildren }">
-			<MenuItem :key="item.value.id" :item="item.value">
-				<template v-if="hasChildren" #toggle>
-					<N8nIconButton
-						size="mini"
-						type="highlight"
-						:icon="isExpanded ? 'chevron-down' : 'chevron-right'"
-						icon-size="medium"
-						aria-label="Expand"
-						@click="handleToggle"
-					/>
-				</template>
-			</MenuItem>
-  </N8nTree>
+  <N8nTree :items="items" />
 </template>
 ```
+
+#### Custom slot and key
 
 ```vue
 <script setup lang="ts">
@@ -104,8 +91,11 @@ function getCustomKey(item: CustomItem) {
     :items="customItems"
     :get-key="getCustomKey"
   >
-    <template #default="{ item }">
-      <span>{{ item.value.name }} ({{ item.value.uuid }})</span>
+    <template #default="{ item, handleToggle, isExpanded, hasChildren }">
+			<div>
+				<N8nIconButton v-if="hasChildren" :icon="isExpanded ? 'chevron-down' : 'chevron-right'" @click="handleToggle" />
+				<span>{{ item.value.name }} ({{ item.value.uuid }})</span>
+			</div>
     </template>
   </N8nTree>
 </template>
