@@ -96,3 +96,6 @@ packageExtensions:
   unplugin-swc:
     peerDependencies:
       '@swc/core': "-"
+  tsup:
+    peerDependencies:
+      '@swc/core': "-"
