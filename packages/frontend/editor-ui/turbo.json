@@ -2,8 +2,9 @@
 	"extends": ["//"],
 	"tasks": {
 		"popularity-cache-marker": {
-			"cache": false,
-			"outputs": [".build/cache-marker"]
+			"cache": true,
+			"outputs": [".build/cache-marker"],
+			"inputs": ["scripts/cache-marker.mjs"]
 		},
 		"fetch-popularity": {
 			"dependsOn": ["popularity-cache-marker"],
