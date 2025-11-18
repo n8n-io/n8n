@@ -223,13 +223,13 @@ export function jsonSchemaTypeToFieldType(schema: JSONSchema7): FieldType {
 
 export function convertJsonSchemaToResourceMapperFields(
 	schema: JSONSchema7,
-	required: string[] = [],
 ): ResourceMapperField[] {
 	const fields: ResourceMapperField[] = [];
 	if (schema.type !== 'object' || !schema.properties) {
 		return fields;
 	}
 
+	const required = Array.isArray(schema.required) ? schema.required : [];
 	for (const [key, propertySchema] of Object.entries(schema.properties)) {
 		if (propertySchema === false) {
 			continue;
@@ -240,7 +240,6 @@ export function convertJsonSchemaToResourceMapperFields(
 				id: key,
 				displayName: key,
 				defaultMatch: false,
-				canBeUsedToMatch: true,
 				required: required.includes(key),
 				display: true,
 				type: 'string', // use string as a "catch all" for any values

@@ -40,8 +40,7 @@ export async function getToolParameters(
 		throw new NodeOperationError(this.getNode(), 'Tool not found');
 	}
 
-	const requiredFields = Array.isArray(tool.inputSchema.required) ? tool.inputSchema.required : [];
-	const fields = convertJsonSchemaToResourceMapperFields(tool.inputSchema, requiredFields);
+	const fields = convertJsonSchemaToResourceMapperFields(tool.inputSchema);
 	return {
 		fields,
 	};
