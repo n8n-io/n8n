@@ -1,5 +1,5 @@
 {
-	"globalEnv": ["CI", "COVERAGE_ENABLED"],
+	"globalEnv": ["CI"],
 	"tasks": {
 		"clean": { "cache": false },
 		"build": {
@@ -23,15 +23,18 @@
 		},
 		"test": {
 			"dependsOn": ["^build", "build"],
-			"outputs": ["coverage/**", "*.xml"]
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED"]
 		},
 		"test:unit": {
 			"dependsOn": ["^build", "build"],
-			"outputs": ["coverage/**", "*.xml"]
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED"]
 		},
 		"test:integration": {
 			"dependsOn": ["^build", "build"],
-			"outputs": ["coverage/**", "*.xml"]
+			"outputs": ["coverage/**", "*.xml"],
+			"env": ["COVERAGE_ENABLED"]
 		},
 		"watch": { "cache": false, "persistent": true },
 		"dev": { "cache": false, "persistent": true },
