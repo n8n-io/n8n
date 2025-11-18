@@ -98,7 +98,7 @@ def format_output_json(
     output: Dict[str, Any] = {
         "similarity_score": result["similarity_score"],
         "similarity_percentage": f"{result['similarity_score'] * 100:.1f}%",
-				"edit_cost": result["edit_cost"] ,
+        "edit_cost": result["edit_cost"],
         "max_possible_cost": result["max_possible_cost"],
         "top_edits": result["top_edits"],
         "metadata": metadata,
@@ -172,7 +172,9 @@ def _format_parameter_diff(
     return lines
 
 
-def format_output_summary(result: Dict[str, Any], metadata: Dict[str, Any], verbose: bool = False) -> str:
+def format_output_summary(
+    result: Dict[str, Any], metadata: Dict[str, Any], verbose: bool = False
+) -> str:
     """Format result as human-readable summary"""
     lines = []
 
