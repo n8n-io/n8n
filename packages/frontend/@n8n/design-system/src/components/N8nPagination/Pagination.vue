@@ -12,7 +12,6 @@ import {
 import { computed, ref, watch, type Component } from 'vue';
 
 interface Props {
-	// Core props
 	currentPage?: number;
 	defaultCurrentPage?: number;
 	pageSize?: number;
@@ -20,18 +19,15 @@ interface Props {
 	total: number;
 	pageCount?: number;
 
-	// Configuration
 	pagerCount?: number; // Maps to siblingCount in Reka UI
 	layout?: string; // Controls which buttons to show
 	pageSizes?: number[]; // Not used by pagination itself, but kept for compatibility
 
-	// Appearance
 	small?: boolean;
 	background?: boolean;
 	disabled?: boolean;
 	hideOnSinglePage?: boolean;
 
-	// Text/Icons
 	prevText?: string;
 	prevIcon?: string | Component;
 	nextText?: string;
@@ -65,15 +61,12 @@ const emit = defineEmits<{
 	'next-click': [page: number];
 }>();
 
-// Use v-model for currentPage (1-based to match ElementPlus API)
 const pageModel = defineModel<number>('currentPage', {
 	default: undefined,
 });
 
-// Internal page state (1-based to match ElementPlus API)
 const page = ref(props.currentPage ?? pageModel.value ?? props.defaultCurrentPage ?? 1);
 
-// Sync page with prop changes
 watch(
 	() => props.currentPage,
 	(newValue) => {
@@ -83,22 +76,18 @@ watch(
 	},
 );
 
-// Sync page with model changes
 watch(pageModel, (newValue) => {
 	if (newValue !== undefined && newValue !== page.value) {
 		page.value = newValue;
 	}
 });
 
-// Use v-model for pageSize
 const pageSizeModel = defineModel<number>('pageSize', {
 	default: undefined,
 });
 
-// Internal itemsPerPage state
 const itemsPerPage = ref(props.pageSize ?? pageSizeModel.value ?? props.defaultPageSize ?? 10);
 
-// Sync itemsPerPage with prop changes
 watch(
 	() => props.pageSize,
 	(newValue) => {
@@ -108,21 +97,14 @@ watch(
 	},
 );
 
-// Sync itemsPerPage with model changes
 watch(pageSizeModel, (newValue) => {
 	if (newValue !== undefined && newValue !== itemsPerPage.value) {
 		itemsPerPage.value = newValue;
 	}
 });
 
-// Compute siblingCount from pagerCount
-// pagerCount in ElementPlus is total visible page numbers
-// siblingCount in Reka UI is pages on each side of current
-// Limit to max 6 pages visible in the middle section before ellipses
-// With siblingCount = 3: shows current-3, current-2, current-1, current, current+1, current+2 = 6 pages
+// ensures 2 sibling elements exist around the central selected item in larger lists.
 const siblingCount = computed(() => {
-	// Limit to max 6 pages in middle section before ellipses appear
-	// siblingCount of 3 gives: current-3, current-2, current-1, current, current+1, current+2 = 6 pages
 	const maxSiblingCount = 2;
 	const calculated = Math.max(1, Math.floor((props.pagerCount - 1) / 2));
 	return Math.min(calculated, maxSiblingCount);
@@ -143,7 +125,6 @@ const layoutParts = computed(() => {
 // Handle page changes and emit events
 function handlePageChange(newPage: number) {
 	page.value = newPage;
-	// Update model if using v-model
 	if (pageModel.value !== undefined) {
 		pageModel.value = newPage;
 	}
@@ -151,7 +132,6 @@ function handlePageChange(newPage: number) {
 	emit('current-change', newPage);
 }
 
-// Handle prev/next clicks
 function handlePrevClick(currentPage: number) {
 	emit('prev-click', currentPage);
 }
@@ -160,7 +140,6 @@ function handleNextClick(currentPage: number) {
 	emit('next-click', currentPage);
 }
 
-// Check if pagination should be hidden
 const shouldShowPagination = computed(() => {
 	if (props.hideOnSinglePage) {
 		const totalPages = Math.ceil(props.total / itemsPerPage.value);
@@ -188,7 +167,6 @@ const shouldShowPagination = computed(() => {
 		@update:page="handlePageChange"
 	>
 		<PaginationList v-slot="{ items }">
-			<!-- First button -->
 			<PaginationFirst
 				v-if="layoutParts.showFirst"
 				class="n8n-pagination__button n8n-pagination__button--first"
@@ -199,7 +177,6 @@ const shouldShowPagination = computed(() => {
 				</slot>
 			</PaginationFirst>
 
-			<!-- Previous button -->
 			<PaginationPrev
 				v-if="layoutParts.showPrev"
 				class="n8n-pagination__button n8n-pagination__button--prev"
@@ -211,7 +188,6 @@ const shouldShowPagination = computed(() => {
 				</slot>
 			</PaginationPrev>
 
-			<!-- Page numbers -->
 			<template v-if="layoutParts.showPager">
 				<template v-for="(item, index) in items" :key="index">
 					<PaginationListItem
@@ -231,7 +207,6 @@ const shouldShowPagination = computed(() => {
 				</template>
 			</template>
 
-			<!-- Next button -->
 			<PaginationNext
 				v-if="layoutParts.showNext"
 				class="n8n-pagination__button n8n-pagination__button--next"
@@ -243,7 +218,6 @@ const shouldShowPagination = computed(() => {
 				</slot>
 			</PaginationNext>
 
-			<!-- Last button -->
 			<PaginationLast
 				v-if="layoutParts.showLast"
 				class="n8n-pagination__button n8n-pagination__button--last"
@@ -265,16 +239,6 @@ const shouldShowPagination = computed(() => {
 	font-size: var(--font-size--sm);
 	height: 32px;
 	padding: 2px 0;
-
-	&.is-small {
-		font-size: 12px;
-
-		.n8n-pagination__button {
-			min-width: 28px;
-			height: 28px;
-			font-size: 12px;
-		}
-	}
 
 	&.is-disabled {
 		opacity: 0.6;
@@ -313,11 +277,8 @@ const shouldShowPagination = computed(() => {
 	transition: color 0.2s ease;
 	user-select: none;
 
-	// Override any nested button or element styles
 	:deep(button) {
-		background: transparent !important;
 		color: inherit;
-		border: none;
 		padding: 0;
 	}
 
@@ -329,7 +290,6 @@ const shouldShowPagination = computed(() => {
 		border: 1px solid var(--color--foreground);
 
 		:deep(button) {
-			background: var(--color--background--light-3) !important;
 			color: var(--color--primary);
 			border: 1px solid var(--color--foreground);
 		}
@@ -344,7 +304,6 @@ const shouldShowPagination = computed(() => {
 		cursor: not-allowed;
 	}
 
-	// Make prev/next arrows bigger
 	&--prev,
 	&--next,
 	&--first,
@@ -352,45 +311,36 @@ const shouldShowPagination = computed(() => {
 		font-size: 14px;
 	}
 
-	// Add margin to next arrow to space it out
 	&--next {
 		margin-right: 8px;
 	}
 
 	&.is-active {
-		background: transparent !important;
 		color: var(--color--primary);
 		border: 1px solid var(--color--primary);
-		font-weight: var(--font-weight--bold);
 
 		:deep(button) {
-			background: transparent !important;
 			color: var(--color--primary);
 			border: 1px solid var(--color--primary);
 		}
 
 		&:hover {
 			background: var(--color--background--light-3) !important;
-			color: var(--color--primary);
-			border: 1px solid var(--color--primary);
 
 			:deep(button) {
 				background: var(--color--background--light-3) !important;
-				color: var(--color--primary);
-				border: 1px solid var(--color--primary);
 			}
 		}
 	}
 }
 
 .n8n-pagination__ellipsis {
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
 	min-width: 28px;
 	height: 28px;
 	color: var(--color--text--inverse);
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 	user-select: none;
-	background: transparent !important;
 }
 </style>
