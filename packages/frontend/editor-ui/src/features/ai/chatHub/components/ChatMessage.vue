@@ -235,57 +235,94 @@ onBeforeMount(() => {
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
 	}
+}
 
-	> .chatMessageMarkdown {
-		display: block;
+.chatMessageMarkdown {
+	display: block;
+	box-sizing: border-box;
+
+	> *:first-child {
+		margin-top: 0;
+	}
+
+	> *:last-child {
+		margin-bottom: 0;
+	}
+
+	& * {
+		font-size: var(--font-size--md);
+		line-height: 1.8;
+	}
+
+	p {
+		margin: var(--spacing--xs) 0;
+	}
+
+	// Override heading sizes to be smaller
+	h1 {
+		font-size: var(--font-size--2xl);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--md);
+	}
+
+	h2 {
+		font-size: var(--font-size--xl);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--lg);
+	}
+
+	h3 {
+		font-size: var(--font-size--lg);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--lg);
+	}
+
+	h4 {
+		font-size: var(--font-size--md);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--xl);
+	}
+
+	h5 {
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--xl);
+	}
+
+	h6 {
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--xl);
+	}
+
+	pre {
+		font-family: inherit;
+		font-size: inherit;
+		margin: 0;
+		white-space: pre-wrap;
 		box-sizing: border-box;
+		padding: var(--chat--spacing);
+		background: var(--chat--message--pre--background);
+		border-radius: var(--chat--border-radius);
+	}
 
-		> *:first-child {
-			margin-top: 0;
-		}
+	table {
+		width: 100%;
+		border-bottom: var(--border);
+		border-top: var(--border);
+		border-width: 2px;
+		margin-bottom: 1em;
+		border-color: var(--color--text--shade-1);
+	}
 
-		> *:last-child {
-			margin-bottom: 0;
-		}
+	th,
+	td {
+		padding: 0.25em 1em 0.25em 0;
+	}
 
-		& * {
-			font-size: var(--font-size--md);
-			line-height: 1.8;
-		}
-
-		p {
-			margin: var(--spacing--xs) 0;
-		}
-
-		pre {
-			font-family: inherit;
-			font-size: inherit;
-			margin: 0;
-			white-space: pre-wrap;
-			box-sizing: border-box;
-			padding: var(--chat--spacing);
-			background: var(--chat--message--pre--background);
-			border-radius: var(--chat--border-radius);
-		}
-
-		table {
-			width: 100%;
-			border-bottom: var(--border);
-			border-top: var(--border);
-			border-width: 2px;
-			margin-bottom: 1em;
-			border-color: var(--color--text--shade-1);
-		}
-
-		th,
-		td {
-			padding: 0.25em 1em 0.25em 0;
-		}
-
-		th {
-			border-bottom: var(--border);
-			border-color: var(--color--text--shade-1);
-		}
+	th {
+		border-bottom: var(--border);
+		border-color: var(--color--text--shade-1);
 	}
 }
 
