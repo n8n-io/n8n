@@ -65,7 +65,41 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const conversation = getConversation(sessionId);
 		if (!conversation) return [];
 
-		return conversation.activeMessageChain.map((id) => conversation.messages[id]).filter(Boolean);
+		const persistedMessages = conversation.activeMessageChain.flatMap<ChatMessage>(
+			(id, index, arr) => {
+				const message = conversation.messages[id];
+
+				if (!message) {
+					return [];
+				}
+
+				if (
+					arr.length - 1 === index &&
+					streaming.value?.requestType === 'new' &&
+					streaming.value?.sessionId === sessionId &&
+					message.type === 'ai'
+				) {
+					// When agent responds multiple messages (e.g. when tools are used),
+					// there's a noticeable time gap between messages.
+					// In order to indicate that agent is still responding, show the last AI message as running
+					return [{ ...message, status: 'running' }];
+				}
+
+				return [message];
+			},
+		);
+
+		if (
+			streaming.value?.requestType === 'new' &&
+			streaming.value?.sessionId === sessionId &&
+			!streaming.value.messageId &&
+			streaming.value.promptId === persistedMessages[persistedMessages.length - 1]?.id
+		) {
+			// Append a placeholder AI message as an immediate feedback until backend starts streaming
+			persistedMessages.push(createAiMessageFromStreamingState(sessionId, uuidv4()));
+		}
+
+		return persistedMessages;
 	};
 
 	function ensureConversation(sessionId: ChatSessionId): ChatConversation {
@@ -459,7 +493,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			alternatives: [],
 		});
 
-		streaming.value = { promptId: messageId, sessionId, model };
+		streaming.value = { promptId: messageId, sessionId, model, requestType: 'new' };
 
 		sendMessageApi(
 			rootStore.restApiContext,
@@ -522,7 +556,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			replaceMessageContent(sessionId, editId, content);
 		}
 
-		streaming.value = { promptId, sessionId, model };
+		streaming.value = { promptId, sessionId, model, requestType: 'edit' };
 
 		editMessageApi(
 			rootStore.restApiContext,
@@ -553,7 +587,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			throw new Error('No previous message to base regeneration on');
 		}
 
-		streaming.value = { promptId: retryId, sessionId, model };
+		streaming.value = { promptId: retryId, sessionId, model, requestType: 'regenerate' };
 
 		regenerateMessageApi(
 			rootStore.restApiContext,
