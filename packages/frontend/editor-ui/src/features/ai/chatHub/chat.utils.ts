@@ -298,7 +298,7 @@ export function buildUiMessages(
 		streaming.promptId === persistedMessages[persistedMessages.length - 1]?.id
 	) {
 		// Append a placeholder AI message as an immediate feedback until backend starts streaming
-		persistedMessages.push(createAiMessageFromStreamingState(sessionId, uuidv4()));
+		persistedMessages.push(createAiMessageFromStreamingState(sessionId, uuidv4(), streaming));
 	}
 
 	return persistedMessages;
