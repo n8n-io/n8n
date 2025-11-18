@@ -1,5 +1,5 @@
 import userEvent from '@testing-library/user-event';
-import { render, screen, waitFor, within } from '@testing-library/vue';
+import { render, screen, waitFor } from '@testing-library/vue';
 
 import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
 
@@ -100,7 +100,17 @@ describe('N8nDataTableServer', () => {
 
 		await userEvent.click(container.querySelector('thead tr th')!);
 		await userEvent.click(container.querySelector('thead tr th')!);
-		await userEvent.click(within(getByTestId('pagination')).getByLabelText('page 2'));
+
+		// Find the page 2 button in the pagination component
+		const pagination = getByTestId('pagination');
+		const pageButtons = pagination.querySelectorAll('.n8n-pagination__button--page');
+		const page2Button = Array.from(pageButtons).find(
+			(btn) => btn.textContent?.trim() === '2',
+		) as HTMLElement;
+		if (!page2Button) {
+			throw new Error('Page 2 button not found in pagination');
+		}
+		await userEvent.click(page2Button);
 
 		expect(emitted('update:options').length).toBe(3);
 		expect(emitted('update:options')[0]).toStrictEqual([
