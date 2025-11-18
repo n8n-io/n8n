@@ -155,6 +155,10 @@ export class ChatHubService {
 				return await this.fetchAnthropicModels(credentials, additionalData);
 			case 'google':
 				return await this.fetchGoogleModels(credentials, additionalData);
+			case 'ollama':
+				return await this.fetchOllamaModels(credentials, additionalData);
+			case 'azureOpenAi':
+				return await this.fetchAzureOpenAiModels(credentials, additionalData);
 			case 'n8n':
 				return await this.fetchAgentWorkflowsAsModels(user);
 			case 'custom-agent':
@@ -278,6 +282,76 @@ export class ChatHubService {
 				createdAt: null,
 				updatedAt: null,
 			})),
+		};
+	}
+
+	private async fetchOllamaModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse['ollama']> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				// From Ollama Model node
+				// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LMOllama/description.ts#L24
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/api/tags',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'models',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.name}}',
+									value: '={{$responseItem.name}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.ollama,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({
+				name: String(result.value),
+				description: result.description ?? null,
+				model: {
+					provider: 'ollama',
+					model: String(result.value),
+				},
+				createdAt: null,
+				updatedAt: null,
+			})),
+		};
+	}
+
+	private async fetchAzureOpenAiModels(
+		_credentials: INodeCredentials,
+		_additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse['azureOpenAi']> {
+		// Azure doesn't appear to offer a way to list available models via API.
+		// If we add support for this in the future on the Azure OpenAI node we should copy that
+		// implementation here too.
+		return {
+			models: [],
 		};
 	}
 
