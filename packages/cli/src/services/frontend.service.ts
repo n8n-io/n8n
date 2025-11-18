@@ -48,7 +48,6 @@ export type PublicFrontendSettings = Pick<
 	| 'instanceId'
 	| 'defaultLocale'
 	| 'versionCli'
-	| 'releaseChannel'
 	| 'userManagement'
 	| 'sso'
 	| 'mfa'
@@ -493,7 +492,6 @@ export class FrontendService {
 			instanceId,
 			defaultLocale,
 			versionCli,
-			releaseChannel,
 			userManagement,
 			sso,
 			mfa,
@@ -510,7 +508,6 @@ export class FrontendService {
 			instanceId,
 			defaultLocale,
 			versionCli,
-			releaseChannel,
 			userManagement,
 			sso,
 			mfa,
