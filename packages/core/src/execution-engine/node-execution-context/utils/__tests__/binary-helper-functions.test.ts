@@ -12,9 +12,6 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
 
-import type { BinaryDataConfig } from '@/binary-data';
-import { BinaryDataService } from '@/binary-data/binary-data.service';
-
 import {
 	assertBinaryData,
 	binaryToString,
@@ -25,6 +22,9 @@ import {
 	prepareBinaryData,
 	setBinaryDataBuffer,
 } from '../binary-helper-functions';
+
+import type { BinaryDataConfig } from '@/binary-data';
+import { BinaryDataService } from '@/binary-data/binary-data.service';
 
 const workflowId = 'workflow123';
 const executionId = 'execution456';
@@ -567,6 +567,231 @@ describe('assertBinaryData', () => {
 		expect(() => assertBinaryData(inputData, mockNode, 0, [] as any, 0)).toThrow(
 			'Provided parameter is not a string or binary data object.',
 		);
+	});
+
+	describe('combined binary mode', () => {
+		it('should return binary data from json path in combined mode', () => {
+			const binaryData = mock<IBinaryData>({
+				fileName: 'test.txt',
+				mimeType: 'text/plain',
+				data: 'base64data',
+			});
+			const inputData = {
+				main: [
+					[
+						{
+							json: {
+								file: binaryData,
+							},
+						},
+					],
+				],
+			};
+
+			const result = assertBinaryData(inputData, mockNode, 0, 'file', 0, 'combined');
+			expect(result).toBe(binaryData);
+		});
+
+		it('should return binary data from nested json path in combined mode', () => {
+			const binaryData = mock<IBinaryData>({
+				fileName: 'nested.pdf',
+				mimeType: 'application/pdf',
+				data: 'pdfdata',
+			});
+			const inputData = {
+				main: [
+					[
+						{
+							json: {
+								data: {
+									attachments: {
+										document: binaryData,
+									},
+								},
+							},
+						},
+					],
+				],
+			};
+
+			const result = assertBinaryData(
+				inputData,
+				mockNode,
+				0,
+				'data.attachments.document',
+				0,
+				'combined',
+			);
+			expect(result).toBe(binaryData);
+		});
+
+		it('should throw error when path does not exist in combined mode', () => {
+			const inputData = {
+				main: [
+					[
+						{
+							json: {
+								otherData: 'value',
+							},
+						},
+					],
+				],
+			};
+
+			expect(() =>
+				assertBinaryData(inputData, mockNode, 0, 'nonexistent.path', 0, 'combined'),
+			).toThrow('does not resolve to a binary data object');
+		});
+
+		it('should throw error when path resolves to non-binary data in combined mode', () => {
+			const inputData = {
+				main: [
+					[
+						{
+							json: {
+								file: 'just a string',
+							},
+						},
+					],
+				],
+			};
+
+			expect(() => assertBinaryData(inputData, mockNode, 0, 'file', 0, 'combined')).toThrow(
+				'does not resolve to a binary data object',
+			);
+		});
+
+		it('should throw error when path resolves to object without binary data properties in combined mode', () => {
+			const inputData = {
+				main: [
+					[
+						{
+							json: {
+								file: {
+									name: 'test.txt',
+									// Missing mimeType and data properties
+								},
+							},
+						},
+					],
+				],
+			};
+
+			expect(() => assertBinaryData(inputData, mockNode, 0, 'file', 0, 'combined')).toThrow(
+				'does not resolve to a binary data object',
+			);
+		});
+
+		it('should handle binary data in array path in combined mode', () => {
+			const binaryData = mock<IBinaryData>({
+				fileName: 'array-file.jpg',
+				mimeType: 'image/jpeg',
+				data: 'imagedata',
+			});
+			const inputData = {
+				main: [
+					[
+						{
+							json: {
+								files: [{ image: binaryData }],
+							},
+						},
+					],
+				],
+			};
+
+			const result = assertBinaryData(inputData, mockNode, 0, 'files[0].image', 0, 'combined');
+			expect(result).toBe(binaryData);
+		});
+
+		it('should return IBinaryData directly even in combined mode when parameterData is IBinaryData', () => {
+			const binaryData = mock<IBinaryData>({
+				fileName: 'direct.txt',
+				mimeType: 'text/plain',
+				data: 'directdata',
+			});
+			const inputData = {
+				main: [
+					[
+						{
+							json: {},
+						},
+					],
+				],
+			};
+
+			const result = assertBinaryData(inputData, mockNode, 0, binaryData, 0, 'combined');
+			expect(result).toBe(binaryData);
+		});
+
+		it('should throw error when path is undefined in combined mode', () => {
+			const inputData = {
+				main: [
+					[
+						{
+							json: {
+								data: {
+									file: undefined,
+								},
+							},
+						},
+					],
+				],
+			};
+
+			expect(() => assertBinaryData(inputData, mockNode, 0, 'data.file', 0, 'combined')).toThrow(
+				'does not resolve to a binary data object',
+			);
+		});
+
+		it('should throw error when path is null in combined mode', () => {
+			const inputData = {
+				main: [
+					[
+						{
+							json: {
+								data: {
+									file: null,
+								},
+							},
+						},
+					],
+				],
+			};
+
+			expect(() => assertBinaryData(inputData, mockNode, 0, 'data.file', 0, 'combined')).toThrow(
+				'does not resolve to a binary data object',
+			);
+		});
+	});
+
+	describe('separate binary mode (default)', () => {
+		it('should work with explicit separate mode', () => {
+			const binaryData = mock<IBinaryData>({ fileName: 'test.txt' });
+			const inputData = {
+				main: [
+					[
+						{
+							json: {},
+							binary: {
+								testFile: binaryData,
+							},
+						},
+					],
+				],
+			};
+
+			const result = assertBinaryData(inputData, mockNode, 0, 'testFile', 0, 'separate');
+			expect(result).toBe(binaryData);
+		});
+
+		it('should throw error with explicit separate mode when binary data missing', () => {
+			const inputData = { main: [[{ json: {} }]] };
+
+			expect(() => assertBinaryData(inputData, mockNode, 0, 'testFile', 0, 'separate')).toThrow(
+				"expects the node's input data to contain a binary file",
+			);
+		});
 	});
 });
 
