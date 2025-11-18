@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { SamlPreferences } from '@n8n/api-types';
 import CopyInput from '@/app/components/CopyInput.vue';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
@@ -121,7 +122,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			return;
 		}
 
-		const config =
+		const config: Partial<SamlPreferences> =
 			ipsType.value === IdentityProviderSettingsType.URL
 				? { metadataUrl: metadataUrl.value }
 				: { metadata: metadata.value };
@@ -134,6 +135,9 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
+		// Update store with saved metadata config
+		ssoStore.samlConfig!.metadata = config.metadata;
+		ssoStore.samlConfig!.metadataUrl = config.metadataUrl;
 
 		if (!ssoStore.isSamlLoginEnabled) {
 			const answer = await message.confirm(
