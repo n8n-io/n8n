@@ -10,8 +10,6 @@ const visible = defineModel<boolean>();
 
 const props = defineProps<{
 	newProvisioningSetting: UserRoleProvisioningSetting;
-	// TODO: use this to display different text when switching from "instance_role" to "instance_and_project_roles"
-	currentProvisioningSetting: UserRoleProvisioningSetting;
 }>();
 
 const emit = defineEmits<{
@@ -85,7 +83,7 @@ const onConfirmProvisioningSetting = () => {
 						locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.list.one')
 					}}</N8nText>
 				</li>
-				<li>
+				<li v-if="newProvisioningSetting === 'instance_and_project_roles'">
 					<N8nText color="text-base">{{
 						locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.list.two')
 					}}</N8nText>

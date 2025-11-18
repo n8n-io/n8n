@@ -61,7 +61,7 @@ const showUserRoleProvisioningDialog = ref(false);
 
 const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
 
-const { currentProvisioningSetting, isUserRoleProvisioningChanged, saveProvisioningConfig } =
+const { isUserRoleProvisioningChanged, saveProvisioningConfig } =
 	useUserRoleProvisioningForm(userRoleProvisioning);
 
 async function loadSamlConfig() {
@@ -257,7 +257,6 @@ onMounted(async () => {
 			<EnableJitProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
 				:new-provisioning-setting="userRoleProvisioning"
-				:current-provisioning-setting="currentProvisioningSetting"
 				@confirm-provisioning="onSave(true)"
 			/>
 			<div :class="$style.group">

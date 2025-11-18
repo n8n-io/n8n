@@ -70,9 +70,6 @@ export function useUserRoleProvisioningForm(
 	};
 
 	return {
-		currentProvisioningSetting: getUserRoleProvisioningValueFromConfig(
-			provisioningStore.provisioningConfig,
-		),
 		isUserRoleProvisioningChanged,
 		saveProvisioningConfig,
 	};
