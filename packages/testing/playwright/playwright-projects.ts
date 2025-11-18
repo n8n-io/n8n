@@ -43,14 +43,14 @@ export function getProjects(): Project[] {
 					[CONTAINER_ONLY.source, SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|'),
 				),
 				fullyParallel: true,
-				use: { baseURL: process.env.N8N_BASE_URL },
+				use: { baseURL: process.env.N8N_BASE_URL, currentsBatchSize: 2 },
 			},
 			{
 				name: 'ui:isolated',
 				testDir: './tests/ui',
 				grep: new RegExp([SERIAL_EXECUTION.source, ISOLATED_ONLY.source].join('|')),
 				workers: 1,
-				use: { baseURL: process.env.N8N_BASE_URL },
+				use: { baseURL: process.env.N8N_BASE_URL, currentsBatchSize: 1 },
 			},
 		);
 	} else {
