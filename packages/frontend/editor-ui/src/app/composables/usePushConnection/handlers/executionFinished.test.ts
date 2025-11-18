@@ -3,6 +3,7 @@ import { mock } from 'vitest-mock-extended';
 import {
 	continueEvaluationLoop,
 	executionFinished,
+	getRunExecutionData,
 	type SimplifiedExecution,
 } from './executionFinished';
 import type { ITaskData } from 'n8n-workflow';
@@ -184,6 +185,37 @@ describe('continueEvaluationLoop()', () => {
 		continueEvaluationLoop(execution, opts);
 
 		expect(runWorkflow).not.toHaveBeenCalled();
+	});
+});
+
+describe('getRunExecutionData()', () => {
+	it('should preserve pushRef from execution data', () => {
+		const execution = mock<SimplifiedExecution>({
+			data: {
+				pushRef: 'test-push-ref-12345',
+				resultData: {
+					runData: {},
+				},
+			},
+		});
+
+		const result = getRunExecutionData(execution);
+
+		expect(result.pushRef).toBe('test-push-ref-12345');
+	});
+
+	it('should handle missing pushRef gracefully', () => {
+		const execution = mock<SimplifiedExecution>({
+			data: {
+				resultData: {
+					runData: {},
+				},
+			},
+		});
+
+		const result = getRunExecutionData(execution);
+
+		expect(result.pushRef).toBeUndefined();
 	});
 });
 

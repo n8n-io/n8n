@@ -391,6 +391,72 @@ describe('WorkflowDetails', () => {
 			});
 		});
 
+		it("should navigate to team project workflows page on 'Archive' for team project workflow", async () => {
+			const teamProjectId = 'team-project-123';
+			const teamWorkflow = {
+				...workflow,
+				homeProject: {
+					id: teamProjectId,
+					name: 'Team Project',
+					type: 'team',
+				},
+			};
+
+			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(teamWorkflow);
+			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...teamWorkflow,
+					active: false,
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-archive'));
+
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(teamWorkflow.id);
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: teamProjectId },
+			});
+		});
+
+		it("should navigate to personal workflows page on 'Archive' for personal project workflow", async () => {
+			const personalWorkflow = {
+				...workflow,
+				homeProject: {
+					id: 'personal-project-123',
+					name: 'Personal Project',
+					type: 'personal',
+				},
+			};
+
+			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(personalWorkflow);
+			workflowsStore.archiveWorkflow.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...personalWorkflow,
+					active: false,
+					readOnly: false,
+					isArchived: false,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-archive'));
+
+			expect(workflowsStore.archiveWorkflow).toHaveBeenCalledWith(personalWorkflow.id);
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOWS,
+			});
+		});
+
 		it("should confirm onWorkflowMenuSelect on 'Archive' option click on active workflow", async () => {
 			const { getByTestId } = renderComponent({
 				props: {
@@ -456,6 +522,72 @@ describe('WorkflowDetails', () => {
 			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledTimes(1);
 			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(workflow.id);
 			expect(router.push).toHaveBeenCalledTimes(1);
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.WORKFLOWS,
+			});
+		});
+
+		it("should navigate to team project workflows page on 'Delete' for team project workflow", async () => {
+			const teamProjectId = 'team-project-456';
+			const teamWorkflow = {
+				...workflow,
+				isArchived: true,
+				homeProject: {
+					id: teamProjectId,
+					name: 'Team Project',
+					type: 'team',
+				},
+			};
+
+			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(teamWorkflow);
+			workflowsStore.deleteWorkflow.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...teamWorkflow,
+					readOnly: false,
+					isArchived: true,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-delete'));
+
+			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(teamWorkflow.id);
+			expect(router.push).toHaveBeenCalledWith({
+				name: VIEWS.PROJECTS_WORKFLOWS,
+				params: { projectId: teamProjectId },
+			});
+		});
+
+		it("should navigate to personal workflows page on 'Delete' for personal project workflow", async () => {
+			const personalWorkflow = {
+				...workflow,
+				isArchived: true,
+				homeProject: {
+					id: 'personal-project-456',
+					name: 'Personal Project',
+					type: 'personal',
+				},
+			};
+
+			workflowsStore.getWorkflowById = vi.fn().mockReturnValue(personalWorkflow);
+			workflowsStore.deleteWorkflow.mockResolvedValue(undefined);
+
+			const { getByTestId } = renderComponent({
+				props: {
+					...personalWorkflow,
+					readOnly: false,
+					isArchived: true,
+					scopes: ['workflow:delete'],
+				},
+			});
+
+			await userEvent.click(getByTestId('workflow-menu'));
+			await userEvent.click(getByTestId('workflow-menu-item-delete'));
+
+			expect(workflowsStore.deleteWorkflow).toHaveBeenCalledWith(personalWorkflow.id);
 			expect(router.push).toHaveBeenCalledWith({
 				name: VIEWS.WORKFLOWS,
 			});

@@ -2409,9 +2409,11 @@ export interface IRun {
 	jobId?: string;
 }
 
-// Contains all the data which is needed to execute a workflow and so also to
-// start restart it again after it did fail.
-// The RunData, ExecuteData and WaitForExecution contain often the same data.
+/**
+ * Contains all the data which is needed to execute a workflow and so also to
+ * start restart it again after it did fail.
+ * The RunData, ExecuteData and WaitForExecution contain often the same data.
+ */
 export interface IRunExecutionData {
 	startData?: {
 		startNodes?: StartNodeData[];
