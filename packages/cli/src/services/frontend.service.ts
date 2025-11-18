@@ -49,7 +49,6 @@ export type PublicFrontendSettings = Pick<
 	| 'defaultLocale'
 	| 'versionCli'
 	| 'releaseChannel'
-	| 'versionNotifications'
 	| 'userManagement'
 	| 'sso'
 	| 'mfa'
@@ -495,7 +494,6 @@ export class FrontendService {
 			defaultLocale,
 			versionCli,
 			releaseChannel,
-			versionNotifications,
 			userManagement,
 			sso,
 			mfa,
@@ -513,7 +511,6 @@ export class FrontendService {
 			defaultLocale,
 			versionCli,
 			releaseChannel,
-			versionNotifications,
 			userManagement,
 			sso,
 			mfa,
