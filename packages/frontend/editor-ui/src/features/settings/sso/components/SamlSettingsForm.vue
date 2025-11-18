@@ -1,0 +1,339 @@
+<script lang="ts" setup>
+import CopyInput from '@/app/components/CopyInput.vue';
+import { SupportedProtocols, useSSOStore } from '../sso.store';
+import { useI18n } from '@n8n/i18n';
+
+import { ElSwitch } from 'element-plus';
+import { N8nActionBox, N8nButton, N8nInput, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
+import { useToast } from '@/app/composables/useToast';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { useMessage } from '@/app/composables/useMessage';
+import { computed, onMounted, ref } from 'vue';
+import UserRoleProvisioningDropdown from './UserRoleProvisioningDropdown.vue';
+
+const i18n = useI18n();
+const ssoStore = useSSOStore();
+const toast = useToast();
+const message = useMessage();
+const pageRedirectionHelper = usePageRedirectionHelper();
+
+const redirectUrl = ref();
+
+const IdentityProviderSettingsType = {
+	URL: 'url',
+	XML: 'xml',
+};
+
+const ipsOptions = ref([
+	{
+		label: i18n.baseText('settings.sso.settings.ips.options.url'),
+		value: IdentityProviderSettingsType.URL,
+	},
+	{
+		label: i18n.baseText('settings.sso.settings.ips.options.xml'),
+		value: IdentityProviderSettingsType.XML,
+	},
+]);
+const ipsType = ref(IdentityProviderSettingsType.URL);
+
+const ssoActivatedLabel = computed(() =>
+	ssoStore.isSamlLoginEnabled
+		? i18n.baseText('settings.sso.activated')
+		: i18n.baseText('settings.sso.deactivated'),
+);
+
+const metadataUrl = ref();
+const metadata = ref();
+
+const ssoSettingsSaved = ref(false);
+
+const entityId = ref();
+
+const isSaveEnabled = computed(() => {
+	//if (isUserRoleProvisioningChanged()) {
+	//	return true;
+	//} else
+	if (ipsType.value === IdentityProviderSettingsType.URL) {
+		return !!metadataUrl.value && metadataUrl.value !== ssoStore.samlConfig?.metadataUrl;
+	} else if (ipsType.value === IdentityProviderSettingsType.XML) {
+		return !!metadata.value && metadata.value !== ssoStore.samlConfig?.metadata;
+	}
+	return false;
+});
+
+const isTestEnabled = computed(() => {
+	if (ipsType.value === IdentityProviderSettingsType.URL) {
+		return !!metadataUrl.value && ssoSettingsSaved.value;
+	} else if (ipsType.value === IdentityProviderSettingsType.XML) {
+		return !!metadata.value && ssoSettingsSaved.value;
+	}
+	return false;
+});
+
+async function loadSamlConfig() {
+	if (!ssoStore.isEnterpriseSamlEnabled) {
+		return;
+	}
+	try {
+		await getSamlConfig();
+	} catch (error) {
+		toast.showError(error, 'error');
+	}
+}
+
+const getSamlConfig = async () => {
+	const config = await ssoStore.getSamlConfig();
+
+	entityId.value = config?.entityID;
+	redirectUrl.value = config?.returnUrl;
+
+	if (config?.metadataUrl) {
+		ipsType.value = IdentityProviderSettingsType.URL;
+	} else if (config?.metadata) {
+		ipsType.value = IdentityProviderSettingsType.XML;
+	}
+
+	metadata.value = config?.metadata;
+	metadataUrl.value = config?.metadataUrl;
+	ssoSettingsSaved.value = !!config?.metadata;
+};
+
+const onSave = async () => {
+	try {
+		validateSamlInput();
+
+		//if (isUserRoleProvisioningChanged()) {
+		// TODO: show dialog to download access settings csv
+		//}
+
+		const config =
+			ipsType.value === IdentityProviderSettingsType.URL
+				? { metadataUrl: metadataUrl.value }
+				: { metadata: metadata.value };
+		await ssoStore.saveSamlConfig(config);
+
+		//if (isUserRoleProvisioningChanged()) {
+		//await saveUserRoleProvisioningSettings(userRoleProvisioning.value);
+		//}
+
+		// Update store with saved protocol selection
+		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
+
+		if (!ssoStore.isSamlLoginEnabled) {
+			const answer = await message.confirm(
+				i18n.baseText('settings.sso.settings.save.activate.message'),
+				i18n.baseText('settings.sso.settings.save.activate.title'),
+				{
+					confirmButtonText: i18n.baseText('settings.sso.settings.save.activate.test'),
+					cancelButtonText: i18n.baseText('settings.sso.settings.save.activate.cancel'),
+				},
+			);
+
+			if (answer === 'confirm') {
+				await onTest();
+			}
+		}
+
+		//trackUpdateSettings();
+	} catch (error) {
+		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
+		return;
+	} finally {
+		await getSamlConfig();
+	}
+};
+
+const onTest = async () => {
+	try {
+		const url = await ssoStore.testSamlConfig();
+
+		if (typeof window !== 'undefined') {
+			window.open(url, '_blank');
+		}
+	} catch (error) {
+		toast.showError(error, 'error');
+	}
+};
+
+const validateSamlInput = () => {
+	if (ipsType.value === IdentityProviderSettingsType.URL) {
+		// In case the user wants to set the metadata url we want to be sure that
+		// the provided url is at least a valid http, https url.
+		try {
+			const parsedUrl = new URL(metadataUrl.value);
+			// We allow http and https URLs for now, because we want to avoid a theoretical breaking
+			// change, this should be restricted to only allow https when switching to V2.
+			if (parsedUrl.protocol !== 'https:' && parsedUrl.protocol !== 'http:') {
+				// The content of this error is never seen by the user, because the catch clause
+				// below catches it and translates it to a more general error message.
+				throw new Error('The provided protocol is not supported');
+			}
+		} catch (error) {
+			throw new Error(i18n.baseText('settings.sso.settings.ips.url.invalid'));
+		}
+	}
+};
+
+const isToggleSsoDisabled = computed(() => {
+	/** Allow users to disable SSO even if config request fails */
+	if (ssoStore.isSamlLoginEnabled) {
+		return false;
+	}
+
+	return !ssoSettingsSaved.value;
+});
+
+const goToUpgrade = () => {
+	void pageRedirectionHelper.goToUpgrade('sso', 'upgrade-sso');
+};
+
+onMounted(async () => {
+	await loadSamlConfig();
+});
+</script>
+<template>
+	<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
+		<div :class="$style.group">
+			<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+			<CopyInput
+				:value="redirectUrl"
+				:copy-button-text="i18n.baseText('generic.clickToCopy')"
+				:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
+			/>
+			<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+		</div>
+		<div :class="$style.group">
+			<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
+			<CopyInput
+				:value="entityId"
+				:copy-button-text="i18n.baseText('generic.clickToCopy')"
+				:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
+			/>
+			<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
+		</div>
+		<div :class="$style.group">
+			<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
+			<div class="mt-2xs mb-s">
+				<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
+			</div>
+			<div v-if="ipsType === IdentityProviderSettingsType.URL">
+				<N8nInput
+					v-model="metadataUrl"
+					type="text"
+					name="metadataUrl"
+					size="large"
+					:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
+					data-test-id="sso-provider-url"
+				/>
+				<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
+			</div>
+			<div v-if="ipsType === IdentityProviderSettingsType.XML">
+				<N8nInput
+					v-model="metadata"
+					type="textarea"
+					name="metadata"
+					:rows="4"
+					data-test-id="sso-provider-xml"
+				/>
+				<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
+			</div>
+			<UserRoleProvisioningDropdown />
+			<div :class="$style.group">
+				<N8nTooltip
+					v-if="ssoStore.isEnterpriseSamlEnabled"
+					:disabled="ssoStore.isSamlLoginEnabled || ssoSettingsSaved"
+				>
+					<template #content>
+						<span>
+							{{ i18n.baseText('settings.sso.activation.tooltip') }}
+						</span>
+					</template>
+					<ElSwitch
+						v-model="ssoStore.isSamlLoginEnabled"
+						data-test-id="sso-toggle"
+						:disabled="isToggleSsoDisabled"
+						:class="$style.switch"
+						:inactive-text="ssoActivatedLabel"
+					/>
+				</N8nTooltip>
+			</div>
+		</div>
+		<div :class="$style.buttons">
+			<N8nButton :disabled="!isSaveEnabled" size="large" data-test-id="sso-save" @click="onSave">
+				{{ i18n.baseText('settings.sso.settings.save') }}
+			</N8nButton>
+			<N8nButton
+				:disabled="!isTestEnabled"
+				size="large"
+				type="tertiary"
+				data-test-id="sso-test"
+				@click="onTest"
+			>
+				{{ i18n.baseText('settings.sso.settings.test') }}
+			</N8nButton>
+		</div>
+
+		<footer :class="$style.footer">
+			{{ i18n.baseText('settings.sso.settings.footer.hint') }}
+		</footer>
+	</div>
+	<N8nActionBox
+		v-else
+		data-test-id="sso-content-unlicensed"
+		:class="$style.actionBox"
+		:description="i18n.baseText('settings.sso.actionBox.description')"
+		:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
+		@click:button="goToUpgrade"
+	>
+		<template #heading>
+			<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
+		</template>
+	</N8nActionBox>
+</template>
+
+<style lang="scss" module>
+.switch {
+	span {
+		font-size: var(--font-size--2xs);
+		font-weight: var(--font-weight--bold);
+		color: var(--color--text--tint-1);
+	}
+}
+
+.buttons {
+	display: flex;
+	justify-content: flex-start;
+	padding: var(--spacing--2xl) 0 var(--spacing--2xs);
+
+	button {
+		margin: 0 var(--spacing--sm) 0 0;
+	}
+}
+
+.group {
+	padding: var(--spacing--xl) 0 0;
+
+	> label {
+		display: inline-block;
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--medium);
+		padding: 0 0 var(--spacing--2xs);
+	}
+
+	small {
+		display: block;
+		padding: var(--spacing--2xs) 0 0;
+		font-size: var(--font-size--2xs);
+		color: var(--color--text);
+	}
+}
+
+.actionBox {
+	margin: var(--spacing--2xl) 0 0;
+}
+
+.footer {
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
+}
+</style>
