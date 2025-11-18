@@ -2,6 +2,7 @@ import type { ModuleInterface, ModuleMetadata } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 
+import type { InstanceState } from '../../instance-state';
 import type { LicenseState } from '../../license-state';
 import { ModuleConfusionError } from '../errors/module-confusion.error';
 import { ModuleRegistry } from '../module-registry';
@@ -15,8 +16,8 @@ beforeEach(() => {
 
 describe('eligibleModules', () => {
 	it('should consider all default modules eligible', () => {
-		// 'mcp' and 'chat-hub' aren't (yet) eligible modules by default
-		const NON_DEFAULT_MODULES = ['mcp', 'chat-hub'];
+		// 'chat-hub' isn't (yet) an eligible module by default
+		const NON_DEFAULT_MODULES = ['chat-hub'];
 		const expectedModules = MODULE_NAMES.filter((name) => !NON_DEFAULT_MODULES.includes(name));
 		expect(Container.get(ModuleRegistry).eligibleModules).toEqual(expectedModules);
 	});
@@ -29,6 +30,7 @@ describe('eligibleModules', () => {
 			'data-table',
 			'provisioning',
 			'breaking-changes',
+			'mcp',
 		]);
 	});
 
@@ -41,6 +43,7 @@ describe('eligibleModules', () => {
 			'data-table',
 			'provisioning',
 			'breaking-changes',
+			'mcp',
 		]);
 	});
 
@@ -64,7 +67,7 @@ describe('loadModules', () => {
 		});
 
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]);
 
@@ -78,7 +81,7 @@ describe('loadModules', () => {
 		});
 
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]);
 
@@ -96,7 +99,7 @@ describe('initModules', () => {
 		});
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.initModules();
 
@@ -115,7 +118,7 @@ describe('initModules', () => {
 		const licenseState = mock<LicenseState>({ isLicensed: jest.fn().mockReturnValue(true) });
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock(), mock());
 
 		await moduleRegistry.initModules();
 
@@ -134,11 +137,123 @@ describe('initModules', () => {
 		const licenseState = mock<LicenseState>({ isLicensed: jest.fn().mockReturnValue(false) });
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, licenseState, mock(), mock(), mock());
 
 		await moduleRegistry.initModules();
 
 		expect(ModuleClass.init).not.toHaveBeenCalled();
+	});
+
+	it('should init module if instance type matches (single type)', async () => {
+		const ModuleClass = { init: jest.fn() };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest
+				.fn()
+				.mockReturnValue([['test-module', { instanceType: 'main' as const, class: ModuleClass }]]),
+		});
+		const instanceState = mock<InstanceState>({
+			isInstanceType: jest.fn().mockReturnValue(true),
+			instanceType: 'main' as const,
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(
+			moduleMetadata,
+			mock(),
+			instanceState,
+			mock(),
+			mock(),
+		);
+
+		await moduleRegistry.initModules();
+
+		expect(ModuleClass.init).toHaveBeenCalled();
+		expect(instanceState.isInstanceType).toHaveBeenCalledWith('main');
+	});
+
+	it('should init module if instance type matches (multiple types)', async () => {
+		const ModuleClass = { init: jest.fn() };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest
+				.fn()
+				.mockReturnValue([
+					['test-module', { instanceType: ['main', 'webhook'] as const, class: ModuleClass }],
+				]),
+		});
+		const instanceState = mock<InstanceState>({
+			isInstanceType: jest.fn().mockReturnValue(true),
+			instanceType: 'main' as const,
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(
+			moduleMetadata,
+			mock(),
+			instanceState,
+			mock(),
+			mock(),
+		);
+
+		await moduleRegistry.initModules();
+
+		expect(ModuleClass.init).toHaveBeenCalled();
+		expect(instanceState.isInstanceType).toHaveBeenCalledWith(['main', 'webhook']);
+	});
+
+	it('should skip init for module with non-matching instance type', async () => {
+		const ModuleClass = { init: jest.fn() };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest
+				.fn()
+				.mockReturnValue([['test-module', { instanceType: 'main' as const, class: ModuleClass }]]),
+		});
+		const instanceState = mock<InstanceState>({
+			isInstanceType: jest.fn().mockReturnValue(false),
+			instanceType: 'worker' as const,
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(
+			moduleMetadata,
+			mock(),
+			instanceState,
+			mock(),
+			mock(),
+		);
+
+		await moduleRegistry.initModules();
+
+		expect(ModuleClass.init).not.toHaveBeenCalled();
+		expect(instanceState.isInstanceType).toHaveBeenCalledWith('main');
+	});
+
+	it('should skip init for module with non-matching instance types', async () => {
+		const ModuleClass = { init: jest.fn() };
+		const moduleMetadata = mock<ModuleMetadata>({
+			getEntries: jest
+				.fn()
+				.mockReturnValue([
+					['test-module', { instanceType: ['main', 'webhook'] as const, class: ModuleClass }],
+				]),
+		});
+		const instanceState = mock<InstanceState>({
+			isInstanceType: jest.fn().mockReturnValue(false),
+			instanceType: 'worker' as const,
+		});
+		Container.get = jest.fn().mockReturnValue(ModuleClass);
+
+		const moduleRegistry = new ModuleRegistry(
+			moduleMetadata,
+			mock(),
+			instanceState,
+			mock(),
+			mock(),
+		);
+
+		await moduleRegistry.initModules();
+
+		expect(ModuleClass.init).not.toHaveBeenCalled();
+		expect(instanceState.isInstanceType).toHaveBeenCalledWith(['main', 'webhook']);
 	});
 
 	it('should accept module without `init` method', async () => {
@@ -151,7 +266,7 @@ describe('initModules', () => {
 
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.initModules();
 
@@ -171,7 +286,7 @@ describe('initModules', () => {
 		});
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules();
@@ -195,7 +310,7 @@ describe('initModules', () => {
 		});
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules();
@@ -217,7 +332,7 @@ describe('initModules', () => {
 		});
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules();
@@ -241,7 +356,7 @@ describe('initModules', () => {
 		});
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules();
@@ -261,7 +376,7 @@ describe('initModules', () => {
 		});
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
 
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		// ACT
 		await moduleRegistry.initModules();
@@ -282,7 +397,7 @@ describe('loadDir', () => {
 			getClasses: jest.fn().mockReturnValue([ModuleClass]),
 		});
 		Container.get = jest.fn().mockReturnValue(ModuleClass);
-		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock());
+		const moduleRegistry = new ModuleRegistry(moduleMetadata, mock(), mock(), mock(), mock());
 
 		await moduleRegistry.loadModules([]); // empty to skip dynamic imports
 

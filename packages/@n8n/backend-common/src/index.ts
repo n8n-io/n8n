@@ -1,3 +1,4 @@
+export * from './instance-state';
 export * from './license-state';
 export type * from './types';
 

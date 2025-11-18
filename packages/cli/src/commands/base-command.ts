@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import {
 	inDevelopment,
 	inTest,
+	InstanceState,
 	LicenseState,
 	Logger,
 	ModuleRegistry,
@@ -79,6 +80,9 @@ export abstract class BaseCommand<F = never> {
 	async init(): Promise<void> {
 		this.dbConnection = Container.get(DbConnection);
 		this.errorReporter = Container.get(ErrorReporter);
+
+		// Set instance state provider early so modules can access it
+		Container.get(InstanceState).setInstanceStateProvider(this.instanceSettings);
 
 		const { backendDsn, environment, deploymentName } = this.globalConfig.sentry;
 		await this.errorReporter.init({

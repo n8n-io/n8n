@@ -1,3 +1,4 @@
+import { InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 
 import type { LicenseFlag, ModuleClass } from './module';
@@ -9,6 +10,12 @@ type ModuleEntry = {
 	 * if multiple, checks that any of the features are licensed
 	 */
 	licenseFlag?: LicenseFlag | LicenseFlag[];
+
+	/*
+	 * If singular, only enables the module for that instance type,
+	 * if multiple, enables the module for any of the instance types
+	 */
+	instanceType?: InstanceType | InstanceType[];
 };
 
 @Service()

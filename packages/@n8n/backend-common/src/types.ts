@@ -1,4 +1,4 @@
-import type { BooleanLicenseFeature, NumericLicenseFeature } from '@n8n/constants';
+import type { BooleanLicenseFeature, InstanceType, NumericLicenseFeature } from '@n8n/constants';
 
 export type FeatureReturnType = Partial<
 	{
@@ -12,4 +12,9 @@ export interface LicenseProvider {
 
 	/** Returns the value of a feature in the user's license plan, typically a boolean or integer. */
 	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T];
+}
+
+export interface InstanceStateProvider {
+	/** Returns the current instance type. */
+	readonly instanceType: InstanceType;
 }
