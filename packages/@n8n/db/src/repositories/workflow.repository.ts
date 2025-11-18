@@ -809,10 +809,6 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		return await this.update({ id: workflowId }, { active: newState });
 	}
 
-	async deactivate(workflowId: string) {
-		return await this.update({ id: workflowId }, { active: false });
-	}
-
 	async deactivateAll() {
 		return await this.update({ active: true }, { active: false });
 	}

@@ -43,7 +43,7 @@ class QueueRecoveryConfig {
 class RecoveryConfig {
 	/**
 	 * Number of last executions to check when determining if a workflow should be deactivated
-	 * due to too many crashed executions. Only applies to legacy SQLite databases.
+	 * when all of the last N executions have crashed. Only applies to legacy SQLite databases.
 	 */
 	@Env('N8N_EXECUTIONS_RECOVERY_MAX_LAST_EXECUTIONS')
 	maxLastExecutions: number = 3;

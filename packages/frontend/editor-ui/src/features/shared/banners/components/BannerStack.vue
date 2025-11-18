@@ -19,7 +19,7 @@ import type { N8nBanners } from '../banners.types';
 export const N8N_BANNERS: N8nBanners = {
 	V1: { priority: 350, component: V1Banner as Component },
 	WORKFLOW_AUTO_DEACTIVATED: {
-		priority: 350,
+		priority: 340,
 		component: WorkflowAutoDeactivatedBanner as Component,
 	},
 	TRIAL_OVER: { priority: 260, component: TrialOverBanner as Component },

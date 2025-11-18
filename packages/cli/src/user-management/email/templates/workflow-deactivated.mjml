@@ -9,6 +9,7 @@
 					><b>"{{ workflowName }}"</b> workflow has been deactivated.</mj-text
 				>
 				<mj-text>After you have fixed the workflow, you can re-activate it.</mj-text>
+				<mj-button href="{{ workflowUrl }}" background-color="#ff6d5a">View Workflow</mj-button>
 				<mj-include path="./_footer.mjml" />
 			</mj-column>
 		</mj-section>

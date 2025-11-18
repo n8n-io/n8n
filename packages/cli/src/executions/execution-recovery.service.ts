@@ -77,7 +77,7 @@ export class ExecutionRecoveryService {
 
 				if (!workflow) {
 					this.logger.warn(`Workflow ${workflowId} not found, skipping workflow deactivation`);
-					return;
+					return amendedExecution;
 				}
 
 				if (workflow.active) {
