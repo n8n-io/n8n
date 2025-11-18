@@ -100,15 +100,15 @@ const iconColor = computed(() => {
 
 .router-link-active,
 .active {
-	background-color: var(--color--foreground);
+	background-color: var(--color--background--light-1);
 }
 
 .menuItem {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing--3xs);
-	gap: var(--spacing--3xs);
+	padding: var(--spacing--4xs);
+	gap: var(--spacing--4xs);
 	cursor: pointer;
 	color: var(--color--text);
 	border-radius: var(--spacing--4xs);
@@ -147,9 +147,12 @@ const iconColor = computed(() => {
 
 .menuItemIcon {
 	position: relative;
-	width: var(--spacing--sm);
-	height: var(--spacing--sm);
-	min-width: var(--spacing--sm);
+	width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	min-width: var(--spacing--lg);
+	display: flex;
+	align-items: center;
+	justify-content: center;
 
 	&.notification::after {
 		content: '';
