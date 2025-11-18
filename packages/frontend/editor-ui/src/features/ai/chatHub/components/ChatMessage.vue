@@ -211,7 +211,7 @@ onBeforeMount(() => {
 	width: 28px;
 	height: 28px;
 	border-radius: 50%;
-	background: var(--color--background--light-3);
+	background: var(--color--background);
 	color: var(--color--text--tint-1);
 
 	.compact & {
@@ -231,7 +231,7 @@ onBeforeMount(() => {
 	max-width: fit-content;
 
 	.user & {
-		padding: var(--spacing--4xs) var(--spacing--md);
+		padding: var(--spacing--3xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
 	}
@@ -323,6 +323,13 @@ onBeforeMount(() => {
 	th {
 		border-bottom: var(--border);
 		border-color: var(--color--text--shade-1);
+	}
+
+	ul,
+	ol {
+		li {
+			margin-bottom: 0.125rem;
+		}
 	}
 }
 
