@@ -135,7 +135,7 @@ onBeforeMount(() => {
 		:style="minHeight ? { minHeight: `${minHeight}px` } : undefined"
 		:data-message-id="message.id"
 	>
-		<div :class="$style.avatar">
+		<div :class="[$style.avatar, { [$style.errorAvatar]: message.status === 'error' }]">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
 			<ChatAgentAvatar v-else-if="agent" :agent="agent" size="md" tooltip />
 			<N8nIcon v-else icon="sparkles" width="20" height="20" />
@@ -162,7 +162,7 @@ onBeforeMount(() => {
 				</div>
 			</div>
 			<template v-else>
-				<div :class="$style.chatMessage">
+				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
 					<VueMarkdown
 						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
@@ -235,6 +235,14 @@ onBeforeMount(() => {
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
 	}
+}
+
+.errorMessage {
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--danger--tint-4);
+	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
+	color: var(--color--danger);
 }
 
 .chatMessageMarkdown {
