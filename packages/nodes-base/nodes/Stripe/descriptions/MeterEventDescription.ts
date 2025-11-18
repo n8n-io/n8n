@@ -58,10 +58,10 @@ export const meterEventFields: INodeProperties[] = [
 	{
 		displayName: 'Value',
 		name: 'value',
-		type: 'string',
+		type: 'number',
 		required: true,
-		default: '',
-		description: 'The value of the meter event. Can be positive or negative.',
+		default: 1,
+		description: 'The value of the meter event. Must be an integer. Can be positive or negative.',
 		displayOptions: {
 			show: {
 				resource: ['meterEvent'],

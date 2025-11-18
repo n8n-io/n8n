@@ -514,7 +514,10 @@ export class Stripe implements INodeType {
 								};
 								if (customPayloadData.properties && customPayloadData.properties.length > 0) {
 									customPayloadData.properties.forEach((prop) => {
-										payload[prop.key] = prop.value;
+										// Guard against overwriting required fields
+										if (prop.key !== 'stripe_customer_id' && prop.key !== 'value') {
+											payload[prop.key] = prop.value;
+										}
 									});
 								}
 							}
