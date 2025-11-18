@@ -42,7 +42,7 @@ export class McpClient implements INodeType {
 				name: 'endpointUrl',
 				type: 'string',
 				default: '',
-				placeholder: 'e.g. https://some.server.com/mcp',
+				placeholder: 'e.g. https://my-mcp-server.ai/mcp',
 				required: true,
 				description: 'The URL of the MCP server to connect to',
 			},
@@ -52,16 +52,20 @@ export class McpClient implements INodeType {
 				type: 'options',
 				options: [
 					{
-						name: 'MCP OAuth2',
-						value: 'mcpOAuth2Api',
-					},
-					{
 						name: 'Bearer Auth',
 						value: 'bearerAuth',
 					},
 					{
 						name: 'Header Auth',
 						value: 'headerAuth',
+					},
+					{
+						name: 'MCP OAuth2',
+						value: 'mcpOAuth2Api',
+					},
+					{
+						name: 'Multiple Headers Auth',
+						value: 'multipleHeadersAuth',
 					},
 					{
 						name: 'None',
