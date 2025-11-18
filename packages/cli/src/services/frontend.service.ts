@@ -52,7 +52,6 @@ export type PublicFrontendSettings = Pick<
 	| 'sso'
 	| 'mfa'
 	| 'authCookie'
-	| 'oauthCallbackUrls'
 	| 'banners'
 	| 'previewMode'
 	| 'telemetry'
@@ -496,7 +495,6 @@ export class FrontendService {
 			sso,
 			mfa,
 			authCookie,
-			oauthCallbackUrls,
 			banners,
 			previewMode,
 			telemetry,
@@ -512,7 +510,6 @@ export class FrontendService {
 			sso,
 			mfa,
 			authCookie,
-			oauthCallbackUrls,
 			banners,
 			previewMode,
 			telemetry,
