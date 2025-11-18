@@ -40,10 +40,7 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		const ctor = this as unknown as typeof ExtendedWeaviateVectorStore & typeof WeaviateStore;
 		const baseCandidate = await ctor.fromExistingIndex(embeddings, args);
 
-		// Prefer a runtime type check instead of a cast to satisfy "Prefer Typeguards over Type casting" rule.
 		if (!(baseCandidate instanceof ExtendedWeaviateVectorStore)) {
-			// If the factory didn't return an instance of the subclass, fail with a clear error so callers
-			// don't operate on an unexpected type.
 			throw new UserError(
 				'Weaviate store factory did not return an ExtendedWeaviateVectorStore instance',
 			);
