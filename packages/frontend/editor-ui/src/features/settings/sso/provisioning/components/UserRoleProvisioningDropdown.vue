@@ -6,6 +6,8 @@ import { N8nOption, N8nSelect } from '@n8n/design-system';
 import { onMounted } from 'vue';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useUserRoleProvisioningStore } from '../composables/userRoleProvisioning.store';
+import { useI18n } from '@n8n/i18n';
+import { type SupportedProtocolType } from '../../sso.store';
 
 export type UserRoleProvisioningSetting =
 	| 'disabled'
@@ -14,6 +16,11 @@ export type UserRoleProvisioningSetting =
 
 const value = defineModel<UserRoleProvisioningSetting>({ default: 'disabled' });
 
+const { authProtocol } = defineProps<{
+	authProtocol: SupportedProtocolType;
+}>();
+
+const i18n = useI18n();
 const posthogStore = usePostHog();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
 
@@ -46,24 +53,29 @@ type UserRoleProvisioningDescription = {
 	value: UserRoleProvisioningSetting;
 };
 
-// TODO: translate
 const userRoleProvisioningDescriptions: UserRoleProvisioningDescription[] = [
 	{
-		label: 'Disabled',
+		label: i18n.baseText('settings.sso.settings.userRoleProvisioning.option.disabled.label'),
 		value: 'disabled',
-		description: 'User and project roles are managed inside the n8n settings.',
+		description: i18n.baseText(
+			'settings.sso.settings.userRoleProvisioning.option.disabled.description',
+		),
 	},
 	{
-		label: 'Instance role',
+		label: i18n.baseText('settings.sso.settings.userRoleProvisioning.option.instanceRole.label'),
 		value: 'instance_role',
-		description:
-			'The instance role of a user is configured in the "n8n_instance_role" attribute on your SSO provider. If none is set on the SSO provider, the member role is used as fallback.',
+		description: i18n.baseText(
+			'settings.sso.settings.userRoleProvisioning.option.instanceRole.description',
+		),
 	},
 	{
-		label: 'Instance and project roles',
+		label: i18n.baseText(
+			'settings.sso.settings.userRoleProvisioning.option.instanceAndProjectRoles.label',
+		),
 		value: 'instance_and_project_roles',
-		description:
-			'The list of projects a user has access to is configured on the "n8n_projects" string array attribute on your SSO provider. Project access cannot be granted from within n8n.',
+		description: i18n.baseText(
+			'settings.sso.settings.userRoleProvisioning.option.instanceAndProjectRoles.description',
+		),
 	},
 ];
 
@@ -79,7 +91,7 @@ onMounted(async () => {
 <template>
 	<!-- TODO: also check for 'provisioning:manage' permission scope -->
 	<div v-if="isUserRoleProvisioningFeatureEnabled" :class="$style.group">
-		<label>User role provisioning</label>
+		<label>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.label') }}</label>
 		<N8nSelect
 			:model-value="value"
 			data-test-id="oidc-user-role-provisioning"
@@ -99,6 +111,12 @@ onMounted(async () => {
 				</div>
 			</N8nOption>
 		</N8nSelect>
+		<small
+			>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.help') }}
+			<a :href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`" target="_blank">{{
+				i18n.baseText('settings.sso.settings.userRoleProvisioning.help.linkText')
+			}}</a></small
+		>
 	</div>
 </template>
 <style lang="scss" module>

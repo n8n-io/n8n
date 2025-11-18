@@ -257,7 +257,7 @@ onMounted(async () => {
 				/>
 				<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
 			</div>
-			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" />
+			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
 			<EnableJitProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
 				:new-provisioning-setting="userRoleProvisioning"
