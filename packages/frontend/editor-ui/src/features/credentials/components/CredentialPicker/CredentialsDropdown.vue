@@ -56,13 +56,6 @@ const onCreateNewCredential = async () => {
 				<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
 			</div>
 		</N8nOption>
-		<!-- <N8nOption
-			:key="NEW_CREDENTIALS_TEXT"
-			data-test-id="node-credentials-select-item-new"
-			:value="NEW_CREDENTIALS_TEXT"
-			:label="NEW_CREDENTIALS_TEXT"
-		>
-		</N8nOption> -->
 		<template #footer>
 			<button
 				type="button"
