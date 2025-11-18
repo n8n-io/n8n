@@ -91,7 +91,7 @@ export function assertBinaryData(
 		);
 	}
 
-	if (binaryMode === 'separate' && binaryMode === undefined) {
+	if (binaryMode === 'separate' || binaryMode === undefined) {
 		const binaryKeyData = inputData.main[inputIndex]![itemIndex].binary;
 		if (binaryKeyData === undefined) {
 			throw new NodeOperationError(
