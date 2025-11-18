@@ -19,10 +19,11 @@ Displays contextual information when users hover over, focus on, or tap an eleme
 - `showAfter?: number` - Delay in milliseconds before showing tooltip after trigger is hovered. Default: `0`
 - `visible?: boolean` - Manual control of tooltip visibility (programmatic show/hide).
 - `popperClass?: string` - Custom CSS class name for the tooltip popper element.
-
-**UI Props**
-
-- `size?: 'small' | 'medium' | 'large'` - Default: `'medium'`
+- `enterable?: boolean` - Whether the mouse can enter the tooltip content area. Default: `true`
+- `popperOptions?: object` - Popper.js configuration object for advanced positioning control.
+- `teleported?: boolean` - Whether to append the tooltip to the body. Default: `true`
+- `offset?: number` - Offset of the tooltip from the trigger element (in pixels).
+- `showArrow?: boolean` - Whether to show the tooltip arrow. Default: `true`
 
 **Slots**
 
