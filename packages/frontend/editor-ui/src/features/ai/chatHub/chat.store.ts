@@ -43,7 +43,7 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
-import { isMatchedAgent } from './chat.utils';
+import { buildUiMessages, isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { type INode } from 'n8n-workflow';
@@ -65,41 +65,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const conversation = getConversation(sessionId);
 		if (!conversation) return [];
 
-		const persistedMessages = conversation.activeMessageChain.flatMap<ChatMessage>(
-			(id, index, arr) => {
-				const message = conversation.messages[id];
-
-				if (!message) {
-					return [];
-				}
-
-				if (
-					arr.length - 1 === index &&
-					streaming.value?.requestType === 'new' &&
-					streaming.value?.sessionId === sessionId &&
-					message.type === 'ai'
-				) {
-					// When agent responds multiple messages (e.g. when tools are used),
-					// there's a noticeable time gap between messages.
-					// In order to indicate that agent is still responding, show the last AI message as running
-					return [{ ...message, status: 'running' }];
-				}
-
-				return [message];
-			},
-		);
-
-		if (
-			streaming.value?.requestType === 'new' &&
-			streaming.value?.sessionId === sessionId &&
-			!streaming.value.messageId &&
-			streaming.value.promptId === persistedMessages[persistedMessages.length - 1]?.id
-		) {
-			// Append a placeholder AI message as an immediate feedback until backend starts streaming
-			persistedMessages.push(createAiMessageFromStreamingState(sessionId, uuidv4()));
-		}
-
-		return persistedMessages;
+		return buildUiMessages(sessionId, conversation, streaming.value);
 	};
 
 	function ensureConversation(sessionId: ChatSessionId): ChatConversation {

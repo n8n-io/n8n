@@ -13,8 +13,10 @@ import type {
 	ChatAgentFilter,
 	ChatStreamingState,
 	FlattenedModel,
+	ChatConversation,
 } from './chat.types';
 import { CHAT_VIEW } from './constants';
+import { v4 as uuidv4 } from 'uuid';
 
 export function findOneFromModelsResponse(response: ChatModelsResponse): ChatModelDto | undefined {
 	for (const provider of chatHubProviderSchema.options) {
@@ -258,4 +260,46 @@ export function createAiMessageFromStreamingState(
 					agentId: null,
 				}),
 	};
+}
+
+export function buildUiMessages(
+	sessionId: string,
+	conversation: ChatConversation,
+	streaming?: ChatStreamingState,
+): ChatMessage[] {
+	const persistedMessages = conversation.activeMessageChain.flatMap<ChatMessage>(
+		(id, index, arr) => {
+			const message = conversation.messages[id];
+
+			if (!message) {
+				return [];
+			}
+
+			if (
+				arr.length - 1 === index &&
+				streaming?.requestType === 'new' &&
+				streaming.sessionId === sessionId &&
+				message.type === 'ai'
+			) {
+				// When agent responds multiple messages (e.g. when tools are used),
+				// there's a noticeable time gap between messages.
+				// In order to indicate that agent is still responding, show the last AI message as running
+				return [{ ...message, status: 'running' }];
+			}
+
+			return [message];
+		},
+	);
+
+	if (
+		streaming?.requestType === 'new' &&
+		streaming.sessionId === sessionId &&
+		!streaming.messageId &&
+		streaming.promptId === persistedMessages[persistedMessages.length - 1]?.id
+	) {
+		// Append a placeholder AI message as an immediate feedback until backend starts streaming
+		persistedMessages.push(createAiMessageFromStreamingState(sessionId, uuidv4()));
+	}
+
+	return persistedMessages;
 }
