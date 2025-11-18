@@ -127,7 +127,7 @@ const menu = computed(() => {
 		// Filter out disabled providers from the menu
 		if (settings && !settings.enabled) continue;
 
-		const theAgents = agents.value[provider].models;
+		const theAgents = [...agents.value[provider].models];
 
 		// Add any manually defined models in settings
 		if (settings && settings.limitModels) {
@@ -159,7 +159,7 @@ const menu = computed(() => {
 								!settings ||
 								!settings.limitModels ||
 								settings.allowedModels?.some(
-									(m) => m.model === (agent.model as ChatHubBaseLLMModel).model,
+									(m) => 'model' in agent.model && m.model === agent.model.model,
 								),
 						)
 						.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
@@ -173,8 +173,9 @@ const menu = computed(() => {
 
 		const submenu = agentOptions.concat([
 			...(agentOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
-			...(settings && !settings.limitModels
-				? [
+			...(settings?.limitModels
+				? []
+				: [
 						// Disallow "Add model" if models are limited in settings
 						{
 							id: `${provider}::add-model`,
@@ -182,8 +183,7 @@ const menu = computed(() => {
 							title: i18n.baseText('chatHub.agent.addModel'),
 							disabled: false,
 						} as const,
-					]
-				: []),
+					]),
 			{
 				id: `${provider}::configure`,
 				icon: 'settings',

@@ -19,12 +19,14 @@ export class ChatHubSettingsController {
 	) {}
 
 	@Get('/settings')
-	async getSettings() {
+	@GlobalScope('chatHub:manage')
+	async getSettings(_req: AuthenticatedRequest, _res: Response) {
 		const providers = await this.settings.getAllProviderSettings();
 		return { providers };
 	}
 
 	@Get('/settings/:provider')
+	@GlobalScope('chatHub:manage')
 	async getProviderSettings(
 		_req: AuthenticatedRequest,
 		_res: Response,

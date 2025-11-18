@@ -734,9 +734,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function fetchAllChatSettings() {
-		settingsLoading.value = true;
-		settings.value = await fetchChatSettingsApi(rootStore.restApiContext);
-		settingsLoading.value = false;
+		try {
+			settingsLoading.value = true;
+			settings.value = await fetchChatSettingsApi(rootStore.restApiContext);
+		} finally {
+			settingsLoading.value = false;
+		}
 
 		return settings.value;
 	}

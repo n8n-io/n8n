@@ -5,7 +5,6 @@ import Modal from '@/app/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
-	ChatHubBaseLLMModel,
 	ChatHubLLMProvider,
 	ChatModelDto,
 	ChatProviderSettingsDto,
@@ -45,15 +44,19 @@ const customModels = ref<string[]>([]);
 
 const allModels = computed<IModel[]>(() => {
 	const models: Map<string, IModel> = new Map(
-		availableModels.value
-			.filter((model) => model.model.provider !== 'custom-agent' && model.model.provider !== 'n8n')
-			.map((model) => [
-				(model.model as ChatHubBaseLLMModel).model,
-				{
-					id: (model.model as ChatHubBaseLLMModel).model,
-					name: model.name,
-				},
-			]),
+		availableModels.value.reduce<[string, IModel][]>((acc, model) => {
+			if (model.model.provider !== 'custom-agent' && model.model.provider !== 'n8n') {
+				acc.push([
+					model.model.model,
+					{
+						id: model.model.model,
+						name: model.name,
+					},
+				]);
+			}
+
+			return acc;
+		}, []),
 	);
 
 	for (const model of customModels.value) {

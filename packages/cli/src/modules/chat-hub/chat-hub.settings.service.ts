@@ -76,7 +76,7 @@ export class ChatHubSettingsService {
 			CHAT_PROVIDER_SETTINGS_KEY(WILDCARD),
 		);
 
-		const parsedSettings = (settings ?? []).map((setting) =>
+		const parsedSettings = settings.map((setting) =>
 			jsonParse<ChatProviderSettingsDto>(setting.value),
 		);
 
