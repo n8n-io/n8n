@@ -15,7 +15,7 @@ const props = defineProps<
 				collapsed: boolean;
 		  }
 	) & {
-		releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
+		releaseChannel?: 'stable' | 'beta' | 'nightly' | 'dev';
 	}
 >();
 
@@ -40,7 +40,10 @@ const containerClasses = computed(() => {
 
 const svg = useTemplateRef<{ $el: Element }>('logo');
 onMounted(() => {
-	if (releaseChannel === 'stable' || !('createObjectURL' in URL)) return;
+	const useCustomLogo = releaseChannel && releaseChannel !== 'stable';
+	if (!useCustomLogo) {
+		return;
+	}
 
 	const logoEl = svg.value!.$el;
 
@@ -48,9 +51,11 @@ onMounted(() => {
 	const logoColor = releaseChannel === 'dev' ? '#838383' : '#E9984B';
 	logoEl.querySelector('path')?.setAttribute('fill', logoColor);
 
-	// Reuse the SVG as favicon
-	const blob = new Blob([logoEl.outerHTML], { type: 'image/svg+xml' });
-	useFavicon(URL.createObjectURL(blob));
+	if ('createObjectURL' in URL) {
+		// Reuse the SVG as favicon
+		const blob = new Blob([logoEl.outerHTML], { type: 'image/svg+xml' });
+		useFavicon(URL.createObjectURL(blob));
+	}
 });
 </script>
 
