@@ -12,7 +12,6 @@ import type {
 	ChatHubLLMProvider,
 	ChatModelDto,
 	ChatModelsResponse,
-	ChatHubBaseLLMModel,
 } from '@n8n/api-types';
 import {
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
