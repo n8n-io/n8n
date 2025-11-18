@@ -1,5 +1,5 @@
 import { Container } from '@n8n/di';
-import { jsonParse } from 'n8n-workflow';
+import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -215,7 +215,7 @@ export class FileSystemManager implements BinaryData.Manager {
 			return FileLocation.ofChatHubMessageAttachment(chatHubMatch[1], chatHubMatch[2]);
 		}
 
-		throw Error(`File ID ${fileId} has invalid format.`);
+		throw new UnexpectedError(`File ID ${fileId} has invalid format.`);
 	}
 
 	private resolvePath(...args: string[]) {
