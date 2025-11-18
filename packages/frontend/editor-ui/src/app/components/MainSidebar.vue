@@ -59,6 +59,8 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
 import MainSidebarUserArea from '@/app/components/MainSidebarUserArea.vue';
+import KeyboardShortcutTooltip from './KeyboardShortcutTooltip.vue';
+import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -84,7 +86,10 @@ const calloutHelpers = useCalloutHelpers();
 
 useKeybindings({
 	ctrl_alt_o: () => handleSelect('about'),
+	['bracketleft']: () => toggleCollapse(),
 });
+
+const { isEnabled: isCommandBarEnabled } = useCommandBar();
 
 // Template refs
 const user = useTemplateRef('user');
@@ -330,6 +335,21 @@ const trackHelpItemClick = (itemType: string) => {
 	});
 };
 
+function openCommandBar(event: MouseEvent) {
+	event.stopPropagation();
+
+	void nextTick(() => {
+		const keyboardEvent = new KeyboardEvent('keydown', {
+			key: 'k',
+			code: 'KeyK',
+			metaKey: true,
+			bubbles: true,
+			cancelable: true,
+		});
+		document.dispatchEvent(keyboardEvent);
+	});
+}
+
 const toggleCollapse = () => {
 	uiStore.toggleSidebarMenuCollapse();
 	// When expanding, delay showing some element to ensure smooth animation
@@ -442,16 +462,10 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 			[$style.sideMenuCollapsed]: isCollapsed,
 		}"
 	>
-		<div
-			id="collapse-change-button"
-			:class="['clickable', $style.sideMenuCollapseButton]"
-			@click="toggleCollapse"
-		>
-			<N8nIcon v-if="isCollapsed" icon="chevron-right" size="xsmall" class="ml-5xs" />
-			<N8nIcon v-else icon="chevron-left" size="xsmall" class="mr-5xs" />
-		</div>
-		<div :class="$style.logo">
+		<div :class="$style.header">
 			<N8nLogo
+				v-if="!isCollapsed"
+				:class="$style.logo"
 				size="small"
 				:collapsed="isCollapsed"
 				:release-channel="settingsStore.settings.releaseChannel"
@@ -480,6 +494,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					/>
 				</N8nTooltip>
 			</N8nLogo>
+
 			<N8nNavigationDropdown
 				ref="createBtn"
 				data-test-id="universal-add"
@@ -542,6 +557,41 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					</N8nTooltip>
 				</template>
 			</N8nNavigationDropdown>
+			<KeyboardShortcutTooltip
+				v-if="isCommandBarEnabled"
+				:placement="isCollapsed ? 'right' : 'bottom'"
+				show-after="500"
+				:label="i18n.baseText('nodeView.openCommandBar')"
+				:shortcut="{ keys: ['k'], metaKey: true }"
+			>
+				<N8nIconButton
+					size="small"
+					type="highlight"
+					icon="search"
+					icon-size="large"
+					aria-label="Open command palette"
+					@click="openCommandBar"
+				/>
+			</KeyboardShortcutTooltip>
+			<KeyboardShortcutTooltip
+				:placement="isCollapsed ? 'right' : 'bottom'"
+				:label="
+					isCollapsed
+						? i18n.baseText('mainSidebar.state.expand')
+						: i18n.baseText('mainSidebar.state.collapse')
+				"
+				show-after="500"
+				:shortcut="{ keys: ['['] }"
+			>
+				<N8nIconButton
+					size="small"
+					type="highlight"
+					icon="panel-left"
+					icon-size="large"
+					aria-label="Toggle sidebar"
+					@click="toggleCollapse"
+				/>
+			</KeyboardShortcutTooltip>
 		</div>
 		<N8nScrollArea as-child>
 			<div :class="$style.scrollArea">
@@ -618,55 +668,40 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	width: 300px;
 	background-color: var(--menu--color--background, var(--color--background--light-2));
 
-	.logo {
+	.header {
 		display: flex;
 		align-items: center;
 		padding: var(--spacing--2xs) var(--spacing--3xs);
 		margin-bottom: var(--spacing--2xs);
 		justify-content: space-between;
+		gap: var(--spacing--4xs);
 
 		img {
 			position: relative;
 			left: 1px;
 			height: 20px;
+			margin-right: auto;
 		}
 	}
 
 	&.sideMenuCollapsed {
-		width: 44px;
+		width: 42px;
 		min-width: auto;
 
-		.logo {
-			flex-direction: column;
-			gap: 12px;
+		.header {
+			flex-direction: column-reverse;
 		}
 	}
+}
+
+.logo {
+	margin-right: auto;
 }
 
 .scrollArea {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-}
-
-.sideMenuCollapseButton {
-	position: absolute;
-	right: -10px;
-	top: 50%;
-	z-index: 999;
-	display: flex;
-	justify-content: center;
-	align-items: center;
-	color: var(--color--text);
-	background-color: var(--color--foreground--tint-2);
-	width: 20px;
-	height: 20px;
-	border: var(--border-width) var(--border-style) var(--color--foreground);
-	border-radius: 50%;
-
-	&:hover {
-		color: var(--color--primary--shade-1);
-	}
 }
 
 .bottomMenu {
