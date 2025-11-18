@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { CredentialsMap } from '@/features/ai/chatHub/chat.types';
+import ChatSidebarOpener from '@/features/ai/chatHub/components/ChatSidebarOpener.vue';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
@@ -45,15 +46,7 @@ defineExpose({
 <template>
 	<div :class="$style.component">
 		<div :class="$style.grow">
-			<N8nIconButton
-				v-if="!sidebar.isStatic.value"
-				:class="$style.menuButton"
-				type="secondary"
-				icon="panel-left"
-				text
-				icon-size="large"
-				@click="sidebar.toggleOpen(true)"
-			/>
+			<ChatSidebarOpener :class="$style.menuButton" />
 			<N8nIconButton
 				v-if="!sidebar.isStatic.value"
 				:class="$style.menuButton"
@@ -66,7 +59,7 @@ defineExpose({
 			<ModelSelector
 				v-if="readyToShowModelSelector"
 				ref="modelSelectorRef"
-				:selectedAgent="selectedModel"
+				:selected-agent="selectedModel"
 				:credentials="credentials"
 				@change="onModelChange"
 				@create-custom-agent="emit('createCustomAgent')"

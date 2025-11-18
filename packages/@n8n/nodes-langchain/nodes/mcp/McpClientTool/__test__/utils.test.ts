@@ -113,6 +113,22 @@ describe('utils', () => {
 			expect(result).toEqual({ headers: { Authorization: 'Bearer access-token' } });
 		});
 
+		it('should return the headers for multipleHeadersAuth', async () => {
+			const ctx = mockDeep<IExecuteFunctions>();
+			ctx.getCredentials.mockResolvedValue({
+				headers: {
+					values: [
+						{ name: 'Foo', value: 'bar' },
+						{ name: 'Test', value: '123' },
+					],
+				},
+			});
+
+			const result = await getAuthHeaders(ctx, 'multipleHeadersAuth');
+
+			expect(result).toEqual({ headers: { Foo: 'bar', Test: '123' } });
+		});
+
 		it('should return an empty object for none', async () => {
 			const ctx = mockDeep<IExecuteFunctions>();
 
@@ -129,7 +145,12 @@ describe('utils', () => {
 			expect(result).toEqual({});
 		});
 
-		it.each(['headerAuth', 'bearerAuth', 'mcpOAuth2Api'] as McpAuthenticationOption[])(
+		it.each([
+			'headerAuth',
+			'bearerAuth',
+			'mcpOAuth2Api',
+			'multipleHeadersAuth',
+		] as McpAuthenticationOption[])(
 			'should return an empty object for %s when it fails',
 			async (authentication) => {
 				const ctx = mockDeep<IExecuteFunctions>();

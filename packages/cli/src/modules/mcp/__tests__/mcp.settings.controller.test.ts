@@ -280,7 +280,9 @@ describe('McpSettingsController', () => {
 					availableInMCP: true,
 				}),
 			).rejects.toThrow(
-				new BadRequestError('MCP access can only be set for webhook-triggered workflows'),
+				new BadRequestError(
+					'MCP access can only be set for active workflows with one of the following trigger nodes: Schedule Trigger, Webhook Trigger, Form Trigger, Chat Trigger.',
+				),
 			);
 
 			expect(workflowService.update).not.toHaveBeenCalled();
