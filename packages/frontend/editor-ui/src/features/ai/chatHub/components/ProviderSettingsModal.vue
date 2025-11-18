@@ -1,18 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import {
-	N8nButton,
-	N8nCallout,
-	N8nHeading,
-	N8nIcon,
-	N8nOption,
-	N8nSelect,
-	N8nText,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
 	ChatHubBaseLLMModel,
@@ -27,15 +17,16 @@ import { useChatStore } from '../chat.store';
 import { providerDisplayNames } from '../constants';
 import { fetchChatModelsApi } from '../chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import ChatProviderModelsTable from './ChatProviderModelsTable.vue';
 import { useToast } from '@/app/composables/useToast';
+import CredentialPicker from '@/features/credentials/components/CredentialPicker/CredentialPicker.vue';
+import TagsDropdown from '@/features/shared/tags/components/TagsDropdown.vue';
+import { type ITag } from '@n8n/rest-api-client';
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		provider: ChatHubLLMProvider;
 		disabled: boolean;
-		onNewCredential: (provider: ChatHubLLMProvider) => void;
 		onConfirm: (settings: ChatProviderSettingsDto) => void;
 		onCancel: () => void;
 	};
@@ -46,20 +37,97 @@ const modalBus = ref(createEventBus());
 const loadingSettings = ref(false);
 const loadingModels = ref(false);
 const availableModels = ref<ChatModelDto[]>([]);
-const calloutDismissed = ref(false);
+
+const allModels = computed<ITag[]>(() => {
+	const models = new Map(
+		availableModels.value
+			.filter((model) => model.model.provider !== 'custom-agent' && model.model.provider !== 'n8n')
+			.map((model) => [
+				(model.model as ChatHubBaseLLMModel).model,
+				{
+					id: (model.model as ChatHubBaseLLMModel).model,
+					name: model.name,
+				},
+			]),
+	);
+
+	// Ensure any custom selected models are also included
+	if (settings.value?.allowedModels) {
+		for (const allowed of settings.value.allowedModels) {
+			models.set(allowed.model, {
+				id: allowed.model,
+				name: allowed.model,
+			});
+		}
+	}
+
+	return Array.from(models.values());
+});
+
+const modelsById = computed<Record<string, ITag>>(() => {
+	const map: Record<string, ITag> = {};
+	allModels.value.forEach((model) => {
+		map[model.id] = model;
+	});
+
+	return map;
+});
+
+const selectedModels = computed({
+	get: () => settings.value?.allowedModels?.map((m) => m.model) || [],
+	set: (value) => {
+		if (settings.value) {
+			settings.value.allowedModels = allModels.value
+				.filter((model) => value.includes(model.id))
+				.map((model) => ({
+					model: model.id,
+					displayName: model.name,
+				}));
+		}
+	},
+});
+
+// TODO: While we're able to support creating new models here
+// this won't make them available in the model selector at the momenst,
+// as the models list is fetched from the backend based on credentials.
+// We should somehow track that these are custom manually defined models
+// and they should always be shown...
+async function createModel(name: string): Promise<ITag> {
+	availableModels.value.push({
+		name,
+		model: {
+			provider: props.data.provider,
+			model: name,
+		} satisfies ChatHubBaseLLMModel,
+		description: '',
+		updatedAt: new Date().toISOString(),
+		createdAt: new Date().toISOString(),
+	});
+
+	return {
+		id: name,
+		name,
+	};
+}
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
 const chatStore = useChatStore();
 const toast = useToast();
 
-const availableCredentials = computed<ICredentialsResponse[]>(() => {
-	return credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[props.data.provider]);
+const credentialType = computed(() => {
+	return PROVIDER_CREDENTIAL_TYPE_MAP[props.data.provider];
 });
 
 function onCredentialSelect(credentialId: string) {
 	if (settings.value) {
 		settings.value.credentialId = credentialId;
+	}
+}
+
+function onCredentialDeselected() {
+	if (settings.value) {
+		settings.value.credentialId = null;
 	}
 }
 
@@ -71,10 +139,6 @@ function onConfirm() {
 	}
 
 	modalBus.value.emit('close');
-}
-
-function onNewCredential() {
-	props.data.onNewCredential(props.data.provider);
 }
 
 function onCancel() {
@@ -106,25 +170,6 @@ async function loadAvailableModels(credentialId: string) {
 	}
 }
 
-const models = computed(() => {
-	return availableModels.value
-		.filter((model) => model.model.provider !== 'custom-agent' && model.model.provider !== 'n8n')
-		.map((model) => {
-			const isEnabled =
-				(settings.value?.limitModels === false ||
-					settings.value?.allowedModels?.some(
-						(m) => m.model === (model.model as ChatHubBaseLLMModel).model,
-					)) ??
-				false;
-
-			return {
-				model: (model.model as ChatHubBaseLLMModel).model,
-				displayName: model.name,
-				enabled: isEnabled,
-			};
-		});
-});
-
 function onToggleEnabled(value: string | number | boolean) {
 	if (settings.value) {
 		settings.value.enabled = typeof value === 'boolean' ? value : Boolean(value);
@@ -135,16 +180,6 @@ function onToggleLimitModels(value: string | number | boolean) {
 	if (settings.value) {
 		settings.value.limitModels = typeof value === 'boolean' ? value : Boolean(value);
 	}
-}
-
-function onSelectModels(selectedModelNames: Array<{ model: string; displayName: string }>) {
-	if (settings.value) {
-		settings.value.allowedModels = selectedModelNames;
-	}
-}
-
-function onCalloutDismiss() {
-	calloutDismissed.value = true;
 }
 
 onMounted(async () => {
@@ -169,19 +204,13 @@ watch(
 </script>
 
 <template>
-	<Modal
-		:name="modalName"
-		:event-bus="modalBus"
-		width="50%"
-		max-width="860px"
-		min-height="340px"
-		:center="true"
-	>
+	<Modal :name="modalName" :event-bus="modalBus" width="50%" max-width="500px" :center="true">
 		<template #header>
 			<div :class="$style.header">
-				<N8nIcon icon="settings2" :size="24" />
 				<N8nHeading size="large" color="text-dark">{{
-					i18n.baseText('settings.chatHub.providers.modal.edit.title')
+					i18n.baseText('settings.chatHub.providers.modal.edit.title', {
+						interpolate: { provider: providerDisplayNames[props.data.provider] },
+					})
 				}}</N8nHeading>
 			</div>
 		</template>
@@ -189,134 +218,91 @@ watch(
 		<template #content>
 			<div :class="$style.content">
 				<div :class="$style.container">
-					<div :class="$style.label">
-						<N8nText bold>
-							{{
-								i18n.baseText('settings.chatHub.providers.modal.edit.enabled.label', {
-									interpolate: { provider: providerDisplayNames[props.data.provider] },
-								})
-							}}
-						</N8nText>
-						<N8nText size="small" color="text-light">
-							{{
-								i18n.baseText('settings.chatHub.providers.modal.edit.enabled.description', {
-									interpolate: { provider: providerDisplayNames[props.data.provider] },
-								})
-							}}
-						</N8nText>
-					</div>
+					<N8nText tag="label" color="text-dark">
+						{{
+							i18n.baseText('settings.chatHub.providers.modal.edit.enabled.label', {
+								interpolate: { provider: providerDisplayNames[props.data.provider] },
+							})
+						}}
+					</N8nText>
+
+					<N8nTooltip
+						:content="i18n.baseText('settings.chatHub.providers.modal.edit.enabled.tooltip')"
+						:disabled="!props.data.disabled"
+						placement="top"
+					>
+						<ElSwitch
+							size="large"
+							:model-value="settings?.enabled ?? false"
+							:disabled="props.data.disabled"
+							:loading="loadingSettings"
+							@update:model-value="onToggleEnabled"
+						/>
+					</N8nTooltip>
+				</div>
+
+				<div v-if="settings && settings.enabled" :class="$style.container">
+					<N8nText tag="label" color="text-dark">
+						{{ i18n.baseText('settings.chatHub.providers.modal.edit.credential.label') }}
+					</N8nText>
+
+					<CredentialPicker
+						:class="$style.credentialPicker"
+						:app-name="providerDisplayNames[props.data.provider]"
+						:credential-type="credentialType"
+						:selected-credential-id="settings.credentialId"
+						@credential-selected="onCredentialSelect"
+						@credential-deselected="onCredentialDeselected"
+					/>
+				</div>
+
+				<div v-if="settings && settings.enabled && settings.credentialId" :class="$style.container">
+					<N8nText tag="label" color="text-dark">
+						{{
+							i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.label', {
+								interpolate: { provider: providerDisplayNames[props.data.provider] },
+							})
+						}}
+					</N8nText>
 
 					<div :class="$style.toggle">
 						<N8nTooltip
-							:content="i18n.baseText('settings.chatHub.providers.modal.edit.enabled.tooltip')"
+							:content="i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.tooltip')"
 							:disabled="!props.data.disabled"
 							placement="top"
 						>
 							<ElSwitch
 								size="large"
-								:model-value="settings?.enabled ?? false"
+								:model-value="settings?.limitModels ?? false"
 								:disabled="props.data.disabled"
 								:loading="loadingSettings"
-								@update:model-value="onToggleEnabled"
+								@update:model-value="onToggleLimitModels"
 							/>
 						</N8nTooltip>
 					</div>
 				</div>
 
-				<N8nCallout
-					v-if="settings && settings.enabled && !calloutDismissed"
-					icon="info"
-					icon-size="large"
-					theme="secondary"
+				<div
+					v-if="settings && settings.enabled && settings.credentialId && settings.limitModels"
+					:class="$style.container"
 				>
-					<N8nText
-						size="small"
-						v-n8n-html="i18n.baseText('settings.chatHub.providers.modal.edit.credential.callout')"
-					/>
-
-					<template #trailingContent>
-						<N8nIcon
-							icon="x"
-							title="Dismiss"
-							size="medium"
-							type="secondary"
-							class="callout-dismiss"
-							@click="onCalloutDismiss()"
-						/>
-					</template>
-				</N8nCallout>
-
-				<div v-if="settings && settings.enabled">
-					<N8nText size="small" color="text-base">
-						{{ i18n.baseText('settings.chatHub.providers.modal.edit.credential.label') }}
+					<N8nText tag="label" color="text-dark">
+						{{ i18n.baseText('settings.chatHub.providers.modal.edit.allowedModels.label') }}
 					</N8nText>
-					<div :class="$style.credentials">
-						<N8nSelect
-							:model-value="settings.credentialId"
-							size="large"
-							:placeholder="
-								i18n.baseText('settings.chatHub.providers.modal.edit.credential.placeholder')
-							"
-							@update:model-value="onCredentialSelect($event)"
-						>
-							<N8nOption
-								v-for="c in availableCredentials"
-								:key="c.id"
-								:value="c.id"
-								:label="c.name"
-							/>
-						</N8nSelect>
-						<N8nButton size="medium" type="secondary" @click="onNewCredential()">
-							{{ i18n.baseText('settings.chatHub.providers.modal.edit.credential.new') }}
-						</N8nButton>
-					</div>
-				</div>
-
-				<div v-if="settings && settings.enabled && settings.credentialId">
-					<div :class="$style.container">
-						<div :class="$style.label">
-							<N8nText bold>
-								{{
-									i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.label', {
-										interpolate: { provider: providerDisplayNames[props.data.provider] },
-									})
-								}}
-							</N8nText>
-							<N8nText size="small" color="text-light">
-								{{
-									i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.description', {
-										interpolate: { provider: providerDisplayNames[props.data.provider] },
-									})
-								}}
-							</N8nText>
-						</div>
-
-						<div :class="$style.toggle">
-							<N8nTooltip
-								:content="
-									i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.tooltip')
-								"
-								:disabled="!props.data.disabled"
-								placement="top"
-							>
-								<ElSwitch
-									size="large"
-									:model-value="settings?.limitModels ?? false"
-									:disabled="props.data.disabled"
-									:loading="loadingSettings"
-									@update:model-value="onToggleLimitModels"
-								/>
-							</N8nTooltip>
-						</div>
-					</div>
-
-					<div v-if="settings && settings.enabled && settings.credentialId && settings.limitModels">
-						<ChatProviderModelsTable
-							:models="models"
-							:loading="loadingModels"
-							@select-models="onSelectModels"
-						/>
-					</div>
+					<TagsDropdown
+						v-if="settings.limitModels"
+						v-model="selectedModels"
+						:class="$style.modelPicker"
+						:placeholder="i18n.baseText('settings.chatHub.providers.modal.edit.models.placeholder')"
+						:event-bus="null"
+						:create-enabled="true"
+						:manage-enabled="false"
+						:all-tags="allModels"
+						:is-loading="loadingModels"
+						:tags-by-id="modelsById"
+						:create-tag="createModel"
+						:create-tag-i18n-key="'settings.chatHub.providers.modal.edit.models.create'"
+					/>
 				</div>
 			</div>
 		</template>
@@ -351,19 +337,10 @@ watch(
 
 .container {
 	display: flex;
-	align-items: center;
-	justify-content: space-between;
-
-	padding: var(--spacing--sm);
-	border-radius: var(--radius);
-	border: var(--border);
-}
-
-.label {
-	display: flex;
-	flex-direction: column;
-	justify-content: center;
 	align-items: flex-start;
+	justify-content: space-between;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 }
 
 .toggle {
@@ -373,50 +350,17 @@ watch(
 	flex-shrink: 0;
 }
 
-.provider {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--sm);
-	margin-bottom: var(--spacing--md);
-}
-.providerHeader {
-	display: grid;
-	gap: var(--spacing--2xs);
-}
-.providerTitle {
-	display: inline-flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+.credentialPicker {
+	width: 100%;
 }
 
-.row {
-	display: grid;
-	gap: var(--spacing--2xs);
-}
-.credentials {
-	display: flex;
-	gap: var(--spacing--2xs);
-	align-items: center;
-}
-
-.toolsList {
-	display: grid;
-	gap: var(--spacing--sm);
-}
-.toolRow {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	padding: var(--spacing--2xs) 0;
-}
-.toolInfo {
-	display: grid;
-	gap: 2px;
+.modelPicker {
+	width: 100%;
 }
 
 .footer {
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-end;
 	align-items: center;
 	width: 100%;
 }

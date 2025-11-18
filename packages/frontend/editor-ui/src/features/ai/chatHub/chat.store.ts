@@ -49,7 +49,7 @@ import { retry } from '@n8n/utils/retry';
 import { isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { type INode } from 'n8n-workflow';
+import { deepCopy, type INode } from 'n8n-workflow';
 import { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
@@ -745,7 +745,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const providerSettings = await fetchChatProviderSettingsApi(rootStore.restApiContext, provider);
 
 		settings.value = settings.value?.map((setting: ChatProviderSettingsDto) =>
-			setting.provider === provider ? providerSettings : setting,
+			setting.provider === provider ? deepCopy(providerSettings) : setting,
 		);
 
 		return providerSettings;
