@@ -112,6 +112,61 @@ def format_output_json(
     return json.dumps(output, indent=2)
 
 
+def _format_parameter_diff(
+    diff: Dict[str, Any], indent: str = "", max_value_length: int = 50
+) -> list:
+    """
+    Format parameter diff for human-readable display.
+
+    Args:
+        diff: Parameter diff dictionary with 'added', 'removed', 'changed' keys
+        indent: Indentation prefix for each line
+        max_value_length: Maximum length for displayed values before truncation
+
+    Returns:
+        List of formatted lines
+    """
+    lines = []
+
+    def truncate_value(value: Any) -> str:
+        """Truncate long values for display"""
+        value_str = str(value)
+        if len(value_str) > max_value_length:
+            return value_str[:max_value_length] + "..."
+        return value_str
+
+    # Added parameters
+    if "added" in diff and diff["added"]:
+        lines.append(f"{indent}Added:")
+        for key, value in diff["added"].items():
+            lines.append(f"{indent}  + {key}: {truncate_value(value)}")
+
+    # Removed parameters
+    if "removed" in diff and diff["removed"]:
+        lines.append(f"{indent}Removed:")
+        for key, value in diff["removed"].items():
+            lines.append(f"{indent}  - {key}: {truncate_value(value)}")
+
+    # Changed parameters
+    if "changed" in diff and diff["changed"]:
+        lines.append(f"{indent}Changed:")
+        for key, value in diff["changed"].items():
+            if isinstance(value, dict) and "from" in value and "to" in value:
+                # Simple value change
+                lines.append(f"{indent}  ~ {key}:")
+                lines.append(f"{indent}      from: {truncate_value(value['from'])}")
+                lines.append(f"{indent}      to:   {truncate_value(value['to'])}")
+            elif isinstance(value, dict):
+                # Nested diff
+                lines.append(f"{indent}  ~ {key}:")
+                nested_lines = _format_parameter_diff(
+                    value, indent + "    ", max_value_length
+                )
+                lines.extend(nested_lines)
+
+    return lines
+
+
 def format_output_summary(result: Dict[str, Any], metadata: Dict[str, Any]) -> str:
     """Format result as human-readable summary"""
     lines = []
@@ -168,6 +223,14 @@ def format_output_summary(result: Dict[str, Any], metadata: Dict[str, Any]) -> s
 
             lines.append(f"{i}. {indicator} [{priority}] Cost: {cost:.1f}")
             lines.append(f"   {desc}")
+
+            # Add parameter diff if present
+            if "parameter_diff" in edit:
+                lines.append("")
+                lines.extend(
+                    _format_parameter_diff(edit["parameter_diff"], indent="   ")
+                )
+
             lines.append("")
     else:
         lines.append("No edits required - workflows are identical!")
