@@ -1,6 +1,8 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { waitFor } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
+
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { createComponentRenderer } from '../../__tests__/render';
 import N8nPagination from './Pagination.vue';
 
@@ -285,7 +287,7 @@ describe('N8nPagination', () => {
 	describe('v-model Support', () => {
 		it('should update v-model:currentPage when page changes', async () => {
 			const user = userEvent.setup();
-			let currentPage = 1;
+			const currentPage = 1;
 			const { container, emitted } = renderComponent({
 				props: {
 					total: 100,
