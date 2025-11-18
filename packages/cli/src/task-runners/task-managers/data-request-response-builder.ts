@@ -65,8 +65,9 @@ export class DataRequestResponseBuilder {
 		};
 	}
 
-	private buildRunExecutionData(runExecutionData: IRunExecutionData) {
+	private buildRunExecutionData(runExecutionData: IRunExecutionData): IRunExecutionData {
 		return {
+			version: 1,
 			startData: runExecutionData.startData,
 			resultData: runExecutionData.resultData,
 			executionData: runExecutionData.executionData

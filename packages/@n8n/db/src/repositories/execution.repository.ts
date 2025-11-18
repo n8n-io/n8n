@@ -795,7 +795,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async stopDuringRun(execution: IExecutionResponse) {
 		const error = new ManualExecutionCancelledError(execution.id);
 
-		execution.data ??= { resultData: { runData: {} } };
+		execution.data ??= {
+			version: 1,
+			resultData: { runData: {} },
+		};
 		execution.data.resultData.error = {
 			...error,
 			message: error.message,

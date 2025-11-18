@@ -105,6 +105,7 @@ export class WorkflowRunner {
 
 		const fullRunData: IRun = {
 			data: {
+				version: 1,
 				resultData: {
 					error: {
 						...error,

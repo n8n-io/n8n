@@ -220,7 +220,7 @@ export class JobProcessor {
 						finished: false,
 						startedAt: now,
 						stoppedAt: now,
-						data: { resultData: { error, runData: {} } },
+						data: { version: 1, resultData: { error, runData: {} } },
 					};
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);

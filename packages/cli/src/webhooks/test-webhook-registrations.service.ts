@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { IWebhookData, IWorkflowBase } from 'n8n-workflow';
+import type { IDestinationNode, IWebhookData, IWorkflowBase } from 'n8n-workflow';
 
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';
@@ -8,7 +8,7 @@ import { CacheService } from '@/services/cache/cache.service';
 export type TestWebhookRegistration = {
 	pushRef?: string;
 	workflowEntity: IWorkflowBase;
-	destinationNode?: string;
+	destinationNode?: IDestinationNode;
 	webhook: IWebhookData;
 };
 

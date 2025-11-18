@@ -10,14 +10,15 @@ import type {
 	ExecutionError,
 	RelatedExecution,
 	INode,
+	IDestinationNode,
 } from './interfaces';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 
 export interface CreateFullRunExecutionDataOptions {
 	startData?: {
 		startNodes?: StartNodeData[];
-		destinationNode?: string;
-		originalDestinationNode?: string;
+		destinationNode?: IDestinationNode;
+		originalDestinationNode?: IDestinationNode;
 		runNodeFilter?: string[];
 	};
 	resultData?: {
@@ -87,6 +88,7 @@ export function createRunExecutionData(
  */
 export function createEmptyRunExecutionData(): IRunExecutionData {
 	return {
+		version: 1,
 		resultData: {
 			runData: {},
 		},
@@ -103,8 +105,12 @@ export function createEmptyRunExecutionData(): IRunExecutionData {
  */
 export function createErrorExecutionData(node: INode, error: ExecutionError): IRunExecutionData {
 	return {
+		version: 1,
 		startData: {
-			destinationNode: node.name,
+			destinationNode: {
+				nodeName: node.name,
+				mode: 'inclusive',
+			},
 			runNodeFilter: [node.name],
 		},
 		executionData: {
