@@ -16,6 +16,7 @@ type EnvOptions = {
 	};
 	mode: CodeExecutionMode;
 	cache: IndexedDbCache;
+	cdnUrl: string;
 };
 
 export function removeUnusedLibs(fsMap: Map<string, string>) {
@@ -32,7 +33,7 @@ export function removeUnusedLibs(fsMap: Map<string, string>) {
 	}
 }
 
-export async function setupTypescriptEnv({ cache, code, mode }: EnvOptions) {
+export async function setupTypescriptEnv({ cache, code, mode, cdnUrl }: EnvOptions) {
 	const fsMap = await tsvfs.createDefaultMapFromCDN(
 		COMPILER_OPTIONS,
 		ts.version,
@@ -41,6 +42,7 @@ export async function setupTypescriptEnv({ cache, code, mode }: EnvOptions) {
 		undefined,
 		undefined,
 		cache,
+		cdnUrl,
 	);
 
 	removeUnusedLibs(fsMap);

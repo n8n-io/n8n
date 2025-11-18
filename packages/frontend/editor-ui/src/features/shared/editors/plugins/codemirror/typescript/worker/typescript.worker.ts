@@ -43,6 +43,7 @@ export const worker: LanguageServiceWorkerInit = {
 			cache,
 			mode: mode.value,
 			code: { content: Text.of(options.content).toString(), fileName: codeFileName },
+			cdnUrl: options.BASE_PATH + '/static/typescript/5.9.2/lib/',
 		});
 
 		const prefix = computed(() => fnPrefix(mode.value));

@@ -57,6 +57,7 @@ export function useTypescript(
 						)
 					: [],
 				mode: toValue(mode),
+				BASE_PATH: location.origin + (window?.BASE_PATH === '/' ? '' : window.BASE_PATH),
 			},
 			Comlink.proxy(async (nodeName) => {
 				const node = workflowsStore.getNodeByName(nodeName);
