@@ -169,8 +169,9 @@ export class CommunityPackagesController {
 		let pendingUpdates: CommunityPackages.AvailableUpdates | undefined;
 
 		try {
-			const command = ['npm', 'outdated', '--json'].join(' ');
-			await this.communityPackagesService.executeNpmCommand(command, { doNotHandleError: true });
+			await this.communityPackagesService.executeNpmCommand(['outdated', '--json'], {
+				doNotHandleError: true,
+			});
 		} catch (error) {
 			// when there are updates, npm exits with code 1
 			// when there are no updates, command succeeds
