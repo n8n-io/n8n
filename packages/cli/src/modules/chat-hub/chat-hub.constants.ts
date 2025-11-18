@@ -24,6 +24,14 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 		version: 1.2,
 	},
+	ollama: {
+		name: '@n8n/n8n-nodes-langchain.lmOllama',
+		version: 1,
+	},
+	azureOpenAi: {
+		name: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+		version: 1,
+	},
 };
 
 export const NODE_NAMES = {
