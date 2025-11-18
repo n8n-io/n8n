@@ -6,6 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
 import type { BinaryMetadata } from '@/Interface';
+import { ref, computed } from 'vue';
 
 import { N8nIcon, N8nTooltip } from '@n8n/design-system';
 type Props = {
@@ -53,6 +54,12 @@ function viewBinaryData() {
 const emit = defineEmits<{
 	click: [];
 }>();
+
+const isDownloadHovered = ref(false);
+const isViewHovered = ref(false);
+
+const downloadIconColor = computed(() => (isDownloadHovered.value ? 'primary' : 'text-base'));
+const viewIconColor = computed(() => (isViewHovered.value ? 'primary' : 'text-base'));
 </script>
 
 <template>
@@ -107,8 +114,10 @@ const emit = defineEmits<{
 					'pill--locked': locked,
 				}"
 				@click="downloadBinaryData"
+				@mouseenter="isDownloadHovered = true"
+				@mouseleave="isDownloadHovered = false"
 			>
-				<N8nIcon class="type-icon" :icon="'download'" size="small" />
+				<N8nIcon class="type-icon" :icon="'download'" size="small" :color="downloadIconColor" />
 			</div>
 			<div
 				class="pill"
@@ -118,8 +127,10 @@ const emit = defineEmits<{
 					'pill--locked': locked,
 				}"
 				@click="viewBinaryData"
+				@mouseenter="isViewHovered = true"
+				@mouseleave="isViewHovered = false"
 			>
-				<N8nIcon class="type-icon" :icon="'eye'" size="small" />
+				<N8nIcon class="type-icon" :icon="'eye'" size="small" :color="viewIconColor" />
 			</div>
 		</div>
 	</div>

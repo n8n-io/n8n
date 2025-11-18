@@ -4,7 +4,7 @@ import { saveAs } from 'file-saver';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { BINARY_DATA_VIEW_MODAL_KEY } from '@/app/constants';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import type { BinaryMetadata } from '@/Interface';
 
 interface Props {
@@ -57,6 +57,10 @@ const viewBinaryData = () => {
 const containerStyle = computed(() => ({
 	marginLeft: props.depth ? `${props.depth * 15}px` : '0',
 }));
+
+const isDownloadHovered = ref(false);
+
+const downloadIconColor = computed(() => (isDownloadHovered.value ? 'primary' : 'text-base'));
 </script>
 
 <template>
@@ -68,11 +72,16 @@ const containerStyle = computed(() => ({
 			</div>
 		</div>
 		<div :class="$style.info">
-			<div :class="$style.filename">{{ fileName }}</div>
+			<div :class="$style.filename" @click="viewBinaryData">{{ fileName }}</div>
 			<div v-if="fileMeta" :class="$style.meta">{{ fileMeta }}</div>
 		</div>
-		<div :class="$style.download" @click="downloadBinaryData">
-			<N8nIcon icon="download" size="large" />
+		<div
+			:class="$style.download"
+			@click="downloadBinaryData"
+			@mouseenter="isDownloadHovered = true"
+			@mouseleave="isDownloadHovered = false"
+		>
+			<N8nIcon icon="download" size="large" :color="downloadIconColor" />
 		</div>
 	</div>
 </template>
@@ -85,6 +94,7 @@ const containerStyle = computed(() => ({
 	width: 100%;
 	min-height: 50px;
 	min-width: 150px;
+	padding-bottom: var(--spacing--2xs);
 
 	&:hover {
 		.download {
@@ -134,12 +144,13 @@ const containerStyle = computed(() => ({
 }
 
 .filename {
-	font-size: var(--font-size--xs);
+	font-size: var(--font-size--2xs);
 	color: var(--color--text--shade-1);
 	font-weight: var(--font-weight--bold);
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
+	cursor: pointer;
 }
 
 .meta {

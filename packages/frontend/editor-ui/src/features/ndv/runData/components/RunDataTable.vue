@@ -747,8 +747,8 @@ watch(
 								/>
 							</template>
 
-							<template #binary="{ value, depth }">
-								<BinaryEntryDataTable :value="value" :depth="depth" />
+							<template #binary="{ value }">
+								<BinaryEntryDataTable :value="value" />
 							</template>
 
 							<template #value="{ value }">
