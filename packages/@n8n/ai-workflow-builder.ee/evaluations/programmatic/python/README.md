@@ -34,16 +34,16 @@ powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 ```bash
 # Using default (standard) configuration
-uvx --from . python -m compare_workflows generated.json ground_truth.json
+uvx --from . python -m src.compare_workflows generated.json ground_truth.json
 
 # Using a preset
-uvx --from . python -m compare_workflows generated.json ground_truth.json --preset strict
+uvx --from . python -m src.compare_workflows generated.json ground_truth.json --preset strict
 
 # Using custom configuration
-uvx --from . python -m compare_workflows generated.json ground_truth.json --config my-config.yaml
+uvx --from . python -m src.compare_workflows generated.json ground_truth.json --config my-config.yaml
 
 # Output as human-readable summary
-uvx --from . python -m compare_workflows generated.json ground_truth.json --output-format summary
+uvx --from . python -m src.compare_workflows generated.json ground_truth.json --output-format summary
 ```
 
 ### Python API Usage
@@ -73,21 +73,6 @@ result = calculate_graph_edit_distance(g1, g2, config)
 print(f"Similarity: {result['similarity_score']:.2%}")
 print(f"Edit cost: {result['edit_cost']:.1f}")
 print(f"Top edits: {len(result['top_edits'])}")
-```
-
-### TypeScript Integration
-
-```typescript
-import { evaluateWorkflowSimilarity } from './evaluators/workflow-similarity';
-
-const result = await evaluateWorkflowSimilarity(
-  generatedWorkflow,
-  groundTruthWorkflow,
-  'standard' // or 'strict', 'lenient'
-);
-
-console.log(`Similarity: ${result.score}`);
-console.log(`Violations: ${result.violations.length}`);
 ```
 
 ## Configuration
