@@ -99,18 +99,12 @@ exports[`components > N8nDatatable > should render correctly 1`] = `
     </div>
   </div>
   <div data-v-c73ff18f="" class="pagination">
-    <div data-v-c73ff18f="" class="el-pagination is-background is-background"><button type="button" class="btn-prev is-first" disabled="" aria-label="Go to previous page" aria-disabled="true"><i class="el-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-            <path fill="currentColor" d="M609.408 149.376 277.76 489.6a32 32 0 0 0 0 44.672l331.648 340.352a29.12 29.12 0 0 0 41.728 0 30.592 30.592 0 0 0 0-42.752L339.264 511.936l311.872-319.872a30.592 30.592 0 0 0 0-42.688 29.12 29.12 0 0 0-41.728 0z"></path>
-          </svg></i></button>
-      <ul class="el-pager">
-        <li class="is-active number" aria-current="true" aria-label="page 1" tabindex="0"> 1 </li>
+    <nav data-v-758ecbea="" data-v-c73ff18f="" class="n8n-pagination is-background">
+      <div data-v-758ecbea="">
+        <!--v-if--><button data-v-758ecbea="" aria-label="Previous Page" type="button" disabled="" class="n8n-pagination__button n8n-pagination__button--prev"><span data-v-758ecbea="">‹</span></button><button data-v-758ecbea="" data-type="page" aria-label="Page 1" aria-current="page" data-selected="true" type="button" class="n8n-pagination__button n8n-pagination__button--page is-active" value="1">1</button><button data-v-758ecbea="" data-type="page" aria-label="Page 2" type="button" class="n8n-pagination__button n8n-pagination__button--page" value="2">2</button><button data-v-758ecbea="" aria-label="Next Page" type="button" class="n8n-pagination__button n8n-pagination__button--next"><span data-v-758ecbea="">›</span></button>
         <!--v-if-->
-        <!--v-if-->
-        <li class="number" aria-current="false" aria-label="page 2" tabindex="0">2</li>
-      </ul><button type="button" class="btn-next is-last" aria-label="Go to next page" aria-disabled="false"><i class="el-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
-            <path fill="currentColor" d="M340.864 149.312a30.592 30.592 0 0 0 0 42.752L652.736 512 340.864 831.872a30.592 30.592 0 0 0 0 42.752 29.12 29.12 0 0 0 41.728 0L714.24 534.336a32 32 0 0 0 0-44.672L382.592 149.376a29.12 29.12 0 0 0-41.728 0z"></path>
-          </svg></i></button>
-    </div>
+      </div>
+    </nav>
     <div data-v-c73ff18f="" class="pageSizeSelector">
       <div data-v-c73ff18f="" class="n8n-select container withPrepend">
         <div class="prepend">Page size</div>
