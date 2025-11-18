@@ -2287,6 +2287,7 @@
 	"settings.chatHub.providers.table.createdAt": "Created",
 	"settings.chatHub.providers.table.updatedAt": "Last edited",
 	"settings.chatHub.providers.table.action.editProvider": "Edit provider",
+	"settings.chatHub.providers.table.action.editProvider.disabled": "Only instance admins and owners can edit chat providers.",
 	"settings.chatHub.providers.table.title": "Providers",
 	"settings.chatHub.providers.table.refresh.tooltip": "Refresh list",
 	"settings.chatHub.providers.table.addProvider.button": "Add provider",

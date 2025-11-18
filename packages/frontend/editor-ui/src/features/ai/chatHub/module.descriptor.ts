@@ -78,6 +78,9 @@ export const ChatModule: FrontendModuleDescription = {
 				open: false,
 				data: {
 					provider: null,
+					disabled: false,
+					onConfirm: () => {},
+					onCancel: () => {},
 				},
 			},
 		},
@@ -91,7 +94,12 @@ export const ChatModule: FrontendModuleDescription = {
 				sidebar: ChatSidebar,
 			},
 			meta: {
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated'],
+				getProperties() {
+					return {
+						feature: 'chat-hub',
+					};
+				},
 			},
 		},
 		{
@@ -102,7 +110,12 @@ export const ChatModule: FrontendModuleDescription = {
 				sidebar: ChatSidebar,
 			},
 			meta: {
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated'],
+				getProperties() {
+					return {
+						feature: 'chat-hub',
+					};
+				},
 			},
 		},
 		{
@@ -113,7 +126,12 @@ export const ChatModule: FrontendModuleDescription = {
 				sidebar: ChatSidebar,
 			},
 			meta: {
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated'],
+				getProperties() {
+					return {
+						feature: 'chat-hub',
+					};
+				},
 			},
 		},
 		{
@@ -123,9 +141,19 @@ export const ChatModule: FrontendModuleDescription = {
 				settingsView: SettingsChatHubView,
 			},
 			meta: {
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated', 'rbac'],
+				middlewareOptions: {
+					rbac: {
+						scope: ['chatHub:manage'],
+					},
+				},
 				telemetry: {
 					pageCategory: 'settings',
+					getProperties() {
+						return {
+							feature: 'chat-hub',
+						};
+					},
 				},
 			},
 		},

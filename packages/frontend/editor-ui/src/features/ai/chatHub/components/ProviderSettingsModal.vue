@@ -311,7 +311,7 @@ watch(
 					<N8nButton type="tertiary" @click="onCancel">
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.cancel') }}
 					</N8nButton>
-					<N8nButton type="primary" @click="onConfirm">
+					<N8nButton type="primary" @click="onConfirm" :disabled="props.data.disabled">
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.confirm') }}
 					</N8nButton>
 				</div>

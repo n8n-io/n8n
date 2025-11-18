@@ -16,6 +16,7 @@ import {
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 
 const i18n = useI18n();
 const toast = useToast();
@@ -24,11 +25,14 @@ const documentTitle = useDocumentTitle();
 const chatStore = useChatStore();
 const usersStore = useUsersStore();
 const settingsStore = useSettingsStore();
+const credentialsStore = useCredentialsStore();
 const uiStore = useUIStore();
 const telemetry = useTelemetry();
 
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
+
+const disabled = computed(() => !isOwner.value && !isAdmin.value);
 
 const fetchSettings = async () => {
 	try {
@@ -43,7 +47,7 @@ function onEditProvider(settings: ChatProviderSettingsDto) {
 		name: CHAT_PROVIDER_SETTINGS_MODAL_KEY,
 		data: {
 			provider: settings.provider,
-			disabled: !isOwner.value && !isAdmin.value,
+			disabled: disabled.value,
 			onNewCredential: (provider: ChatHubLLMProvider) => {
 				const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
 
@@ -83,6 +87,8 @@ onMounted(async () => {
 		return;
 	}
 	await fetchSettings();
+	await credentialsStore.fetchAllCredentials();
+	await credentialsStore.fetchCredentialTypes(false);
 });
 </script>
 <template>
@@ -93,6 +99,7 @@ onMounted(async () => {
 				:data-test-id="'chat-providers-table'"
 				:settings="chatStore.settings"
 				:loading="chatStore.settingsLoading"
+				:disabled="disabled"
 				@edit-provider="onEditProvider"
 				@refresh="onRefreshWorkflows"
 			/>

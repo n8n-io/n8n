@@ -22,6 +22,7 @@ const TRUNCATE_MODELS_AFTER = 4;
 type Props = {
 	settings: ChatProviderSettingsDto[];
 	loading: boolean;
+	disabled: boolean;
 };
 
 const props = defineProps<Props>();
@@ -73,10 +74,11 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 	},
 ]);
 
-const tableActions = ref<Array<{ label: string; value: string }>>([
+const tableActions = ref([
 	{
 		label: i18n.baseText('settings.chatHub.providers.table.action.editProvider'),
 		value: 'editProvider',
+		disabled: props.disabled,
 	},
 ]);
 
@@ -229,11 +231,5 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--xs);
-
-	.separator,
-	.ellipsis {
-		padding-bottom: 1px;
-		color: var(--color--text--tint-1);
-	}
 }
 </style>
