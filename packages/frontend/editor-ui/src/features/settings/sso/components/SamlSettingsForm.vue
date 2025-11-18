@@ -13,10 +13,7 @@ import UserRoleProvisioningDropdown, {
 	type UserRoleProvisioningSetting,
 } from './UserRoleProvisioningDropdown.vue';
 import EnableJitProvisioningDialog from '../provisioning/components/EnableJitProvisioningDialog.vue';
-import { type ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
-import { useUserRoleProvisioningStore } from '../user-role-provisioning.store';
-import { usePostHog } from '@/app/stores/posthog.store';
-import { SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT } from '@/app/constants/experiments';
+import { useUserRoleProvisioningForm } from './useUserRoleProvisioningForm';
 
 const emit = defineEmits<{
 	submitSuccess: [];
@@ -24,11 +21,9 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
-const provisioningStore = useUserRoleProvisioningStore();
 const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
-const posthogStore = usePostHog();
 
 const redirectUrl = ref();
 
@@ -66,6 +61,9 @@ const showUserRoleProvisioningDialog = ref(false);
 
 const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
 
+const { isUserRoleProvisioningChanged, saveProvisioningConfig } =
+	useUserRoleProvisioningForm(userRoleProvisioning);
+
 async function loadSamlConfig() {
 	if (!ssoStore.isEnterpriseSamlEnabled) {
 		return;
@@ -92,52 +90,6 @@ const getSamlConfig = async () => {
 	metadata.value = config?.metadata;
 	metadataUrl.value = config?.metadataUrl;
 	ssoSettingsSaved.value = !!config?.metadata;
-};
-
-const getUserRoleProvisioningValueFromConfig = (
-	config?: ProvisioningConfig,
-): UserRoleProvisioningSetting => {
-	if (!config) {
-		return 'disabled';
-	}
-	if (config.scopesProvisionInstanceRole && config.scopesProvisionProjectRoles) {
-		return 'instance_and_project_roles';
-	} else if (config.scopesProvisionInstanceRole) {
-		return 'instance_role';
-	} else {
-		return 'disabled';
-	}
-};
-
-const getProvisioningConfigFromFormValue = (
-	formValue: UserRoleProvisioningSetting,
-): Pick<ProvisioningConfig, 'scopesProvisionInstanceRole' | 'scopesProvisionProjectRoles'> => {
-	if (formValue === 'instance_role') {
-		return {
-			scopesProvisionInstanceRole: true,
-			scopesProvisionProjectRoles: false,
-		};
-	} else if (formValue === 'instance_and_project_roles') {
-		return {
-			scopesProvisionInstanceRole: true,
-			scopesProvisionProjectRoles: true,
-		};
-	} else {
-		return {
-			scopesProvisionInstanceRole: false,
-			scopesProvisionProjectRoles: false,
-		};
-	}
-};
-
-const isUserRoleProvisioningChanged = () => {
-	if (!posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name)) {
-		return false;
-	}
-	return (
-		getUserRoleProvisioningValueFromConfig(provisioningStore.provisioningConfig) !==
-		userRoleProvisioning.value
-	);
 };
 
 const isSaveEnabled = computed(() => {
@@ -176,9 +128,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 		await ssoStore.saveSamlConfig(config);
 
 		if (isUserRoleProvisioningChanged()) {
-			await provisioningStore.saveProvisioningConfig(
-				getProvisioningConfigFromFormValue(userRoleProvisioning.value),
-			);
+			await saveProvisioningConfig();
 			showUserRoleProvisioningDialog.value = false;
 		}
 
