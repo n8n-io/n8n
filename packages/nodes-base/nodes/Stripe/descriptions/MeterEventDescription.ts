@@ -102,7 +102,7 @@ export const meterEventFields: INodeProperties[] = [
 				displayName: 'Custom Payload Properties',
 				name: 'customPayload',
 				type: 'fixedCollection',
-				default: [],
+				default: {},
 				placeholder: 'Add Custom Property',
 				description:
 					'Additional custom properties to include in the event payload. Use this for custom meter configurations with non-default payload keys.',
