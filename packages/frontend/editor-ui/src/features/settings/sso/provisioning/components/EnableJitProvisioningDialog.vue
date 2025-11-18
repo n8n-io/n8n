@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useI18n } from '@n8n/i18n';
 import { ElDialog } from 'element-plus';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
 import { ref, watch, computed } from 'vue';
 import { useAccessSettingsCsvExport } from '@/features/settings/sso/provisioning/composables/useAccessSettingsCsvExport';
 import type { UserRoleProvisioningSetting } from './UserRoleProvisioningDropdown.vue';
@@ -21,6 +21,7 @@ const locale = useI18n();
 const downloadingInstanceRolesCsv = ref(false);
 const downloadingProjectRolesCsv = ref(false);
 const loadingActivatingJit = ref(false);
+const confirmationChecked = ref(false);
 const {
 	hasDownloadedInstanceRoleCsv,
 	hasDownloadedProjectRoleCsv,
@@ -39,6 +40,7 @@ const shouldShowProjectRolesCsv = computed(
 
 watch(visible, () => {
 	loadingActivatingJit.value = false;
+	confirmationChecked.value = false;
 	accessSettingsCsvExportOnModalClose();
 });
 
@@ -181,6 +183,22 @@ const onConfirmProvisioningSetting = () => {
 				</li>
 			</ul>
 		</template>
+		<div class="mb-s">
+			<N8nCheckbox
+				v-model="confirmationChecked"
+				:disabled="
+					!isDisablingProvisioning &&
+					(!hasDownloadedInstanceRoleCsv ||
+						(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv))
+				"
+				data-test-id="provisioning-confirmation-checkbox"
+			>
+				<N8nText color="text-base">{{
+					locale.baseText(`settings.provisioningConfirmDialog.${messagingKey}.checkbox`)
+				}}</N8nText>
+			</N8nCheckbox>
+		</div>
+
 		<template #footer>
 			<N8nButton
 				type="tertiary"
@@ -194,6 +212,7 @@ const onConfirmProvisioningSetting = () => {
 				native-type="button"
 				:disabled="
 					loadingActivatingJit ||
+					!confirmationChecked ||
 					(!isDisablingProvisioning && !hasDownloadedInstanceRoleCsv) ||
 					(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv)
 				"

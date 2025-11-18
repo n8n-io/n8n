@@ -2502,6 +2502,8 @@
 	"settings.provisioningConfirmDialog.disable.beforeSaving": "Before saving, make sure:",
 	"settings.provisioningConfirmDialog.disable.checklist.one": "You are ready to reassign instance roles for all users inside n8n.",
 	"settings.provisioningConfirmDialog.disable.checklist.two": "You understand that role changes made in SSO will no longer be applied.",
+	"settings.provisioningConfirmDialog.enable.checkbox": "I have downloaded and reviewed the CSV export. My SSO provider is correctly configured to become the source of truth for user role provisioning on this n8n instance.",
+	"settings.provisioningConfirmDialog.disable.checkbox": "I confirm that I want to no longer provision user roles from my SSO provider.",
 	"settings.provisioningConfirmDialog.button.enable.confirm": "Save and enable",
 	"settings.provisioningConfirmDialog.button.disable.confirm": "Save and disable",
 	"settings.provisioningConfirmDialog.button.cancel": "Cancel",
