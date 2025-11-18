@@ -167,6 +167,11 @@ onBeforeUnmount(() => {
 	visibility: hidden;
 }
 
+.tags {
+	display: flex;
+	gap: var(--spacing--4xs);
+}
+
 .count-container {
 	position: absolute;
 	max-width: 40px;
