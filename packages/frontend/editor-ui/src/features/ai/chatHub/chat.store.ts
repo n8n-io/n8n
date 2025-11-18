@@ -704,7 +704,27 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function getAgent(model: ChatHubConversationModel) {
 		if (!agents.value) return;
 
-		return agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
+		const agent = agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
+
+		if (!agent) {
+			if (model.provider === 'custom-agent' || model.provider === 'n8n') {
+				return;
+			}
+
+			// Allow custom models chosen by ID even if they are not in the fetched list
+			return {
+				model: {
+					provider: model.provider,
+					model: model.model,
+				},
+				name: model.model,
+				description: null,
+				createdAt: null,
+				updatedAt: null,
+			};
+		}
+
+		return agent;
 	}
 
 	return {
