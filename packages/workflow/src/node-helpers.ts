@@ -36,6 +36,7 @@ import type {
 	NodeConnectionType,
 } from './interfaces';
 import { validateFilterParameter } from './node-parameters/filter-parameter';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import {
 	isFilterValue,
 	isINodePropertyOptionsList,
@@ -46,7 +47,6 @@ import {
 import { validateFieldType } from './type-validation';
 import { deepCopy } from './utils';
 import type { Workflow } from './workflow';
-import type { IRunExecutionData } from '.';
 
 export const cronNodeOptions: INodePropertyCollection[] = [
 	{

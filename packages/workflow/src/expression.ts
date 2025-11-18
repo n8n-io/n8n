@@ -26,7 +26,7 @@ import type {
 } from './interfaces';
 import type { Workflow } from './workflow';
 import { WorkflowDataProxy } from './workflow-data-proxy';
-import type { IRunExecutionData } from '.';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
