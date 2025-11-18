@@ -2,27 +2,27 @@
 import { computed, ref, watchEffect, h } from 'vue';
 import type { VNode } from 'vue';
 import dateformat from 'dateformat';
-import { toDayMonth } from '@/utils/formatters/dateFormatter';
-import Modal from '@/components/Modal.vue';
+import { toDayMonth } from '@/app/utils/formatters/dateFormatter';
+import Modal from '@/app/components/Modal.vue';
 import {
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
-} from '@/constants';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+} from '@/app/constants';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
 import { N8nHeading, N8nCallout, N8nText, N8nInput, N8nButton, N8nBadge } from '@n8n/design-system';
-import { getActivatableTriggerNodes } from '@/utils/nodeTypesUtils';
+import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
-import { useToast } from '@/composables/useToast';
-import { useWorkflowActivate } from '@/composables/useWorkflowActivate';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useToast } from '@/app/composables/useToast';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
-import WorkflowActivationErrorMessage from '@/components/WorkflowActivationErrorMessage.vue';
+import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
 
 const modalBus = createEventBus();
 const i18n = useI18n();

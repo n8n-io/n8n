@@ -2,7 +2,7 @@
 import { computed, ref, useCssModule } from 'vue';
 import { type ActionDropdownItem, N8nActionDropdown } from '@n8n/design-system';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client';
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
@@ -12,26 +12,26 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
-} from '@/constants';
-import { hasPermission } from '@/utils/rbac/permissions';
+} from '@/app/constants';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRoute } from 'vue-router';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { IWorkflowToShare, IWorkflowDb } from '@/Interface';
-import { telemetry } from '@/plugins/telemetry';
-import router from '@/router';
-import { sanitizeFilename } from '@/utils/fileUtils';
+import { telemetry } from '@/app/plugins/telemetry';
+import router from '@/app/router';
+import { sanitizeFilename } from '@/app/utils/fileUtils';
 import saveAs from 'file-saver';
-import { nodeViewEventBus } from '@/event-bus';
+import { nodeViewEventBus } from '@/app/event-bus';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useTagsStore } from '@/stores/tags.store';
-import { useWorkflowHelpers } from '@/composables/useWorkflowHelpers';
+import { useTagsStore } from '@/app/stores/tags.store';
+import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];

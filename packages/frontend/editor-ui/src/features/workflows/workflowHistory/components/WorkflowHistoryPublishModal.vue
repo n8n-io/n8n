@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import Modal from '@/components/Modal.vue';
+import Modal from '@/app/components/Modal.vue';
 import { N8nHeading, N8nText, N8nButton } from '@n8n/design-system';
-import { WORKFLOW_HISTORY_PUBLISH_MODAL_KEY } from '@/constants';
+import { WORKFLOW_HISTORY_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 

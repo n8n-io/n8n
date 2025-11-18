@@ -1,23 +1,23 @@
 <script lang="ts" setup>
 import { computed, useCssModule, useTemplateRef } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';
 import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import type { IWorkflowDb } from '@/Interface';
-import { EnterpriseEditionFeature, WORKFLOW_SHARE_MODAL_KEY, VIEWS } from '@/constants';
-import WorkflowActivator from '@/components/WorkflowActivator.vue';
-import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import { EnterpriseEditionFeature, WORKFLOW_SHARE_MODAL_KEY, VIEWS } from '@/app/constants';
+import WorkflowActivator from '@/app/components/WorkflowActivator.vue';
+import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import CollaborationPane from '@/features/collaboration/collaboration/components/CollaborationPane.vue';
 import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
-import SaveButton from '@/components/SaveButton.vue';
+import SaveButton from '@/app/components/SaveButton.vue';
 import { I18nT } from 'vue-i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
-import ActionsMenu from '@/components/MainHeader/ActionsMenu.vue';
+import ActionsMenu from '@/app/components/MainHeader/ActionsMenu.vue';
 
 const i18n = useI18n();
 const uiStore = useUIStore();

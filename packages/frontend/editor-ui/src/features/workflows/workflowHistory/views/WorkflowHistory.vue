@@ -6,7 +6,7 @@ import {
 	VIEWS,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
-} from '@/constants';
+} from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import type {
