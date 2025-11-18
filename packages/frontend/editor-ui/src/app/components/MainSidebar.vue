@@ -486,7 +486,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				:menu="menu"
 				@select="handleMenuSelect"
 			>
-				<N8nIconButton icon="plus" type="secondary" outline />
+				<N8nIconButton icon="plus" type="highlight" size="small" />
 				<template #[createWorkflowsAppendSlotName]>
 					<N8nTooltip
 						v-if="sourceControlStore.preferences.branchReadOnly"
