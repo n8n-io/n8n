@@ -1,5 +1,5 @@
+import type { IRunExecutionData } from '.';
 import type {
-	IRunExecutionData,
 	IRunData,
 	IPinData,
 	IExecuteContextData,
