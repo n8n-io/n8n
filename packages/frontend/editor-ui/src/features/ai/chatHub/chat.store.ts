@@ -734,6 +734,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				description: null,
 				createdAt: null,
 				updatedAt: null,
+				allowFileUploads: true,
 			};
 		}
 
