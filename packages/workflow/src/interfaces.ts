@@ -32,6 +32,7 @@ import type { ExecutionStatus } from './execution-status';
 import type { Result } from './result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 
 export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './execution-context';
 
@@ -2409,51 +2410,6 @@ export interface IRun {
 	jobId?: string;
 }
 
-/**
- * Contains all the data which is needed to execute a workflow and so also to
- * start restart it again after it did fail.
- * The RunData, ExecuteData and WaitForExecution contain often the same data.
- */
-export interface IRunExecutionData {
-	startData?: {
-		startNodes?: StartNodeData[];
-		destinationNode?: string;
-		originalDestinationNode?: string;
-		runNodeFilter?: string[];
-	};
-	resultData: {
-		error?: ExecutionError;
-		runData: IRunData;
-		pinData?: IPinData;
-		lastNodeExecuted?: string;
-		metadata?: Record<string, string>;
-	};
-	executionData?: {
-		contextData: IExecuteContextData;
-		runtimeData?: IExecutionContext;
-		nodeExecutionStack: IExecuteData[];
-		metadata: {
-			// node-name: metadata by runIndex
-			[key: string]: ITaskMetadata[];
-		};
-		waitingExecution: IWaitingForExecution;
-		waitingExecutionSource: IWaitingForExecutionSource | null;
-	};
-	parentExecution?: RelatedExecution;
-	/**
-	 * This is used to prevent breaking change
-	 * for waiting executions started before signature validation was added
-	 */
-	validateSignature?: boolean;
-	waitTill?: Date;
-	pushRef?: string;
-
-	/** Data needed for a worker to run a manual execution. */
-	manualData?: Pick<
-		IWorkflowExecutionDataProcess,
-		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
-	>;
-}
 export type SchemaType =
 	| 'string'
 	| 'number'
