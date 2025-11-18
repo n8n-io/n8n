@@ -102,7 +102,7 @@ export class ChatHubAttachmentService {
 	async deleteAllBySessionId(sessionId: string): Promise<void> {
 		const messages = await this.messageRepository.getManyBySessionId(sessionId);
 
-		await this.deleteByMessages(messages);
+		await this.deleteAttachments(messages.flatMap((message) => message.attachments ?? []));
 	}
 
 	/**
@@ -116,25 +116,16 @@ export class ChatHubAttachmentService {
 			select: ['attachments'],
 		});
 
-		await this.deleteByMessages(messages);
+		await this.deleteAttachments(messages.flatMap((message) => message.attachments ?? []));
 	}
 
-	private async deleteByMessages(messages: ChatHubMessage[]) {
-		const attachmentIds = new Set<string>();
-
-		for (const message of messages) {
-			for (const attachment of message.attachments ?? []) {
-				if (attachment.id) {
-					attachmentIds.add(attachment.id);
-				}
-			}
-		}
-
-		if (attachmentIds.size === 0) {
-			return;
-		}
-
-		await this.binaryDataService.deleteManyByBinaryDataId(Array.from(attachmentIds.values()));
+	/**
+	 * Deletes attachments by their binary data directly (used for rollback when message wasn't saved)
+	 */
+	async deleteAttachments(attachments: IBinaryData[]): Promise<void> {
+		await this.binaryDataService.deleteManyByBinaryDataId(
+			attachments.flatMap((attachment) => (attachment.id ? [attachment.id] : [])),
+		);
 	}
 
 	/**

@@ -396,8 +396,11 @@ export class ChatHubService {
 			attachments,
 		);
 
-		const { executionData, workflowData } = await this.messageRepository.manager.transaction(
-			async (trx) => {
+		let executionData: IRunExecutionData;
+		let workflowData: IWorkflowBase;
+
+		try {
+			const result = await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
 				session ??= await this.createChatSession(user, sessionId, model, credentialId, tools, trx);
 
@@ -426,8 +429,15 @@ export class ChatHubService {
 					processedAttachments,
 					trx,
 				);
-			},
-		);
+			});
+
+			executionData = result.executionData;
+			workflowData = result.workflowData;
+		} catch (error) {
+			// Rollback stored attachments if transaction fails
+			await this.chatHubAttachmentService.deleteAttachments(processedAttachments);
+			throw error;
+		}
 
 		await this.executeChatWorkflowWithCleanup(
 			res,
