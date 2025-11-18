@@ -203,6 +203,7 @@ describe('McpSettingsController', () => {
 			const entity = new WorkflowEntity();
 			entity.id = workflowId;
 			entity.active = true;
+			entity.activeVersionId = overrides.active ? 'some-version-id' : null;
 			entity.nodes = [createWebhookNode()];
 			entity.settings = { saveManualExecutions: true };
 			entity.versionId = 'current-version-id';

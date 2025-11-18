@@ -104,6 +104,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -169,6 +170,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [],
 			connections: {},
@@ -213,6 +215,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -280,6 +283,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -736,6 +740,7 @@ describe('generateNodesGraph', () => {
 			id: 'NfV4GV9aQTifSLc2',
 			name: 'My workflow 26',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			nodes: [
 				{
@@ -2821,6 +2826,7 @@ describe('extractLastExecutedNodeStructuredOutputErrorInfo', () => {
 		id: 'test-workflow',
 		name: 'Test Workflow',
 		active: false,
+		activeVersionId: null,
 		isArchived: false,
 		nodes,
 		connections: connections || {},

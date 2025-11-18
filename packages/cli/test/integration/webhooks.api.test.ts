@@ -1,9 +1,4 @@
-import {
-	testDb,
-	mockInstance,
-	createWorkflowWithHistory,
-	setActiveVersion,
-} from '@n8n/backend-test-utils';
+import { testDb, mockInstance, createActiveWorkflow } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { readFileSync } from 'fs';
 import {
@@ -99,8 +94,7 @@ describe('Webhook API', () => {
 
 	beforeEach(async () => {
 		await testDb.truncate(['WorkflowEntity']);
-		const workflow = await createWorkflowWithHistory(workflowData, user);
-		await setActiveVersion(workflow.id, workflow.versionId);
+		await createActiveWorkflow(workflowData, user);
 		await initActiveWorkflowManager();
 	});
 

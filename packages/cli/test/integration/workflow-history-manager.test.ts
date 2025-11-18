@@ -1,4 +1,9 @@
-import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
+import {
+	createWorkflow,
+	testDb,
+	mockInstance,
+	createActiveWorkflow,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import { WorkflowHistoryRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -92,8 +97,8 @@ describe('Workflow History Manager', () => {
 	test('should not prune current versions', async () => {
 		globalConfig.workflowHistory.pruneTime = 24;
 
-		const activeWorkflow = await createWorkflow({ active: true });
-		const inactiveWorkflow = await createWorkflow({ active: false });
+		const activeWorkflow = await createActiveWorkflow();
+		const inactiveWorkflow = await createWorkflow();
 
 		// Create old history versions for the active workflow
 		const activeWorkflowVersions = await createManyWorkflowHistoryItems(
@@ -133,7 +138,7 @@ describe('Workflow History Manager', () => {
 	test('should not prune current or active versions when they differ', async () => {
 		globalConfig.workflowHistory.pruneTime = 24;
 
-		const workflow = await createWorkflow({ active: true });
+		const workflow = await createActiveWorkflow();
 
 		// Create old history versions
 		const workflowVersions = await createManyWorkflowHistoryItems(

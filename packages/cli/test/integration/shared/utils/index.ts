@@ -194,6 +194,7 @@ export function makeWorkflow(options?: {
 
 	workflow.name = 'My Workflow';
 	workflow.active = false;
+	workflow.activeVersionId = null;
 	workflow.connections = {};
 	workflow.nodes = [node];
 

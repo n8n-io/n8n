@@ -79,6 +79,7 @@ describe('LiveWebhooks', () => {
 				id: workflowId,
 				name: 'Test Workflow',
 				active: true,
+				activeVersionId: activeVersion.versionId,
 				nodes: draftNodes,
 				connections: {},
 				activeVersion,

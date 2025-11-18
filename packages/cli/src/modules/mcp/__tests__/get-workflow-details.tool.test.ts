@@ -1,4 +1,4 @@
-import { mockInstance } from '@n8n/backend-test-utils';
+import { createActiveWorkflow, mockInstance } from '@n8n/backend-test-utils';
 import { User } from '@n8n/db';
 
 import { createWorkflow } from './mock.utils';
@@ -46,7 +46,7 @@ describe('get-workflow-details MCP tool', () => {
 
 	describe('handler tests', () => {
 		test('returns sanitized workflow and trigger info (active)', async () => {
-			const workflow = createWorkflow({ active: true });
+			const workflow = createActiveWorkflow();
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
 				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
 			});
@@ -69,7 +69,7 @@ describe('get-workflow-details MCP tool', () => {
 		});
 
 		test('returns trigger info (inactive)', async () => {
-			const workflow = createWorkflow({ active: false });
+			const workflow = createWorkflow();
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
 				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
 			});

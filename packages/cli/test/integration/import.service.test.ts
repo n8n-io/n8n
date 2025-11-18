@@ -5,6 +5,7 @@ import {
 	getWorkflowById,
 	newWorkflow,
 	testDb,
+	createActiveWorkflow,
 } from '@n8n/backend-test-utils';
 import { DatabaseConfig } from '@n8n/config';
 import type { Project, User } from '@n8n/db';
@@ -120,7 +121,7 @@ describe('ImportService', () => {
 	});
 
 	test('should deactivate imported workflow if active', async () => {
-		const workflowToImport = await createWorkflow({ active: true });
+		const workflowToImport = await createActiveWorkflow();
 
 		await importService.importWorkflows([workflowToImport], ownerPersonalProject.id);
 
@@ -129,6 +130,7 @@ describe('ImportService', () => {
 		if (!dbWorkflow) fail('Expected to find workflow');
 
 		expect(dbWorkflow.active).toBe(false);
+		expect(dbWorkflow.activeVersionId).toBeNull();
 	});
 
 	test('should leave intact new-format credentials', async () => {
@@ -227,7 +229,7 @@ describe('ImportService', () => {
 	});
 
 	test('should remove workflow from ActiveWorkflowManager when workflow has ID', async () => {
-		const workflowWithId = await createWorkflow({ active: true });
+		const workflowWithId = await createActiveWorkflow();
 		await importService.importWorkflows([workflowWithId], ownerPersonalProject.id);
 
 		expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith(workflowWithId.id);
