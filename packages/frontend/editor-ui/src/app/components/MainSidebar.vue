@@ -16,6 +16,7 @@ import {
 	N8nText,
 	N8nIcon,
 	N8nButton,
+	N8nResizeWrapper,
 } from '@n8n/design-system';
 import type { IMenuItem } from '@n8n/design-system';
 import {
@@ -309,8 +310,7 @@ const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 const showUserArea = computed(() => hasPermission(['authenticated']));
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
-onMounted(async () => {
-	window.addEventListener('resize', onResize);
+onMounted(() => {
 	basePath.value = rootStore.baseUrl;
 	if (user.value?.$el) {
 		void externalHooks.run('mainSidebar.mounted', {
@@ -319,13 +319,10 @@ onMounted(async () => {
 	}
 
 	becomeTemplateCreatorStore.startMonitoringCta();
-
-	await nextTick(onResizeEnd);
 });
 
 onBeforeUnmount(() => {
 	becomeTemplateCreatorStore.stopMonitoringCta();
-	window.removeEventListener('resize', onResize);
 });
 
 const trackHelpItemClick = (itemType: string) => {
@@ -422,22 +419,6 @@ const handleSelect = (key: string) => {
 	}
 };
 
-function onResize() {
-	void callDebounced(onResizeEnd, { debounceTime: 250 });
-}
-
-async function onResizeEnd() {
-	if (window.innerWidth < 900) {
-		uiStore.sidebarMenuCollapsed = true;
-	} else {
-		uiStore.sidebarMenuCollapsed = uiStore.sidebarMenuCollapsedPreference;
-	}
-
-	void nextTick(() => {
-		fullyExpanded.value = !isCollapsed.value;
-	});
-}
-
 const {
 	menu,
 	handleSelect: handleMenuSelect,
@@ -454,13 +435,22 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 </script>
 
 <template>
-	<div
+	<N8nResizeWrapper
 		id="side-menu"
 		:class="{
 			['side-menu']: true,
 			[$style.sideMenu]: true,
 			[$style.sideMenuCollapsed]: isCollapsed,
 		}"
+		:width="sidebarWidth"
+		:style="{ width: `${sidebarWidth}px` }"
+		:supported-directions="['right']"
+		:min-width="200"
+		:max-width="500"
+		:grid-size="8"
+		@resizestart="onResizeStart"
+		@resize="onResize"
+		@resizeend="onResizeEnd"
 	>
 		<div :class="$style.header">
 			<N8nLogo
@@ -655,7 +645,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 		/>
 
 		<TemplateTooltip />
-	</div>
+	</N8nResizeWrapper>
 </template>
 
 <style lang="scss" module>
