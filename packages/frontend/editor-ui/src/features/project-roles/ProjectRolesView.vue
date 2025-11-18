@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -19,7 +20,7 @@ import type { TableHeader } from '@n8n/design-system/components/N8nDataTableServ
 import { useI18n } from '@n8n/i18n';
 import type { Role } from '@n8n/permissions';
 import dateformat from 'dateformat';
-import { ref, useCssModule } from 'vue';
+import { onMounted, ref, useCssModule } from 'vue';
 import { useRouter } from 'vue-router';
 
 const { showError, showMessage } = useToast();
@@ -32,6 +33,10 @@ const $style = useCssModule();
 const settingsStore = useSettingsStore();
 const { goToUpgrade } = usePageRedirectionHelper();
 const telemetry = useTelemetry();
+
+onMounted(() => {
+	useDocumentTitle().set(i18n.baseText('settings.projectRoles'));
+});
 
 const headers = ref<Array<TableHeader<Role>>>([
 	{
@@ -59,7 +64,8 @@ const headers = ref<Array<TableHeader<Role>>>([
 	{
 		title: i18n.baseText('projectRoles.sourceControl.table.lastEdited'),
 		key: 'updatedAt',
-		value: (item: Role) => (item.updatedAt ? dateformat(item.updatedAt, 'd mmm, yyyy') : ''),
+		value: (item: Role) =>
+			item.updatedAt && !item.systemRole ? dateformat(item.updatedAt, 'd mmm, yyyy') : '—',
 		disableSort: true,
 		resize: false,
 	},

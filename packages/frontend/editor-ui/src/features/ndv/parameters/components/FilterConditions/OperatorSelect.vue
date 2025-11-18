@@ -153,6 +153,11 @@ watch(
 		font-weight: var(--font-weight--bold);
 	}
 
+	&.selected {
+		color: var(--color--primary);
+		font-weight: var(--font-weight--bold);
+	}
+
 	&:hover {
 		background: var(--color--background);
 	}

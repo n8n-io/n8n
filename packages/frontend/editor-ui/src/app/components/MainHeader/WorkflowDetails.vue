@@ -487,7 +487,16 @@ async function handleArchiveWorkflow() {
 		type: 'success',
 	});
 
-	await router.push({ name: VIEWS.WORKFLOWS });
+	// Navigate to the appropriate project's workflow list
+	const workflow = workflowsStore.getWorkflowById(props.id);
+	if (workflow?.homeProject?.type === ProjectTypes.Team) {
+		await router.push({
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: workflow.homeProject.id },
+		});
+	} else {
+		await router.push({ name: VIEWS.WORKFLOWS });
+	}
 }
 
 async function handleUnarchiveWorkflow() {
@@ -521,6 +530,10 @@ async function handleDeleteWorkflow() {
 		return;
 	}
 
+	// Get workflow before deletion to know which project to navigate to
+	const workflow = workflowsStore.getWorkflowById(props.id);
+	const isTeamProject = workflow?.homeProject?.type === ProjectTypes.Team;
+
 	try {
 		await workflowsStore.deleteWorkflow(props.id);
 	} catch (error) {
@@ -537,7 +550,15 @@ async function handleDeleteWorkflow() {
 		type: 'success',
 	});
 
-	await router.push({ name: VIEWS.WORKFLOWS });
+	// Navigate to the appropriate project's workflow list
+	if (isTeamProject && workflow?.homeProject) {
+		await router.push({
+			name: VIEWS.PROJECTS_WORKFLOWS,
+			params: { projectId: workflow.homeProject.id },
+		});
+	} else {
+		await router.push({ name: VIEWS.WORKFLOWS });
+	}
 }
 
 async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void> {

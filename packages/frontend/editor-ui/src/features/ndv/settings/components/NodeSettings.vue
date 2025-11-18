@@ -632,6 +632,7 @@ function handleSelectAction(params: INodeParameters) {
 					:model-value="node.name"
 					:icon-source="iconSource"
 					:read-only="isReadOnly"
+					:node-type="nodeType"
 					@update:model-value="nameChanged"
 				/>
 				<NodeExecuteButton
@@ -831,7 +832,7 @@ function handleSelectAction(params: INodeParameters) {
 
 <style lang="scss" module>
 .header {
-	background-color: var(--color--background);
+	background-color: var(--ndv--header--color);
 }
 
 .featureRequest {
@@ -856,7 +857,7 @@ function handleSelectAction(params: INodeParameters) {
 	display: flex;
 	flex-direction: column;
 	overflow: hidden;
-	background-color: var(--color--background--light-3);
+	background-color: var(--ndv--background--color);
 	height: 100%;
 	width: 100%;
 
