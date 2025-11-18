@@ -453,7 +453,6 @@ export class ChatHubService {
 	async sendHumanMessage(res: Response, user: User, payload: HumanMessagePayload) {
 		const { sessionId, messageId, message, model, credentials, previousMessageId, tools } = payload;
 
-		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 		const credentialId = this.getModelCredential(model, credentials);
 
 		const { executionData, workflowData } = await this.messageRepository.manager.transaction(
@@ -519,7 +518,6 @@ export class ChatHubService {
 
 	async editMessage(res: Response, user: User, payload: EditMessagePayload) {
 		const { sessionId, editId, messageId, message, model, credentials } = payload;
-		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 
 		const workflow = await this.messageRepository.manager.transaction(async (trx) => {
 			const session = await this.getChatSession(user, sessionId, trx);
@@ -605,7 +603,6 @@ export class ChatHubService {
 	async regenerateAIMessage(res: Response, user: User, payload: RegenerateMessagePayload) {
 		const { sessionId, retryId, model, credentials } = payload;
 		const { provider } = model;
-		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 
 		const {
 			workflow: { workflowData, executionData },
@@ -704,6 +701,7 @@ export class ChatHubService {
 		tools: INode[],
 		trx: EntityManager,
 	) {
+		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 		const credential = await this.chatHubCredentialsService.ensureCredentials(
 			user,
 			model.provider,
