@@ -10,7 +10,7 @@ import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
 import { useProjectsStore } from '../projects.store';
 import type { ProjectListItem } from '../projects.types';
 
-import { N8nButton, N8nHeading, N8nMenuItem, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nMenuItem, N8nText, N8nTooltip } from '@n8n/design-system';
 
 type Props = {
 	collapsed: boolean;
@@ -129,13 +129,10 @@ onBeforeUnmount(() => {
 				data-test-id="project-shared-menu-item"
 			/>
 		</div>
-		<N8nHeading
+		<N8nText
 			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
 			:class="[$style.projectsLabel]"
-			bold
-			size="small"
 			color="text-light"
-			tag="h3"
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>
 			<N8nTooltip
@@ -153,7 +150,7 @@ onBeforeUnmount(() => {
 					@click="globalEntityCreation.createProject('add_icon')"
 				/>
 			</N8nTooltip>
-		</N8nHeading>
+		</N8nText>
 		<div
 			v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
 			:class="$style.projectItems"
@@ -208,7 +205,7 @@ onBeforeUnmount(() => {
 }
 
 .projectItems {
-	padding: var(--spacing--xs);
+	padding: var(--spacing--3xs);
 }
 
 .upgradeLink {
@@ -222,7 +219,7 @@ onBeforeUnmount(() => {
 	text-overflow: ellipsis;
 	overflow: hidden;
 	box-sizing: border-box;
-	padding: 0 var(--spacing--sm);
+	padding: 0 var(--spacing--xs);
 	margin-top: var(--spacing--md);
 
 	&.collapsed {
@@ -255,6 +252,6 @@ onBeforeUnmount(() => {
 
 <style lang="scss" scoped>
 .home {
-	padding: 0 var(--spacing--xs);
+	padding: 0 var(--spacing--3xs);
 }
 </style>

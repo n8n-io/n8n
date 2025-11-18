@@ -486,7 +486,13 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				:menu="menu"
 				@select="handleMenuSelect"
 			>
-				<N8nIconButton icon="plus" type="highlight" size="small" />
+				<N8nIconButton
+					size="small"
+					type="highlight"
+					icon="plus"
+					icon-size="large"
+					aria-label="Add new item"
+				/>
 				<template #[createWorkflowsAppendSlotName]>
 					<N8nTooltip
 						v-if="sourceControlStore.preferences.branchReadOnly"
@@ -609,13 +615,14 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	display: flex;
 	flex-direction: column;
 	border-right: var(--border-width) var(--border-style) var(--color--foreground);
-	width: $sidebar-expanded-width;
-	background-color: var(--menu--color--background, var(--color--background--light-1));
+	width: 300px;
+	background-color: var(--menu--color--background, var(--color--background--light-2));
 
 	.logo {
 		display: flex;
 		align-items: center;
-		padding: var(--spacing--xs);
+		padding: var(--spacing--2xs) var(--spacing--3xs);
+		margin-bottom: var(--spacing--2xs);
 		justify-content: space-between;
 
 		img {
@@ -626,7 +633,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	}
 
 	&.sideMenuCollapsed {
-		width: $sidebar-width;
+		width: 44px;
 		min-width: auto;
 
 		.logo {
@@ -669,7 +676,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 }
 
 .bottomMenuItems {
-	padding: var(--spacing--xs);
+	padding: var(--spacing--3xs);
 }
 
 .popover {
