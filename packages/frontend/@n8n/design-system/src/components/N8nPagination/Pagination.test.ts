@@ -1,6 +1,5 @@
 import userEvent from '@testing-library/user-event';
 import { waitFor } from '@testing-library/vue';
-
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import N8nPagination from './Pagination.vue';
