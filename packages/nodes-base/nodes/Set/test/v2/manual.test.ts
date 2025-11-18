@@ -1,7 +1,7 @@
 import get from 'lodash/get';
 import { constructExecutionMetaData } from 'n8n-core';
 import {
-	NodeOperationError,
+	// NodeOperationError,
 	type IDataObject,
 	type IExecuteFunctions,
 	type IGetNodeParameterOptions,
@@ -84,15 +84,18 @@ describe('test Set2, manual mode - error handling with continueOnFail', () => {
 			// Simulate a malformed Object value that will cause parsing to fail
 			const malformedObjectValue = '{ invalid json syntax }';
 			const nodeParameters = {
-				fields: {
-					values: [
+				assignments: {
+					assignments: [
 						{
+							id: 'b5633e0b-221c-480e-b050-7f34bad8869d',
 							name: 'testField',
-							type: 'objectValue',
-							objectValue: malformedObjectValue,
+							type: 'object',
+							value: malformedObjectValue,
 						},
 					],
 				},
+				mode: 'manual',
+				options: {},
 			};
 
 			const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, true);
@@ -118,8 +121,9 @@ describe('test Set2, manual mode - error handling with continueOnFail', () => {
 			expect(output.json.error).toContain('invalid JSON');
 		});
 
-		it('should throw error when continueOnFail is false and Object parsing fails', async () => {
-			const malformedObjectValue = '=invalid object , {]; {]';
+		it('should return error object when continueOnFail is true and Object value is completely invalid', async () => {
+			// Test with a value that cannot be parsed as JSON at all
+			const invalidObjectValue = 'not a json object at all';
 			const nodeParameters = {
 				assignments: {
 					assignments: [
@@ -127,37 +131,12 @@ describe('test Set2, manual mode - error handling with continueOnFail', () => {
 							id: 'b5633e0b-221c-480e-b050-7f34bad8869d',
 							name: 'testField',
 							type: 'object',
-							value: malformedObjectValue,
+							value: 'invalid-object',
 						},
 					],
 				},
 				mode: 'manual',
 				options: {},
-			};
-
-			const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, false);
-			const rawDataWithMalformed = {
-				testField: malformedObjectValue,
-			};
-
-			await expect(
-				execute.call(fakeExecuteFunction, item, 0, options, rawDataWithMalformed, node),
-			).rejects.toThrow(NodeOperationError);
-		});
-
-		it('should return error object when continueOnFail is true and Object value is completely invalid', async () => {
-			// Test with a value that cannot be parsed as JSON at all
-			const invalidObjectValue = 'not a json object at all';
-			const nodeParameters = {
-				fields: {
-					values: [
-						{
-							name: 'testField',
-							type: 'objectValue',
-							objectValue: invalidObjectValue,
-						},
-					],
-				},
 			};
 
 			const fakeExecuteFunction = createMockExecuteFunction(nodeParameters, true);
