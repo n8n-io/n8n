@@ -114,6 +114,7 @@ export class JobProcessor {
 			name: execution.workflowData.name,
 			nodes: execution.workflowData.nodes,
 			connections: execution.workflowData.connections,
+			// still using active, because old executions do not have "activeVersionId"
 			active: execution.workflowData.active,
 			nodeTypes: this.nodeTypes,
 			staticData,

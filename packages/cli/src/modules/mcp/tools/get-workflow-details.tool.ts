@@ -115,8 +115,10 @@ export async function getWorkflowDetails(
 		endpoints,
 	);
 
+	const isActive = !!workflow.activeVersionId;
+
 	triggerNotice += `${
-		workflow.active
+		isActive
 			? '\n- Workflow is active and accessible. Use the production path for live traffic; the test path remains available when listening for test events in the editor. n8n Webhooks nodes do not have information about required request payloads, so ask the user if that cannot be inferred from the workflow.'
 			: '\n- Workflow is not active. Click "Listen for test event" in the editor and use the test path; activate the workflow to make the production path available.'
 	}`;
@@ -124,7 +126,7 @@ export async function getWorkflowDetails(
 	const sanitizedWorkflow: WorkflowDetailsResult['workflow'] = {
 		id: workflow.id,
 		name: workflow.name,
-		active: workflow.active,
+		active: isActive,
 		isArchived: workflow.isArchived,
 		versionId: workflow.versionId,
 		triggerCount: workflow.triggerCount,

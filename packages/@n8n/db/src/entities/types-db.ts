@@ -221,6 +221,7 @@ export namespace ListQueryDb {
 			| 'name'
 			| 'active'
 			| 'versionId'
+			| 'activeVersionId'
 			| 'createdAt'
 			| 'updatedAt'
 			| 'tags'

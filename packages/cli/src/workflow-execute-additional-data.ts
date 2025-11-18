@@ -192,7 +192,7 @@ async function startExecution(
 		name: workflowName,
 		nodes: workflowData.nodes,
 		connections: workflowData.connections,
-		active: workflowData.active,
+		active: workflowData.activeVersionId !== null,
 		nodeTypes,
 		staticData: workflowData.staticData,
 		settings: workflowData.settings,

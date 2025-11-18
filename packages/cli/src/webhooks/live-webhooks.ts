@@ -119,7 +119,7 @@ export class LiveWebhooks implements IWebhookManager {
 			name: workflowData.name,
 			nodes,
 			connections,
-			active: workflowData.active,
+			active: workflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,

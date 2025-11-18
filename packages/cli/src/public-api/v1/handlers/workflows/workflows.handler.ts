@@ -2,7 +2,7 @@ import { GlobalConfig } from '@n8n/config';
 import { WorkflowEntity, ProjectRepository, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, Like, QueryFailedError } from '@n8n/typeorm';
+import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import type express from 'express';
@@ -160,9 +160,17 @@ export = {
 			} = req.query;
 
 			const where: FindOptionsWhere<WorkflowEntity> = {
-				...(active !== undefined && { active }),
 				...(name !== undefined && { name: Like('%' + name.trim() + '%') }),
 			};
+
+			// Filter by active status based on activeVersionId
+			if (active !== undefined) {
+				if (active) {
+					where.activeVersionId = Not(IsNull());
+				} else {
+					where.activeVersionId = IsNull();
+				}
+			}
 
 			if (['global:owner', 'global:admin'].includes(req.user.role.slug)) {
 				if (tags) {
@@ -218,10 +226,11 @@ export = {
 				where.id = In(workflowsIds);
 			}
 
-			const selectFields: (keyof WorkflowEntity)[] = [
+			const selectFields: Array<keyof WorkflowEntity> = [
 				'id',
 				'name',
 				'active',
+				'activeVersionId',
 				'createdAt',
 				'updatedAt',
 				'isArchived',
@@ -300,7 +309,7 @@ export = {
 
 			const workflowManager = Container.get(ActiveWorkflowManager);
 
-			if (workflow.active) {
+			if (workflow.activeVersionId !== null) {
 				// When workflow gets saved always remove it as the triggers could have been
 				// changed and so the changes would not take effect
 				await workflowManager.remove(id);
@@ -329,7 +338,7 @@ export = {
 				}
 			}
 
-			if (workflow.active) {
+			if (workflow.activeVersionId !== null) {
 				try {
 					await workflowManager.add(workflow.id, 'update');
 				} catch (error) {
@@ -375,7 +384,7 @@ export = {
 			const newVersionIsBeingActivated =
 				activeVersionId && activeVersionId !== workflow.activeVersion?.versionId;
 
-			if (!workflow.active || newVersionIsBeingActivated) {
+			if (!workflow.activeVersionId || newVersionIsBeingActivated) {
 				try {
 					// change the status to active in the DB
 					const activeVersion = await setWorkflowAsActive(req.user, workflow.id, activeVersionId);
@@ -384,6 +393,7 @@ export = {
 
 					// Update the workflow object for response
 					workflow.active = true;
+					workflow.activeVersionId = activeVersionId;
 					workflow.activeVersion = activeVersion;
 				} catch (error) {
 					// Rollback: restore previous state
@@ -432,12 +442,15 @@ export = {
 
 			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
-			if (workflow.active) {
+			if (workflow.activeVersionId) {
 				await activeWorkflowManager.remove(workflow.id);
 
 				await setWorkflowAsInactive(workflow.id);
 
+				// Update the workflow object for response
 				workflow.active = false;
+				workflow.activeVersionId = null;
+				workflow.activeVersion = null;
 
 				Container.get(EventService).emit('workflow-deactivated', {
 					user: req.user,

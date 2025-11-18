@@ -144,11 +144,11 @@ export class ActiveWorkflowManager {
 	 */
 	async isActive(workflowId: WorkflowId) {
 		const workflow = await this.workflowRepository.findOne({
-			select: ['active'],
+			select: ['activeVersionId'],
 			where: { id: workflowId },
 		});
 
-		return !!workflow?.active;
+		return !!workflow?.activeVersionId;
 	}
 
 	/**
@@ -268,7 +268,7 @@ export class ActiveWorkflowManager {
 			name: workflowData.name,
 			nodes,
 			connections,
-			active: workflowData.active,
+			active: workflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
@@ -586,7 +586,7 @@ export class ActiveWorkflowManager {
 				});
 			}
 
-			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.active) {
+			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersionId) {
 				this.logger.debug(
 					`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
 					{ workflowId: dbWorkflow.id },
@@ -611,7 +611,7 @@ export class ActiveWorkflowManager {
 				name: dbWorkflow.name,
 				nodes,
 				connections,
-				active: dbWorkflow.active,
+				active: dbWorkflow.activeVersionId !== null,
 				nodeTypes: this.nodeTypes,
 				staticData: dbWorkflow.staticData,
 				settings: dbWorkflow.settings,
@@ -712,7 +712,7 @@ export class ActiveWorkflowManager {
 			const error = ensureError(e);
 			const { message } = error;
 
-			await this.workflowRepository.update(workflowId, { active: false });
+			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
 
 			this.push.broadcast({
 				type: 'workflowFailedToActivate',
