@@ -4,7 +4,7 @@ import { ElDialog } from 'element-plus';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
 import { ref, watch, computed } from 'vue';
 import { useAccessSettingsCsvExport } from '@/features/settings/sso/provisioning/composables/useAccessSettingsCsvExport';
-import type { UserRoleProvisioningSetting } from '../../components/UserRoleProvisioningDropdown.vue';
+import type { UserRoleProvisioningSetting } from './UserRoleProvisioningDropdown.vue';
 
 const visible = defineModel<boolean>();
 

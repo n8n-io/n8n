@@ -11,9 +11,9 @@ import { useMessage } from '@/app/composables/useMessage';
 import { computed, onMounted, ref } from 'vue';
 import UserRoleProvisioningDropdown, {
 	type UserRoleProvisioningSetting,
-} from './UserRoleProvisioningDropdown.vue';
+} from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 import EnableJitProvisioningDialog from '../provisioning/components/EnableJitProvisioningDialog.vue';
-import { useUserRoleProvisioningForm } from './useUserRoleProvisioningForm';
+import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 
 const emit = defineEmits<{
 	submitSuccess: [];

@@ -1,9 +1,9 @@
 import type { Ref } from 'vue';
-import { useUserRoleProvisioningStore } from '../user-role-provisioning.store';
+import { useUserRoleProvisioningStore } from './userRoleProvisioning.store';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT } from '@/app/constants/experiments';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
-import type { UserRoleProvisioningSetting } from './UserRoleProvisioningDropdown.vue';
+import { type UserRoleProvisioningSetting } from '../components/UserRoleProvisioningDropdown.vue';
 
 /**
  * Composable for managing user role provisioning form logic in SSO settings.

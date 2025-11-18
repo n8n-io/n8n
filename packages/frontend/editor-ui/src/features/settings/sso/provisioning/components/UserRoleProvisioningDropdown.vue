@@ -5,7 +5,7 @@ import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 import { onMounted } from 'vue';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { useUserRoleProvisioningStore } from '../user-role-provisioning.store';
+import { useUserRoleProvisioningStore } from '../composables/userRoleProvisioning.store';
 
 export type UserRoleProvisioningSetting =
 	| 'disabled'
