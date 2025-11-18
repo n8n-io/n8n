@@ -802,9 +802,14 @@ export type SchemaType =
 	| 'binary';
 
 export type BinaryMetadata = {
-	[K in (typeof BINARY_METADATA_KEYS)[number]]: K extends 'mimeType' | 'id'
-		? string
-		: string | undefined;
+	[K in (typeof BINARY_METADATA_KEYS)[number] as K extends 'mimeType' | 'id' | 'data'
+		? K
+		: never]: K extends 'mimeType' | 'id' | 'data' ? string : never;
+} & {
+	[K in Exclude<
+		(typeof BINARY_METADATA_KEYS)[number],
+		'mimeType' | 'id' | 'data'
+	>]?: K extends 'bytes' ? number : string;
 };
 
 export type Schema = {
