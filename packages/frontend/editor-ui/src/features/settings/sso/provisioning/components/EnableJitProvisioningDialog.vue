@@ -9,7 +9,9 @@ import type { UserRoleProvisioningSetting } from './UserRoleProvisioningDropdown
 const visible = defineModel<boolean>();
 
 const props = defineProps<{
-	provisioningSetting: UserRoleProvisioningSetting;
+	newProvisioningSetting: UserRoleProvisioningSetting;
+	// TODO: use this to display different text when switching from "instance_role" to "instance_and_project_roles"
+	currentProvisioningSetting: UserRoleProvisioningSetting;
 }>();
 
 const emit = defineEmits<{
@@ -29,9 +31,13 @@ const {
 	accessSettingsCsvExportOnModalClose,
 } = useAccessSettingsCsvExport();
 
-const shouldShowProjectRolesCsv = computed(() => {
-	return props.provisioningSetting === 'instance_and_project_roles';
-});
+const isDisablingProvisioning = computed(() => props.newProvisioningSetting === 'disabled');
+
+const messagingKey = computed(() => (isDisablingProvisioning.value ? 'disable' : 'enable'));
+
+const shouldShowProjectRolesCsv = computed(
+	() => props.newProvisioningSetting === 'instance_and_project_roles',
+);
 
 watch(visible, () => {
 	loadingActivatingJit.value = false;
@@ -56,7 +62,7 @@ const onDownloadProjectRolesCsv = async () => {
 	}
 };
 
-const onConfirmActivatingProvisioning = () => {
+const onConfirmProvisioningSetting = () => {
 	loadingActivatingJit.value = true;
 	emit('confirmProvisioning');
 };
@@ -64,71 +70,119 @@ const onConfirmActivatingProvisioning = () => {
 <template>
 	<ElDialog
 		v-model="visible"
-		:title="locale.baseText('settings.provisioningConfirmDialog.title')"
+		:title="locale.baseText(`settings.provisioningConfirmDialog.${messagingKey}.title`)"
 		width="650"
 	>
-		<div class="mb-s">
-			<N8nText color="text-base">{{
-				locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.firstLine')
-			}}</N8nText>
-		</div>
-		<ul :class="$style.list" class="mb-s">
-			<li>
+		<template v-if="!isDisablingProvisioning">
+			<div class="mb-s">
 				<N8nText color="text-base">{{
-					locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.list.one')
+					locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.firstLine')
 				}}</N8nText>
-			</li>
-			<li>
+			</div>
+			<ul :class="$style.list" class="mb-s">
+				<li>
+					<N8nText color="text-base">{{
+						locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.list.one')
+					}}</N8nText>
+				</li>
+				<li>
+					<N8nText color="text-base">{{
+						locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.list.two')
+					}}</N8nText>
+				</li>
+			</ul>
+			<div class="mb-s">
 				<N8nText color="text-base">{{
-					locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.list.two')
+					locale.baseText('settings.provisioningConfirmDialog.breakingChangeRequiredSteps')
 				}}</N8nText>
-			</li>
-		</ul>
-		<div class="mb-s">
-			<N8nText color="text-base">{{
-				locale.baseText('settings.provisioningConfirmDialog.breakingChangeRequiredSteps')
-			}}</N8nText>
-		</div>
-		<div class="mb-s" :class="$style.buttonRow">
-			<N8nButton
-				type="secondary"
-				native-type="button"
-				data-test-id="provisioning-download-instance-roles-csv-button"
-				:disabled="downloadingInstanceRolesCsv"
-				:loading="downloadingInstanceRolesCsv"
-				:class="$style.button"
-				@click="onDownloadInstanceRolesCsv"
-				>{{
-					locale.baseText('settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv')
-				}}</N8nButton
-			>
-			<N8nIcon
-				v-if="hasDownloadedInstanceRoleCsv"
-				icon="check"
-				color="success"
-				:class="$style.icon"
-			/>
-		</div>
-		<div v-if="shouldShowProjectRolesCsv" class="mb-s" :class="$style.buttonRow">
-			<N8nButton
-				type="secondary"
-				native-type="button"
-				data-test-id="provisioning-download-project-roles-csv-button"
-				:disabled="downloadingProjectRolesCsv"
-				:loading="downloadingProjectRolesCsv"
-				:class="$style.button"
-				@click="onDownloadProjectRolesCsv"
-				>{{
-					locale.baseText('settings.provisioningConfirmDialog.button.downloadProjectRolesCsv')
-				}}</N8nButton
-			>
-			<N8nIcon
-				v-if="hasDownloadedProjectRoleCsv"
-				icon="check"
-				color="success"
-				:class="$style.icon"
-			/>
-		</div>
+			</div>
+			<div class="mb-s" :class="$style.buttonRow">
+				<N8nButton
+					type="secondary"
+					native-type="button"
+					data-test-id="provisioning-download-instance-roles-csv-button"
+					:disabled="downloadingInstanceRolesCsv"
+					:loading="downloadingInstanceRolesCsv"
+					:class="$style.button"
+					@click="onDownloadInstanceRolesCsv"
+					>{{
+						locale.baseText('settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv')
+					}}</N8nButton
+				>
+				<N8nIcon
+					v-if="hasDownloadedInstanceRoleCsv"
+					icon="check"
+					color="success"
+					:class="$style.icon"
+				/>
+			</div>
+			<div v-if="shouldShowProjectRolesCsv" class="mb-s" :class="$style.buttonRow">
+				<N8nButton
+					type="secondary"
+					native-type="button"
+					data-test-id="provisioning-download-project-roles-csv-button"
+					:disabled="downloadingProjectRolesCsv"
+					:loading="downloadingProjectRolesCsv"
+					:class="$style.button"
+					@click="onDownloadProjectRolesCsv"
+					>{{
+						locale.baseText('settings.provisioningConfirmDialog.button.downloadProjectRolesCsv')
+					}}</N8nButton
+				>
+				<N8nIcon
+					v-if="hasDownloadedProjectRoleCsv"
+					icon="check"
+					color="success"
+					:class="$style.icon"
+				/>
+			</div>
+		</template>
+		<template v-else>
+			<div class="mb-s">
+				<N8nText color="text-base">{{
+					locale.baseText('settings.provisioningConfirmDialog.disable.description')
+				}}</N8nText>
+			</div>
+			<div class="mb-s">
+				<N8nText color="text-base">{{
+					locale.baseText('settings.provisioningConfirmDialog.disable.whatWillHappen')
+				}}</N8nText>
+			</div>
+			<ul :class="$style.list" class="mb-s">
+				<li>
+					<N8nText color="text-base">{{
+						locale.baseText('settings.provisioningConfirmDialog.disable.list.one')
+					}}</N8nText>
+				</li>
+				<li>
+					<N8nText color="text-base">{{
+						locale.baseText('settings.provisioningConfirmDialog.disable.list.two')
+					}}</N8nText>
+				</li>
+				<li>
+					<N8nText color="text-base">{{
+						locale.baseText('settings.provisioningConfirmDialog.disable.list.three')
+					}}</N8nText>
+				</li>
+			</ul>
+			<div class="mb-s">
+				<N8nText color="text-base">{{
+					locale.baseText('settings.provisioningConfirmDialog.disable.beforeSaving')
+				}}</N8nText>
+			</div>
+			<ul :class="$style.list" class="mb-s">
+				<li>
+					<N8nText color="text-base">{{
+						locale.baseText('settings.provisioningConfirmDialog.disable.checklist.one')
+					}}</N8nText>
+				</li>
+				<li>
+					<N8nText color="text-base">{{
+						locale.baseText('settings.provisioningConfirmDialog.disable.checklist.two')
+					}}</N8nText>
+				</li>
+			</ul>
+		</template>
 		<template #footer>
 			<N8nButton
 				type="tertiary"
@@ -142,12 +196,14 @@ const onConfirmActivatingProvisioning = () => {
 				native-type="button"
 				:disabled="
 					loadingActivatingJit ||
-					!hasDownloadedInstanceRoleCsv ||
+					(!isDisablingProvisioning && !hasDownloadedInstanceRoleCsv) ||
 					(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv)
 				"
 				data-test-id="provisioning-confirm-button"
-				@click="onConfirmActivatingProvisioning"
-				>{{ locale.baseText('settings.provisioningConfirmDialog.button.confirm') }}</N8nButton
+				@click="onConfirmProvisioningSetting"
+				>{{
+					locale.baseText(`settings.provisioningConfirmDialog.button.${messagingKey}.confirm`)
+				}}</N8nButton
 			>
 		</template>
 	</ElDialog>

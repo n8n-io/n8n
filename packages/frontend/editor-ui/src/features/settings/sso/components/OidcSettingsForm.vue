@@ -33,7 +33,7 @@ const clientSecret = ref('');
 const showUserRoleProvisioningDialog = ref(false);
 const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
 
-const { isUserRoleProvisioningChanged, saveProvisioningConfig } =
+const { currentProvisioningSetting, isUserRoleProvisioningChanged, saveProvisioningConfig } =
 	useUserRoleProvisioningForm(userRoleProvisioning);
 
 type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
@@ -238,7 +238,8 @@ onMounted(async () => {
 		<UserRoleProvisioningDropdown v-model="userRoleProvisioning" />
 		<EnableJitProvisioningDialog
 			v-model="showUserRoleProvisioningDialog"
-			:provisioning-setting="userRoleProvisioning"
+			:new-provisioning-setting="userRoleProvisioning"
+			:current-provisioning-setting="currentProvisioningSetting"
 			@confirm-provisioning="onOidcSettingsSave(true)"
 		/>
 		<div :class="$style.group">
