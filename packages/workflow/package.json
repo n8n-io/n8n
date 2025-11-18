@@ -52,7 +52,7 @@
   "dependencies": {
     "@n8n/errors": "workspace:^",
     "@n8n/tournament": "1.0.6",
-    "ast-types": "0.15.2",
+    "ast-types": "0.16.1",
     "callsites": "catalog:",
     "esprima-next": "5.8.4",
     "form-data": "catalog:",
