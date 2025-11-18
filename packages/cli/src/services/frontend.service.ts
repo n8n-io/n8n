@@ -37,10 +37,7 @@ import {
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
 
-export type PublicEnterpriseSettings = Pick<
-	IEnterpriseSettings,
-	'saml' | 'ldap' | 'oidc' | 'showNonProdBanner'
->;
+export type PublicEnterpriseSettings = Pick<IEnterpriseSettings, 'saml' | 'ldap' | 'oidc'>;
 
 export type PublicFrontendSettings = Pick<
 	FrontendSettings,
@@ -498,7 +495,7 @@ export class FrontendService {
 			banners,
 			previewMode,
 			telemetry,
-			enterprise: { saml, ldap, oidc, showNonProdBanner },
+			enterprise: { saml, ldap, oidc },
 		} = this.getSettings();
 
 		return {
@@ -513,7 +510,7 @@ export class FrontendService {
 			banners,
 			previewMode,
 			telemetry,
-			enterprise: { saml, ldap, oidc, showNonProdBanner },
+			enterprise: { saml, ldap, oidc },
 		};
 	}
 
