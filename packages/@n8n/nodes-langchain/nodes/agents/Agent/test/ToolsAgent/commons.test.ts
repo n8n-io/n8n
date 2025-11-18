@@ -3,7 +3,6 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
-import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { Buffer } from 'buffer';
 import { mock } from 'jest-mock-extended';
 import type { AgentAction, AgentFinish } from 'langchain/agents';
@@ -13,6 +12,8 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
+
+import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 import {
 	getOutputParserSchema,

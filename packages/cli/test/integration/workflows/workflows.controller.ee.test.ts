@@ -361,9 +361,136 @@ describe('GET /workflows/new', () => {
 			await createWorkflow({ name: 'My workflow' }, owner);
 			await createWorkflow({ name: 'My workflow 7' }, owner);
 
-			const response = await authOwnerAgent.get('/workflows/new');
+			const response = await authOwnerAgent.get('/workflows/new').query({
+				projectId: ownerPersonalProject.id,
+			});
 			expect(response.statusCode).toBe(200);
 			expect(response.body.data.name).toEqual('My workflow 8');
+		});
+	});
+
+	test('should return 403 when user does not have workflow:create permission in the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
+		});
+	});
+
+	test('should return 403 when user is not part of the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(anotherMember, teamProject, 'project:admin');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
+		});
+	});
+
+	test('should allow user with workflow:create permission in personal project', async () => {
+		await createWorkflow({ name: 'My workflow' }, member);
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: memberPersonalProject.id,
+			})
+			.expect(200);
+
+		expect(response.body.data.name).toEqual('My workflow 2');
+	});
+
+	test('should allow user with workflow:create permission in team project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:editor');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(200);
+
+		// The naming service generates unique names globally, not per-project
+		expect(response.body.data.name).toBeDefined();
+		expect(typeof response.body.data.name).toBe('string');
+	});
+
+	test('should allow project admin to get new workflow name', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:admin');
+
+		const response = await authMemberAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(200);
+
+		expect(response.body.data.name).toBeDefined();
+	});
+
+	test('should allow instance owner to get new workflow name for any project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(anotherMember, teamProject, 'project:admin');
+
+		const response = await authOwnerAgent
+			.get('/workflows/new')
+			.query({
+				projectId: teamProject.id,
+			})
+			.expect(200);
+
+		expect(response.body.data.name).toBeDefined();
+	});
+});
+
+describe('GET /workflows/from-url', () => {
+	test('should return 403 when user does not have workflow:create permission in the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(member, teamProject, 'project:viewer');
+
+		const response = await authMemberAgent
+			.get('/workflows/from-url')
+			.query({
+				url: 'https://example.com/workflow.json',
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
+		});
+	});
+
+	test('should return 403 when user is not part of the project', async () => {
+		const teamProject = await createTeamProject();
+		await linkUserToProject(anotherMember, teamProject, 'project:admin');
+
+		const response = await authMemberAgent
+			.get('/workflows/from-url')
+			.query({
+				url: 'https://example.com/workflow.json',
+				projectId: teamProject.id,
+			})
+			.expect(403);
+
+		expect(response.body).toMatchObject({
+			message: "You don't have the permissions to create a workflow in this project.",
 		});
 	});
 });

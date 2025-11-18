@@ -199,6 +199,8 @@ describe('GlobalConfig', () => {
 				includeQueueMetrics: false,
 				queueMetricsInterval: 20,
 				activeWorkflowCountInterval: 60,
+				includeWorkflowStatistics: false,
+				workflowStatisticsInterval: 300,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -317,6 +319,7 @@ describe('GlobalConfig', () => {
 			disableWebhookHtmlSandboxing: false,
 			disableBareRepos: false,
 			awsSystemCredentialsAccess: false,
+			enableGitNodeHooks: false,
 		},
 		executions: {
 			mode: 'regular',
