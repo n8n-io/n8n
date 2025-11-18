@@ -853,17 +853,18 @@ export function useWorkflowHelpers() {
 
 		if (active !== undefined) {
 			data.active = active;
+			data.activeVersionId = active ? workflowsStore.workflowVersionId : null;
 		}
 
 		const workflow = await workflowsStore.updateWorkflow(workflowId, data);
 		workflowsStore.setWorkflowVersionId(workflow.versionId);
 
 		if (isCurrentWorkflow) {
-			workflowState.setActive(!!workflow.active);
+			workflowState.setActive(workflow.activeVersionId);
 			uiStore.stateIsDirty = false;
 		}
 
-		if (workflow.active) {
+		if (workflow.activeVersionId !== null) {
 			workflowsStore.setWorkflowActive(workflowId);
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
@@ -949,7 +950,7 @@ export function useWorkflowHelpers() {
 
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
-		workflowState.setActive(workflowData.active || false);
+		workflowState.setActive(workflowData.activeVersionId);
 		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
 		workflowState.setWorkflowId(workflowData.id);
