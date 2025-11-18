@@ -12,6 +12,9 @@ import { tmpdir } from 'os';
 import { join } from 'path';
 import { Readable } from 'stream';
 
+import type { BinaryDataConfig } from '@/binary-data';
+import { BinaryDataService } from '@/binary-data/binary-data.service';
+
 import {
 	assertBinaryData,
 	binaryToString,
@@ -22,9 +25,6 @@ import {
 	prepareBinaryData,
 	setBinaryDataBuffer,
 } from '../binary-helper-functions';
-
-import type { BinaryDataConfig } from '@/binary-data';
-import { BinaryDataService } from '@/binary-data/binary-data.service';
 
 const workflowId = 'workflow123';
 const executionId = 'execution456';
