@@ -32,7 +32,7 @@ jobs:
       - name: Check for changes
         id: check-changes
         run: |
-          if git diff --quiet packages/frontend/editor-ui/.build/node-popularity.json; then
+          if git diff --quiet packages/frontend/editor-ui/data/node-popularity.json; then
             echo "No changes to popularity data"
             echo "has_changes=false" >> "$GITHUB_OUTPUT"
           else
