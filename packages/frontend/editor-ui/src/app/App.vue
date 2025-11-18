@@ -79,7 +79,6 @@ useTelemetryContext({ ndv_source: computed(() => ndvStore.lastSetActiveNodeSourc
 
 onMounted(async () => {
 	setAppZIndexes();
-	logHiringBanner();
 	loading.value = false;
 	window.addEventListener('resize', updateGridWidth);
 	await updateGridWidth();
@@ -94,12 +93,6 @@ watch(showCommandBar, (newVal) => {
 onBeforeUnmount(() => {
 	window.removeEventListener('resize', updateGridWidth);
 });
-
-const logHiringBanner = () => {
-	if (settingsStore.isHiringBannerEnabled && !isDemoMode.value) {
-		console.log(HIRING_BANNER);
-	}
-};
 
 const updateGridWidth = async () => {
 	await nextTick();
