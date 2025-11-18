@@ -74,7 +74,7 @@ export function useWorkflowResourcesLocator(router: Router) {
 			currentPage.value,
 			PAGE_SIZE,
 			'updatedAt:desc',
-			searchFilter.value ? { query: searchFilter.value } : undefined,
+			{ active: true, ...(searchFilter.value ? { query: searchFilter.value } : {}) },
 		);
 		totalCount.value = workflowsStore.totalWorkflowCount;
 
