@@ -128,6 +128,25 @@ const menu = computed(() => {
 		if (settings && !settings.enabled) continue;
 
 		const theAgents = agents.value[provider].models;
+
+		// Add any manually defined models in settings
+		if (settings && settings.limitModels) {
+			for (const model of settings.allowedModels) {
+				if (model.isManual) {
+					theAgents.push({
+						name: model.displayName,
+						description: '',
+						model: {
+							provider,
+							model: model.model,
+						},
+						createdAt: '',
+						updatedAt: null,
+					});
+				}
+			}
+		}
+
 		const error = agents.value[provider].error;
 		const agentOptions =
 			theAgents.length > 0

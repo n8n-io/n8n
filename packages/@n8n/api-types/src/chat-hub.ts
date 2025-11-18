@@ -300,6 +300,7 @@ const chatProviderSettingsSchema = z.object({
 		z.object({
 			displayName: z.string(),
 			model: z.string(),
+			isManual: z.boolean().optional(),
 		}),
 	),
 	createdAt: z.string(),

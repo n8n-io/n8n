@@ -22,6 +22,10 @@ import CredentialPicker from '@/features/credentials/components/CredentialPicker
 import TagsDropdown from '@/features/shared/tags/components/TagsDropdown.vue';
 import { type ITag } from '@n8n/rest-api-client';
 
+interface IModel extends ITag {
+	isManual?: boolean;
+}
+
 const props = defineProps<{
 	modalName: string;
 	data: {
@@ -37,9 +41,10 @@ const modalBus = ref(createEventBus());
 const loadingSettings = ref(false);
 const loadingModels = ref(false);
 const availableModels = ref<ChatModelDto[]>([]);
+const customModels = ref<string[]>([]);
 
-const allModels = computed<ITag[]>(() => {
-	const models = new Map(
+const allModels = computed<IModel[]>(() => {
+	const models: Map<string, IModel> = new Map(
 		availableModels.value
 			.filter((model) => model.model.provider !== 'custom-agent' && model.model.provider !== 'n8n')
 			.map((model) => [
@@ -51,21 +56,19 @@ const allModels = computed<ITag[]>(() => {
 			]),
 	);
 
-	// Ensure any custom selected models are also included
-	if (settings.value?.allowedModels) {
-		for (const allowed of settings.value.allowedModels) {
-			models.set(allowed.model, {
-				id: allowed.model,
-				name: allowed.model,
-			});
-		}
+	for (const model of customModels.value) {
+		models.set(model, {
+			id: model,
+			name: model,
+			isManual: true,
+		});
 	}
 
 	return Array.from(models.values());
 });
 
-const modelsById = computed<Record<string, ITag>>(() => {
-	const map: Record<string, ITag> = {};
+const modelsById = computed<Record<string, IModel>>(() => {
+	const map: Record<string, IModel> = {};
 	allModels.value.forEach((model) => {
 		map[model.id] = model;
 	});
@@ -82,28 +85,18 @@ const selectedModels = computed({
 				.map((model) => ({
 					model: model.id,
 					displayName: model.name,
+					isManual: model.isManual,
 				}));
+
+			customModels.value = settings.value.allowedModels
+				.filter((model) => model.isManual)
+				.map((model) => model.model);
 		}
 	},
 });
 
-// TODO: While we're able to support creating new models here
-// this won't make them available in the model selector at the momenst,
-// as the models list is fetched from the backend based on credentials.
-// We should somehow track that these are custom manually defined models
-// and they should always be shown...
-async function createModel(name: string): Promise<ITag> {
-	availableModels.value.push({
-		name,
-		model: {
-			provider: props.data.provider,
-			model: name,
-		} satisfies ChatHubBaseLLMModel,
-		description: '',
-		updatedAt: new Date().toISOString(),
-		createdAt: new Date().toISOString(),
-	});
-
+async function addManualModel(name: string): Promise<IModel> {
+	customModels.value.push(name);
 	return {
 		id: name,
 		name,
@@ -148,6 +141,11 @@ function onCancel() {
 
 async function loadSettings() {
 	settings.value = await chatStore.fetchProviderSettings(props.data.provider);
+	if (settings.value.allowedModels) {
+		customModels.value = settings.value.allowedModels
+			.filter((model) => model.isManual)
+			.map((model) => model.model);
+	}
 }
 
 async function loadAvailableModels(credentialId: string) {
@@ -300,7 +298,7 @@ watch(
 						:all-tags="allModels"
 						:is-loading="loadingModels"
 						:tags-by-id="modelsById"
-						:create-tag="createModel"
+						:create-tag="addManualModel"
 						:create-tag-i18n-key="'settings.chatHub.providers.modal.edit.models.create'"
 					/>
 				</div>
