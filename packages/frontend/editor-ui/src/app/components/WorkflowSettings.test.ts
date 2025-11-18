@@ -12,6 +12,15 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 
+const toast = {
+	showMessage: vi.fn(),
+	showError: vi.fn(),
+};
+
+vi.mock('@/app/composables/useToast', () => ({
+	useToast: () => toast,
+}));
+
 vi.mock('vue-router', async () => ({
 	useRouter: vi.fn(),
 	useRoute: () =>
@@ -295,5 +304,133 @@ describe('WorkflowSettingsVue', () => {
 
 		expect(timeSavedPerExecutionInput).toBeVisible();
 		expect(timeSavedPerExecutionInput).toBeDisabled();
+	});
+
+	describe('binaryMode dropdown', () => {
+		it('should render binary mode dropdown with correct options', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('workflow-settings-binary-mode'));
+
+			expect(dropdownItems).toHaveLength(2);
+			expect(dropdownItems[0]).toHaveTextContent('separate');
+			expect(dropdownItems[1]).toHaveTextContent('combined');
+		});
+
+		it('should show warning toast when binary mode is changed', async () => {
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('workflow-settings-binary-mode'));
+			await userEvent.click(dropdownItems[1]);
+
+			await waitFor(() => {
+				expect(toast.showMessage).toHaveBeenCalledWith({
+					title: 'Binary mode changed',
+					message:
+						'Please update expressions that reference binary data to match the new binary mode.',
+					type: 'warning',
+					duration: 0,
+				});
+			});
+		});
+
+		it('should save binary mode correctly when changed to combined', async () => {
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('workflow-settings-binary-mode'));
+			await userEvent.click(dropdownItems[1]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ settings: expect.objectContaining({ binaryMode: 'combined' }) }),
+			);
+		});
+
+		it('should save binary mode correctly when changed to separate', async () => {
+			workflowsStore.workflowSettings.binaryMode = 'combined';
+
+			const { getByTestId, getByRole } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('workflow-settings-binary-mode'));
+			await userEvent.click(dropdownItems[0]);
+
+			await userEvent.click(getByRole('button', { name: 'Save' }));
+
+			expect(workflowsStore.updateWorkflow).toHaveBeenCalledWith(
+				expect.any(String),
+				expect.objectContaining({ settings: expect.objectContaining({ binaryMode: 'separate' }) }),
+			);
+		});
+
+		it('should disable binary mode dropdown if env is read-only', async () => {
+			sourceControlStore.preferences.branchReadOnly = true;
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const binaryModeDropdown = within(getByTestId('workflow-settings-binary-mode')).getByRole(
+				'combobox',
+			);
+
+			expect(binaryModeDropdown).toBeDisabled();
+		});
+
+		it('should disable binary mode dropdown if user has no permission to update workflow', async () => {
+			workflowsStore.getWorkflowById.mockImplementation(() => ({
+				id: '1',
+				name: 'Test Workflow',
+				active: true,
+				isArchived: false,
+				nodes: [],
+				connections: {},
+				createdAt: 1,
+				updatedAt: 1,
+				versionId: '123',
+				scopes: ['workflow:read'],
+			}));
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const binaryModeDropdown = within(getByTestId('workflow-settings-binary-mode')).getByRole(
+				'combobox',
+			);
+
+			expect(binaryModeDropdown).toBeDisabled();
+		});
+
+		it('should default to separate mode when binaryMode is undefined', async () => {
+			workflowsStore.workflowSettings = {
+				executionOrder: 'v0',
+			};
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const binaryModeDropdown = within(getByTestId('workflow-settings-binary-mode')).getByRole(
+				'combobox',
+			);
+
+			await waitFor(() => {
+				expect(binaryModeDropdown).toHaveValue('separate');
+			});
+		});
+
+		it('should preserve existing binaryMode value', async () => {
+			workflowsStore.workflowSettings.binaryMode = 'combined';
+
+			const { getByTestId } = createComponent({ pinia });
+			await nextTick();
+
+			const dropdownItems = await getDropdownItems(getByTestId('workflow-settings-binary-mode'));
+
+			expect(dropdownItems[1]).toHaveTextContent('combined');
+		});
 	});
 });
