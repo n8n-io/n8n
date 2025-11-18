@@ -226,7 +226,7 @@ export class LmChatTruefoundry implements INodeType {
 		const options = this.getNodeParameter('options', itemIndex, {}) as {
 			frequencyPenalty?: number;
 			maxTokens?: number;
-			presencePpenalty?: number;
+			presencePenalty?: number;
 			temperature?: number;
 			topP?: number;
 			timeout?: number;
