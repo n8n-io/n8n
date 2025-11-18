@@ -20,13 +20,12 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 				columnName: 'versionId',
 				onDelete: 'CASCADE',
 			})
-			.withUniqueConstraintOn(['workflowId', 'versionId', 'updatedAt'])
 			.withIndexOn(['workflowId', 'versionId']);
 
 		const workflowEntityTableName = escape.tableName('workflow_entity');
 
 		const activeWorkflows = await runQuery<Array<{ id: string; versionId: string }>>(
-			`SELECT we.id, we.versionId FROM ${workflowEntityTableName} we WHERE we.active;`,
+			`SELECT we.id, we.versionId FROM ${workflowEntityTableName} we WHERE we.activeVersionId <> null;`,
 		);
 		console.log(activeWorkflows);
 
