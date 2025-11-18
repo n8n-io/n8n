@@ -114,6 +114,7 @@ import { AddWorkflowDescriptionColumn1762177736257 } from '../common/17621777362
 import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/1762763704614-BackfillMissingWorkflowHistoryRecords';
 import { AddWorkflowHistoryAutoSaveFields1762847206508 } from '../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
 import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-AddActiveVersionIdColumn';
+import { ActivateExecuteWorkflowTriggerWorkflows1763048000000 } from '../common/1763048000000-ActivateExecuteWorkflowTriggerWorkflows';
 import type { Migration } from '../migration-types';
 
 export const mysqlMigrations: Migration[] = [
@@ -233,4 +234,5 @@ export const mysqlMigrations: Migration[] = [
 	AddWorkflowHistoryAutoSaveFields1762847206508,
 	AddToolsColumnToChatHubTables1761830340990,
 	AddActiveVersionIdColumn1763047800000,
+	ActivateExecuteWorkflowTriggerWorkflows1763048000000,
 ];
