@@ -675,7 +675,7 @@ function onFilesDropped(files: File[]) {
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	background-color: rgba(255, 255, 255, 0.95);
+	background-color: color-mix(in srgb, var(--color--background--light-2) 95%, transparent);
 	pointer-events: none;
 }
 </style>
