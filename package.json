@@ -10,7 +10,7 @@
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "preinstall": "node scripts/block-npm-install.js",
-    "build": "turbo run build",
+    "build": "turbo run build --filter=n8n --filter=n8n-core --filter=n8n-workflow --filter=n8n-nodes-base --filter=@n8n/utils --filter=@n8n/decorators --filter=@n8n/api-types --filter=@n8n/backend-common --filter=@n8n/errors --filter=@n8n/db --filter=@n8n/config --filter=@n8n/constants --filter=@n8n/permissions --filter=@n8n/di --filter=!@n8n/composables",
     "build:n8n": "node scripts/build-n8n.mjs",
     "build:deploy": "node scripts/build-n8n.mjs",
     "build:docker": "node scripts/build-n8n.mjs && node scripts/dockerize-n8n.mjs",
