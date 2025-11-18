@@ -3,7 +3,7 @@ import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages
 import type { ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import type { MemorySaver } from '@langchain/langgraph';
+import type { MemorySaver, StateSnapshot } from '@langchain/langgraph';
 import { StateGraph, END, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import {
@@ -39,6 +39,13 @@ import { createStreamProcessor, type BuilderTool } from './utils/stream-processo
 import { estimateTokenCountFromMessages } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
+
+/**
+ * Type for the state snapshot with properly typed values
+ */
+export type TypedStateSnapshot = Omit<StateSnapshot, 'values'> & {
+	values: typeof WorkflowState.State;
+};
 
 /**
  * Determines which node to execute next based on the current state.
@@ -385,12 +392,13 @@ export class WorkflowBuilderAgent {
 		return workflow;
 	}
 
-	async getState(workflowId: string, userId?: string) {
+	async getState(workflowId?: string, userId?: string): Promise<TypedStateSnapshot> {
 		const workflow = this.createWorkflow();
 		const agent = workflow.compile({ checkpointer: this.checkpointer });
-		return await agent.getState({
-			configurable: { thread_id: `workflow-${workflowId}-user-${userId ?? new Date().getTime()}` },
-		});
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+		return (await agent.getState({
+			configurable: { thread_id: threadId },
+		})) as TypedStateSnapshot;
 	}
 
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {
