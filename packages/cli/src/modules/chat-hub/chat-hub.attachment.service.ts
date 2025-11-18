@@ -5,7 +5,6 @@ import { BinaryDataService, FileLocation } from 'n8n-core';
 import { Not, IsNull } from '@n8n/typeorm';
 import { ChatHubMessageRepository } from './chat-message.repository';
 import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-types';
-import type { ChatHubMessage } from './chat-hub-message.entity';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type Stream from 'node:stream';
