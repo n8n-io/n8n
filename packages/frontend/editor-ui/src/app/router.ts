@@ -16,7 +16,6 @@ import {
 	VIEWS,
 	EDITABLE_CANVAS_VIEWS,
 	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT,
-	MIGRATION_REPORT_EXPERIMENT,
 } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
@@ -580,14 +579,10 @@ export const routes: RouteRecordRaw[] = [
 					},
 				],
 				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
 							scope: ['breakingChanges:list'],
-						},
-						custom: () => {
-							const posthogStore = usePostHog();
-							return posthogStore.isFeatureEnabled(MIGRATION_REPORT_EXPERIMENT.name);
 						},
 					},
 					telemetry: {
