@@ -244,13 +244,13 @@ export class LmChatTruefoundry implements INodeType {
 
 		// Add TrueFoundry metadata header with user email
 		const userEmail = this.evaluateExpression(
-			'={{ JSON.stringify({"x-n8n-user": $json.metadata.user.email}) }}',
+			'{{ JSON.stringify({"x-n8n-user": $json.metadata.user.email}) }}',
 			itemIndex,
 		) as string;
 
-		if (userEmail && userEmail.startsWith('={')) {
+		if (userEmail && userEmail.startsWith('{')) {
 			configuration.defaultHeaders = {
-				'X-TFY-METADATA': userEmail.substring(1),
+				'X-TFY-METADATA': userEmail,
 			};
 		}
 
