@@ -226,7 +226,7 @@ watch(
 
 					<N8nTooltip
 						:content="i18n.baseText('settings.chatHub.providers.modal.edit.enabled.tooltip')"
-						:disabled="!props.data.disabled"
+						:disabled="props.data.disabled"
 						placement="top"
 					>
 						<ElSwitch
@@ -266,7 +266,7 @@ watch(
 					<div :class="$style.toggle">
 						<N8nTooltip
 							:content="i18n.baseText('settings.chatHub.providers.modal.edit.limitModels.tooltip')"
-							:disabled="!props.data.disabled"
+							:disabled="props.data.disabled"
 							placement="top"
 						>
 							<ElSwitch
