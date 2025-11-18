@@ -1,9 +1,3 @@
-import {
-	promptTypeOptions,
-	textFromGuardrailsNode,
-	textFromPreviousNode,
-	textInput,
-} from '@utils/descriptions';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,
@@ -14,6 +8,13 @@ import type {
 	EngineResponse,
 	EngineRequest,
 } from 'n8n-workflow';
+
+import {
+	promptTypeOptions,
+	textFromGuardrailsNode,
+	textFromPreviousNode,
+	textInput,
+} from '@utils/descriptions';
 
 import { toolsAgentProperties } from '../agents/ToolsAgent/V3/description';
 import type { RequestResponseMetadata } from '../agents/ToolsAgent/V3/execute';

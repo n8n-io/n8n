@@ -33,7 +33,7 @@ test.describe('Data pinning', () => {
 
 	test.describe('Pin data operations', () => {
 		test('should be able to pin node output', async ({ n8n }) => {
-			await n8n.workflows.addResource.workflow();
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 			await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 
 			await n8n.ndv.execute();
@@ -52,7 +52,7 @@ test.describe('Data pinning', () => {
 		});
 
 		test('should be able to set custom pinned data', async ({ n8n }) => {
-			await n8n.workflows.addResource.workflow();
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 			await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 
 			await expect(n8n.ndv.getEditPinnedDataButton()).toBeVisible();
@@ -74,7 +74,7 @@ test.describe('Data pinning', () => {
 		});
 
 		test('should display pin data edit button for Webhook node', async ({ n8n }) => {
-			await n8n.workflows.addResource.workflow();
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 			await n8n.canvas.addNode(NODES.WEBHOOK);
 
 			const runDataHeader = n8n.ndv.getRunDataPaneHeader();
@@ -83,7 +83,7 @@ test.describe('Data pinning', () => {
 		});
 
 		test('should duplicate pinned data when duplicating node', async ({ n8n }) => {
-			await n8n.workflows.addResource.workflow();
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 			await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 			await n8n.ndv.close();
 
@@ -117,7 +117,7 @@ test.describe('Data pinning', () => {
 			});
 			expect(actualMaxSize).toBe(maxPinnedDataSize);
 
-			await n8n.workflows.addResource.workflow();
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 			await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 			await n8n.ndv.close();
 
@@ -138,7 +138,7 @@ test.describe('Data pinning', () => {
 		});
 
 		test('should show error when pin data JSON is invalid', async ({ n8n }) => {
-			await n8n.workflows.addResource.workflow();
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 			await n8n.canvas.addNode(NODES.SCHEDULE_TRIGGER);
 			await n8n.ndv.close();
 
@@ -158,7 +158,7 @@ test.describe('Data pinning', () => {
 
 	test.describe('Advanced pinning scenarios', () => {
 		test('should be able to reference paired items in node before pinned data', async ({ n8n }) => {
-			await n8n.workflows.addResource.workflow();
+			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 			await n8n.canvas.addNode(NODES.MANUAL_TRIGGER);
 
 			await n8n.canvas.addNode(NODES.HTTP_REQUEST);

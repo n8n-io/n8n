@@ -147,6 +147,7 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
+      - N8N_METRICS=true
     volumes:
       - ${RUN_DIR}/n8n-main2:/n8n
     depends_on:
@@ -184,6 +185,7 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
+      - N8N_METRICS=true
     volumes:
       - ${RUN_DIR}/n8n-main1:/n8n
     depends_on:
@@ -225,3 +227,4 @@ services:
       - K6_API_TOKEN=${K6_API_TOKEN}
       - BENCHMARK_RESULT_WEBHOOK_URL=${BENCHMARK_RESULT_WEBHOOK_URL}
       - BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER=${BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER}
+      - COLLECT_APP_METRICS=true

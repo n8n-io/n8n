@@ -17,7 +17,6 @@ import type {
 	INodeExecutionData,
 	INodeParameters,
 	IPairedItemData,
-	IRunExecutionData,
 	ISourceData,
 	ITaskData,
 	IWorkflowDataProxyAdditionalKeys,
@@ -29,6 +28,7 @@ import type {
 } from './interfaces';
 import * as NodeHelpers from './node-helpers';
 import { createResultError, createResultOk } from './result';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import { isResourceLocatorValue } from './type-guards';
 import { deepCopy, isObjectEmpty } from './utils';
 import type { Workflow } from './workflow';
