@@ -43,7 +43,6 @@ export type PublicFrontendSettings = Pick<
 	FrontendSettings,
 	| 'settingsMode'
 	| 'instanceId'
-	| 'defaultLocale'
 	| 'versionCli'
 	| 'userManagement'
 	| 'sso'
@@ -486,7 +485,6 @@ export class FrontendService {
 		// Get full settings to ensure all required properties are initialized
 		const {
 			instanceId,
-			defaultLocale,
 			versionCli,
 			userManagement,
 			sso,
@@ -501,7 +499,6 @@ export class FrontendService {
 		return {
 			settingsMode: 'public',
 			instanceId,
-			defaultLocale,
 			versionCli,
 			userManagement,
 			sso,
