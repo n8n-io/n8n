@@ -1,10 +1,9 @@
 import { createPinia, setActivePinia } from 'pinia';
 import { createComponentRenderer } from '@/__tests__/render';
 import router from '@/app/router';
-import { SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT, VIEWS } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/app/stores/settings.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
