@@ -345,6 +345,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				allowFileUploads: true,
 			})),
 		};
 	}
