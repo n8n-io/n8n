@@ -18,7 +18,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
 } from 'n8n-workflow';
-import { SubworkflowOperationError, Workflow } from 'n8n-workflow';
+import { SubworkflowOperationError, Workflow, createRunExecutionData } from 'n8n-workflow';
 
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -62,19 +62,11 @@ export class WorkflowExecutionService {
 			},
 		];
 
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
+		const executionData = createRunExecutionData({
 			executionData: {
-				contextData: {},
-				metadata: {},
 				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
-		};
+		});
 
 		// Start the workflow
 		const runData: IWorkflowExecutionDataProcess = {
@@ -197,6 +189,10 @@ export class WorkflowExecutionService {
 			data.startNodes = [{ name: pinnedTrigger.name, sourceData: null }];
 		}
 
+		const offloadingManualExecutionsInQueueMode =
+			this.globalConfig.executions.mode === 'queue' &&
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+
 		/**
 		 * Historically, manual executions in scaling mode ran in the main process,
 		 * so some execution details were never persisted in the database.
@@ -204,26 +200,32 @@ export class WorkflowExecutionService {
 		 * Currently, manual executions in scaling mode are offloaded to workers,
 		 * so we persist all details to give workers full access to them.
 		 */
-		if (
-			this.globalConfig.executions.mode === 'queue' &&
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true'
-		) {
-			data.executionData = {
+		if (offloadingManualExecutionsInQueueMode) {
+			data.executionData = createRunExecutionData({
 				startData: {
 					startNodes: data.startNodes,
 					destinationNode,
 				},
 				resultData: {
 					pinData,
-					// @ts-expect-error CAT-752
-					runData,
+					// If `runData` is initialized to an empty object the execution will
+					// be treated like a partial manual execution instead of a full
+					// manual execution.
+					// So we have to set this to null to instruct
+					// `createRunExecutionData` to not initialize it.
+					runData: runData ?? null,
 				},
 				manualData: {
 					userId: data.userId,
 					dirtyNodeNames,
 					triggerToStartFrom,
 				},
-			};
+				// If `executionData` is initialized the execution will be treated like
+				// a resumed execution after waiting, instead of a manual execution.
+				// So we have to set this to null to instruct `createRunExecutionData`
+				// to not initialize it.
+				executionData: null,
+			});
 		}
 
 		const executionId = await this.workflowRunner.run(data);
@@ -378,19 +380,11 @@ export class WorkflowExecutionService {
 				}),
 			});
 
-			const runExecutionData: IRunExecutionData = {
-				startData: {},
-				resultData: {
-					runData: {},
-				},
+			const runExecutionData = createRunExecutionData({
 				executionData: {
-					contextData: {},
-					metadata: {},
 					nodeExecutionStack,
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const runData: IWorkflowExecutionDataProcess = {
 				executionMode,

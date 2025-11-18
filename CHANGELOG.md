@@ -1,4 +1,4 @@
-# [1.121.0](https://github.com/n8n-io/n8n/compare/n8n@1.120.0...n8n@1.121.0) (2025-11-17)
+# [1.121.0](https://github.com/n8n-io/n8n/compare/n8n@1.120.0...n8n@1.121.0) (2025-11-18)
 
 
 ### Bug Fixes
@@ -21,6 +21,7 @@
 * **editor:** Provide better output for subnode execution errors ([#21714](https://github.com/n8n-io/n8n/issues/21714)) ([5b2d15e](https://github.com/n8n-io/n8n/commit/5b2d15e78ddf3f62f221da4fc00ceade5cda7ae3))
 * **editor:** Refresh insights weekly summary when entering any of the /home routes ([#21859](https://github.com/n8n-io/n8n/issues/21859)) ([c3e6439](https://github.com/n8n-io/n8n/commit/c3e6439303a989e85edfd7745970db7bf20d87dc))
 * **editor:** Small UI tweaks for data size warnings ([#21693](https://github.com/n8n-io/n8n/issues/21693)) ([f9404ec](https://github.com/n8n-io/n8n/commit/f9404ecb61f3c623e56fc3eee6cf9010856f50e2))
+* **editor:** Take user back to correct project after archive/delete ([#21940](https://github.com/n8n-io/n8n/issues/21940)) ([9ddedb0](https://github.com/n8n-io/n8n/commit/9ddedb03dfa2c096c4fb84400a1871dadc0f9987))
 * **editor:** Workflow tags style issue ([#21697](https://github.com/n8n-io/n8n/issues/21697)) ([af7417b](https://github.com/n8n-io/n8n/commit/af7417b88ea1ad239f3f939221af5709455fc252))
 * **Embeddings Azure OpenAi Node:** Add proxy agent ([#18663](https://github.com/n8n-io/n8n/issues/18663)) ([0ab07f0](https://github.com/n8n-io/n8n/commit/0ab07f04788e9d4f82516939da7e83d3b3dbef44))
 * Enable respond to chat node as tool ([#21253](https://github.com/n8n-io/n8n/issues/21253)) ([49eebcf](https://github.com/n8n-io/n8n/commit/49eebcf9292675f14a481747e0a0af5d9eed1947))
@@ -43,6 +44,8 @@
 ### Features
 
 * **ai-builder:** Updating prompt suggestions for the workflow builder ([#21690](https://github.com/n8n-io/n8n/issues/21690)) ([72dfa55](https://github.com/n8n-io/n8n/commit/72dfa553a1aa378953a6823f2dd237c144f9baf5))
+* **Airtop Node:** Add support for airtop agents ([#21624](https://github.com/n8n-io/n8n/issues/21624)) ([6d30615](https://github.com/n8n-io/n8n/commit/6d30615a4c1eaf7af4c8ae2796e061b1dafa4e9b))
+* **Azure AI Search API Node:** Add Azure AI Search Vector Store Node (v2) ([#21892](https://github.com/n8n-io/n8n/issues/21892)) ([9c11c3f](https://github.com/n8n-io/n8n/commit/9c11c3f71ef9dbfb49a26386a359960ce22a376a))
 * Block invite acceptance on SSO systems ([#21830](https://github.com/n8n-io/n8n/issues/21830)) ([f73eba7](https://github.com/n8n-io/n8n/commit/f73eba7c86fdaa2cbef5cde6282b7e310ce4d02f))
 * **core:** Add ACR parameter to OIDC settings ([#20974](https://github.com/n8n-io/n8n/issues/20974)) ([bc61f94](https://github.com/n8n-io/n8n/commit/bc61f94274bef8f4f64c5d014bedef690d218a84))
 * **core:** Enable workflow history to all users ([#21240](https://github.com/n8n-io/n8n/issues/21240)) ([e3267b2](https://github.com/n8n-io/n8n/commit/e3267b257ab8ff9ee4c5fc85638eb1d771514a71))
@@ -50,6 +53,7 @@
 * **core:** Improve workflows text search ([#21738](https://github.com/n8n-io/n8n/issues/21738)) ([35488e7](https://github.com/n8n-io/n8n/commit/35488e7acc99b0aa8e25b3b499a3cb7d22c9ae5d))
 * **core:** Return WWW-Authenticate header in `/mcp-server/http` endpoint ([#21686](https://github.com/n8n-io/n8n/issues/21686)) ([8ed3486](https://github.com/n8n-io/n8n/commit/8ed34862bb6304d0434c0c90155f8fcc1f3c8abd))
 * Disable user invites on SSO systems ([#21806](https://github.com/n8n-io/n8n/issues/21806)) ([3cdfff7](https://github.com/n8n-io/n8n/commit/3cdfff7e6cbbc82111dda0303b7a7a1d8b111c28))
+* **editor:** Add missing doc url from backend response. remove feature flag ([#21936](https://github.com/n8n-io/n8n/issues/21936)) ([8e5e596](https://github.com/n8n-io/n8n/commit/8e5e5965b1129eb37cc5144d1617377a26d04fc7))
 * **editor:** Auto-select operator type when drag and dropping values ([#21260](https://github.com/n8n-io/n8n/issues/21260)) ([707da6c](https://github.com/n8n-io/n8n/commit/707da6cab5486a25c8249f9fc226b5186a3fe49d))
 * **editor:** Create breaking change audit page ([#21633](https://github.com/n8n-io/n8n/issues/21633)) ([2e27198](https://github.com/n8n-io/n8n/commit/2e27198c96edadb43900c2f719370e6a48c05e17))
 * **editor:** Global row search on data table details view ([#21447](https://github.com/n8n-io/n8n/issues/21447)) ([95ab79f](https://github.com/n8n-io/n8n/commit/95ab79f3f8b1c72d8399c93e19bd6df35d859251))
@@ -58,6 +62,7 @@
 * **MCP Client Tool Node:** Add multiple headers authentication option ([#21435](https://github.com/n8n-io/n8n/issues/21435)) ([2a623ea](https://github.com/n8n-io/n8n/commit/2a623eacf32136deeaf4e6e04c571f889ed9dbf8))
 * Prevent ldap email based account when there are deplicate emails ([#21745](https://github.com/n8n-io/n8n/issues/21745)) ([b3af602](https://github.com/n8n-io/n8n/commit/b3af602ed08e11591e17597183cca9c2ab1ff37c))
 * Support custom encryption keys for imports / exports ([#21863](https://github.com/n8n-io/n8n/issues/21863)) ([040dcdb](https://github.com/n8n-io/n8n/commit/040dcdbfc97459c28407b32a44c0c81425f81ba0))
+* Update upgrade wording for variables ([#21939](https://github.com/n8n-io/n8n/issues/21939)) ([e0e15bf](https://github.com/n8n-io/n8n/commit/e0e15bf444045d40739ace9ba8cc6d179eb02b17))
 
 
 
