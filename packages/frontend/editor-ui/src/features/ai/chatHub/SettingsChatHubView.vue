@@ -93,7 +93,9 @@ onMounted(async () => {
 </script>
 <template>
 	<div :class="$style.container">
-		<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.chatHub') }}</N8nHeading>
+		<N8nHeading size="2xlarge" :class="$style.title">
+			{{ i18n.baseText('settings.chatHub') }}
+		</N8nHeading>
 		<div :class="$style.container">
 			<ChatProvidersTable
 				:data-test-id="'chat-providers-table'"
@@ -112,5 +114,9 @@ onMounted(async () => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--lg);
+}
+
+.title {
+	margin-bottom: var(--spacing--sm);
 }
 </style>

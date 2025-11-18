@@ -121,11 +121,11 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 <template>
 	<div :class="$style.tableContainer">
 		<div v-if="props.loading">
-			<N8nLoading :loading="props.loading" variant="h1" class="mb-l" />
+			<N8nLoading :loading="props.loading" variant="h1" :class="$style.header" />
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
-		<div v-else class="mt-s mb-xl">
-			<div :class="[$style.header, 'mb-s']">
+		<div v-else :class="$style.container">
+			<div :class="$style.header">
 				<N8nHeading size="medium" :bold="true">
 					{{ i18n.baseText('settings.chatHub.providers.table.title') }}
 				</N8nHeading>
@@ -198,7 +198,12 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 	</div>
 </template>
 
-<style module lang="scss">
+<style lang="scss" module>
+.container {
+	margin-top: var(--spacing--sm);
+	margin-bottom: var(--spacing--xl);
+}
+
 .tableContainer {
 	:global(.table-pagination) {
 		display: none;
@@ -215,6 +220,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
+	margin-bottom: var(--spacing--sm);
 }
 
 .chatProvidersTable {
