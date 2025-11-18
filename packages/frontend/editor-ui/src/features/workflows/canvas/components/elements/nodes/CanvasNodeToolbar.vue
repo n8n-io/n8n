@@ -194,8 +194,9 @@ function onFocusNode() {
 	padding-bottom: var(--spacing--xs);
 	display: flex;
 	justify-content: flex-end;
-	width: fit-content;
+	width: 100%;
 	cursor: default;
+	pointer-events: none;
 
 	&.isExperimentalNdvActive {
 		justify-content: space-between;
@@ -213,6 +214,7 @@ function onFocusNode() {
 	justify-content: center;
 	background-color: var(--canvas--color--background);
 	border-radius: var(--radius);
+	pointer-events: auto;
 
 	:global(.button) {
 		--button--color--text: var(--color--text--tint-1);
