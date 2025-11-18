@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import CopyInput from '@/app/components/CopyInput.vue';
 import { MODAL_CONFIRM } from '@/app/constants';
-import { useSSOStore } from '../sso.store';
+import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 
 import { ElSwitch } from 'element-plus';
@@ -10,7 +10,14 @@ import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useMessage } from '@/app/composables/useMessage';
-import UserRoleProvisioningDropdown from './UserRoleProvisioningDropdown.vue';
+import UserRoleProvisioningDropdown, {
+	type UserRoleProvisioningSetting,
+} from './UserRoleProvisioningDropdown.vue';
+import EnableJitProvisioningDialog from '../provisioning/components/EnableJitProvisioningDialog.vue';
+import { useUserRoleProvisioningStore } from '../user-role-provisioning.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT } from '@/app/constants/experiments';
+import { type ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 
 const emit = defineEmits<{
 	submitSuccess: [];
@@ -18,6 +25,8 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
+const provisioningStore = useUserRoleProvisioningStore();
+const posthogStore = usePostHog();
 const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -25,6 +34,9 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const discoveryEndpoint = ref('');
 const clientId = ref('');
 const clientSecret = ref('');
+
+const showUserRoleProvisioningDialog = ref(false);
+const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
 
 type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
 
@@ -80,6 +92,52 @@ const loadOidcConfig = async () => {
 	}
 };
 
+const getUserRoleProvisioningValueFromConfig = (
+	config?: ProvisioningConfig,
+): UserRoleProvisioningSetting => {
+	if (!config) {
+		return 'disabled';
+	}
+	if (config.scopesProvisionInstanceRole && config.scopesProvisionProjectRoles) {
+		return 'instance_and_project_roles';
+	} else if (config.scopesProvisionInstanceRole) {
+		return 'instance_role';
+	} else {
+		return 'disabled';
+	}
+};
+
+const getProvisioningConfigFromFormValue = (
+	formValue: UserRoleProvisioningSetting,
+): Pick<ProvisioningConfig, 'scopesProvisionInstanceRole' | 'scopesProvisionProjectRoles'> => {
+	if (formValue === 'instance_role') {
+		return {
+			scopesProvisionInstanceRole: true,
+			scopesProvisionProjectRoles: false,
+		};
+	} else if (formValue === 'instance_and_project_roles') {
+		return {
+			scopesProvisionInstanceRole: true,
+			scopesProvisionProjectRoles: true,
+		};
+	} else {
+		return {
+			scopesProvisionInstanceRole: false,
+			scopesProvisionProjectRoles: false,
+		};
+	}
+};
+
+const isUserRoleProvisioningChanged = () => {
+	if (!posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name)) {
+		return false;
+	}
+	return (
+		getUserRoleProvisioningValueFromConfig(provisioningStore.provisioningConfig) !==
+		userRoleProvisioning.value
+	);
+};
+
 const cannotSaveOidcSettings = computed(() => {
 	const currentAcrString = authenticationContextClassReference.value
 		.split(',')
@@ -95,13 +153,13 @@ const cannotSaveOidcSettings = computed(() => {
 		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
 		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
 		ssoStore.oidcConfig?.prompt === prompt.value &&
-		//!isUserRoleProvisioningChanged() &&
+		!isUserRoleProvisioningChanged() &&
 		storedAcrString === authenticationContextClassReference.value &&
 		currentAcrString === storedAcrString
 	);
 });
 
-async function onOidcSettingsSave() {
+async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false) {
 	if (ssoStore.oidcConfig?.loginEnabled && !ssoStore.isOidcLoginEnabled) {
 		const confirmAction = await message.confirm(
 			i18n.baseText('settings.oidc.confirmMessage.beforeSaveForm.message'),
@@ -118,9 +176,10 @@ async function onOidcSettingsSave() {
 		if (confirmAction !== MODAL_CONFIRM) return;
 	}
 
-	//if (isUserRoleProvisioningChanged()) {
-	// TODO: show dialog to download access settings csv
-	//}
+	if (isUserRoleProvisioningChanged() && !provisioningChangesConfirmed) {
+		showUserRoleProvisioningDialog.value = true;
+		return;
+	}
 
 	const acrArray = authenticationContextClassReference.value
 		.split(',')
@@ -137,12 +196,15 @@ async function onOidcSettingsSave() {
 			authenticationContextClassReference: acrArray,
 		});
 
-		//if (isUserRoleProvisioningChanged()) {
-		//	await saveUserRoleProvisioningSettings(userRoleProvisioning.value);
-		//}
-		// Update store with saved protocol selection
+		if (isUserRoleProvisioningChanged()) {
+			await provisioningStore.saveProvisioningConfig(
+				getProvisioningConfigFromFormValue(userRoleProvisioning.value),
+			);
+			showUserRoleProvisioningDialog.value = false;
+		}
 
-		// ssoStore.selectedAuthProtocol = authProtocol.value; TODO: do this in the parent
+		// Update store with saved protocol selection
+		ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
 
 		clientSecret.value = newConfig.clientSecret;
 		emit('submitSuccess');
@@ -223,7 +285,12 @@ onMounted(async () => {
 			</N8nSelect>
 			<small>The prompt parameter to use when authenticating with the OIDC provider</small>
 		</div>
-		<UserRoleProvisioningDropdown />
+		<UserRoleProvisioningDropdown v-model="userRoleProvisioning" />
+		<EnableJitProvisioningDialog
+			v-model="showUserRoleProvisioningDialog"
+			:provisioning-setting="userRoleProvisioning"
+			@confirm-provisioning="onOidcSettingsSave(true)"
+		/>
 		<div :class="$style.group">
 			<label>Authentication Context Class Reference</label>
 			<N8nInput
@@ -252,7 +319,7 @@ onMounted(async () => {
 				data-test-id="sso-oidc-save"
 				size="large"
 				:disabled="cannotSaveOidcSettings"
-				@click="onOidcSettingsSave"
+				@click="onOidcSettingsSave(false)"
 			>
 				{{ i18n.baseText('settings.sso.settings.save') }}
 			</N8nButton>

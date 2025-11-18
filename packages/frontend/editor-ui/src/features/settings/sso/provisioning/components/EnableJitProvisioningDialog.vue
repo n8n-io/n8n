@@ -2,12 +2,18 @@
 import { useI18n } from '@n8n/i18n';
 import { ElDialog } from 'element-plus';
 import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
-import { ref, watch } from 'vue';
+import { ref, watch, computed } from 'vue';
 import { useAccessSettingsCsvExport } from '@/features/settings/sso/provisioning/composables/useAccessSettingsCsvExport';
+import type { UserRoleProvisioningSetting } from '../../components/UserRoleProvisioningDropdown.vue';
 
 const visible = defineModel<boolean>();
+
+const props = defineProps<{
+	provisioningSetting: UserRoleProvisioningSetting;
+}>();
+
 const emit = defineEmits<{
-	confirmProvisioning: [value?: string];
+	confirmProvisioning: [];
 	cancel: [];
 }>();
 
@@ -22,6 +28,10 @@ const {
 	downloadInstanceRolesCsv,
 	accessSettingsCsvExportOnModalClose,
 } = useAccessSettingsCsvExport();
+
+const shouldShowProjectRolesCsv = computed(() => {
+	return props.provisioningSetting === 'instance_and_project_roles';
+});
 
 watch(visible, () => {
 	loadingActivatingJit.value = false;
@@ -99,7 +109,7 @@ const onConfirmActivatingProvisioning = () => {
 				:class="$style.icon"
 			/>
 		</div>
-		<div class="mb-s" :class="$style.buttonRow">
+		<div v-if="shouldShowProjectRolesCsv" class="mb-s" :class="$style.buttonRow">
 			<N8nButton
 				type="secondary"
 				native-type="button"
@@ -131,7 +141,9 @@ const onConfirmActivatingProvisioning = () => {
 				type="primary"
 				native-type="button"
 				:disabled="
-					loadingActivatingJit || !(hasDownloadedInstanceRoleCsv && hasDownloadedProjectRoleCsv)
+					loadingActivatingJit ||
+					!hasDownloadedInstanceRoleCsv ||
+					(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv)
 				"
 				data-test-id="provisioning-confirm-button"
 				@click="onConfirmActivatingProvisioning"

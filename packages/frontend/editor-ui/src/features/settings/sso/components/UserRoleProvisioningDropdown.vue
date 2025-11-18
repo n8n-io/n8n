@@ -3,7 +3,7 @@ import { SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT } from '@/app/constants';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 
 import { N8nOption, N8nSelect } from '@n8n/design-system';
-import { onMounted, ref } from 'vue';
+import { onMounted } from 'vue';
 import { usePostHog } from '@/app/stores/posthog.store';
 import { useUserRoleProvisioningStore } from '../user-role-provisioning.store';
 
@@ -12,7 +12,7 @@ export type UserRoleProvisioningSetting =
 	| 'instance_role'
 	| 'instance_and_project_roles';
 
-const value = defineModel<UserRoleProvisioningSetting>('disabled');
+const value = defineModel<UserRoleProvisioningSetting>({ default: 'disabled' });
 
 const posthogStore = usePostHog();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
@@ -21,10 +21,8 @@ const isUserRoleProvisioningFeatureEnabled = posthogStore.isFeatureEnabled(
 	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name,
 );
 
-const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
-
-const handleUserRoleProvisioningChange = (value: UserRoleProvisioningSetting) => {
-	userRoleProvisioning.value = value;
+const handleUserRoleProvisioningChange = (newValue: UserRoleProvisioningSetting) => {
+	value.value = newValue;
 };
 
 const getUserRoleProvisioningValueFromConfig = (
@@ -83,7 +81,7 @@ onMounted(async () => {
 	<div v-if="isUserRoleProvisioningFeatureEnabled" :class="$style.group">
 		<label>User role provisioning</label>
 		<N8nSelect
-			:model-value="userRoleProvisioning"
+			:model-value="value"
 			data-test-id="oidc-user-role-provisioning"
 			:class="$style.userRoleProvisioningSelect"
 			@update:model-value="handleUserRoleProvisioningChange"
