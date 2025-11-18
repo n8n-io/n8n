@@ -5,9 +5,15 @@ export const validateNodeName = (name: string): string | undefined => {
 	const regexScoped = /^@([a-z0-9]+(?:-[a-z0-9]+)*)\/n8n-nodes-([a-z0-9]+(?:-[a-z0-9]+)*)$/;
 	// 2. Matches 'n8n-nodes-anything'
 	const regexUnscoped = /^n8n-nodes-([a-z0-9]+(?:-[a-z0-9]+)*)$/;
+	// 3. Matches 'anythingTool'
+	const regexTool = /^.+\wTool$/;
 
 	if (!regexScoped.test(name) && !regexUnscoped.test(name)) {
 		return "Must start with 'n8n-nodes-' or '@org/n8n-nodes-'. Examples: n8n-nodes-my-app, @mycompany/n8n-nodes-my-app";
+	}
+
+	if (regexTool.test(name)) {
+		return "Please remove the 'Tool' suffix from the node name. Examples: n8n-nodes-my-app, @mycompany/n8n-nodes-my-app";
 	}
 	return;
 };

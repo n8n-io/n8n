@@ -1,8 +1,9 @@
 import type { CommunityNodeType } from '@n8n/api-types';
-import { Logger, inProduction } from '@n8n/backend-common';
+import { inProduction, Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { ensureError } from 'n8n-workflow';
+import { ensureError, NodeConnectionTypes } from 'n8n-workflow';
 
+import cloneDeep from 'lodash/cloneDeep';
 import { getCommunityNodeTypes, StrapiCommunityNodeType } from './community-node-types-utils';
 import { CommunityPackagesConfig } from './community-packages.config';
 import { CommunityPackagesService } from './community-packages.service';
@@ -58,7 +59,34 @@ export class CommunityNodeTypesService {
 
 		this.communityNodeTypes = new Map(nodeTypes.map((nodeType) => [nodeType.name, nodeType]));
 
+		this.createAiTools();
+
 		this.lastUpdateTimestamp = Date.now();
+	}
+
+	private createAiTools() {
+		const usableAsTools = Array.from(this.communityNodeTypes.values()).filter(
+			// TODO: remove "|| true"
+			(nodeType) => nodeType.nodeDescription.usableAsTool || true,
+		);
+		for (const nodeType of usableAsTools) {
+			const clonedNodeType = cloneDeep(nodeType);
+			clonedNodeType.name += 'Tool';
+			clonedNodeType.nodeDescription.name += 'Tool';
+			clonedNodeType.nodeDescription.inputs = [];
+			clonedNodeType.nodeDescription.outputs = [NodeConnectionTypes.AiTool];
+			clonedNodeType.nodeDescription.displayName += ' Tool';
+			clonedNodeType.nodeDescription.codex = {
+				categories: ['AI'],
+				subcategories: {
+					AI: ['Tools'],
+					Tools: clonedNodeType.nodeDescription.codex?.subcategories?.Tools ?? ['Other Tools'],
+				},
+				resources: clonedNodeType.nodeDescription.codex?.resources ?? {},
+			};
+
+			this.communityNodeTypes.set(clonedNodeType.nodeDescription.name, clonedNodeType);
+		}
 	}
 
 	private resetCommunityNodeTypes() {
