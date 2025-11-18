@@ -7,6 +7,8 @@ on:
     paths:
       - 'packages/@n8n/ai-workflow-builder.ee/**'
       - '.github/workflows/ci-evals.yml'
+  schedule:
+    - cron: '0 22 * * 6'
   workflow_dispatch:
     inputs:
       branch:
@@ -27,11 +29,20 @@ jobs:
       LANGSMITH_TRACING: true
       LANGSMITH_ENDPOINT: ${{ secrets.EVALS_LANGSMITH_ENDPOINT }}
       LANGSMITH_API_KEY: ${{ secrets.EVALS_LANGSMITH_API_KEY }}
-      LANGSMITH_DATASET_NAME: ${{ github.event.inputs.dataset || 'workflow-builder-canvas-prompts' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: ${{ github.event.inputs.branch || github.ref }}
+
+      - name: Select dataset
+        run: |
+          DATASET="workflow-builder-canvas-prompts"
+          if [ "${{ github.event_name }}" = "schedule" ]; then
+            DATASET="prompts-v2"
+          elif [ -n "${{ github.event.inputs.dataset }}" ]; then
+            DATASET="${{ github.event.inputs.dataset }}"
+          fi
+          echo "LANGSMITH_DATASET_NAME=$DATASET" >> "$GITHUB_ENV"
 
       - name: Setup and Build
         uses: ./.github/actions/setup-nodejs-blacksmith
