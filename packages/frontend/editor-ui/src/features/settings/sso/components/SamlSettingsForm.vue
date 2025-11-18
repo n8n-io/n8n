@@ -11,6 +11,10 @@ import { useMessage } from '@/app/composables/useMessage';
 import { computed, onMounted, ref } from 'vue';
 import UserRoleProvisioningDropdown from './UserRoleProvisioningDropdown.vue';
 
+const emit = defineEmits<{
+	submitSuccess: [];
+}>();
+
 const i18n = useI18n();
 const ssoStore = useSSOStore();
 const toast = useToast();
@@ -134,7 +138,7 @@ const onSave = async () => {
 			}
 		}
 
-		//trackUpdateSettings();
+		emit('submitSuccess');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;
