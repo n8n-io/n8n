@@ -6,7 +6,7 @@ n8n is a workflow automation platform that gives technical teams the flexibility
 
 ![n8n.io - Screenshot](https://raw.githubusercontent.com/n8n-io/n8n/master/assets/n8n-screenshot-readme.png)
 
-## Key Capabilities
+## Key Capabilitien
 
 - **Code When You Need It**: Write JavaScript/Python, add npm packages, or use the visual interface
 - **AI-Native Platform**: Build AI agent workflows based on LangChain with your own data and models
