@@ -7,7 +7,7 @@ import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 /**
  * Composable to load and save provisioning config
  */
-export const useUserRoleProvisioningStore = defineStore('userRolePovisioning', () => {
+export const useUserRoleProvisioningStore = defineStore('userRoleProvisioning', () => {
 	const rootStore = useRootStore();
 
 	const provisioningConfig = ref<ProvisioningConfig | undefined>();
