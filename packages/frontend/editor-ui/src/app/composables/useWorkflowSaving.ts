@@ -423,7 +423,8 @@ export function useWorkflowSaving({
 			const tagIds = createdTags.map((tag: ITag) => tag.id);
 			workflowState.setWorkflowTagIds(tagIds);
 
-			const templateId = router.currentRoute.value.query.templateId;
+			const route = router.currentRoute.value;
+			const templateId = route.query.templateId;
 			if (templateId) {
 				telemetry.track('User saved new workflow from template', {
 					template_id: tryToParseNumber(String(templateId)),
@@ -436,7 +437,7 @@ export function useWorkflowSaving({
 				await router.replace({
 					name: VIEWS.WORKFLOW,
 					params: { name: workflowData.id },
-					query: { action: 'workflowSave' },
+					query: { ...route.query, new: undefined },
 				});
 			}
 
