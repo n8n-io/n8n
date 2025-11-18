@@ -1,18 +1,18 @@
 <script lang="ts" setup>
-import ActionsMenu from '@/components/MainHeader/ActionsMenu.vue';
+import ActionsMenu from '@/app/components/MainHeader/ActionsMenu.vue';
 import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, useTemplateRef } from 'vue';
-import { useSettingsStore } from '@/stores/settings.store';
-import { EnterpriseEditionFeature, WORKFLOW_PUBLISH_MODAL_KEY } from '@/constants';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { EnterpriseEditionFeature, WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import SaveButton from '@/components/SaveButton.vue';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import SaveButton from '@/app/components/SaveButton.vue';
 
 const props = defineProps<{
 	readOnly?: boolean;

@@ -112,7 +112,7 @@ import NodeRecommendationModalV2 from '@/experiments/templateRecoV2/components/N
 import NodeRecommendationModalV3 from '@/experiments/personalizedTemplatesV3/components/NodeRecommendationModal.vue';
 import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/components/NodeRecommendationModal.vue';
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
-import WorkflowPublishModal from '@/components/MainHeader/WorkflowPublishModal.vue';
+import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryPublishModal.vue';
 </script>
 

@@ -2,9 +2,9 @@
 import BreakpointsObserver from '@/app/components/BreakpointsObserver.vue';
 import FolderBreadcrumbs from '@/features/core/folders/components/FolderBreadcrumbs.vue';
 import PushConnectionTracker from '@/app/components/PushConnectionTracker.vue';
-import WorkflowProductionChecklist from '@/components/WorkflowProductionChecklist.vue';
-import WorkflowTagsContainer from '@/components/WorkflowTagsContainer.vue';
-import WorkflowTagsDropdown from '@/components/WorkflowTagsDropdown.vue';
+import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChecklist.vue';
+import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTagsContainer.vue';
+import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import {
 	DRAFT_PUBLISH_EXPERIMENT,
 	MAX_WORKFLOW_NAME_LENGTH,
@@ -14,21 +14,21 @@ import {
 } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { useMessage } from '@/composables/useMessage';
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { useWorkflowSaving } from '@/composables/useWorkflowSaving';
-import { nodeViewEventBus } from '@/event-bus';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useMessage } from '@/app/composables/useMessage';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { nodeViewEventBus } from '@/app/event-bus';
 import type { IWorkflowDb } from '@/Interface';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
-import WorkflowHeaderActions from '@/components/MainHeader/WorkflowHeaderActions.vue';
-import WorkflowHeaderDraftPublishActions from '@/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
+import WorkflowHeaderActions from '@/app/components/MainHeader/WorkflowHeaderActions.vue';
+import WorkflowHeaderDraftPublishActions from '@/app/components/MainHeader/WorkflowHeaderDraftPublishActions.vue';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import { createEventBus } from '@n8n/utils/event-bus';
