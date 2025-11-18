@@ -3,7 +3,7 @@
 Displays contextual information when users hover over, focus on, or tap an element. Tooltips help users understand the purpose or state of UI elements without cluttering the interface.
 
 - **Component Name:** N8nTooltip
-- **Figma Component:** [Figma](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3) (link TBD)
+- **Figma Component:** [Figma](https://www.figma.com/design/8zib7Trf2D2CHYXrEGPHkg/n8n-Design-System-V3?node-id=252-3284&m=dev)
 - **Element+ Component:** [ElTooltip](https://element-plus.org/en-US/component/tooltip.html)
 - **Reka UI Component:** [Tooltip](https://reka-ui.com/docs/components/tooltip)
 - **Nuxt UI Component:** [Tooltip](https://ui.nuxt.com/docs/components/tooltip)
