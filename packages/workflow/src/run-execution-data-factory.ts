@@ -1,5 +1,4 @@
 import type {
-	IRunExecutionData,
 	IRunData,
 	IPinData,
 	IExecuteContextData,
@@ -12,6 +11,7 @@ import type {
 	RelatedExecution,
 	INode,
 } from './interfaces';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 
 export interface CreateFullRunExecutionDataOptions {
 	startData?: {
