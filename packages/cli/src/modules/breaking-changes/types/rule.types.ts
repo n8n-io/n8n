@@ -2,6 +2,7 @@ import type {
 	BreakingChangeAffectedWorkflow,
 	BreakingChangeRecommendation,
 	BreakingChangeRuleSeverity,
+	BreakingChangeVersion,
 } from '@n8n/api-types';
 import type { WorkflowEntity } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
@@ -15,8 +16,6 @@ export const enum BreakingChangeCategory {
 	database = 'database',
 	infrastructure = 'infrastructure',
 }
-
-export type BreakingChangeVersion = 'v2';
 
 export interface BreakingChangeRuleMetadata {
 	version: BreakingChangeVersion;
