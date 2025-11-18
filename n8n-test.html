@@ -1,0 +1,756 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>n8n 外部认证测试页面</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			min-height: 100vh;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			padding: 20px;
+		}
+
+		.container {
+			background: white;
+			border-radius: 16px;
+			padding: 40px;
+			max-width: 600px;
+			width: 100%;
+			box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+		}
+
+		h1 {
+			color: #333;
+			margin-bottom: 10px;
+			font-size: 28px;
+		}
+
+		.subtitle {
+			color: #666;
+			margin-bottom: 30px;
+			font-size: 14px;
+		}
+
+		.section {
+			margin-bottom: 30px;
+			padding: 20px;
+			background: #f8f9fa;
+			border-radius: 8px;
+		}
+
+		.section h2 {
+			color: #667eea;
+			margin-bottom: 15px;
+			font-size: 18px;
+		}
+
+		.input-group {
+			margin-bottom: 15px;
+		}
+
+		label {
+			display: block;
+			margin-bottom: 5px;
+			color: #555;
+			font-weight: 500;
+			font-size: 14px;
+		}
+
+		input,
+		select {
+			width: 100%;
+			padding: 12px;
+			border: 2px solid #e0e0e0;
+			border-radius: 6px;
+			font-size: 14px;
+			transition: border-color 0.3s;
+			background: white;
+		}
+
+		input:focus,
+		select:focus {
+			outline: none;
+			border-color: #667eea;
+		}
+
+		select {
+			cursor: pointer;
+		}
+
+		button {
+			width: 100%;
+			padding: 14px;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			border: none;
+			border-radius: 6px;
+			font-size: 16px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: transform 0.2s, box-shadow 0.2s;
+		}
+
+		button:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+		}
+
+		button:active {
+			transform: translateY(0);
+		}
+
+		.result {
+			margin-top: 15px;
+			padding: 15px;
+			border-radius: 6px;
+			font-size: 14px;
+			line-height: 1.6;
+			display: none;
+		}
+
+		.result.success {
+			background: #d4edda;
+			border: 1px solid #c3e6cb;
+			color: #155724;
+		}
+
+		.result.error {
+			background: #f8d7da;
+			border: 1px solid #f5c6cb;
+			color: #721c24;
+		}
+
+		.result pre {
+			margin-top: 10px;
+			background: rgba(0, 0, 0, 0.05);
+			padding: 10px;
+			border-radius: 4px;
+			overflow-x: auto;
+			font-size: 12px;
+		}
+
+		.tip {
+			background: #fff3cd;
+			border: 1px solid #ffeaa7;
+			color: #856404;
+			padding: 12px;
+			border-radius: 6px;
+			margin-top: 20px;
+			font-size: 13px;
+			line-height: 1.6;
+		}
+
+		.tip strong {
+			display: block;
+			margin-bottom: 5px;
+		}
+
+		.permission-info {
+			background: white;
+			border-radius: 6px;
+			padding: 15px;
+			margin-top: 10px;
+		}
+
+		.permission-info h3 {
+			color: #667eea;
+			font-size: 16px;
+			margin-bottom: 10px;
+		}
+
+		.permission-item {
+			display: flex;
+			justify-content: space-between;
+			padding: 8px 0;
+			border-bottom: 1px solid #e0e0e0;
+		}
+
+		.permission-item:last-child {
+			border-bottom: none;
+		}
+
+		.permission-label {
+			font-weight: 500;
+			color: #555;
+		}
+
+		.permission-value {
+			color: #667eea;
+			font-weight: 600;
+		}
+
+		.project-list {
+			margin-top: 10px;
+		}
+
+		.project-item {
+			background: #f8f9fa;
+			padding: 10px;
+			border-radius: 4px;
+			margin-bottom: 8px;
+			border-left: 3px solid #667eea;
+		}
+
+		.project-name {
+			font-weight: 600;
+			color: #333;
+			margin-bottom: 4px;
+		}
+
+		.project-type {
+			display: inline-block;
+			padding: 2px 8px;
+			background: #667eea;
+			color: white;
+			border-radius: 3px;
+			font-size: 11px;
+			margin-right: 8px;
+		}
+
+		.project-role {
+			color: #666;
+			font-size: 13px;
+		}
+
+		code {
+			background: rgba(0, 0, 0, 0.05);
+			padding: 2px 6px;
+			border-radius: 3px;
+			font-family: 'Courier New', monospace;
+			font-size: 12px;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container">
+		<h1>🚀 n8n 外部认证 & 权限管理测试</h1>
+		<p class="subtitle">测试单点登录、权限查看和权限设置功能</p>
+
+		<!-- 配置部分 -->
+		<div class="section">
+			<h2>⚙️ 配置</h2>
+			<div class="input-group">
+				<label for="n8nUrl">n8n 地址</label>
+				<input type="text" id="n8nUrl" value="http://localhost:5678" placeholder="http://localhost:5678">
+			</div>
+			<div class="input-group">
+				<label for="authSecret">认证密钥</label>
+				<input type="text" id="authSecret" value="n8n-secret-key-2025" placeholder="与 n8n 服务器一致">
+			</div>
+		</div>
+
+		<!-- 步骤1：创建用户 -->
+		<div class="section">
+			<h2>📝 步骤 1：创建用户</h2>
+			<div class="input-group">
+				<label for="createUserId">用户 ID</label>
+				<input type="text" id="createUserId" value="user123" placeholder="例如：user123 或 10001">
+			</div>
+			<div class="input-group">
+				<label for="firstName">名（可选）</label>
+				<input type="text" id="firstName" value="张" placeholder="名">
+			</div>
+			<div class="input-group">
+				<label for="lastName">姓（可选）</label>
+				<input type="text" id="lastName" value="三" placeholder="姓">
+			</div>
+			<button onclick="createUser()">创建用户</button>
+			<div id="createResult" class="result"></div>
+		</div>
+
+		<!-- 步骤2：SSO 登录 -->
+		<div class="section">
+			<h2>🔐 步骤 2：SSO 登录</h2>
+			<div class="input-group">
+				<label for="loginUserId">用户 ID</label>
+				<input type="text" id="loginUserId" value="user123" placeholder="与创建时的 userId 一致">
+			</div>
+			<button onclick="ssoLogin()">登录并跳转到 n8n</button>
+			<div id="loginResult" class="result"></div>
+		</div>
+
+		<!-- 步骤3：查看用户权限 -->
+		<div class="section">
+			<h2>👁️ 步骤 3：查看用户权限</h2>
+			<div class="input-group">
+				<label for="viewPermUserId">用户 ID</label>
+				<input type="text" id="viewPermUserId" value="user123" placeholder="要查看权限的用户 ID">
+			</div>
+			<button onclick="viewPermissions()">查看权限</button>
+			<div id="viewPermResult" class="result"></div>
+		</div>
+
+		<!-- 步骤4：设置用户权限 -->
+		<div class="section">
+			<h2>⚡ 步骤 4：设置用户权限</h2>
+			<div class="input-group">
+				<label for="setPermUserId">用户 ID</label>
+				<input type="text" id="setPermUserId" value="user123" placeholder="要设置权限的用户 ID">
+			</div>
+			<div class="input-group">
+				<label for="globalRole">全局角色</label>
+				<select id="globalRole">
+					<option value="">-- 不修改全局角色 --</option>
+					<option value="global:owner">global:owner (实例拥有者)</option>
+					<option value="global:admin">global:admin (全局管理员)</option>
+					<option value="global:member">global:member (普通成员)</option>
+				</select>
+			</div>
+			<div class="input-group">
+				<label for="projectId">项目 ID（可选）</label>
+				<input type="text" id="projectId" placeholder="例如：proj-team-456">
+				<small style="color: #666; font-size: 12px; display: block; margin-top: 4px;">
+					💡 提示：项目ID可以在"查看权限"结果中找到
+				</small>
+			</div>
+			<div class="input-group">
+				<label for="projectRole">项目角色（可选）</label>
+				<select id="projectRole">
+					<option value="">-- 请选择 --</option>
+					<option value="project:admin">project:admin (项目管理员)</option>
+					<option value="project:editor">project:editor (项目编辑者)</option>
+					<option value="project:viewer">project:viewer (项目查看者)</option>
+				</select>
+			</div>
+			<button onclick="setPermissions()">设置权限</button>
+			<div id="setPermResult" class="result"></div>
+		</div>
+
+		<!-- 权限说明 -->
+		<div class="tip" style="background: #e3f2fd; border-color: #90caf9; color: #1565c0;">
+			<strong>📖 权限说明：</strong>
+			<strong style="margin-top: 8px;">全局角色：</strong>
+			• <code>global:owner</code> - 实例拥有者，拥有最高权限<br>
+			• <code>global:admin</code> - 全局管理员，可管理用户和全局设置<br>
+			• <code>global:member</code> - 普通成员，基础权限<br>
+			<strong style="margin-top: 8px;">项目角色：</strong>
+			• <code>project:admin</code> - 项目管理员，可管理项目设置、成员、工作流、凭证<br>
+			• <code>project:editor</code> - 项目编辑者，可创建、编辑、删除工作流和凭证<br>
+			• <code>project:viewer</code> - 项目查看者，只读访问
+		</div>
+
+		<!-- 提示 -->
+		<div class="tip">
+			<strong>💡 使用提示：</strong>
+			1. 确保 n8n 服务已启动（http://localhost:5678）<br>
+			2. 先点击"创建用户"，等待成功后再点击"登录"<br>
+			3. 登录成功会在新窗口中自动跳转到 n8n 主页<br>
+			4. 使用"查看权限"可以看到用户当前的全局角色和项目角色<br>
+			5. 使用"设置权限"可以修改用户的全局角色或项目角色
+		</div>
+	</div>
+
+	<script>
+		// 获取配置
+		function getConfig ()
+		{
+			return {
+				n8nUrl: document.getElementById('n8nUrl').value.trim(),
+				authSecret: document.getElementById('authSecret').value.trim(),
+			};
+		}
+
+		// 显示结果
+		function showResult (elementId, success, message, data = null)
+		{
+			const resultDiv = document.getElementById(elementId);
+			resultDiv.className = `result ${success ? 'success' : 'error'}`;
+			resultDiv.style.display = 'block';
+
+			let html = `<strong>${success ? '✅ 成功' : '❌ 失败'}</strong><br>${message}`;
+
+			if (data) {
+				html += `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+			}
+
+			resultDiv.innerHTML = html;
+		}
+
+		// 创建用户
+		async function createUser ()
+		{
+			const config = getConfig();
+			const userId = document.getElementById('createUserId').value.trim();
+			const firstName = document.getElementById('firstName').value.trim();
+			const lastName = document.getElementById('lastName').value.trim();
+
+			if (!userId) {
+				showResult('createResult', false, '请输入用户 ID');
+				return;
+			}
+
+			try {
+				const response = await fetch(`${config.n8nUrl}/rest/external-auth/create-user`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						userId: userId,
+						firstName: firstName || '用户',
+						lastName: lastName || userId.substring(0, 8),
+						authSecret: config.authSecret,
+					}),
+				});
+
+				console.log('response status:', response.status);
+				console.log('response ok:', response.ok);
+				console.log('response headers:', response.headers.get('content-type'));
+
+				// 检查响应内容类型
+				const contentType = response.headers.get('content-type');
+				if (!contentType || !contentType.includes('application/json')) {
+					const text = await response.text();
+					console.error('Response is not JSON:', text);
+					throw new Error(`服务器返回了非 JSON 响应 (状态码: ${response.status})`);
+				}
+
+				const result = await response.json();
+				console.log('result:', result);
+
+				if (response.ok) {
+					showResult('createResult', true, '用户创建成功！现在可以进行 SSO 登录了。', result);
+					// 自动填充登录表单
+					document.getElementById('loginUserId').value = userId;
+				} else {
+					showResult('createResult', false, result.message || '创建失败', result);
+				}
+			} catch (error) {
+				console.error('Create user error:', error);
+				showResult('createResult', false, `请求失败: ${error.message}<br><small>请打开浏览器控制台查看详细错误信息</small>`);
+			}
+		}
+
+		// SSO 登录
+		async function ssoLogin ()
+		{
+			const config = getConfig();
+			const userId = document.getElementById('loginUserId').value.trim();
+
+			if (!userId) {
+				showResult('loginResult', false, '请输入用户 ID');
+				return;
+			}
+
+			showResult('loginResult', true, '正在打开新窗口并登录...');
+
+			// 创建一个临时 HTML 页面，在新窗口中调用登录接口
+			const loginHtml = `
+				<!DOCTYPE html>
+				<html>
+				<head>
+					<meta charset="UTF-8">
+					<title>正在登录 n8n...</title>
+					<style>
+						body {
+							display: flex;
+							justify-content: center;
+							align-items: center;
+							height: 100vh;
+							margin: 0;
+							font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+							background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+							color: white;
+						}
+						.container {
+							text-align: center;
+						}
+						.spinner {
+							border: 4px solid rgba(255, 255, 255, 0.3);
+							border-radius: 50%;
+							border-top: 4px solid white;
+							width: 40px;
+							height: 40px;
+							animation: spin 1s linear infinite;
+							margin: 0 auto 20px;
+						}
+						@keyframes spin {
+							0% { transform: rotate(0deg); }
+							100% { transform: rotate(360deg); }
+						}
+						.error {
+							background: rgba(255, 59, 48, 0.2);
+							border: 1px solid rgba(255, 59, 48, 0.5);
+							border-radius: 8px;
+							padding: 20px;
+							margin-top: 20px;
+							display: none;
+						}
+					</style>
+				</head>
+				<body>
+					<div class="container">
+						<div class="spinner"></div>
+						<h2>正在登录工作流系统...</h2>
+						<p>请稍候，即将自动跳转</p>
+						<div class="error" id="error">
+							<p style="font-size: 18px; margin: 0 0 10px 0;">❌ 登录失败</p>
+							<div id="error-message"></div>
+						</div>
+					</div>
+					<script>
+						(async function() {
+							try {
+								const response = await fetch('${config.n8nUrl}/rest/external-auth/login', {
+									method: 'POST',
+									headers: { 'Content-Type': 'application/json' },
+									credentials: 'include',
+									body: JSON.stringify({
+										userIdentifier: '${userId}',
+										authSecret: '${config.authSecret}'
+									})
+								});
+
+								if (response.ok) {
+									setTimeout(() => {
+										window.location.href = '${config.n8nUrl}';
+									}, 1500);
+								} else {
+									const error = await response.json();
+									throw new Error(error.message || '登录失败');
+								}
+							} catch (e) {
+								document.querySelector('.spinner').style.display = 'none';
+								document.getElementById('error').style.display = 'block';
+								document.getElementById('error-message').innerHTML =
+									'<p>错误原因：' + e.message + '</p>' +
+									'<p style="margin-top: 10px; font-size: 12px;">请关闭此窗口并重试</p>';
+							}
+						})();
+					<\/script>
+				</body>
+				</html>
+			`;
+
+			// 在新窗口中打开这个 HTML
+			const newWindow = window.open('', '_blank');
+			if (newWindow) {
+				newWindow.document.write(loginHtml);
+				newWindow.document.close();
+				showResult('loginResult', true, '新窗口已打开，正在自动登录...');
+			} else {
+				showResult('loginResult', false, '无法打开新窗口，请检查浏览器弹窗拦截设置');
+			}
+		}
+
+		// 查看用户权限
+		async function viewPermissions ()
+		{
+			const config = getConfig();
+			const userId = document.getElementById('viewPermUserId').value.trim();
+
+			if (!userId) {
+				showResult('viewPermResult', false, '请输入用户 ID');
+				return;
+			}
+
+			try {
+				const response = await fetch(`${config.n8nUrl}/rest/external-auth/get-permissions`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify({
+						userId: userId,
+						authSecret: config.authSecret,
+					}),
+				});
+
+				console.log('get-permissions status:', response.status);
+
+				// 检查响应内容类型
+				const contentType = response.headers.get('content-type');
+				if (!contentType || !contentType.includes('application/json')) {
+					const text = await response.text();
+					console.error('Response is not JSON:', text);
+					throw new Error(`服务器返回了非 JSON 响应 (状态码: ${response.status})`);
+				}
+
+				const result = await response.json();
+				console.log('get-permissions result:', result);
+
+				if (response.ok) {
+					// 构建漂亮的权限展示
+					let html = '<strong>✅ 成功</strong><br>用户权限信息：';
+					html += '<div class="permission-info">';
+
+					// 用户基本信息
+					html += '<h3>👤 用户信息</h3>';
+					html += `<div class="permission-item">
+						<span class="permission-label">姓名：</span>
+						<span class="permission-value">${result.data.user.firstName} ${result.data.user.lastName}</span>
+					</div>`;
+
+					// 全局角色
+					html += '<h3 style="margin-top: 15px;">🌐 全局角色</h3>';
+					html += `<div class="permission-item">
+						<span class="permission-label">角色：</span>
+						<span class="permission-value">${result.data.permissions.globalRole}</span>
+					</div>`;
+
+					// 项目列表
+					if (result.data.permissions.projects && result.data.permissions.projects.length > 0) {
+						html += '<h3 style="margin-top: 15px;">📁 项目权限</h3>';
+						html += '<div class="project-list">';
+
+						result.data.permissions.projects.forEach(proj =>
+						{
+							html += `<div class="project-item">
+								<div class="project-name">
+									<span class="project-type">${proj.projectType}</span>
+									${proj.projectName}
+								</div>
+								<div class="project-role">
+									<strong>角色：</strong> ${proj.role}<br>
+									<strong>项目ID：</strong> ${proj.projectId}
+								</div>
+							</div>`;
+						});
+
+						html += '</div>';
+					} else {
+						html += '<p style="margin-top: 10px; color: #666;">该用户还没有加入任何项目。</p>';
+					}
+
+					html += '</div>';
+
+					const resultDiv = document.getElementById('viewPermResult');
+					resultDiv.className = 'result success';
+					resultDiv.style.display = 'block';
+					resultDiv.innerHTML = html;
+				} else {
+					showResult('viewPermResult', false, result.message || '获取权限失败', result);
+				}
+			} catch (error) {
+				console.error('Get permissions error:', error);
+				showResult('viewPermResult', false, `请求失败: ${error.message}<br><small>请打开浏览器控制台查看详细错误信息</small>`);
+			}
+		}
+
+		// 设置用户权限
+		async function setPermissions ()
+		{
+			const config = getConfig();
+			const userId = document.getElementById('setPermUserId').value.trim();
+			const globalRole = document.getElementById('globalRole').value;
+			const projectId = document.getElementById('projectId').value.trim();
+			const projectRole = document.getElementById('projectRole').value;
+
+			if (!userId) {
+				showResult('setPermResult', false, '请输入用户 ID');
+				return;
+			}
+
+			if (!globalRole && !projectId) {
+				showResult('setPermResult', false, '请至少选择要修改全局角色或填写项目 ID');
+				return;
+			}
+
+			if (projectId && !projectRole) {
+				showResult('setPermResult', false, '填写了项目 ID，请选择项目角色');
+				return;
+			}
+
+			// 构建请求体
+			const requestBody = {
+				userId: userId,
+				authSecret: config.authSecret,
+			};
+
+			if (globalRole) {
+				requestBody.globalRole = globalRole;
+			}
+
+			if (projectId && projectRole) {
+				requestBody.projectPermissions = [
+					{
+						projectId: projectId,
+						role: projectRole,
+					}
+				];
+			}
+
+			try {
+				console.log('set-permissions request:', requestBody);
+
+				const response = await fetch(`${config.n8nUrl}/rest/external-auth/set-permissions`, {
+					method: 'POST',
+					headers: {
+						'Content-Type': 'application/json',
+					},
+					body: JSON.stringify(requestBody),
+				});
+
+				console.log('set-permissions status:', response.status);
+
+				// 检查响应内容类型
+				const contentType = response.headers.get('content-type');
+				if (!contentType || !contentType.includes('application/json')) {
+					const text = await response.text();
+					console.error('Response is not JSON:', text);
+					throw new Error(`服务器返回了非 JSON 响应 (状态码: ${response.status})`);
+				}
+
+				const result = await response.json();
+				console.log('set-permissions result:', result);
+
+				if (response.ok) {
+					let message = '权限设置成功！<br><br>';
+					if (globalRole) {
+						message += `✓ 全局角色已更新为：<strong>${globalRole}</strong><br>`;
+					}
+					if (projectId && projectRole) {
+						message += `✓ 项目 ${projectId} 的角色已更新为：<strong>${projectRole}</strong><br>`;
+					}
+					message += '<br><small>💡 提示：可以点击"查看权限"验证更新结果</small>';
+
+					showResult('setPermResult', true, message);
+
+					// 自动更新查看权限的用户ID
+					document.getElementById('viewPermUserId').value = userId;
+				} else {
+					showResult('setPermResult', false, result.message || '设置权限失败', result);
+				}
+			} catch (error) {
+				console.error('Set permissions error:', error);
+				showResult('setPermResult', false, `请求失败: ${error.message}<br><small>请打开浏览器控制台查看详细错误信息</small>`);
+			}
+		}
+
+		// 回车键触发
+		document.addEventListener('keypress', function (e)
+		{
+			if (e.key === 'Enter') {
+				const activeElement = document.activeElement;
+				const section = activeElement.closest('.section');
+				if (!section) return;
+
+				const heading = section.querySelector('h2')?.textContent;
+				if (heading?.includes('步骤 1')) {
+					createUser();
+				} else if (heading?.includes('步骤 2')) {
+					ssoLogin();
+				} else if (heading?.includes('步骤 3')) {
+					viewPermissions();
+				} else if (heading?.includes('步骤 4')) {
+					setPermissions();
+				}
+			}
+		});
+	</script>
+</body>
+
+</html>
