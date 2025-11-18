@@ -27,6 +27,7 @@ export const LOG_SCOPES = [
 	'legacy-sqlite-execution-recovery',
 	'chat-hub',
 	'breaking-changes',
+	'circuit-breaker',
 ] as const;
 
 export type LogScope = (typeof LOG_SCOPES)[number];
