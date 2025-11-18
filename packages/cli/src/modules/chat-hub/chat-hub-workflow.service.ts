@@ -481,7 +481,7 @@ export class ChatHubWorkflowService {
 				};
 			}
 			default:
-				throw new OperationalError(`Unsupported model provider: ${provider}`);
+				throw new OperationalError('Unsupported model provider');
 		}
 	}
 
