@@ -3,7 +3,7 @@ import type { WeaviateLibArgs as OriginalWeaviateLibArgs } from '@langchain/weav
 import { WeaviateStore } from '@langchain/weaviate';
 import { Document } from 'langchain/document';
 import {
-	ApplicationError,
+	UserError,
 	type IDataObject,
 	type INodeProperties,
 	type INodePropertyCollection,
@@ -44,7 +44,7 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 		if (!(baseCandidate instanceof ExtendedWeaviateVectorStore)) {
 			// If the factory didn't return an instance of the subclass, fail with a clear error so callers
 			// don't operate on an unexpected type.
-			throw new ApplicationError(
+			throw new UserError(
 				'Weaviate store factory did not return an ExtendedWeaviateVectorStore instance',
 			);
 		}
@@ -82,7 +82,7 @@ class ExtendedWeaviateVectorStore extends WeaviateStore {
 			return content.map((doc) => {
 				const { score, ...metadata } = doc.metadata;
 				if (typeof score !== 'number') {
-					throw new ApplicationError(`Unexpected score type: ${typeof score}`);
+					throw new UserError(`Unexpected score type: ${typeof score}`);
 				}
 				return [
 					new Document({
