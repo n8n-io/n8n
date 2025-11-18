@@ -1,4 +1,5 @@
 import type { JSONSchema7Definition, JSONSchema7 } from 'json-schema';
+
 import {
 	convertJsonSchemaToResourceMapperFields,
 	jsonSchemaTypeToDefaultValue,
@@ -286,8 +287,11 @@ describe('utils', () => {
 					display: true,
 					type: 'options',
 					options: [
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						{ name: 'red', value: 'red' },
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						{ name: 'green', value: 'green' },
+						// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
 						{ name: 'blue', value: 'blue' },
 					],
 				},

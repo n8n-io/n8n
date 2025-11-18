@@ -82,7 +82,6 @@ export class McpClient implements INodeType {
 					},
 				},
 			},
-
 			{
 				displayName: 'Tool',
 				name: 'tool',
@@ -281,9 +280,9 @@ export class McpClient implements INodeType {
 
 				returnData.push({
 					json: {
-						content,
+						content: content.length > 0 ? content : undefined,
 					},
-					binary,
+					binary: Object.keys(binary).length > 0 ? binary : undefined,
 					pairedItem: {
 						item: itemIndex,
 					},
