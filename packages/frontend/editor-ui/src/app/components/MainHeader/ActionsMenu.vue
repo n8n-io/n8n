@@ -30,7 +30,7 @@ import { nodeViewEventBus } from '@/app/event-bus';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { useTagsStore } from '@/app/stores/tags.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 
 const props = defineProps<{
