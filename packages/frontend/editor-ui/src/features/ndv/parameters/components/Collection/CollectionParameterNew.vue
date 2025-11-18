@@ -15,7 +15,7 @@ import { deepCopy, isINodeProperties, isINodePropertyCollection } from 'n8n-work
 import get from 'lodash/get';
 
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
@@ -24,17 +24,16 @@ import {
 	N8nCollapsiblePanel,
 	N8nHeaderAction,
 	N8nIconButton,
-	N8nRekaSelect,
+	N8nDropdown,
 	N8nSectionHeader,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
-import type { RekaSelectOption } from '@n8n/design-system';
-import { isPresent } from '@/utils/typesUtils';
+import type { N8nDropdownOption } from '@n8n/design-system';
+import { isPresent } from '@/app/utils/typesUtils';
 import type { ComponentExposed } from 'vue-component-type-helpers';
 
-const selectedOption = ref<string | undefined>(undefined);
-const addDropdownRef = ref<ComponentExposed<typeof N8nRekaSelect>>();
+const addDropdownRef = ref<ComponentExposed<typeof N8nDropdown>>();
 
 export interface Props {
 	hideDelete?: boolean;
@@ -161,7 +160,7 @@ const parameterOptions = computed(() => {
 	return filteredOptions.value.filter((option) => !propertyNames.value.includes(option.name));
 });
 
-const dropdownOptions = computed((): Array<RekaSelectOption<string>> => {
+const dropdownOptions = computed((): Array<N8nDropdownOption<string>> => {
 	return parameterOptions.value.map((option) => ({
 		label: getParameterOptionLabel(option),
 		value: option.name,
@@ -306,18 +305,17 @@ async function onHeaderAddClick() {
 			</Suspense>
 
 			<div v-if="!isReadOnly && !isAddDisabled" :class="$style.paramOptions">
-				<N8nRekaSelect
+				<N8nDropdown
 					ref="addDropdownRef"
-					v-model="selectedOption"
 					:options="dropdownOptions"
 					:class="$style.addDropdown"
 					data-test-id="collection-parameter-add-dropdown"
-					@update:model-value="optionSelected"
+					@select="optionSelected"
 				>
 					<template #trigger>
 						<N8nButton type="secondary" icon="plus" :label="placeholder" />
 					</template>
-				</N8nRekaSelect>
+				</N8nDropdown>
 			</div>
 		</div>
 	</N8nCollapsiblePanel>
@@ -371,18 +369,17 @@ async function onHeaderAddClick() {
 			</Suspense>
 
 			<div v-if="!isReadOnly && !isAddDisabled" :class="$style.paramOptions">
-				<N8nRekaSelect
+				<N8nDropdown
 					ref="addDropdownRef"
-					v-model="selectedOption"
 					:options="dropdownOptions"
 					:class="$style.addDropdown"
 					data-test-id="collection-parameter-add-dropdown"
-					@update:model-value="optionSelected"
+					@select="optionSelected"
 				>
 					<template #trigger>
 						<N8nButton type="secondary" icon="plus" :label="placeholder" />
 					</template>
-				</N8nRekaSelect>
+				</N8nDropdown>
 			</div>
 		</div>
 	</div>

@@ -1,22 +1,16 @@
 <script setup lang="ts" generic="T extends string | number">
 import {
-	SelectContent,
-	SelectItem,
-	SelectItemIndicator,
-	SelectItemText,
-	SelectPortal,
-	SelectRoot,
-	SelectScrollDownButton,
-	SelectScrollUpButton,
-	SelectTrigger,
-	SelectValue,
-	SelectViewport,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuPortal,
+	DropdownMenuRoot,
+	DropdownMenuTrigger,
 } from 'reka-ui';
-import { computed, ref, useTemplateRef } from 'vue';
+import { ref, useTemplateRef } from 'vue';
 
 import N8nIcon from '../N8nIcon';
 
-export interface RekaSelectOption<V = string | number> {
+export interface N8nDropdownOption<V = string | number> {
 	label: string;
 	value: V;
 	disabled?: boolean;
@@ -26,40 +20,30 @@ export interface Props<T extends string | number> {
 	/**
 	 * The list of options to display in the dropdown
 	 */
-	options: Array<RekaSelectOption<T>>;
-	/**
-	 * The currently selected value
-	 */
-	modelValue?: T;
+	options: Array<N8nDropdownOption<T>>;
 	/**
 	 * Whether the dropdown is disabled
 	 */
 	disabled?: boolean;
 	/**
-	 * Placeholder text when no value is selected
+	 * Placeholder text for the default trigger
 	 */
 	placeholder?: string;
 	/**
-	 * Size variant
+	 * Size variant for the default trigger
 	 */
 	size?: 'small' | 'medium' | 'large';
 }
 
 const props = withDefaults(defineProps<Props<T>>(), {
-	modelValue: undefined,
 	disabled: false,
 	placeholder: 'Select an option',
 	size: 'medium',
 });
 
 const emit = defineEmits<{
-	'update:model-value': [value: T];
+	select: [value: T];
 }>();
-
-const selectedValue = computed({
-	get: () => props.modelValue,
-	set: (value: T) => emit('update:model-value', value),
-});
 
 const isOpen = ref(false);
 const rootRef = useTemplateRef<HTMLElement>('rootRef');
@@ -78,6 +62,13 @@ const scrollIntoView = (options?: ScrollIntoViewOptions) => {
 	rootRef.value?.scrollIntoView(options);
 };
 
+const handleSelect = (option: N8nDropdownOption<T>) => {
+	if (!option.disabled) {
+		emit('select', option.value);
+		close();
+	}
+};
+
 defineExpose({
 	open,
 	close,
@@ -87,65 +78,47 @@ defineExpose({
 
 <template>
 	<div ref="rootRef">
-		<SelectRoot
-			v-model="selectedValue"
-			:disabled="disabled"
-			:open="isOpen"
-			@update:open="isOpen = $event"
-		>
-			<SelectTrigger
+		<DropdownMenuRoot v-model:open="isOpen">
+			<DropdownMenuTrigger
 				v-if="!$slots.trigger"
 				:class="[$style.defaultTrigger, $style[size]]"
 				:aria-label="placeholder"
-				:data-test-id="`dropdown-trigger-${modelValue || 'empty'}`"
+				:disabled="disabled"
+				:data-test-id="`dropdown-trigger`"
 			>
-				<SelectValue :placeholder="placeholder" :class="$style.triggerText" />
+				<span :class="$style.triggerText">{{ placeholder }}</span>
 				<N8nIcon
 					icon="chevron-down"
 					:class="[$style.triggerIcon, { [$style.open]: isOpen }]"
 					size="large"
 				/>
-			</SelectTrigger>
-			<SelectTrigger v-else as-child>
+			</DropdownMenuTrigger>
+			<DropdownMenuTrigger v-else as-child :disabled="disabled">
 				<slot name="trigger" />
-			</SelectTrigger>
+			</DropdownMenuTrigger>
 
-			<SelectPortal>
-				<SelectContent
+			<DropdownMenuPortal>
+				<DropdownMenuContent
 					:class="$style.content"
 					:side-offset="8"
 					align="start"
-					position="popper"
 					:avoid-collisions="true"
 				>
-					<SelectScrollUpButton :class="$style.scrollButton">
-						<N8nIcon icon="chevron-up" size="large" />
-					</SelectScrollUpButton>
-
-					<SelectViewport :class="$style.viewport">
-						<SelectItem
-							v-for="option in options"
-							:key="option.value"
-							:value="option.value"
-							:disabled="option.disabled"
-							:class="$style.item"
-							:data-test-id="`dropdown-option-${option.value}`"
-						>
-							<SelectItemText :class="$style.itemText">
-								{{ option.label }}
-							</SelectItemText>
-							<SelectItemIndicator :class="$style.itemIndicator">
-								<N8nIcon icon="check" size="large" />
-							</SelectItemIndicator>
-						</SelectItem>
-					</SelectViewport>
-
-					<SelectScrollDownButton :class="$style.scrollButton">
-						<N8nIcon icon="chevron-down" size="large" />
-					</SelectScrollDownButton>
-				</SelectContent>
-			</SelectPortal>
-		</SelectRoot>
+					<DropdownMenuItem
+						v-for="option in options"
+						:key="option.value"
+						:disabled="option.disabled"
+						:class="$style.item"
+						:data-test-id="`dropdown-option-${option.value}`"
+						@select="handleSelect(option)"
+					>
+						<span :class="$style.itemText">
+							{{ option.label }}
+						</span>
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenuPortal>
+		</DropdownMenuRoot>
 	</div>
 </template>
 
@@ -219,7 +192,7 @@ defineExpose({
 }
 
 .content {
-	min-width: max(var(--reka-select-trigger-width), 200px);
+	min-width: 200px;
 	max-width: 400px;
 	max-height: 320px;
 	background-color: var(--color--foreground--tint-2);
@@ -227,7 +200,8 @@ defineExpose({
 	border-radius: var(--radius--lg);
 	box-shadow: var(--shadow--light);
 	z-index: 9999;
-	overflow: hidden;
+	overflow: auto;
+	padding: var(--spacing--3xs);
 
 	&[data-side='bottom'] {
 		transform-origin: top center;
@@ -252,25 +226,6 @@ defineExpose({
 		&[data-state='closed'] {
 			animation: slideUp var(--animation--duration--spring) var(--animation--easing--spring) reverse;
 		}
-	}
-}
-
-.viewport {
-	padding: var(--spacing--3xs);
-}
-
-.scrollButton {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	height: 24px;
-	background-color: var(--color--foreground--tint-2);
-	color: var(--color--text--tint-1);
-	cursor: pointer;
-	border: none;
-
-	&:hover {
-		background-color: var(--color--background);
 	}
 }
 
@@ -309,14 +264,6 @@ defineExpose({
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.itemIndicator {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	color: var(--color--text--tint-1);
-	flex-shrink: 0;
 }
 
 @keyframes slideDown {

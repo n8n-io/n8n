@@ -15,12 +15,12 @@ import { deepCopy, isINodeProperties, isINodePropertyCollection } from 'n8n-work
 import get from 'lodash/get';
 
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 
 import { N8nButton, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
-import { isPresent } from '@/utils/typesUtils';
+import { isPresent } from '@/app/utils/typesUtils';
 
 const selectedOption = ref<string | undefined>(undefined);
 const addSelectRef = ref<InstanceType<typeof N8nSelect>>();

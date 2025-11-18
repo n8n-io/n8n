@@ -2,7 +2,7 @@
 import type { IUpdateInformation } from '@/Interface';
 import type { INodeParameters, INodeProperties } from 'n8n-workflow';
 
-import { useCollectionOverhaul } from '@/composables/useCollectionOverhaul';
+import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import CollectionParameterLegacy from './CollectionParameterLegacy.vue';
 import CollectionParameterNew from './CollectionParameterNew.vue';
 

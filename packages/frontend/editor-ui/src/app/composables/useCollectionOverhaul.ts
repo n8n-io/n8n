@@ -1,10 +1,7 @@
 import { computed } from 'vue';
-import { usePostHog } from '@/stores/posthog.store';
-import { COLLECTION_OVERHAUL_EXPERIMENT } from '@/constants';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { COLLECTION_OVERHAUL_EXPERIMENT } from '@/app/constants';
 
-/**
- * Composable to check if the collection overhaul feature flag is enabled
- */
 export function useCollectionOverhaul() {
 	const postHogStore = usePostHog();
 

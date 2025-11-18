@@ -885,7 +885,7 @@ function handleSelectAction(params: INodeParameters) {
 		flex-grow: 1;
 
 		&.ndv-v2 {
-			padding: 0 var(--spacing--sm) var(--spacing--lg) var(--spacing--sm);
+			padding: 0 var(--spacing--xs) var(--spacing--lg) var(--spacing--xs);
 		}
 	}
 

@@ -12,22 +12,21 @@ import { computed, ref, watch, onBeforeMount, nextTick } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { storeToRefs } from 'pinia';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { useFixedCollectionItemState } from '@/composables/useFixedCollectionItemState';
-import { useWorkflowsStore } from '@/stores/workflows.store';
-import { telemetry } from '@/plugins/telemetry';
-import type { RekaSelectOption } from '@n8n/design-system';
+import { useFixedCollectionItemState } from '@/app/composables/useFixedCollectionItemState';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { telemetry } from '@/app/plugins/telemetry';
+import type { N8nDropdownOption } from '@n8n/design-system';
 import {
 	N8nButton,
 	N8nCollapsiblePanel,
 	N8nHeaderAction,
-	N8nRekaSelect,
+	N8nDropdown,
 	N8nSectionHeader,
 	N8nTooltip,
 	TOOLTIP_DELAY_MS,
 } from '@n8n/design-system';
 import ParameterInputList from '../ParameterInputList.vue';
 import FixedCollectionItemList from './FixedCollectionItemList.vue';
-import type { ComponentExposed } from 'vue-component-type-helpers';
 
 const locale = useI18n();
 const ndvStore = useNDVStore();
@@ -43,6 +42,7 @@ export type Props = {
 	isNested?: boolean;
 	isNewlyAdded?: boolean;
 	canDelete?: boolean;
+	hiddenIssuesInputs?: string[];
 };
 
 type ValueChangedEvent = {
@@ -53,6 +53,7 @@ type ValueChangedEvent = {
 
 const props = withDefaults(defineProps<Props>(), {
 	values: () => ({}),
+	hiddenIssuesInputs: () => [],
 	isReadOnly: false,
 	isNewlyAdded: false,
 	canDelete: false,
@@ -64,8 +65,6 @@ const emit = defineEmits<{
 }>();
 
 const mutableValues = ref({} as Record<string, INodeParameters[] | INodeParameters>);
-const addDropdownRef = ref<ComponentExposed<typeof N8nRekaSelect>>();
-const selectedOption = ref<string | undefined>(undefined);
 
 const storageKey = computed(() => `${activeNode.value?.id ?? 'unknown'}-${props.path}`);
 const itemState = useFixedCollectionItemState(storageKey, {
@@ -130,7 +129,7 @@ const dropdownOptions = computed(
 				.nodeText(activeNode.value?.type)
 				.collectionOptionDisplayName(props.parameter, option, props.path),
 			value: option.name,
-		})) as Array<RekaSelectOption<string>>,
+		})) as Array<N8nDropdownOption<string>>,
 );
 
 const shouldShowSectionHeader = computed(
@@ -276,8 +275,6 @@ const optionSelected = (optionName: string) => {
 	if (props.parameter.name === 'workflowInputs') {
 		trackFieldAdded();
 	}
-
-	selectedOption.value = undefined;
 };
 
 const valueChanged = (parameterData: IUpdateInformation) => {
@@ -318,12 +315,8 @@ const onHeaderAddClick = async () => {
 		await nextTick();
 	}
 
-	if (shouldShowSectionHeader.value && !multipleValues.value && addDropdownRef.value) {
-		addDropdownRef.value.open();
-		await nextTick();
-		addDropdownRef.value.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-	} else if (properties.value[0]) {
-		optionSelected(properties.value[0].name);
+	if (hasSingleOption.value && dropdownOptions.value[0]) {
+		optionSelected(dropdownOptions.value[0].value);
 	}
 };
 
@@ -331,11 +324,6 @@ const onAddButtonClick = () => {
 	if (hasSingleOption.value && dropdownOptions.value[0]) {
 		optionSelected(dropdownOptions.value[0].value);
 	}
-};
-
-const onDropdownSelect = (value: string | number) => {
-	if (typeof value !== 'string') return;
-	optionSelected(value);
 };
 </script>
 
@@ -345,7 +333,6 @@ const onDropdownSelect = (value: string | number) => {
 		:data-test-id="`fixed-collection-${props.parameter?.name}`"
 		@keydown.stop
 	>
-		<!-- Header variant: Section header with add button -->
 		<template v-if="shouldShowSectionHeader">
 			<N8nSectionHeader
 				:title="displayName"
@@ -355,7 +342,27 @@ const onDropdownSelect = (value: string | number) => {
 				<template v-if="shouldShowAddInHeader" #actions>
 					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
 						<template #content>{{ addTooltipText }}</template>
+						<N8nDropdown
+							v-if="hasMultipleOptions"
+							:options="dropdownOptions"
+							:disabled="isAddDisabled"
+							@select="optionSelected"
+						>
+							<template #trigger>
+								<N8nHeaderAction
+									icon="plus"
+									:label="placeholder"
+									:disabled="isAddDisabled"
+									:data-test-id="
+										multipleValues
+											? 'fixed-collection-add-header'
+											: 'fixed-collection-add-header-top-level'
+									"
+								/>
+							</template>
+						</N8nDropdown>
 						<N8nHeaderAction
+							v-else
 							icon="plus"
 							:label="placeholder"
 							:disabled="isAddDisabled"
@@ -412,6 +419,7 @@ const onDropdownSelect = (value: string | number) => {
 						:is-nested="false"
 						:remove-first-parameter-margin="true"
 						:remove-last-parameter-margin="true"
+						:hidden-issues-inputs="hiddenIssuesInputs"
 						@value-changed="valueChanged"
 					/>
 				</N8nCollapsiblePanel>
@@ -428,15 +436,13 @@ const onDropdownSelect = (value: string | number) => {
 					:class="$style.addButton"
 					@click="onAddButtonClick"
 				/>
-				<N8nRekaSelect
+				<N8nDropdown
 					v-else-if="hasMultipleOptions"
-					ref="addDropdownRef"
-					v-model="selectedOption"
 					:options="dropdownOptions"
 					:class="$style.dropdown"
 					:data-test-id="`fixed-collection-add-top-level-dropdown`"
 					:disabled="isAddDisabled"
-					@update:model-value="onDropdownSelect"
+					@select="optionSelected"
 				>
 					<template #trigger>
 						<N8nButton
@@ -447,11 +453,10 @@ const onDropdownSelect = (value: string | number) => {
 							:class="$style.addButton"
 						/>
 					</template>
-				</N8nRekaSelect>
+				</N8nDropdown>
 			</div>
 		</template>
 
-		<!-- Nested variant: Collapsible wrapper with add in actions -->
 		<N8nCollapsiblePanel
 			v-else-if="shouldWrapInCollapsible"
 			v-model="isWrapperExpanded"
@@ -460,7 +465,23 @@ const onDropdownSelect = (value: string | number) => {
 			<template #actions>
 				<N8nTooltip v-if="shouldShowAddInCollapsibleActions" :show-after="TOOLTIP_DELAY_MS">
 					<template #content>{{ addTooltipText }}</template>
+					<N8nDropdown
+						v-if="hasMultipleOptions"
+						:options="dropdownOptions"
+						:disabled="isAddDisabled"
+						@select="optionSelected"
+					>
+						<template #trigger>
+							<N8nHeaderAction
+								icon="plus"
+								:label="placeholder"
+								:disabled="isAddDisabled"
+								data-test-id="fixed-collection-add-header-nested"
+							/>
+						</template>
+					</N8nDropdown>
 					<N8nHeaderAction
+						v-else
 						icon="plus"
 						:label="placeholder"
 						:disabled="isAddDisabled"
@@ -507,13 +528,12 @@ const onDropdownSelect = (value: string | number) => {
 							:class="$style.addButton"
 							@click="onAddButtonClick"
 						/>
-						<N8nRekaSelect
+						<N8nDropdown
 							v-else-if="hasMultipleOptions"
-							v-model="selectedOption"
 							:options="dropdownOptions"
 							:class="$style.dropdown"
 							:data-test-id="`fixed-collection-add-nested-dropdown`"
-							@update:model-value="onDropdownSelect"
+							@select="optionSelected"
 						>
 							<template #trigger>
 								<N8nButton
@@ -523,7 +543,7 @@ const onDropdownSelect = (value: string | number) => {
 									:class="$style.addButton"
 								/>
 							</template>
-						</N8nRekaSelect>
+						</N8nDropdown>
 					</div>
 				</template>
 
@@ -538,6 +558,7 @@ const onDropdownSelect = (value: string | number) => {
 							:is-nested="true"
 							:remove-first-parameter-margin="true"
 							:remove-last-parameter-margin="true"
+							:hidden-issues-inputs="hiddenIssuesInputs"
 							@value-changed="valueChanged"
 						/>
 					</div>
@@ -545,7 +566,6 @@ const onDropdownSelect = (value: string | number) => {
 			</div>
 		</N8nCollapsiblePanel>
 
-		<!-- Default variant: Simple rendering without wrapper -->
 		<template v-else>
 			<div v-for="property in properties" :key="property.name" :class="$style.propertySection">
 				<template v-if="multipleValues && mutableValues[property.name]">
@@ -589,6 +609,7 @@ const onDropdownSelect = (value: string | number) => {
 						:is-nested="false"
 						:remove-first-parameter-margin="true"
 						:remove-last-parameter-margin="true"
+						:hidden-issues-inputs="hiddenIssuesInputs"
 						@value-changed="valueChanged"
 					/>
 				</N8nCollapsiblePanel>

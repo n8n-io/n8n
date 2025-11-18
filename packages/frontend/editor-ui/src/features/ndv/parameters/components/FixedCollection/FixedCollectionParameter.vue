@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { INodeParameters, INodeProperties, NodeParameterValueType } from 'n8n-workflow';
-import { useCollectionOverhaul } from '@/composables/useCollectionOverhaul';
+import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import FixedCollectionParameterLegacy from './FixedCollectionParameterLegacy.vue';
 import FixedCollectionParameterNew from './FixedCollectionParameterNew.vue';
 
@@ -15,6 +15,7 @@ export type Props = {
 	isNested?: boolean;
 	isNewlyAdded?: boolean;
 	canDelete?: boolean;
+	hiddenIssuesInputs?: string[];
 };
 
 type ValueChangedEvent = {
@@ -23,7 +24,7 @@ type ValueChangedEvent = {
 	type?: 'optionsOrderChanged';
 };
 
-defineProps<Props>();
+withDefaults(defineProps<Props>(), { values: undefined, hiddenIssuesInputs: () => [] });
 
 const emit = defineEmits<{
 	valueChanged: [value: ValueChangedEvent];

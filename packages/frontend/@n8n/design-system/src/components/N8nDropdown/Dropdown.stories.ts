@@ -2,16 +2,13 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import { ref } from 'vue';
 
 import N8nButton from '../N8nButton';
-import N8nRekaSelect from './RekaSelect.vue';
-import type { RekaSelectOption } from './RekaSelect.vue';
+import N8nDropdown from './Dropdown.vue';
+import type { N8nDropdownOption } from './Dropdown.vue';
 
 export default {
-	title: 'Atoms/RekaSelect',
-	component: N8nRekaSelect,
+	title: 'Atoms/Dropdown',
+	component: N8nDropdown,
 	argTypes: {
-		modelValue: {
-			control: 'text',
-		},
 		placeholder: {
 			control: 'text',
 		},
@@ -28,14 +25,14 @@ export default {
 	},
 };
 
-const priorityOptions: RekaSelectOption[] = [
+const priorityOptions: N8nDropdownOption[] = [
 	{ label: 'Low', value: 'low' },
 	{ label: 'Medium', value: 'medium' },
 	{ label: 'High', value: 'high' },
 	{ label: 'Critical', value: 'critical' },
 ];
 
-const statusOptions: RekaSelectOption[] = [
+const statusOptions: N8nDropdownOption[] = [
 	{ label: 'Draft', value: 'draft' },
 	{ label: 'In Progress', value: 'in_progress' },
 	{ label: 'In Review', value: 'in_review' },
@@ -43,7 +40,7 @@ const statusOptions: RekaSelectOption[] = [
 	{ label: 'Published', value: 'published' },
 ];
 
-const countriesOptions: RekaSelectOption[] = [
+const countriesOptions: N8nDropdownOption[] = [
 	{ label: 'United States', value: 'us' },
 	{ label: 'United Kingdom', value: 'uk' },
 	{ label: 'Germany', value: 'de' },
@@ -68,16 +65,20 @@ const countriesOptions: RekaSelectOption[] = [
 
 const Template: StoryFn = (args, { argTypes }) => ({
 	setup: () => {
-		const selectedValue = ref(args.modelValue);
-		return { args, selectedValue };
+		const selectedValue = ref<string | number>();
+		const onSelect = (value: string | number) => {
+			selectedValue.value = value;
+			console.log('Selected:', value);
+		};
+		return { args, selectedValue, onSelect };
 	},
 	props: Object.keys(argTypes),
 	components: {
-		N8nRekaSelect,
+		N8nDropdown,
 	},
 	template: `
 		<div style="padding: 20px;">
-			<N8nRekaSelect v-bind="args" v-model="selectedValue" />
+			<N8nDropdown v-bind="args" @select="onSelect" />
 			<p style="margin-top: 16px; color: var(--color--text--tint-1); font-size: var(--font-size--sm);">
 				Selected value: <strong>{{ selectedValue || 'none' }}</strong>
 			</p>
@@ -89,49 +90,55 @@ export const Default = Template.bind({});
 Default.args = {
 	options: priorityOptions,
 	placeholder: 'Select priority',
-	modelValue: undefined,
 	disabled: false,
 	size: 'medium',
 };
 
-export const WithSelection = Template.bind({});
-WithSelection.args = {
+export const WithStatusOptions = Template.bind({});
+WithStatusOptions.args = {
 	options: statusOptions,
 	placeholder: 'Select status',
-	modelValue: 'in_progress',
 };
 
 export const Disabled = Template.bind({});
 Disabled.args = {
 	options: statusOptions,
 	placeholder: 'Select status',
-	modelValue: 'approved',
 	disabled: true,
 };
 
 export const Sizes: StoryFn = () => ({
 	setup: () => {
 		const small = ref<string>();
-		const medium = ref('medium');
+		const medium = ref<string>();
 		const large = ref<string>();
-		return { small, medium, large, priorityOptions };
+		const onSelectSmall = (value: string | number) => {
+			small.value = String(value);
+		};
+		const onSelectMedium = (value: string | number) => {
+			medium.value = String(value);
+		};
+		const onSelectLarge = (value: string | number) => {
+			large.value = String(value);
+		};
+		return { small, medium, large, priorityOptions, onSelectSmall, onSelectMedium, onSelectLarge };
 	},
 	components: {
-		N8nRekaSelect,
+		N8nDropdown,
 	},
 	template: `
 		<div style="padding: 20px; display: flex; flex-direction: column; gap: 16px;">
 			<div>
 				<label style="display: block; margin-bottom: 8px; font-size: var(--font-size--sm);">Small</label>
-				<N8nRekaSelect v-model="small" :options="priorityOptions" placeholder="Select priority" size="small" />
+				<N8nDropdown @select="onSelectSmall" :options="priorityOptions" placeholder="Select priority" size="small" />
 			</div>
 			<div>
 				<label style="display: block; margin-bottom: 8px; font-size: var(--font-size--sm);">Medium (default)</label>
-				<N8nRekaSelect v-model="medium" :options="priorityOptions" placeholder="Select priority" size="medium" />
+				<N8nDropdown @select="onSelectMedium" :options="priorityOptions" placeholder="Select priority" size="medium" />
 			</div>
 			<div>
 				<label style="display: block; margin-bottom: 8px; font-size: var(--font-size--sm);">Large</label>
-				<N8nRekaSelect v-model="large" :options="priorityOptions" placeholder="Select priority" size="large" />
+				<N8nDropdown @select="onSelectLarge" :options="priorityOptions" placeholder="Select priority" size="large" />
 			</div>
 		</div>
 	`,
@@ -152,10 +159,13 @@ WithDisabledOptions.args = {
 export const LongList: StoryFn = () => ({
 	setup: () => {
 		const selectedValue = ref<string>();
-		return { selectedValue, countriesOptions };
+		const onSelect = (value: string | number) => {
+			selectedValue.value = String(value);
+		};
+		return { selectedValue, countriesOptions, onSelect };
 	},
 	components: {
-		N8nRekaSelect,
+		N8nDropdown,
 	},
 	template: `
 		<div style="padding: 20px;">
@@ -173,8 +183,8 @@ export const LongList: StoryFn = () => ({
 				</ul>
 			</div>
 
-			<N8nRekaSelect
-				v-model="selectedValue"
+			<N8nDropdown
+				@select="onSelect"
 				:options="countriesOptions"
 				placeholder="Select a country"
 			/>
@@ -199,10 +209,13 @@ export const CustomTrigger: StoryFn = () => ({
 			{ label: 'Country', value: 'country' },
 			{ label: 'Postal Code', value: 'postal_code' },
 		];
-		return { selectedValue, fieldOptions };
+		const onSelect = (value: string | number) => {
+			selectedValue.value = String(value);
+		};
+		return { selectedValue, fieldOptions, onSelect };
 	},
 	components: {
-		N8nRekaSelect,
+		N8nDropdown,
 		N8nButton,
 	},
 	template: `
@@ -223,8 +236,8 @@ export const CustomTrigger: StoryFn = () => ({
 				--button--color--text--active: var(--color--primary);
 				--button--color--text--focus: var(--color--primary);
 			">
-				<N8nRekaSelect
-					v-model="selectedValue"
+				<N8nDropdown
+					@select="onSelect"
 					:options="fieldOptions"
 					placeholder="Add field"
 					style="display: inline-flex;"
@@ -232,7 +245,7 @@ export const CustomTrigger: StoryFn = () => ({
 					<template #trigger>
 						<N8nButton type="secondary" icon="plus" label="Add field" />
 					</template>
-				</N8nRekaSelect>
+				</N8nDropdown>
 			</div>
 			<p style="margin-top: 16px; color: var(--color--text--tint-1); font-size: var(--font-size--sm);">
 				Selected value: <strong>{{ selectedValue || 'none' }}</strong>
