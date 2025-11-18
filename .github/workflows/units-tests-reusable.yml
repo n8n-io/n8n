@@ -85,6 +85,7 @@ jobs:
           name: backend-integration
 
       - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -117,6 +118,7 @@ jobs:
           name: nodes-unit
 
       - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -155,6 +157,7 @@ jobs:
           name: frontend-shard-${{ matrix.shard }}
 
       - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
