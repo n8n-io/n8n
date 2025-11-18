@@ -3,7 +3,7 @@ import { HumanMessage } from '@langchain/core/messages';
 import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
 import type { SimpleWorkflow, WorkflowOperation } from './types';
-import type { ProgrammaticEvaluationResult } from './validation/types';
+import type { ProgrammaticEvaluationResult, TelemetryValidationStatus } from './validation/types';
 import type { ChatPayload } from './workflow-builder-agent';
 
 /**
@@ -80,9 +80,20 @@ export const WorkflowState = Annotation.Root({
 	workflowContext: Annotation<ChatPayload['workflowContext'] | undefined>({
 		reducer: (x, y) => y ?? x,
 	}),
+	// Results of last workflow validation
 	workflowValidation: Annotation<ProgrammaticEvaluationResult | null>({
 		reducer: (x, y) => (y === undefined ? x : y),
 		default: () => null,
+	}),
+	// Compacted programmatic validations history for telemetry
+	validationHistory: Annotation<TelemetryValidationStatus[]>({
+		reducer: (x, y) => (y && y.length > 0 ? [...x, ...y] : x),
+		default: () => [],
+	}),
+	// Technique categories identified from categorize_prompt tool for telemetry
+	techniqueCategories: Annotation<string[]>({
+		reducer: (x, y) => (y && y.length > 0 ? [...x, ...y] : x),
+		default: () => [],
 	}),
 
 	// Previous conversation summary (used for compressing long conversations)
