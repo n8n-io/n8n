@@ -78,7 +78,7 @@ ${formatExamplePrompts()}
 </example_categorization>
 
 Select a maximum of 5 techniques that you believe are applicable, but only select them if you are
-confident that they are applicable. If the prompt is ambigious or does not provide an obvious workflow
+confident that they are applicable. If the prompt is ambiguous or does not provide an obvious workflow
 do not provide any techniques - if confidence is low avoid providing techniques.
 
 Select ALL techniques that apply to this workflow. Most workflows use multiple techniques.
