@@ -27,4 +27,6 @@ yarn-error.log*
 src/components.d.ts
 
 # Build artifacts
-.build/
+.build/*
+# Except for the committed popularity data
+!.build/node-popularity.json
