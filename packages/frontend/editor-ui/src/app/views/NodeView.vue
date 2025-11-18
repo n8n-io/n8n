@@ -1914,7 +1914,7 @@ watch(
 );
 
 // Watch for workflow meta changes to update banner when workflow is reactivated
-watch(
+watch<{ timestamp: string; crashedExecutions: number } | undefined>(
 	() => workflowsStore.workflow.meta?.autoDeactivated,
 	() => {
 		updateWorkflowAutoDeactivatedBanner();
