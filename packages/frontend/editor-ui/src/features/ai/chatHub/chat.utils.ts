@@ -267,39 +267,55 @@ export function buildUiMessages(
 	conversation: ChatConversation,
 	streaming?: ChatStreamingState,
 ): ChatMessage[] {
-	const persistedMessages = conversation.activeMessageChain.flatMap<ChatMessage>(
-		(id, index, arr) => {
-			const message = conversation.messages[id];
+	const messagesToShow: ChatMessage[] = [];
+	let foundRunning = false;
 
-			if (!message) {
-				return [];
-			}
+	for (let index = 0; index < conversation.activeMessageChain.length; index++) {
+		const id = conversation.activeMessageChain[index];
+		const message = conversation.messages[id];
 
-			if (
-				arr.length - 1 === index &&
-				streaming?.requestType === 'new' &&
-				streaming.sessionId === sessionId &&
-				message.type === 'ai'
-			) {
-				// When agent responds multiple messages (e.g. when tools are used),
-				// there's a noticeable time gap between messages.
-				// In order to indicate that agent is still responding, show the last AI message as running
-				return [{ ...message, status: 'running' }];
-			}
+		if (!message) {
+			continue;
+		}
 
-			return [message];
-		},
-	);
+		foundRunning = foundRunning || message.status === 'running';
 
-	if (
-		streaming?.requestType === 'new' &&
-		streaming.sessionId === sessionId &&
-		!streaming.messageId &&
-		streaming.promptId === persistedMessages[persistedMessages.length - 1]?.id
-	) {
-		// Append a placeholder AI message as an immediate feedback until backend starts streaming
-		persistedMessages.push(createAiMessageFromStreamingState(sessionId, uuidv4(), streaming));
+		if (foundRunning || streaming?.sessionId !== sessionId || message.type !== 'ai') {
+			messagesToShow.push(message);
+			continue;
+		}
+
+		if (streaming.retryOfMessageId === id && !streaming.messageId) {
+			// While waiting for streaming to start on regeneration, show previously generated message
+			// in running state as an immediate feedback
+			messagesToShow.push({ ...message, content: '', status: 'running' });
+			foundRunning = true;
+			continue;
+		}
+
+		if (index === conversation.activeMessageChain.length - 1) {
+			// When agent responds multiple messages (e.g. when tools are used),
+			// there's a noticeable time gap between messages.
+			// In order to indicate that agent is still responding, show the last AI message as running
+			messagesToShow.push({ ...message, status: 'running' });
+			foundRunning = true;
+			continue;
+		}
+
+		messagesToShow.push(message);
 	}
 
-	return persistedMessages;
+	if (
+		!foundRunning &&
+		streaming?.sessionId === sessionId &&
+		!streaming.messageId &&
+		streaming.retryOfMessageId === null &&
+		streaming.promptId === messagesToShow[messagesToShow.length - 1]?.id
+	) {
+		// While waiting for streaming to start on sending new message/editing, append a fake message
+		// in running state as an immediate feedback
+		messagesToShow.push(createAiMessageFromStreamingState(sessionId, uuidv4(), streaming));
+	}
+
+	return messagesToShow;
 }

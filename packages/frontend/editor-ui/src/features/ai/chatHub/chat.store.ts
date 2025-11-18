@@ -459,7 +459,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			alternatives: [],
 		});
 
-		streaming.value = { promptId: messageId, sessionId, model, requestType: 'new' };
+		streaming.value = {
+			promptId: messageId,
+			sessionId,
+			model,
+			retryOfMessageId: null,
+		};
 
 		sendMessageApi(
 			rootStore.restApiContext,
@@ -522,7 +527,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			replaceMessageContent(sessionId, editId, content);
 		}
 
-		streaming.value = { promptId, sessionId, model, requestType: 'edit' };
+		streaming.value = {
+			promptId,
+			sessionId,
+			model,
+			retryOfMessageId: null,
+		};
 
 		editMessageApi(
 			rootStore.restApiContext,
@@ -553,7 +563,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			throw new Error('No previous message to base regeneration on');
 		}
 
-		streaming.value = { promptId: retryId, sessionId, model, requestType: 'regenerate' };
+		streaming.value = {
+			promptId: retryId,
+			sessionId,
+			model,
+			retryOfMessageId: retryId,
+		};
 
 		regenerateMessageApi(
 			rootStore.restApiContext,

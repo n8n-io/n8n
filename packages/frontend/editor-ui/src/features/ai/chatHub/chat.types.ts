@@ -74,10 +74,10 @@ export interface ChatAgentFilter {
 }
 
 export interface ChatStreamingState extends Partial<EnrichedStructuredChunk['metadata']> {
-	requestType: 'new' | 'edit' | 'regenerate';
 	promptId: ChatMessageId;
 	sessionId: ChatSessionId;
 	model: ChatHubConversationModel;
+	retryOfMessageId: ChatMessageId | null;
 }
 
 export interface FlattenedModel {
