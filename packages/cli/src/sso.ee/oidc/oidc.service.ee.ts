@@ -28,6 +28,7 @@ import {
 import { OIDC_CLIENT_SECRET_REDACTED_VALUE, OIDC_PREFERENCES_DB_KEY } from './constants';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { inE2ETests } from '@/constants';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { InternalServerError } from '@/errors/response-errors/internal-server.error';
 import { ProvisioningService } from '@/modules/provisioning.ee/provisioning.service.ee';
@@ -515,24 +516,19 @@ export class OidcService {
 		clientSecret: string,
 	): Promise<client.Configuration> {
 		// For E2E tests with HTTP, allow insecure requests and transform localhost URLs
-		const discoveryOptions =
-			process.env.E2E_TESTS === 'true'
-				? {
-						execute: [client.allowInsecureRequests],
-						[client.customFetch]: async (url: string, options?: any) => {
-							const transformedUrl = this.transformDockerUrl(url);
-							return await fetch(transformedUrl, options as RequestInit);
-						},
-					}
-				: undefined;
+		const discoveryOptions = inE2ETests
+			? {
+					execute: [client.allowInsecureRequests],
+					[client.customFetch]: async (url: string, options?: any) => {
+						const transformedUrl = this.transformDockerUrl(url);
+						return await fetch(transformedUrl, options as RequestInit);
+					},
+				}
+			: undefined;
 
-		const configuration = await client.discovery(
-			discoveryUrl,
-			clientId,
-			clientSecret,
-			undefined,
-			discoveryOptions,
-		);
+		const configuration = discoveryOptions
+			? await client.discovery(discoveryUrl, clientId, clientSecret, undefined, discoveryOptions)
+			: await client.discovery(discoveryUrl, clientId, clientSecret);
 
 		// Check if proxy environment variables are set
 		const hasProxyConfig =
@@ -561,7 +557,7 @@ export class OidcService {
 		}
 
 		// For E2E tests, transform localhost URLs to Docker network hostnames
-		if (process.env.E2E_TESTS === 'true') {
+		if (inE2ETests) {
 			const existingFetch = configuration[client.customFetch];
 
 			configuration[client.customFetch] = async (...args) => {
