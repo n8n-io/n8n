@@ -46,6 +46,7 @@ export const HTML_NODE_TYPE = 'n8n-nodes-base.html';
 export const MAILGUN_NODE_TYPE = 'n8n-nodes-base.mailgun';
 export const POSTGRES_NODE_TYPE = 'n8n-nodes-base.postgres';
 export const MYSQL_NODE_TYPE = 'n8n-nodes-base.mySql';
+export const SCHEDULE_TRIGGER_NODE_TYPE = 'n8n-nodes-base.scheduleTrigger';
 export const JINA_AI_TOOL_NODE_TYPE = 'n8n-nodes-base.jinaAiTool';
 
 export const STARTING_NODE_TYPES = [
@@ -54,6 +55,7 @@ export const STARTING_NODE_TYPES = [
 	ERROR_TRIGGER_NODE_TYPE,
 	START_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
+	FORM_TRIGGER_NODE_TYPE,
 ];
 
 export const SCRIPTING_NODE_TYPES = [
