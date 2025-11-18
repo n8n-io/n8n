@@ -19,7 +19,7 @@
   },
   "scripts": {
     "dev": "tsc --watch",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
