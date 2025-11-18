@@ -12,6 +12,7 @@ from src.cost_functions import (
     edge_substitution_cost,
     edge_deletion_cost,
     edge_insertion_cost,
+    get_parameter_diff,
 )
 
 
@@ -58,30 +59,36 @@ def calculate_graph_edit_distance(
     def node_ins_cost(n_attrs):
         return node_insertion_cost(n_attrs, config)
 
-    # Edge cost functions receive edge attribute dicts from NetworkX
-    def edge_subst_cost(e1_attrs, e2_attrs):
-        return edge_substitution_cost(e1_attrs, e2_attrs, config)
+    # Edge match function - returns True if edges are equivalent
+    # This is better than cost functions for preventing false positives
+    def edge_match(e1_attrs, e2_attrs):
+        """Check if two edges match (same connection type or equivalent)"""
+        conn_type1 = e1_attrs.get("connection_type", "main")
+        conn_type2 = e2_attrs.get("connection_type", "main")
 
-    def edge_del_cost(e_attrs):
-        return edge_deletion_cost(e_attrs, config)
+        # Exact match
+        if conn_type1 == conn_type2:
+            return True
 
-    def edge_ins_cost(e_attrs):
-        return edge_insertion_cost(e_attrs, config)
+        # Check for equivalent types in config
+        for equiv_group in config.equivalent_connection_types:
+            if conn_type1 in equiv_group and conn_type2 in equiv_group:
+                return True
+
+        return False
 
     # Calculate GED using NetworkX
     # Note: This can be slow for large graphs, but workflow graphs are typically small
     try:
-        # Use optimize_edit_paths to get the actual edit operations
-        # This returns tuples of (node_edit_path, edge_edit_path, cost)
+        # Use optimize_edit_paths with edge_match instead of edge cost functions
+        # This prevents false positive edge insertions/deletions
         edit_path_generator = nx.optimize_edit_paths(
             g1_relabeled,
             g2_relabeled,
             node_subst_cost=node_subst_cost,
             node_del_cost=node_del_cost,
             node_ins_cost=node_ins_cost,
-            edge_subst_cost=edge_subst_cost,
-            edge_del_cost=edge_del_cost,
-            edge_ins_cost=edge_ins_cost,
+            edge_match=edge_match,
             upper_bound=None,  # Calculate exact
         )
 
@@ -294,27 +301,36 @@ def _extract_operations_from_path(
                 type1 = node1_data.get("type", "unknown")
                 type2 = node2_data.get("type", "unknown")
 
+                operation_data = {
+                    "type": "node_substitute",
+                    "cost": cost,
+                    "priority": _determine_priority(
+                        cost, config, node1_data, "node_substitute"
+                    ),
+                    "node_name": display_name,
+                }
+
                 if type1 != type2:
-                    desc = (
+                    operation_data["description"] = (
                         f"Change node '{display_name}' from type '{type1}' to '{type2}'"
                     )
                 else:
-                    desc = f"Update parameters of node '{display_name}' (type: {type1})"
+                    operation_data["description"] = (
+                        f"Update parameters of node '{display_name}' (type: {type1})"
+                    )
+                    # Extract parameter diff for same-type substitutions
+                    params1 = node1_data.get("parameters", {})
+                    params2 = node2_data.get("parameters", {})
+                    if params1 or params2:
+                        param_diff = get_parameter_diff(params1, params2, type1, config)
+                        if param_diff:
+                            operation_data["parameter_diff"] = param_diff
 
-                # Use node1 data for priority check (either could work for trigger check)
-                operations.append(
-                    {
-                        "type": "node_substitute",
-                        "description": desc,
-                        "cost": cost,
-                        "priority": _determine_priority(
-                            cost, config, node1_data, "node_substitute"
-                        ),
-                        "node_name": display_name,
-                    }
-                )
+                operations.append(operation_data)
 
     # Process edge edits
+    # Note: With edge_match function, the GED algorithm should only report
+    # edges that truly differ, so we don't need complex filtering here
     for e1, e2 in edge_edit_path:
         if e1 is None:
             # Edge insertion
@@ -462,12 +478,24 @@ def _relabel_graph_by_structure(graph: nx.DiGraph) -> tuple[nx.DiGraph, Dict[str
         mapping[original_name] = new_label
         reverse_mapping[new_label] = original_name
 
-    # Create relabeled graph
+    # Create relabeled graph - this preserves all node attributes
     relabeled = nx.relabel_nodes(graph, mapping, copy=True)
 
-    # Store original names in node attributes
+    # Store original names in node attributes for matching
+    # This helps the GED algorithm match nodes correctly
     for new_label, original_name in reverse_mapping.items():
         if new_label in relabeled.nodes:
             relabeled.nodes[new_label]["_original_name"] = original_name
+            # Add a normalized name hash to help with matching nodes of the same type
+            # Normalize by replacing smart quotes with regular quotes for comparison
+            # U+2018 (') -> U+0027 ('), U+2019 (') -> U+0027 (')
+            # U+201C (") -> U+0022 ("), U+201D (") -> U+0022 (")
+            normalized_name = original_name.replace("\u2018", "'").replace(
+                "\u2019", "'"
+            )
+            normalized_name = normalized_name.replace("\u201c", '"').replace(
+                "\u201d", '"'
+            )
+            relabeled.nodes[new_label]["_name_hash"] = hash(normalized_name)
 
     return relabeled, reverse_mapping

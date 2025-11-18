@@ -73,12 +73,18 @@ def build_workflow_graph(
                         continue
 
                     # Add edge with connection metadata
+                    # Include source and target node info for better matching
+                    source_node_data = G.nodes[source_name]
+                    target_node_data = G.nodes[target_name]
+
                     G.add_edge(
                         source_name,
                         target_name,
                         connection_type=conn.get("type", "main"),
                         source_index=output_index,
                         target_index=conn.get("index", 0),
+                        source_node_type=source_node_data.get("type", ""),
+                        target_node_type=target_node_data.get("type", ""),
                     )
 
     return G
