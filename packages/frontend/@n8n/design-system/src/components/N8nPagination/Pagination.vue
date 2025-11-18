@@ -308,7 +308,7 @@ const shouldShowPagination = computed(() => {
 	align-items: center;
 	justify-content: center;
 	font-size: var(--font-size--2xs);
-	font-weight: normal;
+	font-weight: var(--font-weight--bold);
 	color: var(--color--text--inverse);
 	transition: color 0.2s ease;
 	user-select: none;
@@ -361,7 +361,7 @@ const shouldShowPagination = computed(() => {
 		background: transparent !important;
 		color: var(--color--primary);
 		border: 1px solid var(--color--primary);
-		font-weight: normal;
+		font-weight: var(--font-weight--bold);
 
 		:deep(button) {
 			background: transparent !important;
