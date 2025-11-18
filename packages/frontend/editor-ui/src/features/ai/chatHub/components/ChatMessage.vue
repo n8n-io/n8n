@@ -135,7 +135,7 @@ onBeforeMount(() => {
 		:style="minHeight ? { minHeight: `${minHeight}px` } : undefined"
 		:data-message-id="message.id"
 	>
-		<div :class="$style.avatar">
+		<div :class="[$style.avatar, { [$style.errorAvatar]: message.status === 'error' }]">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
 			<ChatAgentAvatar v-else-if="agent" :agent="agent" size="md" tooltip />
 			<N8nIcon v-else icon="sparkles" width="20" height="20" />
