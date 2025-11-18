@@ -224,21 +224,18 @@ export class AiWorkflowBuilderService {
 	): Promise<void> {
 		if (!this.onTelemetryEvent) return;
 
-		// Get the final state from the agent
 		const state = await agent.getState(workflowId, userId);
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
 
-		// Extract the last AI message using instanceof
-		const aiMessages = state.values.messages.filter(
+		// extract the last message that was sent to the user for telemetry
+		const lastAiMessage = state.values.messages.findLast(
 			(m: BaseMessage): m is AIMessage => m instanceof AIMessage,
 		);
-		const lastAiMessage = aiMessages[aiMessages.length - 1];
 		const messageAi =
 			typeof lastAiMessage?.content === 'string'
 				? lastAiMessage.content
 				: JSON.stringify(lastAiMessage?.content ?? '');
 
-		// Extract tools called from tool messages using instanceof
 		const toolMessages = state.values.messages.filter(
 			(m: BaseMessage): m is ToolMessage => m instanceof ToolMessage,
 		);
