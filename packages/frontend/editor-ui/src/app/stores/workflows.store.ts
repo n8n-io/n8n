@@ -1040,10 +1040,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			delete nodeMetadata.value[nodeName].pinnedDataLastRemovedAt;
 		}
 
-		const storedPinData = payload.data.map((item) =>
-			// Store full item to preserve binary and paired item information
-			isJsonKeyObject(item) ? item : { json: item },
-		);
+		const storedPinData = payload.data.map((item) => {
+			// Store only essential properties: json, binary, and pairedItem
+			// Exclude runtime properties (error, metadata, evaluationData, etc.)
+			if (isJsonKeyObject(item)) {
+				const { json, binary, pairedItem } = item;
+				return {
+					json,
+					...(binary && { binary }),
+					...(pairedItem !== undefined && { pairedItem }),
+				};
+			}
+			return { json: item };
+		});
 
 		workflow.value.pinData[nodeName] = storedPinData;
 		workflowObject.value.setPinData(workflow.value.pinData);
