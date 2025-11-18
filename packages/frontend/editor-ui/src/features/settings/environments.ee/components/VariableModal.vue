@@ -220,10 +220,10 @@ async function handleSubmit() {
 
 onMounted(async () => {
 	await nextTick();
-	if (keyInputRef.value?.inputRef) {
+	const input = keyInputRef.value?.inputRef;
+	if (input) {
 		requestAnimationFrame(() => {
-			keyInputRef.value?.inputRef?.focus();
-			keyInputRef.value?.inputRef?.select();
+			input.focus();
 		});
 	}
 });
