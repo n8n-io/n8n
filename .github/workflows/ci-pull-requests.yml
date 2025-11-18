@@ -6,6 +6,9 @@ on:
       - '**'
       - '!release/*'
 
+env:
+  COVERAGE_ENABLED: 'true'  # Set globally for all jobs - ensures Turbo cache consistency
+
 jobs:
   install-and-build:
     name: Install & Build
