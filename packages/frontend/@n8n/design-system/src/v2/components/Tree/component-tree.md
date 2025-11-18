@@ -39,6 +39,8 @@ interface TreeItem {
 **Slots**
 
 - `default`: `{ item: FlattenedItem<T>; handleToggle: () => void; handleSelect: () => void; isExpanded: boolean, hasChildren: boolean }` - Main content for each tree item.
+- `empty`: - Slot for empty state.
+
 ### Template usage example
 
 #### Basic Usage
@@ -97,6 +99,9 @@ function getCustomKey(item: CustomItem) {
 				<span>{{ item.value.name }} ({{ item.value.uuid }})</span>
 			</div>
     </template>
+		<template #empty>
+			<p>No custom items to display</p>
+		</template>
   </N8nTree>
 </template>
 ```
