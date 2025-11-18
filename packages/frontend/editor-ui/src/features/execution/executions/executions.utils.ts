@@ -11,6 +11,7 @@ import type {
 	INodeExecutionData,
 	Workflow,
 	IWorkflowDataProxyAdditionalKeys,
+	IRunExecutionData,
 } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type {
@@ -376,16 +377,41 @@ export function getExecutionErrorToastConfiguration({
 }
 
 /**
+ * Removes invalid empty node executions and returns cleaned runData
+ * @param runData The run data to clean
+ * @returns A new runData object with invalid entries filtered out
+ */
+function removeInvalidRuns(runData: IRunData): IRunData {
+	const cleanedRunData: IRunData = {};
+	for (const nodeName in runData) {
+		if (runData[nodeName]) {
+			cleanedRunData[nodeName] = runData[nodeName].filter(
+				(taskData) => taskData !== undefined && taskData !== null,
+			);
+		}
+	}
+
+	return cleanedRunData;
+}
+
+/**
  * Unflattens the Execution data.
  *
  * @param {IExecutionFlattedResponse} fullExecutionData The data to unflatten
  */
 export function unflattenExecutionData(fullExecutionData: IExecutionFlattedResponse) {
 	// Unflatten the data
+	const parsedData = parse(fullExecutionData.data) as unknown as IRunExecutionData;
+	if (parsedData.resultData?.runData) {
+		parsedData.resultData = {
+			...parsedData.resultData,
+			runData: removeInvalidRuns(parsedData.resultData.runData),
+		};
+	}
 	const returnData: IExecutionResponse = {
 		...fullExecutionData,
 		workflowData: fullExecutionData.workflowData,
-		data: parse(fullExecutionData.data),
+		data: parsedData,
 	};
 
 	returnData.finished = returnData.finished ? returnData.finished : false;

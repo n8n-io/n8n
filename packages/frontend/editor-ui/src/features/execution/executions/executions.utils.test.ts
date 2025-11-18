@@ -7,6 +7,7 @@ import {
 	getExecutionErrorMessage,
 	getExecutionErrorToastConfiguration,
 	findTriggerNodeToAutoSelect,
+	unflattenExecutionData,
 } from './executions.utils';
 import type {
 	INode,
@@ -15,6 +16,7 @@ import type {
 	ExecutionError,
 	INodeTypeDescription,
 	Workflow,
+	ITaskData,
 } from 'n8n-workflow';
 import { type INodeUi } from '@/Interface';
 import {
@@ -27,6 +29,8 @@ import {
 } from '@/app/constants';
 import { createTestNode, mockNodeTypeDescription } from '@/__tests__/mocks';
 import type { VNode } from 'vue';
+import type { IExecutionFlattedResponse } from './executions.types';
+import { stringify } from 'flatted';
 
 const WAIT_NODE_TYPE = 'waitNode';
 
@@ -702,5 +706,289 @@ describe(findTriggerNodeToAutoSelect, () => {
 				getNodeType,
 			),
 		).toEqual(expect.objectContaining({ name: 'B' }));
+	});
+});
+
+describe('unflattenExecutionData', () => {
+	it('should unflatten execution data without invalid runs', () => {
+		const flattedData: IExecutionFlattedResponse = {
+			id: 'exec-123',
+			finished: true,
+			mode: 'manual',
+			status: 'success',
+			startedAt: new Date('2024-01-01').toISOString(),
+			createdAt: new Date('2024-01-01').toISOString(),
+			stoppedAt: new Date('2024-01-01').toISOString(),
+			workflowId: 'workflow-123',
+			workflowData: {
+				id: 'workflow-123',
+				name: 'Test Workflow',
+				active: false,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+				nodes: [],
+				connections: {},
+				settings: {
+					executionOrder: 'v1',
+				},
+				tags: [],
+				isArchived: false,
+				versionId: '',
+			},
+			data: stringify({
+				resultData: {
+					runData: {
+						Node1: [
+							{
+								startTime: 1234567890,
+								executionTime: 100,
+								executionIndex: 0,
+								source: [],
+								data: { main: [[{ json: { value: 'test' } }]] },
+							} as ITaskData,
+						],
+					},
+				},
+			}),
+		};
+
+		const result = unflattenExecutionData(flattedData);
+
+		expect(result.id).toBe('exec-123');
+		expect(result.finished).toBe(true);
+		expect(result.data?.resultData?.runData?.Node1).toHaveLength(1);
+		expect(result.data?.resultData?.runData?.Node1?.[0]).toBeDefined();
+	});
+
+	it('should remove null and undefined task data entries from runData', () => {
+		const flattedData: IExecutionFlattedResponse = {
+			id: 'exec-456',
+			finished: true,
+			mode: 'manual',
+			status: 'success',
+			startedAt: new Date('2024-01-01').toISOString(),
+			createdAt: new Date('2024-01-01').toISOString(),
+			stoppedAt: new Date('2024-01-01').toISOString(),
+			workflowId: 'workflow-123',
+			workflowData: {
+				id: 'workflow-123',
+				name: 'Test Workflow',
+				active: false,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+				nodes: [],
+				connections: {},
+				settings: {
+					executionOrder: 'v1',
+				},
+				tags: [],
+				isArchived: false,
+				versionId: '',
+			},
+			data: stringify({
+				resultData: {
+					runData: {
+						Node1: [
+							{
+								startTime: 1234567890,
+								executionTime: 100,
+								executionIndex: 0,
+								source: [],
+								data: { main: [[{ json: { value: 'valid1' } }]] },
+							} as ITaskData,
+							null,
+							{
+								startTime: 1234567891,
+								executionTime: 101,
+								executionIndex: 1,
+								source: [],
+								data: { main: [[{ json: { value: 'valid2' } }]] },
+							} as ITaskData,
+							undefined,
+						],
+						Node2: [
+							null,
+							undefined,
+							{
+								startTime: 1234567892,
+								executionTime: 102,
+								executionIndex: 0,
+								source: [],
+								data: { main: [[{ json: { value: 'valid3' } }]] },
+							} as ITaskData,
+						],
+					},
+				},
+			}),
+		};
+
+		const result = unflattenExecutionData(flattedData);
+
+		// Node1 should have 2 valid entries (null and undefined removed)
+		expect(result.data?.resultData?.runData?.Node1).toHaveLength(2);
+		expect(result.data?.resultData?.runData?.Node1?.[0]?.data?.main?.[0]?.[0]?.json).toEqual({
+			value: 'valid1',
+		});
+		expect(result.data?.resultData?.runData?.Node1?.[1]?.data?.main?.[0]?.[0]?.json).toEqual({
+			value: 'valid2',
+		});
+
+		// Node2 should have 1 valid entry (null and undefined removed)
+		expect(result.data?.resultData?.runData?.Node2).toHaveLength(1);
+		expect(result.data?.resultData?.runData?.Node2?.[0]?.data?.main?.[0]?.[0]?.json).toEqual({
+			value: 'valid3',
+		});
+	});
+
+	it('should handle execution data with no runData', () => {
+		const flattedData: IExecutionFlattedResponse = {
+			id: 'exec-789',
+			finished: true,
+			mode: 'manual',
+			status: 'success',
+			startedAt: new Date('2024-01-01').toISOString(),
+			createdAt: new Date('2024-01-01').toISOString(),
+			stoppedAt: new Date('2024-01-01').toISOString(),
+			workflowId: 'workflow-123',
+			workflowData: {
+				id: 'workflow-123',
+				name: 'Test Workflow',
+				active: false,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+				nodes: [],
+				connections: {},
+				settings: {
+					executionOrder: 'v1',
+				},
+				tags: [],
+				isArchived: false,
+				versionId: '',
+			},
+			data: stringify({
+				resultData: {},
+			}),
+		};
+
+		const result = unflattenExecutionData(flattedData);
+
+		expect(result.id).toBe('exec-789');
+		expect(result.finished).toBe(true);
+		expect(result.data?.resultData?.runData).toBeUndefined();
+	});
+
+	it('should handle execution data with empty runData', () => {
+		const flattedData: IExecutionFlattedResponse = {
+			id: 'exec-101',
+			finished: true,
+			mode: 'manual',
+			status: 'success',
+			startedAt: new Date('2024-01-01').toISOString(),
+			createdAt: new Date('2024-01-01').toISOString(),
+			stoppedAt: new Date('2024-01-01').toISOString(),
+			workflowId: 'workflow-123',
+			workflowData: {
+				id: 'workflow-123',
+				name: 'Test Workflow',
+				active: false,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+				nodes: [],
+				connections: {},
+				settings: {
+					executionOrder: 'v1',
+				},
+				tags: [],
+				isArchived: false,
+				versionId: '',
+			},
+			data: stringify({
+				resultData: {
+					runData: {},
+				},
+			}),
+		};
+
+		const result = unflattenExecutionData(flattedData);
+
+		expect(result.id).toBe('exec-101');
+		expect(result.finished).toBe(true);
+		expect(result.data?.resultData?.runData).toEqual({});
+	});
+
+	it('should handle all null/undefined entries in a node', () => {
+		const flattedData: IExecutionFlattedResponse = {
+			id: 'exec-202',
+			finished: true,
+			mode: 'manual',
+			status: 'success',
+			startedAt: new Date('2024-01-01').toISOString(),
+			createdAt: new Date('2024-01-01').toISOString(),
+			stoppedAt: new Date('2024-01-01').toISOString(),
+			workflowId: 'workflow-123',
+			workflowData: {
+				id: 'workflow-123',
+				name: 'Test Workflow',
+				active: false,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+				nodes: [],
+				connections: {},
+				settings: {
+					executionOrder: 'v1',
+				},
+				tags: [],
+				isArchived: false,
+				versionId: '',
+			},
+			data: stringify({
+				resultData: {
+					runData: {
+						Node1: [null, undefined, null],
+					},
+				},
+			}),
+		};
+
+		const result = unflattenExecutionData(flattedData);
+
+		// Node1 should have an empty array after filtering all invalid entries
+		expect(result.data?.resultData?.runData?.Node1).toHaveLength(0);
+		expect(result.data?.resultData?.runData?.Node1).toEqual([]);
+	});
+
+	it('should set finished to false when not provided', () => {
+		const flattedData = {
+			id: 'exec-303',
+			mode: 'manual',
+			status: 'success',
+			startedAt: new Date('2024-01-01').toISOString(),
+			createdAt: new Date('2024-01-01').toISOString(),
+			workflowId: 'workflow-123',
+			workflowData: {
+				id: 'workflow-123',
+				name: 'Test Workflow',
+				active: false,
+				createdAt: Date.now(),
+				updatedAt: Date.now(),
+				nodes: [],
+				connections: {},
+				settings: {
+					executionOrder: 'v1',
+				},
+				tags: [],
+				isArchived: false,
+				versionId: '',
+			},
+			data: stringify({
+				resultData: {
+					runData: {},
+				},
+			}),
+		} as unknown as IExecutionFlattedResponse;
+
+		const result = unflattenExecutionData(flattedData);
+
+		expect(result.finished).toBe(false);
 	});
 });
