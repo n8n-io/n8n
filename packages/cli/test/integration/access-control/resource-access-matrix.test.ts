@@ -192,8 +192,8 @@ describe('Resource Access Control Matrix Tests', () => {
 				expect(response.body.data.length).toBeGreaterThan(0);
 			});
 
-			test('GET /workflows/new should return 200', async () => {
-				await testUserAgent.get('/workflows/new').expect(200);
+			test('GET /workflows/new should return 403', async () => {
+				await testUserAgent.get(`/workflows/new?projectId=${teamProject.id}`).expect(403);
 			});
 
 			test('GET /workflows/:id should return 200', async () => {
@@ -276,7 +276,7 @@ describe('Resource Access Control Matrix Tests', () => {
 			});
 
 			test('GET /workflows/new should return 200', async () => {
-				await testUserAgent.get('/workflows/new').expect(200);
+				await testUserAgent.get(`/workflows/new?projectId=${teamProject.id}`).expect(200);
 			});
 
 			test('GET /workflows/:id should return 200', async () => {

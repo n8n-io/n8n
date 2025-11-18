@@ -147,6 +147,7 @@ export class BreakingChangeService {
 					ruleTitle: rule.getMetadata().title,
 					ruleDescription: rule.getMetadata().description,
 					ruleSeverity: rule.getMetadata().severity,
+					ruleDocumentationUrl: rule.getMetadata().documentationUrl,
 					affectedWorkflows: workflowResults,
 					recommendations: await rule.getRecommendations(workflowResults),
 				});

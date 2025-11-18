@@ -16,7 +16,7 @@ test.describe('Data transformation expressions', () => {
 	}
 
 	test('$json + native string methods', async ({ n8n }) => {
-		await n8n.workflows.addResource.workflow();
+		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myStr: 'Monday' }]);
@@ -38,7 +38,7 @@ test.describe('Data transformation expressions', () => {
 	});
 
 	test('$json + n8n string methods', async ({ n8n }) => {
-		await n8n.workflows.addResource.workflow();
+		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myStr: 'hello@n8n.io is an email' }]);
@@ -59,7 +59,7 @@ test.describe('Data transformation expressions', () => {
 	});
 
 	test('$json + native numeric methods', async ({ n8n }) => {
-		await n8n.workflows.addResource.workflow();
+		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myNum: 9.123 }]);
@@ -80,7 +80,7 @@ test.describe('Data transformation expressions', () => {
 	});
 
 	test('$json + n8n numeric methods', async ({ n8n }) => {
-		await n8n.workflows.addResource.workflow();
+		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myStr: 'hello@n8n.io is an email' }]);
@@ -101,7 +101,7 @@ test.describe('Data transformation expressions', () => {
 	});
 
 	test('$json + native array access', async ({ n8n }) => {
-		await n8n.workflows.addResource.workflow();
+		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myArr: [1, 2, 3] }]);
@@ -123,7 +123,7 @@ test.describe('Data transformation expressions', () => {
 	});
 
 	test('$json + n8n array methods', async ({ n8n }) => {
-		await n8n.workflows.addResource.workflow();
+		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
 		await n8n.canvas.addNode('Schedule Trigger');
 		await n8n.ndv.setPinnedData([{ myArr: [1, 2, 3] }]);
