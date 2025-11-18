@@ -507,6 +507,23 @@ export class OidcService {
 	}
 
 	/**
+	 * Discovers OIDC configuration with E2E test support for HTTP and Docker networking.
+	 */
+	private async discoverWithE2ESupport(
+		discoveryUrl: URL,
+		clientId: string,
+		clientSecret: string,
+	): Promise<client.Configuration> {
+		return await client.discovery(discoveryUrl, clientId, clientSecret, undefined, {
+			execute: [client.allowInsecureRequests],
+			[client.customFetch]: async (url: string, options?: any) => {
+				const transformedUrl = this.transformDockerUrl(url);
+				return await fetch(transformedUrl, options as RequestInit);
+			},
+		});
+	}
+
+	/**
 	 * Creates a proxy-aware configuration for openid-client.
 	 * This method configures customFetch to respect HTTP_PROXY, HTTPS_PROXY, and NO_PROXY environment variables.
 	 */
@@ -515,19 +532,8 @@ export class OidcService {
 		clientId: string,
 		clientSecret: string,
 	): Promise<client.Configuration> {
-		// For E2E tests with HTTP, allow insecure requests and transform localhost URLs
-		const discoveryOptions = inE2ETests
-			? {
-					execute: [client.allowInsecureRequests],
-					[client.customFetch]: async (url: string, options?: any) => {
-						const transformedUrl = this.transformDockerUrl(url);
-						return await fetch(transformedUrl, options as RequestInit);
-					},
-				}
-			: undefined;
-
-		const configuration = discoveryOptions
-			? await client.discovery(discoveryUrl, clientId, clientSecret, undefined, discoveryOptions)
+		const configuration = inE2ETests
+			? await this.discoverWithE2ESupport(discoveryUrl, clientId, clientSecret)
 			: await client.discovery(discoveryUrl, clientId, clientSecret);
 
 		// Check if proxy environment variables are set
