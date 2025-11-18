@@ -34,7 +34,7 @@
 			"id": "stripe-meter-event",
 			"name": "Stripe",
 			"type": "n8n-nodes-base.stripe",
-			"typeVersion": 2,
+			"typeVersion": 1,
 			"position": [200, 0],
 			"credentials": {
 				"stripeApi": {
