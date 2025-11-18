@@ -1,7 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import type {
 	IDataObject,
-	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	EngineResponse,
 	WorkflowExecuteMode,
@@ -9,7 +8,7 @@ import type {
 	IPairedItemData,
 	INodeExecutionData,
 } from 'n8n-workflow';
-import { ApplicationError, NodeConnectionTypes } from 'n8n-workflow';
+import { ApplicationError, NodeConnectionTypes, createRunExecutionData } from 'n8n-workflow';
 
 import { NodeTypes } from '@test/helpers';
 
@@ -43,10 +42,10 @@ describe('processRunExecutionData', () => {
 			.addNodes(node)
 			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
-		const executionData: IRunExecutionData = {
+		const executionData = createRunExecutionData({
 			startData: { startNodes: [{ name: node.name, sourceData: null }] },
-			resultData: { runData: {} },
-		};
+		});
+		delete executionData.executionData;
 
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -66,17 +65,10 @@ describe('processRunExecutionData', () => {
 			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 		const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
-		const executionData: IRunExecutionData = {
+		const executionData = createRunExecutionData({
 			startData: { startNodes: [{ name: node.name, sourceData: null }] },
-			resultData: { runData: {} },
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		};
+			executionData: { nodeExecutionStack: [{ data: taskDataConnection, node, source: null }] },
+		});
 
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -97,17 +89,12 @@ describe('processRunExecutionData', () => {
 			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 		const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
-		const executionData: IRunExecutionData = {
+		const executionData = createRunExecutionData({
 			startData: { startNodes: [{ name: node1.name, sourceData: null }] },
-			resultData: { runData: {} },
 			executionData: {
-				contextData: {},
 				nodeExecutionStack: [{ data: taskDataConnection, node: node1, source: null }],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
-		};
+		});
 
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -162,17 +149,12 @@ describe('processRunExecutionData', () => {
 			.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 		const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
-		const executionData: IRunExecutionData = {
+		const executionData = createRunExecutionData({
 			startData: { startNodes: [{ name: trigger.name, sourceData: null }] },
-			resultData: { runData: {} },
 			executionData: {
-				contextData: {},
 				nodeExecutionStack: [{ data: taskDataConnection, node: trigger, source: null }],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
-		};
+		});
 
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -206,21 +188,17 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const data: IDataObject = { foo: 1 };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: node.name, sourceData: null }] },
 				resultData: {
 					runData: { waitingNode: [toITaskData([{ data }], { executionStatus: 'waiting' })] },
 					lastNodeExecuted: 'waitingNode',
 				},
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: { main: [[{ json: data }]] }, node, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
 				waitTill: new Date('2024-01-01'),
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -246,17 +224,12 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: node.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -280,20 +253,15 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { foo: 1 } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: {
 					startNodes: [{ name: node1.name, sourceData: null }],
 					destinationNode: node1.name,
 				},
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: taskDataConnection, node: node1, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -372,11 +340,9 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { prompt: 'test prompt' } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: nodeWithRequests.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [
 						{
 							data: taskDataConnection,
@@ -384,11 +350,8 @@ describe('processRunExecutionData', () => {
 							source: { main: [{ previousNode: 'Start' }] },
 						},
 					],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -433,7 +396,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { query: 'test input', toolCallId: 'action_1' },
+							json: { prompt: 'test prompt', query: 'test input', toolCallId: 'action_1' },
 							pairedItem: {
 								input: 0,
 								item: 0,
@@ -453,7 +416,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { data: 'another input', toolCallId: 'action_2' },
+							json: { prompt: 'test prompt', data: 'another input', toolCallId: 'action_2' },
 							pairedItem: {
 								input: 0,
 								item: 0,
@@ -526,11 +489,9 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { prompt: 'test prompt' } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: nodeWithRequests.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [
 						{
 							data: taskDataConnection,
@@ -539,11 +500,8 @@ describe('processRunExecutionData', () => {
 							source: null,
 						},
 					],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -565,7 +523,7 @@ describe('processRunExecutionData', () => {
 				ai_tool: [
 					[
 						{
-							json: { query: 'test input', toolCallId: 'action_1' },
+							json: { prompt: 'test prompt', query: 'test input', toolCallId: 'action_1' },
 							pairedItem: {
 								input: 0,
 								item: 0,
@@ -643,11 +601,9 @@ describe('processRunExecutionData', () => {
 				});
 
 			const taskDataConnection = { main: [[{ json: { input: 'start' } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: firstNode.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [
 						{
 							data: taskDataConnection,
@@ -655,11 +611,8 @@ describe('processRunExecutionData', () => {
 							source: { main: [{ previousNode: 'Start' }] },
 						},
 					],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -692,17 +645,12 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { foo: 'bar' } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: node.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -730,17 +678,12 @@ describe('processRunExecutionData', () => {
 				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder: 'v1' } });
 
 			const taskDataConnection = { main: [[{ json: { foo: 'bar' } }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: node.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: taskDataConnection, node, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -841,17 +784,12 @@ describe('processRunExecutionData', () => {
 				});
 
 			const taskDataConnection = { main: [[{ json: dataNodeOutput }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: dataNode.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: taskDataConnection, node: dataNode, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 
@@ -960,17 +898,12 @@ describe('processRunExecutionData', () => {
 				});
 
 			const taskDataConnection = { main: [[{ json: triggerData }]] };
-			const executionData: IRunExecutionData = {
+			const executionData = createRunExecutionData({
 				startData: { startNodes: [{ name: triggerNode.name, sourceData: null }] },
-				resultData: { runData: {} },
 				executionData: {
-					contextData: {},
 					nodeExecutionStack: [{ data: taskDataConnection, node: triggerNode, source: null }],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode, executionData);
 

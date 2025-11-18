@@ -1,21 +1,27 @@
 <script setup lang="ts">
-import { useToast } from '@/composables/useToast';
+import { useToast } from '@/app/composables/useToast';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
-import type { ChatHubConversationModel, ChatHubLLMProvider } from '@n8n/api-types';
+import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
 import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
+import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
+import ToolsSelector from './ToolsSelector.vue';
 
-const { selectedModel, isMissingCredentials } = defineProps<{
+const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
-	selectedModel: ChatHubConversationModel | null;
+	isNewSession: boolean;
+	isToolsSelectable: boolean;
 	isMissingCredentials: boolean;
+	selectedModel: ChatModelDto | null;
+	selectedTools: INode[] | null;
 }>();
 
 const emit = defineEmits<{
 	submit: [string];
 	stop: [];
 	selectModel: [];
+	selectTools: [INode[]];
 	setCredentials: [ChatHubLLMProvider];
 }>();
 
@@ -30,13 +36,15 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
-const placeholder = computed(() => {
-	if (!selectedModel) {
-		return 'Select a model';
-	}
+const placeholder = computed(() =>
+	selectedModel ? `Message ${selectedModel.name ?? 'a model'}...` : 'Select a model',
+);
 
-	return `Message ${selectedModel.name}`;
-});
+const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
+	selectedModel?.model.provider === 'n8n' || selectedModel?.model.provider === 'custom-agent'
+		? undefined
+		: selectedModel?.model.provider,
+);
 
 function onMic() {
 	if (speechInput.isListening.value) {
@@ -92,6 +100,10 @@ watch(speechInput.error, (event) => {
 	}
 });
 
+function onSelectTools(tools: INode[]) {
+	emit('selectTools', tools);
+}
+
 defineExpose({
 	focus: () => inputRef.value?.focus(),
 	setText: (text: string) => {
@@ -104,18 +116,26 @@ defineExpose({
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
 			<N8nText v-if="!selectedModel" :class="$style.callout">
-				Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
-				conversation
+				<template v-if="isNewSession">
+					Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
+					conversation
+				</template>
+				<template v-else>
+					Please <a href="" @click.prevent="emit('selectModel')">reselect a model</a> to continue
+					the conversation
+				</template>
 			</N8nText>
-			<N8nText v-else-if="isMissingCredentials" :class="$style.callout">
-				Please
-				<a
-					href=""
-					@click.prevent="emit('setCredentials', selectedModel.provider as ChatHubLLMProvider)"
-				>
-					set credentials
-				</a>
-				for {{ providerDisplayNames[selectedModel.provider] }} to start a conversation
+			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
+				<template v-if="isNewSession">
+					Please
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					for {{ providerDisplayNames[llmProvider] }} to start a conversation
+				</template>
+				<template v-else>
+					Please
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					for {{ providerDisplayNames[llmProvider] }} to continue the conversation
+				</template>
 			</N8nText>
 			<N8nInput
 				ref="inputRef"
@@ -129,6 +149,14 @@ defineExpose({
 				:disabled="isMissingCredentials || !selectedModel"
 				@keydown="handleKeydownTextarea"
 			/>
+
+			<div v-if="isToolsSelectable" :class="$style.tools">
+				<ToolsSelector
+					:selected="selectedTools ?? []"
+					:disabled="isMissingCredentials || !selectedModel || isResponding"
+					@select="onSelectTools"
+				/>
+			</div>
 
 			<div :class="$style.actions">
 				<!-- TODO: Implement attachments
@@ -212,10 +240,20 @@ defineExpose({
 		line-height: 1.5em;
 		border-radius: 16px !important;
 		resize: none;
-		padding: 16px 16px 48px;
+		padding: 16px 16px 64px;
 		box-shadow: 0 10px 24px 0 #00000010;
 		background-color: var(--color--background--light-3);
 	}
+}
+
+.tools {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	padding: var(--spacing--sm);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 /* Right-side actions */

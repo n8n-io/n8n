@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import Draggable from '@/components/Draggable.vue';
+import Draggable from '@/app/components/Draggable.vue';
 import type { XYPosition } from '@/Interface';
 
 import { N8nIcon } from '@n8n/design-system';
@@ -75,7 +75,7 @@ const onDragStart = () => {
 	pointer-events: all;
 }
 .dragButton {
-	background-color: var(--color--background);
+	background-color: var(--ndv--header--color);
 	width: 64px;
 	height: 21px;
 	border-top-left-radius: var(--radius);

@@ -15,9 +15,9 @@ import { computed, ref, watch, onBeforeMount } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import ParameterInputList from '../ParameterInputList.vue';
 import Draggable from 'vuedraggable';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { telemetry } from '@/plugins/telemetry';
+import { telemetry } from '@/app/plugins/telemetry';
 import { storeToRefs } from 'pinia';
 
 import {
@@ -38,6 +38,7 @@ export type Props = {
 	values?: Record<string, INodeParameters[] | INodeParameters>;
 	isReadOnly?: boolean;
 	isNested?: boolean;
+	hiddenIssuesInputs?: string[];
 };
 
 type ValueChangedEvent = {
@@ -49,6 +50,7 @@ type ValueChangedEvent = {
 const props = withDefaults(defineProps<Props>(), {
 	values: () => ({}),
 	isReadOnly: false,
+	hiddenIssuesInputs: () => [],
 });
 
 const emit = defineEmits<{
@@ -293,6 +295,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 										:is-read-only="isReadOnly"
 										:is-nested="isNested"
 										:hide-delete="true"
+										:hidden-issues-inputs="hiddenIssuesInputs"
 										@value-changed="valueChanged"
 									/>
 								</Suspense>
@@ -323,6 +326,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 						:is-nested="isNested"
 						:hide-delete="true"
 						:class="$style.parameterItem"
+						:hidden-issues-inputs="hiddenIssuesInputs"
 						@value-changed="valueChanged"
 					/>
 				</div>
@@ -363,6 +367,33 @@ function getItemKey(_item: INodeParameters, index: number) {
 <style lang="scss" module>
 .fixedCollectionParameter {
 	padding-left: var(--spacing--sm);
+
+	.controls {
+		:deep(.button) {
+			font-weight: var(--font-weight--regular);
+			--button--color--text: var(--color--text--shade-1);
+			--button--border-color: var(--color--foreground);
+			--button--color--background: var(--color--background);
+
+			--button--color--text--hover: var(--color--text--shade-1);
+			--button--border-color--hover: var(--color--foreground);
+			--button--color--background--hover: var(--color--background);
+
+			--button--color--text--active: var(--color--text--shade-1);
+			--button--border-color--active: var(--color--foreground);
+			--button--color--background--active: var(--color--background);
+
+			--button--color--text--focus: var(--color--text--shade-1);
+			--button--border-color--focus: var(--color--foreground);
+			--button--color--background--focus: var(--color--background);
+
+			&:active,
+			&.active,
+			&:focus {
+				outline: none;
+			}
+		}
+	}
 }
 
 .fixedCollectionParameterProperty {
@@ -378,33 +409,6 @@ function getItemKey(_item: INodeParameters, index: number) {
 	top: -3px;
 	left: calc(-0.5 * var(--spacing--xs));
 	transition: opacity 100ms ease-in;
-}
-
-.controls {
-	:global(.button) {
-		font-weight: var(--font-weight-normal);
-		--button--color--text: var(--color--text--shade-1);
-		--button--border-color: var(--color--foreground);
-		--button--color--background: var(--color--background);
-
-		--button--color--text--hover: var(--color--text--shade-1);
-		--button--border-color--hover: var(--color--foreground);
-		--button--color--background--hover: var(--color--background);
-
-		--button--color--text--active: var(--color--text--shade-1);
-		--button--border-color--active: var(--color--foreground);
-		--button--color--background--active: var(--color--background);
-
-		--button--color--text--focus: var(--color--text--shade-1);
-		--button--border-color--focus: var(--color--foreground);
-		--button--color--background--focus: var(--color--background);
-
-		&:active,
-		&.active,
-		&:focus {
-			outline: none;
-		}
-	}
 }
 
 .parameterItem {

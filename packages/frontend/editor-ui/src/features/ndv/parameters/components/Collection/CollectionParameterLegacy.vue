@@ -274,7 +274,7 @@ function valueChanged(parameterData: IUpdateInformation) {
 
 	:global(.button) {
 		color: var(--color--text--shade-1);
-		font-weight: var(--font-weight-normal);
+		font-weight: var(--font-weight--regular);
 		--button--border-color: var(--color--foreground);
 		--button--color--background: var(--color--background);
 

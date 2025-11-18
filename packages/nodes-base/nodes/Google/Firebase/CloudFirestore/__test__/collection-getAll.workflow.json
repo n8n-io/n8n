@@ -1,0 +1,75 @@
+{
+	"name": "CloudFirestore Collection Get All Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"authentication": "googleFirebaseCloudFirestoreOAuth2Api",
+				"resource": "document",
+				"operation": "getAll",
+				"projectId": "test-project",
+				"database": "(default)",
+				"collection": "users"
+			},
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1.1,
+			"position": [200, 0],
+			"id": "cloudFirestore-getAll",
+			"name": "Get All Documents",
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "cloudFirestore-oauth-id",
+					"name": "CloudFirestore OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get All Documents": [
+			{
+				"json": {
+					"_name": "projects/test-project/databases/(default)/documents/users/user1",
+					"_id": "user1",
+					"_createTime": "2023-01-01T10:00:00.000Z",
+					"_updateTime": "2023-01-01T10:00:00.000Z",
+					"name": "John Doe",
+					"email": "john@example.com"
+				}
+			},
+			{
+				"json": {
+					"_name": "projects/test-project/databases/(default)/documents/users/user2",
+					"_id": "user2",
+					"_createTime": "2023-01-01T10:00:00.000Z",
+					"_updateTime": "2023-01-01T10:00:00.000Z",
+					"name": "Jane Smith",
+					"email": "jane@example.com"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Get All Documents",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

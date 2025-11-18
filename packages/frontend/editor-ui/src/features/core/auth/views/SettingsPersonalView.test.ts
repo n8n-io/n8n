@@ -2,13 +2,13 @@ import userEvent from '@testing-library/user-event';
 import { createPinia } from 'pinia';
 import { waitAllPromises } from '@/__tests__/utils';
 import SettingsPersonalView from './SettingsPersonalView.vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { ROLE } from '@n8n/api-types';
-import { useUIStore } from '@/stores/ui.store';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 

@@ -1,17 +1,17 @@
 <script lang="ts" setup>
-import { useStorage } from '@/composables/useStorage';
+import { useStorage } from '@/app/composables/useStorage';
 
 import type { INodeTypeDescription } from 'n8n-workflow';
 import PanelDragButton from './PanelDragButton.vue';
 
-import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/constants';
+import { LOCAL_STORAGE_MAIN_PANEL_RELATIVE_WIDTH, MAIN_NODE_PANEL_WIDTH } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { ndvEventBus } from '@/features/ndv/shared/ndv.eventBus';
 import NDVFloatingNodes from './NDVFloatingNodes.vue';
 import type { Direction, XYPosition } from '@/Interface';
 import type { MainPanelType } from '@/features/ndv/shared/ndv.types';
 import { ref, onMounted, onBeforeUnmount, computed, watch, nextTick } from 'vue';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { useThrottleFn } from '@vueuse/core';
 
 import { N8nResizeWrapper } from '@n8n/design-system';

@@ -1,6 +1,6 @@
-import { useMessage } from '@/composables/useMessage';
-import { useToast } from '@/composables/useToast';
-import { useTelemetry } from '@/composables/useTelemetry';
+import { useMessage } from '@/app/composables/useMessage';
+import { useToast } from '@/app/composables/useToast';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import type {
 	AddColumnResponse,
 	DataTableColumn,
@@ -17,7 +17,7 @@ import type {
 	GridApi,
 } from 'ag-grid-community';
 import { useDataTableStore } from '@/features/core/dataTable/dataTable.store';
-import { MODAL_CONFIRM } from '@/constants';
+import { MODAL_CONFIRM } from '@/app/constants';
 import { isDataTableValue, isAGGridCellType } from '@/features/core/dataTable/typeGuards';
 import { useDataTableTypes } from '@/features/core/dataTable/composables/useDataTableTypes';
 import { areValuesEqual } from '@/features/core/dataTable/utils/typeUtils';
@@ -47,6 +47,7 @@ export type UseDataTableOperationsParams = {
 	currentSortBy: Ref<string>;
 	currentSortOrder: Ref<string | null>;
 	currentFilterJSON?: Ref<string | undefined>;
+	searchQuery?: Ref<string | undefined>;
 	handleClearSelection: () => void;
 	selectedRowIds: Ref<Set<number>>;
 	handleCopyFocusedCell: (params: CellKeyDownEvent<DataTableRow>) => Promise<void>;
@@ -73,6 +74,7 @@ export const useDataTableOperations = ({
 	currentSortBy,
 	currentSortOrder,
 	currentFilterJSON,
+	searchQuery,
 	handleClearSelection,
 	selectedRowIds,
 	handleCopyFocusedCell,
@@ -279,6 +281,7 @@ export const useDataTableOperations = ({
 				pageSize.value,
 				`${currentSortBy.value}:${currentSortOrder.value}`,
 				currentFilterJSON?.value,
+				searchQuery?.value,
 			);
 			rowData.value = fetchedRows.data;
 			setTotalItems(fetchedRows.count);
