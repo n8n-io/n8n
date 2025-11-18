@@ -476,6 +476,7 @@ function onFilesDropped(files: File[]) {
 <template>
 	<ChatLayout
 		:class="{
+			[$style.chatLayout]: true,
 			[$style.isNewSession]: isNewSession,
 			[$style.isExistingSession]: !isNewSession,
 			[$style.isMobileDevice]: isMobileDevice,
@@ -574,6 +575,10 @@ function onFilesDropped(files: File[]) {
 </template>
 
 <style lang="scss" module>
+.chatLayout {
+	position: relative;
+}
+
 .scrollArea {
 	flex-grow: 1;
 	flex-shrink: 1;
