@@ -248,7 +248,7 @@ export class CredentialsController {
 		if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {
 			const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
 			if (!canShareGlobally) {
-				throw new BadRequestError(
+				throw new ForbiddenError(
 					'You do not have permission to change global sharing for credentials',
 				);
 			}

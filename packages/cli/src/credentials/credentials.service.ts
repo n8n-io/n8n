@@ -50,6 +50,7 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -883,7 +884,7 @@ export class CredentialsService {
 		if (isGlobal === true) {
 			const canShareGlobally = hasGlobalScope(user, 'credential:shareGlobally');
 			if (!canShareGlobally) {
-				throw new BadRequestError(
+				throw new ForbiddenError(
 					'You do not have permission to create globally shared credentials',
 				);
 			}
