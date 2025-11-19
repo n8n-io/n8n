@@ -275,7 +275,7 @@ export class ChatHubService {
 
 		return {
 			models: results.map((result) => ({
-				name: String(result.value),
+				name: result.name,
 				description: result.description ?? null,
 				model: {
 					provider: 'google',
@@ -333,7 +333,7 @@ export class ChatHubService {
 
 		return {
 			models: results.map((result) => ({
-				name: String(result.value),
+				name: result.name,
 				description: result.description ?? null,
 				model: {
 					provider: 'ollama',
@@ -450,7 +450,7 @@ export class ChatHubService {
 
 		return {
 			models: foundationModels.concat(inferenceProfileModels).map((result) => ({
-				name: String(result.name),
+				name: result.name,
 				description: result.description ?? String(result.value),
 				model: {
 					provider: 'awsBedrock',
