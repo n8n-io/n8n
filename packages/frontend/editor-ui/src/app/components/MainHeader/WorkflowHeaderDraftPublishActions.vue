@@ -6,11 +6,12 @@ import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, useTemplateRef } from 'vue';
 import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
-import { N8nButton } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import SaveButton from '@/app/components/SaveButton.vue';
+import TimeAgo from '@/app/components/TimeAgo.vue';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -49,9 +50,14 @@ const onPublishButtonClick = () => {
 	});
 };
 
-const hasWorkflowChanges = computed(
-	() => workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId,
-);
+const hasWorkflowChanges = computed(() => {
+	return (
+		workflowsStore.workflow.versionId &&
+		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId
+	);
+});
+
+const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 
 defineExpose({
 	importFileRef,
@@ -75,6 +81,15 @@ defineExpose({
 			data-test-id="workflow-save-button"
 			@click="$emit('workflow:saved')"
 		/>
+		<div v-if="activeVersion" :class="$style.activeVersionIndicator">
+			<N8nTooltip>
+				<template #content>
+					{{ activeVersion.versionId }}, {{ i18n.baseText('workflowHistory.item.active') }},
+					<TimeAgo :date="activeVersion.createdAt" />
+				</template>
+				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
+			</N8nTooltip>
+		</div>
 		<div :class="$style.publishButtonWrapper">
 			<N8nButton type="secondary" @click="onPublishButtonClick">
 				{{ locale.baseText('workflows.publish') }}
@@ -103,12 +118,21 @@ defineExpose({
 	display: contents;
 }
 
-.publish-button-wrapper {
+.activeVersionIndicator {
+	display: inline-flex;
+	align-items: center;
+
+	.icon:focus {
+		outline: none;
+	}
+}
+
+.publishButtonWrapper {
 	position: relative;
 	display: inline-block;
 }
 
-.publish-button-indicator {
+.publishButtonIndicator {
 	position: absolute;
 	top: -2px;
 	right: -2px;
