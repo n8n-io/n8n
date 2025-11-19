@@ -19,10 +19,6 @@ import { useUserRoleProvisioningForm } from '../provisioning/composables/useUser
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
-const emit = defineEmits<{
-	submitSuccess: [];
-}>();
-
 const i18n = useI18n();
 const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
@@ -174,7 +170,6 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 		await getSamlConfig();
 		sendTrackingEvent(configResponse);
-		emit('submitSuccess');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;

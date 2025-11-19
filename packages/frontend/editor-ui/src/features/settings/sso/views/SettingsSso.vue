@@ -76,36 +76,17 @@ onMounted(() => {
 			</div>
 		</div>
 		<div v-if="authProtocol === SupportedProtocols.SAML">
-			<SamlSettingsForm @submit-success="trackUpdateSettings" />
+			<SamlSettingsForm />
 		</div>
 		<div v-if="authProtocol === SupportedProtocols.OIDC">
-			<OidcSettingsForm @submit-success="trackUpdateSettings" />
+			<OidcSettingsForm />
 		</div>
 	</div>
-	<!-- TODO: display user role provisioning modal based on userRoleProvisioningStore -->
 </template>
 
 <style lang="scss" module>
 .heading {
 	margin-bottom: var(--spacing--sm);
-}
-
-.switch {
-	span {
-		font-size: var(--font-size--2xs);
-		font-weight: var(--font-weight--bold);
-		color: var(--color--text--tint-1);
-	}
-}
-
-.buttons {
-	display: flex;
-	justify-content: flex-start;
-	padding: var(--spacing--2xl) 0 var(--spacing--2xs);
-
-	button {
-		margin: 0 var(--spacing--sm) 0 0;
-	}
 }
 
 .group {
@@ -124,10 +105,6 @@ onMounted(() => {
 		font-size: var(--font-size--2xs);
 		color: var(--color--text);
 	}
-}
-
-.actionBox {
-	margin: var(--spacing--2xl) 0 0;
 }
 
 .footer {

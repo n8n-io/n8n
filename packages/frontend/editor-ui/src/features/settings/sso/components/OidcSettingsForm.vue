@@ -19,10 +19,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { OidcConfigDto } from '@n8n/api-types';
 
-const emit = defineEmits<{
-	submitSuccess: [];
-}>();
-
 const i18n = useI18n();
 const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
@@ -163,7 +159,6 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		clientSecret.value = newConfig.clientSecret;
 
 		await sendTrackingEvent(newConfig);
-		emit('submitSuccess');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 		return;
