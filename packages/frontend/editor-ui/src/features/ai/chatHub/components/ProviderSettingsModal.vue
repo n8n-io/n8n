@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
-import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nIconButton, N8nText, N8nTooltip } from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -122,9 +122,11 @@ function onCredentialSelect(credentialId: string) {
 	}
 }
 
-function onCredentialDeselected() {
+function onCredentialDeselect() {
 	if (settings.value) {
 		settings.value.credentialId = null;
+		settings.value.allowedModels = [];
+		limitModels.value = false;
 	}
 }
 
@@ -181,12 +183,20 @@ const isConfirmDisabled = computed(() => {
 function onToggleEnabled(value: string | number | boolean) {
 	if (settings.value) {
 		settings.value.enabled = typeof value === 'boolean' ? value : Boolean(value);
+		if (!settings.value.enabled) {
+			settings.value.credentialId = null;
+			settings.value.allowedModels = [];
+			limitModels.value = false;
+		}
 	}
 }
 
 function onToggleLimitModels(value: string | number | boolean) {
 	if (settings.value) {
 		limitModels.value = typeof value === 'boolean' ? value : Boolean(value);
+		if (!limitModels.value) {
+			settings.value.allowedModels = [];
+		}
 	}
 }
 
@@ -254,14 +264,25 @@ watch(
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.credential.label') }}
 					</N8nText>
 
-					<CredentialPicker
-						:class="$style.credentialPicker"
-						:app-name="providerDisplayNames[props.data.provider]"
-						:credential-type="credentialType"
-						:selected-credential-id="settings.credentialId"
-						@credential-selected="onCredentialSelect"
-						@credential-deselected="onCredentialDeselected"
-					/>
+					<div :class="$style.credentialContainer">
+						<CredentialPicker
+							:class="$style.credentialPicker"
+							:app-name="providerDisplayNames[props.data.provider]"
+							:credential-type="credentialType"
+							:selected-credential-id="settings.credentialId"
+							@credential-selected="onCredentialSelect"
+							@credential-deselected="onCredentialDeselect"
+						/>
+						<N8nIconButton
+							v-if="settings.credentialId"
+							native-type="button"
+							:title="i18n.baseText('settings.chatHub.providers.modal.edit.credential.clearButton')"
+							icon="x"
+							icon-size="large"
+							type="secondary"
+							@click="onCredentialDeselect"
+						/>
+					</div>
 				</div>
 
 				<div v-if="settings && settings.enabled && settings.credentialId" :class="$style.container">
@@ -355,6 +376,13 @@ watch(
 	justify-content: flex-end;
 	align-items: center;
 	flex-shrink: 0;
+}
+
+.credentialContainer {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
+	width: 100%;
 }
 
 .credentialPicker {

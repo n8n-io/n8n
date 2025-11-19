@@ -2299,6 +2299,7 @@
 	"settings.chatHub.providers.modal.edit.enabled.label": "Enable {provider}",
 	"settings.chatHub.providers.modal.edit.enabled.tooltip": "When disabled, models from this provider won't be available for use in Chat.",
 	"settings.chatHub.providers.modal.edit.credential.label": "Default credential",
+	"settings.chatHub.providers.modal.edit.credential.clearButton": "Clear selection",
 	"settings.chatHub.providers.modal.edit.limitModels.label": "Limit models",
 	"settings.chatHub.providers.modal.edit.limitModels.tooltip": "When enabled only selected models will be available for use in Chat.",
 	"settings.chatHub.providers.modal.edit.allowedModels.label": "Models",
