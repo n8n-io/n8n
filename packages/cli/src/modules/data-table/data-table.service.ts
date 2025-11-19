@@ -714,12 +714,6 @@ export class DataTableService {
 			return String(value);
 		}
 
-		// Handle objects and arrays - stringify them for CSV
-		// This prevents "[object Object]" from appearing in the CSV
-		if (typeof value === 'object' && value !== null) {
-			return JSON.stringify(value);
-		}
-
 		// Handle strings and everything else
 		return String(value);
 	}
