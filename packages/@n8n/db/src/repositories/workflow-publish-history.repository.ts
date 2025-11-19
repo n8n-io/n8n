@@ -13,7 +13,15 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 		workflowId,
 		versionId,
 		status,
-	}: Pick<WorkflowPublishHistory, 'status' | 'workflowId' | 'versionId'>) {
-		return await this.insert({ workflowId, versionId: versionId ?? null, status });
+		mode,
+		userId,
+	}: Pick<WorkflowPublishHistory, 'status' | 'workflowId' | 'versionId' | 'mode' | 'userId'>) {
+		return await this.insert({
+			workflowId,
+			versionId: versionId ?? null,
+			status,
+			mode,
+			userId,
+		});
 	}
 }

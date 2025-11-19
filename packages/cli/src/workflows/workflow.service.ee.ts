@@ -331,7 +331,7 @@ export class EnterpriseWorkflowService {
 		// 6. deactivate workflow if necessary
 		const wasActive = workflow.activeVersionId !== null;
 		if (wasActive) {
-			await this.activeWorkflowManager.remove(workflowId);
+			await this.activeWorkflowManager.remove(workflowId, user.id, 'update');
 		}
 
 		// 7. transfer the workflow
@@ -442,7 +442,7 @@ export class EnterpriseWorkflowService {
 
 		// 5. deactivate all workflows if necessary
 		const deactivateWorkflowsPromises = activeWorkflows.map(
-			async (workflow) => await this.activeWorkflowManager.remove(workflow.id),
+			async (workflow) => await this.activeWorkflowManager.remove(workflow.id, user.id, 'update'),
 		);
 
 		await Promise.all(deactivateWorkflowsPromises);
