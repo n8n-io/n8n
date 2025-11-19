@@ -27,6 +27,7 @@ import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import config from '@/config';
+import { PostHogClient } from '@/posthog';
 import { UserManagementMailer } from '@/user-management/email';
 import { createFolder } from '@test-integration/db/folders';
 
@@ -57,13 +58,14 @@ let saveCredential: SaveCredentialFunction;
 let projectRepository: ProjectRepository;
 let workflowRepository: WorkflowRepository;
 
-const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
-
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing', 'feat:advancedPermissions'],
 });
 const license = testServer.license;
+
+const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+const postHogClient = mockInstance(PostHogClient);
 const mailer = mockInstance(UserManagementMailer);
 
 beforeAll(async () => {
@@ -86,18 +88,21 @@ beforeAll(async () => {
 
 	saveCredential = affixRoleToSaveCredential('credential:owner');
 
+	postHogClient.getFeatureFlags.mockResolvedValue({});
+
 	await utils.initNodeTypes();
 });
 
 beforeEach(async () => {
 	activeWorkflowManager.add.mockReset();
 	activeWorkflowManager.remove.mockReset();
+	postHogClient.getFeatureFlags.mockResolvedValue({});
 
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'WorkflowHistory', 'TagEntity']);
 });
 
 afterEach(() => {
-	jest.clearAllMocks();
+	jest.restoreAllMocks();
 });
 
 describe('router should switch based on flag', () => {

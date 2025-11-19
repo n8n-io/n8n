@@ -26,6 +26,7 @@ import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { User } from './user';
 import type { WorkflowEntity } from './workflow-entity';
+import type { WorkflowHistory } from './workflow-history';
 
 export type UsageCount = {
 	usageCount: number;
@@ -408,3 +409,8 @@ export interface ISimplifiedPinData {
 		pairedItem?: IPairedItemData | IPairedItemData[] | number;
 	}>;
 }
+
+export type WorkflowHistoryUpdate = Omit<
+	Partial<WorkflowHistory>,
+	'versionId' | 'workflowId' | 'createdAt' | 'updatedAt'
+>;

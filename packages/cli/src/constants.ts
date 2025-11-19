@@ -134,3 +134,9 @@ export const WsStatusCodes = {
 export const FREE_AI_CREDITS_CREDENTIAL_NAME = 'n8n free OpenAI API credits';
 
 export const STREAM_SEPARATOR = '⧉⇋⇋➽⌑⧉§§\n';
+
+export const DRAFT_PUBLISH_EXPERIMENT = {
+	name: '051_draft_publish_workflows',
+	control: 'control',
+	variant: 'variant',
+};
