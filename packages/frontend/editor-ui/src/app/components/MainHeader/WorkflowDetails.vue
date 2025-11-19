@@ -606,8 +606,6 @@ onBeforeUnmount(() => {
 				@workflow:saved="onSaveButtonClick"
 				@workflow:deactivated="emit('workflow:deactivated')"
 			/>
-			>>>>>>> c3f968ac33 (Split wf header actions into a new
-			component):packages/frontend/editor-ui/src/components/MainHeader/WorkflowDetails.vue
 		</PushConnectionTracker>
 	</div>
 </template>

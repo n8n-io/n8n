@@ -5,9 +5,7 @@ import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { computed, useTemplateRef } from 'vue';
-import { useSettingsStore } from '@/app/stores/settings.store';
-import { EnterpriseEditionFeature, WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
+import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { N8nButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -30,27 +28,17 @@ const emit = defineEmits<{
 	'workflow:saved': [];
 }>();
 
-const settingsStore = useSettingsStore();
 const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsMenu>>('actionsMenu');
-const pageRedirectionHelper = usePageRedirectionHelper();
 const locale = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
-
-const isWorkflowHistoryFeatureEnabled = computed(() => {
-	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.WorkflowHistory];
-});
 
 const isWorkflowSaving = computed(() => {
 	return uiStore.isActionActive.workflowSaving;
 });
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
-
-const goToWorkflowHistoryUpgrade = () => {
-	void pageRedirectionHelper.goToUpgrade('workflow-history', 'upgrade-workflow-history');
-};
 
 const onPublishButtonClick = () => {
 	// TODO: uncomment once the save doesn't automatically change the active version
@@ -93,12 +81,7 @@ defineExpose({
 			</N8nButton>
 			<span v-if="hasWorkflowChanges" :class="$style.publishButtonIndicator"></span>
 		</div>
-		<WorkflowHistoryButton
-			:workflow-id="props.id"
-			:is-feature-enabled="isWorkflowHistoryFeatureEnabled"
-			:is-new-workflow="isNewWorkflow"
-			@upgrade="goToWorkflowHistoryUpgrade"
-		/>
+		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 		<ActionsMenu
 			:id="id"
 			ref="actionsMenu"
