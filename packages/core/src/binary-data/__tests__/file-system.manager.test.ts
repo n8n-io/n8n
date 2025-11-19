@@ -1,3 +1,4 @@
+import { mock } from 'jest-mock-extended';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -5,6 +6,7 @@ import path from 'node:path';
 import { Readable } from 'node:stream';
 
 import { FileSystemManager } from '@/binary-data/file-system.manager';
+import type { ErrorReporter } from '@/errors';
 import { toFileId, toStream } from '@test/utils';
 
 import type { BinaryData } from '../types';
@@ -13,8 +15,9 @@ jest.mock('fs');
 jest.mock('fs/promises');
 
 const storagePath = tmpdir();
+const errorReporter = mock<ErrorReporter>();
 
-const fsManager = new FileSystemManager(storagePath);
+const fsManager = new FileSystemManager(storagePath, errorReporter);
 
 const toFullFilePath = (fileId: string) => path.join(storagePath, fileId);
 

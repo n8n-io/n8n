@@ -1,4 +1,3 @@
-import { Container } from '@n8n/di';
 import { jsonParse, UnexpectedError } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
 import fs from 'node:fs/promises';
@@ -6,7 +5,7 @@ import path from 'node:path';
 import type { Readable } from 'stream';
 import { v4 as uuid } from 'uuid';
 
-import { ErrorReporter } from '@/errors';
+import type { ErrorReporter } from '@/errors';
 
 import type { BinaryData } from './types';
 import { assertDir, doesNotExist, FileLocation } from './utils';
@@ -21,7 +20,10 @@ const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\//;
 const CHAT_HUB_ATTACHMENT_PATH_MATCHER = /^chat-hub\/sessions\/([^/]+)\/messages\/([^/]+)\//;
 
 export class FileSystemManager implements BinaryData.Manager {
-	constructor(private storagePath: string) {}
+	constructor(
+		private storagePath: string,
+		private readonly errorReporter: ErrorReporter,
+	) {}
 
 	async init() {
 		await assertDir(this.storagePath);
@@ -169,7 +171,7 @@ export class FileSystemManager implements BinaryData.Manager {
 
 				return [parsed];
 			} catch (e) {
-				Container.get(ErrorReporter).warn(`Could not parse file ID ${id}. Skip deletion`);
+				this.errorReporter.warn(`Could not parse file ID ${id}. Skip deletion`);
 				return [];
 			}
 		});

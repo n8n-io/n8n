@@ -14,6 +14,7 @@ import { Readable } from 'stream';
 
 import type { BinaryDataConfig } from '@/binary-data';
 import { BinaryDataService } from '@/binary-data/binary-data.service';
+import type { ErrorReporter } from '@/errors';
 
 import {
 	assertBinaryData,
@@ -44,11 +45,12 @@ describe('test binary data helper methods', () => {
 		availableModes: ['default', 'filesystem'],
 		localStoragePath: temporaryDir,
 	});
+	const errorReporter = mock<ErrorReporter>();
 	let binaryDataService: BinaryDataService;
 
 	beforeEach(() => {
 		jest.resetAllMocks();
-		binaryDataService = new BinaryDataService(binaryDataConfig);
+		binaryDataService = new BinaryDataService(binaryDataConfig, errorReporter);
 		Container.set(BinaryDataService, binaryDataService);
 	});
 

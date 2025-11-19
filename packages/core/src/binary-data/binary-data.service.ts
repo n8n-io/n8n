@@ -7,6 +7,8 @@ import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
 
+import { ErrorReporter } from '@/errors';
+
 import { BinaryDataConfig } from './binary-data.config';
 import type { BinaryData } from './types';
 import { areConfigModes, binaryToBuffer } from './utils';
@@ -19,7 +21,10 @@ export class BinaryDataService {
 
 	private managers: Record<string, BinaryData.Manager> = {};
 
-	constructor(private readonly config: BinaryDataConfig) {}
+	constructor(
+		private readonly config: BinaryDataConfig,
+		private readonly errorReporter: ErrorReporter,
+	) {}
 
 	async init() {
 		const { config } = this;
@@ -30,7 +35,7 @@ export class BinaryDataService {
 		if (config.availableModes.includes('filesystem')) {
 			const { FileSystemManager } = await import('./file-system.manager');
 
-			this.managers.filesystem = new FileSystemManager(config.localStoragePath);
+			this.managers.filesystem = new FileSystemManager(config.localStoragePath, this.errorReporter);
 			this.managers['filesystem-v2'] = this.managers.filesystem;
 
 			await this.managers.filesystem.init();
