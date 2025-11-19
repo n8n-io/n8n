@@ -415,7 +415,7 @@ defineExpose({
 				</div>
 			</template>
 		</div>
-
+		<!-- :content="creditsTooltipContent" -->
 		<!-- Credits bar below input -->
 		<div v-if="showCredits" :class="$style.creditsBar">
 			<div :class="$style.creditsInfoWrapper">
@@ -423,6 +423,7 @@ defineExpose({
 				<N8nTooltip
 					:content="creditsTooltipContent"
 					:popper-class="$style.infoPopper"
+					:show-after="300"
 					placement="top"
 				>
 					<N8nIcon icon="info" size="small" />
@@ -432,6 +433,8 @@ defineExpose({
 				:disabled="!showAskOwnerTooltip"
 				:content="t('promptInput.askAdminToUpgrade')"
 				placement="top"
+				:show-after="300"
+				:enterable="false"
 			>
 				<N8nLink size="small" theme="text" @click="() => emit('upgrade-click')">
 					{{ t('promptInput.getMore') }}
