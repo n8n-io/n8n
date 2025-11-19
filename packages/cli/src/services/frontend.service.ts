@@ -48,7 +48,6 @@ export type PublicFrontendSettings = Pick<
 	| 'sso'
 	| 'mfa'
 	| 'authCookie'
-	| 'banners'
 	| 'previewMode'
 	| 'telemetry'
 > & {
@@ -490,7 +489,6 @@ export class FrontendService {
 			sso,
 			mfa,
 			authCookie,
-			banners,
 			previewMode,
 			telemetry,
 			enterprise: { saml, ldap, oidc },
@@ -504,7 +502,6 @@ export class FrontendService {
 			sso,
 			mfa,
 			authCookie,
-			banners,
 			previewMode,
 			telemetry,
 			enterprise: { saml, ldap, oidc },

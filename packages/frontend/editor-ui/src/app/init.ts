@@ -23,7 +23,6 @@ import { useSSOStore } from '@/features/settings/sso/sso.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useBannersStore } from '@/features/shared/banners/banners.store';
-import type { BannerName } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { h } from 'vue';
@@ -48,7 +47,6 @@ export async function initializeCore() {
 	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
 	const ssoStore = useSSOStore();
-	const bannersStore = useBannersStore();
 
 	const toast = useToast();
 	const i18n = useI18n();
@@ -79,20 +77,6 @@ export async function initializeCore() {
 			ldap: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Ldap],
 			oidc: settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Oidc],
 		},
-	});
-
-	const banners: BannerName[] = [];
-	if (settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner) {
-		banners.push('NON_PRODUCTION_LICENSE');
-	}
-	if (
-		!(settingsStore.settings.banners?.dismissed || []).includes('V1') &&
-		settingsStore.settings.versionCli.startsWith('1.')
-	) {
-		banners.push('V1');
-	}
-	bannersStore.loadStaticBanners({
-		banners,
 	});
 
 	versionsStore.initialize(settingsStore.settings.versionNotifications);
@@ -153,6 +137,19 @@ export async function initializeAuthenticatedFeatures(
 
 	if (rootStore.defaultLocale !== 'en') {
 		await nodeTypesStore.getNodeTranslationHeaders();
+	}
+
+	// Load static banners based on authenticated settings
+	if (settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner) {
+		bannersStore.pushBannerToStack('NON_PRODUCTION_LICENSE');
+	}
+
+	if (
+		settingsStore.settings.banners &&
+		!settingsStore.settings.banners.dismissed.includes('V1') &&
+		settingsStore.settings.versionCli.startsWith('1.')
+	) {
+		bannersStore.pushBannerToStack('V1');
 	}
 
 	if (settingsStore.isCloudDeployment) {
