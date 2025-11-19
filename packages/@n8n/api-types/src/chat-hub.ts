@@ -238,7 +238,7 @@ export interface ChatHubMessageDto {
 }
 
 export class ChatHubConversationsRequest extends Z.class({
-	limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+	limit: z.coerce.number().int().min(1).max(100),
 	cursor: z.string().uuid().optional(),
 }) {}
 

@@ -45,9 +45,9 @@ describe('chatHub', () => {
 
 	describe('getConversations', () => {
 		it('should list empty conversations', async () => {
-			const conversations = await chatHubService.getConversations(member.id);
+			const conversations = await chatHubService.getConversations(member.id, 20);
 			expect(conversations).toBeDefined();
-			expect(conversations).toHaveLength(0);
+			expect(conversations.data).toHaveLength(0);
 		});
 
 		it("should list user's own conversations in expected order", async () => {
@@ -80,11 +80,11 @@ describe('chatHub', () => {
 				tools: [],
 			});
 
-			const conversations = await chatHubService.getConversations(member.id);
-			expect(conversations).toHaveLength(3);
-			expect(conversations[0].id).toBe(session1.id);
-			expect(conversations[1].id).toBe(session2.id);
-			expect(conversations[2].id).toBe(session3.id);
+			const conversations = await chatHubService.getConversations(member.id, 20);
+			expect(conversations.data).toHaveLength(3);
+			expect(conversations.data[0].id).toBe(session1.id);
+			expect(conversations.data[1].id).toBe(session2.id);
+			expect(conversations.data[2].id).toBe(session3.id);
 		});
 	});
 

@@ -1485,7 +1485,7 @@ export class ChatHubService {
 	 */
 	async getConversations(
 		userId: string,
-		limit = 20,
+		limit: number,
 		cursor?: string,
 	): Promise<ChatHubConversationsResponse> {
 		const sessions = await this.sessionRepository.getManyByUserId(userId, limit + 1, cursor);
