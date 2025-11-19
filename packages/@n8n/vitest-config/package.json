@@ -4,12 +4,14 @@
   "type": "module",
   "peerDependencies": {
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "unplugin-swc": "^1.5.8"
   },
   "devDependencies": {
     "@n8n/typescript-config": "workspace:*",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "unplugin-swc": "^1.5.8"
   },
   "files": [
     "backend.mjs",

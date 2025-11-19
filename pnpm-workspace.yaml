@@ -5,6 +5,20 @@ packages:
   - packages/extensions/**
   - packages/testing/**
 
+# packageExtensions:
+#   ts-node:
+#     optionalDependencies:
+#       '@swc/core': '-'
+#       '@swc/helpers': '-'
+#   unplugin-swc:
+#     peerDependencies:
+#       '@swc/core': '-'
+#       '@swc/helpers': '-'
+#   tsup:
+#     peerDependencies:
+#       '@swc/core': '-'
+#       '@swc/helpers': '-'
+
 catalog:
   '@langchain/anthropic': 0.3.26
   '@langchain/community': 0.3.50
@@ -78,4 +92,3 @@ catalogs:
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
-
