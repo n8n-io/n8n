@@ -212,22 +212,14 @@ describe('CredentialsController', () => {
 			} as unknown as CredentialRequest.Update;
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
-			credentialsService.update.mockResolvedValue({
-				...existingCredential,
-				name: 'Updated Credential',
-			});
 
 			// ACT
-			await credentialsController.updateCredentials(memberReq);
+			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrowError(
+				'You do not have permission to change global sharing for credentials',
+			);
 
 			// ASSERT
-			// isGlobal should not be in the update call because user lacks permission
-			expect(credentialsService.update).toHaveBeenCalledWith(
-				credentialId,
-				expect.not.objectContaining({
-					isGlobal: expect.anything(),
-				}),
-			);
+			expect(credentialsService.update).not.toHaveBeenCalled();
 		});
 
 		it('should ignore isGlobal in payload when user lacks credential:shareGlobally scope', async () => {
@@ -244,18 +236,14 @@ describe('CredentialsController', () => {
 			} as unknown as CredentialRequest.Update;
 
 			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
-			let updateCallArgs: any;
-			credentialsService.update.mockImplementation(async (_id, data) => {
-				updateCallArgs = data;
-				return { ...existingCredential, ...data };
-			});
 
 			// ACT
-			await credentialsController.updateCredentials(memberReq);
+			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrowError(
+				'You do not have permission to change global sharing for credentials',
+			);
 
 			// ASSERT
-			// The update should not include isGlobal field
-			expect(updateCallArgs).not.toHaveProperty('isGlobal');
+			expect(credentialsService.update).not.toHaveBeenCalled();
 		});
 
 		it('should update credential without changing isGlobal when not provided', async () => {
