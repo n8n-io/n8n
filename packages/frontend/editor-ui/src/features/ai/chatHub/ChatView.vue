@@ -116,6 +116,7 @@ const defaultTools = useLocalStorage<INode[] | null>(
 );
 
 const toolsSelection = ref<INode[] | null>(null);
+const shouldSkipNextScrollTrigger = ref(false);
 
 const selectedTools = computed<INode[]>(() => {
 	if (currentConversation.value?.tools) {
@@ -225,6 +226,11 @@ watch(
 	[readyToShowMessages, () => chatMessages.value[chatMessages.value.length - 1]?.id],
 	([ready, lastMessageId]) => {
 		if (!ready || !lastMessageId) {
+			return;
+		}
+
+		if (shouldSkipNextScrollTrigger.value) {
+			shouldSkipNextScrollTrigger.value = false;
 			return;
 		}
 
@@ -376,7 +382,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 		return;
 	}
 
-	const messageToRetry = message.retryOfMessageId ?? message.id;
+	const messageToRetry = message.id;
 
 	chatStore.regenerateMessage(
 		sessionId.value,
@@ -399,6 +405,7 @@ async function handleSelectModel(selection: ChatModelDto) {
 }
 
 function handleSwitchAlternative(messageId: string) {
+	shouldSkipNextScrollTrigger.value = true;
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
 
