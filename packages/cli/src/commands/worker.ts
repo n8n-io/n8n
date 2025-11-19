@@ -114,7 +114,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 			}),
 		);
 
-		await this.moduleRegistry.initModules();
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 	}
 
 	async initEventBus() {
