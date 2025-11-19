@@ -935,7 +935,7 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), isGlobal: true });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			'You do not have permission to create globally shared credentials',
 		);
@@ -1364,7 +1364,7 @@ describe('PATCH /credentials/:id', () => {
 			.patch(`/credentials/${savedCredential.id}`)
 			.send({ ...randomCredentialPayload(), isGlobal: true });
 
-		expect(response.statusCode).toBe(400);
+		expect(response.statusCode).toBe(403);
 		expect(response.body.message).toBe(
 			'You do not have permission to change global sharing for credentials',
 		);
