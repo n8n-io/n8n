@@ -23,6 +23,13 @@ export class LicenseState {
 		if (!this.licenseProvider) throw new ProviderNotSetError();
 	}
 
+	/**
+	 * Check if development enterprise mode is enabled via environment variable
+	 */
+	private isDevEnterpriseMode(): boolean {
+		return process.env.N8N_DEV_ENTERPRISE_MODE === 'true';
+	}
+
 	// --------------------
 	//     core queries
 	// --------------------
@@ -31,6 +38,11 @@ export class LicenseState {
 	 * If the feature is an array of strings, it checks if any of the features are licensed
 	 */
 	isLicensed(feature: BooleanLicenseFeature | BooleanLicenseFeature[]) {
+		// DEV MODE: Bypass license check if development enterprise mode is enabled
+		if (this.isDevEnterpriseMode()) {
+			return true;
+		}
+
 		this.assertProvider();
 
 		if (typeof feature === 'string') return this.licenseProvider.isLicensed(feature);
@@ -45,6 +57,16 @@ export class LicenseState {
 	}
 
 	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
+		// DEV MODE: Return unlimited quota for all numeric features if development mode is enabled
+		if (this.isDevEnterpriseMode()) {
+			// For quota features, return unlimited (-1)
+			// For AI credits specifically, return a large number instead of -1
+			if (feature === 'quota:aiCredits') {
+				return 1000000 as FeatureReturnType[T];
+			}
+			return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
+		}
+
 		this.assertProvider();
 
 		return this.licenseProvider.getValue(feature);
