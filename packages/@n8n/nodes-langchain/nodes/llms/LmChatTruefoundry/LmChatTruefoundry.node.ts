@@ -1,4 +1,5 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
+import pick from 'lodash/pick';
 import {
 	NodeConnectionTypes,
 	type INodeType,
@@ -42,7 +43,6 @@ export class LmChatTruefoundry implements INodeType {
 			resources: {
 				primaryDocumentation: [
 					{
-						// Need to create using: https://www.truefoundry.com/ai-gateway
 						url: 'https://docs.n8n.io/integrations/builtin/cluster-nodes/sub-nodes/n8n-nodes-langchain.lmchattruefoundry/',
 					},
 				],
@@ -276,10 +276,18 @@ export class LmChatTruefoundry implements INodeType {
 		if (options.reasoningEffort && ['low', 'medium', 'high'].includes(options.reasoningEffort))
 			modelKwargs.reasoning_effort = options.reasoningEffort;
 
+		const includedOptions = pick(options, [
+			'frequencyPenalty',
+			'maxTokens',
+			'presencePenalty',
+			'temperature',
+			'topP',
+		]);
+
 		const model = new ChatOpenAI({
 			apiKey: credentials.apiKey as string,
 			model: modelName,
-			...options,
+			...includedOptions,
 			timeout: options.timeout ?? 60000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
