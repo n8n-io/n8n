@@ -43,7 +43,7 @@ export interface ChatOptions {
 	beforeMessageSent?: (message: string) => void | Promise<void>;
 	afterMessageSent?: (
 		message: string,
-		response?: SendMessageResponse | { hasReceivedChunks: boolean },
+		response?: SendMessageResponse | { hasReceivedChunks: boolean; message?: ChatMessage },
 	) => void | Promise<void>;
 	// Message action options
 	enableMessageActions?: boolean;

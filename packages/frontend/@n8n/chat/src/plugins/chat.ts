@@ -132,8 +132,8 @@ async function handleStreamingMessage(config: StreamingMessageConfig): Promise<v
 		onBeginMessage: (nodeId: string, runIndex?: number) => {
 			handleNodeStart(nodeId, streamingManager, runIndex);
 		},
-		onEndMessage: (nodeId: string, runIndex?: number) => {
-			handleNodeComplete(nodeId, streamingManager, runIndex);
+		onEndMessage: async (nodeId: string, runIndex?: number) => {
+			await handleNodeComplete(nodeId, streamingManager, runIndex, text, options);
 		},
 	};
 

@@ -121,7 +121,7 @@ function createLineParser(): TransformStream<Uint8Array, StructuredChunk> {
 export interface StreamingEventHandlers {
 	onBeginMessage: (nodeId: string, runIndex?: number) => void;
 	onChunk: (chunk: string, nodeId?: string, runIndex?: number) => void;
-	onEndMessage: (nodeId: string, runIndex?: number) => void;
+	onEndMessage: (nodeId: string, runIndex?: number) => void | Promise<void>;
 }
 
 export async function sendMessageStreaming(
@@ -172,12 +172,12 @@ export async function sendMessageStreaming(
 					handlers.onChunk(value.content ?? '', nodeId, runIndex);
 					break;
 				case 'end':
-					handlers.onEndMessage(nodeId, runIndex);
+					await handlers.onEndMessage(nodeId, runIndex);
 					break;
 				case 'error':
 					hasReceivedChunks = true;
 					handlers.onChunk(`Error: ${value.content ?? 'Unknown error'}`, nodeId, runIndex);
-					handlers.onEndMessage(nodeId, runIndex);
+					await handlers.onEndMessage(nodeId, runIndex);
 					break;
 			}
 		}

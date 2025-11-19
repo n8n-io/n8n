@@ -230,22 +230,31 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 			},
 			afterMessageSent: async (_message: string, response) => {
 				// Store bot response for persistence
-				if (!isReadOnly && response) {
-					// For streaming, response is { hasReceivedChunks: boolean }
-					// For non-streaming, it's SendMessageResponse
-					if ('hasReceivedChunks' in response) {
-						return;
-					}
+				if (isReadOnly || !response) {
+					return;
+				}
 
-					// Extract bot message from non-streaming response
-					const botMessage = response.output ?? response.text ?? response.message;
-					if (botMessage && typeof botMessage === 'string') {
+				if ('hasReceivedChunks' in response) {
+					const message = response.message;
+					// In streaming mode, store the completed message
+					if (message && 'text' in message) {
 						logsStore.addChatMessage({
-							id: uuid(),
-							text: botMessage,
+							id: message.id,
+							text: message.text,
 							sender: 'bot',
 						});
 					}
+					return;
+				}
+
+				// Extract bot message from non-streaming response
+				const botMessage = response.output ?? response.text ?? response.message;
+				if (botMessage && typeof botMessage === 'string') {
+					logsStore.addChatMessage({
+						id: uuid(),
+						text: botMessage,
+						sender: 'bot',
+					});
 				}
 			},
 		};
