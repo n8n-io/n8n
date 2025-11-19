@@ -52,8 +52,13 @@ const hasPublishedVersion = computed(() => {
 });
 
 const wfHasAnyChanges = computed(() => {
-	return workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId;
+	return (
+		uiStore.stateIsDirty ||
+		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId
+	);
 });
+
+const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
 
 const actionText = computed(() => {
 	if (!hasPublishedVersion.value && wfHasAnyChanges.value) {
@@ -83,7 +88,7 @@ const newVersionText = computed(() => {
 });
 
 const isPublishDisabled = computed(() => {
-	return !wfHasAnyChanges.value || !containsTrigger.value;
+	return !wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value;
 });
 
 const publishedInfoText = computed(() => {
@@ -189,9 +194,11 @@ async function handlePublish() {
 	}
 
 	// Activate the workflow
-	try {
-		await workflowActivate.updateWorkflowActivation(workflowsStore.workflow.id, true);
+	const success = await workflowActivate.publishWorkflow(workflowsStore.workflow.id, {
+		description: description.value,
+	});
 
+	if (success) {
 		// Show AI credits warning if applicable
 		if (shouldShowFreeAiCreditsWarning.value) {
 			showMessage({
@@ -202,10 +209,9 @@ async function handlePublish() {
 			});
 		}
 
-		// TODO: Save the description and create a publish version entry
 		// For now, just close the modal after successful activation
 		modalBus.emit('close');
-	} catch {
+	} else {
 		// Display activation error if it fails
 		await displayActivationError();
 	}
@@ -236,6 +242,17 @@ watchEffect(async () => {
 			<div :class="$style.content">
 				<N8nCallout v-if="!containsTrigger" theme="danger" icon="status-error">
 					{{ i18n.baseText('workflows.publishModal.noTriggerMessage') }}
+				</N8nCallout>
+				<N8nCallout v-else-if="hasNodeIssues" theme="danger" icon="status-error">
+					<strong>
+						{{
+							i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title')
+						}}
+					</strong>
+					<br />
+					{{
+						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message')
+					}}
 				</N8nCallout>
 				<div :class="$style.versionTextContainer">
 					<div :class="$style.versionRow">

@@ -132,9 +132,102 @@ export function useWorkflowActivate() {
 		return await updateWorkflowActivation(workflowId, true, telemetrySource);
 	};
 
+	const publishWorkflow = async (
+		workflowId: string,
+		options: { description?: string; name?: string } = {},
+	) => {
+		updatingWorkflowActivation.value = true;
+		const nodesIssuesExist = workflowsStore.nodesIssuesExist;
+		const wasWorkflowActive = workflowsStore.isWorkflowActive;
+
+		let currWorkflowId: string | undefined = workflowId;
+		if (
+			!currWorkflowId ||
+			currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+			uiStore.stateIsDirty
+		) {
+			const saved = await workflowSaving.saveCurrentWorkflow();
+			if (!saved) {
+				updatingWorkflowActivation.value = false;
+				return false;
+			}
+			currWorkflowId = workflowsStore.workflowId;
+		}
+
+		if (nodesIssuesExist) {
+			toast.showMessage({
+				title: i18n.baseText(
+					'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
+				),
+				message: i18n.baseText(
+					'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message',
+				),
+				type: 'error',
+			});
+			updatingWorkflowActivation.value = false;
+			return false;
+		}
+
+		const hasPublishedVersion = !!workflowsStore.workflow.activeVersion;
+
+		if (!hasPublishedVersion) {
+			const telemetryPayload = {
+				workflow_id: currWorkflowId,
+				is_active: true,
+				previous_status: false,
+				ndv_input: false,
+			};
+			void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
+		}
+
+		try {
+			const updatedWorkflow = await workflowsStore.publishWorkflow(currWorkflowId, {
+				versionId: workflowsStore.workflow.versionId,
+				...options,
+			});
+
+			console.log('updatedWorkflow', updatedWorkflow);
+			workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId);
+			if (updatedWorkflow.description) {
+				workflowsStore.setDescription(updatedWorkflow.description);
+			}
+			if (updatedWorkflow.activeVersion) {
+				workflowsStore.setWorkflowActiveVersion(updatedWorkflow.activeVersion);
+			}
+			if (updatedWorkflow.activeVersionId) {
+				workflowsStore.setWorkflowActive(currWorkflowId);
+
+				if (currWorkflowId === workflowsStore.workflowId) {
+					uiStore.stateIsDirty = false;
+				}
+			}
+
+			void useExternalHooks().run('workflow.activeChangeCurrent', {
+				workflowId: currWorkflowId,
+				active: true,
+			});
+
+			if (!wasWorkflowActive && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
+				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
+			}
+			return true;
+		} catch (error) {
+			toast.showError(
+				error,
+				i18n.baseText('workflowActivator.showError.title', {
+					interpolate: { newStateName: 'activated' },
+				}) + ':',
+			);
+			return false;
+		} finally {
+			updatingWorkflowActivation.value = false;
+		}
+	};
+
 	return {
 		activateCurrentWorkflow,
 		updateWorkflowActivation,
 		updatingWorkflowActivation,
+		publishWorkflow,
 	};
 }
