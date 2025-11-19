@@ -10,7 +10,6 @@ import { mock } from 'jest-mock-extended';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
-import { PostHogClient } from '@/posthog';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
@@ -21,7 +20,6 @@ import { createOwner } from '../shared/db/users';
 let workflowService: WorkflowService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowHistoryService = mockInstance(WorkflowHistoryService);
-const postHogClient = mockInstance(PostHogClient);
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
@@ -47,12 +45,7 @@ beforeAll(async () => {
 		mock(),
 		mock(),
 		Container.get(WorkflowFinderService),
-		postHogClient,
 	);
-});
-
-beforeEach(() => {
-	postHogClient.getFeatureFlags.mockResolvedValue({});
 });
 
 afterEach(async () => {

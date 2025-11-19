@@ -13,6 +13,7 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
 import type { User, ListQueryDb, WorkflowFolderUnionFull, Role } from '@n8n/db';
 import {
 	ProjectRepository,
@@ -23,8 +24,6 @@ import {
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
 
-import { DRAFT_PUBLISH_EXPERIMENT } from '@/constants';
-import { PostHogClient } from '@/posthog';
 import { DateTime } from 'luxon';
 import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -61,9 +60,9 @@ const testServer = utils.setupTestServer({
 const { objectContaining, arrayContaining, any } = expect;
 
 const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
-const postHogClientLike = mockInstance(PostHogClient);
 
 let projectRepository: ProjectRepository;
+let globalConfig: GlobalConfig;
 let folderListMissingRole: Role;
 
 beforeEach(async () => {
@@ -79,6 +78,7 @@ beforeEach(async () => {
 	]);
 	await cleanupRolesAndScopes();
 	projectRepository = Container.get(ProjectRepository);
+	globalConfig = Container.get(GlobalConfig);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
@@ -91,8 +91,8 @@ beforeEach(async () => {
 		description: 'Can only read and list workflows',
 	});
 
-	// Default: feature flag disabled (control group)
-	postHogClientLike.getFeatureFlags.mockResolvedValue({});
+	// Default: draft/publish feature disabled
+	globalConfig.workflows.draftPublishEnabled = false;
 });
 
 afterEach(() => {
@@ -2724,11 +2724,13 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(response.statusCode).toBe(500);
 	});
 
-	describe('with draft/publish feature flag enabled', () => {
+	describe('with draft/publish feature enabled', () => {
 		beforeEach(() => {
-			postHogClientLike.getFeatureFlags.mockResolvedValue({
-				[DRAFT_PUBLISH_EXPERIMENT.name]: 'variant',
-			});
+			globalConfig.workflows.draftPublishEnabled = true;
+		});
+
+		afterEach(() => {
+			globalConfig.workflows.draftPublishEnabled = false;
 		});
 
 		test('should not update activeVersionId when updating with active: true', async () => {

@@ -29,14 +29,12 @@ import { NodeApiError, PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import { DRAFT_PUBLISH_EXPERIMENT } from '@/constants';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
-import { PostHogClient } from '@/posthog';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { OwnershipService } from '@/services/ownership.service';
@@ -71,7 +69,6 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
-		private readonly postHogClient: PostHogClient,
 	) {}
 
 	async getMany(
@@ -242,8 +239,7 @@ export class WorkflowService {
 			);
 		}
 
-		const featureFlags = await this.postHogClient.getFeatureFlags(user);
-		const isDraftPublishDisabled = featureFlags[DRAFT_PUBLISH_EXPERIMENT.name] !== 'variant';
+		const isDraftPublishDisabled = !this.globalConfig.workflows.draftPublishEnabled;
 
 		if (
 			Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active', 'activeVersionId']))
