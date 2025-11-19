@@ -67,7 +67,7 @@ describe('CredentialsPermissionChecker', () => {
 	it('should throw if a credential is not accessible', async () => {
 		ownershipService.getPersonalProjectOwnerCached.mockResolvedValueOnce(null);
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([]);
-		credentialsRepository.findBy.mockResolvedValueOnce([]);
+		credentialsRepository.find.mockResolvedValueOnce([]);
 
 		await expect(permissionChecker.check(workflowId, [node])).rejects.toThrow(
 			'Node "Test Node" does not have access to the credential',
@@ -92,7 +92,7 @@ describe('CredentialsPermissionChecker', () => {
 		sharedCredentialsRepository.getFilteredAccessibleCredentials.mockResolvedValueOnce([
 			credentialId,
 		]);
-		credentialsRepository.findBy.mockResolvedValueOnce([]);
+		credentialsRepository.find.mockResolvedValueOnce([]);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
 
@@ -120,7 +120,7 @@ describe('CredentialsPermissionChecker', () => {
 			id: credentialId,
 			isGlobal: true,
 		});
-		credentialsRepository.findBy.mockResolvedValueOnce([globalCredential]);
+		credentialsRepository.find.mockResolvedValueOnce([globalCredential]);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
 
@@ -129,8 +129,11 @@ describe('CredentialsPermissionChecker', () => {
 			[personalProject.id],
 			[credentialId],
 		);
-		expect(credentialsRepository.findBy).toHaveBeenCalledWith({
-			isGlobal: true,
+		expect(credentialsRepository.find).toHaveBeenCalledWith({
+			select: ['id'],
+			where: {
+				isGlobal: true,
+			},
 		});
 	});
 
@@ -150,7 +153,7 @@ describe('CredentialsPermissionChecker', () => {
 			id: credentialId,
 			isGlobal: true,
 		});
-		credentialsRepository.findBy.mockResolvedValue([globalCredential]);
+		credentialsRepository.find.mockResolvedValue([globalCredential]);
 
 		await expect(permissionChecker.check(workflowId, [node])).resolves.not.toThrow();
 
@@ -159,8 +162,11 @@ describe('CredentialsPermissionChecker', () => {
 			[teamProject.id],
 			[credentialId],
 		);
-		expect(credentialsRepository.findBy).toHaveBeenCalledWith({
-			isGlobal: true,
+		expect(credentialsRepository.find).toHaveBeenCalledWith({
+			select: ['id'],
+			where: {
+				isGlobal: true,
+			},
 		});
 	});
 });
