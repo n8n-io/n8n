@@ -260,7 +260,6 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
 		const url = URL.createObjectURL(blob);
 
-		// Trigger download with proper cleanup
 		const tempElement = document.createElement('a');
 		tempElement.setAttribute('href', url);
 		tempElement.setAttribute('download', filename);
