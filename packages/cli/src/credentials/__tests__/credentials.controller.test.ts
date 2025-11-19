@@ -222,7 +222,7 @@ describe('CredentialsController', () => {
 			expect(credentialsService.update).not.toHaveBeenCalled();
 		});
 
-		it('should ignore isGlobal in payload when user lacks credential:shareGlobally scope', async () => {
+		it('should prevent non-owner from changing isGlobal to true', async () => {
 			// ARRANGE
 			const memberReq = {
 				user: { id: 'member-id', role: GLOBAL_MEMBER_ROLE },
@@ -231,11 +231,14 @@ describe('CredentialsController', () => {
 					name: 'Updated Credential',
 					type: 'apiKey',
 					data: { apiKey: 'updated-key' },
-					isGlobal: true, // User is trying to set this but lacks permission
+					isGlobal: false,
 				},
 			} as unknown as CredentialRequest.Update;
 
-			credentialsFinderService.findCredentialForUser.mockResolvedValue(existingCredential);
+			credentialsFinderService.findCredentialForUser.mockResolvedValue({
+				...existingCredential,
+				isGlobal: true,
+			});
 
 			// ACT
 			await expect(credentialsController.updateCredentials(memberReq)).rejects.toThrowError(
