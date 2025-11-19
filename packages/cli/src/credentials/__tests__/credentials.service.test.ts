@@ -1418,29 +1418,14 @@ describe('CredentialsService', () => {
 			});
 		});
 
-		it('should prevent non-owner from creating global credential', async () => {
+		it('should throw error when non-owner tries to create global credential', async () => {
 			// ARRANGE
 			const payload = { ...credentialData, isGlobal: true };
-			let savedCredential: any;
-			// @ts-expect-error - Mocking manager for testing
-			credentialsRepository.manager = {
-				transaction: jest.fn().mockImplementation(async (callback) => {
-					const mockManager = {
-						save: jest.fn().mockImplementation(async (entity) => {
-							savedCredential = entity;
-							return { ...entity, id: 'new-cred-id' };
-						}),
-					};
-					return await callback(mockManager);
-				}),
-			};
 
-			// ACT
-			await service.createUnmanagedCredential(payload, memberUser);
-
-			// ASSERT
-			// isGlobal should be undefined/not set because user lacks permission
-			expect(savedCredential.isGlobal).toBeUndefined();
+			// ACT & ASSERT
+			await expect(service.createUnmanagedCredential(payload, memberUser)).rejects.toThrow(
+				'You do not have permission to create globally shared credentials',
+			);
 		});
 
 		it('should create non-global credential by default', async () => {
@@ -1467,9 +1452,9 @@ describe('CredentialsService', () => {
 			expect(savedCredential.isGlobal).toBeUndefined();
 		});
 
-		it('should ignore isGlobal when user lacks credential:shareGlobally scope', async () => {
+		it('should allow member to create non-global credential', async () => {
 			// ARRANGE
-			const payload = { ...credentialData, isGlobal: true };
+			const payload = { ...credentialData, isGlobal: false };
 			let savedCredential: any;
 			// @ts-expect-error - Mocking manager for testing
 			credentialsRepository.manager = {

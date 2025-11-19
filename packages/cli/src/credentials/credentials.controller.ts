@@ -245,8 +245,13 @@ export class CredentialsController {
 
 		// Update isGlobal if provided in the payload and user has permission
 		const isGlobal = body.isGlobal;
-		const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
-		if (isGlobal !== undefined && canShareGlobally) {
+		if (isGlobal !== undefined && isGlobal !== credential.isGlobal) {
+			const canShareGlobally = hasGlobalScope(req.user, 'credential:shareGlobally');
+			if (!canShareGlobally) {
+				throw new BadRequestError(
+					'You do not have permission to change global sharing for credentials',
+				);
+			}
 			newCredentialData.isGlobal = isGlobal;
 		}
 
