@@ -3,6 +3,7 @@ import type { SamlPreferences } from '@n8n/api-types';
 import CopyInput from '@/app/components/CopyInput.vue';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
+import { captureMessage } from '@sentry/vue';
 
 import { ElSwitch } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nInput, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
@@ -15,6 +16,8 @@ import UserRoleProvisioningDropdown, {
 } from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 import EnableJitProvisioningDialog from '../provisioning/components/EnableJitProvisioningDialog.vue';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const emit = defineEmits<{
 	submitSuccess: [];
@@ -22,6 +25,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
+const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -113,6 +117,20 @@ const isTestEnabled = computed(() => {
 	return false;
 });
 
+const sendTrackingEvent = (config?: SamlPreferences) => {
+	if (!config) {
+		captureMessage('Single Sign-On SAML: telemtetry data undefined on submit', { level: 'error' });
+		return;
+	}
+	const trackingMetadata = {
+		instance_id: useRootStore().instanceId,
+		authentication_method: SupportedProtocols.SAML,
+		identity_provider: config.metadataUrl ? 'metadata' : 'xml',
+		is_active: config.loginEnabled ?? false,
+	};
+	telemetry.track('User updated single sign on settings', trackingMetadata);
+};
+
 const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 	try {
 		validateSamlInput();
@@ -126,7 +144,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			ipsType.value === IdentityProviderSettingsType.URL
 				? { metadataUrl: metadataUrl.value }
 				: { metadata: metadata.value };
-		await ssoStore.saveSamlConfig(config);
+		const configResponse = await ssoStore.saveSamlConfig(config);
 
 		if (isUserRoleProvisioningChanged()) {
 			await saveProvisioningConfig();
@@ -154,12 +172,12 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			}
 		}
 
+		await getSamlConfig();
+		sendTrackingEvent(configResponse);
 		emit('submitSuccess');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;
-	} finally {
-		await getSamlConfig();
 	}
 };
 

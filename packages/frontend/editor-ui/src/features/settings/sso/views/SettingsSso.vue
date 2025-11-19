@@ -1,9 +1,7 @@
 <script lang="ts" setup>
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
-import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSSOStore, SupportedProtocols, type SupportedProtocolType } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
-import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed, onMounted, ref } from 'vue';
 
 import { N8nHeading, N8nInfoTip, N8nOption, N8nSelect } from '@n8n/design-system';
@@ -11,8 +9,6 @@ import SamlSettingsForm from '../components/SamlSettingsForm.vue';
 import OidcSettingsForm from '../components/OidcSettingsForm.vue';
 
 const i18n = useI18n();
-const telemetry = useTelemetry();
-const rootStore = useRootStore();
 const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 
@@ -35,29 +31,6 @@ const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 function onAuthProtocolUpdated(value: SupportedProtocolType) {
 	authProtocol.value = value;
 }
-
-const trackUpdateSettings = () => {
-	const trackingMetadata: {
-		instance_id: string;
-		authentication_method: SupportedProtocolType;
-		is_active?: boolean;
-		discovery_endpoint?: string;
-		identity_provider?: 'metadata' | 'xml';
-	} = {
-		instance_id: rootStore.instanceId,
-		authentication_method: authProtocol.value,
-	};
-
-	// TODO: consider getting this data from emit of child component rather than store
-	if (authProtocol.value === SupportedProtocols.SAML) {
-		trackingMetadata.identity_provider = ssoStore.samlConfig?.metadataUrl ? 'metadata' : 'xml';
-		trackingMetadata.is_active = ssoStore.isSamlLoginEnabled;
-	} else if (authProtocol.value === SupportedProtocols.OIDC) {
-		trackingMetadata.discovery_endpoint = ssoStore.oidcConfig?.discoveryEndpoint;
-		trackingMetadata.is_active = ssoStore.isOidcLoginEnabled;
-	}
-	telemetry.track('User updated single sign on settings', trackingMetadata);
-};
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.sso.title'));

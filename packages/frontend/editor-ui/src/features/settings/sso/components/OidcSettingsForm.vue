@@ -15,6 +15,9 @@ import UserRoleProvisioningDropdown, {
 } from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 import EnableJitProvisioningDialog from '../provisioning/components/EnableJitProvisioningDialog.vue';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { OidcConfigDto } from '@n8n/api-types';
 
 const emit = defineEmits<{
 	submitSuccess: [];
@@ -22,6 +25,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
+const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
@@ -157,6 +161,8 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;
 
 		clientSecret.value = newConfig.clientSecret;
+
+		await sendTrackingEvent(newConfig);
 		emit('submitSuccess');
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
@@ -164,6 +170,16 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 	} finally {
 		await getOidcConfig();
 	}
+}
+
+async function sendTrackingEvent(config: OidcConfigDto) {
+	const trackingMetadata = {
+		instance_id: useRootStore().instanceId,
+		authentication_method: SupportedProtocols.OIDC,
+		discovery_endpoint: config.discoveryEndpoint,
+		is_active: config.loginEnabled,
+	};
+	telemetry.track('User updated single sign on settings', trackingMetadata);
 }
 
 const goToUpgrade = () => {
