@@ -6,8 +6,9 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 	async up({ schemaBuilder: { createTable, column }, runQuery, escape }: MigrationContext) {
 		await createTable(workflowPublishHistoryTableName)
 			.withColumns(
+				column('id').int.primary.autoGenerate2,
 				column('workflowId').varchar(36).notNull,
-				column('versionId').varchar(36).notNull,
+				column('versionId').varchar(36),
 				column('status').varchar(36).notNull,
 			)
 			.withCreatedAt.withForeignKey('workflowId', {

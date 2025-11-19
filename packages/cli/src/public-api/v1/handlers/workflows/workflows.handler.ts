@@ -341,7 +341,7 @@ export = {
 
 			if (workflow.activeVersionId) {
 				try {
-					await workflowManager.add(workflow.id, 'update');
+					await workflowManager.add(workflow.id, workflow.activeVersionId, 'update');
 				} catch (error) {
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
@@ -393,7 +393,11 @@ export = {
 					// change the status to active in the DB
 					const activeVersion = await setWorkflowAsActive(req.user, workflow.id, activeVersionId);
 
-					await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
+					await Container.get(ActiveWorkflowManager).add(
+						workflow.id,
+						workflow.activeVersionId,
+						'activate',
+					);
 
 					// Update the workflow object for response
 					workflow.activeVersionId = activeVersionId;

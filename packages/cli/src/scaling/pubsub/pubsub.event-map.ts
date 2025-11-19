@@ -56,6 +56,7 @@ export type PubSubCommandMap = {
 
 	'add-webhooks-triggers-and-pollers': {
 		workflowId: string;
+		versionId: string | undefined;
 	};
 
 	'remove-triggers-and-pollers': {
@@ -64,6 +65,7 @@ export type PubSubCommandMap = {
 
 	'display-workflow-activation': {
 		workflowId: string;
+		versionId: string | undefined;
 	};
 
 	'display-workflow-deactivation': {

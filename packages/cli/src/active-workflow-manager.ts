@@ -7,7 +7,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository, WorkflowPublishHistoryRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
@@ -58,6 +58,7 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
+import { PubSubCommandMap } from './scaling/pubsub/pubsub.event-map';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -79,6 +80,7 @@ export class ActiveWorkflowManager {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly executionService: ExecutionService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
@@ -476,9 +478,15 @@ export class ActiveWorkflowManager {
 		if (!dbWorkflow) return;
 
 		try {
-			const added = await this.add(dbWorkflow.id, activationMode, dbWorkflow, {
-				shouldPublish: false,
-			});
+			const added = await this.add(
+				dbWorkflow.id,
+				dbWorkflow.activeVersionId,
+				activationMode,
+				dbWorkflow,
+				{
+					shouldPublish: false,
+				},
+			);
 
 			if (added.webhooks || added.triggersAndPollers) {
 				this.logger.info(`Activated workflow ${formatWorkflow(dbWorkflow)}`, {
@@ -557,6 +565,7 @@ export class ActiveWorkflowManager {
 	 */
 	async add(
 		workflowId: WorkflowId,
+		versionId: string | undefined | null,
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
 		{ shouldPublish } = { shouldPublish: true },
@@ -566,7 +575,7 @@ export class ActiveWorkflowManager {
 		if (this.instanceSettings.isMultiMain && shouldPublish) {
 			void this.publisher.publishCommand({
 				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId },
+				payload: { workflowId, versionId: versionId ?? undefined },
 			});
 
 			return added;
@@ -654,6 +663,11 @@ export class ActiveWorkflowManager {
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
 			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId: dbWorkflow.versionId,
+				status: 'activated',
+			});
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.register(workflowId, error.message);
@@ -669,8 +683,11 @@ export class ActiveWorkflowManager {
 	}
 
 	@OnPubSubEvent('display-workflow-activation', { instanceType: 'main' })
-	handleDisplayWorkflowActivation({ workflowId }: { workflowId: string }) {
-		this.push.broadcast({ type: 'workflowActivated', data: { workflowId } });
+	handleDisplayWorkflowActivation({
+		workflowId,
+		versionId,
+	}: PubSubCommandMap['display-workflow-activation']) {
+		this.push.broadcast({ type: 'workflowActivated', data: { workflowId, versionId } });
 	}
 
 	@OnPubSubEvent('display-workflow-deactivation', { instanceType: 'main' })
@@ -696,17 +713,20 @@ export class ActiveWorkflowManager {
 		instanceType: 'main',
 		instanceRole: 'leader',
 	})
-	async handleAddWebhooksTriggersAndPollers({ workflowId }: { workflowId: string }) {
+	async handleAddWebhooksTriggersAndPollers({
+		workflowId,
+		versionId,
+	}: PubSubCommandMap['add-webhooks-triggers-and-pollers']) {
 		try {
-			await this.add(workflowId, 'activate', undefined, {
+			await this.add(workflowId, versionId, 'activate', undefined, {
 				shouldPublish: false, // prevent leader from re-publishing message
 			});
 
-			this.push.broadcast({ type: 'workflowActivated', data: { workflowId } });
+			this.push.broadcast({ type: 'workflowActivated', data: { workflowId, versionId } });
 
 			await this.publisher.publishCommand({
 				command: 'display-workflow-activation',
-				payload: { workflowId },
+				payload: { workflowId, versionId },
 			}); // instruct followers to show activation in UI
 		} catch (e) {
 			const error = ensureError(e);
@@ -813,7 +833,7 @@ export class ActiveWorkflowManager {
 				workflowName,
 			});
 			try {
-				await this.add(workflowId, activationMode, workflowData);
+				await this.add(workflowId, workflowData.activeVersionId, activationMode, workflowData);
 			} catch (error) {
 				this.errorReporter.error(error);
 				let lastTimeout = this.queuedActivations[workflowId].lastTimeout;
@@ -917,6 +937,12 @@ export class ActiveWorkflowManager {
 		// if it's active in memory then it's a trigger
 		// so remove from list of actives workflows
 		await this.removeWorkflowTriggersAndPollers(workflowId);
+
+		await this.workflowPublishHistoryRepository.addRecord({
+			workflowId,
+			versionId: null,
+			status: 'deactivated',
+		});
 	}
 
 	@OnPubSubEvent('remove-triggers-and-pollers', { instanceType: 'main', instanceRole: 'leader' })

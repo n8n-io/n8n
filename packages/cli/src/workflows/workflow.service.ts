@@ -249,7 +249,7 @@ export class WorkflowService {
 		}
 
 		const featureFlags = await this.postHogClient.getFeatureFlags(user);
-		const isDraftPublishDisabled = featureFlags[DRAFT_PUBLISH_EXPERIMENT.name] === 'control';
+		const isDraftPublishDisabled = featureFlags[DRAFT_PUBLISH_EXPERIMENT.name] !== 'variant';
 
 		if (
 			Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active', 'activeVersionId']))
@@ -479,7 +479,7 @@ export class WorkflowService {
 	): Promise<void> {
 		try {
 			await this.externalHooks.run('workflow.activate', [workflow]);
-			await this.activeWorkflowManager.add(workflowId, mode);
+			await this.activeWorkflowManager.add(workflowId, workflow.activeVersionId, mode);
 		} catch (error) {
 			// If workflow could not be activated, set it again to inactive
 			const rollbackPayload: QueryDeepPartialEntity<WorkflowEntity> = {

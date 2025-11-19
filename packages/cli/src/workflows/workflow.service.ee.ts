@@ -348,7 +348,7 @@ export class EnterpriseWorkflowService {
 
 		// 11. try to activate it again if it was active
 		if (wasActive) {
-			return await this.attemptWorkflowReactivation(workflowId);
+			return await this.attemptWorkflowReactivation(workflowId, workflow.versionId);
 		}
 
 		return;
@@ -402,7 +402,7 @@ export class EnterpriseWorkflowService {
 			},
 		});
 
-		const activeWorkflows = workflows.filter((w) => w.activeVersionId !== null).map((w) => w.id);
+		const activeWorkflows = workflows.filter((w) => w.activeVersionId !== null).map((w) => w);
 
 		// 3. get destination project
 		const destinationProject = await this.projectService.getProjectWithScope(
@@ -442,7 +442,7 @@ export class EnterpriseWorkflowService {
 
 		// 5. deactivate all workflows if necessary
 		const deactivateWorkflowsPromises = activeWorkflows.map(
-			async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
+			async (workflow) => await this.activeWorkflowManager.remove(workflow.id),
 		);
 
 		await Promise.all(deactivateWorkflowsPromises);
@@ -463,8 +463,8 @@ export class EnterpriseWorkflowService {
 
 		// 9. try to activate workflows again if they were active
 
-		for (const workflowId of activeWorkflows) {
-			await this.attemptWorkflowReactivation(workflowId);
+		for (const workflow of activeWorkflows) {
+			await this.attemptWorkflowReactivation(workflow.id, workflow.activeVersionId);
 		}
 	}
 
@@ -479,9 +479,9 @@ export class EnterpriseWorkflowService {
 		};
 	}
 
-	private async attemptWorkflowReactivation(workflowId: string) {
+	private async attemptWorkflowReactivation(workflowId: string, versionId: string | null) {
 		try {
-			await this.activeWorkflowManager.add(workflowId, 'update');
+			await this.activeWorkflowManager.add(workflowId, versionId, 'update');
 			return;
 		} catch (error) {
 			await this.workflowRepository.updateActiveState(workflowId, false);

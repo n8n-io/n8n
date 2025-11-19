@@ -1,17 +1,21 @@
-import { Column, Entity, Index, JoinColumn, ManyToOne } from '@n8n/typeorm';
+import { Column, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { WithCreatedAt } from './abstract-entity';
 import { WorkflowEntity } from './workflow-entity';
 
 @Entity()
 @Index(['workflowId', 'versionId'])
-@Index(['workflowId', 'versionId', 'createdAt'], { unique: true })
+// @Index(['workflowId', 'versionId', 'createdAt'], { unique: true })
 export class WorkflowPublishHistory extends WithCreatedAt {
-	@Column()
+	@PrimaryGeneratedColumn()
+	id: number;
+
+	@Column({ type: 'varchar' })
+	@Index()
 	workflowId: string;
 
-	@Column()
-	versionId: string;
+	@Column({ type: 'varchar' })
+	versionId: string | null;
 
 	@Column()
 	status: 'activated' | 'deactivated';
@@ -20,8 +24,8 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 		onDelete: 'CASCADE',
 	})
 	@JoinColumn({
-		foreignKeyConstraintName: 'id',
-		referencedColumnName: 'workflowId',
+		name: 'workflowId',
+		referencedColumnName: 'id',
 	})
 	workflow: WorkflowEntity;
 }
