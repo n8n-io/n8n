@@ -111,7 +111,10 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 		const options = chatTriggerNode.value?.parameters?.options;
 
 		if (options && typeof options === 'object' && 'allowedFilesMimeTypes' in options) {
-			return options.allowedFilesMimeTypes as string;
+			const result = options.allowedFilesMimeTypes;
+			if (typeof result === 'string') {
+				return result;
+			}
 		}
 
 		return 'image/*';
