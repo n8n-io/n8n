@@ -1599,6 +1599,20 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedWorkflow;
 	}
 
+	async function publishWorkflow(
+		id: string,
+		data: { versionId: string; name?: string; description?: string },
+	): Promise<IWorkflowDb> {
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/activate`,
+			data as unknown as IDataObject,
+		);
+
+		return updatedWorkflow;
+	}
+
 	// Update a single workflow setting key while preserving existing settings
 	async function updateWorkflowSetting<K extends keyof IWorkflowSettings>(
 		id: string,
@@ -1969,6 +1983,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getExecution,
 		createNewWorkflow,
 		updateWorkflow,
+		publishWorkflow,
 		updateWorkflowSetting,
 		saveWorkflowDescription,
 		runWorkflow,
