@@ -2,12 +2,14 @@ import { NodeVM } from '@n8n/vm2';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-const returnRegExp = /\breturn\b/g;
+const returnRegExp = /\breturn\b/;
 export function sortByCode(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],
 ): INodeExecutionData[] {
 	const code = this.getNodeParameter('code', 0) as string;
+	// Reset regex state
+	returnRegExp.lastIndex = 0;
 	if (!returnRegExp.test(code)) {
 		throw new NodeOperationError(
 			this.getNode(),
