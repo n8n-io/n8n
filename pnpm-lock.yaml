@@ -549,7 +549,7 @@ importers:
         version: 4.0.7
       axios:
         specifier: 1.12.0
-        version: 1.12.0(debug@4.4.3)
+        version: 1.12.0(debug@4.4.1)
       dotenv:
         specifier: 8.6.0
         version: 8.6.0
@@ -574,7 +574,7 @@ importers:
     dependencies:
       axios:
         specifier: 1.12.0
-        version: 1.12.0(debug@4.4.3)
+        version: 1.12.0(debug@4.4.1)
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -1065,7 +1065,7 @@ importers:
         version: 12.1.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))
+        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -1092,7 +1092,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.50(071f2de44c6bccc3a8cd2fadf2db3e78)
+        version: 0.3.50(ba725e6da5f3cda58245f84e6fe2ecaf)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1215,7 +1215,7 @@ importers:
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       langchain:
         specifier: 0.3.33
-        version: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
+        version: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1331,7 +1331,7 @@ importers:
         version: link:../eslint-plugin-community-nodes
       axios:
         specifier: 1.12.0
-        version: 1.12.0(debug@4.4.3)
+        version: 1.12.0(debug@4.4.1)
       eslint:
         specifier: 'catalog:'
         version: 9.29.0(jiti@2.6.1)
@@ -1452,13 +1452,23 @@ importers:
         version: 3.1.3(@types/debug@4.1.12)(@types/node@20.19.21)(jiti@2.6.1)(jsdom@23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
 
   packages/@n8n/vitest-config:
+    dependencies:
+      '@rollup/pluginutils':
+        specifier: ^5.3.0
+        version: 5.3.0(rollup@4.52.4)
+      '@swc/core-custom':
+        specifier: npm:@swc/core@1.15.2
+        version: '@swc/core@1.15.2'
+      load-tsconfig:
+        specifier: ^0.2.5
+        version: 0.2.5
+      unplugin:
+        specifier: ^2.3.10
+        version: 2.3.10
     devDependencies:
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../typescript-config
-      unplugin-swc:
-        specifier: ^1.5.8
-        version: 1.5.8(@swc/core@1.15.2)(rollup@4.52.4)
       vite:
         specifier: 'catalog:'
         version: rolldown-vite@7.1.16(@types/node@20.19.21)(esbuild@0.25.10)(jiti@2.6.1)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3)
@@ -1548,7 +1558,7 @@ importers:
         version: 1.11.0
       axios:
         specifier: 1.12.0
-        version: 1.12.0(debug@4.4.3)
+        version: 1.12.0(debug@4.4.1)
       bcryptjs:
         specifier: 2.4.3
         version: 2.4.3
@@ -1900,7 +1910,7 @@ importers:
         version: 9.42.1
       axios:
         specifier: 1.12.0
-        version: 1.12.0(debug@4.4.3)
+        version: 1.12.0(debug@4.4.1)
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
@@ -2367,7 +2377,7 @@ importers:
         version: link:../../../@n8n/utils
       axios:
         specifier: 1.12.0
-        version: 1.12.0(debug@4.4.3)
+        version: 1.12.0(debug@4.4.1)
       flatted:
         specifier: 'catalog:'
         version: 3.2.7
@@ -2624,7 +2634,7 @@ importers:
         version: 1.1.4
       axios:
         specifier: 1.12.0
-        version: 1.12.0(debug@4.4.3)
+        version: 1.12.0(debug@4.4.1)
       bowser:
         specifier: 2.11.0
         version: 2.11.0
@@ -17308,11 +17318,6 @@ packages:
       vue-template-es2015-compiler:
         optional: true
 
-  unplugin-swc@1.5.8:
-    resolution: {integrity: sha512-6qVAQsCn/AMFiw7XGXkNC/q/Or4OpL0zRPertzLT1BoigjOQp0ktPxDWY4lc51FGwVbzW4V1BURaal1rpbJwSg==}
-    peerDependencies:
-      '@swc/core': ^1.2.108
-
   unplugin@1.0.1:
     resolution: {integrity: sha512-aqrHaVBWW1JVKBHmGo33T5TxeL0qWzfvjWokObHA9bYmN7eNDkwOxmLjhioHl9878qDFMAaT51XNroRyuz7WxA==}
 
@@ -21031,7 +21036,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))':
     dependencies:
       form-data: 4.0.4
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -21040,7 +21045,7 @@ snapshots:
       zod: 3.25.67
     optionalDependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
-      langchain: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
+      langchain: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
     transitivePeerDependencies:
       - encoding
 
@@ -21726,7 +21731,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.50(071f2de44c6bccc3a8cd2fadf2db3e78)':
+  '@langchain/community@0.3.50(ba725e6da5f3cda58245f84e6fe2ecaf)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.56.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@16.6.1)(encoding@0.1.13)(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -21738,7 +21743,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.0
-      langchain: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
+      langchain: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
       langsmith: 0.3.55(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       openai: 5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       uuid: 10.0.0
@@ -21753,7 +21758,7 @@ snapshots:
       '@azure/search-documents': 12.1.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 3.4.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -23027,7 +23032,7 @@ snapshots:
 
   '@rudderstack/rudder-sdk-node@2.1.4(tslib@2.8.1)':
     dependencies:
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
       axios-retry: 4.5.0(axios@1.12.0)
       component-type: 2.0.0
       join-component: 1.1.0
@@ -25926,7 +25931,7 @@ snapshots:
 
   axios-retry@4.5.0(axios@1.12.0):
     dependencies:
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
       is-retry-allowed: 2.2.0
 
   axios@1.12.0(debug@4.3.6):
@@ -25940,14 +25945,6 @@ snapshots:
   axios@1.12.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.1)
-      form-data: 4.0.4
-      proxy-from-env: 1.1.0
-    transitivePeerDependencies:
-      - debug
-
-  axios@1.12.0(debug@4.4.3):
-    dependencies:
-      follow-redirects: 1.15.11(debug@4.4.3)
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -26333,7 +26330,7 @@ snapshots:
 
   bundlemon@3.1.0(typescript@5.9.2):
     dependencies:
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
       axios-retry: 4.5.0(axios@1.12.0)
       brotli-size: 4.0.0
       bundlemon-utils: 2.0.1
@@ -28729,10 +28726,6 @@ snapshots:
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
 
-  follow-redirects@1.15.11(debug@4.4.3):
-    optionalDependencies:
-      debug: 4.4.3
-
   for-each@0.3.5:
     dependencies:
       is-callable: 1.2.7
@@ -29435,7 +29428,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
       camelcase: 6.3.0
       debug: 4.4.3
       dotenv: 16.6.1
@@ -29445,7 +29438,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0)
+      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -29523,7 +29516,7 @@ snapshots:
 
   infisical-node@1.3.0:
     dependencies:
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
       dotenv: 16.3.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -30902,7 +30895,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d):
+  langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621):
     dependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       '@langchain/openai': 0.6.16(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -30925,7 +30918,7 @@ snapshots:
       '@langchain/groq': 0.2.3(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/mistralai': 0.2.3(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
       '@langchain/ollama': 0.2.3(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
       cheerio: 1.0.0
       handlebars: 4.7.8
     transitivePeerDependencies:
@@ -33079,7 +33072,7 @@ snapshots:
 
   posthog-node@3.2.1:
     dependencies:
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
       rusha: 0.8.14
     transitivePeerDependencies:
       - debug
@@ -33795,9 +33788,9 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0):
+  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
     dependencies:
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
 
   retry-request@7.0.2(encoding@0.1.13):
     dependencies:
@@ -34404,7 +34397,7 @@ snapshots:
       asn1.js: 5.4.1
       asn1.js-rfc2560: 5.0.1(asn1.js@5.4.1)
       asn1.js-rfc5280: 3.0.0
-      axios: 1.12.0(debug@4.4.3)
+      axios: 1.12.0(debug@4.4.1)
       big-integer: 1.6.52
       bignumber.js: 9.1.2
       binascii: 0.0.2
@@ -35770,15 +35763,6 @@ snapshots:
       '@vue/compiler-sfc': 3.5.13
     transitivePeerDependencies:
       - supports-color
-
-  unplugin-swc@1.5.8(@swc/core@1.15.2)(rollup@4.52.4):
-    dependencies:
-      '@rollup/pluginutils': 5.3.0(rollup@4.52.4)
-      '@swc/core': 1.15.2
-      load-tsconfig: 0.2.5
-      unplugin: 2.3.10
-    transitivePeerDependencies:
-      - rollup
 
   unplugin@1.0.1:
     dependencies:
