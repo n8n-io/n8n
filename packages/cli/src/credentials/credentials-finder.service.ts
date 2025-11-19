@@ -105,15 +105,10 @@ export class CredentialsFinderService {
 			relations: { shared: true },
 		});
 
-		// Also include global credentials
+		// Also include global credentials (no deduplication needed since we filter by isGlobal: false)
 		const globalCredentials = await this.fetchGlobalCredentials();
-		const mergedCredentials = this.mergeAndDeduplicateCredentials(
-			credentials,
-			globalCredentials,
-			(cred) => cred,
-		);
 
-		return mergedCredentials;
+		return [...credentials, ...globalCredentials];
 	}
 
 	/** Get a credential if it has been shared with a user */

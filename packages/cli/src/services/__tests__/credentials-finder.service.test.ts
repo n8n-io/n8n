@@ -334,11 +334,10 @@ describe('CredentialsFinderService', () => {
 			expect(result).toEqual([...credentials]);
 		});
 
-		test('should include global credentials and deduplicate when user already has access', async () => {
-			const sharedGlobalCred = mock<CredentialsEntity>({ id: 'cred1', isGlobal: true, shared: [] });
+		test('should include global credentials alongside non-global credentials', async () => {
 			const mockGlobalCredentials = [
-				sharedGlobalCred, // This one is already in credentials list
 				mock<CredentialsEntity>({ id: 'global1', isGlobal: true }),
+				mock<CredentialsEntity>({ id: 'global2', isGlobal: true }),
 			];
 			credentialsRepository.find.mockResolvedValueOnce(credentials);
 			(credentialsRepository.manager.find as jest.Mock).mockResolvedValueOnce(
@@ -349,9 +348,9 @@ describe('CredentialsFinderService', () => {
 				'credential:read' as const,
 			]);
 
-			// Should not duplicate cred1, only add global1
-			expect(result).toHaveLength(3);
-			expect(result.map((c) => c.id)).toEqual(['cred1', 'cred2', 'global1']);
+			// Should include both non-global (cred1, cred2) and global (global1, global2)
+			expect(result).toHaveLength(4);
+			expect(result.map((c) => c.id)).toEqual(['cred1', 'cred2', 'global1', 'global2']);
 		});
 
 		test('should handle empty global credentials list', async () => {
