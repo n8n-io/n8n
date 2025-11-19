@@ -56,6 +56,7 @@ const onCreateNewCredential = async () => {
 				<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
 			</div>
 		</N8nOption>
+		<template #empty> </template>
 		<template #footer>
 			<button
 				type="button"

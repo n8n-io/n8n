@@ -270,6 +270,7 @@ watch(
 							:app-name="providerDisplayNames[props.data.provider]"
 							:credential-type="credentialType"
 							:selected-credential-id="settings.credentialId"
+							:hide-create-new="true"
 							@credential-selected="onCredentialSelect"
 							@credential-deselected="onCredentialDeselect"
 						/>
