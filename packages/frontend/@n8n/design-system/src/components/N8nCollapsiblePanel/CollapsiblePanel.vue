@@ -105,8 +105,8 @@ const isOpen = computed({
 		height: 14px;
 		transform: rotate(-90deg);
 		transition:
-			color var(--animation--duration--spring) var(--animation--easing--spring),
-			transform var(--animation--duration--spring) var(--animation--easing--spring);
+			color var(--animation--duration) var(--animation--easing),
+			transform var(--animation--duration) var(--animation--easing);
 	}
 
 	.chevronOpen {
@@ -143,7 +143,7 @@ const isOpen = computed({
 	color: var(--color--text--tint-1);
 	font-size: var(--font-size--2xs);
 	line-height: 1;
-	transition: color var(--animation--duration--spring) var(--animation--easing--spring);
+	transition: color var(--animation--duration) var(--animation--easing);
 	flex-shrink: 0;
 }
 
@@ -153,7 +153,7 @@ const isOpen = computed({
 	gap: var(--spacing--4xs);
 	margin-left: auto;
 	opacity: 0;
-	transition: opacity var(--animation--duration--spring) var(--animation--easing--spring);
+	transition: opacity var(--animation--duration) var(--animation--easing);
 
 	button {
 		--button--color--text: var(--color--text--shade-1);
@@ -200,13 +200,13 @@ const isOpen = computed({
 	}
 
 	&[data-state='open'] {
-		animation: slideDown var(--animation--duration--collapse, var(--animation--duration--spring))
-			var(--animation--easing--spring);
+		animation: slideDown var(--animation--duration--collapse, var(--animation--duration))
+			var(--animation--easing);
 	}
 
 	&[data-state='closed'] {
-		animation: slideUp var(--animation--duration--collapse, var(--animation--duration--spring))
-			var(--animation--easing--spring);
+		animation: slideUp var(--animation--duration--collapse, var(--animation--duration))
+			var(--animation--easing);
 	}
 
 	> :first-child {

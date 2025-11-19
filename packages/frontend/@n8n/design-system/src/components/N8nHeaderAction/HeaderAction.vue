@@ -38,7 +38,7 @@ withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
-	click: [];
+	click: [event: MouseEvent];
 }>();
 </script>
 
@@ -53,8 +53,11 @@ const emit = defineEmits<{
 			:icon="icon"
 			:aria-label="label"
 			:data-test-id="testId"
-			:class="[{ [$style.draggable]: draggable }, { [$style.dangerAction]: danger }]"
-			@click.stop="emit('click')"
+			:class="[
+				{ 'drag-handle': draggable, [$style.draggable]: draggable },
+				{ [$style.dangerAction]: danger },
+			]"
+			@click.stop="emit('click', $event)"
 		/>
 	</N8nTooltip>
 </template>

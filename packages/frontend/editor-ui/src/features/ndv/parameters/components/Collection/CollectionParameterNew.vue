@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ref, computed, nextTick, watch } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import ParameterInputList from '../ParameterInputList.vue';
 import type { IUpdateInformation } from '@/Interface';
 
@@ -23,7 +23,6 @@ import {
 	N8nButton,
 	N8nCollapsiblePanel,
 	N8nHeaderAction,
-	N8nIconButton,
 	N8nDropdown,
 	N8nSectionHeader,
 	N8nTooltip,
@@ -31,9 +30,6 @@ import {
 } from '@n8n/design-system';
 import type { N8nDropdownOption } from '@n8n/design-system';
 import { isPresent } from '@/app/utils/typesUtils';
-import type { ComponentExposed } from 'vue-component-type-helpers';
-
-const addDropdownRef = ref<ComponentExposed<typeof N8nDropdown>>();
 
 export interface Props {
 	hideDelete?: boolean;
@@ -196,7 +192,13 @@ watch(isExpanded, (newValue) => {
 	sessionStorage.setItem(storageKey.value, newValue.toString());
 });
 
-function optionSelected(optionName: string) {
+async function optionSelected(optionName: string) {
+	// Expand the collection if it's collapsed
+	if (!isExpanded.value) {
+		isExpanded.value = true;
+		await nextTick();
+	}
+
 	const option = getOptionProperties(optionName);
 	if (!option) return;
 
@@ -250,34 +252,27 @@ function optionSelected(optionName: string) {
 function valueChanged(parameterData: IUpdateInformation) {
 	emit('valueChanged', parameterData);
 }
-
-async function onHeaderAddClick() {
-	if (!isExpanded.value) {
-		isExpanded.value = true;
-		await nextTick();
-	}
-
-	if (addDropdownRef.value) {
-		// For new UI, open the dropdown and scroll into view
-		addDropdownRef.value.open();
-		// Wait for DOM update and scroll the dropdown into view
-		await nextTick();
-		addDropdownRef.value.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-	}
-}
 </script>
 
 <template>
-	<!-- When nested, wrap everything in a collapsible panel -->
 	<N8nCollapsiblePanel
 		v-if="isNested"
 		v-model="isExpanded"
 		:title="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 		@keydown.stop
 	>
-		<template v-if="!isReadOnly && !hideDelete" #actions>
-			<N8nHeaderAction icon="plus" :label="placeholder" @click="onHeaderAddClick" />
+		<template v-if="!isReadOnly" #actions>
+			<N8nDropdown :options="dropdownOptions" :disabled="isAddDisabled" @select="optionSelected">
+				<template #trigger>
+					<N8nHeaderAction
+						icon="plus"
+						:label="placeholder"
+						data-test-id="collection-parameter-add-header-nested"
+					/>
+				</template>
+			</N8nDropdown>
 			<N8nHeaderAction
+				v-if="!hideDelete"
 				icon="trash-2"
 				:label="i18n.baseText('collectionParameter.deleteItem')"
 				danger
@@ -315,7 +310,6 @@ async function onHeaderAddClick() {
 		</div>
 	</N8nCollapsiblePanel>
 
-	<!-- When not nested, render directly with section header -->
 	<div
 		v-else
 		:class="[
@@ -335,17 +329,19 @@ async function onHeaderAddClick() {
 				<template v-if="!isReadOnly" #actions>
 					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
 						<template #content>{{ addTooltipText }}</template>
-						<N8nIconButton
-							type="secondary"
-							text
-							size="small"
-							icon="plus"
-							icon-size="large"
-							:aria-label="i18n.baseText('collectionParameter.addItem')"
+						<N8nDropdown
+							:options="dropdownOptions"
 							:disabled="isAddDisabled"
-							data-test-id="collection-parameter-add-header"
-							@click="onHeaderAddClick"
-						/>
+							@select="optionSelected"
+						>
+							<template #trigger>
+								<N8nHeaderAction
+									icon="plus"
+									:label="placeholder"
+									data-test-id="collection-parameter-add-header"
+								/>
+							</template>
+						</N8nDropdown>
 					</N8nTooltip>
 				</template>
 			</N8nSectionHeader>

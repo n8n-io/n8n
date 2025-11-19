@@ -11,7 +11,15 @@ import {
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
-import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
+import {
+	computed,
+	defineAsyncComponent,
+	nextTick,
+	onErrorCaptured,
+	ref,
+	watch,
+	type WatchSource,
+} from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -507,6 +515,27 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 	await dismissCallout(parameter.name);
 }
+
+const parameterItems = ref<Map<string, HTMLElement>>(new Map());
+
+watch(
+	() => Array.from(props.newlyAddedParameters),
+	async (newlyAddedArray) => {
+		if (newlyAddedArray.length > 0) {
+			await nextTick();
+			const lastAdded = newlyAddedArray[newlyAddedArray.length - 1];
+
+			const element = parameterItems.value.get(lastAdded);
+			if (element) {
+				element.scrollIntoView({
+					behavior: 'smooth',
+					inline: 'center',
+					block: 'nearest',
+				});
+			}
+		}
+	},
+);
 </script>
 
 <template>
@@ -514,7 +543,15 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 		<div
 			v-for="(parameter, index) in filteredParameters"
 			:key="parameter.name"
+			:ref="
+				(el) => {
+					if (el && newlyAddedParameters.has(parameter.name)) {
+						parameterItems.set(parameter.name, el as HTMLElement);
+					}
+				}
+			"
 			:class="[
+				$style.parameterContainer,
 				{
 					indent,
 					[$style.firstParameter]: index === 0 && removeFirstParameterMargin,
@@ -807,6 +844,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	.parameter-item {
 		position: relative;
 		margin: var(--spacing--xs) 0;
+		scroll-margin: var(--spacing--lg);
 	}
 	.parameter-item:hover > .icon-button,
 	.multi-parameter:hover > .icon-button {
@@ -841,6 +879,10 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 </style>
 
 <style lang="scss" module>
+.parameterContainer {
+	scroll-margin: var(--spacing--xl);
+}
+
 .firstParameter {
 	> :global(.parameter-item),
 	> :global(.multi-parameter) {

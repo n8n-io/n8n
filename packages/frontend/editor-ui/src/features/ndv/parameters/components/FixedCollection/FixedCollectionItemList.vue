@@ -4,7 +4,7 @@ import type { INodeParameters, INodePropertyCollection } from 'n8n-workflow';
 import { computed, ref } from 'vue';
 import Draggable from 'vuedraggable';
 import FixedCollectionItem from './FixedCollectionItem.vue';
-import type { useFixedCollectionItemState } from '@/composables/useFixedCollectionItemState';
+import type { useFixedCollectionItemState } from '@/app/composables/useFixedCollectionItemState';
 import { refDebounced } from '@vueuse/core';
 
 export type Props = {

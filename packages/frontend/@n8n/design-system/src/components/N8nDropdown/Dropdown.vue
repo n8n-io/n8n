@@ -184,7 +184,7 @@ defineExpose({
 
 .triggerIcon {
 	color: var(--color--text--tint-1);
-	transition: transform var(--animation--duration--spring) var(--animation--easing--spring);
+	transition: transform var(--animation--duration) var(--animation--easing);
 
 	&.open {
 		transform: rotate(180deg);
@@ -207,12 +207,11 @@ defineExpose({
 		transform-origin: top center;
 
 		&[data-state='open'] {
-			animation: slideDown var(--animation--duration--spring) var(--animation--easing--spring);
+			animation: slideDown var(--animation--duration) var(--animation--easing);
 		}
 
 		&[data-state='closed'] {
-			animation: slideDown var(--animation--duration--spring) var(--animation--easing--spring)
-				reverse;
+			animation: slideDown var(--animation--duration) var(--animation--easing) reverse;
 		}
 	}
 
@@ -220,11 +219,11 @@ defineExpose({
 		transform-origin: bottom center;
 
 		&[data-state='open'] {
-			animation: slideUp var(--animation--duration--spring) var(--animation--easing--spring);
+			animation: slideUp var(--animation--duration) var(--animation--easing);
 		}
 
 		&[data-state='closed'] {
-			animation: slideUp var(--animation--duration--spring) var(--animation--easing--spring) reverse;
+			animation: slideUp var(--animation--duration) var(--animation--easing) reverse;
 		}
 	}
 }
@@ -243,8 +242,8 @@ defineExpose({
 	line-height: 28px;
 	color: var(--color--text);
 	transition:
-		background-color var(--animation--duration--spring) var(--animation--easing--spring),
-		color var(--animation--duration--spring) var(--animation--easing--spring);
+		background-color var(--animation--duration) var(--animation--easing),
+		color var(--animation--duration) var(--animation--easing);
 
 	&[data-highlighted]:not([data-disabled]) {
 		background-color: var(--color--background);

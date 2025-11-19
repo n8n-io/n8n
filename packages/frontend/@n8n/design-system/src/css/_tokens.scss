@@ -714,10 +714,8 @@
 	// Animation
 	--animation--duration: 0.3s;
 	--animation--duration--snappy: 0.2s;
-	--animation--duration--spring: 0.4s;
-	--animation--duration--spring--snappy: 0.3s;
-	// generated using https://animejs.com/easing-editor/spring/default preset:snappy mode:perceived bounce:0.15
-	--animation--easing--spring: linear(
+	// Spring easing, generated at https://animejs.com/easing-editor/spring/default preset:snappy mode:perceived bounce:0.15
+	--animation--easing: linear(
 		0,
 		0.0088,
 		0.0327,
