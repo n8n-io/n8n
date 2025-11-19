@@ -324,7 +324,7 @@ export const setupTestServer = ({
 				}
 			}
 
-			await Container.get(ModuleRegistry).initModules();
+			await Container.get(ModuleRegistry).initModules('main');
 			Container.get(ControllerRegistry).activate(app);
 		}
 	});

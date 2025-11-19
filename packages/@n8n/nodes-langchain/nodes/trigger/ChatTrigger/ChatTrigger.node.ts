@@ -18,6 +18,7 @@ import type {
 	IBinaryData,
 	INodeProperties,
 } from 'n8n-workflow';
+import * as a from 'node:assert';
 
 import { cssVariables } from './constants';
 import { validateAuth } from './GenericFunctions';
@@ -566,6 +567,7 @@ export class ChatTrigger extends Node {
 
 	private async handleFormData(context: IWebhookFunctions) {
 		const req = context.getRequestObject() as MultiPartFormData.Request;
+		a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 		const { data, files } = req.body;
 
