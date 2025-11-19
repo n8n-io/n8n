@@ -223,7 +223,6 @@ export const downloadDataTableCsvApi = async (
 	dataTableId: string,
 	projectId: string,
 ): Promise<{ csvContent: string; filename: string }> => {
-	// We need to use makeRestApiRequest to include authentication headers
 	const response = await makeRestApiRequest<{ csvContent: string; dataTableName: string }>(
 		context,
 		'GET',

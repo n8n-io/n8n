@@ -260,15 +260,22 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
 		const url = URL.createObjectURL(blob);
 
-		// Trigger download
+		// Trigger download with proper cleanup
 		const tempElement = document.createElement('a');
 		tempElement.setAttribute('href', url);
 		tempElement.setAttribute('download', filename);
 		tempElement.style.display = 'none';
 		document.body.appendChild(tempElement);
-		tempElement.click();
-		document.body.removeChild(tempElement);
-		URL.revokeObjectURL(url);
+
+		try {
+			tempElement.click();
+		} finally {
+			// Ensure cleanup happens even if click fails
+			if (document.body.contains(tempElement)) {
+				document.body.removeChild(tempElement);
+			}
+			URL.revokeObjectURL(url);
+		}
 	};
 
 	return {
