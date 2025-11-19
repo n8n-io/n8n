@@ -2,6 +2,15 @@ import { Time } from '@n8n/constants';
 
 import { test, expect } from '../../fixtures/base';
 
+test.use({
+	addContainerCapability: {
+		env: {
+			DB_LOGGING_ENABLED: 'true',
+			DB_LOGGING_OPTIONS: 'all',
+		},
+	},
+});
+
 test(
 	'Database connection timeout health check bug @mode:postgres @chaostest',
 	{
