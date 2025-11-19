@@ -7,7 +7,7 @@ on:
         description: GitHub ref to test.
         required: false
         type: string
-        default: master
+        default: ''
       nodeVersion:
         description: Version of node to use.
         required: false
@@ -30,7 +30,7 @@ jobs:
     name: Backend Unit Tests
     runs-on: blacksmith-4vcpu-ubuntu-2204
     env:
-      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}  # Coverage collected when true
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -52,6 +52,7 @@ jobs:
           name: backend-unit
 
       - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -62,7 +63,7 @@ jobs:
     name: Backend Integration Tests
     runs-on: blacksmith-4vcpu-ubuntu-2204
     env:
-      COVERAGE_ENABLED: ${{ inputs.collectCoverage }}  # Coverage collected when true
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
@@ -84,11 +85,45 @@ jobs:
           name: backend-integration
 
       - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           flags: backend-integration
           name: backend-integration
+
+  unit-test-nodes:
+    name: Nodes Unit Tests
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    env:
+      COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: ${{ inputs.ref }}
+
+      - name: Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        with:
+          node-version: ${{ inputs.nodeVersion }}
+
+      - name: Test Nodes
+        run: pnpm --filter=n8n-nodes-base test
+
+      - name: Upload test results to Codecov
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          name: nodes-unit
+
+      - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
+        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          flags: nodes-unit
+          name: nodes-unit
 
   unit-test-frontend:
     name: Frontend (${{ matrix.shard }}/2)
@@ -122,6 +157,7 @@ jobs:
           name: frontend-shard-${{ matrix.shard }}
 
       - name: Upload coverage to Codecov
+        if: env.COVERAGE_ENABLED == 'true'
         uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
@@ -131,9 +167,9 @@ jobs:
   unit-test:
     name: Unit tests
     runs-on: ubuntu-latest
-    needs: [unit-test-backend, integration-test-backend, unit-test-frontend]
+    needs: [unit-test-backend, integration-test-backend, unit-test-nodes, unit-test-frontend]
     if: always()
     steps:
       - name: Fail if tests failed
-        if: needs.unit-test-backend.result == 'failure' || needs.integration-test-backend.result == 'failure' || needs.unit-test-frontend.result == 'failure'
+        if: needs.unit-test-backend.result == 'failure' || needs.integration-test-backend.result == 'failure' || needs.unit-test-nodes.result == 'failure' || needs.unit-test-frontend.result == 'failure'
         run: exit 1

@@ -6,8 +6,6 @@
   "type": "module",
   "scripts": {
     "clean": "rimraf dist .turbo .build",
-    "popularity-cache-marker": "node scripts/cache-marker.mjs",
-    "fetch-popularity": "node scripts/fetch-node-popularity.mjs",
     "build": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=8192\" vite build",
     "build:coverage": "cross-env VUE_APP_PUBLIC_PATH=\"/{{BASE_PATH}}/\" NODE_OPTIONS=\"--max-old-space-size=14000\" BUILD_WITH_COVERAGE=true vite build",
     "typecheck": "vue-tsc --noEmit",
