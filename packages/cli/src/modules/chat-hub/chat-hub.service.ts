@@ -450,8 +450,8 @@ export class ChatHubService {
 
 		return {
 			models: foundationModels.concat(inferenceProfileModels).map((result) => ({
-				name: String(result.value),
-				description: result.description ?? null,
+				name: String(result.name),
+				description: result.description ?? String(result.value),
 				model: {
 					provider: 'awsBedrock',
 					model: String(result.value),
