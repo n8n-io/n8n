@@ -1,0 +1,100 @@
+version: '3.8'
+
+networks:
+  n8n_network:
+    driver: bridge
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: n8n-postgresql
+    hostname: n8n-postgresql
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/run/postgresql
+    healthcheck:
+      test: |
+        pg_isready -U $POSTGRES_USER -d $POSTGRES_DB && \
+        psql -U $POSTGRES_USER -d $POSTGRES_DB -c "SELECT 1" > /dev/null 2>&1
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    environment:
+      POSTGRES_DB: n8n_db
+      POSTGRES_USER: n8n_user
+      POSTGRES_PASSWORD: changeme_secure_password
+      PGDATA: /var/lib/postgresql/data/pgdata
+      TZ: UTC
+    volumes:
+      - ./volumes/postgresql:/var/lib/postgresql/data
+    networks:
+      - n8n_network
+
+  n8n:
+    build:
+      context: .
+      dockerfile: docker/images/n8n/Dockerfile
+    container_name: n8n
+    hostname: n8n
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:5678/healthz || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    ports:
+      - "5678:5678"
+    environment:
+      # ============================================
+      # DEVELOPMENT ENTERPRISE MODE - ENABLED
+      # ============================================
+      # This enables ALL Enterprise features without a license
+      # For development and testing purposes only
+      # See DEV_ENTERPRISE_MODE.md for details
+      N8N_DEV_ENTERPRISE_MODE: "true"
+
+      # Application
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      N8N_SECURE_COOKIE: "false"
+      NODE_ENV: production
+
+      # Webhooks (change to your domain)
+      WEBHOOK_URL: http://localhost:5678
+
+      # Timezone
+      GENERIC_TIMEZONE: UTC
+      TZ: UTC
+
+      # Database
+      DB_TYPE: postgresdb
+      DB_POSTGRESDB_HOST: n8n-postgresql
+      DB_POSTGRESDB_DATABASE: n8n_db
+      DB_POSTGRESDB_PORT: 5432
+      DB_POSTGRESDB_USER: n8n_user
+      DB_POSTGRESDB_PASSWORD: changeme_secure_password
+
+      # Performance & Maintenance
+      EXECUTIONS_DATA_PRUNE: "true"
+      EXECUTIONS_DATA_MAX_AGE: 336
+      N8N_METRICS: "true"
+
+      # Disable telemetry
+      N8N_DIAGNOSTICS_ENABLED: "false"
+      N8N_HIRING_BANNER_ENABLED: "false"
+    volumes:
+      - ./volumes/data:/home/node/.n8n
+      - ./volumes/files:/files
+    networks:
+      - n8n_network
+    depends_on:
+      postgres:
+        condition: service_healthy
