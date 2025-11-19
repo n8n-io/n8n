@@ -6,12 +6,14 @@ import type { Response } from 'express';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import type { ExecutionService } from '@/executions/execution.service';
 import type { CredentialsService } from '@/credentials/credentials.service';
 import type { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 import type { License } from '@/license';
 import type { WorkflowRequest } from '../workflow.request';
+import type { ProjectService } from '@/services/project.service.ee';
 
 import { WorkflowsController } from '../workflows.controller';
 
@@ -22,30 +24,69 @@ describe('WorkflowsController', () => {
 	const axiosMock = axios.get as jest.Mock;
 	const req = mock<AuthenticatedRequest>();
 	const res = mock<Response>();
+	const projectService = mock<ProjectService>();
+
+	beforeEach(() => {
+		controller.projectService = projectService;
+		jest.clearAllMocks();
+	});
 
 	describe('getFromUrl', () => {
+		const projectId = 'project-123';
+
 		describe('should return workflow data', () => {
-			it('when the URL points to a valid JSON file', async () => {
+			it('when the URL points to a valid JSON file and user has permissions', async () => {
 				const mockWorkflowData = {
 					nodes: [],
 					connections: {},
 				};
 
+				projectService.getProjectWithScope.mockResolvedValue({} as any);
 				axiosMock.mockResolvedValue({ data: mockWorkflowData });
 
-				const query: ImportWorkflowFromUrlDto = { url: 'https://example.com/workflow.json' };
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
 				const result = await controller.getFromUrl(req, res, query);
 
 				expect(result).toEqual(mockWorkflowData);
+				expect(projectService.getProjectWithScope).toHaveBeenCalledWith(req.user, projectId, [
+					'workflow:create',
+				]);
 				expect(axiosMock).toHaveBeenCalledWith(query.url);
 			});
 		});
 
+		describe('should throw a ForbiddenError', () => {
+			it('when the user does not have permissions to create workflows in the project', async () => {
+				projectService.getProjectWithScope.mockResolvedValue(null);
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
+
+				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(ForbiddenError);
+				expect(projectService.getProjectWithScope).toHaveBeenCalledWith(req.user, projectId, [
+					'workflow:create',
+				]);
+				expect(axiosMock).not.toHaveBeenCalled();
+			});
+		});
+
 		describe('should throw a BadRequestError', () => {
-			const query: ImportWorkflowFromUrlDto = { url: 'https://example.com/invalid.json' };
+			beforeEach(() => {
+				projectService.getProjectWithScope.mockResolvedValue({} as any);
+			});
 
 			it('when the URL does not point to a valid JSON file', async () => {
 				axiosMock.mockRejectedValue(new Error('Network Error'));
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/invalid.json',
+					projectId,
+				};
 
 				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(BadRequestError);
 				expect(axiosMock).toHaveBeenCalledWith(query.url);
@@ -59,6 +100,11 @@ describe('WorkflowsController', () => {
 
 				axiosMock.mockResolvedValue({ data: invalidWorkflowData });
 
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/invalid.json',
+					projectId,
+				};
+
 				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(BadRequestError);
 				expect(axiosMock).toHaveBeenCalledWith(query.url);
 			});
@@ -70,6 +116,11 @@ describe('WorkflowsController', () => {
 				};
 
 				axiosMock.mockResolvedValue({ data: incompleteWorkflowData });
+
+				const query: ImportWorkflowFromUrlDto = {
+					url: 'https://example.com/workflow.json',
+					projectId,
+				};
 
 				await expect(controller.getFromUrl(req, res, query)).rejects.toThrow(BadRequestError);
 				expect(axiosMock).toHaveBeenCalledWith(query.url);
