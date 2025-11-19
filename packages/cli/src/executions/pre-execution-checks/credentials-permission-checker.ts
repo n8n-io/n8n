@@ -85,8 +85,9 @@ export class CredentialsPermissionChecker {
 		accessibleCredentialIds: string[],
 	): Promise<Set<string>> {
 		const accessibleSet = new Set(accessibleCredentialIds);
-		const globalCredentials = await this.credentialsRepository.findBy({
-			isGlobal: true,
+		const globalCredentials = await this.credentialsRepository.find({
+			where: { isGlobal: true },
+			select: ['id'],
 		});
 		for (const globalCred of globalCredentials) {
 			accessibleSet.add(globalCred.id);

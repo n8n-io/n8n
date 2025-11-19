@@ -30,6 +30,30 @@ export class CredentialsFinderService {
 	}
 
 	/**
+	 * Checks if the scopes allow read-only access to global credentials.
+	 * Global credentials can be accessed with credential:read scope only.
+	 */
+	hasGlobalReadOnlyAccess(scopes: Scope[]): boolean {
+		return scopes.length === 1 && scopes[0] === 'credential:read';
+	}
+
+	/**
+	 * Finds a global credential by ID if it exists.
+	 */
+	async findGlobalCredentialById(
+		credentialId: string,
+		relations?: { shared: { project: { projectRelations: { user: boolean } } } },
+	): Promise<CredentialsEntity | null> {
+		return await this.credentialsRepository.findOne({
+			where: {
+				id: credentialId,
+				isGlobal: true,
+			},
+			relations,
+		});
+	}
+
+	/**
 	 * Merges global credentials with the provided credentials list,
 	 * deduplicating based on credential ID.
 	 */
@@ -55,7 +79,7 @@ export class CredentialsFinderService {
 	 * all scopes the user has for the credential using `RoleService.addScopes`.
 	 **/
 	async findCredentialsForUser(user: User, scopes: Scope[]) {
-		let where: FindOptionsWhere<CredentialsEntity> = {};
+		let where: FindOptionsWhere<CredentialsEntity> = { isGlobal: false };
 
 		if (!hasGlobalScope(user, scopes, { mode: 'allOf' })) {
 			const [projectRoles, credentialRoles] = await Promise.all([
@@ -127,21 +151,18 @@ export class CredentialsFinderService {
 			},
 		});
 
-		if (!sharedCredential && scopes.length === 1 && scopes[0] === 'credential:read') {
-			const globalCredential = await this.credentialsRepository.findOne({
-				where: {
-					id: credentialsId,
-					isGlobal: true,
-				},
-				relations: {
-					shared: { project: { projectRelations: { user: true } } },
-				},
-			});
-
-			return globalCredential;
+		if (sharedCredential) {
+			return sharedCredential.credentials;
 		}
 
-		return sharedCredential ? sharedCredential.credentials : null;
+		// Check for global credentials with read-only access
+		if (this.hasGlobalReadOnlyAccess(scopes)) {
+			return await this.findGlobalCredentialById(credentialsId, {
+				shared: { project: { projectRelations: { user: true } } },
+			});
+		}
+
+		return null;
 	}
 
 	/** Get all credentials shared to a user */

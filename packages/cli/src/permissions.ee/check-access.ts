@@ -1,14 +1,10 @@
 import type { User } from '@n8n/db';
-import {
-	CredentialsRepository,
-	ProjectRepository,
-	SharedCredentialsRepository,
-	SharedWorkflowRepository,
-} from '@n8n/db';
+import { ProjectRepository, SharedCredentialsRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { hasGlobalScope, type Scope } from '@n8n/permissions';
 import { UnexpectedError } from 'n8n-workflow';
 
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { RoleService } from '@/services/role.service';
 
@@ -69,18 +65,22 @@ export async function userHasScopes(
 			(c) => userProjectIds.includes(c.projectId) && validRoles.includes(c.role),
 		);
 
-		if (!hasValidRoles && scopes.length === 1 && scopes[0] === 'credential:read') {
-			const globalCredential = await Container.get(CredentialsRepository).findBy({
-				id: credentialId,
-				isGlobal: true,
-			});
+		if (hasValidRoles) {
+			return true;
+		}
 
-			if (globalCredential.length > 0) {
+		// Check for global credentials with read-only access
+		const credentialsFinderService = Container.get(CredentialsFinderService);
+		if (credentialsFinderService.hasGlobalReadOnlyAccess(scopes)) {
+			const globalCredential =
+				await credentialsFinderService.findGlobalCredentialById(credentialId);
+
+			if (globalCredential) {
 				return true;
 			}
 		}
 
-		return hasValidRoles;
+		return false;
 	}
 
 	if (workflowId) {

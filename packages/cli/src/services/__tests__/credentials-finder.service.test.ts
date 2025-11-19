@@ -287,7 +287,7 @@ describe('CredentialsFinderService', () => {
 			]);
 
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
-				where: {},
+				where: { isGlobal: false },
 				relations: { shared: true },
 			});
 			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
@@ -309,6 +309,7 @@ describe('CredentialsFinderService', () => {
 			expect(roleService.rolesWithScope).toHaveBeenCalledWith('credential', ['credential:update']);
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
+					isGlobal: false,
 					shared: {
 						role: In(['credential:owner', 'credential:user']),
 						project: {
@@ -379,6 +380,7 @@ describe('CredentialsFinderService', () => {
 
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
+					isGlobal: false,
 					shared: {
 						role: In(['custom:cred-admin-789']),
 						project: {
@@ -783,6 +785,7 @@ describe('CredentialsFinderService', () => {
 
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
+					isGlobal: false,
 					shared: {
 						role: In([]),
 						project: {
@@ -834,6 +837,7 @@ describe('CredentialsFinderService', () => {
 
 			expect(credentialsRepository.find).toHaveBeenCalledWith({
 				where: {
+					isGlobal: false,
 					shared: {
 						role: In(['project:admin']), // Uses what RoleService returned for credential namespace
 						project: {
@@ -847,6 +851,129 @@ describe('CredentialsFinderService', () => {
 				relations: { shared: true },
 			});
 			expect(result).toEqual(isolationResult);
+		});
+	});
+
+	describe('hasGlobalReadOnlyAccess', () => {
+		test('should return true for single credential:read scope', () => {
+			const result = credentialsFinderService.hasGlobalReadOnlyAccess(['credential:read']);
+
+			expect(result).toBe(true);
+		});
+
+		test('should return false for multiple scopes including credential:read', () => {
+			const result = credentialsFinderService.hasGlobalReadOnlyAccess([
+				'credential:read',
+				'credential:update',
+			]);
+
+			expect(result).toBe(false);
+		});
+
+		test('should return false for single non-read scope', () => {
+			const result = credentialsFinderService.hasGlobalReadOnlyAccess(['credential:update']);
+
+			expect(result).toBe(false);
+		});
+
+		test('should return false for empty scopes array', () => {
+			const result = credentialsFinderService.hasGlobalReadOnlyAccess([]);
+
+			expect(result).toBe(false);
+		});
+
+		test('should return false for credential:delete scope', () => {
+			const result = credentialsFinderService.hasGlobalReadOnlyAccess(['credential:delete']);
+
+			expect(result).toBe(false);
+		});
+
+		test('should return false for credential:shareGlobally scope', () => {
+			const result = credentialsFinderService.hasGlobalReadOnlyAccess(['credential:shareGlobally']);
+
+			expect(result).toBe(false);
+		});
+	});
+
+	describe('findGlobalCredentialById', () => {
+		const credentialId = 'cred-123';
+		const mockGlobalCredential = mock<CredentialsEntity>({
+			id: credentialId,
+			name: 'Global Test Credential',
+			type: 'testApi',
+			isGlobal: true,
+		});
+
+		test('should find global credential by ID without relations', async () => {
+			credentialsRepository.findOne.mockResolvedValueOnce(mockGlobalCredential);
+
+			const result = await credentialsFinderService.findGlobalCredentialById(credentialId);
+
+			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
+				where: {
+					id: credentialId,
+					isGlobal: true,
+				},
+				relations: undefined,
+			});
+			expect(result).toEqual(mockGlobalCredential);
+		});
+
+		test('should find global credential by ID with relations', async () => {
+			const relations = { shared: { project: { projectRelations: { user: true } } } };
+			credentialsRepository.findOne.mockResolvedValueOnce(mockGlobalCredential);
+
+			const result = await credentialsFinderService.findGlobalCredentialById(
+				credentialId,
+				relations,
+			);
+
+			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
+				where: {
+					id: credentialId,
+					isGlobal: true,
+				},
+				relations,
+			});
+			expect(result).toEqual(mockGlobalCredential);
+		});
+
+		test('should return null when global credential not found', async () => {
+			credentialsRepository.findOne.mockResolvedValueOnce(null);
+
+			const result = await credentialsFinderService.findGlobalCredentialById('non-existent-id');
+
+			expect(credentialsRepository.findOne).toHaveBeenCalledWith({
+				where: {
+					id: 'non-existent-id',
+					isGlobal: true,
+				},
+				relations: undefined,
+			});
+			expect(result).toBeNull();
+		});
+
+		test('should only query for global credentials', async () => {
+			credentialsRepository.findOne.mockResolvedValueOnce(null);
+
+			await credentialsFinderService.findGlobalCredentialById(credentialId);
+
+			expect(credentialsRepository.findOne).toHaveBeenCalledWith(
+				expect.objectContaining({
+					where: expect.objectContaining({
+						isGlobal: true,
+					}),
+				}),
+			);
+		});
+
+		test('should handle repository errors', async () => {
+			const error = new Error('Database connection failed');
+			credentialsRepository.findOne.mockRejectedValueOnce(error);
+
+			await expect(credentialsFinderService.findGlobalCredentialById(credentialId)).rejects.toThrow(
+				'Database connection failed',
+			);
 		});
 	});
 });
