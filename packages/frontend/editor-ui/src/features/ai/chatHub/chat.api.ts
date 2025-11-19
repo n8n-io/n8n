@@ -179,13 +179,11 @@ export const deleteAgentApi = async (context: IRestApiContext, agentId: string):
 
 export const fetchChatSettingsApi = async (
 	context: IRestApiContext,
-): Promise<ChatProviderSettingsDto[]> => {
+): Promise<Record<ChatHubLLMProvider, ChatProviderSettingsDto>> => {
 	const apiEndpoint = '/chat/settings';
-	const response = await makeRestApiRequest<{ providers: ChatProviderSettingsDto[] }>(
-		context,
-		'GET',
-		apiEndpoint,
-	);
+	const response = await makeRestApiRequest<{
+		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+	}>(context, 'GET', apiEndpoint);
 	return response.providers;
 };
 

@@ -39,6 +39,7 @@ const settings = ref<ChatProviderSettingsDto | null>(null);
 const modalBus = ref(createEventBus());
 const loadingSettings = ref(false);
 const loadingModels = ref(false);
+const limitModels = ref(false);
 const availableModels = ref<ChatModelDto[]>([]);
 const customModels = ref<string[]>([]);
 
@@ -144,11 +145,10 @@ function onCancel() {
 
 async function loadSettings() {
 	settings.value = await chatStore.fetchProviderSettings(props.data.provider);
-	if (settings.value.allowedModels) {
-		customModels.value = settings.value.allowedModels
-			.filter((model) => model.isManual)
-			.map((model) => model.model);
-	}
+	limitModels.value = settings.value?.allowedModels.length > 0;
+	customModels.value = settings.value.allowedModels
+		.filter((model) => model.isManual)
+		.map((model) => model.model);
 }
 
 async function loadAvailableModels(credentialId: string) {
@@ -171,6 +171,13 @@ async function loadAvailableModels(credentialId: string) {
 	}
 }
 
+const isConfirmDisabled = computed(() => {
+	if (props.data.disabled) return true;
+	if (!settings.value) return true;
+
+	return limitModels.value && settings.value.allowedModels.length === 0;
+});
+
 function onToggleEnabled(value: string | number | boolean) {
 	if (settings.value) {
 		settings.value.enabled = typeof value === 'boolean' ? value : Boolean(value);
@@ -179,7 +186,7 @@ function onToggleEnabled(value: string | number | boolean) {
 
 function onToggleLimitModels(value: string | number | boolean) {
 	if (settings.value) {
-		settings.value.limitModels = typeof value === 'boolean' ? value : Boolean(value);
+		limitModels.value = typeof value === 'boolean' ? value : Boolean(value);
 	}
 }
 
@@ -274,7 +281,7 @@ watch(
 						>
 							<ElSwitch
 								size="large"
-								:model-value="settings?.limitModels ?? false"
+								:model-value="limitModels"
 								:disabled="props.data.disabled"
 								:loading="loadingSettings"
 								@update:model-value="onToggleLimitModels"
@@ -284,14 +291,13 @@ watch(
 				</div>
 
 				<div
-					v-if="settings && settings.enabled && settings.credentialId && settings.limitModels"
+					v-if="settings && settings.enabled && settings.credentialId && limitModels"
 					:class="$style.container"
 				>
 					<N8nText tag="label" color="text-dark">
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.allowedModels.label') }}
 					</N8nText>
 					<TagsDropdown
-						v-if="settings.limitModels"
 						v-model="selectedModels"
 						:class="$style.modelPicker"
 						:placeholder="i18n.baseText('settings.chatHub.providers.modal.edit.models.placeholder')"
@@ -314,7 +320,7 @@ watch(
 					<N8nButton type="tertiary" @click="onCancel">
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.cancel') }}
 					</N8nButton>
-					<N8nButton type="primary" @click="onConfirm" :disabled="props.data.disabled">
+					<N8nButton type="primary" @click="onConfirm" :disabled="isConfirmDisabled">
 						{{ i18n.baseText('settings.chatHub.providers.modal.edit.confirm') }}
 					</N8nButton>
 				</div>

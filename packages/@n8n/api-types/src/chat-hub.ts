@@ -295,7 +295,7 @@ const chatProviderSettingsSchema = z.object({
 	provider: chatHubLLMProviderSchema,
 	enabled: z.boolean().optional(),
 	credentialId: z.string().nullable(),
-	limitModels: z.boolean(),
+	// Empty list = all models allowed
 	allowedModels: z.array(
 		z.object({
 			displayName: z.string(),

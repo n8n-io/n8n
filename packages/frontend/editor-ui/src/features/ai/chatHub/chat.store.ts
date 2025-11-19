@@ -61,7 +61,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 	const streaming = ref<ChatStreamingState>();
 	const settingsLoading = ref(false);
-	const settings = ref<ChatProviderSettingsDto[]>([]);
+	const settings = ref<Record<ChatHubLLMProvider, ChatProviderSettingsDto> | null>(null);
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
 
 	const getConversation = (sessionId: ChatSessionId): ChatConversation | undefined =>
@@ -747,23 +747,23 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	async function fetchProviderSettings(provider: ChatHubLLMProvider) {
 		const providerSettings = await fetchChatProviderSettingsApi(rootStore.restApiContext, provider);
 
-		settings.value = settings.value?.map((setting: ChatProviderSettingsDto) =>
-			setting.provider === provider ? deepCopy(providerSettings) : setting,
-		);
+		if (settings.value) {
+			settings.value[provider] = deepCopy(providerSettings);
+		}
 
 		return providerSettings;
 	}
 
 	async function updateProviderSettings(updated: ChatProviderSettingsDto) {
-		if (!updated.enabled || !updated.limitModels) {
+		if (!updated.enabled) {
 			updated.allowedModels = [];
 		}
 
 		const saved = await updateChatSettingsApi(rootStore.restApiContext, updated);
 
-		settings.value = settings.value?.map((previous: ChatProviderSettingsDto) =>
-			previous.provider === updated.provider ? saved : previous,
-		);
+		if (settings.value) {
+			settings.value[updated.provider] = deepCopy(saved);
+		}
 
 		return saved;
 	}

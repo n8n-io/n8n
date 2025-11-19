@@ -17,7 +17,6 @@ const CHAT_ENABLED_KEY = 'chat.access.enabled';
 const getDefaultProviderSettings = (provider: ChatHubLLMProvider): ChatProviderSettingsDto => ({
 	provider,
 	credentialId: null,
-	limitModels: false,
 	allowedModels: [],
 	createdAt: new Date().toISOString(),
 	updatedAt: null,
@@ -53,7 +52,10 @@ export class ChatHubSettingsService {
 			throw new BadRequestError('Provider is not enabled');
 		}
 
-		if (settings.limitModels && !settings.allowedModels.some((m) => m.model === model.model)) {
+		if (
+			settings.allowedModels.length > 0 &&
+			!settings.allowedModels.some((m) => m.model === model.model)
+		) {
 			throw new BadRequestError(`Model ${model.model} is not allowed`);
 		}
 

@@ -127,20 +127,18 @@ const menu = computed(() => {
 		const theAgents = [...agents.value[provider].models];
 
 		// Add any manually defined models in settings
-		if (settings && settings.limitModels) {
-			for (const model of settings.allowedModels) {
-				if (model.isManual) {
-					theAgents.push({
-						name: model.displayName,
-						description: '',
-						model: {
-							provider,
-							model: model.model,
-						},
-						createdAt: '',
-						updatedAt: null,
-					});
-				}
+		for (const model of settings?.allowedModels ?? []) {
+			if (model.isManual) {
+				theAgents.push({
+					name: model.displayName,
+					description: '',
+					model: {
+						provider,
+						model: model.model,
+					},
+					createdAt: '',
+					updatedAt: null,
+				});
 			}
 		}
 
@@ -154,8 +152,8 @@ const menu = computed(() => {
 								agent.model.provider === 'n8n' ||
 								// Filter out models not allowed in settings
 								!settings ||
-								!settings.limitModels ||
-								settings.allowedModels?.some(
+								settings.allowedModels.length === 0 ||
+								settings.allowedModels.some(
 									(m) => 'model' in agent.model && m.model === agent.model.model,
 								),
 						)
@@ -170,9 +168,8 @@ const menu = computed(() => {
 
 		const submenu = agentOptions.concat([
 			...(agentOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
-			...(settings?.limitModels
-				? []
-				: [
+			...(settings?.allowedModels.length === 0
+				? [
 						// Disallow "Add model" if models are limited in settings
 						{
 							id: `${provider}::add-model`,
@@ -180,7 +177,8 @@ const menu = computed(() => {
 							title: i18n.baseText('chatHub.agent.addModel'),
 							disabled: false,
 						} as const,
-					]),
+					]
+				: []),
 			{
 				id: `${provider}::configure`,
 				icon: 'settings',

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from '@n8n/i18n';
 import { type TableHeader } from '@n8n/design-system/components/N8nDataTableServer';
 import {
@@ -12,7 +12,11 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { ChatProviderSettingsDto, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
+import {
+	ChatHubLLMProvider,
+	ChatProviderSettingsDto,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+} from '@n8n/api-types';
 import { providerDisplayNames } from '../constants';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
@@ -20,7 +24,7 @@ import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue
 const TRUNCATE_MODELS_AFTER = 4;
 
 type Props = {
-	settings: ChatProviderSettingsDto[];
+	settings: Record<ChatHubLLMProvider, ChatProviderSettingsDto> | null;
 	loading: boolean;
 	disabled: boolean;
 };
@@ -82,13 +86,15 @@ const tableActions = ref([
 	},
 ]);
 
+const settingItems = computed(() => {
+	return props.settings ? Object.values(props.settings) : [];
+});
+
 const modelsText = (settings: ChatProviderSettingsDto) => {
 	if (!settings.enabled) {
 		return i18n.baseText('settings.chatHub.providers.table.models.disabled');
-	} else if (!settings.limitModels) {
+	} else if (settings.allowedModels.length === 0) {
 		return i18n.baseText('settings.chatHub.providers.table.models.allModels');
-	} else if (!settings.allowedModels || settings.allowedModels.length === 0) {
-		return i18n.baseText('settings.chatHub.providers.table.models.noModels');
 	} else {
 		if (settings.allowedModels.length > TRUNCATE_MODELS_AFTER) {
 			return (
@@ -142,7 +148,7 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 				</div>
 			</div>
 			<N8nActionBox
-				v-if="props.settings.length === 0"
+				v-if="!props.settings"
 				:heading="i18n.baseText('settings.chatHub.providers.table.empty.title')"
 				:description="i18n.baseText('settings.chatHub.providers.table.empty.description')"
 			/>
@@ -150,8 +156,8 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 				v-else
 				:class="$style.chatProvidersTable"
 				:headers="tableHeaders"
-				:items="props.settings"
-				:items-length="props.settings.length"
+				:items="settingItems"
+				:items-length="settingItems.length"
 			>
 				<template #[`item.provider`]="{ item }">
 					<div :class="$style.providerCell">
