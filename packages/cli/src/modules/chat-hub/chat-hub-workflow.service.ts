@@ -452,7 +452,7 @@ export class ChatHubWorkflowService {
 				return {
 					...common,
 					parameters: {
-						model: { __rl: true, mode: 'id', value: model },
+						model,
 						options: {},
 					},
 				};
@@ -461,6 +461,15 @@ export class ChatHubWorkflowService {
 					...common,
 					parameters: {
 						model: { __rl: true, mode: 'id', value: model },
+						options: {},
+					},
+				};
+			}
+			case 'awsBedrock': {
+				return {
+					...common,
+					parameters: {
+						model,
 						options: {},
 					},
 				};
