@@ -699,10 +699,14 @@ export class DataTableService {
 		const columns = await this.dataTableColumnRepository.getColumns(dataTableId);
 
 		// Fetch ALL rows (no pagination for export)
-		const { data: rows } = await this.dataTableRowsRepository.getManyAndCount(dataTableId, {
-			skip: 0,
-			take: -1, // Get all rows
-		});
+		const { data: rows } = await this.dataTableRowsRepository.getManyAndCount(
+			dataTableId,
+			{
+				skip: 0,
+				take: -1, // Get all rows
+			},
+			columns,
+		);
 
 		// Build CSV
 		const csvContent = this.buildCsvContent(rows, columns);
