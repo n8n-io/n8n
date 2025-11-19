@@ -56,7 +56,7 @@ test(
 		// ========== WAIT FOR CONNECTION ISSUES ==========
 		console.log('wait for line 1');
 		await chaos.waitForLog('Database connection timed out', {
-			namePattern: 'n8n-*',
+			namePattern: '-n8n$',
 			timeoutMs: 20 * Time.seconds.toMilliseconds,
 		});
 
@@ -79,7 +79,7 @@ test(
 		// ========== VERIFY: Automatic Recovery ==========
 		console.log('wait for line 2');
 		await chaos.waitForLog('Database connection recovered', {
-			namePattern: 'n8n-*',
+			namePattern: '-n8n$',
 			timeoutMs: 20 * Time.seconds.toMilliseconds,
 		});
 	},
