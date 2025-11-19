@@ -15,7 +15,6 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useFixedCollectionItemState } from '@/app/composables/useFixedCollectionItemState';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { telemetry } from '@/app/plugins/telemetry';
-import { isEmpty } from '@/app/utils/typesUtils';
 import type { N8nDropdownOption } from '@n8n/design-system';
 import {
 	N8nButton,
@@ -153,8 +152,11 @@ const shouldShowAddInCollapsibleActions = computed(
 	() => shouldWrapInCollapsible.value && shouldShowAddControl.value,
 );
 
-const showHeaderDivider = computed(() =>
-	Object.values(mutableValues.value).every((value) => isEmpty(value)),
+const isEmpty = computed(() =>
+	Object.values(mutableValues.value).every((value) => {
+		if (Array.isArray(value)) return value.length === 0;
+		return Object.keys(value).length === 0;
+	}),
 );
 
 const hasSingleOption = computed(() => dropdownOptions.value.length === 1);
@@ -339,11 +341,7 @@ const onAddButtonClick = () => {
 		@keydown.stop
 	>
 		<template v-if="shouldShowSectionHeader">
-			<N8nSectionHeader
-				:title="displayName"
-				:bordered="showHeaderDivider"
-				:class="$style.sectionHeader"
-			>
+			<N8nSectionHeader :title="displayName" :bordered="isEmpty" :class="$style.sectionHeader">
 				<template v-if="shouldShowAddInHeader" #actions>
 					<N8nTooltip :disabled="!isAddDisabled" :show-after="TOOLTIP_DELAY_MS">
 						<template #content>{{ addTooltipText }}</template>
