@@ -28,6 +28,18 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
 ```
 
+Install [just](https://github.com/casey/just)
+```bash
+# on macOS via homebrew
+brew install just
+# or gloabl install via NPM
+npm install -g rust-just
+# or cross platform via curl to DEST
+curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to DEST
+
+```
+
+
 ## Usage
 
 ### CLI Usage
