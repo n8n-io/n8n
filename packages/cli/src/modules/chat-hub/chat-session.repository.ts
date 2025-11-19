@@ -61,7 +61,7 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 	async getManyByUserId(userId: string, limit: number, cursor?: string) {
 		const queryBuilder = this.createQueryBuilder('session')
 			.where('session.ownerId = :userId', { userId })
-			.orderBy('session.lastMessageAt', 'DESC')
+			.orderBy('session.lastMessageAt', 'DESC', 'NULLS LAST')
 			.addOrderBy('session.id', 'ASC');
 
 		if (cursor) {
