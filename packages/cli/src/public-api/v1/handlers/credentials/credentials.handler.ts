@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-argument */
 import type { CredentialsEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
@@ -46,9 +45,13 @@ export = {
 				);
 
 				return res.json(sanitizeCredentials(savedCredential));
-			} catch ({ message, httpStatusCode }) {
-				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-				return res.status(httpStatusCode ?? 500).json({ message });
+			} catch (error) {
+				const httpStatusCode =
+					error instanceof Error && 'httpStatusCode' in error
+						? (error.httpStatusCode as number)
+						: 500;
+				const message = error instanceof Error ? error.message : 'An error occurred';
+				return res.status(httpStatusCode).json({ message });
 			}
 		},
 	],

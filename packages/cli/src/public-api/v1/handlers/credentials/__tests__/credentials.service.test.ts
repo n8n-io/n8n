@@ -92,6 +92,10 @@ describe('CredentialsService', () => {
 				getPersonalProjectForUserOrFail: jest.fn().mockResolvedValue(mockProject),
 			};
 
+			const mockProjectService = {
+				getProjectForCredentialCreation: jest.fn().mockResolvedValue(mockProject),
+			};
+
 			const mockSharedCredentialsRepository = {
 				findCredentialOwningProject: jest.fn().mockResolvedValue(mockProject),
 			};
@@ -106,6 +110,7 @@ describe('CredentialsService', () => {
 
 			jest.spyOn(Container, 'get').mockImplementation((token: any) => {
 				if (token.name === 'ProjectRepository') return mockProjectRepository;
+				if (token.name === 'ProjectService') return mockProjectService;
 				if (token.name === 'SharedCredentialsRepository') return mockSharedCredentialsRepository;
 				if (token.name === 'ExternalHooks') return mockExternalHooks;
 				if (token.name === 'EventService') return mockEventService;
@@ -153,7 +158,7 @@ describe('CredentialsService', () => {
 			};
 
 			const mockProjectService = {
-				getProjectWithScope: jest.fn().mockResolvedValue(mockProject),
+				getProjectForCredentialCreation: jest.fn().mockResolvedValue(mockProject),
 			};
 
 			const mockSharedCredentialsRepository = {
@@ -181,10 +186,9 @@ describe('CredentialsService', () => {
 
 			expect(result).toBeDefined();
 			expect(result.id).toBe('cred2');
-			expect(mockProjectService.getProjectWithScope).toHaveBeenCalledWith(
+			expect(mockProjectService.getProjectForCredentialCreation).toHaveBeenCalledWith(
 				mockUser,
 				'project2',
-				['credential:create'],
 				mockTransactionManager,
 			);
 			expect(mockTransactionManager.save).toHaveBeenCalledTimes(2);

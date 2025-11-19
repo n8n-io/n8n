@@ -65,27 +65,11 @@ export async function saveCredential(
 
 		const newSharedCredential = new SharedCredentials();
 
-		const project =
-			projectId === undefined
-				? await projectRepository.getPersonalProjectForUserOrFail(user.id, transactionManager)
-				: await projectService.getProjectWithScope(
-						user,
-						projectId,
-						['credential:create'],
-						transactionManager,
-					);
-
-		if (typeof projectId === 'string' && project === null) {
-			throw Object.assign(
-				new Error("You don't have the permissions to save the credential in this project."),
-				{ httpStatusCode: 403 },
-			);
-		}
-
-		// Safe guard in case the personal project does not exist for whatever reason.
-		if (project === null) {
-			throw Object.assign(new Error('No personal project found'), { httpStatusCode: 404 });
-		}
+		const project = await projectService.getProjectForCredentialCreation(
+			user,
+			projectId,
+			transactionManager,
+		);
 
 		Object.assign(newSharedCredential, {
 			role: 'credential:owner',
