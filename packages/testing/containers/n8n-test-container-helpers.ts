@@ -177,7 +177,7 @@ export class ContainerTestHelpers {
 			// Progress indicator
 			if (iteration % 10 === 0) {
 				const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
-				console.log(`⏱️ Still waiting... (${elapsedSeconds}s elapsed)`);
+				console.log(`⏱ Still waiting... (${elapsedSeconds}s elapsed)`);
 			}
 		}
 
@@ -314,6 +314,7 @@ export class ContainerTestHelpers {
 					// Check complete lines
 					for (const line of lines) {
 						const cleanLine = this.stripAnsiCodes(line.trim());
+						console.log(container.getName(), cleanLine);
 						if (cleanLine && messageRegex.test(cleanLine)) {
 							clearTimeout(timeout);
 							stream.destroy();

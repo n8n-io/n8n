@@ -23,4 +23,6 @@ jobs:
       test-mode: docker-pull
       docker-image: ${{ github.event.inputs.image || 'n8nio/n8n:nightly' }}
       test-command: pnpm --filter=n8n-playwright test:chaos
+      shards: '[1]'
+      workers: '1'
     secrets: inherit
