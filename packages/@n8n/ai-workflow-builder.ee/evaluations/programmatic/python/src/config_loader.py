@@ -11,6 +11,22 @@ import json
 import re
 
 
+def _get_param_path_matching_pattern(pattern: str) -> str:
+    """
+    Convert glob-like pattern to regex pattern.
+    Supports wildcards: ** (matches any chars including dots), * (matches any chars except dots)
+    """
+    # Use placeholders to preserve wildcards during escaping
+    regex_pattern = pattern.replace("**", "\x00DOUBLE_STAR\x00").replace(
+        "*", "\x00STAR\x00"
+    )
+    regex_pattern = regex_pattern.replace(".", r"\.")
+    regex_pattern = regex_pattern.replace("\x00DOUBLE_STAR\x00", ".*").replace(
+        "\x00STAR\x00", "[^.]*"
+    )
+    return regex_pattern
+
+
 @dataclass
 class NodeIgnoreRule:
     """Rule for ignoring nodes during comparison"""
@@ -45,16 +61,8 @@ class ParameterComparisonRule:
 
     def matches_parameter(self, param_path: str) -> bool:
         """Check if this rule applies to a parameter path"""
-        # Support wildcards like "options.*" or "*Message"
-        # Use placeholders to preserve wildcards during escaping
-        pattern = self.parameter.replace("**", "\x00DOUBLE_STAR\x00").replace(
-            "*", "\x00STAR\x00"
-        )
-        pattern = pattern.replace(".", r"\.")
-        pattern = pattern.replace("\x00DOUBLE_STAR\x00", ".*").replace(
-            "\x00STAR\x00", "[^.]*"
-        )
-        return bool(re.match(f"^{pattern}$", param_path))
+        regex_pattern = _get_param_path_matching_pattern(self.parameter)
+        return bool(re.match(f"^{regex_pattern}$", param_path))
 
 
 @dataclass
@@ -198,9 +206,7 @@ class WorkflowComparisonConfig:
     @staticmethod
     def _matches_path_pattern(path: str, pattern: str) -> bool:
         """Check if path matches pattern (supports ** and *)"""
-        # Convert glob-like pattern to regex
-        regex_pattern = pattern.replace("**", ".*").replace("*", "[^.]*")
-        regex_pattern = regex_pattern.replace(".", r"\.")
+        regex_pattern = _get_param_path_matching_pattern(pattern)
         return bool(re.match(f"^{regex_pattern}$", path))
 
     def are_node_types_similar(self, type1: str, type2: str) -> bool:
