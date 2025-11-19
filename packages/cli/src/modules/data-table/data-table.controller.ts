@@ -276,19 +276,17 @@ export class DataTableController {
 				projectId,
 			);
 
-			// Return JSON with CSV content and table name
-			// Frontend will handle creating the filename and triggering download
 			return {
 				csvContent,
 				dataTableName,
 			};
 		} catch (e: unknown) {
-			if (!(e instanceof Error)) {
-				throw e;
-			} else if (e instanceof DataTableNotFoundError) {
+			if (e instanceof DataTableNotFoundError) {
 				throw new NotFoundError(e.message);
-			} else {
+			} else if (e instanceof Error) {
 				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
 			}
 		}
 	}

@@ -658,8 +658,11 @@ export class DataTableService {
 	}
 
 	private buildCsvContent(rows: DataTableRowReturn[], columns: DataTableColumn[]): string {
+		// Sort columns once to avoid repeated sorting in the row loop
+		const sortedColumns = [...columns].sort((a, b) => a.index - b.index);
+
 		// Build header row: id + user columns + createdAt/updatedAt at the end
-		const userHeaders = columns.sort((a, b) => a.index - b.index).map((col) => col.name);
+		const userHeaders = sortedColumns.map((col) => col.name);
 		const headers = ['id', ...userHeaders, 'createdAt', 'updatedAt'];
 
 		// Escape and join headers
@@ -673,7 +676,7 @@ export class DataTableService {
 			values.push(this.escapeCsvValue(row.id));
 
 			// Add user column values (in correct order)
-			for (const column of columns.sort((a, b) => a.index - b.index)) {
+			for (const column of sortedColumns) {
 				const value = row[column.name];
 				values.push(this.escapeCsvValue(this.formatValueForCsv(value, column.type)));
 			}
@@ -696,13 +699,8 @@ export class DataTableService {
 
 		// Handle dates - always use ISO format for CSV
 		if (columnType === 'date') {
-			if (value instanceof Date) {
-				return value.toISOString();
-			}
-			if (typeof value === 'string') {
-				// Ensure it's in ISO format
-				const date = new Date(value);
-				return !isNaN(date.getTime()) ? date.toISOString() : String(value);
+			if (value instanceof Date || typeof value === 'string') {
+				return this.formatDateForCsv(value);
 			}
 		}
 
@@ -714,6 +712,12 @@ export class DataTableService {
 		// Handle numbers
 		if (columnType === 'number') {
 			return String(value);
+		}
+
+		// Handle objects and arrays - stringify them for CSV
+		// This prevents "[object Object]" from appearing in the CSV
+		if (typeof value === 'object' && value !== null) {
+			return JSON.stringify(value);
 		}
 
 		// Handle strings and everything else
