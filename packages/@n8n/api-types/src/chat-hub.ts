@@ -17,6 +17,7 @@ export const chatHubLLMProviderSchema = z.enum([
 	'google',
 	'azureOpenAi',
 	'ollama',
+	'awsBedrock',
 ]);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
 
@@ -40,6 +41,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	google: 'googlePalmApi',
 	ollama: 'ollamaApi',
 	azureOpenAi: 'azureOpenAiApi',
+	awsBedrock: 'aws',
 };
 
 export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE | typeof SEAR_XNG_TOOL_NODE_TYPE;
@@ -72,6 +74,11 @@ const ollamaModelSchema = z.object({
 	model: z.string(),
 });
 
+const awsBedrockModelSchema = z.object({
+	provider: z.literal('awsBedrock'),
+	model: z.string(),
+});
+
 const n8nModelSchema = z.object({
 	provider: z.literal('n8n'),
 	workflowId: z.string(),
@@ -88,6 +95,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	googleModelSchema,
 	azureOpenAIModelSchema,
 	ollamaModelSchema,
+	awsBedrockModelSchema,
 	n8nModelSchema,
 	chatAgentSchema,
 ]);
@@ -97,12 +105,14 @@ export type ChatHubAnthropicModel = z.infer<typeof anthropicModelSchema>;
 export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
 export type ChatHubAzureOpenAIModel = z.infer<typeof azureOpenAIModelSchema>;
 export type ChatHubOllamaModel = z.infer<typeof ollamaModelSchema>;
+export type ChatHubAwsBedrockModel = z.infer<typeof awsBedrockModelSchema>;
 export type ChatHubBaseLLMModel =
 	| ChatHubOpenAIModel
 	| ChatHubAnthropicModel
 	| ChatHubGoogleModel
 	| ChatHubAzureOpenAIModel
-	| ChatHubOllamaModel;
+	| ChatHubOllamaModel
+	| ChatHubAwsBedrockModel;
 
 export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
 export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
@@ -143,6 +153,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	google: { models: [] },
 	azureOpenAi: { models: [] },
 	ollama: { models: [] },
+	awsBedrock: { models: [] },
 	n8n: { models: [] },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'custom-agent': { models: [] },
