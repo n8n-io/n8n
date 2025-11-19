@@ -282,18 +282,20 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			sessionsLoadingMore.value = true;
 		}
 
-		const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
-		const [response] = await Promise.all([
-			fetchSessionsApi(rootStore.restApiContext, 40, cursor),
-			new Promise((resolve) => setTimeout(resolve, 500)),
-		]);
+		try {
+			const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
+			const [response] = await Promise.all([
+				fetchSessionsApi(rootStore.restApiContext, 40, cursor),
+				new Promise((resolve) => setTimeout(resolve, 500)),
+			]);
 
-		sessions.value = {
-			...response,
-			data: [...(reset ? [] : (sessions.value?.data ?? [])), ...response.data],
-		};
-
-		sessionsLoadingMore.value = false;
+			sessions.value = {
+				...response,
+				data: [...(reset ? [] : (sessions.value?.data ?? [])), ...response.data],
+			};
+		} finally {
+			sessionsLoadingMore.value = false;
+		}
 	}
 
 	async function fetchMoreSessions() {
