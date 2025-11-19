@@ -73,10 +73,13 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 				throw new NotFoundError('Cursor session not found');
 			}
 
-			queryBuilder.andWhere('session.lastMessageAt <= :lastMessageAt AND session.id != :id', {
-				lastMessageAt: cursorSession.lastMessageAt,
-				id: cursorSession.id,
-			});
+			queryBuilder.andWhere(
+				'(session.lastMessageAt < :lastMessageAt OR (session.lastMessageAt = :lastMessageAt AND session.id > :id))',
+				{
+					lastMessageAt: cursorSession.lastMessageAt,
+					id: cursorSession.id,
+				},
+			);
 		}
 
 		queryBuilder.take(limit);
