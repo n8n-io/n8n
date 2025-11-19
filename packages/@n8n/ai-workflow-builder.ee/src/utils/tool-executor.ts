@@ -88,6 +88,7 @@ export async function executeToolsInParallel(
 				return new ToolMessage({
 					content: errorContent,
 					tool_call_id: toolCall.id ?? '',
+					name: toolCall.name,
 					// Include error flag so tools can handle errors appropriately
 					additional_kwargs: { error: true },
 				});
@@ -128,6 +129,24 @@ export async function executeToolsInParallel(
 		}
 	}
 
+	// Collect all technique categories
+	const allTechniqueCategories: string[] = [];
+
+	for (const update of stateUpdates) {
+		if (update.techniqueCategories && Array.isArray(update.techniqueCategories)) {
+			allTechniqueCategories.push(...update.techniqueCategories);
+		}
+	}
+
+	// Collect all validation history
+	const allValidationHistory: Array<(typeof WorkflowState.State.validationHistory)[number]> = [];
+
+	for (const update of stateUpdates) {
+		if (update.validationHistory && Array.isArray(update.validationHistory)) {
+			allValidationHistory.push(...update.validationHistory);
+		}
+	}
+
 	// Return the combined update
 	const finalUpdate: Partial<typeof WorkflowState.State> = {
 		messages: allMessages,
@@ -135,6 +154,14 @@ export async function executeToolsInParallel(
 
 	if (allOperations.length > 0) {
 		finalUpdate.workflowOperations = allOperations;
+	}
+
+	if (allTechniqueCategories.length > 0) {
+		finalUpdate.techniqueCategories = allTechniqueCategories;
+	}
+
+	if (allValidationHistory.length > 0) {
+		finalUpdate.validationHistory = allValidationHistory;
 	}
 
 	return finalUpdate;

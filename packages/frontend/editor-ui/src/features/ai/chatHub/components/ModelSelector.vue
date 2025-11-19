@@ -13,23 +13,28 @@ import type {
 	ChatModelDto,
 	ChatModelsResponse,
 } from '@n8n/api-types';
-import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import {
+	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+	providerDisplayNames,
+} from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { onClickOutside } from '@vueuse/core';
 import { useI18n } from '@n8n/i18n';
 
 import type { CredentialsMap } from '../chat.types';
-import CredentialSelectorModal from './CredentialSelectorModal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import {
+	flattenModel,
 	fromStringToModel,
 	isMatchedAgent,
 	stringifyModel,
 } from '@/features/ai/chatHub/chat.utils';
 import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
 
@@ -53,17 +58,36 @@ function handleSelectCredentials(provider: ChatHubProvider, id: string) {
 	emit('selectCredential', provider, id);
 }
 
+function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
+	emit('change', {
+		model: {
+			provider,
+			model: modelId,
+		},
+		name: modelId,
+		description: null,
+		updatedAt: null,
+		createdAt: null,
+	});
+}
+
 const i18n = useI18n();
 const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
 const dropdownRef = useTemplateRef('dropdownRef');
-const credentialSelectorProvider = ref<ChatHubLLMProvider | null>(null);
 const uiStore = useUIStore();
 const credentialsStore = useCredentialsStore();
+const telemetry = useTelemetry();
 
 const credentialsName = computed(() =>
 	selectedAgent
 		? credentialsStore.getCredentialById(credentials?.[selectedAgent.model.provider] ?? '')?.name
 		: undefined,
+);
+const isCredentialsRequired = computed(
+	() =>
+		selectedAgent &&
+		selectedAgent.model.provider !== 'n8n' &&
+		selectedAgent.model.provider !== 'custom-agent',
 );
 
 const menu = computed(() => {
@@ -117,9 +141,15 @@ const menu = computed(() => {
 		const submenu = agentOptions.concat([
 			...(agentOptions.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
 			{
+				id: `${provider}::add-model`,
+				icon: 'plus',
+				title: i18n.baseText('chatHub.agent.addModel'),
+				disabled: false,
+			},
+			{
 				id: `${provider}::configure`,
 				icon: 'settings',
-				title: 'Configure credentials...',
+				title: i18n.baseText('chatHub.agent.configureCredentials'),
 				disabled: false,
 			},
 		]);
@@ -145,8 +175,26 @@ function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 		return;
 	}
 
-	credentialSelectorProvider.value = provider;
-	uiStore.openModal('chatCredentialSelector');
+	uiStore.openModalWithData({
+		name: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+		data: {
+			provider,
+			initialValue: credentials?.[provider] ?? null,
+			onSelect: handleSelectCredentials,
+			onCreateNew: handleCreateNewCredential,
+		},
+	});
+}
+
+function openModelByIdSelector(provider: ChatHubLLMProvider) {
+	uiStore.openModalWithData({
+		name: CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+		data: {
+			provider,
+			initialValue: null,
+			onSelect: handleSelectModelById,
+		},
+	});
 }
 
 function onSelect(id: string) {
@@ -171,6 +219,15 @@ function onSelect(id: string) {
 		return;
 	}
 
+	if (
+		identifier === 'add-model' &&
+		parsedModel.provider !== 'n8n' &&
+		parsedModel.provider !== 'custom-agent'
+	) {
+		openModelByIdSelector(parsedModel.provider);
+		return;
+	}
+
 	const selected = agents.value[parsedModel.provider].models.find((a) =>
 		isMatchedAgent(a, parsedModel),
 	);
@@ -179,11 +236,25 @@ function onSelect(id: string) {
 		return;
 	}
 
+	telemetry.track('User selected model or agent', {
+		...flattenModel(selected.model),
+		is_custom: selected.model.provider === 'custom-agent',
+	});
+
 	emit('change', selected);
 }
 
 function handleCreateNewCredential(provider: ChatHubLLMProvider) {
-	uiStore.openNewCredential(PROVIDER_CREDENTIAL_TYPE_MAP[provider]);
+	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
+
+	telemetry.track('User opened Credential modal', {
+		credential_type: credentialType,
+		source: 'chat',
+		new_credential: true,
+		workflow_id: null,
+	});
+
+	uiStore.openNewCredential(credentialType);
 }
 
 onClickOutside(
@@ -225,19 +296,10 @@ defineExpose({
 		</template>
 
 		<N8nButton :class="$style.dropdownButton" type="secondary" text>
-			<CredentialSelectorModal
-				v-if="credentialSelectorProvider"
-				:key="credentialSelectorProvider"
-				:provider="credentialSelectorProvider"
-				:initial-value="credentials?.[credentialSelectorProvider] ?? null"
-				@select="handleSelectCredentials"
-				@create-new="handleCreateNewCredential"
-			/>
-
 			<ChatAgentAvatar
 				v-if="selectedAgent"
 				:agent="selectedAgent"
-				:size="credentialsName ? 'md' : 'sm'"
+				:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
 				:class="$style.icon"
 			/>
 			<div :class="$style.selected">

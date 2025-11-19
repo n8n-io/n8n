@@ -2,6 +2,7 @@ import type { INodeConnections, INodeTypeDescription, NodeConnectionType } from 
 import { mapConnectionsByDestination } from 'n8n-workflow';
 
 import type { SimpleWorkflow } from '@/types';
+import { isSubNode } from '@/utils/node-helpers';
 import { resolveNodeInputs, resolveNodeOutputs } from '@/validation/utils/resolve-connections';
 
 import type {
@@ -44,6 +45,7 @@ function checkMissingRequiredInputs(
 
 		if (input.required && providedCount === 0) {
 			issues.push({
+				name: 'node-missing-required-input',
 				type: 'critical',
 				description: `Node ${nodeInfo.node.name} (${nodeInfo.node.type}) is missing required input of type ${input.type}`,
 				pointsDeducted: 50,
@@ -66,6 +68,7 @@ function checkUnsupportedConnections(
 	for (const [type] of providedInputTypes) {
 		if (!supportedTypes.has(type)) {
 			issues.push({
+				name: 'node-unsupported-connection-input',
 				type: 'critical',
 				description: `Node ${nodeInfo.node.name} (${nodeInfo.node.type}) received unsupported connection type ${type}`,
 				pointsDeducted: 50,
@@ -89,6 +92,7 @@ function checkMergeNodeConnections(
 
 		if (totalInputConnections < 2) {
 			issues.push({
+				name: 'node-merge-single-input',
 				type: 'major',
 				description: `Merge node ${nodeInfo.node.name} has only ${totalInputConnections} input connection(s). Merge nodes require at least 2 inputs to function properly.`,
 				pointsDeducted: 20,
@@ -100,6 +104,7 @@ function checkMergeNodeConnections(
 
 		if (totalInputConnections !== expectedInputs) {
 			issues.push({
+				name: 'node-merge-incorrect-num-inputs',
 				type: 'minor',
 				description: `Merge node ${nodeInfo.node.name} has ${totalInputConnections} input connections but is configured to accept ${expectedInputs}.`,
 				pointsDeducted: 10,
@@ -120,9 +125,55 @@ function checkMergeNodeConnections(
 
 		if (missingIndexes.length > 0) {
 			issues.push({
+				name: 'node-merge-missing-input',
 				type: 'major',
 				description: `Merge node ${nodeInfo.node.name} is missing connections for input(s) ${missingIndexes.join(', ')}.`,
 				pointsDeducted: 20,
+			});
+		}
+	}
+
+	return issues;
+}
+
+function checkSubNodeRootConnections(
+	workflow: SimpleWorkflow,
+	nodeInfo: NodeResolvedConnectionTypesInfo,
+	nodesByName: Map<string, SimpleWorkflow['nodes'][number]>,
+): ProgrammaticViolation[] {
+	const issues: ProgrammaticViolation[] = [];
+
+	const { node, nodeType, resolvedOutputs } = nodeInfo;
+
+	if (!resolvedOutputs || resolvedOutputs.size === 0) {
+		return issues;
+	}
+
+	if (!isSubNode(nodeType, node)) {
+		return issues;
+	}
+
+	const aiOutputs = Array.from(resolvedOutputs).filter((output) => output.startsWith('ai_'));
+
+	if (aiOutputs.length === 0) {
+		return issues;
+	}
+
+	const nodeConnections = workflow.connections?.[node.name];
+
+	for (const outputType of aiOutputs) {
+		const connectionsForType = nodeConnections?.[outputType];
+
+		const hasRootConnection = connectionsForType?.some((connectionGroup) =>
+			connectionGroup?.some((connection) => connection?.node && nodesByName.has(connection.node)),
+		);
+
+		if (!hasRootConnection) {
+			issues.push({
+				name: 'sub-node-not-connected',
+				type: 'critical',
+				description: `Sub-node ${node.name} (${node.type}) provides ${outputType} but is not connected to a root node.`,
+				pointsDeducted: 50,
 			});
 		}
 	}
@@ -141,11 +192,14 @@ export function validateConnections(
 	}
 
 	const connectionsByDestination = mapConnectionsByDestination(workflow.connections);
+	const nodesByName = new Map(workflow.nodes.map((node) => [node.name, node]));
+	const nodeTypeMap = new Map(nodeTypes.map((type) => [type.name, type]));
 
 	for (const node of workflow.nodes) {
-		const nodeType = nodeTypes.find((type) => type.name === node.type);
+		const nodeType = nodeTypeMap.get(node.type);
 		if (!nodeType) {
 			violations.push({
+				name: 'node-type-not-found',
 				type: 'critical',
 				description: `Node type ${node.type} not found for node ${node.name}`,
 				pointsDeducted: 50,
@@ -160,6 +214,7 @@ export function validateConnections(
 			nodeInfo.resolvedOutputs = resolveNodeOutputs(nodeInfo);
 		} catch (error) {
 			violations.push({
+				name: 'failed-to-resolve-connections',
 				type: 'critical',
 				description: `Failed to resolve connections for node ${node.name} (${node.type}): ${
 					error instanceof Error ? error.message : String(error)
@@ -178,6 +233,8 @@ export function validateConnections(
 		violations.push(...checkUnsupportedConnections(nodeInfo, providedInputTypes));
 
 		violations.push(...checkMergeNodeConnections(nodeInfo, nodeConnections));
+
+		violations.push(...checkSubNodeRootConnections(workflow, nodeInfo, nodesByName));
 	}
 
 	return violations;

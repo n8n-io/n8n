@@ -91,7 +91,7 @@ RUN uv pip install -r /app/task-runner-python/extras.txt
 # ==============================================================================
 FROM debian:bookworm-slim AS launcher-downloader
 ARG TARGETPLATFORM
-ARG LAUNCHER_VERSION=1.4.0
+ARG LAUNCHER_VERSION=1.4.1
 
 RUN set -e; \
     apt-get update && apt-get install -y --no-install-recommends wget ca-certificates && \

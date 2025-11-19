@@ -12,6 +12,7 @@ import { EntityManager } from '@n8n/typeorm';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
 	IConnections,
 	IExecuteData,
 	INode,
@@ -50,7 +51,8 @@ export class ChatHubWorkflowService {
 		humanMessage: string,
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
-		systemMessage?: string,
+		systemMessage: string | undefined,
+		tools: INode[],
 		trx?: EntityManager,
 	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
@@ -66,6 +68,7 @@ export class ChatHubWorkflowService {
 				credentials,
 				model,
 				systemMessage,
+				tools,
 			});
 
 			const newWorkflow = new WorkflowEntity();
@@ -74,6 +77,9 @@ export class ChatHubWorkflowService {
 			newWorkflow.active = false;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
+			newWorkflow.settings = {
+				executionOrder: 'v1',
+			};
 
 			const workflow = await em.save<WorkflowEntity>(newWorkflow);
 
@@ -120,6 +126,9 @@ export class ChatHubWorkflowService {
 			newWorkflow.active = false;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
+			newWorkflow.settings = {
+				executionOrder: 'v1',
+			};
 
 			const workflow = await em.save<WorkflowEntity>(newWorkflow);
 
@@ -138,6 +147,22 @@ export class ChatHubWorkflowService {
 		});
 	}
 
+	private getUniqueNodeName(originalName: string, existingNames: Set<string>): string {
+		if (!existingNames.has(originalName)) {
+			return originalName;
+		}
+
+		let index = 1;
+		let uniqueName = `${originalName}${index}`;
+
+		while (existingNames.has(uniqueName)) {
+			index++;
+			uniqueName = `${originalName}${index}`;
+		}
+
+		return uniqueName;
+	}
+
 	private buildChatWorkflow({
 		userId,
 		sessionId,
@@ -146,6 +171,7 @@ export class ChatHubWorkflowService {
 		credentials,
 		model,
 		systemMessage,
+		tools,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
@@ -154,6 +180,7 @@ export class ChatHubWorkflowService {
 		credentials: INodeCredentials;
 		model: ChatHubConversationModel;
 		systemMessage?: string;
+		tools: INode[];
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
@@ -171,23 +198,44 @@ export class ChatHubWorkflowService {
 			clearMemoryNode,
 		];
 
+		const nodeNames = new Set(nodes.map((node) => node.name));
+		const distinctTools = tools.map((tool, i) => {
+			// Spread out the tool nodes so that they don't overlap on the canvas
+			const position = [
+				700 + Math.floor(i / 3) * 60 + (i % 3) * 120,
+				300 + Math.floor(i / 3) * 120 - (i % 3) * 30,
+			];
+
+			const name = this.getUniqueNodeName(tool.name, nodeNames);
+			nodeNames.add(name);
+
+			return {
+				...tool,
+				name,
+				position,
+			};
+		});
+
+		nodes.push.apply(nodes, distinctTools);
+
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
-				main: [
+				[NodeConnectionTypes.Main]: [
 					[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 }],
 				],
 			},
 			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
-				main: [[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.Main, index: 0 }]],
+				[NodeConnectionTypes.Main]: [
+					[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.Main, index: 0 }],
+				],
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				ai_languageModel: [
+				[NodeConnectionTypes.AiLanguageModel]: [
 					[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
 				],
 			},
 			[NODE_NAMES.MEMORY]: {
-				ai_memory: [
+				[NodeConnectionTypes.AiMemory]: [
 					[
 						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiMemory, index: 0 },
 						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
@@ -196,7 +244,7 @@ export class ChatHubWorkflowService {
 				],
 			},
 			[NODE_NAMES.REPLY_AGENT]: {
-				main: [
+				[NodeConnectionTypes.Main]: [
 					[
 						{
 							node: NODE_NAMES.CLEAR_CHAT_MEMORY,
@@ -206,6 +254,21 @@ export class ChatHubWorkflowService {
 					],
 				],
 			},
+			...distinctTools.reduce<IConnections>((acc, tool) => {
+				acc[tool.name] = {
+					[NodeConnectionTypes.AiTool]: [
+						[
+							{
+								node: NODE_NAMES.REPLY_AGENT,
+								type: NodeConnectionTypes.AiTool,
+								index: 0,
+							},
+						],
+					],
+				};
+
+				return acc;
+			}, {}),
 		};
 
 		const nodeExecutionStack: IExecuteData[] = [
@@ -228,22 +291,14 @@ export class ChatHubWorkflowService {
 			},
 		];
 
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
+		const executionData = createRunExecutionData({
 			executionData: {
-				contextData: {},
-				metadata: {},
 				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
 			manualData: {
 				userId,
 			},
-		};
+		});
 
 		return { nodes, connections, executionData };
 	}
@@ -263,13 +318,12 @@ export class ChatHubWorkflowService {
 
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
-				main: [
+				[NodeConnectionTypes.Main]: [
 					[{ node: NODE_NAMES.TITLE_GENERATOR_AGENT, type: NodeConnectionTypes.Main, index: 0 }],
 				],
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				ai_languageModel: [
+				[NodeConnectionTypes.AiLanguageModel]: [
 					[
 						{
 							node: NODE_NAMES.TITLE_GENERATOR_AGENT,
@@ -285,7 +339,7 @@ export class ChatHubWorkflowService {
 			{
 				node: chatTriggerNode,
 				data: {
-					main: [
+					[NodeConnectionTypes.Main]: [
 						[
 							{
 								json: {
@@ -301,22 +355,14 @@ export class ChatHubWorkflowService {
 			},
 		];
 
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
+		const executionData = createRunExecutionData({
 			executionData: {
-				contextData: {},
-				metadata: {},
 				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
 			manualData: {
 				userId,
 			},
-		};
+		});
 		return { nodes, connections, executionData };
 	}
 
@@ -402,6 +448,34 @@ export class ChatHubWorkflowService {
 						options: {},
 					},
 				};
+			case 'azureOpenAi':
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			case 'ollama': {
+				return {
+					...common,
+					parameters: {
+						model: { __rl: true, mode: 'id', value: model },
+						options: {},
+					},
+				};
+			}
+			case 'awsBedrock': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			default:
+				throw new OperationalError('Unsupported model provider');
 		}
 	}
 

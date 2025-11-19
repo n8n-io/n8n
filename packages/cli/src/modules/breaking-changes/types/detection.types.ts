@@ -1,15 +1,16 @@
-import type { DetectionResult } from './rule.types';
+import type {
+	BreakingChangeInstanceIssue,
+	BreakingChangeRecommendation,
+	BreakingChangeWorkflowIssue,
+} from '@n8n/api-types';
 
-/**
- * Detection report matching the UI structure
- */
-export interface DetectionReport {
-	generatedAt: Date;
-	targetVersion: string;
-	currentVersion: string;
-	summary: {
-		totalIssues: number;
-		criticalIssues: number;
-	};
-	results: DetectionResult[]; // Keep raw results for debugging
+export interface WorkflowDetectionReport {
+	isAffected: boolean;
+	issues: BreakingChangeWorkflowIssue[]; // List of issues affecting this workflow
+}
+
+export interface InstanceDetectionReport {
+	isAffected: boolean;
+	instanceIssues: BreakingChangeInstanceIssue[];
+	recommendations: BreakingChangeRecommendation[];
 }

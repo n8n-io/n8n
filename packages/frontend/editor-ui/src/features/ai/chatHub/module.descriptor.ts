@@ -1,5 +1,13 @@
 import { type FrontendModuleDescription } from '@/app/moduleInitializer/module.types';
-import { CHAT_VIEW, CHAT_CONVERSATION_VIEW, CHAT_AGENTS_VIEW } from './constants';
+import {
+	CHAT_VIEW,
+	CHAT_CONVERSATION_VIEW,
+	CHAT_AGENTS_VIEW,
+	TOOLS_SELECTOR_MODAL_KEY,
+	AGENT_EDITOR_MODAL_KEY,
+	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+} from '@/features/ai/chatHub/constants';
 
 const ChatSidebar = async () => await import('@/features/ai/chatHub/components/ChatSidebar.vue');
 const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
@@ -10,7 +18,56 @@ export const ChatModule: FrontendModuleDescription = {
 	name: 'Chat',
 	description: 'Interact with various LLM models or your n8n AI agents.',
 	icon: 'chat',
-	modals: [],
+	modals: [
+		{
+			key: TOOLS_SELECTOR_MODAL_KEY,
+			component: async () => await import('./components/ToolsSelectorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					selected: [],
+					onConfirm: () => {},
+				},
+			},
+		},
+		{
+			key: AGENT_EDITOR_MODAL_KEY,
+			component: async () => await import('./components/AgentEditorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					credentials: {},
+					onClose: () => {},
+					onCreateCustomAgent: () => {},
+				},
+			},
+		},
+		{
+			key: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+			component: async () => await import('./components/CredentialSelectorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					provider: null,
+					initialValue: null,
+					onSelect: () => {},
+					onCreateNew: () => {},
+				},
+			},
+		},
+		{
+			key: CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+			component: async () => await import('./components/ModelByIdSelectorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					provider: null,
+					initialValue: null,
+					onSelect: () => {},
+				},
+			},
+		},
+	],
 	routes: [
 		{
 			name: CHAT_VIEW,

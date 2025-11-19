@@ -40,6 +40,8 @@ export const STORES = {
 	EXPERIMENT_READY_TO_RUN_WORKFLOWS_V2: 'readyToRunWorkflowsV2',
 	EXPERIMENT_TEMPLATE_RECO_V2: 'templateRecoV2',
 	PERSONALIZED_TEMPLATES_V3: 'personalizedTemplatesV3',
+	READY_TO_RUN: 'readyToRun',
 	TEMPLATES_DATA_QUALITY: 'templatesDataQuality',
 	BANNERS: 'banners',
+	CONSENT: 'consent',
 } as const;

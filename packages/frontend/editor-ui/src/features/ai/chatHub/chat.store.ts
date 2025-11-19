@@ -43,11 +43,14 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
-import { isMatchedAgent } from './chat.utils';
+import { buildUiMessages, isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { type INode } from 'n8n-workflow';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
+	const telemetry = useTelemetry();
 	const agents = ref<ChatModelsResponse>();
 	const sessions = ref<ChatHubSessionDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
@@ -62,7 +65,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const conversation = getConversation(sessionId);
 		if (!conversation) return [];
 
-		return conversation.activeMessageChain.map((id) => conversation.messages[id]).filter(Boolean);
+		return buildUiMessages(sessionId, conversation, streaming.value);
 	};
 
 	function ensureConversation(sessionId: ChatSessionId): ChatConversation {
@@ -310,6 +313,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				agentName: null,
 				createdAt: new Date().toISOString(),
 				updatedAt: new Date().toISOString(),
+				tools: [],
 				...flattenModel(streaming.value.model),
 			},
 		];
@@ -426,6 +430,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
+		tools: INode[],
 	) {
 		const messageId = uuidv4();
 		const conversation = ensureConversation(sessionId);
@@ -454,7 +459,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			alternatives: [],
 		});
 
-		streaming.value = { promptId: messageId, sessionId, model };
+		streaming.value = {
+			promptId: messageId,
+			sessionId,
+			model,
+			retryOfMessageId: null,
+		};
 
 		sendMessageApi(
 			rootStore.restApiContext,
@@ -465,11 +475,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				message,
 				credentials,
 				previousMessageId,
+				tools,
 			},
 			onStreamMessage,
 			onStreamDone,
 			onStreamError,
 		);
+
+		telemetry.track('User sent chat hub message', {
+			...flattenModel(model),
+			is_custom: model.provider === 'custom-agent',
+			chat_session_id: sessionId,
+		});
 	}
 
 	function editMessage(
@@ -510,7 +527,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			replaceMessageContent(sessionId, editId, content);
 		}
 
-		streaming.value = { promptId, sessionId, model };
+		streaming.value = {
+			promptId,
+			sessionId,
+			model,
+			retryOfMessageId: null,
+		};
 
 		editMessageApi(
 			rootStore.restApiContext,
@@ -541,7 +563,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			throw new Error('No previous message to base regeneration on');
 		}
 
-		streaming.value = { promptId: retryId, sessionId, model };
+		streaming.value = {
+			promptId: retryId,
+			sessionId,
+			model,
+			retryOfMessageId: retryId,
+		};
 
 		regenerateMessageApi(
 			rootStore.restApiContext,
@@ -576,6 +603,19 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 					}
 				: session,
 		);
+	}
+
+	async function updateToolsInSession(sessionId: ChatSessionId, tools: INode[]) {
+		const session = sessions.value?.find((s) => s.id === sessionId);
+		if (!session) {
+			throw new Error(`Session with ID ${sessionId} not found`);
+		}
+
+		const updated = await updateConversationApi(rootStore.restApiContext, sessionId, {
+			tools,
+		});
+
+		updateSession(sessionId, updated.session);
 	}
 
 	async function renameSession(sessionId: ChatSessionId, title: string) {
@@ -633,10 +673,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			description: agent.description ?? null,
 			createdAt: agent.createdAt,
 			updatedAt: agent.updatedAt,
+			tools: agent.tools,
 		};
 		agents.value?.['custom-agent'].models.push(agentModel);
 
 		await fetchAgents(credentials);
+
+		telemetry.track('User created agent', { ...flattenModel(payload) });
 
 		return agentModel;
 	}
@@ -676,7 +719,27 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function getAgent(model: ChatHubConversationModel) {
 		if (!agents.value) return;
 
-		return agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
+		const agent = agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
+
+		if (!agent) {
+			if (model.provider === 'custom-agent' || model.provider === 'n8n') {
+				return;
+			}
+
+			// Allow custom models chosen by ID even if they are not in the fetched list
+			return {
+				model: {
+					provider: model.provider,
+					model: model.model,
+				},
+				name: model.model,
+				description: null,
+				createdAt: null,
+				updatedAt: null,
+			};
+		}
+
+		return agent;
 	}
 
 	return {
@@ -703,6 +766,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		renameSession,
 		updateSessionModel,
 		deleteSession,
+		updateToolsInSession,
 
 		/**
 		 * conversation

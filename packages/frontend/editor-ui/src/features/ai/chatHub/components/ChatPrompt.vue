@@ -4,19 +4,24 @@ import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
 import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
+import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
+import ToolsSelector from './ToolsSelector.vue';
 
-const { selectedModel, isMissingCredentials } = defineProps<{
+const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
 	isNewSession: boolean;
-	selectedModel: ChatModelDto | null;
+	isToolsSelectable: boolean;
 	isMissingCredentials: boolean;
+	selectedModel: ChatModelDto | null;
+	selectedTools: INode[] | null;
 }>();
 
 const emit = defineEmits<{
 	submit: [string];
 	stop: [];
 	selectModel: [];
+	selectTools: [INode[]];
 	setCredentials: [ChatHubLLMProvider];
 }>();
 
@@ -95,6 +100,10 @@ watch(speechInput.error, (event) => {
 	}
 });
 
+function onSelectTools(tools: INode[]) {
+	emit('selectTools', tools);
+}
+
 defineExpose({
 	focus: () => inputRef.value?.focus(),
 	setText: (text: string) => {
@@ -140,6 +149,14 @@ defineExpose({
 				:disabled="isMissingCredentials || !selectedModel"
 				@keydown="handleKeydownTextarea"
 			/>
+
+			<div v-if="isToolsSelectable" :class="$style.tools">
+				<ToolsSelector
+					:selected="selectedTools ?? []"
+					:disabled="isMissingCredentials || !selectedModel || isResponding"
+					@select="onSelectTools"
+				/>
+			</div>
 
 			<div :class="$style.actions">
 				<!-- TODO: Implement attachments
@@ -223,10 +240,20 @@ defineExpose({
 		line-height: 1.5em;
 		border-radius: 16px !important;
 		resize: none;
-		padding: 16px 16px 48px;
+		padding: 16px 16px 64px;
 		box-shadow: 0 10px 24px 0 #00000010;
 		background-color: var(--color--background--light-3);
 	}
+}
+
+.tools {
+	position: absolute;
+	left: 0;
+	bottom: 0;
+	padding: var(--spacing--sm);
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--2xs);
 }
 
 /* Right-side actions */
