@@ -5,11 +5,13 @@ import { N8nButton, N8nCheckbox, N8nIcon, N8nText } from '@n8n/design-system';
 import { ref, watch, computed } from 'vue';
 import { useAccessSettingsCsvExport } from '@/features/settings/sso/provisioning/composables/useAccessSettingsCsvExport';
 import type { UserRoleProvisioningSetting } from './UserRoleProvisioningDropdown.vue';
+import type { SupportedProtocolType } from '../../sso.store';
 
 const visible = defineModel<boolean>();
 
 const props = defineProps<{
 	newProvisioningSetting: UserRoleProvisioningSetting;
+	authProtocol: SupportedProtocolType;
 }>();
 
 const emit = defineEmits<{
@@ -92,6 +94,15 @@ const onConfirmProvisioningSetting = () => {
 				</li>
 			</ul>
 			<div class="mb-s">
+				<N8nText color="text-base"
+					><a
+						:href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`"
+						target="_blank"
+						>{{ locale.baseText('settings.provisioningConfirmDialog.link.docs') }}</a
+					></N8nText
+				>
+			</div>
+			<div class="mb-s">
 				<N8nText color="text-base">{{
 					locale.baseText('settings.provisioningConfirmDialog.breakingChangeRequiredSteps')
 				}}</N8nText>
@@ -159,11 +170,6 @@ const onConfirmProvisioningSetting = () => {
 						locale.baseText('settings.provisioningConfirmDialog.disable.list.two')
 					}}</N8nText>
 				</li>
-				<li>
-					<N8nText color="text-base">{{
-						locale.baseText('settings.provisioningConfirmDialog.disable.list.three')
-					}}</N8nText>
-				</li>
 			</ul>
 			<div class="mb-s">
 				<N8nText color="text-base">{{
@@ -182,6 +188,15 @@ const onConfirmProvisioningSetting = () => {
 					}}</N8nText>
 				</li>
 			</ul>
+			<div class="mb-s">
+				<N8nText color="text-base"
+					><a
+						:href="`https://docs.n8n.io/user-management/${authProtocol}/setup/`"
+						target="_blank"
+						>{{ locale.baseText('settings.provisioningConfirmDialog.link.docs') }}</a
+					></N8nText
+				>
+			</div>
 		</template>
 		<div class="mb-s">
 			<N8nCheckbox

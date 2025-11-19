@@ -274,6 +274,7 @@ onMounted(async () => {
 			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
 				:new-provisioning-setting="userRoleProvisioning"
+				auth-protocol="saml"
 				@confirm-provisioning="onSave(true)"
 			/>
 			<div :class="$style.group">
