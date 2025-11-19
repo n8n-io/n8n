@@ -14,10 +14,10 @@ import { computed, onMounted, ref } from 'vue';
 import UserRoleProvisioningDropdown, {
 	type UserRoleProvisioningSetting,
 } from '../provisioning/components/UserRoleProvisioningDropdown.vue';
-import EnableJitProvisioningDialog from '../provisioning/components/EnableJitProvisioningDialog.vue';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
@@ -271,7 +271,7 @@ onMounted(async () => {
 				<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
 			</div>
 			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
-			<EnableJitProvisioningDialog
+			<ConfirmProvisioningDialog
 				v-model="showUserRoleProvisioningDialog"
 				:new-provisioning-setting="userRoleProvisioning"
 				@confirm-provisioning="onSave(true)"

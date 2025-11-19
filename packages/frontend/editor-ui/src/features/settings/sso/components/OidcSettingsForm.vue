@@ -13,11 +13,11 @@ import { useMessage } from '@/app/composables/useMessage';
 import UserRoleProvisioningDropdown, {
 	type UserRoleProvisioningSetting,
 } from '../provisioning/components/UserRoleProvisioningDropdown.vue';
-import EnableJitProvisioningDialog from '../provisioning/components/EnableJitProvisioningDialog.vue';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { OidcConfigDto } from '@n8n/api-types';
+import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
@@ -247,7 +247,7 @@ onMounted(async () => {
 			<small>The prompt parameter to use when authenticating with the OIDC provider</small>
 		</div>
 		<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="oidc" />
-		<EnableJitProvisioningDialog
+		<ConfirmProvisioningDialog
 			v-model="showUserRoleProvisioningDialog"
 			:new-provisioning-setting="userRoleProvisioning"
 			@confirm-provisioning="onOidcSettingsSave(true)"

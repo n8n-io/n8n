@@ -20,7 +20,7 @@ const emit = defineEmits<{
 const locale = useI18n();
 const downloadingInstanceRolesCsv = ref(false);
 const downloadingProjectRolesCsv = ref(false);
-const loadingActivatingJit = ref(false);
+const loading = ref(false);
 const confirmationChecked = ref(false);
 const {
 	hasDownloadedInstanceRoleCsv,
@@ -39,7 +39,7 @@ const shouldShowProjectRolesCsv = computed(
 );
 
 watch(visible, () => {
-	loadingActivatingJit.value = false;
+	loading.value = false;
 	confirmationChecked.value = false;
 	accessSettingsCsvExportOnModalClose();
 });
@@ -63,7 +63,7 @@ const onDownloadProjectRolesCsv = async () => {
 };
 
 const onConfirmProvisioningSetting = () => {
-	loadingActivatingJit.value = true;
+	loading.value = true;
 	emit('confirmProvisioning');
 };
 </script>
@@ -211,7 +211,7 @@ const onConfirmProvisioningSetting = () => {
 				type="primary"
 				native-type="button"
 				:disabled="
-					loadingActivatingJit ||
+					loading ||
 					!confirmationChecked ||
 					(!isDisablingProvisioning && !hasDownloadedInstanceRoleCsv) ||
 					(shouldShowProjectRolesCsv && !hasDownloadedProjectRoleCsv)
