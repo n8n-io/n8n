@@ -3,7 +3,7 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
-import type { ChatMessageId } from '@n8n/api-types';
+import type { ChatMessageId, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
 import type MarkdownIt from 'markdown-it';
@@ -13,7 +13,7 @@ import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
-import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -35,6 +35,7 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
+const chatStore = useChatStore();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -48,8 +49,11 @@ const speech = useSpeechSynthesis(messageContent, {
 	volume: 1,
 });
 
-const model = computed(() => unflattenModel(message));
-const agent = useAgent(model);
+const agent = computed<ChatModelDto | null>(() => {
+	const model = unflattenModel(message);
+
+	return model ? chatStore.getAgent(model) : null;
+});
 
 async function handleCopy() {
 	const text = message.content;

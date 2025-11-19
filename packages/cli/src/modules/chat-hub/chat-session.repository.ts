@@ -56,11 +56,36 @@ export class ChatHubSessionRepository extends Repository<ChatHubSession> {
 		});
 	}
 
-	async getManyByUserId(userId: string) {
-		return await this.find({
-			where: { ownerId: userId },
-			order: { lastMessageAt: 'DESC', id: 'ASC' },
-		});
+	async getManyByUserId(userId: string, limit?: number, cursor?: string) {
+		const queryBuilder = this.createQueryBuilder('session')
+			.where('session.ownerId = :userId', { userId })
+			.orderBy('session.lastMessageAt', 'DESC')
+			.addOrderBy('session.id', 'ASC');
+
+		if (cursor) {
+			const cursorSession = await this.findOne({
+				where: { id: cursor, ownerId: userId },
+			});
+
+			if (!cursorSession) {
+				const { NotFoundError } = await import('@/errors/response-errors/not-found.error');
+				throw new NotFoundError('Cursor session not found');
+			}
+
+			queryBuilder.andWhere(
+				'(session.lastMessageAt < :lastMessageAt OR (session.lastMessageAt = :lastMessageAt AND session.id > :id))',
+				{
+					lastMessageAt: cursorSession.lastMessageAt,
+					id: cursorSession.id,
+				},
+			);
+		}
+
+		if (limit) {
+			queryBuilder.take(limit);
+		}
+
+		return await queryBuilder.getMany();
 	}
 
 	async getOneById(id: string, userId: string, trx?: EntityManager) {
