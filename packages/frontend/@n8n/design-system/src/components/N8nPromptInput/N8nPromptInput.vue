@@ -415,7 +415,7 @@ defineExpose({
 				</div>
 			</template>
 		</div>
-		<!-- :content="creditsTooltipContent" -->
+
 		<!-- Credits bar below input -->
 		<div v-if="showCredits" :class="$style.creditsBar">
 			<div :class="$style.creditsInfoWrapper">
