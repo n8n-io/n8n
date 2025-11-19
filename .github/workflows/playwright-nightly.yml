@@ -18,12 +18,9 @@ jobs:
   test-configurations:
     strategy:
       fail-fast: false
-      matrix:
-        config: [standard, postgres]
-    name: Test ${{ matrix.config }}
     uses: ./.github/workflows/playwright-test-reusable.yml
     with:
       test-mode: docker-pull
       docker-image: ${{ github.event.inputs.image || 'n8nio/n8n:nightly' }}
-      test-command: pnpm --filter=n8n-playwright test:container:${{ matrix.config }}
+      test-command: pnpm --filter=n8n-playwright test:chaos
     secrets: inherit
