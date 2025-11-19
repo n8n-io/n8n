@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
-import { LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL, VIEWS } from '@/app/constants';
+import {
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL,
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS,
+	VIEWS,
+} from '@/app/constants';
 import { findOneFromModelsResponse, unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
 import ChatStarter from '@/features/ai/chatHub/components/ChatStarter.vue';
-import AgentEditorModal from '@/features/ai/chatHub/components/AgentEditorModal.vue';
 import {
+	AGENT_EDITOR_MODAL_KEY,
 	CHAT_CONVERSATION_VIEW,
 	CHAT_VIEW,
 	MOBILE_MEDIA_QUERY,
@@ -32,6 +36,8 @@ import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
+import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
+import { INodesSchema, type INode } from 'n8n-workflow';
 
 const router = useRouter();
 const route = useRoute();
@@ -59,10 +65,18 @@ const currentConversation = computed(() =>
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 const readyToShowMessages = computed(() => chatStore.agentsReady);
 
+// TODO: This also depends on the model, not all base LLM models support tools.
+const canSelectTools = computed(
+	() =>
+		selectedModel.value?.model.provider !== 'custom-agent' &&
+		selectedModel.value?.model.provider !== 'n8n',
+);
+
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
 	offset: { bottom: 100 },
 });
+
 const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
@@ -81,6 +95,42 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 		},
 	},
 );
+
+const defaultTools = useLocalStorage<INode[] | null>(
+	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS(usersStore.currentUserId ?? 'anonymous'),
+	null,
+	{
+		writeDefaults: false,
+		shallow: true,
+		serializer: {
+			read: (value) => {
+				try {
+					return INodesSchema.parse(JSON.parse(value));
+				} catch (error) {
+					return null;
+				}
+			},
+			write: (value) => JSON.stringify(value),
+		},
+	},
+);
+
+const toolsSelection = ref<INode[] | null>(null);
+const shouldSkipNextScrollTrigger = ref(false);
+
+const selectedTools = computed<INode[]>(() => {
+	if (currentConversation.value?.tools) {
+		return currentConversation.value.tools;
+	}
+
+	// As soon as the user selects tools use the selection over the default
+	if (toolsSelection.value !== null) {
+		return toolsSelection.value;
+	}
+
+	return defaultTools.value ?? [];
+});
+
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
 	const workflowId = route.query.workflowId;
@@ -157,7 +207,6 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
-const editingAgentId = ref<string | undefined>(undefined);
 
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
@@ -177,6 +226,11 @@ watch(
 	[readyToShowMessages, () => chatMessages.value[chatMessages.value.length - 1]?.id],
 	([ready, lastMessageId]) => {
 		if (!ready || !lastMessageId) {
+			return;
+		}
+
+		if (shouldSkipNextScrollTrigger.value) {
+			shouldSkipNextScrollTrigger.value = false;
 			return;
 		}
 
@@ -273,6 +327,7 @@ function onSubmit(message: string) {
 		message,
 		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
+		canSelectTools.value ? selectedTools.value : [],
 	);
 
 	inputRef.value?.setText('');
@@ -327,7 +382,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 		return;
 	}
 
-	const messageToRetry = message.retryOfMessageId ?? message.id;
+	const messageToRetry = message.id;
 
 	chatStore.regenerateMessage(
 		sessionId.value,
@@ -350,6 +405,7 @@ async function handleSelectModel(selection: ChatModelDto) {
 }
 
 function handleSwitchAlternative(messageId: string) {
+	shouldSkipNextScrollTrigger.value = true;
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
 
@@ -361,11 +417,31 @@ function handleConfigureModel() {
 	headerRef.value?.openModelSelector();
 }
 
+async function handleUpdateTools(newTools: INode[]) {
+	toolsSelection.value = newTools;
+	defaultTools.value = newTools;
+
+	if (currentConversation.value) {
+		try {
+			await chatStore.updateToolsInSession(sessionId.value, newTools);
+		} catch (error) {
+			toast.showError(error, 'Could not update selected tools');
+		}
+	}
+}
+
 async function handleEditAgent(agentId: string) {
 	try {
 		await chatStore.fetchCustomAgent(agentId);
-		editingAgentId.value = agentId;
-		uiStore.openModal('agentEditor');
+
+		uiStore.openModalWithData({
+			name: AGENT_EDITOR_MODAL_KEY,
+			data: {
+				agentId,
+				credentials: credentialsByProvider,
+				onCreateCustomAgent: handleSelectModel,
+			},
+		});
 	} catch (error) {
 		toast.showError(error, 'Failed to load agent');
 	}
@@ -373,12 +449,13 @@ async function handleEditAgent(agentId: string) {
 
 function openNewAgentCreator() {
 	chatStore.currentEditingAgent = null;
-	editingAgentId.value = undefined;
-	uiStore.openModal('agentEditor');
-}
-
-function closeAgentEditor() {
-	editingAgentId.value = undefined;
+	uiStore.openModalWithData({
+		name: AGENT_EDITOR_MODAL_KEY,
+		data: {
+			credentials: credentialsByProvider,
+			onCreateCustomAgent: handleSelectModel,
+		},
+	});
 }
 
 function handleOpenWorkflow(workflowId: string) {
@@ -389,14 +466,12 @@ function handleOpenWorkflow(workflowId: string) {
 </script>
 
 <template>
-	<div
-		:class="[
-			$style.component,
-			{
-				[$style.isNewSession]: isNewSession,
-				[$style.isMobileDevice]: isMobileDevice,
-			},
-		]"
+	<ChatLayout
+		:class="{
+			[$style.isNewSession]: isNewSession,
+			[$style.isExistingSession]: !isNewSession,
+			[$style.isMobileDevice]: isMobileDevice,
+		}"
 	>
 		<ChatConversationHeader
 			ref="headerRef"
@@ -408,14 +483,6 @@ function handleOpenWorkflow(workflowId: string) {
 			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"
 			@open-workflow="handleOpenWorkflow"
-		/>
-
-		<AgentEditorModal
-			v-if="credentialsByProvider"
-			:agent-id="editingAgentId"
-			:credentials="credentialsByProvider"
-			@create-custom-agent="handleSelectModel"
-			@close="closeAgentEditor"
 		/>
 
 		<N8nScrollArea
@@ -470,39 +537,25 @@ function handleOpenWorkflow(workflowId: string) {
 					<ChatPrompt
 						ref="inputRef"
 						:class="$style.prompt"
-						:is-responding="isResponding"
 						:selected-model="selectedModel ?? null"
+						:selected-tools="selectedTools"
+						:is-responding="isResponding"
+						:is-tools-selectable="canSelectTools"
 						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
+						@select-tools="handleUpdateTools"
 						@set-credentials="handleConfigureCredentials"
 					/>
 				</div>
 			</div>
 		</N8nScrollArea>
-	</div>
+	</ChatLayout>
 </template>
 
 <style lang="scss" module>
-.component {
-	margin: var(--spacing--4xs);
-	width: 100%;
-	background-color: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	display: flex;
-	flex-direction: column;
-	align-items: stretch;
-	overflow: hidden;
-
-	&.isMobileDevice {
-		margin: 0;
-		border: none;
-	}
-}
-
 .scrollArea {
 	flex-grow: 1;
 	flex-shrink: 1;
@@ -557,7 +610,7 @@ function handleOpenWorkflow(workflowId: string) {
 	justify-content: center;
 
 	.isMobileDevice &,
-	.component:not(.isNewSession) & {
+	.isExistingSession & {
 		position: absolute;
 		bottom: 0;
 		left: 0;

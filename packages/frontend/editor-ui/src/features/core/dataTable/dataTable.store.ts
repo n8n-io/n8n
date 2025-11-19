@@ -16,6 +16,7 @@ import {
 	deleteDataTableRowsApi,
 	fetchDataTableGlobalLimitInBytes,
 	downloadDataTableCsvApi,
+	uploadCsvFileApi,
 } from '@/features/core/dataTable/dataTable.api';
 import type {
 	DataTable,
@@ -26,6 +27,7 @@ import { useProjectsStore } from '@/features/collaboration/projects/projects.sto
 import { reorderItem } from '@/features/core/dataTable/utils';
 import { type DataTableSizeStatus } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { getResourcePermissions } from '@n8n/permissions';
 
 export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const rootStore = useRootStore();
@@ -37,6 +39,12 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const dataTableSize = ref(0);
 	const dataTableSizeLimitState = ref<DataTableSizeStatus>('ok');
 	const dataTableTableSizes = ref<Record<string, number>>({});
+
+	const projectPermissions = computed(() =>
+		getResourcePermissions(
+			projectStore.currentProject?.scopes ?? projectStore.personalProject?.scopes,
+		),
+	);
 
 	const formatSize = (sizeBytes: number) => {
 		return Number((sizeBytes / 1024 / 1024).toFixed(2));
@@ -63,8 +71,21 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		totalCount.value = response.count;
 	};
 
-	const createDataTable = async (name: string, projectId: string) => {
-		const newTable = await createDataTableApi(rootStore.restApiContext, name, projectId);
+	const createDataTable = async (
+		name: string,
+		projectId: string,
+		columns?: DataTableColumnCreatePayload[],
+		fileId?: string,
+		hasHeaders: boolean = true,
+	) => {
+		const newTable = await createDataTableApi(
+			rootStore.restApiContext,
+			name,
+			projectId,
+			columns,
+			fileId,
+			hasHeaders,
+		);
 		if (!newTable.project && projectId) {
 			const project = await projectStore.fetchProject(projectId);
 			if (project) {
@@ -74,6 +95,10 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		dataTables.value.push(newTable);
 		totalCount.value += 1;
 		return newTable;
+	};
+
+	const uploadCsvFile = async (file: File, hasHeaders: boolean = true) => {
+		return await uploadCsvFileApi(rootStore.restApiContext, file, hasHeaders);
 	};
 
 	const deleteDataTable = async (dataTableId: string, projectId: string) => {
@@ -195,12 +220,14 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		pageSize: number,
 		sortBy: string,
 		filter?: string,
+		search?: string,
 	) => {
 		return await getDataTableRowsApi(rootStore.restApiContext, dataTableId, projectId, {
 			skip: (page - 1) * pageSize,
 			take: pageSize,
 			sortBy,
 			filter,
+			search,
 		});
 	};
 
@@ -287,6 +314,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		dataTableSizes,
 		maxSizeMB,
 		createDataTable,
+		uploadCsvFile,
 		deleteDataTable,
 		updateDataTable,
 		fetchDataTableDetails,
@@ -299,5 +327,6 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		updateRow,
 		deleteRows,
 		downloadDataTableCsv,
+		projectPermissions,
 	};
 });
