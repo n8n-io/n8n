@@ -205,7 +205,7 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 						locale.baseText('chat.window.chat.chatMessageOptions.repostMessage') ||
 						'Repost message',
 					reuseButton:
-						locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage') || 'Repost message',
+						locale.baseText('chat.window.chat.chatMessageOptions.reuseMessage') || 'Reuse message',
 					subtitle: '',
 					footer: '',
 					getStarted: '',
