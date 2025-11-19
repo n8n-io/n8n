@@ -119,9 +119,7 @@ const menu = computed(() => {
 	}
 
 	for (const provider of chatHubLLMProviderSchema.options) {
-		const settings = settingStore.moduleSettings?.['chat-hub']?.providers.find(
-			(setting) => setting.provider === provider,
-		);
+		const settings = settingStore.moduleSettings?.['chat-hub']?.providers[provider];
 
 		// Filter out disabled providers from the menu
 		if (settings && !settings.enabled) continue;

@@ -267,7 +267,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	description: z.string().max(512).optional(),
 	systemPrompt: z.string().min(1),
 	credentialId: z.string(),
-	provider: chatHubProviderSchema.exclude(['n8n', 'custom-agent']),
+	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
 	tools: z.array(INodeSchema),
 }) {}
@@ -292,7 +292,7 @@ export interface EnrichedStructuredChunk extends StructuredChunk {
 }
 
 const chatProviderSettingsSchema = z.object({
-	provider: chatHubProviderSchema.exclude(['n8n', 'custom-agent']),
+	provider: chatHubLLMProviderSchema,
 	enabled: z.boolean().optional(),
 	credentialId: z.string().nullable(),
 	limitModels: z.boolean(),

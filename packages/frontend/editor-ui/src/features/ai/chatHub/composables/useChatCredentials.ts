@@ -51,9 +51,7 @@ export function useChatCredentials(userId: string) {
 
 				const availableCredentials = credentialsStore.getCredentialsByType(credentialType);
 
-				const settings = settingsStore.moduleSettings?.['chat-hub']?.providers.find(
-					(setting) => setting.provider === provider,
-				);
+				const settings = settingsStore.moduleSettings?.['chat-hub']?.providers[provider];
 
 				// Use default credential from settings if available to the user
 				if (

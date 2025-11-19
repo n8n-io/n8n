@@ -71,27 +71,26 @@ export class ChatHubSettingsService {
 		});
 	}
 
-	async getAllProviderSettings(): Promise<ChatProviderSettingsDto[]> {
+	async getAllProviderSettings(): Promise<Record<ChatHubLLMProvider, ChatProviderSettingsDto>> {
 		const settings = await this.settingsRepository.findAllLike(
 			CHAT_PROVIDER_SETTINGS_KEY(WILDCARD),
 		);
 
-		const parsedSettings = settings.map((setting) =>
-			jsonParse<ChatProviderSettingsDto>(setting.value),
-		);
+		const persistedByProvider = new Map<ChatHubLLMProvider, ChatProviderSettingsDto>();
 
-		// Ensure each provider has settings, even if none are stored yet
-		for (const provider of Object.values(chatHubLLMProviderSchema.options)) {
-			const hasSettings = parsedSettings.some((setting) => {
-				return setting.provider === provider;
-			});
-
-			if (!hasSettings) {
-				parsedSettings?.push(getDefaultProviderSettings(provider));
-			}
+		for (const setting of settings) {
+			const parsed = jsonParse<ChatProviderSettingsDto>(setting.value);
+			persistedByProvider.set(parsed.provider, parsed);
 		}
 
-		return parsedSettings;
+		const result = {} as Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+
+		// Ensure each provider has settings (use default if missing)
+		for (const provider of chatHubLLMProviderSchema.options) {
+			result[provider] = persistedByProvider.get(provider) ?? getDefaultProviderSettings(provider);
+		}
+
+		return result;
 	}
 
 	async setProviderSettings(

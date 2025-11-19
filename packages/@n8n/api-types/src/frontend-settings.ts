@@ -1,6 +1,6 @@
 import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
-import { type ChatProviderSettingsDto } from './chat-hub';
+import { ChatHubLLMProvider, type ChatProviderSettingsDto } from './chat-hub';
 import { type InsightsDateRange } from './schemas/insights.schema';
 
 export interface IVersionNotificationSettings {
@@ -252,7 +252,7 @@ export type FrontendModuleSettings = {
 	 */
 	'chat-hub'?: {
 		enabled: boolean;
-		providers: ChatProviderSettingsDto[];
+		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
 	};
 };
 
