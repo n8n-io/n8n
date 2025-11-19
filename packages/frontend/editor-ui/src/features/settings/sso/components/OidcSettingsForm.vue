@@ -16,7 +16,7 @@ import UserRoleProvisioningDropdown, {
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
-import { OidcConfigDto } from '@n8n/api-types';
+import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
 
 const i18n = useI18n();
