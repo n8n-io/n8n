@@ -4,7 +4,30 @@ import type { SimpleWorkflow } from '@/types';
 
 export type ProgrammaticViolationType = 'critical' | 'major' | 'minor';
 
+export const PROGRAMMATIC_VIOLATION_NAMES = [
+	'tool-node-has-no-parameters',
+	'tool-node-static-parameters',
+	'agent-static-prompt',
+	'agent-no-system-prompt',
+	'non-tool-node-uses-fromai',
+	'workflow-has-no-nodes',
+	'workflow-has-no-trigger',
+	'node-missing-required-input',
+	'node-unsupported-connection-input',
+	'node-merge-single-input',
+	'node-merge-incorrect-num-inputs',
+	'node-merge-missing-input',
+	'sub-node-not-connected',
+	'node-type-not-found',
+	'failed-to-resolve-connections',
+] as const;
+
+export type ProgrammaticViolationName = (typeof PROGRAMMATIC_VIOLATION_NAMES)[number];
+
+export type TelemetryValidationStatus = Record<ProgrammaticViolationName, 'pass' | 'fail'>;
+
 export interface ProgrammaticViolation {
+	name: ProgrammaticViolationName;
 	type: ProgrammaticViolationType;
 	description: string;
 	pointsDeducted: number;

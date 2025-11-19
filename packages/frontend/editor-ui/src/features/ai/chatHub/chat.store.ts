@@ -46,7 +46,7 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
-import { isMatchedAgent } from './chat.utils';
+import { buildUiMessages, isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
@@ -71,7 +71,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const conversation = getConversation(sessionId);
 		if (!conversation) return [];
 
-		return conversation.activeMessageChain.map((id) => conversation.messages[id]).filter(Boolean);
+		return buildUiMessages(sessionId, conversation, streaming.value);
 	};
 
 	function ensureConversation(sessionId: ChatSessionId): ChatConversation {
@@ -465,7 +465,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			alternatives: [],
 		});
 
-		streaming.value = { promptId: messageId, sessionId, model };
+		streaming.value = {
+			promptId: messageId,
+			sessionId,
+			model,
+			retryOfMessageId: null,
+		};
 
 		sendMessageApi(
 			rootStore.restApiContext,
@@ -528,7 +533,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			replaceMessageContent(sessionId, editId, content);
 		}
 
-		streaming.value = { promptId, sessionId, model };
+		streaming.value = {
+			promptId,
+			sessionId,
+			model,
+			retryOfMessageId: null,
+		};
 
 		editMessageApi(
 			rootStore.restApiContext,
@@ -559,7 +569,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			throw new Error('No previous message to base regeneration on');
 		}
 
-		streaming.value = { promptId: retryId, sessionId, model };
+		streaming.value = {
+			promptId: retryId,
+			sessionId,
+			model,
+			retryOfMessageId: retryId,
+		};
 
 		regenerateMessageApi(
 			rootStore.restApiContext,

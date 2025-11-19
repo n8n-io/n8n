@@ -14,6 +14,7 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	google: 'Google',
 	azureOpenAi: 'Azure OpenAI',
 	ollama: 'Ollama',
+	awsBedrock: 'AWS Bedrock',
 	n8n: 'n8n',
 	'custom-agent': 'Custom Agent',
 };
