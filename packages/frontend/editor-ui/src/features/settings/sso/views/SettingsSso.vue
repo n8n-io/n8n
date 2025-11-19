@@ -53,7 +53,7 @@ onMounted(() => {
 		<div
 			v-if="ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled"
 			data-test-id="sso-auth-protocol-select"
-			:class="$style.group"
+			:class="shared.group"
 		>
 			<label>Select Authentication Protocol</label>
 			<div>
@@ -84,31 +84,10 @@ onMounted(() => {
 	</div>
 </template>
 
+<style lang="scss" module="shared" src="../styles/sso-form.module.scss" />
+
 <style lang="scss" module>
 .heading {
 	margin-bottom: var(--spacing--sm);
-}
-
-.group {
-	padding: var(--spacing--xl) 0 0;
-
-	> label {
-		display: inline-block;
-		font-size: var(--font-size--sm);
-		font-weight: var(--font-weight--medium);
-		padding: 0 0 var(--spacing--2xs);
-	}
-
-	small {
-		display: block;
-		padding: var(--spacing--2xs) 0 0;
-		font-size: var(--font-size--2xs);
-		color: var(--color--text);
-	}
-}
-
-.footer {
-	color: var(--color--text);
-	font-size: var(--font-size--2xs);
 }
 </style>
