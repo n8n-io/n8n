@@ -50,10 +50,15 @@ const onPublishButtonClick = () => {
 	});
 };
 
-const hasWorkflowChanges = computed(() => {
+const isWorkflowSaved = computed(() => {
+	return !uiStore.stateIsDirty && !props.isNewWorkflow;
+});
+
+const workflowHasChanges = computed(() => {
 	return (
-		workflowsStore.workflow.versionId &&
-		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId
+		(workflowsStore.workflow.versionId &&
+			workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId) ||
+		!isWorkflowSaved.value
 	);
 });
 
@@ -68,7 +73,7 @@ defineExpose({
 	<div :class="$style.container">
 		<SaveButton
 			type="primary"
-			:saved="!uiStore.stateIsDirty && !isNewWorkflow"
+			:saved="isWorkflowSaved"
 			:disabled="
 				isWorkflowSaving ||
 				readOnly ||
@@ -94,7 +99,7 @@ defineExpose({
 			<N8nButton type="secondary" @click="onPublishButtonClick">
 				{{ locale.baseText('workflows.publish') }}
 			</N8nButton>
-			<span v-if="hasWorkflowChanges" :class="$style.publishButtonIndicator"></span>
+			<span v-if="workflowHasChanges" :class="$style.publishButtonIndicator"></span>
 		</div>
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 		<ActionsMenu
