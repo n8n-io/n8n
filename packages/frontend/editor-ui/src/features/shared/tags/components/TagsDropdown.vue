@@ -9,6 +9,7 @@ import { v4 as uuid } from 'uuid';
 import { useToast } from '@/app/composables/useToast';
 
 import { N8nIcon, N8nOption, N8nSelect } from '@n8n/design-system';
+
 interface TagsDropdownProps {
 	placeholder: string;
 	modelValue: string[];
@@ -286,17 +287,24 @@ onClickOutside(
 
 	.el-tag,
 	.el-tag.el-tag--info {
-		padding: var(--spacing--5xs) var(--spacing--4xs);
-		color: var(--color--text);
-		background-color: var(--color--background);
-		border-radius: var(--radius);
-		font-size: var(--font-size--2xs);
-		border: 0;
+		height: var(--tag--height);
+		padding: var(--tag--padding);
+		line-height: var(--tag--line-height);
+		color: var(--tag--color--text);
+		background-color: var(--tag--color--background);
+		border: 1px solid var(--tag--border-color);
+		border-radius: var(--tag--radius);
+		font-size: var(--tag--font-size);
 
 		.el-tag__close {
 			max-height: 14px;
 			max-width: 14px;
 			line-height: 14px;
+
+			&:hover {
+				background-color: transparent !important;
+				color: var(--color--primary--shade-1);
+			}
 		}
 	}
 }

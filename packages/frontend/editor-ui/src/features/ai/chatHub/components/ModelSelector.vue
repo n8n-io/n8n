@@ -84,6 +84,12 @@ const credentialsName = computed(() =>
 		? credentialsStore.getCredentialById(credentials?.[selectedAgent.model.provider] ?? '')?.name
 		: undefined,
 );
+const isCredentialsRequired = computed(
+	() =>
+		selectedAgent &&
+		selectedAgent.model.provider !== 'n8n' &&
+		selectedAgent.model.provider !== 'custom-agent',
+);
 
 const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
@@ -294,7 +300,7 @@ defineExpose({
 			<ChatAgentAvatar
 				v-if="selectedAgent"
 				:agent="selectedAgent"
-				:size="credentialsName ? 'md' : 'sm'"
+				:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
 				:class="$style.icon"
 			/>
 			<div :class="$style.selected">

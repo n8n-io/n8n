@@ -12,6 +12,7 @@ const mockRoute = (overrides: Partial<RouteLocationNormalized> = {}) =>
 vi.mock('@/features/core/folders/folders.store', () => ({
 	useFoldersStore: () => ({
 		totalWorkflowCount: 0,
+		workflowsCountLoaded: true,
 	}),
 }));
 
