@@ -2,7 +2,6 @@ import type { IrreversibleMigration, MigrationContext } from '../migration-types
 
 const TABLE_NAME = 'oauth_authorization_codes';
 const TEMP_TABLE_NAME = 'temp_oauth_authorization_codes';
-const COLUMN_NAME = 'state';
 
 export class ChangeOAuthStateColumnToUnboundedVarchar1763572724000
 	implements IrreversibleMigration
@@ -17,7 +16,6 @@ export class ChangeOAuthStateColumnToUnboundedVarchar1763572724000
 		schemaBuilder: { createTable, column, dropTable },
 	}: MigrationContext) {
 		const tableName = escape.tableName(TABLE_NAME);
-		const columnName = escape.columnName(COLUMN_NAME);
 
 		if (isSqlite) {
 			const tempTableName = escape.tableName(TEMP_TABLE_NAME);
@@ -27,8 +25,8 @@ export class ChangeOAuthStateColumnToUnboundedVarchar1763572724000
 					column('code').varchar(255).primary.notNull,
 					column('clientId').varchar().notNull,
 					column('userId').uuid.notNull,
-					column('redirectUri').varchar(255).notNull,
-					column('codeChallenge').varchar(255).notNull,
+					column('redirectUri').varchar().notNull,
+					column('codeChallenge').varchar().notNull,
 					column('codeChallengeMethod').varchar(255).notNull,
 					column('expiresAt').bigint.notNull.comment('Unix timestamp in milliseconds'),
 					column('state').varchar(),
@@ -51,9 +49,17 @@ export class ChangeOAuthStateColumnToUnboundedVarchar1763572724000
 
 			await queryRunner.query(`ALTER TABLE ${tempTableName} RENAME TO ${tableName};`);
 		} else if (isMysql) {
-			await queryRunner.query(`ALTER TABLE ${tableName} MODIFY COLUMN ${columnName} VARCHAR;`);
+			await queryRunner.query(
+				`ALTER TABLE ${tableName} MODIFY COLUMN ${escape.columnName('state')} VARCHAR,` +
+					` MODIFY COLUMN ${escape.columnName('codeChallenge')} VARCHAR,` +
+					` MODIFY COLUMN ${escape.columnName('redirectUri')} VARCHAR;`,
+			);
 		} else if (isPostgres) {
-			await queryRunner.query(`ALTER TABLE ${tableName} ALTER COLUMN ${columnName} TYPE VARCHAR;`);
+			await queryRunner.query(
+				`ALTER TABLE ${tableName} ALTER COLUMN ${escape.columnName('state')} TYPE VARCHAR,` +
+					` ALTER COLUMN ${escape.columnName('codeChallenge')} TYPE VARCHAR,` +
+					` ALTER COLUMN ${escape.columnName('redirectUri')} TYPE VARCHAR;`,
+			);
 		}
 	}
 }
