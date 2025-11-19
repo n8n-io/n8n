@@ -16,6 +16,35 @@ import {
 import { addBinariesToItem } from './utils';
 import { prepareFieldsArray } from '../utils/utils';
 
+/**
+ * Checks if two field paths conflict due to nested path relationships.
+ * Returns true if one path is a parent/ancestor of another path.
+ * Examples:
+ * - 'user' and 'user.name' conflict (user is parent of user.name)
+ * - 'user.address' and 'user.address.city' conflict
+ * - 'user' and 'profile' do NOT conflict (different paths)
+ */
+function hasNestedPathConflict(path1: string, path2: string): boolean {
+	if (path1 === path2) return true;
+
+	// Check if path1 is a parent of path2 or vice versa
+	const segments1 = path1.split('.');
+	const segments2 = path2.split('.');
+
+	// One path is a prefix of the other
+	const minLength = Math.min(segments1.length, segments2.length);
+
+	// Check if all segments of the shorter path match the longer path
+	for (let i = 0; i < minLength; i++) {
+		if (segments1[i] !== segments2[i]) {
+			return false; // Paths diverge, no conflict
+		}
+	}
+
+	// If we got here, one path is a prefix of the other
+	return true;
+}
+
 export class Aggregate implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Aggregate',
@@ -482,11 +511,14 @@ export class Aggregate implements INodeType {
 				if (aggregate === 'aggregateAllItemData') {
 					const destinationFieldName = this.getNodeParameter('destinationFieldName', 0) as string;
 
-					// Check for conflicts with group-by field names
-					if (groupByFields.includes(destinationFieldName)) {
+					// Check for conflicts with group-by field names (including nested paths)
+					const conflictingGroupByField = groupByFields.find((groupByField) =>
+						hasNestedPathConflict(destinationFieldName, groupByField),
+					);
+					if (conflictingGroupByField) {
 						throw new NodeOperationError(
 							this.getNode(),
-							`The destination field '${destinationFieldName}' conflicts with a Group By field`,
+							`The destination field '${destinationFieldName}' conflicts with a Group By field '${conflictingGroupByField}'`,
 							{ description: 'Please choose a different destination field name or Group By field' },
 						);
 					}
@@ -566,11 +598,14 @@ export class Aggregate implements INodeType {
 							);
 						}
 
-						// Check for conflicts with group-by field names
-						if (groupByFields.includes(field)) {
+						// Check for conflicts with group-by field names (including nested paths)
+						const conflictingGroupByField = groupByFields.find((groupByField) =>
+							hasNestedPathConflict(field, groupByField),
+						);
+						if (conflictingGroupByField) {
 							throw new NodeOperationError(
 								this.getNode(),
-								`The output field '${field}' conflicts with a Group By field`,
+								`The output field '${field}' conflicts with a Group By field '${conflictingGroupByField}'`,
 								{
 									description:
 										'Please rename the aggregated field or choose a different Group By field',

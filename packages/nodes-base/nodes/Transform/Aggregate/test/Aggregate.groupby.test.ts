@@ -94,6 +94,193 @@ describe('Aggregate Node - Group By Feature', () => {
 				aggregate.execute.call(mockExecuteFunctions as IExecuteFunctions),
 			).rejects.toThrow("The destination field 'domain' conflicts with a Group By field");
 		});
+
+		it('should throw error when aggregated field is parent of nested group-by field (aggregateIndividualFields)', async () => {
+			const inputData = [
+				{
+					json: { user: { name: 'Alice' }, email: 'alice@example.com' },
+					pairedItem: { item: 0 },
+				},
+				{
+					json: { user: { name: 'Bob' }, email: 'bob@example.com' },
+					pairedItem: { item: 1 },
+				},
+			];
+
+			(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue(inputData);
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string) => {
+					if (paramName === 'aggregate') return 'aggregateIndividualFields';
+					if (paramName === 'options.groupByFields') return 'user.name';
+					if (paramName === 'fieldsToAggregate.fieldToAggregate')
+						return [
+							{
+								fieldToAggregate: 'email',
+								renameField: true,
+								outputFieldName: 'user', // Parent of group-by field 'user.name'
+							},
+						];
+					if (paramName === 'options.disableDotNotation') return false;
+					if (paramName === 'options.mergeLists') return false;
+					if (paramName === 'options.keepMissing') return false;
+					return '';
+				},
+			);
+
+			await expect(
+				aggregate.execute.call(mockExecuteFunctions as IExecuteFunctions),
+			).rejects.toThrow(NodeOperationError);
+			await expect(
+				aggregate.execute.call(mockExecuteFunctions as IExecuteFunctions),
+			).rejects.toThrow("The output field 'user' conflicts with a Group By field 'user.name'");
+		});
+
+		it('should throw error when aggregated field is child of group-by field (aggregateIndividualFields)', async () => {
+			const inputData = [
+				{
+					json: {
+						domain: 'example.com',
+						user: { name: 'Alice', role: 'admin' },
+						email: 'alice@example.com',
+					},
+					pairedItem: { item: 0 },
+				},
+				{
+					json: {
+						domain: 'example.com',
+						user: { name: 'Bob', role: 'user' },
+						email: 'bob@example.com',
+					},
+					pairedItem: { item: 1 },
+				},
+			];
+
+			(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue(inputData);
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string) => {
+					if (paramName === 'aggregate') return 'aggregateIndividualFields';
+					if (paramName === 'options.groupByFields') return 'domain';
+					if (paramName === 'fieldsToAggregate.fieldToAggregate')
+						return [
+							{
+								fieldToAggregate: 'email',
+								renameField: true,
+								outputFieldName: 'domain.subdomain', // Child of group-by field 'domain'
+							},
+						];
+					if (paramName === 'options.disableDotNotation') return false;
+					if (paramName === 'options.mergeLists') return false;
+					if (paramName === 'options.keepMissing') return false;
+					return '';
+				},
+			);
+
+			await expect(
+				aggregate.execute.call(mockExecuteFunctions as IExecuteFunctions),
+			).rejects.toThrow(NodeOperationError);
+			await expect(
+				aggregate.execute.call(mockExecuteFunctions as IExecuteFunctions),
+			).rejects.toThrow(
+				"The output field 'domain.subdomain' conflicts with a Group By field 'domain'",
+			);
+		});
+
+		it('should throw error when destination field is parent of nested group-by field (aggregateAllItemData)', async () => {
+			const inputData = [
+				{
+					json: { user: { name: 'Alice' }, email: 'alice@example.com' },
+					pairedItem: { item: 0 },
+				},
+			];
+
+			(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue(inputData);
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string) => {
+					if (paramName === 'aggregate') return 'aggregateAllItemData';
+					if (paramName === 'options.groupByFields') return 'user.name';
+					if (paramName === 'destinationFieldName') return 'user'; // Parent of 'user.name'
+					if (paramName === 'fieldsToExclude') return '';
+					if (paramName === 'fieldsToInclude') return '';
+					return '';
+				},
+			);
+
+			await expect(
+				aggregate.execute.call(mockExecuteFunctions as IExecuteFunctions),
+			).rejects.toThrow(NodeOperationError);
+			await expect(
+				aggregate.execute.call(mockExecuteFunctions as IExecuteFunctions),
+			).rejects.toThrow("The destination field 'user' conflicts with a Group By field 'user.name'");
+		});
+
+		it('should throw error when destination field is child of group-by field (aggregateAllItemData)', async () => {
+			const inputData = [
+				{
+					json: {
+						domain: 'example.com',
+						user: { name: 'Alice', role: 'admin' },
+						email: 'alice@example.com',
+					},
+					pairedItem: { item: 0 },
+				},
+			];
+
+			(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue(inputData);
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string) => {
+					if (paramName === 'aggregate') return 'aggregateAllItemData';
+					if (paramName === 'options.groupByFields') return 'domain';
+					if (paramName === 'destinationFieldName') return 'domain.data'; // Child of 'domain'
+					if (paramName === 'fieldsToExclude') return '';
+					if (paramName === 'fieldsToInclude') return '';
+					return '';
+				},
+			);
+
+			await expect(
+				aggregate.execute.call(mockExecuteFunctions as IExecuteFunctions),
+			).rejects.toThrow(NodeOperationError);
+			await expect(
+				aggregate.execute.call(mockExecuteFunctions as IExecuteFunctions),
+			).rejects.toThrow(
+				"The destination field 'domain.data' conflicts with a Group By field 'domain'",
+			);
+		});
+
+		it('should NOT throw error when fields share common prefix but are not nested (aggregateIndividualFields)', async () => {
+			const inputData = [
+				{
+					json: { user: 'Alice', userName: 'alice123', email: 'alice@example.com' },
+					pairedItem: { item: 0 },
+				},
+			];
+
+			(mockExecuteFunctions.getInputData as jest.Mock).mockReturnValue(inputData);
+			(mockExecuteFunctions.getNodeParameter as jest.Mock).mockImplementation(
+				(paramName: string) => {
+					if (paramName === 'aggregate') return 'aggregateIndividualFields';
+					if (paramName === 'options.groupByFields') return 'user';
+					if (paramName === 'fieldsToAggregate.fieldToAggregate')
+						return [
+							{
+								fieldToAggregate: 'email',
+								renameField: true,
+								outputFieldName: 'userName', // Shares prefix but not nested
+							},
+						];
+					if (paramName === 'options.disableDotNotation') return false;
+					if (paramName === 'options.mergeLists') return false;
+					if (paramName === 'options.keepMissing') return false;
+					if (paramName === 'options.includeBinaries') return false;
+					return '';
+				},
+			);
+
+			// Should not throw - 'user' and 'userName' are different fields
+			await expect(
+				aggregate.execute.call(mockExecuteFunctions as IExecuteFunctions),
+			).resolves.not.toThrow();
+		});
 	});
 
 	describe('Duplicate Output Field Validation', () => {
