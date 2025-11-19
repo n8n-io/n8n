@@ -12,7 +12,9 @@ body {
 	}
 
 	@media (prefers-color-scheme: dark) {
-		@include hljs-dark-theme;
+		body:not([data-theme]) {
+			@include hljs-dark-theme;
+		}
 	}
 }
 
