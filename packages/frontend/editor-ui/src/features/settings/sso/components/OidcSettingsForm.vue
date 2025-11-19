@@ -158,7 +158,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 
 		clientSecret.value = newConfig.clientSecret;
 
-		await sendTrackingEvent(newConfig);
+		sendTrackingEvent(newConfig);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 		return;
@@ -167,7 +167,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 	}
 }
 
-async function sendTrackingEvent(config: OidcConfigDto) {
+function sendTrackingEvent(config: OidcConfigDto) {
 	const trackingMetadata = {
 		instance_id: useRootStore().instanceId,
 		authentication_method: SupportedProtocols.OIDC,
