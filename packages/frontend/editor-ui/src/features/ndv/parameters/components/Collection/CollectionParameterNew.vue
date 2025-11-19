@@ -246,11 +246,6 @@ function optionSelected(optionName: string) {
 	emit('valueChanged', { name, value });
 
 	newlyAddedParameters.value.add(option.name);
-
-	// Clear selection after emitting to allow adding another item
-	void nextTick(() => {
-		selectedOption.value = undefined;
-	});
 }
 function valueChanged(parameterData: IUpdateInformation) {
 	emit('valueChanged', parameterData);

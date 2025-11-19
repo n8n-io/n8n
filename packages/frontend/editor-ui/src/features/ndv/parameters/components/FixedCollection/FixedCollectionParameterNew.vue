@@ -15,6 +15,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useFixedCollectionItemState } from '@/app/composables/useFixedCollectionItemState';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { telemetry } from '@/app/plugins/telemetry';
+import { isEmpty } from '@/app/utils/typesUtils';
 import type { N8nDropdownOption } from '@n8n/design-system';
 import {
 	N8nButton,
@@ -150,6 +151,10 @@ const shouldShowAddAtBottom = computed(
 
 const shouldShowAddInCollapsibleActions = computed(
 	() => shouldWrapInCollapsible.value && shouldShowAddControl.value,
+);
+
+const showHeaderDivider = computed(() =>
+	Object.values(mutableValues.value).every((value) => isEmpty(value)),
 );
 
 const hasSingleOption = computed(() => dropdownOptions.value.length === 1);
@@ -336,7 +341,7 @@ const onAddButtonClick = () => {
 		<template v-if="shouldShowSectionHeader">
 			<N8nSectionHeader
 				:title="displayName"
-				:bordered="properties.length === 0"
+				:bordered="showHeaderDivider"
 				:class="$style.sectionHeader"
 			>
 				<template v-if="shouldShowAddInHeader" #actions>

@@ -368,6 +368,26 @@ function getItemKey(_item: INodeParameters, index: number) {
 .fixedCollectionParameter {
 	padding-left: var(--spacing--sm);
 
+	:global(.ghost),
+	:global(.dragging) {
+		border-radius: var(--radius);
+		padding-right: var(--spacing--xs);
+	}
+
+	:global(.ghost) {
+		background-color: var(--color--background);
+		opacity: 0.5;
+	}
+
+	:global(.dragging) {
+		background-color: var(--color--background--light-3);
+		opacity: 0.7;
+
+		.parameterItemWrapper {
+			border: none;
+		}
+	}
+
 	.controls {
 		:deep(.button) {
 			font-weight: var(--font-weight--regular);
@@ -448,26 +468,6 @@ function getItemKey(_item: INodeParameters, index: number) {
 
 .noItemsExist {
 	margin: var(--spacing--xs) 0;
-}
-
-:global(.ghost),
-:global(.dragging) {
-	border-radius: var(--radius);
-	padding-right: var(--spacing--xs);
-}
-
-:global(.ghost) {
-	background-color: var(--color--background);
-	opacity: 0.5;
-}
-
-:global(.dragging) {
-	background-color: var(--color--background--light-3);
-	opacity: 0.7;
-
-	.parameterItemWrapper {
-		border: none;
-	}
 }
 
 .addOption {

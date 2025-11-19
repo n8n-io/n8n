@@ -87,6 +87,7 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 			/>
 			<N8nHeaderAction
 				v-if="sortable"
+				draggable
 				icon="grip-vertical"
 				:label="locale.baseText('fixedCollectionParameter.dragItem')"
 				test-id="fixed-collection-item-drag"

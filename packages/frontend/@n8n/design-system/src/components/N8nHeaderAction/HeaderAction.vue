@@ -22,6 +22,10 @@ export interface Props {
 	 */
 	danger?: boolean;
 	/**
+	 * Whether this action is a drag handle
+	 */
+	draggable?: boolean;
+	/**
 	 * Test ID for the button
 	 */
 	testId?: string;
@@ -49,7 +53,7 @@ const emit = defineEmits<{
 			:icon="icon"
 			:aria-label="label"
 			:data-test-id="testId"
-			:class="[{ 'drag-handle': icon === 'grip-vertical' }, { [$style.dangerAction]: danger }]"
+			:class="[{ [$style.draggable]: draggable }, { [$style.dangerAction]: danger }]"
 			@click.stop="emit('click')"
 		/>
 	</N8nTooltip>
@@ -60,5 +64,9 @@ const emit = defineEmits<{
 	&:hover {
 		--button--color--text--hover: var(--color--danger);
 	}
+}
+
+.draggable {
+	cursor: grabbing;
 }
 </style>
