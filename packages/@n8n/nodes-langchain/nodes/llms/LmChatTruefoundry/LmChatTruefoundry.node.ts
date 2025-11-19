@@ -288,7 +288,7 @@ export class LmChatTruefoundry implements INodeType {
 			apiKey: credentials.apiKey as string,
 			model: modelName,
 			...includedOptions,
-			timeout: options.timeout ?? 60000,
+			timeout: options.timeout ?? 360000,
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
