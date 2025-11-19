@@ -7,6 +7,8 @@ test.use({
 		env: {
 			DB_LOGGING_ENABLED: 'true',
 			DB_LOGGING_OPTIONS: 'all',
+			N8N_LOG_LEVEL: 'debug',
+			DEBUG: 'express:*',
 		},
 	},
 });
