@@ -39,6 +39,23 @@ class QueueRecoveryConfig {
 	batchSize: number = 100;
 }
 
+@Config
+class RecoveryConfig {
+	/**
+	 * Number of last executions to check when determining if a workflow should be deactivated
+	 * when all of the last N executions have crashed. Only applies to legacy SQLite databases.
+	 */
+	@Env('N8N_EXECUTIONS_RECOVERY_MAX_LAST_EXECUTIONS')
+	maxLastExecutions: number = 3;
+
+	/**
+	 * Whether to automatically deactivate workflows that have all their last executions crashed.
+	 * Only applies to legacy SQLite databases.
+	 */
+	@Env('N8N_EXECUTIONS_RECOVERY_ENABLE_WORKFLOW_DEACTIVATION')
+	enableWorkflowDeactivation: boolean = false;
+}
+
 const executionModeSchema = z.enum(['regular', 'queue']);
 
 export type ExecutionMode = z.infer<typeof executionModeSchema>;
@@ -92,6 +109,9 @@ export class ExecutionsConfig {
 
 	@Nested
 	queueRecovery: QueueRecoveryConfig;
+
+	@Nested
+	recovery: RecoveryConfig;
 
 	/** Whether to save execution data for failed production executions. This default can be overridden at a workflow level. */
 	@Env('EXECUTIONS_DATA_SAVE_ON_ERROR')

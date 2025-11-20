@@ -346,6 +346,10 @@ describe('GlobalConfig', () => {
 				interval: 180,
 				batchSize: 100,
 			},
+			recovery: {
+				maxLastExecutions: 3,
+				enableWorkflowDeactivation: true,
+			},
 			saveDataOnError: 'all',
 			saveDataOnSuccess: 'all',
 			saveExecutionProgress: false,
