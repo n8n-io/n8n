@@ -281,8 +281,13 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 				instanceUrl: state.instanceUrl ?? '',
 			})) as BaseMessage;
 
+			const toolCallCount =
+				'tool_calls' in response && Array.isArray(response.tool_calls)
+					? response.tool_calls.length
+					: 0;
+
 			console.log('[Configurator Agent] Response', {
-				hasToolCalls: 'tool_calls' in response ? (response.tool_calls?.length ?? 0) : 0,
+				hasToolCalls: toolCallCount,
 			});
 
 			return { messages: [response] };

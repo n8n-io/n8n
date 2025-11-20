@@ -156,7 +156,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 			createAddNodeTool(config.parsedNodeTypes),
 			createConnectNodesTool(config.parsedNodeTypes, config.logger),
 			createRemoveNodeTool(config.logger),
-			createRemoveNodeTool(config.logger),
 			createRemoveConnectionTool(config.logger),
 		];
 		const toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));

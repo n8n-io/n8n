@@ -1,8 +1,14 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { isAIMessage, ToolMessage } from '@langchain/core/messages';
+import type { StructuredTool } from '@langchain/core/tools';
 import { isCommand } from '@langchain/langgraph';
 
 import type { WorkflowOperation } from '../types/workflow';
+
+interface CommandUpdate {
+	messages?: BaseMessage[];
+	workflowOperations?: WorkflowOperation[];
+}
 
 /**
  * Execute tools in a subgraph node
@@ -16,7 +22,7 @@ import type { WorkflowOperation } from '../types/workflow';
  */
 export async function executeSubgraphTools(
 	state: { messages: BaseMessage[] },
-	toolMap: Map<string, any>,
+	toolMap: Map<string, StructuredTool>,
 ): Promise<{ messages?: BaseMessage[]; workflowOperations?: WorkflowOperation[] | null }> {
 	const lastMessage = state.messages[state.messages.length - 1];
 
@@ -36,14 +42,14 @@ export async function executeSubgraphTools(
 			}
 
 			try {
-				const result = await tool.invoke(toolCall.args ?? {}, {
+				const result: unknown = await tool.invoke(toolCall.args ?? {}, {
 					toolCall: {
 						id: toolCall.id,
 						name: toolCall.name,
 						args: toolCall.args ?? {},
 					},
 				});
-				return result;
+				return result as BaseMessage;
 			} catch (error) {
 				return new ToolMessage({
 					content: `Tool failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -60,9 +66,13 @@ export async function executeSubgraphTools(
 	for (const result of toolResults) {
 		if (isCommand(result)) {
 			// Tool returned Command - extract update
-			const update = result.update as any;
-			if (update?.messages) messages.push(...update.messages);
-			if (update?.workflowOperations) operations.push(...update.workflowOperations);
+			const update = result.update as CommandUpdate;
+			if (update.messages) {
+				messages.push(...update.messages);
+			}
+			if (update.workflowOperations) {
+				operations.push(...update.workflowOperations);
+			}
 		} else if (result) {
 			// Direct message (ToolMessage, AIMessage, etc.)
 			messages.push(result as BaseMessage);

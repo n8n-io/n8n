@@ -157,7 +157,7 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 
 					// Only emit non-empty content
 					// Filter out empty strings, whitespace, and workflow context artifacts
-					if (content && content.trim() && !content.includes('<current_workflow_json>')) {
+					if (content?.trim() && !content.includes('<current_workflow_json>')) {
 						const messageChunk: AgentMessageChunk = {
 							role: 'assistant',
 							type: 'message',
@@ -189,7 +189,7 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
  * When subgraphs are enabled, events come as: [namespace, chunk] where namespace is array
  */
 export async function* createStreamProcessor(
-	stream: AsyncGenerator<any, void, unknown>,
+	stream: AsyncGenerator<[string, unknown] | [string[], string, unknown], void, unknown>,
 ): AsyncGenerator<StreamOutput> {
 	for await (const event of stream) {
 		// Subgraph events: flat 3-element array [namespace, streamMode, data]
