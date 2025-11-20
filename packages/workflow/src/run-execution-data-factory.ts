@@ -13,12 +13,15 @@ import type {
 	INode,
 } from './interfaces';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import type { IRunExecutionDataV1 } from './run-execution-data/run-execution-data.v1';
 
 export interface CreateFullRunExecutionDataOptions {
 	startData?: {
 		startNodes?: StartNodeData[];
-		destinationNode?: string;
-		originalDestinationNode?: string;
+		destinationNode?: NonNullable<IRunExecutionData['startData']>['destinationNode'];
+		originalDestinationNode?: NonNullable<
+			IRunExecutionData['startData']
+		>['originalDestinationNode'];
 		runNodeFilter?: string[];
 	};
 	resultData?: {
@@ -52,7 +55,7 @@ export function createRunExecutionData(
 	options: CreateFullRunExecutionDataOptions = {},
 ): IRunExecutionData {
 	return {
-		version: 0,
+		version: 1,
 		startData: options.startData ?? {},
 		resultData: {
 			error: options.resultData?.error,
@@ -77,7 +80,7 @@ export function createRunExecutionData(
 		waitTill: options.waitTill,
 		manualData: options.manualData,
 		pushRef: options.pushRef,
-	} as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
+	} satisfies IRunExecutionDataV1 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }
 
 /**
@@ -87,11 +90,11 @@ export function createRunExecutionData(
  */
 export function createEmptyRunExecutionData(): IRunExecutionData {
 	return {
-		version: 0,
+		version: 1,
 		resultData: {
 			runData: {},
 		},
-	} as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
+	} satisfies IRunExecutionDataV1 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }
 
 /**
@@ -104,9 +107,9 @@ export function createEmptyRunExecutionData(): IRunExecutionData {
  */
 export function createErrorExecutionData(node: INode, error: ExecutionError): IRunExecutionData {
 	return {
-		version: 0,
+		version: 1,
 		startData: {
-			destinationNode: node.name,
+			destinationNode: { nodeName: node.name, mode: 'inclusive' },
 			runNodeFilter: [node.name],
 		},
 		executionData: {
@@ -148,5 +151,5 @@ export function createErrorExecutionData(node: INode, error: ExecutionError): IR
 			error,
 			lastNodeExecuted: node.name,
 		},
-	} as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
+	} satisfies IRunExecutionDataV1 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }

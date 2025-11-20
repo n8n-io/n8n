@@ -17,10 +17,8 @@ export type IRunExecutionDataAll = IRunExecutionDataV0 | IRunExecutionDataV1;
 
 /**
  * Current version of IRunExecutionData.
- *
- * TODO: switch to V1.
  */
-export type IRunExecutionData = IRunExecutionDataV0 & {
+export type IRunExecutionData = IRunExecutionDataV1 & {
 	readonly __brand: 'Use createRunExecutionData factory instead of constructing manually';
 };
 
