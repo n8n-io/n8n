@@ -252,6 +252,7 @@ onMounted(async () => {
 			:new-provisioning-setting="userRoleProvisioning"
 			auth-protocol="oidc"
 			@confirm-provisioning="onOidcSettingsSave(true)"
+			@cancel="showUserRoleProvisioningDialog = false"
 		/>
 		<div :class="$style.group">
 			<label>Authentication Context Class Reference</label>

@@ -276,6 +276,7 @@ onMounted(async () => {
 				:new-provisioning-setting="userRoleProvisioning"
 				auth-protocol="saml"
 				@confirm-provisioning="onSave(true)"
+				@cancel="showUserRoleProvisioningDialog = false"
 			/>
 			<div :class="$style.group">
 				<N8nTooltip
