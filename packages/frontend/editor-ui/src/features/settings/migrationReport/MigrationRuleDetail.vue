@@ -4,6 +4,7 @@ import ResourceFiltersDropdown from '@/app/components/forms/ResourceFiltersDropd
 import { VIEWS } from '@/app/constants';
 import type { BreakingChangeWorkflowRuleResult } from '@n8n/api-types';
 import {
+	N8nButton,
 	N8nDataTableServer,
 	N8nIcon,
 	N8nInput,
@@ -187,6 +188,15 @@ const sortedWorkflows = computed(() => {
 
 <template>
 	<div>
+		<N8nButton
+			:class="$style.backButton"
+			type="secondary"
+			text
+			icon="arrow-left"
+			:label="i18n.baseText('generic.back')"
+			class="mb-xs"
+			@click="router.push({ name: VIEWS.MIGRATION_REPORT })"
+		/>
 		<template v-if="isLoading">
 			<div class="mb-2xs">
 				<N8nLoading variant="h1" />
@@ -215,7 +225,7 @@ const sortedWorkflows = computed(() => {
 				/>
 			</N8nText>
 			<N8nText tag="p" color="text-base" class="mb-2xl">
-				{{ state.ruleDescription }}
+				{{ state.ruleDescription }}{{ state.ruleDescription.endsWith('.') ? '' : '.' }}
 				<N8nLink
 					v-if="state.ruleDocumentationUrl"
 					theme="text"
@@ -316,6 +326,10 @@ const sortedWorkflows = computed(() => {
 </template>
 
 <style module>
+.backButton {
+	padding-left: 0;
+}
+
 .clickableRow {
 	cursor: pointer;
 }

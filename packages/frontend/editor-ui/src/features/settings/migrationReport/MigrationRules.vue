@@ -183,7 +183,7 @@ const sortedInstanceResults = computed(() => {
 							</N8nTooltip>
 						</div>
 						<N8nText tag="p" color="text-base">
-							{{ issue.ruleDescription }}
+							{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
 							<N8nLink
 								v-if="issue.ruleDocumentationUrl"
 								theme="text"
@@ -241,7 +241,7 @@ const sortedInstanceResults = computed(() => {
 							</N8nTooltip>
 						</div>
 						<N8nText tag="p" color="text-base">
-							{{ issue.ruleDescription }}
+							{{ issue.ruleDescription }}{{ issue.ruleDescription.endsWith('.') ? '' : '.' }}
 							<N8nLink
 								v-if="issue.ruleDocumentationUrl"
 								theme="text"
