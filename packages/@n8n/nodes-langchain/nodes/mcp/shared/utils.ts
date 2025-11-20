@@ -159,6 +159,7 @@ export async function connectMcpClient({
 						},
 					}),
 			},
+			fetch: proxyFetch,
 			requestInit: { headers },
 		});
 		await client.connect(sseTransport);
