@@ -9,6 +9,7 @@ import { DataTransformationBestPractices } from './data-transformation';
 import { DocumentProcessingBestPractices } from './document-processing';
 import { EnrichmentBestPractices } from './enrichment';
 import { FormInputBestPractices } from './form-input';
+import { HumanInTheLoopBestPractices } from './human-in-the-loop';
 import { KnowledgeBaseBestPractices } from './knowledge-base';
 import { NotificationBestPractices } from './notification';
 import { ScrapingAndResearchBestPractices } from './scraping-and-research';
@@ -27,9 +28,9 @@ export const documentation: Record<WorkflowTechniqueType, BestPracticesDocument 
 	[WorkflowTechnique.KNOWLEDGE_BASE]: new KnowledgeBaseBestPractices(),
 	[WorkflowTechnique.NOTIFICATION]: new NotificationBestPractices(),
 	[WorkflowTechnique.TRIAGE]: new TriageBestPractices(),
+	[WorkflowTechnique.HUMAN_IN_THE_LOOP]: new HumanInTheLoopBestPractices(),
 
 	/** currently no best practice documentation defined */
-	[WorkflowTechnique.HUMAN_IN_THE_LOOP]: undefined,
 	[WorkflowTechnique.MONITORING]: undefined,
 	[WorkflowTechnique.SCHEDULING]: undefined,
 };
