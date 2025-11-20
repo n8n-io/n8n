@@ -887,7 +887,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (targetWorkflow) {
 			targetWorkflow.active = true;
 			targetWorkflow.activeVersionId = activeVersion.versionId;
-			// TODO: do we need to set the active version?
+			targetWorkflow.activeVersion = activeVersion;
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			uiStore.stateIsDirty = false;
