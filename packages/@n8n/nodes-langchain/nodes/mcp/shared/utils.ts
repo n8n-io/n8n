@@ -5,10 +5,11 @@ import type { ClientOAuth2TokenData } from '@n8n/client-oauth2';
 import type {
 	IExecuteFunctions,
 	ILoadOptionsFunctions,
+	INode,
 	ISupplyDataFunctions,
 	Result,
 } from 'n8n-workflow';
-import { createResultError, createResultOk } from 'n8n-workflow';
+import { createResultError, createResultOk, NodeOperationError } from 'n8n-workflow';
 
 import { proxyFetch } from '@utils/httpProxyAgent';
 
@@ -43,13 +44,23 @@ function normalizeAndValidateUrl(input: string): Result<URL, Error> {
 	return parsedUrl;
 }
 
-function isUnauthorizedError(error: unknown): boolean {
+function errorHasCode(error: unknown, code: number): boolean {
 	return (
 		!!error &&
 		typeof error === 'object' &&
-		(('code' in error && Number(error.code) === 401) ||
-			('message' in error && typeof error.message === 'string' && error.message.includes('401')))
+		(('code' in error && Number(error.code) === code) ||
+			('message' in error &&
+				typeof error.message === 'string' &&
+				error.message.includes(code.toString())))
 	);
+}
+
+function isUnauthorizedError(error: unknown): boolean {
+	return errorHasCode(error, 401);
+}
+
+function isForbiddenError(error: unknown): boolean {
+	return errorHasCode(error, 403);
 }
 
 type OnUnauthorizedHandler = (
@@ -58,7 +69,29 @@ type OnUnauthorizedHandler = (
 
 type ConnectMcpClientError =
 	| { type: 'invalid_url'; error: Error }
-	| { type: 'connection'; error: Error };
+	| { type: 'connection'; error: Error }
+	| { type: 'auth'; error: Error };
+
+export function mapToNodeOperationError(
+	node: INode,
+	error: ConnectMcpClientError,
+): NodeOperationError {
+	switch (error.type) {
+		case 'invalid_url':
+			return new NodeOperationError(node, error.error, {
+				message: 'Could not connect to your MCP server. The provided URL is invalid.',
+			});
+		case 'auth':
+			return new NodeOperationError(node, error.error, {
+				message: 'Could not connect to your MCP server. Authentication failed.',
+			});
+		case 'connection':
+		default:
+			return new NodeOperationError(node, error.error, {
+				message: 'Could not connect to your MCP server',
+			});
+	}
+}
 
 export async function connectMcpClient({
 	headers,
@@ -106,7 +139,11 @@ export async function connectMcpClient({
 				}
 			}
 
-			return createResultError({ type: 'connection', error });
+			if (isUnauthorizedError(error) || isForbiddenError(error)) {
+				return createResultError({ type: 'auth', error: error as Error });
+			} else {
+				return createResultError({ type: 'connection', error: error as Error });
+			}
 		}
 	}
 
@@ -141,7 +178,11 @@ export async function connectMcpClient({
 			}
 		}
 
-		return createResultError({ type: 'connection', error });
+		if (isUnauthorizedError(error) || isForbiddenError(error)) {
+			return createResultError({ type: 'auth', error: error as Error });
+		} else {
+			return createResultError({ type: 'connection', error: error as Error });
+		}
 	}
 }
 

@@ -8,6 +8,7 @@ import {
 	connectMcpClient,
 	getAllTools,
 	tryRefreshOAuth2Token,
+	mapToNodeOperationError,
 } from '../shared/utils';
 
 export async function getToolParameters(
@@ -31,7 +32,7 @@ export async function getToolParameters(
 	});
 
 	if (!client.ok) {
-		throw new NodeOperationError(this.getNode(), 'Could not connect to your MCP server');
+		throw mapToNodeOperationError(node, client.error);
 	}
 
 	const result = await getAllTools(client.result);

@@ -1,8 +1,12 @@
 import type { ILoadOptionsFunctions, INodeListSearchResult } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
 
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
-import { connectMcpClient, getAuthHeaders, tryRefreshOAuth2Token } from '../shared/utils';
+import {
+	connectMcpClient,
+	getAuthHeaders,
+	mapToNodeOperationError,
+	tryRefreshOAuth2Token,
+} from '../shared/utils';
 
 export async function getTools(
 	this: ILoadOptionsFunctions,
@@ -24,7 +28,7 @@ export async function getTools(
 	});
 
 	if (!client.ok) {
-		throw new NodeOperationError(node, 'Could not connect to your MCP server');
+		throw mapToNodeOperationError(node, client.error);
 	}
 
 	const result = await client.result.listTools({ cursor: paginationToken });

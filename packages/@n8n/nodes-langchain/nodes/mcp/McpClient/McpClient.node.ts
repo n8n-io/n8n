@@ -14,7 +14,12 @@ import * as listSearch from './listSearch';
 import * as resourceMapping from './resourceMapping';
 import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
-import { getAuthHeaders, tryRefreshOAuth2Token, connectMcpClient } from '../shared/utils';
+import {
+	getAuthHeaders,
+	tryRefreshOAuth2Token,
+	connectMcpClient,
+	mapToNodeOperationError,
+} from '../shared/utils';
 
 export class McpClient implements INodeType {
 	description: INodeTypeDescription = {
@@ -228,7 +233,7 @@ export class McpClient implements INodeType {
 			onUnauthorized: async (headers) => await tryRefreshOAuth2Token(this, authentication, headers),
 		});
 		if (!client.ok) {
-			throw new NodeOperationError(node, 'Could not connect to your MCP server');
+			throw mapToNodeOperationError(node, client.error);
 		}
 
 		const inputMode = this.getNodeParameter('inputMode', 0, 'manual') as 'manual' | 'json';
