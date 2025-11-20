@@ -84,7 +84,7 @@ const isOpen = computed({
 	position: relative;
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius);
-	background-color: var(--color--background--light-3);
+	background-color: var(--color--background--light-1);
 
 	// Nested panels: extend to parent's right edge and remove right border/radius
 	.collapsiblePanel & {
