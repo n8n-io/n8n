@@ -7,7 +7,7 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useRoute, useRouter } from 'vue-router';
 
-import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 defineProps<{
 	isCollapsed: boolean;
 }>();
@@ -105,7 +105,9 @@ function pullWorkfolder() {
 				}"
 			>
 				<N8nIcon icon="git-branch" size="small" />
-				<span v-if="!isCollapsed" :class="$style.branchName"> {{ currentBranch }}</span>
+				<N8nText v-if="!isCollapsed" bold size="small" :class="$style.branchName">{{
+					currentBranch
+				}}</N8nText>
 			</span>
 			<div>
 				<N8nTooltip
@@ -172,9 +174,14 @@ function pullWorkfolder() {
 <style lang="scss" module>
 .sync {
 	border-top: var(--spacing--5xs) solid rgba(0, 0, 0, 0.1);
+	padding: 0 var(--spacing--5xs) 0 var(--spacing--2xs);
 
 	button {
 		font-size: var(--font-size--2xs);
+	}
+
+	&.collapsed {
+		padding: var(--spacing--2xs) 0 0;
 	}
 }
 
@@ -196,7 +203,7 @@ function pullWorkfolder() {
 .branchName {
 	white-space: normal;
 	line-break: anywhere;
-	font-size: var(--font-size--xs);
+	margin-top: -1px;
 }
 
 .collapsed {
