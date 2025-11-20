@@ -84,7 +84,7 @@ const isOpen = computed({
 	position: relative;
 	border: var(--border-width) var(--border-style) var(--color--foreground);
 	border-radius: var(--radius);
-	background-color: var(--color--background--light-1);
+	background-color: var(--ndv--background--color);
 
 	// Nested panels: extend to parent's right edge and remove right border/radius
 	.collapsiblePanel & {
@@ -140,7 +140,7 @@ const isOpen = computed({
 
 .title {
 	font-weight: var(--font-weight--medium);
-	color: var(-—color-text);
+	color: var(--color--text);
 	font-size: var(--font-size--2xs);
 	line-height: 1;
 	transition: color var(--animation--duration) var(--animation--easing);
