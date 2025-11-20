@@ -265,7 +265,7 @@ export function processThreadOptions(threadOptions: IDataObject | undefined): ID
 
 	if (threadOptions?.replyValues) {
 		const replyValues = threadOptions.replyValues as IDataObject;
-		if (replyValues.thread_ts) {
+		if (replyValues.thread_ts !== undefined) {
 			result.thread_ts = replyValues.thread_ts;
 		}
 		if (replyValues.reply_broadcast !== undefined) {

@@ -180,5 +180,49 @@ describe('Slack V2 GenericFunctions', () => {
 				}),
 			);
 		});
+
+		it('should handle thread_ts with value 0', () => {
+			mockExecuteFunctions.getNodeParameter.mockImplementation(
+				(parameterName, _itemIndex, _fallbackValue, options) => {
+					if (options?.extractValue) {
+						return 'C12345';
+					}
+
+					const params: Record<string, string | object> = {
+						select: 'channel',
+						channelId: { value: 'C12345' },
+						message: 'Test message',
+						subject: 'Test subject',
+						responseType: 'approval',
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						'approvalOptions.values': {
+							approvalType: 'single',
+							approveLabel: 'Approve',
+							buttonApprovalStyle: 'primary',
+						},
+						options: {
+							thread_ts: {
+								replyValues: {
+									thread_ts: 0,
+								},
+							},
+						},
+					};
+					return params[parameterName];
+				},
+			);
+
+			mockExecuteFunctions.getSignedResumeUrl.mockReturnValue('http://localhost/test');
+
+			const body = createSendAndWaitMessageBody(mockExecuteFunctions);
+
+			expect(body).toEqual(
+				expect.objectContaining({
+					channel: 'C12345',
+					blocks: expect.any(Array),
+					thread_ts: 0,
+				}),
+			);
+		});
 	});
 });
