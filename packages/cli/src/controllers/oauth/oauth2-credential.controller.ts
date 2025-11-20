@@ -22,11 +22,11 @@ import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 import { z } from 'zod';
 
+import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
+
 import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { OAuthRequest } from '@/requests';
-
-import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
 
 const oAuthAuthorizationServerMetadataSchema = z.object({
 	authorization_endpoint: z.string().url(),
