@@ -17,9 +17,9 @@ For binary data, ensure you use nodes like Extract From File to handle files pro
 
 ### Referencing Binary Data from Other Nodes
 When you need to reference binary data from a previous node, use this syntax:
-- Expression: '{{ $('Node Name').item.binary.property_name }}'
-- Example for Gmail attachments: '{{ $('Gmail Trigger').item.binary.attachment_0 }}'
-- Example for webhook data: '{{ $('Webhook').item.binary.data }}'
+- Expression: '{{ $('Node Name').item.binary.property_name }}' or {{ $binary.property_name }} if previous item
+- Example for Gmail attachments: '{{ $('Gmail Trigger').item.binary.attachment_0 }}' or {{ $binary.attachment_0 }} if previous item
+- Example for webhook data: '{{ $('Webhook').item.binary.data }}' or {{ $binary.data }} if previous item
 - Important: The property name depends on how the previous node names the binary data
 
 ## Data Structure & Type Management
