@@ -10,8 +10,8 @@ import { N8nHeading } from '@n8n/design-system';
 import { CHAT_PROVIDER_SETTINGS_MODAL_KEY } from './constants';
 import ChatProvidersTable from './components/ChatProvidersTable.vue';
 import {
-	ChatHubLLMProvider,
-	ChatProviderSettingsDto,
+	type ChatHubLLMProvider,
+	type ChatProviderSettingsDto,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -77,8 +77,8 @@ function onEditProvider(settings: ChatProviderSettingsDto) {
 	});
 }
 
-function onRefreshWorkflows() {
-	fetchSettings();
+async function onRefreshWorkflows() {
+	await fetchSettings();
 }
 
 onMounted(async () => {

@@ -13,8 +13,8 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 import {
-	ChatHubLLMProvider,
-	ChatProviderSettingsDto,
+	type ChatHubLLMProvider,
+	type ChatProviderSettingsDto,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { providerDisplayNames } from '../constants';

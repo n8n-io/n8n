@@ -52,7 +52,7 @@ import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
-import { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
+import type { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();

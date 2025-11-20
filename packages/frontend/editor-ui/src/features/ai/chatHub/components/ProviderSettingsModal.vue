@@ -5,9 +5,9 @@ import Modal from '@/app/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import {
-	ChatHubLLMProvider,
-	ChatModelDto,
-	ChatProviderSettingsDto,
+	type ChatHubLLMProvider,
+	type ChatModelDto,
+	type ChatProviderSettingsDto,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 } from '@n8n/api-types';
 import { ElSwitch } from 'element-plus';
@@ -45,7 +45,7 @@ const customModels = ref<string[]>([]);
 
 const allModels = computed<IModel[]>(() => {
 	const models: Map<string, IModel> = new Map(
-		availableModels.value.reduce<[string, IModel][]>((acc, model) => {
+		availableModels.value.reduce<Array<[string, IModel]>>((acc, model) => {
 			if (model.model.provider !== 'custom-agent' && model.model.provider !== 'n8n') {
 				acc.push([
 					model.model.model,
@@ -214,7 +214,7 @@ watch(
 	() => settings.value?.credentialId,
 	async (credentialId) => {
 		if (credentialId) {
-			loadAvailableModels(credentialId);
+			await loadAvailableModels(credentialId);
 		}
 	},
 	{ immediate: true },
