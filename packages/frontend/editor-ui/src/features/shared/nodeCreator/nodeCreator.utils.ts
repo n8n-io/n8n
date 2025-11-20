@@ -272,7 +272,7 @@ function applyNodeTags(element: INodeCreateElement): INodeCreateElement {
 	return element;
 }
 
-export function extendItems(items: INodeCreateElement[]) {
+export function finalizeItems(items: INodeCreateElement[]): INodeCreateElement[] {
 	return items
 		.map((item) => ({
 			...item,
@@ -290,7 +290,7 @@ export const filterAndSearchNodes = (
 
 	const vettedNodes = mergedNodes.map((item) => transformNodeType(item)) as NodeCreateElement[];
 
-	const searchResult: INodeCreateElement[] = extendItems(searchNodes(search || '', vettedNodes));
+	const searchResult: INodeCreateElement[] = finalizeItems(searchNodes(search || '', vettedNodes));
 
 	return searchResult;
 };
