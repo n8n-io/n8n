@@ -39,9 +39,6 @@ export interface OAuth2AccessTokenErrorResponse extends Record<string, unknown> 
  * Based on RFC 8414: https://www.rfc-editor.org/rfc/rfc8414.html
  */
 export interface OAuthAuthorizationServerMetadata {
-	/** The authorization server's identifier */
-	issuer: string;
-
 	/** URL of the authorization server's authorization endpoint */
 	authorization_endpoint: string;
 
@@ -51,15 +48,12 @@ export interface OAuthAuthorizationServerMetadata {
 	/** URL of the authorization server's dynamic client registration endpoint */
 	registration_endpoint: string;
 
-	/** Array of OAuth 2.0 response_type values supported */
-	response_types_supported: string[];
-
 	/** Array of OAuth 2.0 grant type values supported */
-	grant_types_supported: string[];
+	grant_types_supported?: string[];
 
 	/** Array of client authentication methods supported by the token endpoint */
-	token_endpoint_auth_methods_supported: string[];
+	token_endpoint_auth_methods_supported?: string[];
 
 	/** Array of PKCE code challenge methods supported */
-	code_challenge_methods_supported: string[];
+	code_challenge_methods_supported?: string[];
 }
