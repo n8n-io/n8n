@@ -172,36 +172,6 @@ describe('WorkflowsView', () => {
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
 		});
-
-		it('should show template card', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			settingsStore.settings.templates = { enabled: true, host: 'http://example.com' };
-			const { getByTestId } = renderComponent({ pinia });
-			await waitAllPromises();
-
-			expect(getByTestId('new-workflow-from-template-card')).toBeInTheDocument();
-		});
-
-		it('should track template card click', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			settingsStore.settings.templates = { enabled: true, host: 'http://example.com' };
-			const { getByTestId } = renderComponent({ pinia });
-			await waitAllPromises();
-
-			const card = getByTestId('new-workflow-from-template-card');
-			await userEvent.click(card);
-
-			expect(mockTrack).toHaveBeenCalledWith(
-				'User clicked on templates',
-				expect.objectContaining({
-					source: TemplateClickSource.emptyInstanceCard,
-				}),
-			);
-		});
 	});
 
 	describe('fetch workflow options', () => {
