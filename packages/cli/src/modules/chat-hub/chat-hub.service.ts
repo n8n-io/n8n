@@ -162,6 +162,8 @@ export class ChatHubService {
 				return await this.fetchOllamaModels(credentials, additionalData);
 			case 'azureOpenAi':
 				return await this.fetchAzureOpenAiModels(credentials, additionalData);
+			case 'awsBedrock':
+				return await this.fetchAwsBedrockModels(credentials, additionalData);
 			case 'n8n':
 				return await this.fetchAgentWorkflowsAsModels(user);
 			case 'custom-agent':
@@ -278,7 +280,7 @@ export class ChatHubService {
 
 		return {
 			models: results.map((result) => ({
-				name: String(result.value),
+				name: result.name,
 				description: result.description ?? null,
 				model: {
 					provider: 'google',
@@ -337,7 +339,7 @@ export class ChatHubService {
 
 		return {
 			models: results.map((result) => ({
-				name: String(result.value),
+				name: result.name,
 				description: result.description ?? null,
 				model: {
 					provider: 'ollama',
@@ -359,6 +361,111 @@ export class ChatHubService {
 		// implementation here too.
 		return {
 			models: [],
+		};
+	}
+
+	private async fetchAwsBedrockModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse['awsBedrock']> {
+		// From AWS Bedrock node
+		// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts#L100
+		// https://github.com/n8n-io/n8n/blob/master/packages/%40n8n/nodes-langchain/nodes/llms/LmChatAwsBedrock/LmChatAwsBedrock.node.ts#L155
+		const foundationModelsRequest = this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/foundation-models?&byOutputModality=TEXT&byInferenceType=ON_DEMAND',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'modelSummaries',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.modelName}}',
+									description: '={{$responseItem.modelArn}}',
+									value: '={{$responseItem.modelId}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.awsBedrock,
+			{},
+			credentials,
+		);
+
+		const inferenceProfileModelsRequest = this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/inference-profiles?maxResults=1000',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'inferenceProfileSummaries',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.inferenceProfileName}}',
+									description:
+										'={{$responseItem.description || $responseItem.inferenceProfileArn}}',
+									value: '={{$responseItem.inferenceProfileId}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.awsBedrock,
+			{},
+			credentials,
+		);
+
+		const [foundationModels, inferenceProfileModels] = await Promise.all([
+			foundationModelsRequest,
+			inferenceProfileModelsRequest,
+		]);
+
+		return {
+			models: foundationModels.concat(inferenceProfileModels).map((result) => ({
+				name: result.name,
+				description: result.description ?? String(result.value),
+				model: {
+					provider: 'awsBedrock',
+					model: String(result.value),
+				},
+				createdAt: null,
+				updatedAt: null,
+			})),
 		};
 	}
 
