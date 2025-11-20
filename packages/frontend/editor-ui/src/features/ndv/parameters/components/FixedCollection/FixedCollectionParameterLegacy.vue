@@ -389,7 +389,7 @@ function getItemKey(_item: INodeParameters, index: number) {
 	}
 
 	.controls {
-		:deep(.button) {
+		:global(.button) {
 			font-weight: var(--font-weight--regular);
 			--button--color--text: var(--color--text--shade-1);
 			--button--border-color: var(--color--foreground);

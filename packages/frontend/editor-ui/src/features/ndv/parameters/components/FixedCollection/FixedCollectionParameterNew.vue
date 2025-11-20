@@ -349,19 +349,11 @@ const onAddButtonClick = () => {
 							v-if="hasMultipleOptions"
 							:options="dropdownOptions"
 							:disabled="isAddDisabled"
+							data-test-id="fixed-collection-add-header"
 							@select="optionSelected"
 						>
 							<template #trigger>
-								<N8nHeaderAction
-									icon="plus"
-									:label="placeholder"
-									:disabled="isAddDisabled"
-									:data-test-id="
-										multipleValues
-											? 'fixed-collection-add-header'
-											: 'fixed-collection-add-header-top-level'
-									"
-								/>
+								<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 							</template>
 						</N8nDropdown>
 						<N8nHeaderAction
@@ -369,11 +361,7 @@ const onAddButtonClick = () => {
 							icon="plus"
 							:label="placeholder"
 							:disabled="isAddDisabled"
-							:data-test-id="
-								multipleValues
-									? 'fixed-collection-add-header'
-									: 'fixed-collection-add-header-top-level'
-							"
+							data-test-id="fixed-collection-add-header"
 							@click="onHeaderAddClick"
 						/>
 					</N8nTooltip>
@@ -472,15 +460,11 @@ const onAddButtonClick = () => {
 						v-if="hasMultipleOptions"
 						:options="dropdownOptions"
 						:disabled="isAddDisabled"
+						data-test-id="fixed-collection-add-header"
 						@select="optionSelected"
 					>
 						<template #trigger>
-							<N8nHeaderAction
-								icon="plus"
-								:label="placeholder"
-								:disabled="isAddDisabled"
-								data-test-id="fixed-collection-add-header-nested"
-							/>
+							<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 						</template>
 					</N8nDropdown>
 					<N8nHeaderAction

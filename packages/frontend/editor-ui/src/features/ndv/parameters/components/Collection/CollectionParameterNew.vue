@@ -262,13 +262,14 @@ function valueChanged(parameterData: IUpdateInformation) {
 		@keydown.stop
 	>
 		<template v-if="!isReadOnly" #actions>
-			<N8nDropdown :options="dropdownOptions" :disabled="isAddDisabled" @select="optionSelected">
+			<N8nDropdown
+				:options="dropdownOptions"
+				:disabled="isAddDisabled"
+				data-test-id="collection-parameter-add-header"
+				@select="optionSelected"
+			>
 				<template #trigger>
-					<N8nHeaderAction
-						icon="plus"
-						:label="placeholder"
-						data-test-id="collection-parameter-add-header-nested"
-					/>
+					<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 				</template>
 			</N8nDropdown>
 			<N8nHeaderAction
@@ -332,14 +333,11 @@ function valueChanged(parameterData: IUpdateInformation) {
 						<N8nDropdown
 							:options="dropdownOptions"
 							:disabled="isAddDisabled"
+							data-test-id="collection-parameter-add-header"
 							@select="optionSelected"
 						>
 							<template #trigger>
-								<N8nHeaderAction
-									icon="plus"
-									:label="placeholder"
-									data-test-id="collection-parameter-add-header"
-								/>
+								<N8nHeaderAction icon="plus" :label="placeholder" :disabled="isAddDisabled" />
 							</template>
 						</N8nDropdown>
 					</N8nTooltip>

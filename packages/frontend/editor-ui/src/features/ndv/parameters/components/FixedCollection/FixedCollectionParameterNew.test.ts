@@ -265,14 +265,14 @@ describe('FixedCollectionParameterNew.vue', () => {
 			values: {},
 		};
 
-		it('renders select dropdown when multiple options available', () => {
-			const { getByRole } = renderComponent({
+		it('renders dropdown when multiple options available', () => {
+			const { getByTestId } = renderComponent({
 				props: multipleOptionsProps,
 			});
 
-			// Should render a select dropdown instead of a button
-			const select = getByRole('combobox');
-			expect(select).toBeInTheDocument();
+			// Should render a dropdown instead of a simple button
+			const dropdown = getByTestId('fixed-collection-add-top-level-dropdown');
+			expect(dropdown).toBeInTheDocument();
 		});
 	});
 

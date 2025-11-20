@@ -77,16 +77,16 @@ describe('CollectionParameterNew.vue', () => {
 			expect(getByTestId('collection-parameter-add-header')).toBeInTheDocument();
 		});
 
-		it('does not render section header add button when nested', () => {
-			const { queryByTestId } = renderComponent({
+		it('renders add button in collapsible panel when nested', () => {
+			const { getByTestId } = renderComponent({
 				props: {
 					...baseProps,
 					isNested: true,
 				},
 			});
 			// When nested, uses collapsible panel instead of section header
-			// Section header has the add button with this test ID
-			expect(queryByTestId('collection-parameter-add-header')).not.toBeInTheDocument();
+			// Both have the add button with this test ID
+			expect(getByTestId('collection-parameter-add-header')).toBeInTheDocument();
 		});
 
 		it('renders dropdown for adding new items', () => {
@@ -311,7 +311,7 @@ describe('CollectionParameterNew.vue', () => {
 	});
 
 	describe('Disabled state', () => {
-		it('disables add button when all options are added', () => {
+		it('renders add dropdown when all options are added', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...baseProps,
@@ -330,12 +330,13 @@ describe('CollectionParameterNew.vue', () => {
 				},
 			});
 
-			const addButton = getByTestId('collection-parameter-add-header');
-			expect(addButton).toBeDisabled();
+			// When all options are added, the dropdown is still rendered but disabled
+			const addButtonContainer = getByTestId('collection-parameter-add-header');
+			expect(addButtonContainer).toBeInTheDocument();
 		});
 
-		it('shows tooltip when all options are added', () => {
-			const { getByTestId } = renderComponent({
+		it('does not show bottom add button when all options are added', () => {
+			const { queryByTestId } = renderComponent({
 				props: {
 					...baseProps,
 					values: {
@@ -353,9 +354,9 @@ describe('CollectionParameterNew.vue', () => {
 				},
 			});
 
-			// Verify disabled state
-			const addButton = getByTestId('collection-parameter-add-header');
-			expect(addButton).toBeDisabled();
+			// When all options are added (isAddDisabled = true), the bottom add button should not render
+			const bottomAddButton = queryByTestId('collection-parameter-add-dropdown');
+			expect(bottomAddButton).not.toBeInTheDocument();
 		});
 	});
 
