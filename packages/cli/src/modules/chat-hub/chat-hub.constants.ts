@@ -14,7 +14,7 @@ Requirements:
 export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {
 		name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-		version: 1.2,
+		version: 1.3,
 	},
 	anthropic: {
 		name: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -29,6 +29,10 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		version: 1,
 	},
 	azureOpenAi: {
+		name: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+		version: 1,
+	},
+	azureEntraId: {
 		name: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 		version: 1,
 	},

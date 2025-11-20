@@ -16,6 +16,7 @@ export const chatHubLLMProviderSchema = z.enum([
 	'anthropic',
 	'google',
 	'azureOpenAi',
+	'azureEntraId',
 	'ollama',
 	'awsBedrock',
 	'mistralCloud',
@@ -42,6 +43,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	google: 'googlePalmApi',
 	ollama: 'ollamaApi',
 	azureOpenAi: 'azureOpenAiApi',
+	azureEntraId: 'azureEntraCognitiveServicesOAuth2Api',
 	awsBedrock: 'aws',
 	mistralCloud: 'mistralCloudApi',
 };
@@ -68,6 +70,11 @@ const googleModelSchema = z.object({
 
 const azureOpenAIModelSchema = z.object({
 	provider: z.literal('azureOpenAi'),
+	model: z.string(),
+});
+
+const azureEntraIdModelSchema = z.object({
+	provider: z.literal('azureEntraId'),
 	model: z.string(),
 });
 
@@ -101,6 +108,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	anthropicModelSchema,
 	googleModelSchema,
 	azureOpenAIModelSchema,
+	azureEntraIdModelSchema,
 	ollamaModelSchema,
 	awsBedrockModelSchema,
 	mistralCloudModelSchema,
@@ -112,6 +120,7 @@ export type ChatHubOpenAIModel = z.infer<typeof openAIModelSchema>;
 export type ChatHubAnthropicModel = z.infer<typeof anthropicModelSchema>;
 export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
 export type ChatHubAzureOpenAIModel = z.infer<typeof azureOpenAIModelSchema>;
+export type ChatHubAzureEntraIdModel = z.infer<typeof azureEntraIdModelSchema>;
 export type ChatHubOllamaModel = z.infer<typeof ollamaModelSchema>;
 export type ChatHubAwsBedrockModel = z.infer<typeof awsBedrockModelSchema>;
 export type ChatHubMistralCloudModel = z.infer<typeof mistralCloudModelSchema>;
@@ -120,6 +129,7 @@ export type ChatHubBaseLLMModel =
 	| ChatHubAnthropicModel
 	| ChatHubGoogleModel
 	| ChatHubAzureOpenAIModel
+	| ChatHubAzureEntraIdModel
 	| ChatHubOllamaModel
 	| ChatHubAwsBedrockModel
 	| ChatHubMistralCloudModel;
@@ -163,6 +173,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	anthropic: { models: [] },
 	google: { models: [] },
 	azureOpenAi: { models: [] },
+	azureEntraId: { models: [] },
 	ollama: { models: [] },
 	awsBedrock: { models: [] },
 	mistralCloud: { models: [] },

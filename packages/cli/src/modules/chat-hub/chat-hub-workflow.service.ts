@@ -485,6 +485,7 @@ export class ChatHubWorkflowService {
 					},
 				};
 			case 'azureOpenAi':
+			case 'azureEntraId':
 				return {
 					...common,
 					parameters: {

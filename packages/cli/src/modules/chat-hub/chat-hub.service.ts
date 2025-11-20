@@ -44,6 +44,7 @@ import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService, CredentialWithProjectId } from './chat-hub-credentials.service';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
 import {
 	HumanMessagePayload,
@@ -65,7 +66,6 @@ import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 
 @Service()
 export class ChatHubService {
@@ -161,7 +161,8 @@ export class ChatHubService {
 			case 'ollama':
 				return await this.fetchOllamaModels(credentials, additionalData);
 			case 'azureOpenAi':
-				return await this.fetchAzureOpenAiModels(credentials, additionalData);
+			case 'azureEntraId':
+				return this.fetchAzureOpenAiModels(credentials, additionalData);
 			case 'awsBedrock':
 				return await this.fetchAwsBedrockModels(credentials, additionalData);
 			case 'mistralCloud':
@@ -354,10 +355,10 @@ export class ChatHubService {
 		};
 	}
 
-	private async fetchAzureOpenAiModels(
+	private fetchAzureOpenAiModels(
 		_credentials: INodeCredentials,
 		_additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<ChatModelsResponse['azureOpenAi']> {
+	): ChatModelsResponse['azureOpenAi'] {
 		// Azure doesn't appear to offer a way to list available models via API.
 		// If we add support for this in the future on the Azure OpenAI node we should copy that
 		// implementation here too.
