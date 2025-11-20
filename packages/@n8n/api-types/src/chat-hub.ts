@@ -18,6 +18,7 @@ export const chatHubLLMProviderSchema = z.enum([
 	'azureOpenAi',
 	'ollama',
 	'awsBedrock',
+	'vercelAiGateway',
 ]);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
 
@@ -42,6 +43,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	ollama: 'ollamaApi',
 	azureOpenAi: 'azureOpenAiApi',
 	awsBedrock: 'aws',
+	vercelAiGateway: 'vercelAiGatewayApi',
 };
 
 export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE | typeof SEAR_XNG_TOOL_NODE_TYPE;
@@ -79,6 +81,11 @@ const awsBedrockModelSchema = z.object({
 	model: z.string(),
 });
 
+const vercelAiGatewaySchema = z.object({
+	provider: z.literal('vercelAiGateway'),
+	model: z.string(),
+});
+
 const n8nModelSchema = z.object({
 	provider: z.literal('n8n'),
 	workflowId: z.string(),
@@ -96,6 +103,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	azureOpenAIModelSchema,
 	ollamaModelSchema,
 	awsBedrockModelSchema,
+	vercelAiGatewaySchema,
 	n8nModelSchema,
 	chatAgentSchema,
 ]);
@@ -106,13 +114,15 @@ export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
 export type ChatHubAzureOpenAIModel = z.infer<typeof azureOpenAIModelSchema>;
 export type ChatHubOllamaModel = z.infer<typeof ollamaModelSchema>;
 export type ChatHubAwsBedrockModel = z.infer<typeof awsBedrockModelSchema>;
+export type ChatHubVercelAiGatewayModel = z.infer<typeof vercelAiGatewaySchema>;
 export type ChatHubBaseLLMModel =
 	| ChatHubOpenAIModel
 	| ChatHubAnthropicModel
 	| ChatHubGoogleModel
 	| ChatHubAzureOpenAIModel
 	| ChatHubOllamaModel
-	| ChatHubAwsBedrockModel;
+	| ChatHubAwsBedrockModel
+	| ChatHubVercelAiGatewayModel;
 
 export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
 export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
@@ -154,6 +164,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	azureOpenAi: { models: [] },
 	ollama: { models: [] },
 	awsBedrock: { models: [] },
+	vercelAiGateway: { models: [] },
 	n8n: { models: [] },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'custom-agent': { models: [] },

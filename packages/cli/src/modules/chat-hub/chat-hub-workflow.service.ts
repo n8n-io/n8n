@@ -474,6 +474,15 @@ export class ChatHubWorkflowService {
 					},
 				};
 			}
+			case 'vercelAiGateway': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			default:
 				throw new OperationalError('Unsupported model provider');
 		}
