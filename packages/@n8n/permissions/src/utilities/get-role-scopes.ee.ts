@@ -1,4 +1,5 @@
 import { ALL_ROLE_MAPS } from '../roles/role-maps.ee';
+import { ALL_SCOPES } from '../scope-information';
 import type { AllRoleTypes, AuthPrincipal, Resource, Scope } from '../types.ee';
 
 export const COMBINED_ROLE_MAP = Object.fromEntries(
@@ -28,6 +29,15 @@ export function getRoleScopes(role: AllRoleTypes, filters?: Resource[]): Scope[]
  * @returns Array of matching scopes
  */
 export function getAuthPrincipalScopes(user: AuthPrincipal, filters?: Resource[]): Scope[] {
+	// DEV MODE: Return all scopes if development enterprise mode is enabled
+	if (process.env.N8N_DEV_ENTERPRISE_MODE === 'true') {
+		let scopes = ALL_SCOPES;
+		if (filters) {
+			scopes = scopes.filter((s) => filters.includes(s.split(':')[0] as Resource));
+		}
+		return scopes;
+	}
+
 	if (!user.role) {
 		const e = new Error('AuthPrincipal does not have a role defined');
 		console.error('AuthPrincipal does not have a role defined', e);
