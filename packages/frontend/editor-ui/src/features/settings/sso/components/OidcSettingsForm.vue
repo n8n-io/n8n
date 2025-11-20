@@ -26,6 +26,8 @@ const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
+const savingForm = ref<boolean>(false);
+
 const discoveryEndpoint = ref('');
 const clientId = ref('');
 const clientSecret = ref('');
@@ -143,6 +145,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		.filter(Boolean);
 
 	try {
+		savingForm.value = true;
 		const newConfig = await ssoStore.saveOidcConfig({
 			clientId: clientId.value,
 			clientSecret: clientSecret.value,
@@ -167,6 +170,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 		return;
 	} finally {
+		savingForm.value = false;
 		await getOidcConfig();
 	}
 }
@@ -285,7 +289,8 @@ onMounted(async () => {
 			<N8nButton
 				data-test-id="sso-oidc-save"
 				size="large"
-				:disabled="cannotSaveOidcSettings"
+				:loading="savingForm"
+				:disabled="savingForm || cannotSaveOidcSettings"
 				@click="onOidcSettingsSave(false)"
 			>
 				{{ i18n.baseText('settings.sso.settings.save') }}

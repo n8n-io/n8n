@@ -27,6 +27,8 @@ const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
+const savingForm = ref<boolean>(false);
+
 const redirectUrl = ref();
 const samlLoginEnabled = ref<boolean>(false);
 
@@ -94,6 +96,9 @@ const getSamlConfig = async () => {
 };
 
 const isSaveEnabled = computed(() => {
+	if (savingForm.value) {
+		return false;
+	}
 	const isIdentityProviderChanged = () => {
 		if (ipsType.value === IdentityProviderSettingsType.URL) {
 			return !!metadataUrl.value && metadataUrl.value !== ssoStore.samlConfig?.metadataUrl;
@@ -148,7 +153,7 @@ const promptConfirmDisablingSamlLogin = async () => {
 			),
 		},
 	);
-	if (confirmAction !== MODAL_CONFIRM) return;
+	return confirmAction;
 };
 
 const prompTestSamlConnectionBeforeActivating = async () => {
@@ -174,20 +179,23 @@ const prompTestSamlConnectionBeforeActivating = async () => {
 				cancelButtonText: i18n.baseText('settings.sso.settings.save.activate.cancel'),
 			},
 		);
-		if (promptConfirmingSuccessfulTest !== MODAL_CONFIRM) {
-			return;
-		}
+		return promptConfirmingSuccessfulTest;
 	}
+	return promptOpeningTestConnectionPage;
 };
 
 const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 	try {
+		savingForm.value = true;
 		validateSamlInput();
 
 		const isDisablingSamlLogin = ssoStore.isSamlLoginEnabled && !samlLoginEnabled.value;
 
 		if (isDisablingSamlLogin) {
-			await promptConfirmDisablingSamlLogin();
+			const confirmDisablingSaml = await promptConfirmDisablingSamlLogin();
+			if (confirmDisablingSaml !== MODAL_CONFIRM) {
+				return;
+			}
 		}
 
 		if (!isDisablingSamlLogin && isUserRoleProvisioningChanged() && !provisioningChangesConfirmed) {
@@ -206,7 +214,10 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			// metadata settings need to be saved for test to work
 			await ssoStore.saveSamlConfig(metaDataConfig);
 
-			await prompTestSamlConnectionBeforeActivating();
+			const confirmTest = await prompTestSamlConnectionBeforeActivating();
+			if (confirmTest !== MODAL_CONFIRM) {
+				return;
+			}
 		}
 
 		const configResponse = await ssoStore.saveSamlConfig({
@@ -227,6 +238,8 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;
+	} finally {
+		savingForm.value = false;
 	}
 };
 
@@ -335,6 +348,7 @@ onMounted(async () => {
 		<div :class="$style.buttons">
 			<N8nButton
 				:disabled="!isSaveEnabled"
+				:loading="savingForm"
 				size="large"
 				data-test-id="sso-save"
 				@click="onSave(false)"
