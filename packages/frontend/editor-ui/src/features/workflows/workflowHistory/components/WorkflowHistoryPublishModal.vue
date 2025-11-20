@@ -4,6 +4,7 @@ import { N8nHeading, N8nText, N8nButton } from '@n8n/design-system';
 import { WORKFLOW_HISTORY_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 
 const props = defineProps<{
 	modalName: string;
@@ -12,10 +13,17 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const eventBus = createEventBus();
+const workflowActivate = useWorkflowActivate();
 
-const handlePublish = () => {
-	// TODO: implement publish logic
-	eventBus.emit('close');
+const handlePublish = async () => {
+	const success = await workflowActivate.publishWorkflowFromHistory(
+		props.data.workflowId,
+		props.data.versionId,
+	);
+
+	if (success) {
+		eventBus.emit('close');
+	}
 };
 </script>
 
