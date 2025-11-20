@@ -12,6 +12,7 @@
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
+    "test:unit": "jest",
     "test:dev": "jest --watch"
   },
   "main": "dist/index.js",
