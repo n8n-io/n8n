@@ -1,11 +1,14 @@
-import { testDb, testModules } from '@n8n/backend-test-utils';
+import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BinaryDataService } from 'n8n-core';
 import { createAdmin, createMember } from '@test-integration/db/users';
 
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
+
+mockInstance(BinaryDataService);
 
 beforeAll(async () => {
 	await testModules.loadModules(['chat-hub']);

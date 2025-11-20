@@ -18,7 +18,7 @@ import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
-import { BinaryDataService } from 'n8n-core';
+import { FileLocation, BinaryDataService } from 'n8n-core';
 import { NodeApiError, PROJECT_ROOT } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
@@ -456,7 +456,9 @@ export class WorkflowService {
 				select: ['id'],
 				where: { workflowId },
 			})
-			.then((rows) => rows.map(({ id: executionId }) => ({ workflowId, executionId })));
+			.then((rows) =>
+				rows.map(({ id: executionId }) => FileLocation.ofExecution(workflowId, executionId)),
+			);
 
 		await this.workflowRepository.delete(workflowId);
 		await this.binaryDataService.deleteMany(idsForDeletion);
