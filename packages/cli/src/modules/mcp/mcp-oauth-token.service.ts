@@ -172,7 +172,7 @@ export class McpOAuthTokenService {
 
 			const userId = authInfo.extra?.userId as string;
 			if (!userId) {
-				return { user: null, context: { reason: 'user_id_not_in_auth_info', authType: 'oauth' } };
+				return { user: null, context: { reason: 'user_id_not_in_auth_info', auth_type: 'oauth' } };
 			}
 
 			const user = await this.userRepository.findOne({
@@ -181,7 +181,7 @@ export class McpOAuthTokenService {
 			});
 
 			if (!user) {
-				return { user: null, context: { reason: 'user_not_found', authType: 'oauth' } };
+				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
 			}
 
 			return { user };
@@ -197,8 +197,8 @@ export class McpOAuthTokenService {
 				user: null,
 				context: {
 					reason,
-					authType: 'oauth',
-					errorDetails: errorForSure.message,
+					auth_type: 'oauth',
+					error_details: errorForSure.message,
 				},
 			};
 		}

@@ -58,11 +58,11 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: true },
 			});
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue(user);
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user });
 
 			const result = await service.getUserForToken(oauthToken);
 
-			expect(result).toEqual(user);
+			expect(result).toEqual({ user });
 			expect(oauthTokenService.verifyOAuthAccessToken).toHaveBeenCalledWith(oauthToken);
 			expect(mcpServerApiKeyService.verifyApiKey).not.toHaveBeenCalled();
 		});
@@ -74,11 +74,11 @@ describe('McpServerMiddlewareService', () => {
 				aud: 'mcp-server-api',
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue(user);
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user });
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toEqual(user);
+			expect(result).toEqual({ user });
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
 			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
@@ -91,11 +91,11 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: false },
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue(user);
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user });
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toEqual(user);
+			expect(result).toEqual({ user });
 			expect(mcpServerApiKeyService.verifyApiKey).toHaveBeenCalledWith(apiKeyToken);
 			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
@@ -103,10 +103,10 @@ describe('McpServerMiddlewareService', () => {
 		it('should return null for invalid JWT format', async () => {
 			const invalidToken = 'not-a-jwt-token';
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue(null);
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: null });
 			const result = await service.getUserForToken(invalidToken);
 
-			expect(result).toBeNull();
+			expect(result).toMatchObject({ user: null });
 			expect(oauthTokenService.verifyOAuthAccessToken).not.toHaveBeenCalled();
 		});
 
@@ -117,11 +117,11 @@ describe('McpServerMiddlewareService', () => {
 				meta: { isOAuth: true },
 			});
 
-			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue(null);
+			oauthTokenService.verifyOAuthAccessToken.mockResolvedValue({ user: null });
 
 			const result = await service.getUserForToken(oauthToken);
 
-			expect(result).toBeNull();
+			expect(result).toMatchObject({ user: null });
 		});
 
 		it('should return null when API key verification fails', async () => {
@@ -130,11 +130,11 @@ describe('McpServerMiddlewareService', () => {
 				aud: 'mcp-server-api',
 			});
 
-			mcpServerApiKeyService.verifyApiKey.mockResolvedValue(null);
+			mcpServerApiKeyService.verifyApiKey.mockResolvedValue({ user: null });
 
 			const result = await service.getUserForToken(apiKeyToken);
 
-			expect(result).toBeNull();
+			expect(result).toMatchObject({ user: null });
 		});
 	});
 
@@ -162,8 +162,8 @@ describe('McpServerMiddlewareService', () => {
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
-				authType: 'unknown',
-				errorDetails: 'Authorization header not sent',
+				auth_type: 'unknown',
+				error_details: 'Authorization header not sent',
 				reason: 'missing_authorization_header',
 			});
 		});
@@ -189,8 +189,8 @@ describe('McpServerMiddlewareService', () => {
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
-				authType: 'unknown',
-				errorDetails: 'Invalid authorization header format - Missing Bearer prefix',
+				auth_type: 'unknown',
+				error_details: 'Invalid authorization header format - Missing Bearer prefix',
 				reason: 'invalid_bearer_format',
 			});
 		});
@@ -216,8 +216,8 @@ describe('McpServerMiddlewareService', () => {
 				error: 'Unauthorized',
 				client_name: undefined,
 				client_version: undefined,
-				authType: 'unknown',
-				errorDetails: 'Invalid authorization header format - Malformed Bearer token',
+				auth_type: 'unknown',
+				error_details: 'Invalid authorization header format - Malformed Bearer token',
 				reason: 'invalid_bearer_format',
 			});
 		});
@@ -322,8 +322,8 @@ describe('McpServerMiddlewareService', () => {
 				error: 'Unauthorized',
 				client_name: 'test-client',
 				client_version: '1.0.0',
-				authType: 'unknown',
-				errorDetails: 'Authorization header not sent',
+				auth_type: 'unknown',
+				error_details: 'Authorization header not sent',
 				reason: 'missing_authorization_header',
 			});
 		});

@@ -104,12 +104,12 @@ export type AuthFailureReason =
 	| 'user_id_not_in_auth_info'
 	| 'unknown_error';
 
-export type McpAuthType = 'oauth' | 'api_key' | 'unknown';
+export type Mcpauth_type = 'oauth' | 'api_key' | 'unknown';
 
 export type TelemetryAuthContext = {
 	reason: AuthFailureReason;
-	authType: McpAuthType;
-	errorDetails?: string;
+	auth_type: Mcpauth_type;
+	error_details?: string;
 };
 
 export type UserWithContext = {

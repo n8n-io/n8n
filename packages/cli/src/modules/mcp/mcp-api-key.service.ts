@@ -91,7 +91,7 @@ export class McpServerApiKeyService {
 					user: null,
 					context: {
 						reason: 'user_not_found',
-						authType: 'api_key',
+						auth_type: 'api_key',
 					},
 				};
 			}
@@ -102,8 +102,8 @@ export class McpServerApiKeyService {
 				user: null,
 				context: {
 					reason: errorForSure.name === 'JsonWebTokenError' ? 'invalid_token' : 'unknown_error',
-					authType: 'api_key',
-					errorDetails: errorForSure.message,
+					auth_type: 'api_key',
+					error_details: errorForSure.message,
 				},
 			};
 		}

@@ -40,8 +40,8 @@ export class McpServerMiddlewareService {
 				user: null,
 				context: {
 					reason: 'jwt_decode_failed',
-					authType: 'unknown',
-					errorDetails: ensureError(error).message,
+					auth_type: 'unknown',
+					error_details: ensureError(error).message,
 				},
 			};
 		}
@@ -64,8 +64,8 @@ export class McpServerMiddlewareService {
 			if (!authorizationHeader) {
 				this.responseWithUnauthorized(res, req, {
 					reason: 'missing_authorization_header',
-					authType: 'unknown',
-					errorDetails: 'Authorization header not sent',
+					auth_type: 'unknown',
+					error_details: 'Authorization header not sent',
 				});
 				return;
 			}
@@ -77,8 +77,8 @@ export class McpServerMiddlewareService {
 				const error = ensureError(er);
 				this.responseWithUnauthorized(res, req, {
 					reason: 'invalid_bearer_format',
-					authType: 'unknown',
-					errorDetails: error.message,
+					auth_type: 'unknown',
+					error_details: error.message,
 				});
 				return;
 			}
@@ -114,11 +114,9 @@ export class McpServerMiddlewareService {
 		this.trackUnauthorizedEvent(req, context);
 		// RFC 6750 Section 3: Include WWW-Authenticate header for 401 responses
 		res.header('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
-		res
-			.status(401)
-			.send({
-				message: `${UNAUTHORIZED_ERROR_MESSAGE}${context?.errorDetails ? ': ' + context.errorDetails : ''}`,
-			});
+		res.status(401).send({
+			message: `${UNAUTHORIZED_ERROR_MESSAGE}${context?.error_details ? ': ' + context.error_details : ''}`,
+		});
 	}
 
 	private trackUnauthorizedEvent(req: Request, context?: TelemetryAuthContext) {
