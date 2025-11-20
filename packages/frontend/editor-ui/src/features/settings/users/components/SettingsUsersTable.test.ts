@@ -183,9 +183,8 @@ describe('SettingsUsersTable', () => {
 					canEditRole: false,
 				},
 			});
-			screen.getAllByTestId('user-role').forEach((roleCell) => {
-				expect(roleCell).not.toBeVisible();
-			});
+
+			expect(screen.queryByTestId('user-role')).not.toBeInTheDocument();
 		});
 
 		it('should emit "update:role" when a new role is selected', () => {
