@@ -6,7 +6,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { VERSIONS_MODAL_KEY } from '@/app/constants';
 
-import { N8nButton, N8nLink, N8nTooltip } from '@n8n/design-system';
+import { N8nMenuItem } from '@n8n/design-system';
 interface Props {
 	disabled?: boolean;
 	tooltipText?: string;
@@ -37,50 +37,18 @@ const onUpdateClick = async () => {
 </script>
 
 <template>
-	<div :class="$style.container">
-		<N8nLink
-			size="small"
-			theme="text"
-			data-test-id="version-update-next-versions-link"
-			@click="openUpdatesPanel"
-		>
-			{{
-				i18n.baseText('whatsNew.versionsBehind', {
-					interpolate: {
-						count:
-							versionsStore.nextVersions.length > 99 ? '99+' : versionsStore.nextVersions.length,
-					},
-				})
-			}}
-		</N8nLink>
+	<N8nMenuItem
+		data-test-id="version-update-next-versions-link"
+		:item="{
+			id: 'version-update-cta',
+			icon: 'status-warning',
 
-		<N8nTooltip :disabled="!props.tooltipText" :content="props.tooltipText">
-			<N8nButton
-				:class="$style.button"
-				:label="i18n.baseText('whatsNew.update')"
-				data-test-id="version-update-cta-button"
-				size="mini"
-				:disabled="props.disabled"
-				@click="onUpdateClick"
-			/>
-		</N8nTooltip>
-	</div>
+			label: i18n.baseText('whatsNew.versionsBehind', {
+				interpolate: {
+					count: versionsStore.nextVersions.length > 99 ? '99+' : versionsStore.nextVersions.length,
+				},
+			}),
+		}"
+		@click="openUpdatesPanel"
+	/>
 </template>
-
-<style lang="scss" module>
-.container {
-	display: flex;
-	flex-direction: column;
-	justify-content: space-between;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--2xs) var(--spacing--xs);
-	border-radius: var(--radius);
-	border: var(--border);
-	background: var(--color--background--light-1);
-	margin-top: var(--spacing--xs);
-}
-
-.button {
-	width: 100%;
-}
-</style>

@@ -3954,7 +3954,7 @@
 	"insights.upgradeModal.perks.1": "Zoom into last 24 hours with hourly granularity",
 	"insights.upgradeModal.perks.2": "Gain deeper visibility into workflow trends over time",
 	"insights.upgradeModal.title": "Upgrade to Enterprise",
-	"whatsNew.versionsBehind": "{count} version behind | {count} versions behind",
+	"whatsNew.versionsBehind": "Update ({count} version behind) | Update ({count} versions behind)",
 	"whatsNew.update": "Update",
 	"whatsNew.updateNudgeTooltip": "Only owners can perform updates",
 	"whatsNew.updateAvailable": "You're currently on version {currentVersion}. Update to {latestVersion} to get {count} versions worth of new features, improvements, and fixes. See what changed",
