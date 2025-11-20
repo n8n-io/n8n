@@ -164,6 +164,8 @@ export class ChatHubService {
 				return await this.fetchAzureOpenAiModels(credentials, additionalData);
 			case 'awsBedrock':
 				return await this.fetchAwsBedrockModels(credentials, additionalData);
+			case 'cohere':
+				return await this.fetchCohereModels(credentials, additionalData);
 			case 'mistralCloud':
 				return await this.fetchMistralCloudModels(credentials, additionalData);
 			case 'n8n':
@@ -526,6 +528,63 @@ export class ChatHubService {
 				description: result.description ?? String(result.value),
 				model: {
 					provider: 'mistralCloud',
+					model: String(result.value),
+				},
+				createdAt: null,
+				updatedAt: null,
+			})),
+		};
+	}
+
+	private async fetchCohereModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse['cohere']> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/v1/models?page_size=100&endpoint=chat',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'models',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.name}}',
+									value: '={{$responseItem.name}}',
+									description: '={{$responseItem.description}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.cohere,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({
+				name: result.name,
+				description: result.description ?? null,
+				model: {
+					provider: 'cohere',
 					model: String(result.value),
 				},
 				createdAt: null,
