@@ -209,7 +209,7 @@ const onConfirmProvisioningSetting = () => {
 
 .icon {
 	height: 32px; // to match height of download button
-	margin-left: var(--spacing--xs);
+	margin: 0 var(--spacing--lg);
 }
 
 .list {
