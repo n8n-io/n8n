@@ -11,7 +11,14 @@ import { Z } from 'zod-class';
 /**
  * Supported AI model providers
  */
-export const chatHubLLMProviderSchema = z.enum(['openai', 'anthropic', 'google']);
+export const chatHubLLMProviderSchema = z.enum([
+	'openai',
+	'anthropic',
+	'google',
+	'azureOpenAi',
+	'ollama',
+	'awsBedrock',
+]);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
 
 export const chatHubProviderSchema = z.enum([
@@ -32,6 +39,9 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	openai: 'openAiApi',
 	anthropic: 'anthropicApi',
 	google: 'googlePalmApi',
+	ollama: 'ollamaApi',
+	azureOpenAi: 'azureOpenAiApi',
+	awsBedrock: 'aws',
 };
 
 export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE | typeof SEAR_XNG_TOOL_NODE_TYPE;
@@ -54,6 +64,21 @@ const googleModelSchema = z.object({
 	model: z.string(),
 });
 
+const azureOpenAIModelSchema = z.object({
+	provider: z.literal('azureOpenAi'),
+	model: z.string(),
+});
+
+const ollamaModelSchema = z.object({
+	provider: z.literal('ollama'),
+	model: z.string(),
+});
+
+const awsBedrockModelSchema = z.object({
+	provider: z.literal('awsBedrock'),
+	model: z.string(),
+});
+
 const n8nModelSchema = z.object({
 	provider: z.literal('n8n'),
 	workflowId: z.string(),
@@ -68,6 +93,9 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	openAIModelSchema,
 	anthropicModelSchema,
 	googleModelSchema,
+	azureOpenAIModelSchema,
+	ollamaModelSchema,
+	awsBedrockModelSchema,
 	n8nModelSchema,
 	chatAgentSchema,
 ]);
@@ -75,7 +103,16 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 export type ChatHubOpenAIModel = z.infer<typeof openAIModelSchema>;
 export type ChatHubAnthropicModel = z.infer<typeof anthropicModelSchema>;
 export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
-export type ChatHubBaseLLMModel = ChatHubOpenAIModel | ChatHubAnthropicModel | ChatHubGoogleModel;
+export type ChatHubAzureOpenAIModel = z.infer<typeof azureOpenAIModelSchema>;
+export type ChatHubOllamaModel = z.infer<typeof ollamaModelSchema>;
+export type ChatHubAwsBedrockModel = z.infer<typeof awsBedrockModelSchema>;
+export type ChatHubBaseLLMModel =
+	| ChatHubOpenAIModel
+	| ChatHubAnthropicModel
+	| ChatHubGoogleModel
+	| ChatHubAzureOpenAIModel
+	| ChatHubOllamaModel
+	| ChatHubAwsBedrockModel;
 
 export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
 export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
@@ -114,6 +151,9 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	openai: { models: [] },
 	anthropic: { models: [] },
 	google: { models: [] },
+	azureOpenAi: { models: [] },
+	ollama: { models: [] },
+	awsBedrock: { models: [] },
 	n8n: { models: [] },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'custom-agent': { models: [] },

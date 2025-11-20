@@ -4,7 +4,6 @@ import { EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY, TEMPLATES_URLS } from '@/app/con
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { onMounted, ref } from 'vue';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useTemplatesDataQualityStore } from '../stores/templatesDataQuality.store';
 import TemplateCard from './TemplateCard.vue';
 import { useI18n } from '@n8n/i18n';
@@ -20,28 +19,11 @@ const closeModal = () => {
 
 const templates = ref<ITemplatesWorkflowFull[]>([]);
 const isLoadingTemplates = ref(false);
-const nodeTypesStore = useNodeTypesStore();
-
-const trackTemplatesShown = (templateIds: number[]) => {
-	templateIds.forEach((id, index) => {
-		templatesStore.trackTemplateShown(id, index + 1);
-	});
-};
 
 onMounted(async () => {
 	isLoadingTemplates.value = true;
 	try {
-		await nodeTypesStore.loadNodeTypesIfNotLoaded();
-		const ids = templatesStore.getRandomTemplateIds();
-		const promises = ids.map(async (id) => await templatesStore.getTemplateData(id));
-		const results = await Promise.allSettled(promises);
-		templates.value = results
-			.filter(
-				(r): r is PromiseFulfilledResult<ITemplatesWorkflowFull> =>
-					r.status === 'fulfilled' && r.value !== null,
-			)
-			.map((r) => r.value);
-		trackTemplatesShown(ids);
+		templates.value = await templatesStore.loadExperimentTemplates();
 	} finally {
 		isLoadingTemplates.value = false;
 	}
@@ -71,7 +53,12 @@ onMounted(async () => {
 				}}</N8nText>
 			</div>
 			<div v-else :class="$style.suggestions">
-				<TemplateCard v-for="template in templates" :key="template.id" :template="template" />
+				<TemplateCard
+					v-for="(template, index) in templates"
+					:key="template.id"
+					:template="template"
+					:tile-number="index + 1"
+				/>
 			</div>
 			<div :class="$style.seeMore">
 				<N8nLink :href="TEMPLATES_URLS.BASE_WEBSITE_URL">

@@ -5,6 +5,8 @@ import {
 	CHAT_AGENTS_VIEW,
 	TOOLS_SELECTOR_MODAL_KEY,
 	AGENT_EDITOR_MODAL_KEY,
+	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
 } from '@/features/ai/chatHub/constants';
 
 const ChatSidebar = async () => await import('@/features/ai/chatHub/components/ChatSidebar.vue');
@@ -37,6 +39,31 @@ export const ChatModule: FrontendModuleDescription = {
 					credentials: {},
 					onClose: () => {},
 					onCreateCustomAgent: () => {},
+				},
+			},
+		},
+		{
+			key: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+			component: async () => await import('./components/CredentialSelectorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					provider: null,
+					initialValue: null,
+					onSelect: () => {},
+					onCreateNew: () => {},
+				},
+			},
+		},
+		{
+			key: CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+			component: async () => await import('./components/ModelByIdSelectorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					provider: null,
+					initialValue: null,
+					onSelect: () => {},
 				},
 			},
 		},
