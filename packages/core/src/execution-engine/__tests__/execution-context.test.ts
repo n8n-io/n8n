@@ -1,9 +1,9 @@
 import { mock } from 'jest-mock-extended';
 import {
+	createRunExecutionData,
 	UnexpectedError,
 	type IExecutionContext,
 	type INode,
-	type IRunExecutionData,
 	type IWorkflowExecuteAdditionalData,
 	type RelatedExecution,
 	type Workflow,
@@ -20,7 +20,7 @@ describe('establishExecutionContext', () => {
 	describe('successful context establishment', () => {
 		it('should establish context with version 1 and timestamp', async () => {
 			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -40,7 +40,7 @@ describe('establishExecutionContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const beforeTimestamp = Date.now();
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
@@ -58,7 +58,7 @@ describe('establishExecutionContext', () => {
 
 		it('should mutate the provided runExecutionData object', async () => {
 			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -78,7 +78,7 @@ describe('establishExecutionContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const referenceBefore = runExecutionData.executionData;
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
@@ -92,7 +92,7 @@ describe('establishExecutionContext', () => {
 		it('should establish context when execution stack has multiple nodes', async () => {
 			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
 			const secondNode = mock<INode>({ name: 'Second', type: 'n8n-nodes-base.set' });
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -119,7 +119,7 @@ describe('establishExecutionContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
 
@@ -130,7 +130,7 @@ describe('establishExecutionContext', () => {
 
 	describe('Chat Trigger workflow support', () => {
 		it('should establish basic context for empty execution stack (Chat Trigger)', async () => {
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -142,7 +142,7 @@ describe('establishExecutionContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const beforeTimestamp = Date.now();
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
@@ -161,7 +161,7 @@ describe('establishExecutionContext', () => {
 		});
 
 		it('should establish basic context without start node extraction for Chat Trigger', async () => {
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -173,7 +173,7 @@ describe('establishExecutionContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
 
@@ -189,13 +189,13 @@ describe('establishExecutionContext', () => {
 
 	describe('error handling', () => {
 		it('should throw error when executionData is missing', async () => {
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
 				},
 				// executionData is missing
-			};
+			});
 
 			await expect(
 				establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode),
@@ -203,13 +203,13 @@ describe('establishExecutionContext', () => {
 		});
 
 		it('should throw error when executionData is undefined', async () => {
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
 				},
 				executionData: undefined,
-			};
+			});
 
 			await expect(
 				establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode),
@@ -220,7 +220,7 @@ describe('establishExecutionContext', () => {
 	describe('context structure validation', () => {
 		it('should create context with correct structure', async () => {
 			const startNode = mock<INode>({ name: 'Webhook', type: 'n8n-nodes-base.webhook' });
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -240,7 +240,7 @@ describe('establishExecutionContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode);
 
@@ -256,7 +256,7 @@ describe('establishExecutionContext', () => {
 		it('should create unique timestamps for different executions', async () => {
 			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
 
-			const runExecutionData1: IRunExecutionData = {
+			const runExecutionData1 = createRunExecutionData({
 				startData: {},
 				resultData: { runData: {} },
 				executionData: {
@@ -272,9 +272,9 @@ describe('establishExecutionContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
-			const runExecutionData2: IRunExecutionData = {
+			const runExecutionData2 = createRunExecutionData({
 				startData: {},
 				resultData: { runData: {} },
 				executionData: {
@@ -290,7 +290,7 @@ describe('establishExecutionContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			await establishExecutionContext(
 				mockWorkflow,
@@ -318,7 +318,7 @@ describe('establishExecutionContext', () => {
 			const modes: WorkflowExecuteMode[] = ['manual', 'trigger', 'webhook'];
 
 			for (const mode of modes) {
-				const runExecutionData: IRunExecutionData = {
+				const runExecutionData = createRunExecutionData({
 					startData: {},
 					resultData: { runData: {} },
 					executionData: {
@@ -334,7 +334,7 @@ describe('establishExecutionContext', () => {
 						waitingExecution: {},
 						waitingExecutionSource: {},
 					},
-				};
+				});
 
 				await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mode);
 
@@ -355,7 +355,7 @@ describe('establishExecutionContext', () => {
 			};
 
 			const startNode = mock<INode>({ name: 'Wait', type: 'n8n-nodes-base.wait' });
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -376,7 +376,7 @@ describe('establishExecutionContext', () => {
 					waitingExecutionSource: {},
 					runtimeData: existingContext, // Already has context from database
 				},
-			};
+			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'manual');
 
@@ -397,7 +397,7 @@ describe('establishExecutionContext', () => {
 				credentials: 'original-credentials',
 			};
 
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -410,7 +410,7 @@ describe('establishExecutionContext', () => {
 					waitingExecutionSource: {},
 					runtimeData: existingContext,
 				},
-			};
+			});
 
 			// Try to establish with different mode
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'manual');
@@ -429,7 +429,7 @@ describe('establishExecutionContext', () => {
 				credentials: 'webhook-credentials',
 			};
 
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -442,7 +442,7 @@ describe('establishExecutionContext', () => {
 					waitingExecutionSource: {},
 					runtimeData: existingContext,
 				},
-			};
+			});
 
 			await establishExecutionContext(
 				mockWorkflow,
@@ -474,7 +474,7 @@ describe('establishExecutionContext', () => {
 			};
 
 			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -495,7 +495,7 @@ describe('establishExecutionContext', () => {
 					waitingExecutionSource: {},
 				},
 				parentExecution,
-			};
+			});
 
 			const beforeTimestamp = Date.now();
 			await establishExecutionContext(
@@ -533,7 +533,7 @@ describe('establishExecutionContext', () => {
 			};
 
 			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -554,7 +554,7 @@ describe('establishExecutionContext', () => {
 					waitingExecutionSource: {},
 				},
 				parentExecution,
-			};
+			});
 
 			await establishExecutionContext(
 				mockWorkflow,
@@ -588,7 +588,7 @@ describe('establishExecutionContext', () => {
 				executionContext: parentContext,
 			};
 
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -601,7 +601,7 @@ describe('establishExecutionContext', () => {
 					waitingExecutionSource: {},
 				},
 				parentExecution,
-			};
+			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'manual');
 
@@ -630,7 +630,7 @@ describe('establishExecutionContext', () => {
 				executionContext: parentContext,
 			};
 
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -643,7 +643,7 @@ describe('establishExecutionContext', () => {
 					waitingExecutionSource: {},
 				},
 				parentExecution,
-			};
+			});
 
 			await establishExecutionContext(
 				mockWorkflow,
@@ -679,7 +679,7 @@ describe('establishExecutionContext', () => {
 				name: 'ErrorTrigger',
 				type: 'n8n-nodes-base.errorTrigger',
 			});
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -706,7 +706,7 @@ describe('establishExecutionContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const beforeTimestamp = Date.now();
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'error');
@@ -735,7 +735,7 @@ describe('establishExecutionContext', () => {
 				name: 'ErrorTrigger',
 				type: 'n8n-nodes-base.errorTrigger',
 			});
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -756,7 +756,7 @@ describe('establishExecutionContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'error');
 
@@ -783,7 +783,7 @@ describe('establishExecutionContext', () => {
 				name: 'ErrorTrigger',
 				type: 'n8n-nodes-base.errorTrigger',
 			});
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -810,7 +810,7 @@ describe('establishExecutionContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'error');
 
@@ -846,7 +846,7 @@ describe('establishExecutionContext', () => {
 			};
 
 			const startNode = mock<INode>({ name: 'Start', type: 'n8n-nodes-base.start' });
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -878,7 +878,7 @@ describe('establishExecutionContext', () => {
 					workflowId: 'rundata-workflow-id',
 					executionContext: runDataParentContext,
 				},
-			};
+			});
 
 			await establishExecutionContext(
 				mockWorkflow,
@@ -900,7 +900,7 @@ describe('establishExecutionContext', () => {
 				workflowId: '',
 			};
 
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -913,7 +913,7 @@ describe('establishExecutionContext', () => {
 					waitingExecutionSource: {},
 				},
 				parentExecution,
-			};
+			});
 
 			await establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, 'manual');
 
@@ -940,7 +940,7 @@ describe('establishExecutionContext', () => {
 				credentials: 'parent-credentials',
 			};
 
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -958,7 +958,7 @@ describe('establishExecutionContext', () => {
 					workflowId: 'parent-wf-id',
 					executionContext: parentContext,
 				},
-			};
+			});
 
 			await establishExecutionContext(
 				mockWorkflow,

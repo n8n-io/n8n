@@ -14,9 +14,13 @@ describe('RunExecutionDataFactory', () => {
 			const result = createRunExecutionData();
 
 			expect(result).toEqual({
+				version: 1,
 				startData: {},
 				manualData: undefined,
 				parentExecution: undefined,
+				pushRef: undefined,
+				validateSignature: undefined,
+				waitTill: undefined,
 				resultData: {
 					error: undefined,
 					runData: {},
@@ -102,6 +106,7 @@ describe('RunExecutionDataFactory', () => {
 			const result = createEmptyRunExecutionData();
 
 			expect(result).toEqual({
+				version: 1,
 				resultData: {
 					runData: {},
 				},
@@ -127,7 +132,10 @@ describe('RunExecutionDataFactory', () => {
 
 			const result = createErrorExecutionData(node, error);
 
-			expect(result.startData?.destinationNode).toBe('TestNode');
+			expect(result.startData?.destinationNode).toEqual({
+				nodeName: 'TestNode',
+				mode: 'inclusive',
+			});
 			expect(result.startData?.runNodeFilter).toEqual(['TestNode']);
 
 			expect(result.executionData?.contextData).toEqual({});

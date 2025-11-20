@@ -13,6 +13,7 @@ import { createUser } from '@test-integration/db/users';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import {
+	createRunExecutionData,
 	type ExecutionStatus,
 	type INode,
 	type IRun,
@@ -59,7 +60,7 @@ describe('WorkflowStatisticsService', () => {
 				const runData: IRun = {
 					finished: true,
 					status: 'success',
-					data: { resultData: { runData: {} } },
+					data: createRunExecutionData({ resultData: { runData: {} } }),
 					mode,
 					startedAt: new Date(),
 				};
@@ -90,7 +91,7 @@ describe('WorkflowStatisticsService', () => {
 					// use `success` to make sure it would upsert if it were not for the
 					// mode used
 					status: 'success',
-					data: { resultData: { runData: {} } },
+					data: createRunExecutionData({ resultData: { runData: {} } }),
 					mode,
 					startedAt: new Date(),
 				};
@@ -119,7 +120,7 @@ describe('WorkflowStatisticsService', () => {
 				const runData: IRun = {
 					finished: true,
 					status,
-					data: { resultData: { runData: {} } },
+					data: createRunExecutionData({ resultData: { runData: {} } }),
 					mode: 'trigger',
 					startedAt: new Date(),
 				};
@@ -148,7 +149,7 @@ describe('WorkflowStatisticsService', () => {
 				const runData: IRun = {
 					finished: true,
 					status,
-					data: { resultData: { runData: {} } },
+					data: createRunExecutionData({ resultData: { runData: {} } }),
 					// use `trigger` to make sure it would upsert if it were not for the
 					// status used
 					mode: 'trigger',
@@ -177,7 +178,7 @@ describe('WorkflowStatisticsService', () => {
 			const runData: IRun = {
 				finished: true,
 				status: 'success',
-				data: { resultData: { runData: {} } },
+				data: createRunExecutionData({ resultData: { runData: {} } }),
 				mode: 'internal',
 				startedAt: new Date(),
 			};
@@ -207,7 +208,7 @@ describe('WorkflowStatisticsService', () => {
 			const runData: IRun = {
 				finished: false,
 				status: 'error',
-				data: { resultData: { runData: {} } },
+				data: createRunExecutionData({ resultData: { runData: {} } }),
 				mode: 'internal',
 				startedAt: new Date(),
 			};
@@ -227,7 +228,7 @@ describe('WorkflowStatisticsService', () => {
 			const runData: IRun = {
 				finished: true,
 				status: 'success',
-				data: { resultData: { runData: {} } },
+				data: createRunExecutionData({ resultData: { runData: {} } }),
 				mode: 'internal',
 				startedAt: new Date(),
 			};

@@ -6,7 +6,7 @@
  */
 
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
-import type { IRunExecutionDataV1 } from './run-execution-data.v1';
+import { runExecutionDataV0ToV1, type IRunExecutionDataV1 } from './run-execution-data.v1';
 
 /**
  * All the versions of the interface.
@@ -18,6 +18,17 @@ export type IRunExecutionDataAll = IRunExecutionDataV0 | IRunExecutionDataV1;
 /**
  * Current version of IRunExecutionData.
  *
- * TODO: make V1 the default.
+ * TODO: switch to V1.
  */
-export type IRunExecutionData = IRunExecutionDataV0;
+export type IRunExecutionData = IRunExecutionDataV0 & {
+	readonly __brand: 'Use createRunExecutionData factory instead of constructing manually';
+};
+
+export function migrateRunExecutionData(data: IRunExecutionDataAll): IRunExecutionData {
+	switch (data.version) {
+		case 0:
+			data = runExecutionDataV0ToV1(data);
+		// Fall through to subsequent versions as they're added.
+	}
+	return data as IRunExecutionData;
+}

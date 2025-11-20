@@ -1,3 +1,4 @@
+import type { IExecutionContext } from './execution-context';
 import type {
 	IRunData,
 	IPinData,
@@ -33,6 +34,7 @@ export interface CreateFullRunExecutionDataOptions {
 		metadata?: Record<string, ITaskMetadata[]>;
 		waitingExecution?: IWaitingForExecution;
 		waitingExecutionSource?: IWaitingForExecutionSource | null;
+		runtimeData?: IExecutionContext;
 	} | null;
 	parentExecution?: RelatedExecution;
 	validateSignature?: boolean;
@@ -49,11 +51,11 @@ export interface CreateFullRunExecutionDataOptions {
 export function createRunExecutionData(
 	options: CreateFullRunExecutionDataOptions = {},
 ): IRunExecutionData {
-	const runExecutionData: IRunExecutionData = {
+	return {
+		version: 0,
 		startData: options.startData ?? {},
 		resultData: {
 			error: options.resultData?.error,
-			// @ts-expect-error CAT-752
 			runData:
 				options.resultData?.runData === null ? undefined : (options.resultData?.runData ?? {}),
 			pinData: options.resultData?.pinData,
@@ -75,9 +77,7 @@ export function createRunExecutionData(
 		waitTill: options.waitTill,
 		manualData: options.manualData,
 		pushRef: options.pushRef,
-	};
-
-	return runExecutionData;
+	} as unknown as IRunExecutionData;
 }
 
 /**
@@ -87,10 +87,11 @@ export function createRunExecutionData(
  */
 export function createEmptyRunExecutionData(): IRunExecutionData {
 	return {
+		version: 0,
 		resultData: {
 			runData: {},
 		},
-	};
+	} as unknown as IRunExecutionData;
 }
 
 /**
@@ -103,6 +104,7 @@ export function createEmptyRunExecutionData(): IRunExecutionData {
  */
 export function createErrorExecutionData(node: INode, error: ExecutionError): IRunExecutionData {
 	return {
+		version: 0,
 		startData: {
 			destinationNode: node.name,
 			runNodeFilter: [node.name],
@@ -146,5 +148,5 @@ export function createErrorExecutionData(node: INode, error: ExecutionError): IR
 			error,
 			lastNodeExecuted: node.name,
 		},
-	};
+	} as unknown as IRunExecutionData;
 }
