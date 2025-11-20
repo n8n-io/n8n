@@ -28,20 +28,19 @@ export declare namespace WorkflowRequest {
 		uiContext?: string;
 	}>;
 
-	// 1. Full Manual Execution from Trigger
-	type FullManualExecutionFromTriggerPayload = {
+	// 1. Full Manual Execution from Known Trigger
+	type FullManualExecutionFromKnownTriggerPayload = {
 		workflowData: IWorkflowBase;
+		destinationNode: string;
 		triggerToStartFrom?: { name: string; data?: ITaskData };
 		agentRequest?: AiAgentRequest;
 	};
-	// 2. Full Manual Execution to Destination
-	type FullManualExecutionToDestinationPayload = {
+	// 2. Full Manual Execution from Unknown Trigger
+	type FullManualExecutionFromUnknownTriggerPayload = {
 		workflowData: IWorkflowBase;
 		destinationNode: string;
 		agentRequest?: AiAgentRequest;
 	};
-
-	// There could also be an edge case for the chat node where the triggerToStartFrom with data and the destinationNode exists.
 
 	// 3. Partial Manual Execution to Destination
 	type PartialManualExecutionToDestination = {
@@ -53,8 +52,8 @@ export declare namespace WorkflowRequest {
 	};
 
 	type ManualRunPayload =
-		| FullManualExecutionFromTriggerPayload
-		| FullManualExecutionToDestinationPayload
+		| FullManualExecutionFromKnownTriggerPayload
+		| FullManualExecutionFromUnknownTriggerPayload
 		| PartialManualExecutionToDestination;
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
