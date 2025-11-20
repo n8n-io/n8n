@@ -40,6 +40,8 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 	const dataTableSizeLimitState = ref<DataTableSizeStatus>('ok');
 	const dataTableTableSizes = ref<Record<string, number>>({});
 
+	const UTF8_BOM = '\uFEFF';
+
 	const projectPermissions = computed(() =>
 		getResourcePermissions(
 			projectStore.currentProject?.scopes ?? projectStore.personalProject?.scopes,
@@ -274,34 +276,43 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		return result;
 	};
 
+	const createCsvBlob = (csvContent: string): Blob => {
+		// Add BOM for Excel compatibility with special characters
+		return new Blob([UTF8_BOM + csvContent], {
+			type: 'text/csv;charset=utf-8;',
+		});
+	};
+
+	const triggerBrowserDownload = (blob: Blob, filename: string): void => {
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+
+		link.href = url;
+		link.download = filename;
+		link.style.display = 'none';
+
+		document.body.appendChild(link);
+
+		try {
+			link.click();
+		} finally {
+			// Ensure cleanup happens even if click fails
+			if (document.body.contains(link)) {
+				document.body.removeChild(link);
+			}
+			URL.revokeObjectURL(url);
+		}
+	};
+
 	const downloadDataTableCsv = async (dataTableId: string, projectId: string) => {
-		// Fetch CSV content with authentication
 		const { csvContent, filename } = await downloadDataTableCsvApi(
 			rootStore.restApiContext,
 			dataTableId,
 			projectId,
 		);
 
-		// Create blob with UTF-8 BOM for Excel compatibility
-		const bom = '\uFEFF';
-		const blob = new Blob([bom + csvContent], { type: 'text/csv;charset=utf-8;' });
-		const url = URL.createObjectURL(blob);
-
-		const tempElement = document.createElement('a');
-		tempElement.setAttribute('href', url);
-		tempElement.setAttribute('download', filename);
-		tempElement.style.display = 'none';
-		document.body.appendChild(tempElement);
-
-		try {
-			tempElement.click();
-		} finally {
-			// Ensure cleanup happens even if click fails
-			if (document.body.contains(tempElement)) {
-				document.body.removeChild(tempElement);
-			}
-			URL.revokeObjectURL(url);
-		}
+		const csvBlob = createCsvBlob(csvContent);
+		triggerBrowserDownload(csvBlob, filename);
 	};
 
 	return {

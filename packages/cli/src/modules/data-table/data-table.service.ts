@@ -777,8 +777,18 @@ export class DataTableService {
 
 		// RFC 4180 compliant escaping:
 		// - If value contains comma, quote, or newline, wrap in quotes
+		// - Also wrap if value has leading/trailing spaces to prevent trimming
 		// - Escape quotes by doubling them
-		if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
+		const hasLeadingOrTrailingSpace =
+			str.length > 0 && (str[0] === ' ' || str[str.length - 1] === ' ');
+
+		if (
+			str.includes(',') ||
+			str.includes('"') ||
+			str.includes('\n') ||
+			str.includes('\r') ||
+			hasLeadingOrTrailingSpace
+		) {
 			return `"${str.replace(/"/g, '""')}"`;
 		}
 
