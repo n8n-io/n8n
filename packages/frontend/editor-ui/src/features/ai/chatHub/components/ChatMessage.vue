@@ -14,7 +14,6 @@ import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
-import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
