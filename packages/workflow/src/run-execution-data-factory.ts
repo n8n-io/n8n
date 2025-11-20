@@ -59,6 +59,7 @@ export function createRunExecutionData(
 		startData: options.startData ?? {},
 		resultData: {
 			error: options.resultData?.error,
+			// @ts-expect-error CAT-752
 			runData:
 				options.resultData?.runData === null ? undefined : (options.resultData?.runData ?? {}),
 			pinData: options.resultData?.pinData,
