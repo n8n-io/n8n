@@ -195,19 +195,23 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			return;
 		}
 
-		const isActivatingSamlLogin = !ssoStore.isSamlLoginEnabled && samlLoginEnabled.value;
-
-		if (isActivatingSamlLogin) {
-			await prompTestSamlConnectionBeforeActivating();
-		}
-
 		const metaDataConfig: Partial<SamlPreferences> =
 			ipsType.value === IdentityProviderSettingsType.URL
 				? { metadataUrl: metadataUrl.value }
 				: { metadata: metadata.value };
+
+		const isActivatingSamlLogin = !ssoStore.isSamlLoginEnabled && samlLoginEnabled.value;
+
+		if (isActivatingSamlLogin) {
+			// metadata settings need to be saved for test to work
+			await ssoStore.saveSamlConfig(metaDataConfig);
+
+			await prompTestSamlConnectionBeforeActivating();
+		}
+
 		const configResponse = await ssoStore.saveSamlConfig({
-			loginEnabled: samlLoginEnabled.value,
 			...metaDataConfig,
+			loginEnabled: samlLoginEnabled.value,
 		});
 
 		if (isUserRoleProvisioningChanged()) {
