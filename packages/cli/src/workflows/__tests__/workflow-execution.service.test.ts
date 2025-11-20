@@ -93,7 +93,11 @@ describe('WorkflowExecutionService', () => {
 	describe('runWorkflow()', () => {
 		test('should call `WorkflowRunner.run()`', async () => {
 			const node = mock<INode>();
-			const workflow = mock<IWorkflowBase>({ active: true, nodes: [node] });
+			const workflow = mock<IWorkflowBase>({
+				active: true,
+				activeVersionId: 'some-version-id',
+				nodes: [node],
+			});
 
 			workflowRunner.run.mockResolvedValue('fake-execution-id');
 
@@ -104,6 +108,10 @@ describe('WorkflowExecutionService', () => {
 	});
 
 	describe('executeManually()', () => {
+		beforeEach(() => {
+			workflowRunner.run.mockClear();
+		});
+
 		test('should call `WorkflowRunner.run()` with correct parameters with default partial execution logic', async () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';
@@ -253,6 +261,7 @@ describe('WorkflowExecutionService', () => {
 					id: 'abc',
 					name: 'test',
 					active: false,
+					activeVersionId: null,
 					isArchived: false,
 					pinData: {
 						[pinnedTrigger.name]: [{ json: {} }],
@@ -320,6 +329,7 @@ describe('WorkflowExecutionService', () => {
 					id: 'abc',
 					name: 'test',
 					active: false,
+					activeVersionId: null,
 					isArchived: false,
 					pinData: {
 						[pinnedTrigger.name]: [{ json: {} }],
@@ -353,6 +363,38 @@ describe('WorkflowExecutionService', () => {
 				// pass unexecuted trigger to start from
 				triggerToStartFrom: runPayload.triggerToStartFrom,
 			});
+			expect(result).toEqual({ executionId });
+		});
+
+		test('should force current version for manual execution even if workflow has active version', async () => {
+			const executionId = 'fake-execution-id';
+			const userId = 'user-id';
+			const user = mock<User>({ id: userId });
+			const runPayload: WorkflowRequest.ManualRunPayload = {
+				workflowData: {
+					id: 'workflow-id',
+					name: 'Test Workflow',
+					active: true,
+					activeVersionId: 'version-123',
+					isArchived: false,
+					nodes: [],
+					connections: {},
+					createdAt: new Date(),
+					updatedAt: new Date(),
+				},
+				startNodes: [],
+				destinationNode: undefined,
+			};
+
+			workflowRunner.run.mockResolvedValue(executionId);
+
+			const result = await workflowExecutionService.executeManually(runPayload, user);
+
+			expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+			const callArgs = workflowRunner.run.mock.calls[0][0];
+			expect(callArgs.workflowData.active).toBe(false);
+			expect(callArgs.workflowData.activeVersionId).toBe(null);
+			expect(callArgs.executionMode).toBe('manual');
 			expect(result).toEqual({ executionId });
 		});
 	});
@@ -625,6 +667,7 @@ describe('WorkflowExecutionService', () => {
 				id: 'error-workflow-id',
 				name: 'Error Workflow',
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				pinData: {},
 				nodes: [errorTriggerNode],

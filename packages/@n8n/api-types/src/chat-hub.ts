@@ -18,6 +18,7 @@ export const chatHubLLMProviderSchema = z.enum([
 	'azureOpenAi',
 	'ollama',
 	'awsBedrock',
+	'cohere',
 	'mistralCloud',
 ]);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
@@ -43,6 +44,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	ollama: 'ollamaApi',
 	azureOpenAi: 'azureOpenAiApi',
 	awsBedrock: 'aws',
+	cohere: 'cohereApi',
 	mistralCloud: 'mistralCloudApi',
 };
 
@@ -81,6 +83,11 @@ const awsBedrockModelSchema = z.object({
 	model: z.string(),
 });
 
+const cohereModelSchema = z.object({
+	provider: z.literal('cohere'),
+	model: z.string(),
+});
+
 const mistralCloudModelSchema = z.object({
 	provider: z.literal('mistralCloud'),
 	model: z.string(),
@@ -103,6 +110,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	azureOpenAIModelSchema,
 	ollamaModelSchema,
 	awsBedrockModelSchema,
+	cohereModelSchema,
 	mistralCloudModelSchema,
 	n8nModelSchema,
 	chatAgentSchema,
@@ -114,6 +122,7 @@ export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
 export type ChatHubAzureOpenAIModel = z.infer<typeof azureOpenAIModelSchema>;
 export type ChatHubOllamaModel = z.infer<typeof ollamaModelSchema>;
 export type ChatHubAwsBedrockModel = z.infer<typeof awsBedrockModelSchema>;
+export type ChatHubCohereModel = z.infer<typeof cohereModelSchema>;
 export type ChatHubMistralCloudModel = z.infer<typeof mistralCloudModelSchema>;
 export type ChatHubBaseLLMModel =
 	| ChatHubOpenAIModel
@@ -122,6 +131,7 @@ export type ChatHubBaseLLMModel =
 	| ChatHubAzureOpenAIModel
 	| ChatHubOllamaModel
 	| ChatHubAwsBedrockModel
+	| ChatHubCohereModel
 	| ChatHubMistralCloudModel;
 
 export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
@@ -165,6 +175,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	azureOpenAi: { models: [] },
 	ollama: { models: [] },
 	awsBedrock: { models: [] },
+	cohere: { models: [] },
 	mistralCloud: { models: [] },
 	n8n: { models: [] },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -275,7 +286,16 @@ export interface ChatHubMessageDto {
 	attachments: Array<{ fileName?: string; mimeType?: string }>;
 }
 
-export type ChatHubConversationsResponse = ChatHubSessionDto[];
+export class ChatHubConversationsRequest extends Z.class({
+	limit: z.coerce.number().int().min(1).max(100),
+	cursor: z.string().uuid().optional(),
+}) {}
+
+export interface ChatHubConversationsResponse {
+	data: ChatHubSessionDto[];
+	nextCursor: string | null;
+	hasMore: boolean;
+}
 
 export interface ChatHubConversationDto {
 	messages: Record<ChatMessageId, ChatHubMessageDto>;

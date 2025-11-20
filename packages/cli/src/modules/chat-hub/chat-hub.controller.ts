@@ -10,6 +10,7 @@ import {
 	ChatMessageId,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
+	ChatHubConversationsRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -22,6 +23,7 @@ import {
 	Delete,
 	Param,
 	Patch,
+	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
@@ -59,8 +61,9 @@ export class ChatHubController {
 	async getConversations(
 		req: AuthenticatedRequest,
 		_res: Response,
+		@Query query: ChatHubConversationsRequest,
 	): Promise<ChatHubConversationsResponse> {
-		return await this.chatService.getConversations(req.user.id);
+		return await this.chatService.getConversations(req.user.id, query.limit, query.cursor);
 	}
 
 	@Get('/conversations/:sessionId')

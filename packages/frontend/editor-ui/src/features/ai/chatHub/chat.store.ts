@@ -35,6 +35,7 @@ import {
 	type EnrichedStructuredChunk,
 	type ChatHubMessageStatus,
 	type ChatModelDto,
+	type ChatHubConversationsResponse,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -56,7 +57,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const telemetry = useTelemetry();
 
 	const agents = ref<ChatModelsResponse>();
-	const sessions = ref<ChatHubSessionDto[]>();
+	const sessions = ref<ChatHubConversationsResponse>();
+	const sessionsLoadingMore = ref(false);
+
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 	const streaming = ref<ChatStreamingState>();
 
@@ -270,8 +273,39 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return agents.value;
 	}
 
-	async function fetchSessions() {
-		sessions.value = await fetchSessionsApi(rootStore.restApiContext);
+	async function fetchSessions(reset: boolean) {
+		if (sessionsLoadingMore.value) {
+			return;
+		}
+
+		if (!reset && sessions.value && !sessions.value.hasMore && sessions.value.data.length > 0) {
+			return;
+		}
+
+		if (!reset) {
+			sessionsLoadingMore.value = true;
+		}
+
+		try {
+			const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
+			const [response] = await Promise.all([
+				fetchSessionsApi(rootStore.restApiContext, 40, cursor),
+				new Promise((resolve) => setTimeout(resolve, 500)),
+			]);
+
+			sessions.value = {
+				...response,
+				data: [...(reset ? [] : (sessions.value?.data ?? [])), ...response.data],
+			};
+		} finally {
+			sessionsLoadingMore.value = false;
+		}
+	}
+
+	async function fetchMoreSessions() {
+		if (sessions.value?.hasMore && !sessionsLoadingMore.value) {
+			await fetchSessions(false);
+		}
 	}
 
 	async function fetchMessages(sessionId: string) {
@@ -302,25 +336,30 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		addMessage(streaming.value.sessionId, message);
 
-		if (sessions.value?.some((session) => session.id === streaming.value?.sessionId)) {
+		if (sessions.value?.data.some((session) => session.id === streaming.value?.sessionId)) {
 			return;
 		}
 
-		sessions.value = [
-			...(sessions.value ?? []),
-			{
-				id: streaming.value.sessionId,
-				title: 'New Chat',
-				ownerId: '',
-				lastMessageAt: new Date().toISOString(),
-				credentialId: null,
-				agentName: null,
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				tools: [],
-				...flattenModel(streaming.value.model),
-			},
-		];
+		sessions.value = {
+			hasMore: false,
+			nextCursor: null,
+			...sessions.value,
+			data: [
+				...(sessions.value?.data ?? []),
+				{
+					id: streaming.value.sessionId,
+					title: 'New Chat',
+					ownerId: '',
+					lastMessageAt: new Date().toISOString(),
+					credentialId: null,
+					agentName: null,
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					tools: [],
+					...flattenModel(streaming.value.model),
+				},
+			],
+		};
 	}
 
 	function ensureMessage(sessionId: ChatSessionId, messageId: ChatMessageId): ChatMessage {
@@ -402,8 +441,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			3,
 		);
 
-		// update the conversation list
-		await fetchSessions();
+		// update the conversation list to reflect the new title
+		await fetchSessions(true);
 	}
 
 	function onStreamError(error: Error) {
@@ -607,7 +646,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function updateSession(sessionId: ChatSessionId, toUpdate: Partial<ChatHubSessionDto>) {
-		sessions.value = sessions.value?.map((session) =>
+		if (!sessions.value) {
+			return;
+		}
+
+		sessions.value.data = sessions.value.data?.map((session) =>
 			session.id === sessionId
 				? {
 						...session,
@@ -618,7 +661,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function updateToolsInSession(sessionId: ChatSessionId, tools: INode[]) {
-		const session = sessions.value?.find((s) => s.id === sessionId);
+		const session = sessions.value?.data?.find((s) => s.id === sessionId);
 		if (!session) {
 			throw new Error(`Session with ID ${sessionId} not found`);
 		}
@@ -644,7 +687,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	async function deleteSession(sessionId: ChatSessionId) {
 		await deleteConversationApi(rootStore.restApiContext, sessionId);
 
-		sessions.value = sessions.value?.filter((session) => session.id !== sessionId);
+		if (sessions.value) {
+			sessions.value = {
+				...sessions.value,
+				data: sessions.value.data?.filter((session) => session.id !== sessionId),
+			};
+		}
 	}
 
 	function switchAlternative(sessionId: ChatSessionId, messageId: ChatMessageId) {
@@ -730,13 +778,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function getAgent(model: ChatHubConversationModel) {
-		if (!agents.value) return;
+		if (!agents.value) return null;
 
 		const agent = agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
 
 		if (!agent) {
 			if (model.provider === 'custom-agent' || model.provider === 'n8n') {
-				return;
+				return null;
 			}
 
 			// Allow custom models chosen by ID even if they are not in the fetched list
@@ -774,9 +822,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		/**
 		 * conversations
 		 */
-		sessions: computed(() => sessions.value ?? []),
+		sessions: computed(() => sessions.value?.data ?? []),
 		sessionsReady: computed(() => sessions.value !== undefined),
+		sessionsLoading: computed(() => sessionsLoadingMore.value),
 		fetchSessions,
+		fetchMoreSessions,
 		renameSession,
 		updateSessionModel,
 		deleteSession,
