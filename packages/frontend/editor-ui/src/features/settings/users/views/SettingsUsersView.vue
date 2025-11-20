@@ -27,8 +27,9 @@ import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
-
+import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import { ElSwitch } from 'element-plus';
+import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
 import {
 	N8nActionBox,
 	N8nBadge,
@@ -69,6 +70,8 @@ const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
 const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
 );
+
+const userRoleProvisioningStore = useUserRoleProvisioningStore();
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
@@ -448,6 +451,15 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				</EnterpriseEdition>
 			</div>
 		</div>
+		<div
+			v-if="!userRoleProvisioningStore.isInstanceRoleProvisioningEnabled"
+			:class="$style.container"
+		>
+			<N8nAlert
+				type="info"
+				:title="i18n.baseText('settings.provisioningInstanceRolesHandledBySsoProvider.description')"
+			/>
+		</div>
 		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
 			<N8nInput
 				:class="$style.search"
@@ -467,7 +479,11 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				</template>
 				<div>
 					<N8nButton
-						:disabled="ssoStore.isSamlLoginEnabled || !usersStore.usersLimitNotReached"
+						:disabled="
+							ssoStore.isSamlLoginEnabled ||
+							!usersStore.usersLimitNotReached ||
+							userRoleProvisioningStore.isInstanceRoleProvisioningEnabled
+						"
 						:label="i18n.baseText('settings.users.invite')"
 						size="large"
 						data-test-id="settings-users-invite-button"
@@ -485,6 +501,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 			<SettingsUsersTable
 				v-model:table-options="usersTableState"
 				data-test-id="settings-users-table"
+				:can-edit-role="!userRoleProvisioningStore.isInstanceRoleProvisioningEnabled"
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"
 				:actions="usersListActions"

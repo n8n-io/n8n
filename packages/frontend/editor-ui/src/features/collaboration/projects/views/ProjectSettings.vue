@@ -22,6 +22,8 @@ import { isIconOrEmoji, type IconOrEmoji } from '@n8n/design-system/components/N
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import type { UserAction } from '@n8n/design-system';
 import { isProjectRole } from '@/app/utils/typeGuards';
+import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
+import { N8nAlert } from '@n8n/design-system';
 
 import {
 	N8nButton,
@@ -45,6 +47,7 @@ const i18n = useI18n();
 const projectsStore = useProjectsStore();
 const rolesStore = useRolesStore();
 const cloudPlanStore = useCloudPlanStore();
+const userRoleProvisioningStore = useUserRoleProvisioningStore();
 const toast = useToast();
 const router = useRouter();
 const telemetry = useTelemetry();
@@ -567,6 +570,7 @@ onMounted(() => {
 						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="project-members-select"
 						@update:model-value="onAddMember"
+						:disabled="!userRoleProvisioningStore.isInstanceRoleProvisioningEnabled"
 					>
 						<template #prefix>
 							<N8nIcon icon="search" />
@@ -586,6 +590,14 @@ onMounted(() => {
 						</template>
 					</N8nInput>
 				</div>
+				<div v-if="!userRoleProvisioningStore.isInstanceRoleProvisioningEnabled" class="mb-m">
+					<N8nAlert
+						type="info"
+						:title="
+							i18n.baseText('settings.provisioningProjectRolesHandledBySsoProvider.description')
+						"
+					/>
+				</div>
 				<div v-if="relationUsers.length > 0" :class="$style.membersTableContainer">
 					<ProjectMembersTable
 						v-model:table-options="membersTableState"
@@ -594,6 +606,7 @@ onMounted(() => {
 						:current-user-id="usersStore.currentUser?.id"
 						:project-roles="rolesStore.processedProjectRoles"
 						:actions="projectMembersActions"
+						:can-edit-role="!userRoleProvisioningStore.isInstanceRoleProvisioningEnabled"
 						@update:options="onUpdateMembersTableOptions"
 						@update:role="onUpdateMemberRole"
 						@action="onMembersListAction"

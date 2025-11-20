@@ -2531,6 +2531,8 @@
 	"settings.provisioningConfirmDialog.button.generateCsvExport": "Generate access settings CSV export",
 	"settings.provisioningConfirmDialog.button.downloadProjectRolesCsv": "Download existing project access settings csv",
 	"settings.provisioningConfirmDialog.button.downloadInstanceRolesCsv": "Download existing instance role settings csv",
+	"settings.provisioningInstanceRolesHandledBySsoProvider.description": "Your n8n instance is configured to manage users and instance roles from within your SSO provider. Please constant an instance owner / admin for help with this.",
+	"settings.provisioningProjectRolesHandledBySsoProvider.description": "Your n8n instance is configured to manage users and project roles from within your SSO provider. Please constant an instance owner / admin for help with this.",
 	"settings.externalSecrets.title": "External Secrets",
 	"settings.externalSecrets.info": "Connect external secrets tools for centralized credentials management across environments, and to enhance system security.",
 	"settings.externalSecrets.info.link": "More info",
