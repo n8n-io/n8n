@@ -1,0 +1,397 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { INodeTypeDescription } from 'n8n-workflow';
+
+import {
+	setupIntegrationLLM,
+	shouldRunIntegrationTests,
+} from '@/chains/test/integration/test-helpers';
+import { loadNodesFromFile } from '../../../../evaluations/load-nodes';
+import { DiscoverySubgraph } from '@/subgraphs/discovery.subgraph';
+
+/**
+ * Integration tests for Discovery Subgraph
+ *
+ * These tests use a real LLM and make actual API calls to verify end-to-end discovery behavior.
+ * They are skipped by default and only run when ENABLE_INTEGRATION_TESTS=true
+ *
+ * To run these tests:
+ * ENABLE_INTEGRATION_TESTS=true N8N_AI_ANTHROPIC_KEY=your-key pnpm test discovery-subgraph.integration
+ */
+
+// Test prompts covering different workflow types
+const testPrompts = [
+	{
+		name: 'Monitoring workflow',
+		prompt:
+			'Create a workflow that monitors my website every 5 minutes and sends me a Slack notification if it goes down',
+		expectedNodes: ['n8n-nodes-base.httpRequest', 'n8n-nodes-base.scheduleTrigger'],
+		minNodes: 2,
+	},
+	{
+		name: 'Form input workflow',
+		prompt:
+			'Set up a form to collect customer feedback, analyze sentiment with AI, and store the results in Airtable',
+		expectedNodes: ['n8n-nodes-base.formTrigger'],
+		minNodes: 3,
+	},
+	{
+		name: 'RAG chatbot workflow',
+		prompt:
+			'Build a chatbot that can answer customer questions using information from our knowledge base with RAG',
+		expectedNodes: [
+			'@n8n/n8n-nodes-langchain.chatTrigger',
+			'@n8n/n8n-nodes-langchain.agent',
+			'@n8n/n8n-nodes-langchain.vectorStore',
+		],
+		minNodes: 4,
+	},
+	{
+		name: 'API integration workflow',
+		prompt: 'Fetch weather data from OpenWeatherMap API and send daily forecast email via Gmail',
+		expectedNodes: ['n8n-nodes-base.httpRequest', 'n8n-nodes-base.gmail'],
+		minNodes: 2,
+	},
+	{
+		name: 'Data transformation workflow',
+		prompt: 'Read CSV file, transform data with JavaScript, and upload to Google Sheets',
+		expectedNodes: ['n8n-nodes-base.readBinaryFile', 'n8n-nodes-base.code'],
+		minNodes: 3,
+	},
+	{
+		name: 'Multi-agent AI workflow',
+		prompt:
+			'Create 4 AI agents (research, fact-check, writer, formatter) that work together to create and send weekly newsletter',
+		expectedNodes: ['@n8n/n8n-nodes-langchain.agent', '@n8n/n8n-nodes-langchain.lmChatAnthropic'],
+		minNodes: 5,
+	},
+	{
+		name: 'Webhook workflow',
+		prompt: 'Receive webhook from Stripe, validate payment, and update customer record in database',
+		expectedNodes: ['n8n-nodes-base.webhook'],
+		minNodes: 2,
+	},
+	{
+		name: 'Scheduled scraping',
+		prompt: 'Scrape competitor pricing daily and save to Notion database',
+		expectedNodes: ['n8n-nodes-base.scheduleTrigger', 'n8n-nodes-base.httpRequest'],
+		minNodes: 2,
+	},
+];
+
+// Helper to check if expected nodes are discovered
+function hasExpectedNodes(
+	discovered: Array<{ nodeType: INodeTypeDescription; reasoning: string }>,
+	expectedNames: string[],
+): { hasAll: boolean; missing: string[] } {
+	const discoveredNames = discovered.map((n) => n.nodeType.name);
+	const missing = expectedNames.filter((name) => !discoveredNames.includes(name));
+	return {
+		hasAll: missing.length === 0,
+		missing,
+	};
+}
+
+// Helper to calculate node discovery frequency
+function calculateNodeFrequency(
+	results: Array<{ nodesFound: Array<{ nodeType: INodeTypeDescription }> }>,
+): Map<string, number> {
+	const frequency = new Map<string, number>();
+	for (const result of results) {
+		for (const { nodeType } of result.nodesFound) {
+			frequency.set(nodeType.name, (frequency.get(nodeType.name) ?? 0) + 1);
+		}
+	}
+	return frequency;
+}
+
+describe('Discovery Subgraph - Integration Tests', () => {
+	let llm: BaseChatModel;
+	let parsedNodeTypes: INodeTypeDescription[];
+	let discoverySubgraph: DiscoverySubgraph;
+
+	// Skip all tests if integration tests are not enabled
+	const skipTests = !shouldRunIntegrationTests();
+
+	// Set default timeout for all tests in this suite
+	jest.setTimeout(120000); // 2 minutes
+
+	beforeAll(async () => {
+		if (skipTests) {
+			console.log(
+				'\n⏭️  Skipping integration tests. Set ENABLE_INTEGRATION_TESTS=true to run them.\n',
+			);
+			return;
+		}
+
+		console.log('\n🚀 Setting up discovery subgraph integration test environment...\n');
+
+		// Load real LLM and node types
+		llm = await setupIntegrationLLM();
+		parsedNodeTypes = loadNodesFromFile();
+
+		console.log(`Loaded ${parsedNodeTypes.length} node types for testing\n`);
+
+		// Create discovery subgraph instance
+		discoverySubgraph = new DiscoverySubgraph();
+	});
+
+	describe('Basic Discovery', () => {
+		it('should discover nodes for simple monitoring workflow', async () => {
+			if (skipTests) return;
+
+			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
+			const result = await compiled.invoke({
+				userRequest: 'Monitor my website every 5 minutes and send Slack alert if it goes down',
+				supervisorInstructions: null,
+				messages: [],
+			});
+
+			expect(result.nodesFound).toBeDefined();
+			expect(result.nodesFound.length).toBeGreaterThan(0);
+			expect(result.summary).toBeDefined();
+			expect(result.summary.length).toBeGreaterThan(10);
+
+			// Should find scheduling and HTTP nodes
+			const nodeNames = result.nodesFound.map((n) => n.nodeType.name);
+			expect(nodeNames.some((name) => name.includes('schedule'))).toBe(true);
+		});
+
+		it('should discover nodes for form input workflow', async () => {
+			if (skipTests) return;
+
+			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
+			const result = await compiled.invoke({
+				userRequest: 'Create a form to collect feedback and store in database',
+				supervisorInstructions: null,
+				messages: [],
+			});
+
+			expect(result.nodesFound).toBeDefined();
+			expect(result.nodesFound.length).toBeGreaterThan(0);
+
+			// Should find form trigger
+			const nodeNames = result.nodesFound.map((n) => n.nodeType.name);
+			expect(nodeNames.some((name) => name.includes('form'))).toBe(true);
+		});
+
+		it('should discover nodes for AI/RAG workflow', async () => {
+			if (skipTests) return;
+
+			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
+			const result = await compiled.invoke({
+				userRequest: 'Build a chatbot with RAG using knowledge base documents',
+				supervisorInstructions: null,
+				messages: [],
+			});
+
+			expect(result.nodesFound).toBeDefined();
+			expect(result.nodesFound.length).toBeGreaterThanOrEqual(3);
+
+			// Should find AI-related nodes
+			const nodeNames = result.nodesFound.map((n) => n.nodeType.name);
+			const hasAINodes = nodeNames.some(
+				(name) => name.includes('langchain') || name.includes('openai'),
+			);
+			expect(hasAINodes).toBe(true);
+		});
+	});
+
+	describe('Output Structure Validation', () => {
+		it('should return all required discovery fields', async () => {
+			if (skipTests) return;
+
+			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
+			const result = await compiled.invoke({
+				userRequest: 'Send daily email with weather forecast',
+				supervisorInstructions: null,
+				messages: [],
+			});
+
+			// Validate structure
+			expect(result.nodesFound).toBeDefined();
+			expect(Array.isArray(result.nodesFound)).toBe(true);
+			expect(result.requirements).toBeDefined();
+			expect(Array.isArray(result.requirements)).toBe(true);
+			expect(result.constraints).toBeDefined();
+			expect(Array.isArray(result.constraints)).toBe(true);
+			expect(result.dataNeeds).toBeDefined();
+			expect(Array.isArray(result.dataNeeds)).toBe(true);
+			expect(result.summary).toBeDefined();
+			expect(typeof result.summary).toBe('string');
+		});
+
+		it('should provide reasoning for each discovered node', async () => {
+			if (skipTests) return;
+
+			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
+			const result = await compiled.invoke({
+				userRequest: 'Create webhook to receive data and store in PostgreSQL',
+				supervisorInstructions: null,
+				messages: [],
+			});
+
+			expect(result.nodesFound.length).toBeGreaterThan(0);
+
+			// Each node should have nodeType and reasoning
+			result.nodesFound.forEach(({ nodeType, reasoning }) => {
+				expect(nodeType).toBeDefined();
+				expect(nodeType.name).toBeDefined();
+				expect(nodeType.displayName).toBeDefined();
+				expect(reasoning).toBeDefined();
+				expect(reasoning.length).toBeGreaterThan(10);
+			});
+		});
+
+		it('should include categorization and best practices', async () => {
+			if (skipTests) return;
+
+			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
+			const result = await compiled.invoke({
+				userRequest: 'Automate invoice processing with AI',
+				supervisorInstructions: null,
+				messages: [],
+			});
+
+			expect(result.categorization).toBeDefined();
+			expect(result.categorization?.techniques).toBeDefined();
+			expect(Array.isArray(result.categorization?.techniques)).toBe(true);
+			expect(result.bestPractices).toBeDefined();
+		});
+	});
+
+	describe('Complex Workflows', () => {
+		it('should discover multiple nodes for multi-step workflow', async () => {
+			if (skipTests) return;
+
+			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
+			const result = await compiled.invoke({
+				userRequest: 'Scrape competitor data, analyze with AI, generate report, and send via email',
+				supervisorInstructions: null,
+				messages: [],
+			});
+
+			expect(result.nodesFound).toBeDefined();
+			expect(result.nodesFound.length).toBeGreaterThanOrEqual(4);
+			expect(result.requirements.length).toBeGreaterThan(0);
+			expect(result.dataNeeds.length).toBeGreaterThan(0);
+		});
+	});
+
+	describe('Edge Cases', () => {
+		it('should handle vague prompts gracefully', async () => {
+			if (skipTests) return;
+
+			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
+			const result = await compiled.invoke({
+				userRequest: 'Automate my workflow',
+				supervisorInstructions: null,
+				messages: [],
+			});
+
+			// Should still return structured output even for vague prompts
+			expect(result.nodesFound).toBeDefined();
+			expect(result.summary).toBeDefined();
+			expect(result.summary.length).toBeGreaterThan(0);
+		});
+
+		it('should handle prompts with explicit node names', async () => {
+			if (skipTests) return;
+
+			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
+			const result = await compiled.invoke({
+				userRequest: 'Use HTTP Request node to call an API and Code node to transform the response',
+				supervisorInstructions: null,
+				messages: [],
+			});
+
+			expect(result.nodesFound).toBeDefined();
+			const nodeNames = result.nodesFound.map((n) => n.nodeType.name);
+			expect(nodeNames.some((name) => name.includes('httpRequest'))).toBe(true);
+			expect(nodeNames.some((name) => name.includes('code'))).toBe(true);
+		});
+	});
+
+	describe('Comprehensive Test Suite', () => {
+		it('should discover nodes for all test prompts and display statistics', async () => {
+			if (skipTests) return;
+
+			console.log('\n📊 Running comprehensive discovery test suite...\n');
+
+			const results: Array<{
+				name: string;
+				prompt: string;
+				nodesFound: Array<{ nodeType: INodeTypeDescription; reasoning: string }>;
+				nodeCount: number;
+				expectedMatch: boolean;
+				missing: string[];
+			}> = [];
+
+			// Run all test prompts
+			for (const test of testPrompts) {
+				const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
+				const result = await compiled.invoke({
+					userRequest: test.prompt,
+					supervisorInstructions: null,
+					messages: [],
+				});
+
+				const check = hasExpectedNodes(result.nodesFound, test.expectedNodes);
+
+				results.push({
+					name: test.name,
+					prompt: test.prompt,
+					nodesFound: result.nodesFound,
+					nodeCount: result.nodesFound.length,
+					expectedMatch: check.hasAll,
+					missing: check.missing,
+				});
+
+				// Log individual result
+				console.log(`✓ ${test.name}`);
+				console.log(`  Nodes discovered: ${result.nodesFound.length}`);
+				console.log(
+					`  Node types: ${result.nodesFound.map((n) => n.nodeType.displayName).join(', ')}`,
+				);
+				if (!check.hasAll) {
+					console.log(`  ⚠️  Missing expected: ${check.missing.join(', ')}`);
+				}
+				console.log('');
+			}
+
+			// Calculate and display statistics
+			const frequency = calculateNodeFrequency(results);
+			const sortedFrequency = Array.from(frequency.entries())
+				.sort((a, b) => b[1] - a[1])
+				.slice(0, 15); // Top 15
+
+			console.log('\n📈 Top Discovered Nodes:');
+			console.log('─'.repeat(70));
+			for (const [nodeName, count] of sortedFrequency) {
+				const percentage = ((count / results.length) * 100).toFixed(1);
+				const nodeDisplayName =
+					parsedNodeTypes.find((n) => n.name === nodeName)?.displayName ?? nodeName;
+				console.log(`  ${nodeDisplayName.padEnd(35)} ${count} (${percentage}%)`);
+			}
+			console.log('');
+
+			// Calculate match rate
+			const matchCount = results.filter((r) => r.expectedMatch).length;
+			const matchRate = (matchCount / results.length) * 100;
+			console.log(`✓ Expected node match rate: ${matchRate.toFixed(1)}%`);
+			console.log(`  ${matchCount}/${results.length} prompts found all expected nodes\n`);
+
+			// Calculate average nodes discovered
+			const avgNodes = results.reduce((sum, r) => sum + r.nodeCount, 0) / results.length;
+			console.log(`📊 Average nodes discovered per prompt: ${avgNodes.toFixed(1)}\n`);
+
+			// All results should have valid structure
+			for (const result of results) {
+				expect(result.nodesFound.length).toBeGreaterThanOrEqual(1);
+				expect(result.nodesFound.length).toBeLessThanOrEqual(20); // Sanity check
+			}
+
+			// At least 70% should match expected nodes (allowing for LLM variation)
+			expect(matchRate).toBeGreaterThanOrEqual(70);
+		});
+	});
+});
