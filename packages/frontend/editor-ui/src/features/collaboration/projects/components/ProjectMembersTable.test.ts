@@ -173,6 +173,7 @@ describe('ProjectMembersTable', () => {
 				currentUserId: '2',
 				projectRoles: mockProjectRoles,
 				tableOptions: mockTableOptions,
+				canEditRole: true,
 			},
 		});
 	});
