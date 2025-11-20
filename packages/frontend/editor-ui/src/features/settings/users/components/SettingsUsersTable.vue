@@ -121,9 +121,9 @@ const roleActions = computed<Array<ActionDropdownItem<Role>>>(() => [
 	},
 ]);
 
-const canUpdateRole = computed((): boolean =>
-	hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } }),
-);
+const canUpdateRole = computed((): boolean => {
+	return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
+});
 
 const filterActions = (user: UsersList['items'][number]) => {
 	if (user.isOwner) return [];
