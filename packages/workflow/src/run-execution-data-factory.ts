@@ -75,6 +75,7 @@ export function createRunExecutionData(
 						metadata: options.executionData?.metadata ?? {},
 						waitingExecution: options.executionData?.waitingExecution ?? {},
 						waitingExecutionSource: options.executionData?.waitingExecutionSource ?? {},
+						runtimeData: options.executionData?.runtimeData,
 					},
 		parentExecution: options.parentExecution,
 		validateSignature: options.validateSignature,

@@ -50,6 +50,12 @@ describe('RunExecutionDataFactory', () => {
 				},
 				executionData: {
 					nodeExecutionStack: [{ node: {} as INode, data: {}, source: null }],
+					runtimeData: {
+						version: 1 as const,
+						establishedAt: 1234567890,
+						source: 'webhook' as const,
+						credentials: 'test-credentials',
+					},
 				},
 				parentExecution: {
 					executionId: 'parent-123',
@@ -67,6 +73,7 @@ describe('RunExecutionDataFactory', () => {
 			expect(result.executionData?.nodeExecutionStack).toEqual(
 				options.executionData.nodeExecutionStack,
 			);
+			expect(result.executionData?.runtimeData).toEqual(options.executionData.runtimeData);
 			expect(result.parentExecution).toEqual(options.parentExecution);
 			expect(result.validateSignature).toBe(true);
 			expect(result.waitTill).toEqual(options.waitTill);
