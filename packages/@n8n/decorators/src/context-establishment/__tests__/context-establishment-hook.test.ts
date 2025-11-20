@@ -25,7 +25,7 @@ describe('@ContextEstablishmentHook decorator', () => {
 		class TestHook implements IContextEstablishmentHook {
 			hookDescription = { name: 'test.hook' };
 			async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-				return { triggerItem: undefined, contextUpdate: undefined };
+				return {};
 			}
 			isApplicableToTriggerNode(_nodeType: string): boolean {
 				return true;
@@ -43,7 +43,7 @@ describe('@ContextEstablishmentHook decorator', () => {
 		class FirstHook implements IContextEstablishmentHook {
 			hookDescription = { name: 'first.hook' };
 			async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-				return { triggerItem: undefined, contextUpdate: undefined };
+				return {};
 			}
 			isApplicableToTriggerNode(_nodeType: string): boolean {
 				return true;
@@ -54,7 +54,7 @@ describe('@ContextEstablishmentHook decorator', () => {
 		class SecondHook implements IContextEstablishmentHook {
 			hookDescription = { name: 'second.hook' };
 			async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-				return { triggerItem: undefined, contextUpdate: undefined };
+				return {};
 			}
 			isApplicableToTriggerNode(_nodeType: string): boolean {
 				return true;
@@ -65,7 +65,7 @@ describe('@ContextEstablishmentHook decorator', () => {
 		class ThirdHook implements IContextEstablishmentHook {
 			hookDescription = { name: 'third.hook' };
 			async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-				return { triggerItem: undefined, contextUpdate: undefined };
+				return {};
 			}
 			isApplicableToTriggerNode(_nodeType: string): boolean {
 				return true;
@@ -85,7 +85,7 @@ describe('@ContextEstablishmentHook decorator', () => {
 		class TestHook implements IContextEstablishmentHook {
 			hookDescription = { name: 'test.hook' };
 			async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-				return { triggerItem: undefined, contextUpdate: undefined };
+				return {};
 			}
 			isApplicableToTriggerNode(_nodeType: string): boolean {
 				return true;
@@ -100,7 +100,7 @@ describe('@ContextEstablishmentHook decorator', () => {
 		class TestHook implements IContextEstablishmentHook {
 			hookDescription = { name: 'credentials.bearerToken' };
 			async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-				return { triggerItem: undefined, contextUpdate: undefined };
+				return {};
 			}
 			isApplicableToTriggerNode(_nodeType: string): boolean {
 				return true;
@@ -119,7 +119,7 @@ describe('@ContextEstablishmentHook decorator', () => {
 		class BearerTokenHook implements IContextEstablishmentHook {
 			hookDescription = { name: 'credentials.bearerToken' };
 			async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-				return { triggerItem: undefined, contextUpdate: undefined };
+				return {};
 			}
 			isApplicableToTriggerNode(_nodeType: string): boolean {
 				return true;
@@ -130,7 +130,7 @@ describe('@ContextEstablishmentHook decorator', () => {
 		class ApiKeyHook implements IContextEstablishmentHook {
 			hookDescription = { name: 'credentials.apiKey' };
 			async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-				return { triggerItem: undefined, contextUpdate: undefined };
+				return {};
 			}
 			isApplicableToTriggerNode(_nodeType: string): boolean {
 				return true;

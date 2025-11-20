@@ -29,7 +29,7 @@ export type ContextEstablishmentOptions = {
 	 * Hooks can extract data from these items and optionally modify them
 	 * (e.g., removing sensitive headers before storage).
 	 */
-	triggerItem: INodeExecutionData[];
+	triggerItems: INodeExecutionData[];
 
 	/**
 	 * The plaintext execution context built so far.
@@ -68,7 +68,7 @@ export type ContextEstablishmentResult = {
 	 * @example
 	 * ```typescript
 	 * // Remove Authorization header from trigger items
-	 * const modifiedItems = options.triggerItem.map(item => ({
+	 * const modifiedItems = options.triggerItems.map(item => ({
 	 *   ...item,
 	 *   json: {
 	 *     ...item.json,
@@ -78,10 +78,10 @@ export type ContextEstablishmentResult = {
 	 *     }
 	 *   }
 	 * }));
-	 * return { triggerItem: modifiedItems, contextUpdate: { ... } };
+	 * return { triggerItems: modifiedItems, contextUpdate: { ... } };
 	 * ```
 	 */
-	triggerItem: INodeExecutionData[] | undefined;
+	triggerItems?: INodeExecutionData[];
 
 	/**
 	 * Partial context update to merge into the execution context.
@@ -95,7 +95,7 @@ export type ContextEstablishmentResult = {
 	 * ```typescript
 	 * // Add credential context from bearer token
 	 * return {
-	 *   triggerItem: modifiedItems,
+	 *   triggerItems: modifiedItems,
 	 *   contextUpdate: {
 	 *     credentials: {
 	 *       version: 1,
@@ -106,7 +106,7 @@ export type ContextEstablishmentResult = {
 	 * };
 	 * ```
 	 */
-	contextUpdate: Partial<IPlaintextExecutionContext> | undefined;
+	contextUpdate?: Partial<IPlaintextExecutionContext>;
 };
 
 /**
@@ -245,19 +245,19 @@ export interface IContextEstablishmentHook {
 	 *   const removeHeader = options.options?.removeFromItem ?? true;
 	 *
 	 *   // Extract data
-	 *   const token = this.extractToken(options.triggerItem);
+	 *   const token = this.extractToken(options.triggerItems);
 	 *   if (!token) {
 	 *     throw new Error('Bearer token not found in Authorization header');
 	 *   }
 	 *
 	 *   // Optionally modify items
 	 *   const modifiedItems = removeHeader
-	 *     ? this.removeAuthHeader(options.triggerItem)
+	 *     ? this.removeAuthHeader(options.triggerItems)
 	 *     : undefined;
 	 *
 	 *   // Return context update
 	 *   return {
-	 *     triggerItem: modifiedItems,
+	 *     triggerItems: modifiedItems,
 	 *     contextUpdate: {
 	 *       credentials: { version: 1, identity: token }
 	 *     }
@@ -268,7 +268,7 @@ export interface IContextEstablishmentHook {
 	execute(options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult>;
 
 	/**
-	 * Optional method to determine if this hook is applicable to a specific trigger node type.
+	 * Method to determine if this hook is applicable to a specific trigger node type.
 	 *
 	 * **Use cases:**
 	 * - **UI filtering**: Show only relevant hooks for a trigger type in node configuration
