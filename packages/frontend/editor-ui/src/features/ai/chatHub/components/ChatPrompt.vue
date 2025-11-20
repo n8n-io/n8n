@@ -29,6 +29,7 @@ const emit = defineEmits<{
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const message = ref('');
+const committedSpokenMessage = ref('');
 const attachments = ref<File[]>([]);
 
 const toast = useToast();
@@ -50,6 +51,8 @@ const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
 );
 
 function onMic() {
+	committedSpokenMessage.value = message.value;
+
 	if (speechInput.isListening.value) {
 		speechInput.stop();
 	} else {
@@ -97,6 +100,7 @@ function handleSubmitForm() {
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
 		message.value = '';
+		committedSpokenMessage.value = '';
 		attachments.value = [];
 	}
 }
@@ -109,6 +113,7 @@ function handleKeydownTextarea(e: KeyboardEvent) {
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
 		message.value = '';
+		committedSpokenMessage.value = '';
 		attachments.value = [];
 	}
 }
@@ -118,10 +123,18 @@ function handleClickInputWrapper() {
 }
 
 watch(speechInput.result, (spoken) => {
-	if (spoken) {
-		message.value = spoken;
-	}
+	message.value = committedSpokenMessage.value + ' ' + spoken;
 });
+
+watch(
+	speechInput.isFinal,
+	(final) => {
+		if (final) {
+			committedSpokenMessage.value = message.value;
+		}
+	},
+	{ flush: 'post' },
+);
 
 watch(speechInput.error, (event) => {
 	if (event?.error === 'not-allowed') {
