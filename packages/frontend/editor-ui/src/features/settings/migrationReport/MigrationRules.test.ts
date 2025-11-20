@@ -400,12 +400,14 @@ describe('MigrationRules', () => {
 
 	it('should keep refresh button visible during refresh operation', async () => {
 		// Mock a slow refresh to test that button stays visible
-		let resolveRefresh: (value: any) => void;
+		let resolveRefresh: (value: BreakingChangeLightReportResult) => void;
 		const refreshPromise = new Promise((resolve) => {
 			resolveRefresh = resolve;
 		});
 
-		vi.mocked(breakingChangesApi.refreshReport).mockReturnValue(refreshPromise as any);
+		vi.mocked(breakingChangesApi.refreshReport).mockReturnValue(
+			refreshPromise as Promise<BreakingChangeLightReportResult>,
+		);
 
 		renderComponent();
 
