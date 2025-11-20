@@ -23,6 +23,7 @@ const rootStore = useRootStore();
 const i18n = useI18n();
 
 const currentTab = ref('workflow-issues');
+const shouldShowRefreshButton = ref(false);
 
 const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = false) => {
 	if (refresh) {
@@ -34,10 +35,12 @@ const { state, isLoading, execute } = useAsyncState(async (refresh: boolean = fa
 		) {
 			currentTab.value = 'instance-issues';
 		}
+		shouldShowRefreshButton.value = response.shouldCache;
 
 		return response;
 	}
 	const response = await breakingChangesApi.getReport(rootStore.restApiContext);
+	shouldShowRefreshButton.value = response.shouldCache;
 
 	return response;
 }, undefined);
@@ -141,6 +144,7 @@ const sortedInstanceResults = computed(() => {
 		<div :class="$style.ActionBar">
 			<N8nTabs v-model="currentTab" :options="tabs" variant="modern" />
 			<N8nButton
+				v-if="shouldShowRefreshButton"
 				:label="i18n.baseText('settings.migrationReport.refreshButton')"
 				icon="refresh-cw"
 				type="secondary"
