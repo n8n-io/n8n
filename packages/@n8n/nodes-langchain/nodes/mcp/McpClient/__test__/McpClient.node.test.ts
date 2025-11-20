@@ -214,6 +214,8 @@ describe('McpClient', () => {
 
 		const result = await new McpClient().execute.call(executeFunctions);
 
-		expect(result).toEqual([[{ json: { error: 'Tool call failed' }, pairedItem: { item: 0 } }]]);
+		expect(result).toEqual([
+			[{ json: { error: { message: 'Tool call failed' } }, pairedItem: { item: 0 } }],
+		]);
 	});
 });
