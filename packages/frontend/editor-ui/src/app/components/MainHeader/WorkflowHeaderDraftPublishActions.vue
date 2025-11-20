@@ -12,6 +12,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import SaveButton from '@/app/components/SaveButton.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
+import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -42,23 +43,33 @@ const isWorkflowSaving = computed(() => {
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
 const onPublishButtonClick = () => {
-	// TODO: uncomment once the save doesn't automatically change the active version
-	// emit('workflow:saved');
 	uiStore.openModalWithData({
 		name: WORKFLOW_PUBLISH_MODAL_KEY,
 		data: {},
 	});
 };
 
+const foundTriggers = computed(() =>
+	getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes),
+);
+
+const containsTrigger = computed((): boolean => {
+	return foundTriggers.value.length > 0;
+});
+
 const isWorkflowSaved = computed(() => {
 	return !uiStore.stateIsDirty && !props.isNewWorkflow;
 });
 
-const workflowHasChanges = computed(() => {
+const showPublishIndicator = computed(() => {
+	if (!containsTrigger.value) {
+		return false;
+	}
+
 	return (
 		(workflowsStore.workflow.versionId &&
 			workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId) ||
-		!isWorkflowSaved.value
+		uiStore.stateIsDirty
 	);
 });
 
@@ -99,7 +110,7 @@ defineExpose({
 			<N8nButton type="secondary" @click="onPublishButtonClick">
 				{{ locale.baseText('workflows.publish') }}
 			</N8nButton>
-			<span v-if="workflowHasChanges" :class="$style.publishButtonIndicator"></span>
+			<span v-if="showPublishIndicator" :class="$style.publishButtonIndicator"></span>
 		</div>
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 		<ActionsMenu
