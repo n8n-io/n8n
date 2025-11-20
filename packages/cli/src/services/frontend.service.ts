@@ -544,7 +544,6 @@ export class FrontendService {
 			previewMode,
 			enterprise: { saml, ldap, oidc },
 		};
-		console.log('publicSettings', publicSettings);
 		return publicSettings;
 	}
 
