@@ -114,6 +114,7 @@ import { AddToolsColumnToChatHubTables1761830340990 } from '../common/1761830340
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
 import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/1762763704614-BackfillMissingWorkflowHistoryRecords';
 import { AddWorkflowHistoryAutoSaveFields1762847206508 } from '../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
+import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-AddActiveVersionIdColumn';
 import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common/1763572724000-ChangeOAuthStateColumnToUnboundedVarchar';
 import type { Migration } from '../migration-types';
 
@@ -235,4 +236,5 @@ export const postgresMigrations: Migration[] = [
 	AddToolsColumnToChatHubTables1761830340990,
 	ChangeOAuthStateColumnToUnboundedVarchar1763572724000,
 	AddAttachmentsToChatHubMessages1761773155024,
+	AddActiveVersionIdColumn1763047800000,
 ];

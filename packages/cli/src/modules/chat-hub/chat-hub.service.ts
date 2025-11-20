@@ -605,7 +605,7 @@ export class ChatHubService {
 			models: workflows
 				// Ensure the user has at least read access to the workflow
 				.filter((workflow) => workflow.scopes.includes('workflow:read'))
-				.filter((workflow) => workflow.active)
+				.filter((workflow) => !!workflow.activeVersionId)
 				.flatMap((workflow) => {
 					const chatTrigger = workflow.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
 					if (!chatTrigger) {
