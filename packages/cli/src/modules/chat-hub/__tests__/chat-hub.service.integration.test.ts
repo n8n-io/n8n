@@ -1,11 +1,14 @@
-import { testDb, testModules } from '@n8n/backend-test-utils';
+import { mockInstance, testDb, testModules } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { BinaryDataService } from 'n8n-core';
 import { createAdmin, createMember } from '@test-integration/db/users';
 
 import { ChatHubService } from '../chat-hub.service';
 import { ChatHubMessageRepository } from '../chat-message.repository';
 import { ChatHubSessionRepository } from '../chat-session.repository';
+
+mockInstance(BinaryDataService);
 
 beforeAll(async () => {
 	await testModules.loadModules(['chat-hub']);
@@ -45,9 +48,9 @@ describe('chatHub', () => {
 
 	describe('getConversations', () => {
 		it('should list empty conversations', async () => {
-			const conversations = await chatHubService.getConversations(member.id);
+			const conversations = await chatHubService.getConversations(member.id, 20);
 			expect(conversations).toBeDefined();
-			expect(conversations).toHaveLength(0);
+			expect(conversations.data).toHaveLength(0);
 		});
 
 		it("should list user's own conversations in expected order", async () => {
@@ -80,11 +83,182 @@ describe('chatHub', () => {
 				tools: [],
 			});
 
-			const conversations = await chatHubService.getConversations(member.id);
-			expect(conversations).toHaveLength(3);
-			expect(conversations[0].id).toBe(session1.id);
-			expect(conversations[1].id).toBe(session2.id);
-			expect(conversations[2].id).toBe(session3.id);
+			const conversations = await chatHubService.getConversations(member.id, 20);
+			expect(conversations.data).toHaveLength(3);
+			expect(conversations.data[0].id).toBe(session1.id);
+			expect(conversations.data[1].id).toBe(session2.id);
+			expect(conversations.data[2].id).toBe(session3.id);
+		});
+
+		describe('pagination', () => {
+			it('should return hasMore=false and nextCursor=null when all sessions fit in one page', async () => {
+				await sessionsRepository.createChatSession({
+					id: crypto.randomUUID(),
+					ownerId: member.id,
+					title: 'session 1',
+					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
+					tools: [],
+				});
+
+				const conversations = await chatHubService.getConversations(member.id, 10);
+
+				expect(conversations.data).toHaveLength(1);
+				expect(conversations.hasMore).toBe(false);
+				expect(conversations.nextCursor).toBeNull();
+			});
+
+			it('should fetch next page using cursor', async () => {
+				const session1 = await sessionsRepository.createChatSession({
+					id: crypto.randomUUID(),
+					ownerId: member.id,
+					title: 'session 1',
+					lastMessageAt: new Date('2025-01-05T00:00:00Z'),
+					tools: [],
+				});
+
+				const session2 = await sessionsRepository.createChatSession({
+					id: crypto.randomUUID(),
+					ownerId: member.id,
+					title: 'session 2',
+					lastMessageAt: new Date('2025-01-04T00:00:00Z'),
+					tools: [],
+				});
+
+				const session3 = await sessionsRepository.createChatSession({
+					id: crypto.randomUUID(),
+					ownerId: member.id,
+					title: 'session 3',
+					lastMessageAt: new Date('2025-01-03T00:00:00Z'),
+					tools: [],
+				});
+
+				const session4 = await sessionsRepository.createChatSession({
+					id: crypto.randomUUID(),
+					ownerId: member.id,
+					title: 'session 4',
+					lastMessageAt: new Date('2025-01-02T00:00:00Z'),
+					tools: [],
+				});
+
+				// First page
+				const page1 = await chatHubService.getConversations(member.id, 2);
+				expect(page1.data).toHaveLength(2);
+				expect(page1.data[0].id).toBe(session1.id);
+				expect(page1.data[1].id).toBe(session2.id);
+				expect(page1.hasMore).toBe(true);
+				expect(page1.nextCursor).toBe(session2.id);
+
+				// Second page using cursor
+				const page2 = await chatHubService.getConversations(member.id, 2, page1.nextCursor!);
+				expect(page2.data).toHaveLength(2);
+				expect(page2.data[0].id).toBe(session3.id);
+				expect(page2.data[1].id).toBe(session4.id);
+				expect(page2.hasMore).toBe(false);
+				expect(page2.nextCursor).toBeNull();
+			});
+
+			it('should handle sessions with same lastMessageAt using id for ordering', async () => {
+				const sameDate = new Date('2025-01-01T00:00:00Z');
+
+				const session1 = await sessionsRepository.createChatSession({
+					id: '00000000-0000-0000-0000-000000000001',
+					ownerId: member.id,
+					title: 'Session 1',
+					lastMessageAt: sameDate,
+					tools: [],
+				});
+
+				const session2 = await sessionsRepository.createChatSession({
+					id: '00000000-0000-0000-0000-000000000002',
+					ownerId: member.id,
+					title: 'Session 2',
+					lastMessageAt: sameDate,
+					tools: [],
+				});
+
+				const session3 = await sessionsRepository.createChatSession({
+					id: '00000000-0000-0000-0000-000000000003',
+					ownerId: member.id,
+					title: 'Session 3',
+					lastMessageAt: sameDate,
+					tools: [],
+				});
+
+				// Fetch first page
+				const page1 = await chatHubService.getConversations(member.id, 2);
+				expect(page1.data).toHaveLength(2);
+				expect(page1.data[0].id).toBe(session1.id);
+				expect(page1.data[1].id).toBe(session2.id);
+				expect(page1.hasMore).toBe(true);
+
+				// Fetch second page
+				const page2 = await chatHubService.getConversations(member.id, 2, page1.nextCursor!);
+				expect(page2.data).toHaveLength(1);
+				expect(page2.data[0].id).toBe(session3.id);
+				expect(page2.hasMore).toBe(false);
+			});
+
+			it('should throw error when cursor session does not exist', async () => {
+				await sessionsRepository.createChatSession({
+					id: crypto.randomUUID(),
+					ownerId: member.id,
+					title: 'session 1',
+					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
+					tools: [],
+				});
+
+				const nonExistentCursor = '00000000-0000-0000-0000-000000000000';
+
+				await expect(
+					chatHubService.getConversations(member.id, 10, nonExistentCursor),
+				).rejects.toThrow('Cursor session not found');
+			});
+
+			it('should throw error when cursor session belongs to different user', async () => {
+				await sessionsRepository.createChatSession({
+					id: crypto.randomUUID(),
+					ownerId: member.id,
+					title: 'Member Session',
+					lastMessageAt: new Date('2025-01-02T00:00:00Z'),
+					tools: [],
+				});
+
+				const adminSession = await sessionsRepository.createChatSession({
+					id: crypto.randomUUID(),
+					ownerId: admin.id,
+					title: 'Admin Session',
+					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
+					tools: [],
+				});
+
+				await expect(
+					chatHubService.getConversations(member.id, 10, adminSession.id),
+				).rejects.toThrow('Cursor session not found');
+			});
+
+			it('should handle sessions with null lastMessageAt', async () => {
+				const session1 = await sessionsRepository.createChatSession({
+					id: crypto.randomUUID(),
+					ownerId: member.id,
+					title: 'Session with date',
+					lastMessageAt: new Date('2025-01-01T00:00:00Z'),
+					tools: [],
+				});
+
+				const session2 = await sessionsRepository.createChatSession({
+					id: crypto.randomUUID(),
+					ownerId: member.id,
+					title: 'Session without date',
+					lastMessageAt: null,
+					tools: [],
+				});
+
+				const conversations = await chatHubService.getConversations(member.id, 10);
+
+				expect(conversations.data).toHaveLength(2);
+				expect(conversations.data[0].id).toBe(session1.id);
+				expect(conversations.data[1].id).toBe(session2.id);
+			});
 		});
 	});
 
