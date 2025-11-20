@@ -742,7 +742,7 @@ export class SourceControlImportService {
 			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
 			await this.activeWorkflowManager.remove(existingWorkflow.id);
 
-			if (importedWorkflow.active || importedWorkflow.activeVersionId) {
+			if (importedWorkflow.activeVersionId) {
 				// try activating the imported workflow
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
