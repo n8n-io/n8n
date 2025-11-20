@@ -81,6 +81,7 @@ const downloadAndExtractPackage = async (packageName, version) => {
 		const npmResult = spawnSync('npm', ['-q', 'pack', `${packageName}@${version}`], {
 			cwd: TEMP_DIR,
 			stdio: 'pipe',
+			shell: process.platform === 'win32',
 		});
 		if (npmResult.status !== 0) {
 			throw new Error(`npm pack failed: ${npmResult.stderr?.toString()}`);
@@ -99,6 +100,7 @@ const downloadAndExtractPackage = async (packageName, version) => {
 			{
 				cwd: TEMP_DIR,
 				stdio: 'pipe',
+				shell: process.platform === 'win32',
 			},
 		);
 		if (tarResult.status !== 0) {
