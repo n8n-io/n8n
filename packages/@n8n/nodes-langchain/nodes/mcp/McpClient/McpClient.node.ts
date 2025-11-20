@@ -9,6 +9,8 @@ import type {
 	NodeExecutionWithMetadata,
 } from 'n8n-workflow';
 import { jsonParse, NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
+import { ZodError } from 'zod';
+import { prettifyError } from 'zod/v4/core';
 
 import * as listSearch from './listSearch';
 import * as resourceMapping from './resourceMapping';
@@ -297,11 +299,15 @@ export class McpClient implements INodeType {
 					},
 				});
 			} catch (e) {
-				const error = e instanceof Error ? e.message : String(e);
+				const errorMessage =
+					e instanceof ZodError ? prettifyError(e) : e instanceof Error ? e.message : String(e);
 				if (this.continueOnFail()) {
 					returnData.push({
 						json: {
-							error,
+							error: {
+								message: errorMessage,
+								issues: e instanceof ZodError ? e.issues : undefined,
+							},
 						},
 						pairedItem: {
 							item: itemIndex,
@@ -310,7 +316,7 @@ export class McpClient implements INodeType {
 					continue;
 				}
 
-				throw new NodeOperationError(node, error, {
+				throw new NodeOperationError(node, errorMessage, {
 					itemIndex,
 				});
 			}
