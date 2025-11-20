@@ -105,27 +105,38 @@ export async function getWorkflowData(
 
 	let workflowData: IWorkflowBase | null;
 	if (workflowInfo.id !== undefined) {
-		const relations = Container.get(GlobalConfig).tags.disabled ? [] : ['tags'];
+		const baseRelations = ['activeVersion'];
+		const relations = Container.get(GlobalConfig).tags.disabled
+			? [...baseRelations]
+			: [...baseRelations, 'tags'];
 
-		workflowData = await Container.get(WorkflowRepository).get(
+		const workflowFromDb = await Container.get(WorkflowRepository).get(
 			{ id: workflowInfo.id },
 			{ relations },
 		);
 
-		if (workflowData === undefined || workflowData === null) {
+		if (workflowFromDb === undefined || workflowFromDb === null) {
 			throw new UnexpectedError('Workflow does not exist.', {
 				extra: { workflowId: workflowInfo.id },
 			});
 		}
+
+		// Manual executions do not have an active version
+		// So when it is missing we load the latest version
+		// Otherwise, we load the active version
+		if (workflowFromDb.activeVersion) {
+			workflowFromDb.nodes = workflowFromDb.activeVersion.nodes;
+			workflowFromDb.connections = workflowFromDb.activeVersion.connections;
+		}
+
+		workflowData = workflowFromDb;
 	} else {
 		workflowData = workflowInfo.code ?? null;
 		if (workflowData) {
 			if (!workflowData.id) {
 				workflowData.id = parentWorkflowId;
 			}
-			if (!workflowData.settings) {
-				workflowData.settings = parentWorkflowSettings;
-			}
+			workflowData.settings ??= parentWorkflowSettings;
 		}
 	}
 
