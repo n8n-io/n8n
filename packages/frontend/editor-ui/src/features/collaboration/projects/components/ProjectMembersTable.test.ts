@@ -355,6 +355,18 @@ describe('ProjectMembersTable', () => {
 			// The text should be rendered by N8nText component
 			expect(screen.getByText('Editor')).toBeInTheDocument();
 		});
+
+		it('should not show a role dropdown if canEditRole is false', () => {
+			renderComponent({
+				props: {
+					canEditRole: false,
+				},
+			});
+
+			expect(screen.queryByTestId('role-dropdown-1')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('role-dropdown-2')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('role-dropdown-3')).not.toBeInTheDocument();
+		});
 	});
 
 	describe('Integration with ProjectMembersRoleCell', () => {

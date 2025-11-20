@@ -177,6 +177,17 @@ describe('SettingsUsersTable', () => {
 			});
 		});
 
+		it('should not render role update component when canEditRole is false', () => {
+			renderComponent({
+				props: {
+					canEditRole: false,
+				},
+			});
+			screen.getAllByTestId('user-role').forEach((roleCell) => {
+				expect(roleCell).not.toBeVisible();
+			});
+		});
+
 		it('should emit "update:role" when a new role is selected', () => {
 			const { emitted } = renderComponent();
 			emitters.settingsUsersRoleCell.emit('update:role', { role: 'global:admin', userId: '2' });
