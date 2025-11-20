@@ -210,3 +210,12 @@ export const updateChatSettingsApi = async (
 		payload: settings,
 	});
 };
+
+export function buildChatAttachmentUrl(
+	context: IRestApiContext,
+	sessionId: string,
+	messageId: string,
+	attachmentIndex: number,
+): string {
+	return `${context.baseUrl}/chat/conversations/${sessionId}/messages/${messageId}/attachments/${attachmentIndex}`;
+}
