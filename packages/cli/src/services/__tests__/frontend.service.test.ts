@@ -214,7 +214,7 @@ describe('FrontendService', () => {
 					authenticationMethod: 'email',
 				},
 				sso: {
-					saml: { loginEnabled: false, loginLabel: '' },
+					saml: { loginEnabled: false },
 					ldap: { loginEnabled: false, loginLabel: '' },
 					oidc: {
 						loginEnabled: false,

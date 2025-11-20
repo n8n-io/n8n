@@ -52,7 +52,7 @@ export type PublicFrontendSettings = Pick<
 	enterprise: PublicEnterpriseSettings;
 	userManagement: PublicUserManagementSettings;
 	sso: {
-		saml: FrontendSettings['sso']['saml'];
+		saml: Omit<FrontendSettings['sso']['saml'], 'loginLabel'>;
 		ldap: FrontendSettings['sso']['ldap'];
 		oidc: Omit<FrontendSettings['sso']['oidc'], 'callbackUrl'>;
 	};
@@ -504,7 +504,9 @@ export class FrontendService {
 			versionCli,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
 			sso: {
-				saml: ssoSaml,
+				saml: {
+					loginEnabled: ssoSaml.loginEnabled,
+				},
 				ldap: ssoLdap,
 				oidc: {
 					loginEnabled: ssoOidc.loginEnabled,

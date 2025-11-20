@@ -44,7 +44,6 @@ export async function initializeCore() {
 	}
 
 	const settingsStore = useSettingsStore();
-	const usersStore = useUsersStore();
 	const versionsStore = useVersionsStore();
 	const ssoStore = useSSOStore();
 
