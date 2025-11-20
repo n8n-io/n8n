@@ -148,6 +148,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	data?: T;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
+	isGlobal?: boolean;
 }
 
 export interface ICredentialsEncrypted {
@@ -2557,6 +2558,7 @@ export interface IWorkflowBase {
 	staticData?: IDataObject;
 	pinData?: IPinData;
 	versionId?: string;
+	activeVersionId: string | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
 }

@@ -15,7 +15,7 @@ export async function workflowFailedToActivate(
 	}
 
 	workflowsStore.setWorkflowInactive(data.workflowId);
-	options.workflowState.setActive(false);
+	options.workflowState.setActive(null);
 
 	const toast = useToast();
 	const i18n = useI18n();
