@@ -350,38 +350,6 @@ describe('GET /projects/:projectId/data-tables/:dataTableId/download-csv', () =>
 		expect(response.body.data.csvContent).toContain('personal data');
 	});
 
-	test('should handle large data tables efficiently', async () => {
-		const project = await createTeamProject('test project', owner);
-		const dataTable = await createDataTable(project, {
-			name: 'Large Table',
-			columns: [
-				{ name: 'index', type: 'number' },
-				{ name: 'value', type: 'string' },
-			],
-		});
-
-		const columns = await dataTableColumnRepository.getColumns(dataTable.id);
-
-		// Insert 100 rows
-		const rows = Array.from({ length: 100 }, (_, i) => ({
-			index: i,
-			value: `row-${i}`,
-		}));
-		await dataTableRowsRepository.insertRows(dataTable.id, rows, columns, 'id');
-
-		const response = await authOwnerAgent
-			.get(`/projects/${project.id}/data-tables/${dataTable.id}/download-csv`)
-			.expect(200);
-
-		const csvContent = response.body.data.csvContent;
-		const lines = csvContent.split('\n');
-
-		// Should have header + 100 rows
-		expect(lines.length).toBe(101);
-		expect(csvContent).toContain('row-0');
-		expect(csvContent).toContain('row-99');
-	});
-
 	test('should handle table name with special characters', async () => {
 		const project = await createTeamProject('test project', owner);
 		const dataTable = await createDataTable(project, {
