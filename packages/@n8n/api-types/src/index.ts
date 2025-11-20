@@ -27,10 +27,13 @@ export {
 	emptyChatModelsResponse,
 	type ChatModelsRequest,
 	type ChatModelsResponse,
+	chatAttachmentSchema,
+	type ChatAttachment,
 	ChatHubSendMessageRequest,
 	ChatHubRegenerateMessageRequest,
 	ChatHubEditMessageRequest,
 	ChatHubUpdateConversationRequest,
+	ChatHubConversationsRequest,
 	type ChatMessageId,
 	type ChatSessionId,
 	type ChatHubMessageDto,
@@ -42,6 +45,7 @@ export {
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	type EnrichedStructuredChunk,
+	type ChatHubAgentTool,
 } from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';
@@ -124,4 +128,5 @@ export type {
 	BreakingChangeWorkflowRuleResult,
 	BreakingChangeReportResult,
 	BreakingChangeLightReportResult,
+	BreakingChangeVersion,
 } from './schemas/breaking-changes.schema';

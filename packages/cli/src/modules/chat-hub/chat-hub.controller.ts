@@ -10,6 +10,7 @@ import {
 	ChatMessageId,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
+	ChatHubConversationsRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -22,21 +23,26 @@ import {
 	Delete,
 	Param,
 	Patch,
+	Query,
 } from '@n8n/decorators';
 import type { Response } from 'express';
 import { strict as assert } from 'node:assert';
 
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
-
-import { ChatHubService } from './chat-hub.service';
 import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { sanitizeFilename } from '@n8n/utils';
+
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
 @RestController('/chat')
 export class ChatHubController {
 	constructor(
 		private readonly chatService: ChatHubService,
 		private readonly chatAgentService: ChatHubAgentService,
+		private readonly chatAttachmentService: ChatHubAttachmentService,
 		private readonly logger: Logger,
 	) {}
 
@@ -55,8 +61,9 @@ export class ChatHubController {
 	async getConversations(
 		req: AuthenticatedRequest,
 		_res: Response,
+		@Query query: ChatHubConversationsRequest,
 	): Promise<ChatHubConversationsResponse> {
-		return await this.chatService.getConversations(req.user.id);
+		return await this.chatService.getConversations(req.user.id, query.limit, query.cursor);
 	}
 
 	@Get('/conversations/:sessionId')
@@ -67,6 +74,49 @@ export class ChatHubController {
 		@Param('sessionId') sessionId: ChatSessionId,
 	): Promise<ChatHubConversationResponse> {
 		return await this.chatService.getConversation(req.user.id, sessionId);
+	}
+
+	@Get('/conversations/:sessionId/messages/:messageId/attachments/:index')
+	@GlobalScope('chatHub:message')
+	async getMessageAttachment(
+		req: AuthenticatedRequest,
+		res: Response,
+		@Param('sessionId') sessionId: ChatSessionId,
+		@Param('messageId') messageId: ChatMessageId,
+		@Param('index') index: string,
+	) {
+		const attachmentIndex = Number.parseInt(index, 10);
+
+		if (isNaN(attachmentIndex)) {
+			throw new BadRequestError('Invalid attachment index');
+		}
+
+		// Verify user has access to this session
+		await this.chatService.getConversation(req.user.id, sessionId);
+
+		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
+			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
+
+		res.setHeader('Content-Type', mimeType ?? 'application/octet-stream');
+
+		if (attachmentAsStreamOrBuffer.fileSize) {
+			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
+		}
+
+		if (fileName) {
+			res.setHeader('Content-Disposition', `attachment; filename="${sanitizeFilename(fileName)}"`);
+		}
+
+		if (attachmentAsStreamOrBuffer.type === 'buffer') {
+			res.send(attachmentAsStreamOrBuffer.buffer);
+			return;
+		}
+
+		return await new Promise<void>((resolve, reject) => {
+			attachmentAsStreamOrBuffer.stream.on('end', resolve);
+			attachmentAsStreamOrBuffer.stream.on('error', reject);
+			attachmentAsStreamOrBuffer.stream.pipe(res);
+		});
 	}
 
 	@GlobalScope('chatHub:message')

@@ -10,7 +10,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRunExecutionData,
 	NodeParameterValueType,
 } from '../src/interfaces';
 import { Workflow } from '../src/workflow';
@@ -19,6 +18,7 @@ process.env.TEST_VARIABLE_1 = 'valueEnvVariable1';
 
 // eslint-disable-next-line import/order
 import * as Helpers from './helpers';
+import type { IRunExecutionData } from '../src';
 
 interface StubNode {
 	name: string;

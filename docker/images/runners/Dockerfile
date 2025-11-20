@@ -11,14 +11,20 @@ WORKDIR /app/task-runner-javascript
 
 RUN corepack enable pnpm
 
-# Install extra runtime-only npm packages. Allow usage in the Code node via
-# 'NODE_FUNCTION_ALLOW_EXTERNAL' env variable on n8n-task-runners.json.
-RUN rm -f node_modules/.modules.yaml
-RUN mv package.json package.json.bak
-COPY docker/images/runners/package.json /app/task-runner-javascript/package.json
-RUN pnpm install --prod --no-lockfile --silent
-RUN mv package.json extras.json
-RUN mv package.json.bak package.json
+# Remove `catalog` and `workspace` references from package.json to allow `pnpm add` in extended images
+RUN node -e "const pkg = require('./package.json'); \
+    Object.keys(pkg.dependencies || {}).forEach(k => { \
+        const val = pkg.dependencies[k]; \
+        if (val === 'catalog:' || val.startsWith('catalog:') || val.startsWith('workspace:')) \
+            delete pkg.dependencies[k]; \
+    }); \
+    Object.keys(pkg.devDependencies || {}).forEach(k => { \
+        const val = pkg.devDependencies[k]; \
+        if (val === 'catalog:' || val.startsWith('catalog:') || val.startsWith('workspace:')) \
+            delete pkg.devDependencies[k]; \
+    }); \
+    delete pkg.devDependencies; \
+    require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2));"
 
 # ==============================================================================
 # STAGE 2: Python runner build (@n8n/task-runner-python) with uv
@@ -64,11 +70,6 @@ RUN uv sync \
 			--all-extras \
       --no-editable
 
-# Install extra runtime-only Python packages. Allow usage in the Code node via
-# 'N8N_RUNNERS_EXTERNAL_ALLOW' env variable on n8n-task-runners.json.
-COPY docker/images/runners/extras.txt /app/task-runner-python/extras.txt
-RUN uv pip install -r /app/task-runner-python/extras.txt
-
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
@@ -107,7 +108,7 @@ ENV NODE_ENV=production \
     N8N_RELEASE_TYPE=${N8N_RELEASE_TYPE} \
     SHELL=/bin/sh
 
-# Bring `uv` over from python-runner-builder
+# Bring `uv` over from python-runner-builder, to make the image easier to extend
 COPY --from=python-runner-builder /usr/local/bin/uv /usr/local/bin/uv
 
 # Bring node over from node-alpine
@@ -116,6 +117,11 @@ COPY --from=node-alpine /usr/local/bin/node /usr/local/bin/node
 # libstdc++ is required by Node
 # libc6-compat is required by task-runner-launcher
 RUN apk add --no-cache ca-certificates tini libstdc++ libc6-compat
+
+# Bring corepack and pnpm over, to make the image easier to extend
+COPY --from=node-alpine /usr/local/lib/node_modules /usr/local/lib/node_modules
+RUN ln -s ../lib/node_modules/corepack/dist/corepack.js /usr/local/bin/corepack && \
+    ln -s ../lib/node_modules/corepack/dist/pnpm.js /usr/local/bin/pnpm
 
 RUN addgroup -g 1000 -S runner \
  && adduser  -u 1000 -S -G runner -h /home/runner -D runner

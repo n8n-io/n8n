@@ -1,4 +1,44 @@
 import type { INodeProperties } from 'n8n-workflow';
+import {
+	LOGSTREAMING_CB_DEFAULT_FAILURE_WINDOW_MS,
+	LOGSTREAMING_CB_DEFAULT_MAX_FAILURES,
+	LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
+	LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+} from '@n8n/constants';
+
+export const circuitBreakerOptions = {
+	displayName: 'Circuit Breaker Options',
+	name: 'circuitBreaker',
+	type: 'collection',
+	placeholder: 'Add Circuit Breaker Option',
+	description:
+		'A circuit breaker protects services from cascading failures by monitoring request failures and temporarily blocking requests when failure rates are high. This gives failing services time to recover without being overwhelmed by traffic.',
+	default: {},
+	options: [
+		{
+			displayName: 'Max Failures',
+			name: 'maxFailures',
+			type: 'number',
+			typeOptions: {
+				minValue: 1,
+			},
+			default: LOGSTREAMING_CB_DEFAULT_MAX_FAILURES,
+			description:
+				'After this many errors within the failure window n8n stops sending requests to prevent overloading the external service that’s not working properly.',
+		},
+		{
+			displayName: 'Failure Window',
+			name: 'failureWindow',
+			type: 'number',
+			typeOptions: {
+				minValue: 100,
+			},
+			default: LOGSTREAMING_CB_DEFAULT_FAILURE_WINDOW_MS,
+			description:
+				'Time window in milliseconds for counting failures (sliding window). Only failures within this window are counted toward the threshold. Older failures expire naturally.',
+		},
+	],
+};
 
 export const webhookModalDescription = [
 	{
@@ -390,12 +430,57 @@ export const webhookModalDescription = [
 				typeOptions: {
 					minValue: 1,
 				},
-				default: 10000,
+				default: 5000,
 				description:
 					'Time in ms to wait for the server to send response headers (and start the response body) before aborting the request',
 			},
+			{
+				displayName: 'Socket',
+				name: 'socket',
+				description: 'Socket options',
+				type: 'collection',
+				typeOptions: {
+					multipleValues: false,
+				},
+				default: {
+					keepAlive: true,
+					maxSockets: LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+					maxFreeSockets: LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
+				},
+				options: [
+					{
+						displayName: 'Keep Alive',
+						name: 'keepAlive',
+						type: 'boolean',
+						default: true,
+						noDataExpression: true,
+						description: 'Whether to keep the sockets available.',
+					},
+					{
+						displayName: 'Max Sockets',
+						name: 'maxSockets',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						default: LOGSTREAMING_DEFAULT_MAX_SOCKETS,
+						description: 'Maximum number of sockets per host to keep open at any given time.',
+					},
+					{
+						displayName: 'Max Free Sockets',
+						name: 'maxFreeSockets',
+						type: 'number',
+						typeOptions: {
+							minValue: 1,
+						},
+						default: LOGSTREAMING_DEFAULT_MAX_FREE_SOCKETS,
+						description: 'Maximum number of sockets per host to leave open in a free state.',
+					},
+				],
+			},
 		],
 	},
+	circuitBreakerOptions,
 ] as INodeProperties[];
 
 export const syslogModalDescription = [
@@ -465,6 +550,7 @@ export const syslogModalDescription = [
 		noDataExpression: true,
 		description: 'Syslog app name parameter',
 	},
+	circuitBreakerOptions,
 ] as INodeProperties[];
 
 export const sentryModalDescription = [
@@ -476,4 +562,5 @@ export const sentryModalDescription = [
 		noDataExpression: true,
 		description: 'Your Sentry DSN Client Key',
 	},
+	circuitBreakerOptions,
 ] as INodeProperties[];

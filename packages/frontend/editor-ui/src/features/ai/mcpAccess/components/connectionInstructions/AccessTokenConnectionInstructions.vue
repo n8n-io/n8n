@@ -236,6 +236,7 @@ const apiKeyText = computed(() => {
 	}
 	code {
 		font-size: var(--font-size--xs);
+		tab-size: 1;
 	}
 
 	&:hover {
