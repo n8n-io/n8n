@@ -3929,7 +3929,7 @@
 	"insights.banner.title.timeSaved.tooltip": "Total time saved calculated from your estimated time savings per execution across all workflows",
 	"insights.banner.queueMode.warning": "We identified & fixed an issue that may have caused duplicate insight counts.",
 	"insights.banner.queueMode.warning.link.text": "Learn more",
-	"insights.banner.queueMode.warning.link.url": "https://docs.n8n.io/insights/",
+	"insights.banner.queueMode.warning.link.url": "https://community.n8n.io/t/insights-reporting-bug-for-queue-mode-users-on-v1-100-0",
 	"insights.banner.failureRate.deviation.tooltip": "Percentage point change from previous period",
 	"insights.chart.failed": "Failed",
 	"insights.chart.succeeded": "Successful",
