@@ -3,9 +3,9 @@ import AssistantsHub from '@/features/ai/assistant/components/AssistantsHub.vue'
 import AskAssistantFloatingButton from '@/features/ai/assistant/components/Chat/AskAssistantFloatingButton.vue';
 import BannerStack from '@/features/shared/banners/components/BannerStack.vue';
 import Modals from '@/app/components/Modals.vue';
-import Telemetry from '@/app/components/Telemetry.vue';
 import { useHistoryHelper } from '@/app/composables/useHistoryHelper';
 import { useTelemetryContext } from '@/app/composables/useTelemetryContext';
+import { useTelemetryInitializer } from '@/app/composables/useTelemetryInitializer';
 import { useWorkflowDiffRouting } from '@/app/composables/useWorkflowDiffRouting';
 import {
 	APP_MODALS_ELEMENT_ID,
@@ -62,6 +62,8 @@ useHistoryHelper(route);
 
 // Initialize workflow diff routing management
 useWorkflowDiffRouting();
+
+useTelemetryInitializer();
 
 const loading = ref(true);
 const defaultLocale = computed(() => rootStore.defaultLocale);
@@ -181,7 +183,6 @@ useExposeCssVar('--ask-assistant--floating-button--margin-bottom', askAiFloating
 				@input-change="onCommandBarChange"
 				@navigate-to="onCommandBarNavigateTo"
 			/>
-			<Telemetry />
 			<AskAssistantFloatingButton v-if="assistantStore.isFloatingButtonShown" />
 		</div>
 		<AssistantsHub />

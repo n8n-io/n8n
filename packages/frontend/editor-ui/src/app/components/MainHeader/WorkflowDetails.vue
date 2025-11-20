@@ -47,7 +47,7 @@ import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useFoldersStore } from '@/features/core/folders/folders.store';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { ProjectTypes } from '@/features/collaboration/projects/projects.types';
-import { sanitizeFilename } from '@/app/utils/fileUtils';
+import { sanitizeFilename } from '@n8n/utils/files/sanitize';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { PathItem } from '@n8n/design-system/components/N8nBreadcrumbs/Breadcrumbs.vue';
 import { type BaseTextKey, useI18n } from '@n8n/i18n';

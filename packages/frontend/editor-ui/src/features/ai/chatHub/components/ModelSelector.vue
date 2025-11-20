@@ -68,6 +68,7 @@ function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
 		description: null,
 		updatedAt: null,
 		createdAt: null,
+		allowFileUploads: true,
 	});
 }
 
@@ -82,6 +83,12 @@ const credentialsName = computed(() =>
 	selectedAgent
 		? credentialsStore.getCredentialById(credentials?.[selectedAgent.model.provider] ?? '')?.name
 		: undefined,
+);
+const isCredentialsRequired = computed(
+	() =>
+		selectedAgent &&
+		selectedAgent.model.provider !== 'n8n' &&
+		selectedAgent.model.provider !== 'custom-agent',
 );
 
 const menu = computed(() => {
@@ -293,7 +300,7 @@ defineExpose({
 			<ChatAgentAvatar
 				v-if="selectedAgent"
 				:agent="selectedAgent"
-				:size="credentialsName ? 'md' : 'sm'"
+				:size="credentialsName || !isCredentialsRequired ? 'md' : 'sm'"
 				:class="$style.icon"
 			/>
 			<div :class="$style.selected">
