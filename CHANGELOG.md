@@ -1,3 +1,13 @@
+## [1.121.2](https://github.com/n8n-io/n8n/compare/n8n@1.121.1...n8n@1.121.2) (2025-11-20)
+
+
+### Bug Fixes
+
+* **core:** Fix mcp access scope issue ([#22031](https://github.com/n8n-io/n8n/issues/22031)) ([6335c88](https://github.com/n8n-io/n8n/commit/6335c885904aa093d7cf828482ef0a3dde7ba81e))
+* **editor:** Notice background colors ([#22044](https://github.com/n8n-io/n8n/issues/22044)) ([610594e](https://github.com/n8n-io/n8n/commit/610594ea36a7ecbe7344f5d4b12654245ba2db71))
+
+
+
 ## [1.121.1](https://github.com/n8n-io/n8n/compare/n8n@1.121.0...n8n@1.121.1) (2025-11-19)
 
 
