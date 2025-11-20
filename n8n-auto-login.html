@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>n8n 自动登录跳转</title>
+	<style>
+		* {
+			margin: 0;
+			padding: 0;
+			box-sizing: border-box;
+		}
+
+		body {
+			font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			min-height: 100vh;
+			display: flex;
+			justify-content: center;
+			align-items: center;
+			padding: 20px;
+		}
+
+		.container {
+			background: white;
+			border-radius: 16px;
+			padding: 40px;
+			max-width: 500px;
+			width: 100%;
+			box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+		}
+
+		h1 {
+			color: #333;
+			margin-bottom: 10px;
+			font-size: 28px;
+			text-align: center;
+		}
+
+		.subtitle {
+			color: #666;
+			margin-bottom: 30px;
+			font-size: 14px;
+			text-align: center;
+		}
+
+		.section {
+			margin-bottom: 25px;
+			padding: 20px;
+			background: #f8f9fa;
+			border-radius: 8px;
+		}
+
+		.section h2 {
+			color: #667eea;
+			margin-bottom: 15px;
+			font-size: 16px;
+		}
+
+		.input-group {
+			margin-bottom: 15px;
+		}
+
+		label {
+			display: block;
+			margin-bottom: 5px;
+			color: #555;
+			font-weight: 500;
+			font-size: 14px;
+		}
+
+		input {
+			width: 100%;
+			padding: 12px;
+			border: 2px solid #e0e0e0;
+			border-radius: 6px;
+			font-size: 14px;
+			transition: border-color 0.3s;
+			background: white;
+		}
+
+		input:focus {
+			outline: none;
+			border-color: #667eea;
+		}
+
+		button {
+			width: 100%;
+			padding: 14px;
+			background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+			color: white;
+			border: none;
+			border-radius: 6px;
+			font-size: 16px;
+			font-weight: 600;
+			cursor: pointer;
+			transition: transform 0.2s, box-shadow 0.2s;
+		}
+
+		button:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+		}
+
+		button:active {
+			transform: translateY(0);
+		}
+
+		.result {
+			margin-top: 15px;
+			padding: 15px;
+			border-radius: 6px;
+			font-size: 14px;
+			line-height: 1.6;
+			display: none;
+		}
+
+		.result.success {
+			background: #d4edda;
+			border: 1px solid #c3e6cb;
+			color: #155724;
+		}
+
+		.result.error {
+			background: #f8d7da;
+			border: 1px solid #f5c6cb;
+			color: #721c24;
+		}
+
+		.tip {
+			background: #e3f2fd;
+			border: 1px solid #90caf9;
+			color: #1565c0;
+			padding: 15px;
+			border-radius: 6px;
+			margin-top: 20px;
+			font-size: 13px;
+			line-height: 1.6;
+		}
+
+		.tip strong {
+			display: block;
+			margin-bottom: 8px;
+		}
+
+		code {
+			background: rgba(0, 0, 0, 0.05);
+			padding: 2px 6px;
+			border-radius: 3px;
+			font-family: 'Courier New', monospace;
+			font-size: 12px;
+		}
+
+		.example-box {
+			background: white;
+			padding: 12px;
+			border-radius: 4px;
+			margin-top: 10px;
+			border-left: 3px solid #667eea;
+		}
+
+		.example-box p {
+			margin: 5px 0;
+			font-size: 13px;
+		}
+
+		.example-box code {
+			word-break: break-all;
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container">
+		<h1>🚀 n8n 自动登录</h1>
+		<p class="subtitle">输入用户信息，一键打开 n8n 并自动登录</p>
+
+		<!-- 配置部分 -->
+		<div class="section">
+			<h2>⚙️ n8n 服务器地址</h2>
+			<div class="input-group">
+				<label for="n8nUrl">n8n 地址</label>
+				<input type="text" id="n8nUrl" value="http://localhost:5678/signin" placeholder="http://localhost:5678">
+			</div>
+		</div>
+
+		<!-- 用户信息 -->
+		<div class="section">
+			<h2>👤 用户信息</h2>
+			<div class="input-group">
+				<label for="userId">用户 ID（必填）</label>
+				<input type="text" id="userId" value="user001" placeholder="例如：user001 或 10001">
+			</div>
+			<div class="input-group">
+				<label for="userName">用户名称（可选）</label>
+				<input type="text" id="userName" value="" placeholder="">
+			</div>
+			<button onclick="openN8nWithAutoLogin()">🚀 打开 n8n 并自动登录</button>
+			<div id="loginResult" class="result"></div>
+		</div>
+	</div>
+
+	<script>
+		// 显示结果
+		function showResult (elementId, success, message)
+		{
+			const resultDiv = document.getElementById(elementId);
+			resultDiv.className = `result ${success ? 'success' : 'error'}`;
+			resultDiv.style.display = 'block';
+			resultDiv.innerHTML = `<strong>${success ? '✅ 成功' : '❌ 失败'}</strong><br>${message}`;
+		}
+
+		// 打开 n8n 并自动登录
+		function openN8nWithAutoLogin ()
+		{
+			const n8nUrl = document.getElementById('n8nUrl').value.trim();
+			const userId = document.getElementById('userId').value.trim();
+			const userName = document.getElementById('userName').value.trim();
+
+			// 验证必填项
+			if (!n8nUrl) {
+				showResult('loginResult', false, '请输入 n8n 地址');
+				return;
+			}
+
+			if (!userId) {
+				showResult('loginResult', false, '请输入用户 ID');
+				return;
+			}
+
+			try {
+				// 构建 URL
+				const url = new URL(n8nUrl);
+
+				// 添加 userId 参数
+				url.searchParams.set('userId', userId);
+
+				// 如果有用户名，也添加到参数中
+				if (userName) {
+					url.searchParams.set('userName', userName);
+				}
+
+				// 打开新窗口
+				const newWindow = window.open(url.toString(), '_blank');
+
+				if (newWindow) {
+					showResult('loginResult', true, `正在打开 n8n...<br><small>URL: ${url.toString()}</small><br><br>💡 令牌已设置，n8n 可以正常访问`);
+				} else {
+					showResult('loginResult', false, '无法打开新窗口，请检查浏览器弹窗拦截设置');
+				}
+			} catch (error) {
+				showResult('loginResult', false, `URL 格式错误: ${error.message}`);
+			}
+		}
+
+
+		// 页面加载时自动检测 URL 参数
+		window.addEventListener('DOMContentLoaded', function ()
+		{
+			const urlParams = new URLSearchParams(window.location.search);
+			const autoOpen = urlParams.get('autoOpen');
+
+			if (autoOpen === 'true') {
+				// 从 URL 参数中读取配置
+				const n8nUrl = urlParams.get('n8nUrl');
+				const userId = urlParams.get('userId');
+				const userName = urlParams.get('userName');
+
+				if (n8nUrl) document.getElementById('n8nUrl').value = n8nUrl;
+				if (userId) document.getElementById('userId').value = userId;
+				if (userName) document.getElementById('userName').value = userName;
+
+				// 自动触发打开
+				setTimeout(() =>
+				{
+					openN8nWithAutoLogin();
+				}, 500);
+			}
+		});
+	</script>
+</body>
+
+</html>

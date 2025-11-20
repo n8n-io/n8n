@@ -1,33 +1,35 @@
 import type { RouterMiddleware } from '@/app/types/router';
-import { VIEWS } from '@/app/constants';
 import type { GuestPermissionOptions } from '@/app/types/rbac';
 import { isGuest } from '@/app/utils/rbac/checks';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 export const guestMiddleware: RouterMiddleware<GuestPermissionOptions> = async (
 	to,
 	_from,
-	next,
+	_next,
 ) => {
 	const valid = isGuest();
-	if (!valid) {
-		const redirect = (to.query.redirect as string) ?? '';
 
-		// Allow local path redirects
-		if (redirect.startsWith('/')) {
-			return next(redirect);
-		}
+	// 检测自动登录参数：如果有 userId 参数，说明需要进行自动登录
+	const userId = to.query.userId as string;
+	const hasAutoLoginParams = userId && typeof userId === 'string' && userId.trim();
+
+	if (!valid) {
+		// 已登录用户访问登录页，需要先登出
+		const usersStore = useUsersStore();
 
 		try {
-			// Only allow origin domain redirects
-			const url = new URL(redirect);
-			if (url.origin === window.location.origin) {
-				return next(redirect);
-			}
-		} catch {
-			// Intentionally fall through to redirect to homepage
-			// if the redirect is an invalid URL
+			await usersStore.logout();
+		} catch (error) {
+			// 登出失败也继续执行
 		}
 
-		return next({ name: VIEWS.HOMEPAGE });
+		// 如果携带了自动登录参数，允许访问登录页执行自动登录
+		if (hasAutoLoginParams) {
+			return;
+		}
+
+		// 如果没有 userId 参数，允许访问登录页但显示访问被拒绝提示
+		return;
 	}
 };

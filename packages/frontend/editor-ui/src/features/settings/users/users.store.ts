@@ -358,10 +358,13 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 	};
 
 	const showPersonalizationSurvey = async () => {
+		// 屏蔽性化调查问卷
+		/*
 		const surveyEnabled = settingsStore.isPersonalizationSurveyEnabled;
 		if (surveyEnabled && currentUser.value && !currentUser.value.personalizationAnswers) {
 			uiStore.openModal(PERSONALIZATION_MODAL_KEY);
 		}
+		*/
 	};
 
 	const fetchMfaQR = async () => {
