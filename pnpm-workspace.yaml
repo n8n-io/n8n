@@ -79,10 +79,3 @@ catalogs:
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
 
-minimumReleaseAge: 2880
-
-minimumReleaseAgeExclude:
-  - '@n8n/*'
-  - '@n8n_io/*'
-  - 'tsdown@0.16.5'
-  - eslint-plugin-storybook

@@ -43,14 +43,18 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
-import { isMatchedAgent } from './chat.utils';
+import { convertFileToChatAttachment } from '@/app/utils/fileUtils';
+import { buildUiMessages, isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
+import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { type INode } from 'n8n-workflow';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
+	const toast = useToast();
 	const telemetry = useTelemetry();
+
 	const agents = ref<ChatModelsResponse>();
 	const sessions = ref<ChatHubSessionDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
@@ -65,7 +69,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		const conversation = getConversation(sessionId);
 		if (!conversation) return [];
 
-		return conversation.activeMessageChain.map((id) => conversation.messages[id]).filter(Boolean);
+		return buildUiMessages(sessionId, conversation, streaming.value);
 	};
 
 	function ensureConversation(sessionId: ChatSessionId): ChatConversation {
@@ -402,10 +406,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		await fetchSessions();
 	}
 
-	function onStreamError() {
+	function onStreamError(error: Error) {
 		if (!streaming.value) {
 			return;
 		}
+
+		toast.showError(error, 'Could not send message');
 
 		const { sessionId } = streaming.value;
 
@@ -425,18 +431,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
-	function sendMessage(
+	async function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
 		tools: INode[],
+		files: File[] = [],
 	) {
 		const messageId = uuidv4();
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.activeMessageChain.length
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
 			: null;
+
+		const attachments = await Promise.all(files.map(convertFileToChatAttachment));
 
 		addMessage(sessionId, {
 			id: messageId,
@@ -457,9 +466,15 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			revisionOfMessageId: null,
 			responses: [],
 			alternatives: [],
+			attachments,
 		});
 
-		streaming.value = { promptId: messageId, sessionId, model };
+		streaming.value = {
+			promptId: messageId,
+			sessionId,
+			model,
+			retryOfMessageId: null,
+		};
 
 		sendMessageApi(
 			rootStore.restApiContext,
@@ -471,6 +486,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials,
 				previousMessageId,
 				tools,
+				attachments,
 			},
 			onStreamMessage,
 			onStreamDone,
@@ -517,12 +533,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				revisionOfMessageId: editId,
 				responses: [],
 				alternatives: [],
+				attachments: message.attachments ?? null,
 			});
 		} else if (message?.type === 'ai') {
 			replaceMessageContent(sessionId, editId, content);
 		}
 
-		streaming.value = { promptId, sessionId, model };
+		streaming.value = {
+			promptId,
+			sessionId,
+			model,
+			retryOfMessageId: null,
+		};
 
 		editMessageApi(
 			rootStore.restApiContext,
@@ -553,7 +575,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			throw new Error('No previous message to base regeneration on');
 		}
 
-		streaming.value = { promptId: retryId, sessionId, model };
+		streaming.value = {
+			promptId: retryId,
+			sessionId,
+			model,
+			retryOfMessageId: retryId,
+		};
 
 		regenerateMessageApi(
 			rootStore.restApiContext,
@@ -659,6 +686,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			createdAt: agent.createdAt,
 			updatedAt: agent.updatedAt,
 			tools: agent.tools,
+			allowFileUploads: true,
 		};
 		agents.value?.['custom-agent'].models.push(agentModel);
 
@@ -704,7 +732,28 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function getAgent(model: ChatHubConversationModel) {
 		if (!agents.value) return;
 
-		return agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
+		const agent = agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
+
+		if (!agent) {
+			if (model.provider === 'custom-agent' || model.provider === 'n8n') {
+				return;
+			}
+
+			// Allow custom models chosen by ID even if they are not in the fetched list
+			return {
+				model: {
+					provider: model.provider,
+					model: model.model,
+				},
+				name: model.model,
+				description: null,
+				createdAt: null,
+				updatedAt: null,
+				allowFileUploads: true,
+			};
+		}
+
+		return agent;
 	}
 
 	return {
