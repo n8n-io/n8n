@@ -110,7 +110,8 @@ def format_output_json(
         metadata_dict["verbose"] = True
     else:
         for edit in output["top_edits"]:
-            del edit["parameter_diff"]
+            if "parameter_diff" in edit:
+                del edit["parameter_diff"]
 
     return json.dumps(output, indent=2)
 
