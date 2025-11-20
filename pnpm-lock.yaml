@@ -1523,6 +1523,9 @@ importers:
       '@n8n/typeorm':
         specifier: 'catalog:'
         version: 0.3.20-15(@sentry/node@9.42.1)(mysql2@3.15.0)(pg@8.12.0)(sqlite3@5.1.7)
+      '@n8n/utils':
+        specifier: workspace:*
+        version: link:../@n8n/utils
       '@n8n_io/ai-assistant-sdk':
         specifier: 'catalog:'
         version: 1.17.0

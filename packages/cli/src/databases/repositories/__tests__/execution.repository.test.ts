@@ -68,7 +68,9 @@ describe('ExecutionRepository', () => {
 
 			await executionRepository.deleteExecutionsByFilter({ id: '1' }, ['1'], { ids: ['1'] });
 
-			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([{ executionId: '1', workflowId }]);
+			expect(binaryDataService.deleteMany).toHaveBeenCalledWith([
+				{ type: 'execution', executionId: '1', workflowId },
+			]);
 		});
 	});
 
