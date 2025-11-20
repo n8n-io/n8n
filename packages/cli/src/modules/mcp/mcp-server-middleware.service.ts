@@ -65,6 +65,7 @@ export class McpServerMiddlewareService {
 				this.responseWithUnauthorized(res, req, {
 					reason: 'missing_authorization_header',
 					authType: 'unknown',
+					errorDetails: 'Authorization header not sent',
 				});
 				return;
 			}
@@ -113,7 +114,11 @@ export class McpServerMiddlewareService {
 		this.trackUnauthorizedEvent(req, context);
 		// RFC 6750 Section 3: Include WWW-Authenticate header for 401 responses
 		res.header('WWW-Authenticate', 'Bearer realm="n8n MCP Server"');
-		res.status(401).send({ message: UNAUTHORIZED_ERROR_MESSAGE });
+		res
+			.status(401)
+			.send({
+				message: `${UNAUTHORIZED_ERROR_MESSAGE}${context?.errorDetails ? ': ' + context.errorDetails : ''}`,
+			});
 	}
 
 	private trackUnauthorizedEvent(req: Request, context?: TelemetryAuthContext) {
