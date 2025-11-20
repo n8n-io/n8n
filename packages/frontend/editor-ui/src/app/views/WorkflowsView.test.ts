@@ -427,6 +427,7 @@ describe('Folders', () => {
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		active: true,
+		activeVersionId: 'v1',
 		isArchived: false,
 		versionId: '1',
 		homeProject: {
