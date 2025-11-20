@@ -237,10 +237,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		setSettings(fetchedSettings);
 
 		rootStore.setInstanceId(fetchedSettings.instanceId);
-
-		if (fetchedSettings.telemetry.enabled) {
-			void eventsApi.sessionStarted(rootStore.restApiContext);
-		}
 	};
 
 	const getSettings = async () => {

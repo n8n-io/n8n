@@ -47,7 +47,7 @@ export type PublicUserManagementSettings = Pick<
 
 export type PublicFrontendSettings = Pick<
 	FrontendSettings,
-	'settingsMode' | 'instanceId' | 'versionCli' | 'authCookie' | 'previewMode' | 'telemetry'
+	'settingsMode' | 'instanceId' | 'versionCli' | 'authCookie' | 'previewMode'
 > & {
 	enterprise: PublicEnterpriseSettings;
 	userManagement: PublicUserManagementSettings;
@@ -493,7 +493,6 @@ export class FrontendService {
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
 			previewMode,
-			telemetry,
 			enterprise: { saml, ldap, oidc },
 		} = this.getSettings();
 
@@ -514,7 +513,6 @@ export class FrontendService {
 			},
 			authCookie,
 			previewMode,
-			telemetry,
 			enterprise: { saml, ldap, oidc },
 		};
 		console.log('publicSettings', publicSettings);
