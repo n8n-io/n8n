@@ -125,6 +125,7 @@ watch(
 		setLanguage(newLocale);
 
 		axios.defaults.headers.common['Accept-Language'] = newLocale;
+
 		void locale.use(newLocale);
 	},
 	{ immediate: true },

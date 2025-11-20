@@ -47,8 +47,7 @@
     "@types/md5": "^2.3.5",
     "@types/xml2js": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:",
-    "jsonrepair": "catalog:"
+    "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
     "@n8n/errors": "workspace:^",
@@ -67,6 +66,7 @@
     "title-case": "3.0.3",
     "transliteration": "2.3.5",
     "xml2js": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "jsonrepair": "catalog:"
   }
 }

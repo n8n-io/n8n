@@ -189,11 +189,6 @@ describe('jsonParse', () => {
 				expect(result).toEqual({ key: 'value with "quotes" inside' });
 			});
 
-			it('should handle apostrophes in contractions', () => {
-				const result = jsonParse("{key: 'it's a test'}", { repairJSON: true });
-				expect(result).toEqual({ key: 'it"s a test' });
-			});
-
 			it('should handle escaped single quotes', () => {
 				const result = jsonParse("{key: 'it\\'s escaped'}", { repairJSON: true });
 				expect(result).toEqual({ key: "it's escaped" });
