@@ -51,6 +51,7 @@ const usersStore = useUsersStore();
 const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const userRoleProvisioningStore = useUserRoleProvisioningStore();
 
 const tooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 
@@ -70,8 +71,6 @@ const showUMSetupWarning = computed(() => hasPermission(['defaultUser']));
 const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
 );
-
-const userRoleProvisioningStore = useUserRoleProvisioningStore();
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));

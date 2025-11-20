@@ -134,6 +134,7 @@ describe('SettingsUsersTable', () => {
 				data: mockUsersList,
 				actions: mockActions,
 				loading: false,
+				canEditRole: true,
 			},
 		});
 		hasPermission.mockReturnValue(true); // Default to having permission
