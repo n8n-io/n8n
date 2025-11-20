@@ -104,12 +104,13 @@ export async function extractBinaryMessages(
 						);
 						textContent = binaryBuffer.toString('utf-8');
 					} else {
-						// Data might be base64 encoded
+						// Data might be base64 encoded with or without data URL prefix
 						if (data.data.includes('base64,')) {
 							const base64Data = data.data.split('base64,')[1];
 							textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
 						} else {
-							textContent = data.data;
+							// Default: binary data is base64-encoded without prefix
+							textContent = Buffer.from(data.data, 'base64').toString('utf-8');
 						}
 					}
 

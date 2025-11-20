@@ -182,6 +182,31 @@ describe('extractBinaryMessages', () => {
 			]),
 		);
 	});
+
+	it('should decode base64-encoded text files without prefix', async () => {
+		const textContent = 'Hello world!';
+		const fakeItem = {
+			json: {},
+			binary: {
+				text: {
+					mimeType: 'text/plain',
+					fileName: 'test.txt',
+					// Default n8n binary format: base64 without data URL prefix
+					data: Buffer.from(textContent).toString('base64'),
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(1);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'text',
+			text: `File: test.txt\nContent:\n${textContent}`,
+		});
+	});
 });
 
 describe('fixEmptyContentMessage', () => {
