@@ -1205,6 +1205,7 @@
 	"mainSidebar.prompt.invalidUrl": "Invalid URL",
 	"mainSidebar.prompt.workflowUrl": "Workflow URL",
 	"mainSidebar.save": "@:_reusableBaseText.save",
+	"mainSidebar.settings": "Settings",
 	"mainSidebar.showError.stopExecution.title": "Problem stopping execution",
 	"mainSidebar.showMessage.handleFileImport.message": "The file does not contain valid JSON data",
 	"mainSidebar.showMessage.handleFileImport.title": "Could not import file",
