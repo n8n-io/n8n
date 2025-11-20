@@ -217,6 +217,14 @@ export async function* createStreamProcessor(
 }
 
 /**
+ * Remove context tags from message content that are used for AI context
+ * but shouldn't be displayed to users
+ */
+export function cleanContextTags(text: string): string {
+	return text.replace(/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/, '');
+}
+
+/**
  * Format a HumanMessage into the expected output format
  */
 function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {

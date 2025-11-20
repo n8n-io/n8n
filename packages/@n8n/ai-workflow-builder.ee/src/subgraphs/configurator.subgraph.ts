@@ -2,9 +2,14 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { Runnable } from '@langchain/core/runnables';
+import type { StructuredTool } from '@langchain/core/tools';
 import { Annotation, StateGraph, END } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
+
+import { LLMServiceError } from '@/errors';
+import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
@@ -12,8 +17,6 @@ import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { processOperations } from '../utils/operations-processor';
 import { executeSubgraphTools } from '../utils/subgraph-helpers';
 import type { ChatPayload } from '../workflow-builder-agent';
-import { LLMServiceError } from '@/errors';
-import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
 
@@ -165,7 +168,7 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 
 	// Internal: Safety counter
 	iterationCount: Annotation<number>({
-		reducer: (x, y) => (y !== undefined ? y : x) + 1,
+		reducer: (x, y) => (y ?? x) + 1,
 		default: () => 0,
 	}),
 });
@@ -180,10 +183,14 @@ export interface ConfiguratorSubgraphConfig {
 export class ConfiguratorSubgraph extends BaseSubgraph<
 	ConfiguratorSubgraphConfig,
 	typeof ConfiguratorSubgraphState.State,
-	typeof ConfiguratorSubgraphState.State
+	typeof ParentGraphState.State
 > {
 	name = 'configurator_subgraph';
 	description = 'Configures node parameters after structure is built';
+
+	private agent!: Runnable;
+	private toolMap!: Map<string, StructuredTool>;
+	// private config!: ConfiguratorSubgraphConfig;
 
 	create(config: ConfiguratorSubgraphConfig) {
 		// Create tools
@@ -196,7 +203,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			),
 			createGetNodeParameterTool(),
 		];
-		const toolMap = new Map(tools.map((bt) => [bt.tool.name, bt.tool]));
+		this.toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
 		// Create agent with tools bound
 		const systemPromptTemplate = ChatPromptTemplate.fromMessages([
 			[
@@ -221,7 +228,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			});
 		}
 
-		const agent = systemPromptTemplate.pipe(config.llm.bindTools(tools.map((bt) => bt.tool)));
+		this.agent = systemPromptTemplate.pipe(config.llm.bindTools(tools.map((bt) => bt.tool)));
 
 		/**
 		 * Agent node - calls configurator agent
@@ -269,7 +276,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 					: state.messages;
 
 			messagesToUse.push(new HumanMessage({ content: workflowContext }));
-			const response = await agent.invoke({
+			const response = await this.agent.invoke({
 				messages: messagesToUse,
 				instanceUrl: state.instanceUrl ?? '',
 			});
@@ -285,7 +292,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		 * Tool execution node - uses helper for consistent execution
 		 */
 		const executeTools = async (state: typeof ConfiguratorSubgraphState.State) => {
-			return await executeSubgraphTools(state, toolMap);
+			return await executeSubgraphTools(state, this.toolMap);
 		};
 
 		/**
@@ -328,10 +335,27 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 	}
 
 	transformInput(parentState: typeof ParentGraphState.State) {
+		const contextParts: string[] = [];
+
+		// Add supervisor instructions if provided
+		if (parentState.supervisorInstructions) {
+			contextParts.push(parentState.supervisorInstructions);
+		}
+
+		// Add discovery results if available
+		if (parentState.discoveryContext) {
+			const { bestPractices } = parentState.discoveryContext;
+
+			if (bestPractices) {
+				contextParts.push(`\nBest Practices for Configuration:\n${bestPractices}`);
+			}
+		}
+		const supervisorInstructions = contextParts.length > 0 ? contextParts.join('\n\n') : null;
+
 		return {
 			workflowJSON: parentState.workflowJSON,
 			workflowContext: parentState.workflowContext,
-			supervisorInstructions: parentState.supervisorInstructions,
+			supervisorInstructions,
 			instanceUrl: '', // This needs to be passed in config or context, but for now empty
 			messages: [],
 		};
@@ -348,6 +372,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 
 		return {
 			workflowJSON: subgraphOutput.workflowJSON,
+			workflowOperations: subgraphOutput.workflowOperations ?? [],
 			finalResponse,
 			messages: [new HumanMessage({ content: finalResponse })],
 		};

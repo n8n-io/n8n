@@ -1,8 +1,9 @@
 import { ChatOpenAI } from '@langchain/openai';
+
 import { Orchestrator } from './orchestrator';
-import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import { BuilderSubgraph } from './subgraphs/builder.subgraph';
 import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
+import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 
 async function verify() {
 	console.log('Verifying Orchestrator...');
@@ -16,9 +17,9 @@ async function verify() {
 	orchestrator.registerSubgraph(new ConfiguratorSubgraph());
 
 	console.log('Building workflow...');
-	const workflow = orchestrator.build({
+	orchestrator.build({
 		parsedNodeTypes: [],
-		llm: llm,
+		llm,
 	});
 
 	console.log('Workflow built successfully!');

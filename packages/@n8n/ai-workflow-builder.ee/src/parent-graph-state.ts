@@ -1,7 +1,8 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { Annotation } from '@langchain/langgraph';
-import type { INodeTypeDescription } from 'n8n-workflow';
-import type { SimpleWorkflow } from './types/workflow';
+
+import type { DiscoveryContext } from './types/discovery-types';
+import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
 import type { ChatPayload } from './workflow-builder-agent';
 
 /**
@@ -46,13 +47,15 @@ export const ParentGraphState = Annotation.Root({
 		default: () => '',
 	}),
 
-	// Discovery results to pass to builder (structured)
-	discoveryResults: Annotation<{
-		nodesFound: Array<{ nodeType: INodeTypeDescription; reasoning: string }>;
-		relevantContext: Array<{ context: string; relevancy?: string }>;
-		summary: string;
-	} | null>({
+	// Discovery context to pass to other agents
+	discoveryContext: Annotation<DiscoveryContext | null>({
 		reducer: (x, y) => y ?? x,
 		default: () => null,
+	}),
+
+	// Workflow operations collected from subgraphs (hybrid approach)
+	workflowOperations: Annotation<WorkflowOperation[]>({
+		reducer: (x, y) => x.concat(y),
+		default: () => [],
 	}),
 });

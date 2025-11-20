@@ -1,29 +1,38 @@
+import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
 import { StateGraph, END, START } from '@langchain/langgraph';
-import type { ISubgraph } from './subgraphs/subgraph-interface';
-import { ParentGraphState } from './parent-graph-state';
-import { SupervisorAgent } from './agents/supervisor.agent';
+
 import { ResponderAgent } from './agents/responder.agent';
+import { SupervisorAgent } from './agents/supervisor.agent';
+import { ParentGraphState } from './parent-graph-state';
+import type { BuilderSubgraph, BuilderSubgraphConfig } from './subgraphs/builder.subgraph';
+import type {
+	ConfiguratorSubgraph,
+	ConfiguratorSubgraphConfig,
+} from './subgraphs/configurator.subgraph';
+import type { DiscoverySubgraph, DiscoverySubgraphConfig } from './subgraphs/discovery.subgraph';
+import { processOperations } from './utils/operations-processor';
 import { trimWorkflowJSON } from './utils/trim-workflow-context';
-import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
 export interface OrchestratorConfig {
 	llm: BaseChatModel;
 }
 
+type AnySubgraph = DiscoverySubgraph | BuilderSubgraph | ConfiguratorSubgraph;
+
 export class Orchestrator {
-	private subgraphs: Map<string, ISubgraph> = new Map();
+	private subgraphs: Map<string, AnySubgraph> = new Map();
 	private llm: BaseChatModel;
 
 	constructor(config: OrchestratorConfig) {
 		this.llm = config.llm;
 	}
 
-	registerSubgraph(subgraph: ISubgraph) {
+	registerSubgraph(subgraph: AnySubgraph) {
 		this.subgraphs.set(subgraph.name, subgraph);
 	}
 
-	build(config: any) {
+	build(config: DiscoverySubgraphConfig & BuilderSubgraphConfig & ConfiguratorSubgraphConfig) {
 		const supervisorAgent = new SupervisorAgent({ llm: this.llm });
 		const responderAgent = new ResponderAgent({ llm: this.llm });
 
@@ -92,33 +101,69 @@ export class Orchestrator {
 			};
 		});
 
+		// Add process_operations node for hybrid operations approach
+		workflow.addNode('process_operations', (state: typeof ParentGraphState.State) => {
+			console.log('[Process Operations] Processing', {
+				operationCount: state.workflowOperations?.length ?? 0,
+			});
+
+			// Process accumulated operations and clear the queue
+			const result = processOperations(state);
+
+			return {
+				...result,
+				workflowOperations: [], // Clear operations after processing
+			};
+		});
+
 		// Add Subgraph Nodes
 		for (const [name, subgraph] of this.subgraphs) {
 			const compiledSubgraph = subgraph.create(config);
 
-			workflow.addNode(name, async (state) => {
+			workflow.addNode(name, async (state: typeof ParentGraphState.State) => {
 				console.log(`[${name}] Starting`);
 
-				const input = (subgraph as any).transformInput
-					? (subgraph as any).transformInput(state)
-					: state;
-				const result = await compiledSubgraph.invoke(input);
-				const output = (subgraph as any).transformOutput
-					? (subgraph as any).transformOutput(result, state)
-					: result;
+				try {
+					const input = subgraph.transformInput(state);
+					const result = await compiledSubgraph.invoke(input);
+					const output = subgraph.transformOutput(result, state);
 
-				return output;
+					return output;
+				} catch (error) {
+					console.error(`[${name}] Error:`, error);
+
+					// Abort workflow and return error to user
+					const errorMessage =
+						error instanceof Error
+							? error.message
+							: `An error occurred in ${name}: ${String(error)}`;
+
+					return {
+						nextPhase: 'FINISH',
+						finalResponse: `Error: ${errorMessage}`,
+						messages: [
+							new HumanMessage({
+								content: `Error in ${name}: ${errorMessage}`,
+								name: 'system_error',
+							}),
+						],
+					};
+				}
 			});
-
-			// @ts-ignore
-			workflow.addEdge(name, 'supervisor');
 		}
 
-		// @ts-ignore
+		// Connect all subgraphs to process_operations
+		for (const name of this.subgraphs.keys()) {
+			workflow.addEdge(name, 'process_operations');
+		}
+
+		// After processing operations, go back to supervisor
+		workflow.addEdge('process_operations', 'supervisor');
+
 		workflow.addEdge(START, 'supervisor');
 
 		// Conditional Edge for Supervisor
-		workflow.addConditionalEdges('supervisor' as any, (state) => {
+		workflow.addConditionalEdges('supervisor', (state: typeof ParentGraphState.State) => {
 			const next = state.nextPhase;
 			console.log('[Router] Routing to', next);
 
@@ -126,22 +171,14 @@ export class Orchestrator {
 			if (next === 'FINISH') return END;
 
 			// Check if next matches a registered subgraph
-			if (this.subgraphs.has(next)) {
-				return next;
+			if (this.subgraphs.has(`${next}_subgraph`)) {
+				return `${next}_subgraph`;
 			}
-
-			// Fallback mapping (legacy support or fuzzy match)
-			if (next === 'discovery' && this.subgraphs.has('discovery_subgraph'))
-				return 'discovery_subgraph';
-			if (next === 'builder' && this.subgraphs.has('builder_subgraph')) return 'builder_subgraph';
-			if (next === 'configurator' && this.subgraphs.has('configurator_subgraph'))
-				return 'configurator_subgraph';
-
 			// Default
 			return 'discovery_subgraph'; // Or handle error
 		});
 
-		workflow.addEdge('responder' as any, END);
+		workflow.addEdge('responder', END);
 
 		return workflow.compile();
 	}

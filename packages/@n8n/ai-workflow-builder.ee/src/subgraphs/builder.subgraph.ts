@@ -2,6 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import type { BaseMessage } from '@langchain/core/messages';
 import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import type { StructuredTool } from '@langchain/core/tools';
 import { Annotation, StateGraph, END } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
@@ -10,6 +11,8 @@ import { LLMServiceError } from '@/errors';
 import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 import type { ChatPayload } from '@/workflow-builder-agent';
 
+import { BaseSubgraph } from './subgraph-interface';
+import type { ParentGraphState } from '../parent-graph-state';
 import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
@@ -17,8 +20,6 @@ import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { processOperations } from '../utils/operations-processor';
 import { executeSubgraphTools } from '../utils/subgraph-helpers';
-import { BaseSubgraph } from './subgraph-interface';
-import type { ParentGraphState } from '../parent-graph-state';
 
 /**
  * Builder Agent Prompt
@@ -144,7 +145,7 @@ export interface BuilderSubgraphConfig {
 export class BuilderSubgraph extends BaseSubgraph<
 	BuilderSubgraphConfig,
 	typeof BuilderSubgraphState.State,
-	typeof BuilderSubgraphState.State
+	typeof ParentGraphState.State
 > {
 	name = 'builder_subgraph';
 	description = 'Constructs workflow structure: creating nodes and connections';
@@ -155,9 +156,10 @@ export class BuilderSubgraph extends BaseSubgraph<
 			createAddNodeTool(config.parsedNodeTypes),
 			createConnectNodesTool(config.parsedNodeTypes, config.logger),
 			createRemoveNodeTool(config.logger),
+			createRemoveNodeTool(config.logger),
 			createRemoveConnectionTool(config.logger),
 		];
-		const toolMap = new Map(tools.map((bt) => [bt.tool.name, bt.tool]));
+		const toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
 		// Create agent with tools bound
 		const systemPrompt = ChatPromptTemplate.fromMessages([
 			[
@@ -285,7 +287,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 
 	transformInput(parentState: typeof ParentGraphState.State) {
 		const userMessage = parentState.messages.find((m) => m instanceof HumanMessage);
-		const userRequest = userMessage?.content?.toString() || '';
+		const userRequest = typeof userMessage?.content === 'string' ? userMessage.content : '';
 
 		// Build context from discovery results and supervisor instructions
 		let builderRequest = userRequest;
@@ -299,13 +301,23 @@ export class BuilderSubgraph extends BaseSubgraph<
 		}
 
 		// Add discovery results if available
-		if (parentState.discoveryResults) {
-			const { nodesFound, relevantContext, summary } = parentState.discoveryResults;
+		if (parentState.discoveryContext) {
+			const { nodesFound, summary, categorization, bestPractices } = parentState.discoveryContext;
 
 			contextParts.push('\n--- Discovery Results ---');
 
 			if (summary) {
 				contextParts.push(`Summary: ${summary}`);
+			}
+
+			if (categorization) {
+				contextParts.push(
+					`\nCategorization: ${categorization.techniques.join(', ')} (Confidence: ${categorization.confidence})`,
+				);
+			}
+
+			if (bestPractices) {
+				contextParts.push(`\nBest Practices:\n${bestPractices}`);
 			}
 
 			if (nodesFound.length > 0) {
@@ -314,19 +326,11 @@ export class BuilderSubgraph extends BaseSubgraph<
 					contextParts.push(`- ${nodeType.displayName} (${nodeType.name}): ${reasoning}`);
 				});
 			}
-
-			const builderContext = relevantContext.filter(
-				(c) => !c.relevancy || c.relevancy === 'builder',
-			);
-			if (builderContext.length > 0) {
-				contextParts.push('\nAdditional context:');
-				builderContext.forEach(({ context }) => contextParts.push(`- ${context}`));
-			}
 		}
 
 		// Add current workflow state
 		contextParts.push(
-			`\n\nCurrent workflow has ${parentState.workflowJSON.nodes.length} nodes: ${parentState.workflowJSON.nodes.map((n) => n.name).join(', ') || 'none'}`,
+			`\n\nCurrent workflow has ${parentState.workflowJSON.nodes.length} nodes: ${parentState.workflowJSON.nodes.map((n) => n.name).join(', ')}`,
 		);
 
 		builderRequest = contextParts.join('\n');
@@ -363,6 +367,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 
 		return {
 			workflowJSON: subgraphOutput.workflowJSON,
+			workflowOperations: subgraphOutput.workflowOperations ?? [],
 			messages: [
 				new HumanMessage({
 					content: `Builder completed: ${summary}`,
