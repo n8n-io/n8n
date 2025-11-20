@@ -17,6 +17,7 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -40,6 +41,7 @@ const emit = defineEmits<{
 const clipboard = useClipboard();
 const chatStore = useChatStore();
 const rootStore = useRootStore();
+const { isCtrlKeyPressed } = useDeviceSupport();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -94,6 +96,15 @@ function handleConfirmEdit() {
 	}
 
 	emit('update', { ...message, content: editedText.value });
+}
+
+function handleKeydownTextarea(e: KeyboardEvent) {
+	const trimmed = editedText.value.trim();
+
+	if (e.key === 'Enter' && isCtrlKeyPressed(e) && !e.isComposing && trimmed) {
+		e.preventDefault();
+		handleConfirmEdit();
+	}
 }
 
 function handleRegenerate() {
@@ -168,6 +179,7 @@ onBeforeMount(() => {
 					type="textarea"
 					:autosize="{ minRows: 3, maxRows: 20 }"
 					:class="$style.textarea"
+					@keydown="handleKeydownTextarea"
 				/>
 				<div :class="$style.editActions">
 					<N8nButton type="secondary" size="small" @click="handleCancelEdit"> Cancel </N8nButton>
