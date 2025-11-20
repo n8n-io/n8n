@@ -352,7 +352,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 		});
 
-		it('should use current version when workflow has no active version (manual execution)', async () => {
+		it('should use current version when workflow has no active version', async () => {
 			const currentNodes: INode[] = [
 				mock<INode>({
 					id: 'current-node',

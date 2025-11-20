@@ -92,6 +92,10 @@ export function getRunData(
 	};
 }
 
+/**
+ * Loads workflow data for sub-workflow execution.
+ * Uses the active version when available.
+ */
 export async function getWorkflowData(
 	workflowInfo: IExecuteWorkflowInfo,
 	parentWorkflowId: string,
@@ -121,9 +125,6 @@ export async function getWorkflowData(
 			});
 		}
 
-		// Manual executions do not have an active version
-		// So when it is missing we load the latest version
-		// Otherwise, we load the active version
 		if (workflowFromDb.activeVersion) {
 			workflowFromDb.nodes = workflowFromDb.activeVersion.nodes;
 			workflowFromDb.connections = workflowFromDb.activeVersion.connections;
