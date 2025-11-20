@@ -47,17 +47,15 @@ export type PublicUserManagementSettings = Pick<
 
 export type PublicFrontendSettings = Pick<
 	FrontendSettings,
-	| 'settingsMode'
-	| 'instanceId'
-	| 'versionCli'
-	| 'sso'
-	| 'mfa'
-	| 'authCookie'
-	| 'previewMode'
-	| 'telemetry'
+	'settingsMode' | 'instanceId' | 'versionCli' | 'mfa' | 'authCookie' | 'previewMode' | 'telemetry'
 > & {
 	enterprise: PublicEnterpriseSettings;
 	userManagement: PublicUserManagementSettings;
+	sso: {
+		saml: FrontendSettings['sso']['saml'];
+		ldap: FrontendSettings['sso']['ldap'];
+		oidc: Omit<FrontendSettings['sso']['oidc'], 'callbackUrl'>;
+	};
 };
 
 @Service()
@@ -492,7 +490,7 @@ export class FrontendService {
 			instanceId,
 			versionCli,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
-			sso,
+			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			mfa,
 			authCookie,
 			previewMode,
@@ -505,7 +503,14 @@ export class FrontendService {
 			instanceId,
 			versionCli,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
-			sso,
+			sso: {
+				saml: ssoSaml,
+				ldap: ssoLdap,
+				oidc: {
+					loginEnabled: ssoOidc.loginEnabled,
+					loginUrl: ssoOidc.loginUrl,
+				},
+			},
 			mfa,
 			authCookie,
 			previewMode,

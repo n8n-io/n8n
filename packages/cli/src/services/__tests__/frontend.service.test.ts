@@ -207,18 +207,8 @@ describe('FrontendService', () => {
 			const expectedPublicSettings: PublicFrontendSettings = {
 				settingsMode: 'public',
 				instanceId: instanceSettings.instanceId,
-				defaultLocale: globalConfig.defaultLocale,
 				versionCli: N8N_VERSION,
-				releaseChannel: globalConfig.generic.releaseChannel,
-				versionNotifications: {
-					enabled: globalConfig.versionNotifications.enabled,
-					endpoint: globalConfig.versionNotifications.endpoint,
-					whatsNewEnabled: globalConfig.versionNotifications.whatsNewEnabled,
-					whatsNewEndpoint: globalConfig.versionNotifications.whatsNewEndpoint,
-					infoUrl: globalConfig.versionNotifications.infoUrl,
-				},
 				userManagement: {
-					quota: 100,
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
 					authenticationMethod: 'email',
@@ -229,19 +219,13 @@ describe('FrontendService', () => {
 					oidc: {
 						loginEnabled: false,
 						loginUrl: 'http://localhost:5678/rest/sso/oidc/login',
-						callbackUrl: 'http://localhost:5678/rest/sso/oidc/callback',
 					},
 				},
 				mfa: { enabled: false, enforced: false },
 				authCookie: { secure: false },
-				oauthCallbackUrls: {
-					oauth1: 'http://localhost:5678/rest/oauth1-credential/callback',
-					oauth2: 'http://localhost:5678/rest/oauth2-credential/callback',
-				},
-				banners: { dismissed: [] },
 				previewMode: false,
 				telemetry: { enabled: false },
-				enterprise: { saml: false, ldap: false, oidc: false, showNonProdBanner: false },
+				enterprise: { saml: false, ldap: false, oidc: false },
 			};
 
 			const { service } = createMockService();
