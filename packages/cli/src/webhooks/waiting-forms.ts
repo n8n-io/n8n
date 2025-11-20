@@ -10,7 +10,7 @@ import {
 } from 'n8n-workflow';
 
 import { ConflictError } from '@/errors/response-errors/conflict.error';
-import { getWorkflowActiveStatusFromExecution } from '@/executions/execution.utils';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
 
@@ -38,7 +38,7 @@ export class WaitingForms extends WaitingWebhooks {
 			name: workflowData.name,
 			nodes: workflowData.nodes,
 			connections: workflowData.connections,
-			active: getWorkflowActiveStatusFromExecution(workflowData),
+			active: getWorkflowActiveStatusFromWorkflowData(workflowData),
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,

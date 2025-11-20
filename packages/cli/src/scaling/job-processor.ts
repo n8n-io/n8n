@@ -26,7 +26,7 @@ import type {
 
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { getWorkflowActiveStatusFromExecution } from '@/executions/execution.utils';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -115,7 +115,7 @@ export class JobProcessor {
 			name: execution.workflowData.name,
 			nodes: execution.workflowData.nodes,
 			connections: execution.workflowData.connections,
-			active: getWorkflowActiveStatusFromExecution(execution.workflowData),
+			active: getWorkflowActiveStatusFromWorkflowData(execution.workflowData),
 			nodeTypes: this.nodeTypes,
 			staticData,
 			settings: execution.workflowData.settings,
