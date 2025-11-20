@@ -275,7 +275,16 @@ export interface ChatHubMessageDto {
 	attachments: Array<{ fileName?: string; mimeType?: string }>;
 }
 
-export type ChatHubConversationsResponse = ChatHubSessionDto[];
+export class ChatHubConversationsRequest extends Z.class({
+	limit: z.coerce.number().int().min(1).max(100),
+	cursor: z.string().uuid().optional(),
+}) {}
+
+export interface ChatHubConversationsResponse {
+	data: ChatHubSessionDto[];
+	nextCursor: string | null;
+	hasMore: boolean;
+}
 
 export interface ChatHubConversationDto {
 	messages: Record<ChatMessageId, ChatHubMessageDto>;
