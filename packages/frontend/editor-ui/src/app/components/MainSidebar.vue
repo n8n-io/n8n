@@ -40,7 +40,6 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useDebounce } from '@/app/composables/useDebounce';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useBugReporting } from '@/app/composables/useBugReporting';
@@ -77,7 +76,6 @@ const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const templatesDataQualityStore = useTemplatesDataQualityStore();
 
-const { callDebounced } = useDebounce();
 const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const telemetry = useTelemetry();
@@ -351,10 +349,12 @@ const toggleCollapse = () => {
 	uiStore.toggleSidebarMenuCollapse();
 	// When expanding, delay showing some element to ensure smooth animation
 	if (!isCollapsed.value) {
+		sidebarWidth.value = 300;
 		setTimeout(() => {
 			fullyExpanded.value = !isCollapsed.value;
 		}, 300);
 	} else {
+		sidebarWidth.value = 42;
 		fullyExpanded.value = !isCollapsed.value;
 	}
 };
@@ -432,6 +432,37 @@ const {
 onClickOutside(createBtn as Ref<VueInstance>, () => {
 	createBtn.value?.close();
 });
+
+const sidebarWidth = ref(isCollapsed.value ? 42 : 300);
+const isResizing = ref(false);
+
+function onResizeStart() {
+	isResizing.value = true;
+}
+
+function onResize(event: { width: number; x: number }) {
+	if (isCollapsed.value && event.x > 100) {
+		sidebarWidth.value = 200;
+		toggleCollapse();
+		return;
+	}
+
+	if (isCollapsed.value) {
+		return;
+	}
+
+	if (event.x < 30 && !isCollapsed.value) {
+		sidebarWidth.value = 40;
+		toggleCollapse();
+		return;
+	}
+
+	sidebarWidth.value = event.width;
+}
+
+function onResizeEnd() {
+	isResizing.value = false;
+}
 </script>
 
 <template>
@@ -484,7 +515,41 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					/>
 				</N8nTooltip>
 			</N8nLogo>
-
+			<KeyboardShortcutTooltip
+				:placement="isCollapsed ? 'right' : 'bottom'"
+				:label="
+					isCollapsed
+						? i18n.baseText('mainSidebar.state.expand')
+						: i18n.baseText('mainSidebar.state.collapse')
+				"
+				show-after="500"
+				:shortcut="{ keys: ['['] }"
+			>
+				<N8nIconButton
+					size="small"
+					type="highlight"
+					icon="panel-left"
+					icon-size="large"
+					aria-label="Toggle sidebar"
+					@click="toggleCollapse"
+				/>
+			</KeyboardShortcutTooltip>
+			<KeyboardShortcutTooltip
+				v-if="isCommandBarEnabled"
+				:placement="isCollapsed ? 'right' : 'bottom'"
+				show-after="500"
+				:label="i18n.baseText('nodeView.openCommandBar')"
+				:shortcut="{ keys: ['k'], metaKey: true }"
+			>
+				<N8nIconButton
+					size="small"
+					type="highlight"
+					icon="search"
+					icon-size="large"
+					aria-label="Open command palette"
+					@click="openCommandBar"
+				/>
+			</KeyboardShortcutTooltip>
 			<N8nNavigationDropdown
 				ref="createBtn"
 				data-test-id="universal-add"
@@ -547,41 +612,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					</N8nTooltip>
 				</template>
 			</N8nNavigationDropdown>
-			<KeyboardShortcutTooltip
-				v-if="isCommandBarEnabled"
-				:placement="isCollapsed ? 'right' : 'bottom'"
-				show-after="500"
-				:label="i18n.baseText('nodeView.openCommandBar')"
-				:shortcut="{ keys: ['k'], metaKey: true }"
-			>
-				<N8nIconButton
-					size="small"
-					type="highlight"
-					icon="search"
-					icon-size="large"
-					aria-label="Open command palette"
-					@click="openCommandBar"
-				/>
-			</KeyboardShortcutTooltip>
-			<KeyboardShortcutTooltip
-				:placement="isCollapsed ? 'right' : 'bottom'"
-				:label="
-					isCollapsed
-						? i18n.baseText('mainSidebar.state.expand')
-						: i18n.baseText('mainSidebar.state.collapse')
-				"
-				show-after="500"
-				:shortcut="{ keys: ['['] }"
-			>
-				<N8nIconButton
-					size="small"
-					type="highlight"
-					icon="panel-left"
-					icon-size="large"
-					aria-label="Toggle sidebar"
-					@click="toggleCollapse"
-				/>
-			</KeyboardShortcutTooltip>
 		</div>
 		<N8nScrollArea as-child>
 			<div :class="$style.scrollArea">
@@ -679,7 +709,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 		min-width: auto;
 
 		.header {
-			flex-direction: column-reverse;
+			flex-direction: column;
 		}
 	}
 }
