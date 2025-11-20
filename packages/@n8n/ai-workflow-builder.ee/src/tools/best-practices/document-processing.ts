@@ -34,6 +34,82 @@ Trigger → Capture Binary → Extract Text → Parse/Transform → Route to Des
 - Multiple Triggers (Email + Drive + Webhook) → Merge → Standardize → Process → Store
 - Best for: Documents from various channels needing unified processing
 
+### RAG (Retrieval-Augmented Generation) System Design
+
+A complete RAG implementation typically requires multiple coordinated workflows working together. This pattern enables intelligent document-based question answering with automatic knowledge base updates.
+
+**Architecture Overview:**
+The RAG system consists of three main workflows that work in concert:
+
+**Workflow 1: Initial Knowledge Base Population (One-time/Scheduled)**
+- Schedule Trigger (daily/weekly) or Manual Trigger
+- Google Drive node → List all documents in folder
+- Split In Batches (5-10 files)
+- For each batch:
+  - Download file → Extract text (with OCR fallback)
+  - AI Agent → Generate embeddings and metadata
+  - Pinecone/Qdrant/Supabase → Store vectors with metadata
+- Slack notification → "Knowledge base updated: X documents processed"
+- Best for: Initial setup and periodic full refreshes
+
+**Workflow 2: Real-time Document Updates (Event-driven)**
+- Google Drive Trigger → Monitor for new/updated files
+- File validation → Check supported formats
+- Extract from File → OCR fallback if needed
+- AI Chain → Extract key concepts and generate summary
+- Vector embedding generation
+- Update vector database with new/updated embeddings
+- Optional: Remove old versions if document was updated
+- Audit log → Track all changes to knowledge base
+- Best for: Keeping knowledge base current without manual intervention
+
+**Workflow 3: Chat Interface with RAG (User-facing)**
+- Webhook Trigger → Receive user questions
+- Input validation and sanitization
+- Query preprocessing:
+  - AI Agent → Rephrase question for better retrieval
+  - Extract key terms and intent
+- Vector search:
+  - Generate embedding for user query
+  - Retrieve top-k relevant documents (typically 3-5)
+  - Apply metadata filters if needed (date, department, etc.)
+- Context assembly:
+  - Merge retrieved documents
+  - Add system context and constraints
+- AI Agent with context:
+  - System prompt with retrieved documents
+  - User question
+  - Generate comprehensive answer with citations
+- Response formatting:
+  - Include source documents
+  - Confidence score
+  - Suggested follow-up questions
+- Webhook response → Return to user
+- Optional: Log interaction for analytics
+
+**Inter-workflow Communication:**
+- Use DataTable or external database for shared state
+- Track document processing status across workflows
+- Maintain version history and update logs
+
+**Key Design Considerations:**
+
+1. **Chunking Strategy:**
+   - Split large documents into semantic chunks (500-1000 tokens)
+   - Maintain chunk overlap for context preservation
+   - Store chunk metadata (source, page, section)
+
+2. **Embedding Model Selection:**
+   - OpenAI text-embedding-3-small for cost efficiency
+   - Cohere embed-v3 for multilingual documents
+   - Local models via Ollama for sensitive data
+
+3. **Vector Database Choice:**
+   - Pinecone: Easiest setup
+   - Supabase pgvector: If already using Supabase
+   - Qdrant
+   - Redis: For smaller datasets
+
 ### Branching Strategy
 
 Always branch early based on document characteristics:
