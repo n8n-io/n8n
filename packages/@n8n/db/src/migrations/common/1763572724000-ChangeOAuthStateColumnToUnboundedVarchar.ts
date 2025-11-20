@@ -50,13 +50,13 @@ export class ChangeOAuthStateColumnToUnboundedVarchar1763572724000
 			await queryRunner.query(`ALTER TABLE ${tempTableName} RENAME TO ${tableName};`);
 		} else if (isMysql) {
 			await queryRunner.query(
-				`ALTER TABLE ${tableName} MODIFY COLUMN ${escape.columnName('state')} VARCHAR;`,
+				`ALTER TABLE ${tableName} MODIFY COLUMN ${escape.columnName('state')} TEXT;`,
 			);
 			await queryRunner.query(
-				`ALTER TABLE ${tableName} MODIFY COLUMN ${escape.columnName('codeChallenge')} VARCHAR;`,
+				`ALTER TABLE ${tableName} MODIFY COLUMN ${escape.columnName('codeChallenge')} TEXT NOT NULL;`,
 			);
 			await queryRunner.query(
-				`ALTER TABLE ${tableName} MODIFY COLUMN ${escape.columnName('redirectUri')} VARCHAR;`,
+				`ALTER TABLE ${tableName} MODIFY COLUMN ${escape.columnName('redirectUri')} TEXT NOT NULL;`,
 			);
 		} else if (isPostgres) {
 			await queryRunner.query(
