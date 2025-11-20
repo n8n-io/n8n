@@ -77,9 +77,22 @@ const onConfirmProvisioningSetting = () => {
 	>
 		<template v-if="!isDisablingProvisioning">
 			<div class="mb-s">
-				<N8nText color="text-base">{{
-					locale.baseText('settings.provisioningConfirmDialog.breakingChangeDescription.firstLine')
-				}}</N8nText>
+				<N8nText color="text-base"
+					>{{
+						locale.baseText(
+							newProvisioningSetting === 'instance_and_project_roles'
+								? 'settings.provisioningConfirmDialog.breakingChangeDescription.firstSentence.partOne.withProjectRoles'
+								: 'settings.provisioningConfirmDialog.breakingChangeDescription.firstSentence.partOne',
+						)
+					}}
+				</N8nText>
+				<N8nText :class="$style.descriptionTextPartTwo" color="text-base">
+					{{
+						locale.baseText(
+							'settings.provisioningConfirmDialog.breakingChangeDescription.firstSentence.partTwo',
+						)
+					}}</N8nText
+				>
 			</div>
 			<div class="mb-s">
 				<N8nText color="text-base"
@@ -205,6 +218,10 @@ const onConfirmProvisioningSetting = () => {
 
 .card {
 	background-color: var(--color--background--light-1);
+}
+
+.descriptionTextPartTwo {
+	margin-left: 4px;
 }
 
 .icon {
