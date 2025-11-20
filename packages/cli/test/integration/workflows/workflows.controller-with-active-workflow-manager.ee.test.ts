@@ -1,8 +1,8 @@
 import {
 	createTeamProject,
-	createWorkflowWithTriggerAndHistory,
 	testDb,
 	mockInstance,
+	createActiveWorkflow,
 } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 
@@ -39,7 +39,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflowWithTriggerAndHistory({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		//
 		// ACT

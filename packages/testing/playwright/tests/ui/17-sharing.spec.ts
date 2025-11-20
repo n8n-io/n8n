@@ -203,7 +203,7 @@ test.describe('@isolated', () => {
 
 			await expect(
 				n8n.credentials.credentialModal.getVisibleDropdown().getByTestId('project-sharing-info'),
-			).toHaveCount(3);
+			).toHaveCount(4);
 
 			// Admin can share with self
 			await expect(
@@ -251,7 +251,7 @@ test.describe('@isolated', () => {
 			await n8n.credentials.credentialModal.getUsersSelect().click();
 
 			const sharingDropdown = n8n.credentials.credentialModal.getVisibleDropdown();
-			await expect(sharingDropdown.locator('li')).toHaveCount(4);
+			await expect(sharingDropdown.locator('li')).toHaveCount(5);
 			await expect(sharingDropdown.getByText('Development')).toBeVisible();
 
 			await sharingDropdown.getByText('Development').click();
@@ -290,9 +290,9 @@ test.describe('@isolated', () => {
 			await n8n.credentials.credentialModal.getUsersSelect().click();
 
 			const sharingDropdown2 = n8n.credentials.credentialModal.getVisibleDropdown();
-			await expect(sharingDropdown2.locator('li')).toHaveCount(4);
+			await expect(sharingDropdown2.locator('li')).toHaveCount(5);
 
-			await sharingDropdown2.locator('li').first().click();
+			await sharingDropdown2.locator('li').nth(1).click();
 			await n8n.credentials.credentialModal.saveSharing();
 			await n8n.credentials.credentialModal.close();
 
