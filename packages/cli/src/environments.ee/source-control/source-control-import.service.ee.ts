@@ -388,6 +388,7 @@ export class SourceControlImportService {
 				id: true,
 				name: true,
 				type: true,
+				isGlobal: true,
 				shared: {
 					project: {
 						id: true,
@@ -418,6 +419,7 @@ export class SourceControlImportService {
 				type: local.type,
 				filename: getCredentialExportPath(local.id, this.credentialExportFolder),
 				ownedBy: remoteOwnerProject ? getOwnerFromProject(remoteOwnerProject) : undefined,
+				isGlobal: local.isGlobal,
 			};
 		}) as StatusExportableCredential[];
 	}
@@ -787,7 +789,7 @@ export class SourceControlImportService {
 					(e) => e.id === credential.id && e.type === credential.type,
 				);
 
-				const { name, type, data, id } = credential;
+				const { name, type, data, id, isGlobal = false } = credential;
 				const newCredentialObject = new Credentials({ id, name }, type);
 				if (existingCredential?.data) {
 					newCredentialObject.data = existingCredential.data;
@@ -801,7 +803,7 @@ export class SourceControlImportService {
 				}
 
 				this.logger.debug(`Updating credential id ${newCredentialObject.id as string}`);
-				await this.credentialsRepository.upsert(newCredentialObject, ['id']);
+				await this.credentialsRepository.upsert({ ...newCredentialObject, isGlobal }, ['id']);
 
 				const localOwner = existingSharedCredentials.find(
 					(c) => c.credentialsId === credential.id && c.role === 'credential:owner',
