@@ -227,18 +227,17 @@ async function onExecute() {
 }
 
 function scrollIntoView() {
-	containerRef.value?.scrollIntoView({ behavior: 'smooth' });
+	containerRef.value?.scrollIntoView({
+		behavior: 'smooth',
+		block: 'nearest',
+		inline: 'nearest',
+	});
 }
 
 onMounted(scrollIntoView);
 
 onBeforeUnmount(() => {
 	stopExecutionWatcher();
-});
-
-watch(workflowIssues, async () => {
-	await nextTick();
-	scrollIntoView();
 });
 </script>
 

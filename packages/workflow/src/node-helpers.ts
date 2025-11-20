@@ -25,7 +25,6 @@ import type {
 	INodePropertyRegexValidation,
 	INodeType,
 	IParameterDependencies,
-	IRunExecutionData,
 	IVersionedNodeType,
 	NodeParameterValue,
 	ResourceMapperValue,
@@ -37,6 +36,7 @@ import type {
 	NodeConnectionType,
 } from './interfaces';
 import { validateFilterParameter } from './node-parameters/filter-parameter';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 import {
 	isFilterValue,
 	isINodePropertyOptionsList,

@@ -10,6 +10,8 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useToast } from '@/app/composables/useToast';
 import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import TemplatesDataQualityInlineSection from '@/experiments/templatesDataQuality/components/TemplatesDataQualityInlineSection.vue';
 import type { IUser } from 'n8n-workflow';
 
 const emit = defineEmits<{
@@ -24,6 +26,7 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const projectPages = useProjectPages();
 const readyToRunStore = useReadyToRunStore();
+const templatesDataQualityStore = useTemplatesDataQualityStore();
 
 const isLoadingReadyToRun = ref(false);
 
@@ -51,6 +54,14 @@ const showReadyToRunCard = computed(() => {
 	return (
 		isLoadingReadyToRun.value ||
 		readyToRunStore.getCardVisibility(projectPermissions.value.workflow.create, readOnlyEnv.value)
+	);
+});
+
+const showTemplatesDataQualityInline = computed(() => {
+	return (
+		templatesDataQualityStore.isFeatureEnabled() &&
+		!readOnlyEnv.value &&
+		projectPermissions.value.workflow.create
 	);
 });
 
@@ -141,6 +152,7 @@ const addWorkflow = () => {
 					</div>
 				</N8nCard>
 			</div>
+			<TemplatesDataQualityInlineSection v-if="showTemplatesDataQualityInline" />
 		</div>
 	</div>
 </template>
@@ -150,7 +162,8 @@ const addWorkflow = () => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
+	padding-top: var(--spacing--3xl);
 	min-height: 100vh;
 }
 
@@ -158,7 +171,7 @@ const addWorkflow = () => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	max-width: 600px;
+	max-width: 900px;
 	text-align: center;
 }
 

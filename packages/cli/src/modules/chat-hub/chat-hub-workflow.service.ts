@@ -448,6 +448,34 @@ export class ChatHubWorkflowService {
 						options: {},
 					},
 				};
+			case 'azureOpenAi':
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			case 'ollama': {
+				return {
+					...common,
+					parameters: {
+						model: { __rl: true, mode: 'id', value: model },
+						options: {},
+					},
+				};
+			}
+			case 'awsBedrock': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			default:
+				throw new OperationalError('Unsupported model provider');
 		}
 	}
 
