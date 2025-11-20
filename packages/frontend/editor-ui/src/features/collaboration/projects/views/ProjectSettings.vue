@@ -570,7 +570,7 @@ onMounted(() => {
 						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="project-members-select"
 						@update:model-value="onAddMember"
-						:disabled="!userRoleProvisioningStore.isInstanceRoleProvisioningEnabled"
+						:disabled="userRoleProvisioningStore.isProjectRoleProvisioningEnabled"
 					>
 						<template #prefix>
 							<N8nIcon icon="search" />
@@ -590,7 +590,7 @@ onMounted(() => {
 						</template>
 					</N8nInput>
 				</div>
-				<div v-if="!userRoleProvisioningStore.isInstanceRoleProvisioningEnabled" class="mb-m">
+				<div v-if="userRoleProvisioningStore.isProjectRoleProvisioningEnabled" class="mb-m">
 					<N8nAlert
 						type="info"
 						:title="
@@ -606,7 +606,7 @@ onMounted(() => {
 						:current-user-id="usersStore.currentUser?.id"
 						:project-roles="rolesStore.processedProjectRoles"
 						:actions="projectMembersActions"
-						:can-edit-role="!userRoleProvisioningStore.isInstanceRoleProvisioningEnabled"
+						:can-edit-role="!userRoleProvisioningStore.isProjectRoleProvisioningEnabled"
 						@update:options="onUpdateMembersTableOptions"
 						@update:role="onUpdateMemberRole"
 						@action="onMembersListAction"

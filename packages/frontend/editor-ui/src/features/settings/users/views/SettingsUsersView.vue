@@ -452,7 +452,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 			</div>
 		</div>
 		<div
-			v-if="!userRoleProvisioningStore.isInstanceRoleProvisioningEnabled"
+			v-if="userRoleProvisioningStore.isInstanceRoleProvisioningEnabled"
 			:class="$style.container"
 		>
 			<N8nAlert
