@@ -28,38 +28,37 @@ export declare namespace WorkflowRequest {
 		uiContext?: string;
 	}>;
 
-	// TODO: Use a discriminator when CAT-1809 lands
-	//
-	// 1. Full Manual Execution from Known Trigger
-	type FullManualExecutionFromKnownTriggerPayload = {
+	// 1. Full Manual Execution from Trigger
+	type FullManualExecutionFromTriggerPayload = {
 		workflowData: IWorkflowBase;
+		triggerToStartFrom?: { name: string; data?: ITaskData };
 		agentRequest?: AiAgentRequest;
 
 		destinationNode?: string;
 		triggerToStartFrom: { name: string; data?: ITaskData };
 	};
-	// 2. Full Manual Execution from Unknown Trigger
-	type FullManualExecutionFromUnknownTriggerPayload = {
+	// 2. Full Manual Execution to Destination
+	type FullManualExecutionToDestinationPayload = {
 		workflowData: IWorkflowBase;
-		agentRequest?: AiAgentRequest;
-
 		destinationNode: string;
+		agentRequest?: AiAgentRequest;
 	};
 
-	// 3. Partial Manual Execution to Destination
-	type PartialManualExecutionToDestinationPayload = {
-		workflowData: IWorkflowBase;
-		agentRequest?: AiAgentRequest;
+	// There could also be an edge case for the chat node where the triggerToStartFrom with data and the destinationNode exists.
 
+	// 3. Partial Manual Execution to Destination
+	type PartialManualExecutionToDestination = {
+		workflowData: IWorkflowBase;
 		runData: IRunData;
 		destinationNode: string;
 		dirtyNodeNames: string[];
+		agentRequest?: AiAgentRequest;
 	};
 
 	type ManualRunPayload =
-		| FullManualExecutionFromKnownTriggerPayload
-		| FullManualExecutionFromUnknownTriggerPayload
-		| PartialManualExecutionToDestinationPayload;
+		| FullManualExecutionFromTriggerPayload
+		| FullManualExecutionToDestinationPayload
+		| PartialManualExecutionToDestination;
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
