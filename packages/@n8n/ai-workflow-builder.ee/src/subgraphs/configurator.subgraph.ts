@@ -276,13 +276,13 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 					: state.messages;
 
 			messagesToUse.push(new HumanMessage({ content: workflowContext }));
-			const response = await this.agent.invoke({
+			const response = (await this.agent.invoke({
 				messages: messagesToUse,
 				instanceUrl: state.instanceUrl ?? '',
-			});
+			})) as BaseMessage;
 
 			console.log('[Configurator Agent] Response', {
-				hasToolCalls: response.tool_calls?.length ?? 0,
+				hasToolCalls: 'tool_calls' in response ? (response.tool_calls?.length ?? 0) : 0,
 			});
 
 			return { messages: [response] };

@@ -3,9 +3,6 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { Orchestrator } from './orchestrator';
-import { BuilderSubgraph } from './subgraphs/builder.subgraph';
-import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
-import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 
 export interface MultiAgentSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
@@ -26,13 +23,8 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 
 	const orchestrator = new Orchestrator({ llm: llmComplexTask });
 
-	// Register subgraphs
-	orchestrator.registerSubgraph(new DiscoverySubgraph());
-	orchestrator.registerSubgraph(new BuilderSubgraph());
-	orchestrator.registerSubgraph(new ConfiguratorSubgraph());
-
-	// Build the workflow
-	// We pass the config needed for subgraphs to create themselves
+	// Build the workflow with subgraphs statically defined
+	// Subgraphs are now created internally in the build() method
 	return orchestrator.build({
 		parsedNodeTypes,
 		llm: llmComplexTask,

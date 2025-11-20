@@ -255,17 +255,17 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			message += `\n<supervisor_instructions>${state.supervisorInstructions}</supervisor_instructions`;
 		}
 
-		const response = await this.agent.invoke({
+		const response = (await this.agent.invoke({
 			messages: state.messages,
 			prompt: message,
-		});
+		})) as AIMessage;
 
 		console.log('[Discovery Agent] Response', {
-			hasToolCalls: (response as AIMessage).tool_calls?.length ?? 0,
+			hasToolCalls: response.tool_calls?.length ?? 0,
 			hasContent: !!response.content,
 		});
 
-		return { messages: [response as BaseMessage] };
+		return { messages: [response] };
 	}
 
 	/**
@@ -324,12 +324,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Hydrate node types
 		const nodesFound = output.nodesFound.map((n) => {
 			// Try to find the node in fetched nodes first, then in all parsed nodes
-			let nodeType = state.fetchedNodeTypes.get(n.nodeName);
-
-			if (!nodeType) {
-				// Fallback search in config
-				nodeType = this.config.parsedNodeTypes.find((pt) => pt.name === n.nodeName);
-			}
+			let nodeType =
+				state.fetchedNodeTypes.get(n.nodeName) ??
+				this.config.parsedNodeTypes.find((pt) => pt.name === n.nodeName);
 
 			if (!nodeType) {
 				console.warn(`[Discovery] Node type not found for ${n.nodeName}, using placeholder`);
