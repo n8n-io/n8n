@@ -138,7 +138,6 @@ export async function initializeAuthenticatedFeatures(
 		await nodeTypesStore.getNodeTranslationHeaders();
 	}
 
-	// Load static banners based on authenticated settings
 	if (settingsStore.isEnterpriseFeatureEnabled.showNonProdBanner) {
 		bannersStore.pushBannerToStack('NON_PRODUCTION_LICENSE');
 	}

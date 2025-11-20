@@ -47,7 +47,7 @@ export type PublicUserManagementSettings = Pick<
 
 export type PublicFrontendSettings = Pick<
 	FrontendSettings,
-	'settingsMode' | 'instanceId' | 'versionCli' | 'authCookie' | 'previewMode'
+	'settingsMode' | 'authCookie' | 'previewMode'
 > & {
 	enterprise: PublicEnterpriseSettings;
 	userManagement: PublicUserManagementSettings;
@@ -487,8 +487,6 @@ export class FrontendService {
 	getPublicSettings(): PublicFrontendSettings {
 		// Get full settings to ensure all required properties are initialized
 		const {
-			instanceId,
-			versionCli,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
 			authCookie,
@@ -498,8 +496,6 @@ export class FrontendService {
 
 		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
-			instanceId,
-			versionCli,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
 			sso: {
 				saml: {

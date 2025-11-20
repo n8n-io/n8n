@@ -4,8 +4,6 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 
-import { N8N_VERSION } from '@/constants';
-
 import type { CredentialTypes } from '@/credential-types';
 import type { CredentialsOverwrites } from '@/credentials-overwrites';
 import type { License } from '@/license';
@@ -206,8 +204,6 @@ describe('FrontendService', () => {
 		it('should return public settings', () => {
 			const expectedPublicSettings: PublicFrontendSettings = {
 				settingsMode: 'public',
-				instanceId: instanceSettings.instanceId,
-				versionCli: N8N_VERSION,
 				userManagement: {
 					smtpSetup: false,
 					showSetupOnFirstLoad: true,
@@ -221,10 +217,8 @@ describe('FrontendService', () => {
 						loginUrl: 'http://localhost:5678/rest/sso/oidc/login',
 					},
 				},
-				mfa: { enabled: false, enforced: false },
 				authCookie: { secure: false },
 				previewMode: false,
-				telemetry: { enabled: false },
 				enterprise: { saml: false, ldap: false, oidc: false },
 			};
 
