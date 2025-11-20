@@ -129,21 +129,39 @@ jobs:
           docker image inspect $IMAGE
 
           CONTAINER_ID=$(docker run -d \
+            -p 5678:5678 \
             -e N8N_ENCRYPTION_KEY=test-key-12345678901234567890123 \
             -e N8N_USER_MANAGEMENT_JWT_SECRET=test-jwt-secret-1234567890 \
             $IMAGE)
 
           echo "Container started: $CONTAINER_ID"
-          sleep 20
 
-          if docker ps | grep -q $CONTAINER_ID; then
+          # Wait for n8n to start and complete migrations
+          echo "Waiting for n8n to initialize..."
+          sleep 30
+
+          # Check container status
+          CONTAINER_STATUS=$(docker inspect --format='{{.State.Status}}' $CONTAINER_ID || echo "not found")
+          echo "Container status: $CONTAINER_STATUS"
+
+          if [ "$CONTAINER_STATUS" = "running" ]; then
             echo "✓ Container running successfully"
-            docker logs $CONTAINER_ID
+            docker logs $CONTAINER_ID | tail -20
+
+            # Check if n8n is responding
+            sleep 5
+            if curl -f http://localhost:5678 >/dev/null 2>&1; then
+              echo "✓ n8n is responding on port 5678"
+            else
+              echo "⚠ n8n not responding yet (may still be initializing)"
+            fi
+
             docker stop $CONTAINER_ID
             echo "### ✅ Image Test Passed" >> $GITHUB_STEP_SUMMARY
             exit 0
           else
-            echo "✗ Container failed"
+            echo "✗ Container not running (status: $CONTAINER_STATUS)"
+            echo "Container exit code: $(docker inspect --format='{{.State.ExitCode}}' $CONTAINER_ID)"
             docker logs $CONTAINER_ID
             echo "### ❌ Image Test Failed" >> $GITHUB_STEP_SUMMARY
             exit 1
