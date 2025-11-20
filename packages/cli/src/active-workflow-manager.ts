@@ -268,7 +268,7 @@ export class ActiveWorkflowManager {
 			name: workflowData.name,
 			nodes,
 			connections,
-			active: workflowData.activeVersionId !== null,
+			active: true,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
@@ -586,7 +586,7 @@ export class ActiveWorkflowManager {
 				});
 			}
 
-			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersionId) {
+			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
 				this.logger.debug(
 					`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
 					{ workflowId: dbWorkflow.id },
@@ -611,7 +611,7 @@ export class ActiveWorkflowManager {
 				name: dbWorkflow.name,
 				nodes,
 				connections,
-				active: dbWorkflow.activeVersionId !== null,
+				active: true,
 				nodeTypes: this.nodeTypes,
 				staticData: dbWorkflow.staticData,
 				settings: dbWorkflow.settings,
