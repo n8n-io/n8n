@@ -77,7 +77,7 @@ export function createRunExecutionData(
 		waitTill: options.waitTill,
 		manualData: options.manualData,
 		pushRef: options.pushRef,
-	} as unknown as IRunExecutionData;
+	} as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }
 
 /**
@@ -91,7 +91,7 @@ export function createEmptyRunExecutionData(): IRunExecutionData {
 		resultData: {
 			runData: {},
 		},
-	} as unknown as IRunExecutionData;
+	} as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }
 
 /**
@@ -148,5 +148,5 @@ export function createErrorExecutionData(node: INode, error: ExecutionError): IR
 			error,
 			lastNodeExecuted: node.name,
 		},
-	} as unknown as IRunExecutionData;
+	} as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }
