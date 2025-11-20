@@ -33,6 +33,7 @@ describe('ExecutionContextHookRegistry', () => {
 
 		// Manually clear the metadata's internal Set to remove hooks from previous tests
 		// This prevents hooks from accumulating across tests
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		(hookMetadata as any).contextEstablishmentHooks.clear();
 
 		// Create fresh registry instance for each test
@@ -245,6 +246,8 @@ describe('ExecutionContextHookRegistry', () => {
 			// First hook should win
 			const hook = registry.getHookByName('duplicate.hook');
 			expect(hook).toBeDefined();
+
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			expect((hook as any).value).toBe('first');
 
 			// Should have logged a warning about the duplicate
@@ -411,6 +414,7 @@ describe('ExecutionContextHookRegistry', () => {
 
 		it('should return empty array when no hooks match trigger type', async () => {
 			// Clear existing hooks and create registry with only specific hook
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
 			(hookMetadata as any).contextEstablishmentHooks.clear();
 
 			@ContextEstablishmentHook()
