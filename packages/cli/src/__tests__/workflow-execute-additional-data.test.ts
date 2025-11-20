@@ -4,7 +4,7 @@ import type { WorkflowEntity } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
-import { ExternalSecretsProxy } from 'n8n-core';
+import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
 import type {
 	IWorkflowBase,
 	IExecuteWorkflowInfo,
@@ -201,6 +201,32 @@ describe('WorkflowExecuteAdditionalData', () => {
 				executionId: EXECUTION_ID,
 				waitTill,
 			});
+		});
+
+		it('should propagate parent variables to sub-workflow additional data', async () => {
+			const parentVariables: IDataObject = { MY_VAR: 'test-value' };
+
+			const parentAdditionalData = mock<IWorkflowExecuteAdditionalData>();
+
+			parentAdditionalData.variables = parentVariables;
+
+			const workflowExecuteMock = jest.mocked(WorkflowExecute);
+			workflowExecuteMock.mockClear();
+
+			await executeWorkflow(
+				mock<IExecuteWorkflowInfo>(),
+				parentAdditionalData,
+				mock<ExecuteWorkflowOptions>({
+					loadedWorkflowData: undefined,
+					doNotWaitToFinish: false,
+				}),
+			);
+
+			expect(workflowExecuteMock).toHaveBeenCalledTimes(1);
+
+			const [additionalDataIntegrated] = workflowExecuteMock.mock.calls[0];
+
+			expect(additionalDataIntegrated.variables).toBe(parentVariables);
 		});
 	});
 
