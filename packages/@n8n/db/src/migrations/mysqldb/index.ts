@@ -114,6 +114,7 @@ import { AddWorkflowDescriptionColumn1762177736257 } from '../common/17621777362
 import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/1762763704614-BackfillMissingWorkflowHistoryRecords';
 import { AddWorkflowHistoryAutoSaveFields1762847206508 } from '../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
 import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-AddActiveVersionIdColumn';
+import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common/1763572724000-ChangeOAuthStateColumnToUnboundedVarchar';
 import type { Migration } from '../migration-types';
 
 export const mysqlMigrations: Migration[] = [
@@ -232,5 +233,6 @@ export const mysqlMigrations: Migration[] = [
 	BackfillMissingWorkflowHistoryRecords1762763704614,
 	AddWorkflowHistoryAutoSaveFields1762847206508,
 	AddToolsColumnToChatHubTables1761830340990,
+	ChangeOAuthStateColumnToUnboundedVarchar1763572724000,
 	AddActiveVersionIdColumn1763047800000,
 ];
