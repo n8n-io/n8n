@@ -510,6 +510,15 @@ export class ChatHubWorkflowService {
 					},
 				};
 			}
+			case 'mistralCloud': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			default:
 				throw new OperationalError('Unsupported model provider');
 		}
