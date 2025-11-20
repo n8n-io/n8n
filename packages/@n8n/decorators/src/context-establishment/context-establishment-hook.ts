@@ -2,7 +2,7 @@ import type { Constructable } from '@n8n/di';
 import type {
 	INode,
 	INodeExecutionData,
-	IPlaintextExecutionContext,
+	PlaintextExecutionContext,
 	IWorkflowBase,
 } from 'n8n-workflow';
 
@@ -14,7 +14,7 @@ import type {
  * All hooks work with plaintext (decrypted) context for runtime operations.
  *
  * @see IContextEstablishmentHook
- * @see IPlaintextExecutionContext
+ * @see PlaintextExecutionContext
  */
 export type ContextEstablishmentOptions = {
 	/** The trigger node that initiated the workflow execution */
@@ -36,9 +36,9 @@ export type ContextEstablishmentOptions = {
 	 * Includes base context plus results from any previously executed hooks.
 	 * Contains decrypted credential data for runtime operations.
 	 *
-	 * @see IPlaintextExecutionContext for security considerations
+	 * @see PlaintextExecutionContext for security considerations
 	 */
-	context: IPlaintextExecutionContext;
+	context: PlaintextExecutionContext;
 
 	/**
 	 * Hook-specific configuration provided by the trigger node.
@@ -55,7 +55,7 @@ export type ContextEstablishmentOptions = {
  * All context data is in plaintext form during hook execution.
  *
  * @see IContextEstablishmentHook
- * @see IPlaintextExecutionContext
+ * @see PlaintextExecutionContext
  */
 export type ContextEstablishmentResult = {
 	/**
@@ -106,7 +106,7 @@ export type ContextEstablishmentResult = {
 	 * };
 	 * ```
 	 */
-	contextUpdate?: Partial<IPlaintextExecutionContext>;
+	contextUpdate?: Partial<PlaintextExecutionContext>;
 };
 
 /**
@@ -179,7 +179,7 @@ export type HookDescription = {
  *
  * @see ContextEstablishmentOptions - Input parameters
  * @see ContextEstablishmentResult - Output structure
- * @see IPlaintextExecutionContext - Runtime context type with decrypted data
+ * @see PlaintextExecutionContext - Runtime context type with decrypted data
  */
 export interface IContextEstablishmentHook {
 	/**
@@ -226,7 +226,7 @@ export interface IContextEstablishmentHook {
 	 * - Context with updates from all previous hooks
 	 *
 	 * **Context handling:**
-	 * - Input context is plaintext (IPlaintextExecutionContext) for runtime operations
+	 * - Input context is plaintext (PlaintextExecutionContext) for runtime operations
 	 * - Output updates are plaintext and will be encrypted before persistence
 	 * - Never log or expose plaintext context outside hook execution
 	 *

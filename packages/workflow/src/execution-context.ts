@@ -107,7 +107,7 @@ export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
  *
  * **Lifecycle:**
  * 1. Load IExecutionContext from storage (credentials encrypted)
- * 2. Decrypt credentials field → IPlaintextExecutionContext (runtime only)
+ * 2. Decrypt credentials field → PlaintextExecutionContext (runtime only)
  * 3. Use for hook execution, credential resolution, etc.
  * 4. Encrypt credentials → IExecutionContext before persistence
  *
@@ -118,7 +118,7 @@ export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
  * @example
  * ```typescript
  * // During hook execution:
- * const plaintextContext: IPlaintextExecutionContext = {
+ * const plaintextContext: PlaintextExecutionContext = {
  *   ...context,
  *   credentials: decryptCredentials(context.credentials) // Decrypt for runtime use
  * };
@@ -133,7 +133,7 @@ export type IExecutionContext = z.output<typeof ExecutionContextSchema>;
  * };
  * ```
  */
-export type IPlaintextExecutionContext = Omit<IExecutionContext, 'credentials'> & {
+export type PlaintextExecutionContext = Omit<IExecutionContext, 'credentials'> & {
 	credentials?: ICredentialContext;
 };
 
