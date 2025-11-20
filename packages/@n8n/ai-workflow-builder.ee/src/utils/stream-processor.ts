@@ -185,8 +185,8 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 /**
  * Create a stream processor that yields formatted chunks
  *
- * Handles both regular graph events and subgraph events (when subgraphs: true is enabled).
- * When subgraphs are enabled, events come as: [namespace, chunk] where namespace is array
+ * Handles both regular graph events and subgraph events (when enableMultiAgent: true is enabled).
+ * When multi-agent is enabled, events come as: [namespace, chunk] where namespace is array
  */
 export async function* createStreamProcessor(
 	stream: AsyncGenerator<[string, unknown] | [string[], string, unknown], void, unknown>,

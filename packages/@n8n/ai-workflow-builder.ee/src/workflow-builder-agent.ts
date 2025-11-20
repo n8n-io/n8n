@@ -136,12 +136,6 @@ export interface WorkflowBuilderAgentConfig {
 	 * When false, uses the legacy single-agent architecture
 	 */
 	enableMultiAgent?: boolean;
-	/**
-	 * Use subgraph-based multi-agent architecture (experimental)
-	 * When true, uses isolated subgraphs for each specialist agent
-	 * Requires enableMultiAgent to be true
-	 */
-	useSubgraphs?: boolean;
 }
 
 export interface ExpressionValue {
@@ -177,7 +171,6 @@ export class WorkflowBuilderAgent {
 	private instanceUrl?: string;
 	private onGenerationSuccess?: () => Promise<void>;
 	private enableMultiAgent: boolean;
-	private useSubgraphs: boolean;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -191,7 +184,6 @@ export class WorkflowBuilderAgent {
 		this.instanceUrl = config.instanceUrl;
 		this.onGenerationSuccess = config.onGenerationSuccess;
 		this.enableMultiAgent = config.enableMultiAgent ?? false;
-		this.useSubgraphs = config.useSubgraphs ?? false;
 	}
 
 	private getBuilderTools(): BuilderTool[] {
@@ -501,8 +493,8 @@ export class WorkflowBuilderAgent {
 			recursionLimit: 50,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
-			// Enable subgraph streaming for multi-agent subgraph architecture
-			subgraphs: this.useSubgraphs,
+			// Enable subgraph streaming when using multi-agent architecture
+			subgraphs: this.enableMultiAgent,
 		};
 
 		return { agent, threadConfig, streamConfig };
