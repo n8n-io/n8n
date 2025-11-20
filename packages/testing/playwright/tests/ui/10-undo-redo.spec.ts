@@ -13,8 +13,7 @@ import { resolveFromRoot } from '../../utils/path-helper';
 
 test.describe('Undo/Redo', () => {
 	test.beforeEach(async ({ n8n }) => {
-		await n8n.goHome();
-		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
+		await n8n.start.fromBlankCanvas();
 	});
 
 	test('should undo/redo deleting node using context menu', async ({ n8n }) => {
