@@ -104,7 +104,7 @@ onBeforeUnmount(() => {
 
 <template>
 	<div :class="$style.projects">
-		<div class="home">
+		<div :class="[$style.home, props.collapsed ? $style.collapsed : '']">
 			<N8nMenuItem
 				:item="home"
 				:compact="props.collapsed"
@@ -207,7 +207,7 @@ onBeforeUnmount(() => {
 }
 
 .projectItems {
-	padding: var(--spacing--3xs);
+	padding: var(--spacing--2xs) var(--spacing--3xs);
 }
 
 .upgradeLink {
@@ -222,7 +222,7 @@ onBeforeUnmount(() => {
 	overflow: hidden;
 	box-sizing: border-box;
 	padding: 0 var(--spacing--xs);
-	margin-top: var(--spacing--md);
+	margin-top: var(--spacing--2xs);
 
 	&.collapsed {
 		padding: 0;
@@ -250,10 +250,12 @@ onBeforeUnmount(() => {
 		}
 	}
 }
-</style>
 
-<style lang="scss" scoped>
 .home {
-	padding: 0 var(--spacing--3xs);
+	padding: 0 var(--spacing--3xs) var(--spacing--2xs);
+
+	&.collapsed {
+		border-bottom: var(--border);
+	}
 }
 </style>
