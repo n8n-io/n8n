@@ -1,0 +1,150 @@
+name: Docker Build & Test
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/**'
+      - 'docker/images/n8n/**'
+      - '.github/workflows/docker-build.yml'
+
+  pull_request:
+    paths:
+      - 'packages/**'
+      - 'docker/images/n8n/**'
+      - '.github/workflows/docker-build.yml'
+
+  workflow_dispatch:
+
+env:
+  NODE_OPTIONS: '--max-old-space-size=7168'
+  NODE_VERSION: '22.21.0'
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    name: Build & Push
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+
+    outputs:
+      image_tag: ${{ steps.vars.outputs.image_tag }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine tag
+        id: vars
+        run: |
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BRANCH_NAME="${{ github.head_ref }}"
+            TAG=$(echo "$BRANCH_NAME" | tr '/' '-' | tr -cd '[:alnum:]-_')
+          elif [[ "${{ github.ref }}" == "refs/heads/master" ]]; then
+            TAG="latest"
+          else
+            BRANCH_NAME="${{ github.ref_name }}"
+            TAG=$(echo "$BRANCH_NAME" | tr '/' '-' | tr -cd '[:alnum:]-_')
+          fi
+
+          IMAGE="${{ env.REGISTRY }}/${{ github.repository_owner }}/n8n:$TAG"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "image_tag=$IMAGE" >> $GITHUB_OUTPUT
+          echo "Building image: $IMAGE"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build application
+        run: pnpm build:n8n
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/images/n8n/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.vars.outputs.image_tag }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_VERSION=${{ env.NODE_VERSION }}
+
+      - name: Build summary
+        run: |
+          echo "### ✅ Docker Image Built" >> $GITHUB_STEP_SUMMARY
+          echo "**Image:** \`${{ steps.vars.outputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "**Platforms:** linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+
+  test:
+    name: Test Image
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Pull and test
+        run: |
+          IMAGE="${{ needs.build.outputs.image_tag }}"
+          echo "Testing image: $IMAGE"
+
+          docker pull $IMAGE
+          docker image inspect $IMAGE
+
+          CONTAINER_ID=$(docker run -d \
+            -e N8N_ENCRYPTION_KEY=test-key-12345678901234567890123 \
+            -e N8N_USER_MANAGEMENT_JWT_SECRET=test-jwt-secret-1234567890 \
+            $IMAGE)
+
+          echo "Container started: $CONTAINER_ID"
+          sleep 20
+
+          if docker ps | grep -q $CONTAINER_ID; then
+            echo "✓ Container running successfully"
+            docker logs $CONTAINER_ID
+            docker stop $CONTAINER_ID
+            echo "### ✅ Image Test Passed" >> $GITHUB_STEP_SUMMARY
+            exit 0
+          else
+            echo "✗ Container failed"
+            docker logs $CONTAINER_ID
+            echo "### ❌ Image Test Failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
