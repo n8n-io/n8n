@@ -23,8 +23,6 @@ interface Props {
 	layout?: string; // Controls which buttons to show
 	pageSizes?: number[]; // Not used by pagination itself, but kept for compatibility
 
-	small?: boolean;
-	background?: boolean;
 	disabled?: boolean;
 	hideOnSinglePage?: boolean;
 
@@ -160,8 +158,6 @@ const shouldShowPagination = computed(() => {
 		:disabled="disabled"
 		:class="{
 			'n8n-pagination': true,
-			'is-background': background,
-			'is-small': small,
 			'is-disabled': disabled,
 		}"
 		@update:page="handlePageChange"
@@ -232,33 +228,6 @@ const shouldShowPagination = computed(() => {
 </template>
 
 <style lang="scss" scoped>
-.n8n-pagination {
-	display: flex;
-	align-items: center;
-	gap: 6px;
-	font-size: var(--font-size--sm);
-	height: 32px;
-	padding: 2px 0;
-
-	&.is-disabled {
-		opacity: 0.6;
-		pointer-events: none;
-	}
-}
-
-// Override Reka UI default styles and any button elements
-:deep(button),
-:deep([data-pagination-root]),
-:deep([data-pagination-list]),
-:deep([data-pagination-item]),
-:deep([data-pagination-ellipsis]),
-:deep([data-pagination-first]),
-:deep([data-pagination-prev]),
-:deep([data-pagination-next]),
-:deep([data-pagination-last]) {
-	background: transparent !important;
-}
-
 .n8n-pagination__button {
 	min-width: 28px;
 	height: 28px;
@@ -268,19 +237,10 @@ const shouldShowPagination = computed(() => {
 	background: transparent !important;
 	border-radius: var(--radius);
 	cursor: pointer;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
 	font-size: var(--font-size--2xs);
-	font-weight: var(--font-weight--bold);
 	color: var(--color--text--inverse);
 	transition: color 0.2s ease;
 	user-select: none;
-
-	:deep(button) {
-		color: inherit;
-		padding: 0;
-	}
 
 	&:hover:not(:disabled):not(.is-active):not(.n8n-pagination__button--prev):not(
 			.n8n-pagination__button--next
@@ -295,20 +255,9 @@ const shouldShowPagination = computed(() => {
 		}
 	}
 
-	&:active:not(:disabled) {
-		transform: scale(0.98);
-	}
-
 	&:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
-	}
-
-	&--prev,
-	&--next,
-	&--first,
-	&--last {
-		font-size: 14px;
 	}
 
 	&--next {
