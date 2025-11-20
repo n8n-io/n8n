@@ -48,12 +48,21 @@ export interface OAuthAuthorizationServerMetadata {
 	/** URL of the authorization server's dynamic client registration endpoint */
 	registration_endpoint: string;
 
-	/** Array of OAuth 2.0 grant type values supported */
+	/**
+	 * Array of OAuth 2.0 grant type values supported
+	 * If omitted, the default is ['authorization_code', 'implicit']
+	 */
 	grant_types_supported?: string[];
 
-	/** Array of client authentication methods supported by the token endpoint */
+	/**
+	 * Array of client authentication methods supported by the token endpoint
+	 * If omitted, the default is ['client_secret_basic']
+	 */
 	token_endpoint_auth_methods_supported?: string[];
 
-	/** Array of PKCE code challenge methods supported */
+	/**
+	 * Array of PKCE code challenge methods supported
+	 * If omitted, the server does not support PKCE
+	 */
 	code_challenge_methods_supported?: string[];
 }

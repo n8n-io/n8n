@@ -76,9 +76,9 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			toUpdate.accessTokenUrl = token_endpoint;
 
 			const { grantType, authentication } = this.selectGrantTypeAndAuthenticationMethod(
-				data.grant_types_supported,
-				data.token_endpoint_auth_methods_supported,
-				data.code_challenge_methods_supported,
+				data.grant_types_supported ?? ['authorization_code', 'implicit'],
+				data.token_endpoint_auth_methods_supported ?? ['client_secret_basic'],
+				data.code_challenge_methods_supported ?? [],
 			);
 			oauthCredentials.grantType = grantType;
 			toUpdate.grantType = grantType;
