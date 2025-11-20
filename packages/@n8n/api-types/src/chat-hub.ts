@@ -134,7 +134,7 @@ export interface ChatModelDto {
 	description: string | null;
 	updatedAt: string | null;
 	createdAt: string | null;
-	allowFileUploads: boolean;
+	allowFileUploads?: boolean;
 }
 
 /**
