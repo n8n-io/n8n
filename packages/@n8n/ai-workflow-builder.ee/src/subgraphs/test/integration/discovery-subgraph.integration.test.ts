@@ -5,8 +5,9 @@ import {
 	setupIntegrationLLM,
 	shouldRunIntegrationTests,
 } from '@/chains/test/integration/test-helpers';
-import { loadNodesFromFile } from '../../../../evaluations/load-nodes';
 import { DiscoverySubgraph } from '@/subgraphs/discovery.subgraph';
+
+import { loadNodesFromFile } from '../../../../evaluations/load-nodes';
 
 /**
  * Integration tests for Discovery Subgraph

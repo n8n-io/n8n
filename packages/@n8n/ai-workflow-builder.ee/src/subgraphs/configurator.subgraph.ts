@@ -234,12 +234,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		 * Agent node - calls configurator agent
 		 */
 		const callAgent = async (state: typeof ConfiguratorSubgraphState.State) => {
-			console.log('[Configurator Agent] Called in subgraph', {
-				messageCount: state.messages.length,
-				nodeCount: state.workflowJSON.nodes.length,
-				hasSupervisorInstructions: !!state.supervisorInstructions,
-			});
-
 			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
 			const executionData = state.workflowContext?.executionData ?? {};
 			const executionSchema = state.workflowContext?.executionSchema ?? [];
@@ -281,15 +275,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 				instanceUrl: state.instanceUrl ?? '',
 			})) as BaseMessage;
 
-			const toolCallCount =
-				'tool_calls' in response && Array.isArray(response.tool_calls)
-					? response.tool_calls.length
-					: 0;
-
-			console.log('[Configurator Agent] Response', {
-				hasToolCalls: toolCallCount,
-			});
-
 			return { messages: [response] };
 		};
 
@@ -306,7 +291,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		const shouldContinue = (state: typeof ConfiguratorSubgraphState.State) => {
 			// Safety: max 15 iterations
 			if (state.iterationCount >= 15) {
-				console.log('[Configurator Subgraph] Max iterations reached');
 				return END;
 			}
 

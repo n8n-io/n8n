@@ -183,13 +183,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 		 * Agent node - calls builder agent
 		 */
 		const callAgent = async (state: typeof BuilderSubgraphState.State) => {
-			console.log('[Builder Agent] Called in subgraph', {
-				messageCount: state.messages.length,
-				nodeCount: state.workflowJSON.nodes.length,
-				iteration: state.iterationCount,
-				hasSupervisorInstructions: !!state.supervisorInstructions,
-			});
-
 			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
 			const executionData = state.workflowContext?.executionData ?? {};
 			const executionSchema = state.workflowContext?.executionSchema ?? [];
@@ -230,11 +223,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 				messages: messagesToUse,
 			});
 
-			console.log('[Builder Agent] Response', {
-				hasToolCalls: response.tool_calls?.length ?? 0,
-				hasContent: !!response.content,
-			});
-
 			return { messages: [response] };
 		};
 
@@ -251,7 +239,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 		const shouldContinue = (state: typeof BuilderSubgraphState.State) => {
 			// Safety: max 15 iterations
 			if (state.iterationCount >= 15) {
-				console.log('[Builder Subgraph] Max iterations reached');
 				return END;
 			}
 

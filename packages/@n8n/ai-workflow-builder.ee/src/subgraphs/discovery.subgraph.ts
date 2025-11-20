@@ -243,12 +243,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Agent node - calls discovery agent
 	 */
 	private async callAgent(state: typeof DiscoverySubgraphState.State) {
-		console.log('[Discovery Agent] Called in subgraph', {
-			messageCount: state.messages.length,
-			userRequest: state.userRequest.substring(0, 100),
-			hasSupervisorInstructions: !!state.supervisorInstructions,
-		});
-
 		let message = `<user_request>${state.userRequest}</user_request>`;
 
 		if (state.supervisorInstructions) {
@@ -259,11 +253,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			messages: state.messages,
 			prompt: message,
 		})) as AIMessage;
-
-		console.log('[Discovery Agent] Response', {
-			hasToolCalls: response.tool_calls?.length ?? 0,
-			hasContent: !!response.content,
-		});
 
 		return { messages: [response] };
 	}
@@ -345,13 +334,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			};
 		});
 
-		// console.log('[Discovery] Formatted output', {
-		// 	nodesFoundCount: nodesFound?.length,
-		// 	requirementsCount: output.requirements.length,
-		// 	constraintsCount: output.constraints.length,
-		// 	dataNeedsCount: output.dataNeeds.length,
-		// });
-
 		return {
 			nodesFound,
 			requirements: output.requirements,
@@ -369,7 +351,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	private shouldContinue(state: typeof DiscoverySubgraphState.State) {
 		// Safety: max 50 iterations
 		if (state.iterationCount >= 50) {
-			console.log('[Discovery Subgraph] Max iterations reached');
 			return 'format_output'; // Try to format whatever we have, or maybe just end
 		}
 

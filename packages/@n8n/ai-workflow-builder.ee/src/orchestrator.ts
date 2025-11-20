@@ -44,11 +44,6 @@ export class Orchestrator {
 			new StateGraph(ParentGraphState)
 				// Add Supervisor Node
 				.addNode('supervisor', async (state) => {
-					console.log('[Supervisor] Routing', {
-						messageCount: state.messages.length,
-						nodeCount: state.workflowJSON.nodes.length,
-					});
-
 					const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
 					const executionData = state.workflowContext?.executionData ?? {};
 					const executionSchema = state.workflowContext?.executionSchema ?? [];
@@ -82,8 +77,6 @@ export class Orchestrator {
 						messages: messagesWithContext,
 					});
 
-					console.log('[Supervisor] Decision', routing);
-
 					return {
 						nextPhase: routing.next,
 						supervisorInstructions: routing.instructions ?? null,
@@ -91,7 +84,6 @@ export class Orchestrator {
 				})
 				// Add Responder Node
 				.addNode('responder', async (state) => {
-					console.log('[Responder] Called');
 					const agent = responderAgent.getAgent();
 					const response = await agent.invoke({
 						messages: state.messages,
@@ -105,10 +97,6 @@ export class Orchestrator {
 				})
 				// Add process_operations node for hybrid operations approach
 				.addNode('process_operations', (state) => {
-					console.log('[Process Operations] Processing', {
-						operationCount: state.workflowOperations?.length ?? 0,
-					});
-
 					// Process accumulated operations and clear the queue
 					const result = processOperations(state);
 
@@ -119,8 +107,6 @@ export class Orchestrator {
 				})
 				// Add Discovery Subgraph Node
 				.addNode('discovery_subgraph', async (state) => {
-					console.log('[discovery_subgraph] Starting');
-
 					try {
 						const input = discoverySubgraph.transformInput(state);
 						const result = await compiledDiscovery.invoke(input);
@@ -149,8 +135,6 @@ export class Orchestrator {
 				})
 				// Add Builder Subgraph Node
 				.addNode('builder_subgraph', async (state) => {
-					console.log('[builder_subgraph] Starting');
-
 					try {
 						const input = builderSubgraph.transformInput(state);
 						const result = await compiledBuilder.invoke(input);
@@ -179,8 +163,6 @@ export class Orchestrator {
 				})
 				// Add Configurator Subgraph Node
 				.addNode('configurator_subgraph', async (state) => {
-					console.log('[configurator_subgraph] Starting');
-
 					try {
 						const input = configuratorSubgraph.transformInput(state);
 						const result = await compiledConfigurator.invoke(input);
@@ -218,7 +200,6 @@ export class Orchestrator {
 				// Conditional Edge for Supervisor
 				.addConditionalEdges('supervisor', (state) => {
 					const next = state.nextPhase;
-					console.log('[Router] Routing to', next);
 
 					if (next === 'responder') return 'responder';
 					if (next === 'FINISH') return END;
