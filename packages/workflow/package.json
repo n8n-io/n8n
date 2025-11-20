@@ -47,7 +47,8 @@
     "@types/md5": "^2.3.5",
     "@types/xml2js": "catalog:",
     "vitest": "catalog:",
-    "vitest-mock-extended": "catalog:"
+    "vitest-mock-extended": "catalog:",
+    "jsonrepair": "catalog:"
   },
   "dependencies": {
     "@n8n/errors": "workspace:^",
