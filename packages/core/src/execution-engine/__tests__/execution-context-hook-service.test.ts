@@ -94,6 +94,7 @@ describe('ExecutionContextHookRegistry', () => {
 			const initSpy = jest.fn().mockResolvedValue(undefined);
 
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class HookWithInit implements IContextEstablishmentHook {
 				hookDescription = { name: 'hook.with.init' };
 				init = initSpy;
@@ -112,6 +113,7 @@ describe('ExecutionContextHookRegistry', () => {
 
 		it('should not fail if hook does not have init() method', async () => {
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class HookWithoutInit implements IContextEstablishmentHook {
 				hookDescription = { name: 'hook.without.init' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
@@ -130,6 +132,7 @@ describe('ExecutionContextHookRegistry', () => {
 			const initError = new Error('Hook initialization failed');
 
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class FailingHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'failing.hook' };
 				init = jest.fn().mockRejectedValue(initError);
@@ -142,6 +145,7 @@ describe('ExecutionContextHookRegistry', () => {
 			}
 
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class SuccessfulHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'successful.hook' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
@@ -172,6 +176,7 @@ describe('ExecutionContextHookRegistry', () => {
 
 		it('should clear previous hooks when re-initialized', async () => {
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class TestHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'test.hook' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
@@ -192,6 +197,7 @@ describe('ExecutionContextHookRegistry', () => {
 
 		it('should log debug message with hook count', async () => {
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class TestHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'test.hook' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
@@ -209,6 +215,7 @@ describe('ExecutionContextHookRegistry', () => {
 
 		it('should handle duplicate hook names by keeping first registered and warning', async () => {
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class FirstHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'duplicate.hook' };
 				value = 'first';
@@ -221,6 +228,7 @@ describe('ExecutionContextHookRegistry', () => {
 			}
 
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class SecondHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'duplicate.hook' };
 				value = 'second';
@@ -295,6 +303,7 @@ describe('ExecutionContextHookRegistry', () => {
 
 		it('should return all registered hooks', async () => {
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class FirstHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'first.hook' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
@@ -306,6 +315,7 @@ describe('ExecutionContextHookRegistry', () => {
 			}
 
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class SecondHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'second.hook' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
@@ -317,6 +327,7 @@ describe('ExecutionContextHookRegistry', () => {
 			}
 
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class ThirdHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'third.hook' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
@@ -340,6 +351,7 @@ describe('ExecutionContextHookRegistry', () => {
 	describe('getHookForTriggerType()', () => {
 		beforeEach(async () => {
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class WebhookHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'webhook.hook' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
@@ -351,6 +363,7 @@ describe('ExecutionContextHookRegistry', () => {
 			}
 
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class FormHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'form.hook' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
@@ -362,6 +375,7 @@ describe('ExecutionContextHookRegistry', () => {
 			}
 
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class UniversalHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'universal.hook' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
@@ -400,6 +414,7 @@ describe('ExecutionContextHookRegistry', () => {
 			(hookMetadata as any).contextEstablishmentHooks.clear();
 
 			@ContextEstablishmentHook()
+			// @ts-expect-error - Class is used via decorator side-effect
 			class SpecificHook implements IContextEstablishmentHook {
 				hookDescription = { name: 'specific.hook' };
 				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
