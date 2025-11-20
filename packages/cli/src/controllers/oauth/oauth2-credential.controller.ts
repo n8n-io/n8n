@@ -20,12 +20,27 @@ import {
 } from 'n8n-workflow';
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
+import { z } from 'zod';
 
 import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { OAuthRequest } from '@/requests';
 
 import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
+
+const oAuthAuthorizationServerMetadataSchema = z.object({
+	authorization_endpoint: z.string().url(),
+	token_endpoint: z.string().url(),
+	registration_endpoint: z.string().url(),
+	grant_types_supported: z.array(z.string()).optional(),
+	token_endpoint_auth_methods_supported: z.array(z.string()).optional(),
+	code_challenge_methods_supported: z.array(z.string()).optional(),
+});
+
+const dynamicClientRegistrationResponseSchema = z.object({
+	client_id: z.string(),
+	client_secret: z.string().optional(),
+});
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
@@ -63,22 +78,24 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 			const { data } = await axios.get<OAuthAuthorizationServerMetadata>(
 				`${serverUrl.origin}/.well-known/oauth-authorization-server`,
 			);
-			const { authorization_endpoint, token_endpoint, registration_endpoint } = data;
-			if (!authorization_endpoint || !token_endpoint || !registration_endpoint) {
+			const metadataValidation = oAuthAuthorizationServerMetadataSchema.safeParse(data);
+			if (!metadataValidation.success) {
 				throw new BadRequestError(
-					'The OAuth2 server does not support dynamic client registration. Missing endpoints in metadata.',
+					`Invalid OAuth2 server metadata: ${metadataValidation.error.errors.map((e) => e.message).join(', ')}`,
 				);
 			}
 
+			const { authorization_endpoint, token_endpoint, registration_endpoint } =
+				metadataValidation.data;
 			oauthCredentials.authUrl = authorization_endpoint;
 			oauthCredentials.accessTokenUrl = token_endpoint;
 			toUpdate.authUrl = authorization_endpoint;
 			toUpdate.accessTokenUrl = token_endpoint;
 
 			const { grantType, authentication } = this.selectGrantTypeAndAuthenticationMethod(
-				data.grant_types_supported ?? ['authorization_code', 'implicit'],
-				data.token_endpoint_auth_methods_supported ?? ['client_secret_basic'],
-				data.code_challenge_methods_supported ?? [],
+				metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],
+				metadataValidation.data.token_endpoint_auth_methods_supported ?? ['client_secret_basic'],
+				metadataValidation.data.code_challenge_methods_supported ?? [],
 			);
 			oauthCredentials.grantType = grantType;
 			toUpdate.grantType = grantType;
@@ -106,8 +123,15 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				client_id: string;
 				client_secret?: string;
 			}>(registration_endpoint, registerPayload);
+			const registrationValidation =
+				dynamicClientRegistrationResponseSchema.safeParse(registerResult);
+			if (!registrationValidation.success) {
+				throw new BadRequestError(
+					`Invalid client registration response: ${registrationValidation.error.errors.map((e) => e.message).join(', ')}`,
+				);
+			}
 
-			const { client_id, client_secret } = registerResult;
+			const { client_id, client_secret } = registrationValidation.data;
 			oauthCredentials.clientId = client_id;
 			toUpdate.clientId = client_id;
 			if (client_secret) {
