@@ -218,6 +218,10 @@ export class License implements LicenseProvider {
 	}
 
 	isLicensed(feature: BooleanLicenseFeature) {
+		// DEV MODE: Bypass license check if development enterprise mode is enabled
+		if (process.env.N8N_DEV_ENTERPRISE_MODE === 'true') {
+			return true;
+		}
 		return this.manager?.hasFeatureEnabled(feature) ?? false;
 	}
 
@@ -341,6 +345,18 @@ export class License implements LicenseProvider {
 	}
 
 	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
+		// DEV MODE: Return unlimited quota for all numeric features if development mode is enabled
+		if (process.env.N8N_DEV_ENTERPRISE_MODE === 'true') {
+			// For quota features, return unlimited (-1)
+			const featureStr = String(feature);
+			if (featureStr.startsWith('quota:')) {
+				// For AI credits specifically, return a large number instead of -1
+				if (feature === 'quota:aiCredits') {
+					return 1000000 as FeatureReturnType[T];
+				}
+				return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
+			}
+		}
 		return this.manager?.getFeatureValue(feature) as FeatureReturnType[T];
 	}
 

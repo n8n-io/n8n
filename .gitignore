@@ -13,6 +13,7 @@ _START_PACKAGE
 !.vscode/extensions.json
 !.vscode/settings.default.json
 .idea
+compose.yml
 nodelinter.config.json
 **/package-lock.json
 packages/**/.turbo
