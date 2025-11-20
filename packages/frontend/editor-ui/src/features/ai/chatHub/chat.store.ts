@@ -43,14 +43,18 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
+import { convertFileToChatAttachment } from '@/app/utils/fileUtils';
 import { buildUiMessages, isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
+import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { type INode } from 'n8n-workflow';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
+	const toast = useToast();
 	const telemetry = useTelemetry();
+
 	const agents = ref<ChatModelsResponse>();
 	const sessions = ref<ChatHubSessionDto[]>();
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
@@ -402,10 +406,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		await fetchSessions();
 	}
 
-	function onStreamError() {
+	function onStreamError(error: Error) {
 		if (!streaming.value) {
 			return;
 		}
+
+		toast.showError(error, 'Could not send message');
 
 		const { sessionId } = streaming.value;
 
@@ -425,18 +431,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
-	function sendMessage(
+	async function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
 		tools: INode[],
+		files: File[] = [],
 	) {
 		const messageId = uuidv4();
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.activeMessageChain.length
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
 			: null;
+
+		const attachments = await Promise.all(files.map(convertFileToChatAttachment));
 
 		addMessage(sessionId, {
 			id: messageId,
@@ -457,6 +466,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			revisionOfMessageId: null,
 			responses: [],
 			alternatives: [],
+			attachments,
 		});
 
 		streaming.value = {
@@ -476,6 +486,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials,
 				previousMessageId,
 				tools,
+				attachments,
 			},
 			onStreamMessage,
 			onStreamDone,
@@ -522,6 +533,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				revisionOfMessageId: editId,
 				responses: [],
 				alternatives: [],
+				attachments: message.attachments ?? null,
 			});
 		} else if (message?.type === 'ai') {
 			replaceMessageContent(sessionId, editId, content);
@@ -674,6 +686,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			createdAt: agent.createdAt,
 			updatedAt: agent.updatedAt,
 			tools: agent.tools,
+			allowFileUploads: true,
 		};
 		agents.value?.['custom-agent'].models.push(agentModel);
 
@@ -736,6 +749,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				description: null,
 				createdAt: null,
 				updatedAt: null,
+				allowFileUploads: true,
 			};
 		}
 
