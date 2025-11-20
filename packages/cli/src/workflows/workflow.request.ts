@@ -4,7 +4,6 @@ import type {
 	IConnections,
 	IWorkflowSettings,
 	IRunData,
-	StartNodeData,
 	ITaskData,
 	IWorkflowBase,
 	AiAgentRequest,
@@ -29,18 +28,34 @@ export declare namespace WorkflowRequest {
 		uiContext?: string;
 	}>;
 
-	type ManualRunPayload = {
+	// 1. Full Manual Execution from Trigger
+	type FullManualExecutionFromTriggerPayload = {
 		workflowData: IWorkflowBase;
-		runData?: IRunData;
-		startNodes?: StartNodeData[];
-		destinationNode?: string;
-		dirtyNodeNames?: string[];
-		triggerToStartFrom?: {
-			name: string;
-			data?: ITaskData;
-		};
+		triggerToStartFrom?: { name: string; data?: ITaskData };
 		agentRequest?: AiAgentRequest;
 	};
+	// 2. Full Manual Execution to Destination
+	type FullManualExecutionToDestinationPayload = {
+		workflowData: IWorkflowBase;
+		destinationNode: string;
+		agentRequest?: AiAgentRequest;
+	};
+
+	// There could also be an edge case for the chat node where the triggerToStartFrom with data and the destinationNode exists.
+
+	// 3. Partial Manual Execution to Destination
+	type PartialManualExecutionToDestination = {
+		workflowData: IWorkflowBase;
+		runData: IRunData;
+		destinationNode: string;
+		dirtyNodeNames: string[];
+		agentRequest?: AiAgentRequest;
+	};
+
+	type ManualRunPayload =
+		| FullManualExecutionFromTriggerPayload
+		| FullManualExecutionToDestinationPayload
+		| PartialManualExecutionToDestination;
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 
