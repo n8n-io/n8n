@@ -105,10 +105,13 @@ export class CredentialsFinderService {
 			relations: { shared: true },
 		});
 
-		// Also include global credentials (no deduplication needed since we filter by isGlobal: false)
-		const globalCredentials = await this.fetchGlobalCredentials();
+		// Include global credentials only if the user has read-only access
+		if (this.hasGlobalReadOnlyAccess(scopes)) {
+			const globalCredentials = await this.fetchGlobalCredentials();
+			return [...credentials, ...globalCredentials];
+		}
 
-		return [...credentials, ...globalCredentials];
+		return credentials;
 	}
 
 	/** Get a credential if it has been shared with a user */

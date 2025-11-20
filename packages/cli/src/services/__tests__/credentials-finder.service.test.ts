@@ -327,14 +327,12 @@ describe('CredentialsFinderService', () => {
 				},
 				relations: { shared: true },
 			});
-			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
-				where: { isGlobal: true },
-				relations: { shared: true },
-			});
-			expect(result).toEqual([...credentials]);
+			// Should NOT fetch global credentials for update scope
+			expect(credentialsRepository.manager.find).not.toHaveBeenCalled();
+			expect(result).toEqual(credentials);
 		});
 
-		test('should include global credentials alongside non-global credentials', async () => {
+		test('should include global credentials when user has read-only access', async () => {
 			const mockGlobalCredentials = [
 				mock<CredentialsEntity>({ id: 'global1', isGlobal: true }),
 				mock<CredentialsEntity>({ id: 'global2', isGlobal: true }),
@@ -353,14 +351,63 @@ describe('CredentialsFinderService', () => {
 			expect(result.map((c) => c.id)).toEqual(['cred1', 'cred2', 'global1', 'global2']);
 		});
 
-		test('should handle empty global credentials list', async () => {
+		test('should not include global credentials when user has write access', async () => {
+			const mockGlobalCredentials = [
+				mock<CredentialsEntity>({ id: 'global1', isGlobal: true }),
+				mock<CredentialsEntity>({ id: 'global2', isGlobal: true }),
+			];
 			credentialsRepository.find.mockResolvedValueOnce(credentials);
+			(credentialsRepository.manager.find as jest.Mock).mockResolvedValueOnce(
+				mockGlobalCredentials,
+			);
+
+			const result = await credentialsFinderService.findCredentialsForUser(member, [
+				'credential:update' as const,
+			]);
+
+			// Should only include non-global credentials (cred1, cred2)
+			expect(result).toHaveLength(2);
+			expect(result.map((c) => c.id)).toEqual(['cred1', 'cred2']);
+			// Should not call fetchGlobalCredentials when not read-only
+			expect(credentialsRepository.manager.find).not.toHaveBeenCalled();
+		});
+
+		test('should not include global credentials when user has multiple scopes', async () => {
+			const mockGlobalCredentials = [
+				mock<CredentialsEntity>({ id: 'global1', isGlobal: true }),
+				mock<CredentialsEntity>({ id: 'global2', isGlobal: true }),
+			];
+			credentialsRepository.find.mockResolvedValueOnce(credentials);
+			(credentialsRepository.manager.find as jest.Mock).mockResolvedValueOnce(
+				mockGlobalCredentials,
+			);
+
+			const result = await credentialsFinderService.findCredentialsForUser(member, [
+				'credential:read' as const,
+				'credential:list' as const,
+			]);
+
+			// Should only include non-global credentials (cred1, cred2)
+			expect(result).toHaveLength(2);
+			expect(result.map((c) => c.id)).toEqual(['cred1', 'cred2']);
+			// Should not call fetchGlobalCredentials when multiple scopes
+			expect(credentialsRepository.manager.find).not.toHaveBeenCalled();
+		});
+
+		test('should handle empty global credentials list with read-only access', async () => {
+			credentialsRepository.find.mockResolvedValueOnce(credentials);
+			(credentialsRepository.manager.find as jest.Mock).mockResolvedValueOnce([]);
 
 			const result = await credentialsFinderService.findCredentialsForUser(member, [
 				'credential:read' as const,
 			]);
 
 			expect(result).toEqual(credentials);
+			// Should call fetchGlobalCredentials when read-only
+			expect(credentialsRepository.manager.find).toHaveBeenCalledWith(CredentialsEntity, {
+				where: { isGlobal: true },
+				relations: { shared: true },
+			});
 		});
 
 		test('should handle custom roles in filtering', async () => {
