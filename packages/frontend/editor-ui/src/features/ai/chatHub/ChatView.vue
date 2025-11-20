@@ -141,19 +141,19 @@ const modelFromQuery = computed<ChatModelDto | null>(() => {
 	}
 
 	if (typeof agentId === 'string') {
-		return chatStore.getAgent({ provider: 'custom-agent', agentId }) ?? null;
+		return chatStore.getAgent({ provider: 'custom-agent', agentId });
 	}
 
 	if (typeof workflowId === 'string') {
-		return chatStore.getAgent({ provider: 'n8n', workflowId }) ?? null;
+		return chatStore.getAgent({ provider: 'n8n', workflowId });
 	}
 
 	return null;
 });
 
-const selectedModel = computed<ChatModelDto | undefined>(() => {
+const selectedModel = computed<ChatModelDto | null>(() => {
 	if (!chatStore.agentsReady) {
-		return undefined;
+		return null;
 	}
 
 	if (modelFromQuery.value) {
@@ -163,14 +163,14 @@ const selectedModel = computed<ChatModelDto | undefined>(() => {
 	if (currentConversation.value?.provider) {
 		const model = unflattenModel(currentConversation.value);
 
-		return model ? chatStore.getAgent(model) : undefined;
+		return model ? chatStore.getAgent(model) : null;
 	}
 
 	if (chatStore.streaming?.sessionId === sessionId.value) {
 		return chatStore.getAgent(chatStore.streaming.model);
 	}
 
-	return defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined;
+	return defaultModel.value ? chatStore.getAgent(defaultModel.value) : null;
 });
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
@@ -501,7 +501,7 @@ function onFilesDropped(files: File[]) {
 
 		<ChatConversationHeader
 			ref="headerRef"
-			:selected-model="selectedModel ?? null"
+			:selected-model="selectedModel"
 			:credentials="credentialsByProvider"
 			:ready-to-show-model-selector="chatStore.agentsReady"
 			@select-model="handleSelectModel"
@@ -563,7 +563,7 @@ function onFilesDropped(files: File[]) {
 					<ChatPrompt
 						ref="inputRef"
 						:class="$style.prompt"
-						:selected-model="selectedModel ?? null"
+						:selected-model="selectedModel"
 						:selected-tools="selectedTools"
 						:is-responding="isResponding"
 						:is-tools-selectable="canSelectTools"

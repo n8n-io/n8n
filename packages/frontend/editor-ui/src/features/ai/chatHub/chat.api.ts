@@ -97,8 +97,16 @@ export const stopGenerationApi = async (
 
 export const fetchConversationsApi = async (
 	context: IRestApiContext,
+	limit: number,
+	cursor?: string,
 ): Promise<ChatHubConversationsResponse> => {
-	const apiEndpoint = '/chat/conversations';
+	const queryParams = new URLSearchParams();
+	queryParams.append('limit', limit.toString());
+	if (cursor) {
+		queryParams.append('cursor', cursor);
+	}
+
+	const apiEndpoint = `/chat/conversations?${queryParams.toString()}`;
 	return await makeRestApiRequest<ChatHubConversationsResponse>(context, 'GET', apiEndpoint);
 };
 
