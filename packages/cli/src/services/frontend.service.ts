@@ -2,6 +2,7 @@ import type {
 	FrontendSettings,
 	IEnterpriseSettings,
 	ITelemetrySettings,
+	IUserManagementSettings,
 	N8nEnvFeatFlags,
 } from '@n8n/api-types';
 import { LicenseState, Logger, ModuleRegistry } from '@n8n/backend-common';
@@ -39,12 +40,16 @@ import {
 
 export type PublicEnterpriseSettings = Pick<IEnterpriseSettings, 'saml' | 'ldap' | 'oidc'>;
 
+export type PublicUserManagementSettings = Pick<
+	IUserManagementSettings,
+	'showSetupOnFirstLoad' | 'smtpSetup' | 'authenticationMethod'
+>;
+
 export type PublicFrontendSettings = Pick<
 	FrontendSettings,
 	| 'settingsMode'
 	| 'instanceId'
 	| 'versionCli'
-	| 'userManagement'
 	| 'sso'
 	| 'mfa'
 	| 'authCookie'
@@ -52,6 +57,7 @@ export type PublicFrontendSettings = Pick<
 	| 'telemetry'
 > & {
 	enterprise: PublicEnterpriseSettings;
+	userManagement: PublicUserManagementSettings;
 };
 
 @Service()
@@ -485,7 +491,7 @@ export class FrontendService {
 		const {
 			instanceId,
 			versionCli,
-			userManagement,
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
 			sso,
 			mfa,
 			authCookie,
@@ -498,7 +504,7 @@ export class FrontendService {
 			settingsMode: 'public',
 			instanceId,
 			versionCli,
-			userManagement,
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
 			sso,
 			mfa,
 			authCookie,

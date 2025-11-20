@@ -83,12 +83,6 @@ export async function initializeCore() {
 
 	void useExternalHooks().run('app.mount');
 
-	if (!settingsStore.isPreviewMode) {
-		await usersStore.initialize({
-			quota: settingsStore.userManagement.quota,
-		});
-	}
-
 	state.initialized = true;
 }
 
@@ -120,6 +114,12 @@ export async function initializeAuthenticatedFeatures(
 	const bannersStore = useBannersStore();
 	const versionsStore = useVersionsStore();
 	const dataTableStore = useDataTableStore();
+
+	if (!settingsStore.isPreviewMode) {
+		await usersStore.initialize({
+			quota: settingsStore.userManagement.quota,
+		});
+	}
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
 		try {
