@@ -1,14 +1,11 @@
-import {
-	type ILoadOptionsFunctions,
-	type INodePropertyOptions,
-	NodeOperationError,
-} from 'n8n-workflow';
+import { type ILoadOptionsFunctions, type INodePropertyOptions } from 'n8n-workflow';
 
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
 	connectMcpClient,
 	getAllTools,
 	getAuthHeaders,
+	mapToNodeOperationError,
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
 
@@ -35,7 +32,7 @@ export async function getTools(this: ILoadOptionsFunctions): Promise<INodeProper
 	});
 
 	if (!client.ok) {
-		throw new NodeOperationError(this.getNode(), 'Could not connect to your MCP server');
+		throw mapToNodeOperationError(node, client.error);
 	}
 
 	const tools = await getAllTools(client.result);

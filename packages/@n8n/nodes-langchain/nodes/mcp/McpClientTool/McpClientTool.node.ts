@@ -23,6 +23,7 @@ import {
 	connectMcpClient,
 	getAllTools,
 	getAuthHeaders,
+	mapToNodeOperationError,
 	tryRefreshOAuth2Token,
 } from '../shared/utils';
 
@@ -346,8 +347,7 @@ export class McpClientTool implements INodeType {
 		const node = this.getNode();
 		const config = getNodeConfig(this, itemIndex);
 
-		const setError = (message: string, description?: string): SupplyData => {
-			const error = new NodeOperationError(node, message, { itemIndex, description });
+		const setError = (error: NodeOperationError): SupplyData => {
 			this.addOutputData(NodeConnectionTypes.AiTool, itemIndex, error);
 			throw error;
 		};
@@ -356,22 +356,18 @@ export class McpClientTool implements INodeType {
 
 		if (error) {
 			this.logger.error('McpClientTool: Failed to connect to MCP Server', { error });
-
-			switch (error.type) {
-				case 'invalid_url':
-					return setError('Could not connect to your MCP server. The provided URL is invalid.');
-				case 'connection':
-				default:
-					return setError('Could not connect to your MCP server');
-			}
+			return setError(mapToNodeOperationError(node, error));
 		}
 
 		this.logger.debug('McpClientTool: Successfully connected to MCP Server');
 
 		if (!mcpTools?.length) {
 			return setError(
-				'MCP Server returned no tools',
-				'Connected successfully to your MCP server but it returned an empty list of tools.',
+				new NodeOperationError(node, 'MCP Server returned no tools', {
+					itemIndex,
+					description:
+						'Connected successfully to your MCP server but it returned an empty list of tools.',
+				}),
 			);
 		}
 
