@@ -19,7 +19,7 @@ Trigger → Capture Binary → Extract Text → Parse/Transform → Route to Des
 ### Common Flow Patterns
 
 **Simple Document Processing:**
-- Email Trigger → Extract from File → Google Sheets → Slack notification
+- Email Trigger → Extract from File → DataTable → Slack notification
 - Best for: Basic text-based PDFs with straightforward data extraction
 
 **Complex Document Processing with AI:**
@@ -168,15 +168,21 @@ Critical: Enable "Include Binary Data" option
 
 ### Data Destinations
 
+**DataTable (n8n-nodes-base.dataTable)**
+Purpose: Store extracted data in n8n's built-in data tables
+Operations: Insert, Update, Select rows without external dependencies
+Best for: Self-contained workflows that don't require external storage
+
 **Google Sheets (n8n-nodes-base.googleSheets)**
-Purpose: Log extracted data in spreadsheet
+Purpose: Log extracted data in external spreadsheet
 Operations: Use "Append" for new rows, "Update" with key column for existing
+Best for: Collaborative review and manual data validation
 
 **Database Nodes**
 - Postgres (n8n-nodes-base.postgres)
 - MySQL (n8n-nodes-base.mySql)
 - MongoDB (n8n-nodes-base.mongoDb)
-Purpose: Store structured extraction results
+Purpose: Store structured extraction results in production databases
 Best Practice: Validate data schema before insert
 
 ### Utilities
