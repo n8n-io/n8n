@@ -510,6 +510,15 @@ export class ChatHubWorkflowService {
 					},
 				};
 			}
+			case 'cohere': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			case 'mistralCloud': {
 				return {
 					...common,
