@@ -70,6 +70,7 @@ const render = (props: Partial<Props> = {}, pinData?: INodeExecutionData[], runD
 				id: '',
 				name: '',
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: '',
 				updatedAt: '',

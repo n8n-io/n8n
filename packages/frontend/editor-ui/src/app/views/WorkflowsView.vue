@@ -347,6 +347,7 @@ const workflowListResources = computed<Resource[]>(() => {
 				name: resource.name,
 				description: resource.description,
 				active: resource.active ?? false,
+				activeVersionId: resource.activeVersionId,
 				isArchived: resource.isArchived,
 				updatedAt: resource.updatedAt.toString(),
 				createdAt: resource.createdAt.toString(),
@@ -1055,6 +1056,7 @@ const onWorkflowActiveToggle = async (data: { id: string; active: boolean }) => 
 	);
 	if (!workflow) return;
 	workflow.active = data.active;
+	workflow.activeVersionId = data.active ? workflow.versionId : null;
 
 	// Fetch the updated workflow to get the latest settings
 	try {
