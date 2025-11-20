@@ -24,6 +24,7 @@ export type Props = {
 	isExpanded: boolean;
 	sortable: boolean;
 	disableAnimation: boolean;
+	isDragging: boolean;
 	titleTemplate?: string;
 };
 
@@ -87,9 +88,9 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 			/>
 			<N8nHeaderAction
 				v-if="sortable"
-				draggable
 				icon="grip-vertical"
 				:label="locale.baseText('fixedCollectionParameter.dragItem')"
+				:class="['drag-handle', $style.dragHandle, { [$style.dragging]: isDragging }]"
 				test-id="fixed-collection-item-drag"
 			/>
 		</template>
@@ -107,3 +108,13 @@ const handleValueChanged = (parameterData: IUpdateInformation) =>
 		/>
 	</N8nCollapsiblePanel>
 </template>
+
+<style lang="css" module>
+.dragHandle {
+	cursor: grab;
+}
+
+.dragging {
+	cursor: grabbing;
+}
+</style>

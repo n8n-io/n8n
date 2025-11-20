@@ -75,6 +75,7 @@ const onDelete = (index: number) => emit('delete', props.property.name, index);
 				:property-path="getPropertyPath(property.name, index)"
 				:is-read-only="isReadOnly"
 				:is-expanded="itemState.getExpandedState(property.name, index)"
+				:is-dragging="isDragging"
 				:sortable="sortable"
 				:disable-animation="disableAnimation"
 				:title-template="titleTemplate"
@@ -90,7 +91,7 @@ const onDelete = (index: number) => emit('delete', props.property.name, index);
 .ghost,
 .dragging {
 	border-radius: var(--radius);
-	padding-right: var(--spacing--xs);
+	cursor: grabbing;
 }
 
 .ghost {

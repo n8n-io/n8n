@@ -119,7 +119,7 @@ const isOpen = computed({
 	align-items: center;
 	padding: var(--spacing--4xs) var(--spacing--xs);
 	gap: var(--spacing--4xs);
-	min-height: 40px;
+	min-height: 32px;
 }
 
 .trigger {
@@ -140,7 +140,7 @@ const isOpen = computed({
 
 .title {
 	font-weight: var(--font-weight--medium);
-	color: var(--color--text--tint-1);
+	color: var(-—color-text);
 	font-size: var(--font-size--2xs);
 	line-height: 1;
 	transition: color var(--animation--duration) var(--animation--easing);

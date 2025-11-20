@@ -255,11 +255,11 @@ function getItemKey(_item: INodeParameters, index: number) {
 			<div v-if="multipleValues">
 				<Draggable
 					v-model="mutableValues[property.name] as INodeParameters[]"
-					:item-key="getItemKey"
 					handle=".drag-handle"
-					drag-class="dragging"
-					ghost-class="ghost"
-					chosen-class="chosen"
+					:item-key="getItemKey"
+					:drag-class="$style.dragging"
+					:ghost-class="$style.ghost"
+					:chosen-class="$style.chosen"
 					@change="onDragChange(property.name)"
 				>
 					<template #item="{ index }">
@@ -368,18 +368,18 @@ function getItemKey(_item: INodeParameters, index: number) {
 .fixedCollectionParameter {
 	padding-left: var(--spacing--sm);
 
-	:global(.ghost),
-	:global(.dragging) {
+	.ghost,
+	.dragging {
 		border-radius: var(--radius);
 		padding-right: var(--spacing--xs);
 	}
 
-	:global(.ghost) {
+	.ghost {
 		background-color: var(--color--background);
 		opacity: 0.5;
 	}
 
-	:global(.dragging) {
+	.dragging {
 		background-color: var(--color--background--light-3);
 		opacity: 0.7;
 
