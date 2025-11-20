@@ -104,7 +104,7 @@ function pullWorkfolder() {
 					color: accessibleTextColor,
 				}"
 			>
-				<N8nIcon icon="git-branch" />
+				<N8nIcon icon="git-branch" size="small" />
 				<span v-if="!isCollapsed" :class="$style.branchName"> {{ currentBranch }}</span>
 			</span>
 			<div>
@@ -171,8 +171,7 @@ function pullWorkfolder() {
 
 <style lang="scss" module>
 .sync {
-	background: var(--color--background--light-2);
-	font-size: var(--font-size--2xs);
+	border-top: var(--spacing--5xs) solid rgba(0, 0, 0, 0.1);
 
 	button {
 		font-size: var(--font-size--2xs);
@@ -180,7 +179,7 @@ function pullWorkfolder() {
 }
 
 .icon {
-	padding: var(--spacing--3xs) var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs);
 	display: flex;
 	align-items: center;
 	justify-content: center;
