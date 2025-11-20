@@ -87,7 +87,7 @@ export class McpClient implements INodeType {
 				default: '',
 				displayOptions: {
 					show: {
-						authentication: ['headerAuth', 'bearerAuth', 'mcpOAuth2Api'],
+						authentication: ['headerAuth', 'bearerAuth', 'mcpOAuth2Api', 'multipleHeadersAuth'],
 					},
 				},
 			},
