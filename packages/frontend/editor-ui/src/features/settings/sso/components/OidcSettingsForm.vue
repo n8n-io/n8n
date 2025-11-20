@@ -114,8 +114,12 @@ const cannotSaveOidcSettings = computed(() => {
 async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false) {
 	if (ssoStore.oidcConfig?.loginEnabled && !ssoStore.isOidcLoginEnabled) {
 		const confirmAction = await message.confirm(
-			i18n.baseText('settings.oidc.confirmMessage.beforeSaveForm.message'),
-			i18n.baseText('settings.oidc.confirmMessage.beforeSaveForm.headline'),
+			i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.message', {
+				interpolate: { protocol: 'OIDC' },
+			}),
+			i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.headline', {
+				interpolate: { protocol: 'OIDC' },
+			}),
 			{
 				cancelButtonText: i18n.baseText(
 					'settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText',
