@@ -251,7 +251,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			await this.generateStaticAssets();
 		}
 
-		await this.moduleRegistry.initModules();
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		if (this.instanceSettings.isMultiMain) {
 			// we instantiate `PrometheusMetricsService` early to register its multi-main event handlers

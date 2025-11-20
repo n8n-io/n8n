@@ -139,6 +139,7 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 	},
 	azureOpenAi: {},
 	ollama: {},
+	awsBedrock: {},
 };
 
 export const getMaxContextWindowTokens = (
