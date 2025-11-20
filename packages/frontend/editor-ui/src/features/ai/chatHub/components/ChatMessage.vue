@@ -14,6 +14,9 @@ import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
 import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
+import ChatFile from '@n8n/chat/components/ChatFile.vue';
+import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -35,6 +38,7 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
+const rootStore = useRootStore();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -50,6 +54,18 @@ const speech = useSpeechSynthesis(messageContent, {
 
 const model = computed(() => unflattenModel(message));
 const agent = useAgent(model);
+
+const attachments = computed(() =>
+	message.attachments.map(({ fileName, mimeType }, index) => ({
+		file: new File([], fileName ?? 'file', { type: mimeType }), // Placeholder file for display
+		downloadUrl: buildChatAttachmentUrl(
+			rootStore.restApiContext,
+			message.sessionId,
+			message.id,
+			index,
+		),
+	})),
+);
 
 async function handleCopy() {
 	const text = message.content;
@@ -163,6 +179,15 @@ onBeforeMount(() => {
 			</div>
 			<template v-else>
 				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
+					<div v-if="attachments.length > 0" :class="$style.attachments">
+						<ChatFile
+							v-for="(attachment, index) in attachments"
+							:key="index"
+							:file="attachment.file"
+							:is-removable="false"
+							:href="attachment.downloadUrl"
+						/>
+					</div>
 					<VueMarkdown
 						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
@@ -225,8 +250,17 @@ onBeforeMount(() => {
 	flex-direction: column;
 }
 
+.attachments {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--xs);
+}
+
 .chatMessage {
-	display: block;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 	position: relative;
 	max-width: fit-content;
 

@@ -134,6 +134,7 @@ export interface ChatModelDto {
 	description: string | null;
 	updatedAt: string | null;
 	createdAt: string | null;
+	allowFileUploads?: boolean;
 }
 
 /**
@@ -159,6 +160,18 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	'custom-agent': { models: [] },
 };
 
+/**
+ * Chat attachment schema for incoming requests.
+ * Requires base64 data and fileName.
+ * MimeType, fileType, fileExtension, and fileSize are populated server-side.
+ */
+export const chatAttachmentSchema = z.object({
+	data: z.string(),
+	fileName: z.string(),
+});
+
+export type ChatAttachment = z.infer<typeof chatAttachmentSchema>;
+
 export class ChatHubSendMessageRequest extends Z.class({
 	messageId: z.string().uuid(),
 	sessionId: z.string().uuid(),
@@ -172,6 +185,7 @@ export class ChatHubSendMessageRequest extends Z.class({
 		}),
 	),
 	tools: z.array(INodeSchema),
+	attachments: z.array(chatAttachmentSchema),
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({
@@ -246,6 +260,8 @@ export interface ChatHubMessageDto {
 	previousMessageId: ChatMessageId | null;
 	retryOfMessageId: ChatMessageId | null;
 	revisionOfMessageId: ChatMessageId | null;
+
+	attachments: Array<{ fileName?: string; mimeType?: string }>;
 }
 
 export type ChatHubConversationsResponse = ChatHubSessionDto[];
