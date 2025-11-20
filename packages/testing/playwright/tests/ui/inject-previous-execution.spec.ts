@@ -14,7 +14,6 @@ test.describe('Inject previous execution', () => {
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.canvas.clickExecuteWorkflowButton();
 
-		// Wait for the workflow to complete successfully
 		await n8n.notifications.waitForNotificationAndClose(
 			NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,
 		);
@@ -45,7 +44,6 @@ test.describe('Inject previous execution', () => {
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.canvas.clickExecuteWorkflowButton();
 
-		// Wait for the workflow to complete successfully
 		await n8n.notifications.waitForNotificationAndClose(
 			NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,
 		);
