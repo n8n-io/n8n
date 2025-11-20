@@ -5,7 +5,6 @@ import {
 	CredentialsEntity,
 	SharedCredentials,
 	CredentialsRepository,
-	ProjectRepository,
 	SharedCredentialsRepository,
 	UserRepository,
 } from '@n8n/db';
@@ -32,7 +31,6 @@ import {
 	deepCopy,
 	isINodePropertyCollection,
 	NodeHelpers,
-	UnexpectedError,
 } from 'n8n-workflow';
 
 import { CredentialsFinderService } from './credentials-finder.service';
@@ -40,7 +38,6 @@ import { CredentialsFinderService } from './credentials-finder.service';
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
 import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -70,7 +67,6 @@ export class CredentialsService {
 		private readonly credentialsTester: CredentialsTester,
 		private readonly externalHooks: ExternalHooks,
 		private readonly credentialTypes: CredentialTypes,
-		private readonly projectRepository: ProjectRepository,
 		private readonly projectService: ProjectService,
 		private readonly roleService: RoleService,
 		private readonly userRepository: UserRepository,
@@ -416,29 +412,11 @@ export class CredentialsService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 		const result = await dbManager.transaction(async (transactionManager) => {
-			const project =
-				projectId === undefined
-					? await this.projectRepository.getPersonalProjectForUserOrFail(
-							user.id,
-							transactionManager,
-						)
-					: await this.projectService.getProjectWithScope(
-							user,
-							projectId,
-							['credential:create'],
-							transactionManager,
-						);
-
-			if (typeof projectId === 'string' && project === null) {
-				throw new BadRequestError(
-					"You don't have the permissions to save the credential in this project.",
-				);
-			}
-
-			// Safe guard in case the personal project does not exist for whatever reason.
-			if (project === null) {
-				throw new UnexpectedError('No personal project found');
-			}
+			const project = await this.projectService.getProjectForCredentialCreation(
+				user,
+				projectId,
+				transactionManager,
+			);
 
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);
 
