@@ -85,6 +85,14 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 
 export const SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT = {
 	name: '050_sso_jit_provisioning',
+	control: 'control',
+	variant: 'variant',
+};
+
+export const DRAFT_PUBLISH_EXPERIMENT = {
+	name: '051_draft_publish_workflows',
+	control: 'control',
+	variant: 'variant',
 };
 
 export const EXPERIMENTS_TO_TRACK = [

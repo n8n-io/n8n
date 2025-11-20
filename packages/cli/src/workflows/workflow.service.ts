@@ -555,6 +555,7 @@ export class WorkflowService {
 
 		const updatedWorkflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },
+			relations: ['activeVersion'],
 		});
 
 		if (!updatedWorkflow) {

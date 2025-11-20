@@ -132,9 +132,145 @@ export function useWorkflowActivate() {
 		return await updateWorkflowActivation(workflowId, true, telemetrySource);
 	};
 
+	const publishWorkflowFromCanvas = async (
+		workflowId: string,
+		options: { description?: string; name?: string } = {},
+	) => {
+		updatingWorkflowActivation.value = true;
+		const nodesIssuesExist = workflowsStore.nodesIssuesExist;
+		const wasWorkflowActive = workflowsStore.isWorkflowActive;
+
+		let currWorkflowId: string | undefined = workflowId;
+		if (
+			!currWorkflowId ||
+			currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
+			uiStore.stateIsDirty
+		) {
+			const saved = await workflowSaving.saveCurrentWorkflow();
+			if (!saved) {
+				updatingWorkflowActivation.value = false;
+				return false;
+			}
+			currWorkflowId = workflowsStore.workflowId;
+		}
+
+		if (nodesIssuesExist) {
+			toast.showMessage({
+				title: i18n.baseText(
+					'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
+				),
+				message: i18n.baseText(
+					'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message',
+				),
+				type: 'error',
+			});
+			updatingWorkflowActivation.value = false;
+			return false;
+		}
+
+		const hasPublishedVersion = !!workflowsStore.workflow.activeVersion;
+
+		if (!hasPublishedVersion) {
+			const telemetryPayload = {
+				workflow_id: currWorkflowId,
+				is_active: true,
+				previous_status: false,
+				ndv_input: false,
+			};
+			void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
+		}
+
+		try {
+			const updatedWorkflow = await workflowsStore.publishWorkflow(currWorkflowId, {
+				versionId: workflowsStore.workflow.versionId,
+				...options,
+			});
+
+			if (!updatedWorkflow.activeVersion) {
+				throw new Error('Failed to publish workflow');
+			}
+
+			workflowsStore.setWorkflowActive(currWorkflowId, updatedWorkflow.activeVersion);
+
+			void useExternalHooks().run('workflow.activeChangeCurrent', {
+				workflowId: currWorkflowId,
+				// TODO: document this
+				versionId: updatedWorkflow.activeVersion.versionId,
+				active: true,
+			});
+
+			if (!wasWorkflowActive && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
+				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
+			}
+			return true;
+		} catch (error) {
+			toast.showError(
+				error,
+				i18n.baseText('workflowActivator.showError.title', {
+					interpolate: { newStateName: 'activated' },
+				}) + ':',
+			);
+			return false;
+		} finally {
+			updatingWorkflowActivation.value = false;
+		}
+	};
+
+	const publishWorkflowFromHistory = async (workflowId: string, versionId: string) => {
+		updatingWorkflowActivation.value = true;
+		const workflow = workflowsStore.getWorkflowById(workflowId);
+		// TODO: should we check the passed version for node issues?
+		const hadPublishedVersion = !!workflow.activeVersion;
+
+		if (!hadPublishedVersion) {
+			const telemetryPayload = {
+				workflow_id: workflowId,
+				is_active: true,
+				previous_status: false,
+				ndv_input: false,
+			};
+			void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
+		}
+
+		try {
+			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
+				versionId,
+			});
+
+			if (!updatedWorkflow.activeVersion) {
+				throw new Error('Failed to publish workflow');
+			}
+
+			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion);
+
+			void useExternalHooks().run('workflow.activeChangeCurrent', {
+				workflowId,
+				versionId,
+				active: true,
+			});
+
+			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
+				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
+			}
+			return true;
+		} catch (error) {
+			toast.showError(
+				error,
+				i18n.baseText('workflowActivator.showError.title', {
+					interpolate: { newStateName: 'activated' },
+				}) + ':',
+			);
+			return false;
+		} finally {
+			updatingWorkflowActivation.value = false;
+		}
+	};
+
 	return {
 		activateCurrentWorkflow,
 		updateWorkflowActivation,
 		updatingWorkflowActivation,
+		publishWorkflowFromCanvas,
+		publishWorkflowFromHistory,
 	};
 }

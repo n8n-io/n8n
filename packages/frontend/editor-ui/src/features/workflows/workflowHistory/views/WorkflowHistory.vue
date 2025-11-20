@@ -2,7 +2,11 @@
 import { onBeforeMount, ref, watchEffect, computed, h } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import type { IWorkflowDb, UserAction } from '@/Interface';
-import { VIEWS, WORKFLOW_HISTORY_VERSION_RESTORE } from '@/app/constants';
+import {
+	VIEWS,
+	WORKFLOW_HISTORY_VERSION_RESTORE,
+	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+} from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/app/composables/useToast';
 import type {
@@ -30,12 +34,12 @@ type WorkflowHistoryActionRecord = {
 
 const enum WorkflowHistoryVersionRestoreModalActions {
 	restore = 'restore',
-	deactivateAndRestore = 'deactivateAndRestore',
 	cancel = 'cancel',
 }
 
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'restore',
+	'publish',
 	'clone',
 	'open',
 	'download',
@@ -61,7 +65,7 @@ const requestNumberOfItems = ref(20);
 const lastReceivedItemsLength = ref(0);
 const activeWorkflow = ref<IWorkflowDb | null>(null);
 const workflowHistory = ref<WorkflowHistory[]>([]);
-const activeWorkflowVersion = ref<WorkflowVersion | null>(null);
+const selectedWorkflowVersion = ref<WorkflowVersion | null>(null);
 
 const workflowId = computed(() => normalizeSingleRouteParam('workflowId'));
 const versionId = computed(() => normalizeSingleRouteParam('versionId'));
@@ -74,12 +78,18 @@ const editorRoute = computed(() => ({
 const workflowPermissions = computed(
 	() => getResourcePermissions(workflowsStore.getWorkflowById(workflowId.value)?.scopes).workflow,
 );
+
+const workflowActiveVersionId = computed(() => {
+	return workflowsStore.getWorkflowById(workflowId.value)?.activeVersion?.versionId;
+});
+
 const actions = computed<Array<UserAction<IUser>>>(() =>
 	workflowHistoryActionTypes.map((value) => ({
 		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
 		disabled:
 			(value === 'clone' && !workflowPermissions.value.create) ||
-			(value === 'restore' && !workflowPermissions.value.update),
+			(value === 'restore' && !workflowPermissions.value.update) ||
+			(value === 'publish' && !workflowPermissions.value.update),
 		value,
 	})),
 );
@@ -157,16 +167,6 @@ const openRestorationModal = async (
 			},
 		];
 
-		if (isWorkflowActivated) {
-			buttons.push({
-				text: i18n.baseText('workflowHistory.action.restore.modal.button.deactivateAndRestore'),
-				type: 'tertiary',
-				action: () => {
-					resolve(WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore);
-				},
-			});
-		}
-
 		buttons.push({
 			text: i18n.baseText('workflowHistory.action.restore.modal.button.restore'),
 			type: 'primary',
@@ -230,11 +230,7 @@ const restoreWorkflowVersion = async (
 	if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
 		return;
 	}
-	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
-		workflowId.value,
-		id,
-		modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore,
-	);
+	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(workflowId.value, id);
 	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, {
 		take: 1,
 	});
@@ -242,6 +238,20 @@ const restoreWorkflowVersion = async (
 	toast.showMessage({
 		title: i18n.baseText('workflowHistory.action.restore.success.title'),
 		type: 'success',
+	});
+};
+
+const publishWorkflowVersion = async (
+	id: WorkflowVersionId,
+	data: { formattedCreatedAt: string },
+) => {
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
+		data: {
+			versionId: id,
+			workflowId: workflowId.value,
+			formattedCreatedAt: data.formattedCreatedAt,
+		},
 	});
 };
 
@@ -271,6 +281,11 @@ const onAction = async ({
 			case WORKFLOW_HISTORY_ACTIONS.RESTORE:
 				await restoreWorkflowVersion(id, data);
 				sendTelemetry('User restored version');
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.PUBLISH:
+				await publishWorkflowVersion(id, data);
+				// TODO: document this event
+				sendTelemetry('User published version from history');
 				break;
 		}
 	} catch (error) {
@@ -317,7 +332,7 @@ watchEffect(async () => {
 		]);
 
 		// Single atomic update - prevents double render of workflow preview
-		activeWorkflowVersion.value = workflowVersion;
+		selectedWorkflowVersion.value = workflowVersion;
 		activeWorkflow.value = workflow;
 
 		sendTelemetry('User selected version');
@@ -361,12 +376,13 @@ watchEffect(async () => {
 				v-if="canRender"
 				:items="workflowHistory"
 				:last-received-items-length="lastReceivedItemsLength"
-				:active-item="activeWorkflowVersion"
+				:selected-item="selectedWorkflowVersion"
 				:actions="actions"
 				:request-number-of-items="requestNumberOfItems"
 				:should-upgrade="workflowHistoryStore.shouldUpgrade"
 				:evaluated-prune-days="evaluatedPruneDays"
 				:is-list-loading="isListLoading"
+				:active-version-id="workflowActiveVersionId"
 				@action="onAction"
 				@preview="onPreview"
 				@load-more="loadMore"
@@ -377,7 +393,8 @@ watchEffect(async () => {
 			<WorkflowHistoryContent
 				v-if="canRender"
 				:workflow="activeWorkflow"
-				:workflow-version="activeWorkflowVersion"
+				:workflow-version="selectedWorkflowVersion"
+				:is-version-active="selectedWorkflowVersion?.versionId === workflowActiveVersionId"
 				:actions="actions"
 				:is-list-loading="isListLoading"
 				:is-first-item-shown="isFirstItemShown"

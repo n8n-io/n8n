@@ -12,17 +12,17 @@ import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import type { IUser } from 'n8n-workflow';
 import { I18nT } from 'vue-i18n';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
-
 import { N8nLoading } from '@n8n/design-system';
 const props = defineProps<{
 	items: WorkflowHistory[];
-	activeItem: WorkflowHistory | null;
+	selectedItem: WorkflowHistory | null;
 	actions: Array<UserAction<IUser>>;
 	requestNumberOfItems: number;
 	lastReceivedItemsLength: number;
 	evaluatedPruneDays: number;
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
+	activeVersionId: string | undefined;
 }>();
 
 const emit = defineEmits<{
@@ -50,8 +50,17 @@ const { observe: observeForLoadMore } = useIntersectionObserver({
 		emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length }),
 });
 
-const getActions = (index: number) =>
-	index === 0 ? props.actions.filter((action) => action.value !== 'restore') : props.actions;
+const getActions = (item: WorkflowHistory, index: number) => {
+	let filteredActions = props.actions;
+	if (index === 0) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
+	}
+	if (item.versionId === props.activeVersionId) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
+	}
+
+	return filteredActions;
+};
 
 const onAction = ({
 	action,
@@ -74,13 +83,13 @@ const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) 
 const onItemMounted = ({
 	index,
 	offsetTop,
-	isActive,
+	isSelected,
 }: {
 	index: number;
 	offsetTop: number;
-	isActive: boolean;
+	isSelected: boolean;
 }) => {
-	if (isActive && shouldAutoScroll.value) {
+	if (isSelected && shouldAutoScroll.value) {
 		shouldAutoScroll.value = false;
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
@@ -101,8 +110,9 @@ const onItemMounted = ({
 			:key="item.versionId"
 			:index="index"
 			:item="item"
-			:is-active="item.versionId === props.activeItem?.versionId"
-			:actions="getActions(index)"
+			:is-selected="item.versionId === props.selectedItem?.versionId"
+			:is-version-active="item.versionId === props.activeVersionId"
+			:actions="getActions(item, index)"
 			@action="onAction"
 			@preview="onPreview"
 			@mounted="onItemMounted"
