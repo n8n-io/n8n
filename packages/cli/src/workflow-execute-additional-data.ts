@@ -8,7 +8,7 @@ import { GlobalConfig } from '@n8n/config';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { ExternalSecretsProxy, WorkflowExecute } from 'n8n-core';
-import { UnexpectedError, Workflow } from 'n8n-workflow';
+import { UnexpectedError, Workflow, createRunExecutionData } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -16,7 +16,6 @@ import type {
 	INode,
 	INodeExecutionData,
 	INodeParameters,
-	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	IWorkflowSettings,
@@ -30,6 +29,7 @@ import type {
 	EnvProviderState,
 	ExecuteWorkflowData,
 	RelatedExecution,
+	IRunExecutionData,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -51,11 +51,11 @@ import { findSubworkflowStart } from '@/utils';
 import { objectToError } from '@/utils/object-to-error';
 import * as WorkflowHelpers from '@/workflow-helpers';
 
-export async function getRunData(
+export function getRunData(
 	workflowData: IWorkflowBase,
 	inputData?: INodeExecutionData[],
 	parentExecution?: RelatedExecution,
-): Promise<IWorkflowExecutionDataProcess> {
+): IWorkflowExecutionDataProcess {
 	const mode = 'integrated';
 
 	const startingNode = findSubworkflowStart(workflowData.nodes);
@@ -78,20 +78,12 @@ export async function getRunData(
 		source: null,
 	});
 
-	const runExecutionData: IRunExecutionData = {
-		startData: {},
-		resultData: {
-			runData: {},
-		},
+	const runExecutionData = createRunExecutionData({
 		executionData: {
-			contextData: {},
-			metadata: {},
 			nodeExecutionStack,
-			waitingExecution: {},
-			waitingExecutionSource: {},
 		},
 		parentExecution,
-	};
+	});
 
 	return {
 		executionMode: mode,
@@ -155,8 +147,7 @@ export async function executeWorkflow(
 		(await getWorkflowData(workflowInfo, options.parentWorkflowId, options.parentWorkflowSettings));
 
 	const runData =
-		options.loadedRunData ??
-		(await getRunData(workflowData, options.inputData, options.parentExecution));
+		options.loadedRunData ?? getRunData(workflowData, options.inputData, options.parentExecution);
 
 	const executionId = await activeExecutions.add(runData);
 

@@ -9,8 +9,14 @@ import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
 import { useToast } from '@/app/composables/useToast';
-import { useReadyToRunWorkflowsV2Store } from '../stores/readyToRunWorkflowsV2.store';
+import { useReadyToRunStore } from '@/features/workflows/readyToRun/stores/readyToRun.store';
+import { useTemplatesDataQualityStore } from '@/experiments/templatesDataQuality/stores/templatesDataQuality.store';
+import TemplatesDataQualityInlineSection from '@/experiments/templatesDataQuality/components/TemplatesDataQualityInlineSection.vue';
 import type { IUser } from 'n8n-workflow';
+
+const emit = defineEmits<{
+	'click:add': [];
+}>();
 
 const route = useRoute();
 const i18n = useI18n();
@@ -19,7 +25,8 @@ const usersStore = useUsersStore();
 const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const projectPages = useProjectPages();
-const readyToRunWorkflowsV2Store = useReadyToRunWorkflowsV2Store();
+const readyToRunStore = useReadyToRunStore();
+const templatesDataQualityStore = useTemplatesDataQualityStore();
 
 const isLoadingReadyToRun = ref(false);
 
@@ -43,18 +50,22 @@ const emptyListDescription = computed(() => {
 	}
 });
 
-const showReadyToRunV2Card = computed(() => {
+const showReadyToRunCard = computed(() => {
 	return (
 		isLoadingReadyToRun.value ||
-		readyToRunWorkflowsV2Store.getCardVisibility(
-			projectPermissions.value.workflow.create,
-			readOnlyEnv.value,
-			false, // loading is false in simplified layout
-		)
+		readyToRunStore.getCardVisibility(projectPermissions.value.workflow.create, readOnlyEnv.value)
 	);
 });
 
-const handleReadyToRunV2Click = async () => {
+const showTemplatesDataQualityInline = computed(() => {
+	return (
+		templatesDataQualityStore.isFeatureEnabled() &&
+		!readOnlyEnv.value &&
+		projectPermissions.value.workflow.create
+	);
+});
+
+const handleReadyToRunClick = async () => {
 	if (isLoadingReadyToRun.value) return;
 
 	isLoadingReadyToRun.value = true;
@@ -63,7 +74,7 @@ const handleReadyToRunV2Click = async () => {
 		: (route.params.projectId as string);
 
 	try {
-		await readyToRunWorkflowsV2Store.claimCreditsAndOpenWorkflow(
+		await readyToRunStore.claimCreditsAndOpenWorkflow(
 			'card',
 			route.params.folderId as string,
 			projectId,
@@ -77,14 +88,10 @@ const handleReadyToRunV2Click = async () => {
 const addWorkflow = () => {
 	emit('click:add');
 };
-
-const emit = defineEmits<{
-	'click:add': [];
-}>();
 </script>
 
 <template>
-	<div :class="$style.simplifiedLayout">
+	<div :class="$style.emptyStateLayout">
 		<div :class="$style.content">
 			<div :class="$style.welcome">
 				<N8nHeading tag="h1" size="2xlarge" :class="$style.welcomeTitle">
@@ -106,11 +113,11 @@ const emit = defineEmits<{
 				:class="$style.actionsContainer"
 			>
 				<N8nCard
-					v-if="showReadyToRunV2Card"
+					v-if="showReadyToRunCard"
 					:class="[$style.actionCard, { [$style.loading]: isLoadingReadyToRun }]"
 					:hoverable="!isLoadingReadyToRun"
-					data-test-id="ready-to-run-v2-card"
-					@click="handleReadyToRunV2Click"
+					data-test-id="ready-to-run-card"
+					@click="handleReadyToRunClick"
 				>
 					<div :class="$style.cardContent">
 						<N8nIcon
@@ -121,7 +128,7 @@ const emit = defineEmits<{
 							:spin="isLoadingReadyToRun"
 						/>
 						<N8nText size="large" class="mt-xs">
-							{{ i18n.baseText('workflows.empty.readyToRunV2') }}
+							{{ i18n.baseText('workflows.empty.readyToRun') }}
 						</N8nText>
 					</div>
 				</N8nCard>
@@ -145,31 +152,26 @@ const emit = defineEmits<{
 					</div>
 				</N8nCard>
 			</div>
+			<TemplatesDataQualityInlineSection v-if="showTemplatesDataQualityInline" />
 		</div>
 	</div>
 </template>
 
 <style lang="scss" module>
-.simplifiedLayout {
+.emptyStateLayout {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
+	padding-top: var(--spacing--3xl);
 	min-height: 100vh;
-}
-
-.header {
-	position: fixed;
-	top: var(--spacing--lg);
-	left: var(--spacing--lg);
-	opacity: 0.6;
 }
 
 .content {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	max-width: 600px;
+	max-width: 900px;
 	text-align: center;
 }
 

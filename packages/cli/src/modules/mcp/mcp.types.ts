@@ -82,6 +82,11 @@ export type UserCalledMCPToolEventPayload = {
 	};
 };
 
+export type ExecuteWorkflowsInputMeta = {
+	type: 'webhook' | 'chat' | 'schedule' | 'form';
+	parameter_count: number;
+};
+
 type SupportedTriggerNodeTypes = keyof typeof SUPPORTED_MCP_TRIGGERS;
 
 export type MCPTriggersMap = {

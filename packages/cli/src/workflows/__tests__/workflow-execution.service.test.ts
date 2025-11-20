@@ -453,11 +453,14 @@ describe('WorkflowExecutionService', () => {
 				const originalEnv = process.env;
 				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 
-				const configMock = { getEnv: jest.fn() };
-				configMock.getEnv.mockReturnValue('queue');
-
 				const workflowRunnerMock = mock<WorkflowRunner>();
 				workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+				const globalConfigMock = mock<GlobalConfig>({
+					executions: {
+						mode: 'queue',
+					},
+				});
 
 				const service = new WorkflowExecutionService(
 					mock(),
@@ -467,7 +470,7 @@ describe('WorkflowExecutionService', () => {
 					nodeTypes,
 					mock(),
 					workflowRunnerMock,
-					mock(),
+					globalConfigMock,
 					mock(),
 					mock(),
 				);
@@ -483,6 +486,104 @@ describe('WorkflowExecutionService', () => {
 
 				const callArgs = workflowRunnerMock.run.mock.calls[0][0];
 				expect(callArgs.executionData?.resultData?.runData).toBeUndefined();
+
+				process.env = originalEnv;
+			});
+
+			test('when receiving `runData`, should preserve it in `executionData` for partial execution', async () => {
+				const originalEnv = process.env;
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
+
+				const workflowRunnerMock = mock<WorkflowRunner>();
+				workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+				const globalConfigMock = mock<GlobalConfig>({
+					executions: {
+						mode: 'queue',
+					},
+				});
+
+				const service = new WorkflowExecutionService(
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+					nodeTypes,
+					mock(),
+					workflowRunnerMock,
+					globalConfigMock,
+					mock(),
+					mock(),
+				);
+
+				const runData = {
+					Node1: [
+						{
+							startTime: 123,
+							executionTime: 456,
+							source: [],
+							executionIndex: 0,
+						},
+					],
+				};
+
+				await service.executeManually(
+					{
+						workflowData: mock<IWorkflowBase>({ nodes: [] }),
+						startNodes: [],
+						runData,
+					},
+					mock<User>({ id: 'user-id' }),
+				);
+
+				const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+				expect(callArgs.executionData?.resultData?.runData).toEqual(runData);
+
+				process.env = originalEnv;
+			});
+
+			test('should not initialize nested `executionData.executionData` to avoid treating it as resumed execution', async () => {
+				const originalEnv = process.env;
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
+
+				const workflowRunnerMock = mock<WorkflowRunner>();
+				workflowRunnerMock.run.mockResolvedValue('fake-execution-id');
+
+				const globalConfigMock = mock<GlobalConfig>({
+					executions: {
+						mode: 'queue',
+					},
+				});
+
+				const service = new WorkflowExecutionService(
+					mock(),
+					mock(),
+					mock(),
+					mock(),
+					nodeTypes,
+					mock(),
+					workflowRunnerMock,
+					globalConfigMock,
+					mock(),
+					mock(),
+				);
+
+				await service.executeManually(
+					{
+						workflowData: mock<IWorkflowBase>({ nodes: [] }),
+						startNodes: [],
+						runData: undefined,
+					},
+					mock<User>({ id: 'user-id' }),
+				);
+
+				const callArgs = workflowRunnerMock.run.mock.calls[0][0];
+				// Should have executionData at top level with startData and manualData
+				expect(callArgs.executionData).toBeDefined();
+				expect(callArgs.executionData?.startData).toBeDefined();
+				expect(callArgs.executionData?.manualData).toBeDefined();
+				// But nested executionData.executionData should be undefined
+				expect(callArgs.executionData?.executionData).toBeUndefined();
 
 				process.env = originalEnv;
 			});

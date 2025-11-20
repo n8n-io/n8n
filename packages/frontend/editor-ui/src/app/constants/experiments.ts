@@ -87,10 +87,6 @@ export const SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT = {
 	name: '050_sso_jit_provisioning',
 };
 
-export const MIGRATION_REPORT_EXPERIMENT = {
-	name: '052_migration_report',
-};
-
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
