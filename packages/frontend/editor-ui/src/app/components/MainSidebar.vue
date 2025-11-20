@@ -451,7 +451,7 @@ function onResize(event: { width: number; x: number }) {
 		return;
 	}
 
-	if (event.x < 30 && !isCollapsed.value) {
+	if (event.x < 100 && !isCollapsed.value) {
 		sidebarWidth.value = 40;
 		toggleCollapse();
 		return;
@@ -665,14 +665,13 @@ function onResizeEnd() {
 			</div>
 		</N8nScrollArea>
 
-		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 		<MainSidebarUserArea
 			v-if="showUserArea"
 			ref="user"
 			:fully-expanded="fullyExpanded"
 			:is-collapsed="isCollapsed"
 		/>
-
+		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 		<TemplateTooltip />
 	</N8nResizeWrapper>
 </template>
@@ -734,8 +733,9 @@ function onResizeEnd() {
 }
 
 .popover {
-	padding: var(--spacing--xs);
-	min-width: 200px;
+	padding: var(--spacing--3xs);
+	min-width: 260px;
+	background-color: var(--menu--color--background, var(--color--background--light-2));
 }
 
 .popoverTitle {

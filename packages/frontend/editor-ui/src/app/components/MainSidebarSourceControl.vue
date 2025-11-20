@@ -44,6 +44,27 @@ const sourceControlAvailable = computed(
 		(hasPullPermission.value || hasPushPermission.value),
 );
 
+function getAccessibleTextColor(backgroundColor: string): string {
+	// Convert hex color to RGB
+	const hex = backgroundColor.replace('#', '');
+	const r = parseInt(hex.slice(0, 2), 16) / 255;
+	const g = parseInt(hex.slice(2, 4), 16) / 255;
+	const b = parseInt(hex.slice(4, 6), 16) / 255;
+
+	// Calculate relative luminance using WCAG formula
+	const getLuminance = (channel: number) => {
+		return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
+	};
+
+	const luminance = 0.2126 * getLuminance(r) + 0.7152 * getLuminance(g) + 0.0722 * getLuminance(b);
+
+	return luminance > 0.5 ? '#000000' : '#ffffff';
+}
+
+const accessibleTextColor = computed(() => {
+	return getAccessibleTextColor(sourceControlStore.preferences.branchColor);
+});
+
 async function pushWorkfolder() {
 	// Navigate to route with sourceControl param - modal will handle data loading and loading states
 	void router.push({
@@ -73,19 +94,22 @@ function pullWorkfolder() {
 			[$style.collapsed]: isCollapsed,
 			[$style.isConnected]: sourceControlStore.isEnterpriseSourceControlEnabled,
 		}"
-		:style="{ borderLeftColor: sourceControlStore.preferences.branchColor }"
+		:style="{
+			background: sourceControlStore.preferences.branchColor,
+		}"
 		data-test-id="main-sidebar-source-control"
 	>
-		<div
-			v-if="sourceControlStore.preferences.connected && sourceControlStore.preferences.branchName"
-			:class="$style.connected"
-			data-test-id="main-sidebar-source-control-connected"
-		>
-			<span :class="$style.branchName">
+		<div :class="$style.connected" data-test-id="main-sidebar-source-control-connected">
+			<span
+				:class="$style.icon"
+				:style="{
+					color: accessibleTextColor,
+				}"
+			>
 				<N8nIcon icon="git-branch" />
-				{{ currentBranch }}
+				<span v-if="!isCollapsed" :class="$style.branchName"> {{ currentBranch }}</span>
 			</span>
-			<div :class="{ 'pt-xs': !isCollapsed }">
+			<div>
 				<N8nTooltip
 					:disabled="!isCollapsed && hasPullPermission"
 					:show-after="tooltipOpenDelay"
@@ -101,15 +125,13 @@ function pullWorkfolder() {
 						</div>
 					</template>
 					<N8nButton
-						:class="{
-							'mr-2xs': !isCollapsed,
-							'mb-2xs': isCollapsed,
-						}"
+						:style="{ color: accessibleTextColor }"
 						:disabled="!hasPullPermission"
 						data-test-id="main-sidebar-source-control-pull"
 						icon="arrow-down"
 						type="tertiary"
 						size="mini"
+						text
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
 						@click="pullWorkfolder"
@@ -132,12 +154,14 @@ function pullWorkfolder() {
 						</div>
 					</template>
 					<N8nButton
+						:style="{ color: accessibleTextColor }"
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
 						data-test-id="main-sidebar-source-control-push"
 						icon="arrow-up"
 						type="tertiary"
+						text
 						size="mini"
 						@click="pushWorkfolder"
 					/>
@@ -149,42 +173,49 @@ function pullWorkfolder() {
 
 <style lang="scss" module>
 .sync {
-	padding: var(--spacing--sm) var(--spacing--sm) var(--spacing--sm) var(--spacing--lg);
 	background: var(--color--background--light-2);
-	border-top: var(--border-width) var(--border-style) var(--color--foreground);
 	font-size: var(--font-size--2xs);
 
-	&.isConnected {
-		padding-left: var(--spacing--md);
-		border-left: var(--spacing--3xs) var(--border-style) var(--color--foreground);
-
-		&.collapsed {
-			padding-left: var(--spacing--xs);
-		}
-	}
-
-	&:empty {
-		display: none;
-	}
-
 	button {
-		font-size: var(--font-size--3xs);
+		font-size: var(--font-size--2xs);
 	}
+}
+
+.icon {
+	padding: var(--spacing--3xs) var(--spacing--2xs);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--spacing--3xs);
+}
+
+.connected {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding-right: var(--spacing--4xs);
 }
 
 .branchName {
 	white-space: normal;
 	line-break: anywhere;
+	font-size: var(--font-size--2xs);
 }
 
 .collapsed {
 	text-align: center;
-	padding-left: var(--spacing--sm);
-	padding-right: var(--spacing--sm);
+	flex-direction: column;
+	padding-top: var(--spacing--3xs);
 
 	.connected {
-		> span {
-			display: none;
+		flex-direction: column;
+		gap: var(--spacing--4xs);
+		padding-bottom: var(--spacing--2xs);
+		padding-right: 0;
+
+		.icon {
+			width: 100%;
+			justify-content: center;
 		}
 	}
 }
