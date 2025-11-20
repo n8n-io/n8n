@@ -5,8 +5,6 @@ export class DocumentProcessingBestPractices implements BestPracticesDocument {
 	readonly technique = WorkflowTechnique.DOCUMENT_PROCESSING;
 	readonly version = '1.0.0';
 
-	// community node (n8n-nodes-tesseractjs) would be useful to include
-	// but not available on Cloud so leaving out for now
 	private readonly documentation = `# Best Practices: Document Processing Workflows
 
 ## Workflow Design
@@ -19,7 +17,7 @@ Trigger → Capture Binary → Extract Text → Parse/Transform → Route to Des
 ### Common Flow Patterns
 
 **Simple Document Processing:**
-- Email Trigger → Extract from File → DataTable → Slack notification
+- Gmail Trigger → Check file type → Extract from File → DataTable → Slack notification
 - Best for: Basic text-based PDFs with straightforward data extraction
 
 **Complex Document Processing with AI:**
@@ -27,88 +25,13 @@ Trigger → Capture Binary → Extract Text → Parse/Transform → Route to Des
 - Best for: Varied document formats requiring intelligent parsing
 
 **Batch Document Processing:**
-- Schedule Trigger → Fetch Files → Split In Batches → Sub-workflow → Merge Results → Bulk Update
+- Main workflow: Schedule Trigger → Fetch Files → Split In Batches → Sub-workflow → Merge Results → Bulk Update
+- Subworkflow When Executed by Another Workflow -> Process result
 - Best for: High-volume processing with API rate limits
 
 **Multi-Source Document Aggregation:**
-- Multiple Triggers (Email + Drive + Webhook) → Merge → Standardize → Process → Store
+- Multiple Triggers (Email + Drive + Webhook) → Set common fields → Standardize → Process → Store
 - Best for: Documents from various channels needing unified processing
-
-### RAG (Retrieval-Augmented Generation) System Design
-
-A complete RAG implementation typically requires multiple coordinated workflows working together. This pattern enables intelligent document-based question answering with automatic knowledge base updates.
-
-**Architecture Overview:**
-The RAG system consists of three main workflows that work in concert:
-
-**Workflow 1: Initial Knowledge Base Population (One-time/Scheduled)**
-- Schedule Trigger (daily/weekly) or Manual Trigger
-- Google Drive node → List all documents in folder
-- Split In Batches (5-10 files)
-- For each batch:
-  - Download file → Extract text (with OCR fallback)
-  - AI Agent → Generate embeddings and metadata
-  - Pinecone/Qdrant/Supabase → Store vectors with metadata
-- Slack notification → "Knowledge base updated: X documents processed"
-- Best for: Initial setup and periodic full refreshes
-
-**Workflow 2: Real-time Document Updates (Event-driven)**
-- Google Drive Trigger → Monitor for new/updated files
-- File validation → Check supported formats
-- Extract from File → OCR fallback if needed
-- AI Chain → Extract key concepts and generate summary
-- Vector embedding generation
-- Update vector database with new/updated embeddings
-- Optional: Remove old versions if document was updated
-- Audit log → Track all changes to knowledge base
-- Best for: Keeping knowledge base current without manual intervention
-
-**Workflow 3: Chat Interface with RAG (User-facing)**
-- Webhook Trigger → Receive user questions
-- Input validation and sanitization
-- Query preprocessing:
-  - AI Agent → Rephrase question for better retrieval
-  - Extract key terms and intent
-- Vector search:
-  - Generate embedding for user query
-  - Retrieve top-k relevant documents (typically 3-5)
-  - Apply metadata filters if needed (date, department, etc.)
-- Context assembly:
-  - Merge retrieved documents
-  - Add system context and constraints
-- AI Agent with context:
-  - System prompt with retrieved documents
-  - User question
-  - Generate comprehensive answer with citations
-- Response formatting:
-  - Include source documents
-  - Confidence score
-  - Suggested follow-up questions
-- Webhook response → Return to user
-- Optional: Log interaction for analytics
-
-**Inter-workflow Communication:**
-- Use DataTable or external database for shared state
-- Track document processing status across workflows
-- Maintain version history and update logs
-
-**Key Design Considerations:**
-
-1. **Chunking Strategy:**
-   - Split large documents into semantic chunks (500-1000 tokens)
-   - Maintain chunk overlap for context preservation
-   - Store chunk metadata (source, page, section)
-
-2. **Embedding Model Selection:**
-   - OpenAI text-embedding-3-small for cost efficiency
-   - Cohere embed-v3 for multilingual documents
-   - Local models via Ollama for sensitive data
-
-3. **Vector Database Choice:**
-   - Pinecone: Easiest setup
-   - Supabase pgvector: If already using Supabase
-   - Qdrant
-   - Redis: For smaller datasets
 
 ### Branching Strategy
 
@@ -118,14 +41,20 @@ Always branch early based on document characteristics:
 - **Quality Branching**: Separate high-confidence extractions from those needing manual review
 
 ## Binary Data Management
-
 Documents in n8n are handled as binary data that must be carefully preserved throughout the workflow.
 
+### Referencing Binary Data from Other Nodes
+When you need to reference binary data from a previous node, use this syntax:
+- Expression: '{{ $('Node Name').item.binary.property_name }}' or {{ $binary.property_name }} if previous item
+- Example for Gmail attachments: '{{ $('Gmail Trigger').item.binary.attachment_0 }}' or {{ $binary.attachment_0 }} if previous item
+- Example for webhook data: '{{ $('Webhook').item.binary.data }}' or {{ $binary.data }} if previous item
+- Important: The property name depends on how the previous node names the binary data
+
 ### Preserving Binary Data
-- Many nodes (Function, Set, AI nodes) output JSON and drop binary data by default
+- Many nodes (Code, Edit Fields, AI nodes) output JSON and drop binary data by default
 - Use parallel branches: one for processing, one to preserve the original file
 - Rejoin branches with Merge node in pass-through mode
-- Alternative: Configure nodes to keep binary (e.g., Set node's "Keep Only Set" option OFF)
+- Alternative: Configure nodes to keep binary (e.g., Edit field node's "Include Other Input Fields" option ON)
 
 ### Memory Optimization
 For high-volume processing:
@@ -136,11 +65,24 @@ For high-volume processing:
 
 Choose extraction method based on document type and content:
 
+### Critical: File Type Detection
+**ALWAYS check the file type before using Extract from File node** (unless the file type is already known):
+- Use IF node to check file extension or MIME type first
+- The Extract from File node has multiple operations, each for a specific file type:
+  - "Extract from PDF" for PDF files
+  - "Extract from MS Excel" for Excel files (.xlsx, .xls)
+  - "Extract from MS Word" for Word documents (.docx, .doc)
+  - "Extract from CSV" for CSV files
+  - "Extract from HTML" for HTML files
+  - "Extract from RTF" for Rich Text Format files
+  - "Extract from Text File" for plain text files
+- Using the wrong operation will result in errors or empty output
+
 ### Decision Tree for Extraction
-1. **Is it a text-based PDF/DOCX?** → Use Extract from File node
-2. **Is it a scanned image/PDF?** → Use OCR service (OCR.space, AWS Textract, Google Vision)
-3. **Is it structured data (invoice/form)?** → Use specialized parser (Mindee) or AI extraction
-4. **Is it a spreadsheet?** → Use Extract from File for direct JSON conversion
+1. **Check file type** → Route to appropriate extraction method
+2. **Scanned image/PDF?** → Use OCR service (OCR.space, AWS Textract, Google Vision)
+3. **Structured invoice/receipt?** → Use specialized parser (Mindee) or AI extraction
+4. **Text-based document?** → Use Extract from File with the correct operation for that file type
 
 ### Fallback Strategy
 Always implement fallback for extraction failures:
@@ -152,6 +94,14 @@ Always implement fallback for extraction failures:
 
 ### AI-Powered Extraction Pattern
 For varied or complex documents:
+
+Option 1 - Using Document Loader (Recommended for binary files):
+1. Pass binary data directly to Document Loader node (set Data Source to "Binary")
+2. Connect to AI Agent or LLM Chain for processing
+3. Use Structured Output Parser to ensure consistent JSON
+4. Validate extracted fields before processing
+
+Option 2 - Using text extraction:
 1. Extract raw text using Extract from File or OCR
 2. Pass to AI Agent or LLM Chain with structured prompt
 3. Use Structured Output Parser to ensure consistent JSON
@@ -188,9 +138,22 @@ Build resilience at every step:
 
 ### Triggers & Input
 
+**Gmail Trigger (n8n-nodes-base.gmailTrigger)**
+Purpose: Monitor Gmail for emails with attachments (Recommended over IMAP)
+Advantages: Real-time processing, simpler authentication, better integration with Google Workspace
+Critical Configuration for Attachments:
+- **MUST set "Simplify" to FALSE** - otherwise attachments won't be available
+- **MUST set "Download Attachments" to TRUE** to retrieve files
+- Set appropriate label filters
+- Set "Property Prefix Name" (e.g., "attachment_") - attachments will be named with this prefix plus index
+- Important: When referencing its binary data, it will be referenced "attachment_0", "attachment_1", etc., NOT "data"
+
 **Email Read (IMAP) (n8n-nodes-base.emailReadImap)**
-Purpose: Fetch emails with attachments for processing
-Configuration: Enable "Download Attachments" and optionally "Split Attachments"
+Purpose: Alternative email fetching if there's no specialized node for email provider
+Configuration:
+- Enable "Download Attachments" to retrieve files
+- Set "Property Prefix Name" (e.g., "attachment_") - attachments will be named with this prefix plus index
+- Important: When referencing binary data, it will be referenced "attachment_0", "attachment_1", etc., NOT "data"
 
 **HTTP Webhook (n8n-nodes-base.webhook)**
 Purpose: Receive file uploads from web forms
@@ -203,8 +166,10 @@ Configuration: Set appropriate folder and file type filters
 ### Text Extraction
 
 **Extract from File (n8n-nodes-base.extractFromFile)**
-Purpose: Extract text from PDFs, Excel, CSV, HTML files
-Pitfalls: Returns empty for scanned documents - always check and fallback to OCR
+Purpose: Extract text from various file formats using format-specific operations
+Critical: ALWAYS check file type first with an IF or Switch before and select the correct operation (Extract from PDF, Extract from MS Excel, etc.)
+Output: Extracted text is returned under the "text" key in JSON (e.g., access with {{ $json.text }})
+Pitfalls: Returns empty for scanned documents - always check and fallback to OCR; Using wrong operation causes errors
 
 **AWS Textract (n8n-nodes-base.awsTextract)**
 Purpose: Advanced OCR with table and form detection
@@ -224,23 +189,59 @@ Configuration: Include structured output tools for consistent results
 Purpose: Document classification and data extraction
 Use with: Structured Output Parser for JSON consistency
 
+**Document Loader (@n8n/n8n-nodes-langchain.documentLoader)**
+Purpose: Load and process documents directly from binary data for AI processing
+Critical: Use the "Binary" data source option to handle binary files directly - no need to convert to JSON first
+Configuration: Select "Binary" as Data Source, specify the binary property name (by default data unless renamed in a previous node)
+Best for: Direct document processing in AI workflows without intermediate extraction steps
+
 **Structured Output Parser (@n8n/n8n-nodes-langchain.outputParserStructured)**
 Purpose: Ensure AI outputs match expected JSON schema
 Critical for: Database inserts and API calls
+
+### Vector Storage (for RAG/Semantic Search)
+**Simple Vector Store (@n8n/n8n-nodes-langchain.vectorStore) - RECOMMENDED**
+Purpose: Easy-to-setup vector storage for document embeddings
+Advantages:
+- No external dependencies or API keys required
+- Works out of the box with local storage
+- Perfect for prototyping and small to medium datasets
+Configuration: Just connect and use - no complex setup needed
+Best for: Most document processing workflows that need semantic search
 
 ### Flow Control
 
 **Split In Batches (n8n-nodes-base.splitInBatches)**
 Purpose: Process multiple documents in controlled batches
 Configuration: Set batch size based on API limits and memory
+Outputs (in order):
+- Output 0 "done": Executes after all batches are processed - use for final aggregation or notifications
+- Output 1 "loop": Connect processing nodes here - executes for each batch
+Important: Connect processing logic to the second output (loop), completion logic to the first output (done)
 
 **Merge (n8n-nodes-base.merge)**
-Purpose: Rejoin binary data with processed results
+Purpose: Combine data from multiple branches that need to execute together
+Critical: Merge node waits for ALL input branches to complete - do NOT use for independent/optional branches
 Modes: Use "Pass Through" to preserve binary from one branch
 
+**Edit Fields (Set) (n8n-nodes-base.set)**
+Purpose: Better choice for combining data from separate/independent branches
+Use for: Adding fields from different sources, preserving binary while adding processed data
+Configuration: Set common fields and use "Include Other Input Fields" OFF to preserve existing data including binary
+
+**Execute Workflow Trigger (n8n-nodes-base.executeWorkflowTrigger)**
+Purpose: Start point for sub-workflows that are called by other workflows
+Configuration: Automatically receives data from the calling workflow including binary data
+Best practice: Use for modular workflow design, heavy processing tasks, or reusable workflow components
+Pairing: Must be used with Execute Workflow node in the parent workflow
+
 **Execute Workflow (n8n-nodes-base.executeWorkflow)**
-Purpose: Modular sub-workflow execution
-Critical: Enable "Include Binary Data" option
+Purpose: Call and execute another workflow from within the current workflow
+Critical configurations:
+- Workflow ID: Use expression "{{ $workflow.id }}" to reference sub-workflows in the same workflow
+- Choose execution mode: "Run Once for All Items" or "Run Once for Each Item"
+- Binary data is automatically passed to the sub-workflow
+Best practice: Use for delegating heavy processing, creating reusable modules, or managing memory in large batch operations
 
 ### Data Destinations
 
@@ -271,7 +272,8 @@ Purpose: Custom validation, data transformation, or regex extraction
 
 **HTTP Request (n8n-nodes-base.httpRequest)**
 Purpose: Call external OCR APIs (OCR.space, Google Vision, Mistral OCR)
-Configuration: Set "Response Format: File" for downloads, use proper auth
+Configuration: Set "Response Format: File" for downloads
+Critical: NEVER set API keys directly in the request - user can set credentials from the UI for secure API key management
 
 ## Common Pitfalls to Avoid
 
@@ -281,7 +283,7 @@ Configuration: Set "Response Format: File" for downloads, use proper auth
 **Solution**:
 - Use Merge node to reattach binary after processing
 - Or configure nodes to explicitly keep binary data
-- In Function nodes: copy items[0].binary to output
+- In Code nodes: copy items[0].binary to output
 
 ### Incorrect OCR Fallback
 
@@ -296,8 +298,7 @@ Configuration: Set "Response Format: File" for downloads, use proper auth
 **Problem**: Sending files in wrong format to APIs
 **Solution**:
 - Check if API needs multipart/form-data vs Base64
-- Use Move Binary Data (n8n-nodes-base.moveBinaryData) node for format conversion
-- Test API requirements with Postman/cURL first
+- Use "Extract from File" and "Convert to File" format conversion
 
 ### Memory Overload
 
@@ -306,6 +307,7 @@ Configuration: Set "Response Format: File" for downloads, use proper auth
 - Process files sequentially or in small batches
 - Enable filesystem mode for binary data storage
 - Drop unnecessary data after extraction
+- Create a subworkflow in the same workflow using "When Executed by Another Workflow" and "Execute Workflow". Delegate the heavy part of the workflow to the subworkflow.
 
 ### Duplicate Processing
 
@@ -313,15 +315,7 @@ Configuration: Set "Response Format: File" for downloads, use proper auth
 **Solution**:
 - Configure email triggers to mark as read
 - Use "unseen" filters for email fetching
-- Implement deduplication logic based on file hash or name
-
-### Missing Error Handling
-
-**Problem**: Silent failures when extraction or parsing fails
-**Solution**:
-- Add validation after every critical step
-- Log failures for manual review
-- Never assume AI extraction will always return expected fields`;
+- Implement deduplication logic based on file hash or name`;
 
 	getDocumentation(): string {
 		return this.documentation;

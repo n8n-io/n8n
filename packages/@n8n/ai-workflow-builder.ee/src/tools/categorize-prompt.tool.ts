@@ -57,6 +57,7 @@ export function createCategorizePromptTool(llm: BaseChatModel, logger?: Logger):
 				const categorization = await promptCategorizationChain(llm, prompt);
 
 				logger?.debug('Prompt categorized', {
+					prompt,
 					techniques: categorization.techniques,
 					confidence: categorization.confidence,
 				});
