@@ -24,6 +24,22 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 		version: 1.2,
 	},
+	ollama: {
+		name: '@n8n/n8n-nodes-langchain.lmOllama',
+		version: 1,
+	},
+	azureOpenAi: {
+		name: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+		version: 1,
+	},
+	awsBedrock: {
+		name: '@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
+		version: 1.1,
+	},
+	mistralCloud: {
+		name: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+		version: 1,
+	},
 };
 
 export const NODE_NAMES = {
@@ -34,6 +50,7 @@ export const NODE_NAMES = {
 	MEMORY: 'Memory',
 	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
 	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',
+	MERGE: 'Merge',
 } as const;
 
 /* eslint-disable @typescript-eslint/naming-convention */

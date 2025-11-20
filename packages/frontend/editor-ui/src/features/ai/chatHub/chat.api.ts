@@ -174,3 +174,12 @@ export const deleteAgentApi = async (context: IRestApiContext, agentId: string):
 	const apiEndpoint = `/chat/agents/${agentId}`;
 	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
 };
+
+export function buildChatAttachmentUrl(
+	context: IRestApiContext,
+	sessionId: string,
+	messageId: string,
+	attachmentIndex: number,
+): string {
+	return `${context.baseUrl}/chat/conversations/${sessionId}/messages/${messageId}/attachments/${attachmentIndex}`;
+}

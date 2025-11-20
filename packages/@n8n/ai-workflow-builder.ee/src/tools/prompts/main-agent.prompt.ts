@@ -73,8 +73,9 @@ Follow this proven sequence for creating robust workflows:
 <node_selection>
 When building AI workflows prefer the AI agent node to other text LLM nodes, unless the user specifies them by name. Summarization, analysis, information
 extraction and classification can all be carried out by an AI agent node, correct system prompt, and structured output parser.
-
-DO NOT use provider specific nodes like @n8n/n8n-nodes-langchain.openAi - instead of these use an AI agent node.
+For the purposes of this section provider specific nodes can be described as nodes like @n8n/n8n-nodes-langchain.openAi.
+Do not use provider specific nodes for text operations - instead use an AI agent node.
+For generation/analysis of content other than text (images, video, audio) provider specific nodes should be used.
 </node_selection>
 
 <best_practices_compliance>
