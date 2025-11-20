@@ -878,7 +878,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
-	function setWorkflowActive(targetWorkflowId: string) {
+	function setWorkflowActive(targetWorkflowId: string, activeVersion: WorkflowHistory) {
 		const index = activeWorkflows.value.indexOf(targetWorkflowId);
 		if (index === -1) {
 			activeWorkflows.value.push(targetWorkflowId);
@@ -886,12 +886,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const targetWorkflow = workflowsById.value[targetWorkflowId];
 		if (targetWorkflow) {
 			targetWorkflow.active = true;
-			targetWorkflow.activeVersionId = targetWorkflow.versionId;
+			targetWorkflow.activeVersionId = activeVersion.versionId;
+			// TODO: do we need to set the active version?
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			uiStore.stateIsDirty = false;
 			workflow.value.active = true;
 			workflow.value.activeVersionId = workflow.value.versionId;
+			workflow.value.activeVersion = activeVersion;
 		}
 	}
 
