@@ -189,7 +189,7 @@ export class McpOAuthTokenService {
 			const errorForSure = ensureError(error);
 			const reason =
 				errorForSure instanceof JWTVerificationError
-					? 'invalid_signature'
+					? 'invalid_token'
 					: errorForSure instanceof AccessTokenNotFoundError
 						? 'token_not_found_in_db'
 						: 'unknown_error';
