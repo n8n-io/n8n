@@ -58,7 +58,6 @@ import { useKeybindings } from '@/app/composables/useKeybindings';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
-import MainSidebarUserArea from '@/app/components/MainSidebarUserArea.vue';
 import KeyboardShortcutTooltip from './KeyboardShortcutTooltip.vue';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
 
@@ -530,22 +529,6 @@ function onResizeEnd() {
 					@click="toggleCollapse"
 				/>
 			</KeyboardShortcutTooltip>
-			<KeyboardShortcutTooltip
-				v-if="isCommandBarEnabled"
-				:placement="isCollapsed ? 'right' : 'bottom'"
-				show-after="500"
-				:label="i18n.baseText('nodeView.openCommandBar')"
-				:shortcut="{ keys: ['k'], metaKey: true }"
-			>
-				<N8nIconButton
-					size="small"
-					type="highlight"
-					icon="search"
-					icon-size="large"
-					aria-label="Open command palette"
-					@click="openCommandBar"
-				/>
-			</KeyboardShortcutTooltip>
 			<N8nNavigationDropdown
 				ref="createBtn"
 				data-test-id="universal-add"
@@ -608,6 +591,22 @@ function onResizeEnd() {
 					</N8nTooltip>
 				</template>
 			</N8nNavigationDropdown>
+			<KeyboardShortcutTooltip
+				v-if="isCommandBarEnabled"
+				:placement="isCollapsed ? 'right' : 'bottom'"
+				show-after="500"
+				:label="i18n.baseText('nodeView.openCommandBar')"
+				:shortcut="{ keys: ['k'], metaKey: true }"
+			>
+				<N8nIconButton
+					size="small"
+					type="highlight"
+					icon="search"
+					icon-size="large"
+					aria-label="Open command palette"
+					@click="openCommandBar"
+				/>
+			</KeyboardShortcutTooltip>
 		</div>
 		<N8nScrollArea as-child>
 			<div :class="$style.scrollArea">
@@ -673,13 +672,6 @@ function onResizeEnd() {
 				</div>
 			</div>
 		</N8nScrollArea>
-
-		<MainSidebarUserArea
-			v-if="showUserArea"
-			ref="user"
-			:fully-expanded="fullyExpanded"
-			:is-collapsed="isCollapsed"
-		/>
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
 		<TemplateTooltip />
 	</N8nResizeWrapper>
@@ -717,6 +709,7 @@ function onResizeEnd() {
 
 		.header {
 			flex-direction: column;
+			border-bottom: var(--border);
 		}
 	}
 }
@@ -735,6 +728,10 @@ function onResizeEnd() {
 	display: flex;
 	flex-direction: column;
 	margin-top: auto;
+}
+
+.sideMenuCollapsed .bottomMenu {
+	border-top: var(--border);
 }
 
 .bottomMenuItems {
