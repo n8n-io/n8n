@@ -132,6 +132,8 @@ onBeforeUnmount(() => {
 		<N8nText
 			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
 			:class="[$style.projectsLabel]"
+			size="small"
+			bold
 			color="text-light"
 		>
 			<span>{{ locale.baseText('projects.menu.title') }}</span>

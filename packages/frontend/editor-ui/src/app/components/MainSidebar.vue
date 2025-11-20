@@ -194,6 +194,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		id: 'help',
 		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),
+		notification: showWhatsNewNotification.value,
 		position: 'bottom',
 		children: [
 			{
@@ -249,57 +250,53 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 		],
 	},
-	{
-		id: 'whats-new',
-		icon: 'bell',
-		notification: showWhatsNewNotification.value,
-		label: i18n.baseText('mainSidebar.whatsNew'),
-		position: 'bottom',
-		available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
-		children: [
-			...versionsStore.whatsNewArticles.map(
-				(article) =>
-					({
-						id: `whats-new-article-${article.id}`,
-						label: article.title,
-						size: 'small',
-						customIconSize: 'small',
-						icon: {
-							type: 'emoji',
-							value: '•',
-							color: !versionsStore.isWhatsNewArticleRead(article.id) ? 'primary' : 'text-light',
-						},
-					}) satisfies IMenuItem,
-			),
-			{
-				id: 'full-changelog',
-				icon: 'external-link',
-				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
-				link: {
-					href: RELEASE_NOTES_URL,
-					target: '_blank',
-				},
-				size: 'small',
-				customIconSize: 'small',
-			},
-			{
-				id: 'version-upgrade-cta',
-				component: VersionUpdateCTA,
-				available: versionsStore.hasVersionUpdates,
-				props: {
-					disabled: !usersStore.canUserUpdateVersion,
-					tooltipText: !usersStore.canUserUpdateVersion
-						? i18n.baseText('whatsNew.updateNudgeTooltip')
-						: undefined,
-				},
-			},
-		],
-	},
 ]);
 
 const visibleMenuItems = computed(() =>
 	mainMenuItems.value.filter((item) => item.available !== false),
 );
+
+const whatsNewItems = computed(() => ({
+	available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
+	children: [
+		...versionsStore.whatsNewArticles.map(
+			(article) =>
+				({
+					id: `whats-new-article-${article.id}`,
+					label: article.title,
+					size: 'small',
+					customIconSize: 'small',
+					icon: {
+						type: 'emoji',
+						value: '•',
+						color: !versionsStore.isWhatsNewArticleRead(article.id) ? 'primary' : 'text-light',
+					},
+				}) satisfies IMenuItem,
+		),
+		{
+			id: 'full-changelog',
+			icon: 'external-link',
+			label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
+			link: {
+				href: RELEASE_NOTES_URL,
+				target: '_blank',
+			},
+			size: 'small',
+			customIconSize: 'small',
+		},
+		{
+			id: 'version-upgrade-cta',
+			component: VersionUpdateCTA,
+			available: versionsStore.hasVersionUpdates,
+			props: {
+				disabled: !usersStore.canUserUpdateVersion,
+				tooltipText: !usersStore.canUserUpdateVersion
+					? i18n.baseText('whatsNew.updateNudgeTooltip')
+					: undefined,
+			},
+		},
+	],
+}));
 
 const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
@@ -629,13 +626,10 @@ function onResizeEnd() {
 								:key="item.id"
 								side="right"
 								align="end"
-								:side-offset="16"
+								:side-offset="12"
 							>
 								<template #content>
 									<div :class="$style.popover">
-										<N8nText :class="$style.popoverTitle" bold color="foreground-xdark">{{
-											item.label
-										}}</N8nText>
 										<template v-for="child in item.children" :key="child.id">
 											<component
 												:is="child.component"
@@ -643,6 +637,19 @@ function onResizeEnd() {
 												v-bind="child.props"
 											/>
 											<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
+										</template>
+										<template v-if="item.id === 'help' && whatsNewItems.available">
+											<N8nText bold size="small" :class="$style.popoverTitle" color="text-light"
+												>What's new</N8nText
+											>
+											<template v-for="child in whatsNewItems.children" :key="child.id">
+												<component
+													:is="child.component"
+													v-if="isCustomMenuItem(child)"
+													v-bind="child.props"
+												/>
+												<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
+											</template>
 										</template>
 									</div>
 								</template>
@@ -736,12 +743,14 @@ function onResizeEnd() {
 .popover {
 	padding: var(--spacing--3xs);
 	min-width: 260px;
+	border-radius: var(--radius);
 	background-color: var(--menu--color--background, var(--color--background--light-2));
 }
 
 .popoverTitle {
 	display: block;
 	margin-bottom: var(--spacing--3xs);
+	margin-top: var(--spacing--xs);
 }
 
 @media screen and (max-height: 470px) {

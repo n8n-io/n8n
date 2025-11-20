@@ -45,13 +45,11 @@ const sourceControlAvailable = computed(
 );
 
 function getAccessibleTextColor(backgroundColor: string): string {
-	// Convert hex color to RGB
 	const hex = backgroundColor.replace('#', '');
 	const r = parseInt(hex.slice(0, 2), 16) / 255;
 	const g = parseInt(hex.slice(2, 4), 16) / 255;
 	const b = parseInt(hex.slice(4, 6), 16) / 255;
 
-	// Calculate relative luminance using WCAG formula
 	const getLuminance = (channel: number) => {
 		return channel <= 0.03928 ? channel / 12.92 : Math.pow((channel + 0.055) / 1.055, 2.4);
 	};
@@ -199,7 +197,7 @@ function pullWorkfolder() {
 .branchName {
 	white-space: normal;
 	line-break: anywhere;
-	font-size: var(--font-size--2xs);
+	font-size: var(--font-size--xs);
 }
 
 .collapsed {
