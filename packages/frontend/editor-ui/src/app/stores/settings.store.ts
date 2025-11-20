@@ -236,7 +236,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		const rootStore = useRootStore();
 		setSettings(fetchedSettings);
 
-		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
 		rootStore.setInstanceId(fetchedSettings.instanceId);
 
 		if (fetchedSettings.telemetry.enabled) {

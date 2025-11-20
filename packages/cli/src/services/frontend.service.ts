@@ -47,7 +47,7 @@ export type PublicUserManagementSettings = Pick<
 
 export type PublicFrontendSettings = Pick<
 	FrontendSettings,
-	'settingsMode' | 'instanceId' | 'versionCli' | 'mfa' | 'authCookie' | 'previewMode' | 'telemetry'
+	'settingsMode' | 'instanceId' | 'versionCli' | 'authCookie' | 'previewMode' | 'telemetry'
 > & {
 	enterprise: PublicEnterpriseSettings;
 	userManagement: PublicUserManagementSettings;
@@ -491,14 +491,13 @@ export class FrontendService {
 			versionCli,
 			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
 			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
-			mfa,
 			authCookie,
 			previewMode,
 			telemetry,
 			enterprise: { saml, ldap, oidc },
 		} = this.getSettings();
 
-		return {
+		const publicSettings: PublicFrontendSettings = {
 			settingsMode: 'public',
 			instanceId,
 			versionCli,
@@ -513,12 +512,13 @@ export class FrontendService {
 					loginUrl: ssoOidc.loginUrl,
 				},
 			},
-			mfa,
 			authCookie,
 			previewMode,
 			telemetry,
 			enterprise: { saml, ldap, oidc },
 		};
+		console.log('publicSettings', publicSettings);
+		return publicSettings;
 	}
 
 	getModuleSettings() {
