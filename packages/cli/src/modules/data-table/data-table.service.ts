@@ -695,10 +695,8 @@ export class DataTableService {
 	): Promise<{ csvContent: string; dataTableName: string }> {
 		const dataTable = await this.validateDataTableExists(dataTableId, projectId);
 
-		// Fetch columns (ordered by index)
 		const columns = await this.dataTableColumnRepository.getColumns(dataTableId);
 
-		// Fetch ALL rows (no pagination for export)
 		const { data: rows } = await this.dataTableRowsRepository.getManyAndCount(
 			dataTableId,
 			{
@@ -708,7 +706,6 @@ export class DataTableService {
 			columns,
 		);
 
-		// Build CSV
 		const csvContent = this.buildCsvContent(rows, columns);
 
 		return {
@@ -718,30 +715,23 @@ export class DataTableService {
 	}
 
 	private buildCsvContent(rows: DataTableRowReturn[], columns: DataTableColumn[]): string {
-		// Sort columns once to avoid repeated sorting in the row loop
 		const sortedColumns = [...columns].sort((a, b) => a.index - b.index);
 
-		// Build header row: id + user columns + createdAt/updatedAt at the end
 		const userHeaders = sortedColumns.map((col) => col.name);
 		const headers = ['id', ...userHeaders, 'createdAt', 'updatedAt'];
 
-		// Escape and join headers
 		const csvRows: string[] = [headers.map((h) => this.escapeCsvValue(h)).join(',')];
 
-		// Build data rows
 		for (const row of rows) {
 			const values: string[] = [];
 
-			// Add id first
 			values.push(this.escapeCsvValue(row.id));
 
-			// Add user column values (in correct order)
 			for (const column of sortedColumns) {
 				const value = row[column.name];
 				values.push(this.escapeCsvValue(this.formatValueForCsv(value, column.type)));
 			}
 
-			// Add createdAt and updatedAt at the end
 			values.push(this.escapeCsvValue(this.formatDateForCsv(row.createdAt)));
 			values.push(this.escapeCsvValue(this.formatDateForCsv(row.updatedAt)));
 
@@ -752,29 +742,24 @@ export class DataTableService {
 	}
 
 	private formatValueForCsv(value: unknown, columnType: DataTableColumnType): string {
-		// Handle NULL/undefined
 		if (value === null || value === undefined) {
 			return '';
 		}
 
-		// Handle dates - always use ISO format for CSV
 		if (columnType === 'date') {
 			if (value instanceof Date || typeof value === 'string') {
 				return this.formatDateForCsv(value);
 			}
 		}
 
-		// Handle booleans - already normalized to true/false by normalizeRows
 		if (columnType === 'boolean') {
 			return String(value);
 		}
 
-		// Handle numbers
 		if (columnType === 'number') {
 			return String(value);
 		}
 
-		// Handle strings and everything else
 		return String(value);
 	}
 
