@@ -26,6 +26,7 @@ import type {
 
 import { EventService } from '@/events/event.service';
 import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { getWorkflowActiveStatusFromExecution } from '@/executions/execution.utils';
 import { ManualExecutionService } from '@/manual-execution.service';
 import { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
@@ -109,15 +110,12 @@ export class JobProcessor {
 			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
 		}
 
-		// old executions do not have "activeVersionId"
-		const active = !!execution.workflowData.activeVersionId || execution.workflowData.active;
-
 		const workflow = new Workflow({
 			id: workflowId,
 			name: execution.workflowData.name,
 			nodes: execution.workflowData.nodes,
 			connections: execution.workflowData.connections,
-			active,
+			active: getWorkflowActiveStatusFromExecution(execution.workflowData),
 			nodeTypes: this.nodeTypes,
 			staticData,
 			settings: execution.workflowData.settings,
