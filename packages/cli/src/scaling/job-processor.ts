@@ -109,13 +109,15 @@ export class JobProcessor {
 			executionTimeoutTimestamp = Date.now() + workflowTimeout * 1000;
 		}
 
+		// old executions do not have "activeVersionId"
+		const active = !!execution.workflowData.activeVersionId || execution.workflowData.active;
+
 		const workflow = new Workflow({
 			id: workflowId,
 			name: execution.workflowData.name,
 			nodes: execution.workflowData.nodes,
 			connections: execution.workflowData.connections,
-			// still using active, because old executions do not have "activeVersionId"
-			active: execution.workflowData.active,
+			active,
 			nodeTypes: this.nodeTypes,
 			staticData,
 			settings: execution.workflowData.settings,
