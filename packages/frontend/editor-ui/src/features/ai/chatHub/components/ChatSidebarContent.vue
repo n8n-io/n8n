@@ -13,7 +13,9 @@ import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import Logo from '@n8n/design-system/components/N8nLogo';
 import { computed, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useIntersectionObserver } from '@vueuse/core';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
+import SkeletonMenuItem from './SkeletonMenuItem.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
 defineProps<{ isMobileDevice: boolean }>();
@@ -28,11 +30,11 @@ const settingsStore = useSettingsStore();
 const telemetry = useTelemetry();
 
 const renamingSessionId = ref<string>();
+const loadMoreTrigger = ref<HTMLElement | null>(null);
 
 const currentSessionId = computed(() =>
 	typeof route.params.id === 'string' ? route.params.id : undefined,
 );
-const readyToShowConversations = computed(() => chatStore.agentsReady && chatStore.sessionsReady);
 
 const groupedConversations = computed(() => groupConversationsByDate(chatStore.sessions));
 
@@ -84,8 +86,20 @@ function handleNewChatClick() {
 	sidebar.toggleOpen(false);
 }
 
+useIntersectionObserver(
+	loadMoreTrigger,
+	([{ isIntersecting }]) => {
+		if (isIntersecting) {
+			void chatStore.fetchMoreSessions();
+		}
+	},
+	{ threshold: 0.1 },
+);
+
 onMounted(() => {
-	void chatStore.fetchSessions();
+	if (!chatStore.sessionsReady) {
+		void chatStore.fetchSessions(true);
+	}
 });
 </script>
 
@@ -131,8 +145,18 @@ onMounted(() => {
 			/>
 		</div>
 		<N8nScrollArea as-child type="scroll">
-			<div v-if="readyToShowConversations" :class="$style.items">
-				<div v-for="group in groupedConversations" :key="group.group" :class="$style.group">
+			<div :class="$style.items">
+				<div
+					v-if="groupedConversations.length === 0 && !chatStore.sessionsReady"
+					:class="$style.group"
+				>
+					<SkeletonMenuItem v-for="i in 10" :key="`loading-${i}`" />
+				</div>
+				<div
+					v-for="(group, index) in groupedConversations"
+					:key="group.group"
+					:class="$style.group"
+				>
 					<N8nText :class="$style.groupHeader" size="small" bold color="text-light">
 						{{ group.group }}
 					</N8nText>
@@ -147,7 +171,12 @@ onMounted(() => {
 						@confirm-rename="handleConfirmRename"
 						@delete="handleDeleteSession"
 					/>
+					<template v-if="index === groupedConversations.length - 1 && chatStore.sessionsLoading">
+						<SkeletonMenuItem v-for="i in 10" :key="i" />
+					</template>
 				</div>
+
+				<div ref="loadMoreTrigger" :class="$style.loadMoreTrigger"></div>
 			</div>
 		</N8nScrollArea>
 		<MainSidebarUserArea :fully-expanded="true" :is-collapsed="false" />
@@ -201,6 +230,11 @@ onMounted(() => {
 
 .groupHeader {
 	padding: 0 var(--spacing--4xs) var(--spacing--3xs) var(--spacing--4xs);
+}
+
+.loadMoreTrigger {
+	height: 1px;
+	width: 100%;
 }
 
 .loading,

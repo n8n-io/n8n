@@ -116,6 +116,97 @@ describe('extractBinaryMessages', () => {
 			image_url: { url: expectedUrl },
 		});
 	});
+
+	it('should extract markdown and CSV text files', async () => {
+		const mdContent = '# Test Markdown\n\nThis is a test.';
+		const csvContent = 'name,age\nJohn,30';
+		const fakeItem = {
+			json: {},
+			binary: {
+				markdown: {
+					mimeType: 'text/markdown',
+					fileName: 'test.md',
+					data: `data:text/markdown;base64,${Buffer.from(mdContent).toString('base64')}`,
+				},
+				csv: {
+					mimeType: 'text/csv',
+					fileName: 'data.csv',
+					data: `data:text/csv;base64,${Buffer.from(csvContent).toString('base64')}`,
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(2);
+		expect(humanMsg.content).toEqual(
+			expect.arrayContaining([
+				{ type: 'text', text: `File: test.md\nContent:\n${mdContent}` },
+				{ type: 'text', text: `File: data.csv\nContent:\n${csvContent}` },
+			]),
+		);
+	});
+
+	it('should extract both images and text files together', async () => {
+		const textContent = 'Some text content';
+		const fakeItem = {
+			json: {},
+			binary: {
+				image: {
+					mimeType: 'image/png',
+					fileName: 'test.png',
+					data: 'imageData123',
+				},
+				text: {
+					mimeType: 'text/plain',
+					fileName: 'test.txt',
+					data: `data:text/plain;base64,${Buffer.from(textContent).toString('base64')}`,
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(2);
+		expect(humanMsg.content).toEqual(
+			expect.arrayContaining([
+				{
+					type: 'image_url',
+					image_url: { url: 'data:image/png;base64,imageData123' },
+				},
+				{ type: 'text', text: `File: test.txt\nContent:\n${textContent}` },
+			]),
+		);
+	});
+
+	it('should decode base64-encoded text files without prefix', async () => {
+		const textContent = 'Hello world!';
+		const fakeItem = {
+			json: {},
+			binary: {
+				text: {
+					mimeType: 'text/plain',
+					fileName: 'test.txt',
+					// Default n8n binary format: base64 without data URL prefix
+					data: Buffer.from(textContent).toString('base64'),
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(1);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'text',
+			text: `File: test.txt\nContent:\n${textContent}`,
+		});
+	});
 });
 
 describe('fixEmptyContentMessage', () => {
