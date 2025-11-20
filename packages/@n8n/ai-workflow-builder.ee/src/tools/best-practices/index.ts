@@ -7,7 +7,9 @@ import { DataAnalysisBestPractices } from './data-analysis';
 import { DataExtractionBestPractices } from './data-extraction';
 import { DataTransformationBestPractices } from './data-transformation';
 import { DocumentProcessingBestPractices } from './document-processing';
+import { EnrichmentBestPractices } from './enrichment';
 import { FormInputBestPractices } from './form-input';
+import { KnowledgeBaseBestPractices } from './knowledge-base';
 import { NotificationBestPractices } from './notification';
 import { ScrapingAndResearchBestPractices } from './scraping-and-research';
 import { TriageBestPractices } from './triage';
@@ -20,14 +22,14 @@ export const documentation: Record<WorkflowTechniqueType, BestPracticesDocument 
 	[WorkflowTechnique.DATA_EXTRACTION]: new DataExtractionBestPractices(),
 	[WorkflowTechnique.DATA_TRANSFORMATION]: new DataTransformationBestPractices(),
 	[WorkflowTechnique.DOCUMENT_PROCESSING]: new DocumentProcessingBestPractices(),
+	[WorkflowTechnique.ENRICHMENT]: new EnrichmentBestPractices(),
 	[WorkflowTechnique.FORM_INPUT]: new FormInputBestPractices(),
+	[WorkflowTechnique.KNOWLEDGE_BASE]: new KnowledgeBaseBestPractices(),
 	[WorkflowTechnique.NOTIFICATION]: new NotificationBestPractices(),
 	[WorkflowTechnique.TRIAGE]: new TriageBestPractices(),
 
 	/** currently no best practice documentation defined */
-	[WorkflowTechnique.ENRICHMENT]: undefined,
 	[WorkflowTechnique.HUMAN_IN_THE_LOOP]: undefined,
-	[WorkflowTechnique.KNOWLEDGE_BASE]: undefined,
 	[WorkflowTechnique.MONITORING]: undefined,
 	[WorkflowTechnique.SCHEDULING]: undefined,
 };
