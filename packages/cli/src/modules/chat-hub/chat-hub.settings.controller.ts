@@ -32,7 +32,7 @@ export class ChatHubSettingsController {
 		_res: Response,
 		@Param('provider') provider: ChatHubLLMProvider,
 	) {
-		if (chatHubLLMProviderSchema.safeParse(provider).success === false) {
+		if (!chatHubLLMProviderSchema.safeParse(provider).success) {
 			throw new BadRequestError(`Invalid provider: ${provider}`);
 		}
 
@@ -57,6 +57,6 @@ export class ChatHubSettingsController {
 			});
 		}
 
-		return this.settings.getProviderSettings(payload.provider);
+		return await this.settings.getProviderSettings(payload.provider);
 	}
 }
