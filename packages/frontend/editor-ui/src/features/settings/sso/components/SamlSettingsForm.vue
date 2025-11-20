@@ -6,7 +6,7 @@ import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
 import { ElSwitch } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nInput, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
+import { N8nActionBox, N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useMessage } from '@/app/composables/useMessage';
