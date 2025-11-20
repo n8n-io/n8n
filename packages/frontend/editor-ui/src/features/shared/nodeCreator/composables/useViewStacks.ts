@@ -16,8 +16,6 @@ import {
 	AI_SUBCATEGORY,
 	DEFAULT_SUBCATEGORY,
 	TRIGGER_NODE_CREATOR_VIEW,
-	RECOMMENDED_NODES,
-	BETA_NODES,
 } from '@/app/constants';
 import { defineStore } from 'pinia';
 import { v4 as uuid } from 'uuid';
