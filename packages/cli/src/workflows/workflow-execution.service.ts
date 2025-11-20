@@ -104,10 +104,9 @@ export class WorkflowExecutionService {
 		// - check the chat trigger, as it's probably a fourth type of payload
 		// - find out if we need to register a webhook during PartialManualExecutionToDestination
 		// - figure out where to do the OffloadingManualExecutionsInQueueMode changes
-		console.log('payload', payload);
 		function isFullManualExecutionFromTriggerPayload(
 			payload: WorkflowRequest.ManualRunPayload,
-		): payload is WorkflowRequest.FullManualExecutionFromTriggerPayload {
+		): payload is WorkflowRequest.FullManualExecutionFromKnownTriggerPayload {
 			if (!('destinationNode' in payload)) {
 				return true;
 			}
@@ -116,7 +115,7 @@ export class WorkflowExecutionService {
 
 		function isFullManualExecutionToDestinationPayload(
 			payload: WorkflowRequest.ManualRunPayload,
-		): payload is WorkflowRequest.FullManualExecutionToDestinationPayload {
+		): payload is WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload {
 			if ('destinationNode' in payload && !('runData' in payload)) {
 				return true;
 			}
@@ -136,16 +135,16 @@ export class WorkflowExecutionService {
 		payload.workflowData.active = false;
 		payload.workflowData.activeVersionId = null;
 
+		// TODO: fix this on the FE
+		if ('triggerToStartFrom' in payload) {
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
+			delete (payload as any).runData;
+		}
+
+		console.log('payload', payload);
+
 		if (isPartialManualExecutionToDestination(payload)) {
 			console.log('isPartialManualExecutionToDestination');
-			// prerequisites:
-			//
-			// TODO:
-			// 1. find out if the destinationNode is connected to a trigger with runData
-			//   - otherwise this will be a FullManualExecutionToDestinationPayload instead
-			//
-			// 2. make sure the destinationNode is not a trigger
-			//   - otherwise this is a FullManualExecutionToDestinationPayload instead
 
 			const destinationNode = payload.destinationNode
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
@@ -164,7 +163,7 @@ export class WorkflowExecutionService {
 					workflowData: payload.workflowData,
 					destinationNode: payload.destinationNode,
 					agentRequest: payload.agentRequest,
-				} satisfies WorkflowRequest.FullManualExecutionToDestinationPayload;
+				} satisfies WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload;
 			} else {
 				console.log('prerequisitesAreGiven');
 				const executionId = await this.workflowRunner.run({
