@@ -98,6 +98,7 @@ const publishedInfoText = computed(() => {
 
 	const activeVersion = workflowsStore.workflow.activeVersion;
 	const authorName = activeVersion.authors.split(', ')[0];
+	// TODO: this should be published at rather than created at
 	const date = toDayMonth(activeVersion.createdAt);
 	const time = dateformat(activeVersion.createdAt, 'HH:MM');
 
