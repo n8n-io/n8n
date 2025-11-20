@@ -194,7 +194,7 @@ async function handlePublish() {
 	}
 
 	// Activate the workflow
-	const success = await workflowActivate.publishWorkflow(workflowsStore.workflow.id, {
+	const success = await workflowActivate.publishWorkflowFromCanvas(workflowsStore.workflow.id, {
 		description: description.value,
 	});
 

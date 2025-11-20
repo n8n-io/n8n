@@ -132,7 +132,7 @@ export function useWorkflowActivate() {
 		return await updateWorkflowActivation(workflowId, true, telemetrySource);
 	};
 
-	const publishWorkflow = async (
+	const publishWorkflowFromCanvas = async (
 		workflowId: string,
 		options: { description?: string; name?: string } = {},
 	) => {
@@ -218,13 +218,11 @@ export function useWorkflowActivate() {
 
 	const publishWorkflowFromHistory = async (workflowId: string, versionId: string) => {
 		updatingWorkflowActivation.value = true;
-		const wasWorkflowActive = workflowsStore.isWorkflowActive;
-
+		const workflow = workflowsStore.getWorkflowById(workflowId);
 		// TODO: should we check the passed version for node issues?
+		const hadPublishedVersion = !!workflow.activeVersion;
 
-		const hasPublishedVersion = !!workflowsStore.workflow.activeVersion;
-
-		if (!hasPublishedVersion) {
+		if (!hadPublishedVersion) {
 			const telemetryPayload = {
 				workflow_id: workflowId,
 				is_active: true,
@@ -251,7 +249,7 @@ export function useWorkflowActivate() {
 				active: true,
 			});
 
-			if (!wasWorkflowActive && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
+			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
 				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
 			}
 			return true;
@@ -272,7 +270,7 @@ export function useWorkflowActivate() {
 		activateCurrentWorkflow,
 		updateWorkflowActivation,
 		updatingWorkflowActivation,
-		publishWorkflow,
+		publishWorkflowFromCanvas,
 		publishWorkflowFromHistory,
 	};
 }
