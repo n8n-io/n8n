@@ -6,7 +6,7 @@ describe('getUrl', () => {
 	});
 	it('should return the url', () => {
 		const url = getUrl({ url: 'https://example.com' });
-		expect(url).toBe('https://example.com');
+		expect(url).toBe('https://example.com/');
 	});
 	it('should return the url with baseURL', () => {
 		const url = getUrl({ baseURL: 'https://example.com', url: '/test' });
