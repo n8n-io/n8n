@@ -2766,6 +2766,46 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(data.activeVersionId).toBe(workflow.versionId);
 		});
 
+		test('should NOT write "active" field to database when updating with active: true', async () => {
+			const workflow = await createWorkflowWithHistory({}, owner);
+			const payload = {
+				versionId: workflow.versionId,
+				active: true,
+			};
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+			expect(response.statusCode).toBe(200);
+
+			const workflowRepository = Container.get(WorkflowRepository);
+			const updatedWorkflow = await workflowRepository.findOne({
+				where: { id: workflow.id },
+			});
+
+			expect(updatedWorkflow?.active).toBe(false);
+			expect(updatedWorkflow?.activeVersionId).toBeNull();
+		});
+
+		test('should NOT write "active" field to database when updating with active: false', async () => {
+			const workflow = await createActiveWorkflow({}, owner);
+			const payload = {
+				versionId: workflow.versionId,
+				active: false,
+			};
+
+			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+			expect(response.statusCode).toBe(200);
+
+			const workflowRepository = Container.get(WorkflowRepository);
+			const updatedWorkflow = await workflowRepository.findOne({
+				where: { id: workflow.id },
+			});
+
+			expect(updatedWorkflow?.active).toBe(true);
+			expect(updatedWorkflow?.activeVersionId).toBe(workflow.activeVersionId);
+		});
+
 		test('should not modify activeVersionId when explicitly provided', async () => {
 			const workflow = await createWorkflow({}, owner);
 			const payload = {

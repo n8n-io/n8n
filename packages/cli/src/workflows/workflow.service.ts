@@ -329,7 +329,6 @@ export class WorkflowService {
 
 		const fieldsToUpdate = [
 			'name',
-			'active',
 			'nodes',
 			'connections',
 			'meta',
@@ -342,7 +341,7 @@ export class WorkflowService {
 
 		// Forbid updating active fields with FF on
 		if (isDraftPublishDisabled) {
-			fieldsToUpdate.push('activeVersionId');
+			fieldsToUpdate.push('activeVersionId', 'active');
 		}
 
 		const updatePayload: QueryDeepPartialEntity<WorkflowEntity> = pick(
