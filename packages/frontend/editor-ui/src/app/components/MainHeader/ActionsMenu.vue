@@ -24,7 +24,7 @@ import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { IWorkflowToShare, IWorkflowDb } from '@/Interface';
 import { telemetry } from '@/app/plugins/telemetry';
 import router from '@/app/router';
-import { sanitizeFilename } from '@/app/utils/fileUtils';
+import { sanitizeFilename } from '@n8n/utils';
 import saveAs from 'file-saver';
 import { nodeViewEventBus } from '@/app/event-bus';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
