@@ -1,7 +1,7 @@
 export { DirectedGraph } from './directed-graph';
 export {
 	findTriggerForPartialExecution,
-	anyReachableRootHasRunData,
+	allReachableRootsHaveRunData,
 } from './find-trigger-for-partial-execution';
 export { findStartNodes } from './find-start-nodes';
 export { findSubgraph } from './find-subgraph';
