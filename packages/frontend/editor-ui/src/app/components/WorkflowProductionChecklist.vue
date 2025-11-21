@@ -72,12 +72,20 @@ const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
 
+// Show MCP action if:
+// - MCP module is active
+// - Instance-level access is enabled
+// - Workflow is eligible for MCP access
 const isMcpAvailable = computed(() => {
-	return settingsStore.isModuleActive('mcp') && isEligibleForMcpAccess(props.workflow);
+	return (
+		settingsStore.isModuleActive('mcp') &&
+		settingsStore.moduleSettings.mcp?.mcpAccessEnabled &&
+		isEligibleForMcpAccess(props.workflow)
+	);
 });
 
 const availableActions = computed(() => {
-	if (!props.workflow.active || workflowsCache.isCacheLoading.value) {
+	if (props.workflow.activeVersionId === null || workflowsCache.isCacheLoading.value) {
 		return [];
 	}
 
@@ -220,7 +228,7 @@ function handlePopoverOpenChange(open: boolean) {
 
 // Watch for workflow activation
 watch(
-	() => props.workflow.active,
+	() => !!props.workflow.activeVersionId,
 	async (isActive, wasActive) => {
 		if (isActive && !wasActive) {
 			// Check if this is the first activation

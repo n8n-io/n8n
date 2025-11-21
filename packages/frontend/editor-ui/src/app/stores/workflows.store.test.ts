@@ -12,7 +12,13 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
-import { deepCopy, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	createRunExecutionData,
+	deepCopy,
+	NodeConnectionTypes,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
 import type {
 	IPinData,
 	IConnection,
@@ -519,6 +525,135 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('findRootWithMainConnection()', () => {
+		it('returns children connected via ai tool when they also have a main parent', () => {
+			const toolNode = createTestNode({ name: 'ToolNode' });
+			const upstreamParentNode = createTestNode({ name: 'UpstreamNode' });
+			const rootNode = createTestNode({ name: 'RootNode' });
+
+			workflowsStore.setNodes([toolNode, upstreamParentNode, rootNode]);
+
+			workflowsStore.setConnections({
+				[toolNode.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[
+							{
+								node: rootNode.name,
+								type: NodeConnectionTypes.AiTool,
+								index: 0,
+							},
+						],
+					],
+				},
+				[upstreamParentNode.name]: {
+					main: [
+						[
+							{
+								node: rootNode.name,
+								type: NodeConnectionTypes.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+			});
+
+			const result = workflowsStore.findRootWithMainConnection(toolNode.name);
+
+			expect(result).toBe(rootNode.name);
+		});
+
+		it('finds the root for a deeply nested vector tool chain', () => {
+			const embeddingsNode = createTestNode({ name: 'EmbeddingsNode' });
+			const vectorStoreNode = createTestNode({ name: 'VectorStoreNode' });
+			const vectorToolNode = createTestNode({ name: 'VectorToolNode' });
+			const agentNode = createTestNode({ name: 'AI Agent' });
+			const setNode = createTestNode({ name: 'SetNode' });
+
+			workflowsStore.setNodes([
+				embeddingsNode,
+				vectorStoreNode,
+				vectorToolNode,
+				agentNode,
+				setNode,
+			]);
+
+			workflowsStore.setConnections({
+				[embeddingsNode.name]: {
+					[NodeConnectionTypes.AiEmbedding]: [
+						[
+							{
+								node: vectorStoreNode.name,
+								type: NodeConnectionTypes.AiEmbedding,
+								index: 0,
+							},
+						],
+					],
+				},
+				[vectorStoreNode.name]: {
+					[NodeConnectionTypes.AiVectorStore]: [
+						[
+							{
+								node: vectorToolNode.name,
+								type: NodeConnectionTypes.AiVectorStore,
+								index: 0,
+							},
+						],
+					],
+				},
+				[vectorToolNode.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[
+							{
+								node: agentNode.name,
+								type: NodeConnectionTypes.AiTool,
+								index: 0,
+							},
+						],
+					],
+				},
+				[setNode.name]: {
+					main: [
+						[
+							{
+								node: agentNode.name,
+								type: NodeConnectionTypes.Main,
+								index: 0,
+							},
+						],
+					],
+				},
+			});
+
+			expect(workflowsStore.findRootWithMainConnection(embeddingsNode.name)).toBe(agentNode.name);
+		});
+
+		it('returns null when no child has a main input connection', () => {
+			const parent = createTestNode({ name: 'ParentNode' });
+			const aiChild = createTestNode({ name: 'AiChild' });
+
+			workflowsStore.setNodes([parent, aiChild]);
+
+			workflowsStore.setConnections({
+				[parent.name]: {
+					[NodeConnectionTypes.AiTool]: [
+						[
+							{
+								node: aiChild.name,
+								type: NodeConnectionTypes.AiTool,
+								index: 0,
+							},
+						],
+					],
+				},
+			});
+
+			const result = workflowsStore.findRootWithMainConnection(parent.name);
+
+			expect(result).toBeNull();
+		});
+	});
+
 	describe('getPinDataSize()', () => {
 		it('returns zero when pinData is empty', () => {
 			const pinData = {};
@@ -566,6 +701,193 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsApi.getWorkflows).toHaveBeenCalled();
 			expect(Object.values(workflowsStore.workflowsById)).toEqual(mockWorkflows);
+		});
+	});
+
+	describe('searchWorkflows()', () => {
+		beforeEach(() => {
+			vi.mocked(workflowsApi).getWorkflows.mockClear();
+		});
+
+		it('should search workflows with no filters', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Workflow 1', isArchived: false },
+				{ id: '2', name: 'Workflow 2', isArchived: false },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				undefined,
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with query filter', async () => {
+			const mockWorkflows = [{ id: '1', name: 'Test Workflow' }] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({ query: 'test' });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ query: 'test' },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with isArchived filter set to false', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Active Workflow 1', isArchived: false },
+				{ id: '2', name: 'Active Workflow 2', isArchived: false },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({ isArchived: false });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ isArchived: false },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with isArchived filter set to true', async () => {
+			const mockWorkflows = [
+				{ id: '3', name: 'Archived Workflow 1', isArchived: true },
+				{ id: '4', name: 'Archived Workflow 2', isArchived: true },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({ isArchived: true });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ isArchived: true },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with multiple filters including isArchived', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Test Workflow', isArchived: false },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({
+				query: 'test',
+				isArchived: false,
+				projectId: 'project-123',
+				tags: ['tag1', 'tag2'],
+				nodeTypes: ['n8n-nodes-base.httpRequest'],
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{
+					query: 'test',
+					isArchived: false,
+					projectId: 'project-123',
+					tags: ['tag1', 'tag2'],
+					nodeTypes: ['n8n-nodes-base.httpRequest'],
+				},
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should search workflows with select fields', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Workflow 1' },
+				{ id: '2', name: 'Workflow 2' },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({
+				select: ['id', 'name'],
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				undefined,
+				undefined,
+				['id', 'name'],
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should handle empty filter object correctly', async () => {
+			const mockWorkflows = [] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: 0,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({
+				projectId: undefined,
+				query: undefined,
+				nodeTypes: undefined,
+				tags: undefined,
+				isArchived: undefined,
+			});
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				undefined,
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
+		});
+
+		it('should pass isArchived as undefined when not specified', async () => {
+			const mockWorkflows = [
+				{ id: '1', name: 'Workflow 1', isArchived: false },
+				{ id: '2', name: 'Workflow 2', isArchived: true },
+			] as IWorkflowDb[];
+			vi.mocked(workflowsApi).getWorkflows.mockResolvedValue({
+				count: mockWorkflows.length,
+				data: mockWorkflows,
+			});
+
+			const result = await workflowsStore.searchWorkflows({ query: 'workflow' });
+
+			expect(workflowsApi.getWorkflows).toHaveBeenCalledWith(
+				expect.any(Object),
+				{ query: 'workflow', isArchived: undefined },
+				undefined,
+				undefined,
+			);
+			expect(result).toEqual(mockWorkflows);
 		});
 	});
 
@@ -762,7 +1084,7 @@ describe('useWorkflowsStore', () => {
 		beforeEach(() => {
 			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
 				id: 'test-execution',
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							n0: [
@@ -784,7 +1106,7 @@ describe('useWorkflowsStore', () => {
 							],
 						},
 					},
-				},
+				}),
 			});
 		});
 
@@ -870,6 +1192,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
 				data: {
+					version: 0,
 					resultData: {
 						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
@@ -901,6 +1224,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
 				data: {
+					version: 0,
 					resultData: {
 						lastNodeExecuted: 'Edit Fields',
 						runData: {
@@ -944,7 +1268,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should replace placeholder task data in waiting nodes correctly', () => {
 			const runWithExistingRunData = deepCopy(executionResponse);
-			runWithExistingRunData.data = {
+			runWithExistingRunData.data = createRunExecutionData({
 				resultData: {
 					runData: {
 						[successEvent.nodeName]: [
@@ -971,7 +1295,7 @@ describe('useWorkflowsStore', () => {
 						],
 					},
 				},
-			};
+			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
@@ -983,14 +1307,14 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...runWithExistingRunData,
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEvent.data],
 						},
 					},
-				},
+				}),
 			});
 		});
 
@@ -999,7 +1323,7 @@ describe('useWorkflowsStore', () => {
 			successEventWithExecutionIndex.data.executionIndex = 1;
 
 			const runWithExistingRunData = executionResponse;
-			runWithExistingRunData.data = {
+			runWithExistingRunData.data = createRunExecutionData({
 				resultData: {
 					runData: {
 						[successEventWithExecutionIndex.nodeName]: [
@@ -1026,7 +1350,7 @@ describe('useWorkflowsStore', () => {
 						],
 					},
 				},
-			};
+			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
@@ -1038,14 +1362,14 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEventWithExecutionIndex.data],
 						},
 					},
-				},
+				}),
 			});
 		});
 	});
@@ -1948,6 +2272,7 @@ function generateMockExecutionEvents() {
 			nodes: [],
 			connections: {},
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			versionId: '1',
 		},
@@ -1956,11 +2281,7 @@ function generateMockExecutionEvents() {
 		startedAt: new Date(),
 		createdAt: new Date(),
 		status: 'new',
-		data: {
-			resultData: {
-				runData: {},
-			},
-		},
+		data: createEmptyRunExecutionData(),
 	};
 	const successEvent: PushPayload<'nodeExecuteAfter'> = {
 		executionId: '59',

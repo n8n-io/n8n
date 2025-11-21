@@ -67,6 +67,13 @@ const filteredItems = computed(() => {
 				.join(' ')
 				.toLowerCase();
 
+			if (item.matchAnySearchTerm) {
+				return query
+					.split(' ')
+					.filter(Boolean)
+					.some((word) => searchText.includes(word));
+			}
+
 			return searchText.includes(query);
 		});
 	}
@@ -196,6 +203,8 @@ const handleKeydown = (event: KeyboardEvent) => {
 
 	if (!isOpen.value) return;
 
+	event.stopPropagation();
+
 	switch (event.key) {
 		case 'Escape':
 			event.preventDefault();
@@ -228,7 +237,6 @@ const handleKeydown = (event: KeyboardEvent) => {
 			break;
 		case 'Enter':
 			event.preventDefault();
-			event.stopPropagation();
 			if (selectedIndex.value >= 0 && flattenedItems.value[selectedIndex.value]) {
 				void selectItem(flattenedItems.value[selectedIndex.value]);
 			}
@@ -250,12 +258,12 @@ watch(inputValue, (newValue) => {
 });
 
 onMounted(() => {
-	document.addEventListener('keydown', handleKeydown);
+	document.addEventListener('keydown', handleKeydown, { capture: true });
 	document.addEventListener('click', handleClickOutside);
 });
 
 onUnmounted(() => {
-	document.removeEventListener('keydown', handleKeydown);
+	document.removeEventListener('keydown', handleKeydown, { capture: true });
 	document.removeEventListener('click', handleClickOutside);
 });
 </script>
