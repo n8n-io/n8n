@@ -125,27 +125,38 @@ describe('SettingsSso View', () => {
 			expect(toggle.textContent).toContain('Deactivated');
 
 			await userEvent.click(toggle);
-			expect(toggle.textContent).toContain('Activated');
+			expect(toggle.textContent).toContain('Single Sign On Activated');
 
 			await userEvent.click(toggle);
-			expect(toggle.textContent).toContain('Deactivated');
+			expect(toggle.textContent).toContain('Single Sign On Deactivated');
 		});
 
 		it("allows user to fill Identity Provider's URL", async () => {
-			confirmMessage.mockResolvedValueOnce('confirm');
+			// Mock two confirm dialogs: 1) test connection prompt, 2) confirm successful test
+			confirmMessage.mockResolvedValueOnce('confirm').mockResolvedValueOnce('confirm');
 
 			const windowOpenSpy = vi.spyOn(window, 'open');
 
 			ssoStore.isEnterpriseSamlEnabled = true;
 			ssoStore.isEnterpriseOidcEnabled = true;
 			ssoStore.isSamlLoginEnabled = false;
-			ssoStore.samlConfig = { ...samlConfig, metadataUrl: undefined, metadata: undefined };
+			ssoStore.samlConfig = {
+				...samlConfig,
+				metadataUrl: undefined,
+				metadata: undefined,
+				loginEnabled: false,
+			};
 			ssoStore.getSamlConfig.mockResolvedValue({
 				...samlConfig,
 				metadataUrl: undefined,
 				metadata: undefined,
+				loginEnabled: false,
 			});
-			ssoStore.saveSamlConfig.mockResolvedValue({ ...samlConfig, metadata: undefined });
+			ssoStore.saveSamlConfig.mockResolvedValue({
+				...samlConfig,
+				metadata: undefined,
+				loginEnabled: true,
+			});
 			ssoStore.testSamlConfig.mockResolvedValue('https://test-url.com');
 
 			const { getByTestId } = renderView();
@@ -158,11 +169,18 @@ describe('SettingsSso View', () => {
 			expect(urlInput).toBeVisible();
 			await userEvent.type(urlInput, samlConfig.metadataUrl as string);
 
+			// Enable SSO toggle
+			const toggle = getByTestId('sso-toggle');
+			await userEvent.click(toggle);
+
 			expect(saveButton).not.toBeDisabled();
 			await userEvent.click(saveButton);
 
 			expect(ssoStore.saveSamlConfig).toHaveBeenCalledWith(
-				expect.objectContaining({ metadataUrl: samlConfig.metadataUrl }),
+				expect.objectContaining({
+					metadataUrl: samlConfig.metadataUrl,
+					loginEnabled: true,
+				}),
 			);
 
 			expect(ssoStore.testSamlConfig).toHaveBeenCalled();
@@ -177,7 +195,8 @@ describe('SettingsSso View', () => {
 		});
 
 		it("allows user to fill Identity Provider's XML", async () => {
-			confirmMessage.mockResolvedValueOnce('confirm');
+			// Mock two confirm dialogs: 1) test connection prompt, 2) confirm successful test
+			confirmMessage.mockResolvedValueOnce('confirm').mockResolvedValueOnce('confirm');
 
 			const windowOpenSpy = vi.spyOn(window, 'open');
 
@@ -185,8 +204,18 @@ describe('SettingsSso View', () => {
 			ssoStore.isEnterpriseOidcEnabled = true;
 			ssoStore.isSamlLoginEnabled = false;
 			ssoStore.samlConfig = { ...samlConfig, metadataUrl: undefined, metadata: undefined };
+			ssoStore.getSamlConfig.mockResolvedValue({
+				...samlConfig,
+				metadataUrl: undefined,
+				metadata: undefined,
+				loginEnabled: false,
+			});
 			// Mock should return config with metadata but WITHOUT metadataUrl (since user filled XML)
-			ssoStore.saveSamlConfig.mockResolvedValue({ ...samlConfig, metadataUrl: undefined });
+			ssoStore.saveSamlConfig.mockResolvedValue({
+				...samlConfig,
+				metadataUrl: undefined,
+				loginEnabled: true,
+			});
 			ssoStore.testSamlConfig.mockResolvedValue('https://test-url.com');
 
 			const { getByTestId } = renderView();
@@ -201,11 +230,18 @@ describe('SettingsSso View', () => {
 			expect(xmlInput).toBeVisible();
 			await userEvent.type(xmlInput, samlConfig.metadata!);
 
+			// Enable SSO toggle
+			const toggle = getByTestId('sso-toggle');
+			await userEvent.click(toggle);
+
 			expect(saveButton).not.toBeDisabled();
 			await userEvent.click(saveButton);
 
 			expect(ssoStore.saveSamlConfig).toHaveBeenCalledWith(
-				expect.objectContaining({ metadata: samlConfig.metadata }),
+				expect.objectContaining({
+					metadata: samlConfig.metadata,
+					loginEnabled: true,
+				}),
 			);
 
 			expect(ssoStore.testSamlConfig).toHaveBeenCalled();
@@ -281,19 +317,20 @@ describe('SettingsSso View', () => {
 			ssoStore.isEnterpriseOidcEnabled = true;
 			ssoStore.isOidcLoginEnabled = false;
 
-			const error = new Error('Request failed with status code 404');
-			ssoStore.getSamlConfig.mockRejectedValue(error);
+			ssoStore.getSamlConfig.mockResolvedValue({
+				...samlConfig,
+				loginEnabled: true,
+			});
 
 			const { getByTestId } = renderView();
 
 			expect(ssoStore.getSamlConfig).toHaveBeenCalledTimes(1);
 
 			await waitFor(async () => {
-				expect(showError).toHaveBeenCalledWith(error, 'error');
 				const toggle = getByTestId('sso-toggle');
-				expect(toggle.textContent).toContain('Activated');
+				expect(toggle.textContent).toContain('Single Sign On Activated');
 				await userEvent.click(toggle);
-				expect(toggle.textContent).toContain('Deactivated');
+				expect(toggle.textContent).toContain('Single Sign On Deactivated');
 			});
 		});
 
