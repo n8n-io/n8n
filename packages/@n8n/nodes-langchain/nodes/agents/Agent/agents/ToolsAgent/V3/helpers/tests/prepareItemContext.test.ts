@@ -1,13 +1,12 @@
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { mock } from 'jest-mock-extended';
 import type { Tool } from 'langchain/tools';
-import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
+import type { IExecuteFunctions, INode } from 'n8n-workflow';
 
 import * as helpers from '@utils/helpers';
 import * as outputParsers from '@utils/output_parsers/N8nOutputParser';
 
 import * as commonHelpers from '../../../common';
-import type { RequestResponseMetadata } from '../../types';
 import { prepareItemContext } from '../prepareItemContext';
 
 jest.mock('@utils/helpers', () => ({
@@ -33,15 +32,12 @@ beforeEach(() => {
 });
 
 describe('processItem', () => {
-	it('should return null when item was already processed', async () => {
-		const response: EngineResponse<RequestResponseMetadata> = {
-			actionResponses: [],
-			metadata: { itemIndex: 0, previousRequests: [] },
-		};
+	it('should throw error when text parameter is empty', async () => {
+		jest.spyOn(helpers, 'getPromptInputByType').mockReturnValue(undefined as any);
 
-		const result = await prepareItemContext(mockContext, 0, response);
-
-		expect(result).toBeNull();
+		await expect(prepareItemContext(mockContext, 0)).rejects.toThrow(
+			'The "text" parameter is empty.',
+		);
 	});
 
 	it('should process item and return context', async () => {
