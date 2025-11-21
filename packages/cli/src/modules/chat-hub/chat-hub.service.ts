@@ -164,6 +164,8 @@ export class ChatHubService {
 				return await this.fetchAzureOpenAiModels(credentials, additionalData);
 			case 'awsBedrock':
 				return await this.fetchAwsBedrockModels(credentials, additionalData);
+			case 'deepSeek':
+				return await this.fetchDeepSeekModels(credentials, additionalData);
 			case 'cohere':
 				return await this.fetchCohereModels(credentials, additionalData);
 			case 'mistralCloud':
@@ -585,6 +587,62 @@ export class ChatHubService {
 				description: result.description ?? null,
 				model: {
 					provider: 'cohere',
+					model: String(result.value),
+				},
+				createdAt: null,
+				updatedAt: null,
+			})),
+		};
+	}
+
+	private async fetchDeepSeekModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse['deepSeek']> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.deepSeek,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({
+				name: result.name,
+				description: result.description ?? String(result.value),
+				model: {
+					provider: 'deepSeek',
 					model: String(result.value),
 				},
 				createdAt: null,
