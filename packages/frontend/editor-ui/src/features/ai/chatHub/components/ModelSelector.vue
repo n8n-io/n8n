@@ -68,6 +68,7 @@ function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
 		description: null,
 		updatedAt: null,
 		createdAt: null,
+		allowFileUploads: true,
 	});
 }
 

@@ -100,12 +100,19 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 		await n8n.canvas.clickZoomToFitButton();
 
 		await n8n.canvas.connectNodesByDrag(MANUAL_TRIGGER_NODE_DISPLAY_NAME, 'Edit Fields1', 0, 0);
+		await expect(
+			n8n.canvas.connectionBetweenNodes(MANUAL_TRIGGER_NODE_DISPLAY_NAME, 'Edit Fields1').first(),
+		).toBeAttached();
 
 		await n8n.canvas.connectNodesByDrag('Edit Fields', MERGE_NODE_NAME, 0, 0);
+		await expect(
+			n8n.canvas.connectionBetweenNodes('Edit Fields', MERGE_NODE_NAME).first(),
+		).toBeAttached();
 
 		await n8n.canvas.connectNodesByDrag('Edit Fields1', MERGE_NODE_NAME, 0, 1);
-
-		await checkConnections();
+		await expect(
+			n8n.canvas.connectionBetweenNodes('Edit Fields1', MERGE_NODE_NAME).first(),
+		).toBeAttached();
 
 		await n8n.canvas.saveWorkflow();
 		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');

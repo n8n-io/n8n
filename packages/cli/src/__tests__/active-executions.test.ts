@@ -65,6 +65,7 @@ describe('ActiveExecutions', () => {
 			id: '123',
 			name: 'Test workflow 1',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			createdAt: new Date(),
 			updatedAt: new Date(),
