@@ -136,22 +136,7 @@ onBeforeUnmount(() => {
 			bold
 			color="text-light"
 		>
-			<span>{{ locale.baseText('projects.menu.title') }}</span>
-			<N8nTooltip
-				v-if="projectsStore.canCreateProjects"
-				placement="right"
-				:disabled="projectsStore.hasPermissionToCreateProjects"
-				:content="locale.baseText('projects.create.permissionDenied')"
-			>
-				<N8nButton
-					icon="plus"
-					text
-					data-test-id="project-plus-button"
-					:disabled="isCreatingProject || !projectsStore.hasPermissionToCreateProjects"
-					:class="$style.plusBtn"
-					@click="globalEntityCreation.createProject('add_icon')"
-				/>
-			</N8nTooltip>
+			{{ locale.baseText('projects.menu.title') }}
 		</N8nText>
 		<div
 			v-if="projectsStore.isTeamProjectFeatureEnabled || isFoldersFeatureEnabled"
@@ -240,14 +225,11 @@ onBeforeUnmount(() => {
 
 .addFirstProjectBtn {
 	font-size: var(--font-size--xs);
-	margin: 0 var(--spacing--sm);
-	width: calc(100% - var(--spacing--sm) * 2);
+	margin: 0 var(--spacing--xs);
+	width: calc(100% - var(--spacing--xs) * 2);
 
 	&.collapsed {
-		> span:last-child {
-			display: none;
-			margin: 0 var(--spacing--sm) var(--spacing--md);
-		}
+		display: none;
 	}
 }
 
