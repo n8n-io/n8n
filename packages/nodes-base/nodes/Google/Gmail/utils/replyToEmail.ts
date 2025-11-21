@@ -97,14 +97,17 @@ export async function replyToEmail(
 		}
 	};
 
+	const replyToHeaderName = payload.headers.find((h) => h.name.toLowerCase() === 'reply-to')
+		? 'reply-to'
+		: 'from';
 	for (const header of payload.headers) {
 		const headerName = (header.name || '').toLowerCase();
-		if (headerName === 'from' && !replyToRecipientsOnly) {
-			const from = header.value;
-			if (from.includes('<') && from.includes('>')) {
-				to.push(from);
+		if (headerName === replyToHeaderName && !replyToRecipientsOnly) {
+			const replyToEmail = header.value;
+			if (replyToEmail.includes('<') && replyToEmail.includes('>')) {
+				to.push(replyToEmail);
 			} else {
-				to.push(`<${from}>`);
+				to.push(`<${replyToEmail}>`);
 			}
 		}
 
