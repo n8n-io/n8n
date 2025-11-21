@@ -906,9 +906,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (targetWorkflow) {
 			targetWorkflow.active = false;
 			targetWorkflow.activeVersionId = null;
+			targetWorkflow.activeVersion = null;
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			workflow.value.active = false;
+			workflow.value.activeVersionId = null;
+			workflow.value.activeVersion = null;
 		}
 	}
 
@@ -1623,6 +1626,29 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedWorkflow;
 	}
 
+	async function deactivateWorkflow(id: string): Promise<IWorkflowDb> {
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/deactivate`,
+		);
+
+		setWorkflowInactive(id);
+
+		const targetWorkflow = workflowsById.value[id];
+		if (targetWorkflow) {
+			targetWorkflow.activeVersion = updatedWorkflow.activeVersion ?? null;
+			targetWorkflow.activeVersionId = updatedWorkflow.activeVersionId;
+		}
+
+		if (id === workflow.value.id) {
+			workflow.value.activeVersion = updatedWorkflow.activeVersion ?? null;
+			workflow.value.activeVersionId = updatedWorkflow.activeVersionId;
+		}
+
+		return updatedWorkflow;
+	}
+
 	// Update a single workflow setting key while preserving existing settings
 	async function updateWorkflowSetting<K extends keyof IWorkflowSettings>(
 		id: string,
@@ -1994,6 +2020,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		createNewWorkflow,
 		updateWorkflow,
 		publishWorkflow,
+		deactivateWorkflow,
 		updateWorkflowSetting,
 		saveWorkflowDescription,
 		runWorkflow,

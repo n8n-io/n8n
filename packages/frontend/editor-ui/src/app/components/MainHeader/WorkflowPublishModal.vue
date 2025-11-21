@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, h, onMounted, onBeforeUnmount } from 'vue';
+import { computed, ref, h, onMounted } from 'vue';
 import type { VNode } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import {

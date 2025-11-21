@@ -55,8 +55,11 @@ const getActions = (item: WorkflowHistory, index: number) => {
 	if (index === 0) {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
+
 	if (item.versionId === props.activeVersionId) {
 		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
+	} else {
+		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
 	}
 
 	return filteredActions;

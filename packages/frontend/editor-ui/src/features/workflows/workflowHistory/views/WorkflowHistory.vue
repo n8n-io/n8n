@@ -23,6 +23,7 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { telemetry } from '@/app/plugins/telemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { getResourcePermissions } from '@n8n/permissions';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { IUser } from 'n8n-workflow';
@@ -40,6 +41,7 @@ const enum WorkflowHistoryVersionRestoreModalActions {
 const workflowHistoryActionTypes: WorkflowHistoryActionTypes = [
 	'restore',
 	'publish',
+	'unpublish',
 	'clone',
 	'open',
 	'download',
@@ -58,6 +60,7 @@ const pageRedirectionHelper = usePageRedirectionHelper();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
+const workflowActivate = useWorkflowActivate();
 
 const canRender = ref(true);
 const isListLoading = ref(true);
@@ -89,7 +92,7 @@ const actions = computed<Array<UserAction<IUser>>>(() =>
 		disabled:
 			(value === 'clone' && !workflowPermissions.value.create) ||
 			(value === 'restore' && !workflowPermissions.value.update) ||
-			(value === 'publish' && !workflowPermissions.value.update),
+			((value === 'publish' || value === 'unpublish') && !workflowPermissions.value.update),
 		value,
 	})),
 );
@@ -256,6 +259,25 @@ const publishWorkflowVersion = async (
 	});
 };
 
+const unpublishWorkflowVersion = async (id: WorkflowVersionId) => {
+	if (workflowActiveVersionId.value !== id) {
+		return;
+	}
+
+	const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId.value);
+
+	if (!success) {
+		return;
+	}
+
+	activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
+
+	toast.showMessage({
+		title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
+		type: 'success',
+	});
+};
+
 const onAction = async ({
 	action,
 	id,
@@ -287,6 +309,10 @@ const onAction = async ({
 				await publishWorkflowVersion(id, data);
 				// TODO: document this event
 				sendTelemetry('User published version from history');
+				break;
+			case WORKFLOW_HISTORY_ACTIONS.UNPUBLISH:
+				await unpublishWorkflowVersion(id);
+				sendTelemetry('User unpublished workflow from history');
 				break;
 		}
 	} catch (error) {
