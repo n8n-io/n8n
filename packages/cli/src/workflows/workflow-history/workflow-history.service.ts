@@ -1,7 +1,9 @@
 import { Logger } from '@n8n/backend-common';
-import type { User, WorkflowHistory } from '@n8n/db';
-import { WorkflowHistoryRepository } from '@n8n/db';
+import type { User } from '@n8n/db';
+import { WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+// eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
+import type { EntityManager } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
 
@@ -64,15 +66,24 @@ export class WorkflowHistoryService {
 		return hist;
 	}
 
-	async saveVersion(user: User, workflow: IWorkflowBase, workflowId: string) {
+	async saveVersion(
+		user: User,
+		workflow: IWorkflowBase,
+		workflowId: string,
+		transactionManager?: EntityManager,
+	) {
 		if (!workflow.nodes || !workflow.connections) {
 			throw new UnexpectedError(
 				`Cannot save workflow history: nodes and connections are required for workflow ${workflowId}`,
 			);
 		}
 
+		const repository = transactionManager
+			? transactionManager.getRepository(WorkflowHistory)
+			: this.workflowHistoryRepository;
+
 		try {
-			await this.workflowHistoryRepository.insert({
+			await repository.insert({
 				authors: user.firstName + ' ' + user.lastName,
 				connections: workflow.connections,
 				nodes: workflow.nodes,

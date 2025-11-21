@@ -3,6 +3,7 @@ import {
 	getPersonalProject,
 	linkUserToProject,
 	createWorkflow,
+	createActiveWorkflow,
 	createWorkflowWithHistory,
 	getWorkflowSharing,
 	shareWorkflowWithProjects,
@@ -1421,7 +1422,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 	describe('activate workflow', () => {
 		test('should activate workflow without changing version ID', async () => {
-			const workflow = await createWorkflow({}, owner);
+			const workflow = await createWorkflowWithHistory({}, owner);
 			const payload = {
 				versionId: workflow.versionId,
 				active: true,
@@ -1433,16 +1434,17 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(activeWorkflowManager.add).toBeCalled();
 
 			const {
-				data: { id, versionId, active },
+				data: { id, versionId, active, activeVersionId },
 			} = response.body;
 
 			expect(id).toBe(workflow.id);
 			expect(versionId).toBe(workflow.versionId);
 			expect(active).toBe(true);
+			expect(activeVersionId).toBe(workflow.versionId);
 		});
 
 		test('should deactivate workflow without changing version ID', async () => {
-			const workflow = await createWorkflowWithHistory({ active: true }, owner);
+			const workflow = await createActiveWorkflow({}, owner);
 			const payload = {
 				versionId: workflow.versionId,
 				active: false,
@@ -1455,12 +1457,13 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(activeWorkflowManager.remove).toBeCalled();
 
 			const {
-				data: { id, versionId, active },
+				data: { id, versionId, active, activeVersionId },
 			} = response.body;
 
 			expect(id).toBe(workflow.id);
 			expect(versionId).toBe(workflow.versionId);
 			expect(active).toBe(false);
+			expect(activeVersionId).toBeNull();
 		});
 	});
 });
@@ -1636,7 +1639,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflowWithHistory({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		//
 		// ACT
@@ -1664,10 +1667,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
 
-		const workflow = await createWorkflowWithHistory(
-			{ active: true, parentFolder: folder },
-			member,
-		);
+		const workflow = await createActiveWorkflow({ parentFolder: folder }, member);
 
 		//
 		// ACT
@@ -1699,10 +1699,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const folder = await createFolder(destinationProject, { name: 'Test Folder' });
 
-		const workflow = await createWorkflowWithHistory(
-			{ active: true, parentFolder: folder },
-			member,
-		);
+		const workflow = await createActiveWorkflow({ parentFolder: folder }, member);
 
 		//
 		// ACT
@@ -1742,10 +1739,7 @@ describe('PUT /:workflowId/transfer', () => {
 			name: 'Another Test Folder',
 		});
 
-		const workflow = await createWorkflow(
-			{ active: true, parentFolder: folderInDestinationProject },
-			member,
-		);
+		const workflow = await createWorkflow({ parentFolder: folderInDestinationProject }, member);
 
 		//
 		// ACT
@@ -1766,7 +1760,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflowWithHistory({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('Failed'));
 
@@ -1795,7 +1789,8 @@ describe('PUT /:workflowId/transfer', () => {
 		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
 
 		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
-		expect(workflowFromDB).toMatchObject({ active: false });
+		expect(workflowFromDB.active).toBe(false);
+		expect(workflowFromDB.activeVersionId).toBeNull();
 	});
 
 	test('owner transfers workflow from project they are not part of, e.g. test global cred sharing scope', async () => {
@@ -2136,7 +2131,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		const destinationProject = await createTeamProject('Team Project', member);
 
-		const workflow = await createWorkflowWithHistory({ active: true }, member);
+		const workflow = await createActiveWorkflow({}, member);
 
 		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
 
