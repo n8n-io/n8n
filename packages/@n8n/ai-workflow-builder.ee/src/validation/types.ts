@@ -53,12 +53,14 @@ export interface ProgrammaticEvaluationResult {
 	agentPrompt: SingleEvaluatorResult;
 	tools: SingleEvaluatorResult;
 	fromAi: SingleEvaluatorResult;
+	similarity: SingleEvaluatorResult | null;
 }
 
 export interface ProgrammaticEvaluationInput {
 	generatedWorkflow: SimpleWorkflow;
 	userPrompt?: string;
 	referenceWorkflow?: SimpleWorkflow;
+	referenceWorkflows?: SimpleWorkflow[];
 }
 
 export interface NodeResolvedConnectionTypesInfo {
