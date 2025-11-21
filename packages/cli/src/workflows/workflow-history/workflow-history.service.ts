@@ -40,7 +40,15 @@ export class WorkflowHistoryService {
 			},
 			take,
 			skip,
-			select: ['workflowId', 'versionId', 'authors', 'createdAt', 'updatedAt'],
+			select: [
+				'workflowId',
+				'versionId',
+				'authors',
+				'createdAt',
+				'updatedAt',
+				'name',
+				'description',
+			],
 			order: { createdAt: 'DESC' },
 		});
 	}
