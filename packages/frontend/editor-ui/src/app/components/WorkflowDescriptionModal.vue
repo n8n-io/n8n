@@ -1,13 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
-import {
-	N8nButton,
-	N8nIconButton,
-	N8nInput,
-	N8nInputLabel,
-	N8nPopoverReka,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { computed, ref, useTemplateRef, watch } from 'vue';
+import { N8nButton, N8nIconButton, N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -15,15 +8,19 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
+import { createEventBus } from '@n8n/utils/event-bus';
+import Modal from './Modal.vue';
 
-type Props = {
-	workflowId: string;
-	workflowDescription?: string | null;
-};
+const props = defineProps<{
+	modalName: string;
+	data: {
+		workflowId: string;
+		workflowDescription?: string | null;
+	};
+}>();
 
-const props = withDefaults(defineProps<Props>(), {
-	workflowDescription: '',
-});
+const modalBus = createEventBus();
 
 const i18n = useI18n();
 const toast = useToast();
@@ -33,11 +30,10 @@ const settingsStore = useSettingsStore();
 const workflowStore = useWorkflowsStore();
 const uiStore = useUIStore();
 
-const descriptionValue = ref(props.workflowDescription);
-const popoverOpen = ref(false);
+const descriptionValue = ref(props.data.workflowDescription ?? '');
 const descriptionInput = useTemplateRef<HTMLInputElement>('descriptionInput');
 const isSaving = ref(false);
-const lastSavedDescription = ref(props.workflowDescription);
+const lastSavedDescription = ref(props.data.workflowDescription ?? '');
 
 const normalizedCurrentValue = computed(() => (descriptionValue.value ?? '').trim());
 const normalizedLastSaved = computed(() => (lastSavedDescription.value ?? '').trim());
@@ -74,13 +70,13 @@ const saveDescription = async () => {
 
 	try {
 		await workflowStore.saveWorkflowDescription(
-			props.workflowId,
+			props.data.workflowId,
 			normalizedCurrentValue.value ?? null,
 		);
 		lastSavedDescription.value = descriptionValue.value;
 		uiStore.stateIsDirty = false;
 		telemetry.track('User set workflow description', {
-			workflow_id: props.workflowId,
+			workflow_id: props.data.workflowId,
 			description: normalizedCurrentValue.value ?? null,
 		});
 	} catch (error) {
@@ -92,14 +88,15 @@ const saveDescription = async () => {
 	}
 };
 
-const handlePopoverOpenChange = async (open: boolean) => {
-	popoverOpen.value = open;
-	if (open) {
-		await nextTick();
-		descriptionInput.value?.focus();
-	} else {
-		await saveDescription();
-	}
+const cancel = () => {
+	descriptionValue.value = lastSavedDescription.value;
+	uiStore.stateIsDirty = false;
+	modalBus.emit('close');
+};
+
+const save = async () => {
+	await saveDescription();
+	modalBus.emit('close');
 };
 
 const handleKeyDown = async (event: KeyboardEvent) => {
@@ -107,7 +104,7 @@ const handleKeyDown = async (event: KeyboardEvent) => {
 	if (event.key === 'Escape') {
 		event.preventDefault();
 		event.stopPropagation();
-		await cancel();
+		cancel();
 	}
 
 	// Enter (without Shift) - save and close
@@ -122,23 +119,12 @@ const handleKeyDown = async (event: KeyboardEvent) => {
 	}
 };
 
-const cancel = async () => {
-	descriptionValue.value = lastSavedDescription.value;
-	uiStore.stateIsDirty = false;
-	popoverOpen.value = false;
-};
-
-const save = async () => {
-	await saveDescription();
-	popoverOpen.value = false;
-};
-
 // Sync with external prop changes
 watch(
-	() => props.workflowDescription,
+	() => props.data.workflowDescription,
 	(newValue) => {
-		descriptionValue.value = newValue;
-		lastSavedDescription.value = newValue;
+		descriptionValue.value = newValue ?? '';
+		lastSavedDescription.value = newValue ?? '';
 	},
 );
 
@@ -154,67 +140,61 @@ watch(descriptionValue, (newValue) => {
 });
 </script>
 <template>
-	<N8nTooltip :disabled="popoverOpen" :content="i18n.baseText('workflow.description.tooltip')">
-		<div :class="$style['description-popover-wrapper']" data-test-id="workflow-description-popover">
-			<N8nPopoverReka
-				id="workflow-description-popover"
-				:open="popoverOpen"
-				@update:open="handlePopoverOpenChange"
+	<Modal
+		:name="WORKFLOW_DESCRIPTION_MODAL_KEY"
+		:title="i18n.baseText('generic.description')"
+		:class="$style.container"
+		:event-bus="modalBus"
+	>
+		<template #footer>
+			<N8nIconButton
+				:class="{ [$style['description-button']]: true, [$style.active]: true }"
+				:square="true"
+				data-test-id="workflow-description-button"
+				icon="notebook-pen"
+				type="tertiary"
+				size="small"
+				:aria-label="i18n.baseText('workflow.description.tooltip')"
+			/>
+		</template>
+		<template #content>
+			<div
+				:class="$style['description-edit-content']"
+				data-test-id="workflow-description-edit-content"
 			>
-				<template #trigger>
-					<N8nIconButton
-						:class="{ [$style['description-button']]: true, [$style.active]: popoverOpen }"
-						:square="true"
-						data-test-id="workflow-description-button"
-						icon="notebook-pen"
-						type="tertiary"
-						size="small"
-						:aria-label="i18n.baseText('workflow.description.tooltip')"
+				<N8nInputLabel :label="i18n.baseText('generic.description')" :tooltip-text="textareaTip">
+					<N8nInput
+						ref="descriptionInput"
+						v-model="descriptionValue"
+						:placeholder="textareaTip"
+						:rows="6"
+						data-test-id="workflow-description-input"
+						type="textarea"
+						@keydown="handleKeyDown"
 					/>
-				</template>
-				<template #content>
-					<div
-						:class="$style['description-edit-content']"
-						data-test-id="workflow-description-edit-content"
-					>
-						<N8nInputLabel
-							:label="i18n.baseText('generic.description')"
-							:tooltip-text="textareaTip"
-						>
-							<N8nInput
-								ref="descriptionInput"
-								v-model="descriptionValue"
-								:placeholder="textareaTip"
-								:rows="6"
-								data-test-id="workflow-description-input"
-								type="textarea"
-								@keydown="handleKeyDown"
-							/>
-						</N8nInputLabel>
-					</div>
-					<footer :class="$style['popover-footer']">
-						<N8nButton
-							:label="i18n.baseText('generic.cancel')"
-							:size="'small'"
-							:disabled="isSaving"
-							type="tertiary"
-							data-test-id="workflow-description-cancel-button"
-							@click="cancel"
-						/>
-						<N8nButton
-							:label="i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText')"
-							:size="'small'"
-							:loading="isSaving"
-							:disabled="!canSave || isSaving"
-							type="primary"
-							data-test-id="workflow-description-save-button"
-							@click="save"
-						/>
-					</footer>
-				</template>
-			</N8nPopoverReka>
-		</div>
-	</N8nTooltip>
+				</N8nInputLabel>
+			</div>
+			<footer :class="$style['popover-footer']">
+				<N8nButton
+					:label="i18n.baseText('generic.cancel')"
+					:size="'small'"
+					:disabled="isSaving"
+					type="tertiary"
+					data-test-id="workflow-description-cancel-button"
+					@click="cancel"
+				/>
+				<N8nButton
+					:label="i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText')"
+					:size="'small'"
+					:loading="isSaving"
+					:disabled="!canSave || isSaving"
+					type="primary"
+					data-test-id="workflow-description-save-button"
+					@click="save"
+				/>
+			</footer>
+		</template>
+	</Modal>
 </template>
 
 <style module lang="scss">
