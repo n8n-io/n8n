@@ -2,25 +2,22 @@
 import {
 	PaginationRoot,
 	PaginationList,
-	PaginationFirst,
 	PaginationPrev,
 	PaginationListItem,
 	PaginationEllipsis,
 	PaginationNext,
-	PaginationLast,
 } from 'reka-ui';
 import { ref } from 'vue';
 
 interface Props {
-	page?: number;
-	itemsPerPage?: number;
-	total?: number;
+	total: number;
+	currentPage?: number;
+	pageSize?: number;
 }
-
 const props = withDefaults(defineProps<Props>(), {
-	page: undefined,
-	itemsPerPage: undefined,
-	total: undefined,
+	total: 0,
+	currentPage: undefined,
+	pageSize: undefined,
 });
 
 const emit = defineEmits<{
@@ -28,11 +25,13 @@ const emit = defineEmits<{
 	'update:current-page': [page: number];
 }>();
 
-const page = ref(props.page ?? 1);
+const page = ref(props.currentPage ?? 1);
+const itemsPerPage = ref(props.pageSize ?? 10);
 
 // Handle page changes and emit events
 function handlePageChange(newPage: number) {
 	page.value = newPage;
+
 	emit('update:current-page', newPage);
 }
 </script>
@@ -41,7 +40,7 @@ function handlePageChange(newPage: number) {
 	<PaginationRoot
 		:total="total"
 		:items-per-page="itemsPerPage"
-		:page="page"
+		:page="props.currentPage"
 		:sibling-count="2"
 		:show-edges="true"
 		:class="{
@@ -50,33 +49,34 @@ function handlePageChange(newPage: number) {
 		@update:page="handlePageChange"
 	>
 		<PaginationList v-slot="{ items }">
-			<PaginationFirst class="n8n-pagination__button n8n-pagination__button--first">
-			</PaginationFirst>
+			<PaginationPrev class="n8n-pagination__button n8n-pagination__button--prev">
+				<slot name="prev-icon">
+					<span>‹</span>
+				</slot>
+			</PaginationPrev>
 
-			<PaginationPrev class="n8n-pagination__button n8n-pagination__button--prev"> </PaginationPrev>
-
-			<template>
-				<template v-for="(item, index) in items" :key="index">
-					<PaginationListItem
-						v-if="item.type === 'page'"
-						:value="item.value"
-						:class="{
-							'n8n-pagination__button': true,
-							'n8n-pagination__button--page': true,
-							'is-active': item.value === page,
-						}"
-					>
-						{{ item.value }}
-					</PaginationListItem>
-					<PaginationEllipsis v-else :index="index" class="n8n-pagination__ellipsis">
-						&#8230;
-					</PaginationEllipsis>
-				</template>
+			<template v-for="(item, index) in items" :key="index">
+				<PaginationListItem
+					v-if="item.type === 'page'"
+					:value="item.value"
+					:class="{
+						'n8n-pagination__button': true,
+						'n8n-pagination__button--page': true,
+						'is-active': item.value === page,
+					}"
+				>
+					{{ item.value }}
+				</PaginationListItem>
+				<PaginationEllipsis v-else :index="index" class="n8n-pagination__ellipsis">
+					&#8230;
+				</PaginationEllipsis>
 			</template>
 
-			<PaginationNext class="n8n-pagination__button n8n-pagination__button--next"> </PaginationNext>
-
-			<PaginationLast class="n8n-pagination__button n8n-pagination__button--last"> </PaginationLast>
+			<PaginationNext class="n8n-pagination__button n8n-pagination__button--next">
+				<slot name="next-icon">
+					<span>›</span>
+				</slot>
+			</PaginationNext>
 		</PaginationList>
 	</PaginationRoot>
 </template>
@@ -89,7 +89,6 @@ function handlePageChange(newPage: number) {
 	font-size: var(--font-size--sm);
 	height: 32px;
 	padding: 2px 0;
-
 	&.is-disabled {
 		opacity: 0.6;
 		pointer-events: none;
@@ -113,64 +112,52 @@ function handlePageChange(newPage: number) {
 	color: var(--color--text--inverse);
 	transition: color 0.2s ease;
 	user-select: none;
-
 	:deep(button) {
 		color: inherit;
 		padding: 0;
 	}
-
 	&:hover:not(:disabled):not(.is-active):not(.n8n-pagination__button--prev):not(
 			.n8n-pagination__button--next
 		):not(.n8n-pagination__button--first):not(.n8n-pagination__button--last) {
 		background: var(--color--background--light-3) !important;
 		color: var(--color--primary);
 		border: 1px solid var(--color--foreground);
-
 		:deep(button) {
 			color: var(--color--primary);
 			border: 1px solid var(--color--foreground);
 		}
 	}
-
 	&:active:not(:disabled) {
 		transform: scale(0.98);
 	}
-
 	&:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
-
 	&--prev,
 	&--next,
 	&--first,
 	&--last {
 		font-size: 14px;
 	}
-
 	&--next {
 		margin-right: 8px;
 	}
-
 	&.is-active {
 		color: var(--color--primary);
 		border: 1px solid var(--color--primary);
-
 		:deep(button) {
 			color: var(--color--primary);
 			border: 1px solid var(--color--primary);
 		}
-
 		&:hover {
 			background: var(--color--background--light-3) !important;
-
 			:deep(button) {
 				background: var(--color--background--light-3) !important;
 			}
 		}
 	}
 }
-
 .n8n-pagination__ellipsis {
 	min-width: 28px;
 	height: 28px;
