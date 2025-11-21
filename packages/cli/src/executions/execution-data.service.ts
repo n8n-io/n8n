@@ -36,7 +36,10 @@ export class ExecutionDataService {
 
 		if (node) {
 			returnData.data.startData = {
-				destinationNode: node.name,
+				destinationNode: {
+					nodeName: node.name,
+					mode: 'inclusive',
+				},
 				runNodeFilter: [node.name],
 			};
 			returnData.data.resultData.lastNodeExecuted = node.name;

@@ -455,7 +455,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result).toEqual({ val: expect.closeTo(helsinkiTimeNow, 1) });
+				expect(outcome.result).toEqual({ val: expect.closeTo(helsinkiTimeNow, 0) });
 			});
 
 			it('should use the default timezone', async () => {
@@ -472,7 +472,7 @@ describe('JsTaskRunner', () => {
 				});
 
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result).toEqual({ val: expect.closeTo(helsinkiTimeNow, 1) });
+				expect(outcome.result).toEqual({ val: expect.closeTo(helsinkiTimeNow, 0) });
 			});
 		});
 

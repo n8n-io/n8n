@@ -163,7 +163,7 @@ describe('WorkflowExecutionService', () => {
 			const result = await workflowExecutionService.executeManually(runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
-				destinationNode: runPayload.destinationNode,
+				destinationNode: { nodeName: runPayload.destinationNode, mode: 'inclusive' },
 				executionMode: 'manual',
 				runData: undefined,
 				pinData: runPayload.workflowData.pinData,
@@ -213,7 +213,7 @@ describe('WorkflowExecutionService', () => {
 				const result = await workflowExecutionService.executeManually(runPayload, user);
 
 				expect(workflowRunner.run).toHaveBeenCalledWith({
-					destinationNode: runPayload.destinationNode,
+					destinationNode: { nodeName: runPayload.destinationNode, mode: 'inclusive' },
 					executionMode: 'manual',
 					runData: runPayload.runData,
 					pinData: runPayload.workflowData.pinData,

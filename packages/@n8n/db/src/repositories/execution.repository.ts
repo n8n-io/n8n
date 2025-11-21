@@ -28,11 +28,12 @@ import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
-	IRunExecutionData,
+	IRunExecutionDataAll,
 } from 'n8n-workflow';
 import {
 	createEmptyRunExecutionData,
 	ManualExecutionCancelledError,
+	migrateRunExecutionData,
 	UnexpectedError,
 } from 'n8n-workflow';
 
@@ -217,7 +218,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
-					data: parse(executionData.data) as IRunExecutionData,
+					data: executionData.data
+						? migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll)
+						: undefined,
 					workflowData: executionData.workflowData,
 					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionResponse;
@@ -339,12 +342,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			});
 		}
 
+		console.log(executionData);
+
+		if (executionData.data) {
+			console.log('truthy');
+		}
+
 		return {
 			...rest,
 			...(options?.includeData && {
-				data: options?.unflattenData
-					? (parse(executionData.data) as IRunExecutionData)
-					: executionData.data,
+				data:
+					options?.unflattenData && executionData.data
+						? migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll)
+						: executionData.data,
 				workflowData: executionData?.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			}),
@@ -804,7 +814,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async stopDuringRun(execution: IExecutionResponse) {
 		const error = new ManualExecutionCancelledError(execution.id);
 
-		execution.data ??= createEmptyRunExecutionData();
+		execution.data = execution.data || createEmptyRunExecutionData();
+
 		execution.data.resultData.error = {
 			...error,
 			message: error.message,

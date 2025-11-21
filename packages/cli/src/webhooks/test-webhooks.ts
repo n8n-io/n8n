@@ -10,6 +10,7 @@ import type {
 	IHttpRequestMethods,
 	IRunData,
 	IWorkflowBase,
+	IDestinationNode,
 } from 'n8n-workflow';
 
 import { authAllowlistedNodes } from './constants';
@@ -104,7 +105,14 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { destinationNode, pushRef, workflowEntity, webhook: testWebhook } = registration;
+		const { pushRef, workflowEntity, webhook: testWebhook } = registration;
+		// TODO(CAT-1265): support destination node mode in test webhook registration.
+		const destinationNode: IDestinationNode | undefined = registration.destinationNode
+			? {
+					nodeName: registration.destinationNode,
+					mode: 'inclusive',
+				}
+			: undefined;
 
 		const workflow = this.toWorkflow(workflowEntity);
 
@@ -269,7 +277,7 @@ export class TestWebhooks implements IWebhookManager {
 		additionalData: IWorkflowExecuteAdditionalData;
 		runData?: IRunData;
 		pushRef?: string;
-		destinationNode?: string;
+		destinationNode?: IDestinationNode;
 		triggerToStartFrom?: WorkflowRequest.ManualRunPayload['triggerToStartFrom'];
 	}) {
 		const {
@@ -344,10 +352,11 @@ export class TestWebhooks implements IWebhookManager {
 
 			cacheableWebhook.userId = userId;
 
+			// TODO(CAT-1265): support destination node mode in test webhook registration.
 			const registration: TestWebhookRegistration = {
 				pushRef,
 				workflowEntity,
-				destinationNode,
+				destinationNode: destinationNode?.nodeName,
 				webhook: cacheableWebhook as IWebhookData,
 			};
 

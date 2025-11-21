@@ -14,7 +14,7 @@ describe('RunExecutionDataFactory', () => {
 			const result = createRunExecutionData();
 
 			expect(result).toEqual({
-				version: 0,
+				version: 1,
 				startData: {},
 				manualData: undefined,
 				parentExecution: undefined,
@@ -42,7 +42,7 @@ describe('RunExecutionDataFactory', () => {
 			const options = {
 				startData: {
 					startNodes: [{ name: 'Start', sourceData: { previousNode: 'Previous' } }],
-					destinationNode: 'End',
+					destinationNode: { nodeName: 'End', mode: 'inclusive' },
 				},
 				resultData: {
 					runData: { testNode: [] },
@@ -113,7 +113,7 @@ describe('RunExecutionDataFactory', () => {
 			const result = createEmptyRunExecutionData();
 
 			expect(result).toEqual({
-				version: 0,
+				version: 1,
 				resultData: {
 					runData: {},
 				},
@@ -139,7 +139,10 @@ describe('RunExecutionDataFactory', () => {
 
 			const result = createErrorExecutionData(node, error);
 
-			expect(result.startData?.destinationNode).toEqual('TestNode');
+			expect(result.startData?.destinationNode).toEqual({
+				nodeName: 'TestNode',
+				mode: 'inclusive',
+			});
 			expect(result.startData?.runNodeFilter).toEqual(['TestNode']);
 
 			expect(result.executionData?.contextData).toEqual({});
