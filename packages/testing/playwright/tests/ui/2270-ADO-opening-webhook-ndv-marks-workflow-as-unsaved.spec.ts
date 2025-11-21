@@ -2,9 +2,7 @@ import { test, expect } from '../../fixtures/base';
 
 test.describe('ADO-2270 Save button resets on webhook node open', () => {
 	test('should not reset the save button if webhook node is opened and closed', async ({ n8n }) => {
-		await n8n.goHome();
-
-		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
+		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode('Webhook');
 
 		await n8n.page.keyboard.press('Escape');

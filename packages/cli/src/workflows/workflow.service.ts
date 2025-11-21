@@ -205,9 +205,12 @@ export class WorkflowService {
 		parentFolderId?: string,
 		forceSave?: boolean,
 	): Promise<WorkflowEntity> {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
-			'workflow:update',
-		]);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			user,
+			['workflow:update'],
+			{ includeActiveVersion: true },
+		);
 
 		if (!workflow) {
 			this.logger.warn('User attempted to update a workflow without permissions', {
@@ -230,7 +233,10 @@ export class WorkflowService {
 			);
 		}
 
-		if (Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active'])).length > 0) {
+		if (
+			Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active', 'activeVersionId']))
+				.length > 0
+		) {
 			// Update the workflow's version when changing properties such as
 			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
 			// This is necessary for collaboration to work properly - even when only name or settings
@@ -246,8 +252,22 @@ export class WorkflowService {
 			);
 		}
 
+		// Convert 'active' boolean from frontend to 'activeVersionId' for backend
+		if ('active' in workflowUpdateData) {
+			if (workflowUpdateData.active) {
+				workflowUpdateData.activeVersionId = workflowUpdateData.versionId ?? workflow.versionId;
+			} else {
+				workflowUpdateData.activeVersionId = null;
+			}
+		}
+
 		const versionChanged =
 			workflowUpdateData.versionId && workflowUpdateData.versionId !== workflow.versionId;
+		const wasActive = workflow.activeVersionId !== null;
+		const isNowActive = workflowUpdateData.active ?? wasActive;
+		const activationStatusChanged = isNowActive !== wasActive;
+		const needsActiveVersionUpdate = activationStatusChanged || (versionChanged && isNowActive);
+
 		if (versionChanged) {
 			// To save a version, we need both nodes and connections
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
@@ -268,7 +288,7 @@ export class WorkflowService {
 		 * If a trigger or poller in the workflow was updated, the new value
 		 * will take effect only on removing and re-adding.
 		 */
-		if (workflow.active) {
+		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
 
@@ -308,8 +328,29 @@ export class WorkflowService {
 			'staticData',
 			'pinData',
 			'versionId',
+			'activeVersionId',
 			'description',
 		]);
+
+		// Save the workflow to history first, so we can retrieve the complete version object for the update
+		if (versionChanged) {
+			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
+		}
+
+		if (needsActiveVersionUpdate) {
+			const versionIdToFetch = versionChanged ? workflowUpdateData.versionId : workflow.versionId;
+			const version = await this.workflowHistoryService.getVersion(
+				user,
+				workflowId,
+				versionIdToFetch,
+			);
+
+			updatePayload.activeVersion = WorkflowHelpers.getActiveVersionUpdateValue(
+				workflow,
+				version,
+				isNowActive,
+			);
+		}
 
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
@@ -332,10 +373,6 @@ export class WorkflowService {
 
 		if (tagIds && !tagsDisabled) {
 			await this.workflowTagMappingRepository.overwriteTaggings(workflowId, tagIds);
-		}
-
-		if (versionChanged) {
-			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
 		const relations = tagsDisabled ? [] : ['tags'];
@@ -366,11 +403,7 @@ export class WorkflowService {
 			publicApi: false,
 		});
 
-		// Check if workflow activation status changed
-		const wasActive = workflow.active;
-		const isNowActive = updatedWorkflow.active;
-
-		if (isNowActive && !wasActive) {
+		if (activationStatusChanged && isNowActive) {
 			// Workflow is being activated
 			this.eventService.emit('workflow-activated', {
 				user,
@@ -378,7 +411,7 @@ export class WorkflowService {
 				workflow: updatedWorkflow,
 				publicApi: false,
 			});
-		} else if (!isNowActive && wasActive) {
+		} else if (activationStatusChanged && !isNowActive) {
 			// Workflow is being deactivated
 			this.eventService.emit('workflow-deactivated', {
 				user,
@@ -388,21 +421,24 @@ export class WorkflowService {
 			});
 		}
 
-		if (updatedWorkflow.active) {
+		if (isNowActive) {
 			// When the workflow is supposed to be active add it again
 			try {
 				await this.externalHooks.run('workflow.activate', [updatedWorkflow]);
-				await this.activeWorkflowManager.add(workflowId, workflow.active ? 'update' : 'activate');
+				await this.activeWorkflowManager.add(workflowId, wasActive ? 'update' : 'activate');
 			} catch (error) {
 				// If workflow could not be activated set it again to inactive
-				// and revert the versionId change so UI remains consistent
+				// and revert the versionId and activeVersionId change so UI remains consistent
 				await this.workflowRepository.update(workflowId, {
 					active: false,
+					activeVersion: null,
 					versionId: workflow.versionId,
 				});
 
 				// Also set it in the returned data
 				updatedWorkflow.active = false;
+				updatedWorkflow.activeVersionId = null;
+				updatedWorkflow.activeVersion = null;
 
 				// Emit deactivation event since activation failed
 				this.eventService.emit('workflow-deactivated', {
@@ -490,7 +526,7 @@ export class WorkflowService {
 			throw new BadRequestError('Workflow is already archived.');
 		}
 
-		if (workflow.active) {
+		if (workflow.activeVersionId !== null) {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
 
@@ -498,10 +534,13 @@ export class WorkflowService {
 		workflow.versionId = versionId;
 		workflow.isArchived = true;
 		workflow.active = false;
+		workflow.activeVersionId = null;
+		workflow.activeVersion = null;
 
 		await this.workflowRepository.update(workflowId, {
 			isArchived: true,
 			active: false,
+			activeVersion: null,
 			versionId,
 		});
 

@@ -1,5 +1,3 @@
-import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
-import { AddWorkflowHistoryAutoSaveFields1762847206508 } from './../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
 import { InitialMigration1588157391238 } from './1588157391238-InitialMigration';
 import { WebhookModel1592447867632 } from './1592447867632-WebhookModel';
 import { CreateIndexStoppedAt1594902918301 } from './1594902918301-CreateIndexStoppedAt';
@@ -55,6 +53,7 @@ import { AddToolsColumnToChatHubTables1761830340990 } from './1761830340990-AddT
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
+import { AddMfaColumns1690000000030 } from '../common/1690000000040-AddMfaColumns';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
 import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-ExecutionSoftDelete';
@@ -114,6 +113,9 @@ import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000
 import { AddAttachmentsToChatHubMessages1761773155024 } from '../common/1761773155024-AddAttachmentsToChatHubMessages';
 import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
 import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/1762763704614-BackfillMissingWorkflowHistoryRecords';
+import { AddIsGlobalColumnToCredentialsTable1762771954619 } from '../common/1762771954619-IsGlobalGlobalColumnToCredentialsTable';
+import { AddWorkflowHistoryAutoSaveFields1762847206508 } from '../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
+import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-AddActiveVersionIdColumn';
 import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common/1763572724000-ChangeOAuthStateColumnToUnboundedVarchar';
 import type { Migration } from '../migration-types';
 
@@ -231,8 +233,10 @@ export const mysqlMigrations: Migration[] = [
 	AddWorkflowDescriptionColumn1762177736257,
 	CreateOAuthEntities1760116750277,
 	BackfillMissingWorkflowHistoryRecords1762763704614,
+	AddIsGlobalColumnToCredentialsTable1762771954619,
 	AddWorkflowHistoryAutoSaveFields1762847206508,
 	AddToolsColumnToChatHubTables1761830340990,
 	ChangeOAuthStateColumnToUnboundedVarchar1763572724000,
 	AddAttachmentsToChatHubMessages1761773155024,
+	AddActiveVersionIdColumn1763047800000,
 ];
