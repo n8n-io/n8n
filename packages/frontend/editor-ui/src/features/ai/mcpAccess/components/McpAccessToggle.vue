@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ElSwitch } from 'element-plus';
-import { N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 
@@ -53,13 +53,13 @@ const onUpdateMCPEnabled = (value: string | number | boolean) => {
 				</N8nTooltip>
 			</div>
 		</div>
-		<div :class="$style['toggle-notice']">
-			<N8nText v-if="!props.modelValue" color="text-base" data-test-id="mcp-toggle-disabled-notice">
+		<div v-if="!props.modelValue" :class="$style['toggle-notice']">
+			<N8nText color="text-base" data-test-id="mcp-toggle-disabled-notice">
 				{{ i18n.baseText('settings.mcp.toggle.disabled.notice') }}
-				<a :href="MCP_DOCS_PAGE_URL" target="_blank">
-					{{ i18n.baseText('generic.learnMore') }}
-				</a>
 			</N8nText>
+			<N8nLink :to="MCP_DOCS_PAGE_URL" :new-window="true">
+				{{ i18n.baseText('generic.learnMore') }}
+			</N8nLink>
 		</div>
 	</div>
 </template>
@@ -95,5 +95,11 @@ const onUpdateMCPEnabled = (value: string | number | boolean) => {
 	justify-content: flex-end;
 	align-items: center;
 	flex-shrink: 0;
+}
+
+.toggle-notice {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 </style>
