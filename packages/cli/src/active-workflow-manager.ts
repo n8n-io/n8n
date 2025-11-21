@@ -415,6 +415,7 @@ export class ActiveWorkflowManager {
 	) {
 		const fullRunData: IRun = {
 			data: {
+				version: 1,
 				resultData: {
 					error,
 					runData: {},

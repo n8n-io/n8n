@@ -184,7 +184,7 @@ export class ExecutionRecoveryService {
 	}
 
 	private async runHooks(execution: IExecutionResponse) {
-		execution.data ??= { resultData: { runData: {} } };
+		execution.data ??= { version: 1, resultData: { runData: {} } };
 
 		const lifecycleHooks = getLifecycleHooksForRegularMain(
 			{

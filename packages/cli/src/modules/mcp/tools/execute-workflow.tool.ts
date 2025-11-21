@@ -209,6 +209,7 @@ export const executeWorkflow = async (
 	runData.pinData = getPinDataForTrigger(triggerNode, inputs);
 
 	runData.executionData = {
+		version: 1,
 		startData: {},
 		resultData: {
 			pinData: runData.pinData,
