@@ -5,10 +5,9 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 
 import { ElCheckbox } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useMessage } from '@/app/composables/useMessage';
 import UserRoleProvisioningDropdown, {
 	type UserRoleProvisioningSetting,
@@ -24,7 +23,6 @@ const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
-const pageRedirectionHelper = usePageRedirectionHelper();
 
 const savingForm = ref<boolean>(false);
 
@@ -179,125 +177,108 @@ function sendTrackingEvent(config: OidcConfigDto) {
 	telemetry.track('User updated single sign on settings', trackingMetadata);
 }
 
-const goToUpgrade = () => {
-	void pageRedirectionHelper.goToUpgrade('sso', 'upgrade-sso');
-};
-
 onMounted(async () => {
 	await loadOidcConfig();
 });
 </script>
 <template>
-	<div v-if="ssoStore.isEnterpriseOidcEnabled">
-		<div :class="$style.group">
-			<label>Redirect URL</label>
-			<CopyInput
-				:value="ssoStore.oidc.callbackUrl"
-				:copy-button-text="i18n.baseText('generic.clickToCopy')"
-				toast-title="Redirect URL copied to clipboard"
-			/>
-			<small>Copy the Redirect URL to configure your OIDC provider </small>
-		</div>
-		<div :class="$style.group">
-			<label>Discovery Endpoint</label>
-			<N8nInput
-				:model-value="discoveryEndpoint"
-				type="text"
-				data-test-id="oidc-discovery-endpoint"
-				placeholder="https://accounts.google.com/.well-known/openid-configuration"
-				@update:model-value="(v: string) => (discoveryEndpoint = v)"
-			/>
-			<small>Paste here your discovery endpoint</small>
-		</div>
-		<div :class="$style.group">
-			<label>Client ID</label>
-			<N8nInput
-				:model-value="clientId"
-				type="text"
-				data-test-id="oidc-client-id"
-				@update:model-value="(v: string) => (clientId = v)"
-			/>
-			<small>The client ID you received when registering your application with your provider</small>
-		</div>
-		<div :class="$style.group">
-			<label>Client Secret</label>
-			<N8nInput
-				:model-value="clientSecret"
-				type="password"
-				data-test-id="oidc-client-secret"
-				@update:model-value="(v: string) => (clientSecret = v)"
-			/>
-			<small
-				>The client Secret you received when registering your application with your provider</small
-			>
-		</div>
-		<div :class="$style.group">
-			<label>Prompt</label>
-			<N8nSelect
-				:model-value="prompt"
-				data-test-id="oidc-prompt"
-				@update:model-value="handlePromptChange"
-			>
-				<N8nOption
-					v-for="option in promptDescriptions"
-					:key="option.value"
-					:label="option.label"
-					data-test-id="oidc-prompt-filter-option"
-					:value="option.value"
-				/>
-			</N8nSelect>
-			<small>The prompt parameter to use when authenticating with the OIDC provider</small>
-		</div>
-		<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="oidc" />
-		<ConfirmProvisioningDialog
-			v-model="showUserRoleProvisioningDialog"
-			:new-provisioning-setting="userRoleProvisioning"
-			auth-protocol="oidc"
-			@confirm-provisioning="onOidcSettingsSave(true)"
-			@cancel="showUserRoleProvisioningDialog = false"
+	<div :class="$style.group">
+		<label>Redirect URL</label>
+		<CopyInput
+			:value="ssoStore.oidc.callbackUrl"
+			:copy-button-text="i18n.baseText('generic.clickToCopy')"
+			toast-title="Redirect URL copied to clipboard"
 		/>
-		<div :class="$style.group">
-			<label>Authentication Context Class Reference</label>
-			<N8nInput
-				:model-value="authenticationContextClassReference"
-				type="textarea"
-				data-test-id="oidc-authentication-context-class-reference"
-				placeholder="mfa, phrh, pwd"
-				@update:model-value="(v: string) => (authenticationContextClassReference = v)"
-			/>
-			<small
-				>ACR values to include in the authorization request (acr_values parameter), separated by
-				commas in order of preference.</small
-			>
-		</div>
-		<div :class="[$style.group, $style.checkboxGroup]">
-			<ElCheckbox v-model="ssoStore.isOidcLoginEnabled" data-test-id="sso-oidc-toggle">{{
-				i18n.baseText('settings.sso.activated')
-			}}</ElCheckbox>
-		</div>
-
-		<div :class="$style.buttons">
-			<N8nButton
-				data-test-id="sso-oidc-save"
-				size="large"
-				:loading="savingForm"
-				:disabled="savingForm || cannotSaveOidcSettings"
-				@click="onOidcSettingsSave(false)"
-			>
-				{{ i18n.baseText('settings.sso.settings.save') }}
-			</N8nButton>
-		</div>
+		<small>Copy the Redirect URL to configure your OIDC provider </small>
 	</div>
-	<N8nActionBox
-		v-else
-		data-test-id="sso-content-unlicensed"
-		:class="$style.actionBox"
-		:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
-		@click:button="goToUpgrade"
-	>
-		<template #heading>
-			<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
-		</template>
-	</N8nActionBox>
+	<div :class="$style.group">
+		<label>Discovery Endpoint</label>
+		<N8nInput
+			:model-value="discoveryEndpoint"
+			type="text"
+			data-test-id="oidc-discovery-endpoint"
+			placeholder="https://accounts.google.com/.well-known/openid-configuration"
+			@update:model-value="(v: string) => (discoveryEndpoint = v)"
+		/>
+		<small>Paste here your discovery endpoint</small>
+	</div>
+	<div :class="$style.group">
+		<label>Client ID</label>
+		<N8nInput
+			:model-value="clientId"
+			type="text"
+			data-test-id="oidc-client-id"
+			@update:model-value="(v: string) => (clientId = v)"
+		/>
+		<small>The client ID you received when registering your application with your provider</small>
+	</div>
+	<div :class="$style.group">
+		<label>Client Secret</label>
+		<N8nInput
+			:model-value="clientSecret"
+			type="password"
+			data-test-id="oidc-client-secret"
+			@update:model-value="(v: string) => (clientSecret = v)"
+		/>
+		<small
+			>The client Secret you received when registering your application with your provider</small
+		>
+	</div>
+	<div :class="$style.group">
+		<label>Prompt</label>
+		<N8nSelect
+			:model-value="prompt"
+			data-test-id="oidc-prompt"
+			@update:model-value="handlePromptChange"
+		>
+			<N8nOption
+				v-for="option in promptDescriptions"
+				:key="option.value"
+				:label="option.label"
+				data-test-id="oidc-prompt-filter-option"
+				:value="option.value"
+			/>
+		</N8nSelect>
+		<small>The prompt parameter to use when authenticating with the OIDC provider</small>
+	</div>
+	<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="oidc" />
+	<ConfirmProvisioningDialog
+		v-model="showUserRoleProvisioningDialog"
+		:new-provisioning-setting="userRoleProvisioning"
+		auth-protocol="oidc"
+		@confirm-provisioning="onOidcSettingsSave(true)"
+		@cancel="showUserRoleProvisioningDialog = false"
+	/>
+	<div :class="$style.group">
+		<label>Authentication Context Class Reference</label>
+		<N8nInput
+			:model-value="authenticationContextClassReference"
+			type="textarea"
+			data-test-id="oidc-authentication-context-class-reference"
+			placeholder="mfa, phrh, pwd"
+			@update:model-value="(v: string) => (authenticationContextClassReference = v)"
+		/>
+		<small
+			>ACR values to include in the authorization request (acr_values parameter), separated by
+			commas in order of preference.</small
+		>
+	</div>
+	<div :class="[$style.group, $style.checkboxGroup]">
+		<ElCheckbox v-model="ssoStore.isOidcLoginEnabled" data-test-id="sso-oidc-toggle">{{
+			i18n.baseText('settings.sso.activated')
+		}}</ElCheckbox>
+	</div>
+
+	<div :class="$style.buttons">
+		<N8nButton
+			data-test-id="sso-oidc-save"
+			size="large"
+			:loading="savingForm"
+			:disabled="savingForm || cannotSaveOidcSettings"
+			@click="onOidcSettingsSave(false)"
+		>
+			{{ i18n.baseText('settings.sso.settings.save') }}
+		</N8nButton>
+	</div>
 </template>
 <style lang="scss" module src="../styles/sso-form.module.scss" />

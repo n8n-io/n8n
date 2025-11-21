@@ -6,9 +6,8 @@ import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
 import { ElCheckbox } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useMessage } from '@/app/composables/useMessage';
 import { computed, onMounted, ref } from 'vue';
 import UserRoleProvisioningDropdown, {
@@ -25,7 +24,6 @@ const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
-const pageRedirectionHelper = usePageRedirectionHelper();
 
 const savingForm = ref<boolean>(false);
 
@@ -268,107 +266,89 @@ const validateSamlInput = () => {
 	}
 };
 
-const goToUpgrade = () => {
-	void pageRedirectionHelper.goToUpgrade('sso', 'upgrade-sso');
-};
-
 onMounted(async () => {
 	await loadSamlConfig();
 });
 </script>
 <template>
-	<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
-			<CopyInput
-				:value="redirectUrl"
-				:copy-button-text="i18n.baseText('generic.clickToCopy')"
-				:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
-			/>
-			<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+	<div :class="$style.group">
+		<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+		<CopyInput
+			:value="redirectUrl"
+			:copy-button-text="i18n.baseText('generic.clickToCopy')"
+			:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
+		/>
+		<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
+	</div>
+	<div :class="$style.group">
+		<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
+		<CopyInput
+			:value="entityId"
+			:copy-button-text="i18n.baseText('generic.clickToCopy')"
+			:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
+		/>
+		<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
+	</div>
+	<div :class="$style.group">
+		<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
+		<div class="mt-2xs mb-s">
+			<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
 		</div>
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
-			<CopyInput
-				:value="entityId"
-				:copy-button-text="i18n.baseText('generic.clickToCopy')"
-				:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
-			/>
-			<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
-		</div>
-		<div :class="$style.group">
-			<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
-			<div class="mt-2xs mb-s">
-				<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
-			</div>
-			<div v-if="ipsType === IdentityProviderSettingsType.URL">
-				<N8nInput
-					v-model="metadataUrl"
-					type="text"
-					name="metadataUrl"
-					size="large"
-					:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
-					data-test-id="sso-provider-url"
-				/>
-				<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
-			</div>
-			<div v-if="ipsType === IdentityProviderSettingsType.XML">
-				<N8nInput
-					v-model="metadata"
-					type="textarea"
-					name="metadata"
-					:rows="4"
-					data-test-id="sso-provider-xml"
-				/>
-				<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
-			</div>
-			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
-			<ConfirmProvisioningDialog
-				v-model="showUserRoleProvisioningDialog"
-				:new-provisioning-setting="userRoleProvisioning"
-				auth-protocol="saml"
-				@confirm-provisioning="onSave(true)"
-				@cancel="showUserRoleProvisioningDialog = false"
-			/>
-			<div :class="[$style.group, $style.checkboxGroup]">
-				<ElCheckbox v-model="samlLoginEnabled" data-test-id="sso-toggle">{{
-					i18n.baseText('settings.sso.activated')
-				}}</ElCheckbox>
-			</div>
-		</div>
-		<div :class="$style.buttons">
-			<N8nButton
-				:disabled="!isSaveEnabled"
-				:loading="savingForm"
+		<div v-if="ipsType === IdentityProviderSettingsType.URL">
+			<N8nInput
+				v-model="metadataUrl"
+				type="text"
+				name="metadataUrl"
 				size="large"
-				data-test-id="sso-save"
-				@click="onSave(false)"
-			>
-				{{ i18n.baseText('settings.sso.settings.save') }}
-			</N8nButton>
-			<N8nButton
-				:disabled="!isTestEnabled"
-				size="large"
-				type="tertiary"
-				data-test-id="sso-test"
-				@click="onTest"
-			>
-				{{ i18n.baseText('settings.sso.settings.test') }}
-			</N8nButton>
+				:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
+				data-test-id="sso-provider-url"
+			/>
+			<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
+		</div>
+		<div v-if="ipsType === IdentityProviderSettingsType.XML">
+			<N8nInput
+				v-model="metadata"
+				type="textarea"
+				name="metadata"
+				:rows="4"
+				data-test-id="sso-provider-xml"
+			/>
+			<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
+		</div>
+		<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
+		<ConfirmProvisioningDialog
+			v-model="showUserRoleProvisioningDialog"
+			:new-provisioning-setting="userRoleProvisioning"
+			auth-protocol="saml"
+			@confirm-provisioning="onSave(true)"
+			@cancel="showUserRoleProvisioningDialog = false"
+		/>
+		<div :class="[$style.group, $style.checkboxGroup]">
+			<ElCheckbox v-model="samlLoginEnabled" data-test-id="sso-toggle">{{
+				i18n.baseText('settings.sso.activated')
+			}}</ElCheckbox>
 		</div>
 	</div>
-	<N8nActionBox
-		v-else
-		data-test-id="sso-content-unlicensed"
-		:class="$style.actionBox"
-		:description="i18n.baseText('settings.sso.actionBox.description')"
-		:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
-		@click:button="goToUpgrade"
-	>
-		<template #heading>
-			<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
-		</template>
-	</N8nActionBox>
+	<div :class="$style.buttons">
+		<N8nButton
+			:disabled="!isSaveEnabled"
+			:loading="savingForm"
+			size="large"
+			data-test-id="sso-save"
+			@click="onSave(false)"
+		>
+			{{ i18n.baseText('settings.sso.settings.save') }}
+		</N8nButton>
+		<N8nButton
+			:disabled="!isTestEnabled"
+			size="large"
+			type="tertiary"
+			data-test-id="sso-test"
+			@click="onTest"
+		>
+			{{ i18n.baseText('settings.sso.settings.test') }}
+		</N8nButton>
+	</div>
 </template>
 
 <style lang="scss" module src="../styles/sso-form.module.scss" />
