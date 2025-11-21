@@ -11,6 +11,7 @@ import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
 import { N8nActionToggle, N8nTooltip, N8nBadge } from '@n8n/design-system';
+import { getLastPublishedByUser } from '@/features/workflows/workflowHistory/utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -75,8 +76,8 @@ const versionName = computed(() => {
 });
 
 const publishedAt = computed(() => {
-	// TODO: replace with the actual published timestamp once available
-	return props.isVersionActive ? 'Published at X' : null;
+	const lastPublishedByUser = getLastPublishedByUser(props.item.workflowPublishHistory);
+	return lastPublishedByUser ? formatTimestamp(lastPublishedByUser.createdAt) : null;
 });
 
 const onAction = (value: string) => {
@@ -180,7 +181,7 @@ onMounted(() => {
 
 		.metaItem {
 			justify-self: start;
-			max-width: 160px;
+			max-width: 180px;
 			white-space: nowrap;
 			overflow: hidden;
 			text-overflow: ellipsis;
