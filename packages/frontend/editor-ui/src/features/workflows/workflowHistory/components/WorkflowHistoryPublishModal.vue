@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { N8nHeading, N8nText, N8nButton } from '@n8n/design-system';
+import { N8nHeading, N8nButton, N8nCallout } from '@n8n/design-system';
 import { WORKFLOW_HISTORY_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -46,7 +46,9 @@ const handlePublish = async () => {
 			</N8nHeading>
 		</template>
 		<template #content>
-			<N8nText> {{ i18n.baseText('workflowHistory.publishModal.description') }} </N8nText>
+			<N8nCallout theme="warning">
+				{{ i18n.baseText('workflowHistory.publishModal.description') }}
+			</N8nCallout>
 		</template>
 		<template #footer>
 			<div :class="$style.footerButtons">
