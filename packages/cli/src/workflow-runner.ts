@@ -151,6 +151,7 @@ export class WorkflowRunner {
 		 * so we persist all details to give workers full access to them.
 		 */
 		if (data.executionMode === 'manual' && offloadingManualExecutionsInQueueMode) {
+			console.log('offloadingManualExecutionsInQueueMode');
 			data.executionData = createRunExecutionData({
 				startData: {
 					startNodes: data.startNodes,
@@ -158,8 +159,11 @@ export class WorkflowRunner {
 				},
 				resultData: {
 					pinData: data.pinData,
-					// Set this to null so `createRunExecutionData` doesn't initialize it.
-					// Otherwise this would be treated as a partial execution.
+					// If `runData` is initialized to an empty object the execution will
+					// be treated like a partial manual execution instead of a full
+					// manual execution.
+					// So we have to set this to null to instruct
+					// `createRunExecutionData` to not initialize it.
 					runData: data.runData ?? null,
 				},
 				manualData: {
@@ -167,8 +171,10 @@ export class WorkflowRunner {
 					dirtyNodeNames: data.dirtyNodeNames,
 					triggerToStartFrom: data.triggerToStartFrom,
 				},
-				// Set this to null so `createRunExecutionData` doesn't initialize it.
-				// Otherwise this would be treated as a resumed execution after waiting.
+				// If `executionData` is initialized the execution will be treated like
+				// a resumed execution after waiting, instead of a manual execution.
+				// So we have to set this to null to instruct `createRunExecutionData`
+				// to not initialize it.
 				executionData: null,
 			});
 		}
