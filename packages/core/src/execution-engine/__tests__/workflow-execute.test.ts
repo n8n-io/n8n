@@ -2587,10 +2587,9 @@ describe('WorkflowExecute', () => {
 					},
 					lastNodeExecuted: 'Processing',
 				},
-				executionData: mock<IRunExecutionData['executionData']>({
-					nodeExecutionStack: [],
-					metadata: {},
-				}),
+				executionData: {
+					runtimeData: { version: 1, establishedAt: 1763723652184, source: 'manual' },
+				},
 			});
 
 			// Set the run execution data on the workflow execute instance
@@ -2606,6 +2605,7 @@ describe('WorkflowExecute', () => {
 
 			const updatedExecutionData = {
 				data: {
+					version: 0,
 					startData: { startNodes: [{ name: 'Start', sourceData: null }] },
 					resultData: {
 						runData: {
@@ -2621,10 +2621,14 @@ describe('WorkflowExecute', () => {
 						},
 						lastNodeExecuted: 'Processing',
 					},
-					executionData: mock<IRunExecutionData['executionData']>({
+					executionData: {
+						contextData: {},
 						nodeExecutionStack: [],
 						metadata: {},
-					}),
+						waitingExecution: {},
+						waitingExecutionSource: {},
+						runtimeData: { version: 1, establishedAt: 1763723652184, source: 'manual' },
+					},
 				},
 			};
 
