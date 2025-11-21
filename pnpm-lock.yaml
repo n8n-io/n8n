@@ -81,6 +81,9 @@ catalogs:
     js-base64:
       specifier: 3.7.2
       version: 3.7.2
+    jsonrepair:
+      specifier: ^3.13.1
+      version: 3.13.1
     jsonwebtoken:
       specifier: 9.0.2
       version: 9.0.2
@@ -3304,6 +3307,9 @@ importers:
       js-base64:
         specifier: 'catalog:'
         version: 3.7.2(patch_hash=bb02fdf69495c7b0768791b60ab6e1a002053b8decd19a174f5755691e5c9500)
+      jsonrepair:
+        specifier: 'catalog:'
+        version: 3.13.1
       jssha:
         specifier: 3.3.1
         version: 3.3.1
@@ -13080,6 +13086,10 @@ packages:
   jsonpointer@5.0.1:
     resolution: {integrity: sha512-p/nXbhSEcu3pZRdkW1OfJhpsVtW1gd4Wa1fnQc9YLiTfAjn0312eMKimbdIQzuZl9aa9xUGaRlP9T/CJE/ditQ==}
     engines: {node: '>=0.10.0'}
+
+  jsonrepair@3.13.1:
+    resolution: {integrity: sha512-WJeiE0jGfxYmtLwBTEk8+y/mYcaleyLXWaqp5bJu0/ZTSeG0KQq/wWQ8pmnkKenEdN6pdnn6QtcoSUkbqDHWNw==}
+    hasBin: true
 
   jsonschema@1.4.1:
     resolution: {integrity: sha512-S6cATIPVv1z0IlxdN+zUk5EPjkGCdnhN4wVSBlvoUO1tOLJootbo9CquNJmbIh4yikWHiUedhRYrNPn1arpEmQ==}
@@ -30657,6 +30667,8 @@ snapshots:
       underscore: 1.12.1
 
   jsonpointer@5.0.1: {}
+
+  jsonrepair@3.13.1: {}
 
   jsonschema@1.4.1: {}
 
