@@ -20,11 +20,12 @@ import {
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
+import { MCP_DOCS_PAGE_URL, MCP_SETTINGS_VIEW } from '@/features/ai/mcpAccess/mcp.constants';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 
 import { N8nSuggestedActions } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 const props = defineProps<{
 	workflow: IWorkflowDb;
 }>();
@@ -40,6 +41,7 @@ const telemetry = useTelemetry();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const { isEligibleForMcpAccess } = useMcp();
+const usersStore = useUsersStore();
 
 const isPopoverOpen = ref(false);
 const cachedSettings = ref<WorkflowSettings | null>(null);
@@ -72,17 +74,22 @@ const isProtectedEnvironment = computed(() => {
 	return sourceControlStore.preferences.branchReadOnly;
 });
 
-// Show MCP action if:
-// - MCP module is active
-// - Instance-level access is enabled
-// - Workflow is eligible for MCP access
-const isMcpAvailable = computed(() => {
-	return (
-		settingsStore.isModuleActive('mcp') &&
-		settingsStore.moduleSettings.mcp?.mcpAccessEnabled &&
-		isEligibleForMcpAccess(props.workflow)
-	);
+const isOwner = computed(() => usersStore.isInstanceOwner);
+const isAdmin = computed(() => usersStore.isAdmin);
+
+const isMcpModuleEnabled = computed(() => {
+	return settingsStore.isModuleActive('mcp');
 });
+
+const isMcpAccessEnabled = computed(() => {
+	return settingsStore.moduleSettings.mcp?.mcpAccessEnabled ?? false;
+});
+
+const isWorkflowEligibleForMcpAccess = computed(() => {
+	return isEligibleForMcpAccess(props.workflow);
+});
+
+const canToggleInstanceMCPAccess = computed(() => isOwner.value || isAdmin.value);
 
 const availableActions = computed(() => {
 	if (props.workflow.activeVersionId === null || workflowsCache.isCacheLoading.value) {
@@ -135,14 +142,32 @@ const availableActions = computed(() => {
 		});
 	}
 
-	if (isMcpAvailable.value && !suggestedActionSettings['mcp-access']?.ignored) {
-		actions.push({
-			id: 'mcp-access',
-			title: i18n.baseText('mcp.productionCheklist.title'),
-			description: i18n.baseText('mcp.productionCheklist.description'),
-			moreInfoLink: MCP_DOCS_PAGE_URL,
-			completed: props.workflow.settings?.availableInMCP ?? false,
-		});
+	if (isMcpModuleEnabled.value) {
+		if (!isMcpAccessEnabled.value) {
+			if (
+				canToggleInstanceMCPAccess.value &&
+				!suggestedActionSettings['instance-mcp-access']?.ignored
+			) {
+				actions.push({
+					id: 'instance-mcp-access',
+					title: i18n.baseText('mcp.productionChecklist.title'),
+					description: i18n.baseText('mcp.productionChecklist.instance.description'),
+					moreInfoLink: MCP_DOCS_PAGE_URL,
+					completed: false,
+				});
+			}
+		} else if (
+			isWorkflowEligibleForMcpAccess.value &&
+			!suggestedActionSettings['workflow-mcp-access']?.ignored
+		) {
+			actions.push({
+				id: 'workflow-mcp-access',
+				title: i18n.baseText('mcp.productionChecklist.title'),
+				description: i18n.baseText('mcp.productionChecklist.workflow.description'),
+				moreInfoLink: MCP_DOCS_PAGE_URL,
+				completed: props.workflow.settings?.availableInMCP ?? false,
+			});
+		}
 	}
 
 	return actions;
@@ -156,25 +181,38 @@ async function loadWorkflowSettings() {
 }
 
 async function handleActionClick(actionId: string) {
-	if (actionId === 'evaluations') {
-		// Navigate to evaluations
-		await router.push({
-			name: VIEWS.EVALUATION_EDIT,
-			params: { name: props.workflow.id },
-		});
-	} else if (
-		actionId === 'errorWorkflow' ||
-		actionId === 'timeSaved' ||
-		actionId === 'mcp-access'
-	) {
-		// Open workflow settings modal
-		uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+	switch (actionId) {
+		case 'evaluations':
+			// Navigate to evaluations
+			await router.push({
+				name: VIEWS.EVALUATION_EDIT,
+				params: { name: props.workflow.id },
+			});
+			break;
+		case 'errorWorkflow':
+		case 'timeSaved':
+		case 'workflow-mcp-access':
+			// Open workflow settings modal
+			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+			break;
+		case 'instance-mcp-access':
+			// Open settings page
+			await router.push({ name: MCP_SETTINGS_VIEW });
+			break;
+		default:
+			break;
 	}
 	isPopoverOpen.value = false;
 }
 
 function isValidAction(action: string): action is ActionType {
-	return ['evaluations', 'errorWorkflow', 'timeSaved', 'mcp-access'].includes(action);
+	return [
+		'evaluations',
+		'errorWorkflow',
+		'timeSaved',
+		'workflow-mcp-access',
+		'instance-mcp-access',
+	].includes(action);
 }
 
 async function handleIgnoreClick(actionId: string) {
