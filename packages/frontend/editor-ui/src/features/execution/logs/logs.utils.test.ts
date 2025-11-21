@@ -1094,7 +1094,7 @@ describe(createLogTree, () => {
 		const logs = createLogTree(
 			createTestWorkflowObject(aiChatWorkflow),
 			createTestWorkflowExecutionResponse({
-				data: createRunExecutionData({ resultData: { runData: {} } }),
+				data: createEmptyRunExecutionData(),
 			}),
 		);
 
