@@ -92,6 +92,38 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 
 <template>
 	<div :class="$style.insightsWrapper">
+		<N8nCallout
+			v-if="shouldShowQueueModeWarning"
+			:class="$style.queueModeWarning"
+			theme="warning"
+			data-test-id="insights-queue-mode-warning"
+			round-corners
+		>
+			<N8nText color="text-base" size="small">
+				{{ i18n.baseText('insights.banner.queueMode.warning') }}
+				<N8nLink
+					size="small"
+					:href="i18n.baseText('insights.banner.queueMode.warning.link.url')"
+					new-window
+					theme="text"
+					:underline="false"
+				>
+					<span :class="$style.underlined">
+						{{ i18n.baseText('insights.banner.queueMode.warning.link.text') }}
+					</span>
+					↗
+				</N8nLink>
+			</N8nText>
+			<template #trailingContent>
+				<N8nIcon
+					icon="x"
+					:title="i18n.baseText('generic.dismiss')"
+					class="clickable"
+					data-test-id="insights-queue-mode-warning-close"
+					@click="dismissQueueModeWarning"
+				/>
+			</template>
+		</N8nCallout>
 		<div :class="$style.insights">
 			<ul data-test-id="insights-summary-tabs">
 				<li
@@ -173,36 +205,6 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 			</ul>
 		</div>
 		<!-- TODO: This should be removed after some time when the number issue is behind us -->
-		<N8nCallout
-			v-if="shouldShowQueueModeWarning"
-			:class="$style.queueModeWarning"
-			theme="warning"
-			data-test-id="insights-queue-mode-warning"
-			slim
-		>
-			<N8nText color="text-base" size="small">
-				{{ i18n.baseText('insights.banner.queueMode.warning') }}
-				<N8nLink
-					size="small"
-					:href="i18n.baseText('insights.banner.queueMode.warning.link.url')"
-					new-window
-					theme="text"
-				>
-					{{ i18n.baseText('insights.banner.queueMode.warning.link.text') }}
-					<N8nIcon icon="external-link" size="small" :class="$style.queueModeWarningLinkIcon" />
-				</N8nLink>
-			</N8nText>
-			<template #actions>
-				<N8nIcon
-					icon="x"
-					size="small"
-					:title="i18n.baseText('generic.dismiss')"
-					class="clickable"
-					data-test-id="insights-queue-mode-warning-close"
-					@click="dismissQueueModeWarning"
-				/>
-			</template>
-		</N8nCallout>
 	</div>
 </template>
 
@@ -376,12 +378,14 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 }
 
 .queueModeWarning {
-	position: absolute;
-	left: 50%;
-	transform: translateX(-50%) translateY(60%);
-	bottom: 0;
-	max-width: 90%;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-	z-index: 1;
+	margin-bottom: var(--spacing--xs);
+
+	a {
+		text-decoration: none;
+
+		.underlined {
+			text-decoration: underline;
+		}
+	}
 }
 </style>
