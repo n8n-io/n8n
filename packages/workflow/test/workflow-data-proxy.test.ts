@@ -13,7 +13,10 @@ import {
 	type IWorkflowBase,
 	type WorkflowExecuteMode,
 } from '../src/interfaces';
-import { createRunExecutionData } from '../src/run-execution-data-factory';
+import {
+	createEmptyRunExecutionData,
+	createRunExecutionData,
+} from '../src/run-execution-data-factory';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 
@@ -696,7 +699,7 @@ describe('WorkflowDataProxy', () => {
 			const noRunDataProxy = getProxyFromFixture(
 				fixture.workflow,
 				{
-					data: createRunExecutionData({ resultData: { runData: {} } }),
+					data: createEmptyRunExecutionData(),
 					mode: 'manual',
 					startedAt: new Date(),
 					status: 'success',
@@ -1024,11 +1027,7 @@ describe('WorkflowDataProxy', () => {
 
 			// Create run data without execution data for Telegram Trigger
 			const run = {
-				data: createRunExecutionData({
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				}),
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
@@ -1090,11 +1089,7 @@ describe('WorkflowDataProxy', () => {
 			};
 
 			const run = {
-				data: createRunExecutionData({
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				}),
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
@@ -1152,11 +1147,7 @@ describe('WorkflowDataProxy', () => {
 			};
 
 			const run = {
-				data: createRunExecutionData({
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				}),
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
