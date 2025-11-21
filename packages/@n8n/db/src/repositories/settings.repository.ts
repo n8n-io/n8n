@@ -13,7 +13,7 @@ export class SettingsRepository extends Repository<Settings> {
 		return await this.findOneBy({ key });
 	}
 
-	async findAllLike(key: string): Promise<Settings[]> {
-		return await this.findBy({ key: Like(key) });
+	async findByKeyPrefix(prefix: string): Promise<Settings[]> {
+		return await this.findBy({ key: Like(`${prefix}%`) });
 	}
 }

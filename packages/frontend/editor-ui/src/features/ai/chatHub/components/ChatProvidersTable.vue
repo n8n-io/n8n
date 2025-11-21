@@ -78,7 +78,7 @@ const tableHeaders = ref<Array<TableHeader<ChatProviderSettingsDto>>>([
 	},
 ]);
 
-const tableActions = ref([
+const tableActions = computed(() => [
 	{
 		label: i18n.baseText('settings.chatHub.providers.table.action.editProvider'),
 		value: 'editProvider',
@@ -175,7 +175,11 @@ const onTableAction = (action: string, settings: ChatProviderSettingsDto) => {
 				<template #[`item.models`]="{ item }">
 					<N8nTooltip
 						v-if="item.allowedModels?.length && item.allowedModels?.length > TRUNCATE_MODELS_AFTER"
-						:content="item.allowedModels?.map((m) => m.displayName).join(', ')"
+						:content="
+							item.allowedModels
+								?.map((m: ChatProviderSettingsDto['allowedModels'][number]) => m.displayName)
+								.join(', ')
+						"
 					>
 						<N8nText :color="item.enabled ? 'text-base' : 'primary'">
 							{{ modelsText(item) }}

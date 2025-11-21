@@ -9,9 +9,9 @@ import { SettingsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { jsonParse } from 'n8n-workflow';
 
-const WILDCARD = '%';
-const CHAT_PROVIDER_SETTINGS_KEY = (provider: ChatHubLLMProvider | typeof WILDCARD) =>
-	`chat.provider.${provider}`;
+const CHAT_PROVIDER_SETTINGS_KEY_PREFIX = 'chat.provider.';
+const CHAT_PROVIDER_SETTINGS_KEY = (provider: ChatHubLLMProvider) =>
+	`${CHAT_PROVIDER_SETTINGS_KEY_PREFIX}${provider}`;
 const CHAT_ENABLED_KEY = 'chat.access.enabled';
 
 const getDefaultProviderSettings = (provider: ChatHubLLMProvider): ChatProviderSettingsDto => ({
@@ -74,8 +74,8 @@ export class ChatHubSettingsService {
 	}
 
 	async getAllProviderSettings(): Promise<Record<ChatHubLLMProvider, ChatProviderSettingsDto>> {
-		const settings = await this.settingsRepository.findAllLike(
-			CHAT_PROVIDER_SETTINGS_KEY(WILDCARD),
+		const settings = await this.settingsRepository.findByKeyPrefix(
+			CHAT_PROVIDER_SETTINGS_KEY_PREFIX,
 		);
 
 		const persistedByProvider = new Map<ChatHubLLMProvider, ChatProviderSettingsDto>();
