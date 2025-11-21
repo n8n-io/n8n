@@ -271,83 +271,85 @@ onMounted(async () => {
 });
 </script>
 <template>
-	<div :class="$style.group">
-		<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
-		<CopyInput
-			:value="redirectUrl"
-			:copy-button-text="i18n.baseText('generic.clickToCopy')"
-			:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
-		/>
-		<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
-	</div>
-	<div :class="$style.group">
-		<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
-		<CopyInput
-			:value="entityId"
-			:copy-button-text="i18n.baseText('generic.clickToCopy')"
-			:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
-		/>
-		<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
-	</div>
-	<div :class="$style.group">
-		<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
-		<div class="mt-2xs mb-s">
-			<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
+	<div>
+		<div :class="$style.group">
+			<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
+			<CopyInput
+				:value="redirectUrl"
+				:copy-button-text="i18n.baseText('generic.clickToCopy')"
+				:toast-title="i18n.baseText('settings.sso.settings.redirectUrl.copied')"
+			/>
+			<small>{{ i18n.baseText('settings.sso.settings.redirectUrl.help') }}</small>
 		</div>
-		<div v-if="ipsType === IdentityProviderSettingsType.URL">
-			<N8nInput
-				v-model="metadataUrl"
-				type="text"
-				name="metadataUrl"
+		<div :class="$style.group">
+			<label>{{ i18n.baseText('settings.sso.settings.entityId.label') }}</label>
+			<CopyInput
+				:value="entityId"
+				:copy-button-text="i18n.baseText('generic.clickToCopy')"
+				:toast-title="i18n.baseText('settings.sso.settings.entityId.copied')"
+			/>
+			<small>{{ i18n.baseText('settings.sso.settings.entityId.help') }}</small>
+		</div>
+		<div :class="$style.group">
+			<label>{{ i18n.baseText('settings.sso.settings.ips.label') }}</label>
+			<div class="mt-2xs mb-s">
+				<N8nRadioButtons v-model="ipsType" :options="ipsOptions" />
+			</div>
+			<div v-if="ipsType === IdentityProviderSettingsType.URL">
+				<N8nInput
+					v-model="metadataUrl"
+					type="text"
+					name="metadataUrl"
+					size="large"
+					:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
+					data-test-id="sso-provider-url"
+				/>
+				<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
+			</div>
+			<div v-if="ipsType === IdentityProviderSettingsType.XML">
+				<N8nInput
+					v-model="metadata"
+					type="textarea"
+					name="metadata"
+					:rows="4"
+					data-test-id="sso-provider-xml"
+				/>
+				<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
+			</div>
+			<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
+			<ConfirmProvisioningDialog
+				v-model="showUserRoleProvisioningDialog"
+				:new-provisioning-setting="userRoleProvisioning"
+				auth-protocol="saml"
+				@confirm-provisioning="onSave(true)"
+				@cancel="showUserRoleProvisioningDialog = false"
+			/>
+			<div :class="[$style.group, $style.checkboxGroup]">
+				<ElCheckbox v-model="samlLoginEnabled" data-test-id="sso-toggle">{{
+					i18n.baseText('settings.sso.activated')
+				}}</ElCheckbox>
+			</div>
+		</div>
+		<div :class="$style.buttons">
+			<N8nButton
+				:disabled="!isSaveEnabled"
+				:loading="savingForm"
 				size="large"
-				:placeholder="i18n.baseText('settings.sso.settings.ips.url.placeholder')"
-				data-test-id="sso-provider-url"
-			/>
-			<small>{{ i18n.baseText('settings.sso.settings.ips.url.help') }}</small>
+				data-test-id="sso-save"
+				@click="onSave(false)"
+			>
+				{{ i18n.baseText('settings.sso.settings.save') }}
+			</N8nButton>
+			<N8nButton
+				:disabled="!isTestEnabled"
+				size="large"
+				type="tertiary"
+				data-test-id="sso-test"
+				@click="onTest"
+			>
+				{{ i18n.baseText('settings.sso.settings.test') }}
+			</N8nButton>
 		</div>
-		<div v-if="ipsType === IdentityProviderSettingsType.XML">
-			<N8nInput
-				v-model="metadata"
-				type="textarea"
-				name="metadata"
-				:rows="4"
-				data-test-id="sso-provider-xml"
-			/>
-			<small>{{ i18n.baseText('settings.sso.settings.ips.xml.help') }}</small>
-		</div>
-		<UserRoleProvisioningDropdown v-model="userRoleProvisioning" auth-protocol="saml" />
-		<ConfirmProvisioningDialog
-			v-model="showUserRoleProvisioningDialog"
-			:new-provisioning-setting="userRoleProvisioning"
-			auth-protocol="saml"
-			@confirm-provisioning="onSave(true)"
-			@cancel="showUserRoleProvisioningDialog = false"
-		/>
-		<div :class="[$style.group, $style.checkboxGroup]">
-			<ElCheckbox v-model="samlLoginEnabled" data-test-id="sso-toggle">{{
-				i18n.baseText('settings.sso.activated')
-			}}</ElCheckbox>
-		</div>
-	</div>
-	<div :class="$style.buttons">
-		<N8nButton
-			:disabled="!isSaveEnabled"
-			:loading="savingForm"
-			size="large"
-			data-test-id="sso-save"
-			@click="onSave(false)"
-		>
-			{{ i18n.baseText('settings.sso.settings.save') }}
-		</N8nButton>
-		<N8nButton
-			:disabled="!isTestEnabled"
-			size="large"
-			type="tertiary"
-			data-test-id="sso-test"
-			@click="onTest"
-		>
-			{{ i18n.baseText('settings.sso.settings.test') }}
-		</N8nButton>
 	</div>
 </template>
 
