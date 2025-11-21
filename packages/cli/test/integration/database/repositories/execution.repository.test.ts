@@ -88,7 +88,7 @@ describe('ExecutionRepository', () => {
 		});
 	});
 
-	describe('V0 to V1 migration', () => {
+	describe('run execution data migration', () => {
 		it('should automatically migrate IRunExecutionDataV0 to V1 when reading', async () => {
 			const executionRepo = Container.get(ExecutionRepository);
 			const executionDataRepo = Container.get(ExecutionDataRepository);
