@@ -41,7 +41,7 @@ const onUpdateClick = async () => {
 		data-test-id="version-update-next-versions-link"
 		:item="{
 			id: 'version-update-cta',
-			icon: 'status-warning',
+			icon: { value: 'status-warning', type: 'icon', color: 'primary' },
 
 			label: i18n.baseText('whatsNew.versionsBehind', {
 				interpolate: {

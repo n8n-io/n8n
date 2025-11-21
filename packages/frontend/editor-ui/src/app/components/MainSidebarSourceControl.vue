@@ -86,7 +86,7 @@ function pullWorkfolder() {
 
 <template>
 	<div
-		v-if="sourceControlAvailable"
+		v-if="sourceControlAvailable && currentBranch"
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,
