@@ -29,46 +29,16 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		const result = await this.workflowHistoryRepository
-			.createQueryBuilder('wh')
-			.leftJoin(
-				(qb) => {
-					return qb
-						.select('wph.versionId', 'versionId')
-						.addSelect('MAX(wph.createdAt)', 'maxCreatedAt')
-						.from('workflow_publish_history', 'wph')
-						.where('wph.workflowId = :workflowId', { workflowId: workflow.id })
-						.andWhere('wph.mode IN (:...modes)', { modes: ['activated', 'updated'] })
-						.groupBy('wph.versionId');
-				},
-				'latestPublished',
-				'latestPublished.versionId = wh.versionId',
-			)
-			.leftJoinAndSelect(
-				'wh.workflowPublishHistory',
-				'wph',
-				'wph.createdAt = latestPublished.maxCreatedAt',
-			)
-			.where('wh.workflowId = :workflowId', { workflowId: workflow.id })
-			.select([
-				'wh.workflowId',
-				'wh.versionId',
-				'wh.authors',
-				'wh.createdAt',
-				'wh.updatedAt',
-				'wph.createdAt',
-				'wph.userId',
-			])
-			.take(take)
-			.skip(skip)
-			.orderBy('wh.createdAt', 'DESC')
-			.getMany();
-
-		return result.map(({ workflowPublishHistory, ...rest }) => ({
-			...rest,
-			lastActivatedAt: workflowPublishHistory[0]?.createdAt,
-			lastActivatedBy: workflowPublishHistory[0]?.userId,
-		}));
+		return await this.workflowHistoryRepository.find({
+			where: {
+				workflowId: workflow.id,
+			},
+			take,
+			skip,
+			select: ['workflowId', 'versionId', 'authors', 'createdAt', 'updatedAt'],
+			relations: ['workflowPublishHistory'],
+			order: { createdAt: 'DESC' },
+		});
 	}
 
 	async getVersion(user: User, workflowId: string, versionId: string): Promise<WorkflowHistory> {
@@ -85,6 +55,7 @@ export class WorkflowHistoryService {
 				workflowId: workflow.id,
 				versionId,
 			},
+			relations: ['workflowPublishHistory'],
 		});
 		if (!hist) {
 			throw new WorkflowHistoryVersionNotFoundError('');
