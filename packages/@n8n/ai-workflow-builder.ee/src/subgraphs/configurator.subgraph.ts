@@ -362,7 +362,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		return {
 			workflowJSON: subgraphOutput.workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
-			finalResponse,
 			messages: [new HumanMessage({ content: finalResponse })],
 		};
 	}

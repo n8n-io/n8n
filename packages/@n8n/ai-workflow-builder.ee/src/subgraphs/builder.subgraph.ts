@@ -213,7 +213,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 							new HumanMessage({
 								content:
 									state.supervisorInstructions ??
-									`Build workflow for: ${state.userRequest}\n\nCurrent workflow has ${state.workflowJSON.nodes.length} nodes: ${state.workflowJSON.nodes.map((n) => n.name).join(', ') || 'none'}`,
+									`${state.userRequest}\n\nCurrent workflow has ${state.workflowJSON.nodes.length} nodes: ${state.workflowJSON.nodes.map((n) => n.name).join(', ') || 'none'}`,
 							}),
 						]
 					: state.messages;
