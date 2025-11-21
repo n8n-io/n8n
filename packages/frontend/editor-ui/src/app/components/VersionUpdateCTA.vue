@@ -2,11 +2,9 @@
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useI18n } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { VERSIONS_MODAL_KEY } from '@/app/constants';
-
 import { N8nMenuItem } from '@n8n/design-system';
+
 interface Props {
 	disabled?: boolean;
 	tooltipText?: string;
@@ -19,13 +17,9 @@ const props = withDefaults(defineProps<Props>(), {
 
 const i18n = useI18n();
 const versionsStore = useVersionsStore();
-const uiStore = useUIStore();
+
 const pageRedirectionHelper = usePageRedirectionHelper();
 const telemetry = useTelemetry();
-
-const openUpdatesPanel = () => {
-	uiStore.openModal(VERSIONS_MODAL_KEY);
-};
 
 const onUpdateClick = async () => {
 	telemetry.track('User clicked on update button', {
@@ -49,6 +43,6 @@ const onUpdateClick = async () => {
 				},
 			}),
 		}"
-		@click="openUpdatesPanel"
+		@click="onUpdateClick"
 	/>
 </template>
