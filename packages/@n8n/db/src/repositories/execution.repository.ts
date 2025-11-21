@@ -28,11 +28,12 @@ import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
-	IRunExecutionData,
+	IRunExecutionDataAll,
 } from 'n8n-workflow';
 import {
 	createEmptyRunExecutionData,
 	ManualExecutionCancelledError,
+	migrateRunExecutionData,
 	UnexpectedError,
 } from 'n8n-workflow';
 
@@ -217,7 +218,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
-					data: parse(executionData.data) as IRunExecutionData,
+					data: migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll),
 					workflowData: executionData.workflowData,
 					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionResponse;
@@ -343,7 +344,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			...rest,
 			...(options?.includeData && {
 				data: options?.unflattenData
-					? (parse(executionData.data) as IRunExecutionData)
+					? migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll)
 					: executionData.data,
 				workflowData: executionData?.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
