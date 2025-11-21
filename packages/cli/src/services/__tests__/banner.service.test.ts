@@ -31,6 +31,22 @@ describe('BannerService', () => {
 		});
 
 		it('should update settings with the new banner name if banners are already dismissed', async () => {
+			const dismissedBanners = ['V1'];
+			settingsRepo.findOneBy.mockResolvedValue({
+				key,
+				value: JSON.stringify(dismissedBanners),
+				loadOnStartup: false,
+			});
+
+			await bannerService.dismissBanner(bannerName);
+
+			expect(settingsRepo.update).toHaveBeenCalledWith(
+				{ key },
+				{ value: JSON.stringify(['TRIAL_OVER', 'V1']), loadOnStartup: true },
+			);
+		});
+
+		it('should not create duplicates when dismissing the same banner twice', async () => {
 			const dismissedBanners = ['TRIAL_OVER'];
 			settingsRepo.findOneBy.mockResolvedValue({
 				key,
@@ -42,7 +58,7 @@ describe('BannerService', () => {
 
 			expect(settingsRepo.update).toHaveBeenCalledWith(
 				{ key },
-				{ value: JSON.stringify([bannerName, 'TRIAL_OVER']), loadOnStartup: true },
+				{ value: JSON.stringify(['TRIAL_OVER']), loadOnStartup: true },
 			);
 		});
 

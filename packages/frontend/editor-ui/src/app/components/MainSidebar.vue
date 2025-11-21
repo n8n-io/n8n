@@ -592,7 +592,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 		</N8nScrollArea>
 
 		<MainSidebarSourceControl :is-collapsed="isCollapsed" />
-		<MainSidebarTrialUpgrade v-if="userIsTrialing" />
+		<MainSidebarTrialUpgrade />
 		<MainSidebarUserArea
 			v-if="showUserArea"
 			ref="user"
