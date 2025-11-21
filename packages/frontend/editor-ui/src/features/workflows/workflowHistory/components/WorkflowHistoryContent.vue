@@ -12,6 +12,8 @@ import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
 import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { getLastPublishedByUser } from '@/features/workflows/workflowHistory/utils';
+import { formatTimestamp } from '@/features/workflows/workflowHistory/utils';
 const i18n = useI18n();
 
 const props = defineProps<{
@@ -46,8 +48,7 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 });
 
 const versionName = computed(() => {
-	// TODO: this should be returned as part of the history item payload
-	return props.isVersionActive ? 'Version X' : null;
+	return props.workflowVersion?.name;
 });
 
 const formattedPublishedAt = computed<string | null>(() => {
@@ -55,7 +56,12 @@ const formattedPublishedAt = computed<string | null>(() => {
 		return null;
 	}
 
-	return 'Published at X';
+	const lastPublishedByUser = getLastPublishedByUser(props.workflowVersion.workflowPublishHistory);
+	if (!lastPublishedByUser) {
+		return null;
+	}
+	const { date, time } = formatTimestamp(lastPublishedByUser.createdAt);
+	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
 });
 
 const actions = computed(() => {

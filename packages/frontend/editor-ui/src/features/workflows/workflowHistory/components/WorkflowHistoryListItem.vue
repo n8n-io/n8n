@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import dateformat from 'dateformat';
+
 import type { UserAction } from '@n8n/design-system';
 import type {
 	WorkflowHistory,
@@ -11,7 +11,10 @@ import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
 import { N8nActionToggle, N8nTooltip, N8nBadge } from '@n8n/design-system';
-import { getLastPublishedByUser } from '@/features/workflows/workflowHistory/utils';
+import {
+	getLastPublishedByUser,
+	formatTimestamp,
+} from '@/features/workflows/workflowHistory/utils';
 
 const props = withDefaults(
 	defineProps<{
@@ -44,17 +47,10 @@ const itemElement = ref<HTMLElement | null>(null);
 const authorElement = ref<HTMLElement | null>(null);
 const isAuthorElementTruncated = ref(false);
 
-const formatTimestamp = (value: string) => {
-	const currentYear = new Date().getFullYear().toString();
-	const [date, time] = dateformat(
-		value,
-		`${value.startsWith(currentYear) ? '' : 'yyyy '}mmm d"#"HH:MM:ss`,
-	).split('#');
-
+const formattedCreatedAt = computed<string>(() => {
+	const { date, time } = formatTimestamp(props.item.createdAt);
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
-};
-
-const formattedCreatedAt = computed<string>(() => formatTimestamp(props.item.createdAt));
+});
 
 const authors = computed<{ size: number; label: string }>(() => {
 	const allAuthors = props.item.authors.split(', ');
@@ -71,13 +67,20 @@ const authors = computed<{ size: number; label: string }>(() => {
 });
 
 const versionName = computed(() => {
-	// TODO: this should be returned as part of the history item payload
-	return props.isVersionActive ? 'Version X' : null;
+	return props.item.name;
 });
 
 const publishedAt = computed(() => {
+	if (!props.isVersionActive) {
+		return null;
+	}
+
 	const lastPublishedByUser = getLastPublishedByUser(props.item.workflowPublishHistory);
-	return lastPublishedByUser ? formatTimestamp(lastPublishedByUser.createdAt) : null;
+	if (!lastPublishedByUser) {
+		return null;
+	}
+	const { date, time } = formatTimestamp(lastPublishedByUser.createdAt);
+	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
 });
 
 const onAction = (value: string) => {

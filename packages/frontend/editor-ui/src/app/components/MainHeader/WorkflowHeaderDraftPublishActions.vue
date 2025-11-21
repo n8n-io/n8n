@@ -100,7 +100,7 @@ defineExpose({
 		<div v-if="activeVersion" :class="$style.activeVersionIndicator">
 			<N8nTooltip>
 				<template #content>
-					{{ activeVersion.versionId }}, {{ i18n.baseText('workflowHistory.item.active') }},
+					{{ activeVersion.name }}, {{ i18n.baseText('workflowHistory.item.active') }},
 					<TimeAgo :date="activeVersion.createdAt" />
 				</template>
 				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
