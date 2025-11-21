@@ -1,5 +1,10 @@
-import { createWorkflowWithHistory, testDb, mockInstance } from '@n8n/backend-test-utils';
-import type { Project, WebhookEntity } from '@n8n/db';
+import {
+	createWorkflowWithHistory,
+	setActiveVersion,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
+import type { IWorkflowDb, Project, User, WebhookEntity } from '@n8n/db';
 import { WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -43,8 +48,11 @@ const externalHooks = mockInstance(ExternalHooks);
 
 let activeWorkflowManager: ActiveWorkflowManager;
 
-let createActiveWorkflow: () => Promise<IWorkflowBase>;
+let createActiveWorkflow: (
+	workflowOptions?: Parameters<typeof createWorkflowWithHistory>[0],
+) => Promise<IWorkflowBase>;
 let createInactiveWorkflow: () => Promise<IWorkflowBase>;
+let owner: User;
 
 beforeAll(async () => {
 	await testDb.init();
@@ -64,15 +72,19 @@ beforeAll(async () => {
 
 	await utils.initNodeTypes(nodes);
 
-	const owner = await createOwner();
-	createActiveWorkflow = async () => await createWorkflowWithHistory({ active: true }, owner);
+	owner = await createOwner();
+	createActiveWorkflow = async (workflowOptions: Partial<IWorkflowDb> = {}) => {
+		const workflow = await createWorkflowWithHistory({ active: true, ...workflowOptions }, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+		return workflow;
+	};
 	createInactiveWorkflow = async () => await createWorkflowWithHistory({ active: false }, owner);
 	Container.get(InstanceSettings).markAsLeader();
 });
 
 afterEach(async () => {
 	await activeWorkflowManager.removeAll();
-	await testDb.truncate(['WorkflowEntity', 'WebhookEntity']);
+	await testDb.truncate(['WorkflowEntity', 'WebhookEntity', 'WorkflowHistory']);
 	jest.clearAllMocks();
 });
 
@@ -176,7 +188,7 @@ describe('add()', () => {
 		);
 
 		// Create a workflow which has a form trigger
-		const dbWorkflow = await createWorkflowWithHistory({
+		const dbWorkflow = await createActiveWorkflow({
 			nodes: [
 				{
 					id: 'uuid-1',
@@ -194,7 +206,7 @@ describe('add()', () => {
 		expect(updateWorkflowTriggerCountSpy).toHaveBeenCalledWith(dbWorkflow.id, 1);
 	});
 
-	test('should activate an initially inactive workflow in memory', async () => {
+	test('should activate a workflow after its active status changes from false to true', async () => {
 		await activeWorkflowManager.init();
 
 		const dbWorkflow = await createInactiveWorkflow();
@@ -202,6 +214,10 @@ describe('add()', () => {
 
 		// Verify it's not active in memory yet
 		expect(activeWorkflowManager.allActiveInMemory()).toHaveLength(0);
+
+		// Simulate the workflow being activated
+		await setActiveVersion(dbWorkflow.id, dbWorkflow.versionId!);
+		await Container.get(WorkflowRepository).update(dbWorkflow.id, { active: true });
 
 		await activeWorkflowManager.add(dbWorkflow.id, 'activate');
 

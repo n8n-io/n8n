@@ -13,6 +13,7 @@ import { z } from 'zod';
 
 import { isChatInstance, getConnectedTools } from '@utils/helpers';
 import { type N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
+
 /* -----------------------------------------------------------
    Output Parser Helper
 ----------------------------------------------------------- */
@@ -33,13 +34,31 @@ export function getOutputParserSchema(
 /* -----------------------------------------------------------
    Binary Data Helpers
 ----------------------------------------------------------- */
+function isTextFile(mimeType: string): boolean {
+	return (
+		mimeType.startsWith('text/') ||
+		mimeType === 'application/json' ||
+		mimeType === 'application/xml' ||
+		mimeType === 'application/csv' ||
+		mimeType === 'application/x-yaml' ||
+		mimeType === 'application/yaml'
+	);
+}
+
+function isImageFile(mimeType: string): boolean {
+	return mimeType.startsWith('image/');
+}
+
 /**
- * Extracts binary image messages from the input data.
+ * Extracts binary messages (images and text files) from the input data.
  * When operating in filesystem mode, the binary stream is first converted to a buffer.
+ *
+ * Images are converted to base64 data URLs.
+ * Text files are read as UTF-8 text and included in the message content.
  *
  * @param ctx - The execution context
  * @param itemIndex - The current item index
- * @returns A HumanMessage containing the binary image messages.
+ * @returns A HumanMessage containing the binary messages (images and text files).
  */
 export async function extractBinaryMessages(
 	ctx: IExecuteFunctions | ISupplyDataFunctions,
@@ -48,30 +67,58 @@ export async function extractBinaryMessages(
 	const binaryData = ctx.getInputData()?.[itemIndex]?.binary ?? {};
 	const binaryMessages = await Promise.all(
 		Object.values(binaryData)
-			.filter((data) => data.mimeType.startsWith('image/'))
+			// select only the files we can process
+			.filter((data) => isImageFile(data.mimeType) || isTextFile(data.mimeType))
 			.map(async (data) => {
-				let binaryUrlString: string;
+				// Handle images
+				if (isImageFile(data.mimeType)) {
+					let binaryUrlString: string;
 
-				// In filesystem mode we need to get binary stream by id before converting it to buffer
-				if (data.id) {
-					const binaryBuffer = await ctx.helpers.binaryToBuffer(
-						await ctx.helpers.getBinaryStream(data.id),
-					);
-					binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(
-						BINARY_ENCODING,
-					)}`;
-				} else {
-					binaryUrlString = data.data.includes('base64')
-						? data.data
-						: `data:${data.mimeType};base64,${data.data}`;
+					// In filesystem mode we need to get binary stream by id before converting it to buffer
+					if (data.id) {
+						const binaryBuffer = await ctx.helpers.binaryToBuffer(
+							await ctx.helpers.getBinaryStream(data.id),
+						);
+						binaryUrlString = `data:${data.mimeType};base64,${Buffer.from(binaryBuffer).toString(
+							BINARY_ENCODING,
+						)}`;
+					} else {
+						binaryUrlString = data.data.includes('base64')
+							? data.data
+							: `data:${data.mimeType};base64,${data.data}`;
+					}
+
+					return {
+						type: 'image_url',
+						image_url: {
+							url: binaryUrlString,
+						},
+					};
 				}
+				// Handle text files
+				else {
+					let textContent: string;
+					if (data.id) {
+						const binaryBuffer = await ctx.helpers.binaryToBuffer(
+							await ctx.helpers.getBinaryStream(data.id),
+						);
+						textContent = binaryBuffer.toString('utf-8');
+					} else {
+						// Data might be base64 encoded with or without data URL prefix
+						if (data.data.includes('base64,')) {
+							const base64Data = data.data.split('base64,')[1];
+							textContent = Buffer.from(base64Data, 'base64').toString('utf-8');
+						} else {
+							// Default: binary data is base64-encoded without prefix
+							textContent = Buffer.from(data.data, 'base64').toString('utf-8');
+						}
+					}
 
-				return {
-					type: 'image_url',
-					image_url: {
-						url: binaryUrlString,
-					},
-				};
+					return {
+						type: 'text',
+						text: `File: ${data.fileName ?? 'attachment'}\nContent:\n${textContent}`,
+					};
+				}
 			}),
 	);
 	return new HumanMessage({

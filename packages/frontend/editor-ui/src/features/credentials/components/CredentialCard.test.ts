@@ -93,4 +93,68 @@ describe('CredentialCard', () => {
 		const heading = getByRole('heading');
 		expect(heading).toHaveTextContent('Read only');
 	});
+
+	describe('global credentials', () => {
+		it('should display global badge when credential has isGlobal true', () => {
+			const data = createCredential({
+				isGlobal: true,
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+
+			const globalBadge = getByTestId('credential-global-badge');
+			expect(globalBadge).toBeInTheDocument();
+			expect(globalBadge).toHaveTextContent('Global');
+		});
+
+		it('should not display global badge when credential has isGlobal false', () => {
+			const data = createCredential({
+				isGlobal: false,
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-global-badge')).not.toBeInTheDocument();
+		});
+
+		it('should not display global badge when isGlobal is undefined', () => {
+			const data = createCredential({
+				homeProject: {
+					name: 'Test Project',
+				},
+			});
+
+			const { queryByTestId } = renderComponent({ props: { data } });
+
+			expect(queryByTestId('credential-global-badge')).not.toBeInTheDocument();
+		});
+
+		it('should display both project badge and global badge for global credentials', () => {
+			const projectName = 'Test Project';
+			const data = createCredential({
+				isGlobal: true,
+				homeProject: {
+					name: projectName,
+				},
+			});
+
+			const { getByTestId } = renderComponent({ props: { data } });
+
+			// Project badge should be present
+			const projectBadge = getByTestId('card-badge');
+			expect(projectBadge).toBeInTheDocument();
+			expect(projectBadge).toHaveTextContent(projectName);
+
+			// Global badge should also be present
+			const globalBadge = getByTestId('credential-global-badge');
+			expect(globalBadge).toBeInTheDocument();
+			expect(globalBadge).toHaveTextContent('Global');
+		});
+	});
 });

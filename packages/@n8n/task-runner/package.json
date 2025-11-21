@@ -10,6 +10,7 @@
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",
+    "test:unit": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
