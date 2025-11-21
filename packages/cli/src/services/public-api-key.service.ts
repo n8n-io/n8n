@@ -14,6 +14,7 @@ import { JwtService } from './jwt.service';
 import { LastActiveAtService } from './last-active-at.service';
 
 import { EventService } from '@/events/event.service';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 const API_KEY_AUDIENCE = 'public-api';
 const API_KEY_ISSUER = 'n8n';
@@ -51,6 +52,20 @@ export class PublicApiKeyService {
 		);
 
 		return await this.apiKeyRepository.findOneByOrFail({ apiKey });
+	}
+
+	/**
+	 * Creates a new public API key for a target user by an admin.
+	 * @param targetUser - The user object for whom the API key is being created.
+	 * @param label - The label for the API key.
+	 * @param expiresAt - The expiration timestamp.
+	 * @param scopes - The scopes for the API key.
+	 */
+	async createPublicApiKeyForUserByAdmin(
+		targetUser: User,
+		{ label, expiresAt, scopes }: CreateApiKeyRequestDto,
+	) {
+		return await this.createPublicApiKeyForUser(targetUser, { label, expiresAt, scopes });
 	}
 
 	/**
@@ -164,10 +179,10 @@ export class PublicApiKeyService {
 		);
 	}
 
-	private getApiKeyExpiration = (apiKey: string) => {
+	getApiKeyExpiration(apiKey: string) {
 		const decoded = this.jwtService.decode(apiKey);
 		return decoded?.exp ?? null;
-	};
+	}
 
 	apiKeyHasValidScopesForRole(role: AuthPrincipal, apiKeyScopes: ApiKeyScope[]) {
 		const scopesForRole = getApiKeyScopesForRole(role);
