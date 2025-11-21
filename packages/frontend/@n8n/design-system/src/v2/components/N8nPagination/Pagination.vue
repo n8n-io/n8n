@@ -7,8 +7,10 @@ import {
 	PaginationEllipsis,
 	PaginationNext,
 } from 'reka-ui';
-import { ref } from 'vue';
+import { ref, useCssModule } from 'vue';
 import type { PaginationProps } from './Pagination.types';
+
+const $style = useCssModule();
 
 const props = withDefaults(defineProps<PaginationProps>(), {
 	total: 0,
@@ -39,13 +41,11 @@ function handlePageChange(newPage: number) {
 		:page="props.currentPage"
 		:sibling-count="2"
 		:show-edges="true"
-		:class="{
-			'n8n-pagination': true,
-		}"
+		:class="$style.Pagination"
 		@update:page="handlePageChange"
 	>
 		<PaginationList v-slot="{ items }">
-			<PaginationPrev class="n8n-pagination__button n8n-pagination__button--prev">
+			<PaginationPrev :class="[$style.Button, $style.ButtonPrev]">
 				<slot name="prev-icon">
 					<span>‹</span>
 				</slot>
@@ -55,20 +55,16 @@ function handlePageChange(newPage: number) {
 				<PaginationListItem
 					v-if="item.type === 'page'"
 					:value="item.value"
-					:class="{
-						'n8n-pagination__button': true,
-						'n8n-pagination__button--page': true,
-						'is-active': item.value === page,
-					}"
+					:class="[$style.Button, $style.ButtonPage, { [$style.IsActive]: item.value === page }]"
 				>
 					{{ item.value }}
 				</PaginationListItem>
-				<PaginationEllipsis v-else :index="index" class="n8n-pagination__ellipsis">
+				<PaginationEllipsis v-else :index="index" :class="$style.Ellipsis">
 					&#8230;
 				</PaginationEllipsis>
 			</template>
 
-			<PaginationNext class="n8n-pagination__button n8n-pagination__button--next">
+			<PaginationNext :class="[$style.Button, $style.ButtonNext]">
 				<slot name="next-icon">
 					<span>›</span>
 				</slot>
@@ -77,21 +73,22 @@ function handlePageChange(newPage: number) {
 	</PaginationRoot>
 </template>
 
-<style lang="scss" scoped>
-.n8n-pagination {
+<style module>
+.Pagination {
 	display: flex;
 	align-items: center;
 	gap: 6px;
 	font-size: var(--font-size--sm);
 	height: 32px;
 	padding: 2px 0;
-	&.is-disabled {
-		opacity: 0.6;
-		pointer-events: none;
-	}
 }
 
-.n8n-pagination__button {
+.Pagination.IsDisabled {
+	opacity: 0.6;
+	pointer-events: none;
+}
+
+.Button {
 	min-width: 28px;
 	height: 28px;
 	padding: 0 6px;
@@ -105,45 +102,57 @@ function handlePageChange(newPage: number) {
 	color: var(--color--text--inverse);
 	transition: color 0.2s ease;
 	user-select: none;
-
-	&:hover:not(:disabled):not(.is-active):not(.n8n-pagination__button--prev):not(
-			.n8n-pagination__button--next
-		):not(.n8n-pagination__button--first):not(.n8n-pagination__button--last) {
-		background: var(--color--background--light-3) !important;
-		color: var(--color--primary);
-		border: 1px solid var(--color--foreground);
-		:deep(button) {
-			color: var(--color--primary);
-			border: 1px solid var(--color--foreground);
-		}
-	}
-
-	&:disabled {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-
-	&--next {
-		margin-right: 8px;
-	}
-
-	&.is-active {
-		color: var(--color--primary);
-		border: 1px solid var(--color--primary);
-		:deep(button) {
-			color: var(--color--primary);
-			border: 1px solid var(--color--primary);
-		}
-		&:hover {
-			background: var(--color--background--light-3) !important;
-			:deep(button) {
-				background: var(--color--background--light-3) !important;
-			}
-		}
-	}
 }
 
-.n8n-pagination__ellipsis {
+.Button :deep(button) {
+	color: inherit;
+	padding: 0;
+}
+
+.Button:hover:not(:disabled):not(.IsActive):not(.ButtonPrev):not(.ButtonNext):not(.ButtonFirst):not(
+		.ButtonLast
+	) {
+	background: var(--color--background--light-3) !important;
+	color: var(--color--primary);
+	border: 1px solid var(--color--foreground);
+}
+
+.Button:hover:not(:disabled):not(.IsActive):not(.ButtonPrev):not(.ButtonNext):not(.ButtonFirst):not(
+		.ButtonLast
+	)
+	:deep(button) {
+	color: var(--color--primary);
+	border: 1px solid var(--color--foreground);
+}
+
+.Button:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.ButtonNext {
+	margin-right: 8px;
+}
+
+.Button.IsActive {
+	color: var(--color--primary);
+	border: 1px solid var(--color--primary);
+}
+
+.Button.IsActive :deep(button) {
+	color: var(--color--primary);
+	border: 1px solid var(--color--primary);
+}
+
+.Button.IsActive:hover {
+	background: var(--color--background--light-3) !important;
+}
+
+.Button.IsActive:hover :deep(button) {
+	background: var(--color--background--light-3) !important;
+}
+
+.Ellipsis {
 	min-width: 28px;
 	height: 28px;
 	color: var(--color--text--inverse);
