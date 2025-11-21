@@ -357,15 +357,15 @@ describe('WorkflowExecutionService', () => {
 			workflow.nodes = [];
 		});
 
-		it('should return `undefined` if no pindata', () => {
-			workflow.nodes.push(webhookNode, hackerNewsNode);
-			workflow.connections = {
-				...createMainConnection(hackerNewsNode.name, webhookNode.name),
-			};
+		it('should return `null` if no pindata', () => {
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, []);
 
 			const node = workflowExecutionService.selectPinnedTrigger(workflow, hackerNewsNode.name, {});
 
-			expect(node).toBeUndefined();
+		it('should return `null` if no starter nodes', () => {
+			const node = workflowExecutionService.selectPinnedTrigger(workflow);
+
+			expect(node).toBeNull();
 		});
 
 		it('should select webhook node if only choice', () => {
@@ -374,11 +374,7 @@ describe('WorkflowExecutionService', () => {
 				...createMainConnection(hackerNewsNode.name, webhookNode.name),
 			};
 
-			const node = workflowExecutionService.selectPinnedTrigger(
-				workflow,
-				hackerNewsNode.name,
-				pinData,
-			);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toEqual(webhookNode);
 		});
@@ -386,11 +382,7 @@ describe('WorkflowExecutionService', () => {
 		it('should return `undefined` if no choice', () => {
 			workflow.nodes.push(hackerNewsNode);
 
-			const node = workflowExecutionService.selectPinnedTrigger(
-				workflow,
-				hackerNewsNode.name,
-				pinData,
-			);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toBeUndefined();
 		});
@@ -401,11 +393,7 @@ describe('WorkflowExecutionService', () => {
 				...createMainConnection(hackerNewsNode.name, respondToWebhookNode.name),
 			};
 
-			const node = workflowExecutionService.selectPinnedTrigger(
-				workflow,
-				hackerNewsNode.name,
-				pinData,
-			);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toBeUndefined();
 		});
@@ -416,11 +404,7 @@ describe('WorkflowExecutionService', () => {
 				...createMainConnection(hackerNewsNode.name, executeWorkflowTriggerNode.name),
 			};
 
-			const node = workflowExecutionService.selectPinnedTrigger(
-				workflow,
-				hackerNewsNode.name,
-				pinData,
-			);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toEqual(executeWorkflowTriggerNode);
 		});
@@ -432,11 +416,7 @@ describe('WorkflowExecutionService', () => {
 				...createMainConnection(hackerNewsNode.name, executeWorkflowTriggerNode.name),
 			};
 
-			const node = workflowExecutionService.selectPinnedTrigger(
-				workflow,
-				hackerNewsNode.name,
-				pinData,
-			);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toEqual(webhookNode);
 		});
@@ -448,11 +428,7 @@ describe('WorkflowExecutionService', () => {
 				...createMainConnection(hackerNewsNode.name, secondWebhookNode.name),
 			};
 
-			const node = workflowExecutionService.selectPinnedTrigger(
-				workflow,
-				hackerNewsNode.name,
-				pinData,
-			);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toEqual(webhookNode);
 		});

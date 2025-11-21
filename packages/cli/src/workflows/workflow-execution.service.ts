@@ -214,7 +214,7 @@ export class WorkflowExecutionService {
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 				: undefined;
 
-			const pinnedTrigger = this.selectPinnedActivatorStarter(
+			const pinnedTrigger = this.selectPinnedTrigger(
 				payload.workflowData,
 				payload.destinationNode,
 				payload.workflowData.pinData ?? {},
@@ -269,7 +269,7 @@ export class WorkflowExecutionService {
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 				: undefined;
 
-			const pinnedTrigger = this.selectPinnedActivatorStarter(
+			const pinnedTrigger = this.selectPinnedTrigger(
 				payload.workflowData,
 				payload.destinationNode,
 				payload.workflowData.pinData ?? {},
@@ -495,6 +495,8 @@ export class WorkflowExecutionService {
 		}
 	}
 
+	// TODO: update the docstring
+	//
 	/**
 	 * Select the pinned trigger node to use as starter for a manual execution.
 	 *
@@ -507,12 +509,10 @@ export class WorkflowExecutionService {
 	 * @param pinData Pin data mapping node names to their pinned data
 	 * @returns The pinned trigger node if found, undefined otherwise
 	 */
-	selectPinnedTrigger(
-		workflow: IWorkflowBase,
-		destinationNode: string,
-		pinData: IPinData,
-	) {
-		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
+	selectPinnedTrigger(workflow: IWorkflowBase, destinationNode: string, pinData: IPinData) {
+		const allPinnedTriggers = this.findAllPinnedTriggers(workflow, pinData);
+
+		if (allPinnedTriggers.length === 0) return null;
 
 		const destinationParents = new Set(
 			new Workflow({
@@ -523,20 +523,11 @@ export class WorkflowExecutionService {
 			}).getParentNodes(destinationNode),
 		);
 
-		const destinationParents = new Set(
-			new Workflow({
-				nodes: workflow.nodes,
-				connections: workflow.connections,
-				active: workflow.activeVersionId !== null,
-				nodeTypes: this.nodeTypes,
-			}).getParentNodes(destinationNode),
-		);
+		const trigger = allPinnedTriggers.find((a) => destinationParents.has(a.name));
 
-		const activator = allPinnedActivators.find((a) => destinationParents.has(a.name));
+		console.log('trigger', trigger);
 
-		console.log('activator', activator);
-
-		return activator;
+		return trigger;
 	}
 
 	private findAllPinnedTriggers(workflow: IWorkflowBase, pinData?: IPinData) {
