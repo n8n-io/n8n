@@ -31,7 +31,9 @@ export type WorkflowVersion = WorkflowHistory & {
 	connections: IConnections;
 };
 
-export type WorkflowHistoryActionTypes = ['restore', 'publish', 'clone', 'open', 'download'];
+export type WorkflowHistoryActionTypes = Array<
+	'restore' | 'publish' | 'unpublish' | 'clone' | 'open' | 'download'
+>;
 
 export type WorkflowHistoryRequestParams = { take: number; skip?: number };
 

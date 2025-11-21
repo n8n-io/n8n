@@ -72,6 +72,8 @@ const actions = computed(() => {
 
 	if (props.isVersionActive) {
 		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
+	} else {
+		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
 	}
 
 	return filteredActions;
