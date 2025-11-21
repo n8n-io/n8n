@@ -1,7 +1,7 @@
 import { Container, Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
-import { BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
+import { BINARY_ENCODING, UnexpectedError, UserError } from 'n8n-workflow';
 import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
@@ -11,9 +11,8 @@ import { ErrorReporter } from '@/errors';
 
 import { BinaryDataConfig } from './binary-data.config';
 import type { BinaryData } from './types';
-import { areConfigModes, binaryToBuffer } from './utils';
+import { binaryToBuffer } from './utils';
 import { InvalidManagerError } from '../errors/invalid-manager.error';
-import { InvalidModeError } from '../errors/invalid-mode.error';
 
 @Service()
 export class BinaryDataService {
@@ -28,7 +27,10 @@ export class BinaryDataService {
 
 	async init() {
 		const { config } = this;
-		if (!areConfigModes(config.availableModes)) throw new InvalidModeError();
+
+		if (config.mode === 'database' || config.availableModes.includes('database')) {
+			throw new UserError('Database mode is not implemented yet');
+		}
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
