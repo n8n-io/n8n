@@ -570,4 +570,33 @@ describe('replyToEmail', () => {
 			}),
 		);
 	});
+
+	test('should use Reply-To header instead of From, when Reply-To header is provided', async () => {
+		const messageWithReplyToHeader = {
+			...mockMessageMetadata,
+			payload: {
+				...mockMessageMetadata.payload,
+				headers: [
+					...mockMessageMetadata.payload.headers,
+					{ name: 'Reply-To', value: 'reply-to@example.com' },
+				],
+			},
+		};
+
+		mockedGoogleApiRequest
+			.mockResolvedValueOnce(messageWithReplyToHeader)
+			.mockResolvedValueOnce(mockUserProfile)
+			.mockResolvedValueOnce(mockSentMessage);
+
+		const options: IDataObject = {};
+
+		await replyToEmail.call(mockExecuteFunctions, 'message123', options, 0);
+
+		expect(mockedEncodeEmail).toHaveBeenCalledWith(
+			expect.objectContaining({
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				to: expect.stringContaining('<reply-to@example.com>'),
+			}),
+		);
+	});
 });
