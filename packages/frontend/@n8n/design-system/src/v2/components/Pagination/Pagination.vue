@@ -1,0 +1,459 @@
+<script setup lang="ts">
+import { reactivePick } from '@vueuse/core';
+import {
+	PaginationRoot,
+	PaginationList,
+	PaginationListItem,
+	PaginationPrev,
+	PaginationNext,
+	PaginationEllipsis,
+	useForwardPropsEmits,
+} from 'reka-ui';
+import { computed, useCssModule, ref } from 'vue';
+
+import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
+import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
+
+import type {
+	PaginationEmits,
+	PaginationProps,
+	PaginationSlots,
+	PaginationSizes,
+	PaginationVariants,
+} from './Pagination.types';
+
+defineOptions({ inheritAttrs: false });
+
+const $style = useCssModule();
+
+const props = withDefaults(defineProps<PaginationProps>(), {
+	variant: 'default',
+	size: 'small',
+	background: false,
+	layout: 'prev, pager, next',
+	pageSizes: () => [10, 20, 30, 40, 50, 100],
+	hideOnSinglePage: false,
+	prevIcon: 'chevron-left',
+	nextIcon: 'chevron-right',
+	defaultPage: 1,
+	disabled: false,
+	siblingCount: 1,
+	showEdges: false,
+});
+
+const emit = defineEmits<PaginationEmits>();
+const slots = defineSlots<PaginationSlots>();
+
+// Prop mapping: Element+ → Reka UI
+const page = computed(
+	() => props.currentPage ?? props.page ?? props.defaultCurrentPage ?? props.defaultPage,
+);
+const itemsPerPage = computed(
+	() => props.pageSize ?? props.itemsPerPage ?? props.defaultPageSize ?? 10,
+);
+
+// pagerCount is odd number in Element+ (e.g., 7 means show 7 buttons total: prev + 5 pages + next)
+// siblingCount in Reka UI means pages on each side of current page
+// pagerCount 7 = 1 current + 2*siblingCount + prev + next, so siblingCount = (7-1)/2 = 3
+// But actually pagerCount includes only the page numbers, not prev/next buttons
+// pagerCount 7 means: [1] [ellipsis] [5] [6] [7] [8] [9] [ellipsis] [10]
+// So if pagerCount is 7, we want to show current + 3 on each side = siblingCount of 3
+const siblingCount = computed(() => {
+	if (props.pagerCount !== undefined) {
+		// pagerCount is total page buttons shown, including current
+		// For odd pagerCount, siblingCount = (pagerCount - 1) / 2
+		return Math.floor((props.pagerCount - 1) / 2);
+	}
+	return props.siblingCount ?? 1;
+});
+
+// Calculate total pages
+const pageCount = computed(() => {
+	if (props.pageCount !== undefined) return props.pageCount;
+	if (!props.total || !itemsPerPage.value) return 1;
+	return Math.ceil(props.total / itemsPerPage.value);
+});
+
+// Calculate total items for Reka UI (when using pageCount, we need to synthesize total)
+const totalItems = computed(() => {
+	if (props.total !== undefined) return props.total;
+	if (props.pageCount !== undefined) {
+		// Synthesize total from pageCount * itemsPerPage
+		return props.pageCount * itemsPerPage.value;
+	}
+	return 0;
+});
+
+// Hide component when only one page
+const shouldHide = computed(() => props.hideOnSinglePage && pageCount.value <= 1);
+
+// Layout parsing
+const layoutParts = computed(() => props.layout?.split(',').map((s) => s.trim()) ?? []);
+const showPrev = computed(() => layoutParts.value.includes('prev'));
+const showNext = computed(() => layoutParts.value.includes('next'));
+const showPager = computed(() => layoutParts.value.includes('pager'));
+const showSizes = computed(() => layoutParts.value.includes('sizes'));
+const showTotal = computed(() => layoutParts.value.includes('total'));
+const showJumper = computed(() => layoutParts.value.includes('jumper'));
+
+// Forward props to Reka UI
+const rootProps = useForwardPropsEmits(reactivePick(props, 'disabled', 'showEdges'), emit);
+
+// Internal page size state for v-model:page-size
+const internalPageSize = ref(itemsPerPage.value);
+
+// Handle page updates
+const handlePageUpdate = (newPage: number) => {
+	emit('update:page', newPage);
+	emit('update:currentPage', newPage);
+	emit('current-change', newPage);
+};
+
+// Handle page size updates
+const handlePageSizeUpdate = (newSize: number | string) => {
+	const size = typeof newSize === 'string' ? parseInt(newSize, 10) : newSize;
+	internalPageSize.value = size;
+	emit('update:pageSize', size);
+	emit('size-change', size);
+
+	// Reset to first page when page size changes
+	handlePageUpdate(1);
+};
+
+// Handle prev/next clicks
+const handlePrevClick = () => {
+	const newPage = Math.max(1, page.value - 1);
+	handlePageUpdate(newPage);
+	emit('prev-click', newPage);
+};
+
+const handleNextClick = () => {
+	const newPage = Math.min(pageCount.value, page.value + 1);
+	handlePageUpdate(newPage);
+	emit('next-click', newPage);
+};
+
+// Styles
+const variants: Record<PaginationVariants, string> = {
+	default: $style.Default,
+	ghost: $style.Ghost,
+};
+const variant = computed(() => variants[props.variant]);
+
+const sizes: Record<PaginationSizes, string> = {
+	small: $style.Small,
+	medium: $style.Medium,
+};
+const size = computed(() => sizes[props.size]);
+
+// Background class
+const backgroundClass = computed(() => (props.background ? $style.Background : ''));
+
+// Page size selector items
+const pageSizeItems = computed(() =>
+	props.pageSizes.map((s) => ({ value: String(s), label: `${s} / page` })),
+);
+
+// Total text
+const totalText = computed(() => {
+	if (!props.total) return '';
+	return `Total ${props.total}`;
+});
+
+// Jumper state
+const jumperValue = ref<string>('');
+const handleJumperSubmit = () => {
+	const targetPage = parseInt(jumperValue.value, 10);
+	if (!isNaN(targetPage) && targetPage >= 1 && targetPage <= pageCount.value) {
+		handlePageUpdate(targetPage);
+		jumperValue.value = '';
+	}
+};
+</script>
+
+<template>
+	<div
+		v-if="!shouldHide"
+		:class="[$style.PaginationContainer, variant, size, backgroundClass]"
+		v-bind="$attrs"
+	>
+		<!-- Total count -->
+		<div v-if="showTotal" :class="$style.Total">
+			{{ totalText }}
+		</div>
+
+		<!-- Page size selector -->
+		<N8nSelect
+			v-if="showSizes"
+			:model-value="String(internalPageSize)"
+			:items="pageSizeItems"
+			:size="props.size === 'small' ? 'xsmall' : 'small'"
+			:variant="props.variant === 'ghost' ? 'ghost' : 'default'"
+			:disabled="disabled"
+			:class="$style.PageSizeSelect"
+			@update:model-value="handlePageSizeUpdate"
+		/>
+
+		<PaginationRoot
+			v-bind="rootProps"
+			:page="page"
+			:items-per-page="itemsPerPage"
+			:total="totalItems"
+			:sibling-count="siblingCount"
+			:show-edges="showEdges"
+			@update:page="handlePageUpdate"
+		>
+			<PaginationList v-slot="{ items }" :class="$style.PaginationList">
+				<!-- Previous button -->
+				<PaginationPrev v-if="showPrev" :class="$style.PaginationButton" @click="handlePrevClick">
+					<slot name="prev">
+						<span v-if="prevText">{{ prevText }}</span>
+						<Icon v-else :icon="prevIcon as any" />
+					</slot>
+				</PaginationPrev>
+
+				<!-- Page items -->
+				<template v-if="showPager">
+					<template
+						v-for="(item, index) in items"
+						:key="item.type === 'ellipsis' ? `ellipsis-${index}` : item.value"
+					>
+						<!-- Ellipsis button -->
+						<PaginationEllipsis
+							v-if="item.type === 'ellipsis'"
+							:index="index"
+							:class="[$style.PaginationEllipsis, $style.PaginationButton]"
+						>
+							<span aria-hidden="true">&#8230;</span>
+						</PaginationEllipsis>
+						<PaginationListItem v-else :value="item.value" :class="$style.PaginationItem">
+							{{ item.value }}
+						</PaginationListItem>
+					</template>
+				</template>
+
+				<!-- Next button -->
+				<PaginationNext v-if="showNext" :class="$style.PaginationButton" @click="handleNextClick">
+					<slot name="next">
+						<span v-if="nextText">{{ nextText }}</span>
+						<Icon v-else :icon="nextIcon as any" />
+					</slot>
+				</PaginationNext>
+			</PaginationList>
+		</PaginationRoot>
+
+		<!-- Page jumper -->
+		<div v-if="showJumper" :class="$style.Jumper">
+			<span :class="$style.JumperText">Go to</span>
+			<input
+				v-model="jumperValue"
+				type="number"
+				:min="1"
+				:max="pageCount"
+				:class="$style.JumperInput"
+				:disabled="disabled"
+				@keyup.enter="handleJumperSubmit"
+			/>
+		</div>
+	</div>
+</template>
+
+<style module>
+.PaginationContainer {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	font-size: var(--font-size--2xs);
+	color: var(--color--text--shade-1);
+}
+
+.Default {
+	/* Default styling */
+}
+
+.Ghost {
+	/* Ghost variant */
+}
+
+.Small {
+	font-size: var(--font-size--2xs);
+}
+
+.Medium {
+	font-size: var(--font-size--xs);
+}
+
+.Background {
+	/* Applied when background prop is true */
+}
+
+.Total {
+	color: var(--color--text--tint-1);
+	margin-right: var(--spacing--2xs);
+}
+
+.PageSizeSelect {
+	margin-right: var(--spacing--2xs);
+}
+
+.PaginationList {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+}
+
+.PaginationButton {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	padding: 0 var(--spacing--3xs);
+	border-radius: var(--radius);
+	border: var(--border);
+	background-color: var(--color--background--light-3);
+	color: var(--color--text--shade-1);
+	cursor: pointer;
+	user-select: none;
+	transition: all 0.2s;
+
+	&:hover:not([data-disabled]) {
+		background-color: var(--color--primary);
+		color: white;
+		border-color: var(--color--primary);
+	}
+
+	&[data-disabled] {
+		cursor: not-allowed;
+		opacity: 0.5;
+		background-color: var(--color--background--light-2);
+		color: var(--color--text--tint-2);
+	}
+}
+
+.Background .PaginationButton {
+	background-color: var(--color--background--light-2);
+
+	&:hover:not([data-disabled]) {
+		background-color: var(--color--primary);
+		color: white;
+	}
+}
+
+.PaginationItem {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	padding: 0 var(--spacing--3xs);
+	border-radius: var(--radius);
+	border: var(--border);
+	background-color: var(--color--background--light-3);
+	color: var(--color--text--shade-1);
+	cursor: pointer;
+	user-select: none;
+	transition: all 0.2s;
+	font-weight: var(--font-weight--regular);
+
+	&:hover:not([data-selected]):not([data-disabled]) {
+		background-color: var(--color--background--light-1);
+		border-color: var(--color--primary);
+	}
+
+	&[data-selected] {
+		background-color: var(--color--primary);
+		color: white;
+		border-color: var(--color--primary);
+		font-weight: var(--font-weight--bold);
+		cursor: default;
+	}
+
+	&[data-disabled] {
+		cursor: not-allowed;
+		opacity: 0.5;
+	}
+}
+
+.Background .PaginationItem {
+	background-color: var(--color--background--light-2);
+
+	&[data-selected] {
+		background-color: var(--color--primary);
+		color: white;
+	}
+}
+
+.PaginationEllipsis {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	min-width: var(--spacing--lg);
+	height: var(--spacing--lg);
+	color: var(--color--text--tint-1);
+	user-select: none;
+
+	/* Make ellipsis clickable like other buttons */
+	&:not([disabled]) {
+		cursor: pointer;
+
+		&:hover {
+			background-color: var(--color--background--light-1);
+			border-color: var(--color--primary);
+		}
+	}
+}
+
+.Jumper {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+	margin-left: var(--spacing--2xs);
+}
+
+.JumperText {
+	color: var(--color--text--tint-1);
+}
+
+.JumperInput {
+	width: 50px;
+	height: var(--spacing--lg);
+	padding: 0 var(--spacing--3xs);
+	border-radius: var(--radius);
+	border: var(--border);
+	background-color: var(--color--background--light-3);
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--2xs);
+	text-align: center;
+
+	&:focus {
+		outline: none;
+		border-color: var(--color--primary);
+		box-shadow: 0 0 0 2px var(--color--secondary);
+	}
+
+	&:disabled {
+		cursor: not-allowed;
+		opacity: 0.5;
+		background-color: var(--color--background--light-2);
+	}
+
+	/* Hide number input spinners */
+	&::-webkit-outer-spin-button,
+	&::-webkit-inner-spin-button {
+		-webkit-appearance: none;
+		margin: 0;
+	}
+
+	&[type='number'] {
+		-moz-appearance: textfield;
+	}
+}
+
+.Medium .PaginationButton,
+.Medium .PaginationItem,
+.Medium .JumperInput {
+	height: 36px;
+	min-width: 36px;
+}
+</style>
