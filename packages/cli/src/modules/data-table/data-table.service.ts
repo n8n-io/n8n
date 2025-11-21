@@ -701,7 +701,6 @@ export class DataTableService {
 			dataTableId,
 			{
 				skip: 0,
-				take: -1, // Get all rows
 			},
 			columns,
 		);
