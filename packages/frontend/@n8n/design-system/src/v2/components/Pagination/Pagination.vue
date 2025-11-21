@@ -174,7 +174,7 @@ const handleJumperSubmit = () => {
 <template>
 	<div
 		v-if="!shouldHide"
-		:class="[$style.PaginationContainer, variant, size, backgroundClass]"
+		:class="['n8n-pagination', $style.PaginationContainer, variant, size, backgroundClass]"
 		v-bind="$attrs"
 	>
 		<!-- Total count -->
