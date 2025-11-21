@@ -22,7 +22,8 @@ test.describe('Routing @db:reset', () => {
 	});
 
 	test('should correct route after cancelling saveChangesModal', async ({ n8n }) => {
-		await n8n.start.fromBlankCanvas();
+		await n8n.goHome();
+		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
 		await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Test Workflow');
 
