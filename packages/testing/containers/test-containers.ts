@@ -3,7 +3,7 @@
  */
 
 // Use N8N_DOCKER_IMAGE env var if set, otherwise default to 'n8nio/n8n:local'
-const n8nImage = process.env.N8N_DOCKER_IMAGE || 'n8nio/n8n:local';
+const n8nImage = process.env.N8N_DOCKER_IMAGE ?? 'n8nio/n8n:local';
 
 export const TEST_CONTAINER_IMAGES = {
 	postgres: 'postgres:18-alpine',

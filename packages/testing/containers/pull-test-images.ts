@@ -4,6 +4,7 @@
  */
 
 import { execSync } from 'child_process';
+
 import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 console.log('🐳 Pre-pulling test container images...');
