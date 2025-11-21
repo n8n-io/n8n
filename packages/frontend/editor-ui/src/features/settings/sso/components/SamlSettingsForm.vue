@@ -49,12 +49,6 @@ const ipsOptions = ref([
 ]);
 const ipsType = ref(IdentityProviderSettingsType.URL);
 
-const ssoActivatedLabel = computed(() =>
-	samlLoginEnabled.value
-		? i18n.baseText('settings.sso.activated')
-		: i18n.baseText('settings.sso.deactivated'),
-);
-
 const metadataUrl = ref();
 const metadata = ref();
 
