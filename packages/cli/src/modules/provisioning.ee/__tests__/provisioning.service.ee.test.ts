@@ -19,6 +19,7 @@ import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { type ProjectService } from '@/services/project.service.ee';
 import type { EntityManager } from '@n8n/typeorm';
 import { type InstanceSettings } from 'n8n-core';
+import { type EventService } from '@/events/event.service';
 
 const globalConfig = mock<GlobalConfig>();
 const settingsRepository = mock<SettingsRepository>();
@@ -26,6 +27,7 @@ const userRepository = mock<UserRepository>();
 const entityManager = mock<EntityManager>();
 const projectRepository = mock<ProjectRepository>({ manager: entityManager });
 const projectService = mock<ProjectService>();
+const eventService = mock<EventService>();
 
 const logger = mock<Logger>();
 const publisher = mock<Publisher>();
@@ -33,6 +35,7 @@ const roleRepository = mock<RoleRepository>();
 const instanceSettings = mock<InstanceSettings>();
 
 const provisioningService = new ProvisioningService(
+	eventService,
 	globalConfig,
 	settingsRepository,
 	projectRepository,
@@ -282,6 +285,25 @@ describe('ProvisioningService', () => {
 				{ userId: user.id, roleSlug: 'global:owner' },
 			);
 		});
+
+		it('sends telemetry event', async () => {
+			const user = mock<User>({ id: 'user-123', role: { slug: 'global:member' } });
+			const roleSlug = 'global:owner';
+
+			roleRepository.findOneOrFail.mockResolvedValue(
+				mock<Role>({ slug: 'global:owner', roleType: 'global' }),
+			);
+
+			provisioningService['isInstanceRoleProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionInstanceRoleForUser(user, roleSlug);
+
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('sso-user-instance-role-updated', {
+				userId: user.id,
+				role: roleSlug,
+			});
+		});
 	});
 
 	describe('provisionProjectRolesForUser', () => {
@@ -491,6 +513,33 @@ describe('ProvisioningService', () => {
 				{ userId, role: 'project:viewer' },
 				entityManager,
 			);
+		});
+
+		it('sends telemetry event', async () => {
+			const userId = 'user-id-123';
+			const projectIdToRole = ['project-1:viewer', 'project-2:editor'];
+			projectRepository.find.mockResolvedValueOnce([
+				mock<Project>({ id: 'project-1' }),
+				mock<Project>({ id: 'project-2' }),
+			]);
+			projectRepository.find.mockResolvedValueOnce([
+				mock<Project>({ id: 'project-3', type: 'team' }),
+			]);
+			roleRepository.find.mockResolvedValue([
+				mock<Role>({ displayName: 'viewer', slug: 'project:viewer' }),
+				mock<Role>({ displayName: 'editor', slug: 'project:editor' }),
+			]);
+
+			provisioningService['isProjectRolesProvisioningEnabled'] = jest.fn().mockResolvedValue(true);
+
+			await provisioningService.provisionProjectRolesForUser(userId, projectIdToRole);
+
+			expect(eventService.emit).toHaveBeenCalledTimes(1);
+			expect(eventService.emit).toHaveBeenCalledWith('sso-user-project-access-updated', {
+				projectsAdded: 2,
+				projectsRemoved: 1,
+				userId,
+			});
 		});
 	});
 
