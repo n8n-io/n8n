@@ -415,13 +415,13 @@ describe('WorkflowExecutionService', () => {
 		});
 
 		it('should return `null` if no pindata', () => {
-			const node = workflowExecutionService.selectPinnedActivatorStarter(workflow, []);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, []);
 
 			expect(node).toBeNull();
 		});
 
 		it('should return `null` if no starter nodes', () => {
-			const node = workflowExecutionService.selectPinnedActivatorStarter(workflow);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow);
 
 			expect(node).toBeNull();
 		});
@@ -429,7 +429,7 @@ describe('WorkflowExecutionService', () => {
 		it('should select webhook node if only choice', () => {
 			workflow.nodes.push(webhookNode);
 
-			const node = workflowExecutionService.selectPinnedActivatorStarter(workflow, [], pinData);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toEqual(webhookNode);
 		});
@@ -437,7 +437,7 @@ describe('WorkflowExecutionService', () => {
 		it('should return `null` if no choice', () => {
 			workflow.nodes.push(hackerNewsNode);
 
-			const node = workflowExecutionService.selectPinnedActivatorStarter(workflow, [], pinData);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toBeNull();
 		});
@@ -445,7 +445,7 @@ describe('WorkflowExecutionService', () => {
 		it('should return ignore Respond to Webhook', () => {
 			workflow.nodes.push(respondToWebhookNode);
 
-			const node = workflowExecutionService.selectPinnedActivatorStarter(workflow, [], pinData);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toBeNull();
 		});
@@ -453,7 +453,7 @@ describe('WorkflowExecutionService', () => {
 		it('should select execute workflow trigger if only choice', () => {
 			workflow.nodes.push(executeWorkflowTriggerNode);
 
-			const node = workflowExecutionService.selectPinnedActivatorStarter(workflow, [], pinData);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toEqual(executeWorkflowTriggerNode);
 		});
@@ -461,7 +461,7 @@ describe('WorkflowExecutionService', () => {
 		it('should favor webhook node over execute workflow trigger', () => {
 			workflow.nodes.push(webhookNode, executeWorkflowTriggerNode);
 
-			const node = workflowExecutionService.selectPinnedActivatorStarter(workflow, [], pinData);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toEqual(webhookNode);
 		});
@@ -469,7 +469,7 @@ describe('WorkflowExecutionService', () => {
 		it('should favor first webhook node over second webhook node', () => {
 			workflow.nodes.push(webhookNode, secondWebhookNode);
 
-			const node = workflowExecutionService.selectPinnedActivatorStarter(workflow, [], pinData);
+			const node = workflowExecutionService.selectPinnedTrigger(workflow, [], pinData);
 
 			expect(node).toEqual(webhookNode);
 		});
@@ -481,7 +481,7 @@ describe('WorkflowExecutionService', () => {
 				...createMainConnection(secondWebhookNode.name, secondHackerNewsNode.name),
 			};
 
-			const node = workflowExecutionService.selectPinnedActivatorStarter(
+			const node = workflowExecutionService.selectPinnedTrigger(
 				workflow,
 				[],
 				{ ...pinData, [secondWebhookNode.name]: [{ json: { key: 'value' } }] },
