@@ -342,6 +342,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			});
 		}
 
+		console.log(executionData);
+
+		if (executionData.data) {
+			console.log('truthy');
+		}
+
 		return {
 			...rest,
 			...(options?.includeData && {
@@ -808,7 +814,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async stopDuringRun(execution: IExecutionResponse) {
 		const error = new ManualExecutionCancelledError(execution.id);
 
-		execution.data ??= createEmptyRunExecutionData();
+		execution.data = execution.data || createEmptyRunExecutionData();
+
 		execution.data.resultData.error = {
 			...error,
 			message: error.message,
