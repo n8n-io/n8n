@@ -1,5 +1,6 @@
 import { mock } from 'jest-mock-extended';
 import {
+	createEmptyRunExecutionData,
 	createRunExecutionData,
 	UnexpectedError,
 	type IExecutionContext,
@@ -189,13 +190,8 @@ describe('establishExecutionContext', () => {
 
 	describe('error handling', () => {
 		it('should throw error when executionData is missing', async () => {
-			const runExecutionData = createRunExecutionData({
-				startData: {},
-				resultData: {
-					runData: {},
-				},
-				// executionData is missing
-			});
+			const runExecutionData = createEmptyRunExecutionData();
+			delete runExecutionData.executionData;
 
 			await expect(
 				establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode),
@@ -203,13 +199,8 @@ describe('establishExecutionContext', () => {
 		});
 
 		it('should throw error when executionData is undefined', async () => {
-			const runExecutionData = createRunExecutionData({
-				startData: {},
-				resultData: {
-					runData: {},
-				},
-				executionData: undefined,
-			});
+			const runExecutionData = createEmptyRunExecutionData();
+			runExecutionData.executionData = undefined;
 
 			await expect(
 				establishExecutionContext(mockWorkflow, runExecutionData, mockAdditionalData, mockMode),
