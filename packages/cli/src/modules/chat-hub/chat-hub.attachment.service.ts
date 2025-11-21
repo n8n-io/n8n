@@ -152,7 +152,7 @@ export class ChatHubAttachmentService {
 		};
 
 		return await this.binaryDataService.store(
-			FileLocation.ofChatHubMessageAttachment(sessionId, messageId),
+			FileLocation.ofCustom(['chat-hub', 'sessions', sessionId, 'messages', messageId]),
 			buffer,
 			binaryData,
 		);

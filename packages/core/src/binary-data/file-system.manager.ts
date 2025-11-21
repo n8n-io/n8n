@@ -17,8 +17,6 @@ const EXECUTION_ID_EXTRACTOR =
 
 const EXECUTION_PATH_MATCHER = /^workflows\/([^/]+)\/executions\/([^/]+)\//;
 
-const CHAT_HUB_ATTACHMENT_PATH_MATCHER = /^chat-hub\/sessions\/([^/]+)\/messages\/([^/]+)\//;
-
 export class FileSystemManager implements BinaryData.Manager {
 	constructor(
 		private storagePath: string,
@@ -199,8 +197,8 @@ export class FileSystemManager implements BinaryData.Manager {
 				const executionId = location.executionId || 'temp'; // missing only in edge case, see PR #7244
 				return `workflows/${location.workflowId}/executions/${executionId}`;
 			}
-			case 'chat-hub-message-attachment':
-				return `chat-hub/sessions/${location.sessionId}/messages/${location.messageId}`;
+			case 'custom':
+				return location.pathSegments.join('/');
 		}
 	}
 
@@ -211,10 +209,10 @@ export class FileSystemManager implements BinaryData.Manager {
 			return FileLocation.ofExecution(executionMatch[1], executionMatch[2]);
 		}
 
-		const chatHubMatch = fileId.match(CHAT_HUB_ATTACHMENT_PATH_MATCHER);
-
-		if (chatHubMatch) {
-			return FileLocation.ofChatHubMessageAttachment(chatHubMatch[1], chatHubMatch[2]);
+		const binaryDataIndex = fileId.indexOf('/binary_data/');
+		if (binaryDataIndex !== -1) {
+			const pathSegments = fileId.substring(0, binaryDataIndex).split('/');
+			return FileLocation.ofCustom(pathSegments);
 		}
 
 		throw new UnexpectedError(`File ID ${fileId} has invalid format.`);

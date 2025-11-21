@@ -53,9 +53,13 @@ export const FileLocation = {
 		workflowId,
 		executionId,
 	}),
-	ofChatHubMessageAttachment: (sessionId: string, messageId: string): BinaryData.FileLocation => ({
-		type: 'chat-hub-message-attachment',
-		sessionId,
-		messageId,
+
+	/**
+	 * Create a location for a binary file at a custom path,
+	 * e.g. ["chat-hub", "sessions", "abc", "messages", "def"] -> "chat-hub/sessions/abc/messages/def"
+	 */
+	ofCustom: (pathSegments: string[]): BinaryData.FileLocation => ({
+		type: 'custom',
+		pathSegments,
 	}),
 };
