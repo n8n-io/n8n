@@ -140,6 +140,8 @@ export function useWorkflowSaving({
 		workflowId: string,
 		request: WorkflowDataUpdate,
 	): Promise<Partial<NotificationOptions> | undefined> {
+		// todo: check if the draft/publish flag is enabled and if so, don't deactivate the workflow
+
 		const missingActivatableTriggerNode =
 			request.nodes !== undefined && !request.nodes.some(isNodeActivatable);
 
@@ -245,11 +247,6 @@ export function useWorkflowSaving({
 				const createdTags = (workflowData.tags || []) as ITag[];
 				const tagIds = createdTags.map((tag: ITag): string => tag.id);
 				workflowState.setWorkflowTagIds(tagIds);
-			}
-
-			// TODO: do we need this?
-			if (workflowData.activeVersion) {
-				workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion);
 			}
 
 			uiStore.stateIsDirty = false;

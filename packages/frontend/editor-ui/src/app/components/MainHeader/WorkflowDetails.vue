@@ -170,7 +170,6 @@ function getWorkflowId(): string | undefined {
 }
 
 async function onSaveButtonClick() {
-	console.log('onSaveButtonClick');
 	// If the workflow is saving, do not allow another save
 	if (isWorkflowSaving.value) {
 		return;
@@ -188,7 +187,6 @@ async function onSaveButtonClick() {
 	});
 
 	if (saved) {
-		console.log('saved');
 		showCreateWorkflowSuccessToast(id);
 
 		await npsSurveyStore.fetchPromptsData();
