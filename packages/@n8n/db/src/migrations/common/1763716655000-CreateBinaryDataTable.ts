@@ -6,7 +6,7 @@ export class CreateBinaryDataTable1763716655000 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(
-				column('fileId').varchar(255).primary.notNull.comment('UUID'),
+				column('fileId').uuid.primary.notNull,
 				column('sourceType')
 					.varchar(50)
 					.notNull.comment("Source the file belongs to, e.g. 'execution'"),
