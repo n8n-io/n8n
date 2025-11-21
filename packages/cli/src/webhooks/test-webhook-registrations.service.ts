@@ -1,6 +1,6 @@
 import { Service } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
-import type { IWebhookData, IWorkflowBase } from 'n8n-workflow';
+import { UserError, type IWebhookData, type IWorkflowBase } from 'n8n-workflow';
 
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';
@@ -29,7 +29,9 @@ export class TestWebhookRegistrationsService {
 		const isCached = await this.cacheService.exists(this.cacheKey);
 
 		if (!isCached) {
-			throw new Error('Test webhook registration failed: workflow is too big. Remove pinned data');
+			throw new UserError(
+				'Test webhook registration failed: workflow is too big. Remove pinned data',
+			);
 		}
 
 		if (this.instanceSettings.isSingleMain) return;
