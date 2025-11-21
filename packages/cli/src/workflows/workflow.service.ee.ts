@@ -331,7 +331,7 @@ export class EnterpriseWorkflowService {
 		// 6. deactivate workflow if necessary
 		const wasActive = workflow.activeVersionId !== null;
 		if (wasActive) {
-			await this.activeWorkflowManager.remove(workflowId);
+			await this.activeWorkflowManager.remove(workflowId, user.id, 'update');
 		}
 
 		// 7. transfer the workflow
@@ -402,7 +402,7 @@ export class EnterpriseWorkflowService {
 			},
 		});
 
-		const activeWorkflows = workflows.filter((w) => w.activeVersionId !== null).map((w) => w.id);
+		const activeWorkflows = workflows.filter((w) => w.activeVersionId !== null).map((w) => w);
 
 		// 3. get destination project
 		const destinationProject = await this.projectService.getProjectWithScope(
@@ -442,7 +442,7 @@ export class EnterpriseWorkflowService {
 
 		// 5. deactivate all workflows if necessary
 		const deactivateWorkflowsPromises = activeWorkflows.map(
-			async (workflowId) => await this.activeWorkflowManager.remove(workflowId),
+			async (workflow) => await this.activeWorkflowManager.remove(workflow.id, user.id, 'update'),
 		);
 
 		await Promise.all(deactivateWorkflowsPromises);
@@ -463,8 +463,8 @@ export class EnterpriseWorkflowService {
 
 		// 9. try to activate workflows again if they were active
 
-		for (const workflowId of activeWorkflows) {
-			await this.attemptWorkflowReactivation(workflowId);
+		for (const workflow of activeWorkflows) {
+			await this.attemptWorkflowReactivation(workflow.id);
 		}
 	}
 

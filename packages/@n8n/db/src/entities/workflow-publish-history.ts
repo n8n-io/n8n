@@ -1,0 +1,37 @@
+import { Column, Entity, Index, JoinColumn, OneToOne, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { WorkflowActivateMode } from 'n8n-workflow';
+
+import { WithCreatedAt } from './abstract-entity';
+import { User } from './user';
+
+@Entity()
+@Index(['workflowId', 'versionId'])
+export class WorkflowPublishHistory extends WithCreatedAt {
+	@PrimaryGeneratedColumn()
+	id: number;
+
+	@Column({ type: 'varchar' })
+	@Index()
+	workflowId: string;
+
+	@Column({ type: 'varchar' })
+	versionId: string | null;
+
+	@Column()
+	status: 'activated' | 'deactivated';
+
+	// We only expect 'activate', 'update' and 'init' from WorkflowActivateMode
+	// But this makes usage wrt typings easier.
+	// If you ever see other values here this would be unexpected though
+	@Column({ type: 'varchar' })
+	mode: WorkflowActivateMode | 'deactivate' | null;
+
+	@Column({ type: 'varchar' })
+	userId: string | null;
+
+	@OneToOne('User', 'id', {
+		onDelete: 'SET NULL',
+	})
+	@JoinColumn({ name: 'userId' })
+	user: User;
+}

@@ -705,7 +705,7 @@ export class SourceControlImportService {
 			});
 
 			if (existingWorkflow?.activeVersionId) {
-				await this.activateImportedWorkflow({ existingWorkflow, importedWorkflow });
+				await this.activateImportedWorkflow({ existingWorkflow, importedWorkflow }, userId);
 			}
 
 			importWorkflowsResult.push({
@@ -733,19 +733,22 @@ export class SourceControlImportService {
 		}
 	}
 
-	private async activateImportedWorkflow({
-		existingWorkflow,
-		importedWorkflow,
-	}: { existingWorkflow: WorkflowEntity; importedWorkflow: IWorkflowToImport }) {
+	private async activateImportedWorkflow(
+		{
+			existingWorkflow,
+			importedWorkflow,
+		}: { existingWorkflow: WorkflowEntity; importedWorkflow: IWorkflowToImport },
+		userId: string,
+	) {
 		try {
 			// remove active pre-import workflow
 			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
-			await this.activeWorkflowManager.remove(existingWorkflow.id);
+			await this.activeWorkflowManager.remove(existingWorkflow.id, userId, 'update');
 
 			if (importedWorkflow.activeVersionId) {
 				// try activating the imported workflow
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
+				await this.activeWorkflowManager.add(existingWorkflow.id, 'update');
 			}
 		} catch (e) {
 			const error = ensureError(e);
