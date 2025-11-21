@@ -512,6 +512,15 @@ export class ChatHubWorkflowService {
 					},
 				};
 			}
+			case 'xAiGrok': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			case 'groq': {
 				return {
 					...common,

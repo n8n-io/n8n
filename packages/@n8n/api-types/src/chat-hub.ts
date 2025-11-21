@@ -18,6 +18,7 @@ export const chatHubLLMProviderSchema = z.enum([
 	'azureOpenAi',
 	'ollama',
 	'awsBedrock',
+	'xAiGrok',
 	'groq',
 	'openRouter',
 	'deepSeek',
@@ -47,6 +48,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	ollama: 'ollamaApi',
 	azureOpenAi: 'azureOpenAiApi',
 	awsBedrock: 'aws',
+	xAiGrok: 'xAiApi',
 	groq: 'groqApi',
 	openRouter: 'openRouterApi',
 	deepSeek: 'deepSeekApi',
@@ -86,6 +88,11 @@ const ollamaModelSchema = z.object({
 
 const awsBedrockModelSchema = z.object({
 	provider: z.literal('awsBedrock'),
+	model: z.string(),
+});
+
+const xAiGrokModelSchema = z.object({
+	provider: z.literal('xAiGrok'),
 	model: z.string(),
 });
 
@@ -131,6 +138,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	azureOpenAIModelSchema,
 	ollamaModelSchema,
 	awsBedrockModelSchema,
+	xAiGrokModelSchema,
 	groqModelSchema,
 	openRouterModelSchema,
 	deepSeekModelSchema,
@@ -146,6 +154,7 @@ export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
 export type ChatHubAzureOpenAIModel = z.infer<typeof azureOpenAIModelSchema>;
 export type ChatHubOllamaModel = z.infer<typeof ollamaModelSchema>;
 export type ChatHubAwsBedrockModel = z.infer<typeof awsBedrockModelSchema>;
+export type ChatHubXAiGrokModel = z.infer<typeof xAiGrokModelSchema>;
 export type ChatHubGroqModel = z.infer<typeof groqModelSchema>;
 export type ChatHubOpenRouterModel = z.infer<typeof openRouterModelSchema>;
 export type ChatHubDeepSeekModel = z.infer<typeof deepSeekModelSchema>;
@@ -158,6 +167,7 @@ export type ChatHubBaseLLMModel =
 	| ChatHubAzureOpenAIModel
 	| ChatHubOllamaModel
 	| ChatHubAwsBedrockModel
+	| ChatHubXAiGrokModel
 	| ChatHubGroqModel
 	| ChatHubOpenRouterModel
 	| ChatHubDeepSeekModel
@@ -205,6 +215,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	azureOpenAi: { models: [] },
 	ollama: { models: [] },
 	awsBedrock: { models: [] },
+	xAiGrok: { models: [] },
 	groq: { models: [] },
 	openRouter: { models: [] },
 	deepSeek: { models: [] },
