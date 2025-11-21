@@ -212,9 +212,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const executions = await this.find(queryParams);
 
 		if (options?.includeData && options?.unflattenData) {
+			console.log('here');
 			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
 			this.reportInvalidExecutions(invalid);
 			return valid.map((execution) => {
+				console.log(execution);
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
