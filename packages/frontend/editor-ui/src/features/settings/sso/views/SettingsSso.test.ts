@@ -392,10 +392,10 @@ describe('SettingsSso View', () => {
 			});
 			ssoStore.saveOidcConfig.mockResolvedValue({ ...oidcConfig, loginEnabled: true });
 
-			const { getByTestId, getByRole } = renderView();
+			const { getByTestId, getByRole, getAllByRole } = renderView();
 
 			// Set authProtocol component ref to OIDC
-			const protocolSelect = getByRole('combobox');
+			const protocolSelect = getAllByRole('combobox')[0];
 			expect(protocolSelect).toBeInTheDocument();
 			await userEvent.click(protocolSelect);
 
@@ -463,11 +463,11 @@ describe('SettingsSso View', () => {
 				discoveryEndpoint: '',
 			});
 
-			const { getByTestId, getByRole } = renderView();
+			const { getByTestId, getByRole, getAllByRole } = renderView();
 			showError.mockClear();
 
 			// Set authProtocol component ref to OIDC
-			const protocolSelect = getByRole('combobox');
+			const protocolSelect = getAllByRole('combobox')[0];
 			expect(protocolSelect).toBeInTheDocument();
 			await userEvent.click(protocolSelect);
 
@@ -519,10 +519,10 @@ describe('SettingsSso View', () => {
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 			ssoStore.getOidcConfig.mockResolvedValue(oidcConfig);
 
-			const { getByRole } = renderView();
+			const { getByRole, getAllByRole } = renderView();
 
 			// Change protocol selection in dropdown
-			const protocolSelect = getByRole('combobox');
+			const protocolSelect = getAllByRole('combobox')[0];
 			await userEvent.click(protocolSelect);
 
 			const dropdown = await waitFor(() => getByRole('listbox'));
@@ -542,10 +542,10 @@ describe('SettingsSso View', () => {
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 			ssoStore.getOidcConfig.mockResolvedValue(oidcConfig);
 
-			const { getByRole, getByTestId } = renderView();
+			const { getByRole, getByTestId, getAllByRole } = renderView();
 
 			// Change to SAML protocol in dropdown
-			const protocolSelect = getByRole('combobox');
+			const protocolSelect = getAllByRole('combobox')[0];
 			await userEvent.click(protocolSelect);
 
 			const dropdown = await waitFor(() => getByRole('listbox'));
@@ -578,10 +578,10 @@ describe('SettingsSso View', () => {
 			ssoStore.getOidcConfig.mockResolvedValue(oidcConfig);
 			ssoStore.saveOidcConfig.mockResolvedValue(oidcConfig);
 
-			const { getByRole, getByTestId } = renderView();
+			const { getByRole, getByTestId, getAllByRole } = renderView();
 
 			// Change to OIDC protocol in dropdown
-			const protocolSelect = getByRole('combobox');
+			const protocolSelect = getAllByRole('combobox')[0];
 			await userEvent.click(protocolSelect);
 
 			const dropdown = await waitFor(() => getByRole('listbox'));
@@ -641,14 +641,14 @@ describe('SettingsSso View', () => {
 			ssoStore.getSamlConfig.mockResolvedValue(samlConfig);
 			ssoStore.getOidcConfig.mockResolvedValue(oidcConfig);
 
-			const { getByRole, getByTestId, queryByTestId } = renderView();
+			const { getByRole, getAllByRole, getByTestId, queryByTestId } = renderView();
 
 			// Initially should show SAML content (matching store)
 			expect(getByTestId('sso-provider-url')).toBeVisible();
 			expect(queryByTestId('oidc-discovery-endpoint')).not.toBeInTheDocument();
 
 			// Change to OIDC in dropdown (local state only)
-			const protocolSelect = getByRole('combobox');
+			const protocolSelect = getAllByRole('combobox')[0];
 			await userEvent.click(protocolSelect);
 
 			const dropdown = await waitFor(() => getByRole('listbox'));
