@@ -419,7 +419,7 @@ describe('WorkflowDataProxy', () => {
 
 		test.each([{ methodName: 'itemMatching' }, { methodName: 'pairedItem' }])(
 			'$methodName should throw when it cannot find a paired item',
-			async ({ methodName }) => {
+			({ methodName }) => {
 				try {
 					proxy.$('DebugHelper')[methodName](0);
 					throw new Error('should throw');
@@ -445,7 +445,7 @@ describe('WorkflowDataProxy', () => {
 			},
 		);
 
-		test('item should throw when it cannot find a paired item', async () => {
+		test('item should throw when it cannot find a paired item', () => {
 			try {
 				proxy.$('DebugHelper').item;
 				throw new Error('should throw');
@@ -561,6 +561,7 @@ describe('WorkflowDataProxy', () => {
 				],
 				connections: {},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -623,6 +624,7 @@ describe('WorkflowDataProxy', () => {
 				],
 				connections: {},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -1014,6 +1016,7 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -1080,6 +1083,7 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -1141,6 +1145,7 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -1215,6 +1220,7 @@ describe('WorkflowDataProxy', () => {
 				],
 				connections: {},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),

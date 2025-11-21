@@ -2270,6 +2270,7 @@ function generateMockExecutionEvents() {
 			nodes: [],
 			connections: {},
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			versionId: '1',
 		},

@@ -26,6 +26,7 @@ import type { SharedWorkflow } from './shared-workflow';
 import type { TagEntity } from './tag-entity';
 import type { User } from './user';
 import type { WorkflowEntity } from './workflow-entity';
+import type { WorkflowHistory } from './workflow-history';
 
 export type UsageCount = {
 	usageCount: number;
@@ -79,12 +80,14 @@ export interface IWorkflowDb extends IWorkflowBase {
 	triggerCount: number;
 	tags?: TagEntity[];
 	parentFolder?: Folder | null;
+	activeVersion?: WorkflowHistory | null;
 }
 
 export interface ICredentialsDb extends ICredentialsBase, ICredentialsEncrypted {
 	id: string;
 	name: string;
 	shared?: SharedCredentials[];
+	isGlobal?: boolean;
 }
 
 export interface IExecutionResponse extends IExecutionBase {
@@ -221,6 +224,7 @@ export namespace ListQueryDb {
 			| 'name'
 			| 'active'
 			| 'versionId'
+			| 'activeVersionId'
 			| 'createdAt'
 			| 'updatedAt'
 			| 'tags'

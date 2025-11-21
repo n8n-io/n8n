@@ -120,7 +120,9 @@ export class WorkflowsController {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used credentials
 
-			const allCredentials = await this.credentialsService.getMany(req.user);
+			const allCredentials = await this.credentialsService.getMany(req.user, {
+				includeGlobal: true,
+			});
 
 			try {
 				this.enterpriseWorkflowService.validateCredentialPermissionsToUser(
@@ -181,11 +183,29 @@ export class WorkflowsController {
 
 			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
 
+			await this.workflowHistoryService.saveVersion(
+				req.user,
+				workflow,
+				workflow.id,
+				transactionManager,
+			);
+
+			const shouldActivate = req.body.active === true;
+			if (shouldActivate) {
+				workflow.activeVersionId = workflow.versionId;
+				await transactionManager.save(workflow);
+			}
+
 			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
 				req.user,
 				['workflow:read'],
-				{ em: transactionManager, includeTags: true, includeParentFolder: true },
+				{
+					em: transactionManager,
+					includeTags: true,
+					includeParentFolder: true,
+					includeActiveVersion: true,
+				},
 			);
 		});
 
@@ -193,8 +213,6 @@ export class WorkflowsController {
 			this.logger.error('Failed to create workflow', { userId: req.user.id });
 			throw new InternalServerError('Failed to save workflow');
 		}
-
-		await this.workflowHistoryService.saveVersion(req.user, savedWorkflow, savedWorkflow.id);
 
 		if (tagIds && !this.globalConfig.tags.disabled && savedWorkflow.tags) {
 			savedWorkflow.tags = this.tagService.sortByRequestOrder(savedWorkflow.tags, {

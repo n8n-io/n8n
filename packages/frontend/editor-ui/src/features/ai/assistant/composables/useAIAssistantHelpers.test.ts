@@ -417,6 +417,7 @@ const testWorkflow: IWorkflowDb = {
 	id: 'MokOcBHON6KkPq6Y',
 	name: 'My Sub-Workflow 3',
 	active: false,
+	activeVersionId: null,
 	isArchived: false,
 	createdAt: -1,
 	updatedAt: -1,
