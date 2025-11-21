@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, h } from 'vue';
+import { computed, ref, h, onMounted, onBeforeUnmount } from 'vue';
 import type { VNode } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import {
@@ -20,6 +20,7 @@ import { OPEN_AI_API_CREDENTIAL_TYPE } from 'n8n-workflow';
 import type { INodeUi } from '@/Interface';
 import type { IUsedCredential } from '@/features/credentials/credentials.types';
 import WorkflowActivationErrorMessage from '@/app/components/WorkflowActivationErrorMessage.vue';
+import { generateVersionName } from '@/features/workflows/workflowHistory/utils';
 
 const modalBus = createEventBus();
 const i18n = useI18n();
@@ -101,6 +102,16 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 	}
 
 	return null;
+});
+
+function handleModalOpened() {
+	if (!versionName.value) {
+		versionName.value = generateVersionName();
+	}
+}
+
+onMounted(() => {
+	handleModalOpened();
 });
 
 function findManagedOpenAiCredentialId(
