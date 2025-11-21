@@ -5,6 +5,7 @@ import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from './n8n-test-container-utils';
+import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 export async function setupRedis({
 	redisImage,
@@ -352,7 +353,7 @@ export async function setupProxyServer({
 	}
 }
 
-const TASK_RUNNER_IMAGE = 'n8nio/runners:nightly';
+const TASK_RUNNER_IMAGE = TEST_CONTAINER_IMAGES.taskRunner;
 
 export async function setupTaskRunner({
 	projectName,
