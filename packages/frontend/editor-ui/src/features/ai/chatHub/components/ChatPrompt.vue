@@ -212,12 +212,12 @@ defineExpose({
 			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
 				<template v-if="isNewSession">
 					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)">set credentials</a>
 					for {{ providerDisplayNames[llmProvider] }} to start a conversation
 				</template>
 				<template v-else>
 					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)">set credentials</a>
 					for {{ providerDisplayNames[llmProvider] }} to continue the conversation
 				</template>
 			</N8nText>
