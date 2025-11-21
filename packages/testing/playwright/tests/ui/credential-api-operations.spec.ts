@@ -77,12 +77,14 @@ test.describe('Credential API Operations', () => {
 			expect(foundCredentials).toHaveLength(2);
 
 			const credentialsWithScopes = await api.credentials.getCredentials({
+				includeGlobal: false,
 				includeScopes: true,
 			});
 			expect(credentialsWithScopes[0].scopes).toBeDefined();
 			expect(Array.isArray(credentialsWithScopes[0].scopes)).toBe(true);
 
 			const credentialsWithData = await api.credentials.getCredentials({
+				includeGlobal: false,
 				includeData: true,
 			});
 			const foundWithData = credentialsWithData.filter((c) => createdIds.includes(c.id));
