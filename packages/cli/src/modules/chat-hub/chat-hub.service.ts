@@ -65,6 +65,7 @@ import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 
 @Service()
@@ -85,6 +86,7 @@ export class ChatHubService {
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
+		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 	) {}
 
@@ -1139,6 +1141,7 @@ export class ChatHubService {
 		attachments: IBinaryData[],
 		trx: EntityManager,
 	) {
+		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 		const credential = await this.chatHubCredentialsService.ensureCredentials(
 			user,
 			model.provider,

@@ -358,7 +358,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	description: z.string().max(512).optional(),
 	systemPrompt: z.string().min(1),
 	credentialId: z.string(),
-	provider: chatHubProviderSchema.exclude(['n8n', 'custom-agent']),
+	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
 	tools: z.array(INodeSchema),
 }) {}
@@ -381,3 +381,25 @@ export interface EnrichedStructuredChunk extends StructuredChunk {
 		executionId: number | null;
 	};
 }
+
+const chatProviderSettingsSchema = z.object({
+	provider: chatHubLLMProviderSchema,
+	enabled: z.boolean().optional(),
+	credentialId: z.string().nullable(),
+	// Empty list = all models allowed
+	allowedModels: z.array(
+		z.object({
+			displayName: z.string(),
+			model: z.string(),
+			isManual: z.boolean().optional(),
+		}),
+	),
+	createdAt: z.string(),
+	updatedAt: z.string().nullable(),
+});
+
+export type ChatProviderSettingsDto = z.infer<typeof chatProviderSettingsSchema>;
+
+export class UpdateChatSettingsRequest extends Z.class({
+	payload: chatProviderSettingsSchema,
+}) {}
