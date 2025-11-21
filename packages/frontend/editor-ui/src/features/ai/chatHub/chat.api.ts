@@ -97,8 +97,16 @@ export const stopGenerationApi = async (
 
 export const fetchConversationsApi = async (
 	context: IRestApiContext,
+	limit: number,
+	cursor?: string,
 ): Promise<ChatHubConversationsResponse> => {
-	const apiEndpoint = '/chat/conversations';
+	const queryParams = new URLSearchParams();
+	queryParams.append('limit', limit.toString());
+	if (cursor) {
+		queryParams.append('cursor', cursor);
+	}
+
+	const apiEndpoint = `/chat/conversations?${queryParams.toString()}`;
 	return await makeRestApiRequest<ChatHubConversationsResponse>(context, 'GET', apiEndpoint);
 };
 
@@ -174,3 +182,12 @@ export const deleteAgentApi = async (context: IRestApiContext, agentId: string):
 	const apiEndpoint = `/chat/agents/${agentId}`;
 	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
 };
+
+export function buildChatAttachmentUrl(
+	context: IRestApiContext,
+	sessionId: string,
+	messageId: string,
+	attachmentIndex: number,
+): string {
+	return `${context.baseUrl}/chat/conversations/${sessionId}/messages/${messageId}/attachments/${attachmentIndex}`;
+}

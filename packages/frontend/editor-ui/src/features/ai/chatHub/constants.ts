@@ -15,6 +15,11 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	ollama: 'Ollama',
 	awsBedrock: 'AWS Bedrock',
 	xAiGrok: 'xAI Grok',
+	groq: 'Groq',
+	openRouter: 'OpenRouter',
+	deepSeek: 'DeepSeek',
+	cohere: 'Cohere',
+	mistralCloud: 'Mistral Cloud',
 	n8n: 'n8n',
 	'custom-agent': 'Custom Agent',
 };

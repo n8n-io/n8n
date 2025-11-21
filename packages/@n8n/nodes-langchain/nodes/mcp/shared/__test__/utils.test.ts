@@ -261,7 +261,7 @@ describe('utils', () => {
 
 				expect(result.ok).toBe(false);
 				if (!result.ok) {
-					expect(result.error.type).toBe('connection');
+					expect(result.error.type).toBe('auth');
 				}
 				expect(mockClient.connect).toHaveBeenCalledTimes(1);
 				expect(Transport).toHaveBeenCalledTimes(1);
@@ -283,7 +283,7 @@ describe('utils', () => {
 
 				expect(result.ok).toBe(false);
 				if (!result.ok) {
-					expect(result.error.type).toBe('connection');
+					expect(result.error.type).toBe('auth');
 				}
 				expect(mockClient.connect).toHaveBeenCalledTimes(1);
 				expect(Transport).toHaveBeenCalledTimes(1);
@@ -306,7 +306,7 @@ describe('utils', () => {
 
 				expect(result.ok).toBe(false);
 				if (!result.ok) {
-					expect(result.error.type).toBe('connection');
+					expect(result.error.type).toBe('auth');
 				}
 				expect(mockClient.connect).toHaveBeenCalledTimes(2);
 				expect(Transport).toHaveBeenCalledTimes(2);

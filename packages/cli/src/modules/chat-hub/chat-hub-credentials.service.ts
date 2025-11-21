@@ -28,6 +28,7 @@ export class ChatHubCredentialsService {
 			user,
 			['credential:read'],
 			trx,
+			{ includeGlobalCredentials: true },
 		);
 
 		const credentialId = this.pickCredentialId(provider, credentials);
@@ -52,6 +53,7 @@ export class ChatHubCredentialsService {
 			user,
 			['credential:read'],
 			trx,
+			{ includeGlobalCredentials: true },
 		);
 
 		const credential = allCredentials.find((c) => c.id === credentialId);
