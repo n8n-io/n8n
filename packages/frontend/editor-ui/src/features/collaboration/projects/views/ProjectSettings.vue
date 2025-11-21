@@ -478,16 +478,15 @@ onBeforeMount(async () => {
 	await usersStore.fetchUsers();
 });
 
-let isProjectRoleProvisioningEnabled = ref(false);
+let isProjectRoleProvisioningEnabled = computed(
+	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionProjectRoles || false,
+);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 	selectProjectNameIfMatchesDefault();
-	await userRoleProvisioningStore.getProvisioningConfig();
 
-	isProjectRoleProvisioningEnabled = computed(
-		() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionProjectRoles || false,
-	);
+	await userRoleProvisioningStore.getProvisioningConfig();
 });
 </script>
 

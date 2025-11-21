@@ -72,7 +72,9 @@ const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
 );
 
-let isInstanceRoleProvisioningEnabled = ref(false);
+let isInstanceRoleProvisioningEnabled = computed(
+	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
+);
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
@@ -82,10 +84,6 @@ onMounted(async () => {
 	}
 
 	await userRoleProvisioningStore.getProvisioningConfig();
-
-	isInstanceRoleProvisioningEnabled = computed(
-		() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
-	);
 });
 
 const usersListActions = computed((): Array<UserAction<IUser>> => {

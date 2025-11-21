@@ -1,4 +1,4 @@
-import { ref, readonly, computed } from 'vue';
+import { ref, readonly } from 'vue';
 import { defineStore } from 'pinia';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import * as provisioningApi from '@n8n/rest-api-client/api/provisioning';
