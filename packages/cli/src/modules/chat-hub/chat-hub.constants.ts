@@ -36,6 +36,10 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		name: '@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 		version: 1.1,
 	},
+	openRouter: {
+		name: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+		version: 1,
+	},
 	deepSeek: {
 		name: '@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 		version: 1,

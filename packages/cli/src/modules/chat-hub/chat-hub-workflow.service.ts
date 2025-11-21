@@ -512,6 +512,15 @@ export class ChatHubWorkflowService {
 					},
 				};
 			}
+			case 'openRouter': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			case 'deepSeek': {
 				return {
 					...common,
