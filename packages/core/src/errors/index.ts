@@ -1,4 +1,5 @@
 export { FileNotFoundError } from './file-not-found.error';
+export { FileTooLargeError } from './file-too-large.error';
 export { DisallowedFilepathError } from './disallowed-filepath.error';
 export { InvalidManagerError } from './invalid-manager.error';
 export { InvalidExecutionMetadataError } from './invalid-execution-metadata.error';
