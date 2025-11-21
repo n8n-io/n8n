@@ -21,7 +21,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 			this.manager,
 			trx,
 			async (em) => {
-				// @ts-ignore
+				// @ts-ignore this sporadically causes TS2589: Type instantiation is excessively deep and possibly infinite.
 				await em.insert(ChatHubMessage, message);
 				const saved = await em.findOneOrFail(ChatHubMessage, {
 					where: { id: message.id },
