@@ -13,7 +13,6 @@ import type {
 	INodeTypes,
 	IPinData,
 	IRunData,
-	IRunExecutionData,
 	IWebhookDescription,
 	IWorkflowDataProxyAdditionalKeys,
 	NodeParameterValue,
@@ -21,6 +20,7 @@ import type {
 } from 'n8n-workflow';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
+	createEmptyRunExecutionData,
 	FORM_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
 	NodeHelpers,
@@ -215,16 +215,7 @@ function resolveParameterImpl<T = IDataObject>(
 		_connectionInputData = get(_executeData, ['data', inputName, 0], null);
 	}
 
-	let runExecutionData: IRunExecutionData;
-	if (!executionData?.data) {
-		runExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
-	} else {
-		runExecutionData = executionData.data;
-	}
+	const runExecutionData = executionData?.data ?? createEmptyRunExecutionData();
 
 	if (_connectionInputData === null) {
 		_connectionInputData = [];
@@ -856,11 +847,11 @@ export function useWorkflowHelpers() {
 		workflowsStore.setWorkflowVersionId(workflow.versionId);
 
 		if (isCurrentWorkflow) {
-			workflowState.setActive(!!workflow.active);
+			workflowState.setActive(workflow.activeVersionId);
 			uiStore.stateIsDirty = false;
 		}
 
-		if (workflow.active) {
+		if (workflow.activeVersionId !== null) {
 			workflowsStore.setWorkflowActive(workflowId);
 		} else {
 			workflowsStore.setWorkflowInactive(workflowId);
@@ -945,7 +936,7 @@ export function useWorkflowHelpers() {
 
 	function initState(workflowData: IWorkflowDb) {
 		workflowsStore.addWorkflow(workflowData);
-		workflowState.setActive(workflowData.active || false);
+		workflowState.setActive(workflowData.activeVersionId);
 		workflowsStore.setIsArchived(workflowData.isArchived);
 		workflowsStore.setDescription(workflowData.description);
 		workflowState.setWorkflowId(workflowData.id);

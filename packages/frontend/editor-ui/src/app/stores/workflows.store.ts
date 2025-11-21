@@ -97,6 +97,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	name: '',
 	description: '',
 	active: false,
+	activeVersionId: null,
 	isArchived: false,
 	createdAt: -1,
 	updatedAt: -1,
@@ -177,7 +178,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return !existingWorkflow || !existingWorkflow.id;
 	});
 
-	const isWorkflowActive = computed(() => workflow.value.active);
+	const isWorkflowActive = computed(() => workflow.value.activeVersionId !== null);
 
 	const workflowTriggerNodes = computed(() =>
 		workflow.value.nodes.filter((node: INodeUi) => {
@@ -588,9 +589,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return createWorkflowObject(nodes, connections);
 	}
 
-	async function getWorkflowFromUrl(url: string): Promise<IWorkflowDb> {
+	async function getWorkflowFromUrl(url: string, projectId: string): Promise<IWorkflowDb> {
 		return await makeRestApiRequest(rootStore.restApiContext, 'GET', '/workflows/from-url', {
 			url,
+			projectId,
 		});
 	}
 
@@ -885,12 +887,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (index === -1) {
 			activeWorkflows.value.push(targetWorkflowId);
 		}
-		if (workflowsById.value[targetWorkflowId]) {
-			workflowsById.value[targetWorkflowId].active = true;
+		const targetWorkflow = workflowsById.value[targetWorkflowId];
+		if (targetWorkflow) {
+			targetWorkflow.active = true;
+			targetWorkflow.activeVersionId = targetWorkflow.versionId;
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			uiStore.stateIsDirty = false;
 			workflow.value.active = true;
+			workflow.value.activeVersionId = workflow.value.versionId;
 		}
 	}
 
@@ -899,8 +904,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (index !== -1) {
 			activeWorkflows.value.splice(index, 1);
 		}
-		if (workflowsById.value[targetWorkflowId]) {
-			workflowsById.value[targetWorkflowId].active = false;
+		const targetWorkflow = workflowsById.value[targetWorkflowId];
+		if (targetWorkflow) {
+			targetWorkflow.active = false;
+			targetWorkflow.activeVersionId = null;
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			workflow.value.active = false;
