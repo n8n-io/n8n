@@ -83,6 +83,25 @@ const state = reactive({
 	emptyFieldsNotice: '',
 });
 
+function getDefaultFieldValue(field?: ResourceMapperField): string | number | boolean | null {
+	if (!field) {
+		return null;
+	}
+
+	if (field.defaultValue !== undefined) {
+		return field.defaultValue;
+	}
+
+	// We only supply boolean defaults since it's a switch that cannot be null in `Fixed` mode
+	// Other defaults may break backwards compatibility as we'd remove the implicit passthrough
+	// mode you get when the field exists, but is empty in `Fixed` mode.
+	if (field.type === 'boolean') {
+		return false;
+	}
+
+	return null;
+}
+
 // Reload fields to map when dependent parameters change
 watch(
 	() => props.dependentParametersValues,
@@ -288,6 +307,10 @@ async function initFetching(inlineLoading = false): Promise<void> {
 		if (!state.paramValue.matchingColumns || state.paramValue.matchingColumns.length === 0) {
 			onMatchingColumnsChanged(defaultSelectedMatchingColumns.value);
 		}
+		// Set default values after loading schema if value is empty
+		if (!state.paramValue.value || Object.keys(state.paramValue.value).length === 0) {
+			setDefaultFieldValues();
+		}
 		state.hasStaleFields = false;
 	} catch (error) {
 		state.loadingError = true;
@@ -388,17 +411,11 @@ function setDefaultFieldValues(forceMatchingFieldsUpdate = false): void {
 			if (hideAllFields) {
 				field.removed = !field.required;
 			}
-			if (field.type === 'boolean') {
-				state.paramValue.value = {
-					...state.paramValue.value,
-					[field.id]: false,
-				};
-			} else {
-				state.paramValue.value = {
-					...state.paramValue.value,
-					[field.id]: null,
-				};
-			}
+
+			state.paramValue.value = {
+				...state.paramValue.value,
+				[field.id]: field.removed ? null : getDefaultFieldValue(field),
+			};
 		}
 	});
 	emitValueChanged();
@@ -508,12 +525,10 @@ function addField(name: string): void {
 	const schema = state.paramValue.schema;
 	const field = schema.find((f) => f.id === name);
 
+	const defaultValue = getDefaultFieldValue(field);
 	state.paramValue.value = {
 		...state.paramValue.value,
-		// We only supply boolean defaults since it's a switch that cannot be null in `Fixed` mode
-		// Other defaults may break backwards compatibility as we'd remove the implicit passthrough
-		// mode you get when the field exists, but is empty in `Fixed` mode.
-		[name]: field?.type === 'boolean' ? false : null,
+		[name]: defaultValue,
 	};
 
 	if (field) {
@@ -524,7 +539,7 @@ function addField(name: string): void {
 }
 
 function addAllFields(): void {
-	const newValues: { [name: string]: null } = {};
+	const newValues: Record<string, string | number | boolean | null> = {};
 	state.paramValue.schema.forEach((field) => {
 		if (field.display && field.removed) {
 			newValues[field.id] = null;
