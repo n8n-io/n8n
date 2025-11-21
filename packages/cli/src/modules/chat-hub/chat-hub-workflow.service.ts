@@ -512,6 +512,15 @@ export class ChatHubWorkflowService {
 					},
 				};
 			}
+			case 'deepSeek': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			case 'cohere': {
 				return {
 					...common,
