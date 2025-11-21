@@ -3,7 +3,7 @@ import type { User, WorkflowHistoryUpdate } from '@n8n/db';
 import { WorkflowHistory, WorkflowHistoryRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import type { EntityManager } from '@n8n/typeorm';
+import { type EntityManager } from '@n8n/typeorm';
 import type { IWorkflowBase } from 'n8n-workflow';
 import { ensureError, UnexpectedError } from 'n8n-workflow';
 
@@ -20,12 +20,7 @@ export class WorkflowHistoryService {
 		private readonly workflowFinderService: WorkflowFinderService,
 	) {}
 
-	async getList(
-		user: User,
-		workflowId: string,
-		take: number,
-		skip: number,
-	): Promise<Array<Omit<WorkflowHistory, 'nodes' | 'connections'>>> {
+	async getList(user: User, workflowId: string, take: number, skip: number) {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
@@ -34,15 +29,46 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
-		return await this.workflowHistoryRepository.find({
-			where: {
-				workflowId: workflow.id,
-			},
-			take,
-			skip,
-			select: ['workflowId', 'versionId', 'authors', 'createdAt', 'updatedAt'],
-			order: { createdAt: 'DESC' },
-		});
+		const result = await this.workflowHistoryRepository
+			.createQueryBuilder('wh')
+			.leftJoin(
+				(qb) => {
+					return qb
+						.select('wph.versionId', 'versionId')
+						.addSelect('MAX(wph.createdAt)', 'maxCreatedAt')
+						.from('workflow_publish_history', 'wph')
+						.where('wph.workflowId = :workflowId', { workflowId: workflow.id })
+						.andWhere('wph.mode IN (:...modes)', { modes: ['activated', 'updated'] })
+						.groupBy('wph.versionId');
+				},
+				'latestPublished',
+				'latestPublished.versionId = wh.versionId',
+			)
+			.leftJoinAndSelect(
+				'wh.workflowPublishHistory',
+				'wph',
+				'wph.createdAt = latestPublished.maxCreatedAt',
+			)
+			.where('wh.workflowId = :workflowId', { workflowId: workflow.id })
+			.select([
+				'wh.workflowId',
+				'wh.versionId',
+				'wh.authors',
+				'wh.createdAt',
+				'wh.updatedAt',
+				'wph.createdAt',
+				'wph.userId',
+			])
+			.take(take)
+			.skip(skip)
+			.orderBy('wh.createdAt', 'DESC')
+			.getMany();
+
+		return result.map(({ workflowPublishHistory, ...rest }) => ({
+			...rest,
+			lastActivatedAt: workflowPublishHistory[0]?.createdAt,
+			lastActivatedBy: workflowPublishHistory[0]?.userId,
+		}));
 	}
 
 	async getVersion(user: User, workflowId: string, versionId: string): Promise<WorkflowHistory> {

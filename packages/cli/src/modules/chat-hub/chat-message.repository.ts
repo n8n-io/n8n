@@ -21,6 +21,7 @@ export class ChatHubMessageRepository extends Repository<ChatHubMessage> {
 			this.manager,
 			trx,
 			async (em) => {
+				// @ts-ignore
 				await em.insert(ChatHubMessage, message);
 				const saved = await em.findOneOrFail(ChatHubMessage, {
 					where: { id: message.id },
