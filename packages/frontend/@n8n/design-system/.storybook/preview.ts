@@ -47,7 +47,13 @@ export const parameters = {
 		],
 	},
 	themes: {
+		default: 'light',
 		list: [
+			{
+				name: 'light',
+				class: 'theme-light',
+				color: '#fff',
+			},
 			{
 				name: 'dark',
 				class: 'theme-dark-beta',
@@ -65,6 +71,21 @@ export const parameters = {
 				'Modules',
 			],
 		},
+	},
+	chromatic: {
+		modes: {
+			light: {
+				globals: {
+					theme: 'light',
+				},
+			},
+			dark: {
+				globals: {
+					theme: 'dark',
+				},
+			},
+		},
+		disableSnapshot: false,
 	},
 };
 
