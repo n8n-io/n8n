@@ -8,6 +8,7 @@
     "generate:sql:grammar": "lezer-generator --typeScript --output src/grammar.sql.ts src/sql.grammar",
     "generate": "pnpm generate:sql:grammar && pnpm format",
     "build": "tsc -p tsconfig.build.json",
+    "test:unit": "jest",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
     "format": "biome format --write src test",

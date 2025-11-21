@@ -107,8 +107,9 @@ export function useWorkflowState() {
 		return true;
 	}
 
-	function setActive(active: boolean) {
-		ws.workflow.active = active;
+	function setActive(activeVersionId: string | null) {
+		ws.workflow.active = activeVersionId !== null;
+		ws.workflow.activeVersionId = activeVersionId;
 	}
 
 	function setWorkflowId(id?: string) {
@@ -220,7 +221,7 @@ export function useWorkflowState() {
 		setWorkflowExecutionData(null);
 		resetAllNodesIssues();
 
-		setActive(ws.defaults.active);
+		setActive(ws.defaults.activeVersionId);
 		setWorkflowId('');
 		setWorkflowName({ newName: '', setStateDirty: false });
 		setWorkflowSettings({ ...ws.defaults.settings });

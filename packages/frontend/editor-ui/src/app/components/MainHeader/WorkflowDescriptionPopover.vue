@@ -221,7 +221,6 @@ watch(descriptionValue, (newValue) => {
 .description-button {
 	border: none;
 	position: relative;
-	top: var(--spacing--5xs);
 
 	&.active {
 		color: var(--color--background--shade-2);

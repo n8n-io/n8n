@@ -115,6 +115,7 @@ describe('WorkflowShareModal.ee.vue', () => {
 			id: '',
 			name: 'My workflow',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			createdAt: new Date().toISOString(),
 			updatedAt: new Date().toISOString(),

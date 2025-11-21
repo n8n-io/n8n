@@ -5,7 +5,13 @@ import {
 	CHAT_AGENTS_VIEW,
 	TOOLS_SELECTOR_MODAL_KEY,
 	AGENT_EDITOR_MODAL_KEY,
+	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+	CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+	CHAT_SETTINGS_VIEW,
+	CHAT_PROVIDER_SETTINGS_MODAL_KEY,
 } from '@/features/ai/chatHub/constants';
+import { i18n } from '@n8n/i18n';
+import SettingsChatHubView from './SettingsChatHubView.vue';
 
 const ChatSidebar = async () => await import('@/features/ai/chatHub/components/ChatSidebar.vue');
 const ChatView = async () => await import('@/features/ai/chatHub/ChatView.vue');
@@ -40,6 +46,44 @@ export const ChatModule: FrontendModuleDescription = {
 				},
 			},
 		},
+		{
+			key: CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
+			component: async () => await import('./components/CredentialSelectorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					provider: null,
+					initialValue: null,
+					onSelect: () => {},
+					onCreateNew: () => {},
+				},
+			},
+		},
+		{
+			key: CHAT_MODEL_BY_ID_SELECTOR_MODAL_KEY,
+			component: async () => await import('./components/ModelByIdSelectorModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					provider: null,
+					initialValue: null,
+					onSelect: () => {},
+				},
+			},
+		},
+		{
+			key: CHAT_PROVIDER_SETTINGS_MODAL_KEY,
+			component: async () => await import('./components/ProviderSettingsModal.vue'),
+			initialState: {
+				open: false,
+				data: {
+					provider: null,
+					disabled: false,
+					onConfirm: () => {},
+					onCancel: () => {},
+				},
+			},
+		},
 	],
 	routes: [
 		{
@@ -50,7 +94,12 @@ export const ChatModule: FrontendModuleDescription = {
 				sidebar: ChatSidebar,
 			},
 			meta: {
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated'],
+				getProperties() {
+					return {
+						feature: 'chat-hub',
+					};
+				},
 			},
 		},
 		{
@@ -61,7 +110,12 @@ export const ChatModule: FrontendModuleDescription = {
 				sidebar: ChatSidebar,
 			},
 			meta: {
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated'],
+				getProperties() {
+					return {
+						feature: 'chat-hub',
+					};
+				},
 			},
 		},
 		{
@@ -72,7 +126,35 @@ export const ChatModule: FrontendModuleDescription = {
 				sidebar: ChatSidebar,
 			},
 			meta: {
-				middleware: ['authenticated', 'custom'],
+				middleware: ['authenticated'],
+				getProperties() {
+					return {
+						feature: 'chat-hub',
+					};
+				},
+			},
+		},
+		{
+			path: 'chat',
+			name: CHAT_SETTINGS_VIEW,
+			components: {
+				settingsView: SettingsChatHubView,
+			},
+			meta: {
+				middleware: ['authenticated', 'rbac'],
+				middlewareOptions: {
+					rbac: {
+						scope: ['chatHub:manage'],
+					},
+				},
+				telemetry: {
+					pageCategory: 'settings',
+					getProperties() {
+						return {
+							feature: 'chat-hub',
+						};
+					},
+				},
 			},
 		},
 	],
@@ -84,6 +166,15 @@ export const ChatModule: FrontendModuleDescription = {
 		{
 			key: 'chat',
 			displayName: 'Chat',
+		},
+	],
+	settingsPages: [
+		{
+			id: 'settings-chat-hub',
+			icon: 'message-circle',
+			label: i18n.baseText('settings.chatHub'),
+			position: 'top',
+			route: { to: { name: CHAT_SETTINGS_VIEW } },
 		},
 	],
 };
