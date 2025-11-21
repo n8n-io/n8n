@@ -324,7 +324,7 @@ export class TestWebhooks implements IWebhookManager {
 			return false; // no webhooks found to start a workflow
 		}
 
-		const timeoutDuration = TEST_WEBHOOK_TIMEOUT; // 10 minutes for ChatTrigger, normal for others
+		const timeoutDuration = TEST_WEBHOOK_TIMEOUT;
 
 		const timeout = setTimeout(async () => await this.cancelWebhook(workflow.id), timeoutDuration);
 
