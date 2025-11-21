@@ -139,7 +139,10 @@ describe('RunExecutionDataFactory', () => {
 
 			const result = createErrorExecutionData(node, error);
 
-			expect(result.startData?.destinationNode).toEqual('TestNode');
+			expect(result.startData?.destinationNode).toEqual({
+				nodeName: 'TestNode',
+				mode: 'inclusive',
+			});
 			expect(result.startData?.runNodeFilter).toEqual(['TestNode']);
 
 			expect(result.executionData?.contextData).toEqual({});
