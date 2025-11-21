@@ -142,35 +142,61 @@ const availableActions = computed(() => {
 		});
 	}
 
-	if (isMcpModuleEnabled.value) {
-		if (!isMcpAccessEnabled.value) {
-			if (
-				canToggleInstanceMCPAccess.value &&
-				!suggestedActionSettings['instance-mcp-access']?.ignored
-			) {
-				actions.push({
-					id: 'instance-mcp-access',
-					title: i18n.baseText('mcp.productionChecklist.title'),
-					description: i18n.baseText('mcp.productionChecklist.instance.description'),
-					moreInfoLink: MCP_DOCS_PAGE_URL,
-					completed: false,
-				});
-			}
-		} else if (
-			isWorkflowEligibleForMcpAccess.value &&
-			!suggestedActionSettings['workflow-mcp-access']?.ignored
-		) {
-			actions.push({
-				id: 'workflow-mcp-access',
-				title: i18n.baseText('mcp.productionChecklist.title'),
-				description: i18n.baseText('mcp.productionChecklist.workflow.description'),
-				moreInfoLink: MCP_DOCS_PAGE_URL,
-				completed: props.workflow.settings?.availableInMCP ?? false,
-			});
-		}
+	// MCP access action
+	const mcpAction = getMcpAction();
+	if (mcpAction) {
+		actions.push(mcpAction);
 	}
 
 	return actions;
+
+	function getMcpAction(): {
+		id: ActionType;
+		title: string;
+		description: string;
+		moreInfoLink: string;
+		completed: boolean;
+	} | null {
+		if (!isMcpModuleEnabled.value) return null;
+
+		const baseAction = {
+			title: i18n.baseText('mcp.productionChecklist.title'),
+			moreInfoLink: MCP_DOCS_PAGE_URL,
+		};
+
+		// Instance-level MCP access is disabled - show action to enable it
+		if (!isMcpAccessEnabled.value) {
+			// Only show to admins if not ignored
+			if (
+				!canToggleInstanceMCPAccess.value ||
+				suggestedActionSettings['instance-mcp-access']?.ignored
+			) {
+				return null;
+			}
+
+			return {
+				...baseAction,
+				id: 'instance-mcp-access',
+				description: i18n.baseText('mcp.productionChecklist.instance.description'),
+				completed: false,
+			};
+		}
+
+		// Workflow-level MCP access (instance-level is enabled)
+		if (
+			!isWorkflowEligibleForMcpAccess.value ||
+			suggestedActionSettings['workflow-mcp-access']?.ignored
+		) {
+			return null;
+		}
+
+		return {
+			...baseAction,
+			id: 'workflow-mcp-access',
+			description: i18n.baseText('mcp.productionChecklist.workflow.description'),
+			completed: props.workflow.settings?.availableInMCP ?? false,
+		};
+	}
 });
 
 async function loadWorkflowSettings() {
