@@ -35,8 +35,8 @@ withDefaults(
 
 	.wrapper:hover & {
 		/* background: var(--color--primary); */
-		border: 2px solid light-dark(var(--color--neutral-300), var(--color--neutral-300));
-		background: light-dark(var(--color--neutral-300), var(--color--neutral-700));
+		border: 1.5px solid light-dark(var(--color--neutral-300), var(--color--neutral-300));
+		background: light-dark(var(--color--neutral-100), var(--color--neutral-700));
 		transform: scale(1.5);
 	}
 }

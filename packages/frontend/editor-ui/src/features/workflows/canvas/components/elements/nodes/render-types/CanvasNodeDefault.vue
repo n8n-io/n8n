@@ -207,7 +207,7 @@ function onActivate(event: MouseEvent) {
 		var(
 			--canvas-node--border-color,
 			light-dark(
-				oklch(from var(--color--neutral-black) l c h / 0.07),
+				oklch(from var(--color--neutral-black) l c h / 0.15),
 				oklch(from var(--color--neutral-white) l c h / 0.085)
 			)
 		);
