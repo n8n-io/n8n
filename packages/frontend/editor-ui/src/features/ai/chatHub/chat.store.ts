@@ -255,6 +255,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
 		status: ChatHubMessageStatus,
+		content?: string,
 	) {
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[messageId];
@@ -263,6 +264,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 
 		message.status = status;
+		if (content) {
+			message.content = content;
+		}
 		message.updatedAt = new Date().toISOString();
 	}
 
@@ -414,8 +418,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 					return;
 				}
 
-				updateMessage(sessionId, chunk.metadata.messageId, 'error');
-				onChunk(message.content ?? '');
+				updateMessage(sessionId, chunk.metadata.messageId, 'error', chunk.content);
 				break;
 			}
 		}
