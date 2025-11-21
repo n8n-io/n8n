@@ -25,6 +25,7 @@ const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const instanceId = useRootStore().instanceId;
 
 const savingForm = ref<boolean>(false);
 
@@ -151,6 +152,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 
 		if (isUserRoleProvisioningChanged()) {
 			await saveProvisioningConfig();
+			sendTrackingEventForUserProvisioning();
 			showUserRoleProvisioningDialog.value = false;
 		}
 
@@ -171,12 +173,20 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 
 function sendTrackingEvent(config: OidcConfigDto) {
 	const trackingMetadata = {
-		instance_id: useRootStore().instanceId,
+		instance_id: instanceId,
 		authentication_method: SupportedProtocols.OIDC,
 		discovery_endpoint: config.discoveryEndpoint,
 		is_active: config.loginEnabled,
 	};
 	telemetry.track('User updated single sign on settings', trackingMetadata);
+}
+
+function sendTrackingEventForUserProvisioning() {
+	telemetry.track('User updated provisioning settings', {
+		instance_id: instanceId,
+		authentication_method: SupportedProtocols.OIDC,
+		updated_setting: userRoleProvisioning.value,
+	});
 }
 
 const goToUpgrade = () => {
