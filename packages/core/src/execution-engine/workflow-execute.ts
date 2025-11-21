@@ -209,37 +209,39 @@ export class WorkflowExecute {
 		} else {
 			// Edge Case 1:
 			// Support executing a single node that is not connected to a trigger
+			// TODO: remove this, once it's proven to be unnecessary
 			const destinationHasNoParents = graph.getDirectParentConnections(destination).length === 0;
 			if (destinationHasNoParents) {
-				// short cut here, only create a subgraph and the stacks
-				graph = findSubgraph({
-					graph: filterDisabledNodes(graph),
-					destination,
-					trigger: destination,
-				});
-				const filteredNodes = graph.getNodes();
-				runData = cleanRunData(runData, graph, new Set([destination]));
-				const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-					recreateNodeExecutionStack(graph, new Set([destination]), runData, pinData ?? {});
-
-				this.status = 'running';
-				this.runExecutionData = createRunExecutionData({
-					startData: {
-						destinationNode,
-						runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
-					},
-					resultData: {
-						runData,
-						pinData,
-					},
-					executionData: {
-						nodeExecutionStack,
-						waitingExecution,
-						waitingExecutionSource,
-					},
-				});
-
-				return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
+				assert.fail('this code should be dead');
+				// // short cut here, only create a subgraph and the stacks
+				// graph = findSubgraph({
+				// 	graph: filterDisabledNodes(graph),
+				// 	destination,
+				// 	trigger: destination,
+				// });
+				// const filteredNodes = graph.getNodes();
+				// runData = cleanRunData(runData, graph, new Set([destination]));
+				// const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
+				// 	recreateNodeExecutionStack(graph, new Set([destination]), runData, pinData ?? {});
+				//
+				// this.status = 'running';
+				// this.runExecutionData = createRunExecutionData({
+				// 	startData: {
+				// 		destinationNode,
+				// 		runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
+				// 	},
+				// 	resultData: {
+				// 		runData,
+				// 		pinData,
+				// 	},
+				// 	executionData: {
+				// 		nodeExecutionStack,
+				// 		waitingExecution,
+				// 		waitingExecutionSource,
+				// 	},
+				// });
+				//
+				// return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
 			}
 		}
 
