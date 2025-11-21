@@ -8,7 +8,12 @@ import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 
 const props = defineProps<{
 	modalName: string;
-	data: { versionId: string; workflowId: string; formattedCreatedAt: string };
+	data: {
+		versionId: string;
+		workflowId: string;
+		formattedCreatedAt: string;
+		versionName?: string;
+	};
 }>();
 
 const i18n = useI18n();
@@ -33,7 +38,9 @@ const handlePublish = async () => {
 			<N8nHeading tag="h2" size="xlarge">
 				{{
 					i18n.baseText('workflowHistory.publishModal.title', {
-						interpolate: { versionName: props.data.formattedCreatedAt },
+						interpolate: {
+							versionName: props.data.versionName || props.data.formattedCreatedAt,
+						},
 					})
 				}}
 			</N8nHeading>

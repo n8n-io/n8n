@@ -30,7 +30,7 @@ const emit = defineEmits<{
 		value: {
 			action: WorkflowHistoryActionTypes[number];
 			id: WorkflowVersionId;
-			data: { formattedCreatedAt: string };
+			data: { formattedCreatedAt: string; versionName?: string };
 		},
 	];
 }>();
@@ -84,7 +84,7 @@ const onAction = ({
 }: {
 	action: WorkflowHistoryActionTypes[number];
 	id: WorkflowVersionId;
-	data: { formattedCreatedAt: string };
+	data: { formattedCreatedAt: string; versionName?: string };
 }) => {
 	emit('action', { action, id, data });
 };
