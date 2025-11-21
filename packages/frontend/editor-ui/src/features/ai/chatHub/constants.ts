@@ -15,6 +15,7 @@ export const providerDisplayNames: Record<ChatHubProvider, string> = {
 	azureOpenAi: 'Azure OpenAI',
 	ollama: 'Ollama',
 	awsBedrock: 'AWS Bedrock',
+	vercelAiGateway: 'Vercel AI Gateway',
 	xAiGrok: 'xAI Grok',
 	groq: 'Groq',
 	openRouter: 'OpenRouter',
