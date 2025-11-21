@@ -44,11 +44,12 @@ on:
         required: true
 
 env:
-  PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache
+  PLAYWRIGHT_BROWSERS_PATH: ms-playwright-cache
   NODE_OPTIONS: --max-old-space-size=3072
   # Disable Ryuk to avoid issues with Docker since it needs privileged access, containers are cleaned on teardown anyway
   TESTCONTAINERS_RYUK_DISABLED: true
   PLAYWRIGHT_WORKERS: ${{ inputs.workers || '2' }} # Configurable workers, defaults to 2 to reduce resource contention
+  N8N_BASE_URL: http://localhost:5680
 
 jobs:
   test:
@@ -57,7 +58,7 @@ jobs:
       fail-fast: false
       matrix:
         shard: ${{ fromJSON(inputs.shards || '[1, 2, 3, 4, 5, 6, 7, 8]') }}
-    name: Test (Shard ${{ matrix.shard }}/${{ strategy.job-total }})
+    name: Test (Machine ${{ matrix.shard }})
 
     steps:
       - name: Checkout
@@ -75,21 +76,19 @@ jobs:
           INCLUDE_TEST_CONTROLLER: ${{ inputs.test-mode == 'docker-build' && 'true' || '' }}
 
       - name: Install Browsers
-        if: inputs.test-mode == 'docker-build'
         run: pnpm turbo install-browsers:ci
 
       - name: Prepare Test Image
         if: inputs.test-mode == 'docker-pull'
         run: pnpm --filter=n8n-playwright prepare-test-image ${{ inputs.docker-image }}
 
-      - name: Run Tests
-        run: |
-          ${{ inputs.test-command }} \
-            --shard=${{ matrix.shard }}/${{ strategy.job-total }} \
-            --workers=${{ env.PLAYWRIGHT_WORKERS }}
+      - name: Run Tests (Orchestrated)
+        run: pnpm --filter=n8n-playwright exec npx pwc-p --pwc-debug=true -- --project=ui --project=ui:isolated --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
-          N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
+          RESET_E2E_DB: true
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
+          CURRENTS_PROJECT_ID: I0yzoc
+          CURRENTS_CI_BUILD_ID: n8n-${{ github.run_id }}-${{ github.run_attempt }}
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
