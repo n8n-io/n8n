@@ -262,7 +262,7 @@ export class TestRunnerService {
 		// When in queue mode, we need to pass additional data to the execution
 		// the same way as it would be passed in manual mode
 		if (this.executionsConfig.mode === 'queue') {
-			data.executionData = {
+			data.executionData = createRunExecutionData({
 				resultData: {
 					pinData,
 					runData: {},
@@ -273,7 +273,7 @@ export class TestRunnerService {
 						name: triggerNode.name,
 					},
 				},
-			};
+			});
 		}
 
 		// Trigger the workflow under test with mocked data

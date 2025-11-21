@@ -15,9 +15,11 @@ import type { IRunExecutionDataV1 } from './run-execution-data.v1';
  */
 export type IRunExecutionDataAll = IRunExecutionDataV0 | IRunExecutionDataV1;
 
+const __brand = Symbol('brand');
+
 /**
  * Current version of IRunExecutionData.
- *
- * TODO: make V1 the default.
  */
-export type IRunExecutionData = IRunExecutionDataV0;
+export type IRunExecutionData = IRunExecutionDataV0 & {
+	[__brand]: 'Use createRunExecutionData factory instead of constructing manually';
+};

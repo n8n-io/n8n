@@ -290,9 +290,6 @@ export class CanvasPage extends BasePage {
 		await this.page.locator('body').click({ position: { x: 0, y: 0 } });
 	}
 
-	getWorkflowTags() {
-		return this.page.getByTestId('workflow-tags').locator('.el-tag');
-	}
 	async activateWorkflow() {
 		const switchElement = this.page.getByTestId('workflow-activate-switch');
 		const statusElement = this.page.getByTestId('workflow-activator-status');
@@ -375,8 +372,24 @@ export class CanvasPage extends BasePage {
 			.locator('.el-tag:not(.count-container)');
 	}
 
+	getSavedWorkflowTagPills(): Locator {
+		return this.page.getByTestId('workflow-tags').locator('.n8n-tag:not(.count-container)');
+	}
+
 	getTagsDropdown(): Locator {
 		return this.page.getByTestId('tags-dropdown');
+	}
+
+	getWorkflowTagsDropdown(): Locator {
+		return this.page.getByTestId('workflow-tags-dropdown');
+	}
+
+	getWorkflowTags(): Locator {
+		return this.page.getByTestId('workflow-tags');
+	}
+
+	getTagCloseButton(): Locator {
+		return this.getWorkflowTagsDropdown().locator('.el-tag__close');
 	}
 
 	async typeInTagInput(text: string): Promise<void> {
