@@ -94,7 +94,7 @@ export interface FrontendSettings {
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: 'default' | 'filesystem' | 's3';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;
