@@ -157,8 +157,8 @@ const iconColor = computed(() => {
 	&.notification::after {
 		content: '';
 		position: absolute;
-		top: calc(var(--spacing--5xs) * -1);
-		right: calc(var(--spacing--5xs) * -1);
+		top: 0;
+		right: 0;
 		width: var(--spacing--4xs);
 		height: var(--spacing--4xs);
 		background-color: var(--color--danger);
