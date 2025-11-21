@@ -86,7 +86,11 @@ function pullWorkfolder() {
 
 <template>
 	<div
-		v-if="sourceControlAvailable && currentBranch"
+		v-if="
+			sourceControlAvailable &&
+			sourceControlStore.preferences.connected &&
+			sourceControlStore.preferences.branchName
+		"
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,
