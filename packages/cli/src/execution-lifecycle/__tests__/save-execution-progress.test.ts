@@ -4,7 +4,7 @@ import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import { ErrorReporter } from 'n8n-core';
-import { createRunExecutionData, type IRunExecutionData, type ITaskData } from 'n8n-workflow';
+import { createRunExecutionData, type ITaskData } from 'n8n-workflow';
 
 import { saveExecutionProgress } from '../save-execution-progress';
 
