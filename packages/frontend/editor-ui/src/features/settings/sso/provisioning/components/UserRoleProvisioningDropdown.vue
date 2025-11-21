@@ -6,6 +6,7 @@ import { onMounted } from 'vue';
 import { useUserRoleProvisioningStore } from '../composables/userRoleProvisioning.store';
 import { useI18n } from '@n8n/i18n';
 import { type SupportedProtocolType } from '../../sso.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 
 export type UserRoleProvisioningSetting =
 	| 'disabled'
@@ -20,6 +21,7 @@ const { authProtocol } = defineProps<{
 
 const i18n = useI18n();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
+const canManageUserProvisioning = useRBACStore().hasScope('provisioning:manage');
 
 const handleUserRoleProvisioningChange = (newValue: UserRoleProvisioningSetting) => {
 	value.value = newValue;
@@ -72,11 +74,11 @@ onMounted(async () => {
 });
 </script>
 <template>
-	<!-- TODO: also check for 'provisioning:manage' permission scope -->
 	<div :class="$style.group">
 		<label>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.label') }}</label>
 		<N8nSelect
 			:model-value="value"
+			:disabled="!canManageUserProvisioning"
 			data-test-id="oidc-user-role-provisioning"
 			:class="$style.userRoleProvisioningSelect"
 			@update:model-value="handleUserRoleProvisioningChange"
