@@ -512,6 +512,15 @@ export class ChatHubWorkflowService {
 					},
 				};
 			}
+			case 'vercelAiGateway': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			case 'xAiGrok': {
 				return {
 					...common,
