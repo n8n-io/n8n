@@ -80,6 +80,7 @@ export class ChatHubWorkflowService {
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId}`;
 			newWorkflow.active = false;
+			newWorkflow.activeVersionId = null;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
@@ -129,6 +130,7 @@ export class ChatHubWorkflowService {
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId} (Title Generation)`;
 			newWorkflow.active = false;
+			newWorkflow.activeVersionId = null;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
@@ -503,6 +505,60 @@ export class ChatHubWorkflowService {
 				};
 			}
 			case 'awsBedrock': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'vercelAiGateway': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'xAiGrok': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'groq': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'openRouter': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'deepSeek': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'cohere': {
 				return {
 					...common,
 					parameters: {

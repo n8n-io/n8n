@@ -141,6 +141,12 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 	azureEntraId: {},
 	ollama: {},
 	awsBedrock: {},
+	vercelAiGateway: {},
+	xAiGrok: {},
+	groq: {},
+	openRouter: {},
+	deepSeek: {},
+	cohere: {},
 	mistralCloud: {},
 };
 

@@ -19,6 +19,12 @@ export const chatHubLLMProviderSchema = z.enum([
 	'azureEntraId',
 	'ollama',
 	'awsBedrock',
+	'vercelAiGateway',
+	'xAiGrok',
+	'groq',
+	'openRouter',
+	'deepSeek',
+	'cohere',
 	'mistralCloud',
 ]);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
@@ -45,6 +51,12 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	azureOpenAi: 'azureOpenAiApi',
 	azureEntraId: 'azureEntraCognitiveServicesOAuth2Api',
 	awsBedrock: 'aws',
+	vercelAiGateway: 'vercelAiGatewayApi',
+	xAiGrok: 'xAiApi',
+	groq: 'groqApi',
+	openRouter: 'openRouterApi',
+	deepSeek: 'deepSeekApi',
+	cohere: 'cohereApi',
 	mistralCloud: 'mistralCloudApi',
 };
 
@@ -88,6 +100,36 @@ const awsBedrockModelSchema = z.object({
 	model: z.string(),
 });
 
+const vercelAiGatewaySchema = z.object({
+	provider: z.literal('vercelAiGateway'),
+	model: z.string(),
+});
+
+const xAiGrokModelSchema = z.object({
+	provider: z.literal('xAiGrok'),
+	model: z.string(),
+});
+
+const groqModelSchema = z.object({
+	provider: z.literal('groq'),
+	model: z.string(),
+});
+
+const openRouterModelSchema = z.object({
+	provider: z.literal('openRouter'),
+	model: z.string(),
+});
+
+const deepSeekModelSchema = z.object({
+	provider: z.literal('deepSeek'),
+	model: z.string(),
+});
+
+const cohereModelSchema = z.object({
+	provider: z.literal('cohere'),
+	model: z.string(),
+});
+
 const mistralCloudModelSchema = z.object({
 	provider: z.literal('mistralCloud'),
 	model: z.string(),
@@ -111,6 +153,12 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	azureEntraIdModelSchema,
 	ollamaModelSchema,
 	awsBedrockModelSchema,
+	vercelAiGatewaySchema,
+	xAiGrokModelSchema,
+	groqModelSchema,
+	openRouterModelSchema,
+	deepSeekModelSchema,
+	cohereModelSchema,
 	mistralCloudModelSchema,
 	n8nModelSchema,
 	chatAgentSchema,
@@ -123,6 +171,12 @@ export type ChatHubAzureOpenAIModel = z.infer<typeof azureOpenAIModelSchema>;
 export type ChatHubAzureEntraIdModel = z.infer<typeof azureEntraIdModelSchema>;
 export type ChatHubOllamaModel = z.infer<typeof ollamaModelSchema>;
 export type ChatHubAwsBedrockModel = z.infer<typeof awsBedrockModelSchema>;
+export type ChatHubVercelAiGatewayModel = z.infer<typeof vercelAiGatewaySchema>;
+export type ChatHubXAiGrokModel = z.infer<typeof xAiGrokModelSchema>;
+export type ChatHubGroqModel = z.infer<typeof groqModelSchema>;
+export type ChatHubOpenRouterModel = z.infer<typeof openRouterModelSchema>;
+export type ChatHubDeepSeekModel = z.infer<typeof deepSeekModelSchema>;
+export type ChatHubCohereModel = z.infer<typeof cohereModelSchema>;
 export type ChatHubMistralCloudModel = z.infer<typeof mistralCloudModelSchema>;
 export type ChatHubBaseLLMModel =
 	| ChatHubOpenAIModel
@@ -132,6 +186,12 @@ export type ChatHubBaseLLMModel =
 	| ChatHubAzureEntraIdModel
 	| ChatHubOllamaModel
 	| ChatHubAwsBedrockModel
+	| ChatHubVercelAiGatewayModel
+	| ChatHubXAiGrokModel
+	| ChatHubGroqModel
+	| ChatHubOpenRouterModel
+	| ChatHubDeepSeekModel
+	| ChatHubCohereModel
 	| ChatHubMistralCloudModel;
 
 export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
@@ -176,6 +236,12 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	azureEntraId: { models: [] },
 	ollama: { models: [] },
 	awsBedrock: { models: [] },
+	vercelAiGateway: { models: [] },
+	xAiGrok: { models: [] },
+	groq: { models: [] },
+	openRouter: { models: [] },
+	deepSeek: { models: [] },
+	cohere: { models: [] },
 	mistralCloud: { models: [] },
 	n8n: { models: [] },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
@@ -325,7 +391,7 @@ export class ChatHubCreateAgentRequest extends Z.class({
 	description: z.string().max(512).optional(),
 	systemPrompt: z.string().min(1),
 	credentialId: z.string(),
-	provider: chatHubProviderSchema.exclude(['n8n', 'custom-agent']),
+	provider: chatHubLLMProviderSchema,
 	model: z.string().max(64),
 	tools: z.array(INodeSchema),
 }) {}
@@ -348,3 +414,25 @@ export interface EnrichedStructuredChunk extends StructuredChunk {
 		executionId: number | null;
 	};
 }
+
+const chatProviderSettingsSchema = z.object({
+	provider: chatHubLLMProviderSchema,
+	enabled: z.boolean().optional(),
+	credentialId: z.string().nullable(),
+	// Empty list = all models allowed
+	allowedModels: z.array(
+		z.object({
+			displayName: z.string(),
+			model: z.string(),
+			isManual: z.boolean().optional(),
+		}),
+	),
+	createdAt: z.string(),
+	updatedAt: z.string().nullable(),
+});
+
+export type ChatProviderSettingsDto = z.infer<typeof chatProviderSettingsSchema>;
+
+export class UpdateChatSettingsRequest extends Z.class({
+	payload: chatProviderSettingsSchema,
+}) {}
