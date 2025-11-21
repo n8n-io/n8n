@@ -24,6 +24,9 @@ const props = defineProps<Props>();
 
 const emit = defineEmits<{
 	rotateKey: [];
+	urlCopied: [url: string];
+	accessTokenCopied: [];
+	connectionStringCopied: [];
 }>();
 
 const { copy, copied, isSupported } = useClipboard();
@@ -65,6 +68,19 @@ const apiKeyText = computed(() => {
 	}
 	return isKeyRedacted.value ? '<YOUR_ACCESS_TOKEN_HERE>' : props.apiKey.apiKey;
 });
+
+const handleConnectionStringCopy = async () => {
+	await copy(connectionString.value);
+	emit('connectionStringCopied');
+};
+
+const handleUrlCopy = (url: string) => {
+	emit('urlCopied', url);
+};
+
+const handleAccessTokenCopy = () => {
+	emit('accessTokenCopied');
+};
 </script>
 
 <template>
@@ -83,7 +99,7 @@ const apiKeyText = computed(() => {
 						<span :class="$style.label">
 							{{ i18n.baseText('settings.mcp.instructions.serverUrl') }}:
 						</span>
-						<ConnectionParameter :value="props.serverUrl" />
+						<ConnectionParameter :value="props.serverUrl" @copy="handleUrlCopy" />
 					</div>
 				</li>
 				<li>
@@ -101,6 +117,7 @@ const apiKeyText = computed(() => {
 							:value="props.apiKey.apiKey"
 							:max-width="400"
 							:allow-copy="!isKeyRedacted"
+							@copy="handleAccessTokenCopy"
 						>
 							<template #customActions>
 								<N8nTooltip :content="i18n.baseText('settings.mcp.instructions.rotateKey.tooltip')">
@@ -140,7 +157,7 @@ const apiKeyText = computed(() => {
 							:icon="copied ? 'clipboard-check' : 'clipboard'"
 							:square="true"
 							:class="$style['copy-json-button']"
-							@click="copy(connectionString)"
+							@click="handleConnectionStringCopy"
 						/>
 					</N8nTooltip>
 				</template>

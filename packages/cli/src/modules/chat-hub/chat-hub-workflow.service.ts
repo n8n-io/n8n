@@ -487,6 +487,7 @@ export class ChatHubWorkflowService {
 					},
 				};
 			case 'azureOpenAi':
+			case 'azureEntraId':
 				return {
 					...common,
 					parameters: {
@@ -504,6 +505,15 @@ export class ChatHubWorkflowService {
 				};
 			}
 			case 'awsBedrock': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'vercelAiGateway': {
 				return {
 					...common,
 					parameters: {

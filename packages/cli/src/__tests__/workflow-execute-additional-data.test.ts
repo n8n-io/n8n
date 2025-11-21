@@ -14,6 +14,7 @@ import type {
 	INodeExecutionData,
 	INode,
 } from 'n8n-workflow';
+import { createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -229,7 +230,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		it('should return default data', () => {
 			expect(getRunData(workflow)).toEqual({
-				executionData: {
+				executionData: createRunExecutionData({
 					executionData: {
 						contextData: {},
 						metadata: {},
@@ -252,7 +253,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 						runData: {},
 					},
 					startData: {},
-				},
+				}),
 				executionMode: 'integrated',
 				workflowData: workflow,
 			});
@@ -265,7 +266,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				workflowId: '567',
 			};
 			expect(getRunData(workflow, data, parentExecution)).toEqual({
-				executionData: {
+				executionData: createRunExecutionData({
 					executionData: {
 						contextData: {},
 						metadata: {},
@@ -286,7 +287,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					},
 					resultData: { runData: {} },
 					startData: {},
-				},
+				}),
 				executionMode: 'integrated',
 				workflowData: workflow,
 			});
