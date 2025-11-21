@@ -26,6 +26,7 @@ const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const instanceId = useRootStore().instanceId;
 
 const savingForm = ref<boolean>(false);
 
@@ -122,12 +123,20 @@ const sendTrackingEvent = (config?: SamlPreferences) => {
 		return;
 	}
 	const trackingMetadata = {
-		instance_id: useRootStore().instanceId,
+		instance_id: instanceId,
 		authentication_method: SupportedProtocols.SAML,
 		identity_provider: config.metadataUrl ? 'metadata' : 'xml',
 		is_active: config.loginEnabled ?? false,
 	};
 	telemetry.track('User updated single sign on settings', trackingMetadata);
+};
+
+const sendTrackingEventForUserProvisioning = () => {
+	telemetry.track('User updated provisioning settings', {
+		instance_id: instanceId,
+		authentication_method: SupportedProtocols.SAML,
+		updated_setting: userRoleProvisioning.value,
+	});
 };
 
 const promptConfirmDisablingSamlLogin = async () => {
@@ -221,6 +230,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 		if (isUserRoleProvisioningChanged()) {
 			await saveProvisioningConfig();
+			sendTrackingEventForUserProvisioning();
 			showUserRoleProvisioningDialog.value = false;
 		}
 
