@@ -206,7 +206,7 @@ export class WorkflowExecutionService {
 		if (isFullManualExecutionFromKnownTriggerPayload(payload)) {
 			console.log('isFullManualExecutionFromKnownTriggerPayload');
 
-			const pinnedTrigger = this.selectPinnedActivatorStarter(
+			const pinnedTrigger = this.selectPinnedTrigger(
 				payload.workflowData,
 				payload.destinationNode,
 				payload.workflowData.pinData ?? {},
@@ -257,7 +257,7 @@ export class WorkflowExecutionService {
 		if (isFullManualExecutionFromUnknownTriggerPayload(payload)) {
 			console.log('isFullManualExecutionFromUnknownTriggerPayload');
 
-			const pinnedTrigger = this.selectPinnedActivatorStarter(
+			const pinnedTrigger = this.selectPinnedTrigger(
 				payload.workflowData,
 				payload.destinationNode,
 				payload.workflowData.pinData ?? {},
@@ -482,6 +482,8 @@ export class WorkflowExecutionService {
 		}
 	}
 
+	// TODO: update the docstring
+	//
 	/**
 	 * Select the pinned activator node to use as starter for a manual execution.
 	 *
@@ -493,14 +495,10 @@ export class WorkflowExecutionService {
 	 * prioritizing `n8n-nodes-base.webhook` over other activators. If the executed node
 	 * has no upstream nodes and is itself is a pinned activator, select it.
 	 */
-	selectPinnedActivatorStarter(
-		workflow: IWorkflowBase,
-		destinationNode: string,
-		pinData: IPinData,
-	) {
-		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
+	selectPinnedTrigger(workflow: IWorkflowBase, destinationNode: string, pinData: IPinData) {
+		const allPinnedTriggers = this.findAllPinnedTriggers(workflow, pinData);
 
-		if (allPinnedActivators.length === 0) return null;
+		if (allPinnedTriggers.length === 0) return null;
 
 		const destinationParents = new Set(
 			new Workflow({
@@ -511,14 +509,14 @@ export class WorkflowExecutionService {
 			}).getParentNodes(destinationNode),
 		);
 
-		const activator = allPinnedActivators.find((a) => destinationParents.has(a.name));
+		const trigger = allPinnedTriggers.find((a) => destinationParents.has(a.name));
 
-		console.log('activator', activator);
+		console.log('trigger', trigger);
 
-		return activator;
+		return trigger;
 	}
 
-	private findAllPinnedActivators(workflow: IWorkflowBase, pinData?: IPinData) {
+	private findAllPinnedTriggers(workflow: IWorkflowBase, pinData?: IPinData) {
 		return workflow.nodes
 			.filter(
 				(node) =>
