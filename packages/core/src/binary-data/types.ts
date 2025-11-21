@@ -34,7 +34,7 @@ export namespace BinaryData {
 
 	export type FileLocation =
 		| { type: 'execution'; workflowId: string; executionId: string }
-		| { type: 'chat-hub-message-attachment'; sessionId: string; messageId: string };
+		| { type: 'custom'; pathSegments: string[] };
 
 	export interface Manager {
 		init(): Promise<void>;
