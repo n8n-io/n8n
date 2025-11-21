@@ -31,24 +31,27 @@ export declare namespace WorkflowRequest {
 	// 1. Full Manual Execution from Known Trigger
 	type FullManualExecutionFromKnownTriggerPayload = {
 		workflowData: IWorkflowBase;
-		destinationNode: string;
-		triggerToStartFrom?: { name: string; data?: ITaskData };
 		agentRequest?: AiAgentRequest;
+
+		destinationNode: string;
+		triggerToStartFrom: { name: string; data?: ITaskData };
 	};
 	// 2. Full Manual Execution from Unknown Trigger
 	type FullManualExecutionFromUnknownTriggerPayload = {
 		workflowData: IWorkflowBase;
-		destinationNode: string;
 		agentRequest?: AiAgentRequest;
+
+		destinationNode: string;
 	};
 
 	// 3. Partial Manual Execution to Destination
 	type PartialManualExecutionToDestination = {
 		workflowData: IWorkflowBase;
+		agentRequest?: AiAgentRequest;
+
 		runData: IRunData;
 		destinationNode: string;
 		dirtyNodeNames: string[];
-		agentRequest?: AiAgentRequest;
 	};
 
 	type ManualRunPayload =
