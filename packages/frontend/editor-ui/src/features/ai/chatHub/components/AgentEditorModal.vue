@@ -75,7 +75,7 @@ function loadAgent() {
 	name.value = customAgent.name;
 	description.value = customAgent.description ?? '';
 	systemPrompt.value = customAgent.systemPrompt;
-	selectedModel.value = chatStore.getAgent(customAgent) ?? null;
+	selectedModel.value = chatStore.getAgent(customAgent);
 	tools.value = customAgent.tools || [];
 
 	if (customAgent.credentialId) {

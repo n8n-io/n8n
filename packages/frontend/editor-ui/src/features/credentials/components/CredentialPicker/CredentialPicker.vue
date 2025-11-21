@@ -12,6 +12,7 @@ const props = defineProps<{
 	appName: string;
 	credentialType: string;
 	selectedCredentialId: string | null;
+	hideCreateNew?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -97,7 +98,7 @@ listenForModalChanges({
 
 <template>
 	<div>
-		<div v-if="credentialOptions.length > 0" :class="$style.dropdown">
+		<div v-if="credentialOptions.length > 0 || props.hideCreateNew" :class="$style.dropdown">
 			<CredentialsDropdown
 				:credential-type="props.credentialType"
 				:credential-options="credentialOptions"
@@ -121,7 +122,7 @@ listenForModalChanges({
 		</div>
 
 		<N8nButton
-			v-else
+			v-else-if="!props.hideCreateNew"
 			:label="`Create new ${props.appName} credential`"
 			data-test-id="create-credential"
 			@click="createNewCredential"
