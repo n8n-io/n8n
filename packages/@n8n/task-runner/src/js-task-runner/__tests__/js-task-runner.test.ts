@@ -460,7 +460,7 @@ describe('JsTaskRunner', () => {
 
 				// Expect the times to be within 500ms of each other
 				const runnerTimeNow = outcome.result.val;
-                expect(Math.abs(helsinkiTimeNow - runnerTimeNow)).toBeLessThan(0.5);
+				expect(Math.abs(helsinkiTimeNow - runnerTimeNow)).toBeLessThan(0.5);
 			});
 
 			it('should use the default timezone', async () => {
