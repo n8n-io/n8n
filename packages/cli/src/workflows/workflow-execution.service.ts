@@ -4,7 +4,7 @@ import type { Project, User, CreateExecutionPayload } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { ErrorReporter } from 'n8n-core';
+import { DirectedGraph, ErrorReporter, allReachableRootsHaveRunData } from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteData,
@@ -17,8 +17,10 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
+	IRunData,
 } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow, createRunExecutionData } from 'n8n-workflow';
+import * as a from 'node:assert/strict';
 
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -28,8 +30,6 @@ import { TestWebhooks } from '@/webhooks/test-webhooks';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import { WorkflowRunner } from '@/workflow-runner';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
-
-import * as a from 'node:assert/strict';
 
 @Service()
 export class WorkflowExecutionService {
@@ -93,6 +93,18 @@ export class WorkflowExecutionService {
 		return nodeType.description.group.includes('trigger');
 	}
 
+	private doesTriggerHaveRunData(
+		destinationNode: string,
+		workflowData: IWorkflowBase,
+		runData: IRunData,
+	) {
+		return allReachableRootsHaveRunData(
+			DirectedGraph.fromNodesAndConnections(workflowData.nodes, workflowData.connections),
+			destinationNode,
+			runData,
+		);
+	}
+
 	async executeManually(
 		payload: WorkflowRequest.ManualRunPayload,
 		user: User,
@@ -101,22 +113,21 @@ export class WorkflowExecutionService {
 		httpResponse?: Response,
 	) {
 		// TODO:
-		// - check the chat trigger, as it's probably a fourth type of payload
-		// - find out if we need to register a webhook during PartialManualExecutionToDestination
 		// - figure out where to do the OffloadingManualExecutionsInQueueMode changes
-		function isFullManualExecutionFromTriggerPayload(
+
+		function isFullManualExecutionFromKnownTriggerPayload(
 			payload: WorkflowRequest.ManualRunPayload,
 		): payload is WorkflowRequest.FullManualExecutionFromKnownTriggerPayload {
-			if (!('destinationNode' in payload)) {
+			if ('triggerToStartFrom' in payload && !('runData' in payload)) {
 				return true;
 			}
 			return false;
 		}
 
-		function isFullManualExecutionToDestinationPayload(
+		function isFullManualExecutionFromUnknownTriggerPayload(
 			payload: WorkflowRequest.ManualRunPayload,
 		): payload is WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload {
-			if ('destinationNode' in payload && !('runData' in payload)) {
+			if (!('triggerToStartFrom' in payload) && !('runData' in payload)) {
 				return true;
 			}
 			return false;
@@ -150,15 +161,24 @@ export class WorkflowExecutionService {
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 				: undefined;
 
-			// If the destination node is a trigger, then per definition this
-			// is not a partial execution and thus we can ignore the run data.
-			// If we don't do this we'll end up creating an execution, calling the
-			// partial execution flow, finding out that we don't have run data to
-			// create the execution stack and have to cancel the execution, come back
-			// here and either create the runData (e.g. scheduler trigger) or wait for
-			// a webhook or event.
-			if (this.isDestinationNodeATrigger(payload.destinationNode, payload.workflowData)) {
-				console.log('upgrade to FullManualExecutionToDestinationPayload');
+			if (
+				// If the trigger has no runData we have to upgrade to a
+				// FullManualExecutionFromUnknownTriggerPayload
+				!this.doesTriggerHaveRunData(
+					payload.destinationNode,
+					payload.workflowData,
+					payload.runData,
+				) ||
+				// If the destination node is a trigger, then per definition this
+				// is not a partial execution and thus we can ignore the run data.
+				// If we don't do this we'll end up creating an execution, calling the
+				// partial execution flow, finding out that we don't have run data to
+				// create the execution stack and have to cancel the execution, come back
+				// here and either create the runData (e.g. scheduler trigger) or wait for
+				// a webhook or event.
+				this.isDestinationNodeATrigger(payload.destinationNode, payload.workflowData)
+			) {
+				console.log('upgrade to FullManualExecutionFromUnknownTriggerPayload');
 				payload = {
 					workflowData: payload.workflowData,
 					destinationNode: payload.destinationNode,
@@ -185,8 +205,12 @@ export class WorkflowExecutionService {
 			}
 		}
 
-		if (isFullManualExecutionFromTriggerPayload(payload)) {
+		if (isFullManualExecutionFromKnownTriggerPayload(payload)) {
 			console.log('isFullManualExecutionFromTriggerPayload');
+
+			const destinationNode = payload.destinationNode
+				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
+				: undefined;
 
 			console.log('check webhooks');
 			const additionalData = await WorkflowExecuteAdditionalData.getBase({
@@ -200,10 +224,11 @@ export class WorkflowExecutionService {
 				additionalData,
 				pushRef,
 				triggerToStartFrom: payload.triggerToStartFrom,
+				destinationNode,
 				// runData,
-				// destinationNode,
 			});
 
+			console.log('needsWebhook', needsWebhook);
 			if (needsWebhook) return { waitingForWebhook: true };
 
 			const executionId = await this.workflowRunner.run({
@@ -216,7 +241,7 @@ export class WorkflowExecutionService {
 				agentRequest: payload.agentRequest,
 				streamingEnabled,
 				httpResponse,
-				// destinationNode,
+				destinationNode,
 				// runData,
 				// startNodes,
 				// dirtyNodeNames,
@@ -225,7 +250,7 @@ export class WorkflowExecutionService {
 			return { executionId };
 		}
 
-		if (isFullManualExecutionToDestinationPayload(payload)) {
+		if (isFullManualExecutionFromUnknownTriggerPayload(payload)) {
 			console.log('isFullManualExecutionToDestinationPayload');
 
 			const destinationNode = payload.destinationNode
@@ -248,9 +273,10 @@ export class WorkflowExecutionService {
 				// runData,
 			});
 
+			console.log('needsWebhook', needsWebhook);
 			if (needsWebhook) return { waitingForWebhook: true };
 
-			const executionId = await this.workflowRunner.run({
+			const executionId = this.workflowRunner.run({
 				executionMode: 'manual',
 				pinData: payload.workflowData.pinData,
 				pushRef,
