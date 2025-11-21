@@ -52,14 +52,22 @@ onMounted(async () => {
 </template>
 
 <style lang="scss" module>
+@use '@/app/css/variables' as vars;
+
 .container {
-	width: 900px;
+	max-width: vars.$breakpoint-sm;
+	width: 100%;
 	margin-top: var(--spacing--4xl);
 	padding: var(--spacing--sm);
 	background-color: var(--color--background--light-3);
 	border: var(--border);
 	border-radius: var(--radius--lg);
 	text-align: left;
+
+	@media (max-width: vars.$breakpoint-xs) {
+		margin-top: var(--spacing--xl);
+		padding: var(--spacing--xs);
+	}
 }
 
 .header {
@@ -68,6 +76,13 @@ onMounted(async () => {
 	justify-content: space-between;
 	gap: var(--spacing--md);
 	margin-bottom: var(--spacing--md);
+
+	@media (max-width: vars.$breakpoint-xs) {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: var(--spacing--xs);
+		margin-bottom: var(--spacing--sm);
+	}
 }
 
 .allTemplatesLink {
@@ -79,6 +94,16 @@ onMounted(async () => {
 	grid-template-columns: repeat(3, minmax(0, 1fr));
 	gap: var(--spacing--md);
 	min-height: 182px;
+
+	@media (max-width: vars.$breakpoint-sm) {
+		grid-template-columns: repeat(2, minmax(0, 1fr));
+	}
+
+	@media (max-width: vars.$breakpoint-2xs) {
+		grid-template-columns: 1fr;
+		gap: var(--spacing--sm);
+		min-height: auto;
+	}
 }
 
 .loading {
@@ -88,5 +113,9 @@ onMounted(async () => {
 	gap: var(--spacing--xs);
 	padding: var(--spacing--lg);
 	color: var(--color--text--tint-1);
+
+	@media (max-width: vars.$breakpoint-xs) {
+		padding: var(--spacing--md);
+	}
 }
 </style>
