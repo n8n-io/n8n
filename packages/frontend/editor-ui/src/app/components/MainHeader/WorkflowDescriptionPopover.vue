@@ -14,7 +14,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 type Props = {
 	workflowId: string;
