@@ -98,11 +98,6 @@ const iconColor = computed(() => {
 	margin-bottom: var(--spacing--5xs);
 }
 
-.router-link-active,
-.active {
-	background-color: var(--color--background--light-1);
-}
-
 .menuItem {
 	display: flex;
 	align-items: center;
@@ -120,11 +115,16 @@ const iconColor = computed(() => {
 	&:hover .menuItemIcon {
 		color: var(--color--text--shade-1);
 	}
-}
 
-.menuItem:hover:not(.active) {
-	background-color: var(--color--background--light-1);
-	color: var(--color--text--shade-1);
+	&:global(.router-link-active),
+	&.active {
+		background-color: var(--color--background--light-1);
+	}
+
+	&:hover:not(.active):not(:global(.router-link-active)) {
+		background-color: var(--color--background--light-1);
+		color: var(--color--text--shade-1);
+	}
 }
 
 .menuItem:focus-visible {
