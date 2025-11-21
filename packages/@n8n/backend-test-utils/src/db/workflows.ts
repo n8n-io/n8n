@@ -89,6 +89,18 @@ export async function createManyWorkflows(
 	return await Promise.all(workflowRequests);
 }
 
+export async function createManyActiveWorkflows(
+	amount: number,
+	attributes: Partial<IWorkflowDb> = {},
+	userOrProject?: User | Project,
+) {
+	// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+	const workflowRequests = [...Array(amount)].map(
+		async (_) => await createActiveWorkflow(attributes, userOrProject),
+	);
+	return await Promise.all(workflowRequests);
+}
+
 export async function shareWorkflowWithUsers(workflow: IWorkflowBase, users: User[]) {
 	const sharedWorkflows: Array<DeepPartial<SharedWorkflow>> = await Promise.all(
 		users.map(async (user) => {
@@ -135,7 +147,7 @@ export async function getWorkflowSharing(workflow: IWorkflowBase) {
  */
 export async function createWorkflowWithTrigger(
 	attributes: Partial<IWorkflowDb> = {},
-	user?: User,
+	userOrProject?: User | Project,
 ) {
 	const workflow = await createWorkflow(
 		{
@@ -170,7 +182,7 @@ export async function createWorkflowWithTrigger(
 			},
 			...attributes,
 		},
-		user,
+		userOrProject,
 	);
 
 	return workflow;
@@ -201,12 +213,12 @@ export async function createWorkflowWithHistory(
  */
 export async function createWorkflowWithTriggerAndHistory(
 	attributes: Partial<IWorkflowDb> = {},
-	user?: User,
+	userOrProject?: User | Project,
 ) {
-	const workflow = await createWorkflowWithTrigger(attributes, user);
+	const workflow = await createWorkflowWithTrigger(attributes, userOrProject);
 
 	// Create workflow history for the initial version
-	await createWorkflowHistory(workflow, user);
+	await createWorkflowHistory(workflow, userOrProject);
 
 	return workflow;
 }
@@ -227,12 +239,78 @@ export const getWorkflowById = async (id: string) =>
  * @param workflow workflow to create history for
  * @param user user who created the version (optional)
  */
-export async function createWorkflowHistory(workflow: IWorkflowDb, user?: User): Promise<void> {
+export async function createWorkflowHistory(
+	workflow: IWorkflowDb,
+	userOrProject?: User | Project,
+): Promise<void> {
 	await Container.get(WorkflowHistoryRepository).insert({
 		workflowId: workflow.id,
 		versionId: workflow.versionId,
 		nodes: workflow.nodes,
 		connections: workflow.connections,
+		authors: userOrProject instanceof User ? userOrProject.email : 'test@example.com',
+	});
+}
+
+/**
+ * Set the active version for a workflow
+ * @param workflowId workflow ID
+ * @param versionId version ID to set as active
+ */
+export async function setActiveVersion(workflowId: string, versionId: string): Promise<void> {
+	await Container.get(WorkflowRepository)
+		.createQueryBuilder()
+		.update()
+		.set({ activeVersionId: versionId })
+		.where('id = :workflowId', { workflowId })
+		.execute();
+}
+
+/**
+ * Create an active workflow with trigger, history, and activeVersionId set to the current version.
+ * This simulates a workflow that has been activated and is running.
+ * @param attributes workflow attributes
+ * @param user user to assign the workflow to
+ */
+export async function createActiveWorkflow(
+	attributes: Partial<IWorkflowDb> = {},
+	userOrProject?: User | Project,
+) {
+	const workflow = await createWorkflowWithTriggerAndHistory(
+		{ active: true, ...attributes },
+		userOrProject,
+	);
+
+	await setActiveVersion(workflow.id, workflow.versionId);
+
+	workflow.activeVersionId = workflow.versionId;
+	return workflow;
+}
+
+/**
+ * Create a workflow with a specific active version.
+ * This simulates a workflow where the active version differs from the current version.
+ * @param activeVersionId the version ID to set as active
+ * @param attributes workflow attributes
+ * @param user user to assign the workflow to
+ */
+export async function createWorkflowWithActiveVersion(
+	activeVersionId: string,
+	attributes: Partial<IWorkflowDb> = {},
+	user?: User,
+) {
+	const workflow = await createWorkflowWithTriggerAndHistory({ active: true, ...attributes }, user);
+
+	await Container.get(WorkflowHistoryRepository).insert({
+		workflowId: workflow.id,
+		versionId: activeVersionId,
+		nodes: workflow.nodes,
+		connections: workflow.connections,
 		authors: user?.email ?? 'test@example.com',
 	});
+
+	await setActiveVersion(workflow.id, activeVersionId);
+
+	workflow.activeVersionId = activeVersionId;
+	return workflow;
 }
