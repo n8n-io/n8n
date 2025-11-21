@@ -478,7 +478,7 @@ onBeforeMount(async () => {
 	await usersStore.fetchUsers();
 });
 
-let isProjectRoleProvisioningEnabled = computed(
+const isProjectRoleProvisioningEnabled = computed(
 	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionProjectRoles || false,
 );
 

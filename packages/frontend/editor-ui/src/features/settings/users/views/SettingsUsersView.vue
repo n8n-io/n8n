@@ -72,7 +72,7 @@ const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
 );
 
-let isInstanceRoleProvisioningEnabled = computed(
+const isInstanceRoleProvisioningEnabled = computed(
 	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
 );
 
