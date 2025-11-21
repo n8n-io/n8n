@@ -15,7 +15,9 @@ import type {
 	ChatHubUpdateAgentRequest,
 	ChatHubUpdateConversationRequest,
 	EnrichedStructuredChunk,
+	ChatHubLLMProvider,
 } from '@n8n/api-types';
+import type { ChatProviderSettingsDto } from '@n8n/api-types';
 
 // Workflows stream data as newline separated JSON objects (jsonl)
 const STREAM_SEPARATOR = '\n';
@@ -181,6 +183,40 @@ export const updateAgentApi = async (
 export const deleteAgentApi = async (context: IRestApiContext, agentId: string): Promise<void> => {
 	const apiEndpoint = `/chat/agents/${agentId}`;
 	await makeRestApiRequest(context, 'DELETE', apiEndpoint);
+};
+
+export const fetchChatSettingsApi = async (
+	context: IRestApiContext,
+): Promise<Record<ChatHubLLMProvider, ChatProviderSettingsDto>> => {
+	const apiEndpoint = '/chat/settings';
+	const response = await makeRestApiRequest<{
+		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
+	}>(context, 'GET', apiEndpoint);
+	return response.providers;
+};
+
+export const fetchChatProviderSettingsApi = async (
+	context: IRestApiContext,
+	provider: ChatHubLLMProvider,
+): Promise<ChatProviderSettingsDto> => {
+	const apiEndpoint = '/chat/settings/' + provider;
+	const response = await makeRestApiRequest<{ settings: ChatProviderSettingsDto }>(
+		context,
+		'GET',
+		apiEndpoint,
+	);
+	return response.settings;
+};
+
+export const updateChatSettingsApi = async (
+	context: IRestApiContext,
+	settings: ChatProviderSettingsDto,
+): Promise<ChatProviderSettingsDto> => {
+	const apiEndpoint = '/chat/settings';
+
+	return await makeRestApiRequest<ChatProviderSettingsDto>(context, 'POST', apiEndpoint, {
+		payload: settings,
+	});
 };
 
 export function buildChatAttachmentUrl(

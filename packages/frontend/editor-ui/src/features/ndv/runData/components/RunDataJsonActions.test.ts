@@ -14,6 +14,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { setupServer } from '@/__tests__/server';
 import { defaultNodeDescriptions, mockNodes } from '@/__tests__/mocks';
 import { useI18n } from '@n8n/i18n';
+import { createRunExecutionData } from 'n8n-workflow';
 
 vi.mock('vue-router', () => {
 	return {
@@ -63,7 +64,7 @@ async function createPiniaWithActiveNode() {
 		createdAt: new Date(),
 		startedAt: new Date(),
 		workflowData: workflow,
-		data: {
+		data: createRunExecutionData({
 			resultData: {
 				runData: {
 					[node.name]: [
@@ -112,7 +113,7 @@ async function createPiniaWithActiveNode() {
 					],
 				},
 			},
-		},
+		}),
 	};
 
 	ndvStore.setActiveNodeName(node.name, 'other');

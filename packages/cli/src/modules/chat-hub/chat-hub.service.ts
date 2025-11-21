@@ -40,21 +40,6 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubCredentialsService, CredentialWithProjectId } from './chat-hub-credentials.service';
-import type { ChatHubMessage } from './chat-hub-message.entity';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import {
-	HumanMessagePayload,
-	RegenerateMessagePayload,
-	EditMessagePayload,
-	validChatTriggerParamsShape,
-} from './chat-hub.types';
-import { ChatHubMessageRepository } from './chat-message.repository';
-import { ChatHubSessionRepository } from './chat-session.repository';
-import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
-
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -65,7 +50,23 @@ import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
+
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubCredentialsService, CredentialWithProjectId } from './chat-hub-credentials.service';
+import type { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
+import {
+	HumanMessagePayload,
+	RegenerateMessagePayload,
+	EditMessagePayload,
+	validChatTriggerParamsShape,
+} from './chat-hub.types';
+import { ChatHubMessageRepository } from './chat-message.repository';
+import { ChatHubSessionRepository } from './chat-session.repository';
+import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 
 @Service()
 export class ChatHubService {
@@ -85,6 +86,7 @@ export class ChatHubService {
 		private readonly chatHubAgentService: ChatHubAgentService,
 		private readonly chatHubCredentialsService: ChatHubCredentialsService,
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
+		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
 	) {}
 
@@ -161,9 +163,20 @@ export class ChatHubService {
 			case 'ollama':
 				return await this.fetchOllamaModels(credentials, additionalData);
 			case 'azureOpenAi':
-				return await this.fetchAzureOpenAiModels(credentials, additionalData);
+			case 'azureEntraId':
+				return this.fetchAzureOpenAiModels(credentials, additionalData);
 			case 'awsBedrock':
 				return await this.fetchAwsBedrockModels(credentials, additionalData);
+			case 'vercelAiGateway':
+				return await this.fetchVercelAiGatewayModels(credentials, additionalData);
+			case 'xAiGrok':
+				return await this.fetchXAiGrokModels(credentials, additionalData);
+			case 'groq':
+				return await this.fetchGroqModels(credentials, additionalData);
+			case 'openRouter':
+				return await this.fetchOpenRouterModels(credentials, additionalData);
+			case 'deepSeek':
+				return await this.fetchDeepSeekModels(credentials, additionalData);
 			case 'cohere':
 				return await this.fetchCohereModels(credentials, additionalData);
 			case 'mistralCloud':
@@ -356,10 +369,10 @@ export class ChatHubService {
 		};
 	}
 
-	private async fetchAzureOpenAiModels(
+	private fetchAzureOpenAiModels(
 		_credentials: INodeCredentials,
 		_additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<ChatModelsResponse['azureOpenAi']> {
+	): ChatModelsResponse['azureOpenAi'] {
 		// Azure doesn't appear to offer a way to list available models via API.
 		// If we add support for this in the future on the Azure OpenAI node we should copy that
 		// implementation here too.
@@ -585,6 +598,286 @@ export class ChatHubService {
 				description: result.description ?? null,
 				model: {
 					provider: 'cohere',
+					model: String(result.value),
+				},
+				createdAt: null,
+				updatedAt: null,
+			})),
+		};
+	}
+
+	private async fetchDeepSeekModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse['deepSeek']> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.deepSeek,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({
+				name: result.name,
+				description: result.description ?? String(result.value),
+				model: {
+					provider: 'deepSeek',
+					model: String(result.value),
+				},
+				createdAt: null,
+				updatedAt: null,
+			})),
+		};
+	}
+
+	private async fetchOpenRouterModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse['openRouter']> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.openRouter,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({
+				name: result.name,
+				description: result.description ?? null,
+				model: {
+					provider: 'openRouter',
+					model: String(result.value),
+				},
+				createdAt: null,
+				updatedAt: null,
+			})),
+		};
+	}
+
+	private async fetchGroqModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse['groq']> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'filter',
+								properties: {
+									pass: '={{ $responseItem.active === true && $responseItem.object === "model" }}',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.groq,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({
+				name: result.name,
+				description: result.description ?? null,
+				model: {
+					provider: 'groq',
+					model: String(result.value),
+				},
+				createdAt: null,
+				updatedAt: null,
+			})),
+		};
+	}
+
+	private async fetchXAiGrokModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse['xAiGrok']> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.xAiGrok,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({
+				name: result.name,
+				description: result.description ?? null,
+				model: {
+					provider: 'xAiGrok',
+					model: String(result.value),
+				},
+				createdAt: null,
+				updatedAt: null,
+			})),
+		};
+	}
+
+	private async fetchVercelAiGatewayModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse['vercelAiGateway']> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.vercelAiGateway,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({
+				name: result.name,
+				description: result.description ?? String(result.value),
+				model: {
+					provider: 'vercelAiGateway',
 					model: String(result.value),
 				},
 				createdAt: null,
@@ -965,6 +1258,7 @@ export class ChatHubService {
 		attachments: IBinaryData[],
 		trx: EntityManager,
 	) {
+		await this.chatHubSettingsService.ensureModelIsAllowed(model);
 		const credential = await this.chatHubCredentialsService.ensureCredentials(
 			user,
 			model.provider,
