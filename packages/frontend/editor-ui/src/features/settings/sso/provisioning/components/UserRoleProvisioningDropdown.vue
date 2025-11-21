@@ -1,10 +1,8 @@
 <script lang="ts" setup>
-import { SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT } from '@/app/constants';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 import { onMounted } from 'vue';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useUserRoleProvisioningStore } from '../composables/userRoleProvisioning.store';
 import { useI18n } from '@n8n/i18n';
 import { type SupportedProtocolType } from '../../sso.store';
@@ -21,12 +19,7 @@ const { authProtocol } = defineProps<{
 }>();
 
 const i18n = useI18n();
-const posthogStore = usePostHog();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
-
-const isUserRoleProvisioningFeatureEnabled = posthogStore.isFeatureEnabled(
-	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name,
-);
 
 const handleUserRoleProvisioningChange = (newValue: UserRoleProvisioningSetting) => {
 	value.value = newValue;
@@ -80,7 +73,7 @@ onMounted(async () => {
 </script>
 <template>
 	<!-- TODO: also check for 'provisioning:manage' permission scope -->
-	<div v-if="isUserRoleProvisioningFeatureEnabled" :class="$style.group">
+	<div :class="$style.group">
 		<label>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.label') }}</label>
 		<N8nSelect
 			:model-value="value"
