@@ -171,7 +171,20 @@ export class TestWebhooks implements IWebhookManager {
 
 			this.clearTimeout(key);
 
-			await this.deactivateWebhooks(workflow);
+			const isChatTrigger = Object.values(workflow.nodes).some(
+				(node: any) =>
+					node.type === 'n8n-nodes-langchain.chatTrigger' || node.type.includes('chatTrigger'),
+			);
+
+			if (!isChatTrigger) {
+				await this.deactivateWebhooks(workflow);
+			} else {
+				// For ChatTrigger, set a longer timeout before deactivating
+				const chatWebhookKey = `${workflowEntity.id}:chat-session`;
+				this.clearTimeout(chatWebhookKey); // Clear any existing timeout
+
+				await this.deactivateWebhooks(workflow);
+			}
 		});
 	}
 
@@ -271,6 +284,7 @@ export class TestWebhooks implements IWebhookManager {
 		pushRef?: string;
 		destinationNode?: string;
 		triggerToStartFrom?: WorkflowRequest.ManualRunPayload['triggerToStartFrom'];
+		chatSessionId?: string;
 	}) {
 		const {
 			userId,
@@ -280,6 +294,7 @@ export class TestWebhooks implements IWebhookManager {
 			pushRef,
 			destinationNode,
 			triggerToStartFrom,
+			chatSessionId,
 		} = options;
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
@@ -309,12 +324,24 @@ export class TestWebhooks implements IWebhookManager {
 			return false; // no webhooks found to start a workflow
 		}
 
-		const timeout = setTimeout(
-			async () => await this.cancelWebhook(workflow.id),
-			TEST_WEBHOOK_TIMEOUT,
-		);
+		const timeoutDuration = TEST_WEBHOOK_TIMEOUT; // 10 minutes for ChatTrigger, normal for others
+
+		const timeout = setTimeout(async () => await this.cancelWebhook(workflow.id), timeoutDuration);
 
 		for (const webhook of webhooks) {
+			webhook.path = removeTrailingSlash(webhook.path);
+
+			// Use sessionId-based path for ChatTrigger nodes when sessionId is provided
+			// IMPORTANT: This must happen BEFORE key generation
+			if (
+				chatSessionId &&
+				webhook.node &&
+				workflow.nodes[webhook.node]?.type === '@n8n/n8n-nodes-langchain.chatTrigger'
+			) {
+				// Generate predictable path using workflowId and sessionId (without leading slash to match lookup format)
+				webhook.path = `${workflow.id}/${chatSessionId}`;
+			}
+
 			const key = this.registrations.toKey(webhook);
 			const registrationByKey = await this.registrations.get(key);
 
@@ -333,7 +360,6 @@ export class TestWebhooks implements IWebhookManager {
 				throw new WebhookPathTakenError(webhook.node);
 			}
 
-			webhook.path = removeTrailingSlash(webhook.path);
 			webhook.isTest = true;
 
 			/**

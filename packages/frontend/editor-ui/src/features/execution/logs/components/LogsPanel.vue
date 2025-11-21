@@ -50,14 +50,9 @@ const {
 	onOverviewPanelResizeEnd,
 } = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
-const {
-	currentSessionId,
-	messages,
-	previousChatMessages,
-	sendMessage,
-	refreshSession,
-	displayExecution,
-} = useChatState(props.isReadOnly);
+const { currentSessionId, messages, refreshSession, displayExecution } = useChatState(
+	props.isReadOnly,
+);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
 	useLogsExecutionData({ isEnabled: isOpen });
@@ -144,6 +139,13 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	outputTableColumnCollapsing.value =
 		columnName && selected.value ? { nodeName: selected.value.node.name, columnName } : undefined;
 }
+
+function onHideChatPanel() {
+	// Note: We don't reset execution data here because this event is only emitted
+	// when the ChatTrigger node is removed from the workflow, not when the panel is closed.
+	// The execution data will be properly cleaned up when switching workflows via
+	// the watcher in useLogsExecutionData composable (watching workflowId changes).
+}
 </script>
 
 <template>
@@ -181,17 +183,15 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							data-test-id="canvas-chat"
 							:is-open="isOpen"
 							:is-read-only="isReadOnly"
-							:messages="messages"
 							:session-id="currentSessionId"
-							:past-chat-messages="previousChatMessages"
 							:show-close-button="false"
 							:is-new-logs-enabled="true"
 							:is-header-clickable="!isPoppedOut"
 							@close="onToggleOpen"
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
-							@send-message="sendMessage"
 							@click-header="onToggleOpen"
+							@hide-chat-panel="onHideChatPanel"
 						/>
 					</N8nResizeWrapper>
 					<div ref="logsContainer" :class="$style.logsContainer">

@@ -190,6 +190,7 @@ export interface IStartRunData {
 		name: string;
 		data?: ITaskData;
 	};
+	chatSessionId?: string;
 	agentRequest?: {
 		query: NodeParameterValueType;
 		tool: {
