@@ -218,7 +218,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
-					data: migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll),
+					data: executionData.data
+						? migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll)
+						: undefined,
 					workflowData: executionData.workflowData,
 					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionResponse;
@@ -343,9 +345,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return {
 			...rest,
 			...(options?.includeData && {
-				data: options?.unflattenData
-					? migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll)
-					: executionData.data,
+				data:
+					options?.unflattenData && executionData.data
+						? migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll)
+						: executionData.data,
 				workflowData: executionData?.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			}),
