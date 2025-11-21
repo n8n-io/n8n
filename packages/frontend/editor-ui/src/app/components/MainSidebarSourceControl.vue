@@ -173,7 +173,7 @@ function pullWorkfolder() {
 
 <style lang="scss" module>
 .sync {
-	border-top: var(--spacing--5xs) solid rgba(0, 0, 0, 0.1);
+	border-top: 1px solid var(--color--black-alpha-200);
 	padding: 0 var(--spacing--5xs) 0 var(--spacing--2xs);
 
 	button {
