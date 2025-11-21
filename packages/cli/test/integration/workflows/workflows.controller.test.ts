@@ -3114,7 +3114,7 @@ describe('DELETE /workflows/:workflowId', () => {
 });
 
 describe('GET /workflows/:workflowId/executions/last-successful', () => {
-	test.only('should return the last successful execution', async () => {
+	test('should return the last successful execution', async () => {
 		const workflow = await createWorkflow({}, owner);
 
 		const { createSuccessfulExecution } = await import('../shared/db/executions');
