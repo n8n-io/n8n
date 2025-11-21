@@ -4,7 +4,7 @@ import type { Project, User, CreateExecutionPayload } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { DirectedGraph, ErrorReporter, allReachableRootsHaveRunData } from 'n8n-core';
+import { DirectedGraph, ErrorReporter, anyReachableRootHaveRunData } from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteData,
@@ -98,7 +98,7 @@ export class WorkflowExecutionService {
 		workflowData: IWorkflowBase,
 		runData: IRunData,
 	) {
-		return allReachableRootsHaveRunData(
+		return anyReachableRootHaveRunData(
 			DirectedGraph.fromNodesAndConnections(workflowData.nodes, workflowData.connections),
 			destinationNode,
 			runData,
@@ -112,6 +112,7 @@ export class WorkflowExecutionService {
 		streamingEnabled?: boolean,
 		httpResponse?: Response,
 	) {
+		console.log('version 1');
 		function isFullManualExecutionFromKnownTriggerPayload(
 			payload: WorkflowRequest.ManualRunPayload,
 		): payload is WorkflowRequest.FullManualExecutionFromKnownTriggerPayload {
