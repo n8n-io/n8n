@@ -161,6 +161,11 @@ export class WorkflowExecutionService {
 			if (
 				// If the trigger has no runData we have to upgrade to a
 				// FullManualExecutionFromUnknownTriggerPayload
+				//
+				// TODO: This function should be happy if at least one root trigger has
+				// runData, if there are multiple root triggers this will always return
+				// false, because it's impossible for more than one trigger to have
+				// runData.
 				!this.doesTriggerHaveRunData(
 					payload.destinationNode,
 					payload.workflowData,
@@ -211,9 +216,8 @@ export class WorkflowExecutionService {
 
 			const pinnedTrigger = this.selectPinnedActivatorStarter(
 				payload.workflowData,
-				[], //startNodes?.map((nodeData) => nodeData.name),
-				payload.workflowData.pinData,
 				payload.destinationNode,
+				payload.workflowData.pinData ?? {},
 			);
 
 			if (pinnedTrigger === null) {
@@ -265,13 +269,10 @@ export class WorkflowExecutionService {
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 				: undefined;
 
-			// TODO: rewrite this, it returns pinned triggers that are not connected
-			// to the destinationNode
 			const pinnedTrigger = this.selectPinnedActivatorStarter(
 				payload.workflowData,
-				[], //startNodes?.map((nodeData) => nodeData.name),
-				payload.workflowData.pinData,
 				payload.destinationNode,
+				payload.workflowData.pinData ?? {},
 			);
 
 			if (pinnedTrigger === null) {
@@ -506,67 +507,27 @@ export class WorkflowExecutionService {
 	 */
 	selectPinnedActivatorStarter(
 		workflow: IWorkflowBase,
-		// TODO: remove this argument, it's not used anymore
-		startNodes?: string[],
-		pinData?: IPinData,
-		destinationNode?: string,
+		destinationNode: string,
+		pinData: IPinData,
 	) {
-		if (!pinData || !startNodes) return null;
-
 		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
 
 		if (allPinnedActivators.length === 0) return null;
 
-		const [firstPinnedActivator] = allPinnedActivators;
+		const destinationParents = new Set(
+			new Workflow({
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				active: workflow.activeVersionId !== null,
+				nodeTypes: this.nodeTypes,
+			}).getParentNodes(destinationNode),
+		);
 
-		// full manual execution
+		const activator = allPinnedActivators.find((a) => destinationParents.has(a.name));
 
-		if (startNodes?.length === 0) {
-			// If there is a destination node, find the pinned activator that is a parent of the destination node
-			if (destinationNode) {
-				const destinationParents = new Set(
-					new Workflow({
-						nodes: workflow.nodes,
-						connections: workflow.connections,
-						active: workflow.activeVersionId !== null,
-						nodeTypes: this.nodeTypes,
-					}).getParentNodes(destinationNode),
-				);
+		console.log('activator', activator);
 
-				const activator = allPinnedActivators.find((a) => destinationParents.has(a.name));
-
-				if (activator) {
-					return activator;
-				}
-			}
-
-			return firstPinnedActivator ?? null;
-		}
-
-		// partial manual execution
-
-		/**
-		 * If the partial manual execution has 2+ start nodes, we search only the zeroth
-		 * start node's parents for a pinned activator. If we had 2+ start nodes without
-		 * a common ancestor and so if we end up finding multiple pinned activators, we
-		 * would still need to return one to comply with existing usage.
-		 */
-		const [firstStartNodeName] = startNodes;
-
-		const parentNodeNames = new Workflow({
-			nodes: workflow.nodes,
-			connections: workflow.connections,
-			active: workflow.activeVersionId !== null,
-			nodeTypes: this.nodeTypes,
-		}).getParentNodes(firstStartNodeName);
-
-		if (parentNodeNames.length > 0) {
-			const parentNodeName = parentNodeNames.find((p) => p === firstPinnedActivator.name);
-
-			return allPinnedActivators.find((pa) => pa.name === parentNodeName) ?? null;
-		}
-
-		return allPinnedActivators.find((pa) => pa.name === firstStartNodeName) ?? null;
+		return activator;
 	}
 
 	private findAllPinnedActivators(workflow: IWorkflowBase, pinData?: IPinData) {
