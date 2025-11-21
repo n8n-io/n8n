@@ -8,13 +8,9 @@ import {
 	PaginationNext,
 } from 'reka-ui';
 import { ref } from 'vue';
+import type { PaginationProps } from './Pagination.types';
 
-interface Props {
-	total: number;
-	currentPage?: number;
-	pageSize?: number;
-}
-const props = withDefaults(defineProps<Props>(), {
+const props = withDefaults(defineProps<PaginationProps>(), {
 	total: 0,
 	currentPage: undefined,
 	pageSize: undefined,
@@ -104,18 +100,12 @@ function handlePageChange(newPage: number) {
 	background: transparent !important;
 	border-radius: var(--radius);
 	cursor: pointer;
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
 	font-size: var(--font-size--2xs);
 	font-weight: var(--font-weight--bold);
 	color: var(--color--text--inverse);
 	transition: color 0.2s ease;
 	user-select: none;
-	:deep(button) {
-		color: inherit;
-		padding: 0;
-	}
+
 	&:hover:not(:disabled):not(.is-active):not(.n8n-pagination__button--prev):not(
 			.n8n-pagination__button--next
 		):not(.n8n-pagination__button--first):not(.n8n-pagination__button--last) {
@@ -127,22 +117,16 @@ function handlePageChange(newPage: number) {
 			border: 1px solid var(--color--foreground);
 		}
 	}
-	&:active:not(:disabled) {
-		transform: scale(0.98);
-	}
+
 	&:disabled {
 		opacity: 0.5;
 		cursor: not-allowed;
 	}
-	&--prev,
-	&--next,
-	&--first,
-	&--last {
-		font-size: 14px;
-	}
+
 	&--next {
 		margin-right: 8px;
 	}
+
 	&.is-active {
 		color: var(--color--primary);
 		border: 1px solid var(--color--primary);
@@ -158,13 +142,13 @@ function handlePageChange(newPage: number) {
 		}
 	}
 }
+
 .n8n-pagination__ellipsis {
 	min-width: 28px;
 	height: 28px;
 	color: var(--color--text--inverse);
-	display: inline-flex;
-	align-items: center;
-	justify-content: center;
+	display: inline-block;
+	text-align: center;
 	user-select: none;
 }
 </style>
