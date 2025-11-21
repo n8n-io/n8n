@@ -72,6 +72,37 @@ const showOverwriteActiveVersionWarning = computed(() => {
 	);
 });
 
+type WorkflowPublishCalloutId =
+	| 'noTrigger'
+	| 'nodeIssues'
+	| 'noChanges'
+	| 'noPublishedVersion'
+	| 'overwriteActiveVersionWarning';
+
+const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
+	if (!containsTrigger.value) {
+		return 'noTrigger';
+	}
+
+	if (hasNodeIssues.value) {
+		return 'nodeIssues';
+	}
+
+	if (!wfHasAnyChanges.value) {
+		return 'noChanges';
+	}
+
+	if (!hasPublishedVersion.value) {
+		return 'noPublishedVersion';
+	}
+
+	if (showOverwriteActiveVersionWarning.value) {
+		return 'overwriteActiveVersionWarning';
+	}
+
+	return null;
+});
+
 function findManagedOpenAiCredentialId(
 	usedCredentials: Record<string, IUsedCredential>,
 ): string | undefined {
@@ -195,10 +226,10 @@ async function handlePublish() {
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<N8nCallout v-if="!containsTrigger" theme="danger" icon="status-error">
+				<N8nCallout v-if="activeCalloutId === 'noTrigger'" theme="danger" icon="status-error">
 					{{ i18n.baseText('workflows.publishModal.noTriggerMessage') }}
 				</N8nCallout>
-				<N8nCallout v-else-if="hasNodeIssues" theme="danger" icon="status-error">
+				<N8nCallout v-else-if="activeCalloutId === 'nodeIssues'" theme="danger" icon="status-error">
 					<strong>
 						{{
 							i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title')
@@ -209,13 +240,17 @@ async function handlePublish() {
 						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message')
 					}}
 				</N8nCallout>
-				<N8nCallout v-else-if="!wfHasAnyChanges" theme="danger" icon="status-error">
+				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="danger" icon="status-error">
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
 				</N8nCallout>
-				<N8nCallout v-else-if="!hasPublishedVersion" theme="secondary">
+				<N8nCallout v-else-if="activeCalloutId === 'noPublishedVersion'" theme="secondary">
 					{{ i18n.baseText('workflows.publishModal.noPublishedVersionMessage') }}
 				</N8nCallout>
-				<N8nCallout v-if="showOverwriteActiveVersionWarning" theme="warning" icon="triangle-alert">
+				<N8nCallout
+					v-else-if="activeCalloutId === 'overwriteActiveVersionWarning'"
+					theme="warning"
+					icon="triangle-alert"
+				>
 					{{
 						i18n.baseText('workflows.publishModal.overwriteActiveVersionWarning' as any, {
 							interpolate: {
