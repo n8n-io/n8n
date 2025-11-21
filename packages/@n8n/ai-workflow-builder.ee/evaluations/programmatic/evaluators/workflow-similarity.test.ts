@@ -1,5 +1,4 @@
 import { mock } from 'jest-mock-extended';
-import * as childProcess from 'node:child_process';
 
 import type { SimpleWorkflow } from '@/types';
 
@@ -8,11 +7,28 @@ import {
 	evaluateWorkflowSimilarityMultiple,
 } from './workflow-similarity';
 
-// Mock child_process
-jest.mock('node:child_process');
+// Mock node modules before any imports
+jest.mock('node:child_process', () => ({
+	execFile: jest.fn(),
+}));
+
+// Create the mock inside the factory so it's available during hoisting
+jest.mock('node:util', () => {
+	const actualUtil = jest.requireActual<typeof import('node:util')>('node:util');
+	const mockFn = jest.fn();
+	// Store in global so we can access it in tests
+	(global as any).mockExecFileAsync = mockFn;
+
+	return {
+		...actualUtil,
+		promisify: jest.fn(() => mockFn),
+	};
+});
+
 jest.mock('node:fs/promises');
 
-const mockExecFile = childProcess.execFile as jest.MockedFunction<typeof childProcess.execFile>;
+// Get the mock instance that was created in the factory
+const mockExecFileAsync = (global as any).mockExecFileAsync as jest.Mock;
 
 describe('evaluateWorkflowSimilarity', () => {
 	const generatedWorkflow = mock<SimpleWorkflow>({
@@ -85,11 +101,7 @@ describe('evaluateWorkflowSimilarity', () => {
 				},
 			});
 
-			mockExecFile.mockImplementation((cmd, args, opts, callback) => {
-				const cb = callback as (error: null, result: { stdout: string; stderr: string }) => void;
-				cb(null, { stdout: mockPythonOutput, stderr: '' });
-				return {} as ReturnType<typeof childProcess.execFile>;
-			});
+			mockExecFileAsync.mockResolvedValue({ stdout: mockPythonOutput, stderr: '' });
 
 			const result = await evaluateWorkflowSimilarity(generatedWorkflow, groundTruthWorkflow);
 
@@ -129,11 +141,7 @@ describe('evaluateWorkflowSimilarity', () => {
 				},
 			});
 
-			mockExecFile.mockImplementation((cmd, args, opts, callback) => {
-				const cb = callback as (error: null, result: { stdout: string; stderr: string }) => void;
-				cb(null, { stdout: mockPythonOutput, stderr: '' });
-				return {} as ReturnType<typeof childProcess.execFile>;
-			});
+			mockExecFileAsync.mockResolvedValue({ stdout: mockPythonOutput, stderr: '' });
 
 			const result = await evaluateWorkflowSimilarity(generatedWorkflow, groundTruthWorkflow);
 
@@ -166,11 +174,7 @@ describe('evaluateWorkflowSimilarity', () => {
 				},
 			});
 
-			mockExecFile.mockImplementation((cmd, args, opts, callback) => {
-				const cb = callback as (error: null, result: { stdout: string; stderr: string }) => void;
-				cb(null, { stdout: mockPythonOutput, stderr: '' });
-				return {} as ReturnType<typeof childProcess.execFile>;
-			});
+			mockExecFileAsync.mockResolvedValue({ stdout: mockPythonOutput, stderr: '' });
 
 			const result = await evaluateWorkflowSimilarity(generatedWorkflow, groundTruthWorkflow);
 
@@ -181,11 +185,7 @@ describe('evaluateWorkflowSimilarity', () => {
 	describe('error handling', () => {
 		it('should handle uvx command not found error', async () => {
 			const error = Object.assign(new Error('Command not found'), { code: 'ENOENT' });
-			mockExecFile.mockImplementation((cmd, args, opts, callback) => {
-				const cb = callback as (error: Error) => void;
-				cb(error);
-				return {} as ReturnType<typeof childProcess.execFile>;
-			});
+			mockExecFileAsync.mockRejectedValue(error);
 
 			await expect(
 				evaluateWorkflowSimilarity(generatedWorkflow, groundTruthWorkflow),
@@ -194,11 +194,7 @@ describe('evaluateWorkflowSimilarity', () => {
 
 		it('should handle timeout error', async () => {
 			const error = Object.assign(new Error('Timeout'), { killed: true });
-			mockExecFile.mockImplementation((cmd, args, opts, callback) => {
-				const cb = callback as (error: Error) => void;
-				cb(error);
-				return {} as ReturnType<typeof childProcess.execFile>;
-			});
+			mockExecFileAsync.mockRejectedValue(error);
 
 			await expect(
 				evaluateWorkflowSimilarity(generatedWorkflow, groundTruthWorkflow),
@@ -211,11 +207,7 @@ describe('evaluateWorkflowSimilarity', () => {
 				stderr: 'Something went wrong',
 				code: 1,
 			});
-			mockExecFile.mockImplementation((cmd, args, opts, callback) => {
-				const cb = callback as (error: Error) => void;
-				cb(error);
-				return {} as ReturnType<typeof childProcess.execFile>;
-			});
+			mockExecFileAsync.mockRejectedValue(error);
 
 			await expect(
 				evaluateWorkflowSimilarity(generatedWorkflow, groundTruthWorkflow),
@@ -247,11 +239,7 @@ describe('evaluateWorkflowSimilarity', () => {
 				stderr: 'Warning: similarity below threshold',
 				code: 1,
 			});
-			mockExecFile.mockImplementation((cmd, args, opts, callback) => {
-				const cb = callback as (error: Error) => void;
-				cb(error);
-				return {} as ReturnType<typeof childProcess.execFile>;
-			});
+			mockExecFileAsync.mockRejectedValue(error);
 
 			const result = await evaluateWorkflowSimilarity(generatedWorkflow, groundTruthWorkflow);
 
@@ -270,7 +258,7 @@ describe('evaluateWorkflowSimilarity', () => {
 			];
 
 			let callCount = 0;
-			mockExecFile.mockImplementation((cmd, args, opts, callback) => {
+			mockExecFileAsync.mockImplementation(() => {
 				callCount++;
 				const score = callCount === 2 ? 0.9 : 0.5; // Second call has highest score
 				const mockOutput = JSON.stringify({
@@ -280,9 +268,7 @@ describe('evaluateWorkflowSimilarity', () => {
 					top_edits: [],
 					metadata: { generated_nodes: 1, ground_truth_nodes: 1, config_name: 'standard' },
 				});
-				const cb = callback as (error: null, result: { stdout: string; stderr: string }) => void;
-				cb(null, { stdout: mockOutput, stderr: '' });
-				return {} as ReturnType<typeof childProcess.execFile>;
+				return Promise.resolve({ stdout: mockOutput, stderr: '' });
 			});
 
 			const result = await evaluateWorkflowSimilarityMultiple(
@@ -291,7 +277,7 @@ describe('evaluateWorkflowSimilarity', () => {
 			);
 
 			expect(result.score).toBe(0.9);
-			expect(mockExecFile).toHaveBeenCalledTimes(3);
+			expect(mockExecFileAsync).toHaveBeenCalledTimes(3);
 		});
 
 		it('should throw error when no reference workflows provided', async () => {

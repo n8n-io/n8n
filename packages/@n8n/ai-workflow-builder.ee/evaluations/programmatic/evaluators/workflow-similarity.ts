@@ -125,16 +125,6 @@ export async function evaluateWorkflowSimilarity(
 			if (!stdout || stdout.trim() === '') {
 				throw execError;
 			}
-
-			// Log the non-zero exit code but continue processing
-			if (error.code) {
-				console.warn(`Python script exited with code ${error.code}, but produced valid output`);
-			}
-		}
-
-		// Log any warnings from Python
-		if (stderr) {
-			console.warn('Python workflow comparison warnings:', stderr);
 		}
 
 		// Check if stdout is empty
@@ -206,8 +196,14 @@ export async function evaluateWorkflowSimilarityMultiple(
 
 	// Compare against all reference workflows in parallel
 	const results = await Promise.all(
-		referenceWorkflows.map((refWorkflow) =>
-			evaluateWorkflowSimilarity(generatedWorkflow, refWorkflow, configPreset, customConfigPath),
+		referenceWorkflows.map(
+			async (refWorkflow) =>
+				await evaluateWorkflowSimilarity(
+					generatedWorkflow,
+					refWorkflow,
+					configPreset,
+					customConfigPath,
+				),
 		),
 	);
 
