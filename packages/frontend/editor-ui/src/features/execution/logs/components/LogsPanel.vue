@@ -139,13 +139,6 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 	outputTableColumnCollapsing.value =
 		columnName && selected.value ? { nodeName: selected.value.node.name, columnName } : undefined;
 }
-
-function onHideChatPanel() {
-	// Note: We don't reset execution data here because this event is only emitted
-	// when the ChatTrigger node is removed from the workflow, not when the panel is closed.
-	// The execution data will be properly cleaned up when switching workflows via
-	// the watcher in useLogsExecutionData composable (watching workflowId changes).
-}
 </script>
 
 <template>
@@ -191,7 +184,6 @@ function onHideChatPanel() {
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
 							@click-header="onToggleOpen"
-							@hide-chat-panel="onHideChatPanel"
 						/>
 					</N8nResizeWrapper>
 					<div ref="logsContainer" :class="$style.logsContainer">
