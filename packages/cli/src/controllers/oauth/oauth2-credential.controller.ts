@@ -7,7 +7,6 @@ import type {
 	OAuth2AuthenticationMethod,
 	OAuth2CredentialData,
 	OAuth2GrantType,
-	OAuthAuthorizationServerMetadata,
 } from '@n8n/client-oauth2';
 import { ClientOAuth2 } from '@n8n/client-oauth2';
 import { Get, RestController } from '@n8n/decorators';
@@ -64,13 +63,13 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 		if (oauthCredentials.useDynamicClientRegistration && oauthCredentials.serverUrl) {
 			const serverUrl = new URL(oauthCredentials.serverUrl);
-			const { data } = await axios.get<OAuthAuthorizationServerMetadata>(
+			const { data } = await axios.get<unknown>(
 				`${serverUrl.origin}/.well-known/oauth-authorization-server`,
 			);
 			const metadataValidation = oAuthAuthorizationServerMetadataSchema.safeParse(data);
 			if (!metadataValidation.success) {
 				throw new BadRequestError(
-					`Invalid OAuth2 server metadata: ${metadataValidation.error.errors.map((e) => e.message).join(', ')}`,
+					`Invalid OAuth2 server metadata: ${metadataValidation.error.issues.map((e) => e.message).join(', ')}`,
 				);
 			}
 
@@ -108,15 +107,15 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 
 			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);
 
-			const { data: registerResult } = await axios.post<{
-				client_id: string;
-				client_secret?: string;
-			}>(registration_endpoint, registerPayload);
+			const { data: registerResult } = await axios.post<unknown>(
+				registration_endpoint,
+				registerPayload,
+			);
 			const registrationValidation =
 				dynamicClientRegistrationResponseSchema.safeParse(registerResult);
 			if (!registrationValidation.success) {
 				throw new BadRequestError(
-					`Invalid client registration response: ${registrationValidation.error.errors.map((e) => e.message).join(', ')}`,
+					`Invalid client registration response: ${registrationValidation.error.issues.map((e) => e.message).join(', ')}`,
 				);
 			}
 
