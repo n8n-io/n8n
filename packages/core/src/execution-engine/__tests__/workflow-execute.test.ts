@@ -2588,7 +2588,7 @@ describe('WorkflowExecute', () => {
 
 			const updatedExecutionData = {
 				data: {
-					version: 0,
+					version: 1,
 					startData: { startNodes: [{ name: 'Start', sourceData: null }] },
 					resultData: {
 						runData: {

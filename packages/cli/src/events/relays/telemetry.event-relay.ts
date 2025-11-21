@@ -787,7 +787,7 @@ export class TelemetryEventRelay extends EventRelay {
 							manualExecEventProperties.is_managed = credential.isManaged;
 						}
 					}
-
+					console.log(runData.data.startData);
 					const telemetryPayload: ITelemetryTrackProperties = {
 						...manualExecEventProperties,
 						node_type: TelemetryHelpers.getNodeTypeForName(

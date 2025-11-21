@@ -399,7 +399,10 @@ describe('prepareExecutionData', () => {
 			{ nodeName: 'targetNode', mode: 'inclusive' },
 		);
 
-		expect(runExecutionData.startData?.destinationNode).toBe('targetNode');
+		expect(runExecutionData.startData?.destinationNode).toEqual({
+			nodeName: 'targetNode',
+			mode: 'inclusive',
+		});
 	});
 
 	test('should update execution data with execution data merge', () => {

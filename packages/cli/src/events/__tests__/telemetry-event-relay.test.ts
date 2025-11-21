@@ -1599,7 +1599,7 @@ describe('TelemetryEventRelay', () => {
 						nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
 					},
 					startData: {
-						destinationNode: 'OpenAI',
+						destinationNode: { nodeName: 'OpenAI', mode: 'inclusive' },
 						runNodeFilter: ['OpenAI'],
 					},
 					resultData: {

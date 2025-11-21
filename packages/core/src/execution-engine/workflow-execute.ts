@@ -295,7 +295,7 @@ export class WorkflowExecute {
 		this.status = 'running';
 		this.runExecutionData = createRunExecutionData({
 			startData: {
-				destinationNode: destinationNode,
+				destinationNode,
 				originalDestinationNode: originalDestination,
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
