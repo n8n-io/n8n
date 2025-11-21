@@ -204,7 +204,9 @@ onBeforeMount(() => {
 							:href="attachment.downloadUrl"
 						/>
 					</div>
+					<div v-if="message.type === 'human'">{{ message.content }}</div>
 					<VueMarkdown
+						v-else
 						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="
@@ -279,11 +281,14 @@ onBeforeMount(() => {
 	gap: var(--spacing--2xs);
 	position: relative;
 	max-width: fit-content;
+	overflow-wrap: break-word;
 
 	.user & {
-		padding: var(--spacing--3xs) var(--spacing--sm);
+		padding: var(--spacing--2xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
+		white-space-collapse: preserve-breaks;
+		line-height: 1.8;
 	}
 }
 
