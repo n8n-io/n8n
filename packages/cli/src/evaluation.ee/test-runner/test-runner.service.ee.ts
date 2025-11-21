@@ -276,8 +276,6 @@ export class TestRunnerService {
 			});
 		}
 
-		console.log(data);
-
 		// Trigger the workflow under test with mocked data
 		const executionId = await this.workflowRunner.run(data);
 		assert(executionId);
