@@ -27,7 +27,7 @@ function findAllParentTriggers(workflow: Workflow, destinationNodeName: string) 
 	return parentNodes;
 }
 
-export function allReachableRootsHaveRunData(
+export function anyReachableRootHaveRunData(
 	workflow: DirectedGraph,
 	destinationNodeName: string,
 	runData: IRunData,
@@ -53,14 +53,14 @@ export function allReachableRootsHaveRunData(
 		}
 	}
 
-	// Check if all root nodes have run data
+	// Check if at least one root node has run data
 	for (const rootNode of rootNodes) {
-		if (!runData[rootNode.name]) {
-			return false;
+		if (runData[rootNode.name]) {
+			return true;
 		}
 	}
 
-	return rootNodes.size > 0;
+	return false;
 }
 
 // TODO: rewrite this using DirectedGraph instead of workflow.
