@@ -18,6 +18,7 @@ export const chatHubLLMProviderSchema = z.enum([
 	'azureOpenAi',
 	'ollama',
 	'awsBedrock',
+	'groq',
 	'openRouter',
 	'deepSeek',
 	'cohere',
@@ -46,6 +47,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	ollama: 'ollamaApi',
 	azureOpenAi: 'azureOpenAiApi',
 	awsBedrock: 'aws',
+	groq: 'groqApi',
 	openRouter: 'openRouterApi',
 	deepSeek: 'deepSeekApi',
 	cohere: 'cohereApi',
@@ -87,6 +89,11 @@ const awsBedrockModelSchema = z.object({
 	model: z.string(),
 });
 
+const groqModelSchema = z.object({
+	provider: z.literal('groq'),
+	model: z.string(),
+});
+
 const openRouterModelSchema = z.object({
 	provider: z.literal('openRouter'),
 	model: z.string(),
@@ -124,6 +131,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	azureOpenAIModelSchema,
 	ollamaModelSchema,
 	awsBedrockModelSchema,
+	groqModelSchema,
 	openRouterModelSchema,
 	deepSeekModelSchema,
 	cohereModelSchema,
@@ -138,6 +146,7 @@ export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
 export type ChatHubAzureOpenAIModel = z.infer<typeof azureOpenAIModelSchema>;
 export type ChatHubOllamaModel = z.infer<typeof ollamaModelSchema>;
 export type ChatHubAwsBedrockModel = z.infer<typeof awsBedrockModelSchema>;
+export type ChatHubGroqModel = z.infer<typeof groqModelSchema>;
 export type ChatHubOpenRouterModel = z.infer<typeof openRouterModelSchema>;
 export type ChatHubDeepSeekModel = z.infer<typeof deepSeekModelSchema>;
 export type ChatHubCohereModel = z.infer<typeof cohereModelSchema>;
@@ -149,6 +158,7 @@ export type ChatHubBaseLLMModel =
 	| ChatHubAzureOpenAIModel
 	| ChatHubOllamaModel
 	| ChatHubAwsBedrockModel
+	| ChatHubGroqModel
 	| ChatHubOpenRouterModel
 	| ChatHubDeepSeekModel
 	| ChatHubCohereModel
@@ -195,6 +205,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	azureOpenAi: { models: [] },
 	ollama: { models: [] },
 	awsBedrock: { models: [] },
+	groq: { models: [] },
 	openRouter: { models: [] },
 	deepSeek: { models: [] },
 	cohere: { models: [] },
