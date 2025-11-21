@@ -11,6 +11,7 @@ import { readFileSync } from 'fs';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
 import {
+	createRunExecutionData,
 	EVALUATION_NODE_TYPE,
 	EVALUATION_TRIGGER_NODE_TYPE,
 	NodeConnectionTypes,
@@ -860,7 +861,7 @@ describe('TestRunnerService', () => {
 						triggerToStartFrom: {
 							name: triggerNodeName,
 						},
-						executionData: {
+						executionData: createRunExecutionData({
 							resultData: {
 								pinData: {
 									[triggerNodeName]: [testCase],
@@ -873,7 +874,7 @@ describe('TestRunnerService', () => {
 									name: triggerNodeName,
 								},
 							},
-						},
+						}),
 					}),
 				);
 			});
