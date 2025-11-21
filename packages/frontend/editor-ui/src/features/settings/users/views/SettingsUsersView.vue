@@ -72,12 +72,20 @@ const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
 );
 
+let isInstanceRoleProvisioningEnabled = ref(false);
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
 
 	if (!showUMSetupWarning.value) {
 		await updateUsersTableData(usersTableState.value);
 	}
+
+	await userRoleProvisioningStore.getProvisioningConfig();
+
+	isInstanceRoleProvisioningEnabled = computed(
+		() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
+	);
 });
 
 const usersListActions = computed((): Array<UserAction<IUser>> => {
@@ -450,10 +458,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				</EnterpriseEdition>
 			</div>
 		</div>
-		<div
-			v-if="userRoleProvisioningStore.isInstanceRoleProvisioningEnabled"
-			:class="$style.container"
-		>
+		<div v-if="isInstanceRoleProvisioningEnabled" :class="$style.container">
 			<N8nAlert
 				type="info"
 				:title="i18n.baseText('settings.provisioningInstanceRolesHandledBySsoProvider.description')"
@@ -481,7 +486,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 						:disabled="
 							ssoStore.isSamlLoginEnabled ||
 							!usersStore.usersLimitNotReached ||
-							userRoleProvisioningStore.isInstanceRoleProvisioningEnabled
+							isInstanceRoleProvisioningEnabled
 						"
 						:label="i18n.baseText('settings.users.invite')"
 						size="large"
@@ -500,7 +505,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 			<SettingsUsersTable
 				v-model:table-options="usersTableState"
 				data-test-id="settings-users-table"
-				:can-edit-role="!userRoleProvisioningStore.isInstanceRoleProvisioningEnabled"
+				:can-edit-role="!isInstanceRoleProvisioningEnabled"
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"
 				:actions="usersListActions"

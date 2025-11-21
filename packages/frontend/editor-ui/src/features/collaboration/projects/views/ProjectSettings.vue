@@ -478,9 +478,16 @@ onBeforeMount(async () => {
 	await usersStore.fetchUsers();
 });
 
-onMounted(() => {
+let isProjectRoleProvisioningEnabled = ref(false);
+
+onMounted(async () => {
 	documentTitle.set(i18n.baseText('projects.settings'));
 	selectProjectNameIfMatchesDefault();
+	await userRoleProvisioningStore.getProvisioningConfig();
+
+	isProjectRoleProvisioningEnabled = computed(
+		() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionProjectRoles || false,
+	);
 });
 </script>
 
@@ -570,7 +577,7 @@ onMounted(() => {
 						:placeholder="i18n.baseText('workflows.shareModal.select.placeholder')"
 						data-test-id="project-members-select"
 						@update:model-value="onAddMember"
-						:disabled="userRoleProvisioningStore.isProjectRoleProvisioningEnabled"
+						:disabled="isProjectRoleProvisioningEnabled"
 					>
 						<template #prefix>
 							<N8nIcon icon="search" />
@@ -590,7 +597,7 @@ onMounted(() => {
 						</template>
 					</N8nInput>
 				</div>
-				<div v-if="userRoleProvisioningStore.isProjectRoleProvisioningEnabled" class="mb-m">
+				<div v-if="isProjectRoleProvisioningEnabled" class="mb-m">
 					<N8nAlert
 						type="info"
 						:title="
@@ -606,7 +613,7 @@ onMounted(() => {
 						:current-user-id="usersStore.currentUser?.id"
 						:project-roles="rolesStore.processedProjectRoles"
 						:actions="projectMembersActions"
-						:can-edit-role="!userRoleProvisioningStore.isProjectRoleProvisioningEnabled"
+						:can-edit-role="!isProjectRoleProvisioningEnabled"
 						@update:options="onUpdateMembersTableOptions"
 						@update:role="onUpdateMemberRole"
 						@action="onMembersListAction"

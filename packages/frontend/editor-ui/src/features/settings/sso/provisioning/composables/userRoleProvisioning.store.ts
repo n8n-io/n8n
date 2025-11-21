@@ -12,14 +12,6 @@ export const useUserRoleProvisioningStore = defineStore('userRoleProvisioning', 
 
 	const provisioningConfig = ref<ProvisioningConfig | undefined>();
 
-	const isProjectRoleProvisioningEnabled = computed(
-		() => provisioningConfig.value?.scopesProvisionProjectRoles || false,
-	);
-
-	const isInstanceRoleProvisioningEnabled = computed(
-		() => provisioningConfig.value?.scopesProvisionInstanceRole || false,
-	);
-
 	const getProvisioningConfig = async () => {
 		try {
 			const config = await provisioningApi.getProvisioningConfig(rootStore.restApiContext);
@@ -47,8 +39,6 @@ export const useUserRoleProvisioningStore = defineStore('userRoleProvisioning', 
 
 	return {
 		provisioningConfig: readonly(provisioningConfig),
-		isProjectRoleProvisioningEnabled,
-		isInstanceRoleProvisioningEnabled,
 		getProvisioningConfig,
 		saveProvisioningConfig,
 	};
