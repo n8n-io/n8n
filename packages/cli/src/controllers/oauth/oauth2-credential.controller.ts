@@ -1,3 +1,7 @@
+import {
+	oAuthAuthorizationServerMetadataSchema,
+	dynamicClientRegistrationResponseSchema,
+} from '@n8n/api-types';
 import type {
 	ClientOAuth2Options,
 	OAuth2AuthenticationMethod,
@@ -20,27 +24,12 @@ import {
 } from 'n8n-workflow';
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
-import { z } from 'zod';
-
-import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
 
 import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { OAuthRequest } from '@/requests';
 
-const oAuthAuthorizationServerMetadataSchema = z.object({
-	authorization_endpoint: z.string().url(),
-	token_endpoint: z.string().url(),
-	registration_endpoint: z.string().url(),
-	grant_types_supported: z.array(z.string()).optional(),
-	token_endpoint_auth_methods_supported: z.array(z.string()).optional(),
-	code_challenge_methods_supported: z.array(z.string()).optional(),
-});
-
-const dynamicClientRegistrationResponseSchema = z.object({
-	client_id: z.string(),
-	client_secret: z.string().optional(),
-});
+import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {

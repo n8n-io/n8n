@@ -127,3 +127,8 @@ export type {
 	BreakingChangeLightReportResult,
 	BreakingChangeVersion,
 } from './schemas/breaking-changes.schema';
+
+export {
+	oAuthAuthorizationServerMetadataSchema,
+	dynamicClientRegistrationResponseSchema,
+} from './schemas/oauth2-dynamic-client-registration.schema';
