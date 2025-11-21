@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import { computed, ref, watchEffect, h } from 'vue';
+import { computed, ref, h } from 'vue';
 import type { VNode } from 'vue';
-import dateformat from 'dateformat';
-import { toDayMonth } from '@/app/utils/formatters/dateFormatter';
 import Modal from '@/app/components/Modal.vue';
 import {
 	WORKFLOW_PUBLISH_MODAL_KEY,
@@ -11,9 +9,8 @@ import {
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nCallout, N8nText, N8nInput, N8nButton, N8nBadge } from '@n8n/design-system';
+import { N8nHeading, N8nCallout, N8nInput, N8nButton, N8nInputLabel } from '@n8n/design-system';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
-import { useWorkflowHistoryStore } from '@/features/workflows/workflowHistory/workflowHistory.store';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -34,10 +31,8 @@ const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 const workflowHelpers = useWorkflowHelpers();
 
-// TODO: we should use workflow publish history here instead but that table is not yet implemented
-const workflowHistoryStore = useWorkflowHistoryStore();
-const hasAnyPublishedVersions = ref(false);
 const description = ref('');
+const versionName = ref('');
 
 const foundTriggers = computed(() =>
 	getActivatableTriggerNodes(workflowsStore.workflowTriggerNodes),
@@ -45,10 +40,6 @@ const foundTriggers = computed(() =>
 
 const containsTrigger = computed((): boolean => {
 	return foundTriggers.value.length > 0;
-});
-
-const hasPublishedVersion = computed(() => {
-	return !!workflowsStore.workflow.activeVersion;
 });
 
 const wfHasAnyChanges = computed(() => {
@@ -60,55 +51,25 @@ const wfHasAnyChanges = computed(() => {
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
 
-const actionText = computed(() => {
-	if (!hasPublishedVersion.value && wfHasAnyChanges.value) {
-		return i18n.baseText('generic.create');
-	}
-	return '';
-});
-
-const currentVersionText = computed(() => {
-	if (hasPublishedVersion.value) {
-		// TODO: this should be using the workflow publish history
-		return 'Version X';
-	}
-	return '';
-});
-
-const newVersionText = computed(() => {
-	if (!hasPublishedVersion.value) {
-		return 'Version 1';
-	}
-
-	if (wfHasAnyChanges.value) {
-		// TODO: this should be using the workflow publish history
-		return 'Version Y';
-	}
-	return '';
-});
-
-const isPublishDisabled = computed(() => {
+const inputsDisabled = computed(() => {
 	return !wfHasAnyChanges.value || !containsTrigger.value || hasNodeIssues.value;
 });
 
-const publishedInfoText = computed(() => {
-	if (!hasPublishedVersion.value || !workflowsStore.workflow.activeVersion) {
-		return i18n.baseText('workflows.publishModal.noPublishedVersionMessage');
-	}
+const isPublishDisabled = computed(() => {
+	return inputsDisabled.value || versionName.value.trim().length === 0;
+});
 
-	const activeVersion = workflowsStore.workflow.activeVersion;
-	const authorName = activeVersion.authors.split(', ')[0];
-	// TODO: this should be published at rather than created at
-	const date = toDayMonth(activeVersion.createdAt);
-	const time = dateformat(activeVersion.createdAt, 'HH:MM');
+const hasPublishedVersion = computed(() => {
+	return !!workflowsStore.workflow.activeVersion;
+});
 
-	return i18n.baseText('workflows.publishModal.lastPublished', {
-		interpolate: {
-			author: authorName,
-			date,
-			time,
-		},
-	});
+const showOverwriteActiveVersionWarning = computed(() => {
+	return (
+		hasPublishedVersion.value &&
+		wfHasAnyChanges.value &&
+		containsTrigger.value &&
+		!hasNodeIssues.value
+	);
 });
 
 function findManagedOpenAiCredentialId(
@@ -196,6 +157,7 @@ async function handlePublish() {
 
 	// Activate the workflow
 	const success = await workflowActivate.publishWorkflowFromCanvas(workflowsStore.workflow.id, {
+		name: versionName.value,
 		description: description.value,
 	});
 
@@ -217,14 +179,6 @@ async function handlePublish() {
 		await displayActivationError();
 	}
 }
-
-watchEffect(async () => {
-	const workflowHistory = await workflowHistoryStore.getWorkflowHistory(
-		workflowsStore.workflow.id,
-		{ take: 1 },
-	);
-	hasAnyPublishedVersions.value = workflowHistory.length > 1;
-});
 </script>
 
 <template>
@@ -255,48 +209,63 @@ watchEffect(async () => {
 						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message')
 					}}
 				</N8nCallout>
-				<div :class="$style.versionTextContainer">
-					<div :class="$style.versionRow">
-						<N8nText v-if="actionText" color="text-light">{{ actionText }}</N8nText>
-						<N8nText v-if="currentVersionText">
-							{{ currentVersionText }}
-						</N8nText>
-						<N8nBadge v-if="currentVersionText && !wfHasAnyChanges" theme="tertiary" size="small">
-							{{ i18n.baseText('workflows.publishModal.noChanges') }}
-						</N8nBadge>
-						<N8nText
-							v-if="currentVersionText && newVersionText"
-							color="text-light"
-							:class="$style.versionSeparator"
-						>
-							->
-						</N8nText>
-						<N8nText color="text-dark">
-							{{ newVersionText }}
-						</N8nText>
-						<N8nBadge v-if="currentVersionText && newVersionText" theme="warning" size="small">
-							{{ i18n.baseText('workflows.publishModal.modified') }}
-						</N8nBadge>
-					</div>
-					<div>
-						<N8nText color="text-light" size="small">
-							{{ publishedInfoText }}
-						</N8nText>
-					</div>
-				</div>
+				<N8nCallout v-else-if="!wfHasAnyChanges" theme="danger" icon="status-error">
+					{{ i18n.baseText('workflows.publishModal.noChanges') }}
+				</N8nCallout>
+				<N8nCallout v-else-if="!hasPublishedVersion" theme="secondary">
+					{{ i18n.baseText('workflows.publishModal.noPublishedVersionMessage') }}
+				</N8nCallout>
+				<N8nCallout v-if="showOverwriteActiveVersionWarning" theme="warning" icon="triangle-alert">
+					{{
+						i18n.baseText('workflows.publishModal.overwriteActiveVersionWarning' as any, {
+							interpolate: {
+								versionName: workflowsStore.workflow.activeVersion?.name ?? '',
+							},
+						})
+					}}
+				</N8nCallout>
 				<div :class="$style.inputButtonContainer">
-					<N8nInput
-						v-model="description"
-						:placeholder="i18n.baseText('workflows.publishModal.descriptionPlaceholder')"
-						:class="$style.descriptionInput"
-						:disabled="isPublishDisabled"
-						size="small"
-						data-test-id="workflow-publish-description-input"
+					<N8nInputLabel
+						input-name="workflow-version-name"
+						:label="i18n.baseText('workflows.publishModal.versionNameLabel' as any)"
+						:required="true"
+						:class="$style.versionNameInput"
+					>
+						<N8nInput
+							id="workflow-version-name"
+							v-model="versionName"
+							:disabled="inputsDisabled"
+							size="large"
+							data-test-id="workflow-publish-version-name-input"
+						/>
+					</N8nInputLabel>
+				</div>
+				<div :class="$style.descriptionContainer">
+					<N8nInputLabel
+						input-name="workflow-version-description"
+						:label="i18n.baseText('workflows.publishModal.descriptionPlaceholder')"
+					>
+						<N8nInput
+							id="workflow-version-description"
+							v-model="description"
+							type="textarea"
+							:rows="4"
+							:disabled="inputsDisabled"
+							size="large"
+							data-test-id="workflow-publish-description-input"
+						/>
+					</N8nInputLabel>
+				</div>
+				<div :class="$style.actions">
+					<N8nButton
+						type="secondary"
+						:label="i18n.baseText('generic.cancel')"
+						data-test-id="workflow-publish-cancel-button"
+						@click="modalBus.emit('close')"
 					/>
 					<N8nButton
 						:disabled="isPublishDisabled"
 						:label="i18n.baseText('workflows.publish')"
-						size="small"
 						data-test-id="workflow-publish-button"
 						@click="handlePublish"
 					/>
@@ -312,28 +281,23 @@ watchEffect(async () => {
 	flex-direction: column;
 	gap: var(--spacing--lg);
 }
-.versionTextContainer {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing--2xs);
-}
-
-.versionRow {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--4xs);
-}
-
-.versionSeparator {
-	margin: 0 var(--spacing--2xs);
-}
 
 .inputButtonContainer {
 	display: flex;
 	gap: var(--spacing--xs);
 }
 
-.descriptionInput {
-	flex: 1;
+.descriptionContainer {
+	width: 100%;
+}
+
+.actions {
+	display: flex;
+	justify-content: flex-end;
+	gap: var(--spacing--xs);
+}
+
+.versionNameInput {
+	width: 100%;
 }
 </style>
