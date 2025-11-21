@@ -13,7 +13,7 @@ import type {
 	INode,
 } from './interfaces';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
-import type { IRunExecutionDataV1 } from './run-execution-data/run-execution-data.v1';
+import type { IRunExecutionDataV0 } from './run-execution-data/run-execution-data.v0';
 
 export interface CreateFullRunExecutionDataOptions {
 	startData?: {
@@ -55,7 +55,7 @@ export function createRunExecutionData(
 	options: CreateFullRunExecutionDataOptions = {},
 ): IRunExecutionData {
 	return {
-		version: 1,
+		version: 0,
 		startData: options.startData ?? {},
 		resultData: {
 			error: options.resultData?.error,
@@ -82,7 +82,7 @@ export function createRunExecutionData(
 		waitTill: options.waitTill,
 		manualData: options.manualData,
 		pushRef: options.pushRef,
-	} satisfies IRunExecutionDataV1 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
+	} satisfies IRunExecutionDataV0 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }
 
 /**
@@ -92,11 +92,11 @@ export function createRunExecutionData(
  */
 export function createEmptyRunExecutionData(): IRunExecutionData {
 	return {
-		version: 1,
+		version: 0,
 		resultData: {
 			runData: {},
 		},
-	} satisfies IRunExecutionDataV1 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
+	} satisfies IRunExecutionDataV0 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }
 
 /**
@@ -109,9 +109,9 @@ export function createEmptyRunExecutionData(): IRunExecutionData {
  */
 export function createErrorExecutionData(node: INode, error: ExecutionError): IRunExecutionData {
 	return {
-		version: 1,
+		version: 0,
 		startData: {
-			destinationNode: { nodeName: node.name, mode: 'inclusive' },
+			destinationNode: node.name,
 			runNodeFilter: [node.name],
 		},
 		executionData: {
@@ -153,5 +153,5 @@ export function createErrorExecutionData(node: INode, error: ExecutionError): IR
 			error,
 			lastNodeExecuted: node.name,
 		},
-	} satisfies IRunExecutionDataV1 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
+	} satisfies IRunExecutionDataV0 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }

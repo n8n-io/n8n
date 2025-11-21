@@ -6,7 +6,7 @@
  */
 
 import type { IRunExecutionDataV0 } from './run-execution-data.v0';
-import { runExecutionDataV0ToV1, type IRunExecutionDataV1 } from './run-execution-data.v1';
+import type { IRunExecutionDataV1 } from './run-execution-data.v1';
 
 /**
  * All the versions of the interface.
@@ -15,18 +15,11 @@ import { runExecutionDataV0ToV1, type IRunExecutionDataV1 } from './run-executio
  */
 export type IRunExecutionDataAll = IRunExecutionDataV0 | IRunExecutionDataV1;
 
+const __brand = Symbol('brand');
+
 /**
  * Current version of IRunExecutionData.
  */
-export type IRunExecutionData = IRunExecutionDataV1 & {
-	readonly __brand: 'Use createRunExecutionData factory instead of constructing manually';
+export type IRunExecutionData = IRunExecutionDataV0 & {
+	[__brand]: 'Use createRunExecutionData factory instead of constructing manually';
 };
-
-export function migrateRunExecutionData(data: IRunExecutionDataAll): IRunExecutionData {
-	switch (data.version) {
-		case 0:
-			data = runExecutionDataV0ToV1(data);
-		// Fall through to subsequent versions as they're added.
-	}
-	return data as IRunExecutionData;
-}

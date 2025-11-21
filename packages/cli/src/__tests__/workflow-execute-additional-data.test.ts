@@ -5,13 +5,14 @@ import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { ExternalSecretsProxy } from 'n8n-core';
-import type {
-	IWorkflowBase,
-	IExecuteWorkflowInfo,
-	IWorkflowExecuteAdditionalData,
-	ExecuteWorkflowOptions,
-	IRun,
-	INodeExecutionData,
+import {
+	type IWorkflowBase,
+	type IExecuteWorkflowInfo,
+	type IWorkflowExecuteAdditionalData,
+	type ExecuteWorkflowOptions,
+	type IRun,
+	type INodeExecutionData,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
@@ -215,7 +216,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 
 		it('should return default data', () => {
 			expect(getRunData(workflow)).toEqual({
-				executionData: {
+				executionData: createRunExecutionData({
 					executionData: {
 						contextData: {},
 						metadata: {},
@@ -238,7 +239,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 						runData: {},
 					},
 					startData: {},
-				},
+				}),
 				executionMode: 'integrated',
 				workflowData: workflow,
 			});
@@ -251,7 +252,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				workflowId: '567',
 			};
 			expect(getRunData(workflow, data, parentExecution)).toEqual({
-				executionData: {
+				executionData: createRunExecutionData({
 					executionData: {
 						contextData: {},
 						metadata: {},
@@ -272,7 +273,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 					},
 					resultData: { runData: {} },
 					startData: {},
-				},
+				}),
 				executionMode: 'integrated',
 				workflowData: workflow,
 			});
