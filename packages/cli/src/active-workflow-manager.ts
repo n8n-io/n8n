@@ -40,6 +40,7 @@ import {
 	WebhookPathTakenError,
 	UnexpectedError,
 	ensureError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
@@ -414,12 +415,12 @@ export class ActiveWorkflowManager {
 		mode: WorkflowExecuteMode,
 	) {
 		const fullRunData: IRun = {
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					error,
 					runData: {},
 				},
-			},
+			}),
 			finished: false,
 			mode,
 			startedAt: new Date(),
