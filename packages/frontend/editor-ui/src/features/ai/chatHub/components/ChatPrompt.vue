@@ -150,7 +150,7 @@ function handleClickInputWrapper() {
 }
 
 watch(speechInput.result, (spoken) => {
-	message.value = committedSpokenMessage.value + ' ' + spoken;
+	message.value = committedSpokenMessage.value + ' ' + spoken.trimStart();
 });
 
 watch(
