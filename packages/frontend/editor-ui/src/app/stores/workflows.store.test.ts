@@ -12,7 +12,13 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { INodeUi, IWorkflowDb, IWorkflowSettings } from '@/Interface';
 import type { IExecutionResponse } from '@/features/execution/executions/executions.types';
 
-import { deepCopy, NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	createRunExecutionData,
+	deepCopy,
+	NodeConnectionTypes,
+	SEND_AND_WAIT_OPERATION,
+} from 'n8n-workflow';
 import type {
 	IPinData,
 	IConnection,
@@ -1078,7 +1084,7 @@ describe('useWorkflowsStore', () => {
 		beforeEach(() => {
 			workflowsStore.workflowExecutionData = createTestWorkflowExecutionResponse({
 				id: 'test-execution',
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							n0: [
@@ -1100,7 +1106,7 @@ describe('useWorkflowsStore', () => {
 							],
 						},
 					},
-				},
+				}),
 			});
 		});
 
@@ -1186,6 +1192,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
 				data: {
+					version: 0,
 					resultData: {
 						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
@@ -1217,6 +1224,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
 				data: {
+					version: 0,
 					resultData: {
 						lastNodeExecuted: 'Edit Fields',
 						runData: {
@@ -1260,7 +1268,7 @@ describe('useWorkflowsStore', () => {
 
 		it('should replace placeholder task data in waiting nodes correctly', () => {
 			const runWithExistingRunData = deepCopy(executionResponse);
-			runWithExistingRunData.data = {
+			runWithExistingRunData.data = createRunExecutionData({
 				resultData: {
 					runData: {
 						[successEvent.nodeName]: [
@@ -1287,7 +1295,7 @@ describe('useWorkflowsStore', () => {
 						],
 					},
 				},
-			};
+			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
@@ -1299,14 +1307,14 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...runWithExistingRunData,
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEvent.data],
 						},
 					},
-				},
+				}),
 			});
 		});
 
@@ -1315,7 +1323,7 @@ describe('useWorkflowsStore', () => {
 			successEventWithExecutionIndex.data.executionIndex = 1;
 
 			const runWithExistingRunData = executionResponse;
-			runWithExistingRunData.data = {
+			runWithExistingRunData.data = createRunExecutionData({
 				resultData: {
 					runData: {
 						[successEventWithExecutionIndex.nodeName]: [
@@ -1342,7 +1350,7 @@ describe('useWorkflowsStore', () => {
 						],
 					},
 				},
-			};
+			});
 			useWorkflowState().setWorkflowExecutionData(runWithExistingRunData);
 
 			workflowsStore.nodesByName[successEvent.nodeName] = mock<INodeUi>({
@@ -1354,14 +1362,14 @@ describe('useWorkflowsStore', () => {
 
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
 							[successEvent.nodeName]: [successEventWithExecutionIndex.data],
 						},
 					},
-				},
+				}),
 			});
 		});
 	});
@@ -2273,11 +2281,7 @@ function generateMockExecutionEvents() {
 		startedAt: new Date(),
 		createdAt: new Date(),
 		status: 'new',
-		data: {
-			resultData: {
-				runData: {},
-			},
-		},
+		data: createEmptyRunExecutionData(),
 	};
 	const successEvent: PushPayload<'nodeExecuteAfter'> = {
 		executionId: '59',

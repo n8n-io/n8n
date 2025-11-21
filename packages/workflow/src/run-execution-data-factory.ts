@@ -1,3 +1,4 @@
+import type { IExecutionContext } from './execution-context';
 import type {
 	IRunData,
 	IPinData,
@@ -12,12 +13,15 @@ import type {
 	INode,
 } from './interfaces';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+import type { IRunExecutionDataV0 } from './run-execution-data/run-execution-data.v0';
 
 export interface CreateFullRunExecutionDataOptions {
 	startData?: {
 		startNodes?: StartNodeData[];
-		destinationNode?: string;
-		originalDestinationNode?: string;
+		destinationNode?: NonNullable<IRunExecutionData['startData']>['destinationNode'];
+		originalDestinationNode?: NonNullable<
+			IRunExecutionData['startData']
+		>['originalDestinationNode'];
 		runNodeFilter?: string[];
 	};
 	resultData?: {
@@ -33,6 +37,7 @@ export interface CreateFullRunExecutionDataOptions {
 		metadata?: Record<string, ITaskMetadata[]>;
 		waitingExecution?: IWaitingForExecution;
 		waitingExecutionSource?: IWaitingForExecutionSource | null;
+		runtimeData?: IExecutionContext;
 	} | null;
 	parentExecution?: RelatedExecution;
 	validateSignature?: boolean;
@@ -49,7 +54,8 @@ export interface CreateFullRunExecutionDataOptions {
 export function createRunExecutionData(
 	options: CreateFullRunExecutionDataOptions = {},
 ): IRunExecutionData {
-	const runExecutionData: IRunExecutionData = {
+	return {
+		version: 0,
 		startData: options.startData ?? {},
 		resultData: {
 			error: options.resultData?.error,
@@ -69,15 +75,14 @@ export function createRunExecutionData(
 						metadata: options.executionData?.metadata ?? {},
 						waitingExecution: options.executionData?.waitingExecution ?? {},
 						waitingExecutionSource: options.executionData?.waitingExecutionSource ?? {},
+						runtimeData: options.executionData?.runtimeData,
 					},
 		parentExecution: options.parentExecution,
 		validateSignature: options.validateSignature,
 		waitTill: options.waitTill,
 		manualData: options.manualData,
 		pushRef: options.pushRef,
-	};
-
-	return runExecutionData;
+	} satisfies IRunExecutionDataV0 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }
 
 /**
@@ -87,10 +92,11 @@ export function createRunExecutionData(
  */
 export function createEmptyRunExecutionData(): IRunExecutionData {
 	return {
+		version: 0,
 		resultData: {
 			runData: {},
 		},
-	};
+	} satisfies IRunExecutionDataV0 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }
 
 /**
@@ -103,6 +109,7 @@ export function createEmptyRunExecutionData(): IRunExecutionData {
  */
 export function createErrorExecutionData(node: INode, error: ExecutionError): IRunExecutionData {
 	return {
+		version: 0,
 		startData: {
 			destinationNode: node.name,
 			runNodeFilter: [node.name],
@@ -146,5 +153,5 @@ export function createErrorExecutionData(node: INode, error: ExecutionError): IR
 			error,
 			lastNodeExecuted: node.name,
 		},
-	};
+	} satisfies IRunExecutionDataV0 as unknown as IRunExecutionData; // NOTE: we cast to unknown to avoid manual construction of branded type.
 }
