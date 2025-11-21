@@ -161,6 +161,11 @@ export class WorkflowExecutionService {
 			if (
 				// If the trigger has no runData we have to upgrade to a
 				// FullManualExecutionFromUnknownTriggerPayload
+				//
+				// TODO: This function should be happy if at least one root trigger has
+				// runData, if there are multiple root triggers this will always return
+				// false, because it's impossible for more than one trigger to have
+				// runData.
 				!this.doesTriggerHaveRunData(
 					payload.destinationNode,
 					payload.workflowData,
@@ -211,9 +216,8 @@ export class WorkflowExecutionService {
 
 			const pinnedTrigger = this.selectPinnedActivatorStarter(
 				payload.workflowData,
-				[], //startNodes?.map((nodeData) => nodeData.name),
-				payload.workflowData.pinData,
 				payload.destinationNode,
+				payload.workflowData.pinData ?? {},
 			);
 
 			if (pinnedTrigger === null) {
@@ -265,13 +269,10 @@ export class WorkflowExecutionService {
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 				: undefined;
 
-			// TODO: rewrite this, it returns pinned triggers that are not connected
-			// to the destinationNode
 			const pinnedTrigger = this.selectPinnedActivatorStarter(
 				payload.workflowData,
-				[], //startNodes?.map((nodeData) => nodeData.name),
-				payload.workflowData.pinData,
 				payload.destinationNode,
+				payload.workflowData.pinData ?? {},
 			);
 
 			if (pinnedTrigger === null) {
@@ -508,14 +509,10 @@ export class WorkflowExecutionService {
 	 */
 	selectPinnedTrigger(
 		workflow: IWorkflowBase,
-		// TODO: remove this argument, it's not used anymore
-		startNodes?: string[],
-		pinData?: IPinData,
-		destinationNode?: string,
+		destinationNode: string,
+		pinData: IPinData,
 	) {
-		if (!pinData || !startNodes) return null;
-
-		if (allPinnedTriggers.length === 0) return undefined;
+		const allPinnedActivators = this.findAllPinnedActivators(workflow, pinData);
 
 		const destinationParents = new Set(
 			new Workflow({
@@ -526,9 +523,20 @@ export class WorkflowExecutionService {
 			}).getParentNodes(destinationNode),
 		);
 
-		const trigger = allPinnedTriggers.find((a) => destinationParents.has(a.name));
+		const destinationParents = new Set(
+			new Workflow({
+				nodes: workflow.nodes,
+				connections: workflow.connections,
+				active: workflow.activeVersionId !== null,
+				nodeTypes: this.nodeTypes,
+			}).getParentNodes(destinationNode),
+		);
 
-		return trigger;
+		const activator = allPinnedActivators.find((a) => destinationParents.has(a.name));
+
+		console.log('activator', activator);
+
+		return activator;
 	}
 
 	private findAllPinnedTriggers(workflow: IWorkflowBase, pinData?: IPinData) {
