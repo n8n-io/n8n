@@ -298,7 +298,11 @@ export class WorkflowService {
 		 * will take effect only on removing and re-adding.
 		 */
 		if (isDraftPublishDisabled && wasActive) {
-			await this.activeWorkflowManager.remove(workflowId);
+			await this.activeWorkflowManager.remove(
+				workflowId,
+				user.id,
+				isNowActive ? 'update' : 'deactivate',
+			);
 		}
 
 		const workflowSettings = workflowUpdateData.settings ?? {};
@@ -468,7 +472,7 @@ export class WorkflowService {
 	): Promise<void> {
 		try {
 			await this.externalHooks.run('workflow.activate', [workflow]);
-			await this.activeWorkflowManager.add(workflowId, mode);
+			await this.activeWorkflowManager.add(workflowId, mode, undefined, undefined, user.id);
 		} catch (error) {
 			// If workflow could not be activated, set it again to inactive
 			// and revert the versionId and activeVersionId change so UI remains consistent
@@ -601,7 +605,7 @@ export class WorkflowService {
 		}
 
 		// Remove from active workflow manager
-		await this.activeWorkflowManager.remove(workflowId);
+		await this.activeWorkflowManager.remove(workflowId, user.id, 'deactivate');
 
 		await this.workflowRepository.update(workflowId, {
 			active: false,
@@ -647,7 +651,7 @@ export class WorkflowService {
 
 		if (workflow.active) {
 			// deactivate before deleting
-			await this.activeWorkflowManager.remove(workflowId);
+			await this.activeWorkflowManager.remove(workflowId, user.id, 'deactivate');
 		}
 
 		const idsForDeletion = await this.executionRepository
@@ -690,7 +694,7 @@ export class WorkflowService {
 		}
 
 		if (workflow.activeVersionId !== null) {
-			await this.activeWorkflowManager.remove(workflowId);
+			await this.activeWorkflowManager.remove(workflowId, user.id, 'deactivate');
 		}
 
 		const versionId = uuid();

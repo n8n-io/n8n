@@ -29,6 +29,7 @@ import { WebhookEntity } from './webhook-entity';
 import { WorkflowDependency } from './workflow-dependency-entity';
 import { WorkflowEntity } from './workflow-entity';
 import { WorkflowHistory } from './workflow-history';
+import { WorkflowPublishHistory } from './workflow-publish-history';
 import { WorkflowStatistics } from './workflow-statistics';
 import { WorkflowTagMapping } from './workflow-tag-mapping';
 
@@ -58,6 +59,7 @@ export {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,
@@ -93,6 +95,7 @@ export const entities = {
 	FolderTagMapping,
 	AuthProviderSyncHistory,
 	WorkflowHistory,
+	WorkflowPublishHistory,
 	ExecutionData,
 	ExecutionMetadata,
 	AnnotationTagEntity,

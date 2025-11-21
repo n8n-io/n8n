@@ -7,7 +7,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
-import { WorkflowRepository } from '@n8n/db';
+import { WorkflowRepository, WorkflowPublishHistoryRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
@@ -58,6 +58,8 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
+import { PubSubCommandMap } from './scaling/pubsub/pubsub.event-map';
+import { User } from '@n8n/api-types';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -79,6 +81,7 @@ export class ActiveWorkflowManager {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly executionService: ExecutionService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
@@ -560,6 +563,7 @@ export class ActiveWorkflowManager {
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
 		{ shouldPublish } = { shouldPublish: true },
+		userId: string | null = null,
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
@@ -654,6 +658,13 @@ export class ActiveWorkflowManager {
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
 			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId: dbWorkflow.versionId,
+				status: 'activated',
+				mode: activationMode,
+				userId,
+			});
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.register(workflowId, error.message);
@@ -669,7 +680,7 @@ export class ActiveWorkflowManager {
 	}
 
 	@OnPubSubEvent('display-workflow-activation', { instanceType: 'main' })
-	handleDisplayWorkflowActivation({ workflowId }: { workflowId: string }) {
+	handleDisplayWorkflowActivation({ workflowId }: PubSubCommandMap['display-workflow-activation']) {
 		this.push.broadcast({ type: 'workflowActivated', data: { workflowId } });
 	}
 
@@ -696,7 +707,9 @@ export class ActiveWorkflowManager {
 		instanceType: 'main',
 		instanceRole: 'leader',
 	})
-	async handleAddWebhooksTriggersAndPollers({ workflowId }: { workflowId: string }) {
+	async handleAddWebhooksTriggersAndPollers({
+		workflowId,
+	}: PubSubCommandMap['add-webhooks-triggers-and-pollers']) {
 		try {
 			await this.add(workflowId, 'activate', undefined, {
 				shouldPublish: false, // prevent leader from re-publishing message
@@ -880,7 +893,7 @@ export class ActiveWorkflowManager {
 	 */
 	// TODO: this should happen in a transaction
 	// maybe, see: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
-	async remove(workflowId: WorkflowId) {
+	async remove(workflowId: WorkflowId, userId?: User['id'], reason?: 'update' | 'deactivate') {
 		if (this.instanceSettings.isMultiMain) {
 			try {
 				await this.clearWebhooks(workflowId);
@@ -917,6 +930,14 @@ export class ActiveWorkflowManager {
 		// if it's active in memory then it's a trigger
 		// so remove from list of actives workflows
 		await this.removeWorkflowTriggersAndPollers(workflowId);
+
+		await this.workflowPublishHistoryRepository.addRecord({
+			workflowId,
+			versionId: null,
+			status: 'deactivated',
+			mode: reason ?? null,
+			userId: userId ?? null,
+		});
 	}
 
 	@OnPubSubEvent('remove-triggers-and-pollers', { instanceType: 'main', instanceRole: 'leader' })
