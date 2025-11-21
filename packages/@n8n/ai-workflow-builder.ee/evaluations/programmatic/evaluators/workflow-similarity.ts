@@ -5,9 +5,25 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 
 import type { SimpleWorkflow } from '@/types';
-import type { SingleEvaluatorResult } from '@/validation/types';
+import type { ProgrammaticViolationName, SingleEvaluatorResult } from '@/validation/types';
 
 const execFileAsync = promisify(execFile);
+
+/**
+ * Map Python edit types to violation names
+ */
+function mapEditTypeToViolationName(editType: string): ProgrammaticViolationName {
+	const mapping: Record<string, ProgrammaticViolationName> = {
+		node_insert: 'workflow-similarity-node-insert',
+		node_delete: 'workflow-similarity-node-delete',
+		node_substitute: 'workflow-similarity-node-substitute',
+		edge_insert: 'workflow-similarity-edge-insert',
+		edge_delete: 'workflow-similarity-edge-delete',
+		edge_substitute: 'workflow-similarity-edge-substitute',
+	};
+
+	return mapping[editType] ?? 'workflow-similarity-node-substitute';
+}
 
 interface WorkflowSimilarityResult {
 	similarity_score: number; // 0-1
@@ -133,6 +149,7 @@ export async function evaluateWorkflowSimilarity(
 
 		// Convert Python result to SingleEvaluatorResult format
 		const violations = result.top_edits.map((edit) => ({
+			name: mapEditTypeToViolationName(edit.type),
 			type: edit.priority,
 			description: edit.description,
 			pointsDeducted: Math.round(edit.cost),

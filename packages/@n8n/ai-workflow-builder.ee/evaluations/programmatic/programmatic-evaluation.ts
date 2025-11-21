@@ -1,6 +1,6 @@
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import type { ProgrammaticEvaluationInput } from '@/validation/types';
+import type { ProgrammaticEvaluationInput, ProgrammaticViolation } from '@/validation/types';
 
 import {
 	evaluateConnections,
@@ -40,14 +40,14 @@ export async function programmaticEvaluation(
 		} catch (error) {
 			console.warn('Multiple workflow similarity evaluation failed:', error);
 			// Fallback to neutral result if similarity check fails
+			const violation: ProgrammaticViolation = {
+				name: 'workflow-similarity-evaluation-failed',
+				type: 'critical',
+				description: `Similarity evaluation failed: ${(error as Error).message}`,
+				pointsDeducted: 0,
+			};
 			similarityEvaluationResult = {
-				violations: [
-					{
-						type: 'critical' as const,
-						description: `Similarity evaluation failed: ${(error as Error).message}`,
-						pointsDeducted: 0,
-					},
-				],
+				violations: [violation],
 				score: 0,
 			};
 		}
@@ -60,14 +60,14 @@ export async function programmaticEvaluation(
 		} catch (error) {
 			console.warn('Workflow similarity evaluation failed:', error);
 			// Fallback to neutral result if similarity check fails
+			const violation: ProgrammaticViolation = {
+				name: 'workflow-similarity-evaluation-failed',
+				type: 'critical',
+				description: `Similarity evaluation failed: ${(error as Error).message}`,
+				pointsDeducted: 0,
+			};
 			similarityEvaluationResult = {
-				violations: [
-					{
-						type: 'critical' as const,
-						description: `Similarity evaluation failed: ${(error as Error).message}`,
-						pointsDeducted: 0,
-					},
-				],
+				violations: [violation],
 				score: 0,
 			};
 		}

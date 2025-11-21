@@ -20,6 +20,13 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'sub-node-not-connected',
 	'node-type-not-found',
 	'failed-to-resolve-connections',
+	'workflow-similarity-node-insert',
+	'workflow-similarity-node-delete',
+	'workflow-similarity-node-substitute',
+	'workflow-similarity-edge-insert',
+	'workflow-similarity-edge-delete',
+	'workflow-similarity-edge-substitute',
+	'workflow-similarity-evaluation-failed',
 ] as const;
 
 export type ProgrammaticViolationName = (typeof PROGRAMMATIC_VIOLATION_NAMES)[number];
