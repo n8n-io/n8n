@@ -16,12 +16,11 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	}
 
 	async store(
-		workflowId: string,
-		executionId: string,
+		location: BinaryData.FileLocation,
 		bufferOrStream: Buffer | Readable,
 		metadata: BinaryData.PreWriteMetadata,
 	) {
-		const fileId = this.toFileId(workflowId, executionId);
+		const fileId = this.toFileId(location);
 		const buffer = await binaryToBuffer(bufferOrStream);
 
 		await this.objectStoreService.put(fileId, buffer, metadata);
@@ -56,8 +55,8 @@ export class ObjectStoreManager implements BinaryData.Manager {
 		return metadata;
 	}
 
-	async copyByFileId(workflowId: string, executionId: string, sourceFileId: string) {
-		const targetFileId = this.toFileId(workflowId, executionId);
+	async copyByFileId(targetLocation: BinaryData.FileLocation, sourceFileId: string) {
+		const targetFileId = this.toFileId(targetLocation);
 
 		const sourceFile = await this.objectStoreService.get(sourceFileId, { mode: 'buffer' });
 
@@ -70,12 +69,11 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	 * Copy to object store the temp file written by nodes like Webhook, FTP, and SSH.
 	 */
 	async copyByFilePath(
-		workflowId: string,
-		executionId: string,
+		targetLocation: BinaryData.FileLocation,
 		sourcePath: string,
 		metadata: BinaryData.PreWriteMetadata,
 	) {
-		const targetFileId = this.toFileId(workflowId, executionId);
+		const targetFileId = this.toFileId(targetLocation);
 		const sourceFile = await fs.readFile(sourcePath);
 
 		await this.objectStoreService.put(targetFileId, sourceFile, metadata);
@@ -95,9 +93,14 @@ export class ObjectStoreManager implements BinaryData.Manager {
 	//         private methods
 	// ----------------------------------
 
-	private toFileId(workflowId: string, executionId: string) {
-		if (!executionId) executionId = 'temp'; // missing only in edge case, see PR #7244
-
-		return `workflows/${workflowId}/executions/${executionId}/binary_data/${uuid()}`;
+	private toFileId(location: BinaryData.FileLocation) {
+		switch (location.type) {
+			case 'execution': {
+				const executionId = location.executionId || 'temp'; // missing only in edge case, see PR #7244
+				return `workflows/${location.workflowId}/executions/${executionId}/binary_data/${uuid()}`;
+			}
+			case 'chat-hub-message-attachment':
+				return `chat-hub/sessions/${location.sessionId}/messages/${location.messageId}/binary_data/${uuid()}`;
+		}
 	}
 }

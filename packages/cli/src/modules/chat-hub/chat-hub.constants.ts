@@ -36,6 +36,14 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 		name: '@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 		version: 1.1,
 	},
+	cohere: {
+		name: '@n8n/n8n-nodes-langchain.lmChatCohere',
+		version: 1,
+	},
+	mistralCloud: {
+		name: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+		version: 1,
+	},
 };
 
 export const NODE_NAMES = {
@@ -46,6 +54,7 @@ export const NODE_NAMES = {
 	MEMORY: 'Memory',
 	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
 	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',
+	MERGE: 'Merge',
 } as const;
 
 /* eslint-disable @typescript-eslint/naming-convention */
