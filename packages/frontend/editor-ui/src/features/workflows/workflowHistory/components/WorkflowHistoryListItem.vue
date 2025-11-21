@@ -33,7 +33,7 @@ const emit = defineEmits<{
 		value: {
 			action: WorkflowHistoryActionTypes[number];
 			id: WorkflowVersionId;
-			data: { formattedCreatedAt: string };
+			data: { formattedCreatedAt: string; versionName?: string };
 		},
 	];
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
@@ -88,7 +88,7 @@ const onAction = (value: string) => {
 	emit('action', {
 		action,
 		id: props.item.versionId,
-		data: { formattedCreatedAt: formattedCreatedAt.value },
+		data: { formattedCreatedAt: formattedCreatedAt.value, versionName: versionName.value },
 	});
 };
 
