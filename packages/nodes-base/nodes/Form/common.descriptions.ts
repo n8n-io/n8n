@@ -168,6 +168,18 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description: 'Default value that will be pre-filled in the form field',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						hide: {
+							fieldType: ['dropdown', 'date', 'file', 'html', 'hiddenField', 'radio', 'checkbox'],
+						},
+					},
+				},
+				{
 					displayName: 'Field Value',
 					name: 'fieldValue',
 					description:

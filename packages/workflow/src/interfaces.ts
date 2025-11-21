@@ -3000,6 +3000,7 @@ export type FormFieldsParameter = Array<{
 	formatDate?: string;
 	html?: string;
 	placeholder?: string;
+	defaultValue?: string;
 	fieldName?: string;
 	fieldValue?: string;
 	limitSelection?: 'exact' | 'range' | 'unlimited';
