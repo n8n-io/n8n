@@ -33,36 +33,3 @@ export interface OAuth2AccessTokenErrorResponse extends Record<string, unknown> 
 	error_description?: string;
 	error_uri?: string;
 }
-
-/**
- * OAuth 2.0 Authorization Server Metadata
- * Based on RFC 8414: https://www.rfc-editor.org/rfc/rfc8414.html
- */
-export interface OAuthAuthorizationServerMetadata {
-	/** URL of the authorization server's authorization endpoint */
-	authorization_endpoint: string;
-
-	/** URL of the authorization server's token endpoint */
-	token_endpoint: string;
-
-	/** URL of the authorization server's dynamic client registration endpoint */
-	registration_endpoint: string;
-
-	/**
-	 * Array of OAuth 2.0 grant type values supported
-	 * If omitted, the default is ['authorization_code', 'implicit']
-	 */
-	grant_types_supported?: string[];
-
-	/**
-	 * Array of client authentication methods supported by the token endpoint
-	 * If omitted, the default is ['client_secret_basic']
-	 */
-	token_endpoint_auth_methods_supported?: string[];
-
-	/**
-	 * Array of PKCE code challenge methods supported
-	 * If omitted, the server does not support PKCE
-	 */
-	code_challenge_methods_supported?: string[];
-}
