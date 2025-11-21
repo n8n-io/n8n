@@ -8,6 +8,7 @@ import lang from 'element-plus/dist/locale/en.mjs';
 import { N8nPlugin } from '../src/plugin';
 
 import './storybook.scss';
+import { allModes } from './modes';
 // import '../src/css/tailwind/index.css';
 
 setup((app) => {
@@ -74,16 +75,8 @@ export const parameters = {
 	},
 	chromatic: {
 		modes: {
-			light: {
-				globals: {
-					theme: 'light',
-				},
-			},
-			dark: {
-				globals: {
-					theme: 'dark',
-				},
-			},
+			light: allModes['light'],
+			dark: allModes['dark'],
 		},
 		disableSnapshot: false,
 	},
