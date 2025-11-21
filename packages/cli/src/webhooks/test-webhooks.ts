@@ -270,7 +270,7 @@ export class TestWebhooks implements IWebhookManager {
 		runData?: IRunData;
 		pushRef?: string;
 		destinationNode?: string;
-		triggerToStartFrom?: WorkflowRequest.ManualRunPayload['triggerToStartFrom'];
+		triggerToStartFrom?: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload['triggerToStartFrom'];
 	}) {
 		const {
 			userId,
