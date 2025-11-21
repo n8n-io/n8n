@@ -18,6 +18,7 @@ export const chatHubLLMProviderSchema = z.enum([
 	'azureOpenAi',
 	'ollama',
 	'awsBedrock',
+	'deepSeek',
 	'cohere',
 	'mistralCloud',
 ]);
@@ -44,6 +45,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	ollama: 'ollamaApi',
 	azureOpenAi: 'azureOpenAiApi',
 	awsBedrock: 'aws',
+	deepSeek: 'deepSeekApi',
 	cohere: 'cohereApi',
 	mistralCloud: 'mistralCloudApi',
 };
@@ -83,6 +85,11 @@ const awsBedrockModelSchema = z.object({
 	model: z.string(),
 });
 
+const deepSeekModelSchema = z.object({
+	provider: z.literal('deepSeek'),
+	model: z.string(),
+});
+
 const cohereModelSchema = z.object({
 	provider: z.literal('cohere'),
 	model: z.string(),
@@ -110,6 +117,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	azureOpenAIModelSchema,
 	ollamaModelSchema,
 	awsBedrockModelSchema,
+	deepSeekModelSchema,
 	cohereModelSchema,
 	mistralCloudModelSchema,
 	n8nModelSchema,
@@ -122,6 +130,7 @@ export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
 export type ChatHubAzureOpenAIModel = z.infer<typeof azureOpenAIModelSchema>;
 export type ChatHubOllamaModel = z.infer<typeof ollamaModelSchema>;
 export type ChatHubAwsBedrockModel = z.infer<typeof awsBedrockModelSchema>;
+export type ChatHubDeepSeekModel = z.infer<typeof deepSeekModelSchema>;
 export type ChatHubCohereModel = z.infer<typeof cohereModelSchema>;
 export type ChatHubMistralCloudModel = z.infer<typeof mistralCloudModelSchema>;
 export type ChatHubBaseLLMModel =
@@ -131,6 +140,7 @@ export type ChatHubBaseLLMModel =
 	| ChatHubAzureOpenAIModel
 	| ChatHubOllamaModel
 	| ChatHubAwsBedrockModel
+	| ChatHubDeepSeekModel
 	| ChatHubCohereModel
 	| ChatHubMistralCloudModel;
 
@@ -175,6 +185,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	azureOpenAi: { models: [] },
 	ollama: { models: [] },
 	awsBedrock: { models: [] },
+	deepSeek: { models: [] },
 	cohere: { models: [] },
 	mistralCloud: { models: [] },
 	n8n: { models: [] },
