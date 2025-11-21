@@ -2,6 +2,16 @@
 
 This list shows all the versions which include breaking changes and how to upgrade.
 
+# 1.122.0
+
+### What changed?
+
+The way to add third-party dependencies to the `n8nio/runners` image has changed. More details [here](https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies).
+
+### When is action necessary?
+
+If you adding third-party dependencies to the `n8nio/runners` image using `package.json` and `extras.txt` and building the image yourself, please extend the image as instructed in the link above.
+
 # 1.113.0
 
 ### What changed?

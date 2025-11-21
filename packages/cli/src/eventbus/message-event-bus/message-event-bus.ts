@@ -6,7 +6,7 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DeleteResult } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
@@ -165,7 +165,7 @@ export class MessageEventBus extends EventEmitter {
 
 			if (unfinishedExecutionIds.length > 0) {
 				const activeWorkflows = await this.workflowRepository.find({
-					where: { active: true },
+					where: { activeVersionId: Not(IsNull()) },
 					select: ['id', 'name'],
 				});
 				if (activeWorkflows.length > 0) {

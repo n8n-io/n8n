@@ -3,7 +3,7 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
-import type { ChatMessageId } from '@n8n/api-types';
+import type { ChatMessageId, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
 import type MarkdownIt from 'markdown-it';
@@ -13,7 +13,10 @@ import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
-import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import ChatFile from '@n8n/chat/components/ChatFile.vue';
+import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -35,6 +38,8 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
+const chatStore = useChatStore();
+const rootStore = useRootStore();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -48,8 +53,23 @@ const speech = useSpeechSynthesis(messageContent, {
 	volume: 1,
 });
 
-const model = computed(() => unflattenModel(message));
-const agent = useAgent(model);
+const agent = computed<ChatModelDto | null>(() => {
+	const model = unflattenModel(message);
+
+	return model ? chatStore.getAgent(model) : null;
+});
+
+const attachments = computed(() =>
+	message.attachments.map(({ fileName, mimeType }, index) => ({
+		file: new File([], fileName ?? 'file', { type: mimeType }), // Placeholder file for display
+		downloadUrl: buildChatAttachmentUrl(
+			rootStore.restApiContext,
+			message.sessionId,
+			message.id,
+			index,
+		),
+	})),
+);
 
 async function handleCopy() {
 	const text = message.content;
@@ -163,6 +183,15 @@ onBeforeMount(() => {
 			</div>
 			<template v-else>
 				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
+					<div v-if="attachments.length > 0" :class="$style.attachments">
+						<ChatFile
+							v-for="(attachment, index) in attachments"
+							:key="index"
+							:file="attachment.file"
+							:is-removable="false"
+							:href="attachment.downloadUrl"
+						/>
+					</div>
 					<VueMarkdown
 						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
@@ -225,8 +254,17 @@ onBeforeMount(() => {
 	flex-direction: column;
 }
 
+.attachments {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+	margin-top: var(--spacing--xs);
+}
+
 .chatMessage {
-	display: block;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 	position: relative;
 	max-width: fit-content;
 

@@ -35,6 +35,7 @@ import {
 	type EnrichedStructuredChunk,
 	type ChatHubMessageStatus,
 	type ChatModelDto,
+	type ChatHubConversationsResponse,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -43,16 +44,22 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
+import { convertFileToChatAttachment } from '@/app/utils/fileUtils';
 import { buildUiMessages, isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
+import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { type INode } from 'n8n-workflow';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
+	const toast = useToast();
 	const telemetry = useTelemetry();
+
 	const agents = ref<ChatModelsResponse>();
-	const sessions = ref<ChatHubSessionDto[]>();
+	const sessions = ref<ChatHubConversationsResponse>();
+	const sessionsLoadingMore = ref(false);
+
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 	const streaming = ref<ChatStreamingState>();
 
@@ -266,8 +273,39 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return agents.value;
 	}
 
-	async function fetchSessions() {
-		sessions.value = await fetchSessionsApi(rootStore.restApiContext);
+	async function fetchSessions(reset: boolean) {
+		if (sessionsLoadingMore.value) {
+			return;
+		}
+
+		if (!reset && sessions.value && !sessions.value.hasMore && sessions.value.data.length > 0) {
+			return;
+		}
+
+		if (!reset) {
+			sessionsLoadingMore.value = true;
+		}
+
+		try {
+			const cursor = reset ? undefined : (sessions.value?.nextCursor ?? undefined);
+			const [response] = await Promise.all([
+				fetchSessionsApi(rootStore.restApiContext, 40, cursor),
+				new Promise((resolve) => setTimeout(resolve, 500)),
+			]);
+
+			sessions.value = {
+				...response,
+				data: [...(reset ? [] : (sessions.value?.data ?? [])), ...response.data],
+			};
+		} finally {
+			sessionsLoadingMore.value = false;
+		}
+	}
+
+	async function fetchMoreSessions() {
+		if (sessions.value?.hasMore && !sessionsLoadingMore.value) {
+			await fetchSessions(false);
+		}
 	}
 
 	async function fetchMessages(sessionId: string) {
@@ -298,25 +336,30 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		addMessage(streaming.value.sessionId, message);
 
-		if (sessions.value?.some((session) => session.id === streaming.value?.sessionId)) {
+		if (sessions.value?.data.some((session) => session.id === streaming.value?.sessionId)) {
 			return;
 		}
 
-		sessions.value = [
-			...(sessions.value ?? []),
-			{
-				id: streaming.value.sessionId,
-				title: 'New Chat',
-				ownerId: '',
-				lastMessageAt: new Date().toISOString(),
-				credentialId: null,
-				agentName: null,
-				createdAt: new Date().toISOString(),
-				updatedAt: new Date().toISOString(),
-				tools: [],
-				...flattenModel(streaming.value.model),
-			},
-		];
+		sessions.value = {
+			hasMore: false,
+			nextCursor: null,
+			...sessions.value,
+			data: [
+				...(sessions.value?.data ?? []),
+				{
+					id: streaming.value.sessionId,
+					title: 'New Chat',
+					ownerId: '',
+					lastMessageAt: new Date().toISOString(),
+					credentialId: null,
+					agentName: null,
+					createdAt: new Date().toISOString(),
+					updatedAt: new Date().toISOString(),
+					tools: [],
+					...flattenModel(streaming.value.model),
+				},
+			],
+		};
 	}
 
 	function ensureMessage(sessionId: ChatSessionId, messageId: ChatMessageId): ChatMessage {
@@ -398,14 +441,16 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			3,
 		);
 
-		// update the conversation list
-		await fetchSessions();
+		// update the conversation list to reflect the new title
+		await fetchSessions(true);
 	}
 
-	function onStreamError() {
+	function onStreamError(error: Error) {
 		if (!streaming.value) {
 			return;
 		}
+
+		toast.showError(error, 'Could not send message');
 
 		const { sessionId } = streaming.value;
 
@@ -425,18 +470,21 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 	}
 
-	function sendMessage(
+	async function sendMessage(
 		sessionId: ChatSessionId,
 		message: string,
 		model: ChatHubConversationModel,
 		credentials: ChatHubSendMessageRequest['credentials'],
 		tools: INode[],
+		files: File[] = [],
 	) {
 		const messageId = uuidv4();
 		const conversation = ensureConversation(sessionId);
 		const previousMessageId = conversation.activeMessageChain.length
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
 			: null;
+
+		const attachments = await Promise.all(files.map(convertFileToChatAttachment));
 
 		addMessage(sessionId, {
 			id: messageId,
@@ -457,6 +505,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			revisionOfMessageId: null,
 			responses: [],
 			alternatives: [],
+			attachments,
 		});
 
 		streaming.value = {
@@ -476,6 +525,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				credentials,
 				previousMessageId,
 				tools,
+				attachments,
 			},
 			onStreamMessage,
 			onStreamDone,
@@ -522,6 +572,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				revisionOfMessageId: editId,
 				responses: [],
 				alternatives: [],
+				attachments: message.attachments ?? null,
 			});
 		} else if (message?.type === 'ai') {
 			replaceMessageContent(sessionId, editId, content);
@@ -595,7 +646,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function updateSession(sessionId: ChatSessionId, toUpdate: Partial<ChatHubSessionDto>) {
-		sessions.value = sessions.value?.map((session) =>
+		if (!sessions.value) {
+			return;
+		}
+
+		sessions.value.data = sessions.value.data?.map((session) =>
 			session.id === sessionId
 				? {
 						...session,
@@ -606,7 +661,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function updateToolsInSession(sessionId: ChatSessionId, tools: INode[]) {
-		const session = sessions.value?.find((s) => s.id === sessionId);
+		const session = sessions.value?.data?.find((s) => s.id === sessionId);
 		if (!session) {
 			throw new Error(`Session with ID ${sessionId} not found`);
 		}
@@ -632,7 +687,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	async function deleteSession(sessionId: ChatSessionId) {
 		await deleteConversationApi(rootStore.restApiContext, sessionId);
 
-		sessions.value = sessions.value?.filter((session) => session.id !== sessionId);
+		if (sessions.value) {
+			sessions.value = {
+				...sessions.value,
+				data: sessions.value.data?.filter((session) => session.id !== sessionId),
+			};
+		}
 	}
 
 	function switchAlternative(sessionId: ChatSessionId, messageId: ChatMessageId) {
@@ -674,6 +734,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			createdAt: agent.createdAt,
 			updatedAt: agent.updatedAt,
 			tools: agent.tools,
+			allowFileUploads: true,
 		};
 		agents.value?.['custom-agent'].models.push(agentModel);
 
@@ -717,13 +778,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function getAgent(model: ChatHubConversationModel) {
-		if (!agents.value) return;
+		if (!agents.value) return null;
 
 		const agent = agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
 
 		if (!agent) {
 			if (model.provider === 'custom-agent' || model.provider === 'n8n') {
-				return;
+				return null;
 			}
 
 			// Allow custom models chosen by ID even if they are not in the fetched list
@@ -736,6 +797,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				description: null,
 				createdAt: null,
 				updatedAt: null,
+				allowFileUploads: true,
 			};
 		}
 
@@ -760,9 +822,11 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		/**
 		 * conversations
 		 */
-		sessions: computed(() => sessions.value ?? []),
+		sessions: computed(() => sessions.value?.data ?? []),
 		sessionsReady: computed(() => sessions.value !== undefined),
+		sessionsLoading: computed(() => sessionsLoadingMore.value),
 		fetchSessions,
+		fetchMoreSessions,
 		renameSession,
 		updateSessionModel,
 		deleteSession,

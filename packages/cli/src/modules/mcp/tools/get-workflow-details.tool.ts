@@ -126,7 +126,7 @@ export async function getWorkflowDetails(
 	const sanitizedWorkflow: WorkflowDetailsResult['workflow'] = {
 		id: workflow.id,
 		name: workflow.name,
-		active: workflow.active,
+		active: workflow.activeVersionId !== null,
 		isArchived: workflow.isArchived,
 		versionId: workflow.versionId,
 		triggerCount: workflow.triggerCount,

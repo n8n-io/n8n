@@ -50,6 +50,7 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 
 export type CredentialsGetSharedOptions =
 	| { allowGlobalScope: true; globalScope: Scope }
@@ -77,6 +78,40 @@ export class CredentialsService {
 		private readonly credentialsFinderService: CredentialsFinderService,
 	) {}
 
+	private async addGlobalCredentials(
+		credentials: CredentialsEntity[],
+		includeData: boolean,
+	): Promise<CredentialsEntity[]> {
+		const globalCredentials =
+			await this.credentialsRepository.findAllGlobalCredentials(includeData);
+
+		// Merge and deduplicate based on credential ID
+		const credentialIds = new Set(credentials.map((c) => c.id));
+		const newGlobalCreds = globalCredentials.filter((gc) => !credentialIds.has(gc.id));
+
+		return [...credentials, ...newGlobalCreds];
+	}
+
+	async getMany(
+		user: User,
+		options: {
+			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			includeScopes?: boolean;
+			includeData: true;
+			onlySharedWithMe?: boolean;
+			includeGlobal?: boolean;
+		},
+	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
+	async getMany(
+		user: User,
+		options?: {
+			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
+			includeScopes?: boolean;
+			includeData?: boolean;
+			onlySharedWithMe?: boolean;
+			includeGlobal?: boolean;
+		},
+	): Promise<CredentialsEntity[]>;
 	async getMany(
 		user: User,
 		{
@@ -84,20 +119,55 @@ export class CredentialsService {
 			includeScopes = false,
 			includeData = false,
 			onlySharedWithMe = false,
+			includeGlobal = false,
 		}: {
 			listQueryOptions?: ListQuery.Options & { includeData?: boolean };
 			includeScopes?: boolean;
 			includeData?: boolean;
 			onlySharedWithMe?: boolean;
+			includeGlobal?: boolean;
 		} = {},
-	) {
+	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
 		const returnAll = hasGlobalScope(user, 'credential:list');
 		const isDefaultSelect = !listQueryOptions.select;
-		const projectId =
-			typeof listQueryOptions.filter?.projectId === 'string'
-				? listQueryOptions.filter.projectId
-				: undefined;
 
+		this.applyOnlySharedWithMeFilter(listQueryOptions, onlySharedWithMe, user);
+
+		// Auto-enable includeScopes when includeData is requested
+		if (includeData) {
+			includeScopes = true;
+			listQueryOptions.includeData = true;
+		}
+
+		let credentials: CredentialsEntity[];
+
+		if (returnAll) {
+			credentials = await this.getManyForAdminUser(listQueryOptions, includeGlobal, includeData);
+		} else {
+			credentials = await this.getManyForMemberUser(
+				user,
+				listQueryOptions,
+				includeGlobal,
+				includeData,
+			);
+		}
+
+		return await this.enrichCredentials(
+			credentials,
+			user,
+			isDefaultSelect,
+			includeScopes,
+			includeData,
+			listQueryOptions,
+			onlySharedWithMe,
+		);
+	}
+
+	private applyOnlySharedWithMeFilter(
+		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		onlySharedWithMe: boolean,
+		user: User,
+	): void {
 		if (onlySharedWithMe) {
 			listQueryOptions.filter = {
 				...listQueryOptions.filter,
@@ -105,123 +175,172 @@ export class CredentialsService {
 				user,
 			};
 		}
+	}
 
-		if (includeData) {
-			// We need the scopes to check if we're allowed to include the decrypted
-			// data.
-			// Only if the user has the `credential:update` scope the user is allowed
-			// to get the data.
-			includeScopes = true;
-			listQueryOptions.includeData = true;
+	private async getManyForAdminUser(
+		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		includeGlobal: boolean,
+		includeData: boolean,
+	): Promise<CredentialsEntity[]> {
+		await this.applyPersonalProjectFilter(listQueryOptions);
+
+		let credentials = await this.credentialsRepository.findMany(listQueryOptions);
+
+		if (includeGlobal) {
+			credentials = await this.addGlobalCredentials(credentials, includeData);
 		}
 
-		if (returnAll) {
-			let project: Project | undefined;
+		return credentials;
+	}
 
-			if (projectId) {
-				try {
-					project = await this.projectService.getProject(projectId);
-				} catch {}
-			}
-
-			if (project?.type === 'personal') {
-				listQueryOptions.filter = {
-					...listQueryOptions.filter,
-					withRole: 'credential:owner',
-				};
-			}
-
-			let credentials = await this.credentialsRepository.findMany(listQueryOptions);
-
-			if (isDefaultSelect) {
-				// Since we're filtering using project ID as part of the relation,
-				// we end up filtering out all the other relations, meaning that if
-				// it's shared to a project, it won't be able to find the home project.
-				// To solve this, we have to get all the relation now, even though
-				// we're deleting them later.
-				if (
-					(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
-					onlySharedWithMe
-				) {
-					const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
-						credentials.map((c) => c.id),
-					);
-					credentials.forEach((c) => {
-						c.shared = relations.filter((r) => r.credentialsId === c.id);
-					});
-				}
-				credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
-			}
-
-			if (includeScopes) {
-				const projectRelations = await this.projectService.getProjectRelationsForUser(user);
-				credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations));
-			}
-
-			if (includeData) {
-				credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
-					const data = c.scopes.includes('credential:update') ? this.decrypt(c) : undefined;
-					// We never want to expose the oauthTokenData to the frontend, but it
-					// expects it to check if the credential is already connected.
-					if (data?.oauthTokenData) {
-						data.oauthTokenData = true;
-					}
-
-					return {
-						...c,
-						data,
-					} as unknown as CredentialsEntity;
-				});
-			}
-
-			return credentials;
-		}
-
+	private async getManyForMemberUser(
+		user: User,
+		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		includeGlobal: boolean,
+		includeData: boolean,
+	): Promise<CredentialsEntity[]> {
 		const ids = await this.credentialsFinderService.getCredentialIdsByUserAndRole([user.id], {
 			scopes: ['credential:read'],
 		});
 
-		let credentials = await this.credentialsRepository.findMany(
-			listQueryOptions,
-			ids, // only accessible credentials
-		);
+		let credentials = await this.credentialsRepository.findMany(listQueryOptions, ids);
 
+		if (includeGlobal) {
+			credentials = await this.addGlobalCredentials(credentials, includeData);
+		}
+
+		return credentials;
+	}
+
+	private async applyPersonalProjectFilter(
+		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+	): Promise<void> {
+		const projectId =
+			typeof listQueryOptions.filter?.projectId === 'string'
+				? listQueryOptions.filter.projectId
+				: undefined;
+
+		if (!projectId) {
+			return;
+		}
+
+		let project: Project | undefined;
+		try {
+			project = await this.projectService.getProject(projectId);
+		} catch {}
+
+		if (project?.type === 'personal') {
+			listQueryOptions.filter = {
+				...listQueryOptions.filter,
+				withRole: 'credential:owner',
+			};
+		}
+	}
+
+	private async enrichCredentials(
+		credentials: CredentialsEntity[],
+		user: User,
+		isDefaultSelect: boolean,
+		includeScopes: boolean,
+		includeData: true,
+		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		onlySharedWithMe: boolean,
+	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>>>;
+	private async enrichCredentials(
+		credentials: CredentialsEntity[],
+		user: User,
+		isDefaultSelect: boolean,
+		includeScopes: boolean,
+		includeData: boolean,
+		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		onlySharedWithMe: boolean,
+	): Promise<CredentialsEntity[]>;
+	private async enrichCredentials(
+		credentials: CredentialsEntity[],
+		user: User,
+		isDefaultSelect: boolean,
+		includeScopes: boolean,
+		includeData: boolean,
+		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		onlySharedWithMe: boolean,
+	): Promise<Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> | CredentialsEntity[]> {
 		if (isDefaultSelect) {
 			// Since we're filtering using project ID as part of the relation,
 			// we end up filtering out all the other relations, meaning that if
 			// it's shared to a project, it won't be able to find the home project.
 			// To solve this, we have to get all the relation now, even though
 			// we're deleting them later.
-			if (
-				(listQueryOptions.filter?.shared as { projectId?: string })?.projectId ??
-				onlySharedWithMe
-			) {
-				const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
-					credentials.map((c) => c.id),
-				);
-				credentials.forEach((c) => {
-					c.shared = relations.filter((r) => r.credentialsId === c.id);
-				});
-			}
-
-			credentials = credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
+			credentials = await this.populateSharedRelations(
+				credentials,
+				listQueryOptions,
+				onlySharedWithMe,
+			);
 		}
 
 		if (includeScopes) {
-			const projectRelations = await this.projectService.getProjectRelationsForUser(user);
-			credentials = credentials.map((c) => this.roleService.addScopes(c, user, projectRelations));
+			credentials = await this.addScopesToCredentials(credentials, user);
 		}
 
 		if (includeData) {
-			credentials = credentials.map((c: CredentialsEntity & ScopesField) => {
-				return {
-					...c,
-					data: c.scopes.includes('credential:update') ? this.decrypt(c) : undefined,
-				} as unknown as CredentialsEntity;
-			});
+			return this.addDecryptedDataToCredentials(credentials);
 		}
 
 		return credentials;
+	}
+
+	private async populateSharedRelations(
+		credentials: CredentialsEntity[],
+		listQueryOptions: ListQuery.Options & { includeData?: boolean },
+		onlySharedWithMe: boolean,
+	): Promise<CredentialsEntity[]> {
+		const needsRelations =
+			listQueryOptions.filter?.shared &&
+			typeof listQueryOptions.filter.shared === 'object' &&
+			'projectId' in listQueryOptions.filter.shared
+				? listQueryOptions.filter.shared.projectId
+				: onlySharedWithMe;
+
+		if (needsRelations) {
+			const relations = await this.sharedCredentialsRepository.getAllRelationsForCredentials(
+				credentials.map((c) => c.id),
+			);
+			credentials.forEach((c) => {
+				c.shared = relations.filter((r) => r.credentialsId === c.id);
+			});
+		}
+
+		return credentials.map((c) => this.ownershipService.addOwnedByAndSharedWith(c));
+	}
+
+	private async addScopesToCredentials(
+		credentials: CredentialsEntity[],
+		user: User,
+	): Promise<CredentialsEntity[]> {
+		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
+		return credentials.map((c) => this.roleService.addScopes(c, user, projectRelations));
+	}
+
+	private addDecryptedDataToCredentials(
+		credentials: CredentialsEntity[],
+	): Array<ICredentialsDecrypted<ICredentialDataDecryptedObject>> {
+		return credentials.map(
+			(
+				c: CredentialsEntity & ScopesField,
+			): ICredentialsDecrypted<ICredentialDataDecryptedObject> => {
+				const data = c.scopes.includes('credential:update') ? this.decrypt(c) : undefined;
+
+				// We never want to expose the oauthTokenData to the frontend, but it
+				// expects it to check if the credential is already connected.
+				if (data?.oauthTokenData) {
+					data.oauthTokenData = true;
+				}
+
+				return {
+					...c,
+					data,
+				};
+			},
+		);
 	}
 
 	/**
@@ -237,7 +356,7 @@ export class CredentialsService {
 		// necessary to get the scopes
 		const projectRelations = await this.projectService.getProjectRelationsForUser(user);
 
-		// get all credentials the user has access to
+		// get all credentials the user has access to (including global credentials)
 		const allCredentials = await this.credentialsFinderService.findCredentialsForUser(user, [
 			'credential:read',
 		]);
@@ -250,7 +369,9 @@ export class CredentialsService {
 
 		// the intersection of both is all credentials the user can use in this
 		// workflow or project
-		const intersection = allCredentials.filter((c) => allCredentialsForWorkflow.includes(c.id));
+		const intersection = allCredentials.filter(
+			(c) => allCredentialsForWorkflow.includes(c.id) || c.isGlobal,
+		);
 
 		return intersection
 			.map((c) => this.roleService.addScopes(c, user, projectRelations))
@@ -260,6 +381,7 @@ export class CredentialsService {
 				type: c.type,
 				scopes: c.scopes,
 				isManaged: c.isManaged,
+				isGlobal: c.isGlobal,
 			}));
 	}
 
@@ -756,6 +878,18 @@ export class CredentialsService {
 			type: opts.type,
 			data: opts.data as ICredentialDataDecryptedObject,
 		});
+
+		// Set isGlobal if provided in the payload and user has permission
+		const isGlobal = opts.isGlobal;
+		if (isGlobal === true) {
+			const canShareGlobally = hasGlobalScope(user, 'credential:shareGlobally');
+			if (!canShareGlobally) {
+				throw new ForbiddenError(
+					'You do not have permission to create globally shared credentials',
+				);
+			}
+			encryptedCredential.isGlobal = isGlobal;
+		}
 
 		const credentialEntity = this.credentialsRepository.create({
 			...encryptedCredential,
