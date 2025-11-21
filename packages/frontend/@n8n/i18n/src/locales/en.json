@@ -3334,6 +3334,8 @@
 	"dataTable.import.invalidColumnName": "Only alphabetical and non-leading numbers and underscores allowed",
 	"dataTable.delete.confirm.message": "Are you sure you want to delete the data table '{name}'? This action cannot be undone.",
 	"dataTable.delete.error": "Error deleting data table",
+	"dataTable.download.csv": "Download CSV",
+	"dataTable.download.error": "Failed to download data table",
 	"dataTable.rename.error": "Error renaming data table",
 	"dataTable.getDetails.error": "Error fetching data table details",
 	"dataTable.notFound": "Data table not found",
