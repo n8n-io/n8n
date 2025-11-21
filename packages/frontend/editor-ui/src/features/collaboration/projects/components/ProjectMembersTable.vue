@@ -22,6 +22,7 @@ const props = defineProps<{
 	currentUserId?: string;
 	projectRoles: AllRolesMap['project'];
 	actions?: Array<UserAction<ProjectMemberData>>;
+	canEditRole: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -76,7 +77,8 @@ const roleActions = computed<Array<ActionDropdownItem<string>>>(() =>
 	})),
 );
 
-const canUpdateRole = (member: ProjectMemberData): boolean => member.id !== props.currentUserId;
+const canUpdateRole = (member: ProjectMemberData): boolean =>
+	member.id !== props.currentUserId && props.canEditRole;
 
 const onRoleChange = ({ role, userId }: { role: Role['slug']; userId: string }) => {
 	emit('update:role', { role, userId });

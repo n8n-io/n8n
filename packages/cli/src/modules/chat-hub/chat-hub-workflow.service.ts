@@ -487,6 +487,7 @@ export class ChatHubWorkflowService {
 					},
 				};
 			case 'azureOpenAi':
+			case 'azureEntraId':
 				return {
 					...common,
 					parameters: {
@@ -504,6 +505,51 @@ export class ChatHubWorkflowService {
 				};
 			}
 			case 'awsBedrock': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'vercelAiGateway': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'xAiGrok': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'groq': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'openRouter': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'deepSeek': {
 				return {
 					...common,
 					parameters: {

@@ -11,7 +11,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
+import { BINARY_ENCODING, Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
 import type {
@@ -221,7 +221,7 @@ export class JobProcessor {
 						finished: false,
 						startedAt: now,
 						stoppedAt: now,
-						data: { resultData: { error, runData: {} } },
+						data: createRunExecutionData({ resultData: { error, runData: {} } }),
 					};
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);

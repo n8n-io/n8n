@@ -22,6 +22,12 @@ export class WorkflowHistory extends WithTimestamps {
 	@Column()
 	authors: string;
 
+	@Column({ nullable: true })
+	name: string;
+
+	@Column({ nullable: true })
+	description: string;
+
 	@ManyToOne('WorkflowEntity', {
 		onDelete: 'CASCADE',
 	})
