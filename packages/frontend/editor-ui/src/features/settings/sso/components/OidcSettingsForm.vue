@@ -4,7 +4,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 
-import { ElSwitch } from 'element-plus';
+import { ElCheckbox } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
@@ -61,12 +61,6 @@ const promptDescriptions: PromptDescription[] = [
 	},
 	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.create'), value: 'create' },
 ];
-
-const oidcActivatedLabel = computed(() =>
-	ssoStore.isOidcLoginEnabled
-		? i18n.baseText('settings.sso.activated')
-		: i18n.baseText('settings.sso.deactivated'),
-);
 
 const authenticationContextClassReference = ref('');
 
@@ -276,13 +270,10 @@ onMounted(async () => {
 				commas in order of preference.</small
 			>
 		</div>
-		<div :class="$style.group">
-			<ElSwitch
-				v-model="ssoStore.isOidcLoginEnabled"
-				data-test-id="sso-oidc-toggle"
-				:class="$style.switch"
-				:inactive-text="oidcActivatedLabel"
-			/>
+		<div :class="[$style.group, $style.checkboxGroup]">
+			<ElCheckbox v-model="ssoStore.isOidcLoginEnabled" data-test-id="sso-oidc-toggle">{{
+				i18n.baseText('settings.sso.activated')
+			}}</ElCheckbox>
 		</div>
 
 		<div :class="$style.buttons">

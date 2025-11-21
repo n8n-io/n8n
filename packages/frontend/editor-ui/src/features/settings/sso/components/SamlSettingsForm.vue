@@ -5,7 +5,7 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { ElSwitch } from 'element-plus';
+import { ElCheckbox } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -336,13 +336,10 @@ onMounted(async () => {
 				@confirm-provisioning="onSave(true)"
 				@cancel="showUserRoleProvisioningDialog = false"
 			/>
-			<div :class="$style.group">
-				<ElSwitch
-					v-model="samlLoginEnabled"
-					data-test-id="sso-toggle"
-					:class="$style.switch"
-					:inactive-text="ssoActivatedLabel"
-				/>
+			<div :class="[$style.group, $style.checkboxGroup]">
+				<ElCheckbox v-model="samlLoginEnabled" data-test-id="sso-toggle">{{
+					i18n.baseText('settings.sso.activated')
+				}}</ElCheckbox>
 			</div>
 		</div>
 		<div :class="$style.buttons">

@@ -121,14 +121,15 @@ describe('SettingsSso View', () => {
 			const { getByTestId } = renderView();
 
 			const toggle = getByTestId('sso-toggle');
+			const checkbox = toggle.querySelector('input[type="checkbox"]') as HTMLInputElement;
 
-			expect(toggle.textContent).toContain('Deactivated');
-
-			await userEvent.click(toggle);
-			expect(toggle.textContent).toContain('Single Sign On Activated');
+			expect(checkbox).not.toBeChecked();
 
 			await userEvent.click(toggle);
-			expect(toggle.textContent).toContain('Single Sign On Deactivated');
+			expect(checkbox).toBeChecked();
+
+			await userEvent.click(toggle);
+			expect(checkbox).not.toBeChecked();
 		});
 
 		it("allows user to fill Identity Provider's URL", async () => {
@@ -328,9 +329,10 @@ describe('SettingsSso View', () => {
 
 			await waitFor(async () => {
 				const toggle = getByTestId('sso-toggle');
-				expect(toggle.textContent).toContain('Single Sign On Activated');
+				const checkbox = toggle.querySelector('input[type="checkbox"]') as HTMLInputElement;
+				expect(checkbox).toBeChecked();
 				await userEvent.click(toggle);
-				expect(toggle.textContent).toContain('Single Sign On Deactivated');
+				expect(checkbox).not.toBeChecked();
 			});
 		});
 
@@ -349,7 +351,7 @@ describe('SettingsSso View', () => {
 
 			expect(container.querySelector('textarea[name="metadata"]')).toHaveValue(samlConfig.metadata);
 
-			expect(getByRole('switch')).toBeEnabled();
+			expect(getByRole('checkbox')).toBeEnabled();
 			expect(getByTestId('sso-test')).toBeEnabled();
 		});
 	});
