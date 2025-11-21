@@ -1,6 +1,6 @@
 {
   "name": "n8n-workflow",
-  "version": "1.117.0",
+  "version": "1.118.0",
   "description": "Workflow base code of n8n",
   "types": "dist/esm/index.d.ts",
   "module": "dist/esm/index.js",
@@ -30,6 +30,7 @@
     "lint:fix": "eslint src --fix",
     "watch": "tsc --build tsconfig.build.esm.json tsconfig.build.cjs.json --watch",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest --watch"
   },
   "files": [
@@ -52,7 +53,7 @@
   "dependencies": {
     "@n8n/errors": "workspace:^",
     "@n8n/tournament": "1.0.6",
-    "ast-types": "0.15.2",
+    "ast-types": "0.16.1",
     "callsites": "catalog:",
     "esprima-next": "5.8.4",
     "form-data": "catalog:",

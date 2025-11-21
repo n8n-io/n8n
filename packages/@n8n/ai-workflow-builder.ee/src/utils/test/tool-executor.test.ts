@@ -49,6 +49,8 @@ describe('tool-executor', () => {
 			messages,
 			workflowContext: {},
 			workflowValidation: null,
+			validationHistory: [],
+			techniqueCategories: [],
 			previousSummary: 'EMPTY',
 		});
 
@@ -704,6 +706,115 @@ describe('tool-executor', () => {
 			expect(result.messages).toContain(aiResultMessage);
 			expect(result.messages).toContain(toolResultMessage);
 			expect(result.workflowOperations).toHaveLength(1);
+		});
+
+		it('should collect validationHistory from tool state updates', async () => {
+			const validation1 = {
+				result: 'success',
+				checks: { total: 5, passed: 5, failed: 0 },
+			};
+			const validation2 = {
+				result: 'warning',
+				checks: { total: 3, passed: 2, failed: 1 },
+			};
+
+			const command1 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'Validation 1', tool_call_id: 'call-1' })],
+					validationHistory: [validation1],
+				},
+			});
+
+			const command2 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'Validation 2', tool_call_id: 'call-2' })],
+					validationHistory: [validation2],
+				},
+			});
+
+			const mockTool1 = createMockTool(command1);
+			const mockTool2 = createMockTool(command2);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'validate_tool_1',
+					args: {},
+					type: 'tool_call',
+				},
+				{
+					id: 'call-2',
+					name: 'validate_tool_2',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([
+				['validate_tool_1', mockTool1],
+				['validate_tool_2', mockTool2],
+			]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.validationHistory).toBeDefined();
+			expect(result.validationHistory).toHaveLength(2);
+			expect(result.validationHistory).toContain(validation1);
+			expect(result.validationHistory).toContain(validation2);
+		});
+
+		it('should collect techniqueCategories from tool state updates', async () => {
+			const categories1 = ['scraping', 'data-transformation'];
+			const categories2 = ['notifications', 'scheduling'];
+
+			const command1 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'Categorized', tool_call_id: 'call-1' })],
+					techniqueCategories: categories1,
+				},
+			});
+
+			const command2 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'Categorized', tool_call_id: 'call-2' })],
+					techniqueCategories: categories2,
+				},
+			});
+
+			const mockTool1 = createMockTool(command1);
+			const mockTool2 = createMockTool(command2);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'categorize_tool_1',
+					args: {},
+					type: 'tool_call',
+				},
+				{
+					id: 'call-2',
+					name: 'categorize_tool_2',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([
+				['categorize_tool_1', mockTool1],
+				['categorize_tool_2', mockTool2],
+			]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.techniqueCategories).toBeDefined();
+			expect(result.techniqueCategories).toHaveLength(4);
+			expect(result.techniqueCategories).toEqual([...categories1, ...categories2]);
 		});
 	});
 });

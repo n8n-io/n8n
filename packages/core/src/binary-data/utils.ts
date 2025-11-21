@@ -52,3 +52,16 @@ export async function binaryToBuffer(body: Buffer | Readable) {
 	if (Buffer.isBuffer(body)) return body;
 	return await streamToBuffer(body);
 }
+
+export const FileLocation = {
+	ofExecution: (workflowId: string, executionId: string): BinaryData.FileLocation => ({
+		type: 'execution',
+		workflowId,
+		executionId,
+	}),
+	ofChatHubMessageAttachment: (sessionId: string, messageId: string): BinaryData.FileLocation => ({
+		type: 'chat-hub-message-attachment',
+		sessionId,
+		messageId,
+	}),
+};

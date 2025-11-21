@@ -15,6 +15,7 @@ import {
 	updateDataTableRowsApi,
 	deleteDataTableRowsApi,
 	fetchDataTableGlobalLimitInBytes,
+	uploadCsvFileApi,
 } from '@/features/core/dataTable/dataTable.api';
 import type {
 	DataTable,
@@ -69,8 +70,21 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		totalCount.value = response.count;
 	};
 
-	const createDataTable = async (name: string, projectId: string) => {
-		const newTable = await createDataTableApi(rootStore.restApiContext, name, projectId);
+	const createDataTable = async (
+		name: string,
+		projectId: string,
+		columns?: DataTableColumnCreatePayload[],
+		fileId?: string,
+		hasHeaders: boolean = true,
+	) => {
+		const newTable = await createDataTableApi(
+			rootStore.restApiContext,
+			name,
+			projectId,
+			columns,
+			fileId,
+			hasHeaders,
+		);
 		if (!newTable.project && projectId) {
 			const project = await projectStore.fetchProject(projectId);
 			if (project) {
@@ -80,6 +94,10 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		dataTables.value.push(newTable);
 		totalCount.value += 1;
 		return newTable;
+	};
+
+	const uploadCsvFile = async (file: File, hasHeaders: boolean = true) => {
+		return await uploadCsvFileApi(rootStore.restApiContext, file, hasHeaders);
 	};
 
 	const deleteDataTable = async (dataTableId: string, projectId: string) => {
@@ -265,6 +283,7 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		dataTableSizes,
 		maxSizeMB,
 		createDataTable,
+		uploadCsvFile,
 		deleteDataTable,
 		updateDataTable,
 		fetchDataTableDetails,

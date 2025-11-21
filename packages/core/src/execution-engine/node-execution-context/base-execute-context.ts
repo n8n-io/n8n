@@ -34,6 +34,7 @@ import {
 } from 'n8n-workflow';
 
 import { BinaryDataService } from '@/binary-data/binary-data.service';
+import { FileLocation } from '@/binary-data/utils';
 
 import { NodeExecutionContext } from './node-execution-context';
 
@@ -155,8 +156,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 		}
 
 		const data = await this.binaryDataService.duplicateBinaryData(
-			this.workflow.id,
-			this.additionalData.executionId!,
+			FileLocation.ofExecution(this.workflow.id, this.additionalData.executionId!),
 			result.data,
 		);
 		return { ...result, data };
