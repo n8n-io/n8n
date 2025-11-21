@@ -34,6 +34,7 @@ import type {
 	RelatedExecution,
 	IExecuteFunctions,
 	IDataObject,
+	IDestinationNode,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
@@ -234,7 +235,10 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 			// ACT
-			await workflowExecute.run(workflowInstance, trigger, 'node1');
+			await workflowExecute.run(workflowInstance, trigger, {
+				nodeName: 'node1',
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			const workflowHooks = runHookSpy.mock.calls.filter(
@@ -311,7 +315,10 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
 
 			// ACT
-			await workflowExecute.run(workflowInstance, trigger, 'node1');
+			await workflowExecute.run(workflowInstance, trigger, {
+				nodeName: 'node1',
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			const workflowHooks = runHookSpy.mock.calls.filter(
@@ -461,7 +468,7 @@ describe('WorkflowExecute', () => {
 				[node2.name]: [toITaskData([{ data: { name: node2.name } }])],
 			};
 			const dirtyNodeNames = [node1.name];
-			const destinationNode = node2.name;
+			const destinationNode: IDestinationNode = { nodeName: node2.name, mode: 'inclusive' };
 
 			jest.spyOn(workflowExecute, 'processRunExecutionData').mockImplementationOnce(jest.fn());
 
@@ -524,7 +531,7 @@ describe('WorkflowExecute', () => {
 				[destination.name]: [toITaskData([{ data: { node: 'destination' } }])],
 			};
 			const dirtyNodeNames = [set2.name];
-			const destinationNode = destination.name;
+			const destinationNode: IDestinationNode = { nodeName: destination.name, mode: 'inclusive' };
 
 			// ACT
 			await workflowExecute.runPartialWorkflow2(
@@ -569,7 +576,7 @@ describe('WorkflowExecute', () => {
 				[node2.name]: [toITaskData([{ data: { name: node2.name } }])],
 			};
 			const dirtyNodeNames: string[] = [];
-			const destinationNode = node2.name;
+			const destinationNode: IDestinationNode = { nodeName: node2.name, mode: 'inclusive' };
 
 			const processRunExecutionDataSpy = jest
 				.spyOn(workflowExecute, 'processRunExecutionData')
@@ -643,13 +650,10 @@ describe('WorkflowExecute', () => {
 			);
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				afterLoop.name,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: afterLoop.name,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			expect(recreateNodeExecutionStackSpy).toHaveBeenNthCalledWith(
@@ -696,13 +700,10 @@ describe('WorkflowExecute', () => {
 			const cleanRunDataSpy = jest.spyOn(partialExecutionUtils, 'cleanRunData');
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				node1.name,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: node1.name,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			const subgraph = new DirectedGraph()
@@ -752,13 +753,10 @@ describe('WorkflowExecute', () => {
 			const cleanRunDataSpy = jest.spyOn(partialExecutionUtils, 'cleanRunData');
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				destination.name,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: destination.name,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			const subgraph = new DirectedGraph()
@@ -808,13 +806,10 @@ describe('WorkflowExecute', () => {
 				.mockImplementationOnce(jest.fn());
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				orphan.name,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: orphan.name,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
@@ -886,13 +881,10 @@ describe('WorkflowExecute', () => {
 				.toWorkflow({ ...workflow });
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				tool.name,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: tool.name,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
@@ -934,13 +926,10 @@ describe('WorkflowExecute', () => {
 			const processRunExecutionDataSpy = jest.spyOn(workflowExecute, 'processRunExecutionData');
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				destinationNode,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: destinationNode,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
@@ -983,13 +972,10 @@ describe('WorkflowExecute', () => {
 			const processRunExecutionDataSpy = jest.spyOn(workflowExecute, 'processRunExecutionData');
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				destinationNode,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: destinationNode,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
@@ -1028,13 +1014,10 @@ describe('WorkflowExecute', () => {
 				.mockImplementationOnce(jest.fn());
 
 			// ACT
-			await workflowExecute.runPartialWorkflow2(
-				workflow,
-				runData,
-				pinData,
-				dirtyNodeNames,
-				destinationNode,
-			);
+			await workflowExecute.runPartialWorkflow2(workflow, runData, pinData, dirtyNodeNames, {
+				nodeName: destinationNode,
+				mode: 'inclusive',
+			});
 
 			// ASSERT
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);

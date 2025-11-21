@@ -14,6 +14,7 @@ import {
 import { mock } from 'jest-mock-extended';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
+	createRunExecutionData,
 	type INode,
 	type INodesGraphResult,
 	type IRun,
@@ -1284,9 +1285,9 @@ describe('TelemetryEventRelay', () => {
 			const runData = {
 				status: 'error',
 				mode: 'manual',
-				data: {
+				data: createRunExecutionData({
 					startData: {
-						destinationNode: 'OpenAI',
+						destinationNode: { nodeName: 'OpenAI', mode: 'inclusive' },
 						runNodeFilter: ['OpenAI'],
 					},
 					resultData: {
@@ -1315,7 +1316,7 @@ describe('TelemetryEventRelay', () => {
 							},
 						),
 					},
-				},
+				}),
 			} as IRun;
 
 			const nodeGraph: INodesGraphResult = {
@@ -1386,9 +1387,9 @@ describe('TelemetryEventRelay', () => {
 			const runData = {
 				status: 'error',
 				mode: 'manual',
-				data: {
+				data: createRunExecutionData({
 					startData: {
-						destinationNode: 'OpenAI',
+						destinationNode: { nodeName: 'OpenAI', mode: 'inclusive' },
 						runNodeFilter: ['OpenAI'],
 					},
 					resultData: {
@@ -1417,7 +1418,7 @@ describe('TelemetryEventRelay', () => {
 							},
 						),
 					},
-				},
+				}),
 			} as IRun;
 
 			const nodeGraph: INodesGraphResult = {

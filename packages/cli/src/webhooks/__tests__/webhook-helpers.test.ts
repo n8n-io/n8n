@@ -396,7 +396,7 @@ describe('prepareExecutionData', () => {
 			webhookResultData,
 			undefined,
 			{},
-			'targetNode',
+			{ nodeName: 'targetNode', mode: 'inclusive' },
 		);
 
 		expect(runExecutionData.startData?.destinationNode).toBe('targetNode');

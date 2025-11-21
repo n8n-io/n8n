@@ -20,6 +20,6 @@ const __brand = Symbol('brand');
 /**
  * Current version of IRunExecutionData.
  */
-export type IRunExecutionData = IRunExecutionDataV0 & {
+export type IRunExecutionData = IRunExecutionDataV1 & {
 	[__brand]: 'Use createRunExecutionData factory instead of constructing manually';
 };
