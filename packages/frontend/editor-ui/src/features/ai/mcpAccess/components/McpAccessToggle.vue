@@ -2,6 +2,7 @@
 import { ElSwitch } from 'element-plus';
 import { N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
 
 type Props = {
 	modelValue: boolean;
@@ -27,33 +28,50 @@ const onUpdateMCPEnabled = (value: string | number | boolean) => {
 </script>
 
 <template>
-	<div :class="$style['main-toggle-container']">
-		<div :class="$style['main-toggle-info']">
-			<N8nText :bold="true">{{ i18n.baseText('settings.mcp.toggle.label') }}</N8nText>
-			<N8nText size="small" color="text-light">
-				{{ i18n.baseText('settings.mcp.toggle.description') }}
-			</N8nText>
+	<div :class="$style['mcp-access-toggle']">
+		<div :class="$style['main-toggle-container']">
+			<div :class="$style['main-toggle-info']">
+				<N8nText :bold="true">{{ i18n.baseText('settings.mcp.toggle.label') }}</N8nText>
+				<N8nText size="small" color="text-light">
+					{{ i18n.baseText('settings.mcp.toggle.description') }}
+				</N8nText>
+			</div>
+			<div :class="$style['main-toggle']" data-test-id="mcp-toggle-container">
+				<N8nTooltip
+					:content="i18n.baseText('settings.mcp.toggle.disabled.tooltip')"
+					:disabled="!props.disabled"
+					placement="top"
+				>
+					<ElSwitch
+						size="large"
+						data-test-id="mcp-access-toggle"
+						:model-value="props.modelValue"
+						:disabled="props.disabled"
+						:loading="props.loading"
+						@update:model-value="onUpdateMCPEnabled"
+					/>
+				</N8nTooltip>
+			</div>
 		</div>
-		<div :class="$style['main-toggle']" data-test-id="mcp-toggle-container">
-			<N8nTooltip
-				:content="i18n.baseText('settings.mcp.toggle.disabled.tooltip')"
-				:disabled="!props.disabled"
-				placement="top"
-			>
-				<ElSwitch
-					size="large"
-					data-test-id="mcp-access-toggle"
-					:model-value="props.modelValue"
-					:disabled="props.disabled"
-					:loading="props.loading"
-					@update:model-value="onUpdateMCPEnabled"
-				/>
-			</N8nTooltip>
+		<div :class="$style['toggle-notice']">
+			<N8nText v-if="!props.modelValue" color="text-base" data-test-id="mcp-toggle-disabled-notice">
+				{{ i18n.baseText('settings.mcp.toggle.disabled.notice') }}
+				<a :href="MCP_DOCS_PAGE_URL" target="_blank">
+					{{ i18n.baseText('generic.learnMore') }}
+				</a>
+			</N8nText>
 		</div>
 	</div>
 </template>
 
 <style module lang="scss">
+.mcp-access-toggle {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	width: 100%;
+}
+
 .main-toggle-container {
 	display: flex;
 	align-items: center;
