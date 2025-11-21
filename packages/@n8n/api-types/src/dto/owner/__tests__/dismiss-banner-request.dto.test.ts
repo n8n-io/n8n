@@ -87,7 +87,6 @@ describe('DismissBannerRequestDto', () => {
 			const expectedBanners = [
 				'V1',
 				'TRIAL_OVER',
-				'TRIAL',
 				'NON_PRODUCTION_LICENSE',
 				'EMAIL_CONFIRMATION',
 				'DATA_TABLE_STORAGE_LIMIT_WARNING',

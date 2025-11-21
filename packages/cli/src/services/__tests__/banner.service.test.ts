@@ -17,7 +17,7 @@ describe('BannerService', () => {
 
 	describe('dismissBanner', () => {
 		const key = 'ui.banners.dismissed';
-		const bannerName: BannerName = 'TRIAL';
+		const bannerName: BannerName = 'TRIAL_OVER';
 
 		it('should save the banner name to settings if no banners are dismissed yet', async () => {
 			settingsRepo.findOneBy.mockResolvedValue(null);

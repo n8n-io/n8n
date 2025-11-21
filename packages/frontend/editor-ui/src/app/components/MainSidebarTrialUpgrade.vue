@@ -3,26 +3,29 @@ import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
 const cloudPlanStore = useCloudPlanStore();
+const pageRedirectionHelper = usePageRedirectionHelper();
 const uiStore = useUIStore();
 
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
 const isVisible = computed(() => {
-	return true;
-	// return cloudPlanStore.userIsTrialing; // ! TODO TO uncomment
+	return cloudPlanStore.userIsTrialing;
 });
 
-const daysLeft = computed(() => 14);
-
 const trialMessage = computed(() => {
-	return `${daysLeft.value} days left`;
+	return `${cloudPlanStore.trialDaysLeft} days left`;
 });
 
 const tooltipContent = computed(() => {
-	return `${daysLeft.value} days left in your trial. Upgrade to keep using n8n.`;
+	return `${cloudPlanStore.trialDaysLeft} days left in your trial. Upgrade to keep using n8n.`;
 });
+
+const onUpgradeClick = () => {
+	void pageRedirectionHelper.goToUpgrade('main-sidebar', 'upgrade-main-sidebar', 'redirect');
+};
 </script>
 
 <template>
@@ -42,6 +45,7 @@ const tooltipContent = computed(() => {
 				:label="isCollapsed ? '' : 'Upgrade'"
 				:square="isCollapsed"
 				data-test-id="trial-upgrade-button"
+				@click="onUpgradeClick"
 			/>
 		</N8nTooltip>
 

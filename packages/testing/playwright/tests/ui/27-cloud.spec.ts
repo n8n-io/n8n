@@ -48,13 +48,25 @@ const createProjectAndNavigate = async (n8n: n8nPage) => {
 };
 
 test.describe('Cloud @db:reset @auth:owner', () => {
-	test.describe('Trial Banner', () => {
-		test('should render trial banner for opt-in cloud user', async ({ n8n, setupRequirements }) => {
+	test.describe('Trial Upgrade', () => {
+		test('should show trial upgrade in the main sidebar if user is trialing', async ({
+			n8n,
+			setupRequirements,
+		}) => {
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
 
-			await expect(n8n.sideBar.getTrialBanner()).toBeVisible();
+			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).toBeVisible();
+		});
+
+		test('should not show trial upgrade in the main sidebar if user is not trialing', async ({
+			n8n,
+		}) => {
+			await n8n.start.fromBlankCanvas();
+			await n8n.sideBar.expand();
+
+			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).not.toBeVisible();
 		});
 	});
 

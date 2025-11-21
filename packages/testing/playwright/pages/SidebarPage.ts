@@ -94,8 +94,8 @@ export class SidebarPage {
 		return this.page.getByTestId('cloud-admin');
 	}
 
-	getTrialBanner(): Locator {
-		return this.page.getByTestId('banners-TRIAL');
+	getMainSidebarTrialUpgrade(): Locator {
+		return this.page.getByTestId('main-sidebar-trial-upgrade');
 	}
 
 	getTemplatesLink(): Locator {

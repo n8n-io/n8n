@@ -289,22 +289,6 @@ describe('Init', () => {
 				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL_OVER');
 			});
 
-			it('should push TRIAL banner if trial is active', async () => {
-				settingsStore.settings.deployment.type = 'cloud';
-				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
-				usersStore.currentUserId = '123';
-
-				cloudPlanStore.userIsTrialing = true;
-				cloudPlanStore.trialExpired = false;
-
-				const cloudStoreSpy = vi.spyOn(cloudPlanStore, 'initialize').mockResolvedValueOnce();
-
-				await initializeAuthenticatedFeatures(false);
-
-				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
-			});
-
 			it('should push EMAIL_CONFIRMATION banner if user cloud info is not confirmed', async () => {
 				settingsStore.settings.deployment.type = 'cloud';
 				usersStore.usersById = { '123': { id: '123', email: '' } as IUser };
