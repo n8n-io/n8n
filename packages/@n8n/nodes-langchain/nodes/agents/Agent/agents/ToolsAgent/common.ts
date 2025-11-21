@@ -206,18 +206,35 @@ export function handleAgentFinishOutput(
 	if (agentFinishSteps.returnValues) {
 		const isMultiOutput = Array.isArray(agentFinishSteps.returnValues?.output);
 		if (isMultiOutput) {
-			// If all items in the multi-output array are of type 'text', merge them into a single string
 			const multiOutputSteps = agentFinishSteps.returnValues.output as Array<{
 				index: number;
 				type: string;
-				text: string;
+				text?: string;
+				thinking?: string;
 			}>;
-			const isTextOnly = multiOutputSteps.every((output) => 'text' in output);
-			if (isTextOnly) {
-				agentFinishSteps.returnValues.output = multiOutputSteps
-					.map((output) => output.text)
+
+			// Filter out thinking blocks and join text blocks
+			const textOutputs = multiOutputSteps
+				.filter((output) => output.type === 'text' && output.text)
+				.map((output) => output.text)
+				.join('\n')
+				.trim();
+
+			if (textOutputs) {
+				agentFinishSteps.returnValues.output = textOutputs;
+			} else {
+				const thinkingOutputs = multiOutputSteps
+					.filter((output) => output.type === 'thinking' && output.thinking)
+					.map((output) => output.thinking)
 					.join('\n')
 					.trim();
+
+				if (thinkingOutputs) {
+					agentFinishSteps.returnValues.output = thinkingOutputs;
+				} else {
+					// no output was found
+					agentFinishSteps.returnValues.output = '';
+				}
 			}
 			return agentFinishSteps;
 		}
