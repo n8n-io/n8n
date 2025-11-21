@@ -139,6 +139,46 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		const offloadingManualExecutionsInQueueMode =
+			this.executionsConfig.mode === 'queue' &&
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+
+		/**
+		 * Historically, manual executions in scaling mode ran in the main process,
+		 * so some execution details were never persisted in the database.
+		 *
+		 * Currently, manual executions in scaling mode are offloaded to workers,
+		 * so we persist all details to give workers full access to them.
+		 */
+		if (data.executionMode === 'manual' && offloadingManualExecutionsInQueueMode) {
+			console.log('offloadingManualExecutionsInQueueMode');
+			data.executionData = createRunExecutionData({
+				startData: {
+					startNodes: data.startNodes,
+					destinationNode: data.destinationNode,
+				},
+				resultData: {
+					pinData: data.pinData,
+					// If `runData` is initialized to an empty object the execution will
+					// be treated like a partial manual execution instead of a full
+					// manual execution.
+					// So we have to set this to null to instruct
+					// `createRunExecutionData` to not initialize it.
+					runData: data.runData ?? null,
+				},
+				manualData: {
+					userId: data.userId,
+					dirtyNodeNames: data.dirtyNodeNames,
+					triggerToStartFrom: data.triggerToStartFrom,
+				},
+				// If `executionData` is initialized the execution will be treated like
+				// a resumed execution after waiting, instead of a manual execution.
+				// So we have to set this to null to instruct `createRunExecutionData`
+				// to not initialize it.
+				executionData: null,
+			});
+		}
+
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 
