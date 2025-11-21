@@ -216,6 +216,7 @@ describe('GET /credentials', () => {
 					'credential:move',
 					'credential:read',
 					'credential:share',
+					'credential:shareGlobally',
 					'credential:update',
 				].sort(),
 			);
@@ -230,6 +231,7 @@ describe('GET /credentials', () => {
 					'credential:move',
 					'credential:read',
 					'credential:share',
+					'credential:shareGlobally',
 					'credential:update',
 				].sort(),
 			);
@@ -356,6 +358,7 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:shareGlobally',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -370,6 +373,7 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:shareGlobally',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -387,6 +391,7 @@ describe('GET /credentials', () => {
 				'credential:read',
 				'credential:update',
 				'credential:share',
+				'credential:shareGlobally',
 				'credential:delete',
 				'credential:create',
 				'credential:list',
@@ -924,6 +929,57 @@ describe('POST /credentials', () => {
 				message: "You don't have the permissions to save the credential in this project.",
 			});
 	});
+
+	test('should fail when member tries to create credential with isGlobal=true', async () => {
+		const response = await authMemberAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isGlobal: true });
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe(
+			'You do not have permission to create globally shared credentials',
+		);
+	});
+
+	test('should allow owner to create credential with isGlobal=true', async () => {
+		const response = await authOwnerAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isGlobal: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: response.body.data.id,
+		});
+		expect(credential.isGlobal).toBe(true);
+	});
+
+	test('should allow member to create credential with isGlobal=false', async () => {
+		const response = await authMemberAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isGlobal: false });
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: response.body.data.id,
+		});
+		expect(credential.isGlobal).toBe(false);
+	});
+
+	test('should allow member to create credential without passing isGlobal', async () => {
+		const payload = randomCredentialPayload();
+		delete payload.isGlobal;
+
+		const response = await authMemberAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: response.body.data.id,
+		});
+		expect(credential.isGlobal).toBe(false);
+	});
 });
 
 describe('DELETE /credentials/:id', () => {
@@ -1071,6 +1127,7 @@ describe('PATCH /credentials/:id', () => {
 				'credential:move',
 				'credential:read',
 				'credential:share',
+				'credential:shareGlobally',
 				'credential:update',
 			].sort(),
 		);
@@ -1295,6 +1352,69 @@ describe('PATCH /credentials/:id', () => {
 			.send(randomCredentialPayload());
 
 		expect(response.statusCode).toBe(400);
+	});
+
+	test('should fail when member tries to change isGlobal value', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: member,
+			role: 'credential:owner',
+		});
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ ...randomCredentialPayload(), isGlobal: true });
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe(
+			'You do not have permission to change global sharing for credentials',
+		);
+	});
+
+	test('should allow owner to set isGlobal to true', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload(), {
+			user: owner,
+			role: 'credential:owner',
+		});
+
+		const response = await authOwnerAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ ...randomCredentialPayload(), isGlobal: true });
+
+		expect(response.statusCode).toBe(200);
+
+		const credential = await Container.get(CredentialsRepository).findOneByOrFail({
+			id: savedCredential.id,
+		});
+		expect(credential.isGlobal).toBe(true);
+	});
+
+	test('should allow member to update credential with same isGlobal value', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload({ isGlobal: false }), {
+			user: member,
+			role: 'credential:owner',
+		});
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send({ ...randomCredentialPayload(), isGlobal: false });
+
+		expect(response.statusCode).toBe(200);
+	});
+
+	test('should allow member to update credential without passing isGlobal', async () => {
+		const savedCredential = await saveCredential(randomCredentialPayload({ isGlobal: false }), {
+			user: member,
+			role: 'credential:owner',
+		});
+
+		const payload = randomCredentialPayload();
+		delete payload.isGlobal;
+
+		const response = await authMemberAgent
+			.patch(`/credentials/${savedCredential.id}`)
+			.send(payload);
+
+		expect(response.statusCode).toBe(200);
 	});
 });
 
