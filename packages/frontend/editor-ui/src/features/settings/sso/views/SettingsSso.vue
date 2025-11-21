@@ -29,6 +29,10 @@ const options = computed(() => {
 	];
 });
 
+const hasAnySsoEnabled = computed(
+	() => ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled,
+);
+
 const authProtocol = ref<SupportedProtocolType>(SupportedProtocols.SAML);
 function onAuthProtocolUpdated(value: SupportedProtocolType) {
 	authProtocol.value = value;
@@ -56,11 +60,7 @@ onMounted(() => {
 				{{ i18n.baseText('settings.sso.info.link') }}
 			</a>
 		</N8nInfoTip>
-		<div
-			v-if="ssoStore.isEnterpriseSamlEnabled || ssoStore.isEnterpriseOidcEnabled"
-			data-test-id="sso-auth-protocol-select"
-			:class="shared.group"
-		>
+		<div v-if="hasAnySsoEnabled" data-test-id="sso-auth-protocol-select" :class="shared.group">
 			<label>Select Authentication Protocol</label>
 			<div>
 				<N8nSelect
@@ -94,7 +94,7 @@ onMounted(() => {
 			<OidcSettingsForm />
 		</div>
 		<N8nActionBox
-			v-if="!ssoStore.isEnterpriseSamlEnabled && !ssoStore.isEnterpriseOidcEnabled"
+			v-if="!hasAnySsoEnabled"
 			data-test-id="sso-content-unlicensed"
 			:class="$style.actionBox"
 			:description="i18n.baseText('settings.sso.actionBox.description')"
