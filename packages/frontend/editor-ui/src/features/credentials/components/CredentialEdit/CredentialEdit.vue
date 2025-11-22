@@ -13,7 +13,7 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { deepCopy, NodeHelpers } from 'n8n-workflow';
 import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
@@ -65,6 +65,8 @@ import {
 	type IMenuItem,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { setParameterValue } from '@/app/utils/parameterUtils';
+import get from 'lodash/get';
 
 type Props = {
 	modalName: string;
@@ -113,6 +115,7 @@ const hasUserSpecifiedName = ref(false);
 const isSharedWithChanged = ref(false);
 const requiredCredentials = ref(false); // Are credentials required or optional for the node
 const contentRef = ref<HTMLDivElement>();
+const isSharedGlobally = ref(false);
 
 const activeNodeType = computed(() => {
 	const activeNode = ndvStore.activeNode;
@@ -539,6 +542,10 @@ async function loadCurrentCredential() {
 		}
 
 		credentialName.value = currentCredentials.name;
+		isSharedGlobally.value =
+			'isGlobal' in currentCredentials && typeof currentCredentials.isGlobal === 'boolean'
+				? currentCredentials.isGlobal
+				: false;
 	} catch (error) {
 		toast.showError(
 			error,
@@ -574,18 +581,23 @@ function onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 	hasUnsavedChanges.value = true;
 }
 
+function onShareWithAllUsersUpdate(shareWithAllUsers: boolean) {
+	isSharedGlobally.value = shareWithAllUsers;
+	hasUnsavedChanges.value = true;
+}
+
 function onDataChange({ name, value }: IUpdateInformation) {
-	// skip update if new value matches the current
-	if (credentialData.value[name] === value) return;
+	const currentValue = get(credentialData.value, name);
+	if (currentValue === value) {
+		return;
+	}
 
 	hasUnsavedChanges.value = true;
 
 	const { oauthTokenData, ...credData } = credentialData.value;
+	credentialData.value = deepCopy(credData);
 
-	credentialData.value = {
-		...credData,
-		[name]: value as CredentialInformation,
-	};
+	setParameterValue(credentialData.value, name, value);
 }
 
 function closeDialog() {
@@ -701,6 +713,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		name: credentialName.value,
 		type: credentialTypeName.value,
 		data: data as unknown as ICredentialDataDecryptedObject,
+		isGlobal: isSharedGlobally.value,
 	};
 
 	if (
@@ -1238,8 +1251,10 @@ const { width } = useElementSize(credNameRef);
 						:credential-data="credentialData"
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
+						:isSharedGlobally="isSharedGlobally"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
+						@update:share-with-all-users="onShareWithAllUsersUpdate"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">

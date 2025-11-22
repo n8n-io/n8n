@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { VIEWS } from '@/app/constants';
 import {
 	INSIGHT_IMPACT_TYPES,
@@ -9,12 +10,14 @@ import type { InsightsSummaryDisplay } from '@/features/execution/insights/insig
 import type { InsightsDateRange, InsightsSummary } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { computed, useCssModule } from 'vue';
+import { computed, ref, useCssModule, onMounted } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { getTimeRangeLabels } from '../insights.utils';
 
-import { N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { N8nCallout, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
+
+const INSIGHTS_QUEUE_MODE_WARNING_DISMISSED_KEY = 'n8n-insights-queue-mode-warning-dismissed';
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
 	timeRange: InsightsDateRange['key'];
@@ -25,8 +28,26 @@ const i18n = useI18n();
 const route = useRoute();
 const $style = useCssModule();
 const telemetry = useTelemetry();
+const settingsStore = useSettingsStore();
 
 const timeRangeLabels = getTimeRangeLabels();
+
+// Queue mode warning dismissal state
+const isQueueModeWarningDismissed = ref(false);
+
+onMounted(() => {
+	isQueueModeWarningDismissed.value =
+		localStorage.getItem(INSIGHTS_QUEUE_MODE_WARNING_DISMISSED_KEY) === 'true';
+});
+
+const dismissQueueModeWarning = () => {
+	localStorage.setItem(INSIGHTS_QUEUE_MODE_WARNING_DISMISSED_KEY, 'true');
+	isQueueModeWarningDismissed.value = true;
+};
+
+const shouldShowQueueModeWarning = computed(() => {
+	return settingsStore.isQueueModeEnabled && !isQueueModeWarningDismissed.value;
+});
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
 	total: i18n.baseText('insights.banner.title.total'),
@@ -70,89 +91,133 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 </script>
 
 <template>
-	<div :class="$style.insights">
-		<ul data-test-id="insights-summary-tabs">
-			<li
-				v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
-				:key="id"
-				:data-test-id="`insights-summary-tab-${id}`"
-			>
-				<N8nTooltip
-					:placement="route.name === VIEWS.INSIGHTS ? 'bottom' : 'top'"
-					:disabled="!(summaryHasNoData && id === 'total')"
-					:show-after="500"
+	<div :class="$style.insightsWrapper">
+		<N8nCallout
+			v-if="shouldShowQueueModeWarning"
+			:class="$style.queueModeWarning"
+			theme="warning"
+			data-test-id="insights-queue-mode-warning"
+			round-corners
+		>
+			<N8nText color="text-base" size="small">
+				{{ i18n.baseText('insights.banner.queueMode.warning') }}
+				<N8nLink
+					size="small"
+					:href="i18n.baseText('insights.banner.queueMode.warning.link.url')"
+					new-window
+					theme="text"
+					:underline="false"
 				>
-					<template #content>
-						<I18nT keypath="insights.banner.noData.tooltip" scope="global">
-							<template #link>
-								<a :href="i18n.baseText('insights.banner.noData.tooltip.link.url')" target="_blank">
-									{{ i18n.baseText('insights.banner.noData.tooltip.link') }}
-								</a>
-							</template>
-						</I18nT>
-					</template>
-					<RouterLink :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
-						<strong>
-							<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
-								<template #content>
-									{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
+					<span :class="$style.underlined">
+						{{ i18n.baseText('insights.banner.queueMode.warning.link.text') }}
+					</span>
+					↗
+				</N8nLink>
+			</N8nText>
+			<template #trailingContent>
+				<N8nIcon
+					icon="x"
+					:title="i18n.baseText('generic.dismiss')"
+					class="clickable"
+					data-test-id="insights-queue-mode-warning-close"
+					@click="dismissQueueModeWarning"
+				/>
+			</template>
+		</N8nCallout>
+		<div :class="$style.insights">
+			<ul data-test-id="insights-summary-tabs">
+				<li
+					v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
+					:key="id"
+					:data-test-id="`insights-summary-tab-${id}`"
+				>
+					<N8nTooltip
+						:placement="route.name === VIEWS.INSIGHTS ? 'bottom' : 'top'"
+						:disabled="!(summaryHasNoData && id === 'total')"
+						:show-after="500"
+					>
+						<template #content>
+							<I18nT keypath="insights.banner.noData.tooltip" scope="global">
+								<template #link>
+									<a
+										:href="i18n.baseText('insights.banner.noData.tooltip.link.url')"
+										target="_blank"
+									>
+										{{ i18n.baseText('insights.banner.noData.tooltip.link') }}
+									</a>
 								</template>
-								{{ summaryTitles[id] }}
-							</N8nTooltip>
-						</strong>
-						<small :class="$style.days">
-							{{ timeRangeLabels[timeRange] }}
-						</small>
-						<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
-							<em>--</em>
-							<small>
-								<N8nTooltip placement="bottom">
+							</I18nT>
+						</template>
+						<RouterLink :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">
+							<strong>
+								<N8nTooltip placement="bottom" :disabled="id !== 'timeSaved'">
 									<template #content>
-										<I18nT keypath="insights.banner.timeSaved.tooltip" scope="global">
-											<template #link>{{
-												i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
-											}}</template>
-										</I18nT>
+										{{ i18n.baseText('insights.banner.title.timeSaved.tooltip') }}
 									</template>
-									<N8nIcon :class="$style.icon" icon="info" size="medium" />
+									{{ summaryTitles[id] }}
 								</N8nTooltip>
+							</strong>
+							<small :class="$style.days">
+								{{ timeRangeLabels[timeRange] }}
 							</small>
-						</span>
-						<span v-else>
-							<em
-								>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
-							>
-							<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
-								<N8nIcon
-									:class="[$style.icon, getImpactStyle(id, deviation)]"
-									:icon="
-										deviation === 0
-											? 'chevron-right'
-											: deviation > 0
-												? 'chevron-up'
-												: 'chevron-down'
-									"
-								/>
-								<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
-									<template #content>
-										{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
-									</template>
-									{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US') }}{{ deviationUnit }}
-								</N8nTooltip>
-							</small>
-						</span>
-					</RouterLink>
-				</N8nTooltip>
-			</li>
-		</ul>
+							<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
+								<em>--</em>
+								<small>
+									<N8nTooltip placement="bottom">
+										<template #content>
+											<I18nT keypath="insights.banner.timeSaved.tooltip" scope="global">
+												<template #link>{{
+													i18n.baseText('insights.banner.timeSaved.tooltip.link.text')
+												}}</template>
+											</I18nT>
+										</template>
+										<N8nIcon :class="$style.icon" icon="info" size="medium" />
+									</N8nTooltip>
+								</small>
+							</span>
+							<span v-else>
+								<em
+									>{{ smartDecimal(value).toLocaleString('en-US') }} <i>{{ unit }}</i></em
+								>
+								<small v-if="deviation !== null" :class="getImpactStyle(id, deviation)">
+									<N8nIcon
+										:class="[$style.icon, getImpactStyle(id, deviation)]"
+										:icon="
+											deviation === 0
+												? 'chevron-right'
+												: deviation > 0
+													? 'chevron-up'
+													: 'chevron-down'
+										"
+									/>
+									<N8nTooltip placement="bottom" :disabled="id !== 'failureRate'">
+										<template #content>
+											{{ i18n.baseText('insights.banner.failureRate.deviation.tooltip') }}
+										</template>
+										{{ smartDecimal(Math.abs(deviation)).toLocaleString('en-US')
+										}}{{ deviationUnit }}
+									</N8nTooltip>
+								</small>
+							</span>
+						</RouterLink>
+					</N8nTooltip>
+				</li>
+			</ul>
+		</div>
+		<!-- TODO: This should be removed after some time when the number issue is behind us -->
 	</div>
 </template>
 
 <style lang="scss" module>
+.insightsWrapper {
+	position: relative;
+	padding: var(--spacing--xs) 0 0;
+	margin-bottom: var(--spacing--2xl);
+}
+
 .insights {
 	display: grid;
 	grid-template-rows: auto 1fr;
-	padding: var(--spacing--xs) 0 var(--spacing--2xl);
 
 	ul {
 		display: flex;
@@ -309,6 +374,18 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 		margin: 0;
 		height: auto;
 		border-radius: inherit;
+	}
+}
+
+.queueModeWarning {
+	margin-bottom: var(--spacing--xs);
+
+	a {
+		text-decoration: none;
+
+		.underlined {
+			text-decoration: underline;
+		}
 	}
 }
 </style>

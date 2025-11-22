@@ -38,6 +38,7 @@ import type {
 import {
 	ApplicationError,
 	createDeferredPromise,
+	createRunExecutionData,
 	NodeApiError,
 	NodeConnectionTypes,
 	NodeHelpers,
@@ -1246,7 +1247,7 @@ describe('WorkflowExecute', () => {
 			},
 		};
 
-		const runExecutionData: IRunExecutionData = {
+		const runExecutionData: IRunExecutionData = createRunExecutionData({
 			resultData: {
 				runData: {
 					previousNode: [
@@ -1262,7 +1263,7 @@ describe('WorkflowExecute', () => {
 					],
 				},
 			},
-		};
+		});
 
 		let workflowExecute: WorkflowExecute;
 
@@ -1448,20 +1449,7 @@ describe('WorkflowExecute', () => {
 		let workflowExecute: WorkflowExecute;
 
 		beforeEach(() => {
-			runExecutionData = {
-				startData: {},
-				resultData: {
-					runData: {},
-					pinData: {},
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			};
+			runExecutionData = createRunExecutionData();
 			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
 		});
 
@@ -1654,20 +1642,7 @@ describe('WorkflowExecute', () => {
 		const parentExecution = mock<RelatedExecution>();
 
 		beforeEach(() => {
-			runExecutionData = {
-				startData: {},
-				resultData: {
-					runData: {},
-					pinData: {},
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			};
+			runExecutionData = createRunExecutionData();
 			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
 		});
 
@@ -1809,7 +1784,7 @@ describe('WorkflowExecute', () => {
 		let additionalData: IWorkflowExecuteAdditionalData;
 
 		beforeEach(() => {
-			runExecutionData = {
+			runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: { runData: {} },
 				executionData: {
@@ -1819,7 +1794,7 @@ describe('WorkflowExecute', () => {
 					waitingExecution: {},
 					waitingExecutionSource: null,
 				},
-			};
+			});
 			additionalData = mock();
 			additionalData.hooks = mock<ExecutionLifecycleHooks>();
 
@@ -2254,7 +2229,7 @@ describe('WorkflowExecute', () => {
 		let mockHooks: ExecutionLifecycleHooks;
 
 		beforeEach(() => {
-			runExecutionData = {
+			runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: { runData: {} },
 				executionData: {
@@ -2264,7 +2239,7 @@ describe('WorkflowExecute', () => {
 					waitingExecution: {},
 					waitingExecutionSource: null,
 				},
-			};
+			});
 
 			mockHooks = mock<ExecutionLifecycleHooks>();
 			additionalData = mock<IWorkflowExecuteAdditionalData>();
@@ -2598,7 +2573,7 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			// Create run execution data with tasks in various statuses
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData: IRunExecutionData = createRunExecutionData({
 				startData: { startNodes: [{ name: 'Start', sourceData: null }] },
 				resultData: {
 					runData: {
@@ -2612,11 +2587,10 @@ describe('WorkflowExecute', () => {
 					},
 					lastNodeExecuted: 'Processing',
 				},
-				executionData: mock<IRunExecutionData['executionData']>({
-					nodeExecutionStack: [],
-					metadata: {},
-				}),
-			};
+				executionData: {
+					runtimeData: { version: 1, establishedAt: 1763723652184, source: 'manual' },
+				},
+			});
 
 			// Set the run execution data on the workflow execute instance
 			// @ts-expect-error private data
@@ -2631,6 +2605,7 @@ describe('WorkflowExecute', () => {
 
 			const updatedExecutionData = {
 				data: {
+					version: 0,
 					startData: { startNodes: [{ name: 'Start', sourceData: null }] },
 					resultData: {
 						runData: {
@@ -2646,10 +2621,14 @@ describe('WorkflowExecute', () => {
 						},
 						lastNodeExecuted: 'Processing',
 					},
-					executionData: mock<IRunExecutionData['executionData']>({
+					executionData: {
+						contextData: {},
 						nodeExecutionStack: [],
 						metadata: {},
-					}),
+						waitingExecution: {},
+						waitingExecutionSource: {},
+						runtimeData: { version: 1, establishedAt: 1763723652184, source: 'manual' },
+					},
 				},
 			};
 
@@ -2681,7 +2660,7 @@ describe('WorkflowExecute', () => {
 			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
 			// Create initial execution data with nodes queued to execute
-			const runExecutionData: IRunExecutionData = {
+			const runExecutionData: IRunExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: {
 					runData: {},
@@ -2708,7 +2687,7 @@ describe('WorkflowExecute', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			// @ts-expect-error private data
 			workflowExecute.runExecutionData = runExecutionData;
