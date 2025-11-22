@@ -158,6 +158,14 @@ const distanceStrategyField: INodeProperties = {
 	],
 };
 
+const skipTableCreationField: INodeProperties = {
+	displayName: 'Skip Table Creation',
+	name: 'skipTableCreation',
+	type: 'boolean',
+	default: false,
+	description: 'Skip automatic table creation. Use this if the table already exists with the correct schema.',
+};
+
 const insertFields: INodeProperties[] = [
 	{
 		displayName: 'Options',
@@ -165,7 +173,7 @@ const insertFields: INodeProperties[] = [
 		type: 'collection',
 		placeholder: 'Add Option',
 		default: {},
-		options: [collectionField, columnNamesField],
+		options: [collectionField, columnNamesField, skipTableCreationField],
 	},
 ];
 
@@ -189,13 +197,15 @@ const retrieveFields: INodeProperties[] = [
 class ExtendedPGVectorStore extends PGVectorStore {
 	static async initialize(
 		embeddings: EmbeddingsInterface,
-		args: PGVectorStoreArgs & { dimensions?: number },
+		args: PGVectorStoreArgs & { dimensions?: number; skipTableCreation?: boolean },
 	): Promise<ExtendedPGVectorStore> {
-		const { dimensions, ...rest } = args;
+		const { dimensions, skipTableCreation, ...rest } = args;
 		const postgresqlVectorStore = new this(embeddings, rest);
 
 		await postgresqlVectorStore._initializeClient();
-		await postgresqlVectorStore.ensureTableInDatabase(dimensions);
+		if (!skipTableCreation) {
+			await postgresqlVectorStore.ensureTableInDatabase(dimensions);
+		}
 		if (postgresqlVectorStore.collectionTableName) {
 			await postgresqlVectorStore.ensureCollectionTableInDatabase();
 		}
@@ -272,7 +282,13 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 			'cosine',
 		) as DistanceStrategy;
 
-		return await ExtendedPGVectorStore.initialize(embeddings, config);
+		const skipTableCreation = context.getNodeParameter(
+			'options.skipTableCreation',
+			0,
+			false,
+		) as boolean;
+
+		return await ExtendedPGVectorStore.initialize(embeddings, { ...config, skipTableCreation });
 	},
 
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
