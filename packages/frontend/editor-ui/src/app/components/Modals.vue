@@ -15,7 +15,6 @@ import {
 	NPS_SURVEY_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
 	SETUP_CREDENTIALS_MODAL_KEY,
-	VERSIONS_MODAL_KEY,
 	WHATS_NEW_MODAL_KEY,
 	PRE_BUILT_AGENTS_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
@@ -171,10 +170,6 @@ import VariableModal from '@/features/settings/environments.ee/components/Variab
 
 		<ModalRoot :name="ANNOTATION_TAGS_MANAGER_MODAL_KEY">
 			<AnnotationTagsManager />
-		</ModalRoot>
-
-		<ModalRoot :name="VERSIONS_MODAL_KEY" :keep-alive="true">
-			<UpdatesPanel />
 		</ModalRoot>
 
 		<ModalRoot :name="NPS_SURVEY_MODAL_KEY" :keep-alive="true">
