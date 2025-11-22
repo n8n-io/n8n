@@ -123,4 +123,55 @@ describe('VectorStoreAzureAISearch', () => {
 			extractValue: true,
 		});
 	});
+
+	describe('clearIndex functionality', () => {
+		it('should define clearIndex option in insertFields', () => {
+			// Verify the node description includes the clearIndex option
+			const nodeInstance = new VectorStoreAzureAISearch();
+			const properties = nodeInstance.description.properties;
+
+			// Find the options field for insert mode
+			const optionsField = properties.find(
+				(p) =>
+					p.name === 'options' &&
+					p.type === 'collection' &&
+					p.displayOptions?.show?.mode?.includes('insert'),
+			);
+
+			expect(optionsField).toBeDefined();
+			if (optionsField && 'options' in optionsField) {
+				const clearIndexOption = (optionsField.options as any[]).find(
+					(opt) => opt.name === 'clearIndex',
+				);
+				expect(clearIndexOption).toBeDefined();
+				expect(clearIndexOption.type).toBe('boolean');
+				expect(clearIndexOption.default).toBe(false);
+				expect(clearIndexOption.description).toContain('delete and recreate');
+			}
+		});
+
+		it('should have correct clearIndex option configuration', () => {
+			const nodeInstance = new VectorStoreAzureAISearch();
+			const properties = nodeInstance.description.properties;
+
+			// Find the insert options
+			const optionsField = properties.find(
+				(p) =>
+					p.name === 'options' &&
+					p.type === 'collection' &&
+					p.displayOptions?.show?.mode?.includes('insert'),
+			);
+
+			expect(optionsField).toBeDefined();
+
+			// Verify the structure matches other vector stores like Weaviate
+			// which use a similar "Clear Data" pattern that deletes the index
+			if (optionsField && 'options' in optionsField) {
+				const clearIndexOption = (optionsField.options as any[]).find(
+					(opt) => opt.name === 'clearIndex',
+				);
+				expect(clearIndexOption.displayName).toBe('Clear Index');
+			}
+		});
+	});
 });
