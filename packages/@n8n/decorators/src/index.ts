@@ -3,6 +3,7 @@ export * from './command';
 export { Debounce } from './debounce';
 export * from './execution-lifecycle';
 export { Memoized } from './memoized';
+export * from './context-establishment';
 export * from './module';
 export * from './multi-main';
 export * from './pubsub';

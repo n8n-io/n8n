@@ -262,6 +262,8 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			Container.get(MultiMainSetup).registerEventHandlers();
 		}
+
+		await this.executionContextHookRegistry.init();
 	}
 
 	async initOrchestration() {
