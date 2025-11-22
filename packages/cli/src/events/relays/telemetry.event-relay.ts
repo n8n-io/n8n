@@ -93,6 +93,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'instance-owner-setup': async (event) => await this.instanceOwnerSetup(event),
 			'first-production-workflow-succeeded': (event) =>
 				this.firstProductionWorkflowSucceeded(event),
+			'instance-first-production-workflow-failed': (event) =>
+				this.instanceFirstProductionWorkflowFailed(event),
 			'first-workflow-data-loaded': (event) => this.firstWorkflowDataLoaded(event),
 			'workflow-post-execute': async (event) => await this.workflowPostExecute(event),
 			'user-changed-role': (event) => this.userChangedRole(event),
@@ -910,6 +912,18 @@ export class TelemetryEventRelay extends EventRelay {
 		userId,
 	}: RelayEventMap['first-production-workflow-succeeded']) {
 		this.telemetry.track('Workflow first prod success', {
+			project_id: projectId,
+			workflow_id: workflowId,
+			user_id: userId,
+		});
+	}
+
+	private instanceFirstProductionWorkflowFailed({
+		projectId,
+		workflowId,
+		userId,
+	}: RelayEventMap['instance-first-production-workflow-failed']) {
+		this.telemetry.track('Instance first prod failure', {
 			project_id: projectId,
 			workflow_id: workflowId,
 			user_id: userId,
