@@ -2,6 +2,7 @@ import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Debounce } from '@n8n/decorators';
 import { Service } from '@n8n/di';
+import { readFileSync } from 'fs';
 import ioRedis from 'ioredis';
 import type { Cluster, RedisOptions } from 'ioredis';
 
@@ -131,7 +132,8 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 	}
 
 	private getOptions({ extraOptions }: { extraOptions?: RedisOptions }) {
-		const { username, password, db, tls, dualStack } = this.globalConfig.queue.bull.redis;
+		const { username, password, db, tls, tlsConfig, dualStack } =
+			this.globalConfig.queue.bull.redis;
 
 		/**
 		 * Disabling ready check allows quick reconnection to Redis if Redis becomes
@@ -155,7 +157,25 @@ export class RedisClientService extends TypedEmitter<RedisEventMap> {
 
 		if (dualStack) options.family = 0;
 
-		if (tls) options.tls = {}; // enable TLS with default Node.js settings
+		if (tls) {
+			const readCertFileSync = (path: string) => {
+				try {
+					return readFileSync(path).toString('utf-8');
+				} catch (e) {
+					const msg = `Error reading Redis TLS file: ${path}`;
+					this.logger.error(msg, { error: e });
+					throw new Error(msg, { cause: e });
+				}
+			};
+
+			const { ca = '', cert = '', serverName = '', rejectUnauthorized = true } = tlsConfig;
+			options.tls = {
+				ca: ca ? readCertFileSync(ca) : undefined,
+				cert: cert ? readCertFileSync(cert) : undefined,
+				servername: serverName || undefined,
+				rejectUnauthorized: rejectUnauthorized ? undefined : false,
+			};
+		}
 
 		return options;
 	}
