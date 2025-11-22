@@ -11,6 +11,7 @@ import {
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
 	ChatHubConversationsRequest,
+	ViewableMimeTypes,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -97,14 +98,21 @@ export class ChatHubController {
 		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
 			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
 
-		res.setHeader('Content-Type', mimeType ?? 'application/octet-stream');
+		res.setHeader('Content-Type', mimeType);
 
 		if (attachmentAsStreamOrBuffer.fileSize) {
 			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
 		}
 
 		if (fileName) {
-			res.setHeader('Content-Disposition', `attachment; filename="${sanitizeFilename(fileName)}"`);
+			const disposition = ViewableMimeTypes.includes(mimeType.toLowerCase())
+				? 'inline'
+				: 'attachment';
+
+			res.setHeader(
+				'Content-Disposition',
+				`${disposition}; filename="${sanitizeFilename(fileName)}"`,
+			);
 		}
 
 		if (attachmentAsStreamOrBuffer.type === 'buffer') {

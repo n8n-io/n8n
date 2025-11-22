@@ -162,6 +162,15 @@ onBeforeMount(() => {
 		</div>
 		<div :class="$style.content">
 			<div v-if="isEditing" :class="$style.editContainer">
+				<div v-if="attachments.length > 0" :class="$style.attachments">
+					<ChatFile
+						v-for="(attachment, index) in attachments"
+						:key="index"
+						:file="attachment.file"
+						:is-removable="false"
+						:href="attachment.downloadUrl"
+					/>
+				</div>
 				<N8nInput
 					ref="textarea"
 					v-model="editedText"
@@ -258,7 +267,10 @@ onBeforeMount(() => {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--xs);
+
+	.chatMessage & {
+		margin-top: var(--spacing--xs);
+	}
 }
 
 .chatMessage {
@@ -384,15 +396,29 @@ onBeforeMount(() => {
 }
 
 .editContainer {
+	width: 100%;
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--xs);
+	background-color: var(--color--background--light-3);
+	border: var(--border);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
+	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+
+	&:focus-within,
+	&:hover {
+		border-color: var(--color--secondary);
+	}
 }
 
 .textarea textarea {
 	font-family: inherit;
-	background-color: var(--color--background--light-3);
-	border-radius: var(--radius--lg);
+	line-height: 1.5em;
+	resize: none;
+	background-color: transparent !important;
+	border: none !important;
+	padding: 0 !important;
 }
 
 .editActions {
