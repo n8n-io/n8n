@@ -11,7 +11,7 @@ export interface TextKeys {
 	};
 }
 
-export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem', 'error', 'index']);
+export const REQUIRED_N8N_ITEM_KEYS = new Set(['json', 'binary', 'pairedItem', 'error', 'metadata', 'index']);
 
 export function getTextKey(
 	textKeys: TextKeys,
