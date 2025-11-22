@@ -729,6 +729,12 @@ export class SlackV2 implements INodeType {
 						if (filters.oldest) {
 							qs.oldest = new Date(filters.oldest as string).getTime() / 1000;
 						}
+
+						const includeAllMetadata = this.getNodeParameter('includeAllMetadata', i);
+						if (includeAllMetadata) {
+							qs.include_all_metadata = includeAllMetadata as boolean;
+						}
+
 						if (returnAll) {
 							responseData = await slackApiRequestAllItems.call(
 								this,
