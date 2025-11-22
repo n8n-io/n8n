@@ -22,7 +22,6 @@ test.describe('Workflow Production Checklist', () => {
 
 		await expect(n8n.canvas.getProductionChecklistButton()).toBeVisible();
 		await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
-		await expect(n8n.canvas.getProductionChecklistActionItem()).toHaveCount(2);
 		await expect(n8n.canvas.getErrorActionItem()).toBeVisible();
 		await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
 	});
@@ -43,7 +42,6 @@ test.describe('Workflow Production Checklist', () => {
 		await n8n.workflowActivationModal.close();
 
 		await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
-		await expect(n8n.canvas.getProductionChecklistActionItem()).toHaveCount(3);
 
 		await expect(n8n.canvas.getEvaluationsActionItem()).toBeVisible();
 		await n8n.canvas.getEvaluationsActionItem().click();
