@@ -253,8 +253,7 @@ export class HomeAssistant implements INodeType {
 						};
 
 						const body = {
-							state,
-							attributes: {},
+							state
 						};
 
 						if (Object.entries(stateAttributes).length) {
