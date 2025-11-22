@@ -1,4 +1,5 @@
 import { test, expect } from '../../fixtures/base';
+import nonTrialPlanData from '../../fixtures/plan-data-non-trial.json';
 import basePlanData from '../../fixtures/plan-data-trial.json';
 import type { n8nPage } from '../../pages/n8nPage';
 import type { TestRequirements } from '../../Types';
@@ -32,6 +33,32 @@ const cloudTrialRequirements = {
 	},
 };
 
+const cloudNonTrialRequirements = {
+	config: {
+		settings: {
+			deployment: { type: 'cloud' },
+			n8nMetadata: { userId: '1' },
+			aiCredits: {
+				enabled: true,
+				credits: 100,
+			},
+			banners: {
+				dismissed: ['V1'], // Prevent V1 banner interference
+			},
+		},
+	},
+	intercepts: {
+		'cloud-plan': {
+			url: '**/rest/admin/cloud-plan',
+			response: { ...nonTrialPlanData, expirationDate: fiveDaysFromNow.toJSON() },
+		},
+		'cloud-user': {
+			url: '**/rest/cloud/proxy/user/me',
+			response: {},
+		},
+	},
+};
+
 const setupCloudTest = async (
 	n8n: n8nPage,
 	setupRequirements: (requirements: TestRequirements) => Promise<void>,
@@ -48,13 +75,27 @@ const createProjectAndNavigate = async (n8n: n8nPage) => {
 };
 
 test.describe('Cloud @db:reset @auth:owner', () => {
-	test.describe('Trial Banner', () => {
-		test('should render trial banner for opt-in cloud user', async ({ n8n, setupRequirements }) => {
+	test.describe('Trial Upgrade', () => {
+		test('should show trial upgrade in the main sidebar if user is trialing', async ({
+			n8n,
+			setupRequirements,
+		}) => {
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
 
-			await expect(n8n.sideBar.getTrialBanner()).toBeVisible();
+			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).toBeVisible();
+		});
+
+		test('should not show trial upgrade in the main sidebar if user is not trialing', async ({
+			n8n,
+			setupRequirements,
+		}) => {
+			await setupCloudTest(n8n, setupRequirements, cloudNonTrialRequirements);
+			await n8n.start.fromBlankCanvas();
+			await n8n.sideBar.expand();
+
+			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).not.toBeVisible();
 		});
 	});
 
