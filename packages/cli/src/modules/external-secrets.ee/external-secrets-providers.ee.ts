@@ -1,5 +1,6 @@
 import { Service } from '@n8n/di';
 
+import { AkeylessProvider } from './providers/akeyless';
 import { AwsSecretsManager } from './providers/aws-secrets-manager';
 import { AzureKeyVault } from './providers/azure-key-vault/azure-key-vault';
 import { GcpSecretsManager } from './providers/gcp-secrets-manager/gcp-secrets-manager';
@@ -10,6 +11,7 @@ import type { SecretsProvider } from './types';
 @Service()
 export class ExternalSecretsProviders {
 	providers: Record<string, { new (): SecretsProvider }> = {
+		akeyless: AkeylessProvider,
 		awsSecretsManager: AwsSecretsManager,
 		infisical: InfisicalProvider,
 		vault: VaultProvider,
