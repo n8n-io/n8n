@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref, useTemplateRef } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, nextTick, type Ref } from 'vue';
 import { onClickOutside, type VueInstance } from '@vueuse/core';
 
 import { useI18n } from '@n8n/i18n';
@@ -40,7 +40,6 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
-import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useBugReporting } from '@/app/composables/useBugReporting';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -62,6 +61,7 @@ import { useUserHelpers } from '../composables/useUserHelpers';
 import { useRouter } from 'vue-router';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
+import { useSidebarLayout } from '../composables/useSidebarLayout';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -77,12 +77,13 @@ const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
 const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const templatesDataQualityStore = useTemplatesDataQualityStore();
 
-const externalHooks = useExternalHooks();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
 const calloutHelpers = useCalloutHelpers();
+const { isCollapsed, sidebarWidth, onResizeStart, onResize, onResizeEnd, toggleCollapse } =
+	useSidebarLayout();
 
 useKeybindings({
 	ctrl_alt_o: () => handleSelect('about'),
@@ -91,12 +92,8 @@ useKeybindings({
 
 const { isEnabled: isCommandBarEnabled } = useCommandBar();
 
-// Template refs
-const user = useTemplateRef('user');
-
 // Component data
 const basePath = ref('');
-const fullyExpanded = ref(false);
 
 const showWhatsNewNotification = computed(
 	() =>
@@ -443,18 +440,10 @@ const visibleSettingsItems = computed(() => settingsItems.value.filter((item) =>
 
 const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
-const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
-
-const showUserArea = computed(() => hasPermission(['authenticated']));
 const userIsTrialing = computed(() => cloudPlanStore.userIsTrialing);
 
 onMounted(() => {
 	basePath.value = rootStore.baseUrl;
-	if (user.value?.$el) {
-		void externalHooks.run('mainSidebar.mounted', {
-			userRef: user.value.$el,
-		});
-	}
 
 	becomeTemplateCreatorStore.startMonitoringCta();
 });
@@ -484,20 +473,6 @@ function openCommandBar(event: MouseEvent) {
 		document.dispatchEvent(keyboardEvent);
 	});
 }
-
-const toggleCollapse = () => {
-	uiStore.toggleSidebarMenuCollapse();
-	// When expanding, delay showing some element to ensure smooth animation
-	if (!isCollapsed.value) {
-		sidebarWidth.value = 300;
-		setTimeout(() => {
-			fullyExpanded.value = !isCollapsed.value;
-		}, 300);
-	} else {
-		sidebarWidth.value = 42;
-		fullyExpanded.value = !isCollapsed.value;
-	}
-};
 
 const handleSelect = (key: string) => {
 	switch (key) {
@@ -573,37 +548,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 	createBtn.value?.close();
 });
 
-const sidebarWidth = ref(isCollapsed.value ? 42 : 300);
-const isResizing = ref(false);
-
-function onResizeStart() {
-	isResizing.value = true;
-}
-
-function onResize(event: { width: number; x: number }) {
-	if (isCollapsed.value && event.x > 100) {
-		sidebarWidth.value = 200;
-		toggleCollapse();
-		return;
-	}
-
-	if (isCollapsed.value) {
-		return;
-	}
-
-	if (event.x < 100 && !isCollapsed.value) {
-		sidebarWidth.value = 40;
-		toggleCollapse();
-		return;
-	}
-
-	sidebarWidth.value = event.width;
-}
-
-function onResizeEnd() {
-	isResizing.value = false;
-}
-
 const onLogout = () => {
 	void router.push({ name: VIEWS.SIGNOUT });
 };
@@ -613,7 +557,6 @@ const onLogout = () => {
 	<N8nResizeWrapper
 		id="side-menu"
 		:class="{
-			['side-menu']: true,
 			[$style.sideMenu]: true,
 			[$style.sideMenuCollapsed]: isCollapsed,
 		}"
@@ -765,7 +708,7 @@ const onLogout = () => {
 				/>
 
 				<div :class="$style.bottomMenu">
-					<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
+					<BecomeTemplateCreatorCta v-if="!isCollapsed && !userIsTrialing" />
 					<div :class="$style.bottomMenuItems">
 						<template v-for="item in visibleMenuItems" :key="item.id">
 							<N8nPopoverReka
