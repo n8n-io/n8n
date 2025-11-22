@@ -27,6 +27,7 @@ import {
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
+	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT,
 } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
@@ -62,6 +63,7 @@ import { useRouter } from 'vue-router';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { useSidebarLayout } from '../composables/useSidebarLayout';
+import { usePostHog } from '../stores/posthog.store';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -71,6 +73,7 @@ const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const versionsStore = useVersionsStore();
+const posthogStore = usePostHog();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
