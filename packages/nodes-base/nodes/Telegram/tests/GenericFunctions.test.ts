@@ -287,6 +287,35 @@ describe('Telegram > GenericFunctions', () => {
 				text: 'Hello, world!\n\n_This message was sent automatically with _[n8n](https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram)',
 			});
 		});
+
+		it('should handle empty string parse_mode correctly', () => {
+			const body: IDataObject = { text: 'Hello, world!' };
+			const index = 0;
+			const nodeVersion = 1.1;
+			const instanceId = '45';
+
+			(mockThis.getNodeParameter as jest.Mock).mockImplementation((paramName: string) => {
+				switch (paramName) {
+					case 'operation':
+						return 'sendMessage';
+					case 'additionalFields':
+						return { parse_mode: '', appendAttribution: true };
+					case 'replyMarkup':
+						return 'none';
+					default:
+						return '';
+				}
+			});
+
+			addAdditionalFields.call(mockThis, body, index, nodeVersion, instanceId);
+
+			expect(body).toEqual({
+				text: 'Hello, world!\n\nThis message was sent automatically with n8n (https://n8n.io/?utm_source=n8n-internal&utm_medium=powered_by&utm_campaign=n8n-nodes-base.telegram_45)',
+				disable_web_page_preview: true,
+			});
+			// parse_mode should be absent when empty string was provided
+			expect(body).not.toHaveProperty('parse_mode');
+		});
 	});
 	describe('getPropertyName', () => {
 		it('should return the property name by removing "send" and converting to lowercase', () => {
