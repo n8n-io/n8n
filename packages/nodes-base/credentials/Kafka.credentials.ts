@@ -2,9 +2,7 @@ import type { ICredentialType, INodeProperties } from 'n8n-workflow';
 
 export class Kafka implements ICredentialType {
 	name = 'kafka';
-
 	displayName = 'Kafka';
-
 	documentationUrl = 'kafka';
 
 	properties: INodeProperties[] = [
@@ -30,18 +28,24 @@ export class Kafka implements ICredentialType {
 			default: true,
 		},
 		{
-			displayName: 'Authentication',
-			name: 'authentication',
-			type: 'boolean',
-			default: false,
+			displayName: 'Authentication Mode',
+			name: 'authMode',
+			type: 'options',
+			default: 'none',
+			options: [
+				{ name: 'None', value: 'none' },
+				{ name: 'Username & Password', value: 'userpass' },
+				{ name: 'AWS IAM Role', value: 'awsIam' },
+			],
 		},
+		// ───────────── Username/Password (SASL) ─────────────
 		{
 			displayName: 'Username',
 			name: 'username',
 			type: 'string',
 			displayOptions: {
 				show: {
-					authentication: [true],
+					authMode: ['userpass'],
 				},
 			},
 			default: '',
@@ -53,7 +57,7 @@ export class Kafka implements ICredentialType {
 			type: 'string',
 			displayOptions: {
 				show: {
-					authentication: [true],
+					authMode: ['userpass'],
 				},
 			},
 			typeOptions: {
@@ -68,7 +72,7 @@ export class Kafka implements ICredentialType {
 			type: 'options',
 			displayOptions: {
 				show: {
-					authentication: [true],
+					authMode: ['userpass'],
 				},
 			},
 			options: [
