@@ -1094,7 +1094,7 @@
 	"workflow.count": "the {count} workflow | the {count} workflows",
 	"workflow.description.tooltip": "Edit workflow description",
 	"workflow.description.placeholder": "Describe the purpose and functionality of this workflow",
-	"workflow.description.placeholder.mcp": "To help MCP clients understand when to use this workflow, add a short workflow description that describes what a workflow does. eg: \nThe workflow has two functionalities: \n\ta) Get all customers \n\tb) Delete a customer by ID",
+	"workflow.description.placeholder.mcp": "To help MCP clients understand when to use this workflow, add a short workflow description that describes what it does.",
 	"workflow.description.error.title": "Problem updating workflow description",
 	"folder.and.workflow.separator": "and",
 	"folders.delete.action": "Archive all workflows and delete subfolders",
