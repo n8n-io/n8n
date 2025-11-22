@@ -35,4 +35,6 @@ export interface ActionsBlock {
 export interface SendAndWaitMessageBody {
 	channel: string;
 	blocks: Array<DividerBlock | SectionBlock | ActionsBlock>;
+	thread_ts?: number | string;
+	reply_broadcast?: boolean;
 }
