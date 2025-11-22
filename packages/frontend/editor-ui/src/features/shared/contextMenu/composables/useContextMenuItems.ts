@@ -1,5 +1,9 @@
 import type { ActionDropdownItem, INodeUi } from '@/Interface';
-import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/app/constants';
+import {
+	NOT_DUPLICATABLE_NODE_TYPES,
+	STICKY_NODE_TYPE,
+	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
+} from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -7,7 +11,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
 import { getResourcePermissions } from '@n8n/permissions';
 import type { INode, INodeTypeDescription, Workflow } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { NodeHelpers, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { computed, type ComputedRef } from 'vue';
 import { isPresent } from '@/app/utils/typesUtils';
 import { usePinnedData } from '@/app/composables/usePinnedData';
@@ -18,6 +22,8 @@ export type ContextMenuAction =
 	| 'toggle_activation'
 	| 'duplicate'
 	| 'execute'
+	| 'copy_test_url'
+	| 'copy_production_url'
 	| 'rename'
 	| 'replace'
 	| 'toggle_pin'
@@ -92,6 +98,15 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			workflowNode.typeVersion,
 		) as INodeTypeDescription;
 		return NodeHelpers.isExecutable(workflowObject.value, workflowNode, nodeType);
+	};
+
+	const isWebhookNode = (node: INodeUi) => {
+		if (node.type === WEBHOOK_NODE_TYPE) return true;
+		if (!node.webhookId) return false;
+		if (!node.type.toLocaleLowerCase().includes('trigger')) return false;
+		if (!isExecutable(node)) return false;
+
+		return true;
 	};
 
 	return computed(() => {
@@ -203,6 +218,32 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 			].filter(Boolean) as Item[];
 
 			if (nodes.length === 1) {
+				const copyWebhookActions: Item[] = [];
+
+				if (isWebhookNode(nodes[0])) {
+					const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(nodes[0].type);
+					const isWorkflowActive = workflowsStore.workflow.active;
+					if (!isProductionOnly) {
+						copyWebhookActions.push({
+							divided: true,
+							id: 'copy_test_url',
+							label: i18n.baseText('contextMenu.copyTestUrl'),
+							shortcut: { shiftKey: true, altKey: true, keys: ['U'] },
+							disabled: false,
+						});
+					}
+
+					if (isWorkflowActive) {
+						copyWebhookActions.push({
+							divided: isProductionOnly,
+							id: 'copy_production_url',
+							label: i18n.baseText('contextMenu.copyProductionUrl'),
+							shortcut: { altKey: true, keys: ['U'] },
+							disabled: false,
+						});
+					}
+				}
+
 				const singleNodeActions: Item[] = onlyStickies
 					? [
 							{
@@ -228,7 +269,9 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 								label: i18n.baseText('contextMenu.test'),
 								disabled: isReadOnly.value || !isExecutable(nodes[0]),
 							},
+							...copyWebhookActions,
 							{
+								divided: !!copyWebhookActions.length,
 								id: 'rename',
 								label: i18n.baseText('contextMenu.rename'),
 								shortcut: { keys: ['Space'] },
