@@ -5,7 +5,7 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { createTestingPinia } from '@pinia/testing';
 import { setActivePinia } from 'pinia';
-import { VIEWS, PLACEHOLDER_EMPTY_WORKFLOW_ID, NEW_WORKFLOW_ID } from '@/app/constants';
+import { VIEWS } from '@/app/constants';
 
 const recentWorkflowsRef = ref<Array<{ id: string; openedAt: number }>>([]);
 const recentNodesRef = ref<Record<string, Array<{ nodeId: string; openedAt: number }>>>({});
@@ -238,25 +238,12 @@ describe('useRecentResources', () => {
 			expect(recentWorkflowsRef.value).toHaveLength(0);
 		});
 
-		it('should not register workflow when id is PLACEHOLDER_EMPTY_WORKFLOW_ID', () => {
+		it('should not register workflow when id is "new"', () => {
 			const { trackResourceOpened } = useRecentResources();
 
 			const route = {
 				name: VIEWS.WORKFLOW,
-				params: { name: PLACEHOLDER_EMPTY_WORKFLOW_ID },
-			} as unknown as Parameters<typeof trackResourceOpened>[0];
-
-			trackResourceOpened(route);
-
-			expect(recentWorkflowsRef.value).toHaveLength(0);
-		});
-
-		it('should not register workflow when id is NEW_WORKFLOW_ID', () => {
-			const { trackResourceOpened } = useRecentResources();
-
-			const route = {
-				name: VIEWS.WORKFLOW,
-				params: { name: NEW_WORKFLOW_ID },
+				params: { name: 'new' },
 			} as unknown as Parameters<typeof trackResourceOpened>[0];
 
 			trackResourceOpened(route);

@@ -2,7 +2,7 @@
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUsageStore } from '@/features/settings/usage/usage.store';
 import { useAsyncState } from '@vueuse/core';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, EVALUATIONS_DOCS_URL } from '@/app/constants';
+import { EVALUATIONS_DOCS_URL } from '@/app/constants';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -87,7 +87,7 @@ const { isReady } = useAsyncState(async () => {
 
 	if (workflowId && workflowId !== 'new') {
 		// Check if we are loading the Evaluation tab directly, without having loaded the workflow
-		if (workflowsStore.workflow.id === PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+		if (!workflowsStore.workflow.id) {
 			try {
 				const data = await workflowsStore.fetchWorkflow(workflowId);
 

@@ -82,6 +82,7 @@
     "lodash": "catalog:",
     "luxon": "catalog:",
     "n8n-workflow": "workspace:*",
+    "nanoid": "catalog:",
     "pinia": "catalog:frontend",
     "prettier": "^3.3.3",
     "qrcode.vue": "^3.3.4",
