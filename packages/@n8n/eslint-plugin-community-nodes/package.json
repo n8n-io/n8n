@@ -21,6 +21,7 @@
     "lint:fix": "eslint src --fix",
     "lint:docs": "eslint-doc-generator --check",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest",
     "typecheck": "tsc --noEmit",
     "watch": "tsc --watch --project tsconfig.build.json"
