@@ -18,7 +18,7 @@ import {
 	N8nButton,
 	N8nResizeWrapper,
 } from '@n8n/design-system';
-import type { IMenuItem } from '@n8n/design-system';
+import type { IMenuItem, IMenuElement } from '@n8n/design-system';
 import {
 	ABOUT_MODAL_KEY,
 	EXPERIMENT_TEMPLATE_RECO_V2_KEY,
@@ -260,11 +260,11 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 	},
 ]);
 
-const visibleMenuItems = computed(() =>
+const visibleMenuItems = computed<IMenuItem[]>(() =>
 	mainMenuItems.value.filter((item) => item.available !== false),
 );
 
-const whatsNewItems = computed(() => ({
+const whatsNewItems = computed<{ available: boolean; children: IMenuElement[] }>(() => ({
 	available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
 	children: [
 		...versionsStore.whatsNewArticles.map(
