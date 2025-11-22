@@ -1,4 +1,5 @@
 import glob from 'fast-glob';
+import { createHash } from "crypto";
 
 import { DirectoryLoader } from './directory-loader';
 
@@ -17,6 +18,12 @@ export class CustomDirectoryLoader extends DirectoryLoader {
 	}
 
 	override async loadAll() {
+		// hash the name so that multiple custom nodes do not collide
+		this.packageName = createHash('sha256')
+            .update(this.directory)
+            .digest('hex')
+			.substring(0, 8);
+		
 		const nodes = await glob('**/*.node.js', {
 			cwd: this.directory,
 			absolute: true,
