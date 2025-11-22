@@ -1,0 +1,60 @@
+version: "1.0"
+name: "standard"
+description: "Standard balanced comparison configuration"
+
+# Cost weights - balanced approach
+costs:
+  nodes:
+    insertion: 10.0
+    deletion: 10.0
+    substitution:
+      same_type: 1.0
+      similar_type: 5.0
+      different_type: 15.0
+      trigger_mismatch: 50.0
+
+  edges:
+    insertion: 2.0
+    deletion: 2.0
+    substitution: 1.0
+
+  parameters:
+    mismatch_weight: 0.5
+    nested_weight: 0.3
+
+# Ignore rules
+ignore:
+  # Ignore UI-only nodes
+  node_types:
+    - "n8n-nodes-base.stickyNote"
+
+  # Ignore cosmetic parameters
+  global_parameters:
+    - "position"
+    - "id"
+    - "notes"
+    - "notesInFlow"
+    - "color"
+
+
+# Ignore credential references (might differ between environments)
+parameter_paths:
+  - "**.credentials"
+
+# Parameter comparison rules
+parameter_comparison:
+  # Numeric tolerance for temperature and similar params
+  numeric_tolerance:
+    - parameter: "options.temperature"
+      tolerance: 0.1
+      cost_if_exceeded: 2.0
+
+    - parameter: "options.maxTokens"
+      tolerance: 100
+      cost_if_exceeded: 1.0
+
+# Output configuration
+output:
+  max_edits: 29
+  group_by: "priority"
+  include_explanations: true

@@ -5,8 +5,8 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
-import { ElSwitch } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nInput, N8nRadioButtons, N8nTooltip } from '@n8n/design-system';
+import { ElCheckbox } from 'element-plus';
+import { N8nActionBox, N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useMessage } from '@/app/composables/useMessage';
@@ -18,6 +18,7 @@ import { useUserRoleProvisioningForm } from '../provisioning/composables/useUser
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
+import { MODAL_CONFIRM } from '@/app/constants/modals';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
@@ -26,7 +27,10 @@ const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
 
+const savingForm = ref<boolean>(false);
+
 const redirectUrl = ref();
+const samlLoginEnabled = ref<boolean>(false);
 
 const IdentityProviderSettingsType = {
 	URL: 'url',
@@ -45,16 +49,8 @@ const ipsOptions = ref([
 ]);
 const ipsType = ref(IdentityProviderSettingsType.URL);
 
-const ssoActivatedLabel = computed(() =>
-	ssoStore.isSamlLoginEnabled
-		? i18n.baseText('settings.sso.activated')
-		: i18n.baseText('settings.sso.deactivated'),
-);
-
 const metadataUrl = ref();
 const metadata = ref();
-
-const ssoSettingsSaved = ref(false);
 
 const entityId = ref();
 
@@ -90,25 +86,32 @@ const getSamlConfig = async () => {
 
 	metadata.value = config?.metadata;
 	metadataUrl.value = config?.metadataUrl;
-	ssoSettingsSaved.value = !!config?.metadata;
+	samlLoginEnabled.value = config.loginEnabled ?? false;
 };
 
 const isSaveEnabled = computed(() => {
-	if (isUserRoleProvisioningChanged()) {
-		return true;
-	} else if (ipsType.value === IdentityProviderSettingsType.URL) {
-		return !!metadataUrl.value && metadataUrl.value !== ssoStore.samlConfig?.metadataUrl;
-	} else if (ipsType.value === IdentityProviderSettingsType.XML) {
-		return !!metadata.value && metadata.value !== ssoStore.samlConfig?.metadata;
+	if (savingForm.value) {
+		return false;
 	}
-	return false;
+	const isIdentityProviderChanged = () => {
+		if (ipsType.value === IdentityProviderSettingsType.URL) {
+			return !!metadataUrl.value && metadataUrl.value !== ssoStore.samlConfig?.metadataUrl;
+		} else if (ipsType.value === IdentityProviderSettingsType.XML) {
+			return !!metadata.value && metadata.value !== ssoStore.samlConfig?.metadata;
+		}
+		return false;
+	};
+	const isSamlLoginEnabledChanged = ssoStore.isSamlLoginEnabled !== samlLoginEnabled.value;
+	return (
+		isUserRoleProvisioningChanged() || isIdentityProviderChanged() || isSamlLoginEnabledChanged
+	);
 });
 
 const isTestEnabled = computed(() => {
 	if (ipsType.value === IdentityProviderSettingsType.URL) {
-		return !!metadataUrl.value && ssoSettingsSaved.value;
+		return !!metadataUrl.value;
 	} else if (ipsType.value === IdentityProviderSettingsType.XML) {
-		return !!metadata.value && ssoSettingsSaved.value;
+		return !!metadata.value;
 	}
 	return false;
 });
@@ -127,20 +130,94 @@ const sendTrackingEvent = (config?: SamlPreferences) => {
 	telemetry.track('User updated single sign on settings', trackingMetadata);
 };
 
+const promptConfirmDisablingSamlLogin = async () => {
+	const confirmAction = await message.confirm(
+		i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.message', {
+			interpolate: { protocol: 'SAML' },
+		}),
+		i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.headline', {
+			interpolate: { protocol: 'SAML' },
+		}),
+		{
+			cancelButtonText: i18n.baseText(
+				'settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText',
+			),
+			confirmButtonText: i18n.baseText(
+				'settings.ldap.confirmMessage.beforeSaveForm.confirmButtonText',
+			),
+		},
+	);
+	return confirmAction;
+};
+
+const prompTestSamlConnectionBeforeActivating = async () => {
+	const promptOpeningTestConnectionPage = await message.confirm(
+		i18n.baseText('settings.sso.settings.save.testConnection.message'),
+		i18n.baseText('settings.sso.settings.save.testConnection.title'),
+		{
+			confirmButtonText: i18n.baseText('settings.sso.settings.save.testConnection.test'),
+			cancelButtonText: i18n.baseText('settings.sso.settings.save.activate.cancel'),
+		},
+	);
+
+	if (promptOpeningTestConnectionPage === MODAL_CONFIRM) {
+		await onTest();
+
+		const promptConfirmingSuccessfulTest = await message.confirm(
+			i18n.baseText('settings.sso.settings.save.confirmTestConnection.message'),
+			i18n.baseText('settings.sso.settings.save.confirmTestConnection.title'),
+			{
+				confirmButtonText: i18n.baseText(
+					'settings.sso.settings.save.confirmTestConnection.confirm',
+				),
+				cancelButtonText: i18n.baseText('settings.sso.settings.save.activate.cancel'),
+			},
+		);
+		return promptConfirmingSuccessfulTest;
+	}
+	return promptOpeningTestConnectionPage;
+};
+
 const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 	try {
+		savingForm.value = true;
 		validateSamlInput();
 
-		if (isUserRoleProvisioningChanged() && !provisioningChangesConfirmed) {
+		const isDisablingSamlLogin = ssoStore.isSamlLoginEnabled && !samlLoginEnabled.value;
+
+		if (isDisablingSamlLogin) {
+			const confirmDisablingSaml = await promptConfirmDisablingSamlLogin();
+			if (confirmDisablingSaml !== MODAL_CONFIRM) {
+				return;
+			}
+		}
+
+		if (!isDisablingSamlLogin && isUserRoleProvisioningChanged() && !provisioningChangesConfirmed) {
 			showUserRoleProvisioningDialog.value = true;
 			return;
 		}
 
-		const config: Partial<SamlPreferences> =
+		const metaDataConfig: Partial<SamlPreferences> =
 			ipsType.value === IdentityProviderSettingsType.URL
 				? { metadataUrl: metadataUrl.value }
 				: { metadata: metadata.value };
-		const configResponse = await ssoStore.saveSamlConfig(config);
+
+		const isActivatingSamlLogin = !ssoStore.isSamlLoginEnabled && samlLoginEnabled.value;
+
+		if (isActivatingSamlLogin) {
+			// metadata settings need to be saved for test to work
+			await ssoStore.saveSamlConfig(metaDataConfig);
+
+			const confirmTest = await prompTestSamlConnectionBeforeActivating();
+			if (confirmTest !== MODAL_CONFIRM) {
+				return;
+			}
+		}
+
+		const configResponse = await ssoStore.saveSamlConfig({
+			...metaDataConfig,
+			loginEnabled: samlLoginEnabled.value,
+		});
 
 		if (isUserRoleProvisioningChanged()) {
 			await saveProvisioningConfig();
@@ -149,30 +226,14 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
-		// Update store with saved metadata config
-		ssoStore.samlConfig!.metadata = config.metadata;
-		ssoStore.samlConfig!.metadataUrl = config.metadataUrl;
-
-		if (!ssoStore.isSamlLoginEnabled) {
-			const answer = await message.confirm(
-				i18n.baseText('settings.sso.settings.save.activate.message'),
-				i18n.baseText('settings.sso.settings.save.activate.title'),
-				{
-					confirmButtonText: i18n.baseText('settings.sso.settings.save.activate.test'),
-					cancelButtonText: i18n.baseText('settings.sso.settings.save.activate.cancel'),
-				},
-			);
-
-			if (answer === 'confirm') {
-				await onTest();
-			}
-		}
 
 		await getSamlConfig();
 		sendTrackingEvent(configResponse);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error'));
 		return;
+	} finally {
+		savingForm.value = false;
 	}
 };
 
@@ -206,15 +267,6 @@ const validateSamlInput = () => {
 		}
 	}
 };
-
-const isToggleSsoDisabled = computed(() => {
-	/** Allow users to disable SSO even if config request fails */
-	if (ssoStore.isSamlLoginEnabled) {
-		return false;
-	}
-
-	return !ssoSettingsSaved.value;
-});
 
 const goToUpgrade = () => {
 	void pageRedirectionHelper.goToUpgrade('sso', 'upgrade-sso');
@@ -276,30 +328,18 @@ onMounted(async () => {
 				:new-provisioning-setting="userRoleProvisioning"
 				auth-protocol="saml"
 				@confirm-provisioning="onSave(true)"
+				@cancel="showUserRoleProvisioningDialog = false"
 			/>
-			<div :class="$style.group">
-				<N8nTooltip
-					v-if="ssoStore.isEnterpriseSamlEnabled"
-					:disabled="ssoStore.isSamlLoginEnabled || ssoSettingsSaved"
-				>
-					<template #content>
-						<span>
-							{{ i18n.baseText('settings.sso.activation.tooltip') }}
-						</span>
-					</template>
-					<ElSwitch
-						v-model="ssoStore.isSamlLoginEnabled"
-						data-test-id="sso-toggle"
-						:disabled="isToggleSsoDisabled"
-						:class="$style.switch"
-						:inactive-text="ssoActivatedLabel"
-					/>
-				</N8nTooltip>
+			<div :class="[$style.group, $style.checkboxGroup]">
+				<ElCheckbox v-model="samlLoginEnabled" data-test-id="sso-toggle">{{
+					i18n.baseText('settings.sso.activated')
+				}}</ElCheckbox>
 			</div>
 		</div>
 		<div :class="$style.buttons">
 			<N8nButton
 				:disabled="!isSaveEnabled"
+				:loading="savingForm"
 				size="large"
 				data-test-id="sso-save"
 				@click="onSave(false)"
@@ -316,10 +356,6 @@ onMounted(async () => {
 				{{ i18n.baseText('settings.sso.settings.test') }}
 			</N8nButton>
 		</div>
-
-		<footer :class="$style.footer">
-			{{ i18n.baseText('settings.sso.settings.footer.hint') }}
-		</footer>
 	</div>
 	<N8nActionBox
 		v-else

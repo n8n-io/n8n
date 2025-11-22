@@ -9,6 +9,7 @@ import {
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
 	type ExecutionError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 
 import type { IWorkflowErrorData } from '@/interfaces';
@@ -701,7 +702,7 @@ describe('WorkflowExecutionService', () => {
 			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
 			expect(workflowRunnerMock.run).toHaveBeenCalledWith({
 				executionMode: 'error',
-				executionData: {
+				executionData: createRunExecutionData({
 					executionData: {
 						contextData: {},
 						metadata: {},
@@ -733,7 +734,7 @@ describe('WorkflowExecutionService', () => {
 						runData: {},
 					},
 					startData: {},
-				},
+				}),
 				workflowData: errorWorkflow,
 				projectId: 'project-id',
 			});
