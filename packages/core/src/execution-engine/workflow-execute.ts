@@ -81,6 +81,7 @@ import {
 import { handleRequest, isEngineRequest, makeEngineResponse } from './requests-response';
 import { RoutingNode } from './routing-node';
 import { TriggersAndPollers } from './triggers-and-pollers';
+import { convertBinaryData } from '../utils/convert-binary-data';
 
 export class WorkflowExecute {
 	private status: ExecutionStatus = 'new';
@@ -1735,6 +1736,13 @@ export class WorkflowExecute {
 
 									continue executionLoop;
 								}
+
+								runNodeData = await convertBinaryData(
+									workflow.id,
+									this.additionalData.executionId,
+									runNodeData,
+									workflow.settings.binaryMode,
+								);
 
 								nodeSuccessData = runNodeData.data;
 
