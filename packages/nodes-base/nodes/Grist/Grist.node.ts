@@ -28,6 +28,7 @@ import type {
 	GristCredentials,
 	GristGetAllOptions,
 	GristUpdateRowPayload,
+	GristUpsertRowPayload,
 	SendingOptions,
 } from './types';
 
@@ -117,6 +118,66 @@ export class Grist implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 
 		const operation = this.getNodeParameter('operation', 0);
+
+		if (operation === 'upsert') {
+			// ----------------------------------
+			//            upsert
+			// ----------------------------------
+
+			// https://support.getgrist.com/api/#tag/records/operation/replaceRecords
+
+			const body: GristUpsertRowPayload = { records: [] };
+
+			// Process all input items and batch them
+			for (let i = 0; i < items.length; i++) {
+				const { properties: upsertCriteriaProperties } = this.getNodeParameter(
+					'upsertCriteria',
+					i,
+					[],
+				) as FieldsToSend;
+				throwOnZeroDefinedFields.call(this, upsertCriteriaProperties);
+				const require = parseDefinedFields(upsertCriteriaProperties);
+
+				const dataToSend = this.getNodeParameter('dataToSend', 0) as SendingOptions;
+
+				let fields: { [key: string]: any } = {};
+
+				if (dataToSend === 'autoMapInputs') {
+					const incomingKeys = Object.keys(items[i].json);
+					const rawInputsToIgnore = this.getNodeParameter('inputsToIgnore', i) as string;
+					const inputsToIgnore = rawInputsToIgnore.split(',').map((c) => c.trim());
+					fields = parseAutoMappedInputs(incomingKeys, inputsToIgnore, items[i].json);
+				} else if (dataToSend === 'defineInNode') {
+					const { properties } = this.getNodeParameter('fieldsToSend', i, []) as FieldsToSend;
+					throwOnZeroDefinedFields.call(this, properties);
+					fields = parseDefinedFields(properties);
+				}
+
+				body.records.push({ require, fields });
+			}
+
+			const docId = this.getNodeParameter('docId', 0) as string;
+			const tableId = this.getNodeParameter('tableId', 0) as string;
+			const endpoint = `/docs/${docId}/tables/${tableId}/records`;
+
+			const qs: IDataObject = {};
+			const onMany = this.getNodeParameter('onMany', 0, 'first') as string;
+			if (onMany !== 'first') {
+				qs.onmany = onMany;
+			}
+
+			await gristApiRequest.call(this, 'PUT', endpoint, body, qs);
+
+			// Upsert API returns null, so we pass through all input data
+			for (let i = 0; i < items.length; i++) {
+				returnData.push({
+					json: items[i].json,
+					pairedItem: { item: i },
+				});
+			}
+
+			return [returnData];
+		}
 
 		for (let i = 0; i < items.length; i++) {
 			try {
@@ -249,7 +310,7 @@ export class Grist implements INodeType {
 						this.helpers.returnJsonArray({ error: error.message }),
 						{ itemData: { item: i } },
 					);
-					returnData.push(...executionData);
+					returnData.push.apply(returnData, executionData);
 
 					continue;
 				}
@@ -259,7 +320,7 @@ export class Grist implements INodeType {
 				this.helpers.returnJsonArray(responseData as IDataObject[]),
 				{ itemData: { item: i } },
 			);
-			returnData.push(...executionData);
+			returnData.push.apply(returnData, executionData);
 		}
 
 		return [returnData];
