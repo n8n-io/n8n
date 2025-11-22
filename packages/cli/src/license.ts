@@ -218,7 +218,8 @@ export class License implements LicenseProvider {
 	}
 
 	isLicensed(feature: BooleanLicenseFeature) {
-		return this.manager?.hasFeatureEnabled(feature) ?? false;
+		// UNLOCKED: Always return true to enable all pro features for self-hosted
+		return true;
 	}
 
 	/** @deprecated Use `LicenseState.isSharingLicensed` instead. */
@@ -341,6 +342,18 @@ export class License implements LicenseProvider {
 	}
 
 	getValue<T extends keyof FeatureReturnType>(feature: T): FeatureReturnType[T] {
+		// UNLOCKED: Return unlimited quotas for self-hosted
+		if (feature === 'planName') {
+			return 'Enterprise (Unlocked)' as FeatureReturnType[T];
+		}
+		// For AI credits, return a large number instead of unlimited
+		if (feature === LICENSE_QUOTAS.AI_CREDITS) {
+			return 1000000 as FeatureReturnType[T];
+		}
+		// For other numeric quotas, return unlimited (-1)
+		if (feature.toString().startsWith('quota:')) {
+			return UNLIMITED_LICENSE_QUOTA as FeatureReturnType[T];
+		}
 		return this.manager?.getFeatureValue(feature) as FeatureReturnType[T];
 	}
 
