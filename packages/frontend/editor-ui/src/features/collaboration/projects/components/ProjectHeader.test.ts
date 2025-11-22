@@ -137,7 +137,7 @@ describe('ProjectHeader', () => {
 
 		await rerender({});
 
-		expect(getByTestId('project-name')).toHaveTextContent('Overview');
+		expect(getByTestId('project-name')).toHaveTextContent('All resources');
 		expect(getByTestId('project-subtitle')).toHaveTextContent(overviewSubtitle);
 	});
 
