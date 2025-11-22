@@ -331,6 +331,7 @@ function onSubmit(message: string, attachments: File[]) {
 	}
 
 	didSubmitInCurrentSession.value = true;
+	editingMessageId.value = undefined;
 
 	void chatStore.sendMessage(
 		sessionId.value,

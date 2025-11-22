@@ -135,7 +135,7 @@ watch(
 						behaviors
 					</N8nText>
 				</div>
-				<N8nButton icon="plus" type="primary" size="large" @click="handleCreateAgent">
+				<N8nButton icon="plus" type="primary" size="medium" @click="handleCreateAgent">
 					New Agent
 				</N8nButton>
 			</div>

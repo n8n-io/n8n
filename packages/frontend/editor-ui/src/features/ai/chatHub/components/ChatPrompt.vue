@@ -29,6 +29,7 @@ const emit = defineEmits<{
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const message = ref('');
+const committedSpokenMessage = ref('');
 const attachments = ref<File[]>([]);
 
 const toast = useToast();
@@ -50,6 +51,8 @@ const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
 );
 
 function onMic() {
+	committedSpokenMessage.value = message.value;
+
 	if (speechInput.isListening.value) {
 		speechInput.stop();
 	} else {
@@ -97,6 +100,7 @@ function handleSubmitForm() {
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
 		message.value = '';
+		committedSpokenMessage.value = '';
 		attachments.value = [];
 	}
 }
@@ -109,8 +113,36 @@ function handleKeydownTextarea(e: KeyboardEvent) {
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
 		message.value = '';
+		committedSpokenMessage.value = '';
 		attachments.value = [];
 	}
+}
+
+function handlePaste(e: ClipboardEvent) {
+	e.preventDefault();
+
+	const text = e.clipboardData?.getData('text');
+
+	if (!text) {
+		return;
+	}
+
+	// Text copied from conversation history tends to
+	// include unnecessary leading & trailing whitespaces, so we're removing them
+	const trimmed = text.trim();
+
+	const textarea = e.target as HTMLTextAreaElement;
+	const start = textarea.selectionStart;
+	const end = textarea.selectionEnd;
+	const before = message.value.substring(0, start);
+	const after = message.value.substring(end);
+
+	message.value = before + trimmed + after;
+
+	setTimeout(() => {
+		const newPosition = start + trimmed.length;
+		textarea.setSelectionRange(newPosition, newPosition);
+	}, 0);
 }
 
 function handleClickInputWrapper() {
@@ -118,10 +150,18 @@ function handleClickInputWrapper() {
 }
 
 watch(speechInput.result, (spoken) => {
-	if (spoken) {
-		message.value = spoken;
-	}
+	message.value = committedSpokenMessage.value + ' ' + spoken.trimStart();
 });
+
+watch(
+	speechInput.isFinal,
+	(final) => {
+		if (final) {
+			committedSpokenMessage.value = message.value;
+		}
+	},
+	{ flush: 'post' },
+);
 
 watch(speechInput.error, (event) => {
 	if (event?.error === 'not-allowed') {
@@ -172,12 +212,12 @@ defineExpose({
 			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
 				<template v-if="isNewSession">
 					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)">set credentials</a>
 					for {{ providerDisplayNames[llmProvider] }} to start a conversation
 				</template>
 				<template v-else>
 					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)">set credentials</a>
 					for {{ providerDisplayNames[llmProvider] }} to continue the conversation
 				</template>
 			</N8nText>
@@ -212,6 +252,7 @@ defineExpose({
 					autofocus
 					:disabled="isMissingCredentials || !selectedModel"
 					@keydown="handleKeydownTextarea"
+					@paste="handlePaste"
 				/>
 
 				<div :class="$style.footer">
@@ -315,6 +356,7 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 
 	&:focus-within,
 	&:hover {
