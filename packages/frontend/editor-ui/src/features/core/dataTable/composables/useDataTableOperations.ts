@@ -151,6 +151,59 @@ export const useDataTableOperations = ({
 		}
 	}
 
+	async function onRenameColumn(columnId: string, newName: string): Promise<void> {
+		const columnToRename = colDefs.value.find((col) => col.colId === columnId);
+		if (!columnToRename) return;
+
+		const oldName = columnToRename.headerName;
+		const oldField = columnToRename.field;
+
+		// No change made
+		if (newName === oldName) {
+			return;
+		}
+
+		// Optimistically update the UI
+		columnToRename.headerName = newName;
+		columnToRename.field = newName;
+		setGridData({ colDefs: colDefs.value });
+
+		try {
+			await dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName);
+
+			// Update row data with new column name
+			rowData.value = rowData.value.map((row) => {
+				if (oldField && oldField in row) {
+					const { [oldField]: value, ...rest } = row;
+					return { ...rest, [newName]: value };
+				}
+				return row;
+			});
+			setGridData({ colDefs: colDefs.value, rowData: rowData.value });
+
+			telemetry.track('User renamed data table column', {
+				column_id: columnId,
+				column_type: columnToRename.cellDataType,
+				data_table_id: dataTableId,
+			});
+		} catch (error) {
+			// Revert on error
+			columnToRename.headerName = oldName;
+			columnToRename.field = oldField;
+			setGridData({ colDefs: colDefs.value });
+
+			const errorDetails = getAddColumnError(error);
+			if (errorDetails.httpStatus === 409) {
+				toast.showError(
+					new Error(errorDetails.message),
+					i18n.baseText('dataTable.renameColumn.alreadyExistsError' as never),
+				);
+			} else {
+				toast.showError(error, i18n.baseText('dataTable.renameColumn.error' as never));
+			}
+		}
+	}
+
 	async function onAddColumn(column: DataTableColumnCreatePayload): Promise<AddColumnResponse> {
 		try {
 			const newColumn = await dataTableStore.addDataTableColumn(dataTableId, projectId, column);
@@ -362,6 +415,7 @@ export const useDataTableOperations = ({
 
 	return {
 		onDeleteColumn,
+		onRenameColumn,
 		onAddColumn,
 		onColumnMoved,
 		onAddRowClick,
