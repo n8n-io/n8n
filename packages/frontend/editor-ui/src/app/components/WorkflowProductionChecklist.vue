@@ -169,7 +169,8 @@ const availableActions = computed(() => {
 			// Only show to admins if not ignored
 			if (
 				!canToggleInstanceMCPAccess.value ||
-				suggestedActionSettings['instance-mcp-access']?.ignored
+				suggestedActionSettings['instance-mcp-access']?.ignored ||
+				!isWorkflowEligibleForMcpAccess.value
 			) {
 				return null;
 			}
