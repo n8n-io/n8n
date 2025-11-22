@@ -88,8 +88,9 @@ export class LmChatGoogleVertex implements INodeType {
 				name: 'modelName',
 				type: 'string',
 				description:
-					'The model which will generate the completion. <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models">Learn more</a>.',
-				default: 'gemini-2.5-flash',
+					'The model which will generate the completion. Supported models include: gemini-3-pro-preview, gemini-2.5-pro, gemini-2.5-flash, and others. <a href="https://cloud.google.com/vertex-ai/generative-ai/docs/learn/models">Learn more</a>.',
+				default: 'gemini-2.5-pro',
+				placeholder: 'gemini-3-pro-preview',
 			},
 			getAdditionalOptions({ supportsThinkingBudget: true }),
 		],

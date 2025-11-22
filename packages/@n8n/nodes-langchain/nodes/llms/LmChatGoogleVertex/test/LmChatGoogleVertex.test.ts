@@ -146,4 +146,89 @@ describe('LmChatGoogleVertex - Thinking Budget', () => {
 			);
 		});
 	});
+
+	describe('supplyData - gemini-3-pro-preview model support', () => {
+		it('should work with gemini-3-pro-preview model', async () => {
+			const mockContext = setupMockContext();
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'modelName') return 'gemini-3-pro-preview';
+				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'options') {
+					return {
+						maxOutputTokens: 2048,
+						temperature: 0.4,
+						topK: 40,
+						topP: 0.9,
+					};
+				}
+				if (paramName === 'options.safetySettings.values') return null;
+				return undefined;
+			});
+
+			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+			expect(MockedChatVertexAI).toHaveBeenCalledTimes(1);
+			const callArgs = MockedChatVertexAI.mock.calls[0][0];
+			expect(callArgs).toMatchObject({
+				authOptions: {
+					projectId: 'test-project',
+					credentials: {
+						client_email: 'test@n8n.io',
+						private_key: 'test-private-key',
+					},
+				},
+				location: 'us-central1',
+				model: 'gemini-3-pro-preview',
+				topK: 40,
+				topP: 0.9,
+				temperature: 0.4,
+				maxOutputTokens: 2048,
+			});
+		});
+
+		it('should work with gemini-3-pro-preview and thinkingBudget', async () => {
+			const mockContext = setupMockContext();
+			const expectedThinkingBudget = 2048;
+
+			mockContext.getNodeParameter = jest.fn().mockImplementation((paramName: string) => {
+				if (paramName === 'modelName') return 'gemini-3-pro-preview';
+				if (paramName === 'projectId') return 'test-project';
+				if (paramName === 'options') {
+					return {
+						maxOutputTokens: 2048,
+						temperature: 0.4,
+						topK: 40,
+						topP: 0.9,
+						thinkingBudget: expectedThinkingBudget,
+					};
+				}
+				if (paramName === 'options.safetySettings.values') return null;
+				return undefined;
+			});
+
+			await lmChatGoogleVertex.supplyData.call(mockContext, 0);
+			expect(MockedChatVertexAI).toHaveBeenCalledWith(
+				expect.objectContaining({
+					authOptions: {
+						projectId: 'test-project',
+						credentials: {
+							client_email: 'test@n8n.io',
+							private_key: 'test-private-key',
+						},
+					},
+					location: 'us-central1',
+					model: 'gemini-3-pro-preview',
+					topK: 40,
+					topP: 0.9,
+					temperature: 0.4,
+					maxOutputTokens: 2048,
+					thinkingBudget: expectedThinkingBudget,
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					callbacks: expect.arrayContaining([expect.any(Object)]),
+					// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+					onFailedAttempt: expect.any(Function),
+				}),
+			);
+		});
+	});
 });
