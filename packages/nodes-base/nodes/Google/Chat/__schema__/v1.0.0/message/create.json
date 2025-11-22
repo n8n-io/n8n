@@ -30,6 +30,15 @@
         "space": {
             "type": "object",
             "properties": {
+                "createTime": {
+                    "type": "string"
+                },
+                "customer": {
+                    "type": "string"
+                },
+                "displayName": {
+                    "type": "string"
+                },
                 "lastActiveTime": {
                     "type": "string"
                 },
@@ -73,5 +82,5 @@
             }
         }
     },
-    "version": 6
+    "version": 7
 }

@@ -13,12 +13,9 @@
         "name": {
             "type": "string"
         },
-        "table_id": {
-            "type": "integer"
-        },
         "table_name": {
             "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }
