@@ -368,8 +368,9 @@ describe('VariableModal', () => {
 			if (!valueInput) throw new Error('Input not found');
 
 			// Just change the value, not the key
+			await userEvent.click(valueInput);
 			await userEvent.clear(valueInput);
-			await userEvent.type(valueInput, 'new value');
+			await userEvent.type(valueInput, 'new value', { delay: 10 });
 
 			// Should not show duplicate error for own key
 			expect(saveButton).toBeEnabled();
