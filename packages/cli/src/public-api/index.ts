@@ -59,6 +59,7 @@ async function createApiRouter(
 			operationHandlers: handlersDirectory,
 			validateRequests: true,
 			validateApiSpec: true,
+			coerceTypes: true,
 			formats: {
 				email: {
 					type: 'string',
