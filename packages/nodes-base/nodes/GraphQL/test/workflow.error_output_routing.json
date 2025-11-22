@@ -1,0 +1,119 @@
+{
+	"name": "Test GraphQL Error Output Routing",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "manual-trigger",
+			"name": "Manual Trigger",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0]
+		},
+		{
+			"parameters": {
+				"jsCode": "return [\n  // This query will fail with a GraphQL error\n  {\n    query: 'INVALID_QUERY'\n  },\n  // This query will succeed\n  {\n    query: 'query { users { id name email } }'\n  }\n]"
+			},
+			"id": "code-node",
+			"name": "Generate Queries",
+			"type": "n8n-nodes-base.code",
+			"typeVersion": 2,
+			"position": [200, 0]
+		},
+		{
+			"parameters": {
+				"endpoint": "http://test.example.com/graphql",
+				"query": "={{ $json.query }}"
+			},
+			"id": "graphql-node",
+			"name": "GraphQL",
+			"type": "n8n-nodes-base.graphql",
+			"typeVersion": 1.1,
+			"position": [400, 0],
+			"onError": "continueErrorOutput"
+		},
+		{
+			"parameters": {},
+			"id": "success-output",
+			"name": "Success Output",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [600, -100]
+		},
+		{
+			"parameters": {},
+			"id": "error-output",
+			"name": "Error Output",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [600, 100]
+		}
+	],
+	"connections": {
+		"Manual Trigger": {
+			"main": [
+				[
+					{
+						"node": "Generate Queries",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Generate Queries": {
+			"main": [
+				[
+					{
+						"node": "GraphQL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"GraphQL": {
+			"main": [
+				[
+					{
+						"node": "Success Output",
+						"type": "main",
+						"index": 0
+					}
+				],
+				[
+					{
+						"node": "Error Output",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"pinData": {
+		"Success Output": [
+			{
+				"data": {
+					"users": [
+						{
+							"id": "1",
+							"name": "John Doe",
+							"email": "john@example.com"
+						},
+						{
+							"id": "2",
+							"name": "Jane Smith",
+							"email": "jane@example.com"
+						}
+					]
+				}
+			}
+		],
+		"Error Output": [
+			{
+				"query": "INVALID_QUERY",
+				"error": "Syntax Error: Invalid query syntax"
+			}
+		]
+	}
+}
