@@ -1,6 +1,6 @@
 import { createComponentRenderer } from '@/__tests__/render';
 import { SETTINGS_STORE_DEFAULT_STATE } from '@/__tests__/utils';
-import FixedCollectionParameter, { type Props } from './FixedCollectionParameter.vue';
+import FixedCollectionParameterLegacy, { type Props } from './FixedCollectionParameterLegacy.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
@@ -8,7 +8,7 @@ import { fireEvent, waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
 import { nextTick } from 'vue';
 
-describe('FixedCollectionParameter.vue', () => {
+describe('FixedCollectionParameterLegacy.vue', () => {
 	const pinia = createTestingPinia({
 		initialState: {
 			[STORES.SETTINGS]: {
@@ -55,7 +55,7 @@ describe('FixedCollectionParameter.vue', () => {
 		},
 		isReadOnly: false,
 	};
-	const renderComponent = createComponentRenderer(FixedCollectionParameter, { props });
+	const renderComponent = createComponentRenderer(FixedCollectionParameterLegacy, { props });
 
 	it('renders the component', () => {
 		const { getByTestId } = renderComponent();

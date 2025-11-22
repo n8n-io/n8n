@@ -89,4 +89,8 @@ export default {
 	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b> (1 credit = 1 message)',
 	'promptInput.creditsRenew': 'Credits renew on: <b>{date}</b>',
 	'promptInput.creditsExpire': 'Unused credits expire {date}',
+	'collapsiblePanel.collapse': 'Collapse',
+	'collapsiblePanel.expand': 'Expand',
+	'collapsiblePanel.dragToReorder': 'Drag to reorder',
+	'collapsiblePanel.delete': 'Delete',
 } as N8nLocale;

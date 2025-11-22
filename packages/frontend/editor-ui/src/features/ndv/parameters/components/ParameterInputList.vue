@@ -11,7 +11,15 @@ import {
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
-import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
+import {
+	computed,
+	defineAsyncComponent,
+	nextTick,
+	onErrorCaptured,
+	ref,
+	watch,
+	type WatchSource,
+} from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -40,6 +48,7 @@ import { captureException } from '@sentry/vue';
 import { computedWithControl } from '@vueuse/core';
 import get from 'lodash/get';
 import { storeToRefs } from 'pinia';
+import { useCollectionOverhaul } from '@/app/composables/useCollectionOverhaul';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { getParameterTypeOption } from '@/features/ndv/shared/ndv.utils';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -56,10 +65,10 @@ import {
 	N8nTooltip,
 } from '@n8n/design-system';
 const LazyFixedCollectionParameter = defineAsyncComponent(
-	async () => await import('./FixedCollectionParameter.vue'),
+	async () => await import('./FixedCollection/FixedCollectionParameter.vue'),
 );
 const LazyCollectionParameter = defineAsyncComponent(
-	async () => await import('./CollectionParameter.vue'),
+	async () => await import('./Collection/CollectionParameter.vue'),
 );
 
 // Parameter issues are displayed within the inputs themselves, but some parameters need to show them in the label UI
@@ -75,9 +84,17 @@ type Props = {
 	isReadOnly?: boolean;
 	hiddenIssuesInputs?: string[];
 	entryIndex?: number;
+	isNested?: boolean;
+	removeFirstParameterMargin?: boolean;
+	removeLastParameterMargin?: boolean;
+	newlyAddedParameters?: Set<string>;
 };
 
-const props = withDefaults(defineProps<Props>(), { path: '', hiddenIssuesInputs: () => [] });
+const props = withDefaults(defineProps<Props>(), {
+	path: '',
+	hiddenIssuesInputs: () => [],
+	newlyAddedParameters: () => new Set(),
+});
 const emit = defineEmits<{
 	activate: [];
 	valueChanged: [value: IUpdateInformation];
@@ -93,6 +110,7 @@ const nodeSettingsParameters = useNodeSettingsParameters();
 const asyncLoadingError = ref(false);
 const workflowHelpers = useWorkflowHelpers();
 const i18n = useI18n();
+const { isEnabled: isCollectionOverhaulEnabled } = useCollectionOverhaul();
 const {
 	dismissCallout,
 	isCalloutDismissed,
@@ -497,6 +515,27 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 
 	await dismissCallout(parameter.name);
 }
+
+const parameterItems = ref<Map<string, HTMLElement>>(new Map());
+
+watch(
+	() => Array.from(props.newlyAddedParameters),
+	async (newlyAddedArray) => {
+		if (newlyAddedArray.length > 0) {
+			await nextTick();
+			const lastAdded = newlyAddedArray[newlyAddedArray.length - 1];
+
+			const element = parameterItems.value.get(lastAdded);
+			if (element) {
+				element.scrollIntoView({
+					behavior: 'smooth',
+					inline: 'center',
+					block: 'nearest',
+				});
+			}
+		}
+	},
+);
 </script>
 
 <template>
@@ -504,7 +543,22 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 		<div
 			v-for="(parameter, index) in filteredParameters"
 			:key="parameter.name"
-			:class="{ indent }"
+			:ref="
+				(el) => {
+					if (el && newlyAddedParameters.has(parameter.name)) {
+						parameterItems.set(parameter.name, el as HTMLElement);
+					}
+				}
+			"
+			:class="[
+				$style.parameterContainer,
+				{
+					indent,
+					[$style.firstParameter]: index === 0 && removeFirstParameterMargin,
+					[$style.lastParameter]:
+						index === filteredParameters.length - 1 && removeLastParameterMargin,
+				},
+			]"
 			data-test-id="parameter-item"
 		>
 			<slot v-if="indexToShowSlotAt === index" />
@@ -593,6 +647,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 				class="multi-parameter"
 			>
 				<N8nInputLabel
+					v-if="!isCollectionOverhaulEnabled"
 					:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
 					:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"
 					size="small"
@@ -617,7 +672,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						</N8nTooltip>
 					</template>
 				</N8nInputLabel>
-				<Suspense v-if="!asyncLoadingError">
+				<Suspense v-if="!asyncLoadingError && !isCollectionOverhaulEnabled">
 					<template #default>
 						<LazyCollectionParameter
 							v-if="parameter.type === 'collection'"
@@ -626,6 +681,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
+							:is-nested="isNested"
 							@value-changed="valueChanged"
 						/>
 						<LazyFixedCollectionParameter
@@ -635,6 +691,8 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 							:node-values="nodeValues"
 							:path="getPath(parameter.name)"
 							:is-read-only="isReadOnly"
+							:is-nested="isNested"
+							:is-newly-added="newlyAddedParameters.has(parameter.name)"
 							@value-changed="valueChanged"
 						/>
 					</template>
@@ -645,20 +703,37 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						</N8nText>
 					</template>
 				</Suspense>
+				<template v-else-if="!asyncLoadingError && isCollectionOverhaulEnabled">
+					<LazyCollectionParameter
+						v-if="parameter.type === 'collection'"
+						:parameter="parameter"
+						:values="getParameterValue(parameter.name)"
+						:node-values="nodeValues"
+						:path="getPath(parameter.name)"
+						:is-read-only="isReadOnly"
+						:is-nested="isNested"
+						:is-newly-added="newlyAddedParameters.has(parameter.name)"
+						@value-changed="valueChanged"
+						@delete="deleteOption(parameter.name)"
+					/>
+					<LazyFixedCollectionParameter
+						v-else-if="parameter.type === 'fixedCollection'"
+						:parameter="parameter"
+						:values="getParameterValue(parameter.name)"
+						:node-values="nodeValues"
+						:path="getPath(parameter.name)"
+						:is-read-only="isReadOnly"
+						:is-nested="isNested"
+						:is-newly-added="newlyAddedParameters.has(parameter.name)"
+						:can-delete="!hideDelete"
+						@value-changed="valueChanged"
+						@delete="deleteOption(parameter.name)"
+					/>
+				</template>
 				<N8nText v-else size="small" color="danger" class="async-notice">
 					<N8nIcon icon="triangle-alert" size="xsmall" />
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
-				<N8nIconButton
-					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
-					type="tertiary"
-					text
-					size="small"
-					icon="trash-2"
-					class="icon-button"
-					:title="i18n.baseText('parameterInputList.delete')"
-					@click="deleteOption(parameter.name)"
-				></N8nIconButton>
 			</div>
 			<ResourceMapper
 				v-else-if="parameter.type === 'resourceMapper'"
@@ -694,7 +769,12 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
 				<N8nIconButton
-					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
+					v-if="
+						hideDelete !== true &&
+						!isReadOnly &&
+						!parameter.isNodeSetting &&
+						!isCollectionOverhaulEnabled
+					"
 					type="tertiary"
 					text
 					size="small"
@@ -716,6 +796,10 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 					"
 					:hide-label="false"
 					:node-values="nodeValues"
+					:show-delete="
+						!isReadOnly && !parameter.isNodeSetting && !hideDelete && isCollectionOverhaulEnabled
+					"
+					:on-delete="() => deleteOption(parameter.name)"
 					@update="valueChanged"
 					@blur="onParameterBlur(parameter.name)"
 				/>
@@ -760,6 +844,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	.parameter-item {
 		position: relative;
 		margin: var(--spacing--xs) 0;
+		scroll-margin: var(--spacing--lg);
 	}
 	.parameter-item:hover > .icon-button,
 	.multi-parameter:hover > .icon-button {
@@ -789,6 +874,26 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 	}
 	.callout-dismiss:hover {
 		color: var(--icon--color--hover);
+	}
+}
+</style>
+
+<style lang="scss" module>
+.parameterContainer {
+	scroll-margin: var(--spacing--xl);
+}
+
+.firstParameter {
+	> :global(.parameter-item),
+	> :global(.multi-parameter) {
+		margin-top: 0;
+	}
+}
+
+.lastParameter {
+	> :global(.parameter-item),
+	> :global(.multi-parameter) {
+		margin-bottom: 0;
 	}
 }
 </style>

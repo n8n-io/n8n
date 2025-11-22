@@ -219,8 +219,8 @@ function getIssues(index: number): string[] {
 			</div>
 			<div v-if="!singleCondition && !readOnly" :class="$style.addConditionWrapper">
 				<N8nButton
-					type="tertiary"
-					block
+					type="secondary"
+					icon="plus"
 					:class="$style.addCondition"
 					:label="i18n.baseText('filter.addCondition')"
 					:title="maxConditionsReached ? i18n.baseText('filter.maxConditions') : ''"
@@ -275,28 +275,17 @@ function getIssues(index: number): string[] {
 
 .addCondition {
 	// Styling to match collection button (should move to standard button in future)
-	font-weight: var(--font-weight--regular);
-	--button--color--text: var(--color--text--shade-1);
-	--button--border-color: var(--color--foreground);
 	--button--color--background: var(--color--background);
-
-	--button--color--text--hover: var(--color--text--shade-1);
-	--button--border-color--hover: var(--color--foreground);
 	--button--color--background--hover: var(--color--background);
-
-	--button--color--text--active: var(--color--text--shade-1);
-	--button--border-color--active: var(--color--foreground);
 	--button--color--background--active: var(--color--background);
-
-	--button--color--text--focus: var(--color--text--shade-1);
-	--button--border-color--focus: var(--color--foreground);
 	--button--color--background--focus: var(--color--background);
-
-	&:hover,
-	&:focus,
-	&:active {
-		outline: none;
-	}
+	--button--border-color: transparent;
+	--button--border-color--hover: transparent;
+	--button--border-color--active: transparent;
+	--button--border-color--focus: transparent;
+	--button--color--text--hover: var(--color--primary);
+	--button--color--text--active: var(--color--primary);
+	--button--color--text--focus: var(--color--primary);
 }
 .ghost,
 .dragging {
