@@ -3,7 +3,7 @@ import {
 	AzureAISearchVectorStore,
 	AzureAISearchQueryType,
 } from '@langchain/community/vectorstores/azure_aisearch';
-import { AzureKeyCredential } from '@azure/search-documents';
+import { AzureKeyCredential, SearchIndexClient } from '@azure/search-documents';
 import {
 	type IDataObject,
 	type ILoadOptionsFunctions,
@@ -94,7 +94,25 @@ const retrieveFields: INodeProperties[] = [
 	},
 ];
 
-const insertFields: INodeProperties[] = [];
+const insertFields: INodeProperties[] = [
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		options: [
+			{
+				displayName: 'Clear Index',
+				name: 'clearIndex',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to delete and recreate the index before inserting new data. Warning: This will reset any custom index configuration (semantic ranking, analyzers, etc.) to defaults.',
+			},
+		],
+	},
+];
 
 type IFunctionsContext = IExecuteFunctions | ISupplyDataFunctions | ILoadOptionsFunctions;
 
@@ -340,6 +358,34 @@ export class VectorStoreAzureAISearch extends createVectorStoreNode({
 	},
 	async populateVectorStore(context, embeddings, documents, itemIndex) {
 		try {
+			// Check if we should clear the index before inserting
+			const options = context.getNodeParameter('options', itemIndex, {}) as {
+				clearIndex?: boolean;
+			};
+
+			if (options.clearIndex) {
+				const credentials = await context.getCredentials(AZURE_AI_SEARCH_CREDENTIALS);
+				const indexName = getIndexName(context, itemIndex);
+
+				if (credentials.endpoint && credentials.apiKey) {
+					try {
+						// Delete the entire index (similar to Weaviate's approach)
+						const indexClient = new SearchIndexClient(
+							credentials.endpoint as string,
+							new AzureKeyCredential(credentials.apiKey as string),
+						);
+						await indexClient.deleteIndex(indexName);
+						context.logger.debug(`Deleted Azure AI Search index: ${indexName}`);
+					} catch (deleteError) {
+						// Log the error but don't fail - index might not exist yet
+						context.logger.debug('Error deleting index (may not exist):', {
+							message: deleteError instanceof Error ? deleteError.message : String(deleteError),
+						});
+					}
+				}
+			}
+
+			// Get vector store client (will auto-create index if it doesn't exist)
 			const vectorStore = await getAzureAISearchClient(context, embeddings, itemIndex);
 
 			// Add documents to Azure AI Search (framework handles batching)
