@@ -20,7 +20,8 @@ export function useEmptyStateDetection() {
 	 * - Not currently refreshing data
 	 */
 	const isTrulyEmpty = (currentRoute: RouteLocationNormalized = route) => {
-		const hasNoWorkflows = foldersStore.totalWorkflowCount === 0;
+		const hasNoWorkflows =
+			foldersStore.workflowsCountLoaded && foldersStore.totalWorkflowCount === 0;
 		const isNotInSpecificFolder = !currentRoute.params?.folderId;
 		const isMainWorkflowsPage = projectPages.isOverviewSubPage;
 

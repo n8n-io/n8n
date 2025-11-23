@@ -16,7 +16,12 @@ import {
 	createTestWorkflowExecutionResponse,
 	createTestWorkflowObject,
 } from '@/__tests__/mocks';
-import { CHAT_TRIGGER_NODE_TYPE, NodeConnectionTypes, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import {
+	CHAT_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
+	NodeConnectionTypes,
+	WEBHOOK_NODE_TYPE,
+} from 'n8n-workflow';
 import type { AssignmentCollectionValue, IConnections } from 'n8n-workflow';
 import * as apiWebhooks from '@n8n/rest-api-client/api/webhooks';
 import { mockedStore } from '@/__tests__/utils';
@@ -1140,7 +1145,7 @@ describe(resolveParameter, () => {
 					workflow: createTestWorkflowObject(workflowData),
 					execution: createTestWorkflowExecutionResponse({
 						workflowData,
-						data: {
+						data: createRunExecutionData({
 							resultData: {
 								runData: {
 									n0: [
@@ -1150,7 +1155,7 @@ describe(resolveParameter, () => {
 									],
 								},
 							},
-						},
+						}),
 					}),
 					nodeName: 'n1',
 					inputNode: { name: 'n0', branchIndex: 0, runIndex: 0 },

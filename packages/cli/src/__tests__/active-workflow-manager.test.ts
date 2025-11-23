@@ -137,7 +137,7 @@ describe('ActiveWorkflowManager', () => {
 						'addTriggersAndPollers',
 					);
 					workflowRepository.findById.mockResolvedValue(
-						mock<WorkflowEntity>({ active: false, activeVersionId: null }),
+						mock<WorkflowEntity>({ active: false, activeVersionId: null, activeVersion: null }),
 					);
 
 					const added = await activeWorkflowManager.add('some-id', mode);

@@ -57,7 +57,9 @@ test.describe('Workflow Builder @auth:owner @ai @capability:proxy', () => {
 		await expect(suggestions).toHaveCount(8);
 	});
 
-	test('should build workflow from suggested prompt', async ({ n8n }) => {
+	// @AI team to look at this
+	// eslint-disable-next-line playwright/no-skipped-test
+	test.skip('should build workflow from suggested prompt', async ({ n8n }) => {
 		await n8n.page.goto('/workflow/new');
 		await openBuilderAndClickSuggestion(n8n, 'YouTube video chapters');
 

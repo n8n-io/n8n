@@ -89,6 +89,7 @@ function toExportableCredential(
 		name: cred.name,
 		type: cred.type,
 		ownedBy: resourceOwner,
+		isGlobal: cred.isGlobal ?? false,
 	};
 }
 
@@ -1159,6 +1160,200 @@ describe('SourceControlService', () => {
 					}),
 				).rejects.toThrowError(ForbiddenError);
 			});
+		});
+	});
+
+	describe('isGlobal flag modification detection', () => {
+		let testGlobalOwner: User;
+		let testProject: Project;
+
+		beforeAll(async () => {
+			testGlobalOwner = await createUser({ role: GLOBAL_OWNER_ROLE });
+			testProject = await createTeamProject('TestProjectForGlobal', testGlobalOwner);
+		});
+
+		afterEach(() => {
+			globMock.mockClear();
+			fsReadFile.mockClear();
+		});
+
+		const setupMocksForCredential = (
+			credential: CredentialsEntity,
+			remoteCredential: ExportableCredential,
+		) => {
+			const testGitFiles = {
+				[`${SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER}/${credential.id}.json`]: remoteCredential,
+				[SOURCE_CONTROL_TAGS_EXPORT_FILE]: { tags: [], mappings: [] },
+				[SOURCE_CONTROL_FOLDERS_EXPORT_FILE]: { folders: [] },
+			};
+
+			globMock.mockImplementation(async (path, opts) => {
+				if (opts.cwd?.endsWith(SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER)) {
+					return [];
+				} else if (opts.cwd?.endsWith(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER)) {
+					return Object.keys(testGitFiles).filter((file) =>
+						file.startsWith(SOURCE_CONTROL_CREDENTIAL_EXPORT_FOLDER),
+					);
+				} else if (path === SOURCE_CONTROL_FOLDERS_EXPORT_FILE) {
+					return [SOURCE_CONTROL_FOLDERS_EXPORT_FILE];
+				} else if (path === SOURCE_CONTROL_TAGS_EXPORT_FILE) {
+					return [SOURCE_CONTROL_TAGS_EXPORT_FILE];
+				}
+				return [];
+			});
+
+			fsReadFile.mockImplementation(async (file) => {
+				const fileName = basename(file as string);
+				const fullPath = Object.keys(testGitFiles).find((key) => key.endsWith(fileName));
+				if (fullPath) {
+					return Buffer.from(JSON.stringify(testGitFiles[fullPath]));
+				}
+				return Buffer.from('{}');
+			});
+		};
+
+		it('should detect credential as modified when isGlobal changes from false to true', async () => {
+			// Create a test credential with isGlobal: false
+			const credential = await createCredentials(
+				{
+					name: 'Test Credential isGlobal false->true',
+					type: 'testType',
+					data: cipher.encrypt({}),
+					isGlobal: false,
+				},
+				testProject,
+			);
+
+			// Setup: Mock remote credential with isGlobal: true
+			const remoteCredential = toExportableCredential(credential, testProject);
+			remoteCredential.isGlobal = true;
+			setupMocksForCredential(credential, remoteCredential);
+
+			// Act
+			const result = (await service.getStatus(testGlobalOwner, {
+				direction: 'push',
+				preferLocalVersion: true,
+				verbose: false,
+			})) as SourceControlledFile[];
+
+			// Assert
+			const modifiedCredentials = result.filter(
+				(r: SourceControlledFile) => r.type === 'credential' && r.status === 'modified',
+			);
+
+			expect(modifiedCredentials.some((c) => c.id === credential.id)).toBe(true);
+		});
+
+		it('should detect credential as modified when isGlobal changes from true to false', async () => {
+			const credential = await createCredentials(
+				{
+					name: 'Test Credential isGlobal true->false',
+					type: 'testType',
+					data: cipher.encrypt({}),
+					isGlobal: true,
+				},
+				testProject,
+			);
+
+			const remoteCredential = toExportableCredential(credential, testProject);
+			remoteCredential.isGlobal = false;
+			setupMocksForCredential(credential, remoteCredential);
+
+			const result = (await service.getStatus(testGlobalOwner, {
+				direction: 'push',
+				preferLocalVersion: true,
+				verbose: false,
+			})) as SourceControlledFile[];
+
+			const modifiedCredentials = result.filter(
+				(r: SourceControlledFile) => r.type === 'credential' && r.status === 'modified',
+			);
+
+			expect(modifiedCredentials.some((c) => c.id === credential.id)).toBe(true);
+		});
+
+		it('should NOT detect credential as modified when isGlobal is undefined vs false', async () => {
+			const credential = await createCredentials(
+				{
+					name: 'Test Credential isGlobal undefined vs false',
+					type: 'testType',
+					data: cipher.encrypt({}),
+					isGlobal: false,
+				},
+				testProject,
+			);
+
+			const remoteCredential = toExportableCredential(credential, testProject);
+			delete remoteCredential.isGlobal;
+			setupMocksForCredential(credential, remoteCredential);
+
+			const result = (await service.getStatus(testGlobalOwner, {
+				direction: 'push',
+				preferLocalVersion: true,
+				verbose: false,
+			})) as SourceControlledFile[];
+
+			const modifiedCredentials = result.filter(
+				(r: SourceControlledFile) => r.type === 'credential' && r.status === 'modified',
+			);
+
+			expect(modifiedCredentials.some((c) => c.id === credential.id)).toBe(false);
+		});
+
+		it('should detect credential as modified when isGlobal changes from undefined to true', async () => {
+			const credential = await createCredentials(
+				{
+					name: 'Test Credential isGlobal undefined->true',
+					type: 'testType',
+					data: cipher.encrypt({}),
+					isGlobal: false,
+				},
+				testProject,
+			);
+
+			const remoteCredential = toExportableCredential(credential, testProject);
+			remoteCredential.isGlobal = true;
+			setupMocksForCredential(credential, remoteCredential);
+
+			const result = (await service.getStatus(testGlobalOwner, {
+				direction: 'push',
+				preferLocalVersion: true,
+				verbose: false,
+			})) as SourceControlledFile[];
+
+			const modifiedCredentials = result.filter(
+				(r: SourceControlledFile) => r.type === 'credential' && r.status === 'modified',
+			);
+
+			expect(modifiedCredentials.some((c) => c.id === credential.id)).toBe(true);
+		});
+
+		it('should NOT detect credential as modified when isGlobal is the same', async () => {
+			const credential = await createCredentials(
+				{
+					name: 'Test Credential isGlobal same value',
+					type: 'testType',
+					data: cipher.encrypt({}),
+					isGlobal: true,
+				},
+				testProject,
+			);
+
+			const remoteCredential = toExportableCredential(credential, testProject);
+			remoteCredential.isGlobal = true;
+			setupMocksForCredential(credential, remoteCredential);
+
+			const result = (await service.getStatus(testGlobalOwner, {
+				direction: 'push',
+				preferLocalVersion: true,
+				verbose: false,
+			})) as SourceControlledFile[];
+
+			const modifiedCredentials = result.filter(
+				(r: SourceControlledFile) => r.type === 'credential' && r.status === 'modified',
+			);
+
+			expect(modifiedCredentials.some((c) => c.id === credential.id)).toBe(false);
 		});
 	});
 });

@@ -13,7 +13,6 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { Project } from '@/features/collaboration/projects/projects.types';
-import { TemplateClickSource } from '@/experiments/utils';
 import WorkflowsView from '@/app/views/WorkflowsView.vue';
 import { STORES } from '@n8n/stores';
 import { createTestingPinia } from '@pinia/testing';
@@ -171,36 +170,6 @@ describe('WorkflowsView', () => {
 			await userEvent.click(getByTestId('new-workflow-card'));
 
 			expect(router.currentRoute.value.name).toBe(VIEWS.NEW_WORKFLOW);
-		});
-
-		it('should show template card', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			settingsStore.settings.templates = { enabled: true, host: 'http://example.com' };
-			const { getByTestId } = renderComponent({ pinia });
-			await waitAllPromises();
-
-			expect(getByTestId('new-workflow-from-template-card')).toBeInTheDocument();
-		});
-
-		it('should track template card click', async () => {
-			const projectsStore = mockedStore(useProjectsStore);
-			projectsStore.currentProject = { scopes: ['workflow:create'] } as Project;
-
-			settingsStore.settings.templates = { enabled: true, host: 'http://example.com' };
-			const { getByTestId } = renderComponent({ pinia });
-			await waitAllPromises();
-
-			const card = getByTestId('new-workflow-from-template-card');
-			await userEvent.click(card);
-
-			expect(mockTrack).toHaveBeenCalledWith(
-				'User clicked on templates',
-				expect.objectContaining({
-					source: TemplateClickSource.emptyInstanceCard,
-				}),
-			);
 		});
 	});
 
