@@ -6,6 +6,5 @@ export { recreateNodeExecutionStack } from './recreate-node-execution-stack';
 export { cleanRunData } from './clean-run-data';
 export { handleCycles } from './handle-cycles';
 export { filterDisabledNodes } from './filter-disabled-nodes';
-export { isTool } from './is-tool';
 export { rewireGraph } from './rewire-graph';
 export { getNextExecutionIndex } from './run-data-utils';

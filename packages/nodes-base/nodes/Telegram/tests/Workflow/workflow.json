@@ -556,7 +556,9 @@
 		],
 		"No Operation, do nothing1": [
 			{
-				"json": {}
+				"json": {
+					"error": "Chat not found"
+				}
 			}
 		],
 		"No Operation, do nothing2": [

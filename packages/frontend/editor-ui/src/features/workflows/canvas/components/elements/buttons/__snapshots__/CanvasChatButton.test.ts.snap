@@ -1,0 +1,3 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasChatButton > should render correctly 1`] = `"<n8n-button-stub icon="message-circle" block="false" element="button" label="" square="false" active="false" disabled="false" loading="false" outline="false" size="large" text="false" type="primary" data-test-id="workflow-chat-button"></n8n-button-stub>"`;

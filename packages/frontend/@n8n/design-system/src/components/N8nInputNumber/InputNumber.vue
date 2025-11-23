@@ -2,7 +2,7 @@
 import { ElInputNumber } from 'element-plus';
 import { computed } from 'vue';
 
-import type { ElementPlusSizePropType, InputSize } from '@n8n/design-system/types';
+import type { ElementPlusSizePropType, InputSize } from '../../types';
 
 type InputNumberProps = {
 	size?: InputSize;
@@ -20,7 +20,15 @@ const props = withDefaults(defineProps<InputNumberProps>(), {
 	max: Infinity,
 });
 
-const resolvedSize = computed(() => props.size as ElementPlusSizePropType);
+const sizeMap: Record<InputSize, ElementPlusSizePropType> = {
+	mini: 'small',
+	small: 'small',
+	medium: 'default',
+	large: 'large',
+	xlarge: 'large',
+};
+
+const resolvedSize = computed(() => (props.size ? sizeMap[props.size] : undefined));
 </script>
 
 <template>

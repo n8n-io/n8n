@@ -91,8 +91,8 @@ export async function execute(
 	const mergeIntoSingleObject = selectMergeMethod(clashHandling);
 
 	for (let i = 0; i < numEntries; i++) {
-		const preferredEntry = preferred[i] ?? {};
-		const restEntries = inputsData.map((input) => input[i] ?? {});
+		const preferredEntry = preferred[i] ?? ({} as INodeExecutionData);
+		const restEntries = inputsData.map((input) => input[i] ?? ({} as INodeExecutionData));
 
 		const json = {
 			...mergeIntoSingleObject(

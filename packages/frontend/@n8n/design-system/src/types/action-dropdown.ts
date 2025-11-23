@@ -1,13 +1,17 @@
 import type { KeyboardShortcut } from '@n8n/design-system/types/keyboardshortcut';
 
-export interface ActionDropdownItem {
-	id: string;
+import type { IconName } from '../components/N8nIcon/icons';
+
+export interface ActionDropdownItem<T extends string> {
+	id: T;
 	label: string;
 	badge?: string;
+	description?: string;
 	badgeProps?: Record<string, unknown>;
-	icon?: string;
+	icon?: IconName;
 	divided?: boolean;
 	disabled?: boolean;
 	shortcut?: KeyboardShortcut;
 	customClass?: string;
+	checked?: boolean;
 }

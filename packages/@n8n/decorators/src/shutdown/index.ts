@@ -3,6 +3,6 @@ export {
 	DEFAULT_SHUTDOWN_PRIORITY,
 	LOWEST_SHUTDOWN_PRIORITY,
 } from './constants';
-export { ShutdownRegistryMetadata } from './shutdown-registry-metadata';
+export { ShutdownMetadata } from './shutdown-metadata';
 export { OnShutdown } from './on-shutdown';
 export type { ShutdownHandler, ShutdownServiceClass } from './types';

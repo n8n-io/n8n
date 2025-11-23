@@ -24,7 +24,7 @@ import { NodeConnectionTypes, NodeOperationError, jsonParse } from 'n8n-workflow
 
 import { versionDescription } from './versionDescription';
 import type { DynamicZodObject } from '../../../../types/zod.types';
-import { convertJsonSchemaToZod, generateSchema } from '../../../../utils/schemaParsing';
+import { convertJsonSchemaToZod, generateSchemaFromExample } from '../../../../utils/schemaParsing';
 
 export class ToolWorkflowV1 implements INodeType {
 	description: INodeTypeDescription;
@@ -215,7 +215,7 @@ export class ToolWorkflowV1 implements INodeType {
 				const schemaType = this.getNodeParameter('schemaType', itemIndex) as 'fromJson' | 'manual';
 				const jsonSchema =
 					schemaType === 'fromJson'
-						? generateSchema(jsonExample)
+						? generateSchemaFromExample(jsonExample)
 						: jsonParse<JSONSchema7>(inputSchema);
 
 				const zodSchema = convertJsonSchemaToZod<DynamicZodObject>(jsonSchema);

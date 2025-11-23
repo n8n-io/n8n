@@ -1,4 +1,4 @@
-import { ApplicationError } from 'n8n-workflow';
+import { ApplicationError } from '@n8n/errors';
 import type {
 	ICredentialDataDecryptedObject,
 	ICredentialType,
@@ -11,7 +11,7 @@ export class CustomerIoApi implements ICredentialType {
 
 	displayName = 'Customer.io API';
 
-	documentationUrl = 'customerIo';
+	documentationUrl = 'customerio';
 
 	properties: INodeProperties[] = [
 		{

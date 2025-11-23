@@ -4,17 +4,6 @@
         "@odata.etag": {
             "type": "string"
         },
-        "body": {
-            "type": "object",
-            "properties": {
-                "content": {
-                    "type": "string"
-                },
-                "contentType": {
-                    "type": "string"
-                }
-            }
-        },
         "bodyPreview": {
             "type": "string"
         },
@@ -49,9 +38,15 @@
         "id": {
             "type": "string"
         },
+        "receivedDateTime": {
+            "type": "string"
+        },
+        "sentDateTime": {
+            "type": "string"
+        },
         "subject": {
             "type": "string"
         }
     },
-    "version": 3
+    "version": 7
 }

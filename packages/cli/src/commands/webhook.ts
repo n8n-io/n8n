@@ -1,24 +1,22 @@
+import { Command } from '@n8n/decorators';
 import { Container } from '@n8n/di';
-import { Flags } from '@oclif/core';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
+import { DeprecationService } from '@/deprecation/deprecation.service';
+import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
+import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-relay';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
-import { PubSubHandler } from '@/scaling/pubsub/pubsub-handler';
+import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
 import { WebhookServer } from '@/webhooks/webhook-server';
 
 import { BaseCommand } from './base-command';
 
+@Command({
+	name: 'webhook',
+	description: 'Starts n8n webhook process. Intercepts only production URLs.',
+})
 export class Webhook extends BaseCommand {
-	static description = 'Starts n8n webhook process. Intercepts only production URLs.';
-
-	static examples = ['$ n8n webhook'];
-
-	static flags = {
-		help: Flags.help({ char: 'h' }),
-	};
-
 	protected server = Container.get(WebhookServer);
 
 	override needsCommunityPackages = true;
@@ -43,7 +41,7 @@ export class Webhook extends BaseCommand {
 	}
 
 	async init() {
-		if (config.getEnv('executions.mode') !== 'queue') {
+		if (this.globalConfig.executions.mode !== 'queue') {
 			/**
 			 * It is technically possible to run without queues but
 			 * there are 2 known bugs when running in this mode:
@@ -66,6 +64,7 @@ export class Webhook extends BaseCommand {
 		this.logger.debug(`Host ID: ${this.instanceSettings.hostId}`);
 
 		await super.init();
+		Container.get(DeprecationService).warn();
 
 		await this.initLicense();
 		this.logger.debug('License init complete');
@@ -77,10 +76,13 @@ export class Webhook extends BaseCommand {
 		this.logger.debug('Data deduplication service init complete');
 		await this.initExternalHooks();
 		this.logger.debug('External hooks init complete');
-		await this.initExternalSecrets();
-		this.logger.debug('External secrets init complete');
 
-		await this.loadModules();
+		await Container.get(MessageEventBus).initialize({
+			webhookProcessorId: this.instanceSettings.hostId,
+		});
+		Container.get(LogStreamingEventRelay).init();
+
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 	}
 
 	async run() {
@@ -100,7 +102,7 @@ export class Webhook extends BaseCommand {
 	async initOrchestration() {
 		Container.get(Publisher);
 
-		Container.get(PubSubHandler).init();
+		Container.get(PubSubRegistry).init();
 		await Container.get(Subscriber).subscribe('n8n.commands');
 	}
 }

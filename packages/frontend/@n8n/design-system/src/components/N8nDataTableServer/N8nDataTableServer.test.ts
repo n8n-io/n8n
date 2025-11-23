@@ -1,7 +1,17 @@
 import userEvent from '@testing-library/user-event';
-import { render, within } from '@testing-library/vue';
+import { render, screen, waitFor, within } from '@testing-library/vue';
+
+import { createComponentRenderer } from '@n8n/design-system/__tests__/render';
 
 import N8nDataTableServer, { type TableHeader } from './N8nDataTableServer.vue';
+
+const renderComponent = createComponentRenderer(N8nDataTableServer);
+
+const getRenderedOptions = async () => {
+	const dropdown = await waitFor(() => screen.getByRole('listbox'));
+	expect(dropdown).toBeInTheDocument();
+	return dropdown.querySelectorAll('.el-select-dropdown__item');
+};
 
 const itemFactory = () => ({
 	id: crypto.randomUUID() as string,
@@ -10,7 +20,7 @@ const itemFactory = () => ({
 });
 type Item = ReturnType<typeof itemFactory>;
 
-const items: Item[] = [...Array(20).keys()].map(itemFactory);
+const items: Item[] = [...Array(106).keys()].map(itemFactory);
 const headers: Array<TableHeader<Item>> = [
 	{
 		title: 'Id',
@@ -84,8 +94,7 @@ describe('N8nDataTableServer', () => {
 	});
 
 	it('should emit options for sorting / pagination', async () => {
-		const { container, emitted, getByTestId } = render(N8nDataTableServer, {
-			//@ts-expect-error testing-library errors due to header generics
+		const { container, emitted, getByTestId, findAllByRole } = renderComponent({
 			props: { items, headers, itemsLength: 100 },
 		});
 
@@ -100,7 +109,39 @@ describe('N8nDataTableServer', () => {
 		expect(emitted('update:options')[1]).toStrictEqual([
 			expect.objectContaining({ sortBy: [{ id: 'id', desc: true }] }),
 		]);
-		expect(emitted('update:options')[2]).toStrictEqual([expect.objectContaining({ page: 1 })]);
+
+		// // change the page size select option
+		const selectInput = await findAllByRole('combobox'); // Find the select input
+		await userEvent.click(selectInput[0]);
+
+		const options = await getRenderedOptions();
+		expect(options.length).toBe(4);
+
+		// account for the debounce
+		await new Promise((r) => setTimeout(r, 100));
+
+		const option50 = Array.from(options).find((option) => option.textContent === '50');
+		await userEvent.click(option50!);
+
+		expect(emitted('update:options').length).toBe(4);
+		expect(emitted('update:options').at(-1)).toStrictEqual([
+			expect.objectContaining({ page: 1, itemsPerPage: 50 }),
+		]);
+	});
+
+	it('should emit options for sorting with initial sort', async () => {
+		const { container, emitted } = renderComponent({
+			props: { items, headers, itemsLength: 100, sortBy: [{ id: 'id', desc: true }] },
+		});
+
+		await userEvent.click(container.querySelector('thead tr th')!);
+		await userEvent.click(container.querySelector('thead tr th')!);
+
+		expect(emitted('update:options').length).toBe(2);
+		expect(emitted('update:options')[0]).toStrictEqual([expect.objectContaining({ sortBy: [] })]);
+		expect(emitted('update:options')[1]).toStrictEqual([
+			expect.objectContaining({ sortBy: [{ id: 'id', desc: false }] }),
+		]);
 	});
 
 	it('should not show the pagination if there are no items', async () => {
@@ -119,5 +160,29 @@ describe('N8nDataTableServer', () => {
 		});
 
 		expect(queryByTestId('pagination')).not.toBeInTheDocument();
+	});
+
+	it('should adjust page to highest available when page size changes and current page exceeds maximum', async () => {
+		const { emitted, findAllByRole } = renderComponent({
+			props: { items, headers, itemsLength: 106, itemsPerPage: 50, page: 2 },
+		});
+
+		// change the page size select option
+		const selectInput = await findAllByRole('combobox'); // Find the select input
+		await userEvent.click(selectInput[0]);
+
+		const options = await getRenderedOptions();
+		expect(options.length).toBe(4);
+
+		const option100 = Array.from(options).find((option) => option.textContent === '100');
+		await userEvent.click(option100!);
+
+		// With 106 items and 50 per page, max page should be 2 (0-based index 1)
+		// Since we were on page 2, we should be adjusted to page 1
+		expect(emitted('update:options')).toEqual(
+			expect.arrayContaining([
+				expect.arrayContaining([expect.objectContaining({ page: 1, itemsPerPage: 100 })]),
+			]),
+		);
 	});
 });

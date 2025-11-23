@@ -1,9 +1,9 @@
 import { AcceptInvitationRequestDto, InviteUsersRequestDto } from '@n8n/api-types';
+import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
-import { UserRepository } from '@n8n/db';
+import { UserRepository, AuthenticatedRequest } from '@n8n/db';
 import { Post, GlobalScope, RestController, Body, Param } from '@n8n/decorators';
 import { Response } from 'express';
-import { Logger } from 'n8n-core';
 
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
@@ -14,10 +14,10 @@ import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
 import { PostHogClient } from '@/posthog';
-import { AuthenticatedRequest, AuthlessRequest } from '@/requests';
+import { AuthlessRequest } from '@/requests';
 import { PasswordUtility } from '@/services/password.utility';
 import { UserService } from '@/services/user.service';
-import { isSamlLicensedAndEnabled } from '@/sso.ee/saml/saml-helpers';
+import { isSsoCurrentAuthenticationMethod } from '@/sso.ee/sso-helpers';
 
 @RestController('/invitations')
 export class InvitationController {
@@ -48,12 +48,12 @@ export class InvitationController {
 
 		const isWithinUsersLimit = this.license.isWithinUsersLimit();
 
-		if (isSamlLicensedAndEnabled()) {
+		if (isSsoCurrentAuthenticationMethod()) {
 			this.logger.debug(
-				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
 			throw new BadRequestError(
-				'SAML is enabled, so users are managed by the Identity Provider and cannot be added through invites',
+				'SSO is enabled, so users are managed by the Identity Provider and cannot be added through invites',
 			);
 		}
 
@@ -97,9 +97,21 @@ export class InvitationController {
 		@Body payload: AcceptInvitationRequestDto,
 		@Param('id') inviteeId: string,
 	) {
+		if (isSsoCurrentAuthenticationMethod()) {
+			this.logger.debug(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+			throw new BadRequestError(
+				'Invite links are not supported on this system, please use single sign on instead.',
+			);
+		}
+
 		const { inviterId, firstName, lastName, password } = payload;
 
-		const users = await this.userRepository.findManyByIds([inviterId, inviteeId]);
+		const users = await this.userRepository.find({
+			where: [{ id: inviterId }, { id: inviteeId }],
+			relations: ['role'],
+		});
 
 		if (users.length !== 2) {
 			this.logger.debug(
@@ -128,7 +140,7 @@ export class InvitationController {
 
 		const updatedUser = await this.userRepository.save(invitee, { transaction: false });
 
-		this.authService.issueCookie(res, updatedUser, req.browserId);
+		this.authService.issueCookie(res, updatedUser, false, req.browserId);
 
 		this.eventService.emit('user-signed-up', {
 			user: updatedUser,

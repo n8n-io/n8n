@@ -1,4 +1,5 @@
 import { CreateApiKeyRequestDto, UpdateApiKeyRequestDto } from '@n8n/api-types';
+import { AuthenticatedRequest } from '@n8n/db';
 import { Body, Delete, Get, Param, Patch, Post, RestController } from '@n8n/decorators';
 import { getApiKeyScopesForRole } from '@n8n/permissions';
 import type { RequestHandler } from 'express';
@@ -6,7 +7,6 @@ import type { RequestHandler } from 'express';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { EventService } from '@/events/event.service';
 import { isApiEnabled } from '@/public-api';
-import { AuthenticatedRequest } from '@/requests';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 
 export const isApiEnabledMiddleware: RequestHandler = (_, res, next) => {
@@ -33,7 +33,7 @@ export class ApiKeysController {
 		_res: Response,
 		@Body body: CreateApiKeyRequestDto,
 	) {
-		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user.role, body.scopes)) {
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, body.scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
 		}
 
@@ -80,7 +80,7 @@ export class ApiKeysController {
 		@Param('id') apiKeyId: string,
 		@Body body: UpdateApiKeyRequestDto,
 	) {
-		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user.role, body.scopes)) {
+		if (!this.publicApiKeyService.apiKeyHasValidScopesForRole(req.user, body.scopes)) {
 			throw new BadRequestError('Invalid scopes for user role');
 		}
 
@@ -91,8 +91,7 @@ export class ApiKeysController {
 
 	@Get('/scopes', { middlewares: [isApiEnabledMiddleware] })
 	async getApiKeyScopes(req: AuthenticatedRequest, _res: Response) {
-		const { role } = req.user;
-		const scopes = getApiKeyScopesForRole(role);
+		const scopes = getApiKeyScopesForRole(req.user);
 		return scopes;
 	}
 }

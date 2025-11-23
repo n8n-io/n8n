@@ -1,15 +1,13 @@
-import {
-	parse as esprimaParse,
-	Syntax,
-	type Node as SyntaxNode,
-	type ExpressionStatement,
-} from 'esprima-next';
+import { ApplicationError } from '@n8n/errors';
+import { parse as esprimaParse, Syntax } from 'esprima-next';
+import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
-import { merge } from 'lodash';
+import merge from 'lodash/merge';
 
-import { ALPHABET } from './Constants';
-import { ApplicationError } from './errors/application.error';
-import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './Interfaces';
+import { ALPHABET } from './constants';
+import { ManualExecutionCancelledError } from './errors/execution-cancelled.error';
+import type { BinaryFileType, IDisplayOptions, INodeProperties, JsonObject } from './interfaces';
+import * as LoggerProxy from './logger-proxy';
 
 const readStreamClasses = new Set(['ReadStream', 'Readable', 'ReadableStream']);
 
@@ -155,6 +153,28 @@ type JSONStringifyOptions = {
 	replaceCircularRefs?: boolean;
 };
 
+/**
+ * Decodes a Base64 string with proper UTF-8 character handling.
+ *
+ * @param str - The Base64 string to decode
+ * @returns The decoded UTF-8 string
+ */
+export const base64DecodeUTF8 = (str: string): string => {
+	try {
+		// Use modern TextDecoder for proper UTF-8 handling
+		const bytes = new Uint8Array(
+			atob(str)
+				.split('')
+				.map((char) => char.charCodeAt(0)),
+		);
+		return new TextDecoder('utf-8').decode(bytes);
+	} catch (error) {
+		// Fallback method for older browsers
+		console.warn('TextDecoder not available, using fallback method');
+		return atob(str);
+	}
+};
+
 export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSet()): T => {
 	if (typeof value !== 'object' || value === null || value instanceof RegExp) return value;
 	if ('toJSON' in value && typeof value.toJSON === 'function') return value.toJSON() as T;
@@ -162,7 +182,18 @@ export const replaceCircularReferences = <T>(value: T, knownObjects = new WeakSe
 	knownObjects.add(value);
 	const copy = (Array.isArray(value) ? [] : {}) as T;
 	for (const key in value) {
-		copy[key] = replaceCircularReferences(value[key], knownObjects);
+		try {
+			copy[key] = replaceCircularReferences(value[key], knownObjects);
+		} catch (error: unknown) {
+			if (
+				error instanceof TypeError &&
+				error.message.includes('Cannot assign to read only property')
+			) {
+				LoggerProxy.error('Error while replacing circular references: ' + error.message, { error });
+				continue; // Skip properties that cannot be assigned to (readonly, non-configurable, etc.)
+			}
+			throw error;
+		}
 	}
 	knownObjects.delete(value);
 	return copy;
@@ -175,6 +206,23 @@ export const jsonStringify = (obj: unknown, options: JSONStringifyOptions = {}):
 export const sleep = async (ms: number): Promise<void> =>
 	await new Promise((resolve) => {
 		setTimeout(resolve, ms);
+	});
+
+export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Promise<void> =>
+	await new Promise((resolve, reject) => {
+		if (abortSignal?.aborted) {
+			reject(new ManualExecutionCancelledError(''));
+			return;
+		}
+
+		const timeout = setTimeout(resolve, ms);
+
+		const abortHandler = () => {
+			clearTimeout(timeout);
+			reject(new ManualExecutionCancelledError(''));
+		};
+
+		abortSignal?.addEventListener('abort', abortHandler, { once: true });
 	});
 
 export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
@@ -284,7 +332,15 @@ export function hasKey<T extends PropertyKey>(value: unknown, key: T): value is 
 	return value !== null && typeof value === 'object' && value.hasOwnProperty(key);
 }
 
-const unsafeObjectProperties = new Set(['__proto__', 'prototype', 'constructor', 'getPrototypeOf']);
+const unsafeObjectProperties = new Set([
+	'__proto__',
+	'prototype',
+	'constructor',
+	'getPrototypeOf',
+	'mainModule',
+	'binding',
+	'_load',
+]);
 
 /**
  * Checks if a property key is safe to use on an object, preventing prototype pollution.
@@ -309,4 +365,66 @@ export function setSafeObjectProperty(
 	if (isSafeObjectProperty(property)) {
 		target[property] = value;
 	}
+}
+
+export function isDomainAllowed(
+	urlString: string,
+	options: {
+		allowedDomains: string;
+	},
+): boolean {
+	if (!options.allowedDomains || options.allowedDomains.trim() === '') {
+		return true; // If no restrictions are set, allow all domains
+	}
+
+	try {
+		const url = new URL(urlString);
+
+		// Normalize hostname: lowercase and remove trailing dot
+		const hostname = url.hostname.toLowerCase().replace(/\.$/, '');
+
+		// Reject empty hostnames
+		if (!hostname) {
+			return false;
+		}
+
+		const allowedDomainsList = options.allowedDomains
+			.split(',')
+			.map((domain) => domain.trim().toLowerCase().replace(/\.$/, ''))
+			.filter(Boolean);
+
+		for (const allowedDomain of allowedDomainsList) {
+			// Handle wildcard domains (*.example.com)
+			if (allowedDomain.startsWith('*.')) {
+				const domainSuffix = allowedDomain.substring(2);
+				// Ensure the suffix itself is valid
+				if (!domainSuffix) continue;
+
+				// Wildcard matches only subdomains, not the base domain itself
+				// *.example.com matches sub.example.com but NOT example.com
+				if (hostname.endsWith('.' + domainSuffix)) {
+					return true;
+				}
+			}
+			// Exact match
+			else if (hostname === allowedDomain) {
+				return true;
+			}
+		}
+
+		return false;
+	} catch (error) {
+		// If URL parsing fails, deny access to be safe
+		return false;
+	}
+}
+
+const COMMUNITY_PACKAGE_NAME_REGEX = /^(?!@n8n\/)(@[\w.-]+\/)?n8n-nodes-(?!base\b)\b\w+/g;
+
+export function isCommunityPackageName(packageName: string): boolean {
+	COMMUNITY_PACKAGE_NAME_REGEX.lastIndex = 0;
+	// Community packages names start with <@username/>n8n-nodes- not followed by word 'base'
+	const nameMatch = COMMUNITY_PACKAGE_NAME_REGEX.exec(packageName);
+
+	return !!nameMatch;
 }

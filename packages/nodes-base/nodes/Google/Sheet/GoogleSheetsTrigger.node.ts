@@ -15,12 +15,12 @@ import {
 	getRevisionFile,
 	sheetBinaryToArrayOfArrays,
 } from './GoogleSheetsTrigger.utils';
+import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_SHEETS_SHEET_URL_REGEX } from '../constants';
 import { GoogleSheet } from './v2/helpers/GoogleSheet';
 import type { ResourceLocator, ValueRenderOption } from './v2/helpers/GoogleSheets.types';
 import { sheetsSearch, spreadSheetsSearch } from './v2/methods/listSearch';
 import { getSheetHeaderRowAndSkipEmpty } from './v2/methods/loadOptions';
 import { apiRequest } from './v2/transport';
-import { GOOGLE_DRIVE_FILE_URL_REGEX, GOOGLE_SHEETS_SHEET_URL_REGEX } from '../constants';
 
 export const document: INodeProperties = {
 	displayName: 'Document',

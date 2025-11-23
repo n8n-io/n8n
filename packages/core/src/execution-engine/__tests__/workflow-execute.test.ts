@@ -15,7 +15,7 @@ process.env.N8N_RUNNERS_ENABLED = 'false';
 // PD denotes that the node has pinned data
 
 import { mock } from 'jest-mock-extended';
-import { pick } from 'lodash';
+import pick from 'lodash/pick';
 import type {
 	ExecutionBaseError,
 	IConnection,
@@ -33,14 +33,19 @@ import type {
 	WorkflowTestData,
 	RelatedExecution,
 	IExecuteFunctions,
+	IDataObject,
 } from 'n8n-workflow';
 import {
 	ApplicationError,
 	createDeferredPromise,
+	createRunExecutionData,
+	NodeApiError,
 	NodeConnectionTypes,
 	NodeHelpers,
+	NodeOperationError,
 	Workflow,
 } from 'n8n-workflow';
+import assert from 'node:assert';
 
 import * as Helpers from '@test/helpers';
 import { legacyWorkflowExecuteTests, v1WorkflowExecuteTests } from '@test/helpers/constants';
@@ -118,6 +123,14 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				expect(result.data.executionData!.contextData).toEqual({});
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(result.data.executionData!.runtimeData).toHaveProperty('source');
+				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});
@@ -187,6 +200,15 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				expect(result.data.executionData!.contextData).toEqual({});
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(result.data.executionData!.runtimeData).toHaveProperty('source');
+				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});
@@ -401,6 +423,15 @@ describe('WorkflowExecute', () => {
 				expect(result.finished).toEqual(true);
 				// expect(result.data.executionData!.contextData).toEqual({}); //Fails when test workflow Includes splitInbatches
 				expect(result.data.executionData!.nodeExecutionStack).toEqual([]);
+
+				// Check if execution context was established
+				expect(result.data.executionData!.runtimeData).toBeDefined();
+				expect(result.data.executionData!.runtimeData).toHaveProperty('version', 1);
+				expect(result.data.executionData!.runtimeData).toHaveProperty('establishedAt');
+				expect(result.data.executionData!.runtimeData).toHaveProperty('source');
+				expect(result.data.executionData!.runtimeData!.source).toEqual('manual');
+				expect(typeof result.data.executionData!.runtimeData!.establishedAt).toBe('number');
+				expect(result.data.executionData!.runtimeData!.establishedAt).toBeGreaterThan(0);
 			});
 		}
 	});
@@ -518,7 +549,7 @@ describe('WorkflowExecute', () => {
 		// ┌───────┐1     ┌─────┐1     ┌─────┐
 		// │trigger├──────►node1├──────►node2│
 		// └───────┘      └─────┘      └─────┘
-		test('removes disabled nodes from the workflow', async () => {
+		test('removes disabled nodes from the runNodeFilter, but not the graph', async () => {
 			// ARRANGE
 			const waitPromise = createDeferredPromise<IRun>();
 			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
@@ -554,11 +585,17 @@ describe('WorkflowExecute', () => {
 			);
 
 			// ASSERT
+			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const runNodeFilter: string[] = (workflowExecute as any).runExecutionData.startData
+				?.runNodeFilter;
+			expect(runNodeFilter).toContain(trigger.name);
+			expect(runNodeFilter).toContain(node2.name);
+			expect(runNodeFilter).not.toContain(node1.name);
 			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
 			const nodes = Object.keys(processRunExecutionDataSpy.mock.calls[0][0].nodes);
 			expect(nodes).toContain(trigger.name);
 			expect(nodes).toContain(node2.name);
-			expect(nodes).not.toContain(node1.name);
+			expect(nodes).toContain(node1.name);
 		});
 
 		//                             ►►
@@ -961,6 +998,47 @@ describe('WorkflowExecute', () => {
 				expect.objectContaining({ executionIndex: 1 }),
 			]);
 		});
+
+		//                    ►►
+		// ┌─────┐1     ┌─────┐
+		// │node1├──────►node2│
+		// └─────┘      └─────┘
+		test('should find closest parent with run data when no trigger exists', async () => {
+			// ARRANGE
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflow = new DirectedGraph()
+				.addNodes(node1, node2)
+				.addConnections({ from: node1, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes });
+
+			const pinData: IPinData = {};
+			const runData: IRunData = {
+				[node1.name]: [toITaskData([{ data: { name: node1.name } }])],
+			};
+			const dirtyNodeNames: string[] = [];
+			const destinationNode = node2.name;
+
+			const processRunExecutionDataSpy = jest
+				.spyOn(workflowExecute, 'processRunExecutionData')
+				.mockImplementationOnce(jest.fn());
+
+			// ACT
+			await workflowExecute.runPartialWorkflow2(
+				workflow,
+				runData,
+				pinData,
+				dirtyNodeNames,
+				destinationNode,
+			);
+
+			// ASSERT
+			expect(processRunExecutionDataSpy).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('checkReadyForExecution', () => {
@@ -1169,7 +1247,7 @@ describe('WorkflowExecute', () => {
 			},
 		};
 
-		const runExecutionData: IRunExecutionData = {
+		const runExecutionData: IRunExecutionData = createRunExecutionData({
 			resultData: {
 				runData: {
 					previousNode: [
@@ -1185,7 +1263,7 @@ describe('WorkflowExecute', () => {
 					],
 				},
 			},
-		};
+		});
 
 		let workflowExecute: WorkflowExecute;
 
@@ -1351,6 +1429,19 @@ describe('WorkflowExecute', () => {
 				},
 			]);
 		});
+
+		test('should handle top-level error property correctly', () => {
+			const nodeSuccessData: INodeExecutionData[][] = [
+				[{ json: {}, error: { message: 'Test error' } as NodeApiError }],
+			];
+
+			workflowExecute.handleNodeErrorOutput(workflow, executionData, nodeSuccessData, 0);
+
+			expect(nodeSuccessData[0]).toEqual([]);
+			expect(nodeSuccessData[1]).toEqual([
+				{ json: {}, error: { message: 'Test error' } as NodeApiError },
+			]);
+		});
 	});
 
 	describe('prepareWaitingToExecution', () => {
@@ -1358,20 +1449,7 @@ describe('WorkflowExecute', () => {
 		let workflowExecute: WorkflowExecute;
 
 		beforeEach(() => {
-			runExecutionData = {
-				startData: {},
-				resultData: {
-					runData: {},
-					pinData: {},
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			};
+			runExecutionData = createRunExecutionData();
 			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
 		});
 
@@ -1564,20 +1642,7 @@ describe('WorkflowExecute', () => {
 		const parentExecution = mock<RelatedExecution>();
 
 		beforeEach(() => {
-			runExecutionData = {
-				startData: {},
-				resultData: {
-					runData: {},
-					pinData: {},
-				},
-				executionData: {
-					contextData: {},
-					nodeExecutionStack: [],
-					metadata: {},
-					waitingExecution: {},
-					waitingExecutionSource: {},
-				},
-			};
+			runExecutionData = createRunExecutionData();
 			workflowExecute = new WorkflowExecute(mock(), 'manual', runExecutionData);
 		});
 
@@ -1719,7 +1784,7 @@ describe('WorkflowExecute', () => {
 		let additionalData: IWorkflowExecuteAdditionalData;
 
 		beforeEach(() => {
-			runExecutionData = {
+			runExecutionData = createRunExecutionData({
 				startData: {},
 				resultData: { runData: {} },
 				executionData: {
@@ -1729,7 +1794,7 @@ describe('WorkflowExecute', () => {
 					waitingExecution: {},
 					waitingExecutionSource: null,
 				},
-			};
+			});
 			additionalData = mock();
 			additionalData.hooks = mock<ExecutionLifecycleHooks>();
 
@@ -1811,6 +1876,58 @@ describe('WorkflowExecute', () => {
 			// Verify cleanup was called
 			await mockCleanupPromise;
 			expect(cleanupCalled).toBe(true);
+		});
+
+		test('should capture stoppedAt timestamp after all processing completes', async () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+
+			let cleanupExecuted = false;
+			let cleanupTimestamp: Date | null = null;
+			const closeFunction = new Promise<void>((resolve) => {
+				setTimeout(() => {
+					cleanupExecuted = true;
+					cleanupTimestamp = new Date();
+					resolve();
+				}, 50);
+			});
+
+			const result = await workflowExecute.processSuccessExecution(
+				startedAt,
+				workflow,
+				undefined,
+				closeFunction,
+			);
+
+			// Verify cleanup was executed
+			expect(cleanupExecuted).toBe(true);
+			// Verify stoppedAt is after cleanup completed
+			expect(result.stoppedAt!.getTime()).toBeGreaterThanOrEqual(cleanupTimestamp!.getTime());
+			// Verify stoppedAt is after startedAt
+			expect(result.stoppedAt!.getTime()).toBeGreaterThan(result.startedAt.getTime());
+		});
+
+		test('should use explicit stoppedAt when provided to getFullRunData', () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+			const explicitStoppedAt = new Date('2023-01-01T00:00:05.500Z');
+
+			const result = workflowExecute.getFullRunData(startedAt, explicitStoppedAt);
+
+			expect(result.startedAt).toEqual(startedAt);
+			expect(result.stoppedAt).toEqual(explicitStoppedAt);
+			expect(result.stoppedAt!.getTime() - result.startedAt.getTime()).toBe(5500);
+		});
+
+		test('should default to current time when stoppedAt not provided to getFullRunData', () => {
+			const startedAt = new Date('2023-01-01T00:00:00.000Z');
+			const currentTime = new Date('2023-01-01T00:00:03.250Z');
+			jest.useFakeTimers().setSystemTime(currentTime);
+
+			const result = workflowExecute.getFullRunData(startedAt);
+
+			expect(result.startedAt).toEqual(startedAt);
+			expect(result.stoppedAt).toEqual(currentTime);
+
+			jest.useRealTimers();
 		});
 	});
 
@@ -1915,7 +2032,7 @@ describe('WorkflowExecute', () => {
 
 		test('should return true when node has no input connections', () => {
 			workflow.nodes = {};
-			workflow.connectionsByDestinationNode = {};
+			workflow.setConnections({});
 
 			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
 
@@ -1928,11 +2045,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			const hasInputData = workflowExecute.ensureInputData(workflow, node, executionData);
 
@@ -1946,11 +2063,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			executionData.data = { main: [[{ json: { test: 'data' } }]] };
 
@@ -1965,11 +2082,11 @@ describe('WorkflowExecute', () => {
 				[parentNode.name]: parentNode,
 			};
 
-			workflow.connectionsByDestinationNode = {
-				[node.name]: {
-					main: [[{ node: parentNode.name, type: NodeConnectionTypes.Main, index: 0 }]],
+			workflow.setConnections({
+				[parentNode.name]: {
+					main: [[{ node: node.name, type: NodeConnectionTypes.Main, index: 0 }]],
 				},
-			};
+			});
 
 			executionData.data = { main: [null] };
 
@@ -1982,75 +2099,113 @@ describe('WorkflowExecute', () => {
 
 	describe('customOperations', () => {
 		const nodeTypes = mock<INodeTypes>();
-		const testNode = mock<INode>();
 
-		const workflow = new Workflow({
-			nodeTypes,
-			nodes: [testNode],
-			connections: {},
-			active: false,
-		});
-
-		const executionData = mock<IExecuteData>({
-			node: { parameters: { resource: 'test', operation: 'test' } },
-			data: { main: [[{ json: {} }]] },
-		});
 		const runExecutionData = mock<IRunExecutionData>();
 		const additionalData = mock<IWorkflowExecuteAdditionalData>();
 		const workflowExecute = new WorkflowExecute(additionalData, 'manual');
 
-		test('should execute customOperations', async () => {
-			const nodeType = mock<INodeType>({
-				description: {
-					properties: [],
-				},
-				execute: undefined,
-				customOperations: {
-					test: {
-						async test(this: IExecuteFunctions) {
-							return [[{ json: { customOperationsRun: true } }]];
+		const testCases: Array<{
+			title: string;
+			parameters?: INode['parameters'];
+			forceCustomOperation?: INode['forceCustomOperation'];
+			expectedOutput: IDataObject | undefined;
+		}> = [
+			{
+				title: 'only parameters are set',
+				parameters: { resource: 'test', operation: 'test1' },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: [[{ json: { customOperationsRun: 1 } }]], hints: [] },
+			},
+			{
+				title: 'both parameters and forceCustomOperation are set',
+				parameters: { resource: 'test', operation: 'test1' },
+				forceCustomOperation: { resource: 'test', operation: 'test2' },
+				expectedOutput: { data: [[{ json: { customOperationsRun: 2 } }]], hints: [] },
+			},
+			{
+				title: 'only forceCustomOperation is set',
+				parameters: undefined,
+				forceCustomOperation: { resource: 'test', operation: 'test1' },
+				expectedOutput: { data: [[{ json: { customOperationsRun: 1 } }]], hints: [] },
+			},
+			{
+				title: 'neither option is set',
+				parameters: undefined,
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined },
+			},
+			{
+				title: 'non relevant parameters are set',
+				parameters: { test: 1 },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined },
+			},
+			{
+				title: 'only parameter.resource is set',
+				parameters: { resource: 'test' },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined },
+			},
+			{
+				title: 'only parameter.operation is set',
+				parameters: { operation: 'test1' },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined },
+			},
+			{
+				title: 'unknown parameter.resource is set',
+				parameters: { resource: 'unknown', operation: 'test1' },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined },
+			},
+			{
+				title: 'unknown parameter.operation is set',
+				parameters: { resource: 'test', operation: 'unknown' },
+				forceCustomOperation: undefined,
+				expectedOutput: { data: undefined, hints: [] },
+			},
+		];
+		testCases.forEach(({ title, parameters, forceCustomOperation, expectedOutput }) => {
+			test(`should execute customOperations - ${title}`, async () => {
+				const testNode = mock<INode>({
+					name: 'nodeName',
+					parameters,
+					forceCustomOperation,
+				});
+
+				const workflow = new Workflow({
+					nodeTypes,
+					nodes: [testNode],
+					connections: {},
+					active: false,
+				});
+
+				const executionData: IExecuteData = {
+					node: testNode,
+					data: { main: [[{ json: {} }]] },
+					source: null,
+				};
+
+				const nodeType = mock<INodeType>({
+					description: {
+						properties: [],
+					},
+					execute: undefined,
+					customOperations: {
+						test: {
+							async test1(this: IExecuteFunctions) {
+								return [[{ json: { customOperationsRun: 1 } }]];
+							},
+							async test2(this: IExecuteFunctions) {
+								return [[{ json: { customOperationsRun: 2 } }]];
+							},
 						},
 					},
-				},
-			});
+				});
 
-			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
+				nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
 
-			const runPromise = workflowExecute.runNode(
-				workflow,
-				executionData,
-				runExecutionData,
-				0,
-				additionalData,
-				'manual',
-			);
-
-			const result = await runPromise;
-
-			expect(result).toEqual({ data: [[{ json: { customOperationsRun: true } }]], hints: [] });
-		});
-
-		test('should throw error if customOperation and execute both defined', async () => {
-			const nodeType = mock<INodeType>({
-				description: {
-					properties: [],
-				},
-				async execute(this: IExecuteFunctions) {
-					return [];
-				},
-				customOperations: {
-					test: {
-						async test(this: IExecuteFunctions) {
-							return [];
-						},
-					},
-				},
-			});
-
-			nodeTypes.getByNameAndVersion.mockReturnValue(nodeType);
-
-			try {
-				await workflowExecute.runNode(
+				const runPromise = workflowExecute.runNode(
 					workflow,
 					executionData,
 					runExecutionData,
@@ -2058,11 +2213,498 @@ describe('WorkflowExecute', () => {
 					additionalData,
 					'manual',
 				);
-			} catch (error) {
-				expect(error.message).toBe(
-					'Node type cannot have both customOperations and execute defined',
-				);
+
+				const result = await runPromise;
+
+				expect(result).toEqual(expectedOutput);
+			});
+		});
+	});
+
+	describe('error chunk handling', () => {
+		const nodeTypes = mock<INodeTypes>();
+		let workflowExecute: WorkflowExecute;
+		let additionalData: IWorkflowExecuteAdditionalData;
+		let runExecutionData: IRunExecutionData;
+		let mockHooks: ExecutionLifecycleHooks;
+
+		beforeEach(() => {
+			runExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: { runData: {} },
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: null,
+				},
+			});
+
+			mockHooks = mock<ExecutionLifecycleHooks>();
+			additionalData = mock<IWorkflowExecuteAdditionalData>();
+			additionalData.hooks = mockHooks;
+			additionalData.currentNodeExecutionIndex = 0;
+
+			workflowExecute = new WorkflowExecute(additionalData, 'manual', runExecutionData);
+
+			jest.spyOn(mockHooks, 'runHook').mockResolvedValue(undefined);
+		});
+
+		test('should send error chunk when workflow execution fails', async () => {
+			// ARRANGE
+			const errorNode: INode = {
+				id: '1',
+				name: 'ErrorNode',
+				type: 'test.error',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const nodeOperationError = new NodeOperationError(errorNode, 'Node execution failed');
+			nodeOperationError.description = 'A detailed error description';
+
+			const errorNodeType = mock<INodeType>({
+				description: {
+					name: 'test.error',
+					displayName: 'Test Error Node',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					throw nodeOperationError;
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(errorNodeType);
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [errorNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			testAdditionalData.hooks = mockHooks;
+
+			// ACT
+			try {
+				await workflowExecute.run(workflow, errorNode);
+			} catch {
+				// Expected to throw
 			}
+
+			// ASSERT
+			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
+				{
+					type: 'error',
+					content: 'A detailed error description',
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
+				},
+			]);
+		});
+
+		test('should send error chunk when workflow execution fails with NodeApiError', async () => {
+			// ARRANGE
+			const errorNode: INode = {
+				id: 'error-node-id',
+				name: 'ErrorNode',
+				type: 'test.error',
+				typeVersion: 1,
+				position: [100, 200],
+				parameters: {},
+			};
+
+			const nodeApiError = new NodeApiError(errorNode, { message: 'API request failed' });
+			nodeApiError.description = 'The API returned an error';
+
+			const errorNodeType = mock<INodeType>({
+				description: {
+					name: 'test.error',
+					displayName: 'Test Error Node',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					throw nodeApiError;
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(errorNodeType);
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [errorNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			testAdditionalData.hooks = mockHooks;
+
+			// ACT
+			try {
+				await workflowExecute.run(workflow, errorNode);
+			} catch {
+				// Expected to throw
+			}
+
+			// ASSERT
+			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
+				{
+					type: 'error',
+					content: 'The API returned an error',
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
+				},
+			]);
+		});
+
+		test('should not send error chunk when workflow execution succeeds', async () => {
+			// ARRANGE
+			const successNode: INode = {
+				id: '1',
+				name: 'SuccessNode',
+				type: 'test.success',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const successNodeType = mock<INodeType>({
+				description: {
+					name: 'test.success',
+					displayName: 'Test Success Node',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					return [[{ json: { success: true } }]];
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(successNodeType);
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [successNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			testAdditionalData.hooks = mockHooks;
+
+			// ACT
+			await workflowExecute.run(workflow, successNode);
+
+			// ASSERT
+			expect(mockHooks.runHook).not.toHaveBeenCalledWith('sendChunk', expect.anything());
+		});
+
+		test('should send error chunk when workflow execution fails with NodeOperationError', async () => {
+			// ARRANGE
+			const errorNode: INode = {
+				id: '1',
+				name: 'ErrorNode',
+				type: 'test.error',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const nodeOperationError = new NodeOperationError(errorNode, 'Operation failed');
+			nodeOperationError.description = 'Custom error description';
+
+			const errorNodeType = mock<INodeType>({
+				description: {
+					name: 'test.error',
+					displayName: 'Test Error Node',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					throw nodeOperationError;
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(errorNodeType);
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [errorNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			testAdditionalData.hooks = mockHooks;
+
+			// ACT
+			try {
+				await workflowExecute.run(workflow, errorNode);
+			} catch {
+				// Expected to throw
+			}
+
+			// ASSERT
+			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
+				{
+					type: 'error',
+					content: 'Custom error description',
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
+				},
+			]);
+		});
+
+		test('should send error chunk with undefined content when error has no description', async () => {
+			// ARRANGE
+			const errorNode: INode = {
+				id: '1',
+				name: 'ErrorNode',
+				type: 'test.error',
+				typeVersion: 1,
+				position: [0, 0],
+				parameters: {},
+			};
+
+			const simpleError = new Error('Simple error message');
+
+			const errorNodeType = mock<INodeType>({
+				description: {
+					name: 'test.error',
+					displayName: 'Test Error Node',
+					defaultVersion: 1,
+					properties: [],
+					inputs: [{ type: NodeConnectionTypes.Main }],
+					outputs: [{ type: NodeConnectionTypes.Main }],
+				},
+				async execute() {
+					throw simpleError;
+				},
+			});
+
+			nodeTypes.getByNameAndVersion.mockReturnValue(errorNodeType);
+
+			const workflow = new Workflow({
+				id: 'test',
+				nodes: [errorNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const testAdditionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			testAdditionalData.hooks = mockHooks;
+
+			// ACT
+			try {
+				await workflowExecute.run(workflow, errorNode);
+			} catch {
+				// Expected to throw
+			}
+
+			// ASSERT
+			expect(mockHooks.runHook).toHaveBeenCalledWith('sendChunk', [
+				{
+					type: 'error',
+					content: undefined, // When no description is available, content should be undefined
+					metadata: {
+						nodeId: errorNode.id,
+						nodeName: errorNode.name,
+						runIndex: 0,
+						itemIndex: 0,
+					},
+				},
+			]);
+		});
+	});
+
+	describe('Cancellation', () => {
+		test('should update only running task statuses to cancelled when workflow is cancelled', () => {
+			// Arrange - create a workflow with some nodes
+			const startNode = createNodeData({ name: 'Start' });
+			const processingNode = createNodeData({ name: 'Processing' });
+			const completedNode = createNodeData({ name: 'Completed' });
+
+			const workflow = new Workflow({
+				id: 'test-workflow',
+				nodes: [startNode, processingNode, completedNode],
+				connections: {},
+				active: false,
+				nodeTypes,
+			});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			// Create run execution data with tasks in various statuses
+			const runExecutionData: IRunExecutionData = createRunExecutionData({
+				startData: { startNodes: [{ name: 'Start', sourceData: null }] },
+				resultData: {
+					runData: {
+						Start: [toITaskData([{ data: { test: 'data' } }], { executionStatus: 'success' })],
+						Processing: [toITaskData([{ data: { test: 'data' } }], { executionStatus: 'running' })],
+						Completed: [
+							toITaskData([{ data: { test: 'data1' } }], { executionStatus: 'error' }),
+							toITaskData([{ data: { test: 'data2' } }], { executionStatus: 'running' }),
+							toITaskData([{ data: { test: 'data3' } }], { executionStatus: 'waiting' }),
+						],
+					},
+					lastNodeExecuted: 'Processing',
+				},
+				executionData: {
+					runtimeData: { version: 1, establishedAt: 1763723652184, source: 'manual' },
+				},
+			});
+
+			// Set the run execution data on the workflow execute instance
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			assert(additionalData.hooks);
+			const runHook = jest.fn();
+			additionalData.hooks.runHook = runHook;
+
+			const promise = workflowExecute.processRunExecutionData(workflow);
+			promise.cancel('reason');
+
+			const updatedExecutionData = {
+				data: {
+					version: 0,
+					startData: { startNodes: [{ name: 'Start', sourceData: null }] },
+					resultData: {
+						runData: {
+							Start: [toITaskData([{ data: { test: 'data' } }], { executionStatus: 'success' })],
+							Processing: [
+								toITaskData([{ data: { test: 'data' } }], { executionStatus: 'canceled' }),
+							],
+							Completed: [
+								toITaskData([{ data: { test: 'data1' } }], { executionStatus: 'error' }),
+								toITaskData([{ data: { test: 'data2' } }], { executionStatus: 'canceled' }),
+								toITaskData([{ data: { test: 'data3' } }], { executionStatus: 'waiting' }),
+							],
+						},
+						lastNodeExecuted: 'Processing',
+					},
+					executionData: {
+						contextData: {},
+						nodeExecutionStack: [],
+						metadata: {},
+						waitingExecution: {},
+						waitingExecutionSource: {},
+						runtimeData: { version: 1, establishedAt: 1763723652184, source: 'manual' },
+					},
+				},
+			};
+
+			expect(runHook.mock.lastCall[0]).toEqual('workflowExecuteAfter');
+			expect(JSON.stringify(runHook.mock.lastCall[1][0].data)).toBe(
+				JSON.stringify(updatedExecutionData.data),
+			);
+			expect(runHook.mock.lastCall[1][0].status).toEqual('canceled');
+		});
+
+		test('should set status to canceled when execution timeout is reached', async () => {
+			// Arrange - create a workflow with multiple nodes
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+
+			const workflow = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 })
+				.toWorkflow({
+					name: 'test-workflow',
+					nodeTypes,
+					active: false,
+				});
+
+			const waitPromise = createDeferredPromise<IRun>();
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(waitPromise);
+
+			const workflowExecute = new WorkflowExecute(additionalData, 'manual');
+
+			// Create initial execution data with nodes queued to execute
+			const runExecutionData: IRunExecutionData = createRunExecutionData({
+				startData: {},
+				resultData: {
+					runData: {},
+				},
+				executionData: {
+					contextData: {},
+					nodeExecutionStack: [
+						{
+							node: node1,
+							data: {
+								main: [[{ json: { value: 1 } }]],
+							},
+							source: null,
+						},
+						{
+							node: node2,
+							data: {
+								main: [[{ json: { value: 2 } }]],
+							},
+							source: null,
+						},
+					],
+					metadata: {},
+					waitingExecution: {},
+					waitingExecutionSource: {},
+				},
+			});
+
+			// @ts-expect-error private data
+			workflowExecute.runExecutionData = runExecutionData;
+
+			// Set execution timeout to a time in the past to trigger immediate timeout on first loop iteration
+			additionalData.executionTimeoutTimestamp = Date.now() - 1000;
+
+			// Act - run the workflow
+			const promise = workflowExecute.processRunExecutionData(workflow);
+			const result = await promise;
+
+			// Assert - verify status was set to canceled and timedOut flag was set
+			// @ts-expect-error private data
+			expect(workflowExecute.status).toBe('canceled');
+			expect(workflowExecute.timedOut).toBe(true);
+			expect(result.status).toBe('canceled');
+			expect(result.data.resultData.error?.name).toBe('TimeoutExecutionCancelledError');
 		});
 	});
 });

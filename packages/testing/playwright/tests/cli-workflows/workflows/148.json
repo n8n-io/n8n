@@ -1,0 +1,80 @@
+{
+	"createdAt": "2021-03-24T09:07:34.933Z",
+	"updatedAt": "2021-07-29T14:07:02.141Z",
+	"id": "148",
+	"name": "Deepl:Language:translate",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "e3254a53-50f2-42df-925a-f7f4ac8d0a50"
+		},
+		{
+			"parameters": {
+				"text": "n8n (pronounced n-eight-n) helps you to interconnect every app with an API in the world with each other to share and manipulate its data without a single line of code. It is an easy to use, user-friendly and highly customizable service.",
+				"translateTo": "DE",
+				"additionalFields": {
+					"splitSentences": "1",
+					"preserveFormatting": "0",
+					"formality": "default"
+				}
+			},
+			"name": "DeepL",
+			"type": "n8n-nodes-base.deepL",
+			"typeVersion": 1,
+			"position": [450, 300],
+			"credentials": {
+				"deepLApi": {
+					"id": "183",
+					"name": "Deepl Free API creds"
+				}
+			},
+			"id": "e8c6fe13-54b6-476f-a5c5-d6699874fc9e"
+		},
+		{
+			"parameters": {
+				"functionCode": "testData ='n8n (ausgesprochen n-eight-n) hilft Ihnen, jede App mit einer API auf der Welt miteinander zu verbinden, um ihre Daten ohne eine einzige Zeile Code zu teilen und zu manipulieren. Es ist ein einfach zu bedienender, benutzerfreundlicher und hochgradig anpassbarer Dienst.'\nif(items[0].json['text'] !== testData){\n  throw new Error('Problem in DeepL node')\n}\nreturn items;"
+			},
+			"name": "Function",
+			"type": "n8n-nodes-base.function",
+			"typeVersion": 1,
+			"position": [650, 300],
+			"id": "2672ca93-3052-4bc7-9145-f0f25405378d"
+		}
+	],
+	"connections": {
+		"DeepL": {
+			"main": [
+				[
+					{
+						"node": "Function",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "DeepL",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

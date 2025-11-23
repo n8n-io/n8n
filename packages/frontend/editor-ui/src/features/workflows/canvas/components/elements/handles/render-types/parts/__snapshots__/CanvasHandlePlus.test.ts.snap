@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`CanvasHandlePlus > should render with default props 1`] = `
+"<svg data-test-id="canvas-handle-plus-wrapper" class="canvas-handle-plus-wrapper wrapper right default" viewBox="0 0 70 24" style="width: 70px; height: 24px;">
+  <line class="line" x1="0" y1="12" x2="47" y2="12" stroke="var(--color--foreground--shade-2)" stroke-width="2"></line>
+  <g data-test-id="canvas-handle-plus" class="plus clickable" transform="translate(46, 0)">
+    <rect class="clickable" x="2" y="2" width="20" height="20" stroke="var(--color--foreground--shade-2)" stroke-width="2" rx="4" fill="var(--color--foreground--tint-2)"></rect>
+    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" d="M8 12h8m-4-4v8" class="source clickable"></path>
+  </g>
+</svg>"
+`;

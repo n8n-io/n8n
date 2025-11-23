@@ -1,3 +1,5 @@
+import { Logger } from '@n8n/backend-common';
+import { TOOL_EXECUTOR_NODE_NAME } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import * as a from 'assert/strict';
 import {
@@ -5,16 +7,13 @@ import {
 	filterDisabledNodes,
 	recreateNodeExecutionStack,
 	WorkflowExecute,
-	Logger,
-	isTool,
 	rewireGraph,
 } from 'n8n-core';
-import { MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
+import { NodeHelpers, createRunExecutionData } from 'n8n-workflow';
 import type {
 	IExecuteData,
 	IPinData,
 	IRun,
-	IRunExecutionData,
 	IWaitingForExecution,
 	IWaitingForExecutionSource,
 	IWorkflowExecuteAdditionalData,
@@ -43,15 +42,7 @@ export class ManualExecutionService {
 			startNode = workflow.getNode(data.startNodes[0].name) ?? undefined;
 		}
 
-		if (startNode) {
-			return startNode;
-		}
-
-		const manualTrigger = workflow
-			.getTriggerNodes()
-			.find((node) => node.type === MANUAL_TRIGGER_NODE_TYPE);
-
-		return manualTrigger;
+		return startNode;
 	}
 
 	// eslint-disable-next-line @typescript-eslint/promise-function-async
@@ -90,16 +81,17 @@ export class ManualExecutionService {
 				waitingExecutionSource = recreatedStack.waitingExecutionSource;
 			}
 
-			const executionData: IRunExecutionData = {
-				resultData: { runData, pinData },
+			const executionData = createRunExecutionData({
+				resultData: {
+					runData,
+					pinData,
+				},
 				executionData: {
-					contextData: {},
-					metadata: {},
 					nodeExecutionStack,
 					waitingExecution,
 					waitingExecutionSource,
 				},
-			};
+			});
 
 			if (data.destinationNode) {
 				executionData.startData = { destinationNode: data.destinationNode };
@@ -111,10 +103,7 @@ export class ManualExecutionService {
 				executionData,
 			);
 			return workflowExecute.processRunExecutionData(workflow);
-		} else if (
-			data.runData === undefined ||
-			(data.partialExecutionVersion !== 2 && (!data.startNodes || data.startNodes.length === 0))
-		) {
+		} else if (data.runData === undefined || data.executionMode === 'evaluation') {
 			// Full Execution
 			// TODO: When the old partial execution logic is removed this block can
 			// be removed and the previous one can be merged into
@@ -136,8 +125,12 @@ export class ManualExecutionService {
 					`Could not find a node named "${data.destinationNode}" in the workflow.`,
 				);
 
+				const destinationNodeType = workflow.nodeTypes.getByNameAndVersion(
+					destinationNode.type,
+					destinationNode.typeVersion,
+				);
 				// Rewire graph to be able to execute the destination tool node
-				if (isTool(destinationNode, workflow.nodeTypes)) {
+				if (NodeHelpers.isTool(destinationNodeType.description, destinationNode.parameters)) {
 					const graph = rewireGraph(
 						destinationNode,
 						DirectedGraph.fromWorkflow(workflow),
@@ -147,7 +140,14 @@ export class ManualExecutionService {
 					workflow = graph.toWorkflow({
 						...workflow,
 					});
-					data.destinationNode = graph.getDirectChildConnections(destinationNode).at(0)?.to?.name;
+
+					// Save original destination
+					if (data.executionData) {
+						data.executionData.startData = data.executionData.startData ?? {};
+						data.executionData.startData.originalDestinationNode = data.destinationNode;
+					}
+					// Set destination to Tool Executor
+					data.destinationNode = TOOL_EXECUTOR_NODE_NAME;
 				}
 			}
 
@@ -162,29 +162,24 @@ export class ManualExecutionService {
 				data.triggerToStartFrom,
 			);
 		} else {
+			a.ok(
+				data.destinationNode,
+				'a destinationNodeName is required for the new partial execution flow',
+			);
+
 			// Partial Execution
 			this.logger.debug(`Execution ID ${executionId} is a partial execution.`, { executionId });
 			// Execute only the nodes between start and destination nodes
 			const workflowExecute = new WorkflowExecute(additionalData, data.executionMode);
 
-			if (data.partialExecutionVersion === 2) {
-				return workflowExecute.runPartialWorkflow2(
-					workflow,
-					data.runData,
-					data.pinData,
-					data.dirtyNodeNames,
-					data.destinationNode,
-					data.agentRequest,
-				);
-			} else {
-				return workflowExecute.runPartialWorkflow(
-					workflow,
-					data.runData,
-					data.startNodes ?? [],
-					data.destinationNode,
-					data.pinData,
-				);
-			}
+			return workflowExecute.runPartialWorkflow2(
+				workflow,
+				data.runData,
+				data.pinData,
+				data.dirtyNodeNames,
+				data.destinationNode,
+				data.agentRequest,
+			);
 		}
 	}
 }

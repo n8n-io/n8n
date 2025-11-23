@@ -1,5 +1,5 @@
+import { Logger } from '@n8n/backend-common';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
 import { Constants, IdentityProvider } from 'samlify';
 import type { IdentityProviderInstance } from 'samlify';
 import type { XMLFileInfo, XMLLintOptions, XMLValidationResult } from 'xmllint-wasm';

@@ -1,4 +1,4 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="T extends string">
 // This component is visually similar to the ActionToggle component
 // but it offers more options when it comes to dropdown items styling
 // (supports icons, separators, custom styling and all options provided
@@ -8,42 +8,46 @@
 import { ElDropdown, ElDropdownMenu, ElDropdownItem, type Placement } from 'element-plus';
 import { ref, useCssModule, useAttrs, computed } from 'vue';
 
-import type { IconSize } from '@n8n/design-system/types/icon';
-
-import type { ActionDropdownItem } from '../../types';
+import type { ActionDropdownItem, IconSize, ButtonSize } from '../../types';
+import N8nBadge from '../N8nBadge';
 import N8nIcon from '../N8nIcon';
+import { type IconName } from '../N8nIcon/icons';
+import N8nIconButton from '../N8nIconButton';
 import { N8nKeyboardShortcut } from '../N8nKeyboardShortcut';
 
 const TRIGGER = ['click', 'hover'] as const;
 
 interface ActionDropdownProps {
-	items: ActionDropdownItem[];
+	items: Array<ActionDropdownItem<T>>;
 	placement?: Placement;
-	activatorIcon?: string;
-	activatorSize?: IconSize;
+	activatorIcon?: IconName;
+	activatorSize?: ButtonSize;
 	iconSize?: IconSize;
 	trigger?: (typeof TRIGGER)[number];
 	hideArrow?: boolean;
 	teleported?: boolean;
 	disabled?: boolean;
+	extraPopperClass?: string;
+	maxHeight?: string | number;
 }
 
 const props = withDefaults(defineProps<ActionDropdownProps>(), {
 	placement: 'bottom',
-	activatorIcon: 'ellipsis-h',
+	activatorIcon: 'ellipsis',
 	activatorSize: 'medium',
 	iconSize: 'medium',
 	trigger: 'click',
 	hideArrow: false,
 	teleported: true,
 	disabled: false,
+	maxHeight: '',
 });
 
 const attrs = useAttrs();
 const testIdPrefix = attrs['data-test-id'];
 
 const $style = useCssModule();
-const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
+const getItemClasses = (item: ActionDropdownItem<T>): Record<string, boolean> => {
 	return {
 		[$style.itemContainer]: true,
 		[$style.disabled]: !!item.disabled,
@@ -53,16 +57,24 @@ const getItemClasses = (item: ActionDropdownItem): Record<string, boolean> => {
 };
 
 const emit = defineEmits<{
-	select: [action: string];
+	select: [action: T];
 	visibleChange: [open: boolean];
+	'badge-click': [action: T];
 }>();
+
+defineSlots<{
+	activator: {};
+	menuItem: (props: ActionDropdownItem<T>) => void;
+}>();
+
 const elementDropdown = ref<InstanceType<typeof ElDropdown>>();
 
 const popperClass = computed(
-	() => `${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''}`,
+	() =>
+		`${$style.shadow}${props.hideArrow ? ` ${$style.hideArrow}` : ''} ${props.extraPopperClass ?? ''}`,
 );
 
-const onSelect = (action: string) => emit('select', action);
+const onSelect = (action: T) => emit('select', action);
 const onVisibleChange = (open: boolean) => emit('visibleChange', open);
 
 const onButtonBlur = (event: FocusEvent) => {
@@ -86,11 +98,12 @@ defineExpose({ open, close });
 			:popper-class="popperClass"
 			:teleported="teleported"
 			:disabled="disabled"
+			:max-height="maxHeight"
 			@command="onSelect"
 			@visible-change="onVisibleChange"
 		>
 			<slot v-if="$slots.activator" name="activator" />
-			<n8n-icon-button
+			<N8nIconButton
 				v-else
 				type="tertiary"
 				text
@@ -115,9 +128,21 @@ defineExpose({ open, close });
 								<N8nIcon :icon="item.icon" :size="iconSize" />
 							</span>
 							<span :class="$style.label">
-								{{ item.label }}
+								<slot name="menuItem" v-bind="item">
+									{{ item.label }}
+								</slot>
 							</span>
-							<span v-if="item.badge">
+							<N8nIcon
+								v-if="item.checked"
+								:class="$style.checkIcon"
+								icon="check"
+								:size="iconSize"
+							/>
+							<span
+								v-if="item.badge"
+								:class="{ [$style.clickableBadge]: item.disabled }"
+								@click.stop="item.disabled && $emit('badge-click', item.id)"
+							>
 								<N8nBadge theme="primary" size="xsmall" v-bind="item.badgeProps">
 									{{ item.badge }}
 								</N8nBadge>
@@ -140,7 +165,7 @@ defineExpose({ open, close });
 :global(.el-dropdown__list) {
 	.userActionsMenu {
 		min-width: 160px;
-		padding: var(--spacing-4xs) 0;
+		padding: var(--spacing--4xs) 0;
 	}
 
 	.elementItem {
@@ -155,23 +180,23 @@ defineExpose({ open, close });
 }
 
 .shadow {
-	box-shadow: var(--box-shadow-light);
+	box-shadow: var(--shadow--light);
 }
 
 .activator {
 	&:hover {
-		background-color: var(--color-background-base);
+		background-color: var(--color--background);
 	}
 }
 
 .itemContainer {
 	display: flex;
 	align-items: center;
-	gap: var(--spacing-s);
+	gap: var(--spacing--sm);
 	justify-content: space-between;
-	font-size: var(--font-size-2xs);
+	font-size: var(--font-size--2xs);
 	line-height: 18px;
-	padding: var(--spacing-3xs) var(--spacing-2xs);
+	padding: var(--spacing--3xs) var(--spacing--2xs);
 
 	&.disabled {
 		.shortcut {
@@ -181,12 +206,26 @@ defineExpose({ open, close });
 }
 
 .icon {
+	display: flex;
 	text-align: center;
-	margin-right: var(--spacing-2xs);
+	margin-right: var(--spacing--2xs);
+	flex-grow: 0;
+	flex-shrink: 0;
+	margin-right: calc(-1 * var(--spacing--2xs));
 
 	svg {
 		width: 1.2em !important;
 	}
+}
+
+.label {
+	flex-grow: 1;
+	flex-shrink: 1;
+}
+
+.checkIcon {
+	flex-grow: 0;
+	flex-shrink: 0;
 }
 
 .shortcut {
@@ -197,5 +236,10 @@ defineExpose({ open, close });
 	.hasCustomStyling {
 		color: inherit !important;
 	}
+}
+
+.clickableBadge {
+	cursor: pointer;
+	pointer-events: auto;
 }
 </style>

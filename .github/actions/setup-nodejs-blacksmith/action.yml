@@ -1,0 +1,42 @@
+name: 'Blacksmith Node.js Build Setup'
+description: 'Configures Node.js with pnpm, installs dependencies, enables Turborepo caching, (optional) sets up Docker layer caching, and builds the project or an optional command.'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use. Uses latest 22.x by default.'
+    required: false
+    default: '22.x'
+  enable-docker-cache:
+    description: 'Whether to set up Blacksmith Buildx for Docker layer caching.'
+    required: false
+    default: 'false'
+    type: boolean
+  build-command:
+    description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
+    required: false
+    default: 'pnpm build'
+    type: string
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: useblacksmith/setup-node@65c6ca86fdeb0ab3d85e78f57e4f6a7e4780b391 # v5.0.4
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Setup pnpm and Install Dependencies
+      uses: pnpm/action-setup@fe02b34f77f8bc703788d5817da081398fad5dd2 # v4.0.0
+      with:
+        run_install: true
+
+    - name: Configure Turborepo Cache
+      uses: useblacksmith/caching-for-turbo@bafb57e7ebdbf1185762286ec94d24648cd3938a # v1
+
+    - name: Setup Docker Builder for Docker Cache
+      if: ${{ inputs.enable-docker-cache == 'true' }}
+      uses: useblacksmith/setup-docker-builder@0b434dfbb431f4e3a2bcee7a773a56bd363184c5 # v1
+
+    - name: Build Project
+      run: ${{ inputs.build-command }}
+      shell: bash

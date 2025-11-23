@@ -1,6 +1,5 @@
 <script lang="ts" setup>
-import type { TextColor } from '@n8n/design-system/types/text';
-
+import type { TextColor } from '../../types/text';
 import N8nIcon from '../N8nIcon';
 import N8nText from '../N8nText';
 import N8nTooltip from '../N8nTooltip';
@@ -9,6 +8,7 @@ const SIZE = ['small', 'medium', 'large'] as const;
 
 interface InputLabelProps {
 	compact?: boolean;
+	// @TODO Tech debt - property value should be updated to match token names (text-shade-2 instead of text-dark for example)
 	color?: TextColor;
 	label?: string;
 	tooltipText?: string;
@@ -74,7 +74,7 @@ const addTargetBlank = (html: string) =>
 						:class="[$style.infoIcon, showTooltip ? $style.visible : $style.hidden]"
 					>
 						<N8nTooltip placement="top" :popper-class="$style.tooltipPopper" :show-after="300">
-							<N8nIcon :class="$style.icon" icon="question-circle" size="small" />
+							<N8nIcon :class="$style.icon" icon="circle-help" size="small" />
 							<template #content>
 								<div v-n8n-html="addTargetBlank(tooltipText)" />
 							</template>
@@ -137,7 +137,7 @@ const addTargetBlank = (html: string) =>
 			opacity: 1;
 
 			&:hover {
-				color: var(--color-text-base);
+				color: var(--color--text);
 			}
 		}
 	}
@@ -149,7 +149,7 @@ const addTargetBlank = (html: string) =>
 
 .trailing-content {
 	display: flex;
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 
 	* {
 		align-self: center;
@@ -192,8 +192,8 @@ const addTargetBlank = (html: string) =>
 .infoIcon {
 	display: flex;
 	align-items: center;
-	color: var(--color-text-light);
-	margin-left: var(--spacing-4xs);
+	color: var(--color--text--tint-1);
+	margin-left: var(--spacing--4xs);
 	z-index: 1;
 }
 
@@ -225,7 +225,7 @@ const addTargetBlank = (html: string) =>
 
 		background: linear-gradient(
 			270deg,
-			var(--color-foreground-xlight) 72.19%,
+			var(--color--foreground--tint-2) 72.19%,
 			rgba(255, 255, 255, 0) 107.45%
 		);
 	}
@@ -253,31 +253,31 @@ const addTargetBlank = (html: string) =>
 	display: flex;
 
 	&.small {
-		padding-bottom: var(--spacing-5xs);
+		padding-bottom: var(--spacing--5xs);
 	}
 	&.medium {
-		padding-bottom: var(--spacing-2xs);
+		padding-bottom: var(--spacing--2xs);
 	}
 }
 
 .underline {
-	border-bottom: var(--border-base);
+	border-bottom: var(--border);
 }
 
 :root .tooltipPopper {
-	line-height: var(--font-line-height-compact);
+	line-height: var(--line-height--sm);
 	max-width: 400px;
 
 	li {
-		margin-left: var(--spacing-s);
+		margin-left: var(--spacing--sm);
 	}
 
 	code {
-		color: var(--color-text-dark);
-		font-size: var(--font-size-3xs);
-		background: var(--color-background-medium);
-		padding: var(--spacing-5xs);
-		border-radius: var(--border-radius-base);
+		color: var(--color--text--shade-1);
+		font-size: var(--font-size--3xs);
+		background: var(--color--background--shade-1);
+		padding: var(--spacing--5xs);
+		border-radius: var(--radius);
 	}
 }
 </style>

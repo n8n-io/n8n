@@ -1,6 +1,6 @@
-import { Service } from '@n8n/di';
+import { GlobalConfig } from '@n8n/config';
+import { Container, Service } from '@n8n/di';
 
-import config from '@/config';
 import type {
 	DisconnectAnalyzer,
 	DisconnectErrorOptions,
@@ -16,7 +16,7 @@ import { TaskRunnerFailedHeartbeatError } from './errors/task-runner-failed-hear
 @Service()
 export class DefaultTaskRunnerDisconnectAnalyzer implements DisconnectAnalyzer {
 	get isCloudDeployment() {
-		return config.get('deployment.type') === 'cloud';
+		return Container.get(GlobalConfig).deployment.type === 'cloud';
 	}
 
 	async toDisconnectError(opts: DisconnectErrorOptions): Promise<Error> {
@@ -25,7 +25,7 @@ export class DefaultTaskRunnerDisconnectAnalyzer implements DisconnectAnalyzer {
 		if (reason === 'failed-heartbeat-check' && heartbeatInterval) {
 			return new TaskRunnerFailedHeartbeatError(
 				heartbeatInterval,
-				config.get('deployment.type') !== 'cloud',
+				Container.get(GlobalConfig).deployment.type !== 'cloud',
 			);
 		}
 

@@ -6,7 +6,11 @@ import {
 	type INodeTypeDescription,
 } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
+import {
+	promptTypeOptions,
+	textFromGuardrailsNode,
+	textFromPreviousNode,
+} from '@utils/descriptions';
 import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
 
 import { INPUT_TEMPLATE_KEY, LEGACY_INPUT_TEMPLATE_KEY, systemPromptOption } from './constants';
@@ -39,7 +43,7 @@ export class ChainRetrievalQa implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [
 			NodeConnectionTypes.Main,
 			{
@@ -101,6 +105,12 @@ export class ChainRetrievalQa implements INodeType {
 					hide: {
 						'@version': [{ _cnd: { lte: 1.2 } }],
 					},
+				},
+			},
+			{
+				...textFromGuardrailsNode,
+				displayOptions: {
+					show: { promptType: ['guardrails'], '@version': [{ _cnd: { gte: 1.4 } }] },
 				},
 			},
 			{

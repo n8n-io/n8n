@@ -1,9 +1,9 @@
+import { Logger } from '@n8n/backend-common';
 import { SharedWorkflowRepository } from '@n8n/db';
 import { OnLifecycleEvent, type WorkflowExecuteAfterContext } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import { In } from '@n8n/typeorm';
 import { DateTime } from 'luxon';
-import { Logger } from 'n8n-core';
 import { UnexpectedError, type ExecutionStatus, type WorkflowExecuteMode } from 'n8n-workflow';
 
 import { InsightsMetadata } from '@/modules/insights/database/entities/insights-metadata';
@@ -40,7 +40,15 @@ const shouldSkipMode: Record<WorkflowExecuteMode, boolean> = {
 	internal: true,
 
 	manual: true,
+
+	// n8n Chat hub messages
+	chat: true,
 };
+
+const MIN_RUNTIME = 0;
+
+// PostgreSQL INTEGER max (signed 32-bit)
+const MAX_RUNTIME = 2 ** 31 - 1;
 
 type BufferedInsight = Pick<InsightsRaw, 'type' | 'value' | 'timestamp'> & {
 	workflowId: string;
@@ -63,6 +71,8 @@ export class InsightsCollectionService {
 
 	private flushesInProgress: Set<Promise<void>> = new Set();
 
+	private isInitialized = false;
+
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
@@ -73,22 +83,35 @@ export class InsightsCollectionService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	startFlushingTimer() {
+	init() {
+		this.isInitialized = true;
 		this.isAsynchronouslySavingInsights = true;
-		this.stopFlushingTimer();
+
+		this.scheduleFlushing();
+		this.logger.debug('Started flushing timer');
+	}
+
+	scheduleFlushing() {
+		// Safe guard to prevent scheduling flushing when not initialized
+		if (!this.isInitialized) return;
+
+		this.cancelScheduledFlushing();
 		this.flushInsightsRawBufferTimer = setTimeout(
 			async () => await this.flushEvents(),
 			this.insightsConfig.flushIntervalSeconds * 1000,
 		);
-		this.logger.debug('Started flushing timer');
 	}
 
-	stopFlushingTimer() {
+	cancelScheduledFlushing() {
 		if (this.flushInsightsRawBufferTimer !== undefined) {
 			clearTimeout(this.flushInsightsRawBufferTimer);
 			this.flushInsightsRawBufferTimer = undefined;
-			this.logger.debug('Stopped flushing timer');
 		}
+	}
+
+	stopFlushingTimer() {
+		this.cancelScheduledFlushing();
+		this.logger.debug('Stopped flushing timer');
 	}
 
 	async shutdown() {
@@ -102,10 +125,17 @@ export class InsightsCollectionService {
 		// Flush any remaining events
 		this.logger.debug('Flushing remaining insights before shutdown');
 		await Promise.all([...this.flushesInProgress, this.flushEvents()]);
+
+		this.isInitialized = false;
 	}
 
 	@OnLifecycleEvent('workflowExecuteAfter')
 	async handleWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext) {
+		// Safe guard to prevent collecting events when not initialized
+		if (!this.isInitialized) {
+			return;
+		}
+
 		if (shouldSkipStatus[ctx.runData.status] || shouldSkipMode[ctx.runData.mode]) {
 			return;
 		}
@@ -127,7 +157,11 @@ export class InsightsCollectionService {
 
 		// run time event
 		if (ctx.runData.stoppedAt) {
-			const value = ctx.runData.stoppedAt.getTime() - ctx.runData.startedAt.getTime();
+			const runtimeMs = ctx.runData.stoppedAt.getTime() - ctx.runData.startedAt.getTime();
+			if (runtimeMs < MIN_RUNTIME || runtimeMs > MAX_RUNTIME) {
+				this.logger.warn(`Invalid runtime detected: ${runtimeMs}ms, clamping to safe range`);
+			}
+			const value = Math.min(Math.max(runtimeMs, MIN_RUNTIME), MAX_RUNTIME);
 			this.bufferedInsights.add({
 				...commonWorkflowData,
 				type: 'runtime_ms',
@@ -225,15 +259,20 @@ export class InsightsCollectionService {
 	}
 
 	async flushEvents() {
+		// Safe guard to prevent flushing when not initialized
+		if (!this.isInitialized) {
+			return;
+		}
+
 		// Prevent flushing if there are no events to flush
 		if (this.bufferedInsights.size === 0) {
 			// reschedule the timer to flush again
-			this.startFlushingTimer();
+			this.scheduleFlushing();
 			return;
 		}
 
 		// Stop timer to prevent concurrent flush from timer
-		this.stopFlushingTimer();
+		this.cancelScheduledFlushing();
 
 		// Copy the buffer to a new set to avoid concurrent modification
 		// while we are flushing the events
@@ -250,7 +289,7 @@ export class InsightsCollectionService {
 					this.bufferedInsights.add(event);
 				}
 			} finally {
-				this.startFlushingTimer();
+				this.scheduleFlushing();
 				this.flushesInProgress.delete(flushPromise!);
 			}
 		})();

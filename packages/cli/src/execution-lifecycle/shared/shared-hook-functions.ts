@@ -1,8 +1,8 @@
+import { Logger } from '@n8n/backend-common';
 import type { IExecutionDb } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import pick from 'lodash/pick';
-import { Logger } from 'n8n-core';
 import { ensureError, type ExecutionStatus, type IRun, type IWorkflowBase } from 'n8n-workflow';
 
 import type { UpdateExecutionPayload } from '@/interfaces';
@@ -38,6 +38,7 @@ export function prepareExecutionDataForDbUpdate(parameters: {
 		'id',
 		'name',
 		'active',
+		'activeVersionId',
 		'isArchived',
 		'createdAt',
 		'updatedAt',

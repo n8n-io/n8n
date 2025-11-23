@@ -10,6 +10,9 @@
         "campaignName": {
             "type": "string"
         },
+        "companyName": {
+            "type": "string"
+        },
         "email": {
             "type": "string"
         },
@@ -26,5 +29,5 @@
             "type": "string"
         }
     },
-    "version": 1
+    "version": 4
 }

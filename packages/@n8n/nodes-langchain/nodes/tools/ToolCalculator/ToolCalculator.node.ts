@@ -1,6 +1,7 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { Calculator } from '@langchain/community/tools/calculator';
 import {
+	type IExecuteFunctions,
+	type INodeExecutionData,
 	NodeConnectionTypes,
 	type INodeType,
 	type INodeTypeDescription,
@@ -10,6 +11,12 @@ import {
 
 import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
+
+function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions): Calculator {
+	const calculator = new Calculator();
+	calculator.name = ctx.getNode().name;
+	return calculator;
+}
 
 export class ToolCalculator implements INodeType {
 	description: INodeTypeDescription = {
@@ -37,9 +44,9 @@ export class ToolCalculator implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiTool],
 		outputNames: ['Tool'],
 		properties: [getConnectionHintNoticeField([NodeConnectionTypes.AiAgent])],
@@ -47,7 +54,27 @@ export class ToolCalculator implements INodeType {
 
 	async supplyData(this: ISupplyDataFunctions): Promise<SupplyData> {
 		return {
-			response: logWrapper(new Calculator(), this),
+			response: logWrapper(getTool(this), this),
 		};
+	}
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const calculator = getTool(this);
+		const input = this.getInputData();
+		const response: INodeExecutionData[] = [];
+		for (let i = 0; i < input.length; i++) {
+			const inputItem = input[i];
+			const result = await calculator.invoke(inputItem.json);
+			response.push({
+				json: {
+					response: result,
+				},
+				pairedItem: {
+					item: i,
+				},
+			});
+		}
+
+		return [response];
 	}
 }

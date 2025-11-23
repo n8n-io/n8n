@@ -1,3 +1,4 @@
+import { GlobalConfig } from '@n8n/config';
 import type { LdapConfig, ConnectionSecurity } from '@n8n/constants';
 import type { AuthProviderSyncHistory } from '@n8n/db';
 import {
@@ -6,6 +7,7 @@ import {
 	AuthIdentityRepository,
 	AuthProviderSyncHistoryRepository,
 	UserRepository,
+	GLOBAL_MEMBER_ROLE,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { validate } from 'jsonschema';
@@ -13,15 +15,9 @@ import type { Entry as LdapUser } from 'ldapts';
 import { Filter } from 'ldapts/filters/Filter';
 import { randomString } from 'n8n-workflow';
 
-import config from '@/config';
 import { License } from '@/license';
 
-import {
-	BINARY_AD_ATTRIBUTES,
-	LDAP_CONFIG_SCHEMA,
-	LDAP_LOGIN_ENABLED,
-	LDAP_LOGIN_LABEL,
-} from './constants';
+import { BINARY_AD_ATTRIBUTES, LDAP_CONFIG_SCHEMA } from './constants';
 
 /**
  *  Check whether the LDAP feature is disabled in the instance
@@ -33,12 +29,12 @@ export const isLdapEnabled = () => {
 /**
  * Retrieve the LDAP login label from the configuration object
  */
-export const getLdapLoginLabel = (): string => config.getEnv(LDAP_LOGIN_LABEL);
+export const getLdapLoginLabel = (): string => Container.get(GlobalConfig).sso.ldap.loginLabel;
 
 /**
  * Retrieve the LDAP login enabled from the configuration object
  */
-export const isLdapLoginEnabled = (): boolean => config.getEnv(LDAP_LOGIN_ENABLED);
+export const isLdapLoginEnabled = (): boolean => Container.get(GlobalConfig).sso.ldap.loginEnabled;
 
 /**
  * Validate the structure of the LDAP configuration schema
@@ -92,6 +88,22 @@ export const getAuthIdentityByLdapId = async (
 		where: {
 			providerId: idAttributeValue,
 			providerType: 'ldap',
+		},
+	});
+};
+
+/**
+ * Retrieve user by LDAP ID from database
+ * @param idAttributeValue - LDAP ID value
+ */
+export const getUserByLdapId = async (idAttributeValue: string) => {
+	return await Container.get(UserRepository).findOne({
+		relations: { role: true },
+		where: {
+			authIdentities: {
+				providerId: idAttributeValue,
+				providerType: 'ldap',
+			},
 		},
 	});
 };
@@ -155,7 +167,7 @@ export const mapLdapUserToDbUser = (
 	const [ldapId, data] = mapLdapAttributesToUser(ldapUser, ldapConfig);
 	Object.assign(user, data);
 	if (toCreate) {
-		user.role = 'global:member';
+		user.role = GLOBAL_MEMBER_ROLE;
 		user.password = randomString(8);
 		user.disabled = false;
 	} else {
@@ -275,7 +287,7 @@ export const createLdapAuthIdentity = async (user: User, ldapId: string) => {
 export const createLdapUserOnLocalDb = async (data: Partial<User>, ldapId: string) => {
 	const { user } = await Container.get(UserRepository).createUserWithProject({
 		password: randomString(8),
-		role: 'global:member',
+		role: GLOBAL_MEMBER_ROLE,
 		...data,
 	});
 	await createLdapAuthIdentity(user, ldapId);

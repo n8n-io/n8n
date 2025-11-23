@@ -12,13 +12,7 @@
         },
         "_updateTime": {
             "type": "string"
-        },
-        "chat_id": {
-            "type": "string"
-        },
-        "lastInteraction": {
-            "type": "string"
         }
     },
-    "version": 2
+    "version": 3
 }

@@ -1,9 +1,12 @@
-<script lang="ts" setup>
+<script lang="ts" setup generic="UserType extends IUser">
 import { computed, ref, watch } from 'vue';
 
-import type { UserAction } from '@n8n/design-system/types';
-
+import type { IUser, UserAction } from '../../types';
+import N8nActionToggle from '../N8nActionToggle';
+import N8nLink from '../N8nLink';
 import N8nLoading from '../N8nLoading';
+import N8nText from '../N8nText';
+import N8nTooltip from '../N8nTooltip';
 
 export type PathItem = {
 	id: string;
@@ -66,7 +69,7 @@ const dropdownDisabled = computed(() => {
 	return props.pathTruncated && !hasHiddenItems.value;
 });
 
-const hiddenItemActions = computed((): UserAction[] => {
+const hiddenItemActions = computed((): Array<UserAction<UserType>> => {
 	return loadedHiddenItems.value.map((item) => ({
 		value: item.id,
 		label: item.label,
@@ -132,7 +135,7 @@ const emitItemHover = (id: string) => {
 	emit('itemHover', item);
 };
 
-const onHiddenItemMouseUp = (item: UserAction) => {
+const onHiddenItemMouseUp = (item: UserAction<UserType>) => {
 	const pathItem = [...props.items, ...loadedHiddenItems.value].find((i) => i.id === item.value);
 	if (!pathItem || !props.dragActive) {
 		return;
@@ -177,16 +180,13 @@ const handleTooltipClose = () => {
 			>
 				<!-- Show interactive dropdown for larger versions -->
 				<div v-if="props.theme !== 'small'" :class="$style['hidden-items-menu']">
-					<n8n-action-toggle
+					<N8nActionToggle
 						:actions="hiddenItemActions"
 						:loading="isLoadingHiddenItems"
 						:loading-row-count="loadingSkeletonRows"
 						:disabled="dropdownDisabled"
 						:class="$style['action-toggle']"
-						:popper-class="{
-							[$style['hidden-items-menu-popper']]: true,
-							[$style.dragging]: dragActive,
-						}"
+						:popper-class="`${$style['hidden-items-menu-popper']} ${dragActive ? $style.dragging : ''}`"
 						:trigger="hiddenItemsTrigger"
 						theme="dark"
 						placement="bottom"
@@ -197,11 +197,11 @@ const handleTooltipClose = () => {
 						@action="emitItemSelected"
 						@item-mouseup="onHiddenItemMouseUp"
 					>
-						<n8n-text :bold="true" :class="$style.dots">...</n8n-text>
-					</n8n-action-toggle>
+						<N8nText :bold="true" :class="$style.dots">...</N8nText>
+					</N8nActionToggle>
 				</div>
 				<!-- Just a tooltip for smaller versions -->
-				<n8n-tooltip
+				<N8nTooltip
 					v-else
 					:popper-class="$style.tooltip"
 					:disabled="dropdownDisabled"
@@ -222,12 +222,12 @@ const handleTooltipClose = () => {
 						</div>
 						<div v-else :class="$style.tooltipContent">
 							<div data-test-id="hidden-items-tooltip">
-								<n8n-text>{{ loadedHiddenItems.map((item) => item.label).join(' / ') }}</n8n-text>
+								<N8nText>{{ loadedHiddenItems.map((item) => item.label).join(' / ') }}</N8nText>
 							</div>
 						</div>
 					</template>
 					<span :class="$style['tooltip-ellipsis']">...</span>
-				</n8n-tooltip>
+				</N8nTooltip>
 			</li>
 			<li v-if="showEllipsis" :class="$style.separator">{{ separator }}</li>
 			<template v-for="(item, index) in items" :key="item.id">
@@ -245,8 +245,8 @@ const handleTooltipClose = () => {
 					@mouseenter="emitItemHover(item.id)"
 					@mouseup="onItemMouseUp(item)"
 				>
-					<n8n-link v-if="item.href" :href="item.href" theme="text">{{ item.label }}</n8n-link>
-					<n8n-text v-else>{{ item.label }}</n8n-text>
+					<N8nLink v-if="item.href" :href="item.href" theme="text">{{ item.label }}</N8nLink>
+					<N8nText v-else>{{ item.label }}</N8nText>
 				</li>
 				<li v-if="index !== items.length - 1" :class="$style.separator">
 					{{ separator }}
@@ -263,12 +263,12 @@ const handleTooltipClose = () => {
 
 	&.small {
 		display: inline-flex;
-		padding: var(--spacing-4xs) var(--spacing-3xs);
+		padding: var(--spacing--4xs) var(--spacing--3xs);
 	}
 
 	&.border {
-		border: var(--border-base);
-		border-radius: var(--border-radius-base);
+		border: var(--border);
+		border-radius: var(--radius);
 	}
 }
 
@@ -279,13 +279,13 @@ const handleTooltipClose = () => {
 }
 
 .item {
-	border: var(--border-width-base) var(--border-style-base) transparent;
+	border: var(--border-width) var(--border-style) transparent;
 }
 
 .item.dragging:hover {
-	border: var(--border-width-base) var(--border-style-base) var(--color-secondary);
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-callout-secondary-background);
+	border: var(--border-width) var(--border-style) var(--color--secondary);
+	border-radius: var(--radius);
+	background-color: var(--callout--color--background--secondary);
 
 	& a {
 		cursor: grabbing;
@@ -300,7 +300,7 @@ const handleTooltipClose = () => {
 }
 
 .item.current span {
-	color: var(--color-text-dark);
+	color: var(--color--text--shade-1);
 }
 
 // Make disabled ellipsis look like a normal item
@@ -309,7 +309,7 @@ const handleTooltipClose = () => {
 	.tooltip-ellipsis {
 		cursor: pointer;
 		user-select: none;
-		color: var(--color-text-base);
+		color: var(--color--text);
 	}
 	&.disabled {
 		.dots,
@@ -318,9 +318,9 @@ const handleTooltipClose = () => {
 		}
 		.dots {
 			cursor: default;
-			color: var(--color-text-base);
+			color: var(--color--text);
 			&:hover {
-				color: var(--color-text-base);
+				color: var(--color--text);
 			}
 		}
 	}
@@ -328,7 +328,7 @@ const handleTooltipClose = () => {
 
 .hidden-items-menu {
 	display: flex;
-	color: var(--color-text-base);
+	color: var(--color--text);
 }
 
 .hidden-items-menu-popper {
@@ -339,11 +339,11 @@ const handleTooltipClose = () => {
 
 	&.dragging li:hover {
 		cursor: grabbing;
-		background-color: var(--color-callout-secondary-background);
+		background-color: var(--callout--color--background--secondary);
 	}
 
 	li {
-		max-width: var(--spacing-5xl);
+		max-width: var(--spacing--5xl);
 		display: block;
 		white-space: nowrap;
 		overflow: hidden;
@@ -352,13 +352,13 @@ const handleTooltipClose = () => {
 }
 
 .tooltip-loading {
-	min-width: var(--spacing-3xl);
+	min-width: var(--spacing--3xl);
 	width: 100%;
 
 	:global(.n8n-loading) > div {
 		display: flex;
 		flex-direction: column;
-		gap: var(--spacing-xs);
+		gap: var(--spacing--xs);
 	}
 
 	:global(.el-skeleton__item) {
@@ -367,92 +367,92 @@ const handleTooltipClose = () => {
 }
 
 .tooltip {
-	padding: var(--spacing-xs) var(--spacing-2xs);
+	padding: var(--spacing--xs) var(--spacing--2xs);
 	text-align: center;
 	& > div {
-		color: var(--color-text-lighter);
+		color: var(--color--text--tint-2);
 		span {
-			font-size: var(--font-size-2xs);
+			font-size: var(--font-size--2xs);
 		}
 	}
 
 	.tooltip-loading {
-		min-width: var(--spacing-4xl);
+		min-width: var(--spacing--4xl);
 	}
 }
 
 .dots {
-	padding: 0 var(--spacing-4xs);
-	color: var(--color-text-light);
-	border-radius: var(--border-radius-base);
+	padding: 0 var(--spacing--4xs);
+	color: var(--color--text--tint-1);
+	border-radius: var(--radius);
 
 	&:hover,
 	&:focus {
-		background-color: var(--color-background-base);
-		color: var(--color-primary);
+		background-color: var(--color--background);
+		color: var(--color--primary);
 	}
 }
 
 // Small theme overrides
 .small {
 	.list {
-		gap: var(--spacing-5xs);
+		gap: var(--spacing--5xs);
 	}
 
 	.item {
-		max-width: var(--spacing-3xl);
+		max-width: var(--spacing--3xl);
 	}
 
 	.item,
 	.item * {
-		color: var(--color-text-base);
-		font-size: var(--font-size-2xs);
-		line-height: var(--font-line-height-xsmall);
+		color: var(--color--text);
+		font-size: var(--font-size--2xs);
+		line-height: var(--line-height--xs);
 	}
 
 	.item a:hover * {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 
 	.separator {
-		font-size: var(--font-size-s);
-		color: var(--color-text-base);
+		font-size: var(--font-size--sm);
+		color: var(--color--text);
 	}
 }
 
 // Medium theme overrides
 .medium {
 	li {
-		padding: var(--spacing-3xs) var(--spacing-4xs) var(--spacing-4xs);
+		padding: var(--spacing--3xs) var(--spacing--4xs) var(--spacing--4xs);
 	}
 
 	.item,
 	.item * {
-		color: var(--color-text-base);
-		font-size: var(--font-size-s);
-		line-height: var(--font-line-height-xsmall);
+		color: var(--color--text);
+		font-size: var(--font-size--sm);
+		line-height: var(--line-height--xs);
 	}
 
 	.item {
-		max-width: var(--spacing-5xl);
+		max-width: var(--spacing--5xl);
 	}
 
 	.item:not(.dragging) a:hover * {
-		color: var(--color-text-dark);
+		color: var(--color--text--shade-1);
 	}
 
 	.ellipsis {
 		padding-right: 0;
 		padding-left: 0;
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 		&:hover {
-			color: var(--color-text-base);
+			color: var(--color--text);
 		}
 	}
 
 	.separator {
-		font-size: var(--font-size-xl);
-		color: var(--color-foreground-base);
+		font-size: var(--font-size--xl);
+		color: var(--color--foreground);
 	}
 }
 </style>

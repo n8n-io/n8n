@@ -4,7 +4,8 @@ import {
 	type INodeProperties,
 } from 'n8n-workflow';
 
-import { outputSchemaField } from '../common/fields';
+import { outputSchemaField, parseJsonOutputField } from '../common/fields';
+import { parseJsonIfPresent } from '../common/output.utils';
 import { executeRequestWithSessionManagement } from '../common/session.utils';
 
 export const description: INodeProperties[] = [
@@ -41,6 +42,9 @@ export const description: INodeProperties[] = [
 		options: [
 			{
 				...outputSchemaField,
+			},
+			{
+				...parseJsonOutputField,
 			},
 			{
 				displayName: 'Interaction Mode',
@@ -101,14 +105,21 @@ export async function execute(
 	const prompt = this.getNodeParameter('prompt', index, '') as string;
 	const additionalFields = this.getNodeParameter('additionalFields', index);
 
-	return await executeRequestWithSessionManagement.call(this, index, {
+	const configFields = ['paginationMode', 'interactionMode', 'outputSchema'];
+	const configuration = configFields.reduce(
+		(config, key) => (additionalFields[key] ? { ...config, [key]: additionalFields[key] } : config),
+		{},
+	);
+
+	const result = await executeRequestWithSessionManagement.call(this, index, {
 		method: 'POST',
 		path: '/sessions/{sessionId}/windows/{windowId}/paginated-extraction',
 		body: {
 			prompt,
-			configuration: {
-				...additionalFields,
-			},
+			configuration,
 		},
 	});
+
+	const nodeOutput = parseJsonIfPresent.call(this, index, result);
+	return this.helpers.returnJsonArray(nodeOutput);
 }

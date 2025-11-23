@@ -33,12 +33,14 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 			production_executions_count: string | number;
 			production_root_executions_count: string | number;
 			manual_executions_count: string | number;
+			evaluations_count: string | number;
 		};
 
 		const userTable = this.toTableName('user');
 		const workflowTable = this.toTableName('workflow_entity');
 		const credentialTable = this.toTableName('credentials_entity');
 		const workflowStatsTable = this.toTableName('workflow_statistics');
+		const testRunTable = this.toTableName('test_run');
 
 		const [
 			{
@@ -50,17 +52,19 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 				production_executions_count: productionExecutions,
 				production_root_executions_count: productionRootExecutions,
 				manual_executions_count: manualExecutions,
+				evaluations_count: evaluations,
 			},
 		] = (await this.query(`
 			SELECT
 				(SELECT COUNT(*) FROM ${userTable} WHERE disabled = false) AS enabled_user_count,
 				(SELECT COUNT(*) FROM ${userTable}) AS total_user_count,
-				(SELECT COUNT(*) FROM ${workflowTable} WHERE active = true) AS active_workflow_count,
+				(SELECT COUNT(*) FROM ${workflowTable} WHERE ${this.toColumnName('activeVersionId')} IS NOT NULL) AS active_workflow_count,
 				(SELECT COUNT(*) FROM ${workflowTable}) AS total_workflow_count,
 				(SELECT COUNT(*) FROM ${credentialTable}) AS total_credentials_count,
 				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_executions_count,
 				(SELECT SUM(${this.toColumnName('rootCount')}) FROM ${workflowStatsTable} WHERE name IN ('production_success', 'production_error')) AS production_root_executions_count,
-				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count;
+				(SELECT SUM(count) FROM ${workflowStatsTable} WHERE name IN ('manual_success', 'manual_error')) AS manual_executions_count,
+				(SELECT COUNT(distinct ${this.toColumnName('workflowId')}) FROM ${testRunTable}) AS evaluations_count;
 		`)) as Row[];
 
 		const toNumber = (value: string | number) =>
@@ -75,6 +79,7 @@ export class LicenseMetricsRepository extends Repository<LicenseMetrics> {
 			productionExecutions: toNumber(productionExecutions),
 			productionRootExecutions: toNumber(productionRootExecutions),
 			manualExecutions: toNumber(manualExecutions),
+			evaluations: toNumber(evaluations),
 		};
 	}
 }

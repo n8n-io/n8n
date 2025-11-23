@@ -1,3 +1,4 @@
+import type { AuthenticatedRequest } from '@n8n/db';
 import type {
 	INode,
 	IConnections,
@@ -9,12 +10,13 @@ import type {
 	AiAgentRequest,
 } from 'n8n-workflow';
 
-import type { AuthenticatedRequest, ListQuery } from '@/requests';
+import type { ListQuery } from '@/requests';
 
 export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
 		id: string; // deleted if sent
 		name: string;
+		description: string | null;
 		nodes: INode[];
 		connections: IConnections;
 		settings: IWorkflowSettings;
@@ -24,6 +26,7 @@ export declare namespace WorkflowRequest {
 		meta: Record<string, unknown>;
 		projectId: string;
 		parentFolderId?: string;
+		uiContext?: string;
 	}>;
 
 	type ManualRunPayload = {
@@ -51,6 +54,7 @@ export declare namespace WorkflowRequest {
 			includeScopes?: string;
 			includeFolders?: string;
 			onlySharedWithMe?: string;
+			availableInMCP?: string;
 		}
 	> & {
 		listQueryOptions: ListQuery.Options;
@@ -63,9 +67,17 @@ export declare namespace WorkflowRequest {
 		{ forceSave?: string }
 	>;
 
-	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
+	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string; projectId: string }>;
 
 	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload, {}>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
+
+	type Activate = AuthenticatedRequest<
+		{ workflowId: string },
+		{},
+		{ versionId: string; name?: string; description?: string }
+	>;
+
+	type Deactivate = AuthenticatedRequest<{ workflowId: string }>;
 }

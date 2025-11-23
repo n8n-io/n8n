@@ -6,7 +6,6 @@ import type { SchemaField, TableRawData, TableSchema } from './interfaces';
 
 function getFieldValue(schemaField: SchemaField, field: IDataObject, parseTimestamps = false) {
 	if (schemaField.type === 'RECORD') {
-		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		return simplify([field.v as TableRawData], schemaField.fields as unknown as SchemaField[]);
 	} else {
 		let value = field.v;

@@ -1,4 +1,4 @@
-import type { ImapSimple, ImapSimpleOptions, Message } from '@n8n/imap';
+import type { ImapSimple, ImapSimpleOptions, Message, SearchCriteria } from '@n8n/imap';
 import { connect as imapConnect, getParts } from '@n8n/imap';
 import find from 'lodash/find';
 import isEmpty from 'lodash/isEmpty';
@@ -343,7 +343,7 @@ export class EmailReadImapV1 implements INodeType {
 		// Returns all the new unseen messages
 		const getNewEmails = async (
 			imapConnection: ImapSimple,
-			searchCriteria: Array<string | string[]>,
+			searchCriteria: SearchCriteria[],
 		): Promise<INodeExecutionData[]> => {
 			const format = this.getNodeParameter('format', 0) as string;
 
@@ -508,7 +508,7 @@ export class EmailReadImapV1 implements INodeType {
 		const returnedPromise = this.helpers.createDeferredPromise();
 
 		const establishConnection = async (): Promise<ImapSimple> => {
-			let searchCriteria = ['UNSEEN'] as Array<string | string[]>;
+			let searchCriteria: SearchCriteria[] = ['UNSEEN'];
 			if (options.customEmailConfig !== undefined) {
 				try {
 					searchCriteria = JSON.parse(options.customEmailConfig as string);

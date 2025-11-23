@@ -6,14 +6,57 @@ export type * from './frontend-settings';
 export type * from './user';
 export type * from './api-keys';
 export type * from './community-node-types';
+export {
+	chatHubConversationModelSchema,
+	type ChatModelDto,
+	type ChatHubOpenAIModel,
+	type ChatHubAnthropicModel,
+	type ChatHubGoogleModel,
+	type ChatHubBaseLLMModel,
+	type ChatHubN8nModel,
+	type ChatHubCustomAgentModel,
+	type ChatHubConversationModel,
+	chatHubProviderSchema,
+	chatHubLLMProviderSchema,
+	type ChatHubProvider,
+	type ChatHubLLMProvider,
+	type ChatHubMessageType,
+	type ChatHubMessageStatus,
+	PROVIDER_CREDENTIAL_TYPE_MAP,
+	chatModelsRequestSchema,
+	emptyChatModelsResponse,
+	type ChatModelsRequest,
+	type ChatModelsResponse,
+	chatAttachmentSchema,
+	type ChatAttachment,
+	ChatHubSendMessageRequest,
+	ChatHubRegenerateMessageRequest,
+	ChatHubEditMessageRequest,
+	ChatHubUpdateConversationRequest,
+	ChatHubConversationsRequest,
+	type ChatMessageId,
+	type ChatSessionId,
+	type ChatHubMessageDto,
+	type ChatHubSessionDto,
+	type ChatHubConversationDto,
+	type ChatHubConversationResponse,
+	type ChatHubConversationsResponse,
+	type ChatHubAgentDto,
+	ChatHubCreateAgentRequest,
+	ChatHubUpdateAgentRequest,
+	type EnrichedStructuredChunk,
+	type ChatHubAgentTool,
+	UpdateChatSettingsRequest,
+	type ChatProviderSettingsDto,
+} from './chat-hub';
 
 export type { Collaborator } from './push/collaboration';
 export type { HeartbeatMessage } from './push/heartbeat';
 export { createHeartbeatMessage, heartbeatMessageSchema } from './push/heartbeat';
 export type { SendWorkerStatusMessage } from './push/worker';
 
-export type { BannerName } from './schemas/bannerName.schema';
-export { ViewableMimeTypes } from './schemas/binaryData.schema';
+export type { BannerName } from './schemas/banner-name.schema';
+export { ViewableMimeTypes } from './schemas/binary-data.schema';
 export { passwordSchema } from './schemas/password.schema';
 
 export type {
@@ -36,5 +79,56 @@ export {
 	type InsightsByWorkflow,
 	type InsightsByTime,
 	type InsightsDateRange,
-	INSIGHTS_DATE_RANGE_KEYS,
+	type RestrictedInsightsByTime,
 } from './schemas/insights.schema';
+
+export {
+	ROLE,
+	type Role,
+	type User,
+	type UsersList,
+	usersListSchema,
+	userBaseSchema,
+	userDetailSchema,
+} from './schemas/user.schema';
+
+export {
+	DATA_TABLE_COLUMN_REGEX,
+	DATA_TABLE_COLUMN_MAX_LENGTH,
+	DATA_TABLE_COLUMN_ERROR_MESSAGE,
+	type DataTable,
+	type DataTableColumn,
+	type DataTableCreateColumnSchema,
+	type DataTableListFilter,
+	type DataTableListOptions,
+	dateTimeSchema,
+	dataTableColumnNameSchema,
+} from './schemas/data-table.schema';
+
+export type {
+	DataTableFilter,
+	DataTableFilterConditionType,
+} from './schemas/data-table-filter.schema';
+
+export type {
+	ExternalSecretsProvider,
+	ExternalSecretsProviderSecret,
+	ExternalSecretsProviderData,
+	ExternalSecretsProviderProperty,
+	ExternalSecretsProviderState,
+} from './schemas/external-secrets.schema';
+
+export type { UsageState } from './schemas/usage.schema';
+
+export type {
+	BreakingChangeRuleSeverity,
+	BreakingChangeRecommendation,
+	BreakingChangeAffectedWorkflow,
+	BreakingChangeInstanceIssue,
+	BreakingChangeWorkflowIssue,
+	BreakingChangeInstanceRuleResult,
+	BreakingChangeWorkflowRuleResult,
+	BreakingChangeReportResult,
+	BreakingChangeLightReportResult,
+	BreakingChangeVersion,
+} from './schemas/breaking-changes.schema';

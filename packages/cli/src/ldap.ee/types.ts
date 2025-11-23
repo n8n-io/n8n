@@ -1,7 +1,5 @@
 import type { LdapConfig } from '@n8n/constants';
-import type { RunningMode } from '@n8n/db';
-
-import type { AuthenticatedRequest } from '@/requests';
+import type { AuthenticatedRequest, RunningMode } from '@n8n/db';
 
 export declare namespace LdapConfiguration {
 	type Update = AuthenticatedRequest<{}, {}, LdapConfig, {}>;

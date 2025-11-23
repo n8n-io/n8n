@@ -1,9 +1,8 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
-import { TEST_ICONS } from './constants';
-import type { Icon } from './IconPicker.vue';
 import N8nIconPicker from './IconPicker.vue';
+import { type IconOrEmoji } from './types';
 
 export default {
 	title: 'Atoms/Icon Picker',
@@ -19,7 +18,7 @@ export default {
 	},
 };
 
-function createTemplate(icon: Icon): StoryFn {
+function createTemplate(icon: IconOrEmoji): StoryFn {
 	return (args, { argTypes }) => ({
 		components: { N8nIconPicker },
 		props: Object.keys(argTypes),
@@ -39,13 +38,11 @@ const DefaultTemplate = createTemplate({ type: 'icon', value: 'smile' });
 export const Default = DefaultTemplate.bind({});
 Default.args = {
 	buttonTooltip: 'Select an icon',
-	availableIcons: TEST_ICONS,
 };
 
-const CustomTooltipTemplate = createTemplate({ type: 'icon', value: 'layer-group' });
+const CustomTooltipTemplate = createTemplate({ type: 'icon', value: 'layers' });
 export const WithCustomIconAndTooltip = CustomTooltipTemplate.bind({});
 WithCustomIconAndTooltip.args = {
-	availableIcons: [...TEST_ICONS],
 	buttonTooltip: 'Select something...',
 };
 

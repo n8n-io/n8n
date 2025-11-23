@@ -124,12 +124,12 @@ export class DirectedGraph {
 			const newConnections: GraphConnection[] = [];
 
 			for (const incomingConnection of incomingConnections) {
-				if (options.skipConnectionFn && options.skipConnectionFn(incomingConnection)) {
+				if (options.skipConnectionFn?.(incomingConnection)) {
 					continue;
 				}
 
 				for (const outgoingConnection of outgoingConnections) {
-					if (options.skipConnectionFn && options.skipConnectionFn(outgoingConnection)) {
+					if (options.skipConnectionFn?.(outgoingConnection)) {
 						continue;
 					}
 

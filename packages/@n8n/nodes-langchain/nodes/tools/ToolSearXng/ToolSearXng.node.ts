@@ -1,6 +1,8 @@
 import { SearxngSearch } from '@langchain/community/tools/searxng_search';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
+	IExecuteFunctions,
+	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 	ISupplyDataFunctions,
@@ -16,6 +18,19 @@ type Options = {
 	language: string;
 	safesearch: 0 | 1 | 2;
 };
+
+async function getTool(ctx: ISupplyDataFunctions | IExecuteFunctions, itemIndex: number) {
+	const credentials = await ctx.getCredentials<{ apiUrl: string }>('searXngApi');
+	const options = ctx.getNodeParameter('options', itemIndex) as Options;
+
+	return new SearxngSearch({
+		apiBase: credentials.apiUrl,
+		headers: {
+			Accept: 'application/json',
+		},
+		params: options,
+	});
+}
 
 export class ToolSearXng implements INodeType {
 	description: INodeTypeDescription = {
@@ -107,19 +122,27 @@ export class ToolSearXng implements INodeType {
 	};
 
 	async supplyData(this: ISupplyDataFunctions, itemIndex: number): Promise<SupplyData> {
-		const credentials = await this.getCredentials<{ apiUrl: string }>('searXngApi');
-		const options = this.getNodeParameter('options', itemIndex) as Options;
-
-		const tool = new SearxngSearch({
-			apiBase: credentials.apiUrl,
-			headers: {
-				Accept: 'application/json',
-			},
-			params: options,
-		});
-
 		return {
-			response: logWrapper(tool, this),
+			response: logWrapper(await getTool(this, itemIndex), this),
 		};
+	}
+
+	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
+		const result: INodeExecutionData[] = [];
+		const input = this.getInputData();
+		for (let i = 0; i < input.length; i++) {
+			const item = input[i];
+			const tool = await getTool(this, i);
+			result.push({
+				json: {
+					response: await tool.invoke(item.json),
+				},
+				pairedItem: {
+					item: i,
+				},
+			});
+		}
+
+		return [result];
 	}
 }

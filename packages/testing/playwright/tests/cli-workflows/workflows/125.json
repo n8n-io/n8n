@@ -1,0 +1,210 @@
+{
+	"createdAt": "2021-03-11T13:25:33.615Z",
+	"updatedAt": "2021-11-12T13:06:28.032Z",
+	"id": "125",
+	"name": "Postgres: insert update executeQuery",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "17ac71e5-e7ee-46e2-bc71-65bcfb5d4a52"
+		},
+		{
+			"parameters": {
+				"table": "testtable",
+				"columns": "id,name",
+				"additionalFields": {}
+			},
+			"name": "Postgres",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 1,
+			"position": [550, 300],
+			"credentials": {
+				"postgres": {
+					"id": "92",
+					"name": "Postgres creds"
+				}
+			},
+			"id": "7cab0391-d473-4d74-a771-6aad35b3240f"
+		},
+		{
+			"parameters": {
+				"values": {
+					"number": [
+						{
+							"name": "id",
+							"value": "={{Math.round(Math.random()*1000)}}"
+						}
+					],
+					"string": [
+						{
+							"name": "name",
+							"value": "=Name{{Date.now()}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [400, 300],
+			"id": "b64bd579-b602-4ec5-8fcb-3e49514517a7"
+		},
+		{
+			"parameters": {
+				"operation": "update",
+				"table": "testtable",
+				"columns": "id,name",
+				"additionalFields": {}
+			},
+			"name": "Postgres1",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 1,
+			"position": [850, 300],
+			"credentials": {
+				"postgres": {
+					"id": "92",
+					"name": "Postgres creds"
+				}
+			},
+			"id": "9013d993-4f74-42ca-bab2-7c1536205836"
+		},
+		{
+			"parameters": {
+				"values": {
+					"number": [],
+					"string": [
+						{
+							"name": "name",
+							"value": "=UpdatedName{{Date.now()}}"
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [700, 300],
+			"id": "a6b9b7f5-453f-494d-b1db-7f4745f81233"
+		},
+		{
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "SELECT * FROM public.testtable;",
+				"additionalFields": {}
+			},
+			"name": "Postgres2",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 1,
+			"position": [1000, 300],
+			"credentials": {
+				"postgres": {
+					"id": "92",
+					"name": "Postgres creds"
+				}
+			},
+			"id": "63302a61-6401-43fd-a4c5-f20b9feb68b8"
+		},
+		{
+			"parameters": {
+				"operation": "executeQuery",
+				"query": "=DELETE FROM public.testtable where id = $1;",
+				"additionalFields": {
+					"queryParams": "id"
+				}
+			},
+			"name": "Postgres3",
+			"type": "n8n-nodes-base.postgres",
+			"typeVersion": 1,
+			"position": [1150, 300],
+			"credentials": {
+				"postgres": {
+					"id": "92",
+					"name": "Postgres creds"
+				}
+			},
+			"id": "c31b730f-f21b-4eb3-88e0-cc649984a327"
+		}
+	],
+	"connections": {
+		"Postgres": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Postgres",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set1": {
+			"main": [
+				[
+					{
+						"node": "Postgres1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Postgres1": {
+			"main": [
+				[
+					{
+						"node": "Postgres2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Postgres2": {
+			"main": [
+				[
+					{
+						"node": "Postgres3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

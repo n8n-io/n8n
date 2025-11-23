@@ -48,13 +48,13 @@ jobs:
         with:
           terraform_version: '1.8.5'
 
-      - uses: actions/setup-node@1d0ff469b7ec7b3cb9d8673fde0c81c44821de2a # v4.2.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: 20.x
+          node-version: 22.x
 
       - name: Setup corepack and pnpm
         run: |
-          npm i -g corepack@0.31
+          npm i -g corepack@0.33
           corepack enable
 
       - name: Install dependencies
@@ -76,6 +76,7 @@ jobs:
         working-directory: packages/@n8n/benchmark
 
       - name: Run the benchmark
+        id: benchmark
         env:
           BENCHMARK_RESULT_WEBHOOK_URL: ${{ secrets.BENCHMARK_RESULT_WEBHOOK_URL }}
           BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER: ${{ secrets.BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER }}
@@ -102,3 +103,20 @@ jobs:
         if: always()
         run: pnpm destroy-cloud-env ${{ env.DEBUG }}
         working-directory: packages/@n8n/benchmark
+
+      - name: Fail `build` job if `benchmark` step failed
+        if: steps.benchmark.outcome == 'failure'
+        run: exit 1
+
+  notify-on-failure:
+    name: Notify Cats on failure
+    runs-on: ubuntu-latest
+    needs: [build]
+    if: failure()
+    steps:
+      - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
+        with:
+          status: ${{ job.status }}
+          channel: '#team-catalysts'
+          webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
+          message: Benchmark run failed for n8n tag `${{ inputs.n8n_tag || 'nightly' }}` - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}

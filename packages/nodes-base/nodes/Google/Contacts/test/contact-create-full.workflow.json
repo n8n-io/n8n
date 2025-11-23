@@ -1,0 +1,158 @@
+{
+	"name": "Google Contacts Create Full Test",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 0],
+			"id": "trigger-id",
+			"name": "When clicking 'Execute Workflow'"
+		},
+		{
+			"parameters": {
+				"resource": "contact",
+				"operation": "create",
+				"familyName": "Smith",
+				"givenName": "Jane",
+				"additionalFields": {
+					"middleName": "Marie",
+					"honorificPrefix": "Dr.",
+					"honorificSuffix": "Jr.",
+					"emailsUi": {
+						"emailsValues": [
+							{
+								"value": "jane@example.com",
+								"type": "work"
+							}
+						]
+					},
+					"phoneUi": {
+						"phoneValues": [
+							{
+								"value": "+1234567890",
+								"type": "mobile"
+							}
+						]
+					},
+					"addressesUi": {
+						"addressesValues": [
+							{
+								"streetAddress": "123 Main St",
+								"city": "Anytown",
+								"region": "CA",
+								"postalCode": "12345",
+								"countryCode": "US",
+								"type": "home"
+							}
+						]
+					},
+					"companyUi": {
+						"companyValues": [
+							{
+								"name": "Test Company",
+								"title": "Software Engineer",
+								"current": true,
+								"domain": "testcompany.com"
+							}
+						]
+					},
+					"birthday": "1990-06-15T00:00:00.000Z",
+					"biographies": "Test biography",
+					"relationsUi": {
+						"relationsValues": [
+							{
+								"person": "John Smith",
+								"type": "spouse"
+							}
+						]
+					},
+					"eventsUi": {
+						"eventsValues": [
+							{
+								"date": "2020-06-15T00:00:00.000Z",
+								"type": "anniversary"
+							}
+						]
+					},
+					"customFieldsUi": {
+						"customFieldsValues": [
+							{
+								"key": "customField",
+								"value": "customValue"
+							}
+						]
+					},
+					"group": ["contactGroups/group123"]
+				}
+			},
+			"type": "n8n-nodes-base.googleContacts",
+			"typeVersion": 1,
+			"position": [200, 0],
+			"id": "contact-create-full",
+			"name": "Create Contact Full",
+			"credentials": {
+				"googleContactsOAuth2Api": {
+					"id": "test-credential-id",
+					"name": "Test Google Contacts OAuth2"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Create Contact Full": [
+			{
+				"json": {
+					"resourceName": "people/c987654321",
+					"etag": "%EgYBAgMEBQYHCCESBCAFIAI=.",
+					"names": [
+						{
+							"metadata": {
+								"primary": true,
+								"source": { "type": "CONTACT", "id": "c987654321" }
+							},
+							"displayName": "Dr. Jane Marie Smith Jr.",
+							"familyName": "Smith",
+							"givenName": "Jane",
+							"middleName": "Marie",
+							"honorificPrefix": "Dr.",
+							"honorificSuffix": "Jr."
+						}
+					],
+					"emailAddresses": [
+						{
+							"metadata": { "primary": true, "source": { "type": "CONTACT", "id": "c987654321" } },
+							"value": "jane@example.com",
+							"type": "work"
+						}
+					],
+					"phoneNumbers": [
+						{
+							"metadata": { "primary": true, "source": { "type": "CONTACT", "id": "c987654321" } },
+							"value": "+1234567890",
+							"type": "mobile"
+						}
+					],
+					"contactId": "c987654321"
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Execute Workflow'": {
+			"main": [
+				[
+					{
+						"node": "Create Contact Full",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

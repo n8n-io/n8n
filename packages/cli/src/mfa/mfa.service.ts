@@ -1,4 +1,5 @@
-import { UserRepository } from '@n8n/db';
+import { LicenseState, Logger } from '@n8n/backend-common';
+import { SettingsRepository, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { Cipher } from 'n8n-core';
 import { v4 as uuid } from 'uuid';
@@ -6,18 +7,58 @@ import { v4 as uuid } from 'uuid';
 import { InvalidMfaCodeError } from '@/errors/response-errors/invalid-mfa-code.error';
 import { InvalidMfaRecoveryCodeError } from '@/errors/response-errors/invalid-mfa-recovery-code-error';
 
+import { MFA_ENFORCE_SETTING } from './constants';
 import { TOTPService } from './totp.service';
 
 @Service()
 export class MfaService {
+	private enforceMFAValue: boolean = false;
+
 	constructor(
 		private userRepository: UserRepository,
+		private settingsRepository: SettingsRepository,
+		private license: LicenseState,
 		public totp: TOTPService,
 		private cipher: Cipher,
+		private logger: Logger,
 	) {}
+
+	async init() {
+		try {
+			await this.loadMFASettings();
+		} catch (error) {
+			this.logger.warn('Failed to load MFA settings', { error });
+		}
+	}
 
 	generateRecoveryCodes(n = 10) {
 		return Array.from(Array(n)).map(() => uuid());
+	}
+
+	private async loadMFASettings() {
+		const value = await this.settingsRepository.findByKey(MFA_ENFORCE_SETTING);
+		if (value) {
+			this.enforceMFAValue = value.value === 'true';
+		}
+	}
+
+	async enforceMFA(value: boolean) {
+		if (!this.license.isMFAEnforcementLicensed()) {
+			value = false; // If the license does not allow MFA enforcement, set it to false
+		}
+		await this.settingsRepository.upsert(
+			{
+				key: MFA_ENFORCE_SETTING,
+				value: `${value}`,
+				loadOnStartup: true,
+			},
+			['key'],
+		);
+		this.enforceMFAValue = value;
+	}
+
+	isMFAEnforced() {
+		return this.license.isMFAEnforcementLicensed() && this.enforceMFAValue;
 	}
 
 	async saveSecretAndRecoveryCodes(userId: string, secret: string, recoveryCodes: string[]) {
@@ -81,7 +122,10 @@ export class MfaService {
 	}
 
 	async enableMfa(userId: string) {
-		const user = await this.userRepository.findOneByOrFail({ id: userId });
+		const user = await this.userRepository.findOneOrFail({
+			where: { id: userId },
+			relations: ['role'],
+		});
 		user.mfaEnabled = true;
 		return await this.userRepository.save(user);
 	}

@@ -1,0 +1,299 @@
+{
+	"createdAt": "2021-05-07T14:37:14.511Z",
+	"updatedAt": "2021-05-12T17:39:44.046Z",
+	"id": "198",
+	"name": "GoogleCloudFirestore:Document:create get upset getAll query delete:Collection:getAll",
+	"active": false,
+	"nodes": [
+		{
+			"parameters": {},
+			"name": "Start",
+			"type": "n8n-nodes-base.start",
+			"typeVersion": 1,
+			"position": [250, 300],
+			"id": "68fcd431-1e94-4928-b19a-1749502c6ec5"
+		},
+		{
+			"parameters": {
+				"operation": "create",
+				"projectId": "fixedtestproject",
+				"collection": "FixedCollection",
+				"columns": "number,boolean"
+			},
+			"name": "Google Cloud Firestore",
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1,
+			"position": [600, 250],
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "167",
+					"name": "Google Firebase Cloud Firestore OAuth2 API creds"
+				}
+			},
+			"id": "d5788046-8872-44f7-83c4-4d1b66480b22"
+		},
+		{
+			"parameters": {
+				"values": {
+					"number": [
+						{
+							"name": "number",
+							"value": 3
+						}
+					],
+					"boolean": [
+						{
+							"name": "boolean",
+							"value": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [450, 250],
+			"id": "b4b9cc8e-7496-40ed-ad8a-eb02421546e0"
+		},
+		{
+			"parameters": {
+				"projectId": "fixedtestproject",
+				"collection": "FixedCollection",
+				"documentId": "={{$node[\"Google Cloud Firestore\"].json[\"_id\"]}}"
+			},
+			"name": "Google Cloud Firestore1",
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1,
+			"position": [800, 250],
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "167",
+					"name": "Google Firebase Cloud Firestore OAuth2 API creds"
+				}
+			},
+			"id": "56bff4bf-504c-4dca-bcef-0dbd4f881303"
+		},
+		{
+			"parameters": {
+				"operation": "upsert",
+				"projectId": "fixedtestproject",
+				"collection": "FixedCollection",
+				"updateKey": "={{$node[\"Google Cloud Firestore1\"].json[\"_id\"]}}",
+				"columns": "number"
+			},
+			"name": "Google Cloud Firestore2",
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1,
+			"position": [1100, 250],
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "167",
+					"name": "Google Firebase Cloud Firestore OAuth2 API creds"
+				}
+			},
+			"id": "fe3abd23-d891-4bcf-aa5e-64e9a0961332"
+		},
+		{
+			"parameters": {
+				"keepOnlySet": true,
+				"values": {
+					"number": [
+						{
+							"name": "number",
+							"value": 100
+						}
+					],
+					"boolean": [
+						{
+							"name": "boolean",
+							"value": true
+						}
+					]
+				},
+				"options": {}
+			},
+			"name": "Set1",
+			"type": "n8n-nodes-base.set",
+			"typeVersion": 1,
+			"position": [950, 250],
+			"id": "3bbbae32-f56a-4252-8e4b-4f0f4854fe22"
+		},
+		{
+			"parameters": {
+				"operation": "getAll",
+				"projectId": "fixedtestproject",
+				"collection": "FixedCollection",
+				"limit": 1
+			},
+			"name": "Google Cloud Firestore3",
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1,
+			"position": [1250, 250],
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "167",
+					"name": "Google Firebase Cloud Firestore OAuth2 API creds"
+				}
+			},
+			"id": "77e69936-c4c5-4aee-918b-1246e25e0446"
+		},
+		{
+			"parameters": {
+				"operation": "query",
+				"projectId": "fixedtestproject",
+				"query": "{\n    \"structuredQuery\":{\n        \"where\":{\n            \"fieldFilter\":{\n                \"field\":{\n                    \"fieldPath\": \"number\"\n                },\n                \"op\":\"EQUAL\",\n                \"value\":{\n                    \"integerValue\": 100\n                }\n            }\n        },\n        \"from\":[\n            {\n                \"collectionId\":\"FixedCollection\"\n            }\n        ]\n    }\n}"
+			},
+			"name": "Google Cloud Firestore4",
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1,
+			"position": [1450, 250],
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "167",
+					"name": "Google Firebase Cloud Firestore OAuth2 API creds"
+				}
+			},
+			"id": "0f0d74da-fbc7-4078-9462-d8c40322b9e7"
+		},
+		{
+			"parameters": {
+				"resource": "collection",
+				"projectId": "fixedtestproject",
+				"limit": 1
+			},
+			"name": "Google Cloud Firestore5",
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1,
+			"position": [450, 400],
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "167",
+					"name": "Google Firebase Cloud Firestore OAuth2 API creds"
+				}
+			},
+			"id": "bda9b450-d8d2-46a0-b3f2-d38fe8bfb6e8"
+		},
+		{
+			"parameters": {
+				"operation": "delete",
+				"projectId": "fixedtestproject",
+				"collection": "FixedCollection",
+				"documentId": "={{$node[\"Google Cloud Firestore\"].json[\"_id\"]}}"
+			},
+			"name": "Google Cloud Firestore6",
+			"type": "n8n-nodes-base.googleFirebaseCloudFirestore",
+			"typeVersion": 1,
+			"position": [1650, 250],
+			"credentials": {
+				"googleFirebaseCloudFirestoreOAuth2Api": {
+					"id": "167",
+					"name": "Google Firebase Cloud Firestore OAuth2 API creds"
+				}
+			},
+			"id": "62f8a14b-34de-48c6-87d9-6292203427e1"
+		}
+	],
+	"connections": {
+		"Google Cloud Firestore": {
+			"main": [
+				[
+					{
+						"node": "Google Cloud Firestore1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set": {
+			"main": [
+				[
+					{
+						"node": "Google Cloud Firestore",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Cloud Firestore1": {
+			"main": [
+				[
+					{
+						"node": "Set1",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Set1": {
+			"main": [
+				[
+					{
+						"node": "Google Cloud Firestore2",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Cloud Firestore2": {
+			"main": [
+				[
+					{
+						"node": "Google Cloud Firestore3",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Cloud Firestore3": {
+			"main": [
+				[
+					{
+						"node": "Google Cloud Firestore4",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Start": {
+			"main": [
+				[
+					{
+						"node": "Set",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "Google Cloud Firestore5",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Google Cloud Firestore4": {
+			"main": [
+				[
+					{
+						"node": "Google Cloud Firestore6",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"settings": {},
+	"staticData": null,
+	"meta": null,
+	"pinData": null,
+	"versionId": null,
+	"triggerCount": 0,
+	"tags": []
+}

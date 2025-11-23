@@ -1,7 +1,9 @@
-import { Time } from '@/constants';
+import { Time } from '@n8n/constants';
+
 import { TaskRunnerRestartLoopError } from '@/task-runners/errors/task-runner-restart-loop-error';
-import type { TaskRunnerProcess } from '@/task-runners/task-runner-process';
 import { TypedEmitter } from '@/typed-emitter';
+
+import type { TaskRunnerProcessBase } from './task-runner-process-base';
 
 const MAX_RESTARTS = 5;
 const RESTARTS_WINDOW = 2 * Time.seconds.toMilliseconds;
@@ -31,7 +33,7 @@ export class TaskRunnerProcessRestartLoopDetector extends TypedEmitter<TaskRunne
 	/** Time when the first restart of a loop happened within a time window */
 	private firstRestartedAt = Date.now();
 
-	constructor(private readonly taskRunnerProcess: TaskRunnerProcess) {
+	constructor(private readonly taskRunnerProcess: TaskRunnerProcessBase) {
 		super();
 
 		this.taskRunnerProcess.on('exit', () => {

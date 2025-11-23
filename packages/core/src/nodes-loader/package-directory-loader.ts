@@ -19,26 +19,24 @@ export class PackageDirectoryLoader extends DirectoryLoader {
 
 		this.packageJson = this.readJSONSync('package.json');
 		this.packageName = this.packageJson.name;
-		this.excludeNodes = this.extractNodeTypes(excludeNodes);
-		this.includeNodes = this.extractNodeTypes(includeNodes);
-	}
 
-	private extractNodeTypes(fullNodeTypes: string[]) {
-		return fullNodeTypes
-			.map((fullNodeType) => fullNodeType.split('.'))
-			.filter(([packageName]) => packageName === this.packageName)
-			.map(([_, nodeType]) => nodeType);
+		this.excludeNodes = this.extractNodeTypes(excludeNodes, this.packageName);
+		this.includeNodes = this.extractNodeTypes(includeNodes, this.packageName);
 	}
 
 	override async loadAll() {
-		const { n8n } = this.packageJson;
+		const { n8n, version, name } = this.packageJson;
 		if (!n8n) return;
 
 		const { nodes, credentials } = n8n;
 
+		const packageVersion = !['n8n-nodes-base', '@n8n/n8n-nodes-langchain'].includes(name)
+			? version
+			: undefined;
+
 		if (Array.isArray(nodes)) {
 			for (const nodePath of nodes) {
-				this.loadNodeFromFile(nodePath);
+				this.loadNodeFromFile(nodePath, packageVersion);
 			}
 		}
 

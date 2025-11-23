@@ -3,7 +3,6 @@ import userEvent from '@testing-library/user-event';
 import type { ISettingsState } from '@/Interface';
 import { UserManagementAuthenticationMethod } from '@/Interface';
 import { defaultSettings } from './defaults';
-import { APP_MODALS_ELEMENT_ID } from '@/constants';
 import type { Mock } from 'vitest';
 import type { Store, StoreDefinition } from 'pinia';
 import type { ComputedRef } from 'vue';
@@ -96,23 +95,6 @@ export const getSelectedDropdownValue = async (items: NodeListOf<Element>) => {
 };
 
 /**
- * Create a container for teleported modals
- *
- * More info: https://test-utils.vuejs.org/guide/advanced/teleport#Mounting-the-Component
- * @returns {HTMLElement} appModals
- */
-export const createAppModals = () => {
-	const appModals = document.createElement('div');
-	appModals.id = APP_MODALS_ELEMENT_ID;
-	document.body.appendChild(appModals);
-	return appModals;
-};
-
-export const cleanupAppModals = () => {
-	document.body.innerHTML = '';
-};
-
-/**
  * Typescript helper for mocking pinia store actions return value
  *
  * @see https://pinia.vuejs.org/cookbook/testing.html#Mocking-the-returned-value-of-an-action
@@ -138,3 +120,20 @@ export const mockedStore = <TStoreDef extends () => unknown>(
 };
 
 export type MockedStore<T extends () => unknown> = ReturnType<typeof mockedStore<T>>;
+
+export type Emitter = (event: string, ...args: unknown[]) => void;
+export type Emitters<T extends string> = Record<
+	T,
+	{
+		emit: Emitter;
+	}
+>;
+export const useEmitters = <T extends string>() => {
+	const emitters = {} as Emitters<T>;
+	return {
+		emitters,
+		addEmitter: (name: T, emitter: Emitter) => {
+			emitters[name] = { emit: emitter };
+		},
+	};
+};

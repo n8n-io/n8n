@@ -245,12 +245,11 @@ export async function encodeEmail(email: IEmail) {
 	// by default the bcc headers are deleted when the mail is built.
 	// So add keepBcc flag to override such behaviour. Only works when
 	// the flag is set after the compilation.
-	// @ts-expect-error - https://nodemailer.com/extras/mailcomposer/#bcc
 	mail.keepBcc = true;
 
 	const mailBody = await mail.build();
 
-	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_');
+	return mailBody.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 export async function googleApiRequestAllItems(
@@ -505,111 +504,6 @@ export function unescapeSnippets(items: INodeExecutionData[]) {
 		return item;
 	});
 	return result;
-}
-
-export async function replyToEmail(
-	this: IExecuteFunctions,
-	gmailId: string,
-	options: IDataObject,
-	itemIndex: number,
-) {
-	let qs: IDataObject = {};
-
-	let cc = '';
-	let bcc = '';
-
-	if (options.ccList) {
-		cc = prepareEmailsInput.call(this, options.ccList as string, 'CC', itemIndex);
-	}
-
-	if (options.bccList) {
-		bcc = prepareEmailsInput.call(this, options.bccList as string, 'BCC', itemIndex);
-	}
-	let attachments: IDataObject[] = [];
-	if (options.attachmentsUi) {
-		attachments = await prepareEmailAttachments.call(
-			this,
-			options.attachmentsUi as IDataObject,
-			itemIndex,
-		);
-		if (attachments.length) {
-			qs = {
-				userId: 'me',
-				uploadType: 'media',
-			};
-		}
-	}
-
-	const endpoint = `/gmail/v1/users/me/messages/${gmailId}`;
-
-	qs.format = 'metadata';
-
-	const { payload, threadId } = await googleApiRequest.call(this, 'GET', endpoint, {}, qs);
-
-	const subject =
-		payload.headers.filter(
-			(data: { [key: string]: string }) => data.name.toLowerCase() === 'subject',
-		)[0]?.value || '';
-
-	const messageIdGlobal =
-		payload.headers.filter(
-			(data: { [key: string]: string }) => data.name.toLowerCase() === 'message-id',
-		)[0]?.value || '';
-
-	const { emailAddress } = await googleApiRequest.call(this, 'GET', '/gmail/v1/users/me/profile');
-
-	let to = '';
-	const replyToSenderOnly =
-		options.replyToSenderOnly === undefined ? false : (options.replyToSenderOnly as boolean);
-
-	const prepareEmailString = (email: string) => {
-		if (email.includes(emailAddress as string)) return;
-		if (email.includes('<') && email.includes('>')) {
-			to += `${email}, `;
-		} else {
-			to += `<${email}>, `;
-		}
-	};
-
-	for (const header of payload.headers as IDataObject[]) {
-		if (((header.name as string) || '').toLowerCase() === 'from') {
-			const from = header.value as string;
-			if (from.includes('<') && from.includes('>')) {
-				to += `${from}, `;
-			} else {
-				to += `<${from}>, `;
-			}
-		}
-
-		if (((header.name as string) || '').toLowerCase() === 'to' && !replyToSenderOnly) {
-			const toEmails = header.value as string;
-			toEmails.split(',').forEach(prepareEmailString);
-		}
-	}
-
-	let from = '';
-	if (options.senderName) {
-		from = `${options.senderName as string} <${emailAddress}>`;
-	}
-
-	const email: IEmail = {
-		from,
-		to,
-		cc,
-		bcc,
-		subject,
-		attachments,
-		inReplyTo: messageIdGlobal,
-		reference: messageIdGlobal,
-		...prepareEmailBody.call(this, itemIndex),
-	};
-
-	const body = {
-		raw: await encodeEmail(email),
-		threadId,
-	};
-
-	return await googleApiRequest.call(this, 'POST', '/gmail/v1/users/me/messages/send', body, qs);
 }
 
 export async function simplifyOutput(

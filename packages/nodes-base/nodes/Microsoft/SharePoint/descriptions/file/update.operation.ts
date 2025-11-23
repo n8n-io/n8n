@@ -68,13 +68,13 @@ const properties: INodeProperties[] = [
 		name: 'fileContents',
 		default: '',
 		description:
-			'Find the name of input field containing the binary data to update the file in the Input panel on the left, in the Binary tab',
+			'Find the name of input field containing the binary data to update the file with in the Input panel on the left, in the Binary tab',
 		displayOptions: {
 			show: {
 				changeFileContent: [true],
 			},
 		},
-		hint: 'The name of the input field containing the binary file data to update the file',
+		hint: 'The name of the input field containing the binary file data to update the file with',
 		placeholder: 'data',
 		required: true,
 		routing: {

@@ -1,3 +1,4 @@
+import { mockInstance } from '@n8n/backend-test-utils';
 import { SettingsRepository, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -7,6 +8,7 @@ import {
 	InstanceSettings,
 	UnrecognizedNodeTypeError,
 	type DirectoryLoader,
+	type ErrorReporter,
 } from 'n8n-core';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
@@ -24,8 +26,6 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { Push } from '@/push';
-
-import { mockInstance } from '../../../shared/mocking';
 
 export { setupTestServer } from './test-server';
 
@@ -116,7 +116,8 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
 		availableModes: [mode],
 		localStoragePath: '',
 	});
-	const binaryDataService = new BinaryDataService(config);
+	const errorReporter = mock<ErrorReporter>();
+	const binaryDataService = new BinaryDataService(config, errorReporter);
 	await binaryDataService.init();
 	Container.set(BinaryDataService, binaryDataService);
 }
@@ -136,7 +137,7 @@ export function getAuthToken(response: request.Response, authCookieName = AUTH_C
 
 	const match = authCookie.match(new RegExp(`(^| )${authCookieName}=(?<token>[^;]+)`));
 
-	if (!match || !match.groups) return undefined;
+	if (!match?.groups) return undefined;
 
 	return match.groups.token;
 }
@@ -195,6 +196,7 @@ export function makeWorkflow(options?: {
 
 	workflow.name = 'My Workflow';
 	workflow.active = false;
+	workflow.activeVersionId = null;
 	workflow.connections = {};
 	workflow.nodes = [node];
 

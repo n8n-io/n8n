@@ -12,6 +12,7 @@ import { UserError, PROJECT_ROOT } from 'n8n-workflow';
 
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import type { ListQuery } from '@/requests';
+// eslint-disable-next-line import-x/no-cycle
 import { WorkflowService } from '@/workflows/workflow.service';
 
 export interface SimpleFolderNode {
@@ -72,7 +73,16 @@ export class FolderService {
 
 			if (parentFolderId !== PROJECT_ROOT) {
 				await this.findFolderInProjectOrFail(parentFolderId, projectId);
+
+				// Ensure that the target parentFolder isn't a descendant of the current folder.
+				const parentFolderPath = await this.getFolderTree(parentFolderId, projectId);
+				if (this.isDescendant(folderId, parentFolderPath)) {
+					throw new UserError(
+						"Cannot set a folder's parent to a folder that is a descendant of the current folder",
+					);
+				}
 			}
+
 			await this.folderRepository.update(
 				{ id: folderId },
 				{ parentFolder: parentFolderId !== PROJECT_ROOT ? { id: parentFolderId } : null },
@@ -218,6 +228,15 @@ export class FolderService {
 		});
 
 		return rootNode ? [rootNode] : [];
+	}
+
+	private isDescendant(folderId: string, tree: SimpleFolderNode[]): boolean {
+		return tree.some((node) => {
+			if (node.id === folderId) {
+				return true;
+			}
+			return this.isDescendant(folderId, node.children);
+		});
 	}
 
 	async getFolderAndWorkflowCount(

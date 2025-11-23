@@ -1,5 +1,5 @@
 import FormData from 'form-data';
-import { isEmpty } from 'lodash';
+import isEmpty from 'lodash/isEmpty';
 import { extension } from 'mime-types';
 import type {
 	IBinaryKeyData,
@@ -29,9 +29,11 @@ export const createSimplifyFunction =
 	};
 
 export function parseDiscordError(this: IExecuteFunctions, error: any, itemIndex = 0) {
-	let errorData = error.cause.error;
+	let errorData = error.cause?.error;
 	const errorOptions: IDataObject = { itemIndex };
 
+	error.description =
+		Array.isArray(error.messages) && error.messages.length ? error.messages[0] : error.description;
 	if (!errorData && error.description) {
 		try {
 			const errorString = (error.description as string).split(' - ')[1];
@@ -415,7 +417,7 @@ export function createSendAndWaitMessageBody(context: IExecuteFunctions) {
 						type: 2,
 						style: 5,
 						label: option.label,
-						url: `${config.url}?approved=${option.value}`,
+						url: option.url,
 					};
 				}),
 			},

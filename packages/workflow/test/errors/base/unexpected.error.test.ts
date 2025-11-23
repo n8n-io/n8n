@@ -1,5 +1,5 @@
-import { BaseError } from '@/errors/base/base.error';
-import { UnexpectedError } from '@/errors/base/unexpected.error';
+import { BaseError } from '../../../src/errors/base/base.error';
+import { UnexpectedError } from '../../../src/errors/base/unexpected.error';
 
 describe('UnexpectedError', () => {
 	it('should be an instance of UnexpectedError', () => {

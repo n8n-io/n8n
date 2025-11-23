@@ -54,7 +54,6 @@ export class AddJsonKeyPinData1659888469333 implements IrreversibleMigration {
 			}
 
 			const newPinDataPerWorkflow = Object.keys(pinDataPerWorkflow).reduce<NewPinnedData>(
-				// eslint-disable-next-line @typescript-eslint/no-shadow
 				(newPinDataPerWorkflow, nodeName) => {
 					let pinDataPerNode = pinDataPerWorkflow[nodeName];
 

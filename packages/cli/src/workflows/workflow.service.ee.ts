@@ -1,5 +1,7 @@
+import { Logger } from '@n8n/backend-common';
 import type {
 	CredentialsEntity,
+	CredentialUsedByWorkflow,
 	User,
 	WorkflowEntity,
 	WorkflowWithSharingsAndCredentials,
@@ -18,9 +20,10 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, type EntityManager } from '@n8n/typeorm';
 import omit from 'lodash/omit';
-import { Logger } from 'n8n-core';
 import type { IWorkflowBase, WorkflowId } from 'n8n-workflow';
 import { NodeOperationError, PROJECT_ROOT, UserError, WorkflowActivationError } from 'n8n-workflow';
+
+import { WorkflowFinderService } from './workflow-finder.service';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -32,8 +35,6 @@ import { TransferWorkflowError } from '@/errors/response-errors/transfer-workflo
 import { FolderService } from '@/services/folder.service';
 import { OwnershipService } from '@/services/ownership.service';
 import { ProjectService } from '@/services/project.service.ee';
-
-import { WorkflowFinderService } from './workflow-finder.service';
 
 @Service()
 export class EnterpriseWorkflowService {
@@ -73,7 +74,7 @@ export class EnterpriseWorkflowService {
 		);
 
 		const newSharedWorkflows = projects
-			// We filter by role === 'project:personalOwner' above and there should
+			// We filter by role === PROJECT_OWNER_ROLE_SLUG above and there should
 			// always only be one owner.
 			.map((project) =>
 				this.sharedWorkflowRepository.create({
@@ -328,7 +329,7 @@ export class EnterpriseWorkflowService {
 		}
 
 		// 6. deactivate workflow if necessary
-		const wasActive = workflow.active;
+		const wasActive = workflow.activeVersionId !== null;
 		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
@@ -342,12 +343,38 @@ export class EnterpriseWorkflowService {
 		// 9. Move workflow to the right folder if any
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
-		// 10. try to activate it again if it was active
+		// 10. Update potential cached project association
+		await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
+
+		// 11. try to activate it again if it was active
 		if (wasActive) {
 			return await this.attemptWorkflowReactivation(workflowId);
 		}
 
 		return;
+	}
+
+	async getFolderUsedCredentials(user: User, folderId: string, projectId: string) {
+		await this.folderService.findFolderInProjectOrFail(folderId, projectId);
+
+		const workflows = await this.workflowFinderService.findAllWorkflowsForUser(
+			user,
+			['workflow:read'],
+			folderId,
+			projectId,
+		);
+
+		const usedCredentials = new Map<string, CredentialUsedByWorkflow>();
+
+		for (const workflow of workflows) {
+			const workflowWithMetaData = this.addOwnerAndSharings(workflow as unknown as WorkflowEntity);
+			await this.addCredentialsToWorkflow(workflowWithMetaData, user);
+			for (const credential of workflowWithMetaData?.usedCredentials ?? []) {
+				usedCredentials.set(credential.id, credential);
+			}
+		}
+
+		return [...usedCredentials.values()];
 	}
 
 	async transferFolder(
@@ -368,14 +395,14 @@ export class EnterpriseWorkflowService {
 		// 2. Get all workflows in the nested folders
 
 		const workflows = await this.workflowRepository.find({
-			select: ['id', 'active', 'shared'],
+			select: ['id', 'activeVersionId', 'shared'],
 			relations: ['shared', 'shared.project'],
 			where: {
 				parentFolder: { id: In([...childrenFolderIds, sourceFolderId]) },
 			},
 		});
 
-		const activeWorkflows = workflows.filter((w) => w.active).map((w) => w.id);
+		const activeWorkflows = workflows.filter((w) => w.activeVersionId !== null).map((w) => w.id);
 
 		// 3. get destination project
 		const destinationProject = await this.projectService.getProjectWithScope(

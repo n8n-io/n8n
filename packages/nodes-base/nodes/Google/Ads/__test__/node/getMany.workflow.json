@@ -1,0 +1,148 @@
+{
+	"name": "Google Ads Get Many",
+	"nodes": [
+		{
+			"parameters": {},
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [0, 40],
+			"id": "efd3f04e-8695-4f2c-8f8d-0b0166390d3f",
+			"name": "When clicking ‘Execute workflow’"
+		},
+		{
+			"parameters": {
+				"managerCustomerId": "111-222-3333",
+				"clientCustomerId": "444-555-6666",
+				"additionalOptions": {},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.googleAds",
+			"typeVersion": 1,
+			"position": [220, -160],
+			"id": "773cca04-b4be-4bfd-8fb4-e37154df2991",
+			"name": "Get Many",
+			"credentials": {
+				"googleAdsOAuth2Api": {
+					"id": "VFEJAm9y8GDEsnS4",
+					"name": "Google Ads account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"managerCustomerId": "111-222-3333",
+				"clientCustomerId": "444-555-6666",
+				"additionalOptions": {
+					"dateRange": "LAST_7_DAYS",
+					"campaignStatus": "ENABLED"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.googleAds",
+			"typeVersion": 1,
+			"position": [220, 40],
+			"id": "3e913683-85bf-4295-98cd-2c8324d97094",
+			"name": "With Options",
+			"credentials": {
+				"googleAdsOAuth2Api": {
+					"id": "VFEJAm9y8GDEsnS4",
+					"name": "Google Ads account"
+				}
+			}
+		},
+		{
+			"parameters": {
+				"managerCustomerId": "111-222-3333",
+				"clientCustomerId": "444-555-6666",
+				"additionalOptions": {
+					"campaignStatus": "REMOVED"
+				},
+				"requestOptions": {}
+			},
+			"type": "n8n-nodes-base.googleAds",
+			"typeVersion": 1,
+			"position": [220, 240],
+			"id": "7043d66a-a68c-495b-b6db-ffc8f1551065",
+			"name": "No Results",
+			"credentials": {
+				"googleAdsOAuth2Api": {
+					"id": "VFEJAm9y8GDEsnS4",
+					"name": "Google Ads account"
+				}
+			}
+		}
+	],
+	"pinData": {
+		"Get Many": [
+			{
+				"json": {
+					"resourceName": "customers/5171368254/campaignBudgets/14669466664",
+					"status": "ENABLED",
+					"advertisingChannelType": "SEARCH",
+					"name": "Search-1",
+					"id": "22682295812",
+					"videoViews": "0",
+					"conversions": 0,
+					"costMicros": "0",
+					"impressions": "0",
+					"interactions": "0",
+					"period": "DAILY",
+					"amountMicros": "10000000"
+				}
+			}
+		],
+		"With Options": [
+			{
+				"json": {
+					"resourceName": "customers/5171368254/campaignBudgets/14669466664",
+					"status": "ENABLED",
+					"advertisingChannelType": "SEARCH",
+					"name": "Search-1",
+					"id": "22682295812",
+					"videoViews": "0",
+					"conversions": 0,
+					"costMicros": "0",
+					"impressions": "0",
+					"interactions": "0",
+					"period": "DAILY",
+					"amountMicros": "10000000"
+				}
+			}
+		],
+		"No Results": []
+	},
+	"connections": {
+		"When clicking ‘Execute workflow’": {
+			"main": [
+				[
+					{
+						"node": "Get Many",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "With Options",
+						"type": "main",
+						"index": 0
+					},
+					{
+						"node": "No Results",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	},
+	"versionId": "a77e4f29-8caa-4d3b-a7f9-9232c1234b93",
+	"meta": {
+		"templateCredsSetupCompleted": true,
+		"instanceId": "e115be144a6a5547dbfca93e774dfffa178aa94a181854c13e2ce5e14d195b2e"
+	},
+	"id": "Ffm7CA1AIhKGiOlK",
+	"tags": []
+}

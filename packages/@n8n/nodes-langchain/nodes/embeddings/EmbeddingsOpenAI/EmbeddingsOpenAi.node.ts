@@ -1,4 +1,3 @@
-/* eslint-disable n8n-nodes-base/node-dirname-against-convention */
 import { OpenAIEmbeddings } from '@langchain/openai';
 import {
 	NodeConnectionTypes,
@@ -11,6 +10,8 @@ import {
 import type { ClientOptions } from 'openai';
 
 import { logWrapper } from '@utils/logWrapper';
+
+import { getProxyAgent } from '@utils/httpProxyAgent';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 const modelParameter: INodeProperties = {
@@ -37,7 +38,12 @@ const modelParameter: INodeProperties = {
 						{
 							type: 'filter',
 							properties: {
-								pass: "={{ $responseItem.id.includes('embed') }}",
+								// If the baseURL is not set or is set to api.openai.com, include only embedding models
+								pass: `={{
+									($parameter.options?.baseURL && !$parameter.options?.baseURL?.startsWith('https://api.openai.com/')) ||
+									($credentials?.url && !$credentials.url.startsWith('https://api.openai.com/')) ||
+									$responseItem.id.includes('embed')
+								}}`,
 							},
 						},
 						{
@@ -98,9 +104,9 @@ export class EmbeddingsOpenAi implements INodeType {
 				],
 			},
 		},
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-inputs-wrong-regular-node
+
 		inputs: [],
-		// eslint-disable-next-line n8n-nodes-base/node-class-description-outputs-wrong
+
 		outputs: [NodeConnectionTypes.AiEmbedding],
 		outputNames: ['Embeddings'],
 		requestDefaults: {
@@ -200,6 +206,23 @@ export class EmbeddingsOpenAi implements INodeType {
 							'Maximum amount of time a request is allowed to take in seconds. Set to -1 for no timeout.',
 						type: 'number',
 					},
+					{
+						displayName: 'Encoding Format',
+						name: 'encodingFormat',
+						type: 'options',
+						description: 'The format to return the embeddings in',
+						default: undefined,
+						options: [
+							{
+								name: 'Float',
+								value: 'float',
+							},
+							{
+								name: 'Base64',
+								value: 'base64',
+							},
+						],
+					},
 				],
 			},
 		],
@@ -215,6 +238,7 @@ export class EmbeddingsOpenAi implements INodeType {
 			stripNewLines?: boolean;
 			timeout?: number;
 			dimensions?: number | undefined;
+			encodingFormat?: 'float' | 'base64' | undefined;
 		};
 
 		if (options.timeout === -1) {
@@ -228,14 +252,18 @@ export class EmbeddingsOpenAi implements INodeType {
 			configuration.baseURL = credentials.url as string;
 		}
 
-		const embeddings = new OpenAIEmbeddings(
-			{
-				modelName: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
-				openAIApiKey: credentials.apiKey as string,
-				...options,
-			},
+		if (configuration.baseURL) {
+			configuration.fetchOptions = {
+				dispatcher: getProxyAgent(configuration.baseURL ?? 'https://api.openai.com/v1'),
+			};
+		}
+
+		const embeddings = new OpenAIEmbeddings({
+			model: this.getNodeParameter('model', itemIndex, 'text-embedding-3-small') as string,
+			apiKey: credentials.apiKey as string,
+			...options,
 			configuration,
-		);
+		});
 
 		return {
 			response: logWrapper(embeddings, this),

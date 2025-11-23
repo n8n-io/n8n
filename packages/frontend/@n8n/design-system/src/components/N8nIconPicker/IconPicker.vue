@@ -1,11 +1,17 @@
 <script lang="ts" setup>
 // vueuse is a peer dependency
-// eslint-disable import/no-extraneous-dependencies
+// eslint-disable import-x/no-extraneous-dependencies
 import { onClickOutside } from '@vueuse/core';
 import { isEmojiSupported } from 'is-emoji-supported';
 import { ref, computed } from 'vue';
 
+import { ALL_ICON_PICKER_ICONS } from './constants';
+import type { IconOrEmoji } from './types';
 import { useI18n } from '../../composables/useI18n';
+import N8nButton from '../N8nButton';
+import N8nIcon from '../N8nIcon';
+import N8nIconButton from '../N8nIconButton';
+import N8nTabs from '../N8nTabs';
 import N8nTooltip from '../N8nTooltip';
 
 /**
@@ -27,27 +33,18 @@ const emojiRanges = [
 	[0x1f400, 0x1f4ff], // Additional pictographs
 ];
 
-export type Icon = {
-	type: 'icon' | 'emoji';
-	value: string;
-};
-
 type Props = {
 	buttonTooltip: string;
-	availableIcons: string[];
 	buttonSize?: 'small' | 'large';
 };
 
 const { t } = useI18n();
 
 const props = withDefaults(defineProps<Props>(), {
-	availableIcons: () => [],
 	buttonSize: 'large',
 });
 
-const model = defineModel<Icon>({ default: { type: 'icon', value: 'smile' } });
-
-const hasAvailableIcons = computed(() => props.availableIcons.length > 0);
+const model = defineModel<IconOrEmoji>({ default: { type: 'icon', value: 'smile' } });
 
 const emojis = computed(() => {
 	const emojisArray: string[] = [];
@@ -63,15 +60,11 @@ const emojis = computed(() => {
 });
 
 const popupVisible = ref(false);
-const tabs = ref<Array<{ value: string; label: string }>>(
-	hasAvailableIcons.value
-		? [
-				{ value: 'icons', label: t('iconPicker.tabs.icons') },
-				{ value: 'emojis', label: t('iconPicker.tabs.emojis') },
-			]
-		: [{ value: 'emojis', label: t('iconPicker.tabs.emojis') }],
-);
-const selectedTab = ref<string>(tabs.value[0].value);
+const tabs: Array<{ value: string; label: string }> = [
+	{ value: 'icons', label: t('iconPicker.tabs.icons') },
+	{ value: 'emojis', label: t('iconPicker.tabs.emojis') },
+];
+const selectedTab = ref<string>(tabs[0].value);
 
 const container = ref<HTMLDivElement>();
 
@@ -79,7 +72,7 @@ onClickOutside(container, () => {
 	popupVisible.value = false;
 });
 
-const selectIcon = (value: Icon) => {
+const selectIcon = (value: IconOrEmoji) => {
 	model.value = value;
 	popupVisible.value = false;
 };
@@ -87,7 +80,7 @@ const selectIcon = (value: Icon) => {
 const togglePopup = () => {
 	popupVisible.value = !popupVisible.value;
 	if (popupVisible.value) {
-		selectedTab.value = tabs.value[0].value;
+		selectedTab.value = tabs[0].value;
 	}
 };
 </script>
@@ -108,7 +101,7 @@ const togglePopup = () => {
 				<N8nIconButton
 					v-if="model.type === 'icon'"
 					:class="$style['icon-button']"
-					:icon="model.value ?? 'smile'"
+					:icon="model.value"
 					:size="buttonSize"
 					:square="true"
 					type="tertiary"
@@ -134,11 +127,11 @@ const togglePopup = () => {
 			</div>
 			<div v-if="selectedTab === 'icons'" :class="$style.content">
 				<N8nIcon
-					v-for="icon in availableIcons"
+					v-for="icon in ALL_ICON_PICKER_ICONS"
 					:key="icon"
 					:icon="icon"
 					:class="$style.icon"
-					size="large"
+					:size="24"
 					data-test-id="icon-picker-icon"
 					@click="selectIcon({ type: 'icon', value: icon })"
 				/>
@@ -162,54 +155,57 @@ const togglePopup = () => {
 .container {
 	position: relative;
 }
-
+.emoji-button {
+	padding: 0;
+}
 .popup {
 	position: absolute;
-	z-index: 1;
+	z-index: 9999;
 	width: 426px;
 	max-height: 300px;
 	display: flex;
 	flex-direction: column;
-	margin-top: var(--spacing-4xs);
-	background-color: var(--color-background-xlight);
-	border-radius: var(--border-radius-base);
-	border: var(--border-base);
-	border-color: var(--color-foreground-dark);
+	margin-top: var(--spacing--4xs);
+	background-color: var(--color--background--light-3);
+	border-radius: var(--radius);
+	border: var(--border);
+	border-color: var(--color--foreground--shade-1);
 
 	.tabs {
-		padding: var(--spacing-2xs);
-		padding-bottom: var(--spacing-5xs);
+		padding: var(--spacing--2xs);
+		padding-bottom: var(--spacing--5xs);
 	}
 
 	.content {
 		display: flex;
 		flex-wrap: wrap;
-		padding: var(--spacing-2xs);
+		padding: var(--spacing--2xs);
 		overflow-y: auto;
 	}
 
 	.icon,
 	.emoji {
 		cursor: pointer;
-		padding: var(--spacing-4xs);
-		border-radius: var(--border-radius-small);
+		padding: var(--spacing--4xs);
+		border-radius: var(--radius--sm);
 
 		&:hover {
-			background-color: var(--color-background-medium);
+			background-color: var(--color--background--shade-1);
 		}
 	}
 
 	.icon {
-		color: var(--color-text-light);
+		color: var(--color--text--tint-1);
 
 		&:hover {
-			color: var(--color-text-dark);
+			color: var(--color--text--shade-1);
 		}
 	}
 
 	.emoji {
-		font-family: 'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji',
-			'Twemoji Mozilla', 'Noto Color Emoji', 'Android Emoji', sans-serif;
+		font-family:
+			'Segoe UI Emoji', 'Segoe UI Symbol', 'Segoe UI', 'Apple Color Emoji', 'Twemoji Mozilla',
+			'Noto Color Emoji', 'Android Emoji', sans-serif;
 	}
 }
 </style>

@@ -1,0 +1,111 @@
+{
+	"name": "slack tests",
+	"nodes": [
+		{
+			"parameters": {},
+			"id": "e679c883-1839-47dc-9511-8f7dc370e6b0",
+			"name": "When clicking 'Test workflow'",
+			"type": "n8n-nodes-base.manualTrigger",
+			"typeVersion": 1,
+			"position": [820, 360]
+		},
+		{
+			"parameters": {
+				"authentication": "accessToken",
+				"resource": "channel",
+				"operation": "create",
+				"channelId": "test-channel",
+				"additionalFields": {
+					"isPrivate": false
+				}
+			},
+			"id": "2e1937a6-4c8f-4cd1-ae42-11b2bd12cc4c",
+			"name": "Slack",
+			"type": "n8n-nodes-base.slack",
+			"typeVersion": 1,
+			"position": [1040, 360],
+			"credentials": {
+				"slackApi": {
+					"id": "Bg0bWXf8apAimCqJ",
+					"name": "Slack account 2"
+				}
+			}
+		},
+		{
+			"parameters": {},
+			"id": "06652908-6b8e-443a-9508-ab229b011b73",
+			"name": "No Operation, do nothing",
+			"type": "n8n-nodes-base.noOp",
+			"typeVersion": 1,
+			"position": [1260, 360]
+		}
+	],
+	"pinData": {
+		"No Operation, do nothing": [
+			{
+				"json": {
+					"id": "C085WNEHP4Y",
+					"name": "test-channel",
+					"is_channel": true,
+					"is_group": false,
+					"is_im": false,
+					"is_mpim": false,
+					"is_private": false,
+					"created": 1734325731,
+					"is_archived": false,
+					"is_general": false,
+					"unlinked": 0,
+					"name_normalized": "test-channel",
+					"is_shared": false,
+					"is_org_shared": false,
+					"is_pending_ext_shared": false,
+					"pending_shared": [],
+					"context_team_id": "T0364MSFHV2",
+					"creator": "U0362BXQYJW",
+					"is_ext_shared": false,
+					"shared_team_ids": ["T0364MSFHV2"],
+					"pending_connected_team_ids": [],
+					"is_member": true,
+					"topic": {
+						"value": "",
+						"creator": "",
+						"last_set": 0
+					},
+					"purpose": {
+						"value": "",
+						"creator": "",
+						"last_set": 0
+					}
+				}
+			}
+		]
+	},
+	"connections": {
+		"When clicking 'Test workflow'": {
+			"main": [
+				[
+					{
+						"node": "Slack",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		},
+		"Slack": {
+			"main": [
+				[
+					{
+						"node": "No Operation, do nothing",
+						"type": "main",
+						"index": 0
+					}
+				]
+			]
+		}
+	},
+	"active": false,
+	"settings": {
+		"executionOrder": "v1"
+	}
+}

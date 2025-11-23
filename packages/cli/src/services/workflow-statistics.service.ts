@@ -1,6 +1,6 @@
+import { Logger } from '@n8n/backend-common';
 import { StatisticsNames, WorkflowStatisticsRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { Logger } from 'n8n-core';
 import type {
 	ExecutionStatus,
 	INode,
@@ -42,6 +42,9 @@ const isModeRootExecution = {
 	internal: false,
 
 	manual: false,
+
+	// n8n Chat hub messages
+	chat: true,
 } satisfies Record<WorkflowExecuteMode, boolean>;
 
 type WorkflowStatisticsEvents = {

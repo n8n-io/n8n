@@ -21,7 +21,7 @@ import {
 } from '../common.descriptions';
 import { cssVariables } from '../cssVariables';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
-import { formWebhook } from '../utils';
+import { formWebhook } from '../utils/utils';
 
 const useWorkflowTimezone: INodeProperties = {
 	displayName: 'Use Workflow Timezone',
@@ -36,7 +36,9 @@ const descriptionV2: INodeTypeDescription = {
 	name: 'formTrigger',
 	icon: 'file:form.svg',
 	group: ['trigger'],
-	version: [2, 2.1, 2.2],
+	// since trigger and node are sharing descriptions and logic we need to sync the versions
+	// and keep them aligned in both nodes
+	version: [2, 2.1, 2.2, 2.3],
 	description: 'Generate webforms in n8n and pass their responses to the workflow',
 	defaults: {
 		name: 'On form submission',

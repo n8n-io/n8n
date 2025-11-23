@@ -6,7 +6,11 @@ import {
 import type { IDataObject, INodeInputConfiguration, INodeProperties } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode } from '@utils/descriptions';
+import {
+	promptTypeOptions,
+	textFromGuardrailsNode,
+	textFromPreviousNode,
+} from '@utils/descriptions';
 import { getBatchingOptionFields, getTemplateNoticeField } from '@utils/sharedFields';
 
 /**
@@ -22,6 +26,17 @@ export function getInputs(parameters: IDataObject) {
 			required: true,
 		},
 	];
+
+	const needsFallback = parameters?.needsFallback;
+
+	if (needsFallback === true) {
+		inputs.push({
+			displayName: 'Fallback Model',
+			maxConnections: 1,
+			type: 'ai_languageModel',
+			required: true,
+		});
+	}
 
 	// If `hasOutputParser` is undefined it must be version 1.3 or earlier so we
 	// always add the output parser input
@@ -88,6 +103,10 @@ export const nodeProperties: INodeProperties[] = [
 		},
 	},
 	{
+		...textFromGuardrailsNode,
+		displayOptions: { show: { promptType: ['guardrails'], '@version': [{ _cnd: { gte: 1.5 } }] } },
+	},
+	{
 		...textFromPreviousNode,
 		displayOptions: { show: { promptType: ['auto'], '@version': [{ _cnd: { gte: 1.5 } }] } },
 	},
@@ -110,6 +129,18 @@ export const nodeProperties: INodeProperties[] = [
 	{
 		displayName: 'Require Specific Output Format',
 		name: 'hasOutputParser',
+		type: 'boolean',
+		default: false,
+		noDataExpression: true,
+		displayOptions: {
+			hide: {
+				'@version': [1, 1.1, 1.3],
+			},
+		},
+	},
+	{
+		displayName: 'Enable Fallback Model',
+		name: 'needsFallback',
 		type: 'boolean',
 		default: false,
 		noDataExpression: true,
@@ -272,6 +303,18 @@ export const nodeProperties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				hasOutputParser: [true],
+			},
+		},
+	},
+	{
+		displayName:
+			'Connect an additional language model on the canvas to use it as a fallback if the main model fails',
+		name: 'fallbackNotice',
+		type: 'notice',
+		default: '',
+		displayOptions: {
+			show: {
+				needsFallback: [true],
 			},
 		},
 	},

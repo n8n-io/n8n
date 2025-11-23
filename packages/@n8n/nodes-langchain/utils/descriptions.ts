@@ -12,7 +12,7 @@ export const schemaTypeField: INodeProperties = {
 			description: 'Generate a schema from an example JSON object',
 		},
 		{
-			name: 'Define Below',
+			name: 'Define using JSON Schema',
 			value: 'manual',
 			description: 'Define the JSON schema manually',
 		},
@@ -21,6 +21,10 @@ export const schemaTypeField: INodeProperties = {
 	description: 'How to specify the schema for the function',
 };
 
+/**
+ * Returns a field for inputting a JSON example that can be used to generate the schema.
+ * @param props
+ */
 export const buildJsonSchemaExampleField = (props?: {
 	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;
 }): INodeProperties => ({
@@ -43,6 +47,26 @@ export const buildJsonSchemaExampleField = (props?: {
 	description: 'Example JSON object to use to generate the schema',
 });
 
+/**
+ * Returns a notice field about the generated schema properties being required by default.
+ * @param props
+ */
+export const buildJsonSchemaExampleNotice = (props?: {
+	showExtraProps?: Record<string, Array<NodeParameterValue | DisplayCondition> | undefined>;
+}): INodeProperties => ({
+	displayName:
+		"All properties will be required. To make them optional, use the 'JSON Schema' schema type instead",
+	name: 'notice',
+	type: 'notice',
+	default: '',
+	displayOptions: {
+		show: {
+			...props?.showExtraProps,
+			schemaType: ['fromJson'],
+		},
+	},
+});
+
 export const jsonSchemaExampleField = buildJsonSchemaExampleField();
 
 export const buildInputSchemaField = (props?: {
@@ -60,7 +84,7 @@ export const buildInputSchemaField = (props?: {
 		}
 	}
 }`,
-	noDataExpression: true,
+	noDataExpression: false,
 	typeOptions: {
 		rows: 10,
 	},
@@ -71,6 +95,7 @@ export const buildInputSchemaField = (props?: {
 		},
 	},
 	description: 'Schema to use for the function',
+	hint: 'Use <a target="_blank" href="https://json-schema.org/">JSON Schema</a> format (<a target="_blank" href="https://json-schema.org/learn/miscellaneous-examples.html">examples</a>). $refs syntax is currently not supported.',
 });
 
 export const inputSchemaField = buildInputSchemaField();
@@ -85,6 +110,12 @@ export const promptTypeOptions: INodeProperties = {
 			value: 'auto',
 			description:
 				"Looks for an input field called 'chatInput' that is coming from a directly connected Chat Trigger",
+		},
+		{
+			name: 'Connected Guardrails Node',
+			value: 'guardrails',
+			description:
+				"Looks for an input field called 'guardrailsInput' that is coming from a directly connected Guardrails Node",
 		},
 		{
 			name: 'Define below',
@@ -117,4 +148,27 @@ export const textFromPreviousNode: INodeProperties = {
 		rows: 2,
 	},
 	disabledOptions: { show: { promptType: ['auto'] } },
+};
+
+export const textFromGuardrailsNode: INodeProperties = {
+	displayName: 'Prompt (User Message)',
+	name: 'text',
+	type: 'string',
+	required: true,
+	default: '={{ $json.guardrailsInput }}',
+	typeOptions: {
+		rows: 2,
+	},
+	disabledOptions: { show: { promptType: ['guardrails'] } },
+};
+
+export const toolDescription: INodeProperties = {
+	displayName: 'Description',
+	name: 'toolDescription',
+	type: 'string',
+	default: 'AI Agent that can call other tools',
+	required: true,
+	typeOptions: { rows: 2 },
+	description:
+		'Explain to the LLM what this tool does, a good, specific description would allow LLMs to produce expected results much more often',
 };

@@ -47,13 +47,22 @@ export class BinaryDataController {
 			throw new BadRequestError('Missing binary data ID');
 		}
 
-		if (!binaryDataId.includes(':')) {
-			throw new BadRequestError('Missing binary data mode');
+		const separatorIndex = binaryDataId.indexOf(':');
+
+		if (separatorIndex === -1) {
+			throw new BadRequestError('Malformed binary data ID');
 		}
 
-		const [mode] = binaryDataId.split(':');
+		const mode = binaryDataId.substring(0, separatorIndex);
+
 		if (!isValidNonDefaultMode(mode)) {
 			throw new BadRequestError('Invalid binary data mode');
+		}
+
+		const path = binaryDataId.substring(separatorIndex + 1);
+
+		if (path === '' || path === '/' || path === '//') {
+			throw new BadRequestError('Malformed binary data ID');
 		}
 	}
 

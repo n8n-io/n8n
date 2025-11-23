@@ -1,5 +1,5 @@
+import type { Logger } from '@n8n/backend-common';
 import type { QueryRunner, ObjectLiteral } from '@n8n/typeorm';
-import type { Logger } from 'n8n-core';
 
 import type { createSchemaBuilder } from './dsl';
 
@@ -56,7 +56,7 @@ export interface IrreversibleMigration extends BaseMigration {
 	down?: never;
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-restricted-types
 export interface Migration extends Function {
 	prototype: ReversibleMigration | IrreversibleMigration;
 }

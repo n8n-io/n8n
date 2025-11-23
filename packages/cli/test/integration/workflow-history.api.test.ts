@@ -1,9 +1,8 @@
+import { createWorkflow, testDb } from '@n8n/backend-test-utils';
 import type { User } from '@n8n/db';
 
 import { createOwner, createUser } from './shared/db/users';
 import { createWorkflowHistoryItem } from './shared/db/workflow-history';
-import { createWorkflow } from './shared/db/workflows';
-import * as testDb from './shared/test-db';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
@@ -14,7 +13,6 @@ let authMemberAgent: SuperAgentTest;
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflowHistory'],
-	enabledFeatures: ['feat:workflowHistory'],
 });
 
 beforeAll(async () => {
@@ -29,13 +27,6 @@ afterEach(async () => {
 });
 
 describe('GET /workflow-history/:workflowId', () => {
-	test('should not work when license is not available', async () => {
-		testServer.license.disable('feat:workflowHistory');
-		const resp = await authOwnerAgent.get('/workflow-history/workflow/badid');
-		expect(resp.status).toBe(403);
-		expect(resp.text).toBe('Workflow History license data not found');
-	});
-
 	test('should not return anything on an invalid workflow ID', async () => {
 		await createWorkflow(undefined, owner);
 		const resp = await authOwnerAgent.get('/workflow-history/workflow/badid');
@@ -160,13 +151,6 @@ describe('GET /workflow-history/:workflowId', () => {
 });
 
 describe('GET /workflow-history/workflow/:workflowId/version/:versionId', () => {
-	test('should not work when license is not available', async () => {
-		testServer.license.disable('feat:workflowHistory');
-		const resp = await authOwnerAgent.get('/workflow-history/workflow/badid/version/badid');
-		expect(resp.status).toBe(403);
-		expect(resp.text).toBe('Workflow History license data not found');
-	});
-
 	test('should not return anything on an invalid workflow ID', async () => {
 		const workflow = await createWorkflow(undefined, owner);
 		const version = await createWorkflowHistoryItem(workflow.id);

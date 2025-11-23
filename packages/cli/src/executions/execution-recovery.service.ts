@@ -1,9 +1,10 @@
+import { Logger } from '@n8n/backend-common';
 import type { IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DateTime } from 'luxon';
-import { InstanceSettings, Logger } from 'n8n-core';
-import { sleep } from 'n8n-workflow';
+import { InstanceSettings } from 'n8n-core';
+import { createEmptyRunExecutionData, sleep } from 'n8n-workflow';
 import type { IRun, ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
@@ -71,7 +72,17 @@ export class ExecutionRecoveryService {
 			unflattenData: true,
 		});
 
-		if (!execution || (execution.status === 'success' && execution.data)) return null;
+		/**
+		 * The event bus is unable to correctly identify unfinished executions in workers,
+		 * because execution lifecycle hooks cause worker event logs to be partitioned.
+		 * Hence we need to filter out finished executions here.
+		 * */
+		if (
+			!execution ||
+			(['success', 'error', 'canceled'].includes(execution.status) && execution.data)
+		) {
+			return null;
+		}
 
 		const runExecutionData = execution.data ?? { resultData: { runData: {} } };
 
@@ -173,7 +184,7 @@ export class ExecutionRecoveryService {
 	}
 
 	private async runHooks(execution: IExecutionResponse) {
-		execution.data ??= { resultData: { runData: {} } };
+		execution.data ??= createEmptyRunExecutionData();
 
 		const lifecycleHooks = getLifecycleHooksForRegularMain(
 			{

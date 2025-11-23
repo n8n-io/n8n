@@ -1,3 +1,4 @@
+import { lookup } from 'mime-types';
 import type {
 	IExecuteFunctions,
 	IDataObject,
@@ -5,6 +6,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 	IHttpRequestMethods,
+	INodeProperties,
 } from 'n8n-workflow';
 import {
 	BINARY_ENCODING,
@@ -23,7 +25,27 @@ import {
 import { appendAttributionOption } from '../../utils/descriptions';
 import { configureWaitTillDate } from '../../utils/sendAndWait/configureWaitTillDate.util';
 import { sendAndWaitWebhooksDescription } from '../../utils/sendAndWait/descriptions';
-import { getSendAndWaitProperties, sendAndWaitWebhook } from '../../utils/sendAndWait/utils';
+import {
+	getSendAndWaitProperties,
+	SEND_AND_WAIT_WAITING_TOOLTIP,
+	sendAndWaitWebhook,
+} from '../../utils/sendAndWait/utils';
+
+const preBuiltAgentsCallout: INodeProperties = {
+	// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+	displayName: 'Interact with Telegram using our pre-built',
+	name: 'preBuiltAgentsCalloutTelegram',
+	type: 'callout',
+	typeOptions: {
+		calloutAction: {
+			label: 'Voice assistant agent',
+			icon: 'bot',
+			type: 'openSampleWorkflowTemplate',
+			templateId: 'voice_assistant_agent_with_telegram',
+		},
+	},
+	default: '',
+};
 
 export class Telegram implements INodeType {
 	description: INodeTypeDescription = {
@@ -46,8 +68,10 @@ export class Telegram implements INodeType {
 				required: true,
 			},
 		],
+		waitingNodeTooltip: SEND_AND_WAIT_WAITING_TOOLTIP,
 		webhooks: sendAndWaitWebhooksDescription,
 		properties: [
+			preBuiltAgentsCallout,
 			{
 				displayName: 'Resource',
 				name: 'resource',
@@ -227,7 +251,7 @@ export class Telegram implements INodeType {
 						name: 'Edit Message Text',
 						value: 'editMessageText',
 						description: 'Edit a text message',
-						action: 'Edit a test message',
+						action: 'Edit a text message',
 					},
 					{
 						name: 'Pin Chat Message',
@@ -655,6 +679,31 @@ export class Telegram implements INodeType {
 				},
 				default: true,
 				description: 'Whether to download the file',
+			},
+			{
+				displayName: 'Additional Fields',
+				name: 'additionalFields',
+				type: 'collection',
+				placeholder: 'Add Field',
+				displayOptions: {
+					show: {
+						operation: ['get'],
+						resource: ['file'],
+						download: [true],
+					},
+				},
+				default: {},
+				options: [
+					{
+						displayName: 'MIME Type',
+						name: 'mimeType',
+						type: 'string',
+						placeholder: 'image/jpeg',
+						default: '',
+						description:
+							'The MIME type of the file. If not specified, the MIME type will be determined by the file extension.',
+					},
+				],
 			},
 
 			// ----------------------------------
@@ -2102,10 +2151,10 @@ export class Telegram implements INodeType {
 				let responseData;
 
 				if (binaryData) {
-					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', 0);
+					const binaryPropertyName = this.getNodeParameter('binaryPropertyName', i);
 					const itemBinaryData = items[i].binary![binaryPropertyName];
 					const propertyName = getPropertyName(operation);
-					const fileName = this.getNodeParameter('additionalFields.fileName', 0, '') as string;
+					const fileName = this.getNodeParameter('additionalFields.fileName', i, '') as string;
 
 					const filename = fileName || itemBinaryData.fileName?.toString();
 
@@ -2138,6 +2187,10 @@ export class Telegram implements INodeType {
 						},
 					};
 
+					if (formData.reply_markup) {
+						formData.reply_markup = JSON.stringify(formData.reply_markup);
+					}
+
 					responseData = await apiRequest.call(this, requestMethod, endpoint, {}, qs, {
 						formData,
 					});
@@ -2165,11 +2218,15 @@ export class Telegram implements INodeType {
 							},
 						);
 
-						const fileName = filePath.split('/').pop();
+						const fileName = filePath.split('/').pop() as string;
+						const additionalFields = this.getNodeParameter('additionalFields', i);
+						const providedMimeType = additionalFields?.mimeType as string | undefined;
+						const mimeType = providedMimeType ?? (lookup(fileName) || 'application/octet-stream');
 
 						const data = await this.helpers.prepareBinaryData(
 							file.body as Buffer,
-							fileName as string,
+							fileName,
+							mimeType,
 						);
 
 						returnData.push({
@@ -2187,7 +2244,6 @@ export class Telegram implements INodeType {
 					returnData.push(...executionData);
 					continue;
 				}
-
 				const executionData = this.helpers.constructExecutionMetaData(
 					this.helpers.returnJsonArray(responseData as IDataObject[]),
 					{ itemData: { item: i } },
@@ -2195,7 +2251,11 @@ export class Telegram implements INodeType {
 				returnData.push(...executionData);
 			} catch (error) {
 				if (this.continueOnFail()) {
-					returnData.push({ json: {}, error: error.message });
+					const executionErrorData = this.helpers.constructExecutionMetaData(
+						this.helpers.returnJsonArray({ error: error.description ?? error.message }),
+						{ itemData: { item: i } },
+					);
+					returnData.push(...executionErrorData);
 					continue;
 				}
 				throw error;

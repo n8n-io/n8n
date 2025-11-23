@@ -30,9 +30,9 @@ const instances = new Map<ServiceIdentifier, Metadata>();
  * @param options.factory Optional factory function to create instances of this class
  * @returns A class decorator to be applied to the target class
  */
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-restricted-types
 export function Service<T = unknown>(): Function;
-// eslint-disable-next-line @typescript-eslint/ban-types
+// eslint-disable-next-line @typescript-eslint/no-restricted-types
 export function Service<T = unknown>(options: Options<T>): Function;
 export function Service<T>({ factory }: Options<T> = {}) {
 	return function (target: Constructable<T>) {

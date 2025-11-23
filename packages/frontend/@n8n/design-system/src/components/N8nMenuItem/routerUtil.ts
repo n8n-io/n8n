@@ -1,15 +1,20 @@
 import type { RouteLocationNormalizedLoaded, RouteLocationRaw } from 'vue-router';
 
-import type { IMenuItem } from '@n8n/design-system/types';
+import { isCustomMenuItem, type IMenuElement } from '@n8n/design-system/types';
 
 /**
  * Checks if the given menu item matches the current route.
  */
 export function doesMenuItemMatchCurrentRoute(
-	item: IMenuItem,
+	item: IMenuElement,
 	currentRoute: RouteLocationNormalizedLoaded,
 ) {
+	if (isCustomMenuItem(item)) {
+		return false;
+	}
+
 	let activateOnRouteNames: string[] = [];
+
 	if (Array.isArray(item.activateOnRouteNames)) {
 		activateOnRouteNames = item.activateOnRouteNames;
 	} else if (item.route && isNamedRouteLocation(item.route.to)) {

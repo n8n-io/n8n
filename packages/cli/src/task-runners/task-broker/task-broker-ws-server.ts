@@ -1,11 +1,12 @@
+import { Logger } from '@n8n/backend-common';
 import { TaskRunnersConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import { Service } from '@n8n/di';
 import type { BrokerMessage, RunnerMessage } from '@n8n/task-runner';
-import { Logger } from 'n8n-core';
 import { jsonStringify, UserError } from 'n8n-workflow';
 import type WebSocket from 'ws';
 
-import { Time, WsStatusCodes } from '@/constants';
+import { WsStatusCodes } from '@/constants';
 import { DefaultTaskRunnerDisconnectAnalyzer } from '@/task-runners/default-task-runner-disconnect-analyzer';
 import type {
 	DisconnectAnalyzer,
@@ -31,7 +32,7 @@ type WsStatusCode = (typeof WsStatusCodes)[keyof typeof WsStatusCodes];
 export class TaskBrokerWsServer {
 	runnerConnections: Map<TaskRunner['id'], WebSocket> = new Map();
 
-	private heartbeatTimer: NodeJS.Timer | undefined;
+	private heartbeatTimer: NodeJS.Timeout | undefined;
 
 	constructor(
 		private readonly logger: Logger,
@@ -58,7 +59,7 @@ export class TaskBrokerWsServer {
 					void this.removeConnection(
 						runnerId,
 						'failed-heartbeat-check',
-						WsStatusCodes.CloseNoStatus,
+						WsStatusCodes.CloseProtocolError,
 					);
 					this.runnerLifecycleEvents.emit('runner:failed-heartbeat-check');
 					return;
@@ -98,7 +99,11 @@ export class TaskBrokerWsServer {
 
 		const onMessage = async (data: WebSocket.RawData) => {
 			try {
-				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
+				const buffer = Array.isArray(data)
+					? Buffer.concat(data)
+					: data instanceof ArrayBuffer
+						? Buffer.from(data)
+						: data;
 
 				const message: RunnerMessage.ToBroker.All = JSON.parse(
 					buffer.toString('utf8'),

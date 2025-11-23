@@ -5,7 +5,7 @@ export class HttpDigestAuth implements ICredentialType {
 
 	displayName = 'Digest Auth';
 
-	documentationUrl = 'httpRequest';
+	documentationUrl = 'httprequest';
 
 	genericAuth = true;
 

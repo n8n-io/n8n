@@ -1,6 +1,38 @@
 import sanitizeHtml from 'sanitize-html';
 
 import type { AuthenticationChatOption, LoadPreviousSessionChatOption } from './types';
+
+function sanitizeUserInput(input: string): string {
+	// Sanitize HTML tags and entities
+	let sanitized = sanitizeHtml(input, {
+		allowedTags: [],
+		allowedAttributes: {},
+	});
+	// Remove dangerous protocols
+	sanitized = sanitized.replace(/javascript:/gi, '');
+	sanitized = sanitized.replace(/data:/gi, '');
+	sanitized = sanitized.replace(/vbscript:/gi, '');
+	return sanitized;
+}
+
+export function getSanitizedInitialMessages(initialMessages: string): string[] {
+	const sanitizedString = sanitizeUserInput(initialMessages);
+
+	return sanitizedString
+		.split('\n')
+		.map((line) => line.trim())
+		.filter((line) => line !== '');
+}
+
+export function getSanitizedI18nConfig(config: Record<string, string>): Record<string, string> {
+	const sanitized: Record<string, string> = {};
+
+	for (const [key, value] of Object.entries<string>(config)) {
+		sanitized[key] = sanitizeUserInput(value);
+	}
+
+	return sanitized;
+}
 export function createPage({
 	instanceId,
 	webhookUrl,
@@ -12,6 +44,7 @@ export function createPage({
 	allowFileUploads,
 	allowedFilesMimeTypes,
 	customCss,
+	enableStreaming,
 }: {
 	instanceId: string;
 	webhookUrl?: string;
@@ -20,12 +53,13 @@ export function createPage({
 	i18n: {
 		en: Record<string, string>;
 	};
-	initialMessages: string[];
+	initialMessages: string;
 	mode: 'test' | 'production';
 	authentication: AuthenticationChatOption;
 	allowFileUploads?: boolean;
 	allowedFilesMimeTypes?: string;
 	customCss?: string;
+	enableStreaming?: boolean;
 }) {
 	const validAuthenticationOptions: AuthenticationChatOption[] = [
 		'none',
@@ -54,6 +88,9 @@ export function createPage({
 	)
 		? loadPreviousSession
 		: 'notSupported';
+
+	const sanitizedInitialMessages = getSanitizedInitialMessages(initialMessages);
+	const sanitizedI18nConfig = getSanitizedI18nConfig(en || {});
 
 	return `<!doctype html>
 	<html lang="en">
@@ -121,9 +158,10 @@ export function createPage({
 						allowFileUploads: ${sanitizedAllowFileUploads},
 						allowedFilesMimeTypes: '${sanitizedAllowedFilesMimeTypes}',
 						i18n: {
-							${en ? `en: ${JSON.stringify(en)},` : ''}
+							${Object.keys(sanitizedI18nConfig).length ? `en: ${JSON.stringify(sanitizedI18nConfig)},` : ''}
 						},
-						${initialMessages.length ? `initialMessages: ${JSON.stringify(initialMessages)},` : ''}
+						${sanitizedInitialMessages.length ? `initialMessages: ${JSON.stringify(sanitizedInitialMessages)},` : ''}
+						enableStreaming: ${!!enableStreaming},
 					});
 				})();
 			</script>

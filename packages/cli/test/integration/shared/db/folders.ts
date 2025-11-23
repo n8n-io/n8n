@@ -1,10 +1,7 @@
-import type { Folder } from '@n8n/db';
-import type { Project } from '@n8n/db';
-import type { TagEntity } from '@n8n/db';
+import { randomName } from '@n8n/backend-test-utils';
+import type { Folder, Project, TagEntity } from '@n8n/db';
 import { FolderRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-
-import { randomName } from '@test-integration/random';
 
 export const createFolder = async (
 	project: Project,

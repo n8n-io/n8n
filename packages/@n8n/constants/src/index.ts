@@ -1,7 +1,16 @@
+export * from './api';
+export * from './browser';
+export * from './community-nodes';
+export * from './instance';
+export * from './execution';
+export * from './logstreaming';
+
 export const LICENSE_FEATURES = {
 	SHARING: 'feat:sharing',
 	LDAP: 'feat:ldap',
 	SAML: 'feat:saml',
+	OIDC: 'feat:oidc',
+	MFA_ENFORCEMENT: 'feat:mfaEnforcement',
 	LOG_STREAMING: 'feat:logStreaming',
 	ADVANCED_EXECUTION_FILTERS: 'feat:advancedExecutionFilters',
 	VARIABLES: 'feat:variables',
@@ -9,7 +18,6 @@ export const LICENSE_FEATURES = {
 	API_DISABLED: 'feat:apiDisabled',
 	EXTERNAL_SECRETS: 'feat:externalSecrets',
 	SHOW_NON_PROD_BANNER: 'feat:showNonProdBanner',
-	WORKFLOW_HISTORY: 'feat:workflowHistory',
 	DEBUG_IN_EDITOR: 'feat:debugInEditor',
 	BINARY_DATA_S3: 'feat:binaryDataS3',
 	MULTIPLE_MAIN_INSTANCES: 'feat:multipleMainInstances',
@@ -27,6 +35,9 @@ export const LICENSE_FEATURES = {
 	INSIGHTS_VIEW_DASHBOARD: 'feat:insights:viewDashboard',
 	INSIGHTS_VIEW_HOURLY_DATA: 'feat:insights:viewHourlyData',
 	API_KEY_SCOPES: 'feat:apiKeyScopes',
+	WORKFLOW_DIFFS: 'feat:workflowDiffs',
+	CUSTOM_ROLES: 'feat:customRoles',
+	AI_BUILDER: 'feat:aiBuilder',
 } as const;
 
 export const LICENSE_QUOTAS = {
@@ -39,9 +50,11 @@ export const LICENSE_QUOTAS = {
 	INSIGHTS_MAX_HISTORY_DAYS: 'quota:insights:maxHistoryDays',
 	INSIGHTS_RETENTION_MAX_AGE_DAYS: 'quota:insights:retention:maxAgeDays',
 	INSIGHTS_RETENTION_PRUNE_INTERVAL_DAYS: 'quota:insights:retention:pruneIntervalDays',
+	WORKFLOWS_WITH_EVALUATION_LIMIT: 'quota:evaluations:maxWorkflows',
 } as const;
 
 export const UNLIMITED_LICENSE_QUOTA = -1;
+export const DEFAULT_WORKFLOW_HISTORY_PRUNE_LIMIT = 24;
 
 export type BooleanLicenseFeature = (typeof LICENSE_FEATURES)[keyof typeof LICENSE_FEATURES];
 export type NumericLicenseFeature = (typeof LICENSE_QUOTAS)[keyof typeof LICENSE_QUOTAS];
@@ -70,6 +83,12 @@ export interface LdapConfig {
 	synchronizationInterval: number; // minutes
 	searchPageSize: number;
 	searchTimeout: number;
+	/**
+	 * Enforce email uniqueness in LDAP directory.
+	 * When enabled, blocks login if multiple LDAP accounts share the same email.
+	 * Prevents privilege escalation via email-based account linking.
+	 */
+	enforceEmailUniqueness: boolean;
 }
 
 export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
@@ -92,4 +111,11 @@ export const LDAP_DEFAULT_CONFIGURATION: LdapConfig = {
 	synchronizationInterval: 60,
 	searchPageSize: 0,
 	searchTimeout: 60,
+	enforceEmailUniqueness: true,
 };
+
+export { Time } from './time';
+
+export const MIN_PASSWORD_CHAR_LENGTH = 8;
+
+export const MAX_PASSWORD_CHAR_LENGTH = 64;

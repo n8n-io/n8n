@@ -1,10 +1,10 @@
+import type { Logger } from '@n8n/backend-common';
 import type { TaskRunnersConfig } from '@n8n/config';
+import { Time } from '@n8n/constants';
 import type { RunnerMessage, TaskResultData } from '@n8n/task-runner';
 import { mock } from 'jest-mock-extended';
-import type { Logger } from 'n8n-core';
 import { ApplicationError, type INodeTypeBaseDescription } from 'n8n-workflow';
 
-import { Time } from '@/constants';
 import type { TaskRunnerLifecycleEvents } from '@/task-runners/task-runner-lifecycle-events';
 
 import { TaskRejectError } from '../errors/task-reject.error';
@@ -18,7 +18,7 @@ describe('TaskBroker', () => {
 	let taskBroker: TaskBroker;
 
 	beforeEach(() => {
-		taskBroker = new TaskBroker(mock(), mock(), mock());
+		taskBroker = new TaskBroker(mock(), mock(), mock(), mock());
 		jest.restoreAllMocks();
 	});
 
@@ -719,12 +719,12 @@ describe('TaskBroker', () => {
 	describe('task execution timeouts', () => {
 		let taskBroker: TaskBroker;
 		let config: TaskRunnersConfig;
-		let runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
+		const runnerLifecycleEvents = mock<TaskRunnerLifecycleEvents>();
 
 		beforeAll(() => {
 			jest.useFakeTimers();
 			config = mock<TaskRunnersConfig>({ taskTimeout: 30, mode: 'internal' });
-			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents);
+			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents, mock());
 		});
 
 		afterAll(() => {
@@ -844,7 +844,7 @@ describe('TaskBroker', () => {
 
 		it('[external mode] on timeout, we should instruct the runner to cancel and send error to requester', async () => {
 			const config = mock<TaskRunnersConfig>({ taskTimeout: 30, mode: 'external' });
-			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents);
+			taskBroker = new TaskBroker(mock(), config, runnerLifecycleEvents, mock());
 
 			jest.spyOn(global, 'clearTimeout');
 
@@ -895,7 +895,7 @@ describe('TaskBroker', () => {
 			const messageCallback = jest.fn();
 			const loggerMock = mock<Logger>();
 
-			taskBroker = new TaskBroker(loggerMock, mock(), mock());
+			taskBroker = new TaskBroker(loggerMock, mock(), mock(), mock());
 			taskBroker.registerRunner(runner, messageCallback);
 
 			const offer: TaskOffer = {
@@ -927,6 +927,144 @@ describe('TaskBroker', () => {
 				),
 			);
 
+			jest.useRealTimers();
+		});
+	});
+
+	describe('request timeout', () => {
+		it('should time out request and send `broker:requestexpired` message', async () => {
+			jest.useFakeTimers();
+
+			const requesterId = 'requester1';
+			const requesterCallback = jest.fn();
+
+			taskBroker.registerRequester(requesterId, requesterCallback);
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId,
+				taskType: 'taskType1',
+				timeout: taskBroker['createRequestTimeout']('request1'),
+			};
+
+			taskBroker.taskRequested(request);
+
+			expect(taskBroker.getPendingTaskRequests()).toHaveLength(1);
+
+			jest.advanceTimersByTime(60 * 1000);
+
+			await Promise.resolve();
+
+			expect(taskBroker.getPendingTaskRequests()).toHaveLength(0);
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:requestexpired',
+				requestId: 'request1',
+				reason: 'timeout',
+			});
+
+			jest.useRealTimers();
+		});
+
+		it('should clear timeout on request matched', async () => {
+			jest.useFakeTimers();
+
+			const requesterId = 'requester1';
+			const requesterCallback = jest.fn();
+
+			taskBroker.registerRequester(requesterId, requesterCallback);
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId: 'runner1',
+				taskType: 'taskType1',
+				validFor: 1000,
+				validUntil: createValidUntil(1000),
+			};
+
+			taskBroker.setPendingTaskOffers([offer]);
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId,
+				taskType: 'taskType1',
+			};
+
+			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
+				clearTimeout(request.timeout);
+				const requests = taskBroker.getPendingTaskRequests();
+				const filtered = requests.filter((r) => r.requestId !== request.requestId);
+				taskBroker.setPendingTaskRequests(filtered);
+			});
+
+			taskBroker.taskRequested(request);
+
+			await Promise.resolve();
+			await Promise.resolve();
+
+			expect(taskBroker.getPendingTaskRequests()).toHaveLength(0);
+
+			jest.advanceTimersByTime(65 * 1000);
+
+			await Promise.resolve();
+
+			expect(requesterCallback).not.toHaveBeenCalledWith(
+				expect.objectContaining({ type: 'broker:requestexpired' }),
+			);
+
+			jest.useRealTimers();
+		});
+
+		it('should reset timeout on request deferred', async () => {
+			jest.useFakeTimers();
+
+			const requesterId = 'requester1';
+			const requesterCallback = jest.fn();
+
+			taskBroker.registerRequester(requesterId, requesterCallback);
+
+			const offer: TaskOffer = {
+				offerId: 'offer1',
+				runnerId: 'runner1',
+				taskType: 'taskType1',
+				validFor: 1000,
+				validUntil: createValidUntil(1000),
+			};
+
+			const request: TaskRequest = {
+				requestId: 'request1',
+				requesterId,
+				taskType: 'taskType1',
+			};
+
+			taskBroker.setPendingTaskOffers([offer]);
+			taskBroker.setPendingTaskRequests([request]);
+
+			const handleTimeoutSpy = jest.spyOn(taskBroker as any, 'handleRequestTimeout');
+
+			jest.spyOn(taskBroker, 'acceptOffer').mockImplementation(async (_offer, request) => {
+				clearTimeout(request.timeout);
+				request.timeout = taskBroker['createRequestTimeout'](request.requestId);
+				taskBroker.setPendingTaskRequests([request]);
+			});
+
+			taskBroker.settleTasks();
+
+			expect(taskBroker.getPendingTaskRequests()).toHaveLength(1);
+			const deferredRequest = taskBroker.getPendingTaskRequests()[0];
+			expect(deferredRequest.timeout).toBeDefined();
+
+			jest.advanceTimersByTime(60 * 1000);
+
+			await Promise.resolve();
+
+			expect(handleTimeoutSpy).toHaveBeenCalledWith('request1');
+			expect(requesterCallback).toHaveBeenCalledWith({
+				type: 'broker:requestexpired',
+				requestId: 'request1',
+				reason: 'timeout',
+			});
+
+			handleTimeoutSpy.mockRestore();
 			jest.useRealTimers();
 		});
 	});

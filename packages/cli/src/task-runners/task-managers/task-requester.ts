@@ -1,7 +1,8 @@
+import { GlobalConfig, TaskRunnersConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { TaskResultData, RequesterMessage, BrokerMessage, TaskData } from '@n8n/task-runner';
 import { AVAILABLE_RPC_METHODS } from '@n8n/task-runner';
-import { isSerializedBuffer, toBuffer } from 'n8n-core';
+import { isSerializedBuffer, toBuffer, ErrorReporter } from 'n8n-core';
 import { createResultOk, createResultError } from 'n8n-workflow';
 import type {
 	EnvProviderState,
@@ -20,13 +21,15 @@ import type {
 } from 'n8n-workflow';
 import { nanoid } from 'nanoid';
 
+import { EventService } from '@/events/event.service';
 import { NodeTypes } from '@/node-types';
+import { TaskRequestTimeoutError } from '@/task-runners/errors/task-request-timeout.error';
 
 import { DataRequestResponseBuilder } from './data-request-response-builder';
 import { DataRequestResponseStripper } from './data-request-response-stripper';
 
 export type RequestAccept = (jobId: string) => void;
-export type RequestReject = (reason: string) => void;
+export type RequestReject = (reason: string | Error) => void;
 
 export type TaskAccept = (data: TaskResultData) => void;
 export type TaskReject = (error: unknown) => void;
@@ -54,13 +57,19 @@ export abstract class TaskRequester {
 
 	taskAcceptRejects: Map<string, { accept: TaskAccept; reject: TaskReject }> = new Map();
 
-	pendingRequests: Map<string, TaskRequest> = new Map();
-
 	tasks: Map<string, Task> = new Map();
 
 	private readonly dataResponseBuilder = new DataRequestResponseBuilder();
 
-	constructor(private readonly nodeTypes: NodeTypes) {}
+	private readonly executionIdsToTaskIds: Map<string, Set<string>> = new Map();
+
+	constructor(
+		private readonly nodeTypes: NodeTypes,
+		private readonly eventService: EventService,
+		private readonly taskRunnersConfig: TaskRunnersConfig,
+		private readonly globalConfig: GlobalConfig,
+		private readonly errorReporter: ErrorReporter,
+	) {}
 
 	async startTask<TData, TError>(
 		additionalData: IWorkflowExecuteAdditionalData,
@@ -110,8 +119,6 @@ export abstract class TaskRequester {
 			data,
 		};
 
-		this.pendingRequests.set(request.requestId, request);
-
 		const taskIdPromise = new Promise<string>((resolve, reject) => {
 			this.requestAcceptRejects.set(request.requestId, {
 				accept: resolve,
@@ -134,6 +141,19 @@ export abstract class TaskRequester {
 		};
 		this.tasks.set(task.taskId, task);
 
+		if (additionalData.executionId) {
+			const taskIds = this.executionIdsToTaskIds.get(additionalData.executionId) ?? new Set();
+			taskIds.add(taskId);
+			this.executionIdsToTaskIds.set(additionalData.executionId, taskIds);
+		}
+
+		this.eventService.emit('runner-task-requested', {
+			taskId: task.taskId,
+			nodeId: task.data.node.id,
+			workflowId: task.data.workflow.id,
+			executionId: task.data.additionalData.executionId ?? 'unknown',
+		});
+
 		try {
 			const dataPromise = new Promise<TaskResultData>((resolve, reject) => {
 				this.taskAcceptRejects.set(task.taskId, {
@@ -149,6 +169,14 @@ export abstract class TaskRequester {
 			});
 
 			const resultData = await dataPromise;
+
+			this.eventService.emit('runner-response-received', {
+				taskId: task.taskId,
+				nodeId: task.data.node.id,
+				workflowId: task.data.workflow.id,
+				executionId: task.data.additionalData.executionId ?? 'unknown',
+			});
+
 			// Set custom execution data (`$execution.customData`) if sent
 			if (resultData.customData) {
 				Object.entries(resultData.customData).forEach(([k, v]) => {
@@ -169,6 +197,48 @@ export abstract class TaskRequester {
 			return createResultError(e as TError);
 		} finally {
 			this.tasks.delete(taskId);
+			this.clearExecutionsMap(taskId);
+		}
+	}
+
+	cancelTasks(executionId: string) {
+		for (const taskId of this.getTaskIds(executionId)) {
+			this.cancelTask(taskId);
+		}
+	}
+
+	private getTaskIds(executionId: string): Set<string> {
+		return this.executionIdsToTaskIds.get(executionId) ?? new Set();
+	}
+
+	private cancelTask(taskId: string, reason = 'Task cancelled by user') {
+		const task = this.tasks.get(taskId);
+		if (!task) return;
+
+		this.tasks.delete(taskId);
+
+		this.sendMessage({
+			type: 'requester:taskcancel',
+			taskId,
+			reason,
+		});
+
+		const acceptReject = this.taskAcceptRejects.get(taskId);
+		if (acceptReject) {
+			acceptReject.reject(new Error(`Task cancelled: ${reason}`));
+			this.taskAcceptRejects.delete(taskId);
+		}
+	}
+
+	private clearExecutionsMap(taskId: string) {
+		for (const [executionId, taskIds] of this.executionIdsToTaskIds.entries()) {
+			if (taskIds.has(taskId)) {
+				taskIds.delete(taskId);
+				if (taskIds.size === 0) {
+					this.executionIdsToTaskIds.delete(executionId);
+				}
+				break;
+			}
 		}
 	}
 
@@ -184,6 +254,9 @@ export abstract class TaskRequester {
 				break;
 			case 'broker:taskerror':
 				this.taskError(message.taskId, message.error);
+				break;
+			case 'broker:requestexpired':
+				this.requestExpired(message.requestId);
 				break;
 			case 'broker:taskdatarequest':
 				this.sendTaskData(message.taskId, message.requestId, message.requestParams);
@@ -208,6 +281,30 @@ export abstract class TaskRequester {
 		}
 
 		acceptReject.accept(taskId);
+		this.requestAcceptRejects.delete(requestId);
+	}
+
+	requestExpired(requestId: string) {
+		const acceptReject = this.requestAcceptRejects.get(requestId);
+		if (!acceptReject) return;
+
+		const error = new TaskRequestTimeoutError({
+			timeout: this.taskRunnersConfig.taskRequestTimeout,
+			isSelfHosted: this.globalConfig.deployment.type !== 'cloud',
+		});
+
+		this.errorReporter.error('Task request timed out', {
+			extra: {
+				requestId,
+				timeout: this.taskRunnersConfig.taskRequestTimeout,
+				deploymentType: this.globalConfig.deployment.type,
+			},
+			tags: {
+				issue: 'task-runners-timeouts',
+			},
+		});
+
+		acceptReject.reject(error);
 		this.requestAcceptRejects.delete(requestId);
 	}
 

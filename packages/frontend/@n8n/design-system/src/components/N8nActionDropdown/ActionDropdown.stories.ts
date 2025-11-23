@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 
 import N8nActionDropdown from './ActionDropdown.vue';
 
@@ -30,7 +30,9 @@ const template: StoryFn = (args, { argTypes }) => ({
 	setup: () => ({ args }),
 	props: Object.keys(argTypes),
 	components: {
-		N8nActionDropdown,
+		// "as unknown ..." is a workaround for generic components.
+		// See https://github.com/storybookjs/storybook/issues/24238
+		N8nActionDropdown: N8nActionDropdown as unknown as Record<string, unknown>,
 	},
 	template: '<n8n-action-dropdown v-bind="args" />',
 });
@@ -51,7 +53,7 @@ defaultActionDropdown.args = {
 
 export const customStyling = template.bind({});
 customStyling.args = {
-	activatorIcon: 'bars',
+	activatorIcon: 'menu',
 	items: [
 		{
 			id: 'item1',
@@ -67,7 +69,7 @@ customStyling.args = {
 		{
 			id: 'item3',
 			label: 'Action 3',
-			icon: 'heart',
+			icon: 'home',
 			divided: true,
 		},
 	],

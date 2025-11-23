@@ -11,7 +11,12 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+import {
+	promptTypeOptions,
+	textFromGuardrailsNode,
+	textFromPreviousNode,
+	textInput,
+} from '@utils/descriptions';
 
 import { conversationalAgentProperties } from '../agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from '../agents/ConversationalAgent/execute';
@@ -67,9 +72,7 @@ function getInputs(
 				type,
 				displayName,
 				required: isModelType,
-				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(
-					type as NodeConnectionType,
-				)
+				maxConnections: ['ai_languageModel', 'ai_memory', 'ai_outputParser'].includes(type)
 					? 1
 					: undefined,
 			};
@@ -93,6 +96,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
 						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
+						'@n8n/n8n-nodes-langchain.lmChatLemonade',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
@@ -101,7 +105,9 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						'@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
 						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
+						'@n8n/n8n-nodes-langchain.modelSelector',
 					],
 				},
 			},
@@ -124,6 +130,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
+						'@n8n/n8n-nodes-langchain.lmChatLemonade',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -132,6 +139,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						'@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
 						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
 					],
 				},
@@ -277,7 +285,6 @@ export class AgentV1 implements INodeType {
 			outputs: [NodeConnectionTypes.Main],
 			credentials: [
 				{
-					// eslint-disable-next-line n8n-nodes-base/node-class-description-credentials-name-unsuffixed
 					name: 'mySql',
 					required: true,
 					testedBy: 'mysqlConnectionTest',
@@ -303,14 +310,28 @@ export class AgentV1 implements INodeType {
 				{
 					displayName:
 						'Tip: Get a feel for agents with our quick <a href="https://docs.n8n.io/advanced-ai/intro-tutorial/" target="_blank">tutorial</a> or see an <a href="/templates/1954" target="_blank">example</a> of how this node works',
-					name: 'notice_tip',
-					type: 'notice',
+					name: 'aiAgentStarterCallout',
+					type: 'callout',
 					default: '',
 					displayOptions: {
 						show: {
 							agent: ['conversationalAgent', 'toolsAgent'],
 						},
 					},
+				},
+				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					displayName: 'Get started faster with our',
+					name: 'preBuiltAgentsCallout',
+					type: 'callout',
+					typeOptions: {
+						calloutAction: {
+							label: 'pre-built agents',
+							icon: 'bot',
+							type: 'openPreBuiltAgentsCollection',
+						},
+					},
+					default: '',
 				},
 				{
 					displayName:
@@ -359,6 +380,12 @@ export class AgentV1 implements INodeType {
 							'@version': [{ _cnd: { lte: 1.2 } }],
 							agent: ['sqlAgent'],
 						},
+					},
+				},
+				{
+					...textFromGuardrailsNode,
+					displayOptions: {
+						show: { promptType: ['guardrails'], '@version': [{ _cnd: { gte: 1.7 } }] },
 					},
 				},
 				{
