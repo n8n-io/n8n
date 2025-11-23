@@ -143,6 +143,31 @@ async function getChromaLibConfig(
 }
 
 class ExtendedChroma extends Chroma {
+	async ensureCollection(): Promise<Collection> {
+		if (!this.collection) {
+			if (!this.index) {
+				const { ChromaClient } = await ExtendedChroma.imports();
+				const clientConfig = this.url
+					? { path: this.url, ...(this.clientParams ?? {}) }
+					: (this.clientParams ?? {});
+
+				this.index = new ChromaClient(clientConfig);
+			}
+
+			try {
+				this.collection = await this.index.getOrCreateCollection({
+					name: this.collectionName,
+					...(this.collectionMetadata && { metadata: this.collectionMetadata }),
+					embeddingFunction: null,
+				});
+			} catch (err) {
+				throw new Error(`Chroma getOrCreateCollection error: ${err}`);
+			}
+		}
+
+		return this.collection!;
+	}
+
 	async similaritySearchVectorWithScore(
 		query: number[],
 		k: number,
