@@ -114,21 +114,154 @@ npm run typecheck    # TypeScript type checking
 npm run format       # Prettier formatting
 ```
 
-### Environment Variables
+### Environment Configuration
 
-Create `.env.local` for local configuration:
+TaxFlow Enhanced uses environment variables for configuration across different deployment environments.
 
+#### Environment Files
+
+The application uses multiple environment files:
+
+```
+.env.example        # Template with all variables (committed to git)
+.env.development    # Development defaults (committed to git)
+.env.production     # Production defaults (committed to git)
+.env.local          # Local overrides (NOT committed, gitignored)
+.env                # Default environment (NOT committed, gitignored)
+```
+
+**File Priority (highest to lowest):**
+1. `.env.local` - Your local overrides (create this for development)
+2. `.env.[mode]` - Environment-specific (development/production)
+3. `.env` - Default fallback
+
+#### Quick Start
+
+```bash
+# Option 1: Use development defaults (no setup needed)
+npm run dev
+
+# Option 2: Create local overrides
+cp .env.example .env.local
+# Edit .env.local with your preferences
+npm run dev
+
+# Option 3: Use .env file
+cp .env.example .env
+# Edit .env with your configuration
+npm run dev
+```
+
+#### Available Environment Variables
+
+**API Configuration:**
 ```env
-VITE_API_URL=http://localhost:3000/api
+# API base URL (optional - for future backend integration)
+VITE_API_URL=
+
+# API timeout in milliseconds (default: 30000)
 VITE_API_TIMEOUT=30000
-VITE_ENABLE_ANALYTICS=false
-VITE_ENABLE_PDF_EXPORT=true
-VITE_ENABLE_EXCEL_EXPORT=true
-VITE_LOG_LEVEL=debug
+```
+
+**Feature Flags:**
+```env
+# Enable/disable features (values: 'true' or 'false')
+VITE_ENABLE_ANALYTICS=false      # Analytics tracking
+VITE_ENABLE_PDF_EXPORT=true      # PDF export functionality
+VITE_ENABLE_EXCEL_EXPORT=true    # Excel export functionality
+VITE_ENABLE_STATE_TAX=false      # State tax calculations (beta)
+```
+
+**Logging:**
+```env
+# Console log level (debug | info | warn | error)
+VITE_LOG_LEVEL=info
+```
+
+**Application Limits:**
+```env
+# Maximum workflow nodes (10-1000, default: 100)
+VITE_MAX_WORKFLOW_NODES=100
+
+# Max file upload size in MB (1-100, default: 10)
+VITE_MAX_FILE_SIZE_MB=10
+```
+
+**Development:**
+```env
+# Use mock data instead of real backend (default: true)
 VITE_USE_MOCK_DATA=true
 ```
 
-See `src/config/environment.ts` for all available options.
+#### Environment-Specific Recommendations
+
+**Development:**
+```env
+VITE_LOG_LEVEL=debug
+VITE_USE_MOCK_DATA=true
+VITE_ENABLE_ANALYTICS=false
+```
+
+**Staging:**
+```env
+VITE_API_URL=https://staging-api.taxflow.example.com
+VITE_LOG_LEVEL=info
+VITE_USE_MOCK_DATA=false
+VITE_ENABLE_ANALYTICS=true
+```
+
+**Production:**
+```env
+VITE_API_URL=https://api.taxflow.example.com
+VITE_LOG_LEVEL=error
+VITE_USE_MOCK_DATA=false
+VITE_ENABLE_ANALYTICS=true
+```
+
+#### Validation
+
+All environment variables are validated at startup using Zod schemas in `src/config/environment.ts`. Invalid values will cause the application to fail with helpful error messages.
+
+**Example validation error:**
+```
+Environment validation error:
+VITE_LOG_LEVEL: Invalid enum value. Expected 'debug' | 'info' | 'warn' | 'error', received 'trace'
+```
+
+#### Using Environment Variables in Code
+
+```typescript
+import { env, isProduction, isFeatureEnabled } from '@/config/environment';
+
+// Check mode
+if (isProduction) {
+  // Production-specific logic
+}
+
+// Access validated env vars
+const apiUrl = env.VITE_API_URL;
+const logLevel = env.VITE_LOG_LEVEL;
+
+// Check feature flags
+if (isFeatureEnabled('VITE_ENABLE_PDF_EXPORT')) {
+  // Enable PDF export button
+}
+```
+
+#### Security Notes
+
+⚠️ **NEVER commit sensitive data to version control:**
+- API keys
+- Secrets
+- Tokens
+- Credentials
+
+✅ **For production deployments:**
+- Set environment variables in your deployment platform (Vercel, Netlify, etc.)
+- Use secret management services for sensitive values
+- Never hardcode secrets in .env files that are committed
+
+See `.env.example` for complete documentation of all available variables.
 
 ## Project Structure
 
