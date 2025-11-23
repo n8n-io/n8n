@@ -15,7 +15,7 @@ export default class Prerelease extends Command {
 		const packageManager = (await detectPackageManager()) ?? 'npm';
 
 		if (!process.env.RELEASE_MODE) {
-			console.log(`Run \`${packageManager} run release\` to publish the package`);
+			this.log(`Run \`${packageManager} run release\` to publish the package`);
 			process.exit(1);
 		}
 	}

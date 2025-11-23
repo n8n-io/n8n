@@ -8,7 +8,7 @@ describe('OpenAiApi Credential', () => {
 	it('should have correct properties', () => {
 		expect(openAiApi.name).toBe('openAiApi');
 		expect(openAiApi.displayName).toBe('OpenAi');
-		expect(openAiApi.documentationUrl).toBe('openAi');
+		expect(openAiApi.documentationUrl).toBe('openai');
 		expect(openAiApi.properties).toHaveLength(6);
 		expect(openAiApi.test.request.baseURL).toBe('={{$credentials?.url}}');
 		expect(openAiApi.test.request.url).toBe('/models');

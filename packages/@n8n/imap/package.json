@@ -12,6 +12,7 @@
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest --silent=false"
   },
   "main": "dist/index.js",

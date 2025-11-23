@@ -130,7 +130,7 @@ export class InstanceRiskReporter implements RiskReporter {
 
 	private getUnprotectedWebhookNodes(workflows: IWorkflowBase[]) {
 		return workflows.reduce<Risk.NodeLocation[]>((acc, workflow) => {
-			if (!workflow.active) return acc;
+			if (!workflow.activeVersionId) return acc;
 
 			workflow.nodes.forEach((node) => {
 				if (

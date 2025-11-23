@@ -15,6 +15,6 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Validate PR title
-        uses: n8n-io/validate-n8n-pull-request-title@c97ff722ac14ee0bda73766473bba764445db805 # v2.2.0
+        uses: n8n-io/validate-n8n-pull-request-title@c3b6fd06bda12eebd57a592c0cf3b747d5b73569 # v2.4.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

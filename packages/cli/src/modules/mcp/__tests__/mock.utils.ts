@@ -1,4 +1,5 @@
 import type { WorkflowEntity } from '@n8n/db';
+import { MANUAL_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => ({
 	id: 'wf-1',
@@ -7,7 +8,7 @@ export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => ({
 		{
 			id: 'node-1',
 			name: 'Webhook',
-			type: 'n8n-nodes-base.webhook',
+			type: WEBHOOK_NODE_TYPE,
 			typeVersion: 1,
 			position: [0, 0],
 			disabled: false,
@@ -17,7 +18,7 @@ export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => ({
 		{
 			id: 'node-2',
 			name: 'Start',
-			type: 'n8n-nodes-base.start',
+			type: MANUAL_TRIGGER_NODE_TYPE,
 			typeVersion: 1,
 			position: [100, 0],
 			disabled: false,
@@ -26,6 +27,8 @@ export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => ({
 		},
 	],
 	active: overrides.active ?? false,
+	versionId: 'some-version-id',
+	activeVersionId: overrides.active ? 'some-version-id' : null,
 	isArchived: overrides.isArchived ?? false,
 	createdAt: overrides.createdAt ?? new Date('2024-01-01T00:00:00.000Z'),
 	updatedAt: overrides.updatedAt ?? new Date('2024-01-02T00:00:00.000Z'),

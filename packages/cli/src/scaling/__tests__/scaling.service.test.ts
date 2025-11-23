@@ -171,7 +171,7 @@ describe('ScalingService', () => {
 			await scalingService.setupQueue();
 			const concurrency = 5;
 
-			await scalingService.setupWorker(concurrency);
+			scalingService.setupWorker(concurrency);
 
 			expect(queue.process).toHaveBeenCalledWith(JOB_TYPE_NAME, concurrency, expect.any(Function));
 		});
@@ -179,14 +179,14 @@ describe('ScalingService', () => {
 		it('should throw if called on a non-worker instance', async () => {
 			await scalingService.setupQueue();
 
-			await expect(scalingService.setupWorker(5)).rejects.toThrow();
+			expect(() => scalingService.setupWorker(5)).toThrow();
 		});
 
 		it('should throw if called before queue is ready', async () => {
 			// @ts-expect-error readonly property
 			instanceSettings.instanceType = 'worker';
 
-			await expect(scalingService.setupWorker(5)).rejects.toThrow();
+			expect(() => scalingService.setupWorker(5)).toThrow();
 		});
 	});
 
@@ -358,6 +358,71 @@ describe('ScalingService', () => {
 			expect(activeExecutions.sendChunk).toHaveBeenCalledWith('exec-123', {
 				type: 'item',
 				content: 'test',
+			});
+		});
+
+		it('should resolve responsePromise with empty response when job-finished has success=true', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				mock(),
+				instanceSettings,
+				mock(),
+			);
+
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			const jobFinishedMessage = {
+				kind: 'job-finished',
+				executionId: 'exec-123',
+				workerId: 'worker-456',
+				success: true,
+			};
+
+			messageHandler('job-789', jobFinishedMessage);
+
+			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-123', {});
+		});
+
+		it('should resolve responsePromise with error response when job-finished has success=false', async () => {
+			const activeExecutions = mock<ActiveExecutions>();
+			scalingService = new ScalingService(
+				mockLogger(),
+				mock(),
+				activeExecutions,
+				jobProcessor,
+				globalConfig,
+				mock(),
+				instanceSettings,
+				mock(),
+			);
+
+			await scalingService.setupQueue();
+
+			const messageHandler = queue.on.mock.calls.find(
+				([event]) => (event as string) === 'global:progress',
+			)?.[1] as (jobId: JobId, msg: unknown) => void;
+
+			const jobFinishedMessage = {
+				kind: 'job-finished',
+				executionId: 'exec-123',
+				workerId: 'worker-456',
+				success: false,
+			};
+
+			messageHandler('job-789', jobFinishedMessage);
+
+			expect(activeExecutions.resolveResponsePromise).toHaveBeenCalledWith('exec-123', {
+				body: { message: 'Workflow execution failed' },
+				statusCode: 500,
 			});
 		});
 	});

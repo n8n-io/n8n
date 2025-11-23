@@ -1,0 +1,165 @@
+{
+	"httpRequest": {
+		"method": "POST",
+		"path": "/v1/messages"
+	},
+	"httpResponse": {
+		"statusCode": 200,
+		"reasonPhrase": "OK",
+		"headers": {
+			"x-envoy-upstream-service-time": ["18919"],
+			"strict-transport-security": ["max-age=31536000; includeSubDomains; preload"],
+			"retry-after": ["7"],
+			"request-id": ["req_011CUfbJvmZMFDskaWrsvxYU"],
+			"cf-cache-status": ["DYNAMIC"],
+			"anthropic-ratelimit-tokens-reset": ["2025-10-31T16:28:53Z"],
+			"anthropic-ratelimit-tokens-remaining": ["15499000"],
+			"anthropic-ratelimit-tokens-limit": ["15500000"],
+			"anthropic-ratelimit-output-tokens-reset": ["2025-10-31T16:29:10Z"],
+			"anthropic-ratelimit-output-tokens-remaining": ["499000"],
+			"anthropic-ratelimit-output-tokens-limit": ["500000"],
+			"anthropic-ratelimit-input-tokens-reset": ["2025-10-31T16:28:53Z"],
+			"anthropic-ratelimit-input-tokens-remaining": ["15000000"],
+			"anthropic-ratelimit-input-tokens-limit": ["15000000"],
+			"X-Robots-Tag": ["none"],
+			"Server": ["cloudflare"],
+			"Date": ["Fri, 31 Oct 2025 16:29:10 GMT"],
+			"Content-Type": ["application/json"],
+			"CF-RAY": ["99748722ec65b34c-MAN"]
+		},
+		"body": {
+			"contentType": "application/json",
+			"type": "JSON",
+			"json": {
+				"model": "claude-sonnet-4-5-20250929",
+				"id": "msg_01GqMTwFnQ2hWE5B5cRKGGbX",
+				"type": "message",
+				"role": "assistant",
+				"content": [
+					{
+						"type": "tool_use",
+						"id": "toolu_01Gu5gBR9JEr7FBWootsnSjp",
+						"name": "update_node_parameters",
+						"input": {
+							"nodeId": "262224c9-60a6-499d-9a8c-397342ad7474",
+							"changes": [
+								"Add field 'videoId' with value '<__PLACEHOLDER_VALUE__YouTube Video ID__>'",
+								"Enable 'Include Other Input Fields' option"
+							]
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01KYefrCL12jnrGrfFJfNzuo",
+						"name": "update_node_parameters",
+						"input": {
+							"nodeId": "8ec7a72a-cd79-47e2-b598-f2200b5b3ccf",
+							"changes": [
+								"Set resource to 'video'",
+								"Set operation to 'get'",
+								"Set video ID to ={ $('Workflow Configuration').first().json.videoId }",
+								"Set part to 'snippet,contentDetails'"
+							]
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01Fxwi8tsT6yqCPgrmAQW7xj",
+						"name": "update_node_parameters",
+						"input": {
+							"nodeId": "b1dcd8e3-1d2b-450f-bdc9-15932e811a53",
+							"changes": [
+								"Set resource to 'video'",
+								"Set operation to 'get captions'",
+								"Set video ID to ={ $('Workflow Configuration').first().json.videoId }"
+							]
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01JZmzddsjAQNEBTqGA97QuW",
+						"name": "update_node_parameters",
+						"input": {
+							"nodeId": "12143dd5-e8ae-4837-8775-547521b10f7b",
+							"changes": [
+								"Set mode to 'Manual Mapping'",
+								"Add field 'videoId' with value ={ $('Workflow Configuration').first().json.videoId }",
+								"Add field 'videoTitle' with value ={ $('Get Video Details').first().json.snippet.title }",
+								"Add field 'currentDescription' with value ={ $('Get Video Details').first().json.snippet.description }",
+								"Add field 'transcript' with value ={ $('Get Video Captions').first().json.text }"
+							]
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01T99qHAWEL6mFGzTzihxPbc",
+						"name": "update_node_parameters",
+						"input": {
+							"nodeId": "0ce1fee2-03a0-43dd-8a82-c1b58d7e8e41",
+							"changes": [
+								"Set prompt to 'You are an expert at analyzing video transcripts and creating YouTube chapter timestamps.\n\nYour task is to analyze the provided video transcript and generate chapter timestamps with descriptive titles. Follow these rules:\n\n1. Chapters must start at 00:00\n2. Use format: MM:SS or HH:MM:SS for timestamps\n3. Each chapter should have a clear, descriptive title\n4. Aim for 5-10 chapters depending on video length\n5. Chapters should mark significant topic changes or sections\n6. Return ONLY the formatted chapters, one per line\n\nVideo Title: { $json.videoTitle }\n\nTranscript:\n{ $json.transcript }\n\nGenerate the chapter timestamps now:'"
+							]
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_01RsQped5iCbzCXkBJUXpXHQ",
+						"name": "update_node_parameters",
+						"input": {
+							"nodeId": "6c79cb79-bbfa-4754-aa57-3f306db18dca",
+							"changes": [
+								"Set JavaScript code to:\nconst aiResponse = $input.first().json.output;\nconst currentDescription = $('Merge Video Data').first().json.currentDescription;\nconst videoId = $('Merge Video Data').first().json.videoId;\n\n// Format the chapters section\nconst chaptersSection = '\\n\\n--- CHAPTERS ---\\n' + aiResponse;\n\n// Combine current description with chapters\nconst updatedDescription = currentDescription + chaptersSection;\n\nreturn {\n  json: {\n    videoId: videoId,\n    description: updatedDescription,\n    chapters: aiResponse\n  }\n};"
+							]
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_017a4hphy1bF8Th72DUqdRgD",
+						"name": "update_node_parameters",
+						"input": {
+							"nodeId": "638257a9-de32-4968-9538-3cc0a6427f60",
+							"changes": [
+								"Set resource to 'video'",
+								"Set operation to 'update'",
+								"Set video ID to ={ $json.videoId }",
+								"Set update fields to include 'Description' with value ={ $json.description }"
+							]
+						}
+					},
+					{
+						"type": "tool_use",
+						"id": "toolu_0144knXetFhy717vhbYH8Ayg",
+						"name": "update_node_parameters",
+						"input": {
+							"nodeId": "7080dd0f-5f71-4ad2-ae11-24a4062e4239",
+							"changes": ["Set model to 'gemini-1.5-flash'"]
+						}
+					}
+				],
+				"stop_reason": "tool_use",
+				"stop_sequence": null,
+				"usage": {
+					"input_tokens": 1,
+					"cache_creation_input_tokens": 2034,
+					"cache_read_input_tokens": 36361,
+					"cache_creation": {
+						"ephemeral_5m_input_tokens": 2034,
+						"ephemeral_1h_input_tokens": 0
+					},
+					"output_tokens": 1293,
+					"service_tier": "standard"
+				}
+			},
+			"rawBytes": "eyJtb2RlbCI6ImNsYXVkZS1zb25uZXQtNC01LTIwMjUwOTI5IiwiaWQiOiJtc2dfMDFHcU1Ud0ZuUTJoV0U1QjVjUktHR2JYIiwidHlwZSI6Im1lc3NhZ2UiLCJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6W3sidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUd1NWdCUjlKRXI3RkJXb290c25TanAiLCJuYW1lIjoidXBkYXRlX25vZGVfcGFyYW1ldGVycyIsImlucHV0Ijp7Im5vZGVJZCI6IjI2MjIyNGM5LTYwYTYtNDk5ZC05YThjLTM5NzM0MmFkNzQ3NCIsImNoYW5nZXMiOlsiQWRkIGZpZWxkICd2aWRlb0lkJyB3aXRoIHZhbHVlICc8X19QTEFDRUhPTERFUl9WQUxVRV9fWW91VHViZSBWaWRlbyBJRF9fPiciLCJFbmFibGUgJ0luY2x1ZGUgT3RoZXIgSW5wdXQgRmllbGRzJyBvcHRpb24iXX19LHsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMUtZZWZyQ0wxMmpuckdyZkZKZk56dW8iLCJuYW1lIjoidXBkYXRlX25vZGVfcGFyYW1ldGVycyIsImlucHV0Ijp7Im5vZGVJZCI6IjhlYzdhNzJhLWNkNzktNDdlMi1iNTk4LWYyMjAwYjViM2NjZiIsImNoYW5nZXMiOlsiU2V0IHJlc291cmNlIHRvICd2aWRlbyciLCJTZXQgb3BlcmF0aW9uIHRvICdnZXQnIiwiU2V0IHZpZGVvIElEIHRvID17ICQoJ1dvcmtmbG93IENvbmZpZ3VyYXRpb24nKS5maXJzdCgpLmpzb24udmlkZW9JZCB9IiwiU2V0IHBhcnQgdG8gJ3NuaXBwZXQsY29udGVudERldGFpbHMnIl19fSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDFGeHdpOHRzVDZ5cUNQZ3JtQVFXN3hqIiwibmFtZSI6InVwZGF0ZV9ub2RlX3BhcmFtZXRlcnMiLCJpbnB1dCI6eyJub2RlSWQiOiJiMWRjZDhlMy0xZDJiLTQ1MGYtYmRjOS0xNTkzMmU4MTFhNTMiLCJjaGFuZ2VzIjpbIlNldCByZXNvdXJjZSB0byAndmlkZW8nIiwiU2V0IG9wZXJhdGlvbiB0byAnZ2V0IGNhcHRpb25zJyIsIlNldCB2aWRlbyBJRCB0byA9eyAkKCdXb3JrZmxvdyBDb25maWd1cmF0aW9uJykuZmlyc3QoKS5qc29uLnZpZGVvSWQgfSJdfX0seyJ0eXBlIjoidG9vbF91c2UiLCJpZCI6InRvb2x1XzAxSlptemRkc2pBUU5FQlRxR0E5N1F1VyIsIm5hbWUiOiJ1cGRhdGVfbm9kZV9wYXJhbWV0ZXJzIiwiaW5wdXQiOnsibm9kZUlkIjoiMTIxNDNkZDUtZThhZS00ODM3LTg3NzUtNTQ3NTIxYjEwZjdiIiwiY2hhbmdlcyI6WyJTZXQgbW9kZSB0byAnTWFudWFsIE1hcHBpbmcnIiwiQWRkIGZpZWxkICd2aWRlb0lkJyB3aXRoIHZhbHVlID17ICQoJ1dvcmtmbG93IENvbmZpZ3VyYXRpb24nKS5maXJzdCgpLmpzb24udmlkZW9JZCB9IiwiQWRkIGZpZWxkICd2aWRlb1RpdGxlJyB3aXRoIHZhbHVlID17ICQoJ0dldCBWaWRlbyBEZXRhaWxzJykuZmlyc3QoKS5qc29uLnNuaXBwZXQudGl0bGUgfSIsIkFkZCBmaWVsZCAnY3VycmVudERlc2NyaXB0aW9uJyB3aXRoIHZhbHVlID17ICQoJ0dldCBWaWRlbyBEZXRhaWxzJykuZmlyc3QoKS5qc29uLnNuaXBwZXQuZGVzY3JpcHRpb24gfSIsIkFkZCBmaWVsZCAndHJhbnNjcmlwdCcgd2l0aCB2YWx1ZSA9eyAkKCdHZXQgVmlkZW8gQ2FwdGlvbnMnKS5maXJzdCgpLmpzb24udGV4dCB9Il19fSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDFUOTlxSEFXRUw2bUZHelR6aWh4UGJjIiwibmFtZSI6InVwZGF0ZV9ub2RlX3BhcmFtZXRlcnMiLCJpbnB1dCI6eyJub2RlSWQiOiIwY2UxZmVlMi0wM2EwLTQzZGQtOGE4Mi1jMWI1OGQ3ZThlNDEiLCJjaGFuZ2VzIjpbIlNldCBwcm9tcHQgdG8gJ1lvdSBhcmUgYW4gZXhwZXJ0IGF0IGFuYWx5emluZyB2aWRlbyB0cmFuc2NyaXB0cyBhbmQgY3JlYXRpbmcgWW91VHViZSBjaGFwdGVyIHRpbWVzdGFtcHMuXG5cbllvdXIgdGFzayBpcyB0byBhbmFseXplIHRoZSBwcm92aWRlZCB2aWRlbyB0cmFuc2NyaXB0IGFuZCBnZW5lcmF0ZSBjaGFwdGVyIHRpbWVzdGFtcHMgd2l0aCBkZXNjcmlwdGl2ZSB0aXRsZXMuIEZvbGxvdyB0aGVzZSBydWxlczpcblxuMS4gQ2hhcHRlcnMgbXVzdCBzdGFydCBhdCAwMDowMFxuMi4gVXNlIGZvcm1hdDogTU06U1Mgb3IgSEg6TU06U1MgZm9yIHRpbWVzdGFtcHNcbjMuIEVhY2ggY2hhcHRlciBzaG91bGQgaGF2ZSBhIGNsZWFyLCBkZXNjcmlwdGl2ZSB0aXRsZVxuNC4gQWltIGZvciA1LTEwIGNoYXB0ZXJzIGRlcGVuZGluZyBvbiB2aWRlbyBsZW5ndGhcbjUuIENoYXB0ZXJzIHNob3VsZCBtYXJrIHNpZ25pZmljYW50IHRvcGljIGNoYW5nZXMgb3Igc2VjdGlvbnNcbjYuIFJldHVybiBPTkxZIHRoZSBmb3JtYXR0ZWQgY2hhcHRlcnMsIG9uZSBwZXIgbGluZVxuXG5WaWRlbyBUaXRsZTogeyAkanNvbi52aWRlb1RpdGxlIH1cblxuVHJhbnNjcmlwdDpcbnsgJGpzb24udHJhbnNjcmlwdCB9XG5cbkdlbmVyYXRlIHRoZSBjaGFwdGVyIHRpbWVzdGFtcHMgbm93OiciXX19LHsidHlwZSI6InRvb2xfdXNlIiwiaWQiOiJ0b29sdV8wMVJzUXBlZDVpQ2J6Q1hrQkpVWHBYSFEiLCJuYW1lIjoidXBkYXRlX25vZGVfcGFyYW1ldGVycyIsImlucHV0Ijp7Im5vZGVJZCI6IjZjNzljYjc5LWJiZmEtNDc1NC1hYTU3LTNmMzA2ZGIxOGRjYSIsImNoYW5nZXMiOlsiU2V0IEphdmFTY3JpcHQgY29kZSB0bzpcbmNvbnN0IGFpUmVzcG9uc2UgPSAkaW5wdXQuZmlyc3QoKS5qc29uLm91dHB1dDtcbmNvbnN0IGN1cnJlbnREZXNjcmlwdGlvbiA9ICQoJ01lcmdlIFZpZGVvIERhdGEnKS5maXJzdCgpLmpzb24uY3VycmVudERlc2NyaXB0aW9uO1xuY29uc3QgdmlkZW9JZCA9ICQoJ01lcmdlIFZpZGVvIERhdGEnKS5maXJzdCgpLmpzb24udmlkZW9JZDtcblxuLy8gRm9ybWF0IHRoZSBjaGFwdGVycyBzZWN0aW9uXG5jb25zdCBjaGFwdGVyc1NlY3Rpb24gPSAnXFxuXFxuLS0tIENIQVBURVJTIC0tLVxcbicgKyBhaVJlc3BvbnNlO1xuXG4vLyBDb21iaW5lIGN1cnJlbnQgZGVzY3JpcHRpb24gd2l0aCBjaGFwdGVyc1xuY29uc3QgdXBkYXRlZERlc2NyaXB0aW9uID0gY3VycmVudERlc2NyaXB0aW9uICsgY2hhcHRlcnNTZWN0aW9uO1xuXG5yZXR1cm4ge1xuICBqc29uOiB7XG4gICAgdmlkZW9JZDogdmlkZW9JZCxcbiAgICBkZXNjcmlwdGlvbjogdXBkYXRlZERlc2NyaXB0aW9uLFxuICAgIGNoYXB0ZXJzOiBhaVJlc3BvbnNlXG4gIH1cbn07Il19fSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDE3YTRocGh5MWJGOFRoNzJEVXFkUmdEIiwibmFtZSI6InVwZGF0ZV9ub2RlX3BhcmFtZXRlcnMiLCJpbnB1dCI6eyJub2RlSWQiOiI2MzgyNTdhOS1kZTMyLTQ5NjgtOTUzOC0zY2MwYTY0MjdmNjAiLCJjaGFuZ2VzIjpbIlNldCByZXNvdXJjZSB0byAndmlkZW8nIiwiU2V0IG9wZXJhdGlvbiB0byAndXBkYXRlJyIsIlNldCB2aWRlbyBJRCB0byA9eyAkanNvbi52aWRlb0lkIH0iLCJTZXQgdXBkYXRlIGZpZWxkcyB0byBpbmNsdWRlICdEZXNjcmlwdGlvbicgd2l0aCB2YWx1ZSA9eyAkanNvbi5kZXNjcmlwdGlvbiB9Il19fSx7InR5cGUiOiJ0b29sX3VzZSIsImlkIjoidG9vbHVfMDE0NGtuWGV0Rmh5NzE3dmhiWUg4QXlnIiwibmFtZSI6InVwZGF0ZV9ub2RlX3BhcmFtZXRlcnMiLCJpbnB1dCI6eyJub2RlSWQiOiI3MDgwZGQwZi01ZjcxLTRhZDItYWUxMS0yNGE0MDYyZTQyMzkiLCJjaGFuZ2VzIjpbIlNldCBtb2RlbCB0byAnZ2VtaW5pLTEuNS1mbGFzaCciXX19XSwic3RvcF9yZWFzb24iOiJ0b29sX3VzZSIsInN0b3Bfc2VxdWVuY2UiOm51bGwsInVzYWdlIjp7ImlucHV0X3Rva2VucyI6MSwiY2FjaGVfY3JlYXRpb25faW5wdXRfdG9rZW5zIjoyMDM0LCJjYWNoZV9yZWFkX2lucHV0X3Rva2VucyI6MzYzNjEsImNhY2hlX2NyZWF0aW9uIjp7ImVwaGVtZXJhbF81bV9pbnB1dF90b2tlbnMiOjIwMzQsImVwaGVtZXJhbF8xaF9pbnB1dF90b2tlbnMiOjB9LCJvdXRwdXRfdG9rZW5zIjoxMjkzLCJzZXJ2aWNlX3RpZXIiOiJzdGFuZGFyZCJ9fQ=="
+		}
+	},
+	"id": "1761928197581-unknown-host-POST-_v1_messages-35ed69d1.json",
+	"priority": 13,
+	"timeToLive": {
+		"unlimited": true
+	},
+	"times": {
+		"remainingTimes": 1,
+		"unlimited": false
+	}
+}

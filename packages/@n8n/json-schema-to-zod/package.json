@@ -29,6 +29,7 @@
     "build": "rimraf ./dist && pnpm run build:types && pnpm run build:cjs && pnpm run build:esm",
     "dry": "pnpm run build && pnpm pub --dry-run",
     "test": "jest",
+    "test:unit": "jest",
     "test:watch": "jest --watch"
   },
   "keywords": [

@@ -4,7 +4,7 @@ import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue';
 import MessageWrapper from './messages/MessageWrapper.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
-import { isToolMessage } from '../../types/assistant';
+import { isTaskAbortedMessage, isToolMessage } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
@@ -223,19 +223,6 @@ function scrollToBottom() {
 	scrollAreaRef.value?.scrollToBottom({ smooth: true });
 }
 
-function isScrolledToBottom(): boolean {
-	const position = scrollAreaRef.value?.getScrollPosition();
-	if (!position) return false;
-
-	const threshold = 10; // Allow for small rounding errors
-	const isAtBottom =
-		Math.abs(
-			position.height - position.top - (messagesRef.value?.parentElement?.clientHeight || 0),
-		) <= threshold;
-
-	return isAtBottom;
-}
-
 function scrollToBottomImmediate() {
 	scrollAreaRef.value?.scrollToBottom({ smooth: false });
 }
@@ -257,106 +244,31 @@ watch(
 	{ immediate: true, deep: true },
 );
 
-// Setup ResizeObserver to maintain scroll position when input height changes
-let resizeObserver: ResizeObserver | null = null;
-let scrollLockActive = false;
-let scrollHandler: (() => void) | null = null;
-let userIsAtBottom = true;
+// Setup initial scroll to bottom
 let isMounted = true;
-
-function setupInputObservers() {
-	if (!isMounted) {
-		return;
-	}
-
-	if (!inputWrapperRef.value || !scrollAreaRef.value || !('ResizeObserver' in window)) {
-		return;
-	}
-
-	// Clean up any existing observers first
-	cleanupInputObservers();
-
-	// Reset state
-	userIsAtBottom = true;
-
-	// Get the viewport element to attach scroll listener
-	const viewport = messagesRef.value?.parentElement;
-	if (!viewport) return;
-
-	// Create scroll handler function so we can remove it later
-	scrollHandler = () => {
-		if (!scrollLockActive) {
-			userIsAtBottom = isScrolledToBottom();
-		}
-	};
-
-	// Monitor user scrolling
-	viewport.addEventListener('scroll', scrollHandler);
-
-	// Monitor input size changes
-	resizeObserver = new ResizeObserver(() => {
-		if (!isMounted) {
-			return;
-		}
-
-		// Only maintain scroll if user was at bottom
-		if (userIsAtBottom) {
-			scrollLockActive = true;
-			// Double RAF for layout stability
-			requestAnimationFrame(() => {
-				if (!isMounted) {
-					return;
-				}
-				requestAnimationFrame(() => {
-					if (!isMounted) {
-						return;
-					}
-					scrollToBottomImmediate();
-					// Check if we're still at bottom after auto-scroll
-					userIsAtBottom = isScrolledToBottom();
-					scrollLockActive = false;
-				});
-			});
-		}
-	});
-
-	resizeObserver.observe(inputWrapperRef.value);
-
-	// Start at bottom
-	scrollToBottomImmediate();
-}
-
-function cleanupInputObservers() {
-	const viewport = messagesRef.value?.parentElement;
-	if (scrollHandler && viewport) {
-		viewport.removeEventListener('scroll', scrollHandler);
-		scrollHandler = null;
-	}
-	if (resizeObserver) {
-		resizeObserver.disconnect();
-		resizeObserver = null;
-	}
-}
 
 // Watch for when the input becomes available and set up observers
 watch(
 	showBottomInput,
 	async (isShown) => {
-		if (isShown) {
-			// Wait for the input to be mounted in the DOM
-			await nextTick();
-			setupInputObservers();
-		} else {
-			// Clean up when input is hidden
-			cleanupInputObservers();
+		if (!isShown) {
+			return;
 		}
+		// Wait for the input to be mounted in the DOM
+		await nextTick();
+
+		if (!isMounted || !inputWrapperRef.value || !scrollAreaRef.value) {
+			return;
+		}
+
+		// Start at bottom
+		scrollToBottomImmediate();
 	},
 	{ immediate: true },
 );
 
 onUnmounted(() => {
 	isMounted = false;
-	cleanupInputObservers();
 });
 
 function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number) {
@@ -374,11 +286,8 @@ function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number
 }
 
 function getMessageColor(message: ChatUI.AssistantMessage): string | undefined {
-	if (message.type === 'text' && message.role === 'assistant') {
-		const isTaskAbortedMessage = message.content === t('aiAssistant.builder.streamAbortedMessage');
-		if (isTaskAbortedMessage) {
-			return 'var(--color-text-base)';
-		}
+	if (isTaskAbortedMessage(message)) {
+		return 'var(--color--text)';
 	}
 	return undefined;
 }
@@ -571,14 +480,14 @@ defineExpose({
 	position: relative;
 	display: grid;
 	grid-template-rows: auto 1fr auto;
-	background-color: var(--color-background-light);
+	background-color: var(--color--background--light-2);
 }
 
 .header {
 	height: 65px; // same as header height in editor
-	padding: 0 var(--spacing-l);
-	background-color: var(--color-background-xlight);
-	border: var(--border-base);
+	padding: 0 var(--spacing--lg);
+	background-color: var(--color--background--light-3);
+	border: var(--border);
 	border-top: 0;
 	display: flex;
 
@@ -593,14 +502,14 @@ defineExpose({
 }
 
 .betaTag {
-	color: var(--color-text-base);
-	font-size: var(--font-size-2xs);
-	font-weight: var(--font-weight-bold);
+	color: var(--color--text);
+	font-size: var(--font-size--2xs);
+	font-weight: var(--font-weight--bold);
 }
 
 .body {
-	background-color: var(--color-background-light);
-	border: var(--border-base);
+	background-color: var(--color--background--light-2);
+	border: var(--border);
 	border-top: 0;
 	border-bottom: 0;
 	position: relative;
@@ -612,7 +521,7 @@ defineExpose({
 }
 
 .placeholder {
-	padding: var(--spacing-s);
+	padding: var(--spacing--sm);
 	height: 100%;
 	display: flex;
 	flex-direction: column;
@@ -637,46 +546,46 @@ defineExpose({
 }
 
 .messagesContent {
-	padding: var(--spacing-xs);
-	padding-bottom: var(--spacing-xl); // Extra padding for fade area
+	padding: var(--spacing--xs);
+	padding-bottom: var(--spacing--xl); // Extra padding for fade area
 }
 
 .message {
-	margin-bottom: var(--spacing-s);
-	font-size: var(--font-size-2xs);
-	line-height: var(--font-line-height-xloose);
+	margin-bottom: var(--spacing--sm);
+	font-size: var(--font-size--2xs);
+	line-height: var(--line-height--xl);
 }
 
 .firstToolMessage {
-	margin-top: var(--spacing-m);
+	margin-top: var(--spacing--md);
 }
 
 .lastToolMessage {
-	margin-bottom: var(--spacing-l);
+	margin-bottom: var(--spacing--lg);
 }
 
 .chatTitle {
 	display: flex;
-	gap: var(--spacing-xs);
+	gap: var(--spacing--xs);
 }
 
 .headerText {
-	gap: var(--spacing-3xs);
+	gap: var(--spacing--3xs);
 }
 
 .assistantTitle {
-	gap: var(--spacing-2xs);
+	gap: var(--spacing--2xs);
 }
 
 .greeting {
-	color: var(--color-text-dark);
-	font-size: var(--font-size-m);
-	margin-bottom: var(--spacing-s);
+	color: var(--color--text--shade-1);
+	font-size: var(--font-size--md);
+	margin-bottom: var(--spacing--sm);
 }
 
 .info {
-	font-size: var(--font-size-s);
-	color: var(--color-text-base);
+	font-size: var(--font-size--sm);
+	color: var(--color--text);
 
 	button {
 		display: inline-flex;
@@ -688,35 +597,35 @@ defineExpose({
 }
 
 .quickReplies {
-	margin-top: var(--spacing-s);
+	margin-top: var(--spacing--sm);
 
 	> * {
-		margin-bottom: var(--spacing-3xs);
+		margin-bottom: var(--spacing--3xs);
 	}
 }
 
 .quickRepliesTitle {
-	font-size: var(--font-size-3xs);
-	color: var(--color-text-base);
+	font-size: var(--font-size--3xs);
+	color: var(--color--text);
 }
 
 .inputWrapper {
-	padding: var(--spacing-4xs) var(--spacing-2xs) var(--spacing-xs);
+	padding: var(--spacing--4xs) var(--spacing--2xs) var(--spacing--xs);
 	background-color: transparent;
 	width: 100%;
 	position: relative;
-	border-left: var(--border-base);
-	border-right: var(--border-base);
+	border-left: var(--border);
+	border-right: var(--border);
 
 	// Add a gradient fade from the chat to the input
 	&::before {
 		content: '';
 		position: absolute;
-		top: calc(-1 * var(--spacing-m));
+		top: calc(-1 * var(--spacing--md));
 		left: 0;
-		right: var(--spacing-xs);
-		height: var(--spacing-m);
-		background: linear-gradient(to bottom, transparent 0%, var(--color-background-light) 100%);
+		right: var(--spacing--xs);
+		height: var(--spacing--md);
+		background: linear-gradient(to bottom, transparent 0%, var(--color--background--light-2) 100%);
 		pointer-events: none;
 		z-index: 1;
 	}

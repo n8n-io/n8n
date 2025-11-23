@@ -6,7 +6,7 @@ export const RESOURCES = {
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
-	credential: ['share', 'move', ...DEFAULT_OPERATIONS] as const,
+	credential: ['share', 'shareGlobally', 'move', ...DEFAULT_OPERATIONS] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
 	externalSecret: ['list', 'use'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,
@@ -27,12 +27,16 @@ export const RESOURCES = {
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list'] as const,
 	oidc: ['manage'] as const,
-	dataStore: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
+	provisioning: ['manage'] as const,
+	dataTable: [...DEFAULT_OPERATIONS, 'readRow', 'writeRow', 'listProject'] as const,
 	execution: ['delete', 'read', 'retry', 'list', 'get'] as const,
 	workflowTags: ['update', 'list'] as const,
 	role: ['manage'] as const,
-	mcp: ['manage'] as const,
+	mcp: ['manage', 'oauth'] as const,
 	mcpApiKey: ['create', 'rotate'] as const,
+	chatHub: ['manage', 'message'] as const,
+	chatHubAgent: [...DEFAULT_OPERATIONS] as const,
+	breakingChanges: ['list'] as const,
 } as const;
 
 export const API_KEY_RESOURCES = {

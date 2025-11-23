@@ -13,6 +13,7 @@ import { PROJECT_OWNER_ROLE_SLUG, type Scope, type WorkflowSharingRole } from '@
 import type { WorkflowId } from 'n8n-workflow';
 
 import { License } from '@/license';
+import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
 
 function insertIf(condition: boolean, elements: string[]): string[] {
@@ -85,16 +86,26 @@ export async function createWorkflow(
 	});
 }
 
-export async function setWorkflowAsActive(workflowId: WorkflowId) {
+export async function setWorkflowAsActive(user: User, workflowId: WorkflowId, versionId: string) {
+	const activeVersion = await Container.get(WorkflowHistoryService).getVersion(
+		user,
+		workflowId,
+		versionId,
+	);
+
 	await Container.get(WorkflowRepository).update(workflowId, {
 		active: true,
+		activeVersion,
 		updatedAt: new Date(),
 	});
+
+	return activeVersion;
 }
 
 export async function setWorkflowAsInactive(workflowId: WorkflowId) {
 	return await Container.get(WorkflowRepository).update(workflowId, {
 		active: false,
+		activeVersion: null,
 		updatedAt: new Date(),
 	});
 }
@@ -103,9 +114,15 @@ export async function deleteWorkflow(workflow: WorkflowEntity): Promise<Workflow
 	return await Container.get(WorkflowRepository).remove(workflow);
 }
 
-export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
-	// @ts-ignore CAT-957
-	return await Container.get(WorkflowRepository).update(workflowId, updateData);
+export async function updateWorkflow(existingWorkflow: WorkflowEntity, updateData: WorkflowEntity) {
+	// Keep existing settings and only update ones that were sent
+	if (updateData.settings && existingWorkflow.settings) {
+		updateData.settings = {
+			...existingWorkflow.settings,
+			...updateData.settings,
+		};
+	}
+	return await Container.get(WorkflowRepository).update(existingWorkflow.id, updateData);
 }
 
 export function parseTagNames(tags: string): string[] {

@@ -1,4 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access */
+import {
+	STARTING_NODES,
+	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
+	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
+} from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
@@ -35,16 +40,12 @@ import {
 	WebhookPathTakenError,
 	UnexpectedError,
 	ensureError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import { strict } from 'node:assert';
 
 import { ActivationErrorsService } from '@/activation-errors.service';
 import { ActiveExecutions } from '@/active-executions';
-import {
-	STARTING_NODES,
-	WORKFLOW_REACTIVATE_INITIAL_TIMEOUT,
-	WORKFLOW_REACTIVATE_MAX_TIMEOUT,
-} from '@/constants';
 import { executeErrorWorkflow } from '@/execution-lifecycle/execute-error-workflow';
 import { ExecutionService } from '@/executions/execution.service';
 import { ExternalHooks } from '@/external-hooks';
@@ -144,11 +145,11 @@ export class ActiveWorkflowManager {
 	 */
 	async isActive(workflowId: WorkflowId) {
 		const workflow = await this.workflowRepository.findOne({
-			select: ['active'],
+			select: ['activeVersionId'],
 			where: { id: workflowId },
 		});
 
-		return !!workflow?.active;
+		return !!workflow?.activeVersionId;
 	}
 
 	/**
@@ -248,18 +249,27 @@ export class ActiveWorkflowManager {
 	async clearWebhooks(workflowId: WorkflowId) {
 		const workflowData = await this.workflowRepository.findOne({
 			where: { id: workflowId },
+			relations: { activeVersion: true },
 		});
 
 		if (workflowData === null) {
 			throw new UnexpectedError('Could not find workflow', { extra: { workflowId } });
 		}
 
+		if (!workflowData.activeVersion) {
+			throw new UnexpectedError('Active version not found for workflow', {
+				extra: { workflowId },
+			});
+		}
+
+		const { nodes, connections } = workflowData.activeVersion;
+
 		const workflow = new Workflow({
 			id: workflowId,
 			name: workflowData.name,
-			nodes: workflowData.nodes,
-			connections: workflowData.connections,
-			active: workflowData.active,
+			nodes,
+			connections,
+			active: true,
 			nodeTypes: this.nodeTypes,
 			staticData: workflowData.staticData,
 			settings: workflowData.settings,
@@ -267,7 +277,7 @@ export class ActiveWorkflowManager {
 
 		const mode = 'internal';
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase();
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({ workflowId: workflow.id });
 
 		const webhooks = WebhookHelpers.getWorkflowWebhooks(workflow, additionalData, undefined, true);
 
@@ -405,12 +415,12 @@ export class ActiveWorkflowManager {
 		mode: WorkflowExecuteMode,
 	) {
 		const fullRunData: IRun = {
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					error,
 					runData: {},
 				},
-			},
+			}),
 			finished: false,
 			mode,
 			startedAt: new Date(),
@@ -488,8 +498,17 @@ export class ActiveWorkflowManager {
 				},
 			);
 
+			if (!dbWorkflow.activeVersion) {
+				throw new UnexpectedError('Active version not found for workflow', {
+					extra: { workflowId: dbWorkflow.id },
+				});
+			}
+
+			const { nodes, connections } = dbWorkflow.activeVersion;
+			const workflowForError = { ...dbWorkflow, nodes, connections };
+
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-			this.executeErrorWorkflow(error, dbWorkflow, 'internal');
+			this.executeErrorWorkflow(error, workflowForError, 'internal');
 
 			// do not keep trying to activate on authorization error
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-call
@@ -568,7 +587,7 @@ export class ActiveWorkflowManager {
 				});
 			}
 
-			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.active) {
+			if (['init', 'leadershipChange'].includes(activationMode) && !dbWorkflow.activeVersion) {
 				this.logger.debug(
 					`Skipping workflow ${formatWorkflow(dbWorkflow)} as it is no longer active`,
 					{ workflowId: dbWorkflow.id },
@@ -577,12 +596,23 @@ export class ActiveWorkflowManager {
 				return added;
 			}
 
+			// Get workflow data from the active version
+			if (!dbWorkflow.activeVersion) {
+				throw new UnexpectedError('Active version not found for workflow', {
+					extra: { workflowId: dbWorkflow.id },
+				});
+			}
+
+			const { nodes, connections } = dbWorkflow.activeVersion;
+			dbWorkflow.nodes = nodes;
+			dbWorkflow.connections = connections;
+
 			workflow = new Workflow({
 				id: dbWorkflow.id,
 				name: dbWorkflow.name,
-				nodes: dbWorkflow.nodes,
-				connections: dbWorkflow.connections,
-				active: dbWorkflow.active,
+				nodes,
+				connections,
+				active: true,
 				nodeTypes: this.nodeTypes,
 				staticData: dbWorkflow.staticData,
 				settings: dbWorkflow.settings,
@@ -597,7 +627,9 @@ export class ActiveWorkflowManager {
 				);
 			}
 
-			const additionalData = await WorkflowExecuteAdditionalData.getBase();
+			const additionalData = await WorkflowExecuteAdditionalData.getBase({
+				workflowId: workflow.id,
+			});
 
 			if (shouldAddWebhooks) {
 				added.webhooks = await this.addWebhooks(
@@ -651,7 +683,10 @@ export class ActiveWorkflowManager {
 	handleDisplayWorkflowActivationError({
 		workflowId,
 		errorMessage,
-	}: { workflowId: string; errorMessage: string }) {
+	}: {
+		workflowId: string;
+		errorMessage: string;
+	}) {
 		this.push.broadcast({
 			type: 'workflowFailedToActivate',
 			data: { workflowId, errorMessage },
@@ -678,7 +713,7 @@ export class ActiveWorkflowManager {
 			const error = ensureError(e);
 			const { message } = error;
 
-			await this.workflowRepository.update(workflowId, { active: false });
+			await this.workflowRepository.update(workflowId, { active: false, activeVersionId: null });
 
 			this.push.broadcast({
 				type: 'workflowFailedToActivate',

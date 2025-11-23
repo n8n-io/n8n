@@ -8,6 +8,7 @@ import {
 import { nanoid } from 'nanoid';
 
 import '@/zod-alias-support';
+import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
@@ -15,6 +16,8 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 import { createMember, createOwner } from '../shared/db/users';
 
 mockInstance(LoadNodesAndCredentials);
+mockInstance(ActiveWorkflowManager);
+
 const command = setupTestCommand(ImportWorkflowsCommand);
 
 beforeEach(async () => {
@@ -45,8 +48,8 @@ test('import:workflow should import active workflow and deactivate it', async ()
 	};
 	expect(after).toMatchObject({
 		workflows: [
-			expect.objectContaining({ name: 'active-workflow', active: false }),
-			expect.objectContaining({ name: 'inactive-workflow', active: false }),
+			expect.objectContaining({ name: 'active-workflow', active: false, activeVersionId: null }),
+			expect.objectContaining({ name: 'inactive-workflow', active: false, activeVersionId: null }),
 		],
 		sharings: [
 			expect.objectContaining({
@@ -86,8 +89,8 @@ test('import:workflow should import active workflow from combined file and deact
 	};
 	expect(after).toMatchObject({
 		workflows: [
-			expect.objectContaining({ name: 'active-workflow', active: false }),
-			expect.objectContaining({ name: 'inactive-workflow', active: false }),
+			expect.objectContaining({ name: 'active-workflow', active: false, activeVersionId: null }),
+			expect.objectContaining({ name: 'inactive-workflow', active: false, activeVersionId: null }),
 		],
 		sharings: [
 			expect.objectContaining({
@@ -124,7 +127,9 @@ test('import:workflow can import a single workflow object', async () => {
 		sharings: await getAllSharedWorkflows(),
 	};
 	expect(after).toMatchObject({
-		workflows: [expect.objectContaining({ name: 'active-workflow', active: false })],
+		workflows: [
+			expect.objectContaining({ name: 'active-workflow', active: false, activeVersionId: null }),
+		],
 		sharings: [
 			expect.objectContaining({
 				workflowId: '998',

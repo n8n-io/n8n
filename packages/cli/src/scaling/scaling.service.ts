@@ -80,11 +80,11 @@ export class ScalingService {
 		this.logger.debug('Queue setup completed');
 	}
 
-	async setupWorker(concurrency: number) {
+	setupWorker(concurrency: number) {
 		this.assertWorker();
 		this.assertQueue();
 
-		await this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
+		void this.queue.process(JOB_TYPE_NAME, concurrency, async (job: Job) => {
 			try {
 				this.eventService.emit('job-dequeued', {
 					executionId: job.data.executionId,
@@ -324,11 +324,22 @@ export class ScalingService {
 					this.activeExecutions.resolveResponsePromise(msg.executionId, decodedResponse);
 					break;
 				case 'job-finished':
-					this.activeExecutions.resolveResponsePromise(msg.executionId, {});
-					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished successfully`, {
+					if (msg.success) {
+						this.activeExecutions.resolveResponsePromise(msg.executionId, {});
+					} else {
+						this.activeExecutions.resolveResponsePromise(msg.executionId, {
+							body: {
+								message: 'Workflow execution failed',
+							},
+							statusCode: 500,
+						});
+					}
+
+					this.logger.info(`Execution ${msg.executionId} (job ${jobId}) finished`, {
 						workerId: msg.workerId,
 						executionId: msg.executionId,
 						jobId,
+						success: msg.success,
 					});
 					break;
 				case 'job-failed':

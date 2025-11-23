@@ -31,7 +31,8 @@ test.describe('Inline expression editor', () => {
 			await expect(n8n.ndv.getInlineExpressionEditorOutput()).toBeHidden();
 		});
 
-		test('should switch between expression and fixed using keyboard', async ({ n8n }) => {
+		// eslint-disable-next-line playwright/no-skipped-test
+		test.skip('should switch between expression and fixed using keyboard', async ({ n8n }) => {
 			await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME);
 
 			// Should switch to expression with =

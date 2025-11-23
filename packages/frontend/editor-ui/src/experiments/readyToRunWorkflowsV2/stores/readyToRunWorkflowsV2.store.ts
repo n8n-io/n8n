@@ -1,23 +1,23 @@
-import { useTelemetry } from '@/composables/useTelemetry';
-import { useToast } from '@/composables/useToast';
-import { READY_TO_RUN_V2_PART2_EXPERIMENT, VIEWS } from '@/constants';
-import { useCloudPlanStore } from '@/stores/cloudPlan.store';
-import { useCredentialsStore } from '@/stores/credentials.store';
-import { usePostHog } from '@/stores/posthog.store';
-import { useSettingsStore } from '@/stores/settings.store';
-import { useUsersStore } from '@/stores/users.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useToast } from '@/app/composables/useToast';
+import { READY_TO_RUN_V2_PART2_EXPERIMENT, VIEWS } from '@/app/constants';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useI18n } from '@n8n/i18n';
+import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { STORES } from '@n8n/stores';
 import { useLocalStorage } from '@vueuse/core';
 import { OPEN_AI_API_CREDENTIAL_TYPE, deepCopy } from 'n8n-workflow';
-import type { WorkflowDataCreate } from '@n8n/rest-api-client';
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import { useRouter, type RouteLocationNormalized } from 'vue-router';
+import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
 import { READY_TO_RUN_WORKFLOW_V3 } from '../workflows/ai-workflow-v3';
 import { READY_TO_RUN_WORKFLOW_V4 } from '../workflows/ai-workflow-v4';
-import { useEmptyStateDetection } from '../composables/useEmptyStateDetection';
 
 const LOCAL_STORAGE_CREDENTIAL_KEY = 'N8N_READY_TO_RUN_V2_OPENAI_CREDENTIAL_ID';
 

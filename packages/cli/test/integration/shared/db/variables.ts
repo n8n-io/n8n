@@ -32,7 +32,10 @@ export async function createProjectVariable(
 }
 
 export async function getVariableByIdOrFail(id: string) {
-	return await Container.get(VariablesRepository).findOneOrFail({ where: { id } });
+	return await Container.get(VariablesRepository).findOneOrFail({
+		where: { id },
+		relations: ['project'],
+	});
 }
 
 export async function getVariableByKey(key: string) {

@@ -329,7 +329,7 @@ export class EnterpriseWorkflowService {
 		}
 
 		// 6. deactivate workflow if necessary
-		const wasActive = workflow.active;
+		const wasActive = workflow.activeVersionId !== null;
 		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
@@ -341,7 +341,6 @@ export class EnterpriseWorkflowService {
 		await this.shareCredentialsWithProject(user, shareCredentials, destinationProject.id);
 
 		// 9. Move workflow to the right folder if any
-		// @ts-ignore CAT-957
 		await this.workflowRepository.update({ id: workflow.id }, { parentFolder });
 
 		// 10. Update potential cached project association
@@ -396,14 +395,14 @@ export class EnterpriseWorkflowService {
 		// 2. Get all workflows in the nested folders
 
 		const workflows = await this.workflowRepository.find({
-			select: ['id', 'active', 'shared'],
+			select: ['id', 'activeVersionId', 'shared'],
 			relations: ['shared', 'shared.project'],
 			where: {
 				parentFolder: { id: In([...childrenFolderIds, sourceFolderId]) },
 			},
 		});
 
-		const activeWorkflows = workflows.filter((w) => w.active).map((w) => w.id);
+		const activeWorkflows = workflows.filter((w) => w.activeVersionId !== null).map((w) => w.id);
 
 		// 3. get destination project
 		const destinationProject = await this.projectService.getProjectWithScope(

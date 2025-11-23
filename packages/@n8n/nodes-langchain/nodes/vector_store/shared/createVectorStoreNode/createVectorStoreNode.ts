@@ -20,6 +20,7 @@ import {
 	handleUpdateOperation,
 	handleRetrieveOperation,
 	handleRetrieveAsToolOperation,
+	handleRetrieveAsToolExecuteOperation,
 } from './operations';
 import type { NodeOperationMode, VectorStoreNodeConstructorArgs } from './types';
 // Import utility functions
@@ -291,9 +292,26 @@ export const createVectorStoreNode = <T extends VectorStore = VectorStore>(
 				return [resultData];
 			}
 
+			if (mode === 'retrieve-as-tool') {
+				const items = this.getInputData(0);
+				const resultData = [];
+
+				for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+					const docs = await handleRetrieveAsToolExecuteOperation(
+						this,
+						args,
+						embeddings,
+						itemIndex,
+					);
+					resultData.push(...docs);
+				}
+
+				return [resultData];
+			}
+
 			throw new NodeOperationError(
 				this.getNode(),
-				'Only the "load", "update" and "insert" operation modes are supported with execute',
+				'Only the "load", "update", "insert", and "retrieve-as-tool" operation modes are supported with execute',
 			);
 		}
 

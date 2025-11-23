@@ -11,14 +11,8 @@ import type {
 	IWorkflowExecutionDataProcess,
 	StructuredChunk,
 } from 'n8n-workflow';
-import { BINARY_ENCODING, Workflow, UnexpectedError } from 'n8n-workflow';
+import { BINARY_ENCODING, Workflow, UnexpectedError, createRunExecutionData } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
-
-import { EventService } from '@/events/event.service';
-import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
-import { ManualExecutionService } from '@/manual-execution.service';
-import { NodeTypes } from '@/node-types';
-import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 import type {
 	Job,
@@ -29,6 +23,13 @@ import type {
 	RunningJob,
 	SendChunkMessage,
 } from './scaling.types';
+
+import { EventService } from '@/events/event.service';
+import { getLifecycleHooksForScalingWorker } from '@/execution-lifecycle/execution-lifecycle-hooks';
+import { getWorkflowActiveStatusFromWorkflowData } from '@/executions/execution.utils';
+import { ManualExecutionService } from '@/manual-execution.service';
+import { NodeTypes } from '@/node-types';
+import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 
 /**
  * Responsible for processing jobs from the queue, i.e. running enqueued executions.
@@ -114,17 +115,16 @@ export class JobProcessor {
 			name: execution.workflowData.name,
 			nodes: execution.workflowData.nodes,
 			connections: execution.workflowData.connections,
-			active: execution.workflowData.active,
+			active: getWorkflowActiveStatusFromWorkflowData(execution.workflowData),
 			nodeTypes: this.nodeTypes,
 			staticData,
 			settings: execution.workflowData.settings,
 		});
 
-		const additionalData = await WorkflowExecuteAdditionalData.getBase(
-			undefined,
-			undefined,
+		const additionalData = await WorkflowExecuteAdditionalData.getBase({
+			workflowId,
 			executionTimeoutTimestamp,
-		);
+		});
 		additionalData.streamingEnabled = job.data.streamingEnabled;
 
 		const { pushRef } = job.data;
@@ -221,7 +221,7 @@ export class JobProcessor {
 						finished: false,
 						startedAt: now,
 						stoppedAt: now,
-						data: { resultData: { error, runData: {} } },
+						data: createRunExecutionData({ resultData: { error, runData: {} } }),
 					};
 
 					await lifecycleHooks.runHook('workflowExecuteAfter', [runData]);
@@ -248,16 +248,19 @@ export class JobProcessor {
 
 		delete this.runningJobs[job.id];
 
+		const hasErrors = await this.executionHasErrors(executionId);
 		this.logger.info(`Worker finished execution ${executionId} (job ${job.id})`, {
 			executionId,
 			workflowId,
 			jobId: job.id,
+			success: !hasErrors,
 		});
 
 		const msg: JobFinishedMessage = {
 			kind: 'job-finished',
 			executionId,
 			workerId: this.instanceSettings.hostId,
+			success: !hasErrors,
 		};
 
 		await job.progress(msg);
@@ -268,6 +271,15 @@ export class JobProcessor {
 		 */
 
 		return { success: true };
+	}
+
+	private async executionHasErrors(executionId: string): Promise<boolean> {
+		const execution = await this.executionRepository.findSingleExecution(executionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		return execution?.status === 'error' || execution?.data?.resultData?.error !== undefined;
 	}
 
 	stopJob(jobId: JobId) {

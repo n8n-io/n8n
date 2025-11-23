@@ -85,14 +85,16 @@ export function getPromptInputByType(options: {
 	let input;
 	if (promptType === 'auto') {
 		input = ctx.evaluateExpression('{{ $json["chatInput"] }}', i) as string;
+	} else if (promptType === 'guardrails') {
+		input = ctx.evaluateExpression('{{ $json["guardrailsInput"] }}', i) as string;
 	} else {
 		input = ctx.getNodeParameter(inputKey, i) as string;
 	}
 
 	if (input === undefined) {
+		const key = promptType === 'auto' ? 'chatInput' : 'guardrailsInput';
 		throw new NodeOperationError(ctx.getNode(), 'No prompt specified', {
-			description:
-				"Expected to find the prompt in an input field called 'chatInput' (this is what the chat trigger node outputs). To use something else, change the 'Prompt' parameter",
+			description: `Expected to find the prompt in an input field called '${key}' (this is what the ${promptType === 'auto' ? 'chat trigger node' : 'guardrails node'} node outputs). To use something else, change the 'Prompt' parameter`,
 		});
 	}
 
@@ -204,12 +206,37 @@ export const getConnectedTools = async (
 	convertStructuredTool: boolean = true,
 	escapeCurlyBrackets: boolean = false,
 ) => {
-	const connectedTools = (
-		((await ctx.getInputConnectionData(NodeConnectionTypes.AiTool, 0)) as Array<Toolkit | Tool>) ??
-		[]
-	).flatMap((toolOrToolkit) => {
+	const toolkitConnections = (await ctx.getInputConnectionData(
+		NodeConnectionTypes.AiTool,
+		0,
+	)) as Array<Toolkit | Tool>;
+
+	// Get parent nodes to map toolkits to their source nodes
+	const parentNodes =
+		'getParentNodes' in ctx
+			? ctx.getParentNodes(ctx.getNode().name, {
+					connectionType: NodeConnectionTypes.AiTool,
+					depth: 1,
+				})
+			: [];
+
+	const connectedTools = (toolkitConnections ?? []).flatMap((toolOrToolkit, index) => {
 		if (toolOrToolkit instanceof Toolkit) {
-			return toolOrToolkit.getTools() as Tool[];
+			const tools = toolOrToolkit.getTools() as Tool[];
+			// Add metadata to each tool from the toolkit
+			return tools.map((tool) => {
+				const sourceNode = parentNodes[index] ?? tool.name;
+
+				tool.metadata ??= {};
+				tool.metadata.isFromToolkit = true;
+				tool.metadata.sourceNodeName = sourceNode?.name;
+				return tool;
+			});
+		} else {
+			const sourceNode = parentNodes[index] ?? toolOrToolkit.name;
+			toolOrToolkit.metadata ??= {};
+			toolOrToolkit.metadata.isFromToolkit = false;
+			toolOrToolkit.metadata.sourceNodeName = sourceNode?.name;
 		}
 
 		return toolOrToolkit;
