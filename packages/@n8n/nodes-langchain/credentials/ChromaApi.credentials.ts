@@ -142,7 +142,7 @@ export class ChromaApi implements ICredentialType {
 		properties: {
 			headers: {
 				Authorization:
-					'={{$credentials.deploymentType === "selfHosted" && $credentials.authentication === "apiKey" && $credentials.apiKey ? "Bearer " + $credentials.apiKey : ""}}',
+					'={{$credentials.deploymentType === "cloud" ? "Bearer " + $credentials.cloudApiKey : ($credentials.deploymentType === "selfHosted" && $credentials.authentication === "apiKey" && $credentials.apiKey ? "Bearer " + $credentials.apiKey : "")}}',
 				'X-Chroma-Token':
 					'={{$credentials.deploymentType === "selfHosted" && $credentials.authentication === "token" && $credentials.token ? $credentials.token : ""}}',
 			},
