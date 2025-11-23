@@ -57,3 +57,7 @@ dist/stats.html
 
 # Local development
 .local/
+
+# Netlify
+.netlify/
+netlify-functions/
