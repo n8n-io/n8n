@@ -1,6 +1,6 @@
 # GitHub Repository: Public to Private Migration Guide
 
-**Repository:** kcribb14/test-n8n
+**Repository:** kcribb14/taxflow-enhanced
 **Date:** 2025-11-23
 **Purpose:** Change repository visibility from public to private
 
@@ -27,7 +27,7 @@ Before changing to private, verify:
 
 1. **Go to your repository**
    ```
-   https://github.com/kcribb14/test-n8n
+   https://github.com/kcribb14/taxflow-enhanced
    ```
 
 2. **Click the "Settings" tab**
@@ -51,7 +51,7 @@ Before changing to private, verify:
    - A modal dialog will appear
 
 3. **Confirm the change**
-   - Type the repository name to confirm: `kcribb14/test-n8n`
+   - Type the repository name to confirm: `kcribb14/taxflow-enhanced`
    - Read the warnings about:
      - Stars will be removed (repository will lose all stars)
      - Forks will be removed (all public forks will be detached)
@@ -61,7 +61,7 @@ Before changing to private, verify:
 
 5. **Verify the change**
    - Look for the "Private" badge next to repository name
-   - URL remains the same: `https://github.com/kcribb14/test-n8n`
+   - URL remains the same: `https://github.com/kcribb14/taxflow-enhanced`
 
 ---
 
@@ -77,10 +77,10 @@ Before changing to private, verify:
 gh auth login
 
 # Change repository to private
-gh repo edit kcribb14/test-n8n --visibility private
+gh repo edit kcribb14/taxflow-enhanced --visibility private
 
 # Verify the change
-gh repo view kcribb14/test-n8n --json visibility
+gh repo view kcribb14/taxflow-enhanced --json visibility
 
 # Expected output:
 # {
@@ -98,10 +98,10 @@ After changing to private, verify these items:
 
 ```bash
 # Check repository is private
-gh repo view kcribb14/test-n8n --json visibility
+gh repo view kcribb14/taxflow-enhanced --json visibility
 
 # Or visit:
-# https://github.com/kcribb14/test-n8n
+# https://github.com/kcribb14/taxflow-enhanced
 # Should show "Private" badge
 ```
 
@@ -113,7 +113,7 @@ gh repo view kcribb14/test-n8n --json visibility
 
 **Check CI/CD pipeline:**
 
-1. Go to: `https://github.com/kcribb14/test-n8n/actions`
+1. Go to: `https://github.com/kcribb14/taxflow-enhanced/actions`
 2. Verify workflows are still running
 3. Push a test commit to trigger workflows
 4. Confirm all jobs pass
@@ -175,7 +175,7 @@ gh repo view kcribb14/test-n8n --json visibility
 
 **Check who has access:**
 
-1. Go to: `https://github.com/kcribb14/test-n8n/settings/access`
+1. Go to: `https://github.com/kcribb14/taxflow-enhanced/settings/access`
 2. Review list of collaborators
 3. Verify each person should have access
 4. Remove anyone who shouldn't have access
@@ -200,10 +200,10 @@ gh repo view kcribb14/test-n8n --json visibility
 
 ```bash
 # Clone via HTTPS (requires authentication)
-git clone https://github.com/kcribb14/test-n8n.git
+git clone https://github.com/kcribb14/taxflow-enhanced.git
 
 # Or via SSH (requires SSH key)
-git clone git@github.com:kcribb14/test-n8n.git
+git clone git@github.com:kcribb14/taxflow-enhanced.git
 
 # If you get "Repository not found" error:
 # - You're not logged in to GitHub
@@ -222,10 +222,10 @@ git clone git@github.com:kcribb14/test-n8n.git
 
 **Verify all links work:**
 
-- ✅ Issues: https://github.com/kcribb14/test-n8n/issues
-- ✅ Discussions: https://github.com/kcribb14/test-n8n/discussions
-- ✅ Pull Requests: https://github.com/kcribb14/test-n8n/pulls
-- ✅ Actions: https://github.com/kcribb14/test-n8n/actions
+- ✅ Issues: https://github.com/kcribb14/taxflow-enhanced/issues
+- ✅ Discussions: https://github.com/kcribb14/taxflow-enhanced/discussions
+- ✅ Pull Requests: https://github.com/kcribb14/taxflow-enhanced/pulls
+- ✅ Actions: https://github.com/kcribb14/taxflow-enhanced/actions
 
 **Note:** These URLs work for private repos, but only for users with access.
 
@@ -471,7 +471,7 @@ GitHub Actions automatically provides `GITHUB_TOKEN` with permissions to:
 
 **Can't clone repository:**
 - Authenticate with `gh auth login`
-- Or use SSH: `git clone git@github.com:kcribb14/test-n8n.git`
+- Or use SSH: `git clone git@github.com:kcribb14/taxflow-enhanced.git`
 - Verify you have access as collaborator
 
 ### GitHub Documentation
@@ -514,5 +514,5 @@ Follow **Step-by-Step: Change Repository to Private** section above!
 ---
 
 **Last Updated:** 2025-11-23
-**Repository:** kcribb14/test-n8n
+**Repository:** kcribb14/taxflow-enhanced
 **Status:** Ready for migration ✅

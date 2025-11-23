@@ -832,8 +832,8 @@ git push origin main
 - **Twitter:** @Netlify
 
 ### Community Resources
-- **GitHub Issues:** https://github.com/kcribb14/test-n8n/issues
-- **Discussions:** https://github.com/kcribb14/test-n8n/discussions
+- **GitHub Issues:** https://github.com/kcribb14/taxflow-enhanced/issues
+- **Discussions:** https://github.com/kcribb14/taxflow-enhanced/discussions
 
 ---
 

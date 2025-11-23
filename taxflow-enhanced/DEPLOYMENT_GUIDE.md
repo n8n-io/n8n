@@ -531,9 +531,9 @@ vercel rollback
 
 ### Application Issues
 
-- **GitHub Issues:** https://github.com/kcribb14/test-n8n/issues
+- **GitHub Issues:** https://github.com/kcribb14/taxflow-enhanced/issues
 - **Documentation:** See DEVELOPER_GUIDE.md and USER_GUIDE.md
-- **Discussions:** https://github.com/kcribb14/test-n8n/discussions
+- **Discussions:** https://github.com/kcribb14/taxflow-enhanced/discussions
 
 ---
 

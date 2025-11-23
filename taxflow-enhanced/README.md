@@ -40,7 +40,7 @@ TaxFlow Enhanced is a production-ready visual workflow automation platform for t
 
 ```bash
 # Clone the repository (requires access to private repo)
-git clone https://github.com/kcribb14/test-n8n.git
+git clone https://github.com/kcribb14/taxflow-enhanced.git
 cd test-n8n/taxflow-enhanced
 
 # Install dependencies
@@ -282,8 +282,8 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 ## 📞 Support
 
 - **Documentation:** See guides in this repository
-- **Bug Reports:** [GitHub Issues](https://github.com/kcribb14/test-n8n/issues)
-- **Questions:** [GitHub Discussions](https://github.com/kcribb14/test-n8n/discussions)
+- **Bug Reports:** [GitHub Issues](https://github.com/kcribb14/taxflow-enhanced/issues)
+- **Questions:** [GitHub Discussions](https://github.com/kcribb14/taxflow-enhanced/discussions)
 
 ---
 
@@ -310,6 +310,6 @@ This project is licensed under the MIT License - see the [LICENSE](./LICENSE) fi
 
 **Made with ❤️ by the TaxFlow Enhanced Team**
 
-[Report Bug](https://github.com/kcribb14/test-n8n/issues) ·
-[Request Feature](https://github.com/kcribb14/test-n8n/issues) ·
+[Report Bug](https://github.com/kcribb14/taxflow-enhanced/issues) ·
+[Request Feature](https://github.com/kcribb14/taxflow-enhanced/issues) ·
 [View Demo](https://taxflow-enhanced.netlify.app)
