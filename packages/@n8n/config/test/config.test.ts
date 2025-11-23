@@ -185,6 +185,7 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: false,
+			draftPublishEnabled: false,
 		},
 		endpoints: {
 			metrics: {

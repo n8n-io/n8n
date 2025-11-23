@@ -113,6 +113,7 @@ import { AddIsGlobalColumnToCredentialsTable1762771954619 } from '../common/1762
 import { AddWorkflowHistoryAutoSaveFields1762847206508 } from '../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
 import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-AddActiveVersionIdColumn';
 import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common/1763572724000-ChangeOAuthStateColumnToUnboundedVarchar';
+import { CreateBinaryDataTable1763716655000 } from '../common/1763716655000-CreateBinaryDataTable';
 import type { Migration } from '../migration-types';
 
 const sqliteMigrations: Migration[] = [
@@ -231,6 +232,7 @@ const sqliteMigrations: Migration[] = [
 	ChangeOAuthStateColumnToUnboundedVarchar1763572724000,
 	AddAttachmentsToChatHubMessages1761773155024,
 	AddActiveVersionIdColumn1763047800000,
+	CreateBinaryDataTable1763716655000,
 ];
 
 export { sqliteMigrations };

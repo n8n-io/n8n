@@ -101,6 +101,7 @@
       "dist/nodes/llms/LMLemonade/LmLemonade.node.js",
       "dist/nodes/llms/LMOllama/LmOllama.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.js",
+      "dist/nodes/mcp/McpClient/McpClient.node.js",
       "dist/nodes/mcp/McpClientTool/McpClientTool.node.js",
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
