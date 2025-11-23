@@ -116,6 +116,7 @@ export const maxContextWindowTokens: Record<ChatHubLLMProvider, Record<string, n
 		'models/gemini-2.5-flash-preview-09-2025': 1048576,
 		'models/gemini-2.5-flash-preview-tts': 8000,
 		'models/gemini-2.5-pro': 1048576,
+		'models/gemini-3-pro-preview': 1048576,
 		'models/gemini-2.5-pro-preview-03-25': 1048576,
 		'models/gemini-2.5-pro-preview-05-06': 1048576,
 		'models/gemini-2.5-pro-preview-06-05': 1048576,
