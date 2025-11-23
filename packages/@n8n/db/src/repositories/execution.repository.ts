@@ -342,19 +342,13 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			});
 		}
 
-		console.log(executionData);
-
-		if (executionData.data) {
-			console.log('truthy');
-		}
-
 		return {
 			...rest,
 			...(options?.includeData && {
 				data:
-					options?.unflattenData && executionData.data
+					options?.unflattenData && executionData?.data
 						? migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll)
-						: executionData.data,
+						: executionData?.data,
 				workflowData: executionData?.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			}),
