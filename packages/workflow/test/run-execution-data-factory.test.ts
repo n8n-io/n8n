@@ -14,9 +14,13 @@ describe('RunExecutionDataFactory', () => {
 			const result = createRunExecutionData();
 
 			expect(result).toEqual({
+				version: 0,
 				startData: {},
 				manualData: undefined,
 				parentExecution: undefined,
+				pushRef: undefined,
+				validateSignature: undefined,
+				waitTill: undefined,
 				resultData: {
 					error: undefined,
 					runData: {},
@@ -46,6 +50,12 @@ describe('RunExecutionDataFactory', () => {
 				},
 				executionData: {
 					nodeExecutionStack: [{ node: {} as INode, data: {}, source: null }],
+					runtimeData: {
+						version: 1 as const,
+						establishedAt: 1234567890,
+						source: 'webhook' as const,
+						credentials: 'test-credentials',
+					},
 				},
 				parentExecution: {
 					executionId: 'parent-123',
@@ -63,6 +73,7 @@ describe('RunExecutionDataFactory', () => {
 			expect(result.executionData?.nodeExecutionStack).toEqual(
 				options.executionData.nodeExecutionStack,
 			);
+			expect(result.executionData?.runtimeData).toEqual(options.executionData.runtimeData);
 			expect(result.parentExecution).toEqual(options.parentExecution);
 			expect(result.validateSignature).toBe(true);
 			expect(result.waitTill).toEqual(options.waitTill);
@@ -102,6 +113,7 @@ describe('RunExecutionDataFactory', () => {
 			const result = createEmptyRunExecutionData();
 
 			expect(result).toEqual({
+				version: 0,
 				resultData: {
 					runData: {},
 				},
@@ -127,7 +139,7 @@ describe('RunExecutionDataFactory', () => {
 
 			const result = createErrorExecutionData(node, error);
 
-			expect(result.startData?.destinationNode).toBe('TestNode');
+			expect(result.startData?.destinationNode).toEqual('TestNode');
 			expect(result.startData?.runNodeFilter).toEqual(['TestNode']);
 
 			expect(result.executionData?.contextData).toEqual({});

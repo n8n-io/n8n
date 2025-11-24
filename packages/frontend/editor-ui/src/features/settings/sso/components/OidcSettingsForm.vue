@@ -4,7 +4,7 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 
-import { ElSwitch } from 'element-plus';
+import { ElCheckbox } from 'element-plus';
 import { N8nActionBox, N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
@@ -25,6 +25,8 @@ const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
 const pageRedirectionHelper = usePageRedirectionHelper();
+
+const savingForm = ref<boolean>(false);
 
 const discoveryEndpoint = ref('');
 const clientId = ref('');
@@ -59,12 +61,6 @@ const promptDescriptions: PromptDescription[] = [
 	},
 	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.create'), value: 'create' },
 ];
-
-const oidcActivatedLabel = computed(() =>
-	ssoStore.isOidcLoginEnabled
-		? i18n.baseText('settings.sso.activated')
-		: i18n.baseText('settings.sso.deactivated'),
-);
 
 const authenticationContextClassReference = ref('');
 
@@ -114,8 +110,12 @@ const cannotSaveOidcSettings = computed(() => {
 async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false) {
 	if (ssoStore.oidcConfig?.loginEnabled && !ssoStore.isOidcLoginEnabled) {
 		const confirmAction = await message.confirm(
-			i18n.baseText('settings.oidc.confirmMessage.beforeSaveForm.message'),
-			i18n.baseText('settings.oidc.confirmMessage.beforeSaveForm.headline'),
+			i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.message', {
+				interpolate: { protocol: 'OIDC' },
+			}),
+			i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.headline', {
+				interpolate: { protocol: 'OIDC' },
+			}),
 			{
 				cancelButtonText: i18n.baseText(
 					'settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText',
@@ -139,6 +139,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		.filter(Boolean);
 
 	try {
+		savingForm.value = true;
 		const newConfig = await ssoStore.saveOidcConfig({
 			clientId: clientId.value,
 			clientSecret: clientSecret.value,
@@ -163,6 +164,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 		return;
 	} finally {
+		savingForm.value = false;
 		await getOidcConfig();
 	}
 }
@@ -252,6 +254,7 @@ onMounted(async () => {
 			:new-provisioning-setting="userRoleProvisioning"
 			auth-protocol="oidc"
 			@confirm-provisioning="onOidcSettingsSave(true)"
+			@cancel="showUserRoleProvisioningDialog = false"
 		/>
 		<div :class="$style.group">
 			<label>Authentication Context Class Reference</label>
@@ -267,20 +270,18 @@ onMounted(async () => {
 				commas in order of preference.</small
 			>
 		</div>
-		<div :class="$style.group">
-			<ElSwitch
-				v-model="ssoStore.isOidcLoginEnabled"
-				data-test-id="sso-oidc-toggle"
-				:class="$style.switch"
-				:inactive-text="oidcActivatedLabel"
-			/>
+		<div :class="[$style.group, $style.checkboxGroup]">
+			<ElCheckbox v-model="ssoStore.isOidcLoginEnabled" data-test-id="sso-oidc-toggle">{{
+				i18n.baseText('settings.sso.activated')
+			}}</ElCheckbox>
 		</div>
 
 		<div :class="$style.buttons">
 			<N8nButton
 				data-test-id="sso-oidc-save"
 				size="large"
-				:disabled="cannotSaveOidcSettings"
+				:loading="savingForm"
+				:disabled="savingForm || cannotSaveOidcSettings"
 				@click="onOidcSettingsSave(false)"
 			>
 				{{ i18n.baseText('settings.sso.settings.save') }}

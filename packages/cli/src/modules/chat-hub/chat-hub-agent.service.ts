@@ -32,6 +32,7 @@ export class ChatHubAgentService {
 				},
 				createdAt: agent.createdAt.toISOString(),
 				updatedAt: agent.updatedAt.toISOString(),
+				allowFileUploads: true,
 			})),
 		};
 	}

@@ -64,6 +64,7 @@ const mockWorkflow: IWorkflowDb = {
 	id: 'test-workflow-id',
 	name: 'Test Workflow',
 	active: true,
+	activeVersionId: 'v1',
 	nodes: [],
 	settings: {
 		executionOrder: 'v1',
@@ -173,6 +174,7 @@ describe('WorkflowProductionChecklist', () => {
 					workflow: {
 						...mockWorkflow,
 						active: false,
+						activeVersionId: null,
 					},
 				},
 				pinia: createTestingPinia(),
@@ -537,6 +539,7 @@ describe('WorkflowProductionChecklist', () => {
 					workflow: {
 						...mockWorkflow,
 						active: false,
+						activeVersionId: null,
 					},
 				},
 				pinia: createTestingPinia(),
@@ -545,7 +548,6 @@ describe('WorkflowProductionChecklist', () => {
 			await rerender({
 				workflow: {
 					...mockWorkflow,
-					active: true,
 				},
 			});
 
@@ -570,6 +572,7 @@ describe('WorkflowProductionChecklist', () => {
 					workflow: {
 						...mockWorkflow,
 						active: false,
+						activeVersionId: null,
 					},
 				},
 				pinia: createTestingPinia(),
@@ -578,7 +581,6 @@ describe('WorkflowProductionChecklist', () => {
 			await rerender({
 				workflow: {
 					...mockWorkflow,
-					active: true,
 				},
 			});
 
@@ -608,6 +610,7 @@ describe('WorkflowProductionChecklist', () => {
 					workflow: {
 						...mockWorkflow,
 						active: false,
+						activeVersionId: null,
 					},
 				},
 				pinia,
@@ -616,7 +619,6 @@ describe('WorkflowProductionChecklist', () => {
 			await rerender({
 				workflow: {
 					...mockWorkflow,
-					active: true,
 				},
 			});
 

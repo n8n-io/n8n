@@ -152,7 +152,9 @@ const addWorkflow = () => {
 					</div>
 				</N8nCard>
 			</div>
-			<TemplatesDataQualityInlineSection v-if="showTemplatesDataQualityInline" />
+			<div v-if="showTemplatesDataQualityInline" :class="$style.templatesSection">
+				<TemplatesDataQualityInlineSection />
+			</div>
 		</div>
 	</div>
 </template>
@@ -235,5 +237,9 @@ const addWorkflow = () => {
 	svg {
 		transition: color 0.3s ease;
 	}
+}
+
+.templatesSection {
+	padding-inline: var(--spacing--md);
 }
 </style>
