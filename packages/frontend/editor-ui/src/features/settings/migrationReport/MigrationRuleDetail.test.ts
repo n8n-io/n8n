@@ -123,7 +123,7 @@ describe('MigrationRuleDetail', () => {
 				expect(screen.getByText('2 affected')).toBeInTheDocument();
 
 				// Description
-				expect(screen.getByText('This is a test rule description')).toBeInTheDocument();
+				expect(screen.getByText('This is a test rule description.')).toBeInTheDocument();
 
 				// Documentation link
 				expect(screen.getByText('Documentation')).toBeInTheDocument();

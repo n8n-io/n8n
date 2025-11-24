@@ -6,7 +6,7 @@ export const RESOURCES = {
 	banner: ['dismiss'] as const,
 	community: ['register'] as const,
 	communityPackage: ['install', 'uninstall', 'update', 'list', 'manage'] as const,
-	credential: ['share', 'move', ...DEFAULT_OPERATIONS] as const,
+	credential: ['share', 'shareGlobally', 'move', ...DEFAULT_OPERATIONS] as const,
 	externalSecretsProvider: ['sync', ...DEFAULT_OPERATIONS] as const,
 	externalSecret: ['list', 'use'] as const,
 	eventBusDestination: ['test', ...DEFAULT_OPERATIONS] as const,

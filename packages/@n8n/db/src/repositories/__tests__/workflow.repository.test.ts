@@ -249,9 +249,7 @@ describe('WorkflowRepository', () => {
 				}),
 			);
 
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith('workflow.active = :active', {
-				active: true,
-			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('workflow.activeVersionId IS NOT NULL');
 
 			expect(queryBuilder.innerJoin).toHaveBeenCalledWith('workflow.shared', 'shared');
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('shared.projectId = :projectId', {
