@@ -6,7 +6,7 @@ import {
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import type { DateValue } from '@internationalized/date';
 import { getLocalTimeZone, isToday } from '@internationalized/date';
-import type { InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
+import type { InsightsDateRange, InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import dateformat from 'dateformat';
 
@@ -102,6 +102,9 @@ export const isPresetRange = (start: DateValue, end: DateValue, presetDays: numb
 	return end.compare(start) === presetDays;
 };
 
+/**
+ * @returns A human readable string representing the date range e.g '01 Jan - 05 Jan 2025'
+ */
 export const formatDateRange = (range: { start?: DateValue; end?: DateValue }): string => {
 	const { start, end } = range;
 	if (!start) return '';
@@ -118,4 +121,26 @@ export const formatDateRange = (range: { start?: DateValue; end?: DateValue }): 
 	}
 
 	return `${dateformat(startStr, DATE_FORMAT_DAY_MONTH_YEAR)} - ${dateformat(endStr, DATE_FORMAT_DAY_MONTH_YEAR)}`;
+};
+
+/**
+ * @returns The matching preset key if the range matches a preset, null for custom ranges
+ */
+export const getMatchingPreset = (range: { start?: DateValue; end?: DateValue }):
+	| InsightsDateRange['key']
+	| null => {
+	const { start, end } = range;
+	if (!start || !end || !isToday(end, getLocalTimeZone())) return null;
+
+	const daysDiff = end.compare(start);
+
+	const presetEntries = Object.entries(timeRangeMappings) as Array<
+		[InsightsDateRange['key'], number]
+	>;
+
+	for (const [key, days] of presetEntries) {
+		if (daysDiff === days) return key;
+	}
+
+	return null;
 };

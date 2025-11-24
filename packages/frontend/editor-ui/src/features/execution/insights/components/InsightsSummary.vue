@@ -7,13 +7,13 @@ import {
 	INSIGHTS_UNIT_IMPACT_MAPPING,
 } from '@/features/execution/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
-import type { InsightsDateRange, InsightsSummary } from '@n8n/api-types';
+import type { InsightsSummary } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
 import { computed, ref, useCssModule, onMounted } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute } from 'vue-router';
-import { getTimeRangeLabels } from '../insights.utils';
+import { formatDateRange, getMatchingPreset, getTimeRangeLabels } from '../insights.utils';
 
 import { N8nCallout, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 
@@ -22,7 +22,6 @@ import type { DateValue } from '@internationalized/date';
 
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
-	timeRange: InsightsDateRange['key'] | null;
 	startDate?: DateValue;
 	endDate?: DateValue;
 	loading?: boolean;
@@ -54,9 +53,16 @@ const shouldShowQueueModeWarning = computed(() => {
 });
 
 const displayDateRangeLabel = computed(() => {
-	// TODO: use start and end date to format the date range
-	if (!props.timeRange) return '';
-	return timeRangeLabels[props.timeRange] ?? '';
+	const timeRangeKey = getMatchingPreset({
+		start: props.startDate,
+		end: props.endDate,
+	});
+
+	if (timeRangeKey) {
+		return timeRangeLabels[timeRangeKey];
+	}
+
+	return formatDateRange({ start: props.startDate, end: props.endDate });
 });
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
