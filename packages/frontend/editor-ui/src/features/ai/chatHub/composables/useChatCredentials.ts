@@ -38,6 +38,10 @@ export function useChatCredentials(userId: string) {
 		},
 	);
 
+	const isCredentialsReady = computed(
+		() => isInitialized.value || credentialsStore.allCredentials.length > 0,
+	);
+
 	const autoSelectCredentials = computed<CredentialsMap>(() =>
 		Object.fromEntries(
 			chatHubProviderSchema.options.map((provider) => {
@@ -74,7 +78,7 @@ export function useChatCredentials(userId: string) {
 	);
 
 	const credentialsByProvider = computed<CredentialsMap | null>(() =>
-		isInitialized.value
+		isCredentialsReady.value
 			? {
 					...autoSelectCredentials.value,
 					...selectedCredentials.value,
