@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import {
+	DRAFT_PUBLISH_EXPERIMENT,
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
 	VIEWS,
@@ -42,6 +43,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
+import { usePostHog } from '@/app/stores/posthog.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
@@ -108,6 +110,7 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const mcpStore = useMCPStore();
+const posthogStore = usePostHog();
 
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
@@ -270,6 +273,14 @@ const isSomeoneElsesWorkflow = computed(
 		props.data.homeProject?.type !== ProjectTypes.Team &&
 		props.data.homeProject?.id !== projectsStore.personalProject?.id,
 );
+
+const isDraftPublishEnabled = computed(() => {
+	return posthogStore.isFeatureEnabled(DRAFT_PUBLISH_EXPERIMENT.name);
+});
+
+const isWorkflowPublished = computed(() => {
+	return props.data.activeVersionId != null;
+});
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
 	if (event?.ctrlKey || event?.metaKey) {
@@ -589,6 +600,19 @@ const tags = computed(
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
+				<N8nTooltip
+					v-if="isDraftPublishEnabled && isWorkflowPublished && !data.isArchived"
+					placement="bottom"
+					data-test-id="workflow-card-publish-indicator"
+				>
+					<template #content> {{ locale.baseText('workflowHistory.item.active') }}</template>
+					<N8nIcon
+						icon="circle-check"
+						color="success"
+						size="large"
+						:class="$style.publishIndicator"
+					/>
+				</N8nTooltip>
 				<ProjectCardBadge
 					v-if="showOwnershipBadge"
 					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
@@ -628,7 +652,7 @@ const tags = computed(
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nText>
 				<WorkflowActivator
-					v-else
+					v-else-if="!isDraftPublishEnabled"
 					class="mr-s"
 					:is-archived="data.isArchived"
 					:workflow-active="data.active"
