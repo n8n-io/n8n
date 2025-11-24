@@ -18,9 +18,13 @@ import { getTimeRangeLabels } from '../insights.utils';
 import { N8nCallout, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 
 const INSIGHTS_QUEUE_MODE_WARNING_DISMISSED_KEY = 'n8n-insights-queue-mode-warning-dismissed';
+import type { DateValue } from '@internationalized/date';
+
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
-	timeRange: InsightsDateRange['key'];
+	timeRange: InsightsDateRange['key'] | null;
+	startDate?: DateValue;
+	endDate?: DateValue;
 	loading?: boolean;
 }>();
 
@@ -47,6 +51,12 @@ const dismissQueueModeWarning = () => {
 
 const shouldShowQueueModeWarning = computed(() => {
 	return settingsStore.isQueueModeEnabled && !isQueueModeWarningDismissed.value;
+});
+
+const displayDateRangeLabel = computed(() => {
+	// TODO: use start and end date to format the date range
+	if (!props.timeRange) return '';
+	return timeRangeLabels[props.timeRange] ?? '';
 });
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
@@ -158,7 +168,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</N8nTooltip>
 							</strong>
 							<small :class="$style.days">
-								{{ timeRangeLabels[timeRange] }}
+								{{ displayDateRangeLabel }}
 							</small>
 							<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
 								<em>--</em>
