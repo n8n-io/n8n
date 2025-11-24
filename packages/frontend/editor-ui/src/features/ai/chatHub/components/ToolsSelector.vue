@@ -7,9 +7,10 @@ import type { INode } from 'n8n-workflow';
 import { computed, onMounted } from 'vue';
 import { TOOLS_SELECTOR_MODAL_KEY } from '../constants';
 
-const { selected } = defineProps<{
+const { selected, transparentBg = false } = defineProps<{
 	disabled: boolean;
 	selected: INode[];
+	transparentBg?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -51,7 +52,8 @@ const onClick = () => {
 <template>
 	<N8nButton
 		type="secondary"
-		:class="$style.toolsButton"
+		native-type="button"
+		:class="[$style.toolsButton, { [$style.transparentBg]: transparentBg }]"
 		:disabled="disabled"
 		aria-label="Select tools"
 		:icon="toolCount > 0 ? undefined : 'plus'"
@@ -77,8 +79,10 @@ const onClick = () => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background-color: transparent;
+
+	&.transparentBg {
+		background-color: transparent;
+	}
 }
 
 .iconStack {

@@ -6,6 +6,8 @@ import {
 	type ChatModelDto,
 	type ChatSessionId,
 	type ChatMessageId,
+	type ChatHubProvider,
+	type ChatHubLLMProvider,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
@@ -319,4 +321,14 @@ export function buildUiMessages(
 	}
 
 	return messagesToShow;
+}
+
+export function isLlmProvider(provider?: ChatHubProvider): provider is ChatHubLLMProvider {
+	return provider !== 'n8n' && provider !== 'custom-agent';
+}
+
+export function isLlmProviderModel(
+	model?: ChatHubConversationModel,
+): model is ChatHubConversationModel & { provider: ChatHubLLMProvider } {
+	return isLlmProvider(model?.provider);
 }
