@@ -64,21 +64,19 @@ export async function imageGenerationModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const results = await baseModelSearch.call(
-		this,
-		(model) =>
-			model.includes('imagen') ||
-			model.includes('image-generation') ||
-			model.includes('flash-image'),
-		filter,
-	);
-
+	const results = await baseModelSearch.call(this, (model) => model.includes('image'), filter);
 	return {
-		results: results.results.map((r) =>
-			r.name.includes('gemini-2.5-flash-image')
-				? { name: `${r.name} (Nano Banana)`, value: r.value }
-				: r,
-		),
+		results: results.results.map((r) => {
+			if (r.name.includes('gemini-2.5-flash-image')) {
+				return { name: `${r.name} (Nano Banana)`, value: r.value };
+			}
+
+			if (r.name.includes('gemini-3-pro-image')) {
+				return { name: `${r.name} (Nano Banana Pro)`, value: r.value };
+			}
+
+			return r;
+		}),
 	};
 }
 
