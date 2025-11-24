@@ -1,6 +1,7 @@
 import {
 	createTeamProject,
 	linkUserToProject,
+	mockInstance,
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
 	randomCredentialPayloadWithOauthTokenData,
@@ -15,12 +16,8 @@ import type { Scope } from '@sentry/node';
 import * as a from 'assert';
 import { mock } from 'jest-mock-extended';
 import { Credentials } from 'n8n-core';
-import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject, ICredentialType, LoadedClass } from 'n8n-workflow';
 import { randomString } from 'n8n-workflow';
-
-import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
-import { CredentialsService } from '@/credentials/credentials.service';
-import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
 	decryptCredentialData,
@@ -33,7 +30,26 @@ import { createAdmin, createManyUsers, createMember, createOwner } from '../shar
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
+import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
+import { CredentialsService } from '@/credentials/credentials.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { CredentialsTester } from '@/services/credentials-tester.service';
+
 const { any } = expect;
+
+// Mock LoadNodesAndCredentials BEFORE setupTestServer is called
+// Used by the credential service on credential creation to check required parameters
+mockInstance(LoadNodesAndCredentials, {
+	getCredential(_credentialType) {
+		return mock<LoadedClass<ICredentialType>>({
+			sourcePath: '',
+			type: mock<ICredentialType>({
+				properties: [],
+				extends: [],
+			}),
+		});
+	},
+});
 
 const testServer = setupTestServer({ endpointGroups: ['credentials'] });
 
@@ -1308,6 +1324,13 @@ describe('PATCH /credentials/:id', () => {
 		expect(data.accessToken).toBe(patchPayload.data.accessToken);
 		// was not overwritten
 		const dbCredential = await getCredentialById(savedCredential.id);
+
+		// this is required to prevent redaction of oauthTokenData
+		jest
+			.spyOn(Container.get(LoadNodesAndCredentials), 'getCredential')
+			.mockImplementationOnce((_credentialType) => {
+				throw new Error('Should not be called');
+			});
 		const unencryptedData = Container.get(CredentialsService).decrypt(dbCredential!);
 		expect(unencryptedData.oauthTokenData).toEqual(credential.data.oauthTokenData);
 	});
