@@ -1,5 +1,5 @@
 import type { InsightsSummary } from '@n8n/api-types';
-import { CalendarDate, getLocalTimeZone, now, today } from '@internationalized/date';
+import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date';
 
 import {
 	transformInsightsTimeSaved,
