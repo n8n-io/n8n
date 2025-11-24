@@ -8,7 +8,6 @@ import type { ChatMessageId, ChatSessionId, ChatAttachment } from '@n8n/api-type
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type Stream from 'node:stream';
-import FileType from 'file-type';
 
 @Service()
 export class ChatHubAttachmentService {
@@ -137,18 +136,14 @@ export class ChatHubAttachmentService {
 		buffer: Buffer,
 	): Promise<IBinaryData> {
 		const sanitizedFileName = sanitizeFilename(attachment.fileName);
-		const fileTypeData = await FileType.fromBuffer(buffer);
-
-		// Only trust content-based detection for security
-		const mimeType = fileTypeData?.mime ?? 'application/octet-stream';
 
 		// Construct IBinaryData with all required fields
 		const binaryData: IBinaryData = {
 			data: attachment.data,
-			mimeType,
+			mimeType: attachment.mimeType,
 			fileName: sanitizedFileName,
 			fileSize: `${buffer.length}`,
-			fileExtension: fileTypeData?.ext,
+			fileExtension: sanitizedFileName?.split('.').pop(),
 		};
 
 		return await this.binaryDataService.store(

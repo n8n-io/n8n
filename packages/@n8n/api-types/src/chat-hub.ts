@@ -255,6 +255,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
  */
 export const chatAttachmentSchema = z.object({
 	data: z.string(),
+	mimeType: z.string(),
 	fileName: z.string(),
 });
 

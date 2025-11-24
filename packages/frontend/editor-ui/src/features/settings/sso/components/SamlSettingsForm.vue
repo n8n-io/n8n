@@ -6,9 +6,8 @@ import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
 import { ElCheckbox } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useMessage } from '@/app/composables/useMessage';
 import { computed, onMounted, ref } from 'vue';
 import UserRoleProvisioningDropdown, {
@@ -25,7 +24,7 @@ const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
-const pageRedirectionHelper = usePageRedirectionHelper();
+const instanceId = useRootStore().instanceId;
 
 const savingForm = ref<boolean>(false);
 
@@ -122,12 +121,20 @@ const sendTrackingEvent = (config?: SamlPreferences) => {
 		return;
 	}
 	const trackingMetadata = {
-		instance_id: useRootStore().instanceId,
+		instance_id: instanceId,
 		authentication_method: SupportedProtocols.SAML,
 		identity_provider: config.metadataUrl ? 'metadata' : 'xml',
 		is_active: config.loginEnabled ?? false,
 	};
 	telemetry.track('User updated single sign on settings', trackingMetadata);
+};
+
+const sendTrackingEventForUserProvisioning = () => {
+	telemetry.track('User updated provisioning settings', {
+		instance_id: instanceId,
+		authentication_method: SupportedProtocols.SAML,
+		updated_setting: userRoleProvisioning.value,
+	});
 };
 
 const promptConfirmDisablingSamlLogin = async () => {
@@ -221,6 +228,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 
 		if (isUserRoleProvisioningChanged()) {
 			await saveProvisioningConfig();
+			sendTrackingEventForUserProvisioning();
 			showUserRoleProvisioningDialog.value = false;
 		}
 
@@ -268,16 +276,12 @@ const validateSamlInput = () => {
 	}
 };
 
-const goToUpgrade = () => {
-	void pageRedirectionHelper.goToUpgrade('sso', 'upgrade-sso');
-};
-
 onMounted(async () => {
 	await loadSamlConfig();
 });
 </script>
 <template>
-	<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
+	<div>
 		<div :class="$style.group">
 			<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
 			<CopyInput
@@ -357,18 +361,6 @@ onMounted(async () => {
 			</N8nButton>
 		</div>
 	</div>
-	<N8nActionBox
-		v-else
-		data-test-id="sso-content-unlicensed"
-		:class="$style.actionBox"
-		:description="i18n.baseText('settings.sso.actionBox.description')"
-		:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
-		@click:button="goToUpgrade"
-	>
-		<template #heading>
-			<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
-		</template>
-	</N8nActionBox>
 </template>
 
 <style lang="scss" module src="../styles/sso-form.module.scss" />
