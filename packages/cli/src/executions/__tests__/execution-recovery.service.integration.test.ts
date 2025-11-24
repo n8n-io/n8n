@@ -416,14 +416,14 @@ describe('ExecutionRecoveryService', () => {
 					active: true,
 				});
 				expect(workflow.active).toBe(true);
-				const execution = await createExecution({ status: 'crashed' }, workflow);
+				await createExecution({ status: 'crashed' }, workflow);
 				await createExecution({ status: 'crashed' }, workflow);
 				await createExecution({ status: 'crashed' }, workflow);
 
 				/**
 				 * Act
 				 */
-				await executionRecoveryService.recoverFromLogs(execution.id, []);
+				await executionRecoveryService.autoDeactivateWorkflowsIfNeeded(new Set([workflow.id]));
 
 				/**
 				 * Assert

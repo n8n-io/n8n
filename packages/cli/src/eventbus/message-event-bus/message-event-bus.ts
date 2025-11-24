@@ -186,6 +186,7 @@ export class MessageEventBus extends EventEmitter {
 					// start actual recovery process and write recovery process flag file
 					this.logWriter?.startRecoveryProcess();
 					const recoveredIds: string[] = [];
+					const crashedWorkflowIds: Set<string> = new Set();
 
 					for (const executionId of unfinishedExecutionIds) {
 						const logMessages = unsentAndUnfinished.unfinishedExecutions[executionId];
@@ -193,7 +194,12 @@ export class MessageEventBus extends EventEmitter {
 							executionId,
 							logMessages ?? [],
 						);
-						if (recoveredExecution) recoveredIds.push(executionId);
+						if (recoveredExecution) {
+							if (recoveredExecution.status === 'crashed') {
+								crashedWorkflowIds.add(recoveredExecution.workflowId);
+							}
+							recoveredIds.push(executionId);
+						}
 					}
 
 					if (recoveredIds.length > 0) {
@@ -201,6 +207,13 @@ export class MessageEventBus extends EventEmitter {
 						this.logger.info(
 							'This could be due to a crash of an active workflow or a restart of n8n',
 						);
+					}
+
+					if (
+						this.globalConfig.executions.recovery.workflowDeactivationEnabled &&
+						crashedWorkflowIds.size > 0
+					) {
+						await this.recoveryService.autoDeactivateWorkflowsIfNeeded(crashedWorkflowIds);
 					}
 				}
 

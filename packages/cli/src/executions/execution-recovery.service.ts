@@ -23,8 +23,6 @@ import type { EventMessageTypes } from '../eventbus/event-message-classes';
  */
 @Service()
 export class ExecutionRecoveryService {
-	private processedWorkflows: Set<string> = new Set();
-
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
@@ -36,37 +34,8 @@ export class ExecutionRecoveryService {
 		private readonly ownershipService: OwnershipService,
 	) {}
 
-	/**
-	 * Recover key properties of a truncated execution using event logs.
-	 */
-	async recoverFromLogs(executionId: string, messages: EventMessageTypes[]) {
-		if (this.instanceSettings.isFollower) return;
-
-		const amendedExecution = await this.amend(executionId, messages);
-
-		if (!amendedExecution) return null;
-
-		this.logger.info('[Recovery] Logs available, amended execution', {
-			executionId: amendedExecution.id,
-		});
-
-		await this.executionRepository.updateExistingExecution(executionId, amendedExecution);
-
-		await this.runHooks(amendedExecution);
-
-		this.push.once('editorUiConnected', async () => {
-			await sleep(1000);
-			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
-		});
-
-		const workflowId = amendedExecution.workflowId;
-
-		// Only check for autodeactivation once per workflow
-		if (
-			this.executionsConfig.recovery.workflowDeactivationEnabled &&
-			!this.processedWorkflows.has(workflowId)
-		) {
-			this.processedWorkflows.add(workflowId);
+	async autoDeactivateWorkflowsIfNeeded(workflowIds: Set<string>) {
+		for (const workflowId of workflowIds) {
 			const maxLastExecutions = this.executionsConfig.recovery.maxLastExecutions;
 			const lastExecutions = await this.executionRepository.findMultipleExecutions({
 				select: ['id', 'status'],
@@ -86,7 +55,7 @@ export class ExecutionRecoveryService {
 
 				if (!workflow) {
 					this.logger.warn(`Workflow ${workflowId} not found, skipping workflow autodeactivation`);
-					return amendedExecution;
+					continue;
 				}
 
 				if (workflow.active) {
@@ -124,6 +93,30 @@ export class ExecutionRecoveryService {
 				}
 			}
 		}
+	}
+
+	/**
+	 * Recover key properties of a truncated execution using event logs.
+	 */
+	async recoverFromLogs(executionId: string, messages: EventMessageTypes[]) {
+		if (this.instanceSettings.isFollower) return;
+
+		const amendedExecution = await this.amend(executionId, messages);
+
+		if (!amendedExecution) return null;
+
+		this.logger.info('[Recovery] Logs available, amended execution', {
+			executionId: amendedExecution.id,
+		});
+
+		await this.executionRepository.updateExistingExecution(executionId, amendedExecution);
+
+		await this.runHooks(amendedExecution);
+
+		this.push.once('editorUiConnected', async () => {
+			await sleep(1000);
+			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
+		});
 
 		return amendedExecution;
 	}
