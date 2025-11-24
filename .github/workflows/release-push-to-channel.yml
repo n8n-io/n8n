@@ -83,14 +83,24 @@ jobs:
       - name: Add beta/next tags to NPM
         if: needs.validate-inputs.outputs.release_channel == 'beta'
         run: |
-          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" next
-          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" beta
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          npm dist-tag add "n8n@${VERSION}" next
+          npm dist-tag add "n8n@${VERSION}" beta
+          npm dist-tag add "n8n@${VERSION}" "${MAJOR}"
+          npm dist-tag add "n8n@${VERSION}" "${MINOR}"
 
       - name: Add latest/stable tags to NPM
         if: needs.validate-inputs.outputs.release_channel == 'stable'
         run: |
-          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" latest
-          npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" stable
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          npm dist-tag add "n8n@${VERSION}" latest
+          npm dist-tag add "n8n@${VERSION}" stable
+          npm dist-tag add "n8n@${VERSION}" "${MAJOR}"
+          npm dist-tag add "n8n@${VERSION}" "${MINOR}"
 
       - name: Add v1 maintenance tags to NPM
         if: needs.validate-inputs.outputs.release_channel == '1'
@@ -115,22 +125,54 @@ jobs:
       - name: Tag stable/latest Docker image
         if: needs.validate-inputs.outputs.release_channel == 'stable'
         run: |
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:stable" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:latest" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:stable" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:latest" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:stable-distroless" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:latest-distroless" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          DOCKER_USER="${{ secrets.DOCKER_USERNAME }}"
+
+          # n8n image tags
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:stable" "${DOCKER_USER}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:latest" "${DOCKER_USER}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:${MAJOR}" "${DOCKER_USER}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:${MINOR}" "${DOCKER_USER}/n8n:${VERSION}"
+
+          # runners (Alpine) tags
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:stable" "${DOCKER_USER}/runners:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:latest" "${DOCKER_USER}/runners:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MAJOR}" "${DOCKER_USER}/runners:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MINOR}" "${DOCKER_USER}/runners:${VERSION}"
+
+          # runners-distroless tags
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:stable-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:latest-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MAJOR}-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MINOR}-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
 
       - name: Tag beta/next Docker image
         if: needs.validate-inputs.outputs.release_channel == 'beta'
         run: |
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:beta" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:next" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:beta" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:next" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:beta-distroless" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
-          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:next-distroless" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          DOCKER_USER="${{ secrets.DOCKER_USERNAME }}"
+
+          # n8n image tags
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:beta" "${DOCKER_USER}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:next" "${DOCKER_USER}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:${MAJOR}" "${DOCKER_USER}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:${MINOR}" "${DOCKER_USER}/n8n:${VERSION}"
+
+          # runners (Alpine) tags
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:beta" "${DOCKER_USER}/runners:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:next" "${DOCKER_USER}/runners:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MAJOR}" "${DOCKER_USER}/runners:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MINOR}" "${DOCKER_USER}/runners:${VERSION}"
+
+          # runners-distroless tags
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:beta-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:next-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MAJOR}-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MINOR}-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
 
       - name: Tag v1 maintenance Docker images
         if: needs.validate-inputs.outputs.release_channel == '1'
@@ -167,22 +209,54 @@ jobs:
       - name: Tag stable/latest GHCR image
         if: needs.validate-inputs.outputs.release_channel == 'stable'
         run: |
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:stable" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:latest" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:stable" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:latest" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:stable-distroless" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:latest-distroless" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          GHCR_BASE="ghcr.io/${{ github.repository_owner }}"
+
+          # n8n image tags
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:stable" "${GHCR_BASE}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:latest" "${GHCR_BASE}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:${MAJOR}" "${GHCR_BASE}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:${MINOR}" "${GHCR_BASE}/n8n:${VERSION}"
+
+          # runners (Alpine) tags
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:stable" "${GHCR_BASE}/runners:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:latest" "${GHCR_BASE}/runners:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MAJOR}" "${GHCR_BASE}/runners:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MINOR}" "${GHCR_BASE}/runners:${VERSION}"
+
+          # runners-distroless tags
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:stable-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:latest-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MAJOR}-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MINOR}-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
 
       - name: Tag beta/next GHCR image
         if: needs.validate-inputs.outputs.release_channel == 'beta'
         run: |
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:beta" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:next" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:beta" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:next" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:beta-distroless" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
-          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:next-distroless" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          GHCR_BASE="ghcr.io/${{ github.repository_owner }}"
+
+          # n8n image tags
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:beta" "${GHCR_BASE}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:next" "${GHCR_BASE}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:${MAJOR}" "${GHCR_BASE}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:${MINOR}" "${GHCR_BASE}/n8n:${VERSION}"
+
+          # runners (Alpine) tags
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:beta" "${GHCR_BASE}/runners:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:next" "${GHCR_BASE}/runners:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MAJOR}" "${GHCR_BASE}/runners:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MINOR}" "${GHCR_BASE}/runners:${VERSION}"
+
+          # runners-distroless tags
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:beta-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:next-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MAJOR}-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MINOR}-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
 
       - name: Tag v1 maintenance GHCR images
         if: needs.validate-inputs.outputs.release_channel == '1'

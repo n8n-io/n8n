@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { appendFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 class BuildContext {
   constructor() {
@@ -132,7 +133,7 @@ class BuildContext {
 }
 
 // CLI - Simple argument parsing
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const args = process.argv.slice(2);
   const getArg = (name) => {
     const index = args.indexOf(`--${name}`);
