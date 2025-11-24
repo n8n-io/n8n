@@ -17,7 +17,6 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
-	IDestinationNode,
 } from 'n8n-workflow';
 import { SubworkflowOperationError, Workflow, createRunExecutionData } from 'n8n-workflow';
 
@@ -102,7 +101,7 @@ export class WorkflowExecutionService {
 		const { workflowData, startNodes, dirtyNodeNames, triggerToStartFrom, agentRequest } = payload;
 		let { runData } = payload;
 		const destinationNode = payload.destinationNode
-			? { nodeName: payload.destinationNode, mode: 'inclusive' }
+			? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 			: undefined;
 		const pinData = workflowData.pinData;
 		let pinnedTrigger = this.selectPinnedActivatorStarter(
