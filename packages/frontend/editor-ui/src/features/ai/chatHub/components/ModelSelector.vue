@@ -308,7 +308,7 @@ defineExpose({
 </script>
 
 <template>
-	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" @select="onSelect">
+	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" teleport @select="onSelect">
 		<template #item-icon="{ item }">
 			<CredentialIcon
 				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
