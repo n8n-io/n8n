@@ -2571,6 +2571,11 @@ export interface IWorkflowCredentials {
 
 export interface IDestinationNode {
 	nodeName: string;
+	/**
+	 * Execution mode for the destination node:
+	 * - 'inclusive': Execute up to and including the destination node
+	 * - 'exclusive': Execute up to but excluding the destination node
+	 */
 	mode: 'inclusive' | 'exclusive';
 }
 
