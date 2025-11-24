@@ -251,7 +251,7 @@ async function handlePublish() {
 						i18n.baseText('workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message')
 					}}
 				</N8nCallout>
-				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="danger" icon="status-error">
+				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="warning">
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
 				</N8nCallout>
 				<N8nCallout v-else-if="activeCalloutId === 'noPublishedVersion'" theme="secondary">
