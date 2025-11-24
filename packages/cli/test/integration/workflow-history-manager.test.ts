@@ -13,17 +13,22 @@ import { DateTime } from 'luxon';
 import { License } from '@/license';
 import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
-import { createManyWorkflowHistoryItems } from './shared/db/workflow-history';
+import {
+	createManyWorkflowHistoryItems,
+	createWorkflowHistoryItem,
+} from './shared/db/workflow-history';
 
 describe('Workflow History Manager', () => {
 	const license = mockInstance(License);
-	let repo: WorkflowHistoryRepository;
+	let workflowHistoryRepository: WorkflowHistoryRepository;
+	let workflowRepository: WorkflowRepository;
 	let manager: WorkflowHistoryManager;
 	let globalConfig: GlobalConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
-		repo = Container.get(WorkflowHistoryRepository);
+		workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
+		workflowRepository = Container.get(WorkflowRepository);
 		manager = Container.get(WorkflowHistoryManager);
 		globalConfig = Container.get(GlobalConfig);
 	});
@@ -87,10 +92,14 @@ describe('Workflow History Manager', () => {
 		await pruneAndAssertCount(10, 20);
 
 		expect(
-			await repo.count({ where: { versionId: In(recentVersions.map((i) => i.versionId)) } }),
+			await workflowHistoryRepository.count({
+				where: { versionId: In(recentVersions.map((i) => i.versionId)) },
+			}),
 		).toBe(10);
 		expect(
-			await repo.count({ where: { versionId: In(oldVersions.map((i) => i.versionId)) } }),
+			await workflowHistoryRepository.count({
+				where: { versionId: In(oldVersions.map((i) => i.versionId)) },
+			}),
 		).toBe(0);
 	});
 
@@ -118,21 +127,26 @@ describe('Workflow History Manager', () => {
 		activeWorkflow.versionId = activeWorkflowVersions[0].versionId;
 		inactiveWorkflow.versionId = inactiveWorkflowVersions[0].versionId;
 
-		const workflowRepo = Container.get(WorkflowRepository);
-		await workflowRepo.save([activeWorkflow, inactiveWorkflow]);
+		await workflowRepository.save([activeWorkflow, inactiveWorkflow]);
 
 		await manager.prune();
 
 		// Both workflows' current versions should still exist even though they are old
-		expect(await repo.count({ where: { versionId: activeWorkflow.versionId } })).toBe(1);
-		expect(await repo.count({ where: { versionId: inactiveWorkflow.versionId } })).toBe(1);
+		expect(
+			await workflowHistoryRepository.count({ where: { versionId: activeWorkflow.versionId } }),
+		).toBe(1);
+		expect(
+			await workflowHistoryRepository.count({ where: { versionId: inactiveWorkflow.versionId } }),
+		).toBe(1);
 
 		// Other old versions should be deleted
 		const otherVersionIds = [
 			...activeWorkflowVersions.slice(1).map((i) => i.versionId),
 			...inactiveWorkflowVersions.slice(1).map((i) => i.versionId),
 		];
-		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
+		expect(
+			await workflowHistoryRepository.count({ where: { versionId: In(otherVersionIds) } }),
+		).toBe(0);
 	});
 
 	test('should not prune current or active versions when they differ', async () => {
@@ -151,18 +165,55 @@ describe('Workflow History Manager', () => {
 		workflow.versionId = workflowVersions[0].versionId;
 		workflow.activeVersionId = workflowVersions[1].versionId;
 
-		const workflowRepo = Container.get(WorkflowRepository);
-		await workflowRepo.save(workflow);
+		await workflowRepository.save(workflow);
 
 		await manager.prune();
 
 		// Both current and active versions should still exist even though they are old
-		expect(await repo.count({ where: { versionId: workflow.versionId } })).toBe(1);
-		expect(await repo.count({ where: { versionId: workflow.activeVersionId } })).toBe(1);
+		expect(
+			await workflowHistoryRepository.count({ where: { versionId: workflow.versionId } }),
+		).toBe(1);
+		expect(
+			await workflowHistoryRepository.count({ where: { versionId: workflow.activeVersionId } }),
+		).toBe(1);
 
 		// Other old versions should be deleted
 		const otherVersionIds = workflowVersions.slice(2).map((i) => i.versionId);
-		expect(await repo.count({ where: { versionId: In(otherVersionIds) } })).toBe(0);
+		expect(
+			await workflowHistoryRepository.count({ where: { versionId: In(otherVersionIds) } }),
+		).toBe(0);
+	});
+
+	test('should not prune named versions', async () => {
+		globalConfig.workflowHistory.pruneTime = 24;
+
+		const inactiveWorkflow = await createWorkflow();
+
+		// Create old history versions
+		const oldVersions = await createManyWorkflowHistoryItems(
+			inactiveWorkflow.id,
+			5,
+			DateTime.now().minus({ days: 2 }).toJSDate(),
+		);
+
+		const oldNamedVersion = await createWorkflowHistoryItem(inactiveWorkflow.id, {
+			name: 'My Named Version',
+			createdAt: DateTime.now().minus({ days: 2 }).toJSDate(),
+		});
+		await workflowHistoryRepository.save(oldNamedVersion);
+
+		await manager.prune();
+
+		// Named version should still exist even though it is old
+		expect(
+			await workflowHistoryRepository.count({ where: { versionId: oldNamedVersion.versionId } }),
+		).toBe(1);
+
+		// Other old versions should be deleted
+		const otherVersionIds = oldVersions.map((i) => i.versionId);
+		expect(
+			await workflowHistoryRepository.count({ where: { versionId: In(otherVersionIds) } }),
+		).toBe(0);
 	});
 
 	const createWorkflowHistory = async (ageInDays = 2) => {
@@ -172,9 +223,12 @@ describe('Workflow History Manager', () => {
 	};
 
 	const pruneAndAssertCount = async (finalCount = 10, initialCount = 10) => {
-		expect(await repo.count()).toBe(initialCount);
+		expect(await workflowHistoryRepository.count()).toBe(initialCount);
 
-		const deleteSpy = jest.spyOn(repo, 'deleteEarlierThanExceptCurrentAndActive');
+		const deleteSpy = jest.spyOn(
+			workflowHistoryRepository,
+			'deleteEarlierThanExceptProtectedVersions',
+		);
 		await manager.prune();
 
 		if (initialCount === finalCount) {
@@ -184,6 +238,6 @@ describe('Workflow History Manager', () => {
 		}
 		deleteSpy.mockRestore();
 
-		expect(await repo.count()).toBe(finalCount);
+		expect(await workflowHistoryRepository.count()).toBe(finalCount);
 	};
 });

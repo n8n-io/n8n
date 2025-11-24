@@ -34,6 +34,6 @@ export class WorkflowHistoryManager {
 		}
 		const pruneDateTime = DateTime.now().minus({ hours: pruneHours }).toJSDate();
 
-		await this.workflowHistoryRepo.deleteEarlierThanExceptCurrentAndActive(pruneDateTime);
+		await this.workflowHistoryRepo.deleteEarlierThanExceptProtectedVersions(pruneDateTime);
 	}
 }
