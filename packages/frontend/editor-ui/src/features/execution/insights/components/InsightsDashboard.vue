@@ -308,7 +308,7 @@ const projects = computed(() =>
 }
 
 .insightsBanner {
-	padding-bottom: 0;
+	margin-bottom: 0;
 
 	ul {
 		border-bottom-left-radius: 0;

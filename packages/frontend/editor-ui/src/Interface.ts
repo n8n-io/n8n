@@ -250,6 +250,7 @@ export interface IWorkflowDb {
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
 	versionId: string;
+	activeVersionId: string | null;
 	usedCredentials?: IUsedCredential[];
 	meta?: WorkflowMetadata;
 	parentFolder?: {
@@ -277,6 +278,7 @@ export type WorkflowResource = BaseResource & {
 	updatedAt: string;
 	createdAt: string;
 	active: boolean;
+	activeVersionId: string | null;
 	isArchived: boolean;
 	homeProject?: ProjectSharingData;
 	scopes?: Scope[];
@@ -304,6 +306,7 @@ export type CredentialsResource = BaseResource & {
 	sharedWithProjects?: ProjectSharingData[];
 	readOnly: boolean;
 	needsSetup: boolean;
+	isGlobal?: boolean;
 };
 
 // Base resource types that are always available
@@ -347,6 +350,7 @@ export interface IWorkflowShortResponse {
 	id: string;
 	name: string;
 	active: boolean;
+	activeVersionId: string | null;
 	createdAt: number | string;
 	updatedAt: number | string;
 	tags: ITag[];
@@ -445,7 +449,7 @@ export type SimplifiedNodeType = Pick<
 	| 'defaults'
 	| 'outputs'
 > & {
-	tag?: string;
+	tag?: NodeCreatorTag;
 };
 export interface SubcategoryItemProps {
 	description?: string;

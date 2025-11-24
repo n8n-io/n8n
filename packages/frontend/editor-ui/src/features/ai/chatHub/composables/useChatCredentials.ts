@@ -1,4 +1,5 @@
 import { LOCAL_STORAGE_CHAT_HUB_CREDENTIALS } from '@/app/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { credentialsMapSchema, type CredentialsMap } from '@/features/ai/chatHub/chat.types';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import {
@@ -8,6 +9,7 @@ import {
 } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
 import { computed, onMounted, ref } from 'vue';
+import { isLlmProvider } from '../chat.utils';
 
 /**
  * Composable for managing chat credentials including auto-selection and user selection.
@@ -15,6 +17,8 @@ import { computed, onMounted, ref } from 'vue';
 export function useChatCredentials(userId: string) {
 	const isInitialized = ref(false);
 	const credentialsStore = useCredentialsStore();
+	const settingsStore = useSettingsStore();
+
 	const selectedCredentials = useLocalStorage<CredentialsMap>(
 		LOCAL_STORAGE_CHAT_HUB_CREDENTIALS(userId),
 		{},
@@ -34,23 +38,39 @@ export function useChatCredentials(userId: string) {
 		},
 	);
 
+	const isCredentialsReady = computed(
+		() => isInitialized.value || credentialsStore.allCredentials.length > 0,
+	);
+
 	const autoSelectCredentials = computed<CredentialsMap>(() =>
 		Object.fromEntries(
 			chatHubProviderSchema.options.map((provider) => {
-				if (provider === 'n8n' || provider === 'custom-agent') {
+				if (!isLlmProvider(provider)) {
 					return [provider, null];
 				}
 
 				const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-
 				if (!credentialType) {
 					return [provider, null];
 				}
 
+				const availableCredentials = credentialsStore.getCredentialsByType(credentialType);
+
+				const settings = settingsStore.moduleSettings?.['chat-hub']?.providers[provider];
+
+				// Use default credential from settings if available to the user
+				if (
+					settings &&
+					settings.credentialId &&
+					availableCredentials.some((c) => c.id === settings.credentialId)
+				) {
+					return [provider, settings.credentialId];
+				}
+
 				const lastCreatedCredential =
-					credentialsStore
-						.getCredentialsByType(credentialType)
-						.toSorted((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0]?.id ?? null;
+					availableCredentials.toSorted(
+						(a, b) => +new Date(b.createdAt) - +new Date(a.createdAt),
+					)[0]?.id ?? null;
 
 				return [provider, lastCreatedCredential];
 			}),
@@ -58,7 +78,7 @@ export function useChatCredentials(userId: string) {
 	);
 
 	const credentialsByProvider = computed<CredentialsMap | null>(() =>
-		isInitialized.value
+		isCredentialsReady.value
 			? {
 					...autoSelectCredentials.value,
 					...selectedCredentials.value,

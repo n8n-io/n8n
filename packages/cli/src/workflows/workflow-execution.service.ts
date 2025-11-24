@@ -167,6 +167,7 @@ export class WorkflowExecutionService {
 
 		// For manual testing always set to not active
 		workflowData.active = false;
+		workflowData.activeVersionId = null;
 
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
@@ -285,7 +286,7 @@ export class WorkflowExecutionService {
 				nodeTypes: this.nodeTypes,
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,
-				active: workflowData.active,
+				active: workflowData.activeVersion !== null,
 				staticData: workflowData.staticData,
 				settings: workflowData.settings,
 			});
@@ -440,7 +441,7 @@ export class WorkflowExecutionService {
 					new Workflow({
 						nodes: workflow.nodes,
 						connections: workflow.connections,
-						active: workflow.active,
+						active: workflow.activeVersionId !== null,
 						nodeTypes: this.nodeTypes,
 					}).getParentNodes(destinationNode),
 				);
@@ -468,7 +469,7 @@ export class WorkflowExecutionService {
 		const parentNodeNames = new Workflow({
 			nodes: workflow.nodes,
 			connections: workflow.connections,
-			active: workflow.active,
+			active: workflow.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 		}).getParentNodes(firstStartNodeName);
 
