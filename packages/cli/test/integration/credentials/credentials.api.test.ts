@@ -1307,7 +1307,7 @@ describe('PATCH /credentials/:id', () => {
 			.query({ includeData: true })
 			.expect(200);
 
-		const { id, data } = response.body.data;
+		const { id } = response.body.data;
 
 		expect(id).toBe(savedCredential.id);
 		// was not overwritten
