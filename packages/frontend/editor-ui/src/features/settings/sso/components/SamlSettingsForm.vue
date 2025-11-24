@@ -24,7 +24,6 @@ const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
-const pageRedirectionHelper = usePageRedirectionHelper();
 const instanceId = useRootStore().instanceId;
 
 const savingForm = ref<boolean>(false);
