@@ -1,6 +1,21 @@
-export const configureNodeInputs = (operation: 'classify' | 'sanitize') => {
-	if (operation === 'sanitize') {
-		// sanitize operations don't use a chat model
+import type { GuardrailsOptions } from '../actions/types';
+
+const LLM_CHECKS = ['nsfw', 'topicalAlignment', 'custom', 'jailbreak'] as const satisfies Array<
+	keyof GuardrailsOptions
+>;
+
+export const hasLLMGuardrails = (guardrails: GuardrailsOptions) => {
+	const checks = Object.keys(guardrails ?? {});
+	return checks.length > 0 && checks.some((check) => (LLM_CHECKS as string[]).includes(check));
+};
+
+export const configureNodeInputs = (parameters: { guardrails: Array<{ name: string }> }) => {
+	// typeof LLM_CHECKS guarantees that it's in sync with hasLLMGuardrails
+	const CHECKS: typeof LLM_CHECKS = ['nsfw', 'topicalAlignment', 'custom', 'jailbreak'];
+	const checks = Object.keys(parameters?.guardrails ?? {}) as Array<keyof GuardrailsOptions>;
+	const hasLLMChecks =
+		checks.length > 0 && checks.some((check) => (CHECKS as string[]).includes(check));
+	if (!hasLLMChecks) {
 		return ['main'];
 	}
 

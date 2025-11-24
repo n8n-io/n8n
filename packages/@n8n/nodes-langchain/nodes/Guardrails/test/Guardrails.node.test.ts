@@ -41,6 +41,13 @@ describe('Guardrails', () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
 						operation: 'classify',
+						guardrails: {
+							nsfw: {
+								value: {
+									threshold: 0.5,
+								},
+							},
+						},
 					};
 					return params[paramName];
 				});
@@ -52,7 +59,7 @@ describe('Guardrails', () => {
 				processSpy.mockResolvedValue({
 					guardrailsInput: 'processed text',
 					passed: {
-						checks: [{ name: 'test', triggered: false }],
+						checks: [{ name: 'nsfw', triggered: false }],
 					},
 					failed: null,
 				});
@@ -64,7 +71,7 @@ describe('Guardrails', () => {
 				expect(result[0][0]).toEqual({
 					json: {
 						guardrailsInput: 'processed text',
-						checks: [{ name: 'test', triggered: false }],
+						checks: [{ name: 'nsfw', triggered: false }],
 					},
 					pairedItem: { item: 0 },
 				});
@@ -83,6 +90,13 @@ describe('Guardrails', () => {
 				mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 					const params: Record<string, any> = {
 						operation: 'classify',
+						guardrails: {
+							nsfw: {
+								value: {
+									threshold: 0.5,
+								},
+							},
+						},
 					};
 					return params[paramName];
 				});

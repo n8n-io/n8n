@@ -1,7 +1,9 @@
 import type { IExecuteFunctions, INodeExecutionData, INodeType } from 'n8n-workflow';
 
 import { process } from './actions/process';
+import type { GuardrailsOptions } from './actions/types';
 import { versionDescription } from './description';
+import { hasLLMGuardrails } from './helpers/configureNodeInputs';
 import { getChatModel } from './helpers/model';
 
 export class Guardrails implements INodeType {
@@ -10,7 +12,9 @@ export class Guardrails implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();
 		const operation = this.getNodeParameter('operation', 0) as 'classify' | 'sanitize';
-		const model = operation === 'classify' ? await getChatModel.call(this) : null;
+		const model = hasLLMGuardrails(this.getNodeParameter('guardrails', 0) as GuardrailsOptions)
+			? await getChatModel.call(this)
+			: null;
 
 		const failedItems: INodeExecutionData[] = [];
 		const passedItems: INodeExecutionData[] = [];

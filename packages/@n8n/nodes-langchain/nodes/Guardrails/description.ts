@@ -74,7 +74,7 @@ export const versionDescription: INodeTypeDescription = {
 			],
 		},
 	},
-	inputs: `={{(${configureNodeInputs})($parameter.operation)}}`,
+	inputs: `={{(${configureNodeInputs})($parameter)}}`,
 	outputs: `={{
 		((parameters) => {
 			const operation = parameters.operation ?? 'classify';
