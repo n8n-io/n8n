@@ -34,6 +34,7 @@ catalog:
   https-proxy-agent: 7.0.6
   iconv-lite: 0.6.3
   js-base64: 3.7.2
+  jsonrepair: 3.13.1
   jsonwebtoken: 9.0.2
   lodash: 4.17.21
   luxon: 3.4.4
@@ -78,4 +79,3 @@ catalogs:
     vue-markdown-render: ^2.2.1
     vue-router: ^4.5.0
     vue-tsc: ^2.2.8
-
