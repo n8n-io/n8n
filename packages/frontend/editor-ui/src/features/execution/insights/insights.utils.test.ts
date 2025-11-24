@@ -1,5 +1,5 @@
 import type { InsightsSummary } from '@n8n/api-types';
-import { CalendarDate } from '@internationalized/date';
+import { CalendarDate, getLocalTimeZone, now, today } from '@internationalized/date';
 
 import {
 	transformInsightsTimeSaved,
@@ -9,6 +9,8 @@ import {
 	transformInsightsDeviation,
 	transformInsightsSummary,
 	formatDateRange,
+	getMatchingPreset,
+	timeRangeMappings,
 } from './insights.utils';
 
 import {
@@ -290,5 +292,49 @@ describe('Insights Transformers', () => {
 
 			expect(result).toBe('20 Dec, 2024 - 5 Jan, 2025');
 		});
+	});
+
+	describe('getMatchingPreset', () => {
+		it('should return null if the end date is not provided', () => {
+			const result = getMatchingPreset({ start: new CalendarDate(2025, 10, 20) });
+
+			expect(result).toBeNull();
+		});
+
+		it('should return null if the start date is not provided', () => {
+			const result = getMatchingPreset({ end: new CalendarDate(2025, 10, 20) });
+
+			expect(result).toBeNull();
+		});
+
+		it('should return null if the end date is not today', () => {
+			const result = getMatchingPreset({
+				start: new CalendarDate(2025, 10, 20),
+				end: new CalendarDate(2025, 10, 21),
+			});
+
+			expect(result).toBeNull();
+		});
+
+		it('should return null for custom range', () => {
+			const result = getMatchingPreset({
+				start: new CalendarDate(2025, 10, 20),
+				end: today(getLocalTimeZone()),
+			});
+
+			expect(result).toBeNull();
+		});
+
+		test.each(Object.entries(timeRangeMappings))(
+			'should return the %s" preset for for %d days',
+			(key, days) => {
+				const end = today(getLocalTimeZone());
+				const start = end.subtract({ days });
+
+				const result = getMatchingPreset({ start, end });
+
+				expect(result).toBe(key);
+			},
+		);
 	});
 });
