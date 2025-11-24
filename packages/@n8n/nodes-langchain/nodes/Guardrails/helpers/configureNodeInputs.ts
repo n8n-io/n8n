@@ -6,15 +6,14 @@ const LLM_CHECKS = ['nsfw', 'topicalAlignment', 'custom', 'jailbreak'] as const 
 
 export const hasLLMGuardrails = (guardrails: GuardrailsOptions) => {
 	const checks = Object.keys(guardrails ?? {});
-	return checks.length > 0 && checks.some((check) => (LLM_CHECKS as string[]).includes(check));
+	return checks.some((check) => (LLM_CHECKS as string[]).includes(check));
 };
 
-export const configureNodeInputs = (parameters: { guardrails: Array<{ name: string }> }) => {
+export const configureNodeInputs = (parameters: { guardrails: GuardrailsOptions }) => {
 	// typeof LLM_CHECKS guarantees that it's in sync with hasLLMGuardrails
 	const CHECKS: typeof LLM_CHECKS = ['nsfw', 'topicalAlignment', 'custom', 'jailbreak'];
-	const checks = Object.keys(parameters?.guardrails ?? {}) as Array<keyof GuardrailsOptions>;
-	const hasLLMChecks =
-		checks.length > 0 && checks.some((check) => (CHECKS as string[]).includes(check));
+	const checks = Object.keys(parameters?.guardrails ?? {});
+	const hasLLMChecks = checks.some((check) => (CHECKS as string[]).includes(check));
 	if (!hasLLMChecks) {
 		return ['main'];
 	}
