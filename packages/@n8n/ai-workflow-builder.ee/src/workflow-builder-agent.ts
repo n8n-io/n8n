@@ -206,6 +206,7 @@ export class WorkflowBuilderAgent {
 			llmComplexTask: this.llmComplexTask,
 			logger: this.logger,
 			instanceUrl: this.instanceUrl,
+			checkpointer: this.checkpointer,
 		});
 	}
 

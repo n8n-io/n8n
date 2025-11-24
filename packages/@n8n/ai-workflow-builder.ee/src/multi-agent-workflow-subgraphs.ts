@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { HumanMessage } from '@langchain/core/messages';
-import { StateGraph, END, START } from '@langchain/langgraph';
+import { StateGraph, END, START, type MemorySaver } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
@@ -20,6 +20,7 @@ export interface MultiAgentSubgraphConfig {
 	llmComplexTask: BaseChatModel;
 	logger?: Logger;
 	instanceUrl?: string;
+	checkpointer?: MemorySaver;
 }
 
 /**
@@ -61,7 +62,7 @@ function createSubgraphNodeHandler<
  * Parent graph orchestrates between subgraphs with minimal shared state.
  */
 export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraphConfig) {
-	const { parsedNodeTypes, llmComplexTask, logger, instanceUrl } = config;
+	const { parsedNodeTypes, llmComplexTask, logger, instanceUrl, checkpointer } = config;
 
 	const supervisorAgent = new SupervisorAgent({ llm: llmComplexTask });
 	const responderAgent = new ResponderAgent({ llm: llmComplexTask });
@@ -188,6 +189,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			// Responder ends the workflow
 			.addEdge('responder', END)
 			// Compile the graph
-			.compile()
+			.compile({ checkpointer })
 	);
 }
