@@ -90,24 +90,6 @@ export const getTimeRangeLabels = () => {
 };
 
 /**
- * Checks if a date range matches a specific preset
- * @param start - Start date of the range
- * @param end - End date of the range
- * @param presetDays - Number of days in the preset
- * @returns True if the range matches the preset (ends today with correct day count)
- */
-export const isPresetRange = (input: {
-	start: DateValue;
-	end: DateValue;
-	presetDays: number;
-}): boolean => {
-	const { start, end, presetDays } = input;
-	if (!isToday(end, getLocalTimeZone())) return false;
-
-	return end.compare(start) === presetDays;
-};
-
-/**
  * @returns A human readable string representing the date range e.g '01 Jan - 05 Jan 2025'
  */
 export const formatDateRange = (range: { start?: DateValue; end?: DateValue }): string => {

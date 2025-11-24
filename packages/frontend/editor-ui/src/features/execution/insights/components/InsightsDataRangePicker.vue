@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { getLocalTimeZone } from '@internationalized/date';
+import { getLocalTimeZone, isToday } from '@internationalized/date';
 import type {
 	DateRange,
 	DateValue,
@@ -9,7 +9,7 @@ import type {
 } from '@n8n/design-system';
 import { N8nButton, N8nDateRangePicker, N8nIcon } from '@n8n/design-system';
 import { computed, ref, shallowRef, watch } from 'vue';
-import { formatDateRange, isPresetRange } from '../insights.utils';
+import { formatDateRange } from '../insights.utils';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
 
 type Props = Pick<N8nDateRangePickerProps, 'maxValue' | 'minValue'>;
@@ -135,12 +135,11 @@ const formattedRange = computed(() => {
 	return formatDateRange({ start, end });
 });
 
-const isActiveRange = (presetDays: number) =>
-	isPresetRange({
-		start: props.modelValue.start,
-		end: props.modelValue.end,
-		presetDays,
-	});
+function isActiveRange(presetValue: number) {
+	if (!isToday(props.modelValue.end, getLocalTimeZone())) return false;
+
+	return props.modelValue.end.compare(props.modelValue.start) === presetValue;
+}
 </script>
 
 <template>
