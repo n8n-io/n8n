@@ -69,7 +69,7 @@ export async function createExecution(
 	}
 
 	await Container.get(ExecutionDataRepository).save({
-		data: data ?? '',
+		data: data ?? '[]',
 		workflowData: workflow ?? {},
 		executionId: execution.id,
 	});

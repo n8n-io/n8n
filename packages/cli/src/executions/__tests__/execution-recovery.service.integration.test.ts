@@ -229,6 +229,7 @@ describe('ExecutionRecoveryService', () => {
 				const execution = await createExecution(
 					{
 						status: 'success',
+						data: stringify(undefined), // saved execution but likely crashed while saving high-volume data
 					},
 					workflow,
 				);
