@@ -3216,7 +3216,7 @@
 	"workflows.preBuiltAgents.linkText": "pre-built agents",
 	"workflowSelectorParameterInput.createNewSubworkflow.name": "My Sub-Workflow",
 	"workflows.publishModal.title": "Publish workflow",
-	"workflows.publishModal.noTriggerMessage": "Can't publish a workflow without a trigger other than manual",
+	"workflows.publishModal.noTriggerMessage": "This workflow has no trigger nodes that require publishing",
 	"workflows.publishModal.noPublishedVersionMessage": "Not previously published",
 	"workflows.publishModal.versionNameLabel": "Version name",
 	"workflows.publishModal.descriptionPlaceholder": "Describe changes (optional)",
