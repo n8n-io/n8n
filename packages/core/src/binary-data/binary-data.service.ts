@@ -25,6 +25,10 @@ export class BinaryDataService {
 		private readonly errorReporter: ErrorReporter,
 	) {}
 
+	setManager(mode: BinaryData.ServiceMode, manager: BinaryData.Manager) {
+		this.managers[mode] = manager;
+	}
+
 	async init() {
 		const { config } = this;
 
@@ -48,13 +52,11 @@ export class BinaryDataService {
 			await this.managers.s3.init();
 		}
 
-		if (config.availableModes.includes('database')) {
-			const { DatabaseManager } = await import('./database.manager');
-
-			this.managers.database = Container.get(DatabaseManager);
-
-			await this.managers.database.init();
-		}
+		/**
+		 * DB manager is set directly at `BaseCommand` in `cli`.
+		 * to prevent a circular dependency (`core` -> `@n8n/db`
+		 * -> `core`) until we reorganize our dependency graph.
+		 */
 	}
 
 	createSignedToken(binaryData: IBinaryData, expiresIn: TimeUnitValue = '1 day') {

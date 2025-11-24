@@ -1,15 +1,10 @@
 import { BinaryDataRepository, In, SourceTypeSchema, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { BinaryDataConfig, type BinaryData, binaryToBuffer, FileTooLargeError } from 'n8n-core';
 import { UnexpectedError } from 'n8n-workflow';
 import fs from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
-
-import { FileTooLargeError } from '@/errors';
-
-import { BinaryDataConfig } from './binary-data.config';
-import type { BinaryData } from './types';
-import { binaryToBuffer } from './utils';
 
 @Service()
 export class DatabaseManager implements BinaryData.Manager {
