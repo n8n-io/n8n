@@ -290,7 +290,7 @@ const restoreWorkflowVersion = async (
 
 const publishWorkflowVersion = async (
 	id: WorkflowVersionId,
-	data: { formattedCreatedAt: string; versionName?: string },
+	data: { formattedCreatedAt: string; versionName?: string; description?: string },
 ) => {
 	uiStore.openModalWithData({
 		name: WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
@@ -299,6 +299,7 @@ const publishWorkflowVersion = async (
 			workflowId: workflowId.value,
 			formattedCreatedAt: data.formattedCreatedAt,
 			versionName: data.versionName,
+			description: data.description,
 		},
 	});
 };
@@ -334,7 +335,7 @@ const onAction = async ({
 }: {
 	action: WorkflowHistoryActionTypes[number];
 	id: WorkflowVersionId;
-	data: { formattedCreatedAt: string; versionName?: string };
+	data: { formattedCreatedAt: string; versionName?: string; description?: string };
 }) => {
 	try {
 		switch (action) {
