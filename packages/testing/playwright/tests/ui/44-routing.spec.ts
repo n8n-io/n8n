@@ -1,14 +1,9 @@
 import { EDIT_FIELDS_SET_NODE_NAME } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
 
-test.describe('Routing @db:reset', () => {
+test.describe('Routing', () => {
 	test('should ask to save unsaved changes before leaving route', async ({ n8n }) => {
-		await n8n.goHome();
-		await expect(n8n.workflows.getNewWorkflowCard()).toBeVisible();
-		await n8n.workflows.clickNewWorkflowCard();
-
-		await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Test Workflow');
-
+		await n8n.start.fromImportedWorkflow('Test_workflow_1.json');
 		await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: true });
 
 		await n8n.sideBar.clickHomeButton();
@@ -40,10 +35,7 @@ test.describe('Routing @db:reset', () => {
 	});
 
 	test('should correct route when opening and closing NDV', async ({ n8n }) => {
-		await n8n.start.fromBlankCanvas();
-		await n8n.canvas.clickSaveWorkflowButton();
-
-		await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Test Workflow');
+		await n8n.start.fromImportedWorkflow('Test_workflow_1.json');
 
 		const baselineUrl = n8n.page.url();
 
@@ -57,10 +49,7 @@ test.describe('Routing @db:reset', () => {
 	});
 
 	test('should open ndv via URL', async ({ n8n }) => {
-		await n8n.start.fromBlankCanvas();
-		await n8n.canvas.clickSaveWorkflowButton();
-
-		await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Test Workflow');
+		await n8n.start.fromImportedWorkflow('Test_workflow_1.json');
 
 		await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: false });
 		const ndvUrl = n8n.page.url();
@@ -78,10 +67,7 @@ test.describe('Routing @db:reset', () => {
 	test('should open show warning and drop nodeId from URL if it contained an unknown nodeId', async ({
 		n8n,
 	}) => {
-		await n8n.start.fromBlankCanvas();
-		await n8n.canvas.clickSaveWorkflowButton();
-
-		await n8n.canvas.importWorkflow('Test_workflow_1.json', 'Test Workflow');
+		await n8n.start.fromImportedWorkflow('Test_workflow_1.json');
 
 		await n8n.canvas.addNode(EDIT_FIELDS_SET_NODE_NAME, { closeNDV: false });
 		const ndvUrl = n8n.page.url();
