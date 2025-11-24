@@ -236,3 +236,26 @@ it('should error on custom file with missing `sourceId`', async () => {
 
 	await expect(promise).rejects.toThrow(MissingSourceIdError);
 });
+
+it('should accept 255-char filename', async () => {
+	const longFileName = 'a'.repeat(255);
+
+	const { fileId } = await dbManager.store({ type: 'execution', workflowId, executionId }, buffer, {
+		fileName: longFileName,
+	});
+
+	const metadata = await dbManager.getMetadata(fileId);
+	expect(metadata.fileName).toBe(longFileName);
+});
+
+it('should accept Unicode filename', async () => {
+	const unicodeFileName = '测试文件名-émojis-🎉🎊.pdf';
+
+	const { fileId } = await dbManager.store({ type: 'execution', workflowId, executionId }, buffer, {
+		fileName: unicodeFileName,
+		mimeType: 'application/pdf',
+	});
+
+	const metadata = await dbManager.getMetadata(fileId);
+	expect(metadata.fileName).toBe(unicodeFileName);
+});
