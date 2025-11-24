@@ -8,6 +8,7 @@ import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
+import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 
 const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
@@ -45,9 +46,7 @@ const placeholder = computed(() =>
 );
 
 const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
-	selectedModel?.model.provider === 'n8n' || selectedModel?.model.provider === 'custom-agent'
-		? undefined
-		: selectedModel?.model.provider,
+	isLlmProviderModel(selectedModel?.model) ? selectedModel?.model.provider : undefined,
 );
 
 function onMic() {

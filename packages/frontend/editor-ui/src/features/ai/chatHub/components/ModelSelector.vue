@@ -29,6 +29,7 @@ import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vu
 import {
 	flattenModel,
 	fromStringToModel,
+	isLlmProviderModel,
 	isMatchedAgent,
 	stringifyModel,
 } from '@/features/ai/chatHub/chat.utils';
@@ -84,12 +85,7 @@ const credentialsName = computed(() =>
 		? credentialsStore.getCredentialById(credentials?.[selectedAgent.model.provider] ?? '')?.name
 		: undefined,
 );
-const isCredentialsRequired = computed(
-	() =>
-		selectedAgent &&
-		selectedAgent.model.provider !== 'n8n' &&
-		selectedAgent.model.provider !== 'custom-agent',
-);
+const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
 
 const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
@@ -128,13 +124,11 @@ const menu = computed(() => {
 		const error = agents.value[provider].error;
 		const agentOptions =
 			theAgents.length > 0
-				? theAgents
-						.filter((agent) => agent.model.provider !== 'custom-agent')
-						.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
-							id: stringifyModel(agent.model),
-							title: agent.name,
-							disabled: false,
-						}))
+				? theAgents.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
+						id: stringifyModel(agent.model),
+						title: agent.name,
+						disabled: false,
+					}))
 				: error
 					? [{ id: `${provider}::error`, value: null, disabled: true, title: error }]
 					: [];
@@ -211,20 +205,12 @@ function onSelect(id: string) {
 		return;
 	}
 
-	if (
-		identifier === 'configure' &&
-		parsedModel.provider !== 'n8n' &&
-		parsedModel.provider !== 'custom-agent'
-	) {
+	if (identifier === 'configure' && isLlmProviderModel(parsedModel)) {
 		openCredentialsSelectorOrCreate(parsedModel.provider);
 		return;
 	}
 
-	if (
-		identifier === 'add-model' &&
-		parsedModel.provider !== 'n8n' &&
-		parsedModel.provider !== 'custom-agent'
-	) {
+	if (identifier === 'add-model' && isLlmProviderModel(parsedModel)) {
 		openModelByIdSelector(parsedModel.provider);
 		return;
 	}
