@@ -35,6 +35,12 @@ import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
 
+const SINGLE_WEBHOOK_TRIGGERS = [
+	'n8n-nodes-base.telegramTrigger',
+	'n8n-nodes-base.slackTrigger',
+	'n8n-nodes-base.facebookLeadAdsTrigger',
+];
+
 /**
  * Service for handling the execution of webhooks of manual executions
  * that use the [Test URL](https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/#webhook-urls).
@@ -266,12 +272,15 @@ export class TestWebhooks implements IWebhookManager {
 	async needsWebhook(options: {
 		userId: string;
 		workflowEntity: IWorkflowBase;
+		workflowActiveData: { active: boolean; activeVersionId: string | null };
 		additionalData: IWorkflowExecuteAdditionalData;
 		runData?: IRunData;
 		pushRef?: string;
 		destinationNode?: string;
 		triggerToStartFrom?: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload['triggerToStartFrom'];
 	}) {
+		console.log('Checking if test webhook is needed');
+		console.log(options.workflowActiveData);
 		const {
 			userId,
 			workflowEntity,
@@ -284,7 +293,16 @@ export class TestWebhooks implements IWebhookManager {
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
 
+		console.log('workflowEntity is: ', workflowEntity);
+
 		const workflow = this.toWorkflow(workflowEntity);
+
+		console.log('workflowActiveData:', options.workflowActiveData);
+
+		const workflowIsActive =
+			options.workflowActiveData.active || options.workflowActiveData.activeVersionId;
+
+		console.log('workflowIsActive:', workflowIsActive);
 
 		let webhooks = WebhookHelpers.getWorkflowWebhooks(
 			workflow,
@@ -293,20 +311,35 @@ export class TestWebhooks implements IWebhookManager {
 			true,
 		);
 
+		console.log('Found webhooks:', webhooks);
+
 		// If we have a preferred trigger with data, we don't have to listen for a
 		// webhook.
 		if (triggerToStartFrom?.data) {
+			console.log('Preferred trigger with data found, no webhook needed: ', triggerToStartFrom);
 			return false;
 		}
 
 		// If we have a preferred trigger without data we only want to listen for
 		// that trigger, not the other ones.
 		if (triggerToStartFrom) {
+			console.log(
+				'Preferred trigger without data found, filtering webhooks to only listen for that trigger: ',
+				triggerToStartFrom,
+			);
 			webhooks = webhooks.filter((w) => w.node === triggerToStartFrom.name);
 		}
 
 		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
+			console.log('All webhooks are restartable, no webhook needed');
 			return false; // no webhooks found to start a workflow
+		}
+
+		if (
+			workflowIsActive &&
+			webhooks.find((w) => SINGLE_WEBHOOK_TRIGGERS.includes(workflow.getNode(w.node)?.type ?? ''))
+		) {
+			throw new Error('Single webhook triggers are not supported for test executions.');
 		}
 
 		const timeout = setTimeout(
@@ -315,6 +348,7 @@ export class TestWebhooks implements IWebhookManager {
 		);
 
 		for (const webhook of webhooks) {
+			console.log('Activating test webhook for node:', webhook);
 			const key = this.registrations.toKey(webhook);
 			const registrationByKey = await this.registrations.get(key);
 
@@ -492,7 +526,7 @@ export class TestWebhooks implements IWebhookManager {
 			name: workflowEntity.name,
 			nodes: workflowEntity.nodes,
 			connections: workflowEntity.connections,
-			active: false,
+			active: workflowEntity.active,
 			nodeTypes: this.nodeTypes,
 			staticData: {},
 			settings: workflowEntity.settings,

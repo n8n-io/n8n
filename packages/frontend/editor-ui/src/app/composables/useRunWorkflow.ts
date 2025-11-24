@@ -286,7 +286,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					return true;
 				});
 
-			const singleWebhookTrigger =
+			/*const singleWebhookTrigger =
 				options.triggerNode === undefined
 					? // if there is no chosen trigger we check all triggers
 						triggers.find((node) => SINGLE_WEBHOOK_TRIGGERS.includes(node.type))
@@ -309,7 +309,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					type: 'error',
 				});
 				return undefined;
-			}
+			}*/
 
 			const startRunData: IStartRunData = {
 				workflowData,

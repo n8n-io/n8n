@@ -140,6 +140,11 @@ export class WorkflowExecutionService {
 			return false;
 		}
 
+		const workflowActiveData = {
+			active: payload.workflowData.active,
+			activeVersionId: payload.workflowData.activeVersionId,
+		};
+
 		// For manual testing always set to not active
 		payload.workflowData.active = false;
 		payload.workflowData.activeVersionId = null;
@@ -223,6 +228,7 @@ export class WorkflowExecutionService {
 				const needsWebhook = await this.testWebhooks.needsWebhook({
 					userId: user.id,
 					workflowEntity: payload.workflowData,
+					workflowActiveData,
 					additionalData,
 					pushRef,
 					triggerToStartFrom: payload.triggerToStartFrom,
@@ -274,6 +280,7 @@ export class WorkflowExecutionService {
 				const needsWebhook = await this.testWebhooks.needsWebhook({
 					userId: user.id,
 					workflowEntity: payload.workflowData,
+					workflowActiveData,
 					additionalData,
 					pushRef,
 					destinationNode: payload.destinationNode,
