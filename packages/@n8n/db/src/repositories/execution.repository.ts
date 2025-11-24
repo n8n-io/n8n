@@ -28,6 +28,7 @@ import type {
 	AnnotationVote,
 	ExecutionStatus,
 	ExecutionSummary,
+	IRunExecutionData,
 	IRunExecutionDataAll,
 } from 'n8n-workflow';
 import {
@@ -218,9 +219,10 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				const { executionData, metadata, ...rest } = execution;
 				return {
 					...rest,
-					data: executionData.data
-						? migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll)
-						: undefined,
+					data:
+						executionData.data && executionData.data !== '[]'
+							? migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll)
+							: undefined,
 					workflowData: executionData.workflowData,
 					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 				} as IExecutionResponse;
@@ -342,13 +344,22 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			});
 		}
 
+		let data: IRunExecutionData | string | undefined;
+		if (options?.includeData) {
+			if (options?.unflattenData) {
+				data =
+					executionData?.data && executionData?.data !== '[]'
+						? migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll)
+						: undefined;
+			} else {
+				data = executionData?.data;
+			}
+		}
+
 		return {
 			...rest,
 			...(options?.includeData && {
-				data:
-					options?.unflattenData && executionData?.data
-						? migrateRunExecutionData(parse(executionData.data) as IRunExecutionDataAll)
-						: executionData?.data,
+				data,
 				workflowData: executionData?.workflowData,
 				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			}),
