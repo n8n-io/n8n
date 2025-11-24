@@ -8,13 +8,30 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import type { Project, User, Role } from '@n8n/db';
-
-import { UserManagementMailer } from '@/user-management/email';
+import { mock } from 'jest-mock-extended';
+import type { ICredentialType, LoadedClass } from 'n8n-workflow/src/interfaces';
 
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
+
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
+import { UserManagementMailer } from '@/user-management/email';
+
+// Mock LoadNodesAndCredentials BEFORE setupTestServer is called
+// Used by the credential service on credential creation to check required parameters
+mockInstance(LoadNodesAndCredentials, {
+	getCredential(_credentialType) {
+		return mock<LoadedClass<ICredentialType>>({
+			sourcePath: '',
+			type: mock<ICredentialType>({
+				properties: [],
+				extends: [],
+			}),
+		});
+	},
+});
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows', 'credentials'],
