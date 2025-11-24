@@ -1,5 +1,5 @@
 import { Logger } from '@n8n/backend-common';
-import { GlobalConfig } from '@n8n/config';
+import { ExecutionsConfig } from '@n8n/config';
 import { In, type IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -23,12 +23,14 @@ import type { EventMessageTypes } from '../eventbus/event-message-classes';
  */
 @Service()
 export class ExecutionRecoveryService {
+	private processedWorkflows: Set<string> = new Set();
+
 	constructor(
 		private readonly logger: Logger,
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
-		private readonly globalConfig: GlobalConfig,
+		private readonly executionsConfig: ExecutionsConfig,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly ownershipService: OwnershipService,
@@ -57,10 +59,17 @@ export class ExecutionRecoveryService {
 			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
 		});
 
-		if (this.globalConfig.executions.recovery.workflowDeactivationEnabled) {
-			const workflowId = amendedExecution.workflowId;
-			const maxLastExecutions = this.globalConfig.executions.recovery.maxLastExecutions;
+		const workflowId = amendedExecution.workflowId;
+
+		// Only check for autodeactivation once per workflow
+		if (
+			this.executionsConfig.recovery.workflowDeactivationEnabled &&
+			!this.processedWorkflows.has(workflowId)
+		) {
+			this.processedWorkflows.add(workflowId);
+			const maxLastExecutions = this.executionsConfig.recovery.maxLastExecutions;
 			const lastExecutions = await this.executionRepository.findMultipleExecutions({
+				select: ['id', 'status'],
 				where: { workflowId },
 				order: { startedAt: 'DESC' },
 				take: maxLastExecutions,
