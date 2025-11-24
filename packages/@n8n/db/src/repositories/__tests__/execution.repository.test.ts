@@ -193,12 +193,12 @@ describe('ExecutionRepository', () => {
 				const mockEntities = [
 					{
 						id: '1',
-						executionData: { data: '' },
+						executionData: { data: '[]' },
 						metadata: [],
 					},
 					{
 						id: '2',
-						executionData: { data: '' },
+						executionData: { data: '[]' },
 						metadata: [],
 					},
 				];
