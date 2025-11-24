@@ -186,7 +186,6 @@ defineExpose({
 				type="file"
 				:class="$style.fileInput"
 				multiple
-				accept="image/*,.pdf,.doc,.docx,.txt"
 				@change="handleFileSelect"
 			/>
 
