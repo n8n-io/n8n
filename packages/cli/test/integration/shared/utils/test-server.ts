@@ -3,25 +3,26 @@ import { mockInstance, mockLogger, testModules, testDb } from '@n8n/backend-test
 import { GlobalConfig } from '@n8n/config';
 import type { APIRequest, User } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { LicenseMocker } from '@test-integration/license';
 import cookieParser from 'cookie-parser';
 import express from 'express';
 import type superagent from 'superagent';
 import request from 'supertest';
 import { URL } from 'url';
 
+import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
+import type { SetupProps, TestServer } from '../types';
+
 import { AuthService } from '@/auth/auth.service';
 import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { rawBodyReader, bodyParser } from '@/middlewares';
 import { PostHogClient } from '@/posthog';
 import { Push } from '@/push';
 import { Telemetry } from '@/telemetry';
-import { LicenseMocker } from '@test-integration/license';
-
-import { PUBLIC_API_REST_PATH_SEGMENT, REST_PATH_SEGMENT } from '../constants';
-import type { SetupProps, TestServer } from '../types';
 
 /**
  * Plugin to prefix a path segment into a request URL pathname.
@@ -110,6 +111,22 @@ export const setupTestServer = ({
 	mockInstance(PostHogClient);
 	mockInstance(Push);
 	mockInstance(Telemetry);
+
+	// Mock LoadNodesAndCredentials BEFORE setupTestServer is called
+	// Used by the credential service on credential creation to check required parameters
+	mockInstance(LoadNodesAndCredentials, {
+		getCredential(_credentialType) {
+			return {
+				sourcePath: '',
+				type: {
+					name: 'MyTestCredential',
+					displayName: 'My Test Credential',
+					properties: [],
+					extends: [],
+				},
+			};
+		},
+	});
 
 	const testServer: TestServer = {
 		app,
