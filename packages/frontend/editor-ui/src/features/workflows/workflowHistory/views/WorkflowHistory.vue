@@ -5,6 +5,7 @@ import type { IWorkflowDb, UserAction } from '@/Interface';
 import {
 	VIEWS,
 	WORKFLOW_HISTORY_VERSION_RESTORE,
+	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
@@ -35,6 +36,11 @@ type WorkflowHistoryActionRecord = {
 
 const enum WorkflowHistoryVersionRestoreModalActions {
 	restore = 'restore',
+	cancel = 'cancel',
+}
+
+const enum WorkflowHistoryVersionUnpublishModalActions {
+	unpublish = 'unpublish',
 	cancel = 'cancel',
 }
 
@@ -196,6 +202,44 @@ const openRestorationModal = async (
 	});
 };
 
+const openUnpublishModal = async (
+	versionName?: string,
+): Promise<WorkflowHistoryVersionUnpublishModalActions> => {
+	return await new Promise((resolve, reject) => {
+		const buttons = [
+			{
+				text: i18n.baseText('workflowHistory.action.unpublish.modal.button.cancel'),
+				type: 'tertiary',
+				action: () => {
+					resolve(WorkflowHistoryVersionUnpublishModalActions.cancel);
+				},
+			},
+			{
+				text: i18n.baseText('workflowHistory.action.unpublish.modal.button.unpublish'),
+				type: 'primary',
+				action: () => {
+					resolve(WorkflowHistoryVersionUnpublishModalActions.unpublish);
+				},
+			},
+		];
+
+		try {
+			uiStore.openModalWithData({
+				name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+				data: {
+					beforeClose: () => {
+						resolve(WorkflowHistoryVersionUnpublishModalActions.cancel);
+					},
+					versionName,
+					buttons,
+				},
+			});
+		} catch (error) {
+			reject(error);
+		}
+	});
+};
+
 const cloneWorkflowVersion = async (
 	id: WorkflowVersionId,
 	data: { formattedCreatedAt: string },
@@ -259,8 +303,13 @@ const publishWorkflowVersion = async (
 	});
 };
 
-const unpublishWorkflowVersion = async (id: WorkflowVersionId) => {
+const unpublishWorkflowVersion = async (id: WorkflowVersionId, data: { versionName?: string }) => {
 	if (workflowActiveVersionId.value !== id) {
+		return;
+	}
+
+	const modalAction = await openUnpublishModal(data.versionName);
+	if (modalAction === WorkflowHistoryVersionUnpublishModalActions.cancel) {
 		return;
 	}
 
@@ -285,7 +334,7 @@ const onAction = async ({
 }: {
 	action: WorkflowHistoryActionTypes[number];
 	id: WorkflowVersionId;
-	data: { formattedCreatedAt: string };
+	data: { formattedCreatedAt: string; versionName?: string };
 }) => {
 	try {
 		switch (action) {
@@ -311,7 +360,7 @@ const onAction = async ({
 				sendTelemetry('User published version from history');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.UNPUBLISH:
-				await unpublishWorkflowVersion(id);
+				await unpublishWorkflowVersion(id, data);
 				sendTelemetry('User unpublished workflow from history');
 				break;
 		}
