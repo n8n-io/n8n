@@ -369,4 +369,48 @@ describe('createChat()', () => {
 			expect(getChatMessageByText('Error: Failed to receive response')).toBeInTheDocument();
 		});
 	});
+
+	describe('starterPrompts', () => {
+		it('should show starter prompts and send message when clicked', async () => {
+			const prompts = ['Prompt 1', { label: 'Label 2', message: 'Message 2' }];
+			const output = 'Response to prompt';
+
+			const fetchSpy = vi.spyOn(window, 'fetch');
+			fetchSpy
+				.mockImplementationOnce(createFetchResponse(createGetLatestMessagesResponse))
+				.mockImplementationOnce(createFetchResponse(createSendMessageResponse(output)));
+
+			app = createChat({
+				mode: 'fullscreen',
+				starterPrompts: prompts,
+			});
+
+			// Prompts should be visible initially (when no user messages)
+			const prompt1 = await waitFor(() => {
+				const buttons = document.querySelectorAll('.starter-prompt-button');
+				if (buttons.length === 0) throw new Error('No buttons found');
+				return buttons[0];
+			});
+			const prompt2 = document.querySelectorAll('.starter-prompt-button')[1];
+
+			expect(prompt1).toHaveTextContent('Prompt 1');
+			expect(prompt2).toHaveTextContent('Label 2');
+
+			// Click prompt 1
+			await fireEvent.click(prompt1);
+
+			// Message should be sent
+			expect(fetchSpy.mock.calls[1][1]).toEqual(
+				expect.objectContaining({
+					body: expect.stringMatching(/"chatInput":"Prompt 1"/) as unknown,
+				}),
+			);
+
+			// Wait for response
+			await waitFor(() => expect(getChatMessageByText(output)).toBeInTheDocument());
+
+			// Prompts should disappear
+			expect(document.querySelectorAll('.starter-prompt-button')).toHaveLength(0);
+		});
+	});
 });
