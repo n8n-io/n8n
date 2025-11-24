@@ -47,12 +47,7 @@ Better than complex cron expressions and provides flexibility for dynamic requir
 
 CRITICAL: Explicitly set timezone to avoid scheduling confusion.
 
-**Self-hosted**:
-- Default timezone is America/New_York unless changed
-- Set GENERIC_TIMEZONE environment variable (e.g., Europe/Berlin)
-- Configure per-workflow via Workflow → Settings → Timezone
-
-**n8n Cloud**:
+By default n8n will:
 - Attempts to detect local timezone at signup, defaults to GMT if unsure
 - Set instance timezone via Admin Panel
 - Override per-workflow as needed
