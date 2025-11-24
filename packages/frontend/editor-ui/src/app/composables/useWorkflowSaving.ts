@@ -382,10 +382,11 @@ export function useWorkflowSaving({
 			}
 
 			// workflow should not be active if there is live webhook with the same path
-			if (workflowData.active) {
+			if (workflowData.activeVersionId !== null) {
 				const conflict = await checkConflictingWebhooks(workflowData.id);
 				if (conflict) {
 					workflowData.active = false;
+					workflowData.activeVersionId = null;
 
 					toast.showMessage({
 						title: 'Conflicting Webhook Path',
@@ -395,7 +396,7 @@ export function useWorkflowSaving({
 				}
 			}
 
-			workflowState.setActive(workflowData.active || false);
+			workflowState.setActive(workflowData.activeVersionId);
 			workflowState.setWorkflowId(workflowData.id);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
 			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });

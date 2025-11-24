@@ -30,7 +30,11 @@ import type {
 	ExecutionSummary,
 	IRunExecutionData,
 } from 'n8n-workflow';
-import { ManualExecutionCancelledError, UnexpectedError } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	ManualExecutionCancelledError,
+	UnexpectedError,
+} from 'n8n-workflow';
 
 import { ExecutionDataRepository } from './execution-data.repository';
 import {
@@ -408,7 +412,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async hardDelete(ids: { workflowId: string; executionId: string }) {
 		return await Promise.all([
 			this.delete(ids.executionId),
-			this.binaryDataService.deleteMany([ids]),
+			this.binaryDataService.deleteMany([{ type: 'execution', ...ids }]),
 		]);
 	}
 
@@ -509,6 +513,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		const ids = executions.map(({ id, workflowId }) => ({
+			type: 'execution' as const,
 			executionId: id,
 			workflowId,
 		}));
@@ -605,7 +610,11 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				 */
 				withDeleted: true,
 			})
-		).map(({ id: executionId, workflowId }) => ({ workflowId, executionId }));
+		).map(({ id: executionId, workflowId }) => ({
+			type: 'execution' as const,
+			workflowId,
+			executionId,
+		}));
 
 		return workflowIdsAndExecutionIds;
 	}
@@ -795,7 +804,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async stopDuringRun(execution: IExecutionResponse) {
 		const error = new ManualExecutionCancelledError(execution.id);
 
-		execution.data ??= { resultData: { runData: {} } };
+		execution.data ??= createEmptyRunExecutionData();
 		execution.data.resultData.error = {
 			...error,
 			message: error.message,

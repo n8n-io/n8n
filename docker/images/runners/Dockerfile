@@ -11,15 +11,6 @@ WORKDIR /app/task-runner-javascript
 
 RUN corepack enable pnpm
 
-# Install extra runtime-only npm packages. Allow usage in the Code node via
-# 'NODE_FUNCTION_ALLOW_EXTERNAL' env variable on n8n-task-runners.json.
-RUN rm -f node_modules/.modules.yaml
-RUN mv package.json package.json.bak
-COPY docker/images/runners/package.json /app/task-runner-javascript/package.json
-RUN pnpm install --prod --no-lockfile --silent
-RUN mv package.json extras.json
-RUN mv package.json.bak package.json
-
 # Remove `catalog` and `workspace` references from package.json to allow `pnpm add` in extended images
 RUN node -e "const pkg = require('./package.json'); \
     Object.keys(pkg.dependencies || {}).forEach(k => { \
@@ -78,11 +69,6 @@ RUN uv sync \
 			--no-dev \
 			--all-extras \
       --no-editable
-
-# Install extra runtime-only Python packages. Allow usage in the Code node via
-# 'N8N_RUNNERS_EXTERNAL_ALLOW' env variable on n8n-task-runners.json.
-COPY docker/images/runners/extras.txt /app/task-runner-python/extras.txt
-RUN uv pip install -r /app/task-runner-python/extras.txt
 
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download

@@ -10,7 +10,7 @@ import {
 	ExecutionLifecycleHooks,
 	BinaryDataConfig,
 } from 'n8n-core';
-import { ExpressionError } from 'n8n-workflow';
+import { createRunExecutionData, ExpressionError } from 'n8n-workflow';
 import type {
 	IRunExecutionData,
 	ITaskData,
@@ -62,6 +62,7 @@ describe('Execution Lifecycle Hooks', () => {
 		id: workflowId,
 		name: 'Test Workflow',
 		active: true,
+		activeVersionId: 'some-version-id',
 		isArchived: false,
 		connections: {},
 		nodes: [
@@ -117,18 +118,18 @@ describe('Execution Lifecycle Hooks', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		workflowData.settings = {};
-		successfulRun.data = {
+		successfulRun.data = createRunExecutionData({
 			resultData: {
 				runData: {},
 			},
-		};
-		failedRun.data = {
+		});
+		failedRun.data = createRunExecutionData({
 			resultData: {
 				runData: {},
 				error: expressionError,
 			},
-		};
-		successfulRunWithRewiredDestination.data = {
+		});
+		successfulRunWithRewiredDestination.data = createRunExecutionData({
 			startData: {
 				destinationNode: 'PartialExecutionToolExecutor',
 				originalDestinationNode: nodeName,
@@ -136,7 +137,7 @@ describe('Execution Lifecycle Hooks', () => {
 			resultData: {
 				runData: {},
 			},
-		};
+		});
 	});
 
 	const workflowEventTests = (expectedUserId?: string) => {
