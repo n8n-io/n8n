@@ -140,20 +140,6 @@ export function useWorkflowActivate() {
 		const nodesIssuesExist = workflowsStore.nodesIssuesExist;
 		const wasWorkflowActive = workflowsStore.isWorkflowActive;
 
-		let currWorkflowId: string | undefined = workflowId;
-		if (
-			!currWorkflowId ||
-			currWorkflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-			uiStore.stateIsDirty
-		) {
-			const saved = await workflowSaving.saveCurrentWorkflow();
-			if (!saved) {
-				updatingWorkflowActivation.value = false;
-				return false;
-			}
-			currWorkflowId = workflowsStore.workflowId;
-		}
-
 		if (nodesIssuesExist) {
 			toast.showMessage({
 				title: i18n.baseText(
@@ -172,7 +158,7 @@ export function useWorkflowActivate() {
 
 		if (!hasPublishedVersion) {
 			const telemetryPayload = {
-				workflow_id: currWorkflowId,
+				workflow_id: workflowId,
 				is_active: true,
 				previous_status: false,
 				ndv_input: false,
@@ -181,7 +167,7 @@ export function useWorkflowActivate() {
 		}
 
 		try {
-			const updatedWorkflow = await workflowsStore.publishWorkflow(currWorkflowId, {
+			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId: workflowsStore.workflow.versionId,
 				...options,
 			});
@@ -190,10 +176,10 @@ export function useWorkflowActivate() {
 				throw new Error('Failed to publish workflow');
 			}
 
-			workflowsStore.setWorkflowActive(currWorkflowId, updatedWorkflow.activeVersion);
+			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion);
 
 			void useExternalHooks().run('workflow.activeChangeCurrent', {
-				workflowId: currWorkflowId,
+				workflowId,
 				// TODO: document this
 				versionId: updatedWorkflow.activeVersion.versionId,
 				active: true,
