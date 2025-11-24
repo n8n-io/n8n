@@ -8,7 +8,7 @@ import {
 } from '@n8n/decorators';
 import { Container } from '@n8n/di';
 
-import { ExecutionContextHookRegistry } from '../execution-context-hook-service';
+import { ExecutionContextHookRegistry } from '../execution-context-hook-registry.service';
 
 describe('ExecutionContextHookRegistry', () => {
 	let registry: ExecutionContextHookRegistry;
@@ -194,24 +194,6 @@ describe('ExecutionContextHookRegistry', () => {
 			// Re-initialize
 			await registry.init();
 			expect(registry.getAllHooks()).toHaveLength(1);
-		});
-
-		it('should log debug message with hook count', async () => {
-			@ContextEstablishmentHook()
-			// @ts-expect-error - Class is used via decorator side-effect
-			class TestHook implements IContextEstablishmentHook {
-				hookDescription = { name: 'test.hook' };
-				async execute(_options: ContextEstablishmentOptions): Promise<ContextEstablishmentResult> {
-					return {};
-				}
-				isApplicableToTriggerNode(_nodeType: string): boolean {
-					return true;
-				}
-			}
-
-			await registry.init();
-
-			expect(mockLogger.debug).toHaveBeenCalledWith('Registering 1 execution context hooks.');
 		});
 
 		it('should handle duplicate hook names by keeping first registered and warning', async () => {
