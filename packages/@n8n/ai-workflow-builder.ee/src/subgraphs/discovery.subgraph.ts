@@ -16,34 +16,36 @@ import { createCategorizePromptTool } from '../tools/categorize-prompt.tool';
 import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
-import { WorkflowTechnique, type PromptCategorization } from '../types/categorization';
+import type { PromptCategorization } from '../types/categorization';
 import { executeSubgraphTools } from '../utils/subgraph-helpers';
 
 /**
  * Strict Output Schema for Discovery
+ * Simplified to reduce token usage while maintaining utility for downstream subgraphs
  */
 const discoveryOutputSchema = z.object({
-	categorization: z
-		.object({
-			techniques: z.array(z.nativeEnum(WorkflowTechnique)),
-			confidence: z.number(),
-		})
-		.describe('The categorization of the workflow based on the user request'),
 	nodesFound: z
 		.array(
 			z.object({
 				nodeName: z.string().describe('The internal name of the node (e.g., n8n-nodes-base.gmail)'),
-				reasoning: z.string(),
+				reasoning: z.string().describe('Why this node is relevant for the workflow'),
+				connectionChangingParameters: z
+					.array(
+						z.object({
+							name: z
+								.string()
+								.describe('Parameter name (e.g., "mode", "operation", "hasOutputParser")'),
+							possibleValues: z
+								.array(z.union([z.string(), z.boolean(), z.number()]))
+								.describe('Possible values this parameter can take'),
+						}),
+					)
+					.describe(
+						'Parameters that affect node connections (inputs/outputs). ONLY include if parameter appears in <input> or <output> expressions',
+					),
 			}),
 		)
 		.describe('List of n8n nodes identified as necessary for the workflow'),
-	bestPractices: z
-		.string()
-		.describe('Best practices relevant to the identified workflow techniques'),
-	requirements: z.array(z.string()).describe('List of functional requirements identified'),
-	constraints: z.array(z.string()).describe('List of constraints identified'),
-	dataNeeds: z.array(z.string()).describe('List of data requirements identified'),
-	summary: z.string().describe('A comprehensive summary of the discovery findings'),
 });
 
 /**
@@ -51,36 +53,68 @@ const discoveryOutputSchema = z.object({
  */
 const DISCOVERY_PROMPT = `You are a Discovery Agent for n8n AI Workflow Builder.
 
-YOUR ROLE: Gather ALL relevant context needed to successfully build and configure the workflow.
+YOUR ROLE: Identify relevant n8n nodes and their connection-changing parameters.
 
 AVAILABLE TOOLS:
-- categorize_prompt: Analyze the user request to identify techniques and use cases. ALWAYS CALL THIS FIRST.
-- get_best_practices: Retrieve best practices for identified techniques. CALL THIS SECOND.
-- search_nodes: Find n8n integration nodes by keyword (e.g., "Gmail", "OpenAI", "HTTP")
-- get_node_details: Get complete information about a specific node type
-- submit_discovery_results: Submit the FINAL results.
+- categorize_prompt: Analyze the user request (internal context)
+- get_best_practices: Retrieve best practices (internal context)
+- search_nodes: Find n8n nodes by keyword
+- get_node_details: Get complete node information including <connections>
+- submit_discovery_results: Submit final results
 
 PROCESS:
-1. **Categorize**: Call \`categorize_prompt\` to understand the request.
-2. **Best Practices**: Call \`get_best_practices\` with the techniques from step 1.
-3. **Identify Components**: Identify workflow components from user request and best practices.
-4. **Search**: Search for each component type using \`search_nodes\`.
-5. **Details**: Get details for ALL promising matches using \`get_node_details\`.
-6. **Refine**: Consider alternatives (e.g., both "Gmail" and "HTTP Request" for email sending).
-7. **Submit**: Call \`submit_discovery_results\` with ALL gathered information, including the outputs from previous tools.
+1. **Call categorize_prompt** (internal context)
+2. **Call get_best_practices** with techniques from step 1 (internal context)
+3. **Identify workflow components** from user request and best practices
+4. **Call search_nodes IN PARALLEL** for all components (e.g., "Gmail", "OpenAI", "Schedule")
+5. **Call get_node_details IN PARALLEL** for ALL promising nodes (batch multiple calls)
+6. **Analyze each node's <connections>** to identify connection-changing parameters
+7. **Call submit_discovery_results** with nodesFound array
+
+CONNECTION-CHANGING PARAMETERS - CRITICAL RULES:
+
+A parameter is connection-changing ONLY IF it appears in <input> or <output> expressions within <node_details>.
+
+**How to identify:**
+1. Look at the <connections> section in node details
+2. Check if <input> or <output> uses expressions like: ={{...parameterName...}}
+3. If a parameter is referenced in these expressions, it IS connection-changing
+4. If a parameter is NOT in <input>/<output> expressions, it is NOT connection-changing
+
+**Example from AI Agent:**
+\`\`\`xml
+<input>={{...hasOutputParser, needsFallback...}}</input>
+\`\`\`
+→ hasOutputParser and needsFallback ARE connection-changing (they control which inputs appear)
+
+**Counter-example:**
+\`\`\`xml
+<properties>
+  <property name="promptType">...</property>  <!-- NOT in <input>/<output> -->
+  <property name="systemMessage">...</property>  <!-- NOT in <input>/<output> -->
+</properties>
+\`\`\`
+→ promptType and systemMessage are NOT connection-changing (they don't affect connections)
+
+**Common connection-changing parameters:**
+- Vector Store: mode (appears in <input>/<output> expressions)
+- AI Agent: hasOutputParser, needsFallback (appears in <input> expression)
+- Merge: numberInputs (appears in <input> expression)
+- Webhook: responseMode (appears in <output> expression)
 
 CRITICAL RULES:
-- NEVER ask clarifying questions - work with the information provided.
-- ALWAYS categorize the prompt first.
-- ALWAYS get best practices.
-- Search comprehensively - find ALL relevant nodes.
-- Call \`get_node_details\` for EVERY node you find.
-- Execute tools in PARALLEL where possible.
-- PASS THE EXACT OUTPUTS from \`categorize_prompt\` and \`get_best_practices\` to the \`submit_discovery_results\` tool.
+- NEVER ask clarifying questions
+- ALWAYS call categorize_prompt and get_best_practices first
+- Call search_nodes and get_node_details IN PARALLEL for speed
+- ONLY flag connectionChangingParameters if they appear in <input> or <output> expressions
+- If no parameters appear in connection expressions, return empty array []
+- Output ONLY: nodesFound with {{ nodeName, reasoning, connectionChangingParameters }}
 
 DO NOT:
-- Output text commentary between tool calls.
-- Stop without calling \`submit_discovery_results\`.
+- Output text commentary between tool calls
+- Include bestPractices or categorization in submit_discovery_results
+- Flag parameters that don't affect connections
+- Stop without calling submit_discovery_results
 `;
 
 /**
@@ -105,34 +139,19 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Output: Found nodes with reasoning
-	nodesFound: Annotation<Array<{ nodeType: INodeTypeDescription; reasoning: string }>>({
+	// Output: Found nodes with reasoning and connection-changing parameters
+	nodesFound: Annotation<
+		Array<{
+			nodeName: string;
+			reasoning: string;
+			connectionChangingParameters: Array<{
+				name: string;
+				possibleValues: Array<string | boolean | number>;
+			}>;
+		}>
+	>({
 		reducer: (x, y) => y ?? x,
 		default: () => [],
-	}),
-
-	// Output: Requirements identified
-	requirements: Annotation<string[]>({
-		reducer: (x, y) => y ?? x,
-		default: () => [],
-	}),
-
-	// Output: Constraints identified
-	constraints: Annotation<string[]>({
-		reducer: (x, y) => y ?? x,
-		default: () => [],
-	}),
-
-	// Output: Data needs identified
-	dataNeeds: Annotation<string[]>({
-		reducer: (x, y) => y ?? x,
-		default: () => [],
-	}),
-
-	// Output: Human-readable summary
-	summary: Annotation<string>({
-		reducer: (x, y) => y ?? x,
-		default: () => '',
 	}),
 
 	// Output: Categorization result
@@ -289,6 +308,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 	/**
 	 * Format the output from the submit tool call
+	 * No hydration - just return raw node names. Subgraphs will hydrate if needed.
 	 */
 	private formatOutput(state: typeof DiscoverySubgraphState.State) {
 		const lastMessage = state.messages.at(-1);
@@ -306,42 +326,13 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		if (!output) {
 			console.error('[Discovery] No submit tool call found in last message');
 			return {
-				summary: 'Failed to extract discovery results.',
+				nodesFound: [],
 			};
 		}
 
-		// Hydrate node types
-		const nodesFound = output.nodesFound.map((n) => {
-			// Try to find the node in fetched nodes first, then in all parsed nodes
-			let nodeType =
-				state.fetchedNodeTypes.get(n.nodeName) ??
-				this.config.parsedNodeTypes.find((pt) => pt.name === n.nodeName);
-
-			if (!nodeType) {
-				console.warn(`[Discovery] Node type not found for ${n.nodeName}, using placeholder`);
-				// Create a placeholder if not found (shouldn't happen if agent used search)
-				nodeType = {
-					name: n.nodeName,
-					displayName: n.nodeName,
-					description: 'Unknown node type',
-					// Add other required fields with dummy values if needed by INodeTypeDescription
-				} as INodeTypeDescription;
-			}
-
-			return {
-				nodeType,
-				reasoning: n.reasoning,
-			};
-		});
-
+		// Return raw output without hydration
 		return {
-			nodesFound,
-			requirements: output.requirements,
-			constraints: output.constraints,
-			dataNeeds: output.dataNeeds,
-			summary: output.summary,
-			categorization: output.categorization,
-			bestPractices: output.bestPractices,
+			nodesFound: output.nodesFound,
 		};
 	}
 
@@ -395,18 +386,21 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		subgraphOutput: typeof DiscoverySubgraphState.State,
 		_parentState: typeof ParentGraphState.State,
 	) {
+		// Count total connection-changing parameters across all nodes
+		const totalConnectionParams = subgraphOutput.nodesFound.reduce(
+			(sum, node) => sum + (node.connectionChangingParameters?.length || 0),
+			0,
+		);
+
 		const discoveryContext = {
 			nodesFound: subgraphOutput.nodesFound || [],
-			requirements: subgraphOutput.requirements || [],
-			constraints: subgraphOutput.constraints || [],
-			dataNeeds: subgraphOutput.dataNeeds || [],
-			summary: subgraphOutput.summary || '',
+			// Keep categorization and bestPractices from tool calls for downstream use
 			categorization: subgraphOutput.categorization,
 			bestPractices: subgraphOutput.bestPractices,
 		};
 
 		// Create a minimal summary for the supervisor
-		const supervisorSummary = `Discovery completed. Found ${subgraphOutput.nodesFound.length} nodes. Ready for builder.`;
+		const supervisorSummary = `Discovery completed. Found ${subgraphOutput.nodesFound.length} nodes with ${totalConnectionParams} connection-changing parameters. Ready for builder.`;
 		const summaryMessage = new HumanMessage({
 			content: supervisorSummary,
 			name: 'discovery_subgraph',
@@ -414,9 +408,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 		return {
 			discoveryContext,
-			// We don't want to flood the supervisor with the full conversation
-			// Just return a summary message or nothing if the state update is enough
-			// But the supervisor needs a message to know what happened
 			messages: [summaryMessage],
 		};
 	}

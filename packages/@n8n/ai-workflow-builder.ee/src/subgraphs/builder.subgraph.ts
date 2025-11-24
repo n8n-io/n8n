@@ -288,13 +288,9 @@ export class BuilderSubgraph extends BaseSubgraph<
 
 		// Add discovery results if available
 		if (parentState.discoveryContext) {
-			const { nodesFound, summary, categorization, bestPractices } = parentState.discoveryContext;
+			const { nodesFound, categorization, bestPractices } = parentState.discoveryContext;
 
 			contextParts.push('\n--- Discovery Results ---');
-
-			if (summary) {
-				contextParts.push(`Summary: ${summary}`);
-			}
 
 			if (categorization) {
 				contextParts.push(
@@ -308,8 +304,12 @@ export class BuilderSubgraph extends BaseSubgraph<
 
 			if (nodesFound.length > 0) {
 				contextParts.push('\nNodes to use:');
-				nodesFound.forEach(({ nodeType, reasoning }) => {
-					contextParts.push(`- ${nodeType.displayName} (${nodeType.name}): ${reasoning}`);
+				nodesFound.forEach(({ nodeName, reasoning, connectionChangingParameters }) => {
+					const paramInfo =
+						connectionChangingParameters.length > 0
+							? ` [Connection params: ${connectionChangingParameters.map((p) => p.name).join(', ')}]`
+							: '';
+					contextParts.push(`- ${nodeName}: ${reasoning}${paramInfo}`);
 				});
 			}
 		}

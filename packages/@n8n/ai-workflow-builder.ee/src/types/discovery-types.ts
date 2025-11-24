@@ -1,13 +1,14 @@
-import type { INodeTypeDescription } from 'n8n-workflow';
-
 import type { PromptCategorization } from './categorization';
 
 export interface DiscoveryContext {
 	categorization?: PromptCategorization;
-	nodesFound: Array<{ nodeType: INodeTypeDescription; reasoning: string }>;
+	nodesFound: Array<{
+		nodeName: string;
+		reasoning: string;
+		connectionChangingParameters: Array<{
+			name: string;
+			possibleValues: Array<string | boolean | number>;
+		}>;
+	}>;
 	bestPractices?: string;
-	requirements: string[];
-	constraints: string[];
-	dataNeeds: string[];
-	summary: string;
 }

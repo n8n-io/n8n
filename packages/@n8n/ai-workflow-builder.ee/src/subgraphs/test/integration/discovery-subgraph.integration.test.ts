@@ -81,10 +81,10 @@ const testPrompts = [
 
 // Helper to check if expected nodes are discovered
 function hasExpectedNodes(
-	discovered: Array<{ nodeType: INodeTypeDescription; reasoning: string }>,
+	discovered: Array<{ nodeName: string; reasoning: string }>,
 	expectedNames: string[],
 ): { hasAll: boolean; missing: string[] } {
-	const discoveredNames = discovered.map((n) => n.nodeType.name);
+	const discoveredNames = discovered.map((n) => n.nodeName);
 	const missing = expectedNames.filter((name) => !discoveredNames.includes(name));
 	return {
 		hasAll: missing.length === 0,
@@ -94,12 +94,12 @@ function hasExpectedNodes(
 
 // Helper to calculate node discovery frequency
 function calculateNodeFrequency(
-	results: Array<{ nodesFound: Array<{ nodeType: INodeTypeDescription }> }>,
+	results: Array<{ nodesFound: Array<{ nodeName: string }> }>,
 ): Map<string, number> {
 	const frequency = new Map<string, number>();
 	for (const result of results) {
-		for (const { nodeType } of result.nodesFound) {
-			frequency.set(nodeType.name, (frequency.get(nodeType.name) ?? 0) + 1);
+		for (const { nodeName } of result.nodesFound) {
+			frequency.set(nodeName, (frequency.get(nodeName) ?? 0) + 1);
 		}
 	}
 	return frequency;
@@ -149,11 +149,16 @@ describe('Discovery Subgraph - Integration Tests', () => {
 
 			expect(result.nodesFound).toBeDefined();
 			expect(result.nodesFound.length).toBeGreaterThan(0);
-			expect(result.summary).toBeDefined();
-			expect(result.summary.length).toBeGreaterThan(10);
+
+			// Validate connectionChangingParameters are present
+			expect(Array.isArray(result.nodesFound)).toBe(true);
+			result.nodesFound.forEach((node) => {
+				expect(node.connectionChangingParameters).toBeDefined();
+				expect(Array.isArray(node.connectionChangingParameters)).toBe(true);
+			});
 
 			// Should find scheduling and HTTP nodes
-			const nodeNames = result.nodesFound.map((n) => n.nodeType.name);
+			const nodeNames = result.nodesFound.map((n) => n.nodeName);
 			expect(nodeNames.some((name) => name.includes('schedule'))).toBe(true);
 		});
 
@@ -171,7 +176,7 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			expect(result.nodesFound.length).toBeGreaterThan(0);
 
 			// Should find form trigger
-			const nodeNames = result.nodesFound.map((n) => n.nodeType.name);
+			const nodeNames = result.nodesFound.map((n) => n.nodeName);
 			expect(nodeNames.some((name) => name.includes('form'))).toBe(true);
 		});
 
@@ -189,7 +194,7 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			expect(result.nodesFound.length).toBeGreaterThanOrEqual(3);
 
 			// Should find AI-related nodes
-			const nodeNames = result.nodesFound.map((n) => n.nodeType.name);
+			const nodeNames = result.nodesFound.map((n) => n.nodeName);
 			const hasAINodes = nodeNames.some(
 				(name) => name.includes('langchain') || name.includes('openai'),
 			);
@@ -211,14 +216,15 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			// Validate structure
 			expect(result.nodesFound).toBeDefined();
 			expect(Array.isArray(result.nodesFound)).toBe(true);
-			expect(result.requirements).toBeDefined();
-			expect(Array.isArray(result.requirements)).toBe(true);
-			expect(result.constraints).toBeDefined();
-			expect(Array.isArray(result.constraints)).toBe(true);
-			expect(result.dataNeeds).toBeDefined();
-			expect(Array.isArray(result.dataNeeds)).toBe(true);
-			expect(result.summary).toBeDefined();
-			expect(typeof result.summary).toBe('string');
+
+			// Validate each node has required fields
+			result.nodesFound.forEach((node) => {
+				expect(node.nodeName).toBeDefined();
+				expect(typeof node.nodeName).toBe('string');
+				expect(node.reasoning).toBeDefined();
+				expect(node.connectionChangingParameters).toBeDefined();
+				expect(Array.isArray(node.connectionChangingParameters)).toBe(true);
+			});
 		});
 
 		it('should provide reasoning for each discovered node', async () => {
@@ -233,17 +239,26 @@ describe('Discovery Subgraph - Integration Tests', () => {
 
 			expect(result.nodesFound.length).toBeGreaterThan(0);
 
-			// Each node should have nodeType and reasoning
-			result.nodesFound.forEach(({ nodeType, reasoning }) => {
-				expect(nodeType).toBeDefined();
-				expect(nodeType.name).toBeDefined();
-				expect(nodeType.displayName).toBeDefined();
+			// Each node should have nodeName, reasoning, and connectionChangingParameters
+			result.nodesFound.forEach(({ nodeName, reasoning, connectionChangingParameters }) => {
+				expect(nodeName).toBeDefined();
+				expect(typeof nodeName).toBe('string');
 				expect(reasoning).toBeDefined();
 				expect(reasoning.length).toBeGreaterThan(10);
+				expect(connectionChangingParameters).toBeDefined();
+				expect(Array.isArray(connectionChangingParameters)).toBe(true);
+
+				// Validate structure of connection-changing parameters
+				connectionChangingParameters.forEach((param) => {
+					expect(param.name).toBeDefined();
+					expect(typeof param.name).toBe('string');
+					expect(param.possibleValues).toBeDefined();
+					expect(Array.isArray(param.possibleValues)).toBe(true);
+				});
 			});
 		});
 
-		it('should include categorization and best practices', async () => {
+		it('should include categorization and best practices in internal state', async () => {
 			if (skipTests) return;
 
 			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
@@ -253,10 +268,15 @@ describe('Discovery Subgraph - Integration Tests', () => {
 				messages: [],
 			});
 
+			// Categorization and bestPractices are in internal state, not in submit schema
 			expect(result.categorization).toBeDefined();
 			expect(result.categorization?.techniques).toBeDefined();
 			expect(Array.isArray(result.categorization?.techniques)).toBe(true);
 			expect(result.bestPractices).toBeDefined();
+
+			// But the main output should have the simplified schema
+			expect(result.nodesFound).toBeDefined();
+			expect(Array.isArray(result.nodesFound)).toBe(true);
 		});
 	});
 
@@ -273,8 +293,6 @@ describe('Discovery Subgraph - Integration Tests', () => {
 
 			expect(result.nodesFound).toBeDefined();
 			expect(result.nodesFound.length).toBeGreaterThanOrEqual(4);
-			expect(result.requirements.length).toBeGreaterThan(0);
-			expect(result.dataNeeds.length).toBeGreaterThan(0);
 		});
 	});
 
@@ -291,8 +309,7 @@ describe('Discovery Subgraph - Integration Tests', () => {
 
 			// Should still return structured output even for vague prompts
 			expect(result.nodesFound).toBeDefined();
-			expect(result.summary).toBeDefined();
-			expect(result.summary.length).toBeGreaterThan(0);
+			expect(Array.isArray(result.nodesFound)).toBe(true);
 		});
 
 		it('should handle prompts with explicit node names', async () => {
@@ -306,7 +323,7 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			});
 
 			expect(result.nodesFound).toBeDefined();
-			const nodeNames = result.nodesFound.map((n) => n.nodeType.name);
+			const nodeNames = result.nodesFound.map((n) => n.nodeName);
 			expect(nodeNames.some((name) => name.includes('httpRequest'))).toBe(true);
 			expect(nodeNames.some((name) => name.includes('code'))).toBe(true);
 		});
@@ -321,7 +338,14 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			const results: Array<{
 				name: string;
 				prompt: string;
-				nodesFound: Array<{ nodeType: INodeTypeDescription; reasoning: string }>;
+				nodesFound: Array<{
+					nodeName: string;
+					reasoning: string;
+					connectionChangingParameters: Array<{
+						name: string;
+						possibleValues: Array<string | boolean | number>;
+					}>;
+				}>;
 				nodeCount: number;
 				expectedMatch: boolean;
 				missing: string[];
@@ -350,9 +374,7 @@ describe('Discovery Subgraph - Integration Tests', () => {
 				// Log individual result
 				console.log(`✓ ${test.name}`);
 				console.log(`  Nodes discovered: ${result.nodesFound.length}`);
-				console.log(
-					`  Node types: ${result.nodesFound.map((n) => n.nodeType.displayName).join(', ')}`,
-				);
+				console.log(`  Node types: ${result.nodesFound.map((n) => n.nodeName).join(', ')}`);
 				if (!check.hasAll) {
 					console.log(`  ⚠️  Missing expected: ${check.missing.join(', ')}`);
 				}
