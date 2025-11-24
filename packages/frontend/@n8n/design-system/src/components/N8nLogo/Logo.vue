@@ -40,8 +40,8 @@ const containerClasses = computed(() => {
 
 const svg = useTemplateRef<{ $el: Element }>('logo');
 onMounted(() => {
-	const useCustomLogo = releaseChannel && releaseChannel !== 'stable';
-	if (!useCustomLogo) {
+	const isStable = releaseChannel && releaseChannel === 'stable';
+	if (isStable || !('createObjectURL' in URL)) {
 		return;
 	}
 
@@ -51,11 +51,9 @@ onMounted(() => {
 	const logoColor = releaseChannel === 'dev' ? '#838383' : '#E9984B';
 	logoEl.querySelector('path')?.setAttribute('fill', logoColor);
 
-	if ('createObjectURL' in URL) {
-		// Reuse the SVG as favicon
-		const blob = new Blob([logoEl.outerHTML], { type: 'image/svg+xml' });
-		useFavicon(URL.createObjectURL(blob));
-	}
+	// Reuse the SVG as favicon
+	const blob = new Blob([logoEl.outerHTML], { type: 'image/svg+xml' });
+	useFavicon(URL.createObjectURL(blob));
 });
 </script>
 
