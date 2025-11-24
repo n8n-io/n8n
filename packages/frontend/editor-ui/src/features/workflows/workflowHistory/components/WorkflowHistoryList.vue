@@ -30,7 +30,7 @@ const emit = defineEmits<{
 		value: {
 			action: WorkflowHistoryActionTypes[number];
 			id: WorkflowVersionId;
-			data: { formattedCreatedAt: string };
+			data: { formattedCreatedAt: string; versionName?: string; description?: string };
 		},
 	];
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
@@ -72,7 +72,7 @@ const onAction = ({
 }: {
 	action: WorkflowHistoryActionTypes[number];
 	id: WorkflowVersionId;
-	data: { formattedCreatedAt: string };
+	data: { formattedCreatedAt: string; versionName?: string; description?: string };
 }) => {
 	shouldAutoScroll.value = false;
 	emit('action', { action, id, data });

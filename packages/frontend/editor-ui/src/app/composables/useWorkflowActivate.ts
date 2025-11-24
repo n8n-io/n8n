@@ -202,7 +202,11 @@ export function useWorkflowActivate() {
 		}
 	};
 
-	const publishWorkflowFromHistory = async (workflowId: string, versionId: string) => {
+	const publishWorkflowFromHistory = async (
+		workflowId: string,
+		versionId: string,
+		options?: { name?: string; description?: string },
+	) => {
 		updatingWorkflowActivation.value = true;
 		const workflow = workflowsStore.getWorkflowById(workflowId);
 		// TODO: should we check the passed version for node issues?
@@ -221,6 +225,8 @@ export function useWorkflowActivate() {
 		try {
 			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId,
+				name: options?.name,
+				description: options?.description,
 			});
 
 			if (!updatedWorkflow.activeVersion) {
