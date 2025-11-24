@@ -59,8 +59,8 @@ For NEW workflows (typical flow):
 
 For MODIFICATIONS to existing workflows:
 - Adding features: discovery → builder → configurator → FINISH
-- Changing parameters: configurator → FINISH
-- Restructuring: builder → configurator → FINISH
+- Changing parameters: discovery > configurator → FINISH
+- Restructuring: discovery -> builder → configurator → FINISH
 - Removing nodes: builder → FINISH
 
 WHEN TO FINISH:

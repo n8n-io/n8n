@@ -44,6 +44,48 @@ Each add_nodes call creates ONE node. You must provide:
 - connectionParametersReasoning: Explain your thinking about connection parameters
 - connectionParameters: Parameters that affect connections (or {{}} if none needed)
 
+<workflow_configuration_node>
+CRITICAL: Always include a Workflow Configuration node at the start of every workflow.
+
+The Workflow Configuration node (n8n-nodes-base.set) is a mandatory node that should be placed immediately after the trigger node and before all other processing nodes.
+This node centralizes workflow-wide settings and parameters.
+
+Placement rules:
+- ALWAYS add between trigger and first processing node
+- Connect: Trigger → Workflow Configuration → First processing node
+- Name it "Workflow Configuration"
+</workflow_configuration_node>
+
+<data_parsing_strategy>
+For AI-generated structured data, prefer Structured Output Parser nodes over Code nodes.
+Why: Purpose-built parsers are more reliable and handle edge cases better than custom code.
+
+For binary file data, use Extract From File node to extract content from files before processing.
+
+Use Code nodes only for custom business logic beyond parsing.
+</data_parsing_strategy>
+
+<proactive_design>
+Anticipate workflow needs and suggest enhancements:
+- IF nodes for conditional logic when multiple outcomes exist
+- Set nodes for data transformation between incompatible formats
+- Schedule Triggers for recurring tasks
+- Error handling for external service calls
+
+NEVER use Split In Batches nodes.
+</proactive_design>
+
+<node_defaults_warning>
+⚠️ CRITICAL: NEVER RELY ON DEFAULT PARAMETER VALUES FOR CONNECTIONS ⚠️
+
+Default values often hide connection inputs/outputs. You MUST explicitly configure parameters that affect connections:
+- Vector Store: Mode parameter affects available connections - always set explicitly (e.g., mode: "insert", "retrieve", "retrieve-as-tool")
+- AI Agent: hasOutputParser default may not match your workflow needs
+- Document Loader: textSplittingMode affects whether it accepts a text splitter input
+
+ALWAYS check node details and set connectionParameters explicitly.
+</node_defaults_warning>
+
 CONNECTION PARAMETERS EXAMPLES:
 - Static nodes (HTTP Request, Set, Code): reasoning="Static inputs/outputs", parameters={{}}
 - AI Agent with parser: reasoning="hasOutputParser creates additional input", parameters={{ hasOutputParser: true }}
