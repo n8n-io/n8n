@@ -48,11 +48,11 @@ export class ChatHubCredentialsService {
 			},
 		);
 
-		// If credential is shared through multiple projects just pick the first one.
 		const credential = allCredentials.find((c) => c.id === credentialId);
 		if (!credential) {
 			throw new ForbiddenError("You don't have access to the provided credentials");
 		}
+
 		return {
 			id: credential.id,
 			projectId: project.id,
