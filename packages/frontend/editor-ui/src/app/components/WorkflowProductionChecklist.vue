@@ -157,7 +157,7 @@ const availableActions = computed(() => {
 		moreInfoLink: string;
 		completed: boolean;
 	} | null {
-		if (!isMcpModuleEnabled.value) return null;
+		if (!isMcpModuleEnabled.value || !isWorkflowEligibleForMcpAccess.value) return null;
 
 		const baseAction = {
 			title: i18n.baseText('mcp.productionChecklist.title'),
@@ -169,8 +169,7 @@ const availableActions = computed(() => {
 			// Only show to admins if not ignored
 			if (
 				!canToggleInstanceMCPAccess.value ||
-				suggestedActionSettings['instance-mcp-access']?.ignored ||
-				!isWorkflowEligibleForMcpAccess.value
+				suggestedActionSettings['instance-mcp-access']?.ignored
 			) {
 				return null;
 			}
@@ -184,10 +183,7 @@ const availableActions = computed(() => {
 		}
 
 		// Workflow-level MCP access (instance-level is enabled)
-		if (
-			!isWorkflowEligibleForMcpAccess.value ||
-			suggestedActionSettings['workflow-mcp-access']?.ignored
-		) {
+		if (suggestedActionSettings['workflow-mcp-access']?.ignored) {
 			return null;
 		}
 
