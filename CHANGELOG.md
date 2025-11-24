@@ -1,3 +1,12 @@
+## [1.122.1](https://github.com/n8n-io/n8n/compare/n8n@1.122.0...n8n@1.122.1) (2025-11-24)
+
+
+### Bug Fixes
+
+* Renovate will now bump versions ([#22245](https://github.com/n8n-io/n8n/issues/22245)) ([9c57ff3](https://github.com/n8n-io/n8n/commit/9c57ff351879c61cefbff43f1fb9008f6893932f))
+
+
+
 # [1.122.0](https://github.com/n8n-io/n8n/compare/n8n@1.121.0...n8n@1.122.0) (2025-11-24)
 
 
