@@ -19,18 +19,15 @@ export class AiUsageService {
 	async getAllowSendingParameterValues(): Promise<boolean> {
 		const key = 'ai.allowSendingParameterValues';
 		try {
-			// If we've already loaded from DB, use the cached value
 			if (this.hasLoadedFromDb) {
 				return config.getEnv(key);
 			}
 
-			// Otherwise load from database
 			const setting = await this.settingsRepository.findOneBy({ key });
 			this.hasLoadedFromDb = true;
 
 			if (setting) {
 				const parsedValue = JSON.parse(setting.value);
-				// Validate that the parsed value is actually a boolean
 				if (typeof parsedValue === 'boolean') {
 					config.set(key, parsedValue);
 					return parsedValue;
@@ -41,7 +38,6 @@ export class AiUsageService {
 				return config.getEnv(key);
 			}
 
-			// Return the schema default if no database value exists
 			return config.getEnv(key);
 		} catch (error) {
 			this.errorReporter.error(error);
@@ -66,8 +62,6 @@ export class AiUsageService {
 					{ transaction: false },
 				);
 			}
-
-			// Update the config cache and mark as loaded
 			config.set(key, allowSendingActualData);
 			this.hasLoadedFromDb = true;
 		} catch (error) {
