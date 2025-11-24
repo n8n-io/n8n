@@ -67,6 +67,7 @@
     "title-case": "3.0.3",
     "transliteration": "2.3.5",
     "xml2js": "catalog:",
-    "zod": "catalog:"
+    "zod": "catalog:",
+    "jsonrepair": "catalog:"
   }
 }

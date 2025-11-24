@@ -14,6 +14,7 @@ import {
 import { mock } from 'jest-mock-extended';
 import { type BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import {
+	createErrorExecutionData,
 	type INode,
 	type INodesGraphResult,
 	type IRun,
@@ -702,6 +703,38 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('SSO events', () => {
+		it('should track on `sso-user-project-access-updated` event', () => {
+			const event: RelayEventMap['sso-user-project-access-updated'] = {
+				userId: 'user123',
+				projectsRemoved: 2,
+				projectsAdded: 3,
+			};
+
+			eventService.emit('sso-user-project-access-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Sso user project acess update', {
+				user_id: 'user123',
+				projects_removed: 2,
+				projects_added: 3,
+			});
+		});
+
+		it('should track on `sso-user-instance-role-updated` event', () => {
+			const event: RelayEventMap['sso-user-instance-role-updated'] = {
+				userId: 'user123',
+				role: 'global:admin',
+			};
+
+			eventService.emit('sso-user-instance-role-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Sso user instance role update', {
+				user_id: 'user123',
+				role: 'global:admin',
+			});
+		});
+	});
+
 	describe('workflow events', () => {
 		it('should track on `workflow-created` event', async () => {
 			const event: RelayEventMap['workflow-created'] = {
@@ -1281,41 +1314,35 @@ describe('TelemetryEventRelay', () => {
 				mock<CredentialsEntity>({ type: 'openAiApi', isManaged: false }),
 			);
 
+			const errorNode: INode = {
+				id: '1',
+				typeVersion: 1,
+				name: 'Jira',
+				type: 'n8n-nodes-base.jira',
+				parameters: {},
+				position: [100, 200],
+			};
+
+			const error = new NodeApiError(
+				errorNode,
+				{
+					message: 'Error message',
+					description: 'Incorrect API key provided',
+					httpCode: '401',
+					stack: '',
+				},
+				{
+					message: 'Error message',
+					description: 'Error description',
+					level: 'warning',
+					functionality: 'regular',
+				},
+			);
+
 			const runData = {
 				status: 'error',
 				mode: 'manual',
-				data: {
-					startData: {
-						destinationNode: 'OpenAI',
-						runNodeFilter: ['OpenAI'],
-					},
-					resultData: {
-						runData: {},
-						lastNodeExecuted: 'OpenAI',
-						error: new NodeApiError(
-							{
-								id: '1',
-								typeVersion: 1,
-								name: 'Jira',
-								type: 'n8n-nodes-base.jira',
-								parameters: {},
-								position: [100, 200],
-							},
-							{
-								message: 'Error message',
-								description: 'Incorrect API key provided',
-								httpCode: '401',
-								stack: '',
-							},
-							{
-								message: 'Error message',
-								description: 'Error description',
-								level: 'warning',
-								functionality: 'regular',
-							},
-						),
-					},
-				},
+				data: createErrorExecutionData(errorNode, error),
 			} as IRun;
 
 			const nodeGraph: INodesGraphResult = {
@@ -1383,41 +1410,35 @@ describe('TelemetryEventRelay', () => {
 		it('should call telemetry.track when manual node execution finished with canceled error message', async () => {
 			sharedWorkflowRepository.findSharingRole.mockResolvedValue('workflow:owner');
 
+			const errorNode: INode = {
+				id: '1',
+				typeVersion: 1,
+				name: 'Jira',
+				type: 'n8n-nodes-base.jira',
+				parameters: {},
+				position: [100, 200],
+			};
+
+			const error = new NodeApiError(
+				errorNode,
+				{
+					message: 'Error message',
+					description: 'Incorrect API key provided',
+					httpCode: '401',
+					stack: '',
+				},
+				{
+					message: 'Error message canceled',
+					description: 'Error description',
+					level: 'warning',
+					functionality: 'regular',
+				},
+			);
+
 			const runData = {
 				status: 'error',
 				mode: 'manual',
-				data: {
-					startData: {
-						destinationNode: 'OpenAI',
-						runNodeFilter: ['OpenAI'],
-					},
-					resultData: {
-						runData: {},
-						lastNodeExecuted: 'OpenAI',
-						error: new NodeApiError(
-							{
-								id: '1',
-								typeVersion: 1,
-								name: 'Jira',
-								type: 'n8n-nodes-base.jira',
-								parameters: {},
-								position: [100, 200],
-							},
-							{
-								message: 'Error message',
-								description: 'Incorrect API key provided',
-								httpCode: '401',
-								stack: '',
-							},
-							{
-								message: 'Error message canceled',
-								description: 'Error description',
-								level: 'warning',
-								functionality: 'regular',
-							},
-						),
-					},
-				},
+				data: createErrorExecutionData(errorNode, error),
 			} as IRun;
 
 			const nodeGraph: INodesGraphResult = {
@@ -1590,44 +1611,41 @@ describe('TelemetryEventRelay', () => {
 				mock<CredentialsEntity>({ type: 'openAiApi', isManaged: true }),
 			);
 
+			const errorNode: INode = {
+				id: '1',
+				typeVersion: 1,
+				name: 'Jira',
+				type: 'n8n-nodes-base.jira',
+				parameters: {},
+				position: [100, 200],
+			};
+
+			const error = new NodeApiError(
+				errorNode,
+				{
+					message: 'Error message',
+					description: 'Incorrect API key provided',
+					httpCode: '401',
+					stack: '',
+				},
+				{
+					message: 'Error message',
+					description: 'Error description',
+					level: 'warning',
+					functionality: 'regular',
+				},
+			);
+
+			const data = createErrorExecutionData(errorNode, error);
+			// Override executionData to include credentials for this test
+			data.executionData!.nodeExecutionStack = [
+				{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } } as any,
+			];
+
 			const runData = {
 				status: 'error',
 				mode: 'manual',
-				data: {
-					executionData: {
-						nodeExecutionStack: [{ node: { credentials: { openAiApi: { id: 'nhu-l8E4hX' } } } }],
-					},
-					startData: {
-						destinationNode: 'OpenAI',
-						runNodeFilter: ['OpenAI'],
-					},
-					resultData: {
-						runData: {},
-						lastNodeExecuted: 'OpenAI',
-						error: new NodeApiError(
-							{
-								id: '1',
-								typeVersion: 1,
-								name: 'Jira',
-								type: 'n8n-nodes-base.jira',
-								parameters: {},
-								position: [100, 200],
-							},
-							{
-								message: 'Error message',
-								description: 'Incorrect API key provided',
-								httpCode: '401',
-								stack: '',
-							},
-							{
-								message: 'Error message',
-								description: 'Error description',
-								level: 'warning',
-								functionality: 'regular',
-							},
-						),
-					},
-				},
+				data,
 			} as unknown as IRun;
 
 			const nodeGraph: INodesGraphResult = {

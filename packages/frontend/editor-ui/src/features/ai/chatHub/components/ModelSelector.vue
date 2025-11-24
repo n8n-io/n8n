@@ -29,6 +29,7 @@ import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vu
 import {
 	flattenModel,
 	fromStringToModel,
+	isLlmProviderModel,
 	isMatchedAgent,
 	stringifyModel,
 } from '@/features/ai/chatHub/chat.utils';
@@ -43,10 +44,12 @@ const {
 	selectedAgent,
 	includeCustomAgents = true,
 	credentials,
+	text,
 } = defineProps<{
 	selectedAgent: ChatModelDto | null;
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
+	text?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -86,12 +89,7 @@ const credentialsName = computed(() =>
 		? credentialsStore.getCredentialById(credentials?.[selectedAgent.model.provider] ?? '')?.name
 		: undefined,
 );
-const isCredentialsRequired = computed(
-	() =>
-		selectedAgent &&
-		selectedAgent.model.provider !== 'n8n' &&
-		selectedAgent.model.provider !== 'custom-agent',
-);
+const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
 
 const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
@@ -153,7 +151,6 @@ const menu = computed(() => {
 		const agentOptions =
 			theAgents.length > 0
 				? theAgents
-						.filter((agent) => agent.model.provider !== 'custom-agent')
 						.filter(
 							(agent) =>
 								agent.model.provider === 'n8n' ||
@@ -250,20 +247,12 @@ function onSelect(id: string) {
 		return;
 	}
 
-	if (
-		identifier === 'configure' &&
-		parsedModel.provider !== 'n8n' &&
-		parsedModel.provider !== 'custom-agent'
-	) {
+	if (identifier === 'configure' && isLlmProviderModel(parsedModel)) {
 		openCredentialsSelectorOrCreate(parsedModel.provider);
 		return;
 	}
 
-	if (
-		identifier === 'add-model' &&
-		parsedModel.provider !== 'n8n' &&
-		parsedModel.provider !== 'custom-agent'
-	) {
+	if (identifier === 'add-model' && isLlmProviderModel(parsedModel)) {
 		openModelByIdSelector(parsedModel.provider);
 		return;
 	}
@@ -335,7 +324,7 @@ defineExpose({
 			/>
 		</template>
 
-		<N8nButton :class="$style.dropdownButton" type="secondary" text>
+		<N8nButton :class="$style.dropdownButton" type="secondary" :text="text">
 			<ChatAgentAvatar
 				v-if="selectedAgent"
 				:agent="selectedAgent"
