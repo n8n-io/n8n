@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import {
-	DRAFT_PUBLISH_EXPERIMENT,
 	DUPLICATE_MODAL_KEY,
 	MODAL_CONFIRM,
 	VIEWS,
@@ -43,7 +42,7 @@ import {
 	N8nText,
 	N8nTooltip,
 } from '@n8n/design-system';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useMCPStore } from '@/features/ai/mcpAccess/mcp.store';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 const WORKFLOW_LIST_ITEM_ACTIONS = {
@@ -110,8 +109,7 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const mcpStore = useMCPStore();
-const posthogStore = usePostHog();
-
+const settingsStore = useSettingsStore();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
@@ -275,7 +273,7 @@ const isSomeoneElsesWorkflow = computed(
 );
 
 const isDraftPublishEnabled = computed(() => {
-	return posthogStore.isFeatureEnabled(DRAFT_PUBLISH_EXPERIMENT.name);
+	return settingsStore.isWorkflowDraftPublishEnabled;
 });
 
 const isWorkflowPublished = computed(() => {
