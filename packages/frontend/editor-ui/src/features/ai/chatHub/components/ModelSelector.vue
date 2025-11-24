@@ -43,10 +43,12 @@ const {
 	selectedAgent,
 	includeCustomAgents = true,
 	credentials,
+	text,
 } = defineProps<{
 	selectedAgent: ChatModelDto | null;
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
+	text?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -282,7 +284,7 @@ defineExpose({
 			/>
 		</template>
 
-		<N8nButton :class="$style.dropdownButton" type="secondary" text>
+		<N8nButton :class="$style.dropdownButton" type="secondary" :text="text">
 			<ChatAgentAvatar
 				v-if="selectedAgent"
 				:agent="selectedAgent"

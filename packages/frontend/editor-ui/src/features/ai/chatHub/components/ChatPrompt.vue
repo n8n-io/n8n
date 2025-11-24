@@ -229,8 +229,10 @@ defineExpose({
 				<div :class="$style.footer">
 					<div v-if="isToolsSelectable" :class="$style.tools">
 						<ToolsSelector
+							:class="$style.toolsButton"
 							:selected="selectedTools ?? []"
 							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							transparent-bg
 							@select="onSelectTools"
 						/>
 					</div>
@@ -356,21 +358,8 @@ defineExpose({
 }
 
 .toolsButton {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	color: var(--color--text);
-	cursor: pointer;
-
-	border-radius: var(--radius);
-	border: var(--border);
-	background: var(--color--background--light-3);
-
-	&:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
+	/* maintain the same height with other buttons regardless of selected tools */
+	height: 30px;
 }
 
 .iconStack {
