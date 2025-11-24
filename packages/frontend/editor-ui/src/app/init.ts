@@ -45,6 +45,7 @@ export async function initializeCore() {
 
 	const settingsStore = useSettingsStore();
 	const versionsStore = useVersionsStore();
+	const usersStore = useUsersStore();
 	const ssoStore = useSSOStore();
 
 	const toast = useToast();
@@ -79,6 +80,10 @@ export async function initializeCore() {
 	});
 
 	versionsStore.initialize(settingsStore.settings.versionNotifications);
+
+	if (!settingsStore.isPreviewMode) {
+		await usersStore.initialize();
+	}
 
 	void useExternalHooks().run('app.mount');
 
@@ -115,9 +120,7 @@ export async function initializeAuthenticatedFeatures(
 	const dataTableStore = useDataTableStore();
 
 	if (!settingsStore.isPreviewMode) {
-		await usersStore.initialize({
-			quota: settingsStore.userManagement.quota,
-		});
+		usersStore.setUserQuota(settingsStore.userManagement.quota);
 	}
 
 	if (sourceControlStore.isEnterpriseSourceControlEnabled) {
