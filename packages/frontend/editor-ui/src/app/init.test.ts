@@ -33,6 +33,7 @@ vi.mock('@/features/settings/users/users.store', () => ({
 		initialize: vi.fn(),
 		registerLoginHook: vi.fn(),
 		registerLogoutHook: vi.fn(),
+		setUserQuota: vi.fn(),
 	}),
 }));
 
@@ -190,7 +191,7 @@ describe('Init', () => {
 			expect(sourceControlSpy).toHaveBeenCalled();
 			expect(nodeTranslationSpy).toHaveBeenCalled();
 			expect(versionsSpy).toHaveBeenCalled();
-			expect(usersStore.initialize).toHaveBeenCalled();
+			expect(usersStore.setUserQuota).toHaveBeenCalled();
 
 			await initializeAuthenticatedFeatures();
 
