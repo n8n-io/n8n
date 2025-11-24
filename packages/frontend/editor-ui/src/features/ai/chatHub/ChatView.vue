@@ -5,7 +5,11 @@ import {
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS,
 	VIEWS,
 } from '@/app/constants';
-import { findOneFromModelsResponse, unflattenModel } from '@/features/ai/chatHub/chat.utils';
+import {
+	findOneFromModelsResponse,
+	isLlmProvider,
+	unflattenModel,
+} from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
@@ -67,11 +71,7 @@ const currentConversationTitle = computed(() => currentConversation.value?.title
 const readyToShowMessages = computed(() => chatStore.agentsReady);
 
 // TODO: This also depends on the model, not all base LLM models support tools.
-const canSelectTools = computed(
-	() =>
-		selectedModel.value?.model.provider !== 'custom-agent' &&
-		selectedModel.value?.model.provider !== 'n8n',
-);
+const canSelectTools = computed(() => isLlmProvider(selectedModel.value?.model.provider));
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
@@ -186,7 +186,7 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 			return null;
 		}
 
-		if (provider === 'custom-agent' || provider === 'n8n') {
+		if (!isLlmProvider(provider)) {
 			return {};
 		}
 
@@ -331,6 +331,7 @@ function onSubmit(message: string, attachments: File[]) {
 	}
 
 	didSubmitInCurrentSession.value = true;
+	editingMessageId.value = undefined;
 
 	void chatStore.sendMessage(
 		sessionId.value,

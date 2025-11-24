@@ -8,6 +8,7 @@ import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
+import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 
 const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
@@ -29,6 +30,7 @@ const emit = defineEmits<{
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const message = ref('');
+const committedSpokenMessage = ref('');
 const attachments = ref<File[]>([]);
 
 const toast = useToast();
@@ -44,12 +46,12 @@ const placeholder = computed(() =>
 );
 
 const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
-	selectedModel?.model.provider === 'n8n' || selectedModel?.model.provider === 'custom-agent'
-		? undefined
-		: selectedModel?.model.provider,
+	isLlmProviderModel(selectedModel?.model) ? selectedModel?.model.provider : undefined,
 );
 
 function onMic() {
+	committedSpokenMessage.value = message.value;
+
 	if (speechInput.isListening.value) {
 		speechInput.stop();
 	} else {
@@ -97,6 +99,7 @@ function handleSubmitForm() {
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
 		message.value = '';
+		committedSpokenMessage.value = '';
 		attachments.value = [];
 	}
 }
@@ -109,6 +112,7 @@ function handleKeydownTextarea(e: KeyboardEvent) {
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
 		message.value = '';
+		committedSpokenMessage.value = '';
 		attachments.value = [];
 	}
 }
@@ -118,10 +122,18 @@ function handleClickInputWrapper() {
 }
 
 watch(speechInput.result, (spoken) => {
-	if (spoken) {
-		message.value = spoken;
-	}
+	message.value = committedSpokenMessage.value + ' ' + spoken.trimStart();
 });
+
+watch(
+	speechInput.isFinal,
+	(final) => {
+		if (final) {
+			committedSpokenMessage.value = message.value;
+		}
+	},
+	{ flush: 'post' },
+);
 
 watch(speechInput.error, (event) => {
 	if (event?.error === 'not-allowed') {
@@ -172,12 +184,12 @@ defineExpose({
 			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
 				<template v-if="isNewSession">
 					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)">set credentials</a>
 					for {{ providerDisplayNames[llmProvider] }} to start a conversation
 				</template>
 				<template v-else>
 					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)">set credentials</a>
 					for {{ providerDisplayNames[llmProvider] }} to continue the conversation
 				</template>
 			</N8nText>
@@ -217,8 +229,10 @@ defineExpose({
 				<div :class="$style.footer">
 					<div v-if="isToolsSelectable" :class="$style.tools">
 						<ToolsSelector
+							:class="$style.toolsButton"
 							:selected="selectedTools ?? []"
 							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							transparent-bg
 							@select="onSelectTools"
 						/>
 					</div>
@@ -315,6 +329,7 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 
 	&:focus-within,
 	&:hover {
@@ -343,21 +358,8 @@ defineExpose({
 }
 
 .toolsButton {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	color: var(--color--text);
-	cursor: pointer;
-
-	border-radius: var(--radius);
-	border: var(--border);
-	background: var(--color--background--light-3);
-
-	&:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
+	/* maintain the same height with other buttons regardless of selected tools */
+	height: 30px;
 }
 
 .iconStack {
