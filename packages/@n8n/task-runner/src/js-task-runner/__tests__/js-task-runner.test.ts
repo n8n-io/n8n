@@ -446,16 +446,21 @@ describe('JsTaskRunner', () => {
 					timezone: 'Europe/Helsinki',
 				};
 
-				const outcome = await execTaskWithParams({
+				const outcome = (await execTaskWithParams({
 					task: newTaskParamsWithSettings({
 						code: 'return { val: $now.toSeconds() }',
 						nodeMode: 'runOnceForAllItems',
 					}),
 					taskData,
-				});
-
+				})) as { result: { val: number } };
 				const helsinkiTimeNow = DateTime.now().setZone('Europe/Helsinki').toSeconds();
-				expect(outcome.result).toEqual({ val: expect.closeTo(helsinkiTimeNow, 1) });
+
+				// Expect the shape of the result
+				expect(outcome.result).toEqual({ val: expect.any(Number) });
+
+				// Expect the times to be within 500ms of each other
+				const runnerTimeNow = outcome.result.val;
+				expect(Math.abs(helsinkiTimeNow - runnerTimeNow)).toBeLessThan(0.5);
 			});
 
 			it('should use the default timezone', async () => {

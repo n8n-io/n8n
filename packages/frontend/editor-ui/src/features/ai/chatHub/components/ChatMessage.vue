@@ -8,7 +8,7 @@ import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
 import type MarkdownIt from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
-import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
@@ -17,6 +17,7 @@ import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -40,6 +41,7 @@ const emit = defineEmits<{
 const clipboard = useClipboard();
 const chatStore = useChatStore();
 const rootStore = useRootStore();
+const { isCtrlKeyPressed } = useDeviceSupport();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -96,6 +98,15 @@ function handleConfirmEdit() {
 	emit('update', { ...message, content: editedText.value });
 }
 
+function handleKeydownTextarea(e: KeyboardEvent) {
+	const trimmed = editedText.value.trim();
+
+	if (e.key === 'Enter' && isCtrlKeyPressed(e) && !e.isComposing && trimmed) {
+		e.preventDefault();
+		handleConfirmEdit();
+	}
+}
+
 function handleRegenerate() {
 	emit('regenerate', message);
 }
@@ -126,16 +137,22 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 // Watch for isEditing prop changes to initialize edit mode
 watch(
 	() => isEditing,
-	async (editing) => {
-		if (editing) {
-			editedText.value = message.content;
-			await nextTick();
-			textareaRef.value?.focus();
-		} else {
-			editedText.value = '';
-		}
+	(editing) => {
+		editedText.value = editing ? message.content : '';
 	},
 	{ immediate: true },
+);
+
+watch(
+	textareaRef,
+	async (textarea) => {
+		if (textarea) {
+			await new Promise((r) => setTimeout(r, 0));
+			textarea.focus();
+			textarea.$el.scrollIntoView({ block: 'nearest' });
+		}
+	},
+	{ immediate: true, flush: 'post' },
 );
 
 onBeforeMount(() => {
@@ -177,6 +194,7 @@ onBeforeMount(() => {
 					type="textarea"
 					:autosize="{ minRows: 3, maxRows: 20 }"
 					:class="$style.textarea"
+					@keydown="handleKeydownTextarea"
 				/>
 				<div :class="$style.editActions">
 					<N8nButton type="secondary" size="small" @click="handleCancelEdit"> Cancel </N8nButton>
@@ -190,7 +208,7 @@ onBeforeMount(() => {
 					</N8nButton>
 				</div>
 			</div>
-			<template v-else>
+			<div v-else>
 				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
 					<div v-if="attachments.length > 0" :class="$style.attachments">
 						<ChatFile
@@ -201,7 +219,9 @@ onBeforeMount(() => {
 							:href="attachment.downloadUrl"
 						/>
 					</div>
+					<div v-if="message.type === 'human'">{{ message.content }}</div>
 					<VueMarkdown
+						v-else
 						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="
@@ -228,7 +248,7 @@ onBeforeMount(() => {
 					@read-aloud="handleReadAloud"
 					@switchAlternative="handleSwitchAlternative"
 				/>
-			</template>
+			</div>
 		</div>
 	</div>
 </template>
@@ -279,11 +299,14 @@ onBeforeMount(() => {
 	gap: var(--spacing--2xs);
 	position: relative;
 	max-width: fit-content;
+	overflow-wrap: break-word;
 
 	.user & {
-		padding: var(--spacing--3xs) var(--spacing--sm);
+		padding: var(--spacing--2xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
+		white-space-collapse: preserve-breaks;
+		line-height: 1.8;
 	}
 }
 
@@ -410,6 +433,10 @@ onBeforeMount(() => {
 	&:hover {
 		border-color: var(--color--secondary);
 	}
+}
+
+.textarea {
+	scroll-margin-block: var(--spacing--sm);
 }
 
 .textarea textarea {
