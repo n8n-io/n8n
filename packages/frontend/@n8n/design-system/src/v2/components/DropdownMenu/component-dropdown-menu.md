@@ -10,7 +10,7 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 
 ## Public API Definition
 
-**Props**
+### Props
 
 - `id?: string` Unique identifier for the dropdown
 - `items: Array<DropdownMenuItem<T>>` Array of menu items to display
@@ -28,17 +28,18 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 - `closeOnParentScroll?: boolean` Whether to close dropdown when parent scrolls | `default: true`
 
 **Trigger Props**
-
 - `activatorIcon?: IconName` Icon for the default trigger button | `default: 'ellipsis'`
 - `activatorSize?: 'mini' | 'small' | 'medium' | 'large'` Size of the default trigger button | `default: 'medium'`
 - `activatorVariant?: 'primary' | 'secondary' | 'tertiary' | 'ghost'` Variant of the default trigger | `default: 'tertiary'`
-- `iconOrientation?: 'horizontal' | 'vertical'` Orientation of the ellipsis icon | `default: 'vertical'`
 
-**UI Props**
+**Search-specific Props**
+- `searchable?: boolean` Enable search functionality
+- `searchPlaceholder?: string` Search input placeholder
+- `minSearchLength?: number` Minimum characters before filtering | `default: 0`
+- `searchDebounce?: number` Debounce delay in ms | `default: 300`
+- `filterFn?: (item: DropdownMenuItem<T>, searchTerm: string) => boolean` Custom filter function
+- `noResultsText?: string` Text shown when no items match | `default: 'No results found'`
 
-- `theme?: 'default' | 'dark'` Theme variant for styling | `default: 'default'`
-- `iconSize?: 'xsmall' | 'small' | 'medium' | 'large'` Size of icons in menu items | `default: 'medium'`
-- `shadow?: boolean` Whether to show shadow on dropdown | `default: true`
 
 **Events**
 
@@ -82,9 +83,9 @@ type KeyboardShortcutProps = {
 }
 ```
 
-### Template usage examples
+### Examples
 
-**Basic usage with items**
+**Basic example with items**
 
 ```vue
 <script setup lang="ts">
@@ -203,28 +204,6 @@ onMounted(async () => {
 </template>
 ```
 
-**Hover trigger with custom styling**
-
-```vue
-<script setup lang="ts">
-const items = ref([
-  { id: 'option1', label: 'Option 1', checked: true },
-  { id: 'option2', label: 'Option 2' },
-  { id: 'option3', label: 'Option 3' }
-])
-</script>
-
-<template>
-  <N8nDropdownMenu
-    :items="items"
-    trigger="hover"
-    theme="dark"
-    icon-size="small"
-    :hide-arrow="true"
-  />
-</template>
-```
-
 ## Migration Guide
 
 ### From ActionDropdown
@@ -277,3 +256,4 @@ const items = ref([
 
 - In order to make `closeOnParentScroll` work, we need to migrate `useParentScroll` composable
 - The new `update:modelValue` replaces both `visible-change` and `visibleChange` events
+- Search is opt-in via `searchable` prop. If turned on, a search input is injected at the top of the dropdown content
