@@ -6,7 +6,6 @@ import WorkflowProductionChecklist from '@/app/components/WorkflowProductionChec
 import WorkflowTagsContainer from '@/features/shared/tags/components/WorkflowTagsContainer.vue';
 import WorkflowTagsDropdown from '@/features/shared/tags/components/WorkflowTagsDropdown.vue';
 import {
-	DRAFT_PUBLISH_EXPERIMENT,
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
@@ -14,7 +13,6 @@ import {
 } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -83,7 +81,6 @@ const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const npsSurveyStore = useNpsSurveyStore();
 const i18n = useI18n();
-const posthogStore = usePostHog();
 
 const router = useRouter();
 const route = useRoute();
@@ -147,7 +144,7 @@ const currentFolderForBreadcrumbs = computed(() => {
 });
 
 const isDraftPublishEnabled = computed(() => {
-	return posthogStore.isFeatureEnabled(DRAFT_PUBLISH_EXPERIMENT.name);
+	return settingsStore.isWorkflowDraftPublishEnabled;
 });
 
 watch(

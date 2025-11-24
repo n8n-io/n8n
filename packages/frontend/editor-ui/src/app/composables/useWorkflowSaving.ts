@@ -3,9 +3,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
-import { usePostHog } from '@/app/stores/posthog.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import {
-	DRAFT_PUBLISH_EXPERIMENT,
 	MODAL_CANCEL,
 	MODAL_CLOSE,
 	MODAL_CONFIRM,
@@ -49,7 +48,7 @@ export function useWorkflowSaving({
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
-	const posthogStore = usePostHog();
+	const settingsStore = useSettingsStore();
 
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
@@ -141,7 +140,7 @@ export function useWorkflowSaving({
 	}
 
 	const isDraftPublishEnabled = computed(() => {
-		return posthogStore.isFeatureEnabled(DRAFT_PUBLISH_EXPERIMENT.name);
+		return settingsStore.isWorkflowDraftPublishEnabled;
 	});
 
 	async function getWorkflowDeactivationInfo(
