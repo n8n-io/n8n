@@ -13,6 +13,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import SaveButton from '@/app/components/SaveButton.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
+import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
+import { useRouter } from 'vue-router';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -35,6 +37,8 @@ const locale = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
+const router = useRouter();
+const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 
 const isWorkflowSaving = computed(() => {
 	return uiStore.isActionActive.workflowSaving;
@@ -42,7 +46,16 @@ const isWorkflowSaving = computed(() => {
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
-const onPublishButtonClick = () => {
+const onPublishButtonClick = async () => {
+	// If there are unsaved changes, save the workflow first
+	if (uiStore.stateIsDirty || props.isNewWorkflow) {
+		const saved = await saveCurrentWorkflow({}, true);
+		if (!saved) {
+			// If save failed, don't open the modal
+			return;
+		}
+	}
+
 	uiStore.openModalWithData({
 		name: WORKFLOW_PUBLISH_MODAL_KEY,
 		data: {},
