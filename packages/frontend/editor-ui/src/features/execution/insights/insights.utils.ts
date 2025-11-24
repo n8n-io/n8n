@@ -96,7 +96,12 @@ export const getTimeRangeLabels = () => {
  * @param presetDays - Number of days in the preset
  * @returns True if the range matches the preset (ends today with correct day count)
  */
-export const isPresetRange = (start: DateValue, end: DateValue, presetDays: number): boolean => {
+export const isPresetRange = (input: {
+	start: DateValue;
+	end: DateValue;
+	presetDays: number;
+}): boolean => {
+	const { start, end, presetDays } = input;
 	if (!isToday(end, getLocalTimeZone())) return false;
 
 	return end.compare(start) === presetDays;

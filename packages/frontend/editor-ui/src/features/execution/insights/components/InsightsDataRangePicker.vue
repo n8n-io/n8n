@@ -135,8 +135,12 @@ const formattedRange = computed(() => {
 	return formatDateRange({ start, end });
 });
 
-const isActiveRange = (presetValue: number) =>
-	isPresetRange(props.modelValue.start, props.modelValue.end, presetValue);
+const isActiveRange = (presetDays: number) =>
+	isPresetRange({
+		start: props.modelValue.start,
+		end: props.modelValue.end,
+		presetDays,
+	});
 </script>
 
 <template>
