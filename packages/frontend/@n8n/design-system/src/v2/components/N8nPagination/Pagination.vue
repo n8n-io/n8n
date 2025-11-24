@@ -8,6 +8,7 @@ import {
 	PaginationNext,
 } from 'reka-ui';
 import { ref, useCssModule } from 'vue';
+
 import type { PaginationProps } from './Pagination.types';
 
 const $style = useCssModule();
