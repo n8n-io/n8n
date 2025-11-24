@@ -1,7 +1,13 @@
 import { BinaryDataRepository, In, SourceTypeSchema, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { BinaryDataConfig, type BinaryData, binaryToBuffer, FileTooLargeError } from 'n8n-core';
-import { UnexpectedError } from 'n8n-workflow';
+import {
+	BinaryDataConfig,
+	type BinaryData,
+	binaryToBuffer,
+	FileTooLargeError,
+	InvalidSourceTypeError,
+	MissingSourceIdError,
+} from 'n8n-core';
 import fs from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
@@ -172,17 +178,13 @@ export class DatabaseManager implements BinaryData.Manager {
 		}
 
 		if (typeof location.sourceId !== 'string') {
-			throw new UnexpectedError(
-				`Custom file location missing sourceId: ${location.pathSegments.join('/')}`,
-			);
+			throw new MissingSourceIdError(location.pathSegments);
 		}
 
 		const validationResult = SourceTypeSchema.safeParse(location.sourceType);
 
 		if (!validationResult.success) {
-			throw new UnexpectedError(
-				`Custom file location with invalid source type: ${location.sourceType}`,
-			);
+			throw new InvalidSourceTypeError(location.sourceType ?? 'unknown');
 		}
 
 		return {
