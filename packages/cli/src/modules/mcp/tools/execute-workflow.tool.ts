@@ -16,6 +16,7 @@ import {
 	ensureError,
 	jsonStringify,
 	SCHEDULE_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import z from 'zod';
 
@@ -208,7 +209,7 @@ export const executeWorkflow = async (
 	runData.startNodes = [{ name: triggerNode.name, sourceData: null }];
 	runData.pinData = getPinDataForTrigger(triggerNode, inputs);
 
-	runData.executionData = {
+	runData.executionData = createRunExecutionData({
 		startData: {},
 		resultData: {
 			pinData: runData.pinData,
@@ -229,7 +230,7 @@ export const executeWorkflow = async (
 			waitingExecution: {},
 			waitingExecutionSource: {},
 		},
-	};
+	});
 
 	const executionId = await workflowRunner.run(runData);
 

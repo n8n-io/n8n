@@ -1,8 +1,28 @@
 <script setup lang="ts">
-import { MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
-import { useMediaQuery } from '@vueuse/core';
+import { CHAT_VIEW, MOBILE_MEDIA_QUERY } from '@/features/ai/chatHub/constants';
+import { useMediaQuery, useEventListener } from '@vueuse/core';
+import { useRouter } from 'vue-router';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 
 const isMobileDevice = useMediaQuery(MOBILE_MEDIA_QUERY);
+const router = useRouter();
+const uiStore = useUIStore();
+const { isCtrlKeyPressed } = useDeviceSupport();
+
+// Cmd+Shift+O to start new chat
+useEventListener(document, 'keydown', (event: KeyboardEvent) => {
+	if (
+		event.key.toLowerCase() === 'o' &&
+		isCtrlKeyPressed(event) &&
+		event.shiftKey &&
+		!uiStore.isAnyModalOpen
+	) {
+		event.preventDefault();
+		event.stopPropagation();
+		void router.push({ name: CHAT_VIEW, force: true });
+	}
+});
 </script>
 
 <template>

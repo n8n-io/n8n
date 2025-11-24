@@ -1,6 +1,15 @@
 import { ModuleRegistry, Logger } from '@n8n/backend-common';
 import { type AuthenticatedRequest, WorkflowEntity } from '@n8n/db';
-import { Body, Post, Get, Patch, RestController, GlobalScope, Param } from '@n8n/decorators';
+import {
+	Body,
+	Post,
+	Get,
+	Patch,
+	RestController,
+	GlobalScope,
+	Param,
+	ProjectScope,
+} from '@n8n/decorators';
 import type { Response } from 'express';
 
 import { UpdateMcpSettingsDto } from './dto/update-mcp-settings.dto';
@@ -57,7 +66,7 @@ export class McpSettingsController {
 		return await this.mcpServerApiKeyService.rotateMcpServerApiKey(req.user);
 	}
 
-	@GlobalScope('mcp:manage')
+	@ProjectScope('workflow:update')
 	@Patch('/workflows/:workflowId/toggle-access')
 	async toggleWorkflowMCPAccess(
 		req: AuthenticatedRequest,
@@ -79,7 +88,7 @@ export class McpSettingsController {
 			);
 		}
 
-		if (!workflow.active && dto.availableInMCP) {
+		if (!workflow.activeVersionId && dto.availableInMCP) {
 			throw new BadRequestError('MCP access can only be set for active workflows');
 		}
 

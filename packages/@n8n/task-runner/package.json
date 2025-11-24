@@ -1,6 +1,6 @@
 {
   "name": "@n8n/task-runner",
-  "version": "1.56.0",
+  "version": "1.57.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "start": "node dist/start.js",
@@ -10,6 +10,7 @@
     "format": "biome format --write src",
     "format:check": "biome ci src",
     "test": "jest",
+    "test:unit": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix",
