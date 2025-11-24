@@ -261,6 +261,36 @@ export class DataTableController {
 		}
 	}
 
+	@Get('/:dataTableId/download-csv')
+	@ProjectScope('dataTable:read')
+	async downloadDataTableCsv(
+		req: AuthenticatedRequest<{ projectId: string; dataTableId: string }>,
+		_res: Response,
+	) {
+		try {
+			const { projectId, dataTableId } = req.params;
+
+			// Generate CSV content - this will validate that the table exists
+			const { csvContent, dataTableName } = await this.dataTableService.generateDataTableCsv(
+				dataTableId,
+				projectId,
+			);
+
+			return {
+				csvContent,
+				dataTableName,
+			};
+		} catch (e: unknown) {
+			if (e instanceof DataTableNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
+	}
+
 	/**
 	 * @returns the IDs of the inserted rows
 	 */

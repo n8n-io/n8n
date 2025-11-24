@@ -5,6 +5,24 @@ import { getDropdownItems, getSelectedDropdownValue } from '@/__tests__/utils';
 import { createProjectListItem, createProjectSharingData } from '../__tests__/utils';
 import ProjectSharing from './ProjectSharing.vue';
 import type { AllRolesMap } from '@n8n/permissions';
+import { useI18n } from '@n8n/i18n';
+import type * as I18nModule from '@n8n/i18n';
+
+vi.mock('@n8n/i18n', async (importOriginal) => {
+	const actual = await importOriginal<typeof I18nModule>();
+	return {
+		...actual,
+		useI18n: vi.fn(),
+	};
+});
+
+const mockBaseText = vi.fn((key: string) => {
+	const translations: Record<string, string> = {
+		'projects.sharing.allUsers': 'All users and projects',
+		'auth.roles.owner': 'Owner',
+	};
+	return translations[key] || key;
+});
 
 const renderComponent = createComponentRenderer(ProjectSharing);
 
@@ -13,6 +31,11 @@ const teamProjects = Array.from({ length: 3 }, () => createProjectListItem('team
 const homeProject = createProjectSharingData();
 
 describe('ProjectSharing', () => {
+	beforeEach(() => {
+		vi.mocked(useI18n).mockReturnValue({
+			baseText: mockBaseText,
+		} as unknown as ReturnType<typeof useI18n>);
+	});
 	it('should render empty select when projects is empty and no selected project existing', async () => {
 		const { getByTestId, queryByTestId } = renderComponent({
 			props: {
@@ -162,5 +185,152 @@ describe('ProjectSharing', () => {
 		expect(getByTestId('project-sharing-select')).toBeInTheDocument();
 		expect(queryByTestId('project-sharing-list-item')).not.toBeInTheDocument();
 		expect(getByTestId('project-sharing-owner')).toBeInTheDocument();
+	});
+
+	describe('global sharing', () => {
+		it('should show "All Users" option when canShareGlobally is true', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					projects: personalProjects,
+					modelValue: [],
+					canShareGlobally: true,
+				},
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+
+			// "All users and projects" should be the first option
+			expect(dropdownItems[0]).toHaveTextContent('All users and projects');
+			// Total items should be projects + "All Users"
+			expect(dropdownItems).toHaveLength(personalProjects.length + 1);
+		});
+
+		it('should not show "All Users" option when canShareGlobally is false', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					projects: personalProjects,
+					modelValue: [],
+					canShareGlobally: false,
+				},
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+
+			// "All users and projects" should not be present
+			expect(dropdownItems[0]).not.toHaveTextContent('All users and projects');
+			expect(dropdownItems).toHaveLength(personalProjects.length);
+		});
+
+		it('should not show "All Users" option when canShareGlobally is undefined', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					projects: personalProjects,
+					modelValue: [],
+				},
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+
+			// "All users and projects" should not be present
+			expect(dropdownItems[0]).not.toHaveTextContent('All users and projects');
+			expect(dropdownItems).toHaveLength(personalProjects.length);
+		});
+
+		it('should emit update:shareWithAllUsers when "All Users" is selected', async () => {
+			const { getByTestId, emitted } = renderComponent({
+				props: {
+					projects: personalProjects,
+					modelValue: [],
+					canShareGlobally: true,
+				},
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+
+			// Select "All Users" (first item)
+			await userEvent.click(dropdownItems[0]);
+
+			expect(emitted()['update:shareWithAllUsers']).toBeTruthy();
+			expect(emitted()['update:shareWithAllUsers']).toEqual([[true]]);
+		});
+
+		it('should show "All Users" in selected list when isSharedGlobally is true', () => {
+			const { getAllByTestId } = renderComponent({
+				props: {
+					projects: personalProjects,
+					modelValue: [],
+					canShareGlobally: true,
+					isSharedGlobally: true,
+				},
+			});
+
+			const listItems = getAllByTestId('project-sharing-list-item');
+			// First item should be "All users and projects"
+			expect(listItems[0]).toHaveTextContent('All users and projects');
+		});
+
+		it('should emit update:shareWithAllUsers with false when "All Users" is removed', async () => {
+			const { getAllByTestId, emitted } = renderComponent({
+				props: {
+					projects: personalProjects,
+					modelValue: [],
+					canShareGlobally: true,
+					isSharedGlobally: true,
+					roles: [
+						{
+							role: 'project:admin',
+							name: 'Admin',
+						},
+					] as unknown as AllRolesMap['workflow' | 'credential' | 'project'],
+				},
+			});
+
+			const listItems = getAllByTestId('project-sharing-list-item');
+			const removeButton = within(listItems[0]).getByTestId('project-sharing-remove');
+
+			await userEvent.click(removeButton);
+
+			expect(emitted()['update:shareWithAllUsers']).toBeTruthy();
+			expect(emitted()['update:shareWithAllUsers']).toEqual([[false]]);
+		});
+
+		it('should not show remove button for "All Users" when canShareGlobally is false', () => {
+			const { getAllByTestId } = renderComponent({
+				props: {
+					projects: personalProjects,
+					modelValue: [],
+					canShareGlobally: false,
+					isSharedGlobally: true,
+				},
+			});
+
+			const listItems = getAllByTestId('project-sharing-list-item');
+			const removeButton = within(listItems[0]).queryByTestId('project-sharing-remove');
+
+			// Remove button should not exist for "All Users" when canShareGlobally is false
+			expect(removeButton).not.toBeInTheDocument();
+		});
+
+		it('should not show "All Users" in dropdown when already globally shared', async () => {
+			const { getByTestId } = renderComponent({
+				props: {
+					projects: personalProjects,
+					modelValue: [],
+					canShareGlobally: true,
+					isSharedGlobally: true,
+				},
+			});
+
+			const projectSelect = getByTestId('project-sharing-select');
+			const dropdownItems = await getDropdownItems(projectSelect);
+
+			// "All users and projects" should not be in dropdown when already shared globally
+			expect(dropdownItems[0]).not.toHaveTextContent('All users and projects');
+			expect(dropdownItems).toHaveLength(personalProjects.length);
+		});
 	});
 });

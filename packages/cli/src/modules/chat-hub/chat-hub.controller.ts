@@ -10,6 +10,8 @@ import {
 	ChatMessageId,
 	ChatHubCreateAgentRequest,
 	ChatHubUpdateAgentRequest,
+	ChatHubConversationsRequest,
+	ViewableMimeTypes,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { AuthenticatedRequest } from '@n8n/db';
@@ -22,18 +24,20 @@ import {
 	Delete,
 	Param,
 	Patch,
+	Query,
 } from '@n8n/decorators';
+import { sanitizeFilename } from '@n8n/utils';
 import type { Response } from 'express';
+import { jsonStringify } from 'n8n-workflow';
 import { strict as assert } from 'node:assert';
+
+import { ResponseError } from '@/errors/response-errors/abstract/response.error';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { ChatHubService } from './chat-hub.service';
 import { ChatModelsRequestDto } from './dto/chat-models-request.dto';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { sanitizeFilename } from '@n8n/utils';
-
-import { ResponseError } from '@/errors/response-errors/abstract/response.error';
 
 @RestController('/chat')
 export class ChatHubController {
@@ -59,8 +63,9 @@ export class ChatHubController {
 	async getConversations(
 		req: AuthenticatedRequest,
 		_res: Response,
+		@Query query: ChatHubConversationsRequest,
 	): Promise<ChatHubConversationsResponse> {
-		return await this.chatService.getConversations(req.user.id);
+		return await this.chatService.getConversations(req.user.id, query.limit, query.cursor);
 	}
 
 	@Get('/conversations/:sessionId')
@@ -94,14 +99,18 @@ export class ChatHubController {
 		const [{ mimeType, fileName }, attachmentAsStreamOrBuffer] =
 			await this.chatAttachmentService.getAttachment(sessionId, messageId, attachmentIndex);
 
-		res.setHeader('Content-Type', mimeType ?? 'application/octet-stream');
+		res.setHeader('Content-Type', mimeType);
 
 		if (attachmentAsStreamOrBuffer.fileSize) {
 			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
 		}
 
-		if (fileName) {
-			res.setHeader('Content-Disposition', `attachment; filename="${sanitizeFilename(fileName)}"`);
+		if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
+			// Force download if file is not viewable
+			res.setHeader(
+				'Content-Disposition',
+				`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
+			);
 		}
 
 		if (attachmentAsStreamOrBuffer.type === 'buffer') {
@@ -123,7 +132,15 @@ export class ChatHubController {
 		res: Response,
 		@Body payload: ChatHubSendMessageRequest,
 	) {
-		this.logger.debug(`Chat send request received: ${JSON.stringify(payload)}`);
+		this.logger.debug(
+			`Chat send request received: ${jsonStringify({
+				...payload,
+				attachments: payload.attachments?.map((a) => ({
+					fileName: a.fileName,
+					data: `${a.data.length} characters (Base64)`,
+				})),
+			})}`,
+		);
 
 		try {
 			await this.chatService.sendHumanMessage(res, req.user, {
@@ -146,7 +163,7 @@ export class ChatHubController {
 				});
 			} else if (!res.writableEnded) {
 				res.write(
-					JSON.stringify({
+					jsonStringify({
 						type: 'error',
 						content: error.message,
 					}) + '\n',
@@ -167,7 +184,7 @@ export class ChatHubController {
 		@Param('messageId') editId: ChatMessageId,
 		@Body payload: ChatHubEditMessageRequest,
 	) {
-		this.logger.debug(`Chat edit request received: ${JSON.stringify(payload)}`);
+		this.logger.debug(`Chat edit request received: ${jsonStringify(payload)}`);
 
 		try {
 			await this.chatService.editMessage(res, req.user, {
@@ -192,7 +209,7 @@ export class ChatHubController {
 				});
 			} else if (!res.writableEnded) {
 				res.write(
-					JSON.stringify({
+					jsonStringify({
 						type: 'error',
 						content: error.message,
 					}) + '\n',
@@ -213,7 +230,7 @@ export class ChatHubController {
 		@Param('messageId') retryId: ChatMessageId,
 		@Body payload: ChatHubRegenerateMessageRequest,
 	) {
-		this.logger.debug(`Chat retry request received: ${JSON.stringify(payload)}`);
+		this.logger.debug(`Chat retry request received: ${jsonStringify(payload)}`);
 
 		try {
 			await this.chatService.regenerateAIMessage(res, req.user, {
@@ -238,7 +255,7 @@ export class ChatHubController {
 				});
 			} else if (!res.writableEnded) {
 				res.write(
-					JSON.stringify({
+					jsonStringify({
 						type: 'error',
 						content: error.message,
 					}) + '\n',
@@ -258,7 +275,7 @@ export class ChatHubController {
 		@Param('sessionId') sessionId: ChatSessionId,
 		@Param('messageId') messageId: ChatMessageId,
 	) {
-		this.logger.debug(`Chat stop request received: ${JSON.stringify({ sessionId, messageId })}`);
+		this.logger.debug(`Chat stop request received: ${jsonStringify({ sessionId, messageId })}`);
 
 		await this.chatService.stopGeneration(req.user, sessionId, messageId);
 		res.status(204).send();

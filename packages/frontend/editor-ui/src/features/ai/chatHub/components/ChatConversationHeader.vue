@@ -61,6 +61,7 @@ defineExpose({
 				ref="modelSelectorRef"
 				:selected-agent="selectedModel"
 				:credentials="credentials"
+				text
 				@change="onModelChange"
 				@create-custom-agent="emit('createCustomAgent')"
 				@select-credential="

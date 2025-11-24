@@ -27,7 +27,11 @@
     "eval:csv": "tsx evaluations --prompts-csv",
     "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
     "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations",
-    "eval:categorize": "tsx scripts/categorize-prompts.ts"
+    "eval:categorize": "tsx scripts/categorize-prompts.ts",
+    "python:check": "cd evaluations/programmatic/python && just check",
+    "python:test": "cd evaluations/programmatic/python && just test",
+    "python:lint": "cd evaluations/programmatic/python && just lint",
+    "python:format": "cd evaluations/programmatic/python && just format"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

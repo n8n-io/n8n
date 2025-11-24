@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Repository } from '@n8n/typeorm';
+import { DataSource, Like, Repository } from '@n8n/typeorm';
 
 import { Settings } from '../entities';
 
@@ -11,5 +11,9 @@ export class SettingsRepository extends Repository<Settings> {
 
 	async findByKey(key: string): Promise<Settings | null> {
 		return await this.findOneBy({ key });
+	}
+
+	async findByKeyPrefix(prefix: string): Promise<Settings[]> {
+		return await this.findBy({ key: Like(`${prefix}%`) });
 	}
 }

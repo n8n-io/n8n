@@ -99,8 +99,8 @@ export class ObjectStoreManager implements BinaryData.Manager {
 				const executionId = location.executionId || 'temp'; // missing only in edge case, see PR #7244
 				return `workflows/${location.workflowId}/executions/${executionId}/binary_data/${uuid()}`;
 			}
-			case 'chat-hub-message-attachment':
-				return `chat-hub/sessions/${location.sessionId}/messages/${location.messageId}/binary_data/${uuid()}`;
+			case 'custom':
+				return `${location.pathSegments.join('/')}/binary_data/${uuid()}`;
 		}
 	}
 }
