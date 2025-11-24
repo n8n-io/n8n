@@ -40,21 +40,6 @@ import {
 	createRunExecutionData,
 } from 'n8n-workflow';
 
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import type { ChatHubMessage } from './chat-hub-message.entity';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import {
-	HumanMessagePayload,
-	RegenerateMessagePayload,
-	EditMessagePayload,
-	validChatTriggerParamsShape,
-} from './chat-hub.types';
-import { ChatHubMessageRepository } from './chat-message.repository';
-import { ChatHubSessionRepository } from './chat-session.repository';
-import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
-
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -65,8 +50,23 @@ import { getBase } from '@/workflow-execute-additional-data';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
-import { ChatHubSettingsService } from './chat-hub.settings.service';
+
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import type { ChatHubMessage } from './chat-hub-message.entity';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
+import {
+	HumanMessagePayload,
+	RegenerateMessagePayload,
+	EditMessagePayload,
+	validChatTriggerParamsShape,
+} from './chat-hub.types';
+import { ChatHubMessageRepository } from './chat-message.repository';
+import { ChatHubSessionRepository } from './chat-session.repository';
+import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 
 @Service()
 export class ChatHubService {
@@ -163,7 +163,8 @@ export class ChatHubService {
 			case 'ollama':
 				return await this.fetchOllamaModels(credentials, additionalData);
 			case 'azureOpenAi':
-				return await this.fetchAzureOpenAiModels(credentials, additionalData);
+			case 'azureEntraId':
+				return this.fetchAzureOpenAiModels(credentials, additionalData);
 			case 'awsBedrock':
 				return await this.fetchAwsBedrockModels(credentials, additionalData);
 			case 'vercelAiGateway':
@@ -368,10 +369,10 @@ export class ChatHubService {
 		};
 	}
 
-	private async fetchAzureOpenAiModels(
+	private fetchAzureOpenAiModels(
 		_credentials: INodeCredentials,
 		_additionalData: IWorkflowExecuteAdditionalData,
-	): Promise<ChatModelsResponse['azureOpenAi']> {
+	): ChatModelsResponse['azureOpenAi'] {
 		// Azure doesn't appear to offer a way to list available models via API.
 		// If we add support for this in the future on the Azure OpenAI node we should copy that
 		// implementation here too.
@@ -1724,7 +1725,7 @@ export class ChatHubService {
 			workflowId,
 			user,
 			['workflow:read'],
-			{ includeTags: false, includeParentFolder: false },
+			{ includeTags: false, includeParentFolder: false, em: trx },
 		);
 
 		if (!workflowEntity) {

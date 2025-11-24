@@ -11,6 +11,7 @@ import {
 } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
 import { computed, ref, watch } from 'vue';
+import { isLlmProvider } from '../chat.utils';
 
 /**
  * Composable for managing chat credentials including auto-selection and user selection.
@@ -40,10 +41,14 @@ export function useChatCredentials(userId: string) {
 		},
 	);
 
+	const isCredentialsReady = computed(
+		() => isInitialized.value || credentialsStore.allCredentials.length > 0,
+	);
+
 	const autoSelectCredentials = computed<CredentialsMap>(() =>
 		Object.fromEntries(
 			chatHubProviderSchema.options.map((provider) => {
-				if (provider === 'n8n' || provider === 'custom-agent') {
+				if (!isLlmProvider(provider)) {
 					return [provider, null];
 				}
 
@@ -75,7 +80,7 @@ export function useChatCredentials(userId: string) {
 	);
 
 	const credentialsByProvider = computed<CredentialsMap | null>(() =>
-		isInitialized.value
+		isCredentialsReady.value
 			? {
 					...autoSelectCredentials.value,
 					...selectedCredentials.value,
