@@ -1,13 +1,13 @@
-import { useI18n } from '@n8n/i18n';
-import type { InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
-import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import {
 	INSIGHTS_DEVIATION_UNIT_MAPPING,
 	INSIGHTS_SUMMARY_ORDER,
 	INSIGHTS_UNIT_MAPPING,
 } from '@/features/execution/insights/insights.constants';
+import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import type { DateValue } from '@internationalized/date';
 import { getLocalTimeZone, isToday } from '@internationalized/date';
+import type { InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
+import { useI18n } from '@n8n/i18n';
 
 export const transformInsightsTimeSaved = (minutes: number): number =>
 	Math.round(minutes / (Math.abs(minutes) < 60 ? 1 : 60)); // we want to show saved time in minutes or hours
