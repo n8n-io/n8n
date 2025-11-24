@@ -12,6 +12,7 @@ import type { ChatPayload } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
+import type { DiscoveryContext } from '../types/discovery-types';
 import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
@@ -226,8 +227,8 @@ export const BuilderSubgraphState = Annotation.Root({
 		reducer: (x, y) => y ?? x,
 	}),
 
-	// Input: Optional instructions from supervisor
-	supervisorInstructions: Annotation<string | null>({
+	// Input: Discovery context from parent
+	discoveryContext: Annotation<DiscoveryContext | null>({
 		reducer: (x, y) => y ?? x,
 		default: () => null,
 	}),
@@ -308,24 +309,66 @@ export class BuilderSubgraph extends BaseSubgraph<
 		 * Agent node - calls builder agent
 		 */
 		const callAgent = async (state: typeof BuilderSubgraphState.State) => {
-			// Note: workflowContext (trimmed JSON, execution data, schemas) could be added to messages
-			// but is currently omitted to reduce token usage in builder agent
+			// On first call, create initial message with full context
+			if (state.messages.length === 0) {
+				const contextParts: string[] = [];
 
-			// On first call, create initial message with context
-			const messagesToUse =
-				state.messages.length === 0
-					? [
-							new HumanMessage({
-								content:
-									state.supervisorInstructions ??
-									`${state.userRequest}\n\nCurrent workflow has ${state.workflowJSON.nodes.length} nodes: ${state.workflowJSON.nodes.map((n) => n.name).join(', ') || 'none'}`,
-							}),
-						]
-					: state.messages;
+				// 1. User request (primary)
+				contextParts.push('=== USER REQUEST ===');
+				contextParts.push(state.userRequest);
+				contextParts.push('');
 
-			// messagesToUse.push(new HumanMessage({ content: workflowContext }));
+				// 2. Discovery context (what to use)
+				if (state.discoveryContext) {
+					contextParts.push('=== DISCOVERY CONTEXT ===');
+
+					if (state.discoveryContext.categorization) {
+						const { techniques, confidence } = state.discoveryContext.categorization;
+						contextParts.push(
+							`Workflow Type: ${techniques.join(', ')} (Confidence: ${confidence})`,
+						);
+						contextParts.push('');
+					}
+
+					if (state.discoveryContext.nodesFound.length > 0) {
+						contextParts.push('Discovered Nodes:');
+						state.discoveryContext.nodesFound.forEach(
+							({ nodeName, version, reasoning, connectionChangingParameters }) => {
+								const params =
+									connectionChangingParameters.length > 0
+										? ` [Connection params: ${connectionChangingParameters.map((p) => p.name).join(', ')}]`
+										: '';
+								contextParts.push(`- ${nodeName} v${version}: ${reasoning}${params}`);
+							},
+						);
+						contextParts.push('');
+					}
+
+					if (state.discoveryContext.bestPractices) {
+						contextParts.push('Best Practices:');
+						contextParts.push(state.discoveryContext.bestPractices);
+						contextParts.push('');
+					}
+				}
+
+				// 3. Current workflow state
+				contextParts.push('=== CURRENT WORKFLOW ===');
+				contextParts.push(`Existing nodes: ${state.workflowJSON.nodes.length}`);
+				if (state.workflowJSON.nodes.length > 0) {
+					contextParts.push(`Nodes: ${state.workflowJSON.nodes.map((n) => n.name).join(', ')}`);
+				}
+
+				const contextMessage = new HumanMessage({ content: contextParts.join('\n') });
+				const response = await agent.invoke({
+					messages: [contextMessage],
+				});
+
+				return { messages: [contextMessage, response] };
+			}
+
+			// Subsequent calls - just invoke with existing messages
 			const response = await agent.invoke({
-				messages: messagesToUse,
+				messages: state.messages,
 			});
 
 			return { messages: [response] };
@@ -380,57 +423,11 @@ export class BuilderSubgraph extends BaseSubgraph<
 		const userMessage = parentState.messages.find((m) => m instanceof HumanMessage);
 		const userRequest = typeof userMessage?.content === 'string' ? userMessage.content : '';
 
-		// Build context from discovery results and supervisor instructions
-		let builderRequest = userRequest;
-		const contextParts: string[] = [];
-
-		// Add supervisor instructions if provided
-		if (parentState.supervisorInstructions) {
-			contextParts.push(parentState.supervisorInstructions);
-		} else {
-			contextParts.push(userRequest);
-		}
-
-		// Add discovery results if available
-		if (parentState.discoveryContext) {
-			const { nodesFound, categorization, bestPractices } = parentState.discoveryContext;
-
-			contextParts.push('\n--- Discovery Results ---');
-
-			if (categorization) {
-				contextParts.push(
-					`\nCategorization: ${categorization.techniques.join(', ')} (Confidence: ${categorization.confidence})`,
-				);
-			}
-
-			if (bestPractices) {
-				contextParts.push(`\nBest Practices:\n${bestPractices}`);
-			}
-
-			if (nodesFound.length > 0) {
-				contextParts.push('\nNodes to use:');
-				nodesFound.forEach(({ nodeName, version, reasoning, connectionChangingParameters }) => {
-					const paramInfo =
-						connectionChangingParameters.length > 0
-							? ` [Connection params: ${connectionChangingParameters.map((p) => p.name).join(', ')}]`
-							: '';
-					contextParts.push(`- ${nodeName} v${version}: ${reasoning}${paramInfo}`);
-				});
-			}
-		}
-
-		// Add current workflow state
-		contextParts.push(
-			`\n\nCurrent workflow has ${parentState.workflowJSON.nodes.length} nodes: ${parentState.workflowJSON.nodes.map((n) => n.name).join(', ')}`,
-		);
-
-		builderRequest = contextParts.join('\n');
-
 		return {
-			userRequest: builderRequest,
+			userRequest,
 			workflowJSON: parentState.workflowJSON,
 			workflowContext: parentState.workflowContext,
-			supervisorInstructions: null, // Already incorporated into builderRequest
+			discoveryContext: parentState.discoveryContext,
 			messages: [],
 		};
 	}

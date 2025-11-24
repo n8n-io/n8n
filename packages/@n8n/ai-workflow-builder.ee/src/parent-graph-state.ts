@@ -35,12 +35,6 @@ export const ParentGraphState = Annotation.Root({
 		default: () => '',
 	}),
 
-	// Routing: Instructions from supervisor for next agent
-	supervisorInstructions: Annotation<string | null>({
-		reducer: (x, y) => y ?? x,
-		default: () => null,
-	}),
-
 	// Output: Final response to user
 	finalResponse: Annotation<string>({
 		reducer: (x, y) => y ?? x,

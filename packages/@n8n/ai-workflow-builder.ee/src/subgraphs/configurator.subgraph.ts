@@ -19,6 +19,7 @@ import { executeSubgraphTools } from '../utils/subgraph-helpers';
 import type { ChatPayload } from '../workflow-builder-agent';
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
+import type { DiscoveryContext } from '../types/discovery-types';
 
 /**
  * Configurator Agent Prompt
@@ -138,8 +139,14 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 		default: () => '',
 	}),
 
-	// Input: Optional instructions from supervisor
-	supervisorInstructions: Annotation<string | null>({
+	// Input: User request
+	userRequest: Annotation<string>({
+		reducer: (x, y) => y ?? x,
+		default: () => '',
+	}),
+
+	// Input: Discovery context from parent
+	discoveryContext: Annotation<DiscoveryContext | null>({
 		reducer: (x, y) => y ?? x,
 		default: () => null,
 	}),
@@ -238,15 +245,60 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			const executionData = state.workflowContext?.executionData ?? {};
 			const executionSchema = state.workflowContext?.executionSchema ?? [];
 
+			// On first call, create initial message with context
+			if (state.messages.length === 0) {
+				const contextParts: string[] = [];
+
+				// 1. User request (primary)
+				if (state.userRequest) {
+					contextParts.push('=== USER REQUEST ===');
+					contextParts.push(state.userRequest);
+					contextParts.push('');
+				}
+
+				// 2. Discovery best practices
+				if (state.discoveryContext?.bestPractices) {
+					contextParts.push('=== BEST PRACTICES ===');
+					contextParts.push(state.discoveryContext.bestPractices);
+					contextParts.push('');
+				}
+
+				// 3. Workflow JSON
+				contextParts.push('=== WORKFLOW TO CONFIGURE ===');
+				contextParts.push('<current_workflow_json>');
+				contextParts.push(JSON.stringify(trimmedWorkflow, null, 2));
+				contextParts.push('</current_workflow_json>');
+				contextParts.push('<trimmed_workflow_json_note>');
+				contextParts.push(
+					'Note: Large property values may be trimmed. Use get_node_parameter tool for full details.',
+				);
+				contextParts.push('</trimmed_workflow_json_note>');
+				contextParts.push('');
+
+				// 4. Execution data
+				contextParts.push('<current_simplified_execution_data>');
+				contextParts.push(JSON.stringify(executionData, null, 2));
+				contextParts.push('</current_simplified_execution_data>');
+				contextParts.push('');
+				contextParts.push('<current_execution_nodes_schemas>');
+				contextParts.push(JSON.stringify(executionSchema, null, 2));
+				contextParts.push('</current_execution_nodes_schemas>');
+
+				const contextMessage = new HumanMessage({ content: contextParts.join('\n') });
+				const response = (await this.agent.invoke({
+					messages: [contextMessage],
+					instanceUrl: state.instanceUrl ?? '',
+				})) as BaseMessage;
+
+				return { messages: [contextMessage, response] };
+			}
+
+			// Subsequent calls - add workflow context
 			const workflowContext = [
 				'',
 				'<current_workflow_json>',
 				JSON.stringify(trimmedWorkflow, null, 2),
 				'</current_workflow_json>',
-				'<trimmed_workflow_json_note>',
-				'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
-				'Use get_node_parameter tool to get full details when needed.',
-				'</trimmed_workflow_json_note>',
 				'',
 				'<current_simplified_execution_data>',
 				JSON.stringify(executionData, null, 2),
@@ -257,19 +309,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 				'</current_execution_nodes_schemas>',
 			].join('\n');
 
-			// On first call, create initial message
-			const messagesToUse =
-				state.messages.length === 0
-					? [
-							new HumanMessage({
-								content:
-									state.supervisorInstructions ??
-									`Configure all nodes in this workflow:\n\n${JSON.stringify(state.workflowJSON, null, 2)}`,
-							}),
-						]
-					: state.messages;
-
-			messagesToUse.push(new HumanMessage({ content: workflowContext }));
+			const messagesToUse = [...state.messages, new HumanMessage({ content: workflowContext })];
 			const response = (await this.agent.invoke({
 				messages: messagesToUse,
 				instanceUrl: state.instanceUrl ?? '',
@@ -324,28 +364,15 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 	}
 
 	transformInput(parentState: typeof ParentGraphState.State) {
-		const contextParts: string[] = [];
-
-		// Add supervisor instructions if provided
-		if (parentState.supervisorInstructions) {
-			contextParts.push(parentState.supervisorInstructions);
-		}
-
-		// Add discovery results if available
-		if (parentState.discoveryContext) {
-			const { bestPractices } = parentState.discoveryContext;
-
-			if (bestPractices) {
-				contextParts.push(`\nBest Practices for Configuration:\n${bestPractices}`);
-			}
-		}
-		const supervisorInstructions = contextParts.length > 0 ? contextParts.join('\n\n') : null;
+		const userMessage = parentState.messages.find((m) => m instanceof HumanMessage);
+		const userRequest = typeof userMessage?.content === 'string' ? userMessage.content : '';
 
 		return {
 			workflowJSON: parentState.workflowJSON,
 			workflowContext: parentState.workflowContext,
-			supervisorInstructions,
 			instanceUrl: '', // This needs to be passed in config or context, but for now empty
+			userRequest,
+			discoveryContext: parentState.discoveryContext,
 			messages: [],
 		};
 	}

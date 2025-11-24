@@ -41,9 +41,8 @@ const updateNodeParametersSchema = z.object({
 /**
  * Build a success message for the parameter update
  */
-function buildSuccessMessage(node: INode, changes: string[]): string {
-	const changesList = changes.map((c) => `- ${c}`).join('\n');
-	return `Successfully updated parameters for node "${node.name}" (${node.type}):\n${changesList}`;
+function buildSuccessMessage(node: INode): string {
+	return `Successfully updated parameters for node "${node.name}" (${node.type}).`;
 }
 
 /**
@@ -199,7 +198,7 @@ export function createUpdateNodeParametersTool(
 					const updatedNode = updateNodeWithParameters(node, updatedParameters);
 
 					// Build success message
-					const message = buildSuccessMessage(node, changes);
+					const message = buildSuccessMessage(node);
 
 					// Report completion
 					const output: UpdateNodeParametersOutput = {

@@ -79,7 +79,6 @@ export class Orchestrator {
 
 					return {
 						nextPhase: routing.next,
-						supervisorInstructions: routing.instructions ?? null,
 					};
 				})
 				// Add Responder Node
@@ -202,15 +201,14 @@ export class Orchestrator {
 					const next = state.nextPhase;
 
 					if (next === 'responder') return 'responder';
-					if (next === 'FINISH') return END;
 
 					// Static name mapping
 					if (next === 'discovery') return 'discovery_subgraph';
 					if (next === 'builder') return 'builder_subgraph';
 					if (next === 'configurator') return 'configurator_subgraph';
 
-					// Default fallback
-					return 'discovery_subgraph';
+					// Default fallback to responder (terminal)
+					return 'responder';
 				})
 				// Responder ends the workflow
 				.addEdge('responder', END)

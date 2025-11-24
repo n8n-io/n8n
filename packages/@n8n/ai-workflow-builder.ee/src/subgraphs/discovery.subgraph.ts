@@ -12,7 +12,6 @@ import { LLMServiceError } from '@/errors';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
-import { createCategorizePromptTool } from '../tools/categorize-prompt.tool';
 import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
@@ -130,12 +129,6 @@ export const DiscoverySubgraphState = Annotation.Root({
 	userRequest: Annotation<string>({
 		reducer: (x, y) => y ?? x,
 		default: () => '',
-	}),
-
-	// Input: Optional instructions from supervisor
-	supervisorInstructions: Annotation<string | null>({
-		reducer: (x, y) => y ?? x,
-		default: () => null,
 	}),
 
 	// Internal: Conversation within this subgraph
@@ -268,11 +261,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Agent node - calls discovery agent
 	 */
 	private async callAgent(state: typeof DiscoverySubgraphState.State) {
-		let message = `<user_request>${state.userRequest}</user_request>`;
-
-		if (state.supervisorInstructions) {
-			message += `\n<supervisor_instructions>${state.supervisorInstructions}</supervisor_instructions`;
-		}
+		const message = `<user_request>${state.userRequest}</user_request>`;
 
 		const response = (await this.agent.invoke({
 			messages: state.messages,
@@ -387,7 +376,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 		return {
 			userRequest,
-			supervisorInstructions: parentState.supervisorInstructions,
 			messages: [],
 		};
 	}

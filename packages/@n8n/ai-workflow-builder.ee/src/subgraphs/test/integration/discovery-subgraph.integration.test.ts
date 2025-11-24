@@ -143,7 +143,6 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
 			const result = await compiled.invoke({
 				userRequest: 'Monitor my website every 5 minutes and send Slack alert if it goes down',
-				supervisorInstructions: null,
 				messages: [],
 			});
 
@@ -168,7 +167,6 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
 			const result = await compiled.invoke({
 				userRequest: 'Create a form to collect feedback and store in database',
-				supervisorInstructions: null,
 				messages: [],
 			});
 
@@ -186,7 +184,6 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
 			const result = await compiled.invoke({
 				userRequest: 'Build a chatbot with RAG using knowledge base documents',
-				supervisorInstructions: null,
 				messages: [],
 			});
 
@@ -209,7 +206,6 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
 			const result = await compiled.invoke({
 				userRequest: 'Send daily email with weather forecast',
-				supervisorInstructions: null,
 				messages: [],
 			});
 
@@ -235,7 +231,6 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
 			const result = await compiled.invoke({
 				userRequest: 'Create webhook to receive data and store in PostgreSQL',
-				supervisorInstructions: null,
 				messages: [],
 			});
 
@@ -270,7 +265,6 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
 			const result = await compiled.invoke({
 				userRequest: 'Automate invoice processing with AI',
-				supervisorInstructions: null,
 				messages: [],
 			});
 
@@ -293,7 +287,6 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
 			const result = await compiled.invoke({
 				userRequest: 'Scrape competitor data, analyze with AI, generate report, and send via email',
-				supervisorInstructions: null,
 				messages: [],
 			});
 
@@ -309,7 +302,6 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
 			const result = await compiled.invoke({
 				userRequest: 'Automate my workflow',
-				supervisorInstructions: null,
 				messages: [],
 			});
 
@@ -324,7 +316,6 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
 			const result = await compiled.invoke({
 				userRequest: 'Use HTTP Request node to call an API and Code node to transform the response',
-				supervisorInstructions: null,
 				messages: [],
 			});
 
@@ -363,7 +354,6 @@ describe('Discovery Subgraph - Integration Tests', () => {
 				const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
 				const result = await compiled.invoke({
 					userRequest: test.prompt,
-					supervisorInstructions: null,
 					messages: [],
 				});
 
