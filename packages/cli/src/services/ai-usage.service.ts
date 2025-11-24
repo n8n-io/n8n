@@ -16,7 +16,7 @@ export class AiUsageService {
 	/**
 	 * Get the current value of the AI usage (privacy) setting for sending parameter data.
 	 */
-	async getAllowSendingParameterValues(): Promise<boolean> {
+	async getAiUsageSettings(): Promise<boolean> {
 		const key = 'ai.allowSendingParameterValues';
 		try {
 			if (this.hasLoadedFromDb) {
@@ -48,7 +48,7 @@ export class AiUsageService {
 	/**
 	 * Update the AI usage setting for sending parameter data.
 	 */
-	async updateAllowSendingParameterValues(allowSendingActualData: boolean): Promise<void> {
+	async updateAiUsageSettings(allowSendingActualData: boolean): Promise<void> {
 		const key = 'ai.allowSendingParameterValues';
 		try {
 			const value = JSON.stringify(allowSendingActualData);

@@ -270,9 +270,7 @@ export class AiController {
 		@Body payload: AiUsageSettingsRequestDto,
 	): Promise<void> {
 		try {
-			await this.aiUsageService.updateAllowSendingParameterValues(
-				payload.allowSendingParameterValues,
-			);
+			await this.aiUsageService.updateAiUsageSettings(payload.allowSendingParameterValues);
 		} catch (e) {
 			assert(e instanceof Error);
 			throw new InternalServerError(e.message, e);
