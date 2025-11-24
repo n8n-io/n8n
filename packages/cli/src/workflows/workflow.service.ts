@@ -491,13 +491,15 @@ export class WorkflowService {
 			workflow.activeVersionId = rollbackPayload.activeVersionId;
 			workflow.activeVersion = rollbackPayload.activeVersion;
 
-			// Emit deactivation event since activation failed
-			this.eventService.emit('workflow-deactivated', {
-				user,
-				workflowId,
-				workflow,
-				publicApi: false,
-			});
+			if (!workflow.activeVersionId) {
+				// Emit deactivation event since activation failed
+				this.eventService.emit('workflow-deactivated', {
+					user,
+					workflowId,
+					workflow,
+					publicApi: false,
+				});
+			}
 
 			let message;
 			if (error instanceof NodeApiError) message = error.description;

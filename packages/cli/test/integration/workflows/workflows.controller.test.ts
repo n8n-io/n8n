@@ -28,6 +28,7 @@ import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
@@ -64,6 +65,7 @@ const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
 let projectRepository: ProjectRepository;
 let workflowRepository: WorkflowRepository;
 let workflowHistoryRepository: WorkflowHistoryRepository;
+let eventService: EventService;
 let globalConfig: GlobalConfig;
 let folderListMissingRole: Role;
 
@@ -82,6 +84,7 @@ beforeEach(async () => {
 	projectRepository = Container.get(ProjectRepository);
 	workflowRepository = Container.get(WorkflowRepository);
 	workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
+	eventService = Container.get(EventService);
 	globalConfig = Container.get(GlobalConfig);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
@@ -2877,6 +2880,17 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(data.activeVersion.versionId).toBe(workflow.versionId);
 	});
 
+	test('should send activated event', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const emitSpy = jest.spyOn(eventService, 'emit');
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId });
+
+		expect(emitSpy).toHaveBeenCalledWith('workflow-activated', expect.anything());
+	});
+
 	test('should return 400 when versionId is missing', async () => {
 		const workflow = await createWorkflow({}, owner);
 
@@ -2997,6 +3011,8 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
+		const emitSpy = jest.spyOn(eventService, 'emit');
+
 		activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Validation failed'));
 
 		const response = await authOwnerAgent
@@ -3014,6 +3030,8 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(updatedWorkflow?.active).toBe(true);
 		expect(updatedWorkflow?.activeVersionId).toBe(workflow.versionId);
 		expect(updatedWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
+
+		expect(emitSpy).not.toHaveBeenCalledWith('workflow-deactivated', expect.anything());
 	});
 });
 
@@ -3030,6 +3048,15 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 		expect(data.id).toBe(workflow.id);
 		expect(data.active).toBe(false);
 		expect(data.activeVersionId).toBeNull();
+	});
+
+	test('should send deactivated event', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+
+		const emitSpy = jest.spyOn(eventService, 'emit');
+		await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
+
+		expect(emitSpy).toHaveBeenCalledWith('workflow-deactivated', expect.anything());
 	});
 
 	test('should handle deactivating already inactive workflow', async () => {
