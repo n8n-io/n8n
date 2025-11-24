@@ -10,7 +10,8 @@ properties:
     example: true
   mode:
     type: string
-    enum: ['cli', 'error', 'integrated', 'internal', 'manual', 'retry', 'trigger', 'webhook']
+    enum:
+      ['cli', 'error', 'integrated', 'internal', 'manual', 'retry', 'trigger', 'webhook', 'chat']
   retryOf:
     type: number
     nullable: true
