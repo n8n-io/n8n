@@ -64,6 +64,23 @@ interface WorkflowSimilarityResult {
 	};
 }
 
+function isWorkflowSimilarityResult(value: unknown): value is WorkflowSimilarityResult {
+	if (typeof value !== 'object' || value === null) {
+		return false;
+	}
+
+	const obj = value as Record<string, unknown>;
+
+	return (
+		typeof obj.similarity_score === 'number' &&
+		typeof obj.edit_cost === 'number' &&
+		typeof obj.max_possible_cost === 'number' &&
+		Array.isArray(obj.top_edits) &&
+		typeof obj.metadata === 'object' &&
+		obj.metadata !== null
+	);
+}
+
 /**
  * Evaluate workflow similarity using Python graph edit distance algorithm.
  * Compares against a single reference workflow.
@@ -147,10 +164,16 @@ export async function evaluateWorkflowSimilarity(
 		}
 
 		// Parse result
-		const result = JSON.parse(stdout) as WorkflowSimilarityResult;
+		const parsed: unknown = JSON.parse(stdout);
+
+		if (!isWorkflowSimilarityResult(parsed)) {
+			throw new Error(
+				`Invalid response from Python script. Expected WorkflowSimilarityResult shape but got: ${stdout.slice(0, 200)}`,
+			);
+		}
 
 		// Convert Python result to SingleEvaluatorResult format
-		const violations = result.top_edits.map((edit) => ({
+		const violations = parsed.top_edits.map((edit) => ({
 			name: mapEditTypeToViolationName(edit.type),
 			type: edit.priority,
 			description: edit.description,
@@ -159,7 +182,7 @@ export async function evaluateWorkflowSimilarity(
 
 		return {
 			violations,
-			score: result.similarity_score,
+			score: parsed.similarity_score,
 		};
 	} catch (error) {
 		// Handle specific error cases
