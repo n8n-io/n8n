@@ -6,7 +6,7 @@ import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { MODAL_CONFIRM, VIEWS } from '@/app/constants';
 import WorkflowCard from '@/app/components/WorkflowCard.vue';
 import type { WorkflowResource } from '@/Interface';
-import type { IUser } from 'n8n-workflow';
+import type { IUser } from '@n8n/rest-api-client/api/users';
 import * as vueRouter from 'vue-router';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectListItem } from '@/features/collaboration/projects/projects.types';
@@ -653,6 +653,9 @@ describe('WorkflowCard', () => {
 			email: 'test@example.com',
 			firstName: 'Test',
 			lastName: 'User',
+			isDefaultUser: false,
+			isPendingUser: false,
+			mfaEnabled: false,
 			globalScopes: ['workflow:create'],
 		} as IUser;
 
@@ -695,6 +698,9 @@ describe('WorkflowCard', () => {
 			email: 'test@example.com',
 			firstName: 'Test',
 			lastName: 'User',
+			isDefaultUser: false,
+			isPendingUser: false,
+			mfaEnabled: false,
 			globalScopes: [],
 		} as IUser;
 
@@ -746,6 +752,9 @@ describe('WorkflowCard', () => {
 			email: 'test@example.com',
 			firstName: 'Test',
 			lastName: 'User',
+			isDefaultUser: false,
+			isPendingUser: false,
+			mfaEnabled: false,
 			globalScopes: [],
 		} as IUser;
 
