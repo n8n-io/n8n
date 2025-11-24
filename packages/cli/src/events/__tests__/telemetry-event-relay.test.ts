@@ -702,6 +702,38 @@ describe('TelemetryEventRelay', () => {
 		});
 	});
 
+	describe('SSO events', () => {
+		it('should track on `sso-user-project-access-updated` event', () => {
+			const event: RelayEventMap['sso-user-project-access-updated'] = {
+				userId: 'user123',
+				projectsRemoved: 2,
+				projectsAdded: 3,
+			};
+
+			eventService.emit('sso-user-project-access-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Sso user project acess update', {
+				user_id: 'user123',
+				projects_removed: 2,
+				projects_added: 3,
+			});
+		});
+
+		it('should track on `sso-user-instance-role-updated` event', () => {
+			const event: RelayEventMap['sso-user-instance-role-updated'] = {
+				userId: 'user123',
+				role: 'global:admin',
+			};
+
+			eventService.emit('sso-user-instance-role-updated', event);
+
+			expect(telemetry.track).toHaveBeenCalledWith('Sso user instance role update', {
+				user_id: 'user123',
+				role: 'global:admin',
+			});
+		});
+	});
+
 	describe('workflow events', () => {
 		it('should track on `workflow-created` event', async () => {
 			const event: RelayEventMap['workflow-created'] = {
