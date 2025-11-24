@@ -147,8 +147,9 @@ test.describe('Data Table details view', () => {
 		await api.setMaxTeamProjectsQuota(-1);
 		await n8n.goHome();
 
+		await n8n.sideBar.clickPersonalMenuItem();
 		testDataTableName = `Data Table ${nanoid(8)}`;
-		await n8n.page.goto('projects/home/datatables');
+		await n8n.projectTabs.clickDataTablesTab();
 		await n8n.dataTable.clickAddDataTableAction();
 		await n8n.dataTableComposer.createNewDataTable(testDataTableName);
 	});
@@ -215,6 +216,9 @@ test.describe('Data Table details view', () => {
 
 		for (let i = 0; i < 20; i++) {
 			await n8n.dataTableDetails.addRow();
+			// This loop was enough to break it, as we'd get transaction lock errors
+			// eslint-disable-next-line playwright/no-wait-for-timeout
+			await n8n.page.waitForTimeout(150);
 		}
 
 		const rowsOnPage1 = n8n.dataTableDetails.getDataRows();
@@ -235,6 +239,8 @@ test.describe('Data Table details view', () => {
 		const rowData = ['Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5'];
 		for (let i = 0; i < rowData.length; i++) {
 			await n8n.dataTableDetails.addRow();
+			// eslint-disable-next-line playwright/no-wait-for-timeout
+			await n8n.page.waitForTimeout(150);
 			await n8n.dataTableDetails.setCellValue(i, nameColumn, rowData[i], 'string', {
 				skipDoubleClick: true,
 			});
