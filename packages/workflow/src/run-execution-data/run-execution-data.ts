@@ -24,23 +24,19 @@ export type IRunExecutionData = IRunExecutionDataV1 & {
 	[__brand]: 'Use createRunExecutionData factory instead of constructing manually';
 };
 
-function isRunExecutionDataV1(data: IRunExecutionDataAll): data is IRunExecutionDataV1 {
-	return data.version === 1;
-}
-
 export function migrateRunExecutionData(data: IRunExecutionDataAll): IRunExecutionData {
-	switch (data?.version) {
+	switch (data.version) {
 		case 0:
 		case undefined: // Missing version means version 0
 			data = runExecutionDataV0ToV1(data);
 		// Fall through to subsequent versions as they're added.
 	}
 
-	if (!isRunExecutionDataV1(data)) {
+	if (data.version !== 1) {
 		throw new Error(
 			`Unsupported IRunExecutionData version: ${(data as { version?: number }).version}`,
 		);
 	}
 
-	return data satisfies IRunExecutionDataV1 as IRunExecutionData;
+	return data as IRunExecutionData;
 }
