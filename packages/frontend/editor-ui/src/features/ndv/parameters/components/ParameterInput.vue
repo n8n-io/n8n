@@ -1671,9 +1671,9 @@ onUpdated(async () => {
 
 			<CronBuilder
 				v-else-if="
-					parameter.type === 'string' &&
 					parameter.name === 'expression' &&
-					path.includes('cronExpression')
+					parameter.type === 'string' &&
+					node?.type === 'n8n-nodes-base.scheduleTrigger'
 				"
 				ref="inputField"
 				:model-value="displayValue"
