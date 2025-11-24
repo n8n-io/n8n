@@ -203,6 +203,7 @@ describe('McpSettingsController', () => {
 			const entity = new WorkflowEntity();
 			entity.id = workflowId;
 			entity.active = true;
+			entity.activeVersionId = overrides.active === false ? null : 'current-version-id';
 			entity.nodes = [createWebhookNode()];
 			entity.settings = { saveManualExecutions: true };
 			entity.versionId = 'current-version-id';
@@ -280,7 +281,9 @@ describe('McpSettingsController', () => {
 					availableInMCP: true,
 				}),
 			).rejects.toThrow(
-				new BadRequestError('MCP access can only be set for webhook-triggered workflows'),
+				new BadRequestError(
+					'MCP access can only be set for active workflows with one of the following trigger nodes: Schedule Trigger, Webhook Trigger, Form Trigger, Chat Trigger.',
+				),
 			);
 
 			expect(workflowService.update).not.toHaveBeenCalled();

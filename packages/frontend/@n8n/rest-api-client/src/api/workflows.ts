@@ -20,6 +20,7 @@ export interface WorkflowData {
 	tags?: string[];
 	pinData?: IPinData;
 	versionId?: string;
+	activeVersionId?: string | null;
 	meta?: WorkflowMetadata;
 }
 

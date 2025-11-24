@@ -20,6 +20,8 @@ export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 			description: 'Direct access to process.env is blocked by default for security',
 			category: BreakingChangeCategory.workflow,
 			severity: 'low',
+			documentationUrl:
+				'https://docs.n8n.io/2-0-breaking-changes/#block-environment-variable-access-from-code-node-by-default',
 		};
 	}
 
@@ -27,6 +29,15 @@ export class ProcessEnvAccessRule implements IBreakingChangeWorkflowRule {
 		workflow: WorkflowEntity,
 		_nodesGroupedByType: Map<string, INode[]>,
 	): Promise<WorkflowDetectionReport> {
+		// If N8N_BLOCK_ENV_ACCESS_IN_NODE is explicitly set, then the instance is not affected
+		// because the user has already made a choice
+		if (process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE) {
+			return {
+				isAffected: false,
+				issues: [],
+			};
+		}
+
 		// Match process.env with optional whitespace, newlines, comments between 'process' and '.env'
 		// This covers: process.env, process  .env, process/* comment */.env, process\n.env, etc.
 		// Also matches optional chaining: process?.env

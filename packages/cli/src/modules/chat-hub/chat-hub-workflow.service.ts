@@ -12,6 +12,7 @@ import { EntityManager } from '@n8n/typeorm';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
 	IConnections,
 	IExecuteData,
 	INode,
@@ -20,8 +21,10 @@ import {
 	IWorkflowBase,
 	MEMORY_BUFFER_WINDOW_NODE_TYPE,
 	MEMORY_MANAGER_NODE_TYPE,
+	MERGE_NODE_TYPE,
 	NodeConnectionTypes,
 	OperationalError,
+	type IBinaryData,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -48,9 +51,11 @@ export class ChatHubWorkflowService {
 		projectId: string,
 		history: ChatHubMessage[],
 		humanMessage: string,
+		attachments: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
-		systemMessage?: string,
+		systemMessage: string | undefined,
+		tools: INode[],
 		trx?: EntityManager,
 	): Promise<{ workflowData: IWorkflowBase; executionData: IRunExecutionData }> {
 		return await withTransaction(this.workflowRepository.manager, trx, async (em) => {
@@ -63,17 +68,24 @@ export class ChatHubWorkflowService {
 				sessionId,
 				history,
 				humanMessage,
+				attachments,
 				credentials,
 				model,
 				systemMessage,
+				tools,
 			});
 
 			const newWorkflow = new WorkflowEntity();
+
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId}`;
 			newWorkflow.active = false;
+			newWorkflow.activeVersionId = null;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
+			newWorkflow.settings = {
+				executionOrder: 'v1',
+			};
 
 			const workflow = await em.save<WorkflowEntity>(newWorkflow);
 
@@ -118,8 +130,12 @@ export class ChatHubWorkflowService {
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId} (Title Generation)`;
 			newWorkflow.active = false;
+			newWorkflow.activeVersionId = null;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
+			newWorkflow.settings = {
+				executionOrder: 'v1',
+			};
 
 			const workflow = await em.save<WorkflowEntity>(newWorkflow);
 
@@ -138,22 +154,74 @@ export class ChatHubWorkflowService {
 		});
 	}
 
+	prepareExecutionData(
+		triggerNode: INode,
+		sessionId: string,
+		message: string,
+		attachments: IBinaryData[],
+	): IExecuteData[] {
+		// Attachments are already processed (id field populated) by the caller
+		return [
+			{
+				node: triggerNode,
+				data: {
+					main: [
+						[
+							{
+								json: {
+									sessionId,
+									action: 'sendMessage',
+									chatInput: message,
+									files: attachments.map(({ data, ...metadata }) => metadata),
+								},
+								binary: Object.fromEntries(
+									attachments.map((attachment, index) => [`data${index}`, attachment]),
+								),
+							},
+						],
+					],
+				},
+				source: null,
+			},
+		];
+	}
+
+	private getUniqueNodeName(originalName: string, existingNames: Set<string>): string {
+		if (!existingNames.has(originalName)) {
+			return originalName;
+		}
+
+		let index = 1;
+		let uniqueName = `${originalName}${index}`;
+
+		while (existingNames.has(uniqueName)) {
+			index++;
+			uniqueName = `${originalName}${index}`;
+		}
+
+		return uniqueName;
+	}
+
 	private buildChatWorkflow({
 		userId,
 		sessionId,
 		history,
 		humanMessage,
+		attachments,
 		credentials,
 		model,
 		systemMessage,
+		tools,
 	}: {
 		userId: string;
 		sessionId: ChatSessionId;
 		history: ChatHubMessage[];
 		humanMessage: string;
+		attachments: IBinaryData[];
 		credentials: INodeCredentials;
 		model: ChatHubConversationModel;
 		systemMessage?: string;
+		tools: INode[];
 	}) {
 		const chatTriggerNode = this.buildChatTriggerNode();
 		const toolsAgentNode = this.buildToolsAgentNode(model, systemMessage);
@@ -161,6 +229,7 @@ export class ChatHubWorkflowService {
 		const memoryNode = this.buildMemoryNode(20);
 		const restoreMemoryNode = this.buildRestoreMemoryNode(history);
 		const clearMemoryNode = this.buildClearMemoryNode();
+		const mergeNode = this.buildMergeNode();
 
 		const nodes: INode[] = [
 			chatTriggerNode,
@@ -169,25 +238,55 @@ export class ChatHubWorkflowService {
 			memoryNode,
 			restoreMemoryNode,
 			clearMemoryNode,
+			mergeNode,
 		];
+
+		const nodeNames = new Set(nodes.map((node) => node.name));
+		const distinctTools = tools.map((tool, i) => {
+			// Spread out the tool nodes so that they don't overlap on the canvas
+			const position = [
+				700 + Math.floor(i / 3) * 60 + (i % 3) * 120,
+				300 + Math.floor(i / 3) * 120 - (i % 3) * 30,
+			];
+
+			const name = this.getUniqueNodeName(tool.name, nodeNames);
+			nodeNames.add(name);
+
+			return {
+				...tool,
+				name,
+				position,
+			};
+		});
+
+		nodes.push.apply(nodes, distinctTools);
 
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
-				main: [
-					[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 }],
+				[NodeConnectionTypes.Main]: [
+					[
+						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 },
+						{ node: NODE_NAMES.MERGE, type: NodeConnectionTypes.Main, index: 0 },
+					],
 				],
 			},
 			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
-				main: [[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.Main, index: 0 }]],
+				[NodeConnectionTypes.Main]: [
+					[{ node: NODE_NAMES.MERGE, type: NodeConnectionTypes.Main, index: 1 }],
+				],
+			},
+			[NODE_NAMES.MERGE]: {
+				[NodeConnectionTypes.Main]: [
+					[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.Main, index: 0 }],
+				],
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				ai_languageModel: [
+				[NodeConnectionTypes.AiLanguageModel]: [
 					[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiLanguageModel, index: 0 }],
 				],
 			},
 			[NODE_NAMES.MEMORY]: {
-				ai_memory: [
+				[NodeConnectionTypes.AiMemory]: [
 					[
 						{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.AiMemory, index: 0 },
 						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.AiMemory, index: 0 },
@@ -196,7 +295,7 @@ export class ChatHubWorkflowService {
 				],
 			},
 			[NODE_NAMES.REPLY_AGENT]: {
-				main: [
+				[NodeConnectionTypes.Main]: [
 					[
 						{
 							node: NODE_NAMES.CLEAR_CHAT_MEMORY,
@@ -206,44 +305,38 @@ export class ChatHubWorkflowService {
 					],
 				],
 			},
-		};
-
-		const nodeExecutionStack: IExecuteData[] = [
-			{
-				node: chatTriggerNode,
-				data: {
-					main: [
+			...distinctTools.reduce<IConnections>((acc, tool) => {
+				acc[tool.name] = {
+					[NodeConnectionTypes.AiTool]: [
 						[
 							{
-								json: {
-									sessionId,
-									action: 'sendMessage',
-									chatInput: humanMessage,
-								},
+								node: NODE_NAMES.REPLY_AGENT,
+								type: NodeConnectionTypes.AiTool,
+								index: 0,
 							},
 						],
 					],
-				},
-				source: null,
-			},
-		];
+				};
 
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
+				return acc;
+			}, {}),
+		};
+
+		const nodeExecutionStack = this.prepareExecutionData(
+			chatTriggerNode,
+			sessionId,
+			humanMessage,
+			attachments,
+		);
+
+		const executionData = createRunExecutionData({
 			executionData: {
-				contextData: {},
-				metadata: {},
 				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
 			manualData: {
 				userId,
 			},
-		};
+		});
 
 		return { nodes, connections, executionData };
 	}
@@ -263,13 +356,12 @@ export class ChatHubWorkflowService {
 
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
-				main: [
+				[NodeConnectionTypes.Main]: [
 					[{ node: NODE_NAMES.TITLE_GENERATOR_AGENT, type: NodeConnectionTypes.Main, index: 0 }],
 				],
 			},
 			[NODE_NAMES.CHAT_MODEL]: {
-				// eslint-disable-next-line @typescript-eslint/naming-convention
-				ai_languageModel: [
+				[NodeConnectionTypes.AiLanguageModel]: [
 					[
 						{
 							node: NODE_NAMES.TITLE_GENERATOR_AGENT,
@@ -285,7 +377,7 @@ export class ChatHubWorkflowService {
 			{
 				node: chatTriggerNode,
 				data: {
-					main: [
+					[NodeConnectionTypes.Main]: [
 						[
 							{
 								json: {
@@ -301,22 +393,14 @@ export class ChatHubWorkflowService {
 			},
 		];
 
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
+		const executionData = createRunExecutionData({
 			executionData: {
-				contextData: {},
-				metadata: {},
 				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
 			manualData: {
 				userId,
 			},
-		};
+		});
 		return { nodes, connections, executionData };
 	}
 
@@ -402,6 +486,98 @@ export class ChatHubWorkflowService {
 						options: {},
 					},
 				};
+			case 'azureOpenAi':
+			case 'azureEntraId':
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			case 'ollama': {
+				return {
+					...common,
+					parameters: {
+						model: { __rl: true, mode: 'id', value: model },
+						options: {},
+					},
+				};
+			}
+			case 'awsBedrock': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'vercelAiGateway': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'xAiGrok': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'groq': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'openRouter': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'deepSeek': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'cohere': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'mistralCloud': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			default:
+				throw new OperationalError('Unsupported model provider');
 		}
 	}
 
@@ -464,6 +640,22 @@ export class ChatHubWorkflowService {
 			position: [976, 0],
 			id: uuidv4(),
 			name: NODE_NAMES.CLEAR_CHAT_MEMORY,
+		};
+	}
+
+	private buildMergeNode(): INode {
+		return {
+			parameters: {
+				mode: 'combine',
+				fieldsToMatchString: 'chatInput',
+				joinMode: 'enrichInput1',
+				options: {},
+			},
+			type: MERGE_NODE_TYPE,
+			typeVersion: 3.2,
+			position: [224, -100],
+			id: uuidv4(),
+			name: NODE_NAMES.MERGE,
 		};
 	}
 

@@ -77,6 +77,7 @@ export interface ChatStreamingState extends Partial<EnrichedStructuredChunk['met
 	promptId: ChatMessageId;
 	sessionId: ChatSessionId;
 	model: ChatHubConversationModel;
+	retryOfMessageId: ChatMessageId | null;
 }
 
 export interface FlattenedModel {
