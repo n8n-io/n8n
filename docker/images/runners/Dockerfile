@@ -77,7 +77,7 @@ RUN uv sync \
 # ==============================================================================
 # STAGE 3: Task Runner Launcher download
 # ==============================================================================
-FROM alpine:3.22.1 AS launcher-downloader
+FROM alpine:3.22.2 AS launcher-downloader
 ARG TARGETPLATFORM
 ARG LAUNCHER_VERSION=1.4.1
 
