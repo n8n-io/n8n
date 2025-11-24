@@ -1,7 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { isAIMessage, ToolMessage } from '@langchain/core/messages';
+import { isAIMessage, ToolMessage, HumanMessage } from '@langchain/core/messages';
 import type { StructuredTool } from '@langchain/core/tools';
-import { isCommand } from '@langchain/langgraph';
+import { isCommand, END } from '@langchain/langgraph';
 
 import type { WorkflowOperation } from '../types/workflow';
 
@@ -91,4 +91,34 @@ export async function executeSubgraphTools(
 	}
 
 	return stateUpdate;
+}
+
+/**
+ * Extract user request from parent state messages
+ * Helper to reduce duplication across transformInput methods
+ */
+export function extractUserRequest(messages: BaseMessage[], defaultValue = ''): string {
+	const userMessage = messages.find((m) => m instanceof HumanMessage);
+	return typeof userMessage?.content === 'string' ? userMessage.content : defaultValue;
+}
+
+/**
+ * Standard shouldContinue logic for tool-based subgraphs
+ * Checks iteration limit and presence of tool calls
+ */
+export function createStandardShouldContinue(maxIterations: number) {
+	return (state: { iterationCount: number; messages: BaseMessage[] }) => {
+		if (state.iterationCount >= maxIterations) {
+			return END;
+		}
+
+		const lastMessage = state.messages[state.messages.length - 1];
+		const hasToolCalls =
+			lastMessage &&
+			'tool_calls' in lastMessage &&
+			Array.isArray(lastMessage.tool_calls) &&
+			lastMessage.tool_calls.length > 0;
+
+		return hasToolCalls ? 'tools' : END;
+	};
 }

@@ -4,7 +4,7 @@ import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
 import type { StructuredTool } from '@langchain/core/tools';
-import { Annotation, StateGraph, END } from '@langchain/langgraph';
+import { Annotation, StateGraph } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
@@ -15,7 +15,11 @@ import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { processOperations } from '../utils/operations-processor';
-import { executeSubgraphTools } from '../utils/subgraph-helpers';
+import {
+	executeSubgraphTools,
+	extractUserRequest,
+	createStandardShouldContinue,
+} from '../utils/subgraph-helpers';
 import type { ChatPayload } from '../workflow-builder-agent';
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
@@ -328,26 +332,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		/**
 		 * Should continue with tools or finish?
 		 */
-		const shouldContinue = (state: typeof ConfiguratorSubgraphState.State) => {
-			// Safety: max 15 iterations
-			if (state.iterationCount >= 15) {
-				return END;
-			}
-
-			const lastMessage = state.messages[state.messages.length - 1];
-			const hasToolCalls =
-				lastMessage &&
-				'tool_calls' in lastMessage &&
-				Array.isArray(lastMessage.tool_calls) &&
-				lastMessage.tool_calls.length > 0;
-
-			if (hasToolCalls) {
-				return 'tools';
-			}
-
-			// No tool calls = done, extract final response
-			return END;
-		};
+		const shouldContinue = createStandardShouldContinue(15);
 
 		// Build the subgraph
 		const subgraph = new StateGraph(ConfiguratorSubgraphState)
@@ -364,14 +349,11 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 	}
 
 	transformInput(parentState: typeof ParentGraphState.State) {
-		const userMessage = parentState.messages.find((m) => m instanceof HumanMessage);
-		const userRequest = typeof userMessage?.content === 'string' ? userMessage.content : '';
-
 		return {
 			workflowJSON: parentState.workflowJSON,
 			workflowContext: parentState.workflowContext,
 			instanceUrl: '', // This needs to be passed in config or context, but for now empty
-			userRequest,
+			userRequest: extractUserRequest(parentState.messages),
 			discoveryContext: parentState.discoveryContext,
 			messages: [],
 		};

@@ -16,7 +16,7 @@ import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { PromptCategorization } from '../types/categorization';
-import { executeSubgraphTools } from '../utils/subgraph-helpers';
+import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
  * Strict Output Schema for Discovery
@@ -370,12 +370,8 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	}
 
 	transformInput(parentState: typeof ParentGraphState.State) {
-		const userMessage = parentState.messages.find((m: BaseMessage) => m instanceof HumanMessage);
-		const userRequest =
-			typeof userMessage?.content === 'string' ? userMessage.content : 'Build a workflow';
-
 		return {
-			userRequest,
+			userRequest: extractUserRequest(parentState.messages, 'Build a workflow'),
 			messages: [],
 		};
 	}
