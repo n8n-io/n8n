@@ -12,23 +12,21 @@ jest.mock('node:child_process', () => ({
 	execFile: jest.fn(),
 }));
 
-// Create the mock inside the factory so it's available during hoisting
+// Create the mock inside the factory - must use var for proper hoisting with jest.mock
+// eslint-disable-next-line no-var
+var mockExecFileAsync: jest.Mock;
+
 jest.mock('node:util', () => {
-	const actualUtil = jest.requireActual<typeof import('node:util')>('node:util');
 	const mockFn = jest.fn();
-	// Store in global so we can access it in tests
-	(global as any).mockExecFileAsync = mockFn;
+	// Store reference so tests can access it
+	mockExecFileAsync = mockFn;
 
 	return {
-		...actualUtil,
 		promisify: jest.fn(() => mockFn),
 	};
 });
 
 jest.mock('node:fs/promises');
-
-// Get the mock instance that was created in the factory
-const mockExecFileAsync = (global as any).mockExecFileAsync as jest.Mock;
 
 describe('evaluateWorkflowSimilarity', () => {
 	const generatedWorkflow = mock<SimpleWorkflow>({
@@ -258,7 +256,7 @@ describe('evaluateWorkflowSimilarity', () => {
 			];
 
 			let callCount = 0;
-			mockExecFileAsync.mockImplementation(() => {
+			mockExecFileAsync.mockImplementation(async () => {
 				callCount++;
 				const score = callCount === 2 ? 0.9 : 0.5; // Second call has highest score
 				const mockOutput = JSON.stringify({
@@ -268,7 +266,7 @@ describe('evaluateWorkflowSimilarity', () => {
 					top_edits: [],
 					metadata: { generated_nodes: 1, ground_truth_nodes: 1, config_name: 'standard' },
 				});
-				return Promise.resolve({ stdout: mockOutput, stderr: '' });
+				return { stdout: mockOutput, stderr: '' };
 			});
 
 			const result = await evaluateWorkflowSimilarityMultiple(

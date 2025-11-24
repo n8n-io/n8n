@@ -2,7 +2,7 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
 import { readFileSync } from 'fs';
-import { OperationalError } from 'n8n-workflow';
+import { jsonParse, OperationalError } from 'n8n-workflow';
 import { join } from 'path';
 import { z } from 'zod';
 
@@ -12,7 +12,7 @@ import type { TestCase } from '../types/evaluation';
 // Helper to load reference workflows
 function loadReferenceWorkflow(filename: string): SimpleWorkflow {
 	const path = join(__dirname, '..', 'reference-workflows', filename);
-	return JSON.parse(readFileSync(path, 'utf-8'));
+	return jsonParse<SimpleWorkflow>(readFileSync(path, 'utf-8'));
 }
 
 const testCasesSchema = z.object({
