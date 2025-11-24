@@ -450,7 +450,7 @@ describe('GET /workflows', () => {
 		}
 	});
 
-	test.only('should return activeVersion for all workflows', async () => {
+	test('should return activeVersion for all workflows', async () => {
 		const inactiveWorkflow = await createWorkflow({}, member);
 		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
 
