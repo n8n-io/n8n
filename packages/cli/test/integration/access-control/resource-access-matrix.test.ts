@@ -9,12 +9,12 @@ import {
 } from '@n8n/backend-test-utils';
 import type { Project, User, Role } from '@n8n/db';
 
+import { UserManagementMailer } from '@/user-management/email';
+
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { createOwner, createMember } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
-
-import { UserManagementMailer } from '@/user-management/email';
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows', 'credentials'],
@@ -22,7 +22,6 @@ const testServer = utils.setupTestServer({
 	quotas: {
 		'quota:maxTeamProjects': -1,
 	},
-	mockNodesAndCredentials: true,
 });
 
 // Foundation users and projects
@@ -64,6 +63,8 @@ describe('Resource Access Control Matrix Tests', () => {
 		// Create authentication agents
 		ownerAgent = testServer.authAgentFor(owner);
 		testUserAgent = testServer.authAgentFor(testUser);
+
+		await utils.initCredentialsTypes();
 
 		// Create custom roles with specific scopes
 		workflowReadOnlyRole = await createCustomRoleWithScopeSlugs(

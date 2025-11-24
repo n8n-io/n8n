@@ -36,9 +36,7 @@ let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let activeWorkflowManager: ActiveWorkflowManager;
 
-const testServer = utils.setupTestServer({
-	endpointGroups: ['publicApi'],
-});
+const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
 
 const globalConfig = Container.get(GlobalConfig);
@@ -458,8 +456,7 @@ describe('GET /workflows', () => {
 		const inactiveWorkflow = await createWorkflow({}, member);
 		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		const test = await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
-		console.log(test.body);
+		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
 
 		const response = await authMemberAgent.get('/workflows');
 

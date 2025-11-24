@@ -42,7 +42,6 @@ const testServer = utils.setupTestServer({
 	quotas: {
 		'quota:maxTeamProjects': -1,
 	},
-	mockNodesAndCredentials: true,
 });
 
 let owner: User;
@@ -63,6 +62,8 @@ let projectRepository: ProjectRepository;
 
 beforeAll(async () => {
 	await Container.get(RoleCacheService).refreshCache();
+
+	await utils.initCredentialsTypes();
 });
 
 beforeEach(async () => {

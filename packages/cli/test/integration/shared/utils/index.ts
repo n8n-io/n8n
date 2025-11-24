@@ -12,6 +12,9 @@ import {
 } from 'n8n-core';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
+import { HttpBasicAuth } from 'n8n-nodes-base/credentials/HttpBasicAuth.credentials';
+import { HttpHeaderAuth } from 'n8n-nodes-base/credentials/HttpHeaderAuth.credentials';
+import { OpenAiApi } from 'n8n-nodes-base/credentials/OpenAiApi.credentials';
 import { Cron } from 'n8n-nodes-base/nodes/Cron/Cron.node';
 import { FormTrigger } from 'n8n-nodes-base/nodes/Form/FormTrigger.node';
 import { ScheduleTrigger } from 'n8n-nodes-base/nodes/Schedule/ScheduleTrigger.node';
@@ -61,6 +64,18 @@ export async function initCredentialsTypes(): Promise<void> {
 		},
 		ftp: {
 			type: new Ftp(),
+			sourcePath: '',
+		},
+		openAiApi: {
+			type: new OpenAiApi(),
+			sourcePath: '',
+		},
+		httpHeaderAuth: {
+			type: new HttpHeaderAuth(),
+			sourcePath: '',
+		},
+		httpBasicAuth: {
+			type: new HttpBasicAuth(),
 			sourcePath: '',
 		},
 	};
