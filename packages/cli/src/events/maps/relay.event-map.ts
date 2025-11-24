@@ -42,6 +42,13 @@ export type RelayEventMap = {
 		userId: string;
 	};
 
+	'instance-first-production-workflow-failed': {
+		projectId: string;
+		workflowId: string;
+		workflowName: string;
+		userId: string;
+	};
+
 	'first-workflow-data-loaded': {
 		userId: string;
 		workflowId: string;
