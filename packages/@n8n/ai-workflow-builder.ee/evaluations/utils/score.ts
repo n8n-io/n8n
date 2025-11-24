@@ -21,10 +21,10 @@ export function calculateOverallScore(
 		weights = {
 			connections: 0.2,
 			trigger: 0.2,
-			agentPrompt: 0.15,
-			tools: 0.15,
-			fromAi: 0.1,
-			similarity: 0.2, // Significant weight for structural similarity
+			agentPrompt: 0.16,
+			tools: 0.16,
+			fromAi: 0.08,
+			similarity: 0.2,
 		};
 		applicableCategories = Object.keys(evaluatorResults).filter(
 			(k) => k !== 'similarity' || evaluatorResults.similarity !== null,
