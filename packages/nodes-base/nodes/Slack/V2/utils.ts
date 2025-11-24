@@ -10,6 +10,10 @@ export const slackChannelModes: INodePropertyMode[] = [
 		typeOptions: {
 			searchListMethod: 'getChannels',
 			searchable: true,
+			slowLoadNotice: {
+				message: 'If loading is slow, try selecting a channel using "By ID" or "By URL"',
+				timeout: 15000,
+			},
 		},
 	},
 	{

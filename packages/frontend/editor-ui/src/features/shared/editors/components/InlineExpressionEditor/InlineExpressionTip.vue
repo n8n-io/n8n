@@ -107,9 +107,7 @@ watchDebounced(
 
 <template>
 	<div :class="[$style.tip, { [$style.drag]: tip === 'drag' }]">
-		<N8nText size="small" :class="$style.tipText"
-			>{{ i18n.baseText('parameterInput.tip') }}:
-		</N8nText>
+		<N8nText size="small" :class="$style.tipText">{{ i18n.baseText('generic.tip') }}: </N8nText>
 
 		<div v-if="tip === 'drag'" :class="$style.content">
 			<N8nText size="small" :class="$style.text">
