@@ -142,7 +142,7 @@ What we use for testing and writing tests:
 When implementing features:
 1. Define API types in `packages/@n8n/api-types`
 2. Implement backend logic in `packages/cli` module, follow
-   `@packages/cli/scripts/backend-module/backend-module.guide.md`
+   `@packages/cli/scripts/backend-module/backend-module-guide.md`
 3. Add API endpoints via controllers
 4. Update frontend in `packages/editor-ui` with i18n support
 5. Write tests with proper mocks
