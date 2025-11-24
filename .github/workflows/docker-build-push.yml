@@ -20,7 +20,7 @@ on:
         required: true
         type: string
       release_type:
-        description: 'Release type (stable, nightly, dev)'
+        description: 'Release type (stable, 1, beta, nightly, dev)'
         required: false
         type: string
         default: 'stable'
@@ -285,7 +285,9 @@ jobs:
     if: |
       success() &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
-       needs.determine-build-context.outputs.release_type == 'nightly')
+       needs.determine-build-context.outputs.release_type == 'nightly' ||
+       needs.determine-build-context.outputs.release_type == '1' ||
+       needs.determine-build-context.outputs.release_type == 'beta')
     uses: ./.github/workflows/security-trivy-scan-callable.yml
     with:
       image_ref: ${{ needs.build-and-push-docker.outputs.image_ref }}

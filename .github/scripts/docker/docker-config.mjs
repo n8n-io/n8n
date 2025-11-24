@@ -52,6 +52,13 @@ class BuildContext {
       case 'release':
         if (!version) throw new Error('Version required for release');
         context.version = version;
+        // Release types:
+        // - stable: Production releases (v2.x)
+        // - 1: V1 maintenance releases (v1.x) - behaves like stable
+        // - beta: Beta/RC releases (prereleases)
+        // - nightly: Nightly builds
+        // - dev: Development builds
+        // - branch: Branch-specific builds
         context.release_type = releaseType || 'stable';
         context.push_to_docker = true;
         break;

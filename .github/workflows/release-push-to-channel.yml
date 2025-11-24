@@ -9,13 +9,14 @@ on:
         type: string
 
       release-channel:
-        description: 'Release channel'
+        description: 'Release channel (stable: v2 production, 1: v1 maintenance, beta: prereleases)'
         required: true
         type: choice
         default: 'beta'
         options:
           - beta
           - stable
+          - 1
 
 jobs:
   validate-inputs:
@@ -24,22 +25,45 @@ jobs:
     outputs:
       version: ${{ steps.check_version.outputs.version }}
       release_channel: ${{ github.event.inputs.release-channel }}
+      major: ${{ steps.check_version.outputs.major }}
+      minor: ${{ steps.check_version.outputs.minor }}
+      patch: ${{ steps.check_version.outputs.patch }}
+      is_prerelease: ${{ steps.check_version.outputs.is_prerelease }}
     steps:
-      - name: Check Version Format
-        id: check_version
-        env:
-          INPUT_VERSION: ${{ github.event.inputs.version }}
-        run: |
-          input_version="${{ env.INPUT_VERSION }}"
-          version_regex='^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.-]+)?$'
+      - name: Checkout repository
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-          if [[ "$input_version" =~ $version_regex ]]; then
-            echo "Version format is valid: $input_version"
-            echo "version=$input_version" >> "$GITHUB_OUTPUT"
-          else
-            echo "::error::Invalid version format provided: '$input_version'. Must match regex '$version_regex'."
+      - name: Validate and Parse Version
+        id: check_version
+        run: |
+          node .github/scripts/classify-version.mjs --version "${{ github.event.inputs.version }}"
+          echo "version=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
+
+      - name: Validate Channel-Version Compatibility
+        env:
+          VERSION: ${{ github.event.inputs.version }}
+          CHANNEL: ${{ github.event.inputs.release-channel }}
+          MAJOR: ${{ steps.check_version.outputs.major }}
+          IS_PRERELEASE: ${{ steps.check_version.outputs.is_prerelease }}
+        run: |
+          echo "Validating version ${VERSION} for channel ${CHANNEL}..."
+
+          # Invariant 1: Channel '1' only accepts MAJOR == 1
+          if [[ "$CHANNEL" == "1" && "$MAJOR" != "1" ]]; then
+            echo "::error::Cannot promote v${MAJOR} version to channel '1'. Channel '1' is for v1 maintenance releases only."
+            echo "::error::Hint: Use channel 'stable' for v2+ releases."
             exit 1
           fi
+
+          # Invariant 2: Channels 'stable' and '1' reject prerelease versions
+          if [[ ( "$CHANNEL" == "stable" || "$CHANNEL" == "1" ) && "$IS_PRERELEASE" == "true" ]]; then
+            echo "::error::Cannot promote prerelease version ${VERSION} to channel '${CHANNEL}'."
+            echo "::error::Prerelease versions (containing -rc, -beta, -dev, etc.) can only be promoted to 'beta' channel."
+            echo "::error::Hint: Remove prerelease suffix before promoting to ${CHANNEL}, or use channel 'beta'."
+            exit 1
+          fi
+
+          echo "✅ Channel-version compatibility validated successfully"
 
   release-to-npm:
     name: Release to NPM
@@ -65,6 +89,15 @@ jobs:
           npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" latest
           npm dist-tag add "n8n@${{ needs.validate-inputs.outputs.version }}" stable
 
+      - name: Add v1 maintenance tags to NPM
+        if: needs.validate-inputs.outputs.release_channel == '1'
+        run: |
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          npm dist-tag add "n8n@${VERSION}" "${MAJOR}"
+          npm dist-tag add "n8n@${VERSION}" "${MINOR}"
+
   release-to-docker-hub:
     name: Release to DockerHub
     runs-on: ubuntu-latest
@@ -83,6 +116,8 @@ jobs:
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:latest" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:stable" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:latest" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:stable-distroless" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:latest-distroless" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
 
       - name: Tag beta/next Docker image
         if: needs.validate-inputs.outputs.release_channel == 'beta'
@@ -91,6 +126,28 @@ jobs:
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/n8n:next" "${{ secrets.DOCKER_USERNAME }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:beta" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:next" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:beta-distroless" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+          docker buildx imagetools create -t "${{ secrets.DOCKER_USERNAME }}/runners:next-distroless" "${{ secrets.DOCKER_USERNAME }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+
+      - name: Tag v1 maintenance Docker images
+        if: needs.validate-inputs.outputs.release_channel == '1'
+        run: |
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          DOCKER_USER="${{ secrets.DOCKER_USERNAME }}"
+
+          # n8n image pointer tags
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:${MAJOR}" "${DOCKER_USER}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:${MINOR}" "${DOCKER_USER}/n8n:${VERSION}"
+
+          # runners (Alpine) pointer tags
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MAJOR}" "${DOCKER_USER}/runners:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MINOR}" "${DOCKER_USER}/runners:${VERSION}"
+
+          # runners-distroless pointer tags
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MAJOR}-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MINOR}-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
 
   release-to-github-container-registry:
     name: Release to GitHub Container Registry
@@ -111,6 +168,8 @@ jobs:
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:latest" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:stable" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:latest" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:stable-distroless" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:latest-distroless" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
 
       - name: Tag beta/next GHCR image
         if: needs.validate-inputs.outputs.release_channel == 'beta'
@@ -119,6 +178,28 @@ jobs:
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/n8n:next" "ghcr.io/${{ github.repository_owner }}/n8n:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:beta" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
           docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:next" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:beta-distroless" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+          docker buildx imagetools create -t "ghcr.io/${{ github.repository_owner }}/runners:next-distroless" "ghcr.io/${{ github.repository_owner }}/runners:${{ needs.validate-inputs.outputs.version }}-distroless"
+
+      - name: Tag v1 maintenance GHCR images
+        if: needs.validate-inputs.outputs.release_channel == '1'
+        run: |
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          GHCR_BASE="ghcr.io/${{ github.repository_owner }}"
+
+          # n8n image pointer tags
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:${MAJOR}" "${GHCR_BASE}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:${MINOR}" "${GHCR_BASE}/n8n:${VERSION}"
+
+          # runners (Alpine) pointer tags
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MAJOR}" "${GHCR_BASE}/runners:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MINOR}" "${GHCR_BASE}/runners:${VERSION}"
+
+          # runners-distroless pointer tags
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MAJOR}-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MINOR}-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
 
   update-docs:
     name: Update latest and next in the docs
