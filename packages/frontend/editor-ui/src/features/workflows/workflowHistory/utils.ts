@@ -7,20 +7,8 @@ export const getLastPublishedByUser = (workflowPublishHistory: WorkflowPublishHi
 	);
 };
 
-const generateRandomSuffix = (length: number) => {
-	const characters = 'abcdefghijklmnopqrstuvwxyz0123456789';
-	let result = '';
-
-	for (let i = 0; i < length; i++) {
-		const index = Math.floor(Math.random() * characters.length);
-		result += characters[index] ?? '';
-	}
-
-	return result;
-};
-
-export const generateVersionName = () => {
-	return `Version ${generateRandomSuffix(6)}`;
+export const generateVersionName = (versionId: string) => {
+	return `Version ${versionId.substring(0, 8)}`;
 };
 
 export const formatTimestamp = (value: string) => {

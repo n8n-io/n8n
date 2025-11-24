@@ -106,7 +106,7 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 
 function handleModalOpened() {
 	if (!versionName.value && !inputsDisabled.value) {
-		versionName.value = generateVersionName();
+		versionName.value = generateVersionName(workflowsStore.workflow.versionId);
 	}
 }
 
