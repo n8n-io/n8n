@@ -204,7 +204,8 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				options.destinationNode &&
 				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode) ||
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
-				options.source !== 'RunData.ManualChatMessage'
+				options.source !== 'RunData.ManualChatMessage' &&
+				options.source !== 'RunData.ManualChatTrigger'
 			) {
 				const startNode = workflowObject.value.getStartNode(options.destinationNode);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {

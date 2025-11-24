@@ -190,12 +190,25 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 		isRegistering.value = true;
 
 		try {
+			// Clear any existing execution to allow fresh webhook registration
+			workflowState.setWorkflowExecutionData(null);
+			workflowState.setActiveExecutionId(undefined);
+
 			// Use the useRunWorkflow composable to properly register the webhook
-			await runWorkflow({
+			// Only include destinationNode if set for partial execution support
+			const runWorkflowOptions: Parameters<typeof runWorkflow>[0] = {
 				triggerNode: chatTriggerNode.value.name,
 				source: 'RunData.ManualChatTrigger',
 				sessionId: effectiveSessionId.value,
-			});
+			};
+
+			if (workflowsStore.chatPartialExecutionDestinationNode) {
+				runWorkflowOptions.destinationNode = workflowsStore.chatPartialExecutionDestinationNode;
+				// Clear after use so subsequent messages run full workflow
+				workflowsStore.chatPartialExecutionDestinationNode = null;
+			}
+
+			await runWorkflow(runWorkflowOptions);
 
 			webhookRegistered.value = true;
 		} finally {
@@ -444,6 +457,8 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 		nodeHelpers.updateNodesExecutionIssues();
 		logsStore.resetChatSessionId();
 		logsStore.resetMessages();
+		// Clear partial execution destination to allow full workflow execution
+		workflowsStore.chatPartialExecutionDestinationNode = null;
 
 		if (logsStore.isOpen) {
 			chatEventBus.emit('focusInput');
