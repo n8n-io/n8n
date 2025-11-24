@@ -64,19 +64,26 @@ export async function imageGenerationModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
 ): Promise<INodeListSearchResult> {
-	const results = await baseModelSearch.call(this, (model) => model.includes('image'), filter);
+	const rawResult = await baseModelSearch.call(this, (model) => model.includes('image'));
+	let results = rawResult.results.map((r) => {
+		if (r.name.includes('gemini-2.5-flash-image')) {
+			return { name: `${r.name} (Nano Banana)`, value: r.value };
+		}
+
+		if (r.name.includes('gemini-3-pro-image')) {
+			return { name: `${r.name} (Nano Banana Pro)`, value: r.value };
+		}
+
+		return r;
+	});
+
+	if (filter) {
+		const filterLowerCase = filter.toLowerCase();
+		results = results.filter((r) => r.name.toLowerCase().includes(filterLowerCase));
+	}
+
 	return {
-		results: results.results.map((r) => {
-			if (r.name.includes('gemini-2.5-flash-image')) {
-				return { name: `${r.name} (Nano Banana)`, value: r.value };
-			}
-
-			if (r.name.includes('gemini-3-pro-image')) {
-				return { name: `${r.name} (Nano Banana Pro)`, value: r.value };
-			}
-
-			return r;
-		}),
+		results,
 	};
 }
 
@@ -86,7 +93,7 @@ export async function imageEditModelSearch(
 ): Promise<INodeListSearchResult> {
 	const result = await imageGenerationModelSearch.call(this, filter);
 	return {
-		results: result.results.filter((r) => r.name.includes('Nano Banana')),
+		results: result.results.filter((r) => r.name.toLowerCase().includes('nano banana')),
 	};
 }
 
