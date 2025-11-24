@@ -3,7 +3,9 @@ import { useUIStore } from '@/app/stores/ui.store';
 import type { LocationQuery, NavigationGuardNext, useRouter } from 'vue-router';
 import { useMessage } from './useMessage';
 import { useI18n } from '@n8n/i18n';
+import { usePostHog } from '@/app/stores/posthog.store';
 import {
+	DRAFT_PUBLISH_EXPERIMENT,
 	MODAL_CANCEL,
 	MODAL_CLOSE,
 	MODAL_CONFIRM,
@@ -29,6 +31,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { getResourcePermissions } from '@n8n/permissions';
+import { computed } from 'vue';
 
 export function useWorkflowSaving({
 	router,
@@ -46,6 +49,7 @@ export function useWorkflowSaving({
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
+	const posthogStore = usePostHog();
 
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
@@ -136,11 +140,17 @@ export function useWorkflowSaving({
 		);
 	}
 
+	const isDraftPublishEnabled = computed(() => {
+		return posthogStore.isFeatureEnabled(DRAFT_PUBLISH_EXPERIMENT.name);
+	});
+
 	async function getWorkflowDeactivationInfo(
 		workflowId: string,
 		request: WorkflowDataUpdate,
 	): Promise<Partial<NotificationOptions> | undefined> {
-		// todo: check if the draft/publish flag is enabled and if so, don't deactivate the workflow
+		if (isDraftPublishEnabled.value) {
+			return undefined;
+		}
 
 		const missingActivatableTriggerNode =
 			request.nodes !== undefined && !request.nodes.some(isNodeActivatable);
