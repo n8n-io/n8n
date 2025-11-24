@@ -57,7 +57,7 @@ export class ExecutionRecoveryService {
 			this.push.broadcast({ type: 'executionRecovered', data: { executionId } });
 		});
 
-		if (this.globalConfig.executions.recovery.enableWorkflowDeactivation) {
+		if (this.globalConfig.executions.recovery.workflowDeactivationEnabled) {
 			const workflowId = amendedExecution.workflowId;
 			const maxLastExecutions = this.globalConfig.executions.recovery.maxLastExecutions;
 			const lastExecutions = await this.executionRepository.findMultipleExecutions({
@@ -76,7 +76,7 @@ export class ExecutionRecoveryService {
 				const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
 
 				if (!workflow) {
-					this.logger.warn(`Workflow ${workflowId} not found, skipping workflow deactivation`);
+					this.logger.warn(`Workflow ${workflowId} not found, skipping workflow autodeactivation`);
 					return amendedExecution;
 				}
 
@@ -98,20 +98,14 @@ export class ExecutionRecoveryService {
 					this.logger.warn(`Disabled workflow ${workflowId} due to too many crashed executions.`);
 
 					const instanceOwner = await this.ownershipService.getInstanceOwner();
-					if (!instanceOwner) {
-						this.logger.error(
-							'Instance owner not found, skipping owner notification of workflow deactivation',
-						);
-						return;
-					}
-					await this.userManagementMailer.notifyWorkflowDeactivated({
+					await this.userManagementMailer.notifyWorkflowAutodeactivated({
 						recipient: instanceOwner,
 						workflow,
 					});
 				}
 
 				const pendingExecutions = await this.executionRepository.findMultipleExecutions({
-					where: { workflowId, status: In(['running', 'new'] as ExecutionStatus[]) },
+					where: { workflowId, status: In<ExecutionStatus>(['running', 'new']) },
 				});
 				if (pendingExecutions.length > 0) {
 					await this.executionRepository.markAsCrashed(pendingExecutions.map((e) => e.id));

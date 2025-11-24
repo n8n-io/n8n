@@ -4,11 +4,14 @@
 		<mj-section padding="0 20px">
 			<mj-column>
 				<mj-include path="./_logo.mjml" />
-				<mj-text font-size="22px" font-weight="400">A workflow has been deactivated</mj-text>
+				<mj-text font-size="22px" font-weight="400">Workflow automatically deactivated</mj-text>
 				<mj-text
-					><b>"{{ workflowName }}"</b> workflow has been deactivated.</mj-text
+					>n8n has automatically deactivated <b>"{{ workflowName }}"</b>.</mj-text
 				>
-				<mj-text>After you have fixed the workflow, you can re-activate it.</mj-text>
+				<mj-text
+					>Please review its recent executions and resolve any issues before reactivating
+					it.</mj-text
+				>
 				<mj-button href="{{ workflowUrl }}" background-color="#ff6d5a">View Workflow</mj-button>
 				<mj-include path="./_footer.mjml" />
 			</mj-column>
