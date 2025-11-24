@@ -430,7 +430,6 @@ export class WorkflowService {
 					await this.workflowRepository.update({ id: workflowId }, { meta: remainingMeta });
 				}
 
-
 				this.eventService.emit('workflow-activated', {
 					user,
 					workflowId,
