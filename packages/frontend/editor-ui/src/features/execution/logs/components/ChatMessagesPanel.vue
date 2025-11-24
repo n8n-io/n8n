@@ -295,7 +295,7 @@ onUnmounted(() => {
 		--chat--transition-duration: 0.15s;
 
 		/* Colors - Primary and Secondary */
-		--chat--color--primary: var(--color--primary);
+		--chat--color--primary: var(--color--secondary);
 		--chat--color--secondary: var(--color--secondary);
 		--chat--color-light-shade-100: var(--color--foreground);
 		--chat--color-disabled: var(--color--text--tint-1);
@@ -338,11 +338,11 @@ onUnmounted(() => {
 		--chat--input--container--background: var(--color--background--light-3);
 		--chat--input--container--border: 1px solid var(--color--foreground--tint-1);
 		--chat--input--container--border-radius: 24px;
-		--chat--input--container--padding: 12px;
+		--chat--input--container--padding: 4px 8px;
 
 		/* Input Textarea */
 		--chat--input--font-size: var(--font-size--sm);
-		--chat--input--padding: 12px 16px;
+		--chat--input--padding: 10px 0;
 		--chat--input--border-radius: 20px;
 		--chat--input--border: none;
 		--chat--input--border-active: none;
@@ -350,17 +350,17 @@ onUnmounted(() => {
 		--chat--input--text-color: var(--color--text--shade-1);
 		--chat--input--line-height: var(--line-height--md);
 		--chat--input--placeholder--font-size: var(--font-size--sm);
-		--chat--textarea--height: 44px;
+		--chat--textarea--height: 52px;
 		--chat--textarea--max-height: 200px;
 
 		/* Send Button - integrated into container */
 		--chat--input--send--button--color: var(--color--primary);
 		--chat--input--send--button--color-hover: var(--color--primary--shade-1);
 		--chat--input--send--button--background: transparent;
-		--chat--input--send--button--background-hover: var(--color--primary--tint-2);
-		--chat--input--send--button--border-radius: 20px;
+		--chat--input--send--button--background-hover: var(--color--primary--shade-2);
+		--chat--input--send--button--border-radius: var(--radius--lg);
 		--chat--input--send--button--size: 36px;
-		--chat--input--send--button--margin: 4px;
+		--chat--input--send--button--margin: var(--spacing--sm);
 
 		/* File Button */
 		--chat--input--file--button--color: var(--color--text--tint-1);

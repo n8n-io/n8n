@@ -15,10 +15,12 @@ import { computed, provide, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { restoreChatHistory } from '@/features/execution/logs/logs.utils';
-import type { INode, INodeParameters } from 'n8n-workflow';
+import type { INode, NodeParameterValue } from 'n8n-workflow';
 import { isChatNode } from '@/app/utils/aiUtils';
 import { constructChatWebsocketUrl } from '@n8n/chat/utils';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { resolveParameter } from '@/app/composables/useWorkflowHelpers';
+import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 type IntegratedChat = Omit<Chat, 'sendMessage'> & {
 	sendMessage: (text: string, files: File[]) => Promise<void>;
@@ -53,6 +55,7 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 	const logsStore = useLogsStore();
 	const router = useRouter();
 	const nodeHelpers = useNodeHelpers();
+	const nodeTypesStore = useNodeTypesStore();
 	const { runWorkflow } = useRunWorkflow({ router });
 
 	const ws = ref<WebSocket | null>(null);
@@ -66,58 +69,86 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 
 	const previousChatMessages = computed(() => workflowsStore.getPastChatMessages);
 	const chatTriggerNode = computed(() => workflowsStore.allNodes.find(isChatNode) ?? null);
-	const allowFileUploads = computed(
+
+	// Get default value for a parameter from the node type definition
+	const getNodeParameterDefault = <T>(parameterName: string, fallback: T): T => {
+		if (!chatTriggerNode.value) return fallback;
+
+		const nodeType = nodeTypesStore.getNodeType(
+			chatTriggerNode.value.type,
+			chatTriggerNode.value.typeVersion,
+		);
+
+		if (!nodeType) return fallback;
+
+		// Find the options collection parameter
+		const optionsParam = nodeType.properties.find((prop) => prop.name === 'options');
+		if (!optionsParam || optionsParam.type !== 'collection') return fallback;
+
+		// Find the specific parameter within the options collection
+		const param = optionsParam.options?.find((opt) => opt.name === parameterName);
+		// Type guard: only INodeProperties has a 'default' property
+		if (param && 'default' in param) {
+			return (param.default ?? fallback) as T;
+		}
+		return fallback;
+	};
+
+	// Helper to resolve the options parameter from the chat trigger node
+	const resolvedOptions = computed(() => {
+		if (!chatTriggerNode.value) return null;
+
+		// Access the options directly - n8n parameters can contain complex types
+		// that resolveParameter handles, but typing them precisely is complex
+		const options = chatTriggerNode.value.parameters?.options;
+		if (!options) return null;
+
+		// resolveParameter handles expressions and returns resolved values
+		// We pass the whole options object to resolve any expressions it may contain
+		const resolved = resolveParameter<Record<string, unknown>>(options as NodeParameterValue, {
+			contextNodeName: chatTriggerNode.value.name,
+		});
+
+		return resolved;
+	});
+
+	const allowFileUploads = computed<boolean>(
 		() =>
-			(chatTriggerNode.value?.parameters?.options as INodeParameters)?.allowFileUploads === true,
+			(resolvedOptions.value?.allowFileUploads ??
+				getNodeParameterDefault('allowFileUploads', false)) === true,
 	);
-	const allowedFilesMimeTypes = computed(
-		() =>
-			(
-				chatTriggerNode.value?.parameters?.options as INodeParameters
-			)?.allowedFilesMimeTypes?.toString() ?? '',
-	);
+
+	const allowedFilesMimeTypes = computed<string>(() => {
+		const value = resolvedOptions.value?.allowedFilesMimeTypes;
+		return value?.toString() ?? getNodeParameterDefault<string>('allowedFilesMimeTypes', '*');
+	});
 
 	const respondNodesResponseMode = computed(
 		() =>
-			(chatTriggerNode.value?.parameters?.options as { responseMode?: string })?.responseMode ===
-			'responseNodes',
+			(resolvedOptions.value?.responseMode ??
+				getNodeParameterDefault<string>('responseMode', 'lastNode')) === 'responseNodes',
 	);
 
 	// Check if streaming is enabled in ChatTrigger node
-	const isStreamingEnabled = computed(() => {
-		const options = chatTriggerNode.value?.parameters?.options;
-
-		if (options && typeof options === 'object' && 'responseMode' in options) {
-			const responseMode = options.responseMode;
-			return responseMode === 'streaming';
-		}
-
-		return false;
-	});
+	const isStreamingEnabled = computed<boolean>(
+		() =>
+			(resolvedOptions.value?.responseMode ??
+				getNodeParameterDefault<string>('responseMode', 'lastNode')) === 'streaming',
+	);
 
 	// Check if file uploads are allowed in ChatTrigger node
-	const isFileUploadsAllowed = computed(() => {
-		const options = chatTriggerNode.value?.parameters?.options;
-
-		if (options && typeof options === 'object' && 'allowFileUploads' in options) {
-			return !!options.allowFileUploads;
-		}
-
-		return false;
-	});
+	const isFileUploadsAllowed = computed<boolean>(
+		() =>
+			(resolvedOptions.value?.allowFileUploads ??
+				getNodeParameterDefault('allowFileUploads', false)) === true,
+	);
 
 	// Get allowed file MIME types from ChatTrigger node
-	const allowedFilesMimeTypesComputed = computed(() => {
-		const options = chatTriggerNode.value?.parameters?.options;
-
-		if (options && typeof options === 'object' && 'allowedFilesMimeTypes' in options) {
-			const result = options.allowedFilesMimeTypes;
-			if (typeof result === 'string') {
-				return result;
-			}
-		}
-
-		return 'image/*';
+	const allowedFilesMimeTypesComputed = computed<string>(() => {
+		const value = resolvedOptions.value?.allowedFilesMimeTypes;
+		return typeof value === 'string'
+			? value
+			: getNodeParameterDefault<string>('allowedFilesMimeTypes', '*');
 	});
 
 	// Check if workflow is ready for chat execution
