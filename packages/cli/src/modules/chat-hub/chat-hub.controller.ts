@@ -105,14 +105,11 @@ export class ChatHubController {
 			res.setHeader('Content-Length', attachmentAsStreamOrBuffer.fileSize);
 		}
 
-		if (fileName) {
-			const disposition = ViewableMimeTypes.includes(mimeType.toLowerCase())
-				? 'inline'
-				: 'attachment';
-
+		if (!mimeType || !ViewableMimeTypes.includes(mimeType.toLowerCase())) {
+			// Force download if file is not viewable
 			res.setHeader(
 				'Content-Disposition',
-				`${disposition}; filename="${sanitizeFilename(fileName)}"`,
+				`attachment${fileName ? `; filename=${sanitizeFilename(fileName)}` : ''}`,
 			);
 		}
 
