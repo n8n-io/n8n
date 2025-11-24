@@ -489,7 +489,7 @@ describe('VariableModal', () => {
 			if (!keyInput || !valueInput) throw new Error('Inputs not found');
 
 			await userEvent.type(keyInput, 'NEW_VAR');
-			await userEvent.type(valueInput, 'value');
+			await userEvent.type(valueInput, 'value', { delay: 10 });
 			await userEvent.click(saveButton);
 
 			// Give time for the async operation to complete
@@ -526,7 +526,7 @@ describe('VariableModal', () => {
 			if (!valueInput) throw new Error('Input not found');
 
 			await userEvent.clear(valueInput);
-			await userEvent.type(valueInput, 'new value');
+			await userEvent.type(valueInput, 'new value', { delay: 10 });
 			await userEvent.click(saveButton);
 
 			// Give time for the async operation to complete
