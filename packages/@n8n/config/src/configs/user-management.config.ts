@@ -62,7 +62,7 @@ export class TemplateConfig {
 	'workflow-shared': string = '';
 
 	/** Overrides default HTML template for notifying that a workflow was deactivated (use full path) */
-	@Env('N8N_UM_EMAIL_TEMPLATES_WORKFLOW_DEACTIVATED')
+	@Env('N8N_UM_EMAIL_TEMPLATES_WORKFLOW_AUTODEACTIVATED')
 	'workflow-deactivated': string = '';
 
 	/** Overrides default HTML template for notifying that credentials were shared (use full path) */

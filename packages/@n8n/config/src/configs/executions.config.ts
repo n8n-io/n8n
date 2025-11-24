@@ -43,17 +43,16 @@ class QueueRecoveryConfig {
 class RecoveryConfig {
 	/**
 	 * Number of last executions to check when determining if a workflow should be deactivated
-	 * when all of the last N executions have crashed. Only applies to legacy SQLite databases.
+	 * when all of the last N executions have crashed.
 	 */
-	@Env('N8N_EXECUTIONS_RECOVERY_MAX_LAST_EXECUTIONS')
+	@Env('N8N_WORKFLOW_AUTODEACTIVATION_MAX_LAST_EXECUTIONS')
 	maxLastExecutions: number = 3;
 
 	/**
 	 * Whether to automatically deactivate workflows that have all their last executions crashed.
-	 * Only applies to legacy SQLite databases.
 	 */
-	@Env('N8N_EXECUTIONS_RECOVERY_ENABLE_WORKFLOW_DEACTIVATION')
-	enableWorkflowDeactivation: boolean = false;
+	@Env('N8N_WORKFLOW_AUTODEACTIVATION_ENABLED')
+	workflowDeactivationEnabled: boolean = false;
 }
 
 const executionModeSchema = z.enum(['regular', 'queue']);

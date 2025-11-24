@@ -139,7 +139,7 @@ export class UserManagementMailer {
 		}
 	}
 
-	async notifyWorkflowDeactivated({
+	async notifyWorkflowAutodeactivated({
 		recipient,
 		workflow,
 	}: {
@@ -157,8 +157,8 @@ export class UserManagementMailer {
 				workflowName: workflow.name,
 				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
 			}),
-			subjectBuilder: () => 'n8n has automatically deactivated a workflow',
-			messageType: 'Workflow deactivated',
+			subjectBuilder: () => 'n8n has automatically autodeactivated a workflow',
+			messageType: 'Workflow autodeactivated',
 		});
 	}
 
