@@ -1,5 +1,5 @@
 import type { GuardrailsOptions } from '../../actions/types';
-import { configureNodeInputs, hasLLMGuardrails } from '../../helpers/configureNodeInputs';
+import { configureNodeInputsV2, hasLLMGuardrails } from '../../helpers/configureNodeInputs';
 
 describe('configureNodeInputs', () => {
 	describe('hasLLMGuardrails+configureNodeInputs', () => {
@@ -66,7 +66,7 @@ describe('configureNodeInputs', () => {
 			'should return $expected when guardrails contain $name',
 			({ guardrails, expected, expectedInputs }) => {
 				expect(hasLLMGuardrails(guardrails as GuardrailsOptions)).toBe(expected);
-				expect(configureNodeInputs({ guardrails: guardrails as GuardrailsOptions })).toHaveLength(
+				expect(configureNodeInputsV2({ guardrails: guardrails as GuardrailsOptions })).toHaveLength(
 					expectedInputs,
 				);
 			},
