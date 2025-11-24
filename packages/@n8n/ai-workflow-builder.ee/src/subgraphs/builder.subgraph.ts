@@ -304,12 +304,12 @@ export class BuilderSubgraph extends BaseSubgraph<
 
 			if (nodesFound.length > 0) {
 				contextParts.push('\nNodes to use:');
-				nodesFound.forEach(({ nodeName, reasoning, connectionChangingParameters }) => {
+				nodesFound.forEach(({ nodeName, version, reasoning, connectionChangingParameters }) => {
 					const paramInfo =
 						connectionChangingParameters.length > 0
 							? ` [Connection params: ${connectionChangingParameters.map((p) => p.name).join(', ')}]`
 							: '';
-					contextParts.push(`- ${nodeName}: ${reasoning}${paramInfo}`);
+					contextParts.push(`- ${nodeName} v${version}: ${reasoning}${paramInfo}`);
 				});
 			}
 		}

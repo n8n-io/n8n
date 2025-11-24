@@ -4,6 +4,7 @@ export interface DiscoveryContext {
 	categorization?: PromptCategorization;
 	nodesFound: Array<{
 		nodeName: string;
+		version: number;
 		reasoning: string;
 		connectionChangingParameters: Array<{
 			name: string;

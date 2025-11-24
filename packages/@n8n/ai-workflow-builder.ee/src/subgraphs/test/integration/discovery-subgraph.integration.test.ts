@@ -81,7 +81,7 @@ const testPrompts = [
 
 // Helper to check if expected nodes are discovered
 function hasExpectedNodes(
-	discovered: Array<{ nodeName: string; reasoning: string }>,
+	discovered: Array<{ nodeName: string; version: number; reasoning: string }>,
 	expectedNames: string[],
 ): { hasAll: boolean; missing: string[] } {
 	const discoveredNames = discovered.map((n) => n.nodeName);
@@ -221,6 +221,8 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			result.nodesFound.forEach((node) => {
 				expect(node.nodeName).toBeDefined();
 				expect(typeof node.nodeName).toBe('string');
+				expect(node.version).toBeDefined();
+				expect(typeof node.version).toBe('number');
 				expect(node.reasoning).toBeDefined();
 				expect(node.connectionChangingParameters).toBeDefined();
 				expect(Array.isArray(node.connectionChangingParameters)).toBe(true);
@@ -239,23 +241,27 @@ describe('Discovery Subgraph - Integration Tests', () => {
 
 			expect(result.nodesFound.length).toBeGreaterThan(0);
 
-			// Each node should have nodeName, reasoning, and connectionChangingParameters
-			result.nodesFound.forEach(({ nodeName, reasoning, connectionChangingParameters }) => {
-				expect(nodeName).toBeDefined();
-				expect(typeof nodeName).toBe('string');
-				expect(reasoning).toBeDefined();
-				expect(reasoning.length).toBeGreaterThan(10);
-				expect(connectionChangingParameters).toBeDefined();
-				expect(Array.isArray(connectionChangingParameters)).toBe(true);
+			// Each node should have nodeName, version, reasoning, and connectionChangingParameters
+			result.nodesFound.forEach(
+				({ nodeName, version, reasoning, connectionChangingParameters }) => {
+					expect(nodeName).toBeDefined();
+					expect(typeof nodeName).toBe('string');
+					expect(version).toBeDefined();
+					expect(typeof version).toBe('number');
+					expect(reasoning).toBeDefined();
+					expect(reasoning.length).toBeGreaterThan(10);
+					expect(connectionChangingParameters).toBeDefined();
+					expect(Array.isArray(connectionChangingParameters)).toBe(true);
 
-				// Validate structure of connection-changing parameters
-				connectionChangingParameters.forEach((param) => {
-					expect(param.name).toBeDefined();
-					expect(typeof param.name).toBe('string');
-					expect(param.possibleValues).toBeDefined();
-					expect(Array.isArray(param.possibleValues)).toBe(true);
-				});
-			});
+					// Validate structure of connection-changing parameters
+					connectionChangingParameters.forEach((param) => {
+						expect(param.name).toBeDefined();
+						expect(typeof param.name).toBe('string');
+						expect(param.possibleValues).toBeDefined();
+						expect(Array.isArray(param.possibleValues)).toBe(true);
+					});
+				},
+			);
 		});
 
 		it('should include categorization and best practices in internal state', async () => {
@@ -340,6 +346,7 @@ describe('Discovery Subgraph - Integration Tests', () => {
 				prompt: string;
 				nodesFound: Array<{
 					nodeName: string;
+					version: number;
 					reasoning: string;
 					connectionChangingParameters: Array<{
 						name: string;

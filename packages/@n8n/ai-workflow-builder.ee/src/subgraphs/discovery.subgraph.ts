@@ -28,6 +28,9 @@ const discoveryOutputSchema = z.object({
 		.array(
 			z.object({
 				nodeName: z.string().describe('The internal name of the node (e.g., n8n-nodes-base.gmail)'),
+				version: z
+					.number()
+					.describe('The version number of the node (e.g., 1, 1.1, 2, 3, 3.2, etc.)'),
 				reasoning: z.string().describe('Why this node is relevant for the workflow'),
 				connectionChangingParameters: z
 					.array(
@@ -68,8 +71,11 @@ PROCESS:
 3. **Identify workflow components** from user request and best practices
 4. **Call search_nodes IN PARALLEL** for all components (e.g., "Gmail", "OpenAI", "Schedule")
 5. **Call get_node_details IN PARALLEL** for ALL promising nodes (batch multiple calls)
-6. **Analyze each node's <connections>** to identify connection-changing parameters
-7. **Call submit_discovery_results** with nodesFound array
+6. **Extract node information** from each node_details response:
+   - Node name from <name> tag
+   - Version number from <version> tag (required - extract the number)
+   - Connection-changing parameters from <connections> section
+7. **Call submit_discovery_results** with complete nodesFound array
 
 CONNECTION-CHANGING PARAMETERS - CRITICAL RULES:
 
@@ -106,9 +112,10 @@ CRITICAL RULES:
 - NEVER ask clarifying questions
 - ALWAYS call categorize_prompt and get_best_practices first
 - Call search_nodes and get_node_details IN PARALLEL for speed
+- ALWAYS extract version number from <version> tag in node details
 - ONLY flag connectionChangingParameters if they appear in <input> or <output> expressions
 - If no parameters appear in connection expressions, return empty array []
-- Output ONLY: nodesFound with {{ nodeName, reasoning, connectionChangingParameters }}
+- Output ONLY: nodesFound with {{ nodeName, version, reasoning, connectionChangingParameters }}
 
 DO NOT:
 - Output text commentary between tool calls
@@ -139,10 +146,11 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Output: Found nodes with reasoning and connection-changing parameters
+	// Output: Found nodes with version, reasoning and connection-changing parameters
 	nodesFound: Annotation<
 		Array<{
 			nodeName: string;
+			version: number;
 			reasoning: string;
 			connectionChangingParameters: Array<{
 				name: string;
@@ -330,9 +338,13 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			};
 		}
 
+		const bestPracticesTool = state.messages.find(
+			(m) => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
+		);
 		// Return raw output without hydration
 		return {
 			nodesFound: output.nodesFound,
+			bestPractices: bestPracticesTool?.text,
 		};
 	}
 
@@ -386,12 +398,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		subgraphOutput: typeof DiscoverySubgraphState.State,
 		_parentState: typeof ParentGraphState.State,
 	) {
-		// Count total connection-changing parameters across all nodes
-		const totalConnectionParams = subgraphOutput.nodesFound.reduce(
-			(sum, node) => sum + (node.connectionChangingParameters?.length || 0),
-			0,
-		);
-
 		const discoveryContext = {
 			nodesFound: subgraphOutput.nodesFound || [],
 			// Keep categorization and bestPractices from tool calls for downstream use
@@ -399,8 +405,31 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			bestPractices: subgraphOutput.bestPractices,
 		};
 
-		// Create a minimal summary for the supervisor
-		const supervisorSummary = `Discovery completed. Found ${subgraphOutput.nodesFound.length} nodes with ${totalConnectionParams} connection-changing parameters. Ready for builder.`;
+		// Create a detailed summary for the supervisor
+		const messageParts = ['Discovery completed.', ''];
+
+		// Add list of discovered nodes
+		if (subgraphOutput.nodesFound.length > 0) {
+			messageParts.push('**Discovered Nodes:**');
+			subgraphOutput.nodesFound.forEach(
+				({ nodeName, version, reasoning, connectionChangingParameters }) => {
+					const params =
+						connectionChangingParameters.length > 0
+							? ` [Connection params: ${connectionChangingParameters.map((p) => p.name).join(', ')}]`
+							: '';
+					messageParts.push(`- ${nodeName} v${version}: ${reasoning}${params}`);
+				},
+			);
+			messageParts.push('');
+		}
+
+		// Add best practices if available
+		if (subgraphOutput.bestPractices) {
+			messageParts.push('**Best Practices:**');
+			messageParts.push(subgraphOutput.bestPractices);
+		}
+
+		const supervisorSummary = messageParts.join('\n');
 		const summaryMessage = new HumanMessage({
 			content: supervisorSummary,
 			name: 'discovery_subgraph',
