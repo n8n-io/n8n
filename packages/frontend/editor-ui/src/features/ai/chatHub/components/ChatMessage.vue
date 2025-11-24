@@ -8,7 +8,7 @@ import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
 import type MarkdownIt from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
-import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
@@ -137,16 +137,22 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 // Watch for isEditing prop changes to initialize edit mode
 watch(
 	() => isEditing,
-	async (editing) => {
-		if (editing) {
-			editedText.value = message.content;
-			await nextTick();
-			textareaRef.value?.focus();
-		} else {
-			editedText.value = '';
-		}
+	(editing) => {
+		editedText.value = editing ? message.content : '';
 	},
 	{ immediate: true },
+);
+
+watch(
+	textareaRef,
+	async (textarea) => {
+		if (textarea) {
+			await new Promise((r) => setTimeout(r, 0));
+			textarea.focus();
+			textarea.$el.scrollIntoView({ block: 'nearest' });
+		}
+	},
+	{ immediate: true, flush: 'post' },
 );
 
 onBeforeMount(() => {
@@ -404,6 +410,10 @@ onBeforeMount(() => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--2xs);
+}
+
+.textarea {
+	scroll-margin-block: var(--spacing--sm);
 }
 
 .textarea textarea {
