@@ -1,7 +1,6 @@
 import {
 	createTeamProject,
 	linkUserToProject,
-	mockInstance,
 	randomCredentialPayload as payload,
 	randomCredentialPayload,
 	randomCredentialPayloadWithOauthTokenData,
@@ -16,7 +15,7 @@ import type { Scope } from '@sentry/node';
 import * as a from 'assert';
 import { mock } from 'jest-mock-extended';
 import { Credentials } from 'n8n-core';
-import type { ICredentialDataDecryptedObject, ICredentialType, LoadedClass } from 'n8n-workflow';
+import type { ICredentialDataDecryptedObject } from 'n8n-workflow';
 import { randomString } from 'n8n-workflow';
 
 import {
@@ -36,20 +35,6 @@ import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 const { any } = expect;
-
-// Mock LoadNodesAndCredentials BEFORE setupTestServer is called
-// Used by the credential service on credential creation to check required parameters
-mockInstance(LoadNodesAndCredentials, {
-	getCredential(_credentialType) {
-		return mock<LoadedClass<ICredentialType>>({
-			sourcePath: '',
-			type: mock<ICredentialType>({
-				properties: [],
-				extends: [],
-			}),
-		});
-	},
-});
 
 const testServer = setupTestServer({ endpointGroups: ['credentials'] });
 
