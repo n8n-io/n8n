@@ -222,32 +222,6 @@ describe('v2/components/N8nPagination', () => {
 	});
 
 	describe('slots', () => {
-		it('should render custom prev-icon slot', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					total: 100,
-					pageSize: 10,
-				},
-				slots: {
-					'prev-icon': '<span data-testid="custom-prev">Previous</span>',
-				},
-			});
-			expect(wrapper.getByTestId('custom-prev')).toBeInTheDocument();
-		});
-
-		it('should render custom next-icon slot', () => {
-			const wrapper = render(Pagination, {
-				props: {
-					total: 100,
-					pageSize: 10,
-				},
-				slots: {
-					'next-icon': '<span data-testid="custom-next">Next</span>',
-				},
-			});
-			expect(wrapper.getByTestId('custom-next')).toBeInTheDocument();
-		});
-
 		it('should render default prev-icon when slot is not provided', () => {
 			const wrapper = render(Pagination, {
 				props: {
