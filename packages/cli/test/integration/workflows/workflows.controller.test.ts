@@ -2860,6 +2860,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const { data } = response.body;
 		expect(data.id).toBe(workflow.id);
 		expect(data.activeVersionId).toBe(workflow.versionId);
+		expect(data.activeVersion.versionId).toBe(workflow.versionId);
 	});
 
 	test('should return 400 when versionId is missing', async () => {
