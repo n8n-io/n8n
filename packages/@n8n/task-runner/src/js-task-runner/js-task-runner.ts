@@ -142,8 +142,8 @@ export class JsTaskRunner extends TaskRunner {
 					require(module);
 				} catch (error) {
 					if (error instanceof Error && 'code' in error && error.code === 'MODULE_NOT_FOUND') {
-						console.warn(
-							`Allowlisted ${module} is not installed. Please either install it or remove it from the allowlist in the n8n-task-runners.json config file. See: https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies`,
+						console.error(
+							`Allowlisted module '${module}' is not installed. Please either install it or remove it from the allowlist in the n8n-task-runners.json config file. See: https://docs.n8n.io/hosting/configuration/task-runners/#adding-extra-dependencies`,
 						);
 						continue;
 					}
