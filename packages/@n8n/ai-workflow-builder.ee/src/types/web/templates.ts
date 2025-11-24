@@ -44,7 +44,8 @@ export interface TemplateSearchQuery {
 	search?: string;
 	rows?: number;
 	page?: number;
-	// sort is structured like column:desc/asc - e.g. trendingScore:desc for most popular
+	// sort is structured like column:desc/asc
+	// examples: createdAt:desc|asc, _text_match:desc|asc, rank:desc|asc, trendingScore:desc|asc
 	sort?: string;
 	// 0 represents free
 	price?: number;

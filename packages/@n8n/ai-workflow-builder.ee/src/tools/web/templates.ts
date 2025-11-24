@@ -21,11 +21,11 @@ function buildSearchQueryString(query: TemplateSearchQuery): string {
 	query.price = 0;
 	// don't ignore any search criteria
 	query.combineWith = 'and';
-	// pick the most popular templates first
-	query.sort = 'views:desc';
-	// get one template per search
-	query.rows = 1;
-	// get the first page
+	// pick most recent templates that match the search
+	query.sort = 'createdAt:desc,rank:desc';
+
+	// select how many rows per page and get first page
+	query.rows = query.rows ?? 5;
 	query.page = 1;
 
 	if (query.search) {
@@ -56,6 +56,7 @@ function buildSearchQueryString(query: TemplateSearchQuery): string {
 export async function fetchTemplateList(query: {
 	search?: string;
 	category?: Category;
+	rows?: number;
 }): Promise<TemplateSearchResponse> {
 	const queryString = buildSearchQueryString(query);
 	const url = `${N8N_API_BASE_URL}/templates/search${queryString ? `?${queryString}` : ''}`;
