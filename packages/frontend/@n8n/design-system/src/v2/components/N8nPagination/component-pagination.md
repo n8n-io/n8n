@@ -30,9 +30,11 @@ Allows users to navigate through paginated content by displaying page numbers an
 
 ```Typescript
 <script setup lang="ts">
-const currentPage = ref(1)
-const total = 100
-const pageSize = 10
+import { ref } from 'vue';
+
+const currentPage = ref(1);
+const total = 100;
+const pageSize = 10;
 </script>
 
 <template>
@@ -46,9 +48,11 @@ const pageSize = 10
 
 ```Typescript
 <script setup lang="ts">
-const currentPage = ref(1)
-const total = 500
-const pageSize = 10
+import { ref } from 'vue';
+
+const currentPage = ref(1);
+const total = 500;
+const pageSize = 10;
 </script>
 
 <template>

@@ -131,13 +131,12 @@ describe('v2/components/N8nPagination', () => {
 				btn.textContent?.includes('›'),
 			);
 
-			if (nextButton) {
-				await userEvent.click(nextButton);
+			expect(nextButton).toBeInTheDocument();
+			await userEvent.click(nextButton!);
 
-				await waitFor(() => {
-					expect(wrapper.emitted('update:current-page')).toBeTruthy();
-				});
-			}
+			await waitFor(() => {
+				expect(wrapper.emitted('update:current-page')).toBeTruthy();
+			});
 		});
 
 		it('should update current page when clicking prev button', async () => {
@@ -154,13 +153,12 @@ describe('v2/components/N8nPagination', () => {
 				btn.textContent?.includes('‹'),
 			);
 
-			if (prevButton) {
-				await userEvent.click(prevButton);
+			expect(prevButton).toBeInTheDocument();
+			await userEvent.click(prevButton!);
 
-				await waitFor(() => {
-					expect(wrapper.emitted('update:current-page')).toBeTruthy();
-				});
-			}
+			await waitFor(() => {
+				expect(wrapper.emitted('update:current-page')).toBeTruthy();
+			});
 		});
 	});
 
@@ -217,9 +215,9 @@ describe('v2/components/N8nPagination', () => {
 					currentPage: 1,
 				},
 			});
-			// With only 5 pages, ellipsis might not be needed
+			// With only 5 pages, ellipsis should not be rendered
 			// This depends on the sibling-count prop (set to 2)
-			expect(wrapper.container).toBeInTheDocument();
+			expect(wrapper.container.textContent).not.toContain('…');
 		});
 	});
 

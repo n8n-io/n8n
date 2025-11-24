@@ -7,7 +7,7 @@ import {
 	PaginationEllipsis,
 	PaginationNext,
 } from 'reka-ui';
-import { ref, useCssModule } from 'vue';
+import { ref, useCssModule, watch } from 'vue';
 
 import type { PaginationProps } from './Pagination.types';
 
@@ -27,6 +27,24 @@ const emit = defineEmits<{
 const page = ref(props.currentPage ?? 1);
 const itemsPerPage = ref(props.pageSize ?? 10);
 
+watch(
+	() => props.currentPage,
+	(newValue) => {
+		if (newValue !== undefined && newValue !== page.value) {
+			page.value = newValue;
+		}
+	},
+);
+
+watch(
+	() => props.pageSize,
+	(newValue) => {
+		if (newValue !== undefined && newValue !== itemsPerPage.value) {
+			itemsPerPage.value = newValue;
+		}
+	},
+);
+
 // Handle page changes and emit events
 function handlePageChange(newPage: number) {
 	page.value = newPage;
@@ -39,7 +57,7 @@ function handlePageChange(newPage: number) {
 	<PaginationRoot
 		:total="total"
 		:items-per-page="itemsPerPage"
-		:page="props.currentPage"
+		:page="page"
 		:sibling-count="2"
 		:show-edges="true"
 		:class="$style.Pagination"
