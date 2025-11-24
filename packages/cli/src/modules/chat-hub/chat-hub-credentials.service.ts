@@ -9,7 +9,6 @@ import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { INodeCredentials } from 'n8n-workflow';
 
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -19,7 +18,6 @@ export type CredentialWithProjectId = CredentialsEntity & { projectId: string };
 @Service()
 export class ChatHubCredentialsService {
 	constructor(
-		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly credentialsService: CredentialsService,
 		private readonly projectRepository: ProjectRepository,
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
@@ -36,6 +34,10 @@ export class ChatHubCredentialsService {
 			throw new BadRequestError('No credentials provided for the selected model provider');
 		}
 
+		return await this.ensureCredentialById(user, credentialId, trx);
+	}
+
+	async ensureCredentialById(user: User, credentialId: string, trx?: EntityManager) {
 		const project = await this.projectRepository.getPersonalProjectForUser(user.id, trx);
 		if (!project) {
 			throw new ForbiddenError('Missing personal project');
@@ -57,6 +59,17 @@ export class ChatHubCredentialsService {
 			id: credential.id,
 			projectId: project.id,
 		};
+	}
+
+	private pickCredentialId(
+		provider: ChatHubConversationModel['provider'],
+		credentials: INodeCredentials,
+	): string | null {
+		if (provider === 'n8n' || provider === 'custom-agent') {
+			return null;
+		}
+
+		return credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]?.id ?? null;
 	}
 
 	async ensureWorkflowCredentials(
@@ -87,35 +100,5 @@ export class ChatHubCredentialsService {
 			id: credential.id,
 			projectId: project.id,
 		};
-	}
-
-	async ensureCredentialById(
-		user: User,
-		credentialId: string,
-		trx?: EntityManager,
-	): Promise<CredentialWithProjectId> {
-		const allCredentials = await this.credentialsFinderService.findAllCredentialsForUser(
-			user,
-			['credential:read'],
-			trx,
-			{ includeGlobalCredentials: true },
-		);
-
-		const credential = allCredentials.find((c) => c.id === credentialId);
-		if (!credential) {
-			throw new ForbiddenError("You don't have access to the provided credentials");
-		}
-		return credential as CredentialWithProjectId;
-	}
-
-	private pickCredentialId(
-		provider: ChatHubConversationModel['provider'],
-		credentials: INodeCredentials,
-	): string | null {
-		if (provider === 'n8n' || provider === 'custom-agent') {
-			return null;
-		}
-
-		return credentials[PROVIDER_CREDENTIAL_TYPE_MAP[provider]]?.id ?? null;
 	}
 }
