@@ -178,8 +178,7 @@ export async function setBinaryDataBuffer(
 	executionId: string,
 ): Promise<IBinaryData> {
 	return await Container.get(BinaryDataService).store(
-		workflowId,
-		executionId,
+		{ type: 'execution', workflowId, executionId },
 		bufferOrStream,
 		binaryData,
 	);
@@ -237,8 +236,7 @@ export async function copyBinaryFile(
 	}
 
 	return await Container.get(BinaryDataService).copyBinaryFile(
-		workflowId,
-		executionId,
+		{ type: 'execution', workflowId, executionId },
 		returnData,
 		filePath,
 	);
