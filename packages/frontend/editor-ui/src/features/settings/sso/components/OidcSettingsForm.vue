@@ -5,10 +5,9 @@ import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 
 import { ElCheckbox } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useMessage } from '@/app/composables/useMessage';
 import UserRoleProvisioningDropdown, {
 	type UserRoleProvisioningSetting,
@@ -24,7 +23,6 @@ const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
-const pageRedirectionHelper = usePageRedirectionHelper();
 const instanceId = useRootStore().instanceId;
 
 const savingForm = ref<boolean>(false);
@@ -189,16 +187,12 @@ function sendTrackingEventForUserProvisioning() {
 	});
 }
 
-const goToUpgrade = () => {
-	void pageRedirectionHelper.goToUpgrade('sso', 'upgrade-sso');
-};
-
 onMounted(async () => {
 	await loadOidcConfig();
 });
 </script>
 <template>
-	<div v-if="ssoStore.isEnterpriseOidcEnabled">
+	<div>
 		<div :class="$style.group">
 			<label>Redirect URL</label>
 			<CopyInput
@@ -298,16 +292,5 @@ onMounted(async () => {
 			</N8nButton>
 		</div>
 	</div>
-	<N8nActionBox
-		v-else
-		data-test-id="sso-content-unlicensed"
-		:class="$style.actionBox"
-		:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
-		@click:button="goToUpgrade"
-	>
-		<template #heading>
-			<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
-		</template>
-	</N8nActionBox>
 </template>
 <style lang="scss" module src="../styles/sso-form.module.scss" />
