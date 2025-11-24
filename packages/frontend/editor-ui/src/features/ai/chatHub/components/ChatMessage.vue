@@ -193,7 +193,7 @@ onBeforeMount(() => {
 					</N8nButton>
 				</div>
 			</div>
-			<template v-else>
+			<div v-else>
 				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
 					<div v-if="attachments.length > 0" :class="$style.attachments">
 						<ChatFile
@@ -233,7 +233,7 @@ onBeforeMount(() => {
 					@read-aloud="handleReadAloud"
 					@switchAlternative="handleSwitchAlternative"
 				/>
-			</template>
+			</div>
 		</div>
 	</div>
 </template>

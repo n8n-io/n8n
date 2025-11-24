@@ -118,33 +118,6 @@ function handleKeydownTextarea(e: KeyboardEvent) {
 	}
 }
 
-function handlePaste(e: ClipboardEvent) {
-	e.preventDefault();
-
-	const text = e.clipboardData?.getData('text');
-
-	if (!text) {
-		return;
-	}
-
-	// Text copied from conversation history tends to
-	// include unnecessary leading & trailing whitespaces, so we're removing them
-	const trimmed = text.trim();
-
-	const textarea = e.target as HTMLTextAreaElement;
-	const start = textarea.selectionStart;
-	const end = textarea.selectionEnd;
-	const before = message.value.substring(0, start);
-	const after = message.value.substring(end);
-
-	message.value = before + trimmed + after;
-
-	setTimeout(() => {
-		const newPosition = start + trimmed.length;
-		textarea.setSelectionRange(newPosition, newPosition);
-	}, 0);
-}
-
 function handleClickInputWrapper() {
 	inputRef.value?.focus();
 }
@@ -252,7 +225,6 @@ defineExpose({
 					autofocus
 					:disabled="isMissingCredentials || !selectedModel"
 					@keydown="handleKeydownTextarea"
-					@paste="handlePaste"
 				/>
 
 				<div :class="$style.footer">
