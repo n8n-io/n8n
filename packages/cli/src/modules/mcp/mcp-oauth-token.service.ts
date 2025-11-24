@@ -2,17 +2,20 @@ import { AuthInfo } from '@modelcontextprotocol/sdk/server/auth/types';
 import { OAuthTokens } from '@modelcontextprotocol/sdk/shared/auth';
 import { Logger } from '@n8n/backend-common';
 import { Time } from '@n8n/constants';
-import { User, UserRepository, withTransaction } from '@n8n/db';
+import { UserRepository, withTransaction } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { MoreThanOrEqual } from '@n8n/typeorm';
+import { ensureError } from 'n8n-workflow';
 import { randomBytes, randomUUID } from 'node:crypto';
-
-import { JwtService } from '@/services/jwt.service';
 
 import { AccessToken } from './database/entities/oauth-access-token.entity';
 import { RefreshToken } from './database/entities/oauth-refresh-token.entity';
 import { AccessTokenRepository } from './database/repositories/oauth-access-token.repository';
 import { RefreshTokenRepository } from './database/repositories/oauth-refresh-token.repository';
+import { AccessTokenNotFoundError, JWTVerificationError } from './mcp.errors';
+import { UserWithContext } from './mcp.types';
+
+import { JwtService } from '@/services/jwt.service';
 
 /**
  * Manages OAuth 2.1 token lifecycle for MCP server
@@ -142,7 +145,7 @@ export class McpOAuthTokenService {
 		try {
 			decoded = this.jwtService.verify(token, { audience: this.MCP_AUDIENCE });
 		} catch (error) {
-			throw new Error('Invalid access token: JWT verification failed');
+			throw new JWTVerificationError();
 		}
 
 		const accessTokenRecord = await this.accessTokenRepository.findOne({
@@ -150,7 +153,7 @@ export class McpOAuthTokenService {
 		});
 
 		if (!accessTokenRecord) {
-			throw new Error('Invalid access token: not found in database');
+			throw new AccessTokenNotFoundError();
 		}
 
 		return {
@@ -163,13 +166,13 @@ export class McpOAuthTokenService {
 		};
 	}
 
-	async verifyOAuthAccessToken(token: string): Promise<User | null> {
+	async verifyOAuthAccessToken(token: string): Promise<UserWithContext> {
 		try {
 			const authInfo = await this.verifyAccessToken(token);
 
 			const userId = authInfo.extra?.userId as string;
 			if (!userId) {
-				return null;
+				return { user: null, context: { reason: 'user_id_not_in_auth_info', auth_type: 'oauth' } };
 			}
 
 			const user = await this.userRepository.findOne({
@@ -177,9 +180,27 @@ export class McpOAuthTokenService {
 				relations: ['role'],
 			});
 
-			return user;
+			if (!user) {
+				return { user: null, context: { reason: 'user_not_found', auth_type: 'oauth' } };
+			}
+
+			return { user };
 		} catch (error) {
-			return null;
+			const errorForSure = ensureError(error);
+			const reason =
+				errorForSure instanceof JWTVerificationError
+					? 'invalid_token'
+					: errorForSure instanceof AccessTokenNotFoundError
+						? 'token_not_found_in_db'
+						: 'unknown_error';
+			return {
+				user: null,
+				context: {
+					reason,
+					auth_type: 'oauth',
+					error_details: errorForSure.message,
+				},
+			};
 		}
 	}
 

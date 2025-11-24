@@ -18,6 +18,9 @@ import {
 	updateAgentApi,
 	deleteAgentApi,
 	updateConversationApi,
+	fetchChatSettingsApi,
+	fetchChatProviderSettingsApi,
+	updateChatSettingsApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -49,7 +52,8 @@ import { buildUiMessages, isLlmProviderModel, isMatchedAgent } from './chat.util
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { type INode } from 'n8n-workflow';
+import { deepCopy, type INode } from 'n8n-workflow';
+import type { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -62,7 +66,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 	const streaming = ref<ChatStreamingState>();
-
+	const settingsLoading = ref(false);
+	const settings = ref<Record<ChatHubLLMProvider, ChatProviderSettingsDto> | null>(null);
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
 
 	const getConversation = (sessionId: ChatSessionId): ChatConversation | undefined =>
@@ -809,6 +814,41 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		return agent;
 	}
 
+	async function fetchAllChatSettings() {
+		try {
+			settingsLoading.value = true;
+			settings.value = await fetchChatSettingsApi(rootStore.restApiContext);
+		} finally {
+			settingsLoading.value = false;
+		}
+
+		return settings.value;
+	}
+
+	async function fetchProviderSettings(provider: ChatHubLLMProvider) {
+		const providerSettings = await fetchChatProviderSettingsApi(rootStore.restApiContext, provider);
+
+		if (settings.value) {
+			settings.value[provider] = deepCopy(providerSettings);
+		}
+
+		return providerSettings;
+	}
+
+	async function updateProviderSettings(updated: ChatProviderSettingsDto) {
+		if (!updated.enabled) {
+			updated.allowedModels = [];
+		}
+
+		const saved = await updateChatSettingsApi(rootStore.restApiContext, updated);
+
+		if (settings.value) {
+			settings.value[updated.provider] = deepCopy(saved);
+		}
+
+		return saved;
+	}
+
 	return {
 		/**
 		 * models and agents
@@ -855,5 +895,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		editMessage,
 		regenerateMessage,
 		stopStreamingMessage,
+
+		/**
+		 * settings
+		 */
+		settings,
+		settingsLoading,
+		fetchAllChatSettings,
+		fetchProviderSettings,
+		updateProviderSettings,
 	};
 });
