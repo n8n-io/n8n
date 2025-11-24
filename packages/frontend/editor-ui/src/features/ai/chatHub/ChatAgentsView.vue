@@ -53,7 +53,6 @@ const sortOptions = [
 ];
 
 function handleCreateAgent() {
-	chatStore.currentEditingAgent = null;
 	uiStore.openModalWithData({
 		name: AGENT_EDITOR_MODAL_KEY,
 		data: {

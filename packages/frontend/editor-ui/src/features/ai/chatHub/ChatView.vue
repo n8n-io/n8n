@@ -43,6 +43,7 @@ import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCre
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import { INodesSchema, type INode } from 'n8n-workflow';
 import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
+import { useCustomAgent } from './composables/useCustomAgent';
 
 const router = useRouter();
 const route = useRoute();
@@ -172,6 +173,12 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 
 	return defaultModel.value ? chatStore.getAgent(defaultModel.value) : null;
 });
+const customAgentId = computed(() =>
+	selectedModel.value?.model.provider === 'custom-agent'
+		? selectedModel.value.model.agentId
+		: undefined,
+);
+const customAgent = useCustomAgent(customAgentId);
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
 	usersStore.currentUserId ?? 'anonymous',
@@ -338,7 +345,7 @@ function onSubmit(message: string, attachments: File[]) {
 		message,
 		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
-		canSelectTools.value ? selectedTools.value : [],
+		canSelectTools.value ? selectedTools.value : (customAgent.value?.tools ?? []),
 		attachments,
 	);
 
@@ -460,7 +467,6 @@ async function handleEditAgent(agentId: string) {
 }
 
 function openNewAgentCreator() {
-	chatStore.currentEditingAgent = null;
 	uiStore.openModalWithData({
 		name: AGENT_EDITOR_MODAL_KEY,
 		data: {

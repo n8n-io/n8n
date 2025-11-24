@@ -9,11 +9,12 @@ import { N8nButton, N8nHeading, N8nInput, N8nInputLabel } from '@n8n/design-syst
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 
 const props = defineProps<{
 	modalName: string;
@@ -30,6 +31,7 @@ const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
 const modalBus = ref(createEventBus());
+const customAgent = useCustomAgent(props.data.agentId);
 
 const name = ref('');
 const description = ref('');
@@ -68,27 +70,23 @@ const agentMergedCredentials = computed((): CredentialsMap => {
 	};
 });
 
-function loadAgent() {
-	const customAgent = chatStore.currentEditingAgent;
+watch(
+	customAgent,
+	(agent) => {
+		if (!agent) return;
 
-	if (!customAgent) return;
+		name.value = agent.name;
+		description.value = agent.description ?? '';
+		systemPrompt.value = agent.systemPrompt;
+		selectedModel.value = chatStore.getAgent(agent);
+		tools.value = agent.tools || [];
 
-	name.value = customAgent.name;
-	description.value = customAgent.description ?? '';
-	systemPrompt.value = customAgent.systemPrompt;
-	selectedModel.value = chatStore.getAgent(customAgent);
-	tools.value = customAgent.tools || [];
-
-	if (customAgent.credentialId) {
-		agentSelectedCredentials.value[customAgent.provider] = customAgent.credentialId;
-	}
-}
-
-onMounted(() => {
-	if (props.data.agentId) {
-		loadAgent();
-	}
-});
+		if (agent.credentialId) {
+			agentSelectedCredentials.value[agent.provider] = agent.credentialId;
+		}
+	},
+	{ immediate: true },
+);
 
 function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
 	agentSelectedCredentials.value = {
