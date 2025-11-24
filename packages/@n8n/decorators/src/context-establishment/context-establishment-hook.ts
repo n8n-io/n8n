@@ -305,6 +305,59 @@ export interface IContextEstablishmentHook {
 	 * ```
 	 */
 	isApplicableToTriggerNode(nodeType: string): boolean;
+
+	/**
+	 * Optional hook initialization method called during registry setup.
+	 *
+	 * Use this to perform one-time setup operations before the hook starts
+	 * processing workflow executions (e.g., loading configuration, establishing
+	 * connections, validating dependencies).
+	 *
+	 * **Lifecycle:**
+	 * - Called once during application startup when ExecutionContextHookRegistry.init() runs
+	 * - Can be called multiple times if the registry is reinitialized
+	 * - Called AFTER DI container instantiates the hook but BEFORE registration in the registry
+	 *
+	 * **Error handling:**
+	 * - If init() throws an error, the hook is NOT registered and will be unavailable
+	 * - The error is logged but does not stop other hooks from initializing
+	 * - Other hooks continue to load normally even if one fails
+	 * - Only throw errors for failures that make the hook unusable
+	 *
+	 * **Best practices:**
+	 * - Keep initialization fast (avoid blocking operations)
+	 * - Don't allocate resources in constructor - do it here instead
+	 * - Make init() idempotent (safe to call multiple times)
+	 * - Throw errors only when the hook cannot function without successful initialization
+	 * - Add logging for initialization steps to aid debugging
+	 *
+	 * @returns Promise that resolves when initialization is complete
+	 * @throws Error if initialization fails and hook should not be registered
+	 *
+	 * @example
+	 * ```typescript
+	 * @ContextEstablishmentHook()
+	 * export class CustomHook implements IContextEstablishmentHook {
+	 *   hookDescription = { name: 'custom.hook' };
+	 *
+	 *   private config!: ConfigData;
+	 *
+	 *   async init() {
+	 *     // Load required configuration
+	 *     this.config = await this.loadConfig();
+	 *     if (!this.config) {
+	 *       throw new Error('Failed to load required configuration');
+	 *     }
+	 *   }
+	 *
+	 *   async execute(options: ContextEstablishmentOptions) {
+	 *     // Config is guaranteed to be loaded if init() succeeded
+	 *     return this.processWithConfig(options, this.config);
+	 *   }
+	 * }
+	 * ```
+	 */
+	init?(): Promise<void>;
 }
 
 /**
