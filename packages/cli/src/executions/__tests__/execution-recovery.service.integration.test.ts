@@ -40,7 +40,7 @@ describe('ExecutionRecoveryService', () => {
 			instanceSettings,
 			push,
 			executionRepository,
-			globalConfig,
+			globalConfig.executions,
 			workflowRepository,
 			mock(),
 			mock(),
