@@ -144,7 +144,11 @@ export const description = updateDisplayOptions(displayOptions, properties);
 
 export async function execute(this: IExecuteFunctions, i: number): Promise<INodeExecutionData[]> {
 	const prompt = this.getNodeParameter('prompt', i, '');
-	const model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
+	let model = this.getNodeParameter('modelId', i, '', { extractValue: true }) as string;
+	if (!model) {
+		model = 'models/gemini-2.5-flash-image-preview';
+	}
+
 	const binaryPropertyOutput = this.getNodeParameter('options.binaryPropertyOutput', i, 'edited');
 	const outputKey = typeof binaryPropertyOutput === 'string' ? binaryPropertyOutput : 'data';
 
