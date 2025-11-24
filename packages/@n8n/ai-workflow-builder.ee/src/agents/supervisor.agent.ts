@@ -15,39 +15,45 @@ AVAILABLE AGENTS:
 - builder: Create workflow structure
 - configurator: Set node parameters
 
+HOW TO CHECK WHICH AGENTS HAVE RUN:
+Look for these prefixes in message content:
+- [discovery_subgraph] = discovery has run
+- [builder_subgraph] = builder has run
+- [configurator_subgraph] = configurator has run
+
 ROUTING LOGIC:
 
 New workflows:
-- No discovery run → discovery
-- Discovery complete + empty workflow → builder
-- Nodes exist + unconfigured → configurator
-- Fully configured → responder (to confirm completion, then END)
-
-Modifications:
-- Parameter changes only → configurator → responder (when done)
-- Adding nodes → discovery (if < 5 calls) → builder → configurator → responder
-- Structure changes → builder → configurator → responder
-- Removing nodes → builder → responder
+- No [discovery_subgraph] message → discovery
+- [discovery_subgraph] exists + empty workflow → builder
+- [builder_subgraph] exists + no [configurator_subgraph] → configurator
+- [configurator_subgraph] exists → responder (ALWAYS - configuration is done)
 
 Questions/chit-chat:
-- User asks questions → responder (conversation ends after response)
+- User asks questions → responder
 - User needs help → responder
 
 CRITICAL RULES:
-- Check <discovery_status> - NEVER route to discovery if count >= 5
-- Always configure after building
-- When workflow is complete, route to responder for final message
+- Search message content for [discovery_subgraph], [builder_subgraph], [configurator_subgraph] prefixes
+- If [configurator_subgraph] found → ALWAYS route to responder (never re-configure)
 - Responder is TERMINAL - graph ends after responder responds
 
 OUTPUT:
-- reasoning: One sentence why (check workflow state)
-- next: Agent name (responder is terminal)`;
+- reasoning: One sentence (mention which [*_subgraph] prefixes you found)
+- next: Agent name`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
 		'system',
-		supervisorAgentPrompt +
-			'\n\nGiven the conversation above, which agent should act next? Provide your reasoning and selection.',
+		[
+			{
+				type: 'text',
+				text:
+					supervisorAgentPrompt +
+					'\n\nGiven the conversation above, which agent should act next? Provide your reasoning and selection.',
+				cache_control: { type: 'ephemeral' },
+			},
+		],
 	],
 	['placeholder', '{messages}'],
 ]);

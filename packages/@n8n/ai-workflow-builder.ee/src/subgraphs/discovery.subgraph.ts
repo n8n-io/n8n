@@ -16,6 +16,7 @@ import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { PromptCategorization } from '../types/categorization';
+import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
@@ -224,7 +225,16 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 		// Create agent with tools bound (including submit tool)
 		const systemPrompt = ChatPromptTemplate.fromMessages([
-			['system', DISCOVERY_PROMPT],
+			[
+				'system',
+				[
+					{
+						type: 'text',
+						text: DISCOVERY_PROMPT,
+						cache_control: { type: 'ephemeral' },
+					},
+				],
+			],
 			['human', '{prompt}'],
 			['placeholder', '{messages}'],
 		]);
@@ -261,12 +271,24 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Agent node - calls discovery agent
 	 */
 	private async callAgent(state: typeof DiscoverySubgraphState.State) {
+		console.log(
+			`[Discovery] callAgent iteration=${state.iterationCount} messages=${state.messages.length}`,
+		);
+
 		const message = `<user_request>${state.userRequest}</user_request>`;
+
+		// Apply cache markers to accumulated messages (for tool loop iterations)
+		if (state.messages.length > 0) {
+			applySubgraphCacheMarkers(state.messages);
+		}
 
 		const response = (await this.agent.invoke({
 			messages: state.messages,
 			prompt: message,
 		})) as AIMessage;
+
+		const toolCalls = response.tool_calls?.length ?? 0;
+		console.log(`[Discovery] Agent response: ${toolCalls} tool calls`);
 
 		return { messages: [response] };
 	}
@@ -388,7 +410,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		};
 
 		// Create a detailed summary for the supervisor
-		const messageParts = ['Discovery completed.', ''];
+		const messageParts = ['[discovery_subgraph] Discovery completed.', ''];
 
 		// Add list of discovered nodes
 		if (subgraphOutput.nodesFound.length > 0) {

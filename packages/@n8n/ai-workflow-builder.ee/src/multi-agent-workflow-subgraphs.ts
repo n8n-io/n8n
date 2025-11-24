@@ -87,6 +87,21 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		new StateGraph(ParentGraphState)
 			// Add Supervisor Node
 			.addNode('supervisor', async (state) => {
+				console.log(
+					`[Supervisor] Evaluating state: ${state.messages.length} messages, ${state.workflowJSON.nodes.length} nodes`,
+				);
+				// Log message prefixes for debugging
+				const prefixes = state.messages
+					.map((m) => {
+						const content = typeof m.content === 'string' ? m.content : JSON.stringify(m.content);
+						const match = content.match(/^\[(\w+)\]/);
+						return match ? match[1] : null;
+					})
+					.filter(Boolean);
+				console.log(
+					`[Supervisor] Found prefixes: ${prefixes.length > 0 ? prefixes.join(', ') : 'none'}`,
+				);
+
 				const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
 				const executionData = state.workflowContext?.executionData ?? {};
 				const executionSchema = state.workflowContext?.executionSchema ?? [];
@@ -120,17 +135,23 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					messages: messagesWithContext,
 				});
 
+				console.log(
+					`[Supervisor] Routing decision: ${routing.next} (reason: ${routing.reasoning})`,
+				);
+
 				return {
 					nextPhase: routing.next,
 				};
 			})
 			// Add Responder Node
 			.addNode('responder', async (state) => {
+				console.log(`[Responder] Generating final response`);
 				const agent = responderAgent.getAgent();
 				const response = await agent.invoke({
 					messages: state.messages,
 				});
 
+				console.log(`[Responder] Response generated`);
 				return {
 					messages: [response],
 					finalResponse:

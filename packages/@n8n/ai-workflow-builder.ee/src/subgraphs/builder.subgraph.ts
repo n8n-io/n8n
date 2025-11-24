@@ -18,6 +18,7 @@ import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
+import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { processOperations } from '../utils/operations-processor';
 import {
 	executeSubgraphTools,
@@ -291,6 +292,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 					{
 						type: 'text',
 						text: BUILDER_PROMPT,
+						cache_control: { type: 'ephemeral' },
 					},
 				],
 			],
@@ -307,6 +309,10 @@ export class BuilderSubgraph extends BaseSubgraph<
 		 * Agent node - calls builder agent
 		 */
 		const callAgent = async (state: typeof BuilderSubgraphState.State) => {
+			console.log(
+				`[Builder] callAgent iteration=${state.iterationCount} messages=${state.messages.length}`,
+			);
+
 			// On first call, create initial message with full context
 			if (state.messages.length === 0) {
 				const contextParts: string[] = [];
@@ -357,18 +363,31 @@ export class BuilderSubgraph extends BaseSubgraph<
 				}
 
 				const contextMessage = new HumanMessage({ content: contextParts.join('\n') });
+				console.log('[Builder] First call with context message');
 				const response = await agent.invoke({
 					messages: [contextMessage],
 				});
 
+				const toolCalls =
+					'tool_calls' in response && Array.isArray(response.tool_calls)
+						? response.tool_calls.length
+						: 0;
+				console.log(`[Builder] Agent response: ${toolCalls} tool calls`);
 				return { messages: [contextMessage, response] };
 			}
 
-			// Subsequent calls - just invoke with existing messages
+			// Subsequent calls - apply cache markers and invoke with existing messages
+			applySubgraphCacheMarkers(state.messages);
+
 			const response = await agent.invoke({
 				messages: state.messages,
 			});
 
+			const toolCalls =
+				'tool_calls' in response && Array.isArray(response.tool_calls)
+					? response.tool_calls.length
+					: 0;
+			console.log(`[Builder] Agent response: ${toolCalls} tool calls`);
 			return { messages: [response] };
 		};
 
@@ -434,7 +453,8 @@ export class BuilderSubgraph extends BaseSubgraph<
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
 			messages: [
 				new HumanMessage({
-					content: `Builder completed: ${summary}`,
+					content: `[builder_subgraph] Builder completed: ${summary}`,
+					name: 'builder_subgraph',
 				}),
 			],
 		};

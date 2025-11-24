@@ -11,4 +11,5 @@ export {
 	findUserToolMessageIndices,
 	cleanStaleWorkflowContext,
 	applyCacheControlMarkers,
+	applySubgraphCacheMarkers,
 } from './helpers';

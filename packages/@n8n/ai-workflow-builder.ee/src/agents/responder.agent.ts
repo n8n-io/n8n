@@ -39,7 +39,16 @@ RESPONSE STYLE:
 If the user describes a workflow they want to build, let them know you're ready to help and ask them to provide the details if needed.`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
-	['system', responderAgentPrompt],
+	[
+		'system',
+		[
+			{
+				type: 'text',
+				text: responderAgentPrompt,
+				cache_control: { type: 'ephemeral' },
+			},
+		],
+	],
 	['placeholder', '{messages}'],
 ]);
 

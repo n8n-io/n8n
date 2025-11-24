@@ -14,6 +14,7 @@ import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
+import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { processOperations } from '../utils/operations-processor';
 import {
 	executeSubgraphTools,
@@ -227,6 +228,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 					{
 						type: 'text',
 						text: INSTANCE_URL_PROMPT,
+						cache_control: { type: 'ephemeral' },
 					},
 				],
 			],
@@ -245,6 +247,10 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		 * Agent node - calls configurator agent
 		 */
 		const callAgent = async (state: typeof ConfiguratorSubgraphState.State) => {
+			console.log(
+				`[Configurator] callAgent iteration=${state.iterationCount} messages=${state.messages.length}`,
+			);
+
 			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
 			const executionData = state.workflowContext?.executionData ?? {};
 			const executionSchema = state.workflowContext?.executionSchema ?? [];
@@ -289,15 +295,21 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 				contextParts.push('</current_execution_nodes_schemas>');
 
 				const contextMessage = new HumanMessage({ content: contextParts.join('\n') });
+				console.log('[Configurator] First call with context message');
 				const response = (await this.agent.invoke({
 					messages: [contextMessage],
 					instanceUrl: state.instanceUrl ?? '',
 				})) as BaseMessage;
 
+				const toolCalls =
+					'tool_calls' in response && Array.isArray(response.tool_calls)
+						? response.tool_calls.length
+						: 0;
+				console.log(`[Configurator] Agent response: ${toolCalls} tool calls`);
 				return { messages: [contextMessage, response] };
 			}
 
-			// Subsequent calls - add workflow context
+			// Subsequent calls - add workflow context and apply cache markers
 			const workflowContext = [
 				'',
 				'<current_workflow_json>',
@@ -314,11 +326,20 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			].join('\n');
 
 			const messagesToUse = [...state.messages, new HumanMessage({ content: workflowContext })];
+
+			// Apply cache markers to accumulated messages
+			applySubgraphCacheMarkers(messagesToUse);
+
 			const response = (await this.agent.invoke({
 				messages: messagesToUse,
 				instanceUrl: state.instanceUrl ?? '',
 			})) as BaseMessage;
 
+			const toolCalls =
+				'tool_calls' in response && Array.isArray(response.tool_calls)
+					? response.tool_calls.length
+					: 0;
+			console.log(`[Configurator] Agent response: ${toolCalls} tool calls`);
 			return { messages: [response] };
 		};
 
@@ -371,7 +392,12 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		return {
 			workflowJSON: subgraphOutput.workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
-			messages: [new HumanMessage({ content: finalResponse })],
+			messages: [
+				new HumanMessage({
+					content: `[configurator_subgraph] ${finalResponse}`,
+					name: 'configurator_subgraph',
+				}),
+			],
 		};
 	}
 }
