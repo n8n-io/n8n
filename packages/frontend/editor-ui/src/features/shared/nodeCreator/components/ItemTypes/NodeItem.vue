@@ -130,7 +130,7 @@ const author = computed(() => {
 
 const tag = computed(() => {
 	if (props.nodeType.tag) {
-		return { text: props.nodeType.tag };
+		return props.nodeType.tag;
 	}
 	if (description.value.toLowerCase().includes('deprecated')) {
 		return { text: i18n.baseText('nodeCreator.nodeItem.deprecated'), type: 'info' };

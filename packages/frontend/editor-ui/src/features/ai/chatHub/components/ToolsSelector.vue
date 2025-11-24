@@ -2,14 +2,15 @@
 import NodeIcon from '@/app/components/NodeIcon.vue';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { N8nButton, N8nIcon, N8nText } from '@n8n/design-system';
+import { N8nButton } from '@n8n/design-system';
 import type { INode } from 'n8n-workflow';
 import { computed, onMounted } from 'vue';
 import { TOOLS_SELECTOR_MODAL_KEY } from '../constants';
 
-const { selected } = defineProps<{
+const { selected, transparentBg = false } = defineProps<{
 	disabled: boolean;
 	selected: INode[];
+	transparentBg?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -51,9 +52,11 @@ const onClick = () => {
 <template>
 	<N8nButton
 		type="secondary"
-		:class="$style.toolsButton"
+		native-type="button"
+		:class="[$style.toolsButton, { [$style.transparentBg]: transparentBg }]"
 		:disabled="disabled"
 		aria-label="Select tools"
+		:icon="toolCount > 0 ? undefined : 'plus'"
 		@click="onClick"
 	>
 		<span v-if="toolCount" :class="$style.iconStack">
@@ -67,11 +70,7 @@ const onClick = () => {
 				:size="12"
 			/>
 		</span>
-		<span v-else :class="$style.iconFallback">
-			<N8nIcon icon="plus" :size="12" />
-		</span>
-
-		<N8nText size="small" bold color="text-dark">{{ toolsLabel }}</N8nText>
+		{{ toolsLabel }}
 	</N8nButton>
 </template>
 
@@ -80,8 +79,10 @@ const onClick = () => {
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
-	padding: var(--spacing--4xs) var(--spacing--2xs);
-	background-color: transparent;
+
+	&.transparentBg {
+		background-color: transparent;
+	}
 }
 
 .iconStack {
@@ -99,12 +100,5 @@ const onClick = () => {
 
 .iconOverlap {
 	margin-left: -6px;
-}
-
-.iconFallback {
-	padding: var(--spacing--4xs);
-	display: flex;
-	align-items: center;
-	justify-content: center;
 }
 </style>

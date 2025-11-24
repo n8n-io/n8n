@@ -88,6 +88,7 @@
       "sqlite3"
     ],
     "overrides": {
+      "ast-types": "0.16.1",
       "@azure/identity": "^4.3.0",
       "@lezer/common": "^1.2.0",
       "@mistralai/mistralai": "^1.10.0",

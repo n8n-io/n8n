@@ -5,7 +5,7 @@ import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
-import { sleep } from 'n8n-workflow';
+import { createEmptyRunExecutionData, sleep } from 'n8n-workflow';
 import { ExecutionStatus, type IRun, type ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
@@ -256,7 +256,7 @@ export class ExecutionRecoveryService {
 	}
 
 	private async runHooks(execution: IExecutionResponse) {
-		execution.data ??= { resultData: { runData: {} } };
+		execution.data ??= createEmptyRunExecutionData();
 
 		const lifecycleHooks = getLifecycleHooksForRegularMain(
 			{
