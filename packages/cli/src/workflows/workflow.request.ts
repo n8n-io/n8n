@@ -7,6 +7,7 @@ import type {
 	ITaskData,
 	IWorkflowBase,
 	AiAgentRequest,
+	IDestinationNode,
 } from 'n8n-workflow';
 
 import type { ListQuery } from '@/requests';
