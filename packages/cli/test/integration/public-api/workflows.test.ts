@@ -13,16 +13,16 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
+import { createTag } from '../shared/db/tags';
+import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import type { SuperAgentTest } from '../shared/types';
+import * as utils from '../shared/utils/';
+
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { ProjectService } from '@/services/project.service.ee';
 import { Telemetry } from '@/telemetry';
-
-import { createTag } from '../shared/db/tags';
-import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
-import type { SuperAgentTest } from '../shared/types';
-import * as utils from '../shared/utils/';
 
 mockInstance(Telemetry);
 
@@ -34,7 +34,9 @@ let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let activeWorkflowManager: ActiveWorkflowManager;
 
-const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
+const testServer = utils.setupTestServer({
+	endpointGroups: ['publicApi'],
+});
 const license = testServer.license;
 
 const globalConfig = Container.get(GlobalConfig);
@@ -454,7 +456,8 @@ describe('GET /workflows', () => {
 		const inactiveWorkflow = await createWorkflow({}, member);
 		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
 
-		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
+		const test = await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
+		console.log(test.body);
 
 		const response = await authMemberAgent.get('/workflows');
 

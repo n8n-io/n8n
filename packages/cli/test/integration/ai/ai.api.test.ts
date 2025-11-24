@@ -30,7 +30,7 @@ Container.set(
 	}),
 );
 
-const testServer = setupTestServer({ endpointGroups: ['ai'] });
+const testServer = setupTestServer({ endpointGroups: ['ai'], mockNodesAndCredentials: true });
 
 let owner: User;
 let ownerPersonalProject: Project;
