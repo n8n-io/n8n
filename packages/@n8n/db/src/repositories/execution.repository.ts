@@ -223,10 +223,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		return valid.map((execution) => {
 			const { executionData, metadata, ...rest } = execution;
-			const data: IRunExecutionData | string | undefined = this.handleExecutionRunData(
-				executionData.data,
-				options,
-			);
+			const data = this.handleExecutionRunData(executionData.data, options);
 			return {
 				...rest,
 				data,
@@ -344,10 +341,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		}
 
 		// Include the run data.
-		const data: IRunExecutionData | string | undefined = this.handleExecutionRunData(
-			executionData.data,
-			options,
-		);
+		const data = this.handleExecutionRunData(executionData.data, options);
 		return {
 			...rest,
 			data,
@@ -1173,9 +1167,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 	private handleExecutionRunData(
 		data: string,
-		options: { unflattenData?: boolean },
+		options: { unflattenData?: boolean } = {},
 	): IRunExecutionData | string | undefined {
-		if (options?.unflattenData) {
+		if (options.unflattenData) {
 			// Parse the serialized data.
 			const deserializedData: unknown = parse(data);
 			// If it parses to an object, migrate and return it.
