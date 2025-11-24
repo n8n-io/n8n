@@ -53,14 +53,17 @@ import {
 	OperationalError,
 	TimeoutExecutionCancelledError,
 	ManualExecutionCancelledError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 import PCancelable from 'p-cancelable';
 
 import { ErrorReporter } from '@/errors/error-reporter';
 import { WorkflowHasIssuesError } from '@/errors/workflow-has-issues.error';
 import * as NodeExecuteFunctions from '@/node-execute-functions';
+import { assertExecutionDataExists } from '@/utils/assertions';
 import { isJsonCompatible } from '@/utils/is-json-compatible';
 
+import { establishExecutionContext } from './execution-context';
 import type { ExecutionLifecycleHooks } from './execution-lifecycle-hooks';
 import { ExecuteContext, PollContext } from './node-execution-context';
 import {
@@ -88,20 +91,7 @@ export class WorkflowExecute {
 	constructor(
 		private readonly additionalData: IWorkflowExecuteAdditionalData,
 		private readonly mode: WorkflowExecuteMode,
-		private runExecutionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-				pinData: {},
-			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack: [],
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		},
+		private runExecutionData: IRunExecutionData = createRunExecutionData(),
 	) {}
 
 	/**
@@ -155,23 +145,18 @@ export class WorkflowExecute {
 			},
 		];
 
-		this.runExecutionData = {
+		this.runExecutionData = createRunExecutionData({
 			startData: {
 				destinationNode,
 				runNodeFilter,
 			},
+			executionData: {
+				nodeExecutionStack,
+			},
 			resultData: {
-				runData: {},
 				pinData,
 			},
-			executionData: {
-				contextData: {},
-				nodeExecutionStack,
-				metadata: {},
-				waitingExecution: {},
-				waitingExecutionSource: {},
-			},
-		};
+		});
 
 		return this.processRunExecutionData(workflow);
 	}
@@ -234,7 +219,7 @@ export class WorkflowExecute {
 					recreateNodeExecutionStack(graph, new Set([destination]), runData, pinData ?? {});
 
 				this.status = 'running';
-				this.runExecutionData = {
+				this.runExecutionData = createRunExecutionData({
 					startData: {
 						destinationNode: destinationNodeName,
 						runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
@@ -244,13 +229,11 @@ export class WorkflowExecute {
 						pinData,
 					},
 					executionData: {
-						contextData: {},
 						nodeExecutionStack,
-						metadata: {},
 						waitingExecution,
 						waitingExecutionSource,
 					},
-				};
+				});
 
 				return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
 			}
@@ -306,7 +289,7 @@ export class WorkflowExecute {
 		this.additionalData.currentNodeExecutionIndex = getNextExecutionIndex(runData);
 
 		this.status = 'running';
-		this.runExecutionData = {
+		this.runExecutionData = createRunExecutionData({
 			startData: {
 				destinationNode: destinationNodeName,
 				originalDestinationNode: originalDestination,
@@ -317,13 +300,11 @@ export class WorkflowExecute {
 				pinData,
 			},
 			executionData: {
-				contextData: {},
 				nodeExecutionStack,
-				metadata: {},
 				waitingExecution,
 				waitingExecutionSource,
 			},
-		};
+		});
 
 		// Still passing the original workflow here, because the WorkflowDataProxy
 		// needs it to create more useful error messages, e.g. differentiate
@@ -1325,22 +1306,6 @@ export class WorkflowExecute {
 		);
 	}
 
-	private assertExecutionDataExists(
-		this: WorkflowExecute,
-		executionData: IRunExecutionData['executionData'],
-		workflow: Workflow,
-	): asserts executionData is NonNullable<IRunExecutionData['executionData']> {
-		if (!executionData) {
-			throw new UnexpectedError('Failed to run workflow due to missing execution data', {
-				extra: {
-					workflowId: workflow.id,
-					executionId: this.additionalData.executionId,
-					mode: this.mode,
-				},
-			});
-		}
-	}
-
 	/**
 	 * Handles executions that have been waiting by
 	 * 1. unsetting the `waitTill`
@@ -1354,7 +1319,12 @@ export class WorkflowExecute {
 		if (this.runExecutionData.waitTill) {
 			this.runExecutionData.waitTill = undefined;
 
-			this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
+			assertExecutionDataExists(
+				this.runExecutionData.executionData,
+				workflow,
+				this.additionalData,
+				this.mode,
+			);
 			this.runExecutionData.executionData.nodeExecutionStack[0].node.disabled = true;
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
@@ -1363,13 +1333,18 @@ export class WorkflowExecute {
 	}
 
 	private checkForWorkflowIssues(workflow: Workflow): void {
-		this.assertExecutionDataExists(this.runExecutionData.executionData, workflow);
+		assertExecutionDataExists(
+			this.runExecutionData.executionData,
+			workflow,
+			this.additionalData,
+			this.mode,
+		);
 		// Node execution stack will be empty for an execution containing only Chat
 		// Trigger.
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
 
 		let destinationNode: string | undefined;
-		if (this.runExecutionData.startData && this.runExecutionData.startData.destinationNode) {
+		if (this.runExecutionData.startData?.destinationNode) {
 			destinationNode = this.runExecutionData.startData.destinationNode;
 		}
 		const pinDataNodeNames = Object.keys(this.runExecutionData.resultData.pinData ?? {});
@@ -1487,6 +1462,14 @@ export class WorkflowExecute {
 			// eslint-disable-next-line complexity
 			const returnPromise = (async () => {
 				try {
+					// Establish the execution context
+					await establishExecutionContext(
+						workflow,
+						this.runExecutionData,
+						this.additionalData,
+						this.mode,
+					);
+
 					if (!this.additionalData.restartExecutionId) {
 						await hooks.runHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
 					}
@@ -2529,7 +2512,6 @@ export class WorkflowExecute {
 				let errorData: GenericValue | undefined;
 				if (item.error) {
 					errorData = item.error;
-					item.error = undefined;
 				} else if (item.json.error && Object.keys(item.json).length === 1) {
 					errorData = item.json.error;
 				} else if (item.json.error && item.json.message && Object.keys(item.json).length === 2) {

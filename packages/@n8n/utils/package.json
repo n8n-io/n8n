@@ -1,19 +1,27 @@
 {
   "name": "@n8n/utils",
   "type": "module",
-  "version": "1.18.0",
+  "version": "1.19.0",
   "files": [
     "dist"
   ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
     "./dist/*": {
-      "types": "./dist/*.d.ts",
-      "import": "./dist/*.js",
+      "types": "./dist/*.d.mts",
+      "import": "./dist/*.mjs",
       "require": "./dist/*.cjs"
     },
     "./*": {
-      "types": "./dist/*.d.ts",
-      "import": "./dist/*.js",
+      "types": "./dist/*.d.mts",
+      "import": "./dist/*.mjs",
       "require": "./dist/*.cjs"
     }
   },
@@ -23,6 +31,7 @@
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:unit": "vitest run",
     "test:dev": "vitest --silent=false",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix",

@@ -4,7 +4,6 @@ import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
-import { useInsightsStore } from '@/features/execution/insights/insights.store';
 import type { UserManagementAuthenticationMethod } from '@/Interface';
 import {
 	registerModuleModals,
@@ -63,6 +62,7 @@ export async function initializeCore() {
 	try {
 		await settingsStore.initialize();
 	} catch (error) {
+		console.error('Failed to initialize settings store', error);
 		toast.showToast({
 			title: i18n.baseText('startupError'),
 			message: i18n.baseText('startupError.message'),
@@ -134,7 +134,6 @@ export async function initializeAuthenticatedFeatures(
 	const cloudPlanStore = useCloudPlanStore();
 	const projectsStore = useProjectsStore();
 	const rolesStore = useRolesStore();
-	const insightsStore = useInsightsStore();
 	const bannersStore = useBannersStore();
 	const versionsStore = useVersionsStore();
 	const dataTableStore = useDataTableStore();
@@ -189,10 +188,6 @@ export async function initializeAuthenticatedFeatures(
 			.catch((error) => {
 				console.error('Failed to fetch data table limits:', error);
 			});
-	}
-
-	if (insightsStore.isSummaryEnabled) {
-		void insightsStore.weeklySummary.execute();
 	}
 
 	// Don't check for new versions in preview mode or demo view (ex: executions iframe)

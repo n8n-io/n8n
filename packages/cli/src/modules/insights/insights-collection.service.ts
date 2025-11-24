@@ -71,6 +71,8 @@ export class InsightsCollectionService {
 
 	private flushesInProgress: Set<Promise<void>> = new Set();
 
+	private isInitialized = false;
+
 	constructor(
 		private readonly sharedWorkflowRepository: SharedWorkflowRepository,
 		private readonly insightsRawRepository: InsightsRawRepository,
@@ -81,13 +83,18 @@ export class InsightsCollectionService {
 		this.logger = this.logger.scoped('insights');
 	}
 
-	startFlushingTimer() {
+	init() {
+		this.isInitialized = true;
 		this.isAsynchronouslySavingInsights = true;
+
 		this.scheduleFlushing();
 		this.logger.debug('Started flushing timer');
 	}
 
 	scheduleFlushing() {
+		// Safe guard to prevent scheduling flushing when not initialized
+		if (!this.isInitialized) return;
+
 		this.cancelScheduledFlushing();
 		this.flushInsightsRawBufferTimer = setTimeout(
 			async () => await this.flushEvents(),
@@ -118,10 +125,17 @@ export class InsightsCollectionService {
 		// Flush any remaining events
 		this.logger.debug('Flushing remaining insights before shutdown');
 		await Promise.all([...this.flushesInProgress, this.flushEvents()]);
+
+		this.isInitialized = false;
 	}
 
 	@OnLifecycleEvent('workflowExecuteAfter')
 	async handleWorkflowExecuteAfter(ctx: WorkflowExecuteAfterContext) {
+		// Safe guard to prevent collecting events when not initialized
+		if (!this.isInitialized) {
+			return;
+		}
+
 		if (shouldSkipStatus[ctx.runData.status] || shouldSkipMode[ctx.runData.mode]) {
 			return;
 		}
@@ -245,6 +259,11 @@ export class InsightsCollectionService {
 	}
 
 	async flushEvents() {
+		// Safe guard to prevent flushing when not initialized
+		if (!this.isInitialized) {
+			return;
+		}
+
 		// Prevent flushing if there are no events to flush
 		if (this.bufferedInsights.size === 0) {
 			// reschedule the timer to flush again
