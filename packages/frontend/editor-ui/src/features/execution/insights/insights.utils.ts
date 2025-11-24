@@ -8,6 +8,10 @@ import type { DateValue } from '@internationalized/date';
 import { getLocalTimeZone, isToday } from '@internationalized/date';
 import type { InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
 import { useI18n } from '@n8n/i18n';
+import dateformat from 'dateformat';
+
+const DATE_FORMAT_DAY_MONTH_YEAR = 'd mmm, yyyy';
+const DATE_FORMAT_DAY_MONTH = 'd mmm';
 
 export const transformInsightsTimeSaved = (minutes: number): number =>
 	Math.round(minutes / (Math.abs(minutes) < 60 ? 1 : 60)); // we want to show saved time in minutes or hours
@@ -96,4 +100,22 @@ export const isPresetRange = (start: DateValue, end: DateValue, presetDays: numb
 	if (!isToday(end, getLocalTimeZone())) return false;
 
 	return end.compare(start) === presetDays;
+};
+
+export const formatDateRange = (range: { start?: DateValue; end?: DateValue }): string => {
+	const { start, end } = range;
+	if (!start) return '';
+
+	const startStr = start.toString();
+	const endStr = end?.toString();
+
+	if (!end || startStr === endStr) {
+		return dateformat(startStr, DATE_FORMAT_DAY_MONTH_YEAR);
+	}
+
+	if (start.year === end.year) {
+		return `${dateformat(startStr, DATE_FORMAT_DAY_MONTH)} - ${dateformat(endStr, DATE_FORMAT_DAY_MONTH_YEAR)}`;
+	}
+
+	return `${dateformat(startStr, DATE_FORMAT_DAY_MONTH_YEAR)} - ${dateformat(endStr, DATE_FORMAT_DAY_MONTH_YEAR)}`;
 };
