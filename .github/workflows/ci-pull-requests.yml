@@ -123,8 +123,8 @@ jobs:
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
-  e2e-test:
-    name: E2E Tests
+  e2e-checks:
+    name: E2E - Checks
     needs: [install-and-build, unit-test, typecheck, lint]
     if: |
       always() &&
@@ -132,15 +132,5 @@ jobs:
       needs.unit-test.result != 'failure' &&
       needs.typecheck.result != 'failure' &&
       needs.lint.result != 'failure'
-    uses: ./.github/workflows/playwright-test-reusable.yml
+    uses: ./.github/workflows/playwright-test-ci.yml
     secrets: inherit
-
-  e2e-checks:
-    name: E2E - Checks
-    runs-on: ubuntu-latest
-    needs: [e2e-test]
-    if: always()
-    steps:
-      - name: Fail if E2E tests failed
-        if: needs.e2e-test.result == 'failure'
-        run: exit 1

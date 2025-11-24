@@ -437,7 +437,8 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.workflowSettingsModal.getUnpublishMenuItem()).not.toBeAttached();
 	});
 
-	test('should unpublish a published workflow', async ({ n8n }) => {
+	// TODO: flaky test - 18 similar failures across 10 branches in last 14 days
+	test.skip('should unpublish a published workflow', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.publishWorkflow();
 		await n8n.page.keyboard.press('Escape');

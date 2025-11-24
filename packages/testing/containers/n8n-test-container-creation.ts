@@ -47,7 +47,7 @@ const N8N_IMAGE = getDockerImageFromEnv(N8N_E2E_IMAGE);
 // Base environment for all n8n instances
 const BASE_ENV: Record<string, string> = {
 	N8N_LOG_LEVEL: 'debug',
-	N8N_ENCRYPTION_KEY: 'test-encryption-key',
+	N8N_ENCRYPTION_KEY: process.env.N8N_ENCRYPTION_KEY ?? 'test-encryption-key',
 	E2E_TESTS: 'false',
 	QUEUE_HEALTH_CHECK_ACTIVE: 'true',
 	N8N_DIAGNOSTICS_ENABLED: 'false',
@@ -55,6 +55,7 @@ const BASE_ENV: Record<string, string> = {
 	NODE_ENV: 'development', // If this is set to test, the n8n container will not start, insights module is not found??
 	N8N_LICENSE_TENANT_ID: process.env.N8N_LICENSE_TENANT_ID ?? '1001',
 	N8N_LICENSE_ACTIVATION_KEY: process.env.N8N_LICENSE_ACTIVATION_KEY ?? '',
+	N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 };
 
 // Wait strategy for n8n main containers
@@ -121,6 +122,12 @@ export interface N8NStack {
  * });
  */
 export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> {
+	const stackStartTime = Date.now();
+	const log = (message: string) => {
+		const elapsed = ((Date.now() - stackStartTime) / 1000).toFixed(2);
+		console.log(`[n8n-stack +${elapsed}s] ${message}`);
+	};
+
 	const {
 		postgres = false,
 		queueMode = false,
@@ -140,6 +147,8 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	const uniqueProjectName = projectName ?? `n8n-stack-${Math.random().toString(36).substring(7)}`;
 	const containers: StartedTestContainer[] = [];
 
+	log(`Starting stack creation: ${uniqueProjectName} (queueMode: ${JSON.stringify(queueConfig)})`);
+
 	const mainCount = queueConfig?.mains ?? 1;
 	const needsLoadBalancer = mainCount > 1;
 	const needsNetwork =
@@ -153,7 +162,9 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	let network: StartedNetwork | undefined;
 	if (needsNetwork) {
+		log('Creating network...');
 		network = await new Network().start();
+		log('Network created');
 	}
 
 	let environment: Record<string, string> = {
@@ -168,12 +179,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	if (usePostgres) {
 		assert(network, 'Network should be created for postgres');
+		log('Starting PostgreSQL...');
 		const postgresContainer = await setupPostgres({
 			postgresImage: POSTGRES_IMAGE,
 			projectName: uniqueProjectName,
 			network,
 		});
 		containers.push(postgresContainer.container);
+		log('PostgreSQL ready');
 		environment = {
 			...environment,
 			DB_TYPE: 'postgresdb',
@@ -189,12 +202,14 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	if (queueConfig) {
 		assert(network, 'Network should be created for queue mode');
+		log('Starting Redis...');
 		const redis = await setupRedis({
 			redisImage: REDIS_IMAGE,
 			projectName: uniqueProjectName,
 			network,
 		});
 		containers.push(redis);
+		log('Redis ready');
 		environment = {
 			...environment,
 			EXECUTIONS_MODE: 'queue',
@@ -274,6 +289,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 
 	if (needsLoadBalancer) {
 		assert(network, 'Network should be created for load balancer');
+		log('Starting Caddy load balancer...');
 		const loadBalancerContainer = await setupCaddyLoadBalancer({
 			caddyImage: CADDY_IMAGE,
 			projectName: uniqueProjectName,
@@ -281,6 +297,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			network,
 		});
 		containers.push(loadBalancerContainer);
+		log('Caddy load balancer ready');
 
 		const loadBalancerPort = loadBalancerContainer.getMappedPort(80);
 		baseUrl = `http://localhost:${loadBalancerPort}`;
@@ -289,6 +306,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			WEBHOOK_URL: baseUrl,
 		};
 
+		log(`Starting n8n instances (${mainCount} mains, ${queueConfig?.workers ?? 0} workers)...`);
 		const instances = await createN8NInstances({
 			mainCount,
 			workerCount: queueConfig?.workers ?? 0,
@@ -298,9 +316,12 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 			resourceQuota,
 		});
 		containers.push(...instances);
+		log('All n8n instances started');
 
 		// Wait for all containers to be ready behind the load balancer
+		log('Polling load balancer for readiness...');
 		await pollContainerHttpEndpoint(loadBalancerContainer, '/healthz/readiness');
+		log('Load balancer is ready');
 	} else {
 		const assignedPort = await getPort();
 		baseUrl = `http://localhost:${assignedPort}`;
@@ -346,6 +367,7 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 		containers.push(giteaContainer);
 	}
 
+	log(`Stack ready! baseUrl: ${baseUrl}`);
 	return {
 		baseUrl,
 		stop: async () => {
@@ -428,11 +450,17 @@ async function createN8NInstances({
 	resourceQuota,
 }: CreateInstancesOptions): Promise<StartedTestContainer[]> {
 	const instances: StartedTestContainer[] = [];
+	const instanceStartTime = Date.now();
+	const log = (message: string) => {
+		const elapsed = ((Date.now() - instanceStartTime) / 1000).toFixed(2);
+		console.log(`[n8n-instances +${elapsed}s] ${message}`);
+	};
 
 	// Create main instances sequentially to avoid database migration conflicts
 	for (let i = 1; i <= mainCount; i++) {
 		const name = mainCount > 1 ? `${uniqueProjectName}-n8n-main-${i}` : `${uniqueProjectName}-n8n`;
 		const networkAlias = mainCount > 1 ? name : `${uniqueProjectName}-n8n-main-1`;
+		log(`Starting main ${i}/${mainCount}: ${name}`);
 		const container = await createN8NContainer({
 			name,
 			uniqueProjectName,
@@ -445,11 +473,13 @@ async function createN8NInstances({
 			resourceQuota,
 		});
 		instances.push(container);
+		log(`Main ${i}/${mainCount} ready`);
 	}
 
 	// Create worker instances
 	for (let i = 1; i <= workerCount; i++) {
 		const name = `${uniqueProjectName}-n8n-worker-${i}`;
+		log(`Starting worker ${i}/${workerCount}: ${name}`);
 		const container = await createN8NContainer({
 			name,
 			uniqueProjectName,
@@ -460,6 +490,7 @@ async function createN8NInstances({
 			resourceQuota,
 		});
 		instances.push(container);
+		log(`Worker ${i}/${workerCount} ready`);
 	}
 
 	return instances;
