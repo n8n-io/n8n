@@ -497,7 +497,7 @@ watch([currentQueryLoading, resourceDropdownVisible], (isLoading, isDropdownVisi
 		longLoadingTimer.value = setTimeout(() => {
 			showSlowLoadNotice.value = true;
 		}, slowLoadNoticeTimeout.value);
-	} else if (!isLoading) {
+	} else {
 		if (longLoadingTimer.value) {
 			clearTimeout(longLoadingTimer.value);
 			longLoadingTimer.value = null;
