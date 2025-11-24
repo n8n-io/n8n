@@ -95,6 +95,7 @@ import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimen
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
+import { CronBuilder } from '@/components/CronBuilder';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
@@ -1666,6 +1667,18 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
+			/>
+
+			<CronBuilder
+				v-else-if="
+					parameter.type === 'string' &&
+					parameter.name === 'expression' &&
+					path.includes('cronExpression')
+				"
+				ref="inputField"
+				:model-value="displayValue"
+				@update:model-value="valueChanged"
+				@change="valueChanged"
 			/>
 
 			<N8nInputNumber
