@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
 import { writeFile, unlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -8,6 +9,17 @@ import type { SimpleWorkflow } from '@/types';
 import type { ProgrammaticViolationName, SingleEvaluatorResult } from '@/validation/types';
 
 const execFileAsync = promisify(execFile);
+
+interface ExecError extends Error {
+	code?: string;
+	killed?: boolean;
+	stdout?: string;
+	stderr?: string;
+}
+
+function isExecError(error: unknown): error is ExecError {
+	return error instanceof Error;
+}
 
 /**
  * Map Python edit types to violation names
@@ -69,9 +81,9 @@ export async function evaluateWorkflowSimilarity(
 	customConfigPath?: string,
 ): Promise<SingleEvaluatorResult> {
 	const tmpDir = tmpdir();
-	const timestamp = Date.now();
-	const generatedPath = join(tmpDir, `n8n-workflow-generated-${timestamp}.json`);
-	const groundTruthPath = join(tmpDir, `n8n-workflow-groundtruth-${timestamp}.json`);
+	const uniqueId = randomUUID();
+	const generatedPath = join(tmpDir, `n8n-workflow-generated-${uniqueId}.json`);
+	const groundTruthPath = join(tmpDir, `n8n-workflow-groundtruth-${uniqueId}.json`);
 
 	let stdout = '';
 	let stderr = '';
@@ -116,10 +128,10 @@ export async function evaluateWorkflowSimilarity(
 		} catch (execError) {
 			// Python script may exit with non-zero code if similarity is below threshold
 			// But it still outputs valid JSON, so we should use it
-			const error = execError as Error & { stdout?: string; stderr?: string; code?: number };
-
-			stdout = error.stdout ?? '';
-			stderr = error.stderr ?? '';
+			if (isExecError(execError)) {
+				stdout = execError.stdout ?? '';
+				stderr = execError.stderr ?? '';
+			}
 
 			// Only throw if we don't have valid output
 			if (!stdout || stdout.trim() === '') {
@@ -151,23 +163,26 @@ export async function evaluateWorkflowSimilarity(
 		};
 	} catch (error) {
 		// Handle specific error cases
-		const caughtError = error as Error & { code?: string; killed?: boolean };
+		if (isExecError(error)) {
+			if (error.killed) {
+				// Timeout error
+				throw new Error(
+					'Workflow comparison timed out (graphs too complex). Consider using a simpler comparison or increasing timeout.',
+				);
+			}
 
-		if (caughtError.killed) {
-			// Timeout error
-			throw new Error(
-				'Workflow comparison timed out (graphs too complex). Consider using a simpler comparison or increasing timeout.',
-			);
+			if (error.code === 'ENOENT') {
+				throw new Error(
+					'uvx command not found. Please install uv: https://docs.astral.sh/uv/getting-started/installation/',
+				);
+			}
+
+			// Re-throw with more context
+			throw new Error(`Workflow similarity evaluation failed: ${error.message}`);
 		}
 
-		if (caughtError.code === 'ENOENT') {
-			throw new Error(
-				'uvx command not found. Please install uv: https://docs.astral.sh/uv/getting-started/installation/',
-			);
-		}
-
-		// Re-throw with more context
-		throw new Error(`Workflow similarity evaluation failed: ${(error as Error).message}`);
+		// Handle non-Error thrown values
+		throw new Error(`Workflow similarity evaluation failed: ${String(error)}`);
 	} finally {
 		// Cleanup temp files (don't throw on cleanup errors)
 		await Promise.allSettled([unlink(generatedPath), unlink(groundTruthPath)]);

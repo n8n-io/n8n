@@ -172,7 +172,13 @@ export function calculateProgrammaticAverages(results: TestResult[]): Record<str
 
 	Object.keys(programmaticAverages).forEach((key) => {
 		if (key === 'similarity') {
-			programmaticAverages[key] /= similarityCount || 1;
+			// Use -1 as sentinel value when no tests had similarity data
+			// This distinguishes "no reference workflows" from "0% similarity"
+			if (similarityCount === 0) {
+				programmaticAverages[key] = -1;
+			} else {
+				programmaticAverages[key] /= similarityCount;
+			}
 		} else {
 			programmaticAverages[key] /= successfulTests.length || 1;
 		}

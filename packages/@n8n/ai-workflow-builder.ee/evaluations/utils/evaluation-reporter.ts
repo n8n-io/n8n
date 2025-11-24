@@ -262,8 +262,8 @@ export function displaySummaryTable(metrics: {
 			['  FromAI', formatColoredScore(programmaticAverages.fromAi)],
 		);
 
-		// Add similarity if available (only show if > 0, meaning at least one test had reference workflow)
-		if (programmaticAverages.similarity > 0) {
+		// Add similarity if available (-1 means no tests had reference workflows)
+		if (programmaticAverages.similarity >= 0) {
 			summaryTable.push(['  Similarity', formatColoredScore(programmaticAverages.similarity)]);
 		}
 
