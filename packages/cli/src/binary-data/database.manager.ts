@@ -98,6 +98,8 @@ export class DatabaseManager implements BinaryData.Manager {
 	async deleteMany(locations: BinaryData.FileLocation[]) {
 		if (locations.length === 0) return;
 
+		// method intended _only_ for executions, see other managers
+
 		const executionIds = locations.flatMap((location) =>
 			location.type === 'execution' ? [location.executionId] : [],
 		);
@@ -134,7 +136,7 @@ export class DatabaseManager implements BinaryData.Manager {
 
 	async copyByFilePath(
 		targetLocation: BinaryData.FileLocation,
-		sourcePath: string,
+		sourcePath: string, // temp file written to FS by Webhook/SSH/FTP nodes
 		metadata: BinaryData.PreWriteMetadata,
 	) {
 		const fileId = uuid();
