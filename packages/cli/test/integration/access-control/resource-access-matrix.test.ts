@@ -22,6 +22,7 @@ const testServer = utils.setupTestServer({
 	quotas: {
 		'quota:maxTeamProjects': -1,
 	},
+	mockNodesAndCredentials: true,
 });
 
 // Foundation users and projects

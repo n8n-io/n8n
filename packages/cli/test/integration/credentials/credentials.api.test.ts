@@ -36,7 +36,10 @@ import { CredentialsTester } from '@/services/credentials-tester.service';
 
 const { any } = expect;
 
-const testServer = setupTestServer({ endpointGroups: ['credentials'] });
+const testServer = setupTestServer({
+	endpointGroups: ['credentials'],
+	mockNodesAndCredentials: true,
+});
 
 let owner: User;
 let member: User;

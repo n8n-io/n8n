@@ -42,6 +42,7 @@ const testServer = utils.setupTestServer({
 	quotas: {
 		'quota:maxTeamProjects': -1,
 	},
+	mockNodesAndCredentials: true,
 });
 
 let owner: User;

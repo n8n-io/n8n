@@ -96,6 +96,7 @@ export const setupTestServer = ({
 	enabledFeatures,
 	quotas,
 	modules,
+	mockNodesAndCredentials = false,
 }: SetupProps): TestServer => {
 	const app = express();
 	app.use(rawBodyReader);
@@ -114,19 +115,21 @@ export const setupTestServer = ({
 
 	// Mock LoadNodesAndCredentials BEFORE setupTestServer is called
 	// Used by the credential service on credential creation to check required parameters
-	mockInstance(LoadNodesAndCredentials, {
-		getCredential(_credentialType) {
-			return {
-				sourcePath: '',
-				type: {
-					name: 'MyTestCredential',
-					displayName: 'My Test Credential',
-					properties: [],
-					extends: [],
-				},
-			};
-		},
-	});
+	if (mockNodesAndCredentials) {
+		mockInstance(LoadNodesAndCredentials, {
+			getCredential(_credentialType) {
+				return {
+					sourcePath: '',
+					type: {
+						name: 'MyTestCredential',
+						displayName: 'My Test Credential',
+						properties: [],
+						extends: [],
+					},
+				};
+			},
+		});
+	}
 
 	const testServer: TestServer = {
 		app,
