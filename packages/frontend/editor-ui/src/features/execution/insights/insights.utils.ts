@@ -2,10 +2,12 @@ import { useI18n } from '@n8n/i18n';
 import type { InsightsSummary, InsightsSummaryType } from '@n8n/api-types';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import {
+	INSIGHTS_DEVIATION_UNIT_MAPPING,
 	INSIGHTS_SUMMARY_ORDER,
 	INSIGHTS_UNIT_MAPPING,
-	INSIGHTS_DEVIATION_UNIT_MAPPING,
 } from '@/features/execution/insights/insights.constants';
+import type { DateValue } from '@internationalized/date';
+import { getLocalTimeZone, isToday } from '@internationalized/date';
 
 export const transformInsightsTimeSaved = (minutes: number): number =>
 	Math.round(minutes / (Math.abs(minutes) < 60 ? 1 : 60)); // we want to show saved time in minutes or hours
@@ -81,4 +83,17 @@ export const getTimeRangeLabels = () => {
 		'6months': i18n.baseText('insights.months', { interpolate: { count: 6 } }),
 		year: i18n.baseText('insights.oneYear'),
 	};
+};
+
+/**
+ * Checks if a date range matches a specific preset
+ * @param start - Start date of the range
+ * @param end - End date of the range
+ * @param presetDays - Number of days in the preset
+ * @returns True if the range matches the preset (ends today with correct day count)
+ */
+export const isPresetRange = (start: DateValue, end: DateValue, presetDays: number): boolean => {
+	if (!isToday(end, getLocalTimeZone())) return false;
+
+	return end.compare(start) === presetDays;
 };
