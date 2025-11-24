@@ -58,10 +58,10 @@ export async function initializeCore() {
 	/**
 	 * Initialize stores
 	 */
-
 	try {
 		await settingsStore.initialize();
 	} catch (error) {
+		console.error('Failed to initialize settings store', error);
 		toast.showToast({
 			title: i18n.baseText('startupError'),
 			message: i18n.baseText('startupError.message'),
