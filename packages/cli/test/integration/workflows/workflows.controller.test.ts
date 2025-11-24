@@ -14,7 +14,7 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User, ListQueryDb, WorkflowFolderUnionFull, Role } from '@n8n/db';
+import type { User, ListQueryDb, WorkflowFolderUnionFull, Role, WorkflowHistory } from '@n8n/db';
 import {
 	ProjectRepository,
 	WorkflowHistoryRepository,
@@ -584,6 +584,20 @@ describe('GET /workflows/:workflowId', () => {
 
 		expect(response.body.data).toMatchObject({
 			tags: [expect.objectContaining({ id: tag.id, name: tag.name })],
+		});
+	});
+
+	test('should return active version', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`).expect(200);
+
+		const { data: responseData } = response.body as { data: { activeVersion: WorkflowHistory } };
+		const { activeVersion } = responseData;
+
+		expect(activeVersion).toMatchObject({
+			versionId: workflow.activeVersionId,
+			workflowId: workflow.id,
 		});
 	});
 
