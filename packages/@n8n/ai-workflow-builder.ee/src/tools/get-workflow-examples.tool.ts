@@ -15,9 +15,10 @@ import {
 	createSuccessResponse,
 	createErrorResponse,
 } from './helpers';
+import { markdownStringify } from './utils/markdown-workflow.utils';
 import { fetchTemplateList, fetchTemplateByID } from './web/templates';
 
-const FORMAT_MODE: 'json' | 'toon' | 'yaml' = 'toon';
+const FORMAT_MODE: 'json' | 'toon' | 'yaml' | 'markdown' = 'markdown';
 
 /**
  * Workflow example query schema
@@ -53,6 +54,8 @@ function formatWorkflow(workflow: WorkflowMetadata): string {
 			return toonStringify(workflow);
 		case 'yaml':
 			return yamlStringify(workflow);
+		case 'markdown':
+			return markdownStringify(workflow);
 	}
 }
 
