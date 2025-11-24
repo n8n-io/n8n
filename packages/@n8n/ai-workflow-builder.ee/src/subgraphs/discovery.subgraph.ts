@@ -217,7 +217,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 		// Create tools
 		const tools = [
-			createCategorizePromptTool(config.llm),
+			// createCategorizePromptTool(config.llm),
 			createGetBestPracticesTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
 			createNodeDetailsTool(config.parsedNodeTypes),

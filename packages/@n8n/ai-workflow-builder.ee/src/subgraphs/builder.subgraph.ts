@@ -8,7 +8,6 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { LLMServiceError } from '@/errors';
-import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 import type { ChatPayload } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -51,18 +50,102 @@ CONNECTION PARAMETERS EXAMPLES:
 - Vector Store insert: reasoning="Insert mode requires document input", parameters={{ mode: "insert" }}
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
 
-CONNECTIONS:
-- Main data flow: Source output → Target input
-- AI connections: Sub-nodes PROVIDE capabilities (they are the SOURCE)
-  - Example: OpenAI Chat Model → AI Agent [ai_languageModel]
-  - Example: Calculator Tool → AI Agent [ai_tool]
-  - Example: Document Loader → Vector Store [ai_document]
+<node_connections_understanding>
+n8n connections flow from SOURCE (output) to TARGET (input).
 
-RAG PATTERN (CRITICAL):
-- Data flows: Data source → Vector Store (main connection)
-- AI capabilities: Document Loader → Vector Store [ai_document]
-- AI capabilities: Embeddings → Vector Store [ai_embedding]
-- NEVER connect Document Loader to main data flow - it's an AI sub-node!
+<main_connections>
+Regular data flow: Source node output → Target node input
+Example: HTTP Request → Set (HTTP Request is source, Set is target)
+</main_connections>
+
+<ai_connections>
+AI sub-nodes PROVIDE capabilities, making them the SOURCE:
+- OpenAI Chat Model → AI Agent [ai_languageModel]
+- Calculator Tool → AI Agent [ai_tool]
+- Window Buffer Memory → AI Agent [ai_memory]
+- Token Splitter → Default Data Loader [ai_textSplitter]
+- Default Data Loader → Vector Store [ai_document]
+- Embeddings OpenAI → Vector Store [ai_embedding]
+
+Why: Sub-nodes enhance main nodes with their capabilities
+</ai_connections>
+</node_connections_understanding>
+
+<agent_node_distinction>
+CRITICAL: Distinguish between two different agent node types:
+
+1. **AI Agent** (@n8n/n8n-nodes-langchain.agent)
+   - Main workflow node that orchestrates AI tasks
+   - Accepts inputs: trigger data, memory, tools, language models
+   - Use for: Primary AI logic, chatbots, autonomous workflows
+
+2. **AI Agent Tool** (@n8n/n8n-nodes-langchain.agentTool)
+   - Sub-node that acts as a tool for another AI Agent
+   - Provides agent-as-a-tool capability to parent agents
+   - Use for: Multi-agent systems where one agent calls another
+
+Default assumption: When discovery results include "agent", use AI Agent
+unless explicitly specified as "agent tool" or "sub-agent".
+</agent_node_distinction>
+
+<rag_workflow_pattern>
+CRITICAL: For RAG (Retrieval-Augmented Generation) workflows, follow this pattern:
+
+Main data flow:
+- Data source (e.g., HTTP Request) → Vector Store [main connection]
+- The Vector Store receives actual data through its main input
+
+AI capability connections:
+- Document Loader → Vector Store [ai_document] - provides document processing
+- Embeddings → Vector Store [ai_embedding] - provides embedding generation
+- Text Splitter → Document Loader [ai_textSplitter] - provides text chunking
+
+Common mistake to avoid:
+- NEVER connect Document Loader to main data outputs
+- Document Loader is NOT a data processor in the main flow
+- Document Loader is an AI sub-node that gives Vector Store the ability to process documents
+
+Example RAG workflow structure:
+1. Schedule Trigger → HTTP Request (download PDF)
+2. HTTP Request → Vector Store (main data flow)
+3. Token Splitter → Document Loader [ai_textSplitter]
+4. Document Loader → Vector Store [ai_document]
+5. OpenAI Embeddings → Vector Store [ai_embedding]
+
+Why: Vector Store needs three things: data (main input), document processing
+capability (Document Loader), and embedding capability (Embeddings)
+</rag_workflow_pattern>
+
+<connection_type_examples>
+**Main Connections** (regular data flow):
+- Trigger → HTTP Request → Set → Email
+- Schedule → API Call → Transform → Database
+
+**AI Language Model Connections** (ai_languageModel):
+- OpenAI Chat Model → AI Agent
+- Anthropic → AI Agent
+
+**AI Tool Connections** (ai_tool):
+- Calculator Tool → AI Agent
+- Gmail Tool → AI Agent
+- AI Agent Tool → AI Agent (for multi-agent systems)
+
+**AI Document Connections** (ai_document):
+- Document Loader → Vector Store
+- Document Loader → Summarization Chain
+
+**AI Embedding Connections** (ai_embedding):
+- OpenAI Embeddings → Vector Store
+- Embeddings Model → Vector Store
+
+**AI Text Splitter Connections** (ai_textSplitter):
+- Token Text Splitter → Document Loader
+- Recursive Character Text Splitter → Document Loader
+
+**AI Memory Connections** (ai_memory):
+- Window Buffer Memory → AI Agent
+- Buffer Memory → AI Agent
+</connection_type_examples>
 
 DO NOT:
 - Output text before calling tools
@@ -183,28 +266,8 @@ export class BuilderSubgraph extends BaseSubgraph<
 		 * Agent node - calls builder agent
 		 */
 		const callAgent = async (state: typeof BuilderSubgraphState.State) => {
-			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
-			const executionData = state.workflowContext?.executionData ?? {};
-			const executionSchema = state.workflowContext?.executionSchema ?? [];
-
-			const workflowContext = [
-				'',
-				'<current_workflow_json>',
-				JSON.stringify(trimmedWorkflow, null, 2),
-				'</current_workflow_json>',
-				'<trimmed_workflow_json_note>',
-				'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
-				'Use get_node_parameter tool to get full details when needed.',
-				'</trimmed_workflow_json_note>',
-				'',
-				'<current_simplified_execution_data>',
-				JSON.stringify(executionData, null, 2),
-				'</current_simplified_execution_data>',
-				'',
-				'<current_execution_nodes_schemas>',
-				JSON.stringify(executionSchema, null, 2),
-				'</current_execution_nodes_schemas>',
-			].join('\n');
+			// Note: workflowContext (trimmed JSON, execution data, schemas) could be added to messages
+			// but is currently omitted to reduce token usage in builder agent
 
 			// On first call, create initial message with context
 			const messagesToUse =
@@ -218,7 +281,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 						]
 					: state.messages;
 
-			messagesToUse.push(new HumanMessage({ content: workflowContext }));
+			// messagesToUse.push(new HumanMessage({ content: workflowContext }));
 			const response = await agent.invoke({
 				messages: messagesToUse,
 			});
