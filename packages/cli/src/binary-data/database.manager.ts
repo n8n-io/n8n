@@ -1,4 +1,10 @@
-import { BinaryDataRepository, In, SourceTypeSchema, type SourceType } from '@n8n/db';
+import {
+	BinaryDataFile,
+	BinaryDataRepository,
+	In,
+	SourceTypeSchema,
+	type SourceType,
+} from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	BinaryDataConfig,
@@ -29,14 +35,13 @@ export class DatabaseManager implements BinaryData.Manager {
 		metadata: BinaryData.PreWriteMetadata,
 	) {
 		const buffer = await binaryToBuffer(bufferOrStream);
-		const fileSize = buffer.length;
-		const fileSizeInMb = fileSize / (1024 * 1024);
-
+		const fileSizeBytes = buffer.length;
+		const fileSizeMb = fileSizeBytes / (1024 * 1024);
 		const fileId = uuid();
 
-		if (fileSizeInMb > this.config.dbMaxFileSize) {
+		if (fileSizeMb > this.config.dbMaxFileSize) {
 			throw new FileTooLargeError({
-				fileSizeMb: fileSizeInMb,
+				fileSizeMb,
 				maxFileSizeMb: this.config.dbMaxFileSize,
 				fileId,
 				fileName: metadata.fileName,
@@ -52,10 +57,10 @@ export class DatabaseManager implements BinaryData.Manager {
 			data: buffer,
 			mimeType: metadata.mimeType ?? null,
 			fileName: metadata.fileName ?? null,
-			fileSize,
+			fileSize: fileSizeBytes,
 		});
 
-		return { fileId, fileSize };
+		return { fileId, fileSize: fileSizeBytes };
 	}
 
 	getPath(fileId: string) {
@@ -134,7 +139,7 @@ export class DatabaseManager implements BinaryData.Manager {
 	) {
 		const fileId = uuid();
 		const buffer = await fs.readFile(sourcePath);
-		const fileSize = buffer.length;
+		const fileSizeBytes = buffer.length;
 		const { sourceType, sourceId } = this.toSource(targetLocation);
 
 		await this.repository.insert({
@@ -144,26 +149,28 @@ export class DatabaseManager implements BinaryData.Manager {
 			data: buffer,
 			mimeType: metadata.mimeType ?? null,
 			fileName: metadata.fileName ?? null,
-			fileSize,
+			fileSize: fileSizeBytes,
 		});
 
-		return { fileId, fileSize };
+		return { fileId, fileSize: fileSizeBytes };
 	}
 
 	async rename(oldFileId: string, newFileId: string) {
-		const oldRecord = await this.repository.findOneByOrFail({ fileId: oldFileId });
+		await this.repository.manager.transaction(async (tx) => {
+			const oldFile = await tx.findOneByOrFail(BinaryDataFile, { fileId: oldFileId });
 
-		await this.repository.insert({
-			fileId: newFileId,
-			sourceType: oldRecord.sourceType,
-			sourceId: oldRecord.sourceId,
-			data: oldRecord.data,
-			mimeType: oldRecord.mimeType,
-			fileName: oldRecord.fileName,
-			fileSize: oldRecord.fileSize,
+			await tx.insert(BinaryDataFile, {
+				fileId: newFileId,
+				sourceType: oldFile.sourceType,
+				sourceId: oldFile.sourceId,
+				data: oldFile.data,
+				mimeType: oldFile.mimeType,
+				fileName: oldFile.fileName,
+				fileSize: oldFile.fileSize,
+			});
+
+			await tx.delete(BinaryDataFile, { fileId: oldFileId });
 		});
-
-		await this.repository.delete({ fileId: oldFileId });
 	}
 
 	private toSource(location: BinaryData.FileLocation): {
