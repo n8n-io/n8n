@@ -1572,6 +1572,17 @@ onUpdated(async () => {
 						:rows="editorRows"
 					/>
 				</div>
+				<CronBuilder
+					v-else-if="
+						parameter.name === 'expression' &&
+						parameter.type === 'string' &&
+						node?.type === 'n8n-nodes-base.scheduleTrigger'
+					"
+					ref="inputField"
+					:model-value="displayValue"
+					@update:model-value="valueChanged"
+					@change="valueChanged"
+				/>
 				<N8nInput
 					v-else
 					ref="inputField"
@@ -1667,18 +1678,6 @@ onUpdated(async () => {
 				@focus="setFocus"
 				@blur="onBlur"
 				@keydown.stop
-			/>
-
-			<CronBuilder
-				v-else-if="
-					parameter.name === 'expression' &&
-					parameter.type === 'string' &&
-					node?.type === 'n8n-nodes-base.scheduleTrigger'
-				"
-				ref="inputField"
-				:model-value="displayValue"
-				@update:model-value="valueChanged"
-				@change="valueChanged"
 			/>
 
 			<N8nInputNumber
