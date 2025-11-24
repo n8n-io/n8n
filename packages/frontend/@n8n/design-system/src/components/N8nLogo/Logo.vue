@@ -40,8 +40,7 @@ const containerClasses = computed(() => {
 
 const svg = useTemplateRef<{ $el: Element }>('logo');
 onMounted(() => {
-	const isStable = releaseChannel && releaseChannel === 'stable';
-	if (isStable || !('createObjectURL' in URL)) {
+	if (releaseChannel === 'stable' || !('createObjectURL' in URL)) {
 		return;
 	}
 
@@ -54,7 +53,7 @@ onMounted(() => {
 	// Reuse the SVG as favicon
 	const blob = new Blob([logoEl.outerHTML], { type: 'image/svg+xml' });
 	useFavicon(URL.createObjectURL(blob));
-});
+);
 </script>
 
 <template>
