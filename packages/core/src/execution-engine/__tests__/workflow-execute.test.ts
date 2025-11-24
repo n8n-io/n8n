@@ -292,6 +292,41 @@ describe('WorkflowExecute', () => {
 
 			expect(nodeHooks).toHaveLength(0);
 		});
+
+		test("don't execute destination node when mode is exclusive", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger, {
+				nodeName: 'node2',
+				mode: 'exclusive',
+			});
+
+			// ASSERT
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(nodeHooks.map((hook) => ({ name: hook[0], node: hook[1][0] }))).toEqual([
+				{ name: 'nodeExecuteBefore', node: 'trigger' },
+				{ name: 'nodeExecuteAfter', node: 'trigger' },
+				{ name: 'nodeExecuteBefore', node: 'node1' },
+				{ name: 'nodeExecuteAfter', node: 'node1' },
+				// node2 should NOT appear here because mode is 'exclusive'
+			]);
+		});
 	});
 
 	describe('v1 hook order', () => {
@@ -371,6 +406,41 @@ describe('WorkflowExecute', () => {
 			]);
 
 			expect(nodeHooks).toHaveLength(0);
+		});
+
+		test("don't execute destination node when mode is exclusive", async () => {
+			// ARRANGE
+			const trigger = createNodeData({ name: 'trigger', type: 'n8n-nodes-base.manualTrigger' });
+			const node1 = createNodeData({ name: 'node1' });
+			const node2 = createNodeData({ name: 'node2' });
+			const workflowInstance = new DirectedGraph()
+				.addNodes(trigger, node1, node2)
+				.addConnections({ from: trigger, to: node1 }, { from: node1, to: node2 })
+				.toWorkflow({ name: '', active: false, nodeTypes, settings: { executionOrder } });
+
+			const additionalData = Helpers.WorkflowExecuteAdditionalData(createDeferredPromise<IRun>());
+			const runHookSpy = jest.spyOn(additionalData.hooks!, 'runHook');
+
+			const workflowExecute = new WorkflowExecute(additionalData, executionMode);
+
+			// ACT
+			await workflowExecute.run(workflowInstance, trigger, {
+				nodeName: 'node2',
+				mode: 'exclusive',
+			});
+
+			// ASSERT
+			const nodeHooks = runHookSpy.mock.calls.filter(
+				(call) => call[0] === 'nodeExecuteBefore' || call[0] === 'nodeExecuteAfter',
+			);
+
+			expect(nodeHooks.map((hook) => ({ name: hook[0], node: hook[1][0] }))).toEqual([
+				{ name: 'nodeExecuteBefore', node: 'trigger' },
+				{ name: 'nodeExecuteAfter', node: 'trigger' },
+				{ name: 'nodeExecuteBefore', node: 'node1' },
+				{ name: 'nodeExecuteAfter', node: 'node1' },
+				// node2 should NOT appear here because mode is 'exclusive'
+			]);
 		});
 	});
 
@@ -1107,6 +1177,64 @@ describe('WorkflowExecute', () => {
 			expect(issues).toEqual({ [startNode.name]: { execution: false } });
 			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(2);
 			expect(nodeParamIssuesSpy).toHaveBeenCalled();
+		});
+
+		it('should check destination node when mode is inclusive', () => {
+			const trigger = mock<INode>({ name: 'trigger' });
+			const node1 = mock<INode>({ name: 'node1' });
+			const destination = mock<INode>({ name: 'destination' });
+
+			const workflow = new Workflow({
+				nodes: [trigger, node1, destination],
+				connections: {
+					trigger: { main: [[{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 }]] },
+					node1: { main: [[{ node: 'destination', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				active: false,
+				nodeTypes,
+			});
+
+			nodeParamIssuesSpy.mockReturnValue(null);
+			nodeTypes.getByNameAndVersion.mockClear();
+			nodeParamIssuesSpy.mockClear();
+
+			const issues = workflowExecute.checkReadyForExecution(workflow, {
+				destinationNode: { nodeName: 'destination', mode: 'inclusive' },
+			});
+
+			expect(issues).toBe(null);
+			// Should check: trigger, node1, destination (3 nodes = 3 calls to getByNameAndVersion)
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(3);
+			expect(nodeParamIssuesSpy).toHaveBeenCalledTimes(3);
+		});
+
+		it('should not check destination node when mode is exclusive', () => {
+			const trigger = mock<INode>({ name: 'trigger' });
+			const node1 = mock<INode>({ name: 'node1' });
+			const destination = mock<INode>({ name: 'destination' });
+
+			const workflow = new Workflow({
+				nodes: [trigger, node1, destination],
+				connections: {
+					trigger: { main: [[{ node: 'node1', type: NodeConnectionTypes.Main, index: 0 }]] },
+					node1: { main: [[{ node: 'destination', type: NodeConnectionTypes.Main, index: 0 }]] },
+				},
+				active: false,
+				nodeTypes,
+			});
+
+			nodeParamIssuesSpy.mockReturnValue(null);
+			nodeTypes.getByNameAndVersion.mockClear();
+			nodeParamIssuesSpy.mockClear();
+
+			const issues = workflowExecute.checkReadyForExecution(workflow, {
+				destinationNode: { nodeName: 'destination', mode: 'exclusive' },
+			});
+
+			expect(issues).toBe(null);
+			// Should check: trigger, node1 only (2 nodes = 2 calls to getByNameAndVersion)
+			expect(nodeTypes.getByNameAndVersion).toHaveBeenCalledTimes(2);
+			expect(nodeParamIssuesSpy).toHaveBeenCalledTimes(2);
 		});
 	});
 
