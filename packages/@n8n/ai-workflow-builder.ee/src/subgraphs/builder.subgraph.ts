@@ -12,11 +12,11 @@ import type { ChatPayload } from '@/workflow-builder-agent';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
-import type { DiscoveryContext } from '../types/discovery-types';
 import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
+import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { processOperations } from '../utils/operations-processor';
 import { executeSubgraphTools } from '../utils/subgraph-helpers';
