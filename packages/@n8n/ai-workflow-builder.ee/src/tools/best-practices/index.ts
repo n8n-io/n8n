@@ -23,7 +23,7 @@ export const documentation: Record<WorkflowTechniqueType, BestPracticesDocument 
 	[WorkflowTechnique.CONTENT_GENERATION]: new ContentGenerationBestPractices(),
 	[WorkflowTechnique.DATA_ANALYSIS]: undefined, // new DataAnalysisBestPractices(),
 	[WorkflowTechnique.DATA_EXTRACTION]: new DataExtractionBestPractices(),
-	[WorkflowTechnique.DATA_TRANSFORMATION]: undefined, //new DataTransformationBestPractices(),
+	[WorkflowTechnique.DATA_TRANSFORMATION]: undefined, // new DataTransformationBestPractices(),
 	[WorkflowTechnique.DOCUMENT_PROCESSING]: new DocumentProcessingBestPractices(),
 	[WorkflowTechnique.ENRICHMENT]: undefined, // new EnrichmentBestPractices(),
 	[WorkflowTechnique.FORM_INPUT]: new FormInputBestPractices(),

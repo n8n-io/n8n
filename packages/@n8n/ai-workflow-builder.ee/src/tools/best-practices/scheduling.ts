@@ -270,7 +270,7 @@ Use Cases:
 **Solution**:
 - Use crontab.guru to validate expressions
 - Remember n8n supports 5 or 6 field syntax
-- Prefix with 0 for seconds if using 5-field expression
+- n8n supports both 5-field and 6-field (with seconds) cron syntax; use 6 fields if you want to specify seconds (e.g., prefix with 0 for seconds: \`0 0 * * * *\`)
 - Use interval mode for simple schedules
 `;
 

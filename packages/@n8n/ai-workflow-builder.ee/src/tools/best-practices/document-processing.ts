@@ -26,7 +26,7 @@ Trigger → Capture Binary → Extract Text → Parse/Transform → Route to Des
 
 **Batch Document Processing:**
 - Main workflow: Schedule Trigger → Fetch Files → Split In Batches → Sub-workflow → Merge Results → Bulk Update
-- Subworkflow When Executed by Another Workflow -> Process result
+- Sub-workflow When Executed by Another Workflow -> Process result
 - Best for: High-volume processing with API rate limits
 
 **Multi-Source Document Aggregation:**
@@ -307,7 +307,7 @@ Critical: NEVER set API keys directly in the request - user can set credentials 
 - Process files sequentially or in small batches
 - Enable filesystem mode for binary data storage
 - Drop unnecessary data after extraction
-- Create a subworkflow in the same workflow using "When Executed by Another Workflow" and "Execute Workflow". Delegate the heavy part of the workflow to the subworkflow.
+- Create a sub-workflow in the same workflow using "When Executed by Another Workflow" and "Execute Workflow". Delegate the heavy part of the workflow to the sub-workflow.
 
 ### Duplicate Processing
 
