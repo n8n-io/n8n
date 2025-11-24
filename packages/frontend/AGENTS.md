@@ -114,4 +114,3 @@ application. These variables cover colors, spacing, typography, and borders.
 --border-style: solid
 --border: var(--border-width) var(--border-style) var(--color--foreground)
 ```
-

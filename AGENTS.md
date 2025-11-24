@@ -120,7 +120,7 @@ The monorepo is organized into these key packages:
 - **Use CSS variables directly** - never hardcode spacing as px values
 - **data-test-id must be a single value** (no spaces or multiple values)
 
-When implementing CSS, refer to @packages/frontend/AGENTS.md for guidelines on
+When implementing CSS, refer to @packages/frontend/CLAUDE.md for guidelines on
 CSS variables and styling conventions.
 
 ### Testing Guidelines
@@ -156,4 +156,3 @@ When implementing features:
 - Always reference the Linear ticket in the PR description,
   use `https://linear.app/n8n/issue/[TICKET-ID]`
 - always link to the github issue if mentioned in the linear ticket.
-

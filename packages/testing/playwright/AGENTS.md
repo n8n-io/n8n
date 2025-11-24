@@ -9,4 +9,3 @@
 
 - In writing locators, use specialized methods when available.
   For example, prefer `page.getByRole('button')` over `page.locator('[role=button]')`.
-
