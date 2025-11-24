@@ -47,13 +47,13 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
-import { convertFileToChatAttachment } from '@/app/utils/fileUtils';
 import { buildUiMessages, isLlmProviderModel, isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
 import type { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -492,7 +492,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
 			: null;
 
-		const attachments = await Promise.all(files.map(convertFileToChatAttachment));
+		const binaryData = await Promise.all(files.map(convertFileToBinaryData));
+		const attachments = binaryData.map((attachment) => ({
+			fileName: attachment.fileName ?? 'unnamed file',
+			mimeType: attachment.mimeType,
+			data: attachment.data,
+		}));
 
 		addMessage(sessionId, {
 			id: messageId,
