@@ -695,6 +695,7 @@ export interface BaseHelperFunctions {
 }
 
 export interface FileSystemHelperFunctions {
+	isFilePathBlocked(filePath: string): Promise<boolean>;
 	createReadStream(path: PathLike): Promise<Readable>;
 	getStoragePath(): string;
 	writeContentToFile(
