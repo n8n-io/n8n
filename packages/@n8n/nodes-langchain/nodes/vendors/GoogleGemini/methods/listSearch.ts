@@ -80,6 +80,16 @@ export async function imageGenerationModelSearch(
 	};
 }
 
+export async function imageEditModelSearch(
+	this: ILoadOptionsFunctions,
+	filter?: string,
+): Promise<INodeListSearchResult> {
+	const result = await imageGenerationModelSearch.call(this, filter);
+	return {
+		results: result.results.filter((r) => r.name.includes('Nano Banana')),
+	};
+}
+
 export async function videoGenerationModelSearch(
 	this: ILoadOptionsFunctions,
 	filter?: string,
