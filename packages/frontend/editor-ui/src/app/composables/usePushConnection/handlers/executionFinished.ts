@@ -367,8 +367,11 @@ function handleExecutionFinishedSuccessfully(
 	workflowState: WorkflowState,
 ) {
 	const toast = useToast();
+	const documentTitle = useDocumentTitle();
 
-	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
+	// Show success status and keep it
+	documentTitle.setDocumentTitle(workflowName, 'SUCCESS');
+
 	workflowState.setActiveExecutionId(undefined);
 	toast.showMessage({
 		title: message,
@@ -390,8 +393,6 @@ export function handleExecutionFinishedWithSuccessOrOther(
 	const workflowObject = workflowsStore.workflowObject;
 	const workflowName = workflowObject.name ?? '';
 
-	useDocumentTitle().setDocumentTitle(workflowName, 'IDLE');
-
 	const workflowExecution = workflowsStore.getWorkflowExecution;
 	if (workflowExecution?.executedNode) {
 		const node = workflowsStore.getNodeByName(workflowExecution.executedNode);
@@ -400,6 +401,7 @@ export function handleExecutionFinishedWithSuccessOrOther(
 			workflowExecution.data?.resultData?.runData?.[workflowExecution.executedNode];
 
 		if (nodeType?.polling && !nodeOutput) {
+			useDocumentTitle().setDocumentTitle(workflowName, 'SUCCESS');
 			toast.showMessage({
 				title: i18n.baseText('pushConnection.pollingNode.dataNotFound', {
 					interpolate: {

@@ -1,6 +1,7 @@
 import type { WorkflowTitleStatus } from '@/Interface';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import type { Ref } from 'vue';
+import { updateFavicon, type FaviconStatus } from '@/app/utils/favicon';
 
 const DEFAULT_TITLE = 'n8n';
 const DEFAULT_TAGLINE = 'Workflow Automation';
@@ -23,13 +24,20 @@ export function useDocumentTitle(windowRef?: Ref<Window | undefined>) {
 	};
 
 	const setDocumentTitle = (workflowName: string, status: WorkflowTitleStatus) => {
-		let icon = '⚠️';
+		let faviconStatus: FaviconStatus = 'default';
+
 		if (status === 'EXECUTING') {
-			icon = '🔄';
+			faviconStatus = 'executing';
 		} else if (status === 'IDLE') {
-			icon = '▶️';
+			faviconStatus = 'default';
+		} else if (status === 'ERROR') {
+			faviconStatus = 'error';
+		} else if (status === 'SUCCESS') {
+			faviconStatus = 'success';
 		}
-		set(`${icon} ${workflowName}`);
+
+		set(workflowName);
+		void updateFavicon(faviconStatus);
 	};
 
 	return { set, reset, setDocumentTitle };

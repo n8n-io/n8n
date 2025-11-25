@@ -98,6 +98,7 @@ import { useExecutionsStore } from '@/features/execution/executions/executions.s
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useMessage } from '@/app/composables/useMessage';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { resetFavicon } from '@/app/utils/favicon';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useHistoryStore } from '@/app/stores/history.store';
@@ -1858,6 +1859,9 @@ watch(
 );
 onBeforeRouteLeave(async (to, from, next) => {
 	const toNodeViewTab = getNodeViewTab(to);
+
+	// Reset favicon when leaving workflow route
+	resetFavicon();
 
 	if (
 		toNodeViewTab === MAIN_HEADER_TABS.EXECUTIONS ||
