@@ -142,3 +142,12 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
 ];
+
+export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [
+	'chatHub:message',
+	'chatHubAgent:create',
+	'chatHubAgent:read',
+	'chatHubAgent:update',
+	'chatHubAgent:delete',
+	'chatHubAgent:list',
+];

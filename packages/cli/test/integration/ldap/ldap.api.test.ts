@@ -79,6 +79,16 @@ test('Member role should not be able to access ldap routes', async () => {
 	await authAgent.get('/ldap/sync').expect(403);
 });
 
+test('Chat user role should not be able to access ldap routes', async () => {
+	const chatUser = await createUser({ role: { slug: 'global:chatUser' } });
+	const authAgent = testServer.authAgentFor(chatUser);
+	await authAgent.get('/ldap/config').expect(403);
+	await authAgent.put('/ldap/config').expect(403);
+	await authAgent.post('/ldap/test-connection').expect(403);
+	await authAgent.post('/ldap/sync').expect(403);
+	await authAgent.get('/ldap/sync').expect(403);
+});
+
 describe('PUT /ldap/config', () => {
 	test('route should validate payload', async () => {
 		const invalidValuePayload = {

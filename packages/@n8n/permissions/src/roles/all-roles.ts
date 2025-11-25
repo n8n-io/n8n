@@ -17,6 +17,7 @@ const ROLE_NAMES: Record<AllRoleTypes, string> = {
 	'global:owner': 'Owner',
 	'global:admin': 'Admin',
 	'global:member': 'Member',
+	'global:chatUser': 'Chat User',
 	[PROJECT_OWNER_ROLE_SLUG]: 'Project Owner',
 	[PROJECT_ADMIN_ROLE_SLUG]: 'Project Admin',
 	[PROJECT_EDITOR_ROLE_SLUG]: 'Project Editor',
@@ -31,6 +32,7 @@ const ROLE_DESCRIPTIONS: Record<AllRoleTypes, string> = {
 	'global:owner': 'Owner',
 	'global:admin': 'Admin',
 	'global:member': 'Member',
+	'global:chatUser': 'Chat User',
 	[PROJECT_OWNER_ROLE_SLUG]: 'Project Owner',
 	[PROJECT_ADMIN_ROLE_SLUG]:
 		'Full control of settings, members, workflows, credentials and executions',

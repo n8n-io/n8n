@@ -276,12 +276,16 @@ export class UserService {
 		return await this.userRepository.manager.transaction(async (trx) => {
 			await trx.update(User, { id: targetUser.id }, { role: { slug: newRole.newRoleName } });
 
-			const adminDowngradedToMember =
+			const isAdminRole = (roleName: string) => {
+				return roleName === 'global:admin' || roleName === 'global:owner';
+			};
+
+			const isDowngradedAdmin =
 				user.role.slug === 'global:owner' &&
 				targetUser.role.slug === 'global:admin' &&
-				newRole.newRoleName === 'global:member';
+				!isAdminRole(newRole.newRoleName);
 
-			if (adminDowngradedToMember) {
+			if (isDowngradedAdmin) {
 				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser, trx);
 			}
 		});

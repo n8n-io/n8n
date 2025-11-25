@@ -6,6 +6,7 @@ import {
 	GLOBAL_OWNER_SCOPES,
 	GLOBAL_ADMIN_SCOPES,
 	GLOBAL_MEMBER_SCOPES,
+	GLOBAL_CHAT_USER_SCOPES,
 } from './scopes/global-scopes.ee';
 import {
 	REGULAR_PROJECT_ADMIN_SCOPES,
@@ -29,6 +30,7 @@ export const GLOBAL_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
 	'global:owner': GLOBAL_OWNER_SCOPES,
 	'global:admin': GLOBAL_ADMIN_SCOPES,
 	'global:member': GLOBAL_MEMBER_SCOPES,
+	'global:chatUser': GLOBAL_CHAT_USER_SCOPES,
 };
 
 export const PROJECT_SCOPE_MAP: Record<ProjectRole, Scope[]> = {

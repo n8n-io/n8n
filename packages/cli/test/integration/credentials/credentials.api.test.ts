@@ -29,7 +29,13 @@ import {
 	shareCredentialWithProjects,
 	shareCredentialWithUsers,
 } from '../shared/db/credentials';
-import { createAdmin, createManyUsers, createMember, createOwner } from '../shared/db/users';
+import {
+	createAdmin,
+	createChatUser,
+	createManyUsers,
+	createMember,
+	createOwner,
+} from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
 import { setupTestServer } from '../shared/utils';
 
@@ -39,6 +45,7 @@ const testServer = setupTestServer({ endpointGroups: ['credentials'] });
 
 let owner: User;
 let member: User;
+let chatUser: User;
 let admin: User;
 let secondMember: User;
 
@@ -47,6 +54,7 @@ let memberPersonalProject: Project;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
+let authChatUserAgent: SuperAgentTest;
 let authAdminAgent: SuperAgentTest;
 
 let projectRepository: ProjectRepository;
@@ -57,6 +65,7 @@ beforeEach(async () => {
 
 	owner = await createOwner();
 	member = await createMember();
+	chatUser = await createChatUser();
 	admin = await createAdmin();
 	secondMember = await createMember();
 
@@ -69,6 +78,7 @@ beforeEach(async () => {
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
+	authChatUserAgent = testServer.authAgentFor(chatUser);
 	authAdminAgent = testServer.authAgentFor(admin);
 
 	projectRepository = Container.get(ProjectRepository);
@@ -121,6 +131,28 @@ describe('GET /credentials', () => {
 		validateMainCredentialData(member1Credential);
 		expect(member1Credential.data).toBeUndefined();
 		expect(member1Credential.id).toBe(savedCredential1.id);
+	});
+
+	test('should return only own creds for chat user', async () => {
+		const [chatUser1, chatUser2] = await createManyUsers(2, {
+			role: { slug: 'global:chatUser' },
+		});
+
+		const [savedCredential1] = await Promise.all([
+			saveCredential(randomCredentialPayload(), { user: chatUser1, role: 'credential:owner' }),
+			saveCredential(randomCredentialPayload(), { user: chatUser2, role: 'credential:owner' }),
+		]);
+
+		const response = await testServer.authAgentFor(chatUser1).get('/credentials');
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.data.length).toBe(1); // member retrieved only own cred
+
+		const [chatUser1Credential] = response.body.data;
+
+		validateMainCredentialData(chatUser1Credential);
+		expect(chatUser1Credential.data).toBeUndefined();
+		expect(chatUser1Credential.id).toBe(savedCredential1.id);
 	});
 
 	test('should return scopes when ?includeScopes=true', async () => {
@@ -930,6 +962,15 @@ describe('POST /credentials', () => {
 			});
 	});
 
+	test('should fail when chat user tries to create credential', async () => {
+		const response = await authChatUserAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload() });
+
+		expect(response.statusCode).toBe(403);
+		expect(response.body.message).toBe('You do not have permission to create credentials');
+	});
+
 	test('should fail when member tries to create credential with isGlobal=true', async () => {
 		const response = await authMemberAgent
 			.post('/credentials')
@@ -967,6 +1008,14 @@ describe('POST /credentials', () => {
 		expect(credential.isGlobal).toBe(false);
 	});
 
+	test('should not allow chat user to create credential with isGlobal=false', async () => {
+		const response = await authChatUserAgent
+			.post('/credentials')
+			.send({ ...randomCredentialPayload(), isGlobal: false });
+
+		expect(response.statusCode).toBe(403);
+	});
+
 	test('should allow member to create credential without passing isGlobal', async () => {
 		const payload = randomCredentialPayload();
 		delete payload.isGlobal;
@@ -979,6 +1028,15 @@ describe('POST /credentials', () => {
 			id: response.body.data.id,
 		});
 		expect(credential.isGlobal).toBe(false);
+	});
+
+	test('should not allow chat user to create credential without passing isGlobal', async () => {
+		const payload = randomCredentialPayload();
+		delete payload.isGlobal;
+
+		const response = await authChatUserAgent.post('/credentials').send(payload);
+
+		expect(response.statusCode).toBe(403);
 	});
 });
 

@@ -3,6 +3,7 @@ import {
 	AuthIdentity,
 	AuthIdentityRepository,
 	GLOBAL_ADMIN_ROLE,
+	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	type Role,
@@ -152,6 +153,10 @@ export async function createMember() {
 
 export async function createAdmin() {
 	return await createUser({ role: GLOBAL_ADMIN_ROLE });
+}
+
+export async function createChatUser() {
+	return await createUser({ role: GLOBAL_CHAT_USER_ROLE });
 }
 
 export async function createUserShell(role: Role): Promise<User> {
