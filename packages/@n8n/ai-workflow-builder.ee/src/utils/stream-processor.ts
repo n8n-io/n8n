@@ -1,3 +1,7 @@
+// ============================================================================
+// IMPORTS
+// ============================================================================
+
 import { AIMessage, HumanMessage, ToolMessage } from '@langchain/core/messages';
 import type { ToolCall } from '@langchain/core/messages/tool';
 import type { DynamicStructuredTool } from '@langchain/core/tools';
@@ -9,6 +13,10 @@ import type {
 	StreamOutput,
 } from '../types/streaming';
 
+// ============================================================================
+// TYPES & INTERFACES
+// ============================================================================
+
 export interface BuilderToolBase {
 	toolName: string;
 	displayTitle: string;
@@ -19,9 +27,19 @@ export interface BuilderTool extends BuilderToolBase {
 	tool: DynamicStructuredTool;
 }
 
-/**
- * Tools which should trigger canvas updates
- */
+/** Message content structure from LangGraph updates */
+type MessageContent = { content: string | Array<{ type: string; text: string }> };
+
+/** Stream event types from LangGraph */
+type SubgraphEvent = [string[], string, unknown];
+type ParentEvent = [string, unknown];
+type StreamEvent = SubgraphEvent | ParentEvent;
+
+// ============================================================================
+// CONFIGURATION
+// ============================================================================
+
+/** Tools which should trigger canvas updates */
 export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
 	'add_nodes',
 	'connect_nodes',
@@ -30,40 +48,85 @@ export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
 ];
 
 /**
- * Multi-agent graph nodes that should emit messages to frontend
- *
- * Only emit user-facing responses:
+ * Parent graph nodes that should emit user-facing messages
  * - agent: V1 single agent (backward compatibility)
- * - responder: Conversational responses (the ONLY node that should emit in multi-agent mode)
- *
- * Internal agents (discovery, builder, configurator) are hidden - their output is
- * synthesized by the responder for a clean user experience
+ * - responder: The ONLY node that should emit in multi-agent mode
  */
-const AGENT_NODES_TO_EMIT = [
-	'agent', // V1 single agent (backward compatibility)
-	'responder', // Conversational responses - only user-facing node in multi-agent
-];
+const EMITTING_NODES = ['agent', 'responder'];
 
-/**
- * Multi-agent graph nodes to skip (internal coordination)
- */
-const NODES_TO_SKIP = [
-	'supervisor', // Internal routing decisions
-	'tools', // Tool execution handled via custom events
-	'cleanup_dangling_tool_calls', // Internal cleanup
-	'create_workflow_name', // Internal workflow naming
-	'auto_compact_messages', // Internal state management
+/** Parent graph nodes to skip entirely (internal coordination) */
+const SKIPPED_NODES = [
+	'supervisor',
+	'tools',
+	'cleanup_dangling_tool_calls',
+	'create_workflow_name',
+	'auto_compact_messages',
 	'configurator_subgraph',
 	'discovery_subgraph',
 	'builder_subgraph',
 ];
 
 /**
- * Extract message content from a node update
+ * Subgraph namespace prefixes that should not emit message events
+ * Note: Actual namespaces have UUIDs appended like "builder_subgraph:612f4bc3-..."
  */
-function extractMessageContent(
-	messages: Array<{ content: string | Array<{ type: string; text: string }> }>,
-): string | null {
+const SKIPPED_SUBGRAPH_PREFIXES = [
+	'discovery_subgraph',
+	'builder_subgraph',
+	'configurator_subgraph',
+];
+
+// ============================================================================
+// FILTERING LOGIC
+// ============================================================================
+
+/** Check if namespace indicates a skipped subgraph (handles UUID suffixes) */
+function isFromSkippedSubgraph(namespace: string[]): boolean {
+	return namespace.some((ns) => SKIPPED_SUBGRAPH_PREFIXES.some((prefix) => ns.startsWith(prefix)));
+}
+
+/** Check if a node name should be skipped */
+function shouldSkipNode(nodeName: string): boolean {
+	return SKIPPED_NODES.includes(nodeName);
+}
+
+/** Check if a node should emit messages */
+function shouldEmitFromNode(nodeName: string): boolean {
+	return EMITTING_NODES.includes(nodeName);
+}
+
+/** Check if node update contains message data */
+function hasMessageInUpdate(update: unknown): boolean {
+	const typed = update as { messages?: unknown[] };
+	return Array.isArray(typed?.messages) && typed.messages.length > 0;
+}
+
+/** Determine if a subgraph update event should be filtered out */
+function shouldFilterSubgraphUpdate(namespace: string[], data: Record<string, unknown>): boolean {
+	if (!isFromSkippedSubgraph(namespace)) return false;
+
+	return Object.entries(data).some(([nodeName, update]) => {
+		if (shouldSkipNode(nodeName)) return false;
+		return hasMessageInUpdate(update);
+	});
+}
+
+/** Type guard for subgraph events */
+function isSubgraphEvent(event: unknown): event is SubgraphEvent {
+	return Array.isArray(event) && event.length === 3 && Array.isArray(event[0]);
+}
+
+/** Type guard for parent events */
+function isParentEvent(event: unknown): event is ParentEvent {
+	return Array.isArray(event) && event.length === 2 && typeof event[0] === 'string';
+}
+
+// ============================================================================
+// CONTENT EXTRACTION
+// ============================================================================
+
+/** Extract message content from a node update */
+function extractMessageContent(messages: MessageContent[]): string | null {
 	if (messages.length === 0) return null;
 
 	const lastMessage = messages[messages.length - 1];
@@ -82,216 +145,6 @@ function extractMessageContent(
 }
 
 /**
- * Process a single chunk from the LangGraph stream
- */
-// eslint-disable-next-line complexity
-export function processStreamChunk(streamMode: string, chunk: unknown): StreamOutput | null {
-	if (streamMode === 'updates') {
-		const nodeUpdate = chunk as Record<string, unknown>;
-
-		// Handle special nodes first (backward compatibility)
-		if (nodeUpdate.delete_messages) {
-			const deleteUpdate = nodeUpdate.delete_messages as {
-				messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
-			};
-			if ((deleteUpdate?.messages ?? []).length > 0) {
-				const messageChunk: AgentMessageChunk = {
-					role: 'assistant',
-					type: 'message',
-					text: 'Deleted, refresh?',
-				};
-				return { messages: [messageChunk] };
-			}
-		}
-
-		if (nodeUpdate.compact_messages) {
-			const compactUpdate = nodeUpdate.compact_messages as {
-				messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
-			};
-			if ((compactUpdate?.messages ?? []).length > 0) {
-				const content = extractMessageContent(compactUpdate.messages!);
-				if (content) {
-					const messageChunk: AgentMessageChunk = {
-						role: 'assistant',
-						type: 'message',
-						text: content,
-					};
-					return { messages: [messageChunk] };
-				}
-			}
-		}
-
-		// Handle process_operations updates - emit workflow update after operations are processed
-		if (nodeUpdate.process_operations) {
-			const update = nodeUpdate.process_operations as {
-				workflowJSON?: unknown;
-				workflowOperations?: unknown;
-			};
-			if (update.workflowJSON && update.workflowOperations !== undefined) {
-				// Create workflow update chunk
-				const workflowUpdateChunk: WorkflowUpdateChunk = {
-					role: 'assistant',
-					type: 'workflow-updated',
-					codeSnippet: JSON.stringify(update.workflowJSON, null, 2),
-				};
-				return { messages: [workflowUpdateChunk] };
-			}
-		}
-
-		// Generic handler for any agent node (including multi-agent nodes)
-		for (const [nodeName, update] of Object.entries(nodeUpdate)) {
-			// Skip nodes that shouldn't emit
-			if (NODES_TO_SKIP.includes(nodeName)) {
-				continue;
-			}
-
-			// Check if this node should emit messages
-			if (AGENT_NODES_TO_EMIT.includes(nodeName)) {
-				const agentUpdate = update as {
-					messages?: Array<{ content: string | Array<{ type: string; text: string }> }>;
-				};
-
-				if ((agentUpdate?.messages ?? []).length > 0) {
-					const content = extractMessageContent(agentUpdate.messages!);
-
-					// Only emit non-empty content
-					// Filter out empty strings, whitespace, and workflow context artifacts
-					if (content?.trim() && !content.includes('<current_workflow_json>')) {
-						const messageChunk: AgentMessageChunk = {
-							role: 'assistant',
-							type: 'message',
-							text: content,
-						};
-						return { messages: [messageChunk] };
-					}
-				}
-			}
-		}
-	} else if (streamMode === 'custom') {
-		// Handle custom tool updates
-		const toolChunk = chunk as ToolProgressChunk;
-
-		if (toolChunk?.type === 'tool') {
-			const output: StreamOutput = { messages: [toolChunk] };
-			// Don't emit workflow updates here - they'll be emitted after process_operations
-			return output;
-		}
-	}
-
-	return null;
-}
-
-/**
- * Subgraph namespaces that should NOT emit message events
- * These subgraphs run internally and their output is synthesized by the responder
- */
-const SUBGRAPHS_TO_SKIP_MESSAGES = [
-	'discovery_subgraph',
-	'builder_subgraph',
-	'configurator_subgraph',
-];
-
-/**
- * Check if an event comes from a subgraph that should not emit messages
- * Namespace values have UUIDs appended like "builder_subgraph:612f4bc3-..."
- */
-function isFromSkippedSubgraph(namespace: string[]): boolean {
-	return namespace.some((ns) => SUBGRAPHS_TO_SKIP_MESSAGES.some((skip) => ns.startsWith(skip)));
-}
-
-/**
- * Create a stream processor that yields formatted chunks
- *
- * Handles both regular graph events and subgraph events (when enableMultiAgent: true is enabled).
- * When multi-agent is enabled, events come as: [namespace, chunk] where namespace is array
- */
-export async function* createStreamProcessor(
-	stream: AsyncGenerator<[string, unknown] | [string[], string, unknown], void, unknown>,
-): AsyncGenerator<StreamOutput> {
-	for await (const event of stream) {
-		// Debug: Log all events to understand the structure
-		console.log(
-			`[StreamProcessor] Event type: ${Array.isArray(event) ? `array[${event.length}]` : typeof event}`,
-		);
-		if (Array.isArray(event)) {
-			console.log(
-				`[StreamProcessor] Event[0] type: ${Array.isArray(event[0]) ? `array[${event[0].length}]: ${JSON.stringify(event[0])}` : typeof event[0]}: ${String(event[0]).substring(0, 50)}`,
-			);
-		}
-
-		// Subgraph events: flat 3-element array [namespace, streamMode, data]
-		if (Array.isArray(event) && event.length === 3 && Array.isArray(event[0])) {
-			const [namespace, streamMode, data] = event;
-			console.log(
-				`[StreamProcessor] Subgraph event: namespace=${JSON.stringify(namespace)}, mode=${streamMode}`,
-			);
-
-			// Skip message events from internal subgraphs (discovery, builder, configurator)
-			// Only tool/custom events should pass through for progress tracking
-			const isSkippedSubgraph = isFromSkippedSubgraph(namespace);
-			console.log(
-				`[StreamProcessor] isSkippedSubgraph(${JSON.stringify(namespace)}): ${isSkippedSubgraph}`,
-			);
-
-			if (isSkippedSubgraph && streamMode === 'updates') {
-				// Check if this is a message update (not tool progress)
-				const nodeUpdate = data as Record<string, unknown>;
-				const nodeNames = Object.keys(nodeUpdate);
-				console.log(`[StreamProcessor] Checking node updates: ${nodeNames.join(', ')}`);
-
-				const hasMessageUpdate = Object.entries(nodeUpdate).some(([nodeName, update]) => {
-					const isSkipped = NODES_TO_SKIP.includes(nodeName);
-					const agentUpdate = update as { messages?: unknown[] };
-					const hasMessages = agentUpdate?.messages && agentUpdate.messages.length > 0;
-					console.log(
-						`[StreamProcessor] Node "${nodeName}": skipped=${isSkipped}, hasMessages=${hasMessages}`,
-					);
-					if (isSkipped) return false;
-					return hasMessages;
-				});
-
-				// Skip message updates from subgraphs - only responder should emit messages
-				if (hasMessageUpdate) {
-					console.log(
-						`[StreamProcessor] SKIPPING message update from subgraph: ${JSON.stringify(namespace)}`,
-					);
-					continue;
-				}
-			}
-
-			const output = processStreamChunk(streamMode, data);
-
-			if (output) {
-				console.log(
-					`[StreamProcessor] Yielding subgraph output: ${JSON.stringify(output).substring(0, 100)}`,
-				);
-				yield output;
-			}
-		} else if (Array.isArray(event) && event.length === 2) {
-			// Regular parent event: [streamMode, chunk]
-			const [streamMode, chunk] = event;
-			console.log(`[StreamProcessor] Parent event: mode=${streamMode}`);
-
-			// Make sure it's a valid stream mode string
-			if (typeof streamMode === 'string' && streamMode.length > 1) {
-				const output = processStreamChunk(streamMode, chunk);
-
-				if (output) {
-					console.log(
-						`[StreamProcessor] Yielding parent output: ${JSON.stringify(output).substring(0, 100)}`,
-					);
-					yield output;
-				}
-			}
-		} else {
-			console.log(
-				`[StreamProcessor] Unknown event format: ${JSON.stringify(event).substring(0, 200)}`,
-			);
-		}
-	}
-}
-
-/**
  * Remove context tags from message content that are used for AI context
  * but shouldn't be displayed to users
  */
@@ -299,9 +152,179 @@ export function cleanContextTags(text: string): string {
 	return text.replace(/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/, '');
 }
 
+// ============================================================================
+// CHUNK PROCESSORS
+// ============================================================================
+
+/** Handle delete_messages node update */
+function processDeleteMessages(update: unknown): StreamOutput | null {
+	const typed = update as { messages?: MessageContent[] };
+	if (!typed?.messages?.length) return null;
+
+	const messageChunk: AgentMessageChunk = {
+		role: 'assistant',
+		type: 'message',
+		text: 'Deleted, refresh?',
+	};
+	return { messages: [messageChunk] };
+}
+
+/** Handle compact_messages node update */
+function processCompactMessages(update: unknown): StreamOutput | null {
+	const typed = update as { messages?: MessageContent[] };
+	if (!typed?.messages?.length) return null;
+
+	const content = extractMessageContent(typed.messages);
+	if (!content) return null;
+
+	const messageChunk: AgentMessageChunk = {
+		role: 'assistant',
+		type: 'message',
+		text: content,
+	};
+	return { messages: [messageChunk] };
+}
+
+/** Handle process_operations node update */
+function processOperationsUpdate(update: unknown): StreamOutput | null {
+	const typed = update as { workflowJSON?: unknown; workflowOperations?: unknown };
+	if (!typed?.workflowJSON || typed.workflowOperations === undefined) return null;
+
+	const workflowUpdateChunk: WorkflowUpdateChunk = {
+		role: 'assistant',
+		type: 'workflow-updated',
+		codeSnippet: JSON.stringify(typed.workflowJSON, null, 2),
+	};
+	return { messages: [workflowUpdateChunk] };
+}
+
+/** Handle agent node message update */
+function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput | null {
+	if (!shouldEmitFromNode(nodeName)) return null;
+
+	const typed = update as { messages?: MessageContent[] };
+	if (!typed?.messages?.length) return null;
+
+	const content = extractMessageContent(typed.messages);
+	// Filter out empty content and workflow context artifacts
+	if (!content?.trim() || content.includes('<current_workflow_json>')) return null;
+
+	const messageChunk: AgentMessageChunk = {
+		role: 'assistant',
+		type: 'message',
+		text: content,
+	};
+	return { messages: [messageChunk] };
+}
+
+/** Handle custom tool progress chunk */
+function processToolChunk(chunk: unknown): StreamOutput | null {
+	const typed = chunk as ToolProgressChunk;
+	if (typed?.type !== 'tool') return null;
+
+	return { messages: [typed] };
+}
+
+// ============================================================================
+// MAIN STREAM PROCESSOR
+// ============================================================================
+
+/** Process a single chunk from updates stream mode */
+function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput | null {
+	// Special nodes first (backward compatibility)
+	if (nodeUpdate.delete_messages) {
+		return processDeleteMessages(nodeUpdate.delete_messages);
+	}
+	if (nodeUpdate.compact_messages) {
+		return processCompactMessages(nodeUpdate.compact_messages);
+	}
+	if (nodeUpdate.process_operations) {
+		return processOperationsUpdate(nodeUpdate.process_operations);
+	}
+
+	// Generic agent node handling
+	for (const [nodeName, update] of Object.entries(nodeUpdate)) {
+		if (shouldSkipNode(nodeName)) continue;
+
+		const result = processAgentNodeUpdate(nodeName, update);
+		if (result) return result;
+	}
+
+	return null;
+}
+
+/** Process a single chunk from the LangGraph stream */
+export function processStreamChunk(streamMode: string, chunk: unknown): StreamOutput | null {
+	if (streamMode === 'updates') {
+		return processUpdatesChunk(chunk as Record<string, unknown>);
+	}
+
+	if (streamMode === 'custom') {
+		return processToolChunk(chunk);
+	}
+
+	return null;
+}
+
+/** Process a subgraph event */
+function processSubgraphEvent(event: SubgraphEvent): StreamOutput | null {
+	const [namespace, streamMode, data] = event;
+
+	// Filter out message updates from internal subgraphs
+	if (
+		streamMode === 'updates' &&
+		shouldFilterSubgraphUpdate(namespace, data as Record<string, unknown>)
+	) {
+		return null;
+	}
+
+	return processStreamChunk(streamMode, data);
+}
+
+/** Process a parent graph event */
+function processParentEvent(event: ParentEvent): StreamOutput | null {
+	const [streamMode, chunk] = event;
+	if (typeof streamMode !== 'string' || streamMode.length <= 1) return null;
+
+	return processStreamChunk(streamMode, chunk);
+}
+
+/** Process a single event from the stream */
+function processEvent(event: StreamEvent): StreamOutput | null {
+	if (isSubgraphEvent(event)) {
+		return processSubgraphEvent(event);
+	}
+
+	if (isParentEvent(event)) {
+		return processParentEvent(event);
+	}
+
+	return null;
+}
+
 /**
- * Format a HumanMessage into the expected output format
+ * Create a stream processor that yields formatted chunks
+ *
+ * Handles both regular graph events and subgraph events.
+ * - Parent events: [streamMode, data]
+ * - Subgraph events: [namespace[], streamMode, data]
  */
+export async function* createStreamProcessor(
+	stream: AsyncGenerator<StreamEvent, void, unknown>,
+): AsyncGenerator<StreamOutput> {
+	for await (const event of stream) {
+		const result = processEvent(event);
+		if (result) {
+			yield result;
+		}
+	}
+}
+
+// ============================================================================
+// MESSAGE FORMATTING
+// ============================================================================
+
+/** Format a HumanMessage into the expected output format */
 function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
 	return {
 		role: 'user',
@@ -310,9 +333,7 @@ function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
 	};
 }
 
-/**
- * Process array content from AIMessage and return formatted text messages
- */
+/** Process array content from AIMessage and return formatted text messages */
 function processArrayContent(content: unknown[]): Array<Record<string, unknown>> {
 	const textMessages = content.filter(
 		(c): c is { type: string; text: string } =>
@@ -326,9 +347,7 @@ function processArrayContent(content: unknown[]): Array<Record<string, unknown>>
 	}));
 }
 
-/**
- * Process AIMessage content and return formatted messages
- */
+/** Process AIMessage content and return formatted messages */
 function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>> {
 	if (!msg.content) {
 		return [];
@@ -347,9 +366,7 @@ function processAIMessageContent(msg: AIMessage): Array<Record<string, unknown>>
 	];
 }
 
-/**
- * Create a formatted tool call message
- */
+/** Create a formatted tool call message */
 function createToolCallMessage(
 	toolCall: ToolCall,
 	builderTool?: BuilderToolBase,
@@ -372,9 +389,7 @@ function createToolCallMessage(
 	};
 }
 
-/**
- * Process tool calls from AIMessage and return formatted tool messages
- */
+/** Process tool calls from AIMessage and return formatted tool messages */
 function processToolCalls(
 	toolCalls: ToolCall[],
 	builderTools?: BuilderToolBase[],
@@ -385,9 +400,7 @@ function processToolCalls(
 	});
 }
 
-/**
- * Process a ToolMessage and add its output to the corresponding tool call
- */
+/** Process a ToolMessage and add its output to the corresponding tool call */
 function processToolMessage(
 	msg: ToolMessage,
 	formattedMessages: Array<Record<string, unknown>>,
@@ -409,6 +422,7 @@ function processToolMessage(
 	}
 }
 
+/** Format messages for frontend display */
 export function formatMessages(
 	messages: Array<AIMessage | HumanMessage | ToolMessage>,
 	builderTools?: BuilderToolBase[],
