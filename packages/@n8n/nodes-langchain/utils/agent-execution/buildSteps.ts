@@ -45,16 +45,24 @@ export function buildSteps(
 			}
 			// Create a synthetic AI message for the messageLog
 			// This represents the AI's decision to call the tool
+			// Extract thought_signature from metadata if present (for Gemini 3)
+			const thoughtSignature = tool.action.metadata?.thoughtSignature as string | undefined;
+
+			// Build the tool call object with thought_signature if present
+			// The thought_signature must be part of the tool call itself for Gemini 3
+			const toolCall = {
+				id: (toolInput?.id as string) ?? 'reconstructed_call',
+				name: nodeNameToToolName(tool.action.nodeName),
+				args: toolInput,
+				type: 'tool_call',
+				additional_kwargs: {
+					...(thoughtSignature && { thought_signature: thoughtSignature }),
+				},
+			};
+
 			const syntheticAIMessage = new AIMessage({
 				content: `Calling ${tool.action.nodeName} with input: ${JSON.stringify(toolInput)}`,
-				tool_calls: [
-					{
-						id: (toolInput?.id as string) ?? 'reconstructed_call',
-						name: nodeNameToToolName(tool.action.nodeName),
-						args: toolInput,
-						type: 'tool_call',
-					},
-				],
+				tool_calls: [toolCall],
 			});
 
 			const toolResult = {
