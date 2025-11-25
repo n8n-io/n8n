@@ -2259,6 +2259,11 @@ export interface INodeTypeDescription extends INodeTypeBaseDescription {
 	waitingNodeTooltip?: string;
 	__loadOptionsMethods?: string[]; // only for validation during build
 	features?: NodeFeaturesDefinition;
+	/**
+	 * When true, skip generating a name from resource/operation (e.g., "SendAndWait message in Slack")
+	 * and just use defaults.name. Useful for tool nodes that should keep a simple name like "Slack".
+	 */
+	skipNameGeneration?: boolean;
 }
 
 export type TriggerPanelDefinition = {

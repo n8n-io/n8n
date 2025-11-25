@@ -211,7 +211,15 @@ export class WaitingWebhooks implements IWebhookManager {
 		const { workflowData } = execution;
 		const workflow = this.createWorkflow(workflowData);
 
-		const workflowStartNode = workflow.getNode(lastNodeExecuted);
+		// Check for HITL (Human-in-the-Loop) tool context
+		// When an HITL tool enters wait state, the Agent is lastNodeExecuted but
+		// the HITL node name is stored in contextData for webhook lookup
+		const hitlContext = execution.data.executionData?.contextData?.hitl as
+			| { nodeName: string; toolArgs: object }
+			| undefined;
+		const webhookNodeName = hitlContext?.nodeName ?? lastNodeExecuted;
+
+		const workflowStartNode = workflow.getNode(webhookNodeName);
 		if (workflowStartNode === null) {
 			throw new NotFoundError('Could not find node to process webhook.');
 		}

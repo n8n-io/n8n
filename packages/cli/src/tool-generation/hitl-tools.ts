@@ -77,33 +77,24 @@ function findSendAndWaitResource(properties: INodeProperties[]): string | undefi
  */
 function filterHitlToolProperties(
 	properties: INodeProperties[],
-	originalDisplayName: string,
+	sendAndWaitResource: string | undefined,
 ): INodeProperties[] {
 	const filtered: INodeProperties[] = [];
-	const sendAndWaitResource = findSendAndWaitResource(properties);
 
-	// Set description type to manual so makeDescription doesn't override
+	// Add message property with expression support for tool information
 	filtered.push({
-		displayName: 'Description Type',
-		name: 'descriptionType',
-		type: 'hidden',
-		default: 'manual',
-	});
-
-	// Add tool description as first property
-	filtered.push({
-		displayName: 'Tool Description',
-		name: 'toolDescription',
+		displayName: 'Message',
+		name: 'message',
 		type: 'string',
-		default: originalDisplayName,
+		default: '=The agent wants to call {{ $json.toolName }}',
 		required: true,
-		typeOptions: { rows: 2 },
+		typeOptions: { rows: 3 },
 		description:
-			'Explain to the LLM what this HITL tool does. The agent will know that tools connected to this node require human approval.',
+			'Message to send for approval. Use expressions to include tool details: {{ $json.toolName }}, {{ $json.toolCallId }}, {{ $json.parameters }}',
 	});
 
 	for (const prop of properties) {
-		// Convert resource to hidden property with sendAndWait resource as default
+		// Convert resource to hidden property with the sendAndWait resource as default
 		if (prop.name === 'resource') {
 			if (sendAndWaitResource) {
 				filtered.push({
@@ -124,6 +115,11 @@ function filterHitlToolProperties(
 				type: 'hidden',
 				default: SEND_AND_WAIT_OPERATION,
 			});
+			continue;
+		}
+
+		// Skip original message property - we add our own with HITL-specific default
+		if (prop.name === 'message') {
 			continue;
 		}
 
@@ -162,12 +158,22 @@ export function convertNodeToHitlTool<
 >(item: T): T {
 	if (isFullDescription(item.description)) {
 		const originalDisplayName = item.description.displayName;
+		const sendAndWaitResource = findSendAndWaitResource(item.description.properties);
 
 		// Naming convention: slackHitlTool, emailSendHitlTool, etc.
 		item.description.name += 'HitlTool';
 		item.description.displayName = originalDisplayName; // Just the service name (e.g., "Slack")
 		item.description.subtitle = 'Send and wait';
 		item.description.description = 'Request human approval for tools';
+
+		// Set defaults.name to displayName so node name on canvas is "Slack" not auto-generated
+		item.description.defaults = {
+			...item.description.defaults,
+			name: originalDisplayName,
+		};
+
+		// Skip resource/operation-based name generation (e.g., "SendAndWait message in Slack")
+		item.description.skipNameGeneration = true;
 
 		// HITL Tool connections:
 		// - Input: Tools to gate (labeled "Tool")
@@ -189,7 +195,7 @@ export function convertNodeToHitlTool<
 		// Filter and adjust properties for HITL use case
 		item.description.properties = filterHitlToolProperties(
 			item.description.properties,
-			originalDisplayName,
+			sendAndWaitResource,
 		);
 
 		// Keep webhooks - original node's webhook handler will be used
@@ -205,31 +211,11 @@ export function convertNodeToHitlTool<
  * Called during node loading to create HITL tool nodes automatically.
  */
 export function createHitlTools(types: Types, known: KnownNodesAndCredentials): void {
-	// Log nodes with webhooks for debugging
-	const nodesWithWebhooks = types.nodes.filter(
-		(n) => n.webhooks && n.webhooks.length > 0 && !n.name.endsWith('Tool'),
-	);
-	LoggerProxy.debug('[HITL] Nodes with webhooks (excluding Tool variants)', {
-		count: nodesWithWebhooks.length,
-		nodeNames: nodesWithWebhooks.map((n) => n.name),
-	});
-
 	const sendAndWaitNodes = types.nodes.filter(hasSendAndWaitOperation);
-
-	LoggerProxy.debug('[HITL] Found nodes with sendAndWait operation', {
-		count: sendAndWaitNodes.length,
-		nodeNames: sendAndWaitNodes.map((n) => n.name),
-	});
 
 	for (const sendAndWaitNode of sendAndWaitNodes) {
 		const description = deepCopy(sendAndWaitNode);
 		const wrapped = convertNodeToHitlTool({ description }).description;
-
-		LoggerProxy.debug('[HITL] Created HITL tool variant', {
-			originalNode: sendAndWaitNode.name,
-			hitlToolName: wrapped.name,
-			hitlToolDisplayName: wrapped.displayName,
-		});
 
 		// Add to node types
 		types.nodes.push(wrapped);
@@ -241,7 +227,7 @@ export function createHitlTools(types: Types, known: KnownNodesAndCredentials): 
 		copyCredentialSupport(known, sendAndWaitNode.name, wrapped.name);
 	}
 
-	LoggerProxy.debug('[HITL] HITL tool generation complete', {
-		totalHitlTools: sendAndWaitNodes.length,
+	LoggerProxy.debug('[HITL] Generated HITL tool variants', {
+		count: sendAndWaitNodes.length,
 	});
 }

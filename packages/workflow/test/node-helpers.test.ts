@@ -5830,6 +5830,43 @@ describe('NodeHelpers', () => {
 			expect(result).toBe('Create user in Test Node');
 		});
 
+		test('should return defaults.name when skipNameGeneration is true', () => {
+			// Arrange
+			const nodeParameters: INodeParameters = {
+				resource: 'user',
+				operation: 'create',
+			};
+
+			mockNodeTypeDescription.outputs = [NodeConnectionTypes.AiTool];
+			mockNodeTypeDescription.skipNameGeneration = true;
+			mockNodeTypeDescription.properties = [
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					displayOptions: {
+						show: {
+							resource: ['user'],
+						},
+					},
+					options: [
+						{
+							name: 'Create',
+							value: 'create',
+							action: 'Create a new user',
+						},
+					],
+					default: 'create',
+				},
+			];
+
+			// Act
+			const result = makeNodeName(nodeParameters, mockNodeTypeDescription);
+
+			// Assert - should return defaults.name, NOT action-based or resource/operation-based name
+			expect(result).toBe('Test Node');
+		});
+
 		test.each([
 			['javaScript', 'Code in JavaScript'],
 			['pythonNative', 'Code in Python'],
