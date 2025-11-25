@@ -34,15 +34,14 @@ export const DEFAULT_WORKFLOW_UPDATE_TOOLS = [
  *
  * Only emit user-facing responses:
  * - agent: V1 single agent (backward compatibility)
- * - responder: Conversational responses
- * - configurator: Final workflow setup response
+ * - responder: Conversational responses (the ONLY node that should emit in multi-agent mode)
  *
- * Internal agents (discovery, builder) are hidden - user sees tool execution via custom events
+ * Internal agents (discovery, builder, configurator) are hidden - their output is
+ * synthesized by the responder for a clean user experience
  */
 const AGENT_NODES_TO_EMIT = [
 	'agent', // V1 single agent (backward compatibility)
-	'responder', // Conversational responses
-	'configurator', // Final configuration responses
+	'responder', // Conversational responses - only user-facing node in multi-agent
 ];
 
 /**
@@ -183,6 +182,24 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
 }
 
 /**
+ * Subgraph namespaces that should NOT emit message events
+ * These subgraphs run internally and their output is synthesized by the responder
+ */
+const SUBGRAPHS_TO_SKIP_MESSAGES = [
+	'discovery_subgraph',
+	'builder_subgraph',
+	'configurator_subgraph',
+];
+
+/**
+ * Check if an event comes from a subgraph that should not emit messages
+ * Namespace values have UUIDs appended like "builder_subgraph:612f4bc3-..."
+ */
+function isFromSkippedSubgraph(namespace: string[]): boolean {
+	return namespace.some((ns) => SUBGRAPHS_TO_SKIP_MESSAGES.some((skip) => ns.startsWith(skip)));
+}
+
+/**
  * Create a stream processor that yields formatted chunks
  *
  * Handles both regular graph events and subgraph events (when enableMultiAgent: true is enabled).
@@ -192,26 +209,84 @@ export async function* createStreamProcessor(
 	stream: AsyncGenerator<[string, unknown] | [string[], string, unknown], void, unknown>,
 ): AsyncGenerator<StreamOutput> {
 	for await (const event of stream) {
+		// Debug: Log all events to understand the structure
+		console.log(
+			`[StreamProcessor] Event type: ${Array.isArray(event) ? `array[${event.length}]` : typeof event}`,
+		);
+		if (Array.isArray(event)) {
+			console.log(
+				`[StreamProcessor] Event[0] type: ${Array.isArray(event[0]) ? `array[${event[0].length}]: ${JSON.stringify(event[0])}` : typeof event[0]}: ${String(event[0]).substring(0, 50)}`,
+			);
+		}
+
 		// Subgraph events: flat 3-element array [namespace, streamMode, data]
 		if (Array.isArray(event) && event.length === 3 && Array.isArray(event[0])) {
-			const [_namespace, streamMode, data] = event;
+			const [namespace, streamMode, data] = event;
+			console.log(
+				`[StreamProcessor] Subgraph event: namespace=${JSON.stringify(namespace)}, mode=${streamMode}`,
+			);
+
+			// Skip message events from internal subgraphs (discovery, builder, configurator)
+			// Only tool/custom events should pass through for progress tracking
+			const isSkippedSubgraph = isFromSkippedSubgraph(namespace);
+			console.log(
+				`[StreamProcessor] isSkippedSubgraph(${JSON.stringify(namespace)}): ${isSkippedSubgraph}`,
+			);
+
+			if (isSkippedSubgraph && streamMode === 'updates') {
+				// Check if this is a message update (not tool progress)
+				const nodeUpdate = data as Record<string, unknown>;
+				const nodeNames = Object.keys(nodeUpdate);
+				console.log(`[StreamProcessor] Checking node updates: ${nodeNames.join(', ')}`);
+
+				const hasMessageUpdate = Object.entries(nodeUpdate).some(([nodeName, update]) => {
+					const isSkipped = NODES_TO_SKIP.includes(nodeName);
+					const agentUpdate = update as { messages?: unknown[] };
+					const hasMessages = agentUpdate?.messages && agentUpdate.messages.length > 0;
+					console.log(
+						`[StreamProcessor] Node "${nodeName}": skipped=${isSkipped}, hasMessages=${hasMessages}`,
+					);
+					if (isSkipped) return false;
+					return hasMessages;
+				});
+
+				// Skip message updates from subgraphs - only responder should emit messages
+				if (hasMessageUpdate) {
+					console.log(
+						`[StreamProcessor] SKIPPING message update from subgraph: ${JSON.stringify(namespace)}`,
+					);
+					continue;
+				}
+			}
+
 			const output = processStreamChunk(streamMode, data);
 
 			if (output) {
+				console.log(
+					`[StreamProcessor] Yielding subgraph output: ${JSON.stringify(output).substring(0, 100)}`,
+				);
 				yield output;
 			}
 		} else if (Array.isArray(event) && event.length === 2) {
 			// Regular parent event: [streamMode, chunk]
 			const [streamMode, chunk] = event;
+			console.log(`[StreamProcessor] Parent event: mode=${streamMode}`);
 
 			// Make sure it's a valid stream mode string
 			if (typeof streamMode === 'string' && streamMode.length > 1) {
 				const output = processStreamChunk(streamMode, chunk);
 
 				if (output) {
+					console.log(
+						`[StreamProcessor] Yielding parent output: ${JSON.stringify(output).substring(0, 100)}`,
+					);
 					yield output;
 				}
 			}
+		} else {
+			console.log(
+				`[StreamProcessor] Unknown event format: ${JSON.stringify(event).substring(0, 200)}`,
+			);
 		}
 	}
 }
