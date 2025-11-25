@@ -524,7 +524,7 @@ export class WorkflowService {
 		options?: { versionId?: string; name?: string; description?: string },
 		publicApi: boolean = false,
 	): Promise<WorkflowEntity> {
-		const isDraftPublishDisabled = !this.globalConfig.workflows.draftPublishEnabled;
+		const isDraftPublishEnabled = this.globalConfig.workflows.draftPublishEnabled;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
@@ -542,7 +542,9 @@ export class WorkflowService {
 			);
 		}
 
-		const versionToActivate = options?.versionId ?? workflow.versionId;
+		const versionToActivate = isDraftPublishEnabled
+			? (options?.versionId ?? workflow.versionId)
+			: workflow.versionId;
 
 		if (workflow.activeVersionId === versionToActivate) {
 			return workflow;
@@ -557,7 +559,7 @@ export class WorkflowService {
 			updatedAt: workflow.updatedAt,
 		});
 
-		if (options?.name || options?.description) {
+		if (isDraftPublishEnabled && (options?.name || options?.description)) {
 			const updateFields: WorkflowHistoryUpdate = {};
 			if (options.name !== undefined) updateFields.name = options.name;
 			if (options.description !== undefined) updateFields.description = options.description;
@@ -585,16 +587,16 @@ export class WorkflowService {
 			workflowId,
 			updatedWorkflow,
 			activationMode,
-			isDraftPublishDisabled
+			isDraftPublishEnabled
 				? {
-						active: false,
-						activeVersionId: null,
-						activeVersion: null,
-					}
-				: {
 						active: workflow.active,
 						activeVersionId: workflow.activeVersionId,
 						activeVersion: workflow.activeVersion,
+					}
+				: {
+						active: false,
+						activeVersionId: null,
+						activeVersion: null,
 					},
 		);
 

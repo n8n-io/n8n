@@ -364,12 +364,13 @@ export = {
 		projectScope('workflow:update', 'workflow'),
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
+			const { versionId, name, description } = req.body;
 
 			try {
 				const workflow = await Container.get(WorkflowService).activateWorkflow(
 					req.user,
 					id,
-					undefined,
+					{ versionId, name, description },
 					true,
 				);
 
