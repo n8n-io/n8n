@@ -221,26 +221,23 @@ export const useDataTableStore = defineStore(DATA_TABLE_STORE, () => {
 		projectId: string,
 		columnId: string,
 		newName: string,
-	) => {
-		const renamedColumn = await renameDataTableColumnApi(
+	): Promise<void> => {
+		await renameDataTableColumnApi(
 			rootStore.restApiContext,
 			dataTableId,
 			projectId,
 			columnId,
 			newName,
 		);
-		if (renamedColumn) {
-			const tableIndex = dataTables.value.findIndex((table) => table.id === dataTableId);
-			if (tableIndex !== -1) {
-				const columnIndex = dataTables.value[tableIndex].columns.findIndex(
-					(col) => col.id === columnId,
-				);
-				if (columnIndex !== -1) {
-					dataTables.value[tableIndex].columns[columnIndex].name = newName;
-				}
-			}
+
+		const index = dataTables.value.findIndex((table) => table.id === dataTableId);
+		if (index === -1) return;
+
+		const table = dataTables.value[index];
+		const column = table.columns.find((col) => col.id === columnId);
+		if (column) {
+			column.name = newName;
 		}
-		return renamedColumn;
 	};
 
 	const fetchDataTableContent = async (
