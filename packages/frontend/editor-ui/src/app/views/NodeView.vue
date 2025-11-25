@@ -109,7 +109,6 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { sourceControlEventBus } from '@/features/integrations/sourceControl.ee/sourceControl.eventBus';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
-import { useBannersStore } from '@/features/shared/banners/banners.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import {
 	getBounds,
@@ -199,7 +198,6 @@ const projectsStore = useProjectsStore();
 const usersStore = useUsersStore();
 const tagsStore = useTagsStore();
 const pushConnectionStore = usePushConnectionStore();
-const bannersStore = useBannersStore();
 const ndvStore = useNDVStore();
 const focusPanelStore = useFocusPanelStore();
 const builderStore = useBuilderStore();
@@ -534,17 +532,6 @@ function updateNodesIssues() {
 	nodeHelpers.updateNodesInputIssues();
 	nodeHelpers.updateNodesCredentialsIssues();
 	nodeHelpers.updateNodesParameterIssues();
-}
-
-/**
- * Updates the workflow auto-deactivated banner based on current workflow meta
- */
-function updateWorkflowAutoDeactivatedBanner() {
-	if (workflowsStore.workflow.meta?.autoDeactivated) {
-		bannersStore.pushBannerToStack('WORKFLOW_AUTO_DEACTIVATED');
-	} else {
-		bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
-	}
 }
 
 /**
@@ -1913,14 +1900,6 @@ watch(
 	},
 );
 
-// Watch for workflow meta changes to update banner when workflow is reactivated
-watch<{ timestamp: string; crashedExecutions: number } | undefined>(
-	() => workflowsStore.workflow.meta?.autoDeactivated,
-	() => {
-		updateWorkflowAutoDeactivatedBanner();
-	},
-);
-
 onBeforeRouteLeave(async (to, from, next) => {
 	const toNodeViewTab = getNodeViewTab(to);
 
@@ -1992,9 +1971,6 @@ onMounted(() => {
 				isLoading.value = false;
 				canvasStore.stopLoading();
 
-				// Check if workflow was auto-deactivated and show banner
-				updateWorkflowAutoDeactivatedBanner();
-
 				void externalHooks.run('nodeView.mount').catch(() => {});
 
 				// A delay here makes opening the NDV a bit less jarring
@@ -2024,15 +2000,11 @@ onMounted(() => {
 onActivated(() => {
 	addUndoRedoEventBindings();
 	showAddFirstStepIfEnabled();
-	// Check if workflow was auto-deactivated and show banner (for KeepAlive scenarios)
-	updateWorkflowAutoDeactivatedBanner();
 });
 
 onDeactivated(() => {
 	uiStore.closeModal(WORKFLOW_SETTINGS_MODAL_KEY);
 	removeUndoRedoEventBindings();
-	// Remove workflow-specific banner when leaving the workflow view
-	bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
 });
 
 onBeforeUnmount(() => {
@@ -2044,8 +2016,6 @@ onBeforeUnmount(() => {
 	removeExecutionOpenedEventBindings();
 	removeCommandBarEventBindings();
 	unregisterCustomActions();
-	// Remove workflow-specific banner when component is unmounted
-	bannersStore.removeBannerFromStack('WORKFLOW_AUTO_DEACTIVATED');
 	if (!isDemoRoute.value) {
 		pushConnectionStore.pushDisconnect();
 	}
