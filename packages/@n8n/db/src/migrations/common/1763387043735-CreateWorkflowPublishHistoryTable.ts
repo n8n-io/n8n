@@ -18,11 +18,11 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 				columnName: 'id',
 				onDelete: 'CASCADE',
 			})
-			.withForeignKey('versionId', {
-				tableName: 'workflow_history',
-				columnName: 'versionId',
-				onDelete: 'SET NULL',
-			})
+			// .withForeignKey('versionId', {
+			// 	tableName: 'workflow_history',
+			// 	columnName: 'versionId',
+			// 	onDelete: 'SET NULL',
+			// })
 			.withForeignKey('userId', {
 				tableName: 'user',
 				columnName: 'id',
