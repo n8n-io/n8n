@@ -81,7 +81,7 @@ describe('useChatMessaging', () => {
 
 		expect(ws.value.send).toHaveBeenCalledWith(
 			JSON.stringify({
-				sessionId,
+				sessionId: sessionId.value,
 				action: 'sendMessage',
 				chatInput: messageText,
 			}),
