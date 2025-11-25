@@ -77,7 +77,9 @@ export const renderFormCompletion = async (
 
 	// Process line breaks in completion message: convert \n and </br> to <br> for HTML rendering
 	let processedMessage = completionMessage;
-	processedMessage = (processedMessage || '').replace(/\\n/g, '<br>').replace(/<\/br>/g, '<br>');
+	processedMessage = (processedMessage || '')
+		.replace(/\\n/g, '<br />')
+		.replace(/<\/br>/g, '<br />');
 
 	res.render('form-trigger-completion', {
 		title: completionTitle,
