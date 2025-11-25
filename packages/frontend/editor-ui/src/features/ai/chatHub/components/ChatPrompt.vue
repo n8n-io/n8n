@@ -331,7 +331,7 @@ defineExpose({
 	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 
 	&:focus-within,
-	&:hover {
+	&:hover:has(textarea:not(:disabled)) {
 		border-color: var(--color--secondary);
 	}
 
