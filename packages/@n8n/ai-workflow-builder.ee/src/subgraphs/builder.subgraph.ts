@@ -1,6 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { StructuredTool } from '@langchain/core/tools';
 import { Annotation, StateGraph } from '@langchain/langgraph';
@@ -20,6 +19,12 @@ import type { CoordinationLogEntry, BuilderMetadata } from '../types/coordinatio
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
+import {
+	buildDiscoveryContextBlock,
+	buildWorkflowJsonBlock,
+	buildExecutionSchemaBlock,
+	createContextMessage,
+} from '../utils/context-builders';
 import { processOperations } from '../utils/operations-processor';
 import {
 	executeSubgraphTools,
@@ -308,78 +313,17 @@ export class BuilderSubgraph extends BaseSubgraph<
 
 		/**
 		 * Agent node - calls builder agent
+		 * Context is already in messages from transformInput
 		 */
 		const callAgent = async (state: typeof BuilderSubgraphState.State) => {
 			console.log(
 				`[Builder] callAgent iteration=${state.iterationCount} messages=${state.messages.length}`,
 			);
 
-			// On first call, create initial message with full context
-			if (state.messages.length === 0) {
-				const contextParts: string[] = [];
-
-				// 1. User request (primary)
-				contextParts.push('=== USER REQUEST ===');
-				contextParts.push(state.userRequest);
-				contextParts.push('');
-
-				// 2. Discovery context (what to use)
-				if (state.discoveryContext) {
-					contextParts.push('=== DISCOVERY CONTEXT ===');
-
-					if (state.discoveryContext.categorization) {
-						const { techniques, confidence } = state.discoveryContext.categorization;
-						contextParts.push(
-							`Workflow Type: ${techniques.join(', ')} (Confidence: ${confidence})`,
-						);
-						contextParts.push('');
-					}
-
-					if (state.discoveryContext.nodesFound.length > 0) {
-						contextParts.push('Discovered Nodes:');
-						state.discoveryContext.nodesFound.forEach(
-							({ nodeName, version, reasoning, connectionChangingParameters }) => {
-								const params =
-									connectionChangingParameters.length > 0
-										? ` [Connection params: ${connectionChangingParameters.map((p) => p.name).join(', ')}]`
-										: '';
-								contextParts.push(`- ${nodeName} v${version}: ${reasoning}${params}`);
-							},
-						);
-						contextParts.push('');
-					}
-
-					if (state.discoveryContext.bestPractices) {
-						contextParts.push('Best Practices:');
-						contextParts.push(state.discoveryContext.bestPractices);
-						contextParts.push('');
-					}
-				}
-
-				// 3. Current workflow state
-				contextParts.push('=== CURRENT WORKFLOW ===');
-				contextParts.push(`Existing nodes: ${state.workflowJSON.nodes.length}`);
-				if (state.workflowJSON.nodes.length > 0) {
-					contextParts.push(`Nodes: ${state.workflowJSON.nodes.map((n) => n.name).join(', ')}`);
-				}
-
-				const contextMessage = new HumanMessage({ content: contextParts.join('\n') });
-				console.log('[Builder] First call with context message');
-				const response = await agent.invoke({
-					messages: [contextMessage],
-				});
-
-				const toolCalls =
-					'tool_calls' in response && Array.isArray(response.tool_calls)
-						? response.tool_calls.length
-						: 0;
-				console.log(`[Builder] Agent response: ${toolCalls} tool calls`);
-				return { messages: [contextMessage, response] };
-			}
-
-			// Subsequent calls - apply cache markers and invoke with existing messages
+			// Apply cache markers to accumulated messages (for tool loop iterations)
 			applySubgraphCacheMarkers(state.messages);
 
+			// Messages already contain context from transformInput
 			const response = await agent.invoke({
 				messages: state.messages,
 			});
@@ -420,6 +364,38 @@ export class BuilderSubgraph extends BaseSubgraph<
 
 	transformInput(parentState: typeof ParentGraphState.State) {
 		const userRequest = extractUserRequest(parentState.messages);
+
+		// Build context parts for Builder
+		const contextParts: string[] = [];
+
+		// 1. User request (primary)
+		contextParts.push('=== USER REQUEST ===');
+		contextParts.push(userRequest);
+
+		// 2. Discovery context (what nodes to use)
+		if (parentState.discoveryContext) {
+			contextParts.push('=== DISCOVERY CONTEXT ===');
+			contextParts.push(buildDiscoveryContextBlock(parentState.discoveryContext, true));
+		}
+
+		// 3. Current workflow JSON (to add nodes to)
+		contextParts.push('=== CURRENT WORKFLOW ===');
+		if (parentState.workflowJSON.nodes.length > 0) {
+			contextParts.push(buildWorkflowJsonBlock(parentState.workflowJSON));
+		} else {
+			contextParts.push('Empty workflow - ready to build');
+		}
+
+		// 4. Execution schema (data types available, NOT full data)
+		const schemaBlock = buildExecutionSchemaBlock(parentState.workflowContext);
+		if (schemaBlock) {
+			contextParts.push('=== AVAILABLE DATA SCHEMA ===');
+			contextParts.push(schemaBlock);
+		}
+
+		// Create initial message with context
+		const contextMessage = createContextMessage(contextParts);
+
 		console.log('\n========== BUILDER SUBGRAPH ==========');
 		console.log(`[Builder] transformInput called`);
 		console.log(`[Builder] User request: "${userRequest.substring(0, 100)}..."`);
@@ -429,12 +405,13 @@ export class BuilderSubgraph extends BaseSubgraph<
 				`[Builder] Discovery context: ${parentState.discoveryContext.nodesFound.length} nodes found`,
 			);
 		}
+
 		return {
 			userRequest,
 			workflowJSON: parentState.workflowJSON,
 			workflowContext: parentState.workflowContext,
 			discoveryContext: parentState.discoveryContext,
-			messages: [],
+			messages: [contextMessage], // Context already in messages
 		};
 	}
 

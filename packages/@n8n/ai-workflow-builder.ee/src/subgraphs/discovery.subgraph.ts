@@ -18,6 +18,7 @@ import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { PromptCategorization } from '../types/categorization';
 import type { CoordinationLogEntry, DiscoveryMetadata } from '../types/coordination';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
+import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
 /**
@@ -270,22 +271,22 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 	/**
 	 * Agent node - calls discovery agent
+	 * Context is already in messages from transformInput
 	 */
 	private async callAgent(state: typeof DiscoverySubgraphState.State) {
 		console.log(
 			`[Discovery] callAgent iteration=${state.iterationCount} messages=${state.messages.length}`,
 		);
 
-		const message = `<user_request>${state.userRequest}</user_request>`;
-
 		// Apply cache markers to accumulated messages (for tool loop iterations)
 		if (state.messages.length > 0) {
 			applySubgraphCacheMarkers(state.messages);
 		}
 
+		// Messages already contain context from transformInput
 		const response = (await this.agent.invoke({
 			messages: state.messages,
-			prompt: message,
+			prompt: state.userRequest, // Keep for template compatibility
 		})) as AIMessage;
 
 		const toolCalls = response.tool_calls?.length ?? 0;
@@ -394,13 +395,35 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 	transformInput(parentState: typeof ParentGraphState.State) {
 		const userRequest = extractUserRequest(parentState.messages, 'Build a workflow');
+
+		// Build context parts for Discovery
+		const contextParts: string[] = [];
+
+		// 1. User request (primary)
+		contextParts.push('<user_request>');
+		contextParts.push(userRequest);
+		contextParts.push('</user_request>');
+
+		// 2. Current workflow summary (just node names, to know what exists)
+		// Discovery doesn't need full JSON, just awareness of existing nodes
+		if (parentState.workflowJSON.nodes.length > 0) {
+			contextParts.push('<existing_workflow_summary>');
+			contextParts.push(buildWorkflowSummary(parentState.workflowJSON));
+			contextParts.push('</existing_workflow_summary>');
+		}
+
+		// Create initial message with context
+		const contextMessage = createContextMessage(contextParts);
+
 		console.log('\n========== DISCOVERY SUBGRAPH ==========');
 		console.log(`[Discovery] transformInput called`);
 		console.log(`[Discovery] User request: "${userRequest.substring(0, 100)}..."`);
 		console.log(`[Discovery] Parent messages count: ${parentState.messages.length}`);
+		console.log(`[Discovery] Existing nodes: ${parentState.workflowJSON.nodes.length}`);
+
 		return {
 			userRequest,
-			messages: [],
+			messages: [contextMessage], // Context already in messages
 		};
 	}
 

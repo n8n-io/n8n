@@ -11,6 +11,7 @@ import { BuilderSubgraph } from './subgraphs/builder.subgraph';
 import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
+import { buildWorkflowSummary } from './utils/context-builders';
 import {
 	getNextPhaseFromLog,
 	getConfiguratorOutput,
@@ -18,7 +19,6 @@ import {
 	summarizeCoordinationLog,
 } from './utils/coordination-log';
 import { processOperations } from './utils/operations-processor';
-import { trimWorkflowJSON } from './utils/trim-workflow-context';
 
 export interface MultiAgentSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
@@ -121,37 +121,33 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					console.log(`[Supervisor] Last message preview: "${content}..."`);
 				}
 
-				const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
-				const executionData = state.workflowContext?.executionData ?? {};
-				const executionSchema = state.workflowContext?.executionSchema ?? [];
+				// Supervisor only needs summary context for routing decisions
+				const contextParts: string[] = [];
 
-				const workflowContext = [
-					'',
-					'<current_workflow_json>',
-					JSON.stringify(trimmedWorkflow, null, 2),
-					'</current_workflow_json>',
-					'<trimmed_workflow_json_note>',
-					'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
-					'Use get_node_parameter tool to get full details when needed.',
-					'</trimmed_workflow_json_note>',
-					'',
-					'<current_simplified_execution_data>',
-					JSON.stringify(executionData, null, 2),
-					'</current_simplified_execution_data>',
-					'',
-					'<current_execution_nodes_schemas>',
-					JSON.stringify(executionSchema, null, 2),
-					'</current_execution_nodes_schemas>',
-				].join('\n');
+				// 1. Workflow summary (node count and names only)
+				if (state.workflowJSON.nodes.length > 0) {
+					contextParts.push('<workflow_summary>');
+					contextParts.push(buildWorkflowSummary(state.workflowJSON));
+					contextParts.push('</workflow_summary>');
+				}
+
+				// 2. Coordination log summary (what phases completed)
+				if (state.coordinationLog.length > 0) {
+					contextParts.push('<completed_phases>');
+					contextParts.push(summarizeCoordinationLog(state.coordinationLog));
+					contextParts.push('</completed_phases>');
+				}
 
 				const supervisor = supervisorAgent.getAgent();
-				const messagesWithContext = [
-					...state.messages,
-					new HumanMessage({ content: workflowContext }),
-				];
+				const contextMessage =
+					contextParts.length > 0 ? new HumanMessage({ content: contextParts.join('\n\n') }) : null;
+
+				const messagesToSend = contextMessage
+					? [...state.messages, contextMessage]
+					: state.messages;
 
 				const routing = await supervisor.invoke({
-					messages: messagesWithContext,
+					messages: messagesToSend,
 				});
 
 				console.log(`[Supervisor] ➜ Routing to: ${routing.next}`);
