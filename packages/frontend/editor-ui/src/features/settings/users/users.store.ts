@@ -169,13 +169,9 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		await setCurrentUser(user);
 	};
 
-	const initialize = async (options: { quota?: number } = {}) => {
+	const initialize = async () => {
 		if (initialized.value) {
 			return;
-		}
-
-		if (typeof options.quota !== 'undefined') {
-			userQuota.value = options.quota;
 		}
 
 		try {
@@ -439,6 +435,12 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		{ immediate: false, resetOnExecute: false },
 	);
 
+	const setUserQuota = (quota?: number) => {
+		if (typeof quota !== 'undefined') {
+			userQuota.value = quota;
+		}
+	};
+
 	return {
 		initialized,
 		currentUserId,
@@ -495,6 +497,7 @@ export const useUsersStore = defineStore(STORES.USERS, () => {
 		setCalloutDismissed,
 		submitContactEmail,
 		submitContactInfo,
+		setUserQuota,
 		usersList,
 	};
 });
