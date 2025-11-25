@@ -342,8 +342,7 @@ export class LoadNodesAndCredentials {
 			for (const hook of hooks) {
 				const hookOptions = hook.hookDescription.options ?? [];
 				if (hookOptions.length > 0) {
-					for (const option of hookOptions) {
-						const hookOption = option as INodeProperties;
+					for (const hookOption of hookOptions) {
 						// Add display condition to show only when this specific hook is selected
 						const enhancedOption: INodeProperties = {
 							...hookOption,

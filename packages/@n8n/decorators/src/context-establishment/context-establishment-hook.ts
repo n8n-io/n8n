@@ -4,9 +4,7 @@ import type {
 	INodeExecutionData,
 	PlaintextExecutionContext,
 	IWorkflowBase,
-	INodePropertyCollection,
 	INodeProperties,
-	INodePropertyOptions,
 } from 'n8n-workflow';
 
 /**
@@ -222,7 +220,7 @@ export type HookDescription = {
 	 * ]
 	 * ```
 	 */
-	options?: Array<INodePropertyOptions | INodeProperties | INodePropertyCollection>;
+	options?: INodeProperties[];
 };
 
 /**
