@@ -96,18 +96,18 @@ export const formatDateRange = (range: { start?: DateValue; end?: DateValue }): 
 	const { start, end } = range;
 	if (!start) return '';
 
-	const startStr = start.toString();
-	const endStr = end?.toString();
+	const startDate = start.toDate(getLocalTimeZone());
+	const endDate = end?.toDate(getLocalTimeZone());
 
-	if (!end || startStr === endStr) {
-		return dateformat(startStr, DATE_FORMAT_DAY_MONTH_YEAR);
+	if (!end || start.compare(end) === 0) {
+		return dateformat(startDate, DATE_FORMAT_DAY_MONTH_YEAR);
 	}
 
 	if (start.year === end.year) {
-		return `${dateformat(startStr, DATE_FORMAT_DAY_MONTH)} - ${dateformat(endStr, DATE_FORMAT_DAY_MONTH_YEAR)}`;
+		return `${dateformat(startDate, DATE_FORMAT_DAY_MONTH)} - ${dateformat(endDate, DATE_FORMAT_DAY_MONTH_YEAR)}`;
 	}
 
-	return `${dateformat(startStr, DATE_FORMAT_DAY_MONTH_YEAR)} - ${dateformat(endStr, DATE_FORMAT_DAY_MONTH_YEAR)}`;
+	return `${dateformat(startDate, DATE_FORMAT_DAY_MONTH_YEAR)} - ${dateformat(endDate, DATE_FORMAT_DAY_MONTH_YEAR)}`;
 };
 
 /**
