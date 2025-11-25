@@ -123,8 +123,9 @@ describe('GetWorkflowExamplesTool', () => {
 			expect(message).toContain('Automate email workflows');
 			expect(message).toContain('Slack Notification');
 			expect(message).toContain('Send Slack notifications');
-			expect(message).toContain('Nodes: 3');
-			expect(message).toContain('Nodes: 4');
+			// Verify mermaid diagrams are included
+			expect(message).toContain('```mermaid');
+			expect(message).toContain('flowchart TD');
 
 			// Verify API calls
 			expect(mockFetchTemplateList).toHaveBeenCalledWith({ search: 'email automation' });
@@ -169,7 +170,9 @@ describe('GetWorkflowExamplesTool', () => {
 			expectToolSuccess(content, 'Found 1 workflow example(s)');
 			expect(message).toContain('Marketing Campaign');
 			expect(message).toContain('Automate marketing campaigns');
-			expect(message).toContain('Nodes: 5');
+			// Verify mermaid diagram is included
+			expect(message).toContain('```mermaid');
+			expect(message).toContain('flowchart TD');
 
 			expect(mockFetchTemplateList).toHaveBeenCalledWith({ category: 'Marketing' });
 		});

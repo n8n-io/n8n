@@ -101,23 +101,22 @@ function buildQueryIdentifier(query: {
 /**
  * Build the response message from search results
  */
-function buildResponseMessage(results: WorkflowMetadata[]): string {
-	if (results.length === 0) {
+function buildResponseMessage(output: GetWorkflowExamplesOutput): string {
+	if (output.examples.length === 0) {
 		return 'No workflow examples found';
 	}
 
-	let responseContent = `Found ${results.length} workflow example(s):\n`;
+	const sections: string[] = [`Found ${output.totalResults} workflow example(s):`];
 
-	for (const metadata of results) {
-		responseContent += `\n${metadata.name}`;
-		if (metadata.description) {
-			responseContent += `\nDescription: ${metadata.description}`;
+	for (const example of output.examples) {
+		sections.push(`\n## ${example.name}`);
+		if (example.description) {
+			sections.push(example.description);
 		}
-		responseContent += `\nNodes: ${metadata.workflow.nodes.length}`;
-		responseContent += '\n';
+		sections.push(example.workflow);
 	}
 
-	return responseContent;
+	return sections.join('\n');
 }
 
 export const GET_WORKFLOW_EXAMPLES_TOOL: BuilderToolBase = {
@@ -181,15 +180,19 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				}
 				const deduplicatedResults = Array.from(uniqueWorkflows.values());
 
-				// Build response message
-				const responseMessage = buildResponseMessage(deduplicatedResults);
-
-				// Report completion
+				// format the results to mermaid and build output object
+				const formattedResults = deduplicatedResults.map((workflow) => ({
+					name: workflow.name,
+					description: workflow.description,
+					workflow: mermaidStringify(workflow),
+				}));
 				const output: GetWorkflowExamplesOutput = {
-					examples: deduplicatedResults.map((workflow) => mermaidStringify(workflow)),
+					examples: formattedResults,
 					totalResults: deduplicatedResults.length,
-					message: responseMessage,
 				};
+
+				// Build response message and report
+				const responseMessage = buildResponseMessage(output);
 				reporter.complete(output);
 
 				// Return success response
