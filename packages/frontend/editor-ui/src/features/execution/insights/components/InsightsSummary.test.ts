@@ -117,4 +117,95 @@ describe('InsightsSummary', () => {
 
 		expect(html()).toMatchSnapshot();
 	});
+
+	describe('with different date ranges', () => {
+		const testSummary: InsightsSummaryDisplay = [
+			{ id: 'total', value: 525, deviation: 85, unit: '', deviationUnit: '%' },
+			{ id: 'failed', value: 14, deviation: 3, unit: '', deviationUnit: '%' },
+			{ id: 'failureRate', value: 1.9, deviation: -0.8, unit: '%', deviationUnit: 'pp' },
+			{ id: 'timeSaved', value: 55.55, deviation: -5.16, unit: 'h', deviationUnit: 'h' },
+			{ id: 'averageRunTime', value: 2.5, deviation: -0.5, unit: 's', deviationUnit: 's' },
+		];
+
+		test.each<{
+			description: string;
+			getDates: () => { start: ReturnType<typeof today>; end?: ReturnType<typeof today> };
+		}>([
+			{
+				description: 'last 24 hours (day preset)',
+				getDates: () => {
+					const end = today(getLocalTimeZone());
+					return { start: end.subtract({ days: 1 }), end };
+				},
+			},
+			{
+				description: 'last 7 days (week preset)',
+				getDates: () => {
+					const end = today(getLocalTimeZone());
+					return { start: end.subtract({ days: 7 }), end };
+				},
+			},
+			{
+				description: 'last 14 days (2weeks preset)',
+				getDates: () => {
+					const end = today(getLocalTimeZone());
+					return { start: end.subtract({ days: 14 }), end };
+				},
+			},
+			{
+				description: 'last 30 days (month preset)',
+				getDates: () => {
+					const end = today(getLocalTimeZone());
+					return { start: end.subtract({ days: 30 }), end };
+				},
+			},
+			{
+				description: 'last 90 days (quarter preset)',
+				getDates: () => {
+					const end = today(getLocalTimeZone());
+					return { start: end.subtract({ days: 90 }), end };
+				},
+			},
+			{
+				description: 'last 180 days (6months preset)',
+				getDates: () => {
+					const end = today(getLocalTimeZone());
+					return { start: end.subtract({ days: 180 }), end };
+				},
+			},
+			{
+				description: 'last 365 days (year preset)',
+				getDates: () => {
+					const end = today(getLocalTimeZone());
+					return { start: end.subtract({ days: 365 }), end };
+				},
+			},
+			{
+				description: 'custom range ending today',
+				getDates: () => {
+					const end = today(getLocalTimeZone());
+					return { start: end.subtract({ days: 15 }), end };
+				},
+			},
+			{
+				description: 'custom range not ending today',
+				getDates: () => {
+					const end = today(getLocalTimeZone()).subtract({ days: 2 });
+					return { start: end.subtract({ days: 7 }), end };
+				},
+			},
+		])('should render with $description', ({ getDates }) => {
+			const { start, end } = getDates();
+
+			const { html } = renderComponent({
+				props: {
+					summary: testSummary,
+					startDate: start,
+					endDate: end,
+				},
+			});
+
+			expect(html()).toMatchSnapshot();
+		});
+	});
 });
