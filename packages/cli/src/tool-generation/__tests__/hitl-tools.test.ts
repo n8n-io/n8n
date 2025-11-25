@@ -150,7 +150,8 @@ describe('hitl-tools', () => {
 		it('should modify the name and displayName correctly', () => {
 			const result = convertNodeToHitlTool(fullNodeWrapper);
 			expect(result.description.name).toBe('slackHitlTool');
-			expect(result.description.displayName).toBe('Slack HITL Tool');
+			expect(result.description.displayName).toBe('Slack');
+			expect(result.description.subtitle).toBe('Send and wait');
 		});
 
 		it('should update inputs and outputs for HITL with labels', () => {
@@ -176,28 +177,34 @@ describe('hitl-tools', () => {
 			expect(result.description.webhooks).toHaveLength(1);
 		});
 
-		it('should add toolDescription property', () => {
+		it('should set descriptionType to manual', () => {
+			const result = convertNodeToHitlTool(fullNodeWrapper);
+			const descriptionTypeProp = result.description.properties.find(
+				(prop: INodeProperties) => prop.name === 'descriptionType',
+			);
+			expect(descriptionTypeProp).toBeDefined();
+			expect(descriptionTypeProp?.type).toBe('hidden');
+			expect(descriptionTypeProp?.default).toBe('manual');
+		});
+
+		it('should add toolDescription property with displayName as default', () => {
 			const result = convertNodeToHitlTool(fullNodeWrapper);
 			const toolDescriptionProp = result.description.properties.find(
 				(prop: INodeProperties) => prop.name === 'toolDescription',
 			);
 			expect(toolDescriptionProp).toBeDefined();
 			expect(toolDescriptionProp?.type).toBe('string');
-			expect(toolDescriptionProp?.default).toBe(
-				'Request human approval via Slack before executing the tool',
-			);
+			expect(toolDescriptionProp?.default).toBe('Slack');
 		});
 
-		it('should filter out resource and operation properties', () => {
+		it('should convert operation to hidden property with sendAndWait default', () => {
 			const result = convertNodeToHitlTool(fullNodeWrapper);
-			const resourceProp = result.description.properties.find(
-				(prop: INodeProperties) => prop.name === 'resource',
-			);
 			const operationProp = result.description.properties.find(
 				(prop: INodeProperties) => prop.name === 'operation',
 			);
-			expect(resourceProp).toBeUndefined();
-			expect(operationProp).toBeUndefined();
+			expect(operationProp).toBeDefined();
+			expect(operationProp?.type).toBe('hidden');
+			expect(operationProp?.default).toBe(SEND_AND_WAIT_OPERATION);
 		});
 
 		it('should keep properties with sendAndWait displayOptions', () => {
@@ -208,12 +215,13 @@ describe('hitl-tools', () => {
 			expect(messageProp).toBeDefined();
 		});
 
-		it('should remove operation display condition from kept properties', () => {
+		it('should preserve displayOptions on kept properties', () => {
 			const result = convertNodeToHitlTool(fullNodeWrapper);
 			const messageProp = result.description.properties.find(
 				(prop: INodeProperties) => prop.name === 'message',
 			);
-			expect(messageProp?.displayOptions?.show?.operation).toBeUndefined();
+			// displayOptions are preserved since operation exists as hidden property
+			expect(messageProp?.displayOptions?.show?.operation).toContain(SEND_AND_WAIT_OPERATION);
 		});
 
 		it('should set codex categories correctly for HITL', () => {
@@ -242,7 +250,7 @@ describe('hitl-tools', () => {
 			});
 		});
 
-		it('should filter out responseType property', () => {
+		it('should keep responseType visible with approval as default', () => {
 			fullNodeWrapper.description.properties.push({
 				displayName: 'Response Type',
 				name: 'responseType',
@@ -251,16 +259,18 @@ describe('hitl-tools', () => {
 					{ name: 'Approval', value: 'approval' },
 					{ name: 'Free Text', value: 'freeText' },
 				],
-				default: 'approval',
+				default: 'freeText',
 			});
 			const result = convertNodeToHitlTool(fullNodeWrapper);
 			const responseTypeProp = result.description.properties.find(
 				(prop: INodeProperties) => prop.name === 'responseType',
 			);
-			expect(responseTypeProp).toBeUndefined();
+			expect(responseTypeProp).toBeDefined();
+			expect(responseTypeProp?.type).toBe('options');
+			expect(responseTypeProp?.default).toBe('approval');
 		});
 
-		it('should filter out approvalOptions property', () => {
+		it('should keep approvalOptions visible for customization', () => {
 			fullNodeWrapper.description.properties.push({
 				displayName: 'Approval Options',
 				name: 'approvalOptions',
@@ -271,7 +281,8 @@ describe('hitl-tools', () => {
 			const approvalOptionsProp = result.description.properties.find(
 				(prop: INodeProperties) => prop.name === 'approvalOptions',
 			);
-			expect(approvalOptionsProp).toBeUndefined();
+			expect(approvalOptionsProp).toBeDefined();
+			expect(approvalOptionsProp?.type).toBe('fixedCollection');
 		});
 	});
 
@@ -324,7 +335,8 @@ describe('hitl-tools', () => {
 
 			expect(types.nodes).toHaveLength(2); // Original node + HITL tool
 			expect(types.nodes[1].name).toBe('slackHitlTool');
-			expect(types.nodes[1].displayName).toBe('Slack HITL Tool');
+			expect(types.nodes[1].displayName).toBe('Slack');
+			expect(types.nodes[1].subtitle).toBe('Send and wait');
 		});
 
 		it('should point to original node class for HITL tool', () => {

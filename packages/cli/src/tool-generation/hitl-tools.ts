@@ -5,7 +5,7 @@ import type {
 	INodeTypeDescription,
 	KnownNodesAndCredentials,
 } from 'n8n-workflow';
-import { deepCopy, NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
+import { deepCopy, LoggerProxy, NodeConnectionTypes, SEND_AND_WAIT_OPERATION } from 'n8n-workflow';
 
 import { copyCredentialSupport, isFullDescription, setToolCodex } from './utils';
 
@@ -14,36 +14,88 @@ import { copyCredentialSupport, isFullDescription, setToolCodex } from './utils'
  * A node is considered to have sendAndWait if:
  * 1. It has webhooks configured (sendAndWait uses webhooks for the response)
  * 2. It has an 'operation' property with 'sendAndWait' as an option
+ * 3. It's not already a Tool variant (to avoid creating DiscordToolHitlTool)
  */
 export function hasSendAndWaitOperation(nodeType: INodeTypeDescription): boolean {
+	// Skip nodes that are already AI Tool variants (end with 'Tool')
+	// This prevents creating double HITL tools like 'discordToolHitlTool'
+	if (nodeType.name.endsWith('Tool')) {
+		return false;
+	}
+
 	// Must have webhooks configured
-	if (!nodeType.webhooks || nodeType.webhooks.length === 0) return false;
+	if (!nodeType.webhooks || nodeType.webhooks.length === 0) {
+		return false;
+	}
 
-	// Must have an operation property with sendAndWait option
-	const operationProp = nodeType.properties.find((p) => p.name === 'operation');
-	if (!operationProp || !Array.isArray(operationProp.options)) return false;
+	// Check ALL operation properties (nodes can have multiple for different resources)
+	const operationProps = nodeType.properties.filter((p) => p.name === 'operation');
+	if (operationProps.length === 0) {
+		return false;
+	}
 
-	return operationProp.options.some(
-		(opt) => typeof opt === 'object' && 'value' in opt && opt.value === SEND_AND_WAIT_OPERATION,
-	);
+	// Check if ANY operation property has sendAndWait
+	for (const operationProp of operationProps) {
+		if (!Array.isArray(operationProp.options)) continue;
+
+		const hasSendAndWait = operationProp.options.some(
+			(opt) => typeof opt === 'object' && 'value' in opt && opt.value === SEND_AND_WAIT_OPERATION,
+		);
+
+		if (hasSendAndWait) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * Find which resource has the sendAndWait operation.
+ */
+function findSendAndWaitResource(properties: INodeProperties[]): string | undefined {
+	// Look for operation properties that have sendAndWait and check their displayOptions
+	for (const prop of properties) {
+		if (prop.name === 'operation' && Array.isArray(prop.options)) {
+			const hasSendAndWait = prop.options.some(
+				(opt) => typeof opt === 'object' && 'value' in opt && opt.value === SEND_AND_WAIT_OPERATION,
+			);
+			if (hasSendAndWait && prop.displayOptions?.show?.resource) {
+				const resources = prop.displayOptions.show.resource;
+				if (Array.isArray(resources) && resources.length > 0) {
+					return resources[0] as string;
+				}
+			}
+		}
+	}
+	return undefined;
 }
 
 /**
  * Filter properties to only include those relevant for HITL tool operation.
- * Removes resource/operation selectors and keeps only sendAndWait-related properties.
+ * Keeps resource/operation as hidden properties to preserve displayOptions dependencies.
  */
 function filterHitlToolProperties(
 	properties: INodeProperties[],
 	originalDisplayName: string,
 ): INodeProperties[] {
 	const filtered: INodeProperties[] = [];
+	const sendAndWaitResource = findSendAndWaitResource(properties);
+
+	// Set description type to manual so makeDescription doesn't override
+	filtered.push({
+		displayName: 'Description Type',
+		name: 'descriptionType',
+		type: 'hidden',
+		default: 'manual',
+	});
 
 	// Add tool description as first property
 	filtered.push({
 		displayName: 'Tool Description',
 		name: 'toolDescription',
 		type: 'string',
-		default: `Request human approval via ${originalDisplayName} before executing the tool`,
+		default: originalDisplayName,
 		required: true,
 		typeOptions: { rows: 2 },
 		description:
@@ -51,46 +103,46 @@ function filterHitlToolProperties(
 	});
 
 	for (const prop of properties) {
-		// Skip resource selector - we only care about sendAndWait
-		if (prop.name === 'resource') continue;
-
-		// Skip operation selector - force to sendAndWait
-		if (prop.name === 'operation') continue;
-
-		// Skip response type - HITL only uses approval (approve/deny)
-		if (prop.name === 'responseType') continue;
-
-		// Skip approval options customization for now (simplified flow)
-		if (prop.name === 'approvalOptions') continue;
-
-		// Keep properties shown for sendAndWait operation
-		if (prop.displayOptions?.show?.operation) {
-			const ops = prop.displayOptions.show.operation;
-			if (Array.isArray(ops) && ops.includes(SEND_AND_WAIT_OPERATION)) {
-				// Clone and remove the operation display condition since we force sendAndWait
-				const cloned = deepCopy(prop);
-				if (cloned.displayOptions?.show?.operation) {
-					delete cloned.displayOptions.show.operation;
-					// Clean up empty displayOptions
-					if (Object.keys(cloned.displayOptions.show).length === 0) {
-						delete cloned.displayOptions.show;
-					}
-					if (cloned.displayOptions && Object.keys(cloned.displayOptions).length === 0) {
-						delete cloned.displayOptions;
-					}
-				}
-				filtered.push(cloned);
-				continue;
+		// Convert resource to hidden property with sendAndWait resource as default
+		if (prop.name === 'resource') {
+			if (sendAndWaitResource) {
+				filtered.push({
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'hidden',
+					default: sendAndWaitResource,
+				});
 			}
-			// Skip properties for other operations
 			continue;
 		}
 
-		// Keep properties that don't have resource-specific display options
-		// (authentication, credentials config, etc.)
-		if (!prop.displayOptions?.show?.resource) {
-			filtered.push(deepCopy(prop));
+		// Convert operation to hidden property with sendAndWait as default
+		if (prop.name === 'operation') {
+			filtered.push({
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'hidden',
+				default: SEND_AND_WAIT_OPERATION,
+			});
+			continue;
 		}
+
+		// Keep responseType but default to 'approval' for HITL use case
+		if (prop.name === 'responseType') {
+			const cloned = deepCopy(prop);
+			cloned.default = 'approval';
+			filtered.push(cloned);
+			continue;
+		}
+
+		// Keep approvalOptions visible so users can customize approval buttons
+		if (prop.name === 'approvalOptions') {
+			filtered.push(deepCopy(prop));
+			continue;
+		}
+
+		// Keep all other properties to preserve displayOptions dependencies
+		filtered.push(deepCopy(prop));
 	}
 
 	return filtered;
@@ -113,7 +165,9 @@ export function convertNodeToHitlTool<
 
 		// Naming convention: slackHitlTool, emailSendHitlTool, etc.
 		item.description.name += 'HitlTool';
-		item.description.displayName = `${originalDisplayName} HITL Tool`;
+		item.description.displayName = originalDisplayName; // Just the service name (e.g., "Slack")
+		item.description.subtitle = 'Send and wait';
+		item.description.description = 'Request human approval for tools';
 
 		// HITL Tool connections:
 		// - Input: Tools to gate (labeled "Tool")
@@ -151,11 +205,31 @@ export function convertNodeToHitlTool<
  * Called during node loading to create HITL tool nodes automatically.
  */
 export function createHitlTools(types: Types, known: KnownNodesAndCredentials): void {
+	// Log nodes with webhooks for debugging
+	const nodesWithWebhooks = types.nodes.filter(
+		(n) => n.webhooks && n.webhooks.length > 0 && !n.name.endsWith('Tool'),
+	);
+	LoggerProxy.debug('[HITL] Nodes with webhooks (excluding Tool variants)', {
+		count: nodesWithWebhooks.length,
+		nodeNames: nodesWithWebhooks.map((n) => n.name),
+	});
+
 	const sendAndWaitNodes = types.nodes.filter(hasSendAndWaitOperation);
+
+	LoggerProxy.debug('[HITL] Found nodes with sendAndWait operation', {
+		count: sendAndWaitNodes.length,
+		nodeNames: sendAndWaitNodes.map((n) => n.name),
+	});
 
 	for (const sendAndWaitNode of sendAndWaitNodes) {
 		const description = deepCopy(sendAndWaitNode);
 		const wrapped = convertNodeToHitlTool({ description }).description;
+
+		LoggerProxy.debug('[HITL] Created HITL tool variant', {
+			originalNode: sendAndWaitNode.name,
+			hitlToolName: wrapped.name,
+			hitlToolDisplayName: wrapped.displayName,
+		});
 
 		// Add to node types
 		types.nodes.push(wrapped);
@@ -166,4 +240,8 @@ export function createHitlTools(types: Types, known: KnownNodesAndCredentials): 
 
 		copyCredentialSupport(known, sendAndWaitNode.name, wrapped.name);
 	}
+
+	LoggerProxy.debug('[HITL] HITL tool generation complete', {
+		totalHitlTools: sendAndWaitNodes.length,
+	});
 }
