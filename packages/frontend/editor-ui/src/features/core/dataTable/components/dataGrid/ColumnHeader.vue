@@ -219,6 +219,7 @@ onUnmounted(() => {
 				data-test-id="data-table-column-header-text"
 				@update:model-value="onNameSubmit"
 				@click="onNameToggle"
+				@keydown.stop
 			/>
 			<span v-else class="ag-header-cell-text" data-test-id="data-table-column-header-text">
 				{{ props.params.displayName }}

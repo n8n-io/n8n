@@ -159,21 +159,22 @@ export const useDataTableOperations = ({
 		const oldField = columnToRename.field;
 		if (!oldField) return;
 
+		const originalRowData = rowData.value;
+
 		columnToRename.headerName = newName;
 		columnToRename.field = newName;
-		// optimistically update the grid
-		setGridData({ colDefs: colDefs.value });
+		rowData.value = rowData.value.map((row) => {
+			const newRow: DataTableRow = { ...row };
+			if (oldField !== newName) {
+				newRow[newName] = newRow[oldField];
+				delete newRow[oldField];
+			}
+			return newRow;
+		});
+		setGridData({ colDefs: colDefs.value, rowData: rowData.value });
 
 		try {
 			await dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName);
-
-			rowData.value = rowData.value.map((row) => {
-				const newRow: DataTableRow = { ...row };
-				newRow[newName] = newRow[oldField];
-				delete newRow[oldField];
-				return newRow;
-			});
-			setGridData({ colDefs: colDefs.value, rowData: rowData.value });
 
 			telemetry.track('User renamed data table column', {
 				column_id: columnId,
@@ -181,10 +182,10 @@ export const useDataTableOperations = ({
 				data_table_id: dataTableId,
 			});
 		} catch (error) {
-			// Revert on error
 			columnToRename.headerName = oldName;
 			columnToRename.field = oldField;
-			setGridData({ colDefs: colDefs.value });
+			rowData.value = originalRowData;
+			setGridData({ colDefs: colDefs.value, rowData: rowData.value });
 
 			const errorDetails = parseColumnOperationError(error);
 			if (errorDetails.httpStatus === 409) {
