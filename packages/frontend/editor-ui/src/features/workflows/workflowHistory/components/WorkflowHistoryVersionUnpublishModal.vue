@@ -2,20 +2,20 @@
 import { useI18n } from '@n8n/i18n';
 import Modal from '@/app/components/Modal.vue';
 import { useUIStore } from '@/app/stores/ui.store';
-import type { ButtonType } from '@n8n/design-system';
+import type { EventBus } from '@n8n/utils/event-bus';
 
 import { N8nButton, N8nCallout, N8nHeading } from '@n8n/design-system';
+
+export type WorkflowHistoryVersionUnpublishModalEventBusEvents = {
+	unpublish: undefined;
+	cancel: undefined;
+};
 
 const props = defineProps<{
 	modalName: string;
 	data: {
 		versionName?: string;
-		beforeClose: () => void;
-		buttons: Array<{
-			text: string;
-			type: ButtonType;
-			action: () => void;
-		}>;
+		eventBus: EventBus<WorkflowHistoryVersionUnpublishModalEventBusEvents>;
 	};
 }>();
 
@@ -25,10 +25,20 @@ const uiStore = useUIStore();
 const closeModal = () => {
 	uiStore.closeModal(props.modalName);
 };
+
+const onCancel = () => {
+	props.data.eventBus.emit('cancel');
+	closeModal();
+};
+
+const onUnpublish = () => {
+	props.data.eventBus.emit('unpublish');
+	// Modal will be closed by parent after API call completes
+};
 </script>
 
 <template>
-	<Modal width="500px" :name="props.modalName" :before-close="props.data.beforeClose">
+	<Modal width="500px" :name="props.modalName" :before-close="onCancel">
 		<template #header>
 			<N8nHeading tag="h2" size="xlarge">
 				{{
@@ -45,19 +55,11 @@ const closeModal = () => {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton
-					v-for="(button, index) in props.data.buttons"
-					:key="index"
-					size="medium"
-					:type="button.type"
-					@click="
-						() => {
-							button.action();
-							closeModal();
-						}
-					"
-				>
-					{{ button.text }}
+				<N8nButton size="medium" type="tertiary" @click="onCancel">
+					{{ i18n.baseText('workflowHistory.action.unpublish.modal.button.cancel') }}
+				</N8nButton>
+				<N8nButton size="medium" type="primary" @click="onUnpublish">
+					{{ i18n.baseText('workflowHistory.action.unpublish.modal.button.unpublish') }}
 				</N8nButton>
 			</div>
 		</template>

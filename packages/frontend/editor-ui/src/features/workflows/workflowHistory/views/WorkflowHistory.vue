@@ -30,17 +30,15 @@ import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHe
 import type { IUser } from 'n8n-workflow';
 
 import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
+import { createEventBus } from '@n8n/utils/event-bus';
+import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
+
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
 };
 
 const enum WorkflowHistoryVersionRestoreModalActions {
 	restore = 'restore',
-	cancel = 'cancel',
-}
-
-const enum WorkflowHistoryVersionUnpublishModalActions {
-	unpublish = 'unpublish',
 	cancel = 'cancel',
 }
 
@@ -202,44 +200,6 @@ const openRestorationModal = async (
 	});
 };
 
-const openUnpublishModal = async (
-	versionName?: string,
-): Promise<WorkflowHistoryVersionUnpublishModalActions> => {
-	return await new Promise((resolve, reject) => {
-		const buttons = [
-			{
-				text: i18n.baseText('workflowHistory.action.unpublish.modal.button.cancel'),
-				type: 'tertiary',
-				action: () => {
-					resolve(WorkflowHistoryVersionUnpublishModalActions.cancel);
-				},
-			},
-			{
-				text: i18n.baseText('workflowHistory.action.unpublish.modal.button.unpublish'),
-				type: 'primary',
-				action: () => {
-					resolve(WorkflowHistoryVersionUnpublishModalActions.unpublish);
-				},
-			},
-		];
-
-		try {
-			uiStore.openModalWithData({
-				name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-				data: {
-					beforeClose: () => {
-						resolve(WorkflowHistoryVersionUnpublishModalActions.cancel);
-					},
-					versionName,
-					buttons,
-				},
-			});
-		} catch (error) {
-			reject(error);
-		}
-	});
-};
-
 const cloneWorkflowVersion = async (
 	id: WorkflowVersionId,
 	data: { formattedCreatedAt: string },
@@ -326,27 +286,35 @@ const publishWorkflowVersion = async (
 	});
 };
 
-const unpublishWorkflowVersion = async (id: WorkflowVersionId, data: { versionName?: string }) => {
+const unpublishWorkflowVersion = (id: WorkflowVersionId, data: { versionName?: string }) => {
 	if (workflowActiveVersionId.value !== id) {
 		return;
 	}
 
-	const modalAction = await openUnpublishModal(data.versionName);
-	if (modalAction === WorkflowHistoryVersionUnpublishModalActions.cancel) {
-		return;
-	}
+	const unpublishEventBus = createEventBus<WorkflowHistoryVersionUnpublishModalEventBusEvents>();
 
-	const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId.value);
+	unpublishEventBus.once('unpublish', async () => {
+		const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId.value);
+		uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
 
-	if (!success) {
-		return;
-	}
+		if (!success) {
+			return;
+		}
 
-	activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
+		activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
 
-	toast.showMessage({
-		title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
-		type: 'success',
+		toast.showMessage({
+			title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
+			type: 'success',
+		});
+	});
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+		data: {
+			versionName: data.versionName,
+			eventBus: unpublishEventBus,
+		},
 	});
 };
 
