@@ -554,6 +554,7 @@ export class WorkflowService {
 		await this.workflowRepository.update(workflowId, {
 			activeVersionId: versionToActivate,
 			active: true,
+			updatedAt: workflow.updatedAt,
 		});
 
 		if (options?.name || options?.description) {
@@ -639,6 +640,7 @@ export class WorkflowService {
 		await this.workflowRepository.update(workflowId, {
 			active: false,
 			activeVersionId: null,
+			updatedAt: workflow.updatedAt,
 		});
 
 		// Update the workflow object for response
