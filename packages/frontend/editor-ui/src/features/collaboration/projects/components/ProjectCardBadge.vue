@@ -15,6 +15,7 @@ type Props = {
 	resourceTypeLabel: string;
 	personalProject: Project | null;
 	showBadgeBorder?: boolean;
+	global?: boolean;
 };
 
 const enum ProjectState {
@@ -176,6 +177,27 @@ const projectLocation = computed(() => {
 			</template>
 		</N8nTooltip>
 		<slot />
+
+		<N8nTooltip v-if="global" placement="top">
+			<div
+				:class="$style['global-badge']"
+				data-test-id="credential-global-badge"
+				theme="tertiary"
+				bold
+			>
+				<ProjectIcon :icon="{ type: 'icon', value: 'globe' }" :border-less="true" size="mini" />
+				{{ i18n.baseText('projects.badge.global') }}
+			</div>
+			<template #content>
+				{{
+					i18n.baseText('projects.badge.tooltip.global', {
+						interpolate: {
+							resourceTypeLabel: props.resourceTypeLabel,
+						},
+					})
+				}}
+			</template>
+		</N8nTooltip>
 		<N8nTooltip
 			v-if="numberOfMembersInHomeTeamProject"
 			:disabled="!badgeTooltip || numberOfMembersInHomeTeamProject === 0"
@@ -230,6 +252,13 @@ const projectLocation = computed(() => {
 	color: var(--color--text);
 	border-left: var(--border);
 	line-height: var(--line-height--md);
+}
+
+.global-badge {
+	composes: count-badge;
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
 }
 
 .nowrap {

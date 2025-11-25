@@ -20,7 +20,7 @@ on:
       shards:
         description: 'Shards for parallel execution'
         required: false
-        default: '[1, 2, 3, 4, 5, 6, 7]'
+        default: '[1, 2, 3, 4, 5, 6, 7, 8]'
         type: string
       docker-image:
         description: 'Docker image to use (for docker-pull mode)'
@@ -56,7 +56,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: ${{ fromJSON(inputs.shards || '[1, 2, 3, 4, 5, 6, 7]') }}
+        shard: ${{ fromJSON(inputs.shards || '[1, 2, 3, 4, 5, 6, 7, 8]') }}
     name: Test (Shard ${{ matrix.shard }}/${{ strategy.job-total }})
 
     steps:
@@ -77,6 +77,14 @@ jobs:
       - name: Install Browsers
         if: inputs.test-mode == 'docker-build'
         run: pnpm turbo install-browsers:ci
+
+      - name: Pre-pull Test Container Images
+        if: ${{ !contains(inputs.test-command, 'test:local') }}
+        run: |
+          # Pre-pull all test container images to avoid network changes during test execution
+          npx tsx packages/testing/containers/pull-test-images.ts || true
+        env:
+          N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
 
       - name: Prepare Test Image
         if: inputs.test-mode == 'docker-pull'

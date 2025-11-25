@@ -14,7 +14,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 type Props = {
 	workflowId: string;
@@ -48,24 +47,11 @@ const isMcpEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
 
-const hasWebhooks = computed(() => {
-	const workflow = workflowStore.workflow;
-	if (!workflow) return false;
-	return workflow.nodes.some((node) => !node.disabled && node.type === WEBHOOK_NODE_TYPE);
-});
-
-// Descriptive tip that will be used as textarea placeholder and input label tooltip
-// Updated based on MCP and webhook presence
 const textareaTip = computed(() => {
-	const baseTooltip = i18n.baseText('workflow.description.tooltip');
 	if (!isMcpEnabled.value) {
 		return i18n.baseText('workflow.description.tooltip');
 	}
-	const mcpTooltip = i18n.baseText('workflow.description.placeholder.mcp');
-	const webhookNotice = hasWebhooks.value
-		? i18n.baseText('workflow.description.placeholder.mcp.webhook')
-		: '';
-	return `${baseTooltip}. ${mcpTooltip}.\n${webhookNotice}`;
+	return i18n.baseText('workflow.description.placeholder.mcp');
 });
 
 const saveDescription = async () => {

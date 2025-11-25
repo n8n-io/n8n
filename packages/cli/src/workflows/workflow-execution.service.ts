@@ -92,26 +92,23 @@ export class WorkflowExecutionService {
 	}
 
 	async executeManually(
-		{
-			workflowData,
-			runData,
-			startNodes,
-			destinationNode,
-			dirtyNodeNames,
-			triggerToStartFrom,
-			agentRequest,
-		}: WorkflowRequest.ManualRunPayload,
+		payload: WorkflowRequest.ManualRunPayload,
 		user: User,
 		pushRef?: string,
 		streamingEnabled?: boolean,
 		httpResponse?: Response,
 	) {
+		const { workflowData, startNodes, dirtyNodeNames, triggerToStartFrom, agentRequest } = payload;
+		let { runData } = payload;
+		const destinationNode = payload.destinationNode
+			? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
+			: undefined;
 		const pinData = workflowData.pinData;
 		let pinnedTrigger = this.selectPinnedActivatorStarter(
 			workflowData,
 			startNodes?.map((nodeData) => nodeData.name),
 			pinData,
-			destinationNode,
+			destinationNode?.nodeName,
 		);
 
 		// TODO: Reverse the order of events, first find out if the execution is
@@ -126,7 +123,7 @@ export class WorkflowExecutionService {
 		// here and either create the runData (e.g. scheduler trigger) or wait for
 		// a webhook or event.
 		if (destinationNode) {
-			if (this.isDestinationNodeATrigger(destinationNode, workflowData)) {
+			if (this.isDestinationNodeATrigger(destinationNode.nodeName, workflowData)) {
 				runData = undefined;
 			}
 		}
@@ -165,6 +162,7 @@ export class WorkflowExecutionService {
 
 		// For manual testing always set to not active
 		workflowData.active = false;
+		workflowData.activeVersionId = null;
 
 		// Start the workflow
 		const data: IWorkflowExecutionDataProcess = {
@@ -283,7 +281,7 @@ export class WorkflowExecutionService {
 				nodeTypes: this.nodeTypes,
 				nodes: workflowData.nodes,
 				connections: workflowData.connections,
-				active: workflowData.active,
+				active: workflowData.activeVersion !== null,
 				staticData: workflowData.staticData,
 				settings: workflowData.settings,
 			});
@@ -438,7 +436,7 @@ export class WorkflowExecutionService {
 					new Workflow({
 						nodes: workflow.nodes,
 						connections: workflow.connections,
-						active: workflow.active,
+						active: workflow.activeVersionId !== null,
 						nodeTypes: this.nodeTypes,
 					}).getParentNodes(destinationNode),
 				);
@@ -466,7 +464,7 @@ export class WorkflowExecutionService {
 		const parentNodeNames = new Workflow({
 			nodes: workflow.nodes,
 			connections: workflow.connections,
-			active: workflow.active,
+			active: workflow.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 		}).getParentNodes(firstStartNodeName);
 
