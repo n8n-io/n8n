@@ -80,7 +80,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 			n8n,
 			setupRequirements,
 		}) => {
-			await n8n.api.setEnvFeatureFlags({ [UPGRADE_PLAN_CTA.name]: UPGRADE_PLAN_CTA.control });
+			await n8n.api.setEnvFeatureFlags({ '054_upgrade_plan_cta': 'control' });
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
@@ -103,7 +103,7 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 			n8n,
 			setupRequirements,
 		}) => {
-			await n8n.api.setEnvFeatureFlags({ [UPGRADE_PLAN_CTA.name]: UPGRADE_PLAN_CTA.variant });
+			await n8n.api.setEnvFeatureFlags({ '054_upgrade_plan_cta': 'variant' });
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
