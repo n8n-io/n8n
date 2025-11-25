@@ -24,12 +24,13 @@ const timestampSyntax = {
 
 export const jsonColumnType = dbType === 'sqlite' ? 'simple-json' : 'json';
 export const datetimeColumnType = dbType === 'postgresdb' ? 'timestamptz' : 'datetime';
-export const binaryColumnType = {
+const binaryColumnTypeMap = {
 	sqlite: 'blob',
 	postgresdb: 'bytea',
 	mysqldb: 'longblob',
 	mariadb: 'longblob',
-}[dbType] as 'blob' | 'bytea' | 'longblob';
+} as const;
+const binaryColumnType = binaryColumnTypeMap[dbType];
 
 export function JsonColumn(options?: Omit<ColumnOptions, 'type'>) {
 	return Column({
