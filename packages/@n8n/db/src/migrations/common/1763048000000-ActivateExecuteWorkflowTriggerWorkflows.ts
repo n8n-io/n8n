@@ -1,4 +1,8 @@
-import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, type INode } from 'n8n-workflow';
+import {
+	ERROR_TRIGGER_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+	type INode,
+} from 'n8n-workflow';
 
 import type { WorkflowEntity } from '../../entities';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
@@ -8,8 +12,8 @@ type Workflow = Pick<WorkflowEntity, 'id' | 'active' | 'versionId' | 'activeVers
 };
 
 /**
- * Activates all workflows that contain an executeWorkflowTrigger node with at least one parameter.
- * Also disables any other trigger nodes within those workflows.
+ * Activates all workflows that contain an executeWorkflowTrigger node with at least one parameter,
+ * or an errorTrigger node. Also disables any other trigger nodes within those workflows.
  */
 export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements ReversibleMigration {
 	async up({ escape, runQuery, runInBatches, parseJson }: MigrationContext) {
@@ -31,29 +35,39 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 					(node: INode) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 				);
 
-				if (!executeWorkflowTriggerNode) {
+				// Check if workflow contains errorTrigger node
+				const errorTriggerNode = nodes.find((node: INode) => node.type === ERROR_TRIGGER_NODE_TYPE);
+
+				// Skip if workflow doesn't have either trigger type
+				if (!executeWorkflowTriggerNode && !errorTriggerNode) {
 					continue;
 				}
 
-				// Check if the node has at least one parameter defined in workflowInputs.values
-				const workflowInputs = executeWorkflowTriggerNode.parameters?.workflowInputs;
-				const hasParameters =
-					workflowInputs &&
-					typeof workflowInputs === 'object' &&
-					'values' in workflowInputs &&
-					Array.isArray(workflowInputs.values) &&
-					workflowInputs.values.length > 0 &&
-					this.hasValidWorkflowInputs(workflowInputs.values);
+				// For executeWorkflowTrigger, check if the node has at least one parameter defined in workflowInputs.values
+				if (executeWorkflowTriggerNode) {
+					const workflowInputs = executeWorkflowTriggerNode.parameters?.workflowInputs;
+					const hasParameters =
+						workflowInputs &&
+						typeof workflowInputs === 'object' &&
+						'values' in workflowInputs &&
+						Array.isArray(workflowInputs.values) &&
+						workflowInputs.values.length > 0 &&
+						this.hasValidWorkflowInputs(workflowInputs.values);
 
-				if (!hasParameters) {
-					continue;
+					if (!hasParameters) {
+						continue;
+					}
 				}
 
 				// Disable other trigger nodes
 				let nodesModified = false;
 				nodes.forEach((node: INode) => {
-					// Check if node is a trigger (excluding executeWorkflowTrigger)
-					if (node.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE && this.isTriggerNode(node.type)) {
+					// Check if node is a trigger (excluding executeWorkflowTrigger and errorTrigger)
+					if (
+						node.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE &&
+						node.type !== ERROR_TRIGGER_NODE_TYPE &&
+						this.isTriggerNode(node.type)
+					) {
 						if (!node.disabled) {
 							node.disabled = true;
 							nodesModified = true;
@@ -98,12 +112,14 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 			for (const workflow of workflows) {
 				const nodes = parseJson(workflow.nodes);
 
-				// Check if workflow contains executeWorkflowTrigger node
+				// Check if workflow contains executeWorkflowTrigger or errorTrigger node
 				const hasExecuteWorkflowTrigger = nodes.some(
 					(node: INode) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 				);
 
-				if (!hasExecuteWorkflowTrigger) {
+				const hasErrorTrigger = nodes.some((node: INode) => node.type === ERROR_TRIGGER_NODE_TYPE);
+
+				if (!hasExecuteWorkflowTrigger && !hasErrorTrigger) {
 					continue;
 				}
 
