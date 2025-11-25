@@ -123,7 +123,7 @@ class TestStorageManager:
         assert meta_file.exists()
 
         # Delete the file
-        result = storage_manager._delete_file(file_id)
+        result = storage_manager.delete_file(file_id)
         assert result is True
 
         # Verify files are gone

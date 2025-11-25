@@ -99,12 +99,20 @@ class StorageManager:
         meta_path.chmod(0o600)
 
         # Generate download token
-        download_token = self._generate_download_token(file_id)
+        download_token = self.generate_download_token(file_id)
 
         return file_id, download_token
 
-    def _generate_download_token(self, file_id: str) -> str:
-        """Generate a JWT token for file download."""
+    def generate_download_token(self, file_id: str) -> str:
+        """
+        Generate a JWT token for file download.
+
+        Args:
+            file_id: ID of the file to generate token for
+
+        Returns:
+            JWT token string for downloading the file
+        """
         expiration = datetime.now(UTC).timestamp() + settings.token_ttl
         payload = {
             "file_id": file_id,
@@ -155,7 +163,7 @@ class StorageManager:
         # Check if file has expired
         if time.time() > metadata["expires_at"]:
             # Clean up expired file
-            self._delete_file(file_id)
+            self.delete_file(file_id)
             return None
 
         # Decrypt file key
@@ -168,8 +176,16 @@ class StorageManager:
 
         return file_data, metadata["original_filename"]
 
-    def _delete_file(self, file_id: str) -> bool:
-        """Delete a file and its metadata."""
+    def delete_file(self, file_id: str) -> bool:
+        """
+        Delete a file and its metadata from storage.
+
+        Args:
+            file_id: ID of the file to delete
+
+        Returns:
+            True if any files were deleted, False otherwise
+        """
         file_path = self.storage_dir / f"{file_id}.enc"
         meta_path = self.storage_dir / f"{file_id}.meta"
 
@@ -208,7 +224,7 @@ class StorageManager:
                 metadata = json.loads(meta_file.read_text())
                 if current_time > metadata["expires_at"]:
                     file_id = meta_file.stem
-                    if self._delete_file(file_id):
+                    if self.delete_file(file_id):
                         stats["deleted"] += 1
                     else:
                         stats["errors"] += 1

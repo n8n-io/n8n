@@ -213,7 +213,7 @@ async def refresh_download_token(file_id: str) -> dict[str, Any]:
             detail="File has expired and cannot be accessed",
         )
 
-    download_token = storage_manager._generate_download_token(file_id)
+    download_token = storage_manager.generate_download_token(file_id)
     return {
         "file_id": file_id,
         "download_token": download_token,
