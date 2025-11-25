@@ -15,6 +15,13 @@ Use Information Extractor or AI nodes for extracting structured data from unstru
 
 For binary data, ensure you use nodes like Extract From File to handle files properly.
 
+### Referencing Binary Data from Other Nodes
+When you need to reference binary data from a previous node, use this syntax:
+- Expression: '{{ $('Node Name').item.binary.property_name }}' or {{ $binary.property_name }} if previous item
+- Example for Gmail attachments: '{{ $('Gmail Trigger').item.binary.attachment_0 }}' or {{ $binary.attachment_0 }} if previous item
+- Example for webhook data: '{{ $('Webhook').item.binary.data }}' or {{ $binary.data }} if previous item
+- Important: The property name depends on how the previous node names the binary data
+
 ## Data Structure & Type Management
 
 Normalize data structure early in your workflow. Use transformation nodes like Split Out, Aggregate, or Set to ensure your data matches n8n's expected structure: an array of objects with a json key.
