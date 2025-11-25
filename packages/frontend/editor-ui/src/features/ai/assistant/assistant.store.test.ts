@@ -304,7 +304,7 @@ describe('AI Assistant store', () => {
 		expect(assistantStore.isAssistantEnabled).toBe(true);
 	});
 
-	[VIEWS.PROJECTS_CREDENTIALS, VIEWS.TEMPLATE_SETUP, VIEWS.CREDENTIALS].forEach((view) => {
+	[VIEWS.PROJECTS_CREDENTIALS, VIEWS.CREDENTIALS].forEach((view) => {
 		it(`should show assistant if on ${view} page`, () => {
 			currentRouteName = view;
 			const assistantStore = useAssistantStore();

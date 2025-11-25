@@ -181,14 +181,6 @@ export class NavigationHelper {
 	}
 
 	/**
-	 * Navigate to template credential setup page
-	 * URL: /templates/{templateId}/setup
-	 */
-	async toTemplateCredentialSetup(templateId: number): Promise<void> {
-		await this.page.goto(`/templates/${templateId}/setup`);
-	}
-
-	/**
 	 * Navigate to community nodes
 	 * URL: /settings/community-nodes
 	 */
