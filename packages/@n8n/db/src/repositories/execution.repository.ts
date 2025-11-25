@@ -360,7 +360,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
 		const data = stringify(dataObj);
 
-		// All other database drivers should create executions and execution-data atomically
 		return await this.manager.transaction(async (transactionManager) => {
 			const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
 				...rest,
