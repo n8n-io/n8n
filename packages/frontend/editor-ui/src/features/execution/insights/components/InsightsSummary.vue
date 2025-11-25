@@ -1,26 +1,28 @@
 <script setup lang="ts">
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { VIEWS } from '@/app/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,
 } from '@/features/execution/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
-import type { InsightsDateRange, InsightsSummary } from '@n8n/api-types';
+import type { DateValue } from '@internationalized/date';
+import type { InsightsSummary } from '@n8n/api-types';
+import { N8nCallout, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { computed, ref, useCssModule, onMounted } from 'vue';
+import { computed, onMounted, ref, useCssModule } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute } from 'vue-router';
-import { getTimeRangeLabels } from '../insights.utils';
-
-import { N8nCallout, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
+import { formatDateRange, getMatchingPreset, getTimeRangeLabels } from '../insights.utils';
 
 const INSIGHTS_QUEUE_MODE_WARNING_DISMISSED_KEY = 'n8n-insights-queue-mode-warning-dismissed';
+
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
-	timeRange: InsightsDateRange['key'];
+	startDate?: DateValue;
+	endDate?: DateValue;
 	loading?: boolean;
 }>();
 
@@ -47,6 +49,19 @@ const dismissQueueModeWarning = () => {
 
 const shouldShowQueueModeWarning = computed(() => {
 	return settingsStore.isQueueModeEnabled && !isQueueModeWarningDismissed.value;
+});
+
+const displayDateRangeLabel = computed(() => {
+	const timeRangeKey = getMatchingPreset({
+		start: props.startDate,
+		end: props.endDate,
+	});
+
+	if (timeRangeKey) {
+		return timeRangeLabels[timeRangeKey];
+	}
+
+	return formatDateRange({ start: props.startDate, end: props.endDate });
 });
 
 const summaryTitles = computed<Record<keyof InsightsSummary, string>>(() => ({
@@ -158,7 +173,7 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 								</N8nTooltip>
 							</strong>
 							<small :class="$style.days">
-								{{ timeRangeLabels[timeRange] }}
+								{{ displayDateRangeLabel }}
 							</small>
 							<span v-if="value === 0 && id === 'timeSaved'" :class="$style.empty">
 								<em>--</em>
