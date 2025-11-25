@@ -162,7 +162,7 @@ export async function initializeAuthenticatedFeatures(
 					if (cloudPlanStore.trialExpired) {
 						bannersStore.pushBannerToStack('TRIAL_OVER');
 					} else {
-						if (cloudPlanStore.isTrialBannerEnabled) {
+						if (!cloudPlanStore.isTrialUpgradeOnSidebar) {
 							bannersStore.pushBannerToStack('TRIAL');
 						}
 					}

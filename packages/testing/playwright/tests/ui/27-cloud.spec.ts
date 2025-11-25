@@ -111,10 +111,11 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).toBeVisible();
 		});
 
-		test('should not show trial upgrade in the main sidebar if user is not trialing', async ({
+		test('should not show trial upgrade in the main sidebar if user is not trialing and feature flag is enabled', async ({
 			n8n,
 			setupRequirements,
 		}) => {
+			await n8n.api.setEnvFeatureFlags({ '054_upgrade_plan_cta': 'variant' });
 			await setupCloudTest(n8n, setupRequirements, cloudNonTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();

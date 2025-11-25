@@ -116,8 +116,8 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		return await getAdminPanelLoginCode(rootStore.restApiContext);
 	};
 
-	const isTrialBannerEnabled = computed(() => {
-		return posthogStore.getVariant(UPGRADE_PLAN_CTA.name) !== UPGRADE_PLAN_CTA.variant;
+	const isTrialUpgradeOnSidebar = computed(() => {
+		return posthogStore.getVariant(UPGRADE_PLAN_CTA.name) === UPGRADE_PLAN_CTA.variant;
 	});
 
 	const getOwnerCurrentPlan = async () => {
@@ -248,6 +248,6 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 		dynamicTrialBannerText,
 		shouldShowDynamicTrialBanner,
 		dismissDynamicTrialBanner,
-		isTrialBannerEnabled,
+		isTrialUpgradeOnSidebar,
 	};
 });
