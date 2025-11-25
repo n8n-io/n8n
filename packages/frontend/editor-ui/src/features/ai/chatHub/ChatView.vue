@@ -442,21 +442,15 @@ async function handleUpdateTools(newTools: INode[]) {
 	}
 }
 
-async function handleEditAgent(agentId: string) {
-	try {
-		await chatStore.fetchCustomAgent(agentId);
-
-		uiStore.openModalWithData({
-			name: AGENT_EDITOR_MODAL_KEY,
-			data: {
-				agentId,
-				credentials: credentialsByProvider,
-				onCreateCustomAgent: handleSelectModel,
-			},
-		});
-	} catch (error) {
-		toast.showError(error, 'Failed to load agent');
-	}
+function handleEditAgent(agentId: string) {
+	uiStore.openModalWithData({
+		name: AGENT_EDITOR_MODAL_KEY,
+		data: {
+			agentId,
+			credentials: credentialsByProvider,
+			onCreateCustomAgent: handleSelectModel,
+		},
+	});
 }
 
 function openNewAgentCreator() {

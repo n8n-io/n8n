@@ -75,18 +75,13 @@ async function handleEditAgent(model: ChatHubConversationModel) {
 	}
 
 	if (model.provider === 'custom-agent') {
-		try {
-			await chatStore.fetchCustomAgent(model.agentId);
-			uiStore.openModalWithData({
-				name: AGENT_EDITOR_MODAL_KEY,
-				data: {
-					agentId: model.agentId,
-					credentials: credentialsByProvider,
-				},
-			});
-		} catch (error) {
-			toast.showError(error, 'Failed to load agent');
-		}
+		uiStore.openModalWithData({
+			name: AGENT_EDITOR_MODAL_KEY,
+			data: {
+				agentId: model.agentId,
+				credentials: credentialsByProvider,
+			},
+		});
 	}
 }
 
