@@ -3,6 +3,7 @@ import { N8nButton, N8nTooltip } from '@n8n/design-system';
 import { computed } from 'vue';
 import { useCloudPlanStore } from '@/app/stores/cloudPlan.store';
 import { useUIStore } from '@/app/stores/ui.store';
+import { i18n as locale } from '@n8n/i18n';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
 const cloudPlanStore = useCloudPlanStore();
@@ -15,12 +16,20 @@ const isVisible = computed(() => {
 	return cloudPlanStore.userIsTrialing && cloudPlanStore.isTrialUpgradeOnSidebar;
 });
 
+const trialDaysLeft = computed(() => -1 * cloudPlanStore.trialDaysLeft);
+
 const trialMessage = computed(() => {
-	return `${cloudPlanStore.trialDaysLeft} days left`;
+	return locale.baseText('generic.trial.message', {
+		adjustToNumber: trialDaysLeft.value,
+		interpolate: { count: String(trialDaysLeft.value) },
+	});
 });
 
 const tooltipContent = computed(() => {
-	return `${cloudPlanStore.trialDaysLeft} days left in your trial. Upgrade to keep using n8n.`;
+	return locale.baseText('generic.trial.tooltip', {
+		adjustToNumber: trialDaysLeft.value,
+		interpolate: { count: String(trialDaysLeft.value) },
+	});
 });
 
 const onUpgradeClick = () => {
@@ -42,7 +51,7 @@ const onUpgradeClick = () => {
 				type="success"
 				size="mini"
 				icon="zap"
-				:label="isCollapsed ? '' : 'Upgrade'"
+				:label="isCollapsed ? '' : locale.baseText('generic.upgrade')"
 				:square="isCollapsed"
 				data-test-id="trial-upgrade-button"
 				@click="onUpgradeClick"

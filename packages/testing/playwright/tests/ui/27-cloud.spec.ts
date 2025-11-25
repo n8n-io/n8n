@@ -7,7 +7,7 @@ import type { TestRequirements } from '../../Types';
 const fiveDaysFromNow = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
 const planData = { ...basePlanData, expirationDate: fiveDaysFromNow.toJSON() };
 
-const cloudTrialRequirements = {
+const cloudTrialRequirements: TestRequirements = {
 	config: {
 		settings: {
 			deployment: { type: 'cloud' },
@@ -33,7 +33,7 @@ const cloudTrialRequirements = {
 	},
 };
 
-const cloudNonTrialRequirements = {
+const cloudNonTrialRequirements: TestRequirements = {
 	config: {
 		settings: {
 			deployment: { type: 'cloud' },
@@ -80,10 +80,15 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 			n8n,
 			setupRequirements,
 		}) => {
-			await n8n.api.setEnvFeatureFlags({ '054_upgrade_plan_cta': 'control' });
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
+
+			await n8n.page.evaluate(() => {
+				(
+					window as unknown as { featureFlags: { override: (name: string, value: string) => void } }
+				).featureFlags?.override('054_upgrade_plan_cta', 'control');
+			});
 
 			await expect(n8n.sideBar.getTrialBanner()).toBeVisible();
 		});
@@ -103,10 +108,17 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 			n8n,
 			setupRequirements,
 		}) => {
-			await n8n.api.setEnvFeatureFlags({ '054_upgrade_plan_cta': 'variant' });
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
+
+			await n8n.page.evaluate(() => {
+				(
+					window as unknown as { featureFlags: { override: (name: string, value: string) => void } }
+				).featureFlags?.override('054_upgrade_plan_cta', 'variant');
+			});
+
+			await n8n.page.reload();
 
 			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).toBeVisible();
 		});
@@ -115,10 +127,17 @@ test.describe('Cloud @db:reset @auth:owner', () => {
 			n8n,
 			setupRequirements,
 		}) => {
-			await n8n.api.setEnvFeatureFlags({ '054_upgrade_plan_cta': 'variant' });
 			await setupCloudTest(n8n, setupRequirements, cloudNonTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
+
+			await n8n.page.evaluate(() => {
+				(
+					window as unknown as { featureFlags: { override: (name: string, value: string) => void } }
+				).featureFlags?.override('054_upgrade_plan_cta', 'variant');
+			});
+
+			await n8n.page.reload();
 
 			await expect(n8n.sideBar.getMainSidebarTrialUpgrade()).not.toBeVisible();
 		});

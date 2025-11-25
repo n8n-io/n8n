@@ -55,7 +55,7 @@ export const TEMPLATE_RECO_V2 = {
 	variant: 'variant',
 };
 
-export const UPGRADE_PLAN_CTA = {
+export const UPGRADE_PLAN_CTA_EXPERIMENT = {
 	name: '054_upgrade_plan_cta',
 	control: 'control',
 	variant: 'variant',
@@ -98,5 +98,5 @@ export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_RECO_V2.name,
 	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
 	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
-	UPGRADE_PLAN_CTA.name,
+	UPGRADE_PLAN_CTA_EXPERIMENT.name,
 ];

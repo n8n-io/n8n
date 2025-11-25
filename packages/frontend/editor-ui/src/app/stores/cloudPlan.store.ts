@@ -10,7 +10,7 @@ import {
 	getCurrentUsage,
 } from '@n8n/rest-api-client/api/cloudPlans';
 import { DateTime } from 'luxon';
-import { CLOUD_TRIAL_CHECK_INTERVAL, UPGRADE_PLAN_CTA } from '@/app/constants';
+import { CLOUD_TRIAL_CHECK_INTERVAL, UPGRADE_PLAN_CTA_EXPERIMENT } from '@/app/constants';
 import { STORES } from '@n8n/stores';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import * as cloudApi from '@n8n/rest-api-client/api/cloudPlans';
@@ -117,7 +117,10 @@ export const useCloudPlanStore = defineStore(STORES.CLOUD_PLAN, () => {
 	};
 
 	const isTrialUpgradeOnSidebar = computed(() => {
-		return posthogStore.getVariant(UPGRADE_PLAN_CTA.name) === UPGRADE_PLAN_CTA.variant;
+		return (
+			posthogStore.getVariant(UPGRADE_PLAN_CTA_EXPERIMENT.name) ===
+			UPGRADE_PLAN_CTA_EXPERIMENT.variant
+		);
 	});
 
 	const getOwnerCurrentPlan = async () => {
