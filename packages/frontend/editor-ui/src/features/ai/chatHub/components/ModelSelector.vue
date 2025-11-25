@@ -55,10 +55,10 @@ const {
 const emit = defineEmits<{
 	change: [ChatModelDto];
 	createCustomAgent: [];
-	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
+	selectCredential: [provider: ChatHubProvider, credentialId: string];
 }>();
 
-function handleSelectCredentials(provider: ChatHubProvider, id: string | null) {
+function handleSelectCredentials(provider: ChatHubProvider, id: string) {
 	emit('selectCredential', provider, id);
 }
 

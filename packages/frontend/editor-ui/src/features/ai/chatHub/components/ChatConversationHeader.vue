@@ -25,7 +25,7 @@ const emit = defineEmits<{
 	renameConversation: [id: ChatSessionId, title: string];
 	editCustomAgent: [agentId: string];
 	createCustomAgent: [];
-	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
+	selectCredential: [provider: ChatHubProvider, credentialId: string];
 	openWorkflow: [workflowId: string];
 }>();
 

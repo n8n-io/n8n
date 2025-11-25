@@ -8,7 +8,7 @@ import {
 	type ChatHubProvider,
 } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watchEffect } from 'vue';
 import { isLlmProvider } from '../chat.utils';
 
 /**
@@ -79,19 +79,26 @@ export function useChatCredentials(userId: string) {
 
 	const credentialsByProvider = computed<CredentialsMap | null>(() =>
 		isCredentialsReady.value
-			? {
-					...autoSelectCredentials.value,
-					...selectedCredentials.value,
-				}
+			? chatHubProviderSchema.options.reduce<CredentialsMap>((acc, provider) => {
+					const cred =
+						selectedCredentials.value[provider] ?? autoSelectCredentials.value[provider] ?? null;
+
+					acc[provider] = credentialsStore.allCredentials.some((c) => c.id === cred) ? cred : null;
+					return acc;
+				}, {})
 			: null,
 	);
 
-	function selectCredential(provider: ChatHubProvider, id: string | null) {
-		if (id === null) {
-			delete selectedCredentials.value[provider];
-			return;
-		}
+	watchEffect(() => {
+		console.log(
+			4444,
+			autoSelectCredentials.value,
+			selectedCredentials.value,
+			credentialsByProvider.value,
+		);
+	});
 
+	function selectCredential(provider: ChatHubProvider, id: string) {
 		selectedCredentials.value = { ...selectedCredentials.value, [provider]: id };
 	}
 

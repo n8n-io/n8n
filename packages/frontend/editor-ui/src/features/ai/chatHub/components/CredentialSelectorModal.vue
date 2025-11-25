@@ -18,7 +18,7 @@ const props = defineProps<{
 	data: {
 		provider: ChatHubLLMProvider;
 		initialValue: string | null;
-		onSelect: (provider: ChatHubLLMProvider, credentialId: string | null) => void;
+		onSelect: (provider: ChatHubLLMProvider, credentialId: string) => void;
 		onCreateNew: (provider: ChatHubLLMProvider) => void;
 	};
 }>();
@@ -73,11 +73,6 @@ async function onDeleteCredential() {
 	try {
 		await credentialsStore.deleteCredential({ id: credentialIdToDelete });
 		selectedCredentialId.value = null;
-
-		// If the deleted credential was the initially selected one, deselect it in the parent
-		if (props.data.initialValue === credentialIdToDelete) {
-			props.data.onSelect(props.data.provider, null);
-		}
 
 		modalBus.value.emit('close');
 	} catch (error) {
