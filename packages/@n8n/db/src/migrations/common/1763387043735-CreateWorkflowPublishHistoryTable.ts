@@ -9,8 +9,16 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 				column('id').int.primary.autoGenerate2,
 				column('workflowId').varchar(36).notNull,
 				column('versionId').varchar(36),
-				column('status').varchar(36).notNull,
-				column('mode').varchar(36),
+				column('status')
+					.varchar(36)
+					.notNull.comment(
+						'Final state of workflow: activated (workflow is now active), deactivated (workflow is now inactive)',
+					),
+				column('mode')
+					.varchar(36)
+					.comment(
+						'Reason for status change: activate (user turned on), update (updating already active workflow), deactivate (user turned off)',
+					),
 				column('userId').uuid,
 			)
 			.withCreatedAt.withIndexOn('workflowId')
