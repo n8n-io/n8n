@@ -277,6 +277,15 @@ export class WorkflowExecutionService {
 				return;
 			}
 
+			if (workflowData.activeVersion === null) {
+				// The error workflow is not active
+				this.logger.error(
+					`Calling Error Workflow for "${workflowErrorData.workflow.id}". Error workflow "${workflowId}" is not active`,
+					{ workflowId },
+				);
+				return;
+			}
+
 			const executionMode = 'error';
 			const workflowInstance = new Workflow({
 				id: workflowId,

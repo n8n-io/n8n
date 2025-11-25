@@ -125,10 +125,14 @@ export async function getWorkflowData(
 			});
 		}
 
-		if (workflowFromDb.activeVersion) {
-			workflowFromDb.nodes = workflowFromDb.activeVersion.nodes;
-			workflowFromDb.connections = workflowFromDb.activeVersion.connections;
+		if (!workflowFromDb.activeVersion) {
+			throw new UnexpectedError('Workflow is not active and cannot be executed.', {
+				extra: { workflowId: workflowInfo.id },
+			});
 		}
+
+		workflowFromDb.nodes = workflowFromDb.activeVersion.nodes;
+		workflowFromDb.connections = workflowFromDb.activeVersion.connections;
 
 		workflowData = workflowFromDb;
 	} else {
