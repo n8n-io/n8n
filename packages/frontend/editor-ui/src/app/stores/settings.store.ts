@@ -234,33 +234,19 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		saveDataProgressExecution.value = newValue;
 	};
 
-	const setPublicSettings = (fetchedSettings: FrontendSettings) => {
-		const rootStore = useRootStore();
-		setSettings(fetchedSettings);
-
-		isMFAEnforced.value = settings.value.mfa?.enforced ?? false;
-
-		rootStore.setOauthCallbackUrls(fetchedSettings.oauthCallbackUrls);
-		rootStore.setDefaultLocale(fetchedSettings.defaultLocale);
-		rootStore.setInstanceId(fetchedSettings.instanceId);
-
-		if (fetchedSettings.telemetry.enabled) {
-			void eventsApi.sessionStarted(rootStore.restApiContext);
-		}
-	};
-
 	const getSettings = async () => {
 		const rootStore = useRootStore();
 		const fetchedSettings = await settingsApi.getSettings(rootStore.restApiContext);
 
+		setSettings(fetchedSettings);
+
 		if (fetchedSettings.settingsMode === 'public') {
 			// public settings mode is typically used for unauthenticated users
-			// when public settings are returned only critical setup is needed
-			setPublicSettings(fetchedSettings);
+			// when public settings are returned we can skip the rest of the setup
+			// that need the full set of auntenticated settings
 			return;
 		}
 
-		setSettings(fetchedSettings);
 		settings.value.communityNodesEnabled = fetchedSettings.communityNodesEnabled;
 		settings.value.unverifiedCommunityNodesEnabled =
 			fetchedSettings.unverifiedCommunityNodesEnabled;
