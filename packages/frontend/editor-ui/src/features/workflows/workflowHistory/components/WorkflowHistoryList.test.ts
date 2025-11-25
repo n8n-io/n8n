@@ -186,7 +186,7 @@ describe('WorkflowHistoryList', () => {
 			props: {
 				items,
 				actions,
-				activeItem: items[0],
+				selectedItem: items[0],
 				requestNumberOfItems: 20,
 				lastReceivedItemsLength: 20,
 				evaluatedPruneDays: 1,

@@ -278,7 +278,7 @@ const isDraftPublishEnabled = computed(() => {
 });
 
 const isWorkflowPublished = computed(() => {
-	return props.data.activeVersionId != null;
+	return props.data.activeVersionId !== null;
 });
 
 async function onClick(event?: KeyboardEvent | PointerEvent) {
