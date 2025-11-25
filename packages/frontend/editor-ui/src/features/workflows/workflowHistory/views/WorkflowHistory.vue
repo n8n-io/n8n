@@ -33,6 +33,8 @@ import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -67,7 +69,7 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowActivate = useWorkflowActivate();
-
+const envFeatureFlag = useEnvFeatureFlag();
 const canRender = ref(true);
 const isListLoading = ref(true);
 const requestNumberOfItems = ref(20);
@@ -91,6 +93,10 @@ const workflowPermissions = computed(
 const workflowActiveVersionId = computed(() => {
 	return workflowsStore.getWorkflowById(workflowId.value)?.activeVersion?.versionId;
 });
+
+const isDraftPublishEnabled = computed(() =>
+	envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG),
+);
 
 const actions = computed<Array<UserAction<IUser>>>(() =>
 	workflowHistoryActionTypes.map((value) => ({
@@ -245,14 +251,21 @@ const restoreWorkflowVersion = async (
 	data: { formattedCreatedAt: string },
 ) => {
 	const workflow = await workflowsStore.fetchWorkflow(workflowId.value);
-	const modalAction = await openRestorationModal(workflow.active, data.formattedCreatedAt);
-	if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
-		return;
+	let deactivateAndRestore = false;
+
+	if (!isDraftPublishEnabled.value) {
+		const modalAction = await openRestorationModal(workflow.active, data.formattedCreatedAt);
+		if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
+			return;
+		}
+		deactivateAndRestore =
+			modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore;
 	}
+
 	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
 		workflowId.value,
 		id,
-		modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore,
+		deactivateAndRestore,
 	);
 	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, {
 		take: 1,
