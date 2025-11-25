@@ -31,7 +31,8 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 
 	@OneToOne('User', {
 		onDelete: 'SET NULL',
+		nullable: true,
 	})
 	@JoinColumn({ name: 'userId', referencedColumnName: 'id' })
-	user?: User;
+	user: User | null;
 }
