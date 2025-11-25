@@ -98,6 +98,8 @@ export abstract class BaseCommand<F = never> {
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
+
+		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).init();
 
 		await this.dbConnection
