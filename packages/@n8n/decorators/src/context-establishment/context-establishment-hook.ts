@@ -1,5 +1,11 @@
 import type { Constructable } from '@n8n/di';
-import type { INode, INodeExecutionData, INodeProperties, PlaintextExecutionContext, Workflow } from 'n8n-workflow';
+import type {
+	INode,
+	INodeExecutionData,
+	INodeProperties,
+	PlaintextExecutionContext,
+	Workflow,
+} from 'n8n-workflow';
 
 /**
  * Input parameters passed to a context establishment hook during execution.
