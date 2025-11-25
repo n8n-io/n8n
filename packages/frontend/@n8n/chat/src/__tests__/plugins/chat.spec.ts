@@ -426,12 +426,14 @@ describe('ChatPlugin', () => {
 
 		it('should reset session', () => {
 			chatStore.messages.value = [{ id: '1', text: 'test', sender: 'user' }];
+			chatStore.waitingForResponse.value = true;
 			const oldSessionId = 'old-id';
 			chatStore.currentSessionId.value = oldSessionId;
 
 			chatStore.resetSession?.();
 
 			expect(chatStore.messages.value).toHaveLength(0);
+			expect(chatStore.waitingForResponse.value).toBe(false);
 			expect(chatStore.currentSessionId.value).not.toBe(oldSessionId);
 			expect(chatStore.currentSessionId.value).toMatch(
 				/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,

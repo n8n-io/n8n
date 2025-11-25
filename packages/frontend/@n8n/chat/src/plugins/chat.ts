@@ -299,6 +299,7 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 
 		function resetSession() {
 			messages.value = [];
+			waitingForResponse.value = false;
 			currentSessionId.value = uuidv4();
 			localStorage.setItem(localStorageSessionIdKey, currentSessionId.value);
 		}
