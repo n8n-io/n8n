@@ -43,8 +43,10 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 
 	async getPublishedVersions(workflowId: string, includeUser?: boolean) {
 		const select: Array<keyof WorkflowPublishHistory> = ['versionId', 'createdAt'];
+		let relations = {};
 		if (includeUser) {
 			select.push('user');
+			relations = { user: true };
 		}
 		const result = await this.find({
 			select,
@@ -53,6 +55,7 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 				status: 'activated',
 				mode: Or(Equal('activate'), Equal('update')),
 			},
+			relations,
 		});
 
 		return result;
