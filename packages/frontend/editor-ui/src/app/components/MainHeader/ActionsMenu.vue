@@ -352,33 +352,23 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 				return;
 			}
 
-			const buttons = [
-				{
-					text: locale.baseText('workflowHistory.action.unpublish.modal.button.cancel'),
-					type: 'tertiary',
-					action: () => {},
-				},
-				{
-					text: locale.baseText('workflowHistory.action.unpublish.modal.button.unpublish'),
-					type: 'primary',
-					action: async () => {
-						const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
-						if (success) {
-							toast.showMessage({
-								title: locale.baseText('workflowHistory.action.unpublish.success.title'),
-								type: 'success',
-							});
-						}
-					},
-				},
-			];
+			const unpublishEventBus = createEventBus();
+			unpublishEventBus.once('unpublish', async () => {
+				const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
+				uiStore.closeModal(WORKFLOW_HISTORY_VERSION_UNPUBLISH);
+				if (success) {
+					toast.showMessage({
+						title: locale.baseText('workflowHistory.action.unpublish.success.title'),
+						type: 'success',
+					});
+				}
+			});
 
 			uiStore.openModalWithData({
 				name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 				data: {
 					versionName: activeVersion.value.name,
-					beforeClose: () => {},
-					buttons,
+					eventBus: unpublishEventBus,
 				},
 			});
 			break;

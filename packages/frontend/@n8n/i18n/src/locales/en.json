@@ -3068,7 +3068,7 @@
 	"workflowHistory.item.publishedAtLabel": "Published:",
 	"workflowHistory.item.actions.restore": "Restore this version",
 	"workflowHistory.item.actions.publish": "Publish this version",
-	"workflowHistory.item.actions.unpublish": "Unpublish workflow",
+	"workflowHistory.item.actions.unpublish": "Un-publish workflow",
 	"workflowHistory.item.actions.clone": "Clone to new workflow",
 	"workflowHistory.item.actions.open": "Open version in new tab",
 	"workflowHistory.item.actions.download": "Download",
