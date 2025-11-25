@@ -172,6 +172,7 @@ describe('LogStreamingEventRelay', () => {
 				id: 'wf202',
 				name: 'Test Workflow',
 				active: true,
+				activeVersionId: 'some-version-id',
 				nodes: [],
 				connections: {},
 				staticData: undefined,
@@ -608,6 +609,7 @@ describe('LogStreamingEventRelay', () => {
 				id: 'wf303',
 				name: 'Test Workflow with Nodes',
 				active: true,
+				activeVersionId: 'some-version-id',
 				nodes: [
 					{
 						id: 'node1',
@@ -656,6 +658,7 @@ describe('LogStreamingEventRelay', () => {
 				id: 'wf404',
 				name: 'Test Workflow with Completed Node',
 				active: true,
+				activeVersionId: 'some-version-id',
 				nodes: [
 					{
 						id: 'node1',

@@ -8,6 +8,7 @@ import lang from 'element-plus/dist/locale/en.mjs';
 import { N8nPlugin } from '../src/plugin';
 
 import './storybook.scss';
+import { allModes } from './modes';
 // import '../src/css/tailwind/index.css';
 
 setup((app) => {
@@ -47,7 +48,13 @@ export const parameters = {
 		],
 	},
 	themes: {
+		default: 'light',
 		list: [
+			{
+				name: 'light',
+				class: 'theme-light',
+				color: '#fff',
+			},
 			{
 				name: 'dark',
 				class: 'theme-dark-beta',
@@ -65,6 +72,13 @@ export const parameters = {
 				'Modules',
 			],
 		},
+	},
+	chromatic: {
+		modes: {
+			light: allModes['light'],
+			dark: allModes['dark'],
+		},
+		disableSnapshot: false,
 	},
 };
 

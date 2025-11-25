@@ -1,5 +1,8 @@
 import { LOCAL_STORAGE_CHAT_HUB_CREDENTIALS } from '@/app/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { credentialsMapSchema, type CredentialsMap } from '@/features/ai/chatHub/chat.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import {
 	chatHubProviderSchema,
@@ -7,7 +10,8 @@ import {
 	type ChatHubProvider,
 } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
+import { isLlmProvider } from '../chat.utils';
 
 /**
  * Composable for managing chat credentials including auto-selection and user selection.
@@ -15,6 +19,9 @@ import { computed, onMounted, ref } from 'vue';
 export function useChatCredentials(userId: string) {
 	const isInitialized = ref(false);
 	const credentialsStore = useCredentialsStore();
+	const settingsStore = useSettingsStore();
+	const projectStore = useProjectsStore();
+
 	const selectedCredentials = useLocalStorage<CredentialsMap>(
 		LOCAL_STORAGE_CHAT_HUB_CREDENTIALS(userId),
 		{},
@@ -34,23 +41,38 @@ export function useChatCredentials(userId: string) {
 		},
 	);
 
+	const isCredentialsReady = computed(
+		() => isInitialized.value || credentialsStore.allCredentials.length > 0,
+	);
+
 	const autoSelectCredentials = computed<CredentialsMap>(() =>
 		Object.fromEntries(
 			chatHubProviderSchema.options.map((provider) => {
-				if (provider === 'n8n' || provider === 'custom-agent') {
+				if (!isLlmProvider(provider)) {
 					return [provider, null];
 				}
 
 				const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
-
 				if (!credentialType) {
 					return [provider, null];
 				}
 
+				const availableCredentials = credentialsStore.getCredentialsByType(credentialType);
+
+				const settings = settingsStore.moduleSettings?.['chat-hub']?.providers[provider];
+
+				// Use default credential from settings if available to the user
+				if (
+					settings?.credentialId &&
+					availableCredentials.some((c) => c.id === settings.credentialId)
+				) {
+					return [provider, settings.credentialId];
+				}
+
 				const lastCreatedCredential =
-					credentialsStore
-						.getCredentialsByType(credentialType)
-						.toSorted((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))[0]?.id ?? null;
+					availableCredentials.toSorted(
+						(a, b) => +new Date(b.createdAt) - +new Date(a.createdAt),
+					)[0]?.id ?? null;
 
 				return [provider, lastCreatedCredential];
 			}),
@@ -58,7 +80,7 @@ export function useChatCredentials(userId: string) {
 	);
 
 	const credentialsByProvider = computed<CredentialsMap | null>(() =>
-		isInitialized.value
+		isCredentialsReady.value
 			? {
 					...autoSelectCredentials.value,
 					...selectedCredentials.value,
@@ -70,13 +92,27 @@ export function useChatCredentials(userId: string) {
 		selectedCredentials.value = { ...selectedCredentials.value, [provider]: id };
 	}
 
-	onMounted(async () => {
-		await Promise.all([
-			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchAllCredentials(),
-		]);
-		isInitialized.value = true;
-	});
+	watch(
+		() => projectStore.personalProject,
+		async (personalProject) => {
+			if (personalProject) {
+				const hasGlobalCredentialRead = hasPermission(['rbac'], {
+					rbac: { scope: 'credential:read' },
+				});
+
+				await Promise.all([
+					credentialsStore.fetchCredentialTypes(false),
+					// For non-owner users only fetch credentials from personal project.
+					hasGlobalCredentialRead
+						? credentialsStore.fetchAllCredentials()
+						: credentialsStore.fetchAllCredentials(personalProject.id),
+				]);
+
+				isInitialized.value = true;
+			}
+		},
+		{ immediate: true },
+	);
 
 	return { credentialsByProvider, selectCredential };
 }
