@@ -8,7 +8,7 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 			.withColumns(
 				column('id').int.primary.autoGenerate2,
 				column('workflowId').varchar(36).notNull,
-				column('versionId').varchar(36).notNull,
+				column('versionId').varchar(36),
 				column('status').varchar(36).notNull,
 				column('mode').varchar(36),
 				column('userId').uuid,
