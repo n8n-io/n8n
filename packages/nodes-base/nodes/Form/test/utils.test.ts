@@ -1438,7 +1438,6 @@ describe('prepareFormReturnItem', () => {
 
 		expect(DateTime.fromFormat).not.toHaveBeenCalled();
 		expect(result.json['Date Field']).toBe('2023-04-01');
-		expect(DateTime.fromFormat).toHaveBeenCalledWith('2023-04-01', 'yyyy-mm-dd');
 	});
 
 	it('should handle multiselect fields', async () => {

@@ -75,6 +75,7 @@ services:
     environment:
       - N8N_RUNNERS_TASK_BROKER_URI=http://n8n_worker1:5679
       - N8N_RUNNERS_AUTH_TOKEN=test
+      - NO_COLOR=1
     depends_on:
       n8n_worker1:
         condition: service_healthy
@@ -125,6 +126,7 @@ services:
     environment:
       - N8N_RUNNERS_TASK_BROKER_URI=http://n8n_worker2:5679
       - N8N_RUNNERS_AUTH_TOKEN=test
+      - NO_COLOR=1
     depends_on:
       n8n_worker2:
         condition: service_healthy

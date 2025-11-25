@@ -364,6 +364,9 @@ export function useCanvasMapping({
 		}, {}),
 	);
 
+	// Create a map for O(1) node lookups by name
+	const nodesByName = computed(() => new Map(nodes.value.map((n) => [n.name, n])));
+
 	const nodeExecutionRunDataOutputMapById = ref<Record<string, ExecutionOutputMap>>({});
 
 	throttledWatch(
@@ -388,12 +391,61 @@ export function useCanvasMapping({
 
 							acc[nodeId][connectionType][outputIndex] = acc[nodeId][connectionType][
 								outputIndex
-							] ?? { ...outputData };
+							] ?? {
+								...outputData,
+								...(connectionType !== NodeConnectionTypes.Main ? { byTarget: {} } : {}),
+							};
+							// For non-main connections, check if items are wrapped in a response field
+							// (common for AI nodes like embeddings, tools, etc.)
+							// Note: We check only the first item assuming uniform structure across all items
+							let itemCount = connectionTypeOutputIndexData.length;
+							if (
+								connectionType !== NodeConnectionTypes.Main &&
+								connectionTypeOutputIndexData.length > 0
+							) {
+								const firstItem = connectionTypeOutputIndexData[0];
+								// AI nodes typically wrap all items uniformly in response field
+								if (
+									firstItem?.json &&
+									typeof firstItem.json === 'object' &&
+									'response' in firstItem.json &&
+									Array.isArray(firstItem.json.response)
+								) {
+									// Use response array length for all items (assuming uniform structure)
+									itemCount = firstItem.json.response.length;
+								}
+							}
+
 							if (runIteration.executionStatus !== 'canceled') {
 								acc[nodeId][connectionType][outputIndex].iterations += 1;
 							}
-							acc[nodeId][connectionType][outputIndex].total +=
-								connectionTypeOutputIndexData.length;
+							acc[nodeId][connectionType][outputIndex].total += itemCount;
+
+							// For non-main connections, track per-target execution counts
+							if (connectionType !== NodeConnectionTypes.Main) {
+								const callingNodeName = runIteration.source?.[0]?.previousNode;
+								if (callingNodeName) {
+									const callingNode = nodesByName.value.get(callingNodeName);
+									if (callingNode) {
+										const targetId = callingNode.id;
+										const outputEntry = acc[nodeId][connectionType][outputIndex];
+
+										if (outputEntry.byTarget) {
+											if (!outputEntry.byTarget[targetId]) {
+												outputEntry.byTarget[targetId] = {
+													total: 0,
+													iterations: 0,
+												};
+											}
+
+											if (runIteration.executionStatus !== 'canceled') {
+												outputEntry.byTarget[targetId].iterations += 1;
+											}
+											outputEntry.byTarget[targetId].total += itemCount;
+										}
+									}
+								}
+							}
 						}
 					}
 				}
@@ -711,7 +763,14 @@ export function useCanvasMapping({
 		} else if (nodeHasIssuesById.value[connection.source]) {
 			status = 'error';
 		} else if (runDataTotal > 0 && lastSourceTask?.executionStatus !== 'canceled') {
-			status = 'success';
+			// For non-main connections (model, memory, tool, etc.), only mark as executed
+			// if the target node also executed, since these are passive connections
+			const isMainConnection = type === NodeConnectionTypes.Main;
+			const targetNodeHasAnyExecution = nodeExecutionRunDataById.value[connection.target];
+
+			if (isMainConnection || targetNodeHasAnyExecution) {
+				status = 'success';
+			}
 		}
 
 		const maxConnections = [
@@ -754,13 +813,36 @@ export function useCanvasMapping({
 				: '';
 		} else if (nodeExecutionRunDataById.value[fromNode.id]) {
 			const { type, index } = parseCanvasConnectionHandleString(connection.sourceHandle);
-			const runDataTotal =
-				nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.total ?? 0;
-			const hasMultipleRunDataIterations =
-				(nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index]?.iterations ?? 1) >
-				1;
+			const outputData = nodeExecutionRunDataOutputMapById.value[fromNode.id]?.[type]?.[index];
 
-			return runDataTotal > 0
+			// For non-main connections, use per-target data if available
+			const isMainConnection = type === NodeConnectionTypes.Main;
+			const targetHasExecutionData = nodeExecutionRunDataById.value[connection.target];
+
+			if (!isMainConnection && outputData?.byTarget) {
+				// Look up the target node to get per-connection counts
+				const targetNodeId = connection.target;
+				const targetData = outputData.byTarget[targetNodeId];
+
+				if (targetData && targetData.total > 0 && targetHasExecutionData) {
+					return i18n.baseText(
+						targetData.iterations > 1 ? 'ndv.output.itemsTotal' : 'ndv.output.items',
+						{
+							adjustToNumber: targetData.total,
+							interpolate: { count: String(targetData.total) },
+						},
+					);
+				}
+
+				// Target hasn't executed, show no label
+				return '';
+			}
+
+			// For main connections, use aggregate counts
+			const runDataTotal = outputData?.total ?? 0;
+			const hasMultipleRunDataIterations = (outputData?.iterations ?? 1) > 1;
+
+			return runDataTotal > 0 && (isMainConnection || targetHasExecutionData)
 				? i18n.baseText(
 						hasMultipleRunDataIterations ? 'ndv.output.itemsTotal' : 'ndv.output.items',
 						{
