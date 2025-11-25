@@ -14,7 +14,7 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	@Index()
 	workflowId: string;
 
-	@Column({ type: 'varchar' })
+	@Column({ type: 'varchar', nullable: true })
 	versionId: string | null;
 
 	@Column()
@@ -26,12 +26,12 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	@Column({ type: 'varchar' })
 	mode: WorkflowActivateMode | 'deactivate' | null;
 
-	@Column({ type: 'varchar' })
+	@Column({ type: 'varchar', nullable: true })
 	userId: string | null;
 
-	@OneToOne('User', 'id', {
+	@OneToOne('User', {
 		onDelete: 'SET NULL',
 	})
-	@JoinColumn({ name: 'userId' })
+	@JoinColumn({ name: 'userId', referencedColumnName: 'id' })
 	user?: User;
 }
