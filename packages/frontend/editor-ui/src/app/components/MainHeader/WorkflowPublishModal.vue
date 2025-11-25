@@ -9,7 +9,8 @@ import {
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
-import { N8nHeading, N8nCallout, N8nInput, N8nButton, N8nInputLabel } from '@n8n/design-system';
+import { N8nHeading, N8nCallout, N8nButton } from '@n8n/design-system';
+import WorkflowPublishForm from '@/app/components/WorkflowPublishForm.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useToast } from '@/app/composables/useToast';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
@@ -270,38 +271,13 @@ async function handlePublish() {
 						})
 					}}
 				</N8nCallout>
-				<div :class="$style.inputButtonContainer">
-					<N8nInputLabel
-						input-name="workflow-version-name"
-						:label="i18n.baseText('workflows.publishModal.versionNameLabel' as any)"
-						:required="true"
-						:class="$style.versionNameInput"
-					>
-						<N8nInput
-							id="workflow-version-name"
-							v-model="versionName"
-							:disabled="inputsDisabled"
-							size="large"
-							data-test-id="workflow-publish-version-name-input"
-						/>
-					</N8nInputLabel>
-				</div>
-				<div :class="$style.descriptionContainer">
-					<N8nInputLabel
-						input-name="workflow-version-description"
-						:label="i18n.baseText('workflows.publishModal.descriptionPlaceholder')"
-					>
-						<N8nInput
-							id="workflow-version-description"
-							v-model="description"
-							type="textarea"
-							:rows="4"
-							:disabled="inputsDisabled"
-							size="large"
-							data-test-id="workflow-publish-description-input"
-						/>
-					</N8nInputLabel>
-				</div>
+				<WorkflowPublishForm
+					v-model:version-name="versionName"
+					v-model:description="description"
+					:disabled="inputsDisabled"
+					version-name-test-id="workflow-publish-version-name-input"
+					description-test-id="workflow-publish-description-input"
+				/>
 				<div :class="$style.actions">
 					<N8nButton
 						type="secondary"
@@ -328,22 +304,9 @@ async function handlePublish() {
 	gap: var(--spacing--lg);
 }
 
-.inputButtonContainer {
-	display: flex;
-	gap: var(--spacing--xs);
-}
-
-.descriptionContainer {
-	width: 100%;
-}
-
 .actions {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
-}
-
-.versionNameInput {
-	width: 100%;
 }
 </style>
