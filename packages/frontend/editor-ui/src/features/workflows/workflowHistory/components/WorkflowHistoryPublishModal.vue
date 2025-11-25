@@ -6,7 +6,7 @@ import { WORKFLOW_HISTORY_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import { generateVersionName } from '@/features/workflows/workflowHistory/utils';
 
 const props = defineProps<{
@@ -25,8 +25,14 @@ const i18n = useI18n();
 const eventBus = createEventBus();
 const workflowActivate = useWorkflowActivate();
 
+const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('publishForm');
+
 const versionName = ref('');
 const description = ref('');
+
+function onModalOpened() {
+	publishForm.value?.focusInput();
+}
 
 onMounted(() => {
 	// Populate version name from existing data or generate from version ID
@@ -40,6 +46,12 @@ onMounted(() => {
 	if (props.data.description) {
 		description.value = props.data.description;
 	}
+
+	eventBus.on('opened', onModalOpened);
+});
+
+onBeforeUnmount(() => {
+	eventBus.off('opened', onModalOpened);
 });
 
 const isPublishDisabled = ref(false);
@@ -90,6 +102,7 @@ const handlePublish = async () => {
 					{{ i18n.baseText('workflowHistory.publishModal.description') }}
 				</N8nCallout>
 				<WorkflowPublishForm
+					ref="publishForm"
 					v-model:version-name="versionName"
 					v-model:description="description"
 					version-name-test-id="workflow-history-publish-version-name-input"
