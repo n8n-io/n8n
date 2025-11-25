@@ -1106,7 +1106,7 @@ describe('InsightsService (Integration)', () => {
 		});
 	});
 
-	describe('legacy sqlite (without pooling) handles concurrent insights db process without throwing', () => {
+	describe('sqlite handles concurrent insights db process without throwing', () => {
 		let initialFlushBatchSize: number;
 		let insightsConfig: InsightsConfig;
 		beforeAll(() => {

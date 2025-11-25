@@ -247,21 +247,11 @@ export class ProjectService {
 	}
 
 	async createTeamProject(adminUser: User, data: CreateProjectDto): Promise<Project> {
-		if (this.databaseConfig.isLegacySqlite) {
-			// Using transaction in the sqlite legacy driver can cause data loss, so
-			// we avoid this here.
-			return await this.createTeamProjectWithEntityManager(
-				adminUser,
-				data,
-				this.projectRepository.manager,
-			);
-		} else {
-			// This needs to be SERIALIZABLE otherwise the count would not block a
-			// concurrent transaction and we could insert multiple projects.
-			return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
-				return await this.createTeamProjectWithEntityManager(adminUser, data, trx);
-			});
-		}
+		// This needs to be SERIALIZABLE otherwise the count would not block a
+		// concurrent transaction and we could insert multiple projects.
+		return await this.projectRepository.manager.transaction('SERIALIZABLE', async (trx) => {
+			return await this.createTeamProjectWithEntityManager(adminUser, data, trx);
+		});
 	}
 
 	async updateProject(
