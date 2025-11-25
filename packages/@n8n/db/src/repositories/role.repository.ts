@@ -121,10 +121,6 @@ export class RoleRepository extends Repository<Role> {
 		slug: string,
 		newData: Partial<Pick<Role, 'description' | 'scopes' | 'displayName'>>,
 	) {
-		// Do not use transactions for sqlite legacy
-		if (this.databaseConfig.isLegacySqlite) {
-			return await this.updateEntityWithManager(this.manager, slug, newData);
-		}
 		return await this.manager.transaction(async (transactionManager) => {
 			return await this.updateEntityWithManager(transactionManager, slug, newData);
 		});

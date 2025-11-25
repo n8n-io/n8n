@@ -1,5 +1,4 @@
 import { testDb, linkUserToProject, createTeamProject } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import { AuthRolesService, RoleRepository, ScopeRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 
@@ -268,12 +267,6 @@ describe('RoleRepository', () => {
 				//
 				// ARRANGE
 				//
-				const { type: dbType, sqlite: sqliteConfig } = Container.get(GlobalConfig).database;
-				// Skip this test for legacy SQLite
-				if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
-					return;
-				}
-
 				await createRole({
 					slug: 'role-for-transaction-test',
 					displayName: 'Original Name',
@@ -305,12 +298,6 @@ describe('RoleRepository', () => {
 				//
 				// ARRANGE
 				//
-				const { type: dbType, sqlite: sqliteConfig } = Container.get(GlobalConfig).database;
-				// Only run this test for legacy SQLite
-				if (dbType !== 'sqlite' || sqliteConfig.poolSize !== 0) {
-					return;
-				}
-
 				await createRole({
 					slug: 'role-for-legacy-test',
 					displayName: 'Original Name',

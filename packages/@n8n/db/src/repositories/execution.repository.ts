@@ -240,7 +240,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			new UnexpectedError('Found executions without executionData', {
 				extra: {
 					executionIds: executions.map(({ id }) => id),
-					isLegacySqlite: this.globalConfig.database.isLegacySqlite,
 				},
 			}),
 		);
@@ -361,29 +360,19 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		const workflowData = { connections, nodes, name, settings, id: currentWorkflow.id };
 		const data = stringify(dataObj);
 
-		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
-		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
-			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
-			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
-			const { identifiers: inserted } = await this.insert({ ...rest, createdAt: new Date() });
-			const { id: executionId } = inserted[0] as { id: string };
-			await this.executionDataRepository.insert({ executionId, workflowData, data });
-			return String(executionId);
-		} else {
-			// All other database drivers should create executions and execution-data atomically
-			return await this.manager.transaction(async (transactionManager) => {
-				const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
-					...rest,
-					createdAt: new Date(),
-				});
-				const { id: executionId } = inserted[0] as { id: string };
-				await this.executionDataRepository.createExecutionDataForExecution(
-					{ executionId, workflowData, data },
-					transactionManager,
-				);
-				return String(executionId);
+		// All other database drivers should create executions and execution-data atomically
+		return await this.manager.transaction(async (transactionManager) => {
+			const { identifiers: inserted } = await transactionManager.insert(ExecutionEntity, {
+				...rest,
+				createdAt: new Date(),
 			});
-		}
+			const { id: executionId } = inserted[0] as { id: string };
+			await this.executionDataRepository.createExecutionDataForExecution(
+				{ executionId, workflowData, data },
+				transactionManager,
+			);
+			return String(executionId);
+		});
 	}
 
 	async markAsCrashed(executionIds: string | string[]) {
@@ -439,23 +428,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		if (workflowData) executionData.workflowData = workflowData;
 		if (data) executionData.data = stringify(data);
-
-		const { type: dbType, sqlite: sqliteConfig } = this.globalConfig.database;
-
-		if (dbType === 'sqlite' && sqliteConfig.poolSize === 0) {
-			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
-			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
-
-			if (Object.keys(executionInformation).length > 0) {
-				await this.update({ id: executionId }, executionInformation);
-			}
-
-			if (Object.keys(executionData).length > 0) {
-				await this.executionDataRepository.update({ executionId }, executionData);
-			}
-
-			return;
-		}
 
 		// All other database drivers should update executions and execution-data atomically
 

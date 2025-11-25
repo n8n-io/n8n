@@ -1,39 +1,51 @@
 import { Container } from '@n8n/di';
 
-import { DatabaseConfig } from '../database.config';
+import { SqliteConfig } from '../database.config';
 
-describe('DatabaseConfig', () => {
+describe('SqliteConfig', () => {
 	beforeEach(() => {
 		Container.reset();
 		jest.clearAllMocks();
 	});
 
-	test('`isLegacySqlite` defaults to true', () => {
-		const databaseConfig = Container.get(DatabaseConfig);
-		expect(databaseConfig.isLegacySqlite).toBe(true);
-	});
+	describe('poolSize validation', () => {
+		test('should accept pool size greater than 1', () => {
+			const config = Container.get(SqliteConfig);
+			expect(() => {
+				config.poolSize = 2;
+			}).not.toThrow();
+			expect(config.poolSize).toBe(2);
+		});
 
-	test.each(['mariadb', 'mysqldb', 'postgresdb'] satisfies Array<DatabaseConfig['type']>)(
-		'`isLegacySqlite` returns false if dbType is `%s`',
-		(dbType) => {
-			const databaseConfig = Container.get(DatabaseConfig);
-			databaseConfig.sqlite.poolSize = 0;
-			databaseConfig.type = dbType;
-			expect(databaseConfig.isLegacySqlite).toBe(false);
-		},
-	);
+		test('should accept pool size of 3 (default)', () => {
+			const config = Container.get(SqliteConfig);
+			expect(config.poolSize).toBe(3);
+		});
 
-	test('`isLegacySqlite` returns false if dbType is `sqlite` and `poolSize` > 0', () => {
-		const databaseConfig = Container.get(DatabaseConfig);
-		databaseConfig.sqlite.poolSize = 1;
-		databaseConfig.type = 'sqlite';
-		expect(databaseConfig.isLegacySqlite).toBe(false);
-	});
+		test('should accept pool size of 1', () => {
+			const config = Container.get(SqliteConfig);
+			expect(config.poolSize).toBe(1);
+		});
 
-	test('`isLegacySqlite` returns true if dbType is `sqlite` and `poolSize` is 0', () => {
-		const databaseConfig = Container.get(DatabaseConfig);
-		databaseConfig.sqlite.poolSize = 0;
-		databaseConfig.type = 'sqlite';
-		expect(databaseConfig.isLegacySqlite).toBe(true);
+		test('should reject pool size of 0', () => {
+			const config = Container.get(SqliteConfig);
+			expect(() => {
+				config.poolSize = 0;
+			}).toThrow();
+		});
+
+		test('should reject negative pool size', () => {
+			const config = Container.get(SqliteConfig);
+			expect(() => {
+				config.poolSize = -1;
+			}).toThrow();
+		});
+
+		test('should reject non-integer pool size', () => {
+			const config = Container.get(SqliteConfig);
+			expect(() => {
+				config.poolSize = 2.5;
+			}).toThrow();
+		});
 	});
 });

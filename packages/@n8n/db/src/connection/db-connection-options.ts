@@ -85,22 +85,14 @@ export class DbConnectionOptions {
 			migrations: sqliteMigrations,
 		};
 
-		if (sqliteConfig.poolSize > 0) {
-			return {
-				type: 'sqlite-pooled',
-				poolSize: sqliteConfig.poolSize,
-				enableWAL: true,
-				acquireTimeout: 60_000,
-				destroyTimeout: 5_000,
-				...commonOptions,
-			};
-		} else {
-			return {
-				type: 'sqlite',
-				enableWAL: sqliteConfig.enableWAL,
-				...commonOptions,
-			};
-		}
+		return {
+			type: 'sqlite-pooled',
+			poolSize: sqliteConfig.poolSize,
+			enableWAL: true,
+			acquireTimeout: 60_000,
+			destroyTimeout: 5_000,
+			...commonOptions,
+		};
 	}
 
 	private getPostgresConnectionOptions(): PostgresConnectionOptions {
