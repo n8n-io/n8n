@@ -19,8 +19,12 @@ import type {
 	IWorkflowBase,
 	IRunData,
 } from 'n8n-workflow';
-import { SubworkflowOperationError, Workflow, createRunExecutionData } from 'n8n-workflow';
-import * as a from 'node:assert/strict';
+import {
+	SubworkflowOperationError,
+	UnexpectedError,
+	Workflow,
+	createRunExecutionData,
+} from 'n8n-workflow';
 
 import { ExecutionDataService } from '@/executions/execution-data.service';
 import { SubworkflowPolicyChecker } from '@/executions/pre-execution-checks';
@@ -293,7 +297,9 @@ export class WorkflowExecutionService {
 			return { executionId };
 		}
 
-		a.fail('should never happen');
+		throw new UnexpectedError('`executeManually` was called with an unexpected payload', {
+			extra: { payload },
+		});
 	}
 
 	async executeChatWorkflow(
