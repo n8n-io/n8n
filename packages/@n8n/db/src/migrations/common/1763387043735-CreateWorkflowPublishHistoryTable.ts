@@ -3,7 +3,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 const workflowPublishHistoryTableName = 'workflow_publish_history';
 
 export class CreateWorkflowPublishHistoryTable1763387043735 implements ReversibleMigration {
-	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
+	async up({ schemaBuilder: { createTable, column }, escape, runQuery }: MigrationContext) {
 		await createTable(workflowPublishHistoryTableName)
 			.withColumns(
 				column('id').int.primary.autoGenerate2,
@@ -30,6 +30,20 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			});
+
+		const workflowEntityTableName = escape.tableName('workflow_entity');
+		const activeWorkflows = await runQuery<Array<{ id: string; activeVersionId: string }>>(
+			`SELECT we.id, we.activeVersionId FROM ${workflowEntityTableName} we WHERE we.activeVersionId IS NOT NULL;`,
+		);
+
+		if (activeWorkflows.length > 0) {
+			const values = activeWorkflows
+				.map(({ id, activeVersionId }) => `('${id}', '${activeVersionId}', 'activated', 'init')`)
+				.join(',');
+			await runQuery(
+				`INSERT INTO ${workflowPublishHistoryTableName} (workflowId, versionId, status, mode) VALUES ${values};`,
+			);
+		}
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {
