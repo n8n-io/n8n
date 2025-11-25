@@ -196,7 +196,7 @@ export async function extractDataFromPDF(
 		numpages: document.numPages,
 		numrender: document.numPages,
 		info,
-		metadata: (metadata && Object.fromEntries([...metadata])) ?? undefined,
+		metadata: (metadata && Object.fromEntries([...metadata])) ?? null,
 		text,
 		version: pdfJsVersion,
 	};

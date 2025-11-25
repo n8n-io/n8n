@@ -306,15 +306,34 @@ export class NodeTestHarness {
 		// check if result node data matches expected test data
 		const resultNodeData = this.getResultNodeData(result, testData);
 		resultNodeData.forEach(({ nodeName, resultData }) => {
-			resultData.forEach((items) => {
-				items?.forEach((item) => {
+			resultData.forEach((items, runIndex) => {
+				items?.forEach((item, itemIndex) => {
 					const { binary, json } = item;
 					if (binary) {
 						if (!output.assertBinaryData) {
 							delete item.binary;
 						} else {
+							// Get expected data for this specific item to check which fields to keep
+							const expectedRuns = output.nodeData[nodeName];
+							const expectedItem = expectedRuns?.[runIndex]?.[itemIndex];
+							const expectedBinary = expectedItem?.binary;
+
 							for (const key in binary) {
 								delete binary[key].directory;
+
+								// Only delete path/origin if they're not in the expected output
+								if (expectedBinary?.[key]) {
+									if (!('path' in expectedBinary[key])) {
+										delete binary[key].path;
+									}
+									if (!('origin' in expectedBinary[key])) {
+										delete binary[key].origin;
+									}
+								} else {
+									// If no expected binary for comparison, remove path/origin
+									delete binary[key].path;
+									delete binary[key].origin;
+								}
 							}
 						}
 					}
