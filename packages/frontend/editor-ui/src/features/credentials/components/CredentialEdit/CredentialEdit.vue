@@ -1,10 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, useTemplateRef } from 'vue';
 
-import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 import type { IUpdateInformation } from '@/Interface';
+import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
 
-import CredentialIcon from '../CredentialIcon.vue';
 import type {
 	CredentialInformation,
 	ICredentialDataDecryptedObject,
@@ -14,7 +13,8 @@ import type {
 	INodeProperties,
 	ITelemetryTrackProperties,
 } from 'n8n-workflow';
-import { NodeHelpers } from 'n8n-workflow';
+import { deepCopy, NodeHelpers } from 'n8n-workflow';
+import CredentialIcon from '../CredentialIcon.vue';
 
 import CredentialConfig from './CredentialConfig.vue';
 import CredentialInfo from './CredentialInfo.vue';
@@ -25,7 +25,11 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useToast } from '@/app/composables/useToast';
 import { CREDENTIAL_EDIT_MODAL_KEY } from '../../credentials.constants';
-import { EnterpriseEditionFeature, MODAL_CONFIRM } from '@/app/constants';
+import {
+	EnterpriseEditionFeature,
+	MODAL_CONFIRM,
+	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+} from '@/app/constants';
 import { useCredentialsStore } from '../../credentials.store';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -40,6 +44,8 @@ import { createEventBus } from '@n8n/utils/event-bus';
 import { useExternalHooks } from '@/app/composables/useExternalHooks';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { sendUserEvent, type DynamicNotification } from '@n8n/rest-api-client/api/cloudPlans';
 import { isExpression, isTestableExpression } from '@/app/utils/expressions';
 import {
 	getNodeAuthOptions,
@@ -59,6 +65,8 @@ import {
 	type IMenuItem,
 } from '@n8n/design-system';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
+import { setParameterValue } from '@/app/utils/parameterUtils';
+import get from 'lodash/get';
 
 type Props = {
 	modalName: string;
@@ -84,6 +92,7 @@ const message = useMessage();
 const i18n = useI18n();
 const telemetry = useTelemetry();
 const router = useRouter();
+const rootStore = useRootStore();
 
 const activeTab = ref('connection');
 const authError = ref('');
@@ -106,6 +115,7 @@ const hasUserSpecifiedName = ref(false);
 const isSharedWithChanged = ref(false);
 const requiredCredentials = ref(false); // Are credentials required or optional for the node
 const contentRef = ref<HTMLDivElement>();
+const isSharedGlobally = ref(false);
 
 const activeNodeType = computed(() => {
 	const activeNode = ndvStore.activeNode;
@@ -532,6 +542,10 @@ async function loadCurrentCredential() {
 		}
 
 		credentialName.value = currentCredentials.name;
+		isSharedGlobally.value =
+			'isGlobal' in currentCredentials && typeof currentCredentials.isGlobal === 'boolean'
+				? currentCredentials.isGlobal
+				: false;
 	} catch (error) {
 		toast.showError(
 			error,
@@ -567,18 +581,23 @@ function onChangeSharedWith(sharedWithProjects: ProjectSharingData[]) {
 	hasUnsavedChanges.value = true;
 }
 
+function onShareWithAllUsersUpdate(shareWithAllUsers: boolean) {
+	isSharedGlobally.value = shareWithAllUsers;
+	hasUnsavedChanges.value = true;
+}
+
 function onDataChange({ name, value }: IUpdateInformation) {
-	// skip update if new value matches the current
-	if (credentialData.value[name] === value) return;
+	const currentValue = get(credentialData.value, name);
+	if (currentValue === value) {
+		return;
+	}
 
 	hasUnsavedChanges.value = true;
 
 	const { oauthTokenData, ...credData } = credentialData.value;
+	credentialData.value = deepCopy(credData);
 
-	credentialData.value = {
-		...credData,
-		[name]: value as CredentialInformation,
-	};
+	setParameterValue(credentialData.value, name, value);
 }
 
 function closeDialog() {
@@ -694,6 +713,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		name: credentialName.value,
 		type: credentialTypeName.value,
 		data: data as unknown as ICredentialDataDecryptedObject,
+		isGlobal: isSharedGlobally.value,
 	};
 
 	if (
@@ -772,12 +792,46 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 		 */
 		if (!isOAuthType.value) {
 			telemetry.track('User saved credentials', trackProperties);
+			void handleDynamicNotification(!!trackProperties.is_valid);
 		}
 
 		await externalHooks.run('credentialEdit.saveCredential', trackProperties);
 	}
 
 	return credential;
+}
+
+async function handleDynamicNotification(isValid: boolean) {
+	if (!isValid || !settingsStore.isCloudDeployment) {
+		return;
+	}
+
+	try {
+		const response: DynamicNotification = await sendUserEvent(rootStore.restApiContext, {
+			eventType: 'credential-saved',
+			metadata: {
+				credential_type: credentialTypeName.value,
+			},
+		});
+
+		if (response.title && response.message) {
+			setTimeout(async () => {
+				try {
+					await message.confirm(response.message, response.title, {
+						confirmButtonText: i18n.baseText('generic.keepBuilding'),
+						cancelButtonText: '',
+						showCancelButton: false,
+						closeOnClickModal: true,
+						closeOnPressEscape: true,
+					});
+				} catch (error) {
+					// Silently fail
+				}
+			}, 15000);
+		}
+	} catch (error) {
+		// Silently fail
+	}
 }
 
 const createToastMessagingForNewCredentials = (project?: Project | null) => {
@@ -847,7 +901,10 @@ async function createCredential(
 	telemetry.track('User created credentials', {
 		credential_type: credentialDetails.type,
 		credential_id: credential.id,
-		workflow_id: workflowsStore.workflowId,
+		workflow_id:
+			workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
+				? null
+				: workflowsStore.workflowId,
 	});
 
 	return credential;
@@ -997,7 +1054,10 @@ async function oAuthCredentialAuthorize() {
 
 		const trackProperties: ITelemetryTrackProperties = {
 			credential_type: credentialTypeName.value,
-			workflow_id: workflowsStore.workflowId,
+			workflow_id:
+				workflowsStore.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID
+					? null
+					: workflowsStore.workflowId,
 			credential_id: credentialId.value,
 			is_complete: !!requiredPropertiesFilled.value,
 			is_new: props.mode === 'new' && !credentialId.value,
@@ -1010,6 +1070,7 @@ async function oAuthCredentialAuthorize() {
 		}
 
 		telemetry.track('User saved credentials', trackProperties);
+		void handleDynamicNotification(successfullyConnected);
 
 		if (successfullyConnected) {
 			oauthChannel.removeEventListener('message', receiveMessage);
@@ -1102,7 +1163,12 @@ const { width } = useElementSize(credNameRef);
 							:model-value="credentialName"
 							:max-width="width - 10"
 							:readonly="
-								!credentialPermissions.update || !credentialType || isEditingManagedCredential
+								!(
+									(credentialPermissions.create && props.mode === 'new') ||
+									credentialPermissions.update
+								) ||
+								!credentialType ||
+								isEditingManagedCredential
 							"
 							@update:model-value="onNameEdit"
 						/>
@@ -1142,8 +1208,8 @@ const { width } = useElementSize(credNameRef);
 				<div v-if="!isEditingManagedCredential" :class="$style.sidebar">
 					<N8nMenuItem
 						v-for="item in sidebarItems"
-						:item="item"
 						:key="item.id"
+						:item="item"
 						:active="activeTab === item.id"
 						@click="() => onTabSelect(item.id)"
 					/>
@@ -1185,8 +1251,10 @@ const { width } = useElementSize(credNameRef);
 						:credential-data="credentialData"
 						:credential-id="credentialId"
 						:credential-permissions="credentialPermissions"
+						:isSharedGlobally="isSharedGlobally"
 						:modal-bus="modalBus"
 						@update:model-value="onChangeSharedWith"
+						@update:share-with-all-users="onShareWithAllUsersUpdate"
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">

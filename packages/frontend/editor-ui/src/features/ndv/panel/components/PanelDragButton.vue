@@ -75,7 +75,7 @@ const onDragStart = () => {
 	pointer-events: all;
 }
 .dragButton {
-	background-color: var(--color--background);
+	background-color: var(--ndv--header--color);
 	width: 64px;
 	height: 21px;
 	border-top-left-radius: var(--radius);

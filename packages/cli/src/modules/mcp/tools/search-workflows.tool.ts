@@ -26,8 +26,7 @@ const inputSchema = {
 		.max(MAX_RESULTS)
 		.optional()
 		.describe(`Limit the number of results (max ${MAX_RESULTS})`),
-	active: z.boolean().optional().describe('Filter by active status'),
-	name: z.string().optional().describe('Filter by name'),
+	query: z.string().optional().describe('Filter by name or description'),
 	projectId: z.string().optional(),
 } satisfies z.ZodRawShape;
 
@@ -35,13 +34,23 @@ const outputSchema = {
 	data: z
 		.array(
 			z.object({
-				id: z.string(),
-				name: z.string().nullable(),
-				active: z.boolean().nullable(),
-				createdAt: z.string().nullable(),
-				updatedAt: z.string().nullable(),
-				triggerCount: z.number().nullable(),
-				nodes: z.array(nodeSchema),
+				id: z.string().describe('The unique identifier of the workflow'),
+				name: z.string().nullable().describe('The name of the workflow'),
+				description: z.string().nullable().optional().describe('The description of the workflow'),
+				active: z.boolean().nullable().describe('Whether the workflow is active'),
+				createdAt: z
+					.string()
+					.nullable()
+					.describe('The ISO timestamp when the workflow was created'),
+				updatedAt: z
+					.string()
+					.nullable()
+					.describe('The ISO timestamp when the workflow was last updated'),
+				triggerCount: z
+					.number()
+					.nullable()
+					.describe('The number of triggers associated with the workflow'),
+				nodes: z.array(nodeSchema).describe('List of nodes in the workflow'),
 			}),
 		)
 		.describe('List of workflows matching the query'),
@@ -64,9 +73,16 @@ export const createSearchWorkflowsTool = (
 				'Search for workflows with optional filters. Returns a preview of each workflow.',
 			inputSchema,
 			outputSchema,
+			annotations: {
+				title: 'Search Workflows',
+				readOnlyHint: true, // This tool only reads data
+				destructiveHint: false, // No destructive operations
+				idempotentHint: true, // Safe to retry multiple times
+				openWorldHint: false, // Works with internal n8n data only
+			},
 		},
-		handler: async ({ limit = MAX_RESULTS, active, name, projectId }) => {
-			const parameters = { limit, active, name, projectId };
+		handler: async ({ limit = MAX_RESULTS, query, projectId }) => {
+			const parameters = { limit, query, projectId };
 			const telemetryPayload: UserCalledMCPToolEventPayload = {
 				user_id: user.id,
 				tool_name: 'search_workflows',
@@ -76,8 +92,7 @@ export const createSearchWorkflowsTool = (
 			try {
 				const payload: SearchWorkflowsResult = await searchWorkflows(user, workflowService, {
 					limit,
-					active,
-					name,
+					query,
 					projectId,
 				});
 
@@ -116,7 +131,7 @@ export const createSearchWorkflowsTool = (
 export async function searchWorkflows(
 	user: User,
 	workflowService: WorkflowService,
-	{ limit = MAX_RESULTS, active, name, projectId }: SearchWorkflowsParams,
+	{ limit = MAX_RESULTS, query, projectId }: SearchWorkflowsParams,
 ): Promise<SearchWorkflowsResult> {
 	const safeLimit = Math.min(Math.max(1, limit), MAX_RESULTS);
 
@@ -125,13 +140,14 @@ export async function searchWorkflows(
 		filter: {
 			isArchived: false,
 			availableInMCP: true,
-			...(active !== undefined ? { active } : {}),
-			...(name ? { name } : {}),
+			active: true,
+			...(query ? { query } : {}),
 			...(projectId ? { projectId } : {}),
 		},
 		select: {
 			id: true,
 			name: true,
+			description: true,
 			active: true,
 			createdAt: true,
 			updatedAt: true,
@@ -149,10 +165,22 @@ export async function searchWorkflows(
 	);
 
 	const formattedWorkflows: SearchWorkflowsItem[] = (workflows as WorkflowEntity[]).map(
-		({ id, name, active, createdAt, updatedAt, triggerCount, nodes }) => ({
+		({
 			id,
 			name,
+			description,
 			active,
+			activeVersionId,
+			createdAt,
+			updatedAt,
+			triggerCount,
+			nodes,
+		}) => ({
+			id,
+			name,
+			description,
+			active,
+			activeVersionId,
 			createdAt: createdAt.toISOString(),
 			updatedAt: updatedAt.toISOString(),
 			triggerCount,

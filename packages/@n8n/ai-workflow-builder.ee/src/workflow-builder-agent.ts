@@ -3,7 +3,7 @@ import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages
 import type { ToolMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
-import type { MemorySaver } from '@langchain/langgraph';
+import type { MemorySaver, StateSnapshot } from '@langchain/langgraph';
 import { StateGraph, END, GraphRecursionError } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import {
@@ -39,6 +39,13 @@ import { createStreamProcessor, type BuilderTool } from './utils/stream-processo
 import { estimateTokenCountFromMessages } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
+
+/**
+ * Type for the state snapshot with properly typed values
+ */
+export type TypedStateSnapshot = Omit<StateSnapshot, 'values'> & {
+	values: typeof WorkflowState.State;
+};
 
 /**
  * Determines which node to execute next based on the current state.
@@ -78,13 +85,45 @@ export function shouldModifyState(
 		return 'create_workflow_name';
 	}
 
+	const workflowContextToAppend = getWorkflowContext(state);
+
 	// Check if we should auto-compact based on token count
-	const estimatedTokens = estimateTokenCountFromMessages(messages);
+	const estimatedTokens = estimateTokenCountFromMessages([
+		...messages,
+		// appended later to last message
+		new HumanMessage(workflowContextToAppend),
+	]);
 	if (estimatedTokens > autoCompactThresholdTokens) {
 		return 'auto_compact_messages';
 	}
 
 	return 'agent';
+}
+
+function getWorkflowContext(state: typeof WorkflowState.State) {
+	const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
+	const executionData = state.workflowContext?.executionData ?? {};
+	const executionSchema = state.workflowContext?.executionSchema ?? [];
+	const workflowContext = [
+		'',
+		'<current_workflow_json>',
+		JSON.stringify(trimmedWorkflow),
+		'</current_workflow_json>',
+		'<trimmed_workflow_json_note>',
+		'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
+		'Use get_node_parameter tool to get full details when needed.',
+		'</trimmed_workflow_json_note>',
+		'',
+		'<current_simplified_execution_data>',
+		JSON.stringify(executionData),
+		'</current_simplified_execution_data>',
+		'',
+		'<current_execution_nodes_schemas>',
+		JSON.stringify(executionSchema),
+		'</current_execution_nodes_schemas>',
+	].join('\n');
+
+	return workflowContext;
 }
 
 export interface WorkflowBuilderAgentConfig {
@@ -168,9 +207,6 @@ export class WorkflowBuilderAgent {
 			}
 
 			const hasPreviousSummary = state.previousSummary && state.previousSummary !== 'EMPTY';
-			const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
-			const executionData = state.workflowContext?.executionData ?? {};
-			const executionSchema = state.workflowContext?.executionSchema ?? [];
 
 			const prompt = await mainAgentPrompt.invoke({
 				...state,
@@ -182,24 +218,7 @@ export class WorkflowBuilderAgent {
 				previousSummary: hasPreviousSummary ? state.previousSummary : '',
 			});
 
-			const workflowContext = [
-				'',
-				'<current_workflow_json>',
-				JSON.stringify(trimmedWorkflow, null, 2),
-				'</current_workflow_json>',
-				'<trimmed_workflow_json_note>',
-				'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
-				'Use get_node_parameter tool to get full details when needed.',
-				'</trimmed_workflow_json_note>',
-				'',
-				'<current_simplified_execution_data>',
-				JSON.stringify(executionData, null, 2),
-				'</current_simplified_execution_data>',
-				'',
-				'<current_execution_nodes_schemas>',
-				JSON.stringify(executionSchema, null, 2),
-				'</current_execution_nodes_schemas>',
-			].join('\n');
+			const workflowContext = getWorkflowContext(state);
 
 			// Optimize prompts for Anthropic's caching by:
 			// 1. Finding all user/tool message positions (cache breakpoints)
@@ -373,12 +392,13 @@ export class WorkflowBuilderAgent {
 		return workflow;
 	}
 
-	async getState(workflowId: string, userId?: string) {
+	async getState(workflowId?: string, userId?: string): Promise<TypedStateSnapshot> {
 		const workflow = this.createWorkflow();
 		const agent = workflow.compile({ checkpointer: this.checkpointer });
-		return await agent.getState({
-			configurable: { thread_id: `workflow-${workflowId}-user-${userId ?? new Date().getTime()}` },
-		});
+		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
+		return (await agent.getState({
+			configurable: { thread_id: threadId },
+		})) as TypedStateSnapshot;
 	}
 
 	private getDefaultWorkflowJSON(payload: ChatPayload): SimpleWorkflow {

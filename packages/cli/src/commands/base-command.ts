@@ -18,6 +18,7 @@ import {
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
+	ExecutionContextHookRegistry,
 } from 'n8n-core';
 import { ensureError, sleep, UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -35,7 +36,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -63,6 +64,8 @@ export abstract class BaseCommand<F = never> {
 	protected readonly modulesConfig = Container.get(ModulesConfig);
 
 	protected readonly moduleRegistry = Container.get(ModuleRegistry);
+
+	protected readonly executionContextHookRegistry = Container.get(ExecutionContextHookRegistry);
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.

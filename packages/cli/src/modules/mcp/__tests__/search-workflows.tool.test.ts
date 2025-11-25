@@ -73,6 +73,7 @@ describe('search-workflows MCP tool', () => {
 					id: 'a',
 					name: 'Alpha',
 					active: false,
+					activeVersionId: null,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
@@ -82,6 +83,7 @@ describe('search-workflows MCP tool', () => {
 					id: 'b',
 					name: 'Beta',
 					active: true,
+					activeVersionId: workflows[1].versionId,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
@@ -97,18 +99,16 @@ describe('search-workflows MCP tool', () => {
 			});
 			await searchWorkflows(user, workflowService as unknown as WorkflowService, {
 				limit: 500,
-				active: true,
-				name: 'foo',
+				query: 'foo',
 				projectId: 'proj-1',
 			});
 
 			const [_userArg, optionsArg] = (workflowService.getMany as jest.Mock).mock.calls[0];
-			expect(optionsArg.take).toBe(200); // clamped to MAX_RESULTS
+			expect(optionsArg.take).toBe(200);
 			expect(optionsArg.filter).toMatchObject({
 				isArchived: false,
 				availableInMCP: true,
-				active: true,
-				name: 'foo',
+				query: 'foo',
 				projectId: 'proj-1',
 			});
 		});
