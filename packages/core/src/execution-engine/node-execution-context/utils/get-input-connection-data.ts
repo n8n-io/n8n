@@ -17,6 +17,7 @@ import type {
 	INodeType,
 	INode,
 	INodeInputConfiguration,
+	INodeOutputConfiguration,
 	NodeConnectionType,
 	NodeOutput,
 	GenericValue,
@@ -28,7 +29,6 @@ import {
 	ApplicationError,
 	UserError,
 	sleepWithAbort,
-	SEND_AND_WAIT_OPERATION,
 } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -133,23 +133,13 @@ export function makeHitlToolInvocation(
 		const localRunIndex = runIndex++;
 		const context = contextFactory(localRunIndex, {});
 
-		const toolName = toolArgs.tool_name as string;
-		const toolInput = toolArgs.tool_input as IDataObject;
-		const reason = toolArgs.reason as string | undefined;
-
-		context.logger.debug('[HITL] Tool invocation started', {
-			hitlNode: hitlNode.name,
-			toolName,
-			toolInput,
-			reason,
-			runIndex: localRunIndex,
-		});
+		const toolName = toolArgs.toolName as string;
+		const parameters = toolArgs.parameters as IDataObject;
 
 		// Find the selected tool
 		const selectedTool = connectedTools.find((t) => t.name === toolName);
 		if (!selectedTool) {
 			const availableTools = connectedTools.map((t) => t.name).join(', ');
-			context.logger.debug('[HITL] Tool not found', { toolName, availableTools });
 			return `Error: Tool "${toolName}" not found. Available tools: ${availableTools}`;
 		}
 
@@ -160,28 +150,16 @@ export function makeHitlToolInvocation(
 			hitlNode.typeVersion,
 		);
 
-		context.logger.debug('[HITL] Resolved original node type', {
-			hitlNodeType: hitlNode.type,
-			originalNodeTypeName,
-			typeVersion: hitlNode.typeVersion,
-		});
-
-		// Build approval message with tool details
-		const message = `**Tool Approval Request**
-
-Tool: ${toolName}
-Input: ${JSON.stringify(toolInput, null, 2)}${reason ? `\nReason: ${reason}` : ''}`;
-
 		// Create a synthetic node with sendAndWait parameters
+		// resource/operation come from HITL node's hidden properties (set via property defaults)
+		// The message is configured via the node's message property (supports expressions like {{ $json.toolName }})
 		const syntheticNode: INode = {
 			...hitlNode,
 			type: originalNodeTypeName,
 			typeVersion: hitlNode.typeVersion,
 			parameters: {
 				...hitlNode.parameters,
-				operation: SEND_AND_WAIT_OPERATION,
 				responseType: 'approval',
-				message,
 			},
 		};
 
@@ -192,28 +170,39 @@ Input: ${JSON.stringify(toolInput, null, 2)}${reason ? `\nReason: ${reason}` : '
 		context.addInputData(NodeConnectionTypes.AiTool, [[{ json: toolArgs }]]);
 
 		try {
-			context.logger.debug('[HITL] Executing sendAndWait operation', {
-				originalNodeTypeName,
-				operation: SEND_AND_WAIT_OPERATION,
-			});
-
 			// Execute the original node's sendAndWait operation
 			const result = await originalNodeType.execute?.call(context as unknown as IExecuteFunctions);
 
-			context.logger.debug('[HITL] sendAndWait execution returned', {
-				isEngineRequest: isEngineRequest(result),
-				hasResult: result !== undefined,
-			});
+			// Check if the execution entered waiting state (for webhook callback)
+			// When putExecutionToWait() is called, it sets waitTill on runExecutionData
+			if (runExecutionData.waitTill) {
+				// Store HITL context for webhook resumption
+				// The Agent will be set as lastNodeExecuted by the execution engine,
+				// but the webhook handler needs to know which HITL node to use for webhook lookup
+				if (runExecutionData.executionData) {
+					// Store HITL context in contextData under 'hitl' key for webhook lookup
+					runExecutionData.executionData.contextData.hitl = {
+						nodeName: hitlNode.name,
+						toolArgs: {
+							...toolArgs,
+							__selectedToolName: toolName,
+							__selectedToolParameters: parameters,
+						},
+					};
+				}
 
-			// Check if the result is an engine request (e.g., wait request)
-			// Engine requests are handled by the execution engine at a higher level
+				// Return a message indicating waiting state
+				// The Agent will continue but the execution engine will detect waitTill
+				// and save the execution in waiting state
+				return 'Waiting for human approval. The workflow will resume when approval is received.';
+			}
+
+			// Check if the result is an engine request (e.g., tool action request)
+			// This is different from wait state - engine requests are for scheduling sub-nodes
 			if (isEngineRequest(result)) {
-				// The execution should wait for webhook - this error shouldn't normally be reached
-				// as the execution engine will handle the wait request
-				context.logger.debug('[HITL] Received engine request, waiting for webhook approval');
 				throw new NodeOperationError(
 					hitlNode,
-					'HITL approval request is pending. Execution will resume after approval.',
+					'Unexpected engine request from HITL tool execution.',
 				);
 			}
 
@@ -222,42 +211,22 @@ Input: ${JSON.stringify(toolInput, null, 2)}${reason ? `\nReason: ${reason}` : '
 			const resultData = (result as INodeExecutionData[][] | undefined)?.[0]?.[0]?.json;
 			const approved = (resultData?.data as IDataObject | undefined)?.approved;
 
-			context.logger.debug('[HITL] Approval result received', {
-				approved,
-				resultData,
-			});
-
 			if (!approved) {
-				context.logger.debug('[HITL] Tool execution denied by human reviewer');
 				context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, [
 					[{ json: { response: 'Tool execution was denied by human reviewer.' } }],
 				]);
 				return 'Tool execution was denied by human reviewer.';
 			}
 
-			context.logger.debug('[HITL] Approved, executing connected tool', {
-				toolName: selectedTool.name,
-				toolInput,
-			});
-
 			// Execute the connected tool
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-			const toolResult: unknown = await selectedTool.invoke(toolInput);
+			const toolResult: unknown = await selectedTool.invoke(parameters);
 			const response = typeof toolResult === 'string' ? toolResult : JSON.stringify(toolResult);
-
-			context.logger.debug('[HITL] Connected tool execution completed', {
-				toolName: selectedTool.name,
-				responseLength: response.length,
-			});
 
 			context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, [[{ json: { response } }]]);
 
 			return response;
 		} catch (error) {
-			context.logger.debug('[HITL] Error during execution', {
-				error: error instanceof Error ? error.message : String(error),
-				hitlNode: hitlNode.name,
-			});
 			const nodeError = new NodeOperationError(hitlNode, error as Error);
 			context.addOutputData(NodeConnectionTypes.AiTool, localRunIndex, nodeError);
 			throw nodeError;
@@ -270,7 +239,7 @@ Input: ${JSON.stringify(toolInput, null, 2)}${reason ? `\nReason: ${reason}` : '
 
 /**
  * Creates an HITL tool that wraps connected tools with human approval.
- * The tool schema includes tool_name, tool_input, and optional reason fields.
+ * The tool schema includes toolName, toolCallId, and parameters fields.
  */
 function createHitlTool(options: {
 	hitlNode: INode;
@@ -278,11 +247,6 @@ function createHitlTool(options: {
 	handleToolInvocation: (toolArgs: IDataObject) => Promise<unknown>;
 }) {
 	const { hitlNode, connectedTools, handleToolInvocation } = options;
-
-	// Get tool description from node parameters or use default
-	const toolDescription =
-		(hitlNode.parameters?.toolDescription as string) ||
-		'Request human approval before executing a tool';
 
 	// Create enum of available tool names for the schema
 	const toolNames = connectedTools.map((t) => t.name);
@@ -293,16 +257,16 @@ function createHitlTool(options: {
 	const toolDescriptions = connectedTools.map((t) => `- ${t.name}: ${t.description}`).join('\n');
 
 	const schema = z.object({
-		tool_name: toolNameEnum.describe(
+		toolName: toolNameEnum.describe(
 			`Name of the tool to execute after approval. Available tools:\n${toolDescriptions}`,
 		),
-		tool_input: z.record(z.unknown()).describe('Input parameters for the selected tool'),
-		reason: z.string().optional().describe('Reason for executing this tool'),
+		toolCallId: z.string().describe('Unique identifier for this tool call'),
+		parameters: z.record(z.unknown()).describe('Input parameters for the selected tool'),
 	});
 
 	const tool = new DynamicStructuredTool({
 		name: hitlNode.name.replace(/\s+/g, '_'),
-		description: toolDescription,
+		description: `Request human approval before executing a tool. Available tools: ${toolNames.join(', ')}`,
 		schema,
 		func: async (toolArgs: z.infer<typeof schema>) => {
 			const result = await handleToolInvocation(toolArgs as unknown as IDataObject);
@@ -531,18 +495,22 @@ export async function getInputConnectionData(
 			);
 
 		if (!connectedNodeType.supplyData) {
-			if (connectedNodeType.description.outputs.includes(NodeConnectionTypes.AiTool)) {
+			// Check if node outputs AI tool type - support both string and object formats
+			const outputs = connectedNodeType.description.outputs;
+			const hasAiToolOutput =
+				Array.isArray(outputs) &&
+				outputs.some((output: NodeConnectionType | INodeOutputConfiguration) => {
+					if (typeof output === 'string') {
+						return output === NodeConnectionTypes.AiTool;
+					}
+					return output.type === NodeConnectionTypes.AiTool;
+				});
+			if (hasAiToolOutput) {
 				// Check if this is an HITL tool node
 				if (isHitlTool(connectedNode)) {
 					// Get connected tools from HITL node's AiTool inputs
 					// Create a temporary context to access HITL node's connected nodes
 					const hitlContext = contextFactory(parentRunIndex, parentInputData);
-
-					hitlContext.logger.debug('[HITL] Detected HITL tool node', {
-						hitlNodeName: connectedNode.name,
-						hitlNodeType: connectedNode.type,
-						parentNode: parentNode.name,
-					});
 
 					// Get tools connected to the HITL node's input
 					const hitlConnectedTools = await getInputConnectionData.call(
@@ -567,12 +535,6 @@ export async function getInputConnectionData(
 						: hitlConnectedTools
 							? [hitlConnectedTools]
 							: [];
-
-					hitlContext.logger.debug('[HITL] Found connected tools for HITL node', {
-						hitlNodeName: connectedNode.name,
-						connectedToolCount: toolsArray.length,
-						connectedToolNames: toolsArray.map((t) => (t as DynamicStructuredTool).name),
-					});
 
 					// Create HITL tool that wraps the connected tools
 					const supplyData = createHitlTool({

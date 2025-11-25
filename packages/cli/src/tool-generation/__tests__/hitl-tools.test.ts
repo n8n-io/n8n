@@ -177,24 +177,17 @@ describe('hitl-tools', () => {
 			expect(result.description.webhooks).toHaveLength(1);
 		});
 
-		it('should set descriptionType to manual', () => {
+		it('should set defaults.name to displayName', () => {
 			const result = convertNodeToHitlTool(fullNodeWrapper);
-			const descriptionTypeProp = result.description.properties.find(
-				(prop: INodeProperties) => prop.name === 'descriptionType',
-			);
-			expect(descriptionTypeProp).toBeDefined();
-			expect(descriptionTypeProp?.type).toBe('hidden');
-			expect(descriptionTypeProp?.default).toBe('manual');
+			expect(result.description.defaults?.name).toBe('Slack');
 		});
 
-		it('should add toolDescription property with displayName as default', () => {
+		it('should not have toolDescription property', () => {
 			const result = convertNodeToHitlTool(fullNodeWrapper);
 			const toolDescriptionProp = result.description.properties.find(
 				(prop: INodeProperties) => prop.name === 'toolDescription',
 			);
-			expect(toolDescriptionProp).toBeDefined();
-			expect(toolDescriptionProp?.type).toBe('string');
-			expect(toolDescriptionProp?.default).toBe('Slack');
+			expect(toolDescriptionProp).toBeUndefined();
 		});
 
 		it('should convert operation to hidden property with sendAndWait default', () => {
@@ -207,21 +200,76 @@ describe('hitl-tools', () => {
 			expect(operationProp?.default).toBe(SEND_AND_WAIT_OPERATION);
 		});
 
-		it('should keep properties with sendAndWait displayOptions', () => {
+		it('should set skipNameGeneration to true', () => {
+			const result = convertNodeToHitlTool(fullNodeWrapper);
+			expect(result.description.skipNameGeneration).toBe(true);
+		});
+
+		it('should convert resource to hidden property with sendAndWait resource default', () => {
+			// Add a resource-aware operation property
+			fullNodeWrapper.description.properties = [
+				{
+					displayName: 'Resource',
+					name: 'resource',
+					type: 'options',
+					options: [{ name: 'Message', value: 'message' }],
+					default: 'message',
+				},
+				{
+					displayName: 'Operation',
+					name: 'operation',
+					type: 'options',
+					options: [
+						{ name: 'Send Message', value: 'sendMessage' },
+						{ name: 'Send and Wait', value: SEND_AND_WAIT_OPERATION },
+					],
+					default: 'sendMessage',
+					displayOptions: {
+						show: {
+							resource: ['message'],
+						},
+					},
+				},
+			];
+			const result = convertNodeToHitlTool(fullNodeWrapper);
+			const resourceProp = result.description.properties.find(
+				(prop: INodeProperties) => prop.name === 'resource',
+			);
+			expect(resourceProp).toBeDefined();
+			expect(resourceProp?.type).toBe('hidden');
+			expect(resourceProp?.default).toBe('message');
+		});
+
+		it('should add message property with HITL-specific default', () => {
 			const result = convertNodeToHitlTool(fullNodeWrapper);
 			const messageProp = result.description.properties.find(
 				(prop: INodeProperties) => prop.name === 'message',
 			);
 			expect(messageProp).toBeDefined();
+			expect(messageProp?.type).toBe('string');
+			expect(messageProp?.default).toBe('=The agent wants to call {{ $json.toolName }}');
 		});
 
-		it('should preserve displayOptions on kept properties', () => {
+		it('should replace original message property with HITL message', () => {
+			// Add an original message property like sendAndWait nodes have
+			fullNodeWrapper.description.properties.push({
+				displayName: 'Message',
+				name: 'message',
+				type: 'string',
+				default: 'Original default',
+				displayOptions: {
+					show: {
+						operation: [SEND_AND_WAIT_OPERATION],
+					},
+				},
+			});
 			const result = convertNodeToHitlTool(fullNodeWrapper);
-			const messageProp = result.description.properties.find(
+			const messageProps = result.description.properties.filter(
 				(prop: INodeProperties) => prop.name === 'message',
 			);
-			// displayOptions are preserved since operation exists as hidden property
-			expect(messageProp?.displayOptions?.show?.operation).toContain(SEND_AND_WAIT_OPERATION);
+			// Should only have one message property (our HITL one, not the original)
+			expect(messageProps).toHaveLength(1);
+			expect(messageProps[0].default).toBe('=The agent wants to call {{ $json.toolName }}');
 		});
 
 		it('should set codex categories correctly for HITL', () => {
@@ -294,7 +342,7 @@ describe('hitl-tools', () => {
 			types = {
 				nodes: [
 					{
-						name: 'slack',
+						name: 'n8n-nodes-base.slack',
 						displayName: 'Slack',
 						group: ['output'],
 						description: 'Send messages to Slack',
@@ -318,13 +366,13 @@ describe('hitl-tools', () => {
 
 			known = {
 				nodes: {
-					slack: { className: 'Slack', sourcePath: '/path/to/slack' },
+					'n8n-nodes-base.slack': { className: 'Slack', sourcePath: '/path/to/slack' },
 				},
 				credentials: {
 					slackOAuth2Api: {
 						className: 'SlackOAuth2Api',
 						sourcePath: '/path/to/slackOAuth2Api',
-						supportedNodes: ['slack'],
+						supportedNodes: ['n8n-nodes-base.slack'],
 					},
 				},
 			};
@@ -334,7 +382,7 @@ describe('hitl-tools', () => {
 			createHitlTools(types as never, known as never);
 
 			expect(types.nodes).toHaveLength(2); // Original node + HITL tool
-			expect(types.nodes[1].name).toBe('slackHitlTool');
+			expect(types.nodes[1].name).toBe('n8n-nodes-base.slackHitlTool');
 			expect(types.nodes[1].displayName).toBe('Slack');
 			expect(types.nodes[1].subtitle).toBe('Send and wait');
 		});
@@ -342,7 +390,7 @@ describe('hitl-tools', () => {
 		it('should point to original node class for HITL tool', () => {
 			createHitlTools(types as never, known as never);
 
-			expect(known.nodes.slackHitlTool).toEqual({
+			expect(known.nodes['n8n-nodes-base.slackHitlTool']).toEqual({
 				className: 'Slack',
 				sourcePath: '/path/to/slack',
 			});
@@ -353,7 +401,7 @@ describe('hitl-tools', () => {
 
 			expect(
 				(known.credentials.slackOAuth2Api as { supportedNodes: string[] }).supportedNodes,
-			).toEqual(['slack', 'slackHitlTool']);
+			).toEqual(['n8n-nodes-base.slack', 'n8n-nodes-base.slackHitlTool']);
 		});
 
 		it('should not create HITL tools for nodes without sendAndWait', () => {
@@ -361,7 +409,7 @@ describe('hitl-tools', () => {
 			createHitlTools(types as never, known as never);
 
 			expect(types.nodes).toHaveLength(1); // No HITL tool created
-			expect(types.nodes[0].name).toBe('slack');
+			expect(types.nodes[0].name).toBe('n8n-nodes-base.slack');
 		});
 
 		it('should set correct inputs and outputs on HITL tool', () => {
