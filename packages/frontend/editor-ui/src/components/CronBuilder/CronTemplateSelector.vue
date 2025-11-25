@@ -93,7 +93,7 @@ function handleTemplateClick(templateId: string) {
 	&__categories {
 		display: flex;
 		gap: var(--spacing--2xs);
-		flex-wrap: wrap;
+		justify-content: center;
 	}
 
 	&__templates {
