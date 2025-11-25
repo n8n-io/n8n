@@ -559,13 +559,6 @@ export class WorkflowService {
 			updatedAt: workflow.updatedAt,
 		});
 
-		if (isDraftPublishEnabled && (options?.name || options?.description)) {
-			const updateFields: WorkflowHistoryUpdate = {};
-			if (options.name !== undefined) updateFields.name = options.name;
-			if (options.description !== undefined) updateFields.description = options.description;
-			await this.workflowHistoryService.updateVersion(versionToActivate, workflowId, updateFields);
-		}
-
 		const updatedWorkflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: ['activeVersion'],
@@ -599,6 +592,13 @@ export class WorkflowService {
 						activeVersion: null,
 					},
 		);
+
+		if (isDraftPublishEnabled && (options?.name || options?.description)) {
+			const updateFields: WorkflowHistoryUpdate = {};
+			if (options.name !== undefined) updateFields.name = options.name;
+			if (options.description !== undefined) updateFields.description = options.description;
+			await this.workflowHistoryService.updateVersion(versionToActivate, workflowId, updateFields);
+		}
 
 		return updatedWorkflow;
 	}

@@ -3005,13 +3005,33 @@ describe('POST /workflows/:workflowId/activate', () => {
 			const { data } = response.body;
 			expect(data.activeVersionId).toBe(workflow.versionId);
 
-			const workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 			const historyVersion = await workflowHistoryRepository.findOne({
 				where: { workflowId: workflow.id, versionId: workflow.versionId },
 			});
 
 			expect(historyVersion?.name).toBe(newVersionName);
 			expect(historyVersion?.description).toBe(newDescription);
+		});
+
+		test('should not update version name and description when activation fails', async () => {
+			const workflow = await createWorkflowWithHistory({}, owner);
+			const newVersionName = 'Production Version';
+			const newDescription = 'Major update with new features';
+
+			activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Validation failed'));
+
+			await authOwnerAgent.post(`/workflows/${workflow.id}/activate`).send({
+				versionId: workflow.versionId,
+				name: newVersionName,
+				description: newDescription,
+			});
+
+			const updatedVersion = await workflowHistoryRepository.findOne({
+				where: { versionId: workflow.versionId },
+			});
+
+			expect(updatedVersion?.name).toBeNull();
+			expect(updatedVersion?.description).toBeNull();
 		});
 
 		test('should preserve current active version when activation fails', async () => {
