@@ -58,6 +58,12 @@ export interface IExecutionBase {
 	retrySuccessId?: string; // If it failed and a retry did succeed. The id of the successful retry.
 	status: ExecutionStatus;
 	waitTill?: Date | null;
+	note?: string | null;
+	noteUpdatedAt?: Date | null;
+	noteUpdatedBy?: string | null;
+	pinned: boolean;
+	pinnedAt?: Date | null;
+	pinnedBy?: string | null;
 }
 
 // Required by PublicUser
@@ -151,7 +157,14 @@ export interface WorkflowWithSharingsMetaDataAndCredentials extends Omit<Workflo
 }
 
 /** Payload for creating an execution. */
-export type CreateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt' | 'startedAt'>;
+export type CreateExecutionPayload = Omit<
+	IExecutionDb,
+	'id' | 'createdAt' | 'startedAt' | 'pinned' | 'pinnedAt' | 'pinnedBy'
+> & {
+	pinned?: boolean;
+	pinnedAt?: Date | null;
+	pinnedBy?: string | null;
+};
 
 // Data in regular format with references
 export interface IExecutionDb extends IExecutionBase {
@@ -191,6 +204,7 @@ export namespace ExecutionSummaries {
 		annotationTags: string[]; // tag IDs
 		vote: AnnotationVote;
 		projectId: string;
+		pinned: boolean;
 	}>;
 
 	type AccessFields = {

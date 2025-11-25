@@ -2950,6 +2950,12 @@ export interface ExecutionSummary {
 	workflowId: string;
 	workflowName?: string;
 	status: ExecutionStatus;
+	note?: string | null;
+	noteUpdatedAt?: Date | string | null;
+	noteUpdatedBy?: string | null;
+	pinned?: boolean;
+	pinnedAt?: Date | string | null;
+	pinnedBy?: string | null;
 	lastNodeExecuted?: string;
 	executionError?: ExecutionError;
 	nodeExecutionStatus?: {

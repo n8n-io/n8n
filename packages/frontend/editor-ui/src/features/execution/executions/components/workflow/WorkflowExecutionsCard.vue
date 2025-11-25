@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { IExecutionUIData } from '../../composables/useExecutionHelpers';
 import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
@@ -11,10 +11,13 @@ import { useI18n } from '@n8n/i18n';
 import type { PermissionsRecord } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { toDayMonth, toTime } from '@/app/utils/formatters/dateFormatter';
+import { useExecutionsStore } from '../../executions.store';
+import { useToast } from '@/app/composables/useToast';
 
 import {
 	N8nActionDropdown,
 	N8nIcon,
+	N8nIconButton,
 	N8nSpinner,
 	N8nTags,
 	N8nText,
@@ -34,6 +37,8 @@ const emit = defineEmits<{
 
 const route = useRoute();
 const locale = useI18n();
+const executionsStore = useExecutionsStore();
+const { showError } = useToast();
 
 const executionHelpers = useExecutionHelpers();
 const workflowsStore = useWorkflowsStore();
@@ -61,12 +66,35 @@ const executionUIDetails = computed<IExecutionUIData>(() =>
 const isActive = computed(() => props.execution.id === route.params.executionId);
 const isRetriable = computed(() => executionHelpers.isExecutionRetriable(props.execution));
 
+const isPinned = computed(() => Boolean(props.execution.pinned));
+const hasNote = computed(() => Boolean(props.execution.note && props.execution.note.trim().length));
+const notePreview = computed(() => props.execution.note?.trim() ?? '');
+const isPinning = ref(false);
+
 onMounted(() => {
 	emit('mounted', props.execution.id);
 });
 
 function onRetryMenuItemSelect(action: string): void {
 	emit('retryExecution', { execution: props.execution, command: action });
+}
+
+async function onTogglePin(event: MouseEvent) {
+	event.preventDefault();
+	event.stopPropagation();
+
+	if (!props.execution.id || !props.workflowPermissions.update || isPinning.value) {
+		return;
+	}
+
+	isPinning.value = true;
+	try {
+		await executionsStore.updateExecutionPin(props.execution.id, !isPinned.value);
+	} catch (error) {
+		showError(error, 'executionDetails.pin.error');
+	} finally {
+		isPinning.value = false;
+	}
 }
 </script>
 
@@ -79,6 +107,7 @@ function onRetryMenuItemSelect(action: string): void {
 			[$style[executionUIDetails.name]]: true,
 			[$style.highlight]: highlight,
 			[$style.showGap]: showGap,
+			[$style.pinned]: execution.pinned,
 		}"
 	>
 		<RouterLink
@@ -161,6 +190,39 @@ function onRetryMenuItemSelect(action: string): void {
 				</div>
 			</div>
 			<div :class="$style.icons">
+				<N8nTooltip
+					v-if="hasNote"
+					:content="notePreview"
+					placement="top"
+					:teleported="false"
+					effect="dark"
+				>
+					<N8nIcon :class="[$style.icon, $style.noteIcon]" icon="file-text" />
+				</N8nTooltip>
+				<N8nTooltip
+					placement="top"
+					:content="
+						isPinned
+							? locale.baseText('executionsList.pin.unpin')
+							: locale.baseText('executionsList.pin.pin')
+					"
+				>
+					<N8nIconButton
+						size="small"
+						type="tertiary"
+						:loading="isPinning"
+						:disabled="!workflowPermissions.update || isPinning"
+						:title="
+							isPinned
+								? locale.baseText('executionsList.pin.unpin')
+								: locale.baseText('executionsList.pin.pin')
+						"
+						icon="bookmark"
+						:class="[$style.icon, $style.pinIcon, { [$style.pinnedIcon]: isPinned }]"
+						data-test-id="execution-pin-button"
+						@click="onTogglePin"
+					/>
+				</N8nTooltip>
 				<N8nActionDropdown
 					v-if="isRetriable"
 					:class="[$style.icon, $style.retry]"
@@ -279,6 +341,13 @@ function onRetryMenuItemSelect(action: string): void {
 		}
 	}
 
+	&.pinned {
+		.executionLink {
+			border-left-color: var(--color--foreground--shade-1);
+			background: var(--color--background--light-2);
+		}
+	}
+
 	.annotation {
 		display: flex;
 		flex-direction: row;
@@ -341,6 +410,18 @@ function onRetryMenuItemSelect(action: string): void {
 
 	& + & {
 		margin-left: var(--spacing--2xs);
+	}
+}
+
+.noteIcon {
+	color: var(--color--foreground--shade-1);
+}
+
+.pinIcon {
+	color: var(--color--foreground--shade-1);
+
+	&.pinnedIcon {
+		color: var(--color--warning--shade-1);
 	}
 }
 

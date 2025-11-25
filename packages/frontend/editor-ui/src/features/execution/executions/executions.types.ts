@@ -25,6 +25,7 @@ export type ExecutionFilterType = {
 	annotationTags: string[];
 	vote: ExecutionFilterVote;
 	metadata: ExecutionFilterMetadata[];
+	pinnedOnly: boolean;
 };
 
 export type ExecutionsQueryFilter = {
@@ -38,6 +39,7 @@ export type ExecutionsQueryFilter = {
 	startedBefore?: string;
 	annotationTags?: string[];
 	vote?: ExecutionFilterVote;
+	pinned?: boolean;
 };
 
 export interface IExecutionBase {
@@ -51,6 +53,12 @@ export interface IExecutionBase {
 	createdAt: Date | string;
 	stoppedAt?: Date | string;
 	workflowId?: string; // To be able to filter executions easily //
+	note?: string | null;
+	noteUpdatedAt?: Date | string | null;
+	noteUpdatedBy?: string | null;
+	pinned?: boolean;
+	pinnedAt?: Date | string | null;
+	pinnedBy?: string | null;
 }
 
 export interface IExecutionFlatted extends IExecutionBase {

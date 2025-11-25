@@ -73,7 +73,14 @@ export type ICredentialsDecryptedResponse = ICredentialsDecryptedDb;
 export type SaveExecutionDataType = 'all' | 'none';
 
 /** Payload for updating an execution. */
-export type UpdateExecutionPayload = Omit<IExecutionDb, 'id' | 'createdAt'>;
+export type UpdateExecutionPayload = Omit<
+	IExecutionDb,
+	'id' | 'createdAt' | 'pinned' | 'pinnedAt' | 'pinnedBy'
+> & {
+	pinned?: boolean;
+	pinnedAt?: Date | null;
+	pinnedBy?: string | null;
+};
 
 // Flatted data to save memory when saving in database or transferring
 // via REST API
