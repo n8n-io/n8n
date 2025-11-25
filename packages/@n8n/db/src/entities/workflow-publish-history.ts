@@ -33,5 +33,5 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 		onDelete: 'SET NULL',
 	})
 	@JoinColumn({ name: 'userId' })
-	user: User;
+	user?: User;
 }
