@@ -97,11 +97,10 @@ export function getNextPhaseFromLog(
 	console.log(`[Coordination] Last completed phase: ${lastPhase ?? 'none'}`);
 	console.log(`[Coordination] Workflow has nodes: ${workflowHasNodes}`);
 
-	// After discovery → builder (unless workflow already has nodes)
+	// After discovery → always builder (builder decides what new nodes to add)
 	if (lastPhase === 'discovery') {
-		const next = workflowHasNodes ? 'configurator' : 'builder';
-		console.log(`[Coordination] Discovery done → ${next}`);
-		return next;
+		console.log(`[Coordination] Discovery done → builder`);
+		return 'builder';
 	}
 
 	// After builder → configurator

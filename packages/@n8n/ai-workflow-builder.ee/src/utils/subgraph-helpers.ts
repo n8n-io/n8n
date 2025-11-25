@@ -95,11 +95,13 @@ export async function executeSubgraphTools(
 
 /**
  * Extract user request from parent state messages
- * Helper to reduce duplication across transformInput methods
+ * Gets the LAST HumanMessage (most recent user request), not the first
  */
 export function extractUserRequest(messages: BaseMessage[], defaultValue = ''): string {
-	const userMessage = messages.find((m) => m instanceof HumanMessage);
-	return typeof userMessage?.content === 'string' ? userMessage.content : defaultValue;
+	// Get the LAST HumanMessage (most recent user request for iteration support)
+	const humanMessages = messages.filter((m) => m instanceof HumanMessage);
+	const lastUserMessage = humanMessages[humanMessages.length - 1];
+	return typeof lastUserMessage?.content === 'string' ? lastUserMessage.content : defaultValue;
 }
 
 /**
