@@ -14,7 +14,7 @@ import { STORES } from '@n8n/stores';
 import type {
 	INodeMetadata,
 	INodeUi,
-	IStartRunData,
+	ManualRunPayload,
 	IWorkflowDb,
 	IWorkflowsMap,
 	NodeMetadataMap,
@@ -1687,7 +1687,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updated;
 	}
 
-	async function runWorkflow(startRunData: IStartRunData): Promise<IExecutionPushResponse> {
+	async function runWorkflow(startRunData: ManualRunPayload): Promise<IExecutionPushResponse> {
 		if (startRunData.workflowData.settings === null) {
 			startRunData.workflowData.settings = undefined;
 		}
@@ -1697,6 +1697,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 				rootStore.restApiContext,
 				'POST',
 				`/workflows/${startRunData.workflowData.id}/run`,
+				// TODO: create an actual DTO for this to avoid casting
 				startRunData as unknown as IDataObject,
 			);
 		} catch (error) {

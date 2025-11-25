@@ -1,4 +1,10 @@
-import type { IStartRunData, IWorkflowDb } from '@/Interface';
+import type {
+	IWorkflowDb,
+	ManualRunPayload,
+	FullManualExecutionFromKnownTriggerPayload,
+	FullManualExecutionFromUnknownTriggerPayload,
+	PartialManualExecutionToDestination,
+} from '@/Interface';
 import type {
 	IExecutionPushResponse,
 	IExecutionResponse,
@@ -10,7 +16,6 @@ import type {
 	ITaskData,
 	IPinData,
 	Workflow,
-	StartNodeData,
 	INode,
 	IDataObject,
 	IWorkflowBase,
@@ -35,7 +40,6 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import type { useRouter } from 'vue-router';
 import { isEmpty } from '@/app/utils/typesUtils';
 import { useI18n } from '@n8n/i18n';
-import get from 'lodash/get';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useTelemetry } from './useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -90,7 +94,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	// Starts to execute a workflow on server
-	async function runWorkflowApi(runData: IStartRunData): Promise<IExecutionPushResponse> {
+	async function runWorkflowApi(runData: ManualRunPayload): Promise<IExecutionPushResponse> {
 		if (!pushConnectionStore.isConnected) {
 			// Do not start if the connection to server is not active
 			// because then it can not receive the data as it executes.
@@ -152,52 +156,97 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				);
 			}
 
-			const runData = workflowsStore.getWorkflowRunData;
-
 			if (workflowsStore.isNewWorkflow) {
 				await workflowSaving.saveCurrentWorkflow();
 			}
-
 			const workflowData = await workflowHelpers.getWorkflowDataToSave();
+			const runData = workflowsStore.getWorkflowRunData;
+			let agentRequest;
+			if ('destinationNode' in options) {
+				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
+				if (workflowObject.value.id && nodeId) {
+					agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
+				}
+			}
 
-			const consolidatedData = consolidateRunDataAndStartNodes(
-				directParentNodes,
-				runData,
-				workflowData.pinData,
-				workflowObject.value,
-			);
+			let startRunData: ManualRunPayload;
 
-			const { startNodeNames } = consolidatedData;
+			// FullManualExecutionFromKnownTriggerPayload
+			if (options.triggerNode && !runData) {
+				const triggerToStartFrom = {
+					name: options.triggerNode,
+					data: options.nodeData,
+				};
+
+				startRunData = {
+					workflowData,
+					agentRequest,
+					destinationNode: options.destinationNode,
+					triggerToStartFrom,
+				} satisfies FullManualExecutionFromKnownTriggerPayload;
+			}
+
+			// PartialManualExecutionToDestination
+			else if (options.destinationNode && runData) {
+				const nodeNames = Object.entries(dirtinessByName.value).flatMap(([nodeName, dirtiness]) =>
+					dirtiness ? [nodeName] : [],
+				);
+				const dirtyNodeNames = nodeNames.length > 0 ? nodeNames : [];
+
+				startRunData = {
+					workflowData,
+					agentRequest,
+					runData,
+					destinationNode: options.destinationNode,
+					dirtyNodeNames,
+				} satisfies PartialManualExecutionToDestination;
+			}
+
+			// FullManualExecutionFromUnknownTriggerPayload
+			else if (!options.triggerNode && !runData && options.destinationNode) {
+				startRunData = {
+					workflowData,
+					agentRequest,
+					destinationNode: options.destinationNode,
+				} satisfies FullManualExecutionFromUnknownTriggerPayload;
+			} else {
+				console.error(options, runData);
+				throw new Error('Not Supported');
+			}
+
+			// const consolidatedData = consolidateRunDataAndStartNodes(
+			// 	directParentNodes,
+			// 	runData,
+			// 	workflowData.pinData,
+			// 	workflowObject.value,
+			// );
+			//
+			// const { startNodeNames } = consolidatedData;
 			const destinationNodeType = options.destinationNode
 				? workflowsStore.getNodeByName(options.destinationNode)?.type
 				: '';
 
 			let executedNode: string | undefined;
-			let triggerToStartFrom: IStartRunData['triggerToStartFrom'];
+			// let triggerToStartFrom: IStartRunData['triggerToStartFrom'];
 			if (
-				startNodeNames.length === 0 &&
 				directParentNodes.length === 0 &&
 				'destinationNode' in options &&
 				options.destinationNode !== undefined
 			) {
 				executedNode = options.destinationNode;
-				startNodeNames.push(options.destinationNode);
-			} else if (options.triggerNode && options.nodeData && !options.rerunTriggerNode) {
-				// starts execution from downstream nodes of trigger node
-				startNodeNames.push(
-					...workflowObject.value.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
-				);
 			} else if (options.destinationNode) {
 				executedNode = options.destinationNode;
 			}
 
-			if (options.triggerNode) {
-				triggerToStartFrom = {
-					name: options.triggerNode,
-					data: options.nodeData,
-				};
-			}
+			// if (options.triggerNode) {
+			// 	triggerToStartFrom = {
+			// 		name: options.triggerNode,
+			// 		data: options.nodeData,
+			// 	};
+			// }
 
+			// TODO: refactor
+			//
 			// If the destination node is specified, check if it is a chat node or has a chat parent
 			if (
 				options.destinationNode &&
@@ -222,14 +271,15 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				}
 			}
 
-			const triggers = workflowData.nodes.filter(
-				(node) => node.type.toLowerCase().includes('trigger') && !node.disabled,
-			);
-
+			// TODO: refactor
+			//
 			//if no destination node is specified
 			//and execution is not triggered from chat
 			//and there are other triggers in the workflow
 			//disable chat trigger node to avoid modal opening and webhook creation
+			const triggers = workflowData.nodes.filter(
+				(node) => node.type.toLowerCase().includes('trigger') && !node.disabled,
+			);
 			if (
 				!options.destinationNode &&
 				options.source !== 'RunData.ManualChatMessage' &&
@@ -247,44 +297,44 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				}
 			}
 
-			// partial executions must have a destination node
-			const isPartialExecution = options.destinationNode !== undefined;
-
-			// TODO: this will be redundant once we cleanup the partial execution v1
-			const startNodes: StartNodeData[] = sortNodesByYPosition(startNodeNames)
-				.map((name) => {
-					// Find for each start node the source data
-					let sourceData = get(runData, [name, 0, 'source', 0], null);
-					if (sourceData === null) {
-						const parentNodes = workflowObject.value.getParentNodes(
-							name,
-							NodeConnectionTypes.Main,
-							1,
-						);
-						const executeData = workflowHelpers.executeData(
-							workflowObject.value.connectionsBySourceNode,
-							parentNodes,
-							name,
-							NodeConnectionTypes.Main,
-							0,
-						);
-						sourceData = get(executeData, ['source', NodeConnectionTypes.Main, 0], null);
-					}
-					return {
-						name,
-						sourceData,
-					};
-				})
-				// If a destination node is specified and it has chat parent, we don't want to include it in the start nodes
-				.filter((node) => {
-					if (
-						options.destinationNode &&
-						workflowsStore.checkIfNodeHasChatParent(options.destinationNode)
-					) {
-						return node.name !== options.destinationNode;
-					}
-					return true;
-				});
+			// // partial executions must have a destination node
+			// const isPartialExecution = options.destinationNode !== undefined;
+			//
+			// // TODO: this will be redundant once we cleanup the partial execution v1
+			// const startNodes: StartNodeData[] = sortNodesByYPosition(startNodeNames)
+			// 	.map((name) => {
+			// 		// Find for each start node the source data
+			// 		let sourceData = get(runData, [name, 0, 'source', 0], null);
+			// 		if (sourceData === null) {
+			// 			const parentNodes = workflowObject.value.getParentNodes(
+			// 				name,
+			// 				NodeConnectionTypes.Main,
+			// 				1,
+			// 			);
+			// 			const executeData = workflowHelpers.executeData(
+			// 				workflowObject.value.connectionsBySourceNode,
+			// 				parentNodes,
+			// 				name,
+			// 				NodeConnectionTypes.Main,
+			// 				0,
+			// 			);
+			// 			sourceData = get(executeData, ['source', NodeConnectionTypes.Main, 0], null);
+			// 		}
+			// 		return {
+			// 			name,
+			// 			sourceData,
+			// 		};
+			// 	})
+			// 	// If a destination node is specified and it has chat parent, we don't want to include it in the start nodes
+			// 	.filter((node) => {
+			// 		if (
+			// 			options.destinationNode &&
+			// 			workflowsStore.checkIfNodeHasChatParent(options.destinationNode)
+			// 		) {
+			// 			return node.name !== options.destinationNode;
+			// 		}
+			// 		return true;
+			// 	});
 
 			const singleWebhookTrigger =
 				options.triggerNode === undefined
@@ -311,39 +361,39 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				return undefined;
 			}
 
-			const startRunData: IStartRunData = {
-				workflowData,
-				runData: isPartialExecution
-					? (runData ?? undefined) // For partial execution, backend decides what run data to use and what to ignore.
-					: undefined, // if it's a full execution we don't want to send any run data
-				startNodes,
-				triggerToStartFrom,
-			};
-
-			if ('destinationNode' in options) {
-				startRunData.destinationNode = options.destinationNode;
-				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
-				if (workflowObject.value.id && nodeId) {
-					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
-
-					if (agentRequest) {
-						startRunData.agentRequest = {
-							query: agentRequest.query ?? {},
-							tool: {
-								name: agentRequest.toolName ?? '',
-							},
-						};
-					}
-				}
-			}
-
-			if (startRunData.runData) {
-				const nodeNames = Object.entries(dirtinessByName.value).flatMap(([nodeName, dirtiness]) =>
-					dirtiness ? [nodeName] : [],
-				);
-
-				startRunData.dirtyNodeNames = nodeNames.length > 0 ? nodeNames : undefined;
-			}
+			// const startRunData: ManualRunPayload = {
+			// 	workflowData,
+			// 	runData: isPartialExecution
+			// 		? (runData ?? undefined) // For partial execution, backend decides what run data to use and what to ignore.
+			// 		: undefined, // if it's a full execution we don't want to send any run data
+			// 	startNodes,
+			// 	triggerToStartFrom,
+			// };
+			//
+			// if ('destinationNode' in options) {
+			// 	startRunData.destinationNode = options.destinationNode;
+			// 	const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
+			// 	if (workflowObject.value.id && nodeId) {
+			// 		const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
+			//
+			// 		if (agentRequest) {
+			// 			startRunData.agentRequest = {
+			// 				query: agentRequest.query ?? {},
+			// 				tool: {
+			// 					name: agentRequest.toolName ?? '',
+			// 				},
+			// 			};
+			// 		}
+			// 	}
+			// }
+			//
+			// if (startRunData.runData) {
+			// 	const nodeNames = Object.entries(dirtinessByName.value).flatMap(([nodeName, dirtiness]) =>
+			// 		dirtiness ? [nodeName] : [],
+			// 	);
+			//
+			// 	startRunData.dirtyNodeNames = nodeNames.length > 0 ? nodeNames : undefined;
+			// }
 
 			// Init the execution data to represent the start of the execution
 			// that data which gets reused is already set and data of newly executed
@@ -358,10 +408,10 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				stoppedAt: undefined,
 				workflowId: workflowObject.value.id,
 				executedNode,
-				triggerNode: triggerToStartFrom?.name,
+				// triggerNode: triggerToStartFrom?.name,
 				data: createRunExecutionData({
 					resultData: {
-						runData: startRunData.runData ?? {},
+						runData,
 						pinData: workflowData.pinData,
 					},
 				}),
@@ -374,10 +424,12 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					...workflowData,
 				} as IWorkflowDb,
 			};
+
 			workflowState.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
 			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
+
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 			const pinData = workflowData.pinData ?? {};
 

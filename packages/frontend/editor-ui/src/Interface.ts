@@ -62,6 +62,8 @@ import type {
 	ResourceParentFolder,
 } from '@/features/core/folders/folders.types';
 
+import type { IAgentRequest } from '@n8n/stores/useAgentRequestStore';
+
 export * from '@n8n/design-system/types';
 
 declare global {
@@ -197,6 +199,37 @@ export interface IStartRunData {
 		};
 	};
 }
+
+// 1. Full Manual Execution from Known Trigger
+export type FullManualExecutionFromKnownTriggerPayload = {
+	workflowData: WorkflowData;
+	agentRequest?: IAgentRequest;
+
+	destinationNode?: string;
+	triggerToStartFrom: { name: string; data?: ITaskData };
+};
+// 2. Full Manual Execution from Unknown Trigger
+export type FullManualExecutionFromUnknownTriggerPayload = {
+	workflowData: WorkflowData;
+	agentRequest?: IAgentRequest;
+
+	destinationNode: string;
+};
+
+// 3. Partial Manual Execution to Destination
+export type PartialManualExecutionToDestination = {
+	workflowData: WorkflowData;
+	agentRequest?: IAgentRequest;
+
+	runData: IRunData;
+	destinationNode: string;
+	dirtyNodeNames: string[];
+};
+
+export type ManualRunPayload =
+	| FullManualExecutionFromKnownTriggerPayload
+	| FullManualExecutionFromUnknownTriggerPayload
+	| PartialManualExecutionToDestination;
 
 export interface ITableData {
 	columns: string[];
