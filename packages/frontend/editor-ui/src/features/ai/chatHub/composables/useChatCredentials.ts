@@ -87,6 +87,11 @@ export function useChatCredentials(userId: string) {
 	);
 
 	function selectCredential(provider: ChatHubProvider, id: string | null) {
+		if (id === null) {
+			delete selectedCredentials.value[provider];
+			return;
+		}
+
 		selectedCredentials.value = { ...selectedCredentials.value, [provider]: id };
 	}
 
