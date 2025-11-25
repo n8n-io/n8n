@@ -598,19 +598,6 @@ const tags = computed(
 		</div>
 		<template #append>
 			<div :class="$style.cardActions" @click.stop>
-				<N8nTooltip
-					v-if="isDraftPublishEnabled && isWorkflowPublished && !data.isArchived"
-					placement="bottom"
-					data-test-id="workflow-card-publish-indicator"
-				>
-					<template #content> {{ locale.baseText('workflowHistory.item.active') }}</template>
-					<N8nIcon
-						icon="circle-check"
-						color="success"
-						size="xlarge"
-						:class="$style.publishIndicator"
-					/>
-				</N8nTooltip>
 				<ProjectCardBadge
 					v-if="showOwnershipBadge"
 					:class="{ [$style.cardBadge]: true, [$style['with-breadcrumbs']]: showCardBreadcrumbs }"
@@ -659,6 +646,21 @@ const tags = computed(
 					data-test-id="workflow-card-activator"
 					@update:workflow-active="onWorkflowActiveToggle"
 				/>
+				<div
+					v-if="isDraftPublishEnabled && !data.isArchived"
+					:class="$style.publishIndicator"
+					data-test-id="workflow-card-publish-indicator"
+				>
+					<template v-if="isWorkflowPublished">
+						<N8nIcon icon="circle-check" color="success" size="xlarge" />
+						<N8nText size="small" color="success" bold>
+							{{ locale.baseText('workflows.item.published') }}
+						</N8nText>
+					</template>
+					<N8nText v-else size="small" color="text-light" bold>
+						{{ locale.baseText('workflows.item.notPublished') }}
+					</N8nText>
+				</div>
 
 				<N8nActionToggle
 					:actions="actions"
@@ -753,6 +755,12 @@ const tags = computed(
 	&:hover {
 		color: var(--color--text);
 	}
+}
+
+.publishIndicator {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
 }
 
 @include mixins.breakpoint('sm-and-down') {
