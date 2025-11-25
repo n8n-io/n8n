@@ -153,6 +153,8 @@ export class WorkflowExecutionService {
 			delete (payload as any).runData;
 		}
 
+		let workflowExecutionDataProcess: IWorkflowExecutionDataProcess | undefined;
+
 		if (isPartialManualExecutionToDestination(payload)) {
 			const destinationNode = payload.destinationNode
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
@@ -181,7 +183,7 @@ export class WorkflowExecutionService {
 					agentRequest: payload.agentRequest,
 				} satisfies WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload;
 			} else {
-				const executionId = await this.workflowRunner.run({
+				workflowExecutionDataProcess = {
 					destinationNode,
 					executionMode: 'manual',
 					runData: payload.runData,
@@ -193,8 +195,7 @@ export class WorkflowExecutionService {
 					agentRequest: payload.agentRequest,
 					streamingEnabled,
 					httpResponse,
-				});
-				return { executionId };
+				};
 			}
 		}
 
@@ -224,7 +225,7 @@ export class WorkflowExecutionService {
 				}
 			}
 
-			const executionId = await this.workflowRunner.run({
+			workflowExecutionDataProcess = {
 				executionMode: 'manual',
 				pinData: payload.workflowData.pinData,
 				pushRef,
@@ -235,9 +236,7 @@ export class WorkflowExecutionService {
 				streamingEnabled,
 				httpResponse,
 				destinationNode,
-			});
-
-			return { executionId };
+			};
 		}
 
 		if (isFullManualExecutionFromUnknownTriggerPayload(payload)) {
@@ -270,7 +269,7 @@ export class WorkflowExecutionService {
 				}
 			}
 
-			const executionId = await this.workflowRunner.run({
+			workflowExecutionDataProcess = {
 				executionMode: 'manual',
 				pinData: payload.workflowData.pinData,
 				pushRef,
@@ -281,14 +280,18 @@ export class WorkflowExecutionService {
 				httpResponse,
 				destinationNode,
 				triggerToStartFrom: pinnedTrigger ? { name: pinnedTrigger.name } : undefined,
-			});
-
-			return { executionId };
+			};
 		}
 
-		throw new UnexpectedError('`executeManually` was called with an unexpected payload', {
-			extra: { payload },
-		});
+		if (workflowExecutionDataProcess === undefined) {
+			throw new UnexpectedError('`executeManually` was called with an unexpected payload', {
+				extra: { payload },
+			});
+		}
+
+		const executionId = await this.workflowRunner.run(workflowExecutionDataProcess);
+
+		return { executionId };
 	}
 
 	async executeChatWorkflow(
