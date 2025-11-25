@@ -121,9 +121,7 @@ export const getMatchingPreset = (range: { start?: DateValue; end?: DateValue })
 
 	const daysDiff = end.compare(start);
 
-	const presetEntries = Object.entries(timeRangeMappings) as Array<
-		[InsightsDateRange['key'], number]
-	>;
+	const presetEntries = Object.entries(timeRangeMappings);
 
 	for (const [key, days] of presetEntries) {
 		if (daysDiff === days) return key;
