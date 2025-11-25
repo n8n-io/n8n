@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
+import { useTemplateRef } from 'vue';
 
 defineProps<{
 	disabled?: boolean;
@@ -10,8 +11,17 @@ defineProps<{
 
 const versionName = defineModel<string>('versionName', { required: true });
 const description = defineModel<string>('description', { required: true });
+const nameInputRef = useTemplateRef<InstanceType<typeof N8nInput>>('nameInput');
 
 const i18n = useI18n();
+
+const focusInput = () => {
+	nameInputRef.value?.focus();
+};
+
+defineExpose({
+	focusInput,
+});
 </script>
 
 <template>
@@ -24,6 +34,7 @@ const i18n = useI18n();
 		>
 			<N8nInput
 				id="workflow-version-name"
+				ref="nameInput"
 				v-model="versionName"
 				:disabled="disabled"
 				size="large"

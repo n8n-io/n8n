@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, h, onMounted } from 'vue';
+import { computed, ref, h, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import type { VNode } from 'vue';
 import Modal from '@/app/components/Modal.vue';
 import {
@@ -32,6 +32,8 @@ const uiStore = useUIStore();
 const { showMessage } = useToast();
 const workflowActivate = useWorkflowActivate();
 const workflowHelpers = useWorkflowHelpers();
+
+const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('publishForm');
 
 const description = ref('');
 const versionName = ref('');
@@ -105,14 +107,19 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 	return null;
 });
 
-function handleModalOpened() {
-	if (!versionName.value && !inputsDisabled.value) {
-		versionName.value = generateVersionName(workflowsStore.workflow.versionId);
-	}
+function onModalOpened() {
+	publishForm.value?.focusInput();
 }
 
 onMounted(() => {
-	handleModalOpened();
+	if (!versionName.value && !inputsDisabled.value) {
+		versionName.value = generateVersionName(workflowsStore.workflow.versionId);
+	}
+	modalBus.on('opened', onModalOpened);
+});
+
+onBeforeUnmount(() => {
+	modalBus.off('opened', onModalOpened);
 });
 
 function findManagedOpenAiCredentialId(
@@ -272,6 +279,7 @@ async function handlePublish() {
 					}}
 				</N8nCallout>
 				<WorkflowPublishForm
+					ref="publishForm"
 					v-model:version-name="versionName"
 					v-model:description="description"
 					:disabled="inputsDisabled"
