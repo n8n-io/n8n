@@ -14,6 +14,7 @@ import {
 	createEngineRequests,
 	saveToMemory,
 } from '@utils/agent-execution';
+import { modelPricingService } from '@utils/modelPricing';
 
 import { SYSTEM_MESSAGE } from '../../prompt';
 import type { AgentResult, RequestResponseMetadata } from '../types';
@@ -21,6 +22,51 @@ import { buildResponseMetadata } from './buildResponseMetadata';
 import type { ItemContext } from './prepareItemContext';
 
 type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
+
+/**
+ * Helper function to add cost calculation to token usage
+ */
+async function addCostToTokenUsage(
+	tokenUsage: {
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+		isEstimate: boolean;
+	},
+	model: BaseChatModel,
+): Promise<typeof tokenUsage & { estimatedCost?: number | null; modelName?: string }> {
+	// Get model name from the model instance
+	// Try multiple properties as different LLM providers use different naming
+	const modelAny = model as any;
+
+	const modelNameRaw =
+		modelAny.modelName || // Most common (OpenAI, Anthropic, etc.)
+		modelAny.model || // Alternative property
+		modelAny.name || // Some providers
+		modelAny._modelName || // Private property fallback
+		modelAny.caller?.model || // Nested in caller
+		modelAny.client?.modelName || // Nested in client
+		modelAny._modelType?.() || // Method fallback
+		'unknown';
+
+	// Ensure modelName is a string
+	const modelName =
+		typeof modelNameRaw === 'string' ? modelNameRaw : String(modelNameRaw || 'unknown');
+
+	// Calculate cost
+	const estimatedCost = await modelPricingService.calculateCost(
+		modelName,
+		tokenUsage.promptTokens,
+		tokenUsage.completionTokens,
+	);
+
+	return {
+		...tokenUsage,
+		estimatedCost,
+		modelName,
+	};
+}
+
 /**
  * Runs the agent for a single item, choosing between streaming or non-streaming execution.
  * Handles both regular execution and execution after tool calls.
@@ -50,7 +96,10 @@ export async function runAgent(
 		formatting_instructions:
 			'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 	};
-	const executeOptions = { signal: ctx.getExecutionCancelSignal() };
+	const executeOptions = {
+		signal: ctx.getExecutionCancelSignal(),
+		callbacks: [itemContext.tokenTracker],
+	};
 
 	// Check if streaming is actually available
 	const isStreamingAvailable = 'isStreaming' in ctx ? ctx.isStreaming?.() : undefined;
@@ -85,11 +134,28 @@ export async function runAgent(
 		// If result contains tool calls, build the request object like the normal flow
 		if (result.toolCalls && result.toolCalls.length > 0) {
 			const actions = await createEngineRequests(result.toolCalls, itemIndex, tools);
+			const currentTokens = itemContext.tokenTracker.getAccumulatedTokens();
 
 			return {
 				actions,
-				metadata: buildResponseMetadata(response, itemIndex),
+				metadata: buildResponseMetadata(response, itemIndex, currentTokens),
 			};
+		}
+
+		// Add token usage to final streaming result
+		const currentTokens = itemContext.tokenTracker.getAccumulatedTokens();
+		// Merge with previous accumulated tokens if this is a continuation
+		if (response?.metadata?.accumulatedTokens) {
+			const mergedTokens = {
+				promptTokens: response.metadata.accumulatedTokens.promptTokens + currentTokens.promptTokens,
+				completionTokens:
+					response.metadata.accumulatedTokens.completionTokens + currentTokens.completionTokens,
+				totalTokens: response.metadata.accumulatedTokens.totalTokens + currentTokens.totalTokens,
+				isEstimate: response.metadata.accumulatedTokens.isEstimate || currentTokens.isEstimate,
+			};
+			result.tokenUsage = await addCostToTokenUsage(mergedTokens, model);
+		} else if (currentTokens.totalTokens > 0) {
+			result.tokenUsage = await addCostToTokenUsage(currentTokens, model);
 		}
 
 		return result;
@@ -97,10 +163,13 @@ export async function runAgent(
 		// Handle regular execution
 		const chatHistory = await loadMemory(memory, model, options.maxTokensFromMemory);
 
-		const modelResponse = await executor.invoke({
-			...invokeParams,
-			chat_history: chatHistory,
-		});
+		const modelResponse = await executor.invoke(
+			{
+				...invokeParams,
+				chat_history: chatHistory,
+			},
+			executeOptions,
+		);
 
 		if ('returnValues' in modelResponse) {
 			// Save conversation to memory including any tool call context
@@ -126,15 +195,32 @@ export async function runAgent(
 			if (options.returnIntermediateSteps && steps.length > 0) {
 				result.intermediateSteps = steps;
 			}
+			// Add token usage to final result
+			const currentTokens = itemContext.tokenTracker.getAccumulatedTokens();
+			// Merge with previous accumulated tokens if this is a continuation
+			if (response?.metadata?.accumulatedTokens) {
+				const mergedTokens = {
+					promptTokens:
+						response.metadata.accumulatedTokens.promptTokens + currentTokens.promptTokens,
+					completionTokens:
+						response.metadata.accumulatedTokens.completionTokens + currentTokens.completionTokens,
+					totalTokens: response.metadata.accumulatedTokens.totalTokens + currentTokens.totalTokens,
+					isEstimate: response.metadata.accumulatedTokens.isEstimate || currentTokens.isEstimate,
+				};
+				result.tokenUsage = await addCostToTokenUsage(mergedTokens, model);
+			} else if (currentTokens.totalTokens > 0) {
+				result.tokenUsage = await addCostToTokenUsage(currentTokens, model);
+			}
 			return result;
 		}
 
 		// If response contains tool calls, we need to return this in the right format
 		const actions = await createEngineRequests(modelResponse, itemIndex, tools);
+		const currentTokens = itemContext.tokenTracker.getAccumulatedTokens();
 
 		return {
 			actions,
-			metadata: buildResponseMetadata(response, itemIndex),
+			metadata: buildResponseMetadata(response, itemIndex, currentTokens),
 		};
 	}
 }

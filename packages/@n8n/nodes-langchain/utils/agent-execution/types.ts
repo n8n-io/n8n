@@ -46,6 +46,17 @@ export type AgentResult = {
 	toolCalls?: ToolCallRequest[];
 	/** Intermediate steps showing the agent's reasoning */
 	intermediateSteps?: ToolCallData[];
+	/** Token usage information from LLM calls */
+	tokenUsage?: {
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+		isEstimate: boolean;
+		/** Estimated cost in USD (null if pricing unavailable) */
+		estimatedCost?: number | null;
+		/** Model name used for cost calculation */
+		modelName?: string;
+	};
 };
 
 /**
@@ -58,4 +69,11 @@ export type RequestResponseMetadata = {
 	previousRequests?: ToolCallData[];
 	/** Current iteration count (for max iterations enforcement) */
 	iterationCount?: number;
+	/** Accumulated token usage across all LLM calls */
+	accumulatedTokens?: {
+		promptTokens: number;
+		completionTokens: number;
+		totalTokens: number;
+		isEstimate: boolean;
+	};
 };
