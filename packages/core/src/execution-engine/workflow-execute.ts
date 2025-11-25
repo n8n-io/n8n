@@ -40,6 +40,11 @@ import type {
 	IWorkflowExecutionDataProcess,
 	EngineRequest,
 	EngineResponse,
+	EndChunk,
+	BeginChunk,
+	NodeExecuteBeforeChunk,
+	ErrorChunk,
+	NodeExecuteAfterChunk,
 	IDestinationNode,
 } from 'n8n-workflow';
 import {
@@ -1462,6 +1467,13 @@ export class WorkflowExecute {
 				this.updateTaskStatusesToCancelled();
 				this.abortController.abort();
 				const fullRunData = this.getFullRunData(startedAt);
+				const structuredChunk: EndChunk = {
+					type: 'end',
+					metadata: {
+						timestamp: Date.now(),
+					},
+				};
+				void hooks.runHook('sendChunk', [structuredChunk]);
 				void hooks.runHook('workflowExecuteAfter', [fullRunData]);
 			});
 
@@ -1478,6 +1490,13 @@ export class WorkflowExecute {
 
 					if (!this.additionalData.restartExecutionId) {
 						await hooks.runHook('workflowExecuteBefore', [workflow, this.runExecutionData]);
+						const structuredChunk: BeginChunk = {
+							type: 'begin',
+							metadata: {
+								timestamp: Date.now(),
+							},
+						};
+						await hooks.runHook('sendChunk', [structuredChunk]);
 					}
 				} catch (error) {
 					const e = error as unknown as ExecutionBaseError;
@@ -1633,6 +1652,17 @@ export class WorkflowExecute {
 					// Future: May introduce dedicated nodeExecutionPaused/nodeExecutionResumed events
 					// if we need finer-grained visibility into the pause/resume cycle.
 					if (!executionData.metadata?.nodeWasResumed) {
+						const structuredBeforeChunk: NodeExecuteBeforeChunk = {
+							type: 'node-execute-before',
+							metadata: {
+								nodeId: executionNode.id,
+								nodeName: executionNode.name,
+								nodeType: executionNode.type,
+								runIndex,
+								timestamp: Date.now(),
+							},
+						};
+						await hooks.runHook('sendChunk', [structuredBeforeChunk]);
 						await hooks.runHook('nodeExecuteBefore', [executionNode.name, taskStartedData]);
 					}
 					let maxTries = 1;
@@ -1857,18 +1887,18 @@ export class WorkflowExecute {
 						taskData.executionStatus = 'error';
 
 						// Send error to the response if necessary
-						await hooks?.runHook('sendChunk', [
-							{
-								type: 'error',
-								content: executionError.description,
-								metadata: {
-									nodeId: executionNode.id,
-									nodeName: executionNode.name,
-									runIndex,
-									itemIndex: 0,
-								},
+						const structuredChunk: ErrorChunk = {
+							type: 'error',
+							message: executionError.description ?? 'Unknown error',
+							metadata: {
+								nodeId: executionNode.id,
+								nodeName: executionNode.name,
+								nodeType: executionNode.type,
+								runIndex,
+								timestamp: Date.now(),
 							},
-						]);
+						};
+						await hooks?.runHook('sendChunk', [structuredChunk]);
 
 						if (
 							executionData.node.continueOnFail === true ||
@@ -1892,6 +1922,17 @@ export class WorkflowExecute {
 							this.runExecutionData.executionData!.nodeExecutionStack.unshift(executionData);
 							// Only execute the nodeExecuteAfter hook if the node did not get aborted
 							if (!this.isCancelled) {
+								const structuredChunk: NodeExecuteAfterChunk = {
+									type: 'node-execute-after',
+									metadata: {
+										nodeId: executionNode.id,
+										nodeName: executionNode.name,
+										nodeType: executionNode.type,
+										runIndex,
+										timestamp: Date.now(),
+									},
+								};
+								await hooks.runHook('sendChunk', [structuredChunk]);
 								await hooks.runHook('nodeExecuteAfter', [
 									executionNode.name,
 									taskData,
@@ -1953,6 +1994,17 @@ export class WorkflowExecute {
 					}
 
 					if (this.runExecutionData.waitTill) {
+						const structuredChunk: NodeExecuteAfterChunk = {
+							type: 'node-execute-after',
+							metadata: {
+								nodeId: executionNode.id,
+								nodeName: executionNode.name,
+								nodeType: executionNode.type,
+								runIndex,
+								timestamp: Date.now(),
+							},
+						};
+						await hooks.runHook('sendChunk', [structuredChunk]);
 						await hooks.runHook('nodeExecuteAfter', [
 							executionNode.name,
 							taskData,
@@ -1968,6 +2020,17 @@ export class WorkflowExecute {
 					if (this.runExecutionData?.startData?.destinationNode?.nodeName === executionNode.name) {
 						// Before stopping, make sure we are executing hooks so
 						// That frontend is notified for example for manual executions.
+						const structuredChunk: NodeExecuteAfterChunk = {
+							type: 'node-execute-after',
+							metadata: {
+								nodeId: executionNode.id,
+								nodeName: executionNode.name,
+								nodeType: executionNode.type,
+								runIndex,
+								timestamp: Date.now(),
+							},
+						};
+						await hooks.runHook('sendChunk', [structuredChunk]);
 						await hooks.runHook('nodeExecuteAfter', [
 							executionNode.name,
 							taskData,
@@ -2079,6 +2142,17 @@ export class WorkflowExecute {
 					// Execute hooks now to make sure that all hooks are executed properly
 					// Await is needed to make sure that we don't fall into concurrency problems
 					// When saving node execution data
+					const structuredChunk: NodeExecuteAfterChunk = {
+						type: 'node-execute-after',
+						metadata: {
+							nodeId: executionNode.id,
+							nodeName: executionNode.name,
+							nodeType: executionNode.type,
+							runIndex,
+							timestamp: Date.now(),
+						},
+					};
+					await hooks.runHook('sendChunk', [structuredChunk]);
 					await hooks.runHook('nodeExecuteAfter', [
 						executionNode.name,
 						taskData,
@@ -2283,6 +2357,13 @@ export class WorkflowExecute {
 					}
 
 					this.moveNodeMetadata();
+					const structuredChunk: EndChunk = {
+						type: 'end',
+						metadata: {
+							timestamp: Date.now(),
+						},
+					};
+					await hooks.runHook('sendChunk', [structuredChunk]);
 
 					await hooks
 						.runHook('workflowExecuteAfter', [fullRunData, newStaticData])
@@ -2447,6 +2528,13 @@ export class WorkflowExecute {
 
 		// Prevent from running the hook if the error is an abort error as it was already handled
 		if (!this.isCancelled) {
+			const structuredChunk: EndChunk = {
+				type: 'end',
+				metadata: {
+					timestamp: Date.now(),
+				},
+			};
+			this.additionalData.hooks?.runHook('sendChunk', [structuredChunk]);
 			await this.additionalData.hooks?.runHook('workflowExecuteAfter', [
 				fullRunData,
 				newStaticData,
