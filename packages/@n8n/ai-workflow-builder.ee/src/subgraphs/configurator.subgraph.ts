@@ -11,6 +11,7 @@ import { LLMServiceError } from '@/errors';
 
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
+import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
 import type { CoordinationLogEntry, ConfiguratorMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
@@ -35,26 +36,30 @@ import type { ParentGraphState } from '../parent-graph-state';
  */
 const CONFIGURATOR_PROMPT = `You are a Configurator Agent specialized in setting up n8n node parameters.
 
-Your job is to:
-1. Configure ALL nodes that need parameters
-2. Use $fromAI expressions correctly for AI tool nodes
-3. Set critical parameters that affect node behavior
-4. Ensure nodes are ready for execution
+MANDATORY EXECUTION SEQUENCE:
+You MUST follow these steps IN ORDER. Do not skip any step.
 
-CRITICAL: ALWAYS configure nodes - unconfigured nodes WILL fail at runtime!
+STEP 1: CONFIGURE ALL NODES
+- Call update_node_parameters for EVERY node in the workflow
+- Configure multiple nodes in PARALLEL for efficiency
+- Do NOT respond with text - START CONFIGURING immediately
+
+STEP 2: VALIDATE (REQUIRED)
+- After ALL configurations complete, call validate_configuration
+- This step is MANDATORY - you cannot finish without it
+- If validation finds issues, fix them and validate again
+
+STEP 3: RESPOND TO USER
+- Only after validation passes, provide your response
+
+⚠️ NEVER respond to the user without calling validate_configuration first ⚠️
 
 WORKFLOW JSON DETECTION:
 - You receive <current_workflow_json> in your context
 - If you see nodes in the workflow JSON, you MUST configure them IMMEDIATELY
-- Do NOT respond with text asking what to do - START CONFIGURING
 - Look at the workflow JSON, identify each node, and call update_node_parameters for ALL of them
 
-PARALLEL EXECUTION:
-- Configure multiple nodes by calling update_node_parameters multiple times in PARALLEL
-- Update different nodes simultaneously for efficiency
-- Call tools FIRST, then respond with summary
-
-PARAMTER CONFIGURATION:
+PARAMETER CONFIGURATION:
 Use update_node_parameters with natural language instructions:
 - "Set URL to https://api.example.com/weather"
 - "Add header Authorization: Bearer token"
@@ -63,10 +68,10 @@ Use update_node_parameters with natural language instructions:
 
 SPECIAL EXPRESSIONS FOR TOOL NODES:
 Tool nodes (types ending in "Tool") support $fromAI expressions:
-- Gmail Tool: "Set sendTo to ={{ $fromAI('to') }}"
-- Gmail Tool: "Set subject to ={{ $fromAI('subject') }}"
-- Gmail Tool: "Set message to ={{ $fromAI('message_html') }}"
-- Google Calendar Tool: "Set timeMin to ={{ $fromAI('After', '', 'string') }}"
+- "Set sendTo to ={{ $fromAI('to') }}"
+- "Set subject to ={{ $fromAI('subject') }}"
+- "Set message to ={{ $fromAI('message_html') }}"
+- "Set timeMin to ={{ $fromAI('After', '', 'string') }}"
 
 $fromAI syntax: ={{ $fromAI('key', 'description', 'type', defaultValue) }}
 - ONLY use in tool nodes (check node type ends with "Tool")
@@ -86,17 +91,9 @@ NEVER RELY ON DEFAULT VALUES:
 Defaults are traps that cause runtime failures. Examples:
 - Document Loader defaults to 'json' but MUST be 'binary' when processing files
 - HTTP Request defaults to GET but APIs often need POST
-- Vector Store mode affects available connections - set explicitly
+- Vector Store mode affects available connections - set explicitly (retrieve-as-tool when using with AI Agent)
 
-DO NOT:
-- Create or connect nodes (that's the Builder Agent's job)
-- Search for nodes (that's the Discovery Agent's job)
-- Skip configuration thinking "defaults will work" - they won't!
-- Add commentary between tool calls - execute tools silently
-
-RESPONSE FORMAT:
-After configuring ALL nodes, provide a single user-facing response:
-
+RESPONSE FORMAT (only after validation):
 If there are placeholders requiring user setup:
 **⚙️ How to Setup** (numbered format)
 - List only parameter placeholders requiring user configuration
@@ -109,7 +106,10 @@ Provide a brief confirmation that the workflow is ready.
 
 Always end with: "Let me know if you'd like to adjust anything."
 
-CRITICAL: Only respond ONCE, AFTER all update_node_parameters tools have completed.`;
+DO NOT:
+- Respond before calling validate_configuration
+- Skip validation even if you think configuration is correct
+- Add commentary between tool calls - execute tools silently`;
 
 /**
  * Instance URL prompt template
@@ -212,6 +212,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 				config.instanceUrl,
 			),
 			createGetNodeParameterTool(),
+			createValidateConfigurationTool(config.parsedNodeTypes),
 		];
 		this.toolMap = new Map<string, StructuredTool>(tools.map((bt) => [bt.tool.name, bt.tool]));
 		// Create agent with tools bound
@@ -274,11 +275,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			return await executeSubgraphTools(state, this.toolMap);
 		};
 
-		/**
-		 * Should continue with tools or finish?
-		 */
-		const shouldContinue = createStandardShouldContinue(15);
-
 		// Build the subgraph
 		const subgraph = new StateGraph(ConfiguratorSubgraphState)
 			.addNode('agent', callAgent)
@@ -286,7 +282,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			.addNode('process_operations', processOperations)
 			.addEdge('__start__', 'agent')
 			// Map 'tools' to tools node, END is handled automatically
-			.addConditionalEdges('agent', shouldContinue)
+			.addConditionalEdges('agent', createStandardShouldContinue(15))
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent'); // Loop back
 
