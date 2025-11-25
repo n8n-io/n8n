@@ -1,7 +1,7 @@
 import type { Ref } from 'vue';
 import { useUserRoleProvisioningStore } from './userRoleProvisioning.store';
 import { usePostHog } from '@/app/stores/posthog.store';
-import { SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT } from '@/app/constants/experiments';
+import { SSO_JUST_IN_TIME_PROVISIONING_EXPERIMENT } from '@/app/constants/experiments';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 import { type UserRoleProvisioningSetting } from '../components/UserRoleProvisioningDropdown.vue';
 
@@ -51,7 +51,7 @@ export function useUserRoleProvisioningForm(
 	};
 
 	const isUserRoleProvisioningChanged = (): boolean => {
-		if (!posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name)) {
+		if (!posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVISIONING_EXPERIMENT.name)) {
 			return false;
 		}
 		return (

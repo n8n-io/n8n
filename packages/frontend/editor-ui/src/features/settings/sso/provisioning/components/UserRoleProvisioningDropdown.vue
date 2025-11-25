@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT } from '@/app/constants';
+import { SSO_JUST_IN_TIME_PROVISIONING_EXPERIMENT } from '@/app/constants';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 
 import { N8nOption, N8nSelect } from '@n8n/design-system';
@@ -25,7 +25,7 @@ const posthogStore = usePostHog();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
 
 const isUserRoleProvisioningFeatureEnabled = posthogStore.isFeatureEnabled(
-	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name,
+	SSO_JUST_IN_TIME_PROVISIONING_EXPERIMENT.name,
 );
 
 const handleUserRoleProvisioningChange = (newValue: UserRoleProvisioningSetting) => {

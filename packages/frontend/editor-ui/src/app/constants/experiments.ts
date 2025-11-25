@@ -55,6 +55,12 @@ export const TEMPLATE_RECO_V2 = {
 	variant: 'variant',
 };
 
+export const UPGRADE_PLAN_CTA = {
+	name: '054_upgrade_plan_cta',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const TEMPLATES_DATA_QUALITY_EXPERIMENT = {
 	name: '046_templates_data_quality',
 	control: 'control',
@@ -83,7 +89,7 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 	variant: 'variant',
 };
 
-export const SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT = {
+export const SSO_JUST_IN_TIME_PROVISIONING_EXPERIMENT = {
 	name: '050_sso_jit_provisioning',
 };
 
@@ -96,5 +102,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_RECO_V2.name,
 	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
 	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
-	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name,
+	SSO_JUST_IN_TIME_PROVISIONING_EXPERIMENT.name,
+	UPGRADE_PLAN_CTA.name,
 ];

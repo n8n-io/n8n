@@ -12,7 +12,7 @@ const uiStore = useUIStore();
 const isCollapsed = computed(() => uiStore.sidebarMenuCollapsed);
 
 const isVisible = computed(() => {
-	return cloudPlanStore.userIsTrialing;
+	return cloudPlanStore.userIsTrialing && !cloudPlanStore.isTrialBannerEnabled;
 });
 
 const trialMessage = computed(() => {

@@ -76,10 +76,34 @@ const createProjectAndNavigate = async (n8n: n8nPage) => {
 
 test.describe('Cloud @db:reset @auth:owner', () => {
 	test.describe('Trial Upgrade', () => {
-		test('should show trial upgrade in the main sidebar if user is trialing', async ({
+		test('should render trial banner for opt-in cloud user and has feature flag control', async ({
 			n8n,
 			setupRequirements,
 		}) => {
+			await n8n.api.setEnvFeatureFlags({ [UPGRADE_PLAN_CTA.name]: UPGRADE_PLAN_CTA.control });
+			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
+			await n8n.start.fromBlankCanvas();
+			await n8n.sideBar.expand();
+
+			await expect(n8n.sideBar.getTrialBanner()).toBeVisible();
+		});
+
+		test('should render trial banner for opt-in cloud user and has no feature flag set', async ({
+			n8n,
+			setupRequirements,
+		}) => {
+			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
+			await n8n.start.fromBlankCanvas();
+			await n8n.sideBar.expand();
+
+			await expect(n8n.sideBar.getTrialBanner()).toBeVisible();
+		});
+
+		test('should show trial upgrade in the main sidebar if user is trialing and has feature flag enabled', async ({
+			n8n,
+			setupRequirements,
+		}) => {
+			await n8n.api.setEnvFeatureFlags({ [UPGRADE_PLAN_CTA.name]: UPGRADE_PLAN_CTA.variant });
 			await setupCloudTest(n8n, setupRequirements, cloudTrialRequirements);
 			await n8n.start.fromBlankCanvas();
 			await n8n.sideBar.expand();
