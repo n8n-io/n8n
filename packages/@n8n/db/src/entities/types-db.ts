@@ -416,3 +416,5 @@ export type WorkflowHistoryUpdate = Omit<
 	Partial<WorkflowHistory>,
 	'versionId' | 'workflowId' | 'createdAt' | 'updatedAt'
 >;
+
+export type WorkflowPublishHistoryMode = 'activate' | 'update' | 'deactivate';

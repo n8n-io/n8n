@@ -8,7 +8,7 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 			.withColumns(
 				column('id').int.primary.autoGenerate2,
 				column('workflowId').varchar(36).notNull,
-				column('versionId').varchar(36),
+				column('versionId').varchar(36).notNull,
 				column('status').varchar(36).notNull,
 				column('mode').varchar(36),
 				column('userId').uuid,
@@ -40,7 +40,7 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 
 		if (activeWorkflows.length > 0) {
 			const values = activeWorkflows
-				.map(({ id, version }) => `('${id}', '${version}', 'activated', 'init')`)
+				.map(({ id, version }) => `('${id}', '${version}', 'activated', 'activate')`)
 				.join(',');
 			await runQuery(
 				`INSERT INTO ${workflowPublishHistoryTableName} (workflowId, versionId, status, mode) VALUES ${values};`,

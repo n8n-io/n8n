@@ -16,10 +16,6 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 		mode,
 		userId,
 	}: Pick<WorkflowPublishHistory, 'status' | 'workflowId' | 'versionId' | 'mode' | 'userId'>) {
-		// We skip init events on instance start since they don't hold meaningful data
-		// and will grow the table over time without benefit
-		if (mode === 'init') return;
-
 		await this.insert({
 			workflowId,
 			versionId,
@@ -43,10 +39,8 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 
 	async getPublishedVersions(workflowId: string, includeUser?: boolean) {
 		const select: Array<keyof WorkflowPublishHistory> = ['versionId', 'createdAt'];
-		let relations = {};
 		if (includeUser) {
 			select.push('user');
-			relations = { user: true };
 		}
 		const result = await this.find({
 			select,
@@ -55,7 +49,9 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 				status: 'activated',
 				mode: Or(Equal('activate'), Equal('update')),
 			},
-			relations,
+			relations: {
+				user: includeUser,
+			},
 		});
 
 		return result;

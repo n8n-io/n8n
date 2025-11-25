@@ -6,7 +6,7 @@ import {
 } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
-import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
+import type { WorkflowEntity, IWorkflowDb, WorkflowPublishHistoryMode } from '@n8n/db';
 import { WorkflowRepository, WorkflowPublishHistoryRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
@@ -659,13 +659,18 @@ export class ActiveWorkflowManager {
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
 			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId,
-				versionId: dbWorkflow.versionId,
-				status: 'activated',
-				mode: activationMode,
-				userId: userId ?? null,
-			});
+
+			if (activationMode === 'activate' || activationMode === 'update') {
+				// We skip adding init events (e.g. on instance start) since they don't hold meaningful
+				// data and will grow the table over time without benefit
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId,
+					versionId: dbWorkflow.versionId,
+					status: 'activated',
+					mode: activationMode,
+					userId: userId ?? null,
+				});
+			}
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.register(workflowId, error.message);
@@ -894,7 +899,11 @@ export class ActiveWorkflowManager {
 	 */
 	// TODO: this should happen in a transaction
 	// maybe, see: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
-	async remove(workflowId: WorkflowId, userId?: User['id'], reason?: 'update' | 'deactivate') {
+	async remove(
+		workflowId: WorkflowId,
+		userId?: User['id'],
+		reason?: Extract<WorkflowPublishHistoryMode, 'update' | 'deactivate'>,
+	) {
 		if (this.instanceSettings.isMultiMain) {
 			try {
 				await this.clearWebhooks(workflowId);
@@ -932,13 +941,7 @@ export class ActiveWorkflowManager {
 		// so remove from list of actives workflows
 		await this.removeWorkflowTriggersAndPollers(workflowId);
 
-		await this.workflowPublishHistoryRepository.addRecord({
-			workflowId,
-			versionId: null,
-			status: 'deactivated',
-			mode: reason ?? null,
-			userId: userId ?? null,
-		});
+		await this.trackRemovalInPublishingHistory(workflowId, userId, reason);
 	}
 
 	@OnPubSubEvent('remove-triggers-and-pollers', { instanceType: 'main', instanceRole: 'leader' })
@@ -947,16 +950,9 @@ export class ActiveWorkflowManager {
 		userId,
 		reason,
 	}: PubSubCommandMap['remove-triggers-and-pollers']) {
+		await this.trackRemovalInPublishingHistory(workflowId, userId, reason);
 		await this.removeActivationError(workflowId);
 		await this.removeWorkflowTriggersAndPollers(workflowId);
-
-		await this.workflowPublishHistoryRepository.addRecord({
-			workflowId,
-			versionId: null,
-			status: 'deactivated',
-			mode: reason ?? null,
-			userId: userId ?? null,
-		});
 
 		this.push.broadcast({ type: 'workflowDeactivated', data: { workflowId } });
 
@@ -978,6 +974,24 @@ export class ActiveWorkflowManager {
 		if (wasRemoved) {
 			this.logger.debug(`Removed triggers and pollers for workflow "${workflowId}"`, {
 				workflowId,
+			});
+		}
+	}
+
+	async trackRemovalInPublishingHistory(
+		workflowId: string,
+		userId?: User['id'],
+		reason?: Extract<WorkflowPublishHistoryMode, 'update' | 'deactivate'>,
+	) {
+		const workflow = await this.workflowRepository.findById(workflowId);
+		const versionId = workflow?.activeVersionId;
+		if (versionId) {
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId,
+				status: 'deactivated',
+				mode: reason ?? null,
+				userId: userId ?? null,
 			});
 		}
 	}
