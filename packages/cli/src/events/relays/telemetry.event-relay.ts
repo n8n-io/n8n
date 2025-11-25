@@ -936,7 +936,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Workflow first prod success', {
 			project_id: projectId,
 			workflow_id: workflowId,
-			user_id: userId,
+			user_id: userId ?? undefined,
 		});
 	}
 
