@@ -23,6 +23,7 @@ export const defaultOptions: ChatOptions = {
 			getStarted: 'New Conversation',
 			inputPlaceholder: 'Type your question..',
 			closeButtonTooltip: 'Close chat',
+			resetConversation: 'Reset conversation',
 		},
 	},
 	theme: {},

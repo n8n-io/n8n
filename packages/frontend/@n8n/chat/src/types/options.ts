@@ -26,6 +26,7 @@ export interface ChatOptions {
 			getStarted: string;
 			inputPlaceholder: string;
 			closeButtonTooltip: string;
+			resetConversation: string;
 			[message: string]: string;
 		}
 	>;
