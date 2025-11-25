@@ -46,9 +46,9 @@ export type PaginationEmits = PaginationRootEmits & {
 };
 
 export type PaginationSlots = {
-	default?: (props: Record<string, never>) => unknown;
-	prev?: (props: { disabled: boolean }) => unknown;
-	next?: (props: { disabled: boolean }) => unknown;
-	first?: (props: { disabled: boolean }) => unknown;
-	last?: (props: { disabled: boolean }) => unknown;
+	default?: (props?: Record<string, never>) => unknown;
+	prev?: (props?: { disabled?: boolean }) => unknown;
+	next?: (props?: { disabled?: boolean }) => unknown;
+	first?: (props?: { disabled?: boolean }) => unknown;
+	last?: (props?: { disabled?: boolean }) => unknown;
 };

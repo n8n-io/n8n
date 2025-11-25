@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 
 import Pagination from './Pagination.vue';
 
@@ -54,16 +54,10 @@ export default {
 	},
 } satisfies Meta<typeof Pagination>;
 
-const Template = (
-	args: Record<string, unknown>,
-	{ updateArgs }: { updateArgs: (args: Record<string, unknown>) => void },
-) => ({
+const Template = (args: Record<string, unknown>) => ({
 	components: { Pagination },
 	setup() {
-		const currentPage = computed({
-			get: () => (args as { currentPage?: number }).currentPage || 1,
-			set: (value: number) => updateArgs({ currentPage: value }),
-		});
+		const currentPage = ref((args as { currentPage?: number }).currentPage || 1);
 		return { args, currentPage };
 	},
 	template: '<Pagination v-bind="args" v-model:current-page="currentPage" />',
