@@ -1,6 +1,8 @@
 import { LOCAL_STORAGE_CHAT_HUB_CREDENTIALS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import { credentialsMapSchema, type CredentialsMap } from '@/features/ai/chatHub/chat.types';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import {
 	chatHubProviderSchema,
@@ -8,7 +10,7 @@ import {
 	type ChatHubProvider,
 } from '@n8n/api-types';
 import { useLocalStorage } from '@vueuse/core';
-import { computed, onMounted, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { isLlmProvider } from '../chat.utils';
 
 /**
@@ -18,6 +20,7 @@ export function useChatCredentials(userId: string) {
 	const isInitialized = ref(false);
 	const credentialsStore = useCredentialsStore();
 	const settingsStore = useSettingsStore();
+	const projectStore = useProjectsStore();
 
 	const selectedCredentials = useLocalStorage<CredentialsMap>(
 		LOCAL_STORAGE_CHAT_HUB_CREDENTIALS(userId),
@@ -60,8 +63,7 @@ export function useChatCredentials(userId: string) {
 
 				// Use default credential from settings if available to the user
 				if (
-					settings &&
-					settings.credentialId &&
+					settings?.credentialId &&
 					availableCredentials.some((c) => c.id === settings.credentialId)
 				) {
 					return [provider, settings.credentialId];
@@ -90,13 +92,27 @@ export function useChatCredentials(userId: string) {
 		selectedCredentials.value = { ...selectedCredentials.value, [provider]: id };
 	}
 
-	onMounted(async () => {
-		await Promise.all([
-			credentialsStore.fetchCredentialTypes(false),
-			credentialsStore.fetchAllCredentials(),
-		]);
-		isInitialized.value = true;
-	});
+	watch(
+		() => projectStore.personalProject,
+		async (personalProject) => {
+			if (personalProject) {
+				const hasGlobalCredentialRead = hasPermission(['rbac'], {
+					rbac: { scope: 'credential:read' },
+				});
+
+				await Promise.all([
+					credentialsStore.fetchCredentialTypes(false),
+					// For non-owner users only fetch credentials from personal project.
+					hasGlobalCredentialRead
+						? credentialsStore.fetchAllCredentials()
+						: credentialsStore.fetchAllCredentials(personalProject.id),
+				]);
+
+				isInitialized.value = true;
+			}
+		},
+		{ immediate: true },
+	);
 
 	return { credentialsByProvider, selectCredential };
 }
