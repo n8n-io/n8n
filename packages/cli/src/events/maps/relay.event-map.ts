@@ -39,7 +39,7 @@ export type RelayEventMap = {
 	'first-production-workflow-succeeded': {
 		projectId: string;
 		workflowId: string;
-		userId: string;
+		userId: string | null;
 	};
 
 	'first-workflow-data-loaded': {
@@ -532,6 +532,19 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
+
+	// #region SSO
+
+	'sso-user-project-access-updated': {
+		projectsRemoved: number;
+		projectsAdded: number;
+		userId: string;
+	};
+
+	'sso-user-instance-role-updated': {
+		role: string;
+		userId: string;
+	};
 
 	// #region runner
 

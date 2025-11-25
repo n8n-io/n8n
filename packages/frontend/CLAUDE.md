@@ -99,6 +99,7 @@ application. These variables cover colors, spacing, typography, and borders.
 --line-height--xl: 1.5
 
 --font-weight--regular: 400
+--font-weight--medium: 500;
 --font-weight--bold: 600
 --font-family: InterVariable, sans-serif
 ```
