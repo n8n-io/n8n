@@ -422,6 +422,39 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 	}
 
+	function nodeHasIssuesDownstream(nodeName: string): boolean {
+		const visited = new Set<string>();
+
+		function hasIssues(currentNodeName: string): boolean {
+			if (visited.has(currentNodeName)) return false;
+			visited.add(currentNodeName);
+
+			const node = getNodeByName(currentNodeName);
+			if (!node) return false;
+
+			// Check if node has issues (skip disabled nodes)
+			if (!node.disabled && node.issues && Object.keys(node.issues).length > 0) {
+				return true;
+			}
+
+			// Recursively check all downstream connections (all connection types)
+			const connections = outgoingConnectionsByNodeName(currentNodeName);
+			return Object.values(connections).some((connectionType) =>
+				connectionType?.some((outputIndexes) =>
+					outputIndexes?.some((connection) => hasIssues(connection.node)),
+				),
+			);
+		}
+
+		// Check children of the given node (all connection types)
+		const connections = outgoingConnectionsByNodeName(nodeName);
+		return Object.values(connections).some((connectionType) =>
+			connectionType?.some((outputIndexes) =>
+				outputIndexes?.some((connection) => hasIssues(connection.node)),
+			),
+		);
+	}
+
 	function getWorkflowById(id: string): IWorkflowDb {
 		return workflowsById.value[id];
 	}
@@ -1897,6 +1930,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		incomingConnectionsByNodeName,
 		nodeHasOutputConnection,
 		isNodeInOutgoingNodeConnections,
+		nodeHasIssuesDownstream,
 		getWorkflowById,
 		getNodeByName,
 		findRootWithMainConnection,
