@@ -4,6 +4,7 @@ import type {
 	INodeExecutionData,
 	PlaintextExecutionContext,
 	IWorkflowBase,
+	INodeProperties,
 } from 'n8n-workflow';
 
 /**
@@ -137,7 +138,17 @@ export type ContextEstablishmentResult = {
  * @ContextEstablishmentHook()
  * export class BearerTokenHook implements IContextEstablishmentHook {
  *   hookDescription = {
- *     name: 'credentials.bearerToken'
+ *     name: 'credentials.bearerToken',
+ *     displayName: 'Bearer Token',
+ *     options: [
+ *       {
+ *         displayName: 'Remove from Item',
+ *         name: 'removeFromItem',
+ *         type: 'boolean',
+ *         default: true,
+ *         description: 'Whether to remove the Authorization header from the trigger item'
+ *       }
+ *     ]
  *   };
  *
  *   // ... hook implementation
@@ -171,6 +182,45 @@ export type HookDescription = {
 	 * @example 'audit.requestMetadata'
 	 */
 	name: string;
+
+	/**
+	 * Human-readable display name for the hook.
+	 * Used in the UI when presenting the hook selection to users.
+	 * If not provided, the name will be used as the display name.
+	 *
+	 * @example 'Bearer Token Authentication'
+	 * @example 'API Key from Header'
+	 */
+	displayName?: string;
+
+	/**
+	 * Hook-specific configuration options that will be exposed in the trigger node UI.
+	 * These options are passed to the hook's execute() method via the options parameter.
+	 *
+	 * Each option should be a valid node property object with at minimum:
+	 * displayName, name, type, and default fields.
+	 *
+	 * @example
+	 * ```typescript
+	 * options: [
+	 *   {
+	 *     displayName: 'Remove from Item',
+	 *     name: 'removeFromItem',
+	 *     type: 'boolean',
+	 *     default: true,
+	 *     description: 'Whether to remove the Authorization header from trigger items'
+	 *   },
+	 *   {
+	 *     displayName: 'Header Name',
+	 *     name: 'headerName',
+	 *     type: 'string',
+	 *     default: 'Authorization',
+	 *     description: 'The name of the header containing the bearer token'
+	 *   }
+	 * ]
+	 * ```
+	 */
+	options?: INodeProperties[];
 };
 
 /**
