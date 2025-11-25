@@ -111,8 +111,20 @@ const rootProps = useForwardPropsEmits(reactivePick(props, 'disabled', 'showEdge
 // Internal page size state for v-model:page-size
 const internalPageSize = ref(itemsPerPage.value);
 
+// Track previous page for directional events
+const prevPage = ref(page.value);
+
 // Handle page updates
 const handlePageUpdate = (newPage: number) => {
+	// Emit directional events based on page change
+	if (newPage < prevPage.value) {
+		emit('prev-click', newPage);
+	} else if (newPage > prevPage.value) {
+		emit('next-click', newPage);
+	}
+
+	prevPage.value = newPage;
+
 	emit('update:page', newPage);
 	emit('update:currentPage', newPage);
 	emit('current-change', newPage);
@@ -128,18 +140,6 @@ const handlePageSizeUpdate = (newSize: number | string) => {
 	// Reset to first page when page size changes
 	handlePageUpdate(1);
 };
-
-// PaginationRoot already handles page changes via @update:page
-// We just need to emit the additional events when page changes
-watch(page, (newPage, oldPage) => {
-	if (newPage !== oldPage) {
-		if (newPage < oldPage) {
-			emit('prev-click', newPage);
-		} else if (newPage > oldPage) {
-			emit('next-click', newPage);
-		}
-	}
-});
 
 // Styles
 const variants: Record<PaginationVariants, string> = {
