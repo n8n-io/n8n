@@ -38,18 +38,8 @@ import {
 	INode,
 	type IBinaryData,
 	createRunExecutionData,
+	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
-import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionService } from '@/executions/execution.service';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
@@ -67,6 +57,17 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
+
+import { ActiveExecutions } from '@/active-executions';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionService } from '@/executions/execution.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
 
 @Service()
 export class ChatHubService {
@@ -1457,6 +1458,7 @@ export class ChatHubService {
 		previousMessageId: ChatMessageId,
 		model: ChatHubConversationModel,
 		retryOfMessageId: ChatMessageId | null = null,
+		executionMode: WorkflowExecuteMode = 'chat',
 	) {
 		this.logger.debug(
 			`Starting execution of workflow "${workflowData.name}" with ID ${workflowData.id}`,
@@ -1560,6 +1562,7 @@ export class ChatHubService {
 			user,
 			stream,
 			true,
+			executionMode,
 		);
 
 		executionId = execution.executionId;
@@ -1597,6 +1600,10 @@ export class ChatHubService {
 		retryOfMessageId: ChatMessageId | null = null,
 	) {
 		try {
+			// 'n8n' provider executions count towards execution limits and they are run with the usual 'webhook' mode.
+			// Chats with base LLM providers use 'chat' execution mode that doesn't count towards limits.
+			const executionMode = model.provider === 'n8n' ? 'webhook' : 'chat';
+
 			await this.executeChatWorkflow(
 				res,
 				user,
@@ -1606,6 +1613,7 @@ export class ChatHubService {
 				previousMessageId,
 				model,
 				retryOfMessageId,
+				executionMode,
 			);
 		} finally {
 			if (model.provider !== 'n8n') {
