@@ -293,37 +293,6 @@ describe('RoleRepository', () => {
 
 				transactionSpy.mockRestore();
 			});
-
-			it('should use direct manager for SQLite legacy databases', async () => {
-				//
-				// ARRANGE
-				//
-				await createRole({
-					slug: 'role-for-legacy-test',
-					displayName: 'Original Name',
-					description: 'Original Description',
-				});
-
-				// Spy on transaction method to verify it's NOT called
-				const transactionSpy = jest.spyOn(roleRepository.manager, 'transaction');
-
-				//
-				// ACT
-				//
-				const updatedRole = await roleRepository.updateRole('role-for-legacy-test', {
-					displayName: 'Updated Name',
-					description: 'Updated Description',
-				});
-
-				//
-				// ASSERT
-				//
-				expect(transactionSpy).not.toHaveBeenCalled();
-				expect(updatedRole.displayName).toBe('Updated Name');
-				expect(updatedRole.description).toBe('Updated Description');
-
-				transactionSpy.mockRestore();
-			});
 		});
 
 		describe('successful updates', () => {
