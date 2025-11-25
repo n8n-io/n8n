@@ -3116,6 +3116,8 @@
 	"workflows.item.availableInMCP": "Available in MCP",
 	"workflows.item.enableMCPAccess": "Enable MCP access",
 	"workflows.item.disableMCPAccess": "Remove MCP access",
+	"workflows.item.published": "Published",
+	"workflows.item.notPublished": "Not published",
 	"workflows.itemSuggestion.try": "Try template",
 	"workflows.templateRecoV2.starterTemplates": "Starter templates",
 	"workflows.templateRecoV2.seeMoreStarterTemplates": "See more starter templates",
