@@ -652,12 +652,12 @@ const tags = computed(
 					data-test-id="workflow-card-publish-indicator"
 				>
 					<template v-if="isWorkflowPublished">
-						<N8nIcon icon="circle-check" color="success" size="xlarge" />
-						<N8nText size="small" color="success" bold>
+						<N8nIcon icon="circle-check" size="xlarge" :class="$style.publishIndicatorColor" />
+						<N8nText size="small" bold :class="$style.publishIndicatorColor">
 							{{ locale.baseText('workflows.item.published') }}
 						</N8nText>
 					</template>
-					<N8nText v-else size="small" color="text-light" bold>
+					<N8nText v-else size="small" bold :class="$style.publishIndicatorColor">
 						{{ locale.baseText('workflows.item.notPublished') }}
 					</N8nText>
 				</div>
@@ -761,6 +761,20 @@ const tags = computed(
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--4xs);
+}
+
+.publishIndicatorColor {
+	color: var(--color--mint-700);
+
+	:global(body[data-theme='dark']) & {
+		color: var(--color--mint-600);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:global(body:not([data-theme])) & {
+			color: var(--color--mint-600);
+		}
+	}
 }
 
 @include mixins.breakpoint('sm-and-down') {
