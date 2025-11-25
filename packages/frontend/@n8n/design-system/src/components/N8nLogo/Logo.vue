@@ -40,8 +40,6 @@ const containerClasses = computed(() => {
 
 const svg = useTemplateRef<{ $el: Element }>('logo');
 onMounted(() => {
-	console.log('releaseChannel', releaseChannel);
-
 	if (!releaseChannel || releaseChannel === 'stable' || !('createObjectURL' in URL)) {
 		return;
 	}
