@@ -300,6 +300,28 @@ const publishWorkflowVersion = async (
 			formattedCreatedAt: data.formattedCreatedAt,
 			versionName: data.versionName,
 			description: data.description,
+			onSuccess: (publishData: { versionId: string; name: string; description: string }) => {
+				// Update the history list with the new name and description
+				const historyItem = workflowHistory.value.find(
+					(item) => item.versionId === publishData.versionId,
+				);
+				if (historyItem) {
+					historyItem.name = publishData.name;
+					historyItem.description = publishData.description;
+				}
+
+				// Refresh the selected workflow version if it's the one that was published
+				if (selectedWorkflowVersion.value?.versionId === publishData.versionId) {
+					selectedWorkflowVersion.value = {
+						...selectedWorkflowVersion.value,
+						name: publishData.name,
+						description: publishData.description,
+					};
+				}
+
+				// Refresh the active workflow to get the updated activeVersion
+				activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
+			},
 		},
 	});
 };

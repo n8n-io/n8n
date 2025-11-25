@@ -16,6 +16,7 @@ const props = defineProps<{
 		formattedCreatedAt: string;
 		versionName?: string;
 		description?: string;
+		onSuccess?: (data: { versionId: string; name: string; description: string }) => void;
 	};
 }>();
 
@@ -60,6 +61,11 @@ const handlePublish = async () => {
 	isPublishDisabled.value = false;
 
 	if (success) {
+		props.data.onSuccess?.({
+			versionId: props.data.versionId,
+			name: versionName.value,
+			description: description.value,
+		});
 		eventBus.emit('close');
 	}
 };
