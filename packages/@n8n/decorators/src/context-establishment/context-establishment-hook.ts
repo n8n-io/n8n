@@ -1,11 +1,5 @@
 import type { Constructable } from '@n8n/di';
-import type {
-	INode,
-	INodeExecutionData,
-	PlaintextExecutionContext,
-	IWorkflowBase,
-	INodeProperties,
-} from 'n8n-workflow';
+import type { INode, INodeExecutionData, INodeProperties, PlaintextExecutionContext, Workflow } from 'n8n-workflow';
 
 /**
  * Input parameters passed to a context establishment hook during execution.
@@ -22,7 +16,7 @@ export type ContextEstablishmentOptions = {
 	triggerNode: INode;
 
 	/** The complete workflow definition */
-	workflow: IWorkflowBase;
+	workflow: Workflow;
 
 	/**
 	 * Trigger items from the workflow execution start.
@@ -30,7 +24,7 @@ export type ContextEstablishmentOptions = {
 	 * Hooks can extract data from these items and optionally modify them
 	 * (e.g., removing sensitive headers before storage).
 	 */
-	triggerItems: INodeExecutionData[];
+	triggerItems: INodeExecutionData[] | null;
 
 	/**
 	 * The plaintext execution context built so far.
