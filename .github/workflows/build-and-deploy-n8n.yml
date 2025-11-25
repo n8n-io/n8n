@@ -58,7 +58,7 @@ jobs:
           fi
 
       - name: Build and push Docker image
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: docker/build-push-action@v5
         with:
           context: .
           file: docker/images/n8n/Dockerfile
