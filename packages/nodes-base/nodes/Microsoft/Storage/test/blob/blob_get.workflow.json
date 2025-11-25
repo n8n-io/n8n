@@ -51,7 +51,8 @@
 						"fileName": "file.json",
 						"fileSize": "51 B",
 						"fileType": "json",
-						"mimeType": "application/json"
+						"mimeType": "application/json",
+						"origin": "directory"
 					}
 				},
 				"json": {
