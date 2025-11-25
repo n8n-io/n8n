@@ -515,12 +515,14 @@ export class WorkflowService {
 	 * @param user - The user activating the workflow
 	 * @param workflowId - The ID of the workflow to activate
 	 * @param options - Optional versionId, name and description updates
+	 * @param publicApi - Whether this is called from the public API (affects event emission)
 	 * @returns The activated workflow
 	 */
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
 		options?: { versionId?: string; name?: string; description?: string },
+		publicApi: boolean = false,
 	): Promise<WorkflowEntity> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -573,7 +575,7 @@ export class WorkflowService {
 			user,
 			workflowId,
 			workflow: updatedWorkflow,
-			publicApi: false,
+			publicApi,
 		});
 
 		await this._addToActiveWorkflowManager(user, workflowId, updatedWorkflow, activationMode, {

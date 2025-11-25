@@ -24,7 +24,6 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import {
 	getWorkflowById,
-	setWorkflowAsActive,
 	setWorkflowAsInactive,
 	updateWorkflow,
 	createWorkflow,
@@ -366,60 +365,21 @@ export = {
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:update'],
-				{ includeActiveVersion: true },
-			);
-
-			if (!workflow) {
-				// user trying to access a workflow they do not own
-				// or workflow does not exist
-				return res.status(404).json({ message: 'Not Found' });
-			}
-
-			const activeVersionId = workflow.versionId;
-
-			const newVersionIsBeingActivated =
-				activeVersionId && activeVersionId !== workflow.activeVersion?.versionId;
-
-			if (!workflow.activeVersionId || newVersionIsBeingActivated) {
-				try {
-					// change the status to active in the DB
-					const activeVersion = await setWorkflowAsActive(req.user, workflow.id, activeVersionId);
-
-					await Container.get(ActiveWorkflowManager).add(workflow.id, 'activate');
-
-					// Update the workflow object for response
-					workflow.active = true;
-					workflow.activeVersionId = activeVersionId;
-					workflow.activeVersion = activeVersion;
-				} catch (error) {
-					// Rollback: restore previous state
-					await Container.get(WorkflowRepository).update(workflow.id, {
-						active: workflow.active,
-						activeVersion: workflow.activeVersion,
-						updatedAt: new Date(),
-					});
-
-					if (error instanceof Error) {
-						return res.status(400).json({ message: error.message });
-					}
-				}
-
-				Container.get(EventService).emit('workflow-activated', {
-					user: req.user,
-					workflowId: workflow.id,
-					workflow,
-					publicApi: true,
-				});
+			try {
+				const workflow = await Container.get(WorkflowService).activateWorkflow(
+					req.user,
+					id,
+					undefined,
+					true,
+				);
 
 				return res.json(workflow);
+			} catch (error) {
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+				throw error;
 			}
-
-			// nothing to do as this version is already active
-			return res.json(workflow);
 		},
 	],
 	deactivateWorkflow: [
