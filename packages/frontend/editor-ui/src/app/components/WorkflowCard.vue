@@ -658,7 +658,7 @@ const tags = computed(
 							{{ locale.baseText('workflows.item.published') }}
 						</N8nText>
 					</template>
-					<N8nText v-else size="small" bold :class="$style.publishIndicatorColor">
+					<N8nText v-else size="small" bold :class="$style.notPublishedIndicatorColor">
 						{{ locale.baseText('workflows.item.notPublished') }}
 					</N8nText>
 				</div>
@@ -774,6 +774,20 @@ const tags = computed(
 	@media (prefers-color-scheme: dark) {
 		:global(body:not([data-theme])) & {
 			color: var(--color--mint-600);
+		}
+	}
+}
+
+.notPublishedIndicatorColor {
+	color: var(--color--neutral-600);
+
+	:global(body[data-theme='dark']) & {
+		color: var(--color--neutral-400);
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:global(body:not([data-theme])) & {
+			color: var(--color--neutral-400);
 		}
 	}
 }
