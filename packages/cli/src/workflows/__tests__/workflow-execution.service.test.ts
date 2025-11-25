@@ -17,6 +17,7 @@ import type { NodeTypes } from '@/node-types';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRunner } from '@/workflow-runner';
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { toITaskData } from '@test/helpers';
 
 import type { WorkflowRequest } from '../workflow.request';
 
@@ -111,33 +112,44 @@ describe('WorkflowExecutionService', () => {
 	describe('executeManually()', () => {
 		beforeEach(() => {
 			workflowRunner.run.mockClear();
+			jest.spyOn(nodeTypes, 'getByNameAndVersion').mockReset();
 		});
 
 		test('should call `WorkflowRunner.run()` with correct parameters with default partial execution logic', async () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
-			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
-				startNodes: [],
-				destinationNode: undefined,
+			const connections = {
+				...createMainConnection(hackerNewsNode.name, webhookNode.name),
+			};
+			const runPayload: WorkflowRequest.PartialManualExecutionToDestination = {
+				workflowData: mock<IWorkflowBase>({ nodes: [webhookNode, hackerNewsNode], connections }),
 				agentRequest: undefined,
-			});
+				runData: { [webhookNode.name]: [toITaskData([{ data: { value: 1 } }])] },
+				destinationNode: hackerNewsNode.name,
+				dirtyNodeNames: [],
+			};
+
+			jest
+				.spyOn(nodeTypes, 'getByNameAndVersion')
+				.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
 			const result = await workflowExecutionService.executeManually(runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
-				destinationNode: runPayload.destinationNode,
+				destinationNode: {
+					nodeName: runPayload.destinationNode,
+					mode: 'inclusive',
+				},
 				executionMode: 'manual',
 				runData: runPayload.runData,
-				pinData: undefined,
+				pinData: runPayload.workflowData.pinData,
 				pushRef: undefined,
 				workflowData: runPayload.workflowData,
 				userId,
-				startNodes: runPayload.startNodes,
 				dirtyNodeNames: runPayload.dirtyNodeNames,
-				triggerToStartFrom: runPayload.triggerToStartFrom,
 			});
 			expect(result).toEqual({ executionId });
 		});
@@ -147,12 +159,13 @@ describe('WorkflowExecutionService', () => {
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
 			const node = mock<INode>();
-			const runPayload = mock<WorkflowRequest.ManualRunPayload>({
-				workflowData: { nodes: [node] },
-				startNodes: [],
+			const runPayload: WorkflowRequest.PartialManualExecutionToDestination = {
+				workflowData: mock<IWorkflowBase>({ nodes: [node], connections: {} }),
 				destinationNode: node.name,
 				agentRequest: undefined,
-			});
+				runData: { [node.name]: [toITaskData([{ data: { value: 1 } }])] },
+				dirtyNodeNames: [],
+			};
 
 			jest
 				.spyOn(nodeTypes, 'getByNameAndVersion')
@@ -163,20 +176,19 @@ describe('WorkflowExecutionService', () => {
 			const result = await workflowExecutionService.executeManually(runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
+				runData: undefined,
 				destinationNode: { nodeName: runPayload.destinationNode, mode: 'inclusive' },
 				executionMode: 'manual',
-				runData: undefined,
 				pinData: runPayload.workflowData.pinData,
 				pushRef: undefined,
 				workflowData: runPayload.workflowData,
 				userId,
-				startNodes: runPayload.startNodes,
-				dirtyNodeNames: runPayload.dirtyNodeNames,
-				triggerToStartFrom: runPayload.triggerToStartFrom,
 			});
 			expect(result).toEqual({ executionId });
 		});
 
+		// TODO: unsure what this test is testing that others in this file aren't
+		// already testing. Check in with suguru
 		[
 			{
 				name: 'trigger',
@@ -196,17 +208,24 @@ describe('WorkflowExecutionService', () => {
 				const executionId = 'fake-execution-id';
 				const userId = 'user-id';
 				const user = mock<User>({ id: userId });
-				const runPayload = mock<WorkflowRequest.ManualRunPayload>({
-					startNodes: [],
-					workflowData: {
-						pinData: {
-							trigger: [{}],
-						},
-						nodes: [triggerNode],
-					},
-					triggerToStartFrom: undefined,
-					agentRequest: undefined,
-				});
+				const connections = {
+					...createMainConnection(hackerNewsNode.name, triggerNode.name!),
+					...createMainConnection(hackerNewsNode.name, triggerNode.name!),
+				};
+				const runPayload: WorkflowRequest.ManualRunPayload = {
+					workflowData: mock<IWorkflowBase>({
+						pinData: { [triggerNode.name!]: [{ json: {} }] },
+						nodes: [mock<INode>(triggerNode)],
+						connections,
+					}),
+					destinationNode: hackerNewsNode.name,
+				};
+
+				jest
+					.spyOn(nodeTypes, 'getByNameAndVersion')
+					.mockReturnValue(
+						mock<INodeType>({ description: { group: ['trigger'], properties: [] } }),
+					);
 
 				workflowRunner.run.mockResolvedValue(executionId);
 
@@ -215,19 +234,11 @@ describe('WorkflowExecutionService', () => {
 				expect(workflowRunner.run).toHaveBeenCalledWith({
 					destinationNode: { nodeName: runPayload.destinationNode, mode: 'inclusive' },
 					executionMode: 'manual',
-					runData: runPayload.runData,
 					pinData: runPayload.workflowData.pinData,
 					pushRef: undefined,
 					workflowData: runPayload.workflowData,
 					userId,
-					startNodes: [
-						{
-							name: triggerNode.name,
-							sourceData: null,
-						},
-					],
-					dirtyNodeNames: runPayload.dirtyNodeNames,
-					triggerToStartFrom: runPayload.triggerToStartFrom,
+					triggerToStartFrom: { name: triggerNode.name },
 				});
 				expect(result).toEqual({ executionId });
 			});
@@ -246,7 +257,6 @@ describe('WorkflowExecutionService', () => {
 				name: 'pinned',
 				type: 'n8n-nodes-base.airtableTrigger',
 			};
-
 			const unexecutedTrigger: INode = {
 				id: '1',
 				typeVersion: 1,
@@ -255,9 +265,12 @@ describe('WorkflowExecutionService', () => {
 				name: 'to-start-from',
 				type: 'n8n-nodes-base.airtableTrigger',
 			};
+			const connections = {
+				...createMainConnection(hackerNewsNode.name, pinnedTrigger.name),
+				...createMainConnection(hackerNewsNode.name, unexecutedTrigger.name),
+			};
 
 			const runPayload: WorkflowRequest.ManualRunPayload = {
-				startNodes: [],
 				workflowData: {
 					id: 'abc',
 					name: 'test',
@@ -268,11 +281,11 @@ describe('WorkflowExecutionService', () => {
 						[pinnedTrigger.name]: [{ json: {} }],
 					},
 					nodes: [unexecutedTrigger, pinnedTrigger],
-					connections: {},
+					connections,
 					createdAt: new Date(),
 					updatedAt: new Date(),
 				},
-				runData: {},
+				destinationNode: hackerNewsNode.name,
 			};
 
 			workflowRunner.run.mockResolvedValue(executionId);
@@ -280,23 +293,16 @@ describe('WorkflowExecutionService', () => {
 			const result = await workflowExecutionService.executeManually(runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
-				destinationNode: runPayload.destinationNode,
+				destinationNode: {
+					nodeName: runPayload.destinationNode,
+					mode: 'inclusive',
+				},
 				executionMode: 'manual',
-				runData: runPayload.runData,
 				pinData: runPayload.workflowData.pinData,
 				pushRef: undefined,
 				workflowData: runPayload.workflowData,
 				userId,
-				startNodes: [
-					{
-						// Start from pinned trigger
-						name: pinnedTrigger.name,
-						sourceData: null,
-					},
-				],
-				dirtyNodeNames: runPayload.dirtyNodeNames,
-				// no trigger to start from
-				triggerToStartFrom: undefined,
+				triggerToStartFrom: { name: pinnedTrigger.name },
 			});
 			expect(result).toEqual({ executionId });
 		});
@@ -324,26 +330,20 @@ describe('WorkflowExecutionService', () => {
 				type: 'n8n-nodes-base.airtableTrigger',
 			};
 
-			const runPayload: WorkflowRequest.ManualRunPayload = {
-				startNodes: [],
+			const runPayload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload = {
 				workflowData: {
 					id: 'abc',
 					name: 'test',
 					active: false,
 					activeVersionId: null,
 					isArchived: false,
-					pinData: {
-						[pinnedTrigger.name]: [{ json: {} }],
-					},
+					pinData: { [pinnedTrigger.name]: [{ json: {} }] },
 					nodes: [unexecutedTrigger, pinnedTrigger],
 					connections: {},
 					createdAt: new Date(),
 					updatedAt: new Date(),
 				},
-				runData: {},
-				triggerToStartFrom: {
-					name: unexecutedTrigger.name,
-				},
+				triggerToStartFrom: { name: unexecutedTrigger.name },
 			};
 
 			workflowRunner.run.mockResolvedValue(executionId);
@@ -353,14 +353,10 @@ describe('WorkflowExecutionService', () => {
 			expect(workflowRunner.run).toHaveBeenCalledWith({
 				destinationNode: runPayload.destinationNode,
 				executionMode: 'manual',
-				runData: runPayload.runData,
 				pinData: runPayload.workflowData.pinData,
 				pushRef: undefined,
 				workflowData: runPayload.workflowData,
 				userId,
-				// ignore pinned trigger
-				startNodes: [],
-				dirtyNodeNames: runPayload.dirtyNodeNames,
 				// pass unexecuted trigger to start from
 				triggerToStartFrom: runPayload.triggerToStartFrom,
 			});
@@ -371,21 +367,25 @@ describe('WorkflowExecutionService', () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
-			const runPayload: WorkflowRequest.ManualRunPayload = {
+			const node = mock<INode>();
+			const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
 				workflowData: {
 					id: 'workflow-id',
 					name: 'Test Workflow',
 					active: true,
 					activeVersionId: 'version-123',
 					isArchived: false,
-					nodes: [],
+					nodes: [node],
 					connections: {},
 					createdAt: new Date(),
 					updatedAt: new Date(),
 				},
-				startNodes: [],
-				destinationNode: undefined,
+				destinationNode: node.name,
 			};
+
+			// jest
+			// 	.spyOn(nodeTypes, 'getByNameAndVersion')
+			// 	.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
