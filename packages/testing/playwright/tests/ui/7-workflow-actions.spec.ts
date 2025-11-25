@@ -1,5 +1,4 @@
 import fs from 'fs';
-
 import { nanoid } from 'nanoid';
 
 import {
