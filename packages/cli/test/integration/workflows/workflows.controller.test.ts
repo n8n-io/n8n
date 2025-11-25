@@ -241,10 +241,8 @@ describe('POST /workflows', () => {
 		} = response.body;
 
 		expect(id).toBeDefined();
-		expect(
-			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-		).toBe(1);
-		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
+		expect(await workflowHistoryRepository.count({ where: { workflowId: id } })).toBe(1);
+		const historyVersion = await workflowHistoryRepository.findOne({
 			where: {
 				workflowId: id,
 			},
@@ -2925,7 +2923,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: workflow.versionId });
 
-		const updatedWorkflow = await Container.get(WorkflowRepository).findOne({
+		const updatedWorkflow = await workflowRepository.findOne({
 			where: { id: workflow.id },
 			relations: ['activeVersion'],
 		});
@@ -2958,7 +2956,6 @@ describe('POST /workflows/:workflowId/activate', () => {
 			const { data } = response.body;
 			expect(data.activeVersionId).toBe(workflow.versionId);
 
-			const workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 			const historyVersion = await workflowHistoryRepository.findOne({
 				where: { workflowId: workflow.id, versionId: workflow.versionId },
 			});
@@ -2980,7 +2977,6 @@ describe('POST /workflows/:workflowId/activate', () => {
 			const { data } = response.body;
 			expect(data.activeVersionId).toBe(workflow.versionId);
 
-			const workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 			const historyVersion = await workflowHistoryRepository.findOne({
 				where: { workflowId: workflow.id, versionId: workflow.versionId },
 			});
@@ -3092,7 +3088,6 @@ describe('POST /workflows/:workflowId/activate', () => {
 		const { data } = response.body;
 		expect(data.activeVersionId).toBe(workflow.versionId);
 
-		const workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 		const historyVersion = await workflowHistoryRepository.findOne({
 			where: { workflowId: workflow.id, versionId: workflow.versionId },
 		});
@@ -3168,7 +3163,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 
 		await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
 
-		const updatedWorkflow = await Container.get(WorkflowRepository).findOne({
+		const updatedWorkflow = await workflowRepository.findOne({
 			where: { id: workflow.id },
 			relations: ['activeVersion'],
 		});
@@ -3185,7 +3180,6 @@ describe('POST /workflows/:workflowId/run', () => {
 
 	beforeAll(() => {
 		const enterpriseWorkflowService = Container.get(EnterpriseWorkflowService);
-		const workflowRepository = Container.get(WorkflowRepository);
 
 		sharingSpy = jest.spyOn(License.prototype, 'isSharingEnabled');
 		tamperingSpy = jest.spyOn(enterpriseWorkflowService, 'preventTampering');
@@ -3225,7 +3219,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(versionId).not.toBe(workflow.versionId);
 		expect(active).toBe(false);
 
-		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
+		const updatedWorkflow = await workflowRepository.findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
 		expect(updatedWorkflow!.isArchived).toBe(true);
 	});
@@ -3247,7 +3241,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(versionId).not.toBe(workflow.versionId);
 		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
 
-		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
+		const updatedWorkflow = await workflowRepository.findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
 		expect(updatedWorkflow!.isArchived).toBe(true);
 	});
@@ -3261,7 +3255,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 
 		expect(response.body.message).toBe('Workflow is already archived.');
 
-		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
+		const updatedWorkflow = await workflowRepository.findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
 		expect(updatedWorkflow!.isArchived).toBe(true);
 	});
@@ -3282,7 +3276,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 			.send()
 			.expect(403);
 
-		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const workflowsInDb = await workflowRepository.findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
 			workflowId: workflow.id,
 		});
@@ -3307,7 +3301,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(isArchived).toBe(true);
 		expect(versionId).not.toBe(workflow.versionId);
 
-		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const workflowsInDb = await workflowRepository.findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
 			workflowId: workflow.id,
 		});
@@ -3332,7 +3326,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 
 		expect(newVersionId).not.toBe(initialVersionId);
 
-		const historyRecord = await Container.get(WorkflowHistoryRepository).findOne({
+		const historyRecord = await workflowHistoryRepository.findOne({
 			where: {
 				workflowId: workflow.id,
 				versionId: newVersionId,
@@ -3360,7 +3354,7 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 		expect(isArchived).toBe(false);
 		expect(versionId).not.toBe(workflow.versionId);
 
-		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
+		const updatedWorkflow = await workflowRepository.findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
 		expect(updatedWorkflow!.isArchived).toBe(false);
 	});
@@ -3369,7 +3363,7 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 		const workflow = await createWorkflow({ isArchived: false }, owner);
 		await authOwnerAgent.post(`/workflows/${workflow.id}/unarchive`).send().expect(400);
 
-		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
+		const updatedWorkflow = await workflowRepository.findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();
 		expect(updatedWorkflow!.isArchived).toBe(false);
 	});
@@ -3390,7 +3384,7 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 			.send()
 			.expect(403);
 
-		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const workflowsInDb = await workflowRepository.findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
 			workflowId: workflow.id,
 		});
@@ -3415,7 +3409,7 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 		expect(isArchived).toBe(false);
 		expect(versionId).not.toBe(workflow.versionId);
 
-		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const workflowsInDb = await workflowRepository.findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
 			workflowId: workflow.id,
 		});
@@ -3440,7 +3434,7 @@ describe('POST /workflows/:workflowId/unarchive', () => {
 
 		expect(newVersionId).not.toBe(initialVersionId);
 
-		const historyRecord = await Container.get(WorkflowHistoryRepository).findOne({
+		const historyRecord = await workflowHistoryRepository.findOne({
 			where: {
 				workflowId: workflow.id,
 				versionId: newVersionId,
@@ -3495,7 +3489,7 @@ describe('DELETE /workflows/:workflowId', () => {
 
 		await authOwnerAgent.delete(`/workflows/${workflow.id}`).send().expect(200);
 
-		const workflowInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const workflowInDb = await workflowRepository.findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
 			workflowId: workflow.id,
 		});
@@ -3516,7 +3510,7 @@ describe('DELETE /workflows/:workflowId', () => {
 
 		await testServer.authAgentFor(member).delete(`/workflows/${workflow.id}`).send().expect(200);
 
-		const workflowInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const workflowInDb = await workflowRepository.findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
 			workflowId: workflow.id,
 		});
@@ -3531,7 +3525,7 @@ describe('DELETE /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.delete(`/workflows/${workflow.id}`).send().expect(400);
 		expect(response.body.message).toBe('Workflow must be archived before it can be deleted.');
 
-		const workflowInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const workflowInDb = await workflowRepository.findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
 			workflowId: workflow.id,
 		});
@@ -3549,7 +3543,7 @@ describe('DELETE /workflows/:workflowId', () => {
 			.send()
 			.expect(403);
 
-		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const workflowsInDb = await workflowRepository.findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
 			workflowId: workflow.id,
 		});
@@ -3563,7 +3557,7 @@ describe('DELETE /workflows/:workflowId', () => {
 
 		await authOwnerAgent.delete(`/workflows/${workflow.id}`).send().expect(200);
 
-		const workflowsInDb = await Container.get(WorkflowRepository).findById(workflow.id);
+		const workflowsInDb = await workflowRepository.findById(workflow.id);
 		const sharedWorkflowsInDb = await Container.get(SharedWorkflowRepository).findBy({
 			workflowId: workflow.id,
 		});
