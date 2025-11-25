@@ -273,19 +273,15 @@ export class InstanceSettings {
 	 * Ensures that the settings file has the r/w permissions only for the owner.
 	 */
 	private ensureSettingsFilePermissions() {
-		// If the flag is explicitly set to false, skip the check
-		if (this.enforceSettingsFilePermissions.isSet && !this.enforceSettingsFilePermissions.enforce) {
-			return;
-		}
-		if (this.isWindows()) {
-			// Ignore windows as it does not support chmod. We have already logged a warning
-			return;
-		}
+		if (!this.enforceSettingsFilePermissions.enforce) return;
+
+		if (this.isWindows()) return; // ignore windows as it does not support chmod
 
 		const permissionsResult = toResult(() => {
 			const stats = statSync(this.settingsFile);
 			return stats?.mode & 0o777;
 		});
+
 		// If we can't determine the permissions, log a warning and skip the check
 		if (!permissionsResult.ok) {
 			this.logger.warn(
@@ -295,32 +291,22 @@ export class InstanceSettings {
 		}
 
 		const arePermissionsCorrect = permissionsResult.result === 0o600;
-		if (arePermissionsCorrect) {
-			return;
-		}
 
-		// If the permissions are incorrect and the flag is not set, log a warning
-		if (!this.enforceSettingsFilePermissions.isSet) {
-			this.logger.warn(
-				`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. This is ignored for now, but in the future n8n will attempt to change the permissions automatically. To automatically enforce correct permissions now set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=true (recommended), or turn this check off set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
-			);
-			// The default is false so we skip the enforcement for now
-			return;
-		}
+		if (arePermissionsCorrect) return;
 
-		if (this.enforceSettingsFilePermissions.enforce) {
+		this.logger.error(
+			`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. Changing permissions to 0600..`,
+		);
+
+		const chmodResult = toResult(() => chmodSync(this.settingsFile, 0o600));
+
+		if (!chmodResult.ok) {
+			// Some filesystems don't support permissions. In this case we log the
+			// error and ignore it. We might want to prevent the app startup in the
+			// future in this case.
 			this.logger.warn(
-				`Permissions 0${permissionsResult.result.toString(8)} for n8n settings file ${this.settingsFile} are too wide. Changing permissions to 0600..`,
+				`Could not enforce settings file permissions: ${chmodResult.error.message}. To skip this check, set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
 			);
-			const chmodResult = toResult(() => chmodSync(this.settingsFile, 0o600));
-			if (!chmodResult.ok) {
-				// Some filesystems don't support permissions. In this case we log the
-				// error and ignore it. We might want to prevent the app startup in the
-				// future in this case.
-				this.logger.warn(
-					`Could not enforce settings file permissions: ${chmodResult.error.message}. To skip this check, set N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false.`,
-				);
-			}
 		}
 	}
 
