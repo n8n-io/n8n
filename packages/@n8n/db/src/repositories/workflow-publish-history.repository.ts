@@ -44,7 +44,7 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 	async getPublishedVersions(workflowId: string, includeUser?: boolean) {
 		const select: Array<keyof WorkflowPublishHistory> = ['versionId', 'createdAt'];
 		if (includeUser) {
-			select.push('userId');
+			select.push('user');
 		}
 		const result = await this.find({
 			select,
