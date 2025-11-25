@@ -32,6 +32,7 @@ import type { IUser } from 'n8n-workflow';
 import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -39,6 +40,7 @@ type WorkflowHistoryActionRecord = {
 
 const enum WorkflowHistoryVersionRestoreModalActions {
 	restore = 'restore',
+	deactivateAndRestore = 'deactivateAndRestore',
 	cancel = 'cancel',
 }
 
@@ -60,7 +62,7 @@ const router = useRouter();
 const i18n = useI18n();
 const toast = useToast();
 const pageRedirectionHelper = usePageRedirectionHelper();
-
+const settingsStore = useSettingsStore();
 const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -174,6 +176,16 @@ const openRestorationModal = async (
 			},
 		];
 
+		if (isWorkflowActivated && !settingsStore.isWorkflowDraftPublishEnabled) {
+			buttons.push({
+				text: i18n.baseText('workflowHistory.action.restore.modal.button.deactivateAndRestore'),
+				type: 'tertiary',
+				action: () => {
+					resolve(WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore);
+				},
+			});
+		}
+
 		buttons.push({
 			text: i18n.baseText('workflowHistory.action.restore.modal.button.restore'),
 			type: 'primary',
@@ -237,7 +249,11 @@ const restoreWorkflowVersion = async (
 	if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
 		return;
 	}
-	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(workflowId.value, id);
+	activeWorkflow.value = await workflowHistoryStore.restoreWorkflow(
+		workflowId.value,
+		id,
+		modalAction === WorkflowHistoryVersionRestoreModalActions.deactivateAndRestore,
+	);
 	const history = await workflowHistoryStore.getWorkflowHistory(workflowId.value, {
 		take: 1,
 	});
