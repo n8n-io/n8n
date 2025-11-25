@@ -15,6 +15,7 @@ import { jsonParse } from 'n8n-workflow';
 import { PROVISIONING_PREFERENCES_DB_KEY } from './constants';
 import { Not, In } from '@n8n/typeorm';
 import { OnPubSubEvent } from '@n8n/decorators';
+import { EventService } from '@/events/event.service';
 import { type Publisher } from '@/scaling/pubsub/publisher.service';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ZodError } from 'zod';
@@ -26,6 +27,7 @@ export class ProvisioningService {
 	private provisioningConfig: ProvisioningConfigDto;
 
 	constructor(
+		private readonly eventService: EventService,
 		private readonly globalConfig: GlobalConfig,
 		private readonly settingsRepository: SettingsRepository,
 		private readonly projectRepository: ProjectRepository,
@@ -108,6 +110,11 @@ export class ProvisioningService {
 		// No need to update record if the role hasn't changed
 		if (user.role.slug !== dbRole.slug) {
 			await this.userRepository.update(user.id, { role: { slug: dbRole.slug } });
+
+			this.eventService.emit('sso-user-instance-role-updated', {
+				userId: user.id,
+				role: dbRole.slug,
+			});
 		}
 	}
 
@@ -241,6 +248,12 @@ export class ProvisioningService {
 			for (const { projectId, roleSlug } of validProjectToRoleMappings) {
 				await this.projectService.addUser(projectId, { userId, role: roleSlug }, tx);
 			}
+		});
+
+		this.eventService.emit('sso-user-project-access-updated', {
+			projectsAdded: validProjectIds.size,
+			projectsRemoved: projectsToRemoveAccessFrom.length,
+			userId,
 		});
 	}
 

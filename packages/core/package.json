@@ -1,6 +1,10 @@
 {
   "name": "n8n-core",
+<<<<<<< HEAD
   "version": "1.119.3",
+=======
+  "version": "1.121.0",
+>>>>>>> master
   "description": "Core functionality of n8n",
   "main": "dist/index",
   "types": "dist/index.d.ts",
@@ -20,6 +24,7 @@
     "lint:fix": "eslint . --fix",
     "watch": "tsc-watch -p tsconfig.build.json --onCompilationComplete \"tsc-alias -p tsconfig.build.json\"",
     "test": "jest",
+    "test:unit": "jest",
     "test:dev": "jest --watch"
   },
   "files": [
@@ -32,7 +37,7 @@
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
     "@types/lodash": "catalog:",
-    "@types/mime-types": "^2.1.0",
+    "@types/mime-types": "catalog:",
     "@types/proxy-from-env": "^1.0.4",
     "@types/uuid": "catalog:",
     "@types/xml2js": "catalog:"
@@ -62,7 +67,7 @@
     "jsonwebtoken": "catalog:",
     "lodash": "catalog:",
     "luxon": "catalog:",
-    "mime-types": "2.1.35",
+    "mime-types": "catalog:",
     "n8n-workflow": "workspace:*",
     "nanoid": "catalog:",
     "oauth-1.0a": "2.2.6",

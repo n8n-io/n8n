@@ -1,6 +1,10 @@
 {
   "name": "@n8n/backend-common",
+<<<<<<< HEAD
   "version": "0.30.3",
+=======
+  "version": "0.32.0",
+>>>>>>> master
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -12,6 +16,7 @@
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
+    "test:unit": "jest",
     "test:dev": "jest --watch"
   },
   "main": "dist/index.js",

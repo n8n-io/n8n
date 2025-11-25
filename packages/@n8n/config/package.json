@@ -1,6 +1,10 @@
 {
   "name": "@n8n/config",
+<<<<<<< HEAD
   "version": "1.62.1",
+=======
+  "version": "1.64.0",
+>>>>>>> master
   "scripts": {
     "clean": "rimraf dist .turbo",
     "dev": "pnpm watch",
@@ -12,6 +16,7 @@
     "lint:fix": "eslint . --fix",
     "watch": "tsc -p tsconfig.build.json --watch",
     "test": "jest",
+    "test:unit": "jest",
     "test:dev": "jest --watch"
   },
   "main": "dist/index.js",

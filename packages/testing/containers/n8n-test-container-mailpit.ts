@@ -2,6 +2,7 @@ import type { StartedNetwork, StartedTestContainer } from 'testcontainers';
 import { GenericContainer, Wait } from 'testcontainers';
 
 import { createSilentLogConsumer } from './n8n-test-container-utils';
+import { TEST_CONTAINER_IMAGES } from './test-containers';
 
 type MailpitAddress = {
 	Address: string;
@@ -92,7 +93,7 @@ export async function setupMailpit({
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	try {
-		return await new GenericContainer('axllent/mailpit:latest')
+		return await new GenericContainer(TEST_CONTAINER_IMAGES.mailpit)
 			.withNetwork(network)
 			.withNetworkAliases(hostname)
 			.withExposedPorts(smtpPort, httpPort)

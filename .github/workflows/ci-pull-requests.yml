@@ -6,6 +6,13 @@ on:
       - '**'
       - '!release/*'
 
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  COVERAGE_ENABLED: 'true' # Set globally for all jobs - ensures Turbo cache consistency
+
 jobs:
   install-and-build:
     name: Install & Build
@@ -16,7 +23,7 @@ jobs:
       frontend_changed: ${{ steps.paths-filter.outputs.frontend == 'true' }}
       non_python_changed: ${{ steps.paths-filter.outputs.non-python == 'true' }}
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
@@ -43,10 +50,6 @@ jobs:
         if: steps.paths-filter.outputs.non-python == 'true'
         run: pnpm format:check
 
-      - name: Run typecheck
-        if: steps.paths-filter.outputs.non-python == 'true'
-        run: pnpm typecheck
-
       - name: Upload Frontend Build Artifacts
         if: steps.paths-filter.outputs.frontend == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -61,7 +64,7 @@ jobs:
     if: needs.install-and-build.outputs.frontend_changed == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
 
@@ -97,6 +100,21 @@ jobs:
     secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
+  typecheck:
+    name: Typecheck
+    if: needs.install-and-build.outputs.non_python_changed == 'true'
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    needs: install-and-build
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+      - name: Setup Node.js
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+        with:
+          build-command: pnpm typecheck
+
   lint:
     name: Lint
     if: needs.install-and-build.outputs.non_python_changed == 'true'
@@ -104,3 +122,25 @@ jobs:
     needs: install-and-build
     with:
       ref: refs/pull/${{ github.event.pull_request.number }}/merge
+
+  e2e-test:
+    name: E2E Tests
+    needs: [install-and-build, unit-test, typecheck, lint]
+    if: |
+      always() &&
+      needs.install-and-build.result == 'success' &&
+      needs.unit-test.result != 'failure' &&
+      needs.typecheck.result != 'failure' &&
+      needs.lint.result != 'failure'
+    uses: ./.github/workflows/playwright-test-reusable.yml
+    secrets: inherit
+
+  e2e-checks:
+    name: E2E - Checks
+    runs-on: ubuntu-latest
+    needs: [e2e-test]
+    if: always()
+    steps:
+      - name: Fail if E2E tests failed
+        if: needs.e2e-test.result == 'failure'
+        run: exit 1
