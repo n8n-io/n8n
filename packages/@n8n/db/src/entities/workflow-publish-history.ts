@@ -1,8 +1,7 @@
-import { Column, Entity, Index, JoinColumn, OneToOne, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import { Column, Entity, Index, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { WorkflowActivateMode } from 'n8n-workflow';
 
 import { WithCreatedAt } from './abstract-entity';
-import { User } from './user';
 
 @Entity()
 @Index(['workflowId', 'versionId'])
