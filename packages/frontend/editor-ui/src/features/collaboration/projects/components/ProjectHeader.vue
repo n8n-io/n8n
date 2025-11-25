@@ -59,12 +59,20 @@ const headerIcon = computed((): IconOrEmoji => {
 	}
 });
 
+const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+
+const isPersonalProject = computed(() => {
+	return homeProject.value?.type === ProjectTypes.Personal;
+});
+
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
 		if (projectPages.isSharedSubPage) {
 			return i18n.baseText('projects.header.shared.title');
 		} else if (projectPages.isOverviewSubPage) {
 			return i18n.baseText('projects.menu.overview');
+		} else if (isPersonalProject.value) {
+			return i18n.baseText('projects.menu.personal');
 		}
 		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
@@ -90,12 +98,6 @@ const showSettings = computed(
 		!!projectPermissions.value.update &&
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
-
-const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
-
-const isPersonalProject = computed(() => {
-	return homeProject.value?.type === ProjectTypes.Personal;
-});
 
 const showFolders = computed(() => {
 	return (
@@ -475,7 +477,6 @@ const onSelect = (action: string) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	padding-bottom: var(--spacing--lg);
 	min-height: var(--spacing--3xl);
 }
 
