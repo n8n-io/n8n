@@ -323,7 +323,7 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
 			disableWebhookHtmlSandboxing: false,
-			disableBareRepos: false,
+			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			enableGitNodeHooks: false,
 		},
