@@ -3147,6 +3147,7 @@ export interface IUserSettings {
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
 	dismissedCallouts?: Record<string, boolean>;
+	autosaveEnabled?: boolean;
 }
 
 export interface IProcessedDataConfig {

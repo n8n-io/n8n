@@ -9,6 +9,8 @@ const props = withDefaults(
 	defineProps<{
 		saved: boolean;
 		isSaving?: boolean;
+		isAutosaving?: boolean;
+		lastAutosaveTime?: Date | null;
 		disabled?: boolean;
 		type?: ButtonType;
 		withShortcut?: boolean;
@@ -17,6 +19,8 @@ const props = withDefaults(
 	}>(),
 	{
 		isSaving: false,
+		isAutosaving: false,
+		lastAutosaveTime: null,
 		type: 'primary',
 		withShortcut: false,
 		disabled: false,
@@ -26,21 +30,38 @@ const props = withDefaults(
 const i18n = useI18n();
 
 const saveButtonLabel = computed(() => {
-	return props.isSaving
-		? (props.savingLabel ?? i18n.baseText('saveButton.saving'))
-		: i18n.baseText('saveButton.save');
+	if (props.isSaving) {
+		return props.savingLabel ?? i18n.baseText('saveButton.saving');
+	}
+	if (props.isAutosaving) {
+		return i18n.baseText('saveButton.autosaving');
+	}
+	return i18n.baseText('saveButton.save');
 });
 
 const shortcutTooltipLabel = computed(() => {
 	return props.shortcutTooltip ?? i18n.baseText('saveButton.save');
 });
+
+const autosaveTimeLabel = computed(() => {
+	if (!props.lastAutosaveTime) return null;
+	return props.lastAutosaveTime.toLocaleTimeString([], {
+		hour: '2-digit',
+		minute: '2-digit',
+	});
+});
 </script>
 
 <template>
 	<span :class="$style.container" data-test-id="save-button">
-		<span v-if="saved" :class="$style.saved" @click.prevent.stop>{{
-			i18n.baseText('saveButton.saved')
-		}}</span>
+		<span v-if="saved && !isAutosaving" :class="$style.saved" @click.prevent.stop>
+			<template v-if="lastAutosaveTime">
+				{{ i18n.baseText('saveButton.autosaved') }} {{ autosaveTimeLabel }}
+			</template>
+			<template v-else>
+				{{ i18n.baseText('saveButton.saved') }}
+			</template>
+		</span>
 		<template v-else>
 			<KeyboardShortcutTooltip
 				v-if="withShortcut"
