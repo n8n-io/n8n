@@ -10,6 +10,7 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
+	WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG,
 } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -47,6 +48,7 @@ import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
 	SM: 200,
@@ -75,6 +77,7 @@ const emit = defineEmits<{
 const $style = useCssModule();
 
 const settingsStore = useSettingsStore();
+const envFeatureFlag = useEnvFeatureFlag();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
@@ -144,7 +147,7 @@ const currentFolderForBreadcrumbs = computed(() => {
 });
 
 const isDraftPublishEnabled = computed(() => {
-	return settingsStore.isWorkflowDraftPublishEnabled;
+	return envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG);
 });
 
 watch(
