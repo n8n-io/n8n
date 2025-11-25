@@ -514,14 +514,13 @@ export class WorkflowService {
 	 * Activates a workflow by setting its activeVersionId and adding it to the active workflow manager.
 	 * @param user - The user activating the workflow
 	 * @param workflowId - The ID of the workflow to activate
-	 * @param versionId - The version ID to activate
+	 * @param options - Optional versionId, name and description updates
 	 * @returns The activated workflow
 	 */
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
-		versionId?: string,
-		options?: { name?: string; description?: string },
+		options?: { versionId?: string; name?: string; description?: string },
 	): Promise<WorkflowEntity> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
@@ -540,7 +539,7 @@ export class WorkflowService {
 			);
 		}
 
-		const versionToActivate = versionId ?? workflow.versionId;
+		const versionToActivate = options?.versionId ?? workflow.versionId;
 
 		if (workflow.activeVersionId === versionToActivate) {
 			return workflow;
@@ -554,7 +553,7 @@ export class WorkflowService {
 			active: true,
 		});
 
-		if (options) {
+		if (options?.name || options?.description) {
 			const updateFields: WorkflowHistoryUpdate = {};
 			if (options.name !== undefined) updateFields.name = options.name;
 			if (options.description !== undefined) updateFields.description = options.description;

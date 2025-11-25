@@ -185,11 +185,9 @@ describe('activateWorkflow()', () => {
 		const newVersionId = uuid();
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
-		const updatedWorkflow = await workflowService.activateWorkflow(
-			owner,
-			workflow.id,
-			newVersionId,
-		);
+		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id, {
+			versionId: newVersionId,
+		});
 
 		expect(updatedWorkflow.active).toBe(true);
 		expect(updatedWorkflow.activeVersionId).toBe(newVersionId);
