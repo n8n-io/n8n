@@ -1,7 +1,6 @@
 # AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with
-code in the n8n repository.
+This file provides guidance on how to work with the n8n repository.
 
 ## Project Overview
 
