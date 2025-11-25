@@ -369,15 +369,23 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function captureCurrentWorkflowState() {
 		const nodePositions = new Map<string, [number, number]>();
 		const existingNodeIds = new Set<string>();
+		const pinnedDataByNodeName = new Map<string, unknown>();
 
 		workflowsStore.allNodes.forEach((node) => {
 			nodePositions.set(node.id, [...node.position]);
 			existingNodeIds.add(node.id);
+
+			// Capture pinned data by node name
+			const pinData = workflowsStore.pinDataByNodeName(node.name);
+			if (pinData) {
+				pinnedDataByNodeName.set(node.name, pinData);
+			}
 		});
 
 		return {
 			nodePositions,
 			existingNodeIds,
+			pinnedDataByNodeName,
 			currentWorkflowJson: JSON.stringify(pick(workflowsStore.workflow, ['nodes', 'connections'])),
 		};
 	}
@@ -438,7 +446,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		// Capture current state before clearing
-		const { nodePositions, existingNodeIds } = captureCurrentWorkflowState();
+		const { nodePositions, existingNodeIds, pinnedDataByNodeName } = captureCurrentWorkflowState();
 
 		// Clear existing workflow
 		workflowState.removeAllConnections({ setStateDirty: false });
@@ -470,6 +478,19 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		setDefaultNodesCredentials(workflowData);
+
+		// Restore pinned data for nodes with matching names
+		const restoredPinData: Record<string, unknown> = {};
+		workflowData.nodes?.forEach((node) => {
+			const savedPinData = pinnedDataByNodeName.get(node.name);
+			if (savedPinData) {
+				restoredPinData[node.name] = savedPinData;
+			}
+		});
+
+		if (Object.keys(restoredPinData).length > 0) {
+			workflowData.pinData = restoredPinData;
+		}
 
 		return {
 			success: true,
