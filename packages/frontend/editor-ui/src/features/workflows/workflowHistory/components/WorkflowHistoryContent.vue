@@ -12,12 +12,9 @@ import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
 import { N8nButton, N8nIcon } from '@n8n/design-system';
-import {
-	getLastPublishedByUser,
-	formatTimestamp,
-} from '@/features/workflows/workflowHistory/utils';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
+import { formatTimestamp } from '@/features/workflows/workflowHistory/utils';
 
 const i18n = useI18n();
 const envFeatureFlag = useEnvFeatureFlag();
@@ -57,21 +54,16 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	};
 });
 
-const versionName = computed(() => {
-	return props.workflowVersion?.name;
+const formattedCreatedAt = computed<string>(() => {
+	if (!props.workflowVersion) {
+		return '';
+	}
+	const { date, time } = formatTimestamp(props.workflowVersion.createdAt);
+	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
 });
 
-const formattedPublishedAt = computed<string | null>(() => {
-	if (!props.isVersionActive || !props.workflowVersion) {
-		return null;
-	}
-
-	const lastPublishedByUser = getLastPublishedByUser(props.workflowVersion.workflowPublishHistory);
-	if (!lastPublishedByUser) {
-		return null;
-	}
-	const { date, time } = formatTimestamp(lastPublishedByUser.createdAt);
-	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
+const versionNameDisplay = computed(() => {
+	return props.workflowVersion?.name ?? formattedCreatedAt.value;
 });
 
 const actions = computed(() => {
@@ -129,34 +121,8 @@ const onAction = ({
 			>
 				<template #default="{ formattedCreatedAt }">
 					<section v-if="isDraftPublishEnabled" :class="$style.text">
-						<p v-if="versionName" :class="$style.mainLine">
-							{{ versionName }}
-						</p>
-						<p v-if="formattedPublishedAt" :class="$style.metaItem">
-							<span :class="$style.label">
-								{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }}
-							</span>
-							<time :datetime="props.workflowVersion.updatedAt">{{ formattedPublishedAt }}</time>
-						</p>
-						<p :class="$style.metaItem">
-							<span :class="$style.label">
-								{{ i18n.baseText('workflowHistory.item.createdAtLabel') }}
-							</span>
-							<time :datetime="props.workflowVersion.createdAt">{{ formattedCreatedAt }}</time>
-						</p>
-						<p :class="$style.metaItem">
-							<span :class="$style.label">
-								{{ i18n.baseText('workflowHistory.content.editedBy') }}:
-							</span>
-							<span>{{ props.workflowVersion.authors }}</span>
-						</p>
-						<p :class="$style.metaItem">
-							<span :class="$style.label">
-								{{ i18n.baseText('workflowHistory.content.versionId') }}:
-							</span>
-							<data :value="props.workflowVersion.versionId">{{
-								props.workflowVersion.versionId
-							}}</data>
+						<p v-if="versionNameDisplay" :class="$style.mainLine">
+							{{ versionNameDisplay }}
 						</p>
 					</section>
 					<section v-else :class="$style.textOld">
