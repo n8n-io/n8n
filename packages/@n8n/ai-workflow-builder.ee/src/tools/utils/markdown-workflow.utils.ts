@@ -1,9 +1,9 @@
 import type { WorkflowMetadata } from '@/types';
 
 /**
- * Build a Mermaid flowchart from workflow connections
+ * Build a Mermaid flowchart from workflow nodes and connections
  */
-function buildMermaidDiagram(
+function buildMermaidLines(
 	nodes: WorkflowMetadata['workflow']['nodes'],
 	connections: WorkflowMetadata['workflow']['connections'],
 ): string[] {
@@ -100,45 +100,34 @@ function buildMermaidDiagram(
 }
 
 /**
- * Formats workflow as markdown
+ * Generates a Mermaid flowchart diagram from a workflow
  */
-export function markdownStringify(workflow: WorkflowMetadata): string {
-	const lines: string[] = [];
+export function mermaidStringify(workflow: WorkflowMetadata): string {
 	const { workflow: wf } = workflow;
+	return buildMermaidLines(wf.nodes, wf.connections).join('\n');
+}
 
-	// Add workflow header
-	lines.push(`# ${workflow.name}`);
-	lines.push('');
-
-	// Add description if present
-	if (workflow.description) {
-		lines.push(workflow.description);
-		lines.push('');
-	}
-
-	// Separate sticky notes from regular nodes
+/**
+ * Generates sticky notes section from a workflow
+ */
+export function stickyNotesStringify(workflow: WorkflowMetadata): string {
+	const { workflow: wf } = workflow;
 	const stickyNotes = wf.nodes.filter((node) => node.type === 'n8n-nodes-base.stickyNote');
 
-	// Add Workflow Diagram section
-	lines.push('## Workflow Diagram');
-	lines.push('');
-	lines.push(...buildMermaidDiagram(wf.nodes, wf.connections));
+	if (stickyNotes.length === 0) {
+		return '';
+	}
 
-	// Add Sticky Notes section
-	if (stickyNotes.length > 0) {
-		lines.push('');
-		lines.push('## Sticky Notes');
-		lines.push('');
-		for (const note of stickyNotes) {
-			const content = note.parameters.content as string | undefined;
-			if (content) {
-				// Indent continuation lines so they appear as part of the bullet
-				const contentLines = content.trim().split('\n');
-				const indentedContent = contentLines
-					.map((line, idx) => (idx === 0 ? `- ${line}` : `  ${line}`))
-					.join('\n');
-				lines.push(indentedContent);
-			}
+	const lines: string[] = [];
+	for (const note of stickyNotes) {
+		const content = note.parameters.content as string | undefined;
+		if (content) {
+			// Indent continuation lines so they appear as part of the bullet
+			const contentLines = content.trim().split('\n');
+			const indentedContent = contentLines
+				.map((line, idx) => (idx === 0 ? `- ${line}` : `  ${line}`))
+				.join('\n');
+			lines.push(indentedContent);
 		}
 	}
 

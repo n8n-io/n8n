@@ -1,20 +1,14 @@
 import type { WorkflowMetadata } from '@/types';
 
-import { markdownStringify } from '../markdown-workflow.utils';
+import { mermaidStringify, stickyNotesStringify } from '../markdown-workflow.utils';
 import { aiAssistantWorkflow } from './workflows/ai-assistant.workflow';
 
 describe('markdown-workflow.utils', () => {
-	describe('markdownStringify', () => {
-		it('should convert a workflow with AI agent, tools, and sticky notes to markdown', () => {
-			const result = markdownStringify(aiAssistantWorkflow);
+	describe('mermaidStringify', () => {
+		it('should convert a workflow with AI agent and tools to mermaid diagram', () => {
+			const result = mermaidStringify(aiAssistantWorkflow);
 
-			const expected = `# Personal Life Manager with Telegram, Google Services & Voice-Enabled AI
-
-This project teaches you to create a personal AI assistant named Jackie that operates through Telegram. Jackie can summarize unread emails, check calendar events, manage Google Tasks, and handle both voice and text interactions. The assistant provides a comprehensive digital life management solution accessible via Telegram messaging.
-
-## Workflow Diagram
-
-\`\`\`mermaid
+			const expected = `\`\`\`mermaid
 flowchart TD
     %% n8n-nodes-base.googleCalendarTool | {"operation":"getAll","calendar":{"__rl":true,"mode":"id","value":"=<insert email here>"},"options":{"timeMin":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('After', \`\`, 'string') }}","timeMax":"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Before', \`\`, 'string') }}","fields":"=items(summary, start(dateTime))"}}
     n1["Google Calendar"]
@@ -58,56 +52,12 @@ flowchart TD
     n10 -.ai_tool.-> n14
     n11 -.ai_tool.-> n14
     n13 -.ai_tool.-> n14
-\`\`\`
-
-## Sticky Notes
-
-- ## Process Telegram Request
-- 1. [In OpenRouter](https://openrouter.ai/settings/keys) click **“Create API key”** and copy it.
-
-  2. Open the \`\`\`OpenRouter\`\`\` node:
-     * **Select Credential → Create New**
-     * Paste into **API Key** and **Save**
-- This node helps your agent remember the last few messages to stay on topic.
-- This node allows your agent create and get tasks from Google Tasks
-- This node allows your agent access your gmail
-- This node allows your agent access your Google calendar
-- Uses OpenAI to convert voice to text.
-  [In OpenAI](https://platform.openai.com/api-keys) click **“Create new secret key”** and copy it.
-- Caylee, your peronal AI Assistant:
-  1. Get email
-  2. Check calendar
-  3. Get and create to-do tasks
-
-  Edit the **System Message** to adjust your agent’s thinking, behavior, and replies.
-- # Try It Out!
-
-  Launch Jackie—your personal AI assistant that handles voice & text via Telegram to manage your digital life.
-
-  **To get started:**
-
-  1. **Connect all credentials** (Telegram, OpenAI, Gmail, etc.)
-  2. **Activate the workflow** and message your Telegram bot:
-     • "What emails do I have today?"
-     • "Show me my calendar for tomorrow"
-     • "Craete new to-do item"
-     • 🎤 Send voice messages for hands-free interaction
-
-  ## Questions or Need Help?
-
-  For setup assistance, customization, or workflow support, join my Skool community!
-
-  ### [AI Automation Engineering Community](https://www.skool.com/ai-automation-engineering-3014)
-
-  Happy learning! -- Derek Cheung
-- Send message back to Telegram
-- ## [Video Tutorial](https://youtu.be/ROgf5dVqYPQ)
-  @[youtube](ROgf5dVqYPQ)`;
+\`\`\``;
 
 			expect(result).toEqual(expected);
 		});
 
-		it('should handle workflow without description', () => {
+		it('should handle workflow with single node', () => {
 			const workflow: WorkflowMetadata = {
 				name: 'Simple Workflow',
 				workflow: {
@@ -126,50 +76,12 @@ flowchart TD
 				},
 			};
 
-			const result = markdownStringify(workflow);
+			const result = mermaidStringify(workflow);
 
-			const expected = `# Simple Workflow
-
-## Workflow Diagram
-
-\`\`\`mermaid
+			const expected = `\`\`\`mermaid
 flowchart TD
     %% n8n-nodes-base.telegramTrigger | {"updates":["message"]}
     n1["Trigger"]
-\`\`\``;
-
-			expect(result).toEqual(expected);
-		});
-
-		it('should handle workflow without sticky notes', () => {
-			const workflow: WorkflowMetadata = {
-				name: 'No Sticky Notes',
-				workflow: {
-					name: 'No Sticky Notes',
-					nodes: [
-						{
-							parameters: {},
-							id: 'node1',
-							name: 'Start',
-							type: 'n8n-nodes-base.start',
-							position: [0, 0],
-							typeVersion: 1,
-						},
-					],
-					connections: {},
-				},
-			};
-
-			const result = markdownStringify(workflow);
-
-			const expected = `# No Sticky Notes
-
-## Workflow Diagram
-
-\`\`\`mermaid
-flowchart TD
-    %% n8n-nodes-base.start
-    n1["Start"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
@@ -242,13 +154,9 @@ flowchart TD
 				},
 			};
 
-			const result = markdownStringify(workflow);
+			const result = mermaidStringify(workflow);
 
-			const expected = `# Branching Workflow
-
-## Workflow Diagram
-
-\`\`\`mermaid
+			const expected = `\`\`\`mermaid
 flowchart TD
     %% n8n-nodes-base.if
     n1["If"]
@@ -288,19 +196,95 @@ flowchart TD
 				},
 			};
 
-			const result = markdownStringify(workflow);
+			const result = mermaidStringify(workflow);
 
-			const expected = `# Empty Params
-
-## Workflow Diagram
-
-\`\`\`mermaid
+			const expected = `\`\`\`mermaid
 flowchart TD
     %% n8n-nodes-base.noOp
     n1["Empty Node"]
 \`\`\``;
 
 			expect(result).toEqual(expected);
+		});
+
+		it('should exclude sticky notes from mermaid diagram', () => {
+			const workflow: WorkflowMetadata = {
+				name: 'With Sticky',
+				workflow: {
+					name: 'With Sticky',
+					nodes: [
+						{
+							parameters: {},
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+						{
+							parameters: { content: 'This is a note' },
+							id: 'sticky1',
+							name: 'Sticky Note',
+							type: 'n8n-nodes-base.stickyNote',
+							position: [100, 100],
+							typeVersion: 1,
+						},
+					],
+					connections: {},
+				},
+			};
+
+			const result = mermaidStringify(workflow);
+
+			const expected = `\`\`\`mermaid
+flowchart TD
+    %% n8n-nodes-base.start
+    n1["Start"]
+\`\`\``;
+
+			expect(result).toEqual(expected);
+		});
+	});
+
+	describe('stickyNotesStringify', () => {
+		it('should convert workflow sticky notes to bullet list', () => {
+			const result = stickyNotesStringify(aiAssistantWorkflow);
+
+			// Each sticky note should start with "- "
+			const lines = result.split('\n');
+			const bulletLines = lines.filter((line: string) => line.startsWith('- '));
+			expect(bulletLines.length).toBeGreaterThan(0);
+
+			// Should contain key content from sticky notes
+			expect(result).toContain('Process Telegram Request');
+			expect(result).toContain('OpenRouter');
+			expect(result).toContain('Try It Out');
+			expect(result).toContain('Video Tutorial');
+			expect(result).toContain('youtube');
+		});
+
+		it('should return empty string for workflow without sticky notes', () => {
+			const workflow: WorkflowMetadata = {
+				name: 'No Sticky Notes',
+				workflow: {
+					name: 'No Sticky Notes',
+					nodes: [
+						{
+							parameters: {},
+							id: 'node1',
+							name: 'Start',
+							type: 'n8n-nodes-base.start',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+					],
+					connections: {},
+				},
+			};
+
+			const result = stickyNotesStringify(workflow);
+
+			expect(result).toEqual('');
 		});
 	});
 });
