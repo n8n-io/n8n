@@ -231,6 +231,9 @@ function processToolChunk(chunk: unknown): StreamOutput | null {
 
 /** Process a single chunk from updates stream mode */
 function processUpdatesChunk(nodeUpdate: Record<string, unknown>): StreamOutput | null {
+	// Guard against null/undefined chunks
+	if (!nodeUpdate || typeof nodeUpdate !== 'object') return null;
+
 	// Special nodes first (backward compatibility)
 	if (nodeUpdate.delete_messages) {
 		return processDeleteMessages(nodeUpdate.delete_messages);
@@ -324,12 +327,34 @@ export async function* createStreamProcessor(
 // MESSAGE FORMATTING
 // ============================================================================
 
+/** Extract text from HumanMessage content (handles string and array formats) */
+function extractHumanMessageText(content: HumanMessage['content']): string {
+	if (typeof content === 'string') {
+		return content;
+	}
+
+	if (Array.isArray(content)) {
+		return content
+			.filter(
+				(c): c is { type: string; text: string } =>
+					typeof c === 'object' && c !== null && 'type' in c && c.type === 'text' && 'text' in c,
+			)
+			.map((c) => c.text)
+			.join('\n');
+	}
+
+	return '';
+}
+
 /** Format a HumanMessage into the expected output format */
 function formatHumanMessage(msg: HumanMessage): Record<string, unknown> {
+	const rawText = extractHumanMessageText(msg.content);
+	const cleanedText = cleanContextTags(rawText);
+
 	return {
 		role: 'user',
 		type: 'message',
-		text: msg.content,
+		text: cleanedText,
 	};
 }
 
