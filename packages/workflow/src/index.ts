@@ -29,7 +29,7 @@ export * from './versioned-node-type';
 export * from './type-validation';
 export * from './result';
 export * from './schemas';
-export type * from './run-execution-data/run-execution-data';
+export * from './run-execution-data/run-execution-data';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,

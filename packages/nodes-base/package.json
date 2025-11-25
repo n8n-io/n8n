@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-base",
-  "version": "1.119.0",
+  "version": "1.120.0",
   "description": "Base nodes of n8n",
   "main": "index.js",
   "scripts": {
@@ -799,6 +799,7 @@
       "dist/nodes/TheHiveProject/TheHiveProjectTrigger.node.js",
       "dist/nodes/TheHive/TheHive.node.js",
       "dist/nodes/TheHive/TheHiveTrigger.node.js",
+      "dist/nodes/TimeSaved/TimeSaved.node.js",
       "dist/nodes/TimescaleDb/TimescaleDb.node.js",
       "dist/nodes/Todoist/Todoist.node.js",
       "dist/nodes/Toggl/TogglTrigger.node.js",
