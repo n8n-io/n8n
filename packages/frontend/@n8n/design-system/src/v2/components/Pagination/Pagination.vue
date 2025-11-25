@@ -9,7 +9,7 @@ import {
 	PaginationEllipsis,
 	useForwardPropsEmits,
 } from 'reka-ui';
-import { computed, useCssModule, ref } from 'vue';
+import { computed, useCssModule, ref, watch } from 'vue';
 
 import Icon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import N8nSelect from '@n8n/design-system/v2/components/Select/Select.vue';
@@ -48,8 +48,16 @@ const slots = defineSlots<PaginationSlots>();
 const page = computed(
 	() => props.currentPage ?? props.page ?? props.defaultCurrentPage ?? props.defaultPage,
 );
-const itemsPerPage = computed(
-	() => props.pageSize ?? props.itemsPerPage ?? props.defaultPageSize ?? 10,
+const itemsPerPage = ref(props.pageSize ?? props.itemsPerPage ?? props.defaultPageSize ?? 10);
+
+// Watch for external pageSize/itemsPerPage changes and sync
+watch(
+	() => props.pageSize ?? props.itemsPerPage,
+	(newSize: number | undefined) => {
+		if (newSize !== undefined && newSize !== itemsPerPage.value) {
+			itemsPerPage.value = newSize;
+		}
+	},
 );
 
 // pagerCount is odd number in Element+ (e.g., 7 means show 7 buttons total: prev + 5 pages + next)
@@ -75,12 +83,13 @@ const pageCount = computed(() => {
 });
 
 // Calculate total items for Reka UI (when using pageCount, we need to synthesize total)
+// pageCount takes precedence over total per DS-323 requirement
 const totalItems = computed(() => {
-	if (props.total !== undefined) return props.total;
 	if (props.pageCount !== undefined) {
 		// Synthesize total from pageCount * itemsPerPage
 		return props.pageCount * itemsPerPage.value;
 	}
+	if (props.total !== undefined) return props.total;
 	return 0;
 });
 
@@ -120,18 +129,17 @@ const handlePageSizeUpdate = (newSize: number | string) => {
 	handlePageUpdate(1);
 };
 
-// Handle prev/next clicks
-const handlePrevClick = () => {
-	const newPage = Math.max(1, page.value - 1);
-	handlePageUpdate(newPage);
-	emit('prev-click', newPage);
-};
-
-const handleNextClick = () => {
-	const newPage = Math.min(pageCount.value, page.value + 1);
-	handlePageUpdate(newPage);
-	emit('next-click', newPage);
-};
+// PaginationRoot already handles page changes via @update:page
+// We just need to emit the additional events when page changes
+watch(page, (newPage, oldPage) => {
+	if (newPage !== oldPage) {
+		if (newPage < oldPage) {
+			emit('prev-click', newPage);
+		} else if (newPage > oldPage) {
+			emit('next-click', newPage);
+		}
+	}
+});
 
 // Styles
 const variants: Record<PaginationVariants, string> = {
@@ -156,7 +164,7 @@ const pageSizeItems = computed(() =>
 
 // Total text
 const totalText = computed(() => {
-	if (!props.total) return '';
+	if (props.total === undefined) return '';
 	return `Total ${props.total}`;
 });
 
@@ -205,10 +213,10 @@ const handleJumperSubmit = () => {
 		>
 			<PaginationList v-slot="{ items }" :class="$style.PaginationList">
 				<!-- Previous button -->
-				<PaginationPrev v-if="showPrev" :class="$style.PaginationButton" @click="handlePrevClick">
-					<slot name="prev">
+				<PaginationPrev v-if="showPrev" v-slot="slotProps" :class="$style.PaginationButton">
+					<slot name="prev" v-bind="slotProps">
 						<span v-if="prevText">{{ prevText }}</span>
-						<Icon v-else :icon="prevIcon as any" />
+						<Icon v-else :icon="prevIcon" />
 					</slot>
 				</PaginationPrev>
 
@@ -233,10 +241,10 @@ const handleJumperSubmit = () => {
 				</template>
 
 				<!-- Next button -->
-				<PaginationNext v-if="showNext" :class="$style.PaginationButton" @click="handleNextClick">
-					<slot name="next">
+				<PaginationNext v-if="showNext" v-slot="slotProps" :class="$style.PaginationButton">
+					<slot name="next" v-bind="slotProps">
 						<span v-if="nextText">{{ nextText }}</span>
-						<Icon v-else :icon="nextIcon as any" />
+						<Icon v-else :icon="nextIcon" />
 					</slot>
 				</PaginationNext>
 			</PaginationList>

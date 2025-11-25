@@ -193,14 +193,14 @@ describe('v2/components/Pagination', () => {
 			});
 
 			const prevButton = wrapper.container.querySelector('button[data-type="prev"]');
-			if (prevButton) {
-				await userEvent.click(prevButton);
+			expect(prevButton).toBeInTheDocument();
 
-				await waitFor(() => {
-					expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([2]);
-					expect(wrapper.emitted('prev-click')?.[0]).toEqual([2]);
-				});
-			}
+			await userEvent.click(prevButton!);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([2]);
+				expect(wrapper.emitted('prev-click')?.[0]).toEqual([2]);
+			});
 		});
 
 		it('should handle next button click', async () => {
@@ -213,14 +213,14 @@ describe('v2/components/Pagination', () => {
 			});
 
 			const nextButton = wrapper.container.querySelector('button[data-type="next"]');
-			if (nextButton) {
-				await userEvent.click(nextButton);
+			expect(nextButton).toBeInTheDocument();
 
-				await waitFor(() => {
-					expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([3]);
-					expect(wrapper.emitted('next-click')?.[0]).toEqual([3]);
-				});
-			}
+			await userEvent.click(nextButton!);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([3]);
+				expect(wrapper.emitted('next-click')?.[0]).toEqual([3]);
+			});
 		});
 	});
 
@@ -236,20 +236,20 @@ describe('v2/components/Pagination', () => {
 			});
 
 			const select = wrapper.container.querySelector('[role="combobox"]');
-			if (select) {
-				await userEvent.click(select);
+			expect(select).toBeInTheDocument();
 
-				// Wait for dropdown to open and click an option
-				await waitFor(async () => {
-					const option20 = wrapper.getByText('20 / page');
-					await userEvent.click(option20);
-				});
+			await userEvent.click(select!);
 
-				await waitFor(() => {
-					expect(wrapper.emitted('update:pageSize')?.[0]).toEqual([20]);
-					expect(wrapper.emitted('size-change')?.[0]).toEqual([20]);
-				});
-			}
+			// Wait for dropdown to open and click an option
+			await waitFor(async () => {
+				const option20 = wrapper.getByText('20 / page');
+				await userEvent.click(option20);
+			});
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:pageSize')?.[0]).toEqual([20]);
+				expect(wrapper.emitted('size-change')?.[0]).toEqual([20]);
+			});
 		});
 
 		it('should reset to page 1 when page size changes', async () => {
@@ -263,19 +263,19 @@ describe('v2/components/Pagination', () => {
 			});
 
 			const select = wrapper.container.querySelector('[role="combobox"]');
-			if (select) {
-				await userEvent.click(select);
+			expect(select).toBeInTheDocument();
 
-				await waitFor(async () => {
-					const option20 = wrapper.getByText('20 / page');
-					await userEvent.click(option20);
-				});
+			await userEvent.click(select!);
 
-				await waitFor(() => {
-					// When page size changes, component emits update:currentPage with value 1 to reset
-					expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([1]);
-				});
-			}
+			await waitFor(async () => {
+				const option20 = wrapper.getByText('20 / page');
+				await userEvent.click(option20);
+			});
+
+			await waitFor(() => {
+				// When page size changes, component emits update:currentPage with value 1 to reset
+				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([1]);
+			});
 		});
 	});
 
@@ -409,14 +409,14 @@ describe('v2/components/Pagination', () => {
 			});
 
 			const input = wrapper.container.querySelector('input[type="number"]');
-			if (input) {
-				await userEvent.type(input, '5');
-				await userEvent.keyboard('{Enter}');
+			expect(input).toBeInTheDocument();
 
-				await waitFor(() => {
-					expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([5]);
-				});
-			}
+			await userEvent.type(input!, '5');
+			await userEvent.keyboard('{Enter}');
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([5]);
+			});
 		});
 
 		it('should not jump to invalid page number', async () => {
@@ -430,13 +430,13 @@ describe('v2/components/Pagination', () => {
 			});
 
 			const input = wrapper.container.querySelector('input[type="number"]');
-			if (input) {
-				await userEvent.type(input, '999');
-				await userEvent.keyboard('{Enter}');
+			expect(input).toBeInTheDocument();
 
-				// Should not emit any update since 999 is out of range
-				expect(wrapper.emitted('update:currentPage')).toBeFalsy();
-			}
+			await userEvent.type(input!, '999');
+			await userEvent.keyboard('{Enter}');
+
+			// Should not emit any update since 999 is out of range
+			expect(wrapper.emitted('update:currentPage')).toBeFalsy();
 		});
 	});
 

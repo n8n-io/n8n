@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
-import { ref } from 'vue';
+import { computed } from 'vue';
 
 import Pagination from './Pagination.vue';
 
@@ -52,12 +52,18 @@ export default {
 			description: 'Hide when there is only one page',
 		},
 	},
-} as Meta<typeof Pagination>;
+} satisfies Meta<typeof Pagination>;
 
-const Template = (args: Record<string, unknown>) => ({
+const Template = (
+	args: Record<string, unknown>,
+	{ updateArgs }: { updateArgs: (args: Record<string, unknown>) => void },
+) => ({
 	components: { Pagination },
 	setup() {
-		const currentPage = ref((args as { currentPage?: number }).currentPage || 1);
+		const currentPage = computed({
+			get: () => (args as { currentPage?: number }).currentPage || 1,
+			set: (value: number) => updateArgs({ currentPage: value }),
+		});
 		return { args, currentPage };
 	},
 	template: '<Pagination v-bind="args" v-model:current-page="currentPage" />',

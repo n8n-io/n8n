@@ -1,5 +1,7 @@
 import type { PaginationRootEmits, PaginationRootProps } from 'reka-ui';
 
+import type { IconName } from '@n8n/design-system/components/N8nIcon/icons';
+
 export type PaginationSizes = 'small' | 'medium';
 export type PaginationVariants = 'default' | 'ghost';
 
@@ -19,8 +21,8 @@ export type PaginationProps = Omit<
 	hideOnSinglePage?: boolean; // Hide when total pages === 1
 	prevText?: string; // Custom text for prev button
 	nextText?: string; // Custom text for next button
-	prevIcon?: string; // Custom icon for prev button
-	nextIcon?: string; // Custom icon for next button
+	prevIcon?: IconName; // Custom icon for prev button
+	nextIcon?: IconName; // Custom icon for next button
 	popperClass?: string; // Custom class for page sizes dropdown
 	teleported?: boolean; // Whether to teleport dropdown (not used in Reka UI)
 	defaultPageSize?: number; // Default page size for uncontrolled mode
@@ -44,9 +46,9 @@ export type PaginationEmits = PaginationRootEmits & {
 };
 
 export type PaginationSlots = {
-	default?: () => unknown;
-	prev?: () => unknown;
-	next?: () => unknown;
-	first?: () => unknown;
-	last?: () => unknown;
+	default?: (props: Record<string, never>) => unknown;
+	prev?: (props: { disabled: boolean }) => unknown;
+	next?: (props: { disabled: boolean }) => unknown;
+	first?: (props: { disabled: boolean }) => unknown;
+	last?: (props: { disabled: boolean }) => unknown;
 };
