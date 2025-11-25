@@ -51,12 +51,15 @@
       "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
       "dist/credentials/ZepApi.credentials.js",
-      "dist/credentials/NanoBananaApi.credentials.js"
+      "dist/credentials/NanoBananaApi.credentials.js",
+      "dist/credentials/TtapiSora2Api.credentials.js",
+      "dist/credentials/WuyinkeSora2Api.credentials.js"
     ],
     "nodes": [
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
       "dist/nodes/vendors/GoogleGemini/GoogleGemini.node.js",
       "dist/nodes/vendors/NanoBananaBatchImage/NanoBananaBatchImage.node.js",
+      "dist/nodes/vendors/Sora2BatchVideo/Sora2BatchVideo.node.js",
       "dist/nodes/vendors/Ollama/Ollama.node.js",
       "dist/nodes/vendors/OpenAi/OpenAi.node.js",
       "dist/nodes/agents/Agent/Agent.node.js",

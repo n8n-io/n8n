@@ -80,7 +80,7 @@ export type Part =
 			};
 	  }
 	| {
-			thought?: string;
+			thought?: boolean;
 			thoughtSignature?: string;
 	  };
 
