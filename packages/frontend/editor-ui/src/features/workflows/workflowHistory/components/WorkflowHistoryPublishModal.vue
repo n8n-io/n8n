@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { N8nHeading, N8nButton, N8nCallout, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import { N8nHeading, N8nButton, N8nCallout } from '@n8n/design-system';
+import WorkflowPublishForm from '@/app/components/WorkflowPublishForm.vue';
 import { WORKFLOW_HISTORY_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -88,36 +89,12 @@ const handlePublish = async () => {
 				<N8nCallout theme="warning" icon="triangle-alert">
 					{{ i18n.baseText('workflowHistory.publishModal.description') }}
 				</N8nCallout>
-				<div :class="$style.inputContainer">
-					<N8nInputLabel
-						input-name="workflow-version-name"
-						:label="i18n.baseText('workflows.publishModal.versionNameLabel')"
-						:required="true"
-						:class="$style.versionNameInput"
-					>
-						<N8nInput
-							id="workflow-version-name"
-							v-model="versionName"
-							size="large"
-							data-test-id="workflow-history-publish-version-name-input"
-						/>
-					</N8nInputLabel>
-				</div>
-				<div :class="$style.descriptionContainer">
-					<N8nInputLabel
-						input-name="workflow-version-description"
-						:label="i18n.baseText('workflows.publishModal.descriptionPlaceholder')"
-					>
-						<N8nInput
-							id="workflow-version-description"
-							v-model="description"
-							type="textarea"
-							:rows="4"
-							size="large"
-							data-test-id="workflow-history-publish-description-input"
-						/>
-					</N8nInputLabel>
-				</div>
+				<WorkflowPublishForm
+					v-model:version-name="versionName"
+					v-model:description="description"
+					version-name-test-id="workflow-history-publish-version-name-input"
+					description-test-id="workflow-history-publish-description-input"
+				/>
 				<div :class="$style.actions">
 					<N8nButton
 						type="secondary"
@@ -143,22 +120,9 @@ const handlePublish = async () => {
 	gap: var(--spacing--lg);
 }
 
-.inputContainer {
-	display: flex;
-	gap: var(--spacing--xs);
-}
-
-.descriptionContainer {
-	width: 100%;
-}
-
 .actions {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--xs);
-}
-
-.versionNameInput {
-	width: 100%;
 }
 </style>
