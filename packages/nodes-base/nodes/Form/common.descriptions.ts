@@ -175,7 +175,7 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						hide: {
-							fieldType: ['file', 'hiddenField'],
+							fieldType: ['file', 'html', 'hiddenField'],
 						},
 					},
 				},
