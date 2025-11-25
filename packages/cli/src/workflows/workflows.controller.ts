@@ -343,7 +343,11 @@ export class WorkflowsController {
 				workflowId,
 				req.user,
 				['workflow:read'],
-				{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
+				{
+					includeTags: !this.globalConfig.tags.disabled,
+					includeParentFolder: true,
+					includeActiveVersion: true,
+				},
 			);
 
 			if (!workflow) {
@@ -371,7 +375,11 @@ export class WorkflowsController {
 			workflowId,
 			req.user,
 			['workflow:read'],
-			{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
+			{
+				includeTags: !this.globalConfig.tags.disabled,
+				includeParentFolder: true,
+				includeActiveVersion: true,
+			},
 		);
 
 		if (!workflow) {
