@@ -68,19 +68,24 @@ export function getBuilderOutput(log: CoordinationLogEntry[]): string | null {
 /**
  * Get typed metadata for a specific phase
  */
-export function getPhaseMetadata<T extends SubgraphPhase>(
+export function getPhaseMetadata(
 	log: CoordinationLogEntry[],
-	phase: T,
-): T extends 'discovery'
-	? DiscoveryMetadata | null
-	: T extends 'builder'
-		? BuilderMetadata | null
-		: T extends 'configurator'
-			? ConfiguratorMetadata | null
-			: never {
+	phase: 'discovery',
+): DiscoveryMetadata | null;
+export function getPhaseMetadata(
+	log: CoordinationLogEntry[],
+	phase: 'builder',
+): BuilderMetadata | null;
+export function getPhaseMetadata(
+	log: CoordinationLogEntry[],
+	phase: 'configurator',
+): ConfiguratorMetadata | null;
+export function getPhaseMetadata(
+	log: CoordinationLogEntry[],
+	phase: SubgraphPhase,
+): DiscoveryMetadata | BuilderMetadata | ConfiguratorMetadata | null {
 	const entry = getPhaseEntry(log, phase);
-	// eslint-disable-next-line @typescript-eslint/no-explicit-any
-	return (entry?.metadata ?? null) as any;
+	return entry?.metadata ?? null;
 }
 
 /**
@@ -93,30 +98,30 @@ export function getNextPhaseFromLog(
 ): RoutingDecision {
 	const lastPhase = getLastCompletedPhase(log);
 
-	console.log(`[Coordination] getNextPhaseFromLog called`);
+	console.log('[Coordination] getNextPhaseFromLog called');
 	console.log(`[Coordination] Last completed phase: ${lastPhase ?? 'none'}`);
 	console.log(`[Coordination] Workflow has nodes: ${workflowHasNodes}`);
 
 	// After discovery → always builder (builder decides what new nodes to add)
 	if (lastPhase === 'discovery') {
-		console.log(`[Coordination] Discovery done → builder`);
+		console.log('[Coordination] Discovery done → builder');
 		return 'builder';
 	}
 
 	// After builder → configurator
 	if (lastPhase === 'builder') {
-		console.log(`[Coordination] Builder done → configurator`);
+		console.log('[Coordination] Builder done → configurator');
 		return 'configurator';
 	}
 
 	// After configurator → responder (terminal)
 	if (lastPhase === 'configurator') {
-		console.log(`[Coordination] Configurator done → responder (terminal)`);
+		console.log('[Coordination] Configurator done → responder (terminal)');
 		return 'responder';
 	}
 
 	// No phases completed yet → let supervisor decide
-	console.log(`[Coordination] No phases completed → responder (fallback)`);
+	console.log('[Coordination] No phases completed → responder (fallback)');
 	return 'responder';
 }
 

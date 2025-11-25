@@ -397,7 +397,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 		const contextMessage = createContextMessage(contextParts);
 
 		console.log('\n========== BUILDER SUBGRAPH ==========');
-		console.log(`[Builder] transformInput called`);
+		console.log('[Builder] transformInput called');
 		console.log(`[Builder] User request: "${userRequest.substring(0, 100)}..."`);
 		console.log(`[Builder] Existing workflow nodes: ${parentState.workflowJSON.nodes.length}`);
 		if (parentState.discoveryContext) {
@@ -423,7 +423,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 		const connections = subgraphOutput.workflowJSON.connections;
 		const connectionCount = Object.values(connections).flat().length;
 
-		console.log(`[Builder] transformOutput called`);
+		console.log('[Builder] transformOutput called');
 		console.log(`[Builder] Nodes created: ${nodes.length}`);
 		if (nodes.length > 0) {
 			console.log(`[Builder] Node names: ${nodes.map((n) => n.name).join(', ')}`);

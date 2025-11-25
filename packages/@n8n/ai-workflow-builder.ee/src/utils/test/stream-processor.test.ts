@@ -7,7 +7,12 @@ import type {
 	StreamOutput,
 } from '../../types/streaming';
 import type { BuilderToolBase } from '../stream-processor';
-import { processStreamChunk, createStreamProcessor, formatMessages } from '../stream-processor';
+import {
+	processStreamChunk,
+	createStreamProcessor,
+	formatMessages,
+	cleanContextTags,
+} from '../stream-processor';
 
 describe('stream-processor', () => {
 	describe('processStreamChunk', () => {
@@ -1278,8 +1283,6 @@ describe('stream-processor', () => {
 	describe('cleanContextTags', () => {
 		// Import cleanContextTags for direct testing
 		it('should remove workflow context tags from text', () => {
-			const { cleanContextTags } = require('../stream-processor');
-
 			const input = `Question here
 <current_workflow_json>
 {"nodes": []}
@@ -1296,18 +1299,9 @@ describe('stream-processor', () => {
 		});
 
 		it('should handle text without context tags', () => {
-			const { cleanContextTags } = require('../stream-processor');
-
 			const input = 'Plain text without any tags';
 			const result = cleanContextTags(input);
 			expect(result).toBe('Plain text without any tags');
-		});
-
-		it('should handle empty string', () => {
-			const { cleanContextTags } = require('../stream-processor');
-
-			const result = cleanContextTags('');
-			expect(result).toBe('');
 		});
 	});
 

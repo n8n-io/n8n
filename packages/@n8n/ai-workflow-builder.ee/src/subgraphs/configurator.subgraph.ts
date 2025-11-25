@@ -329,7 +329,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		const contextMessage = createContextMessage(contextParts);
 
 		console.log('\n========== CONFIGURATOR SUBGRAPH ==========');
-		console.log(`[Configurator] transformInput called`);
+		console.log('[Configurator] transformInput called');
 		console.log(`[Configurator] User request: "${userRequest.substring(0, 100)}..."`);
 		console.log(
 			`[Configurator] Workflow nodes to configure: ${parentState.workflowJSON.nodes.length}`,
@@ -359,7 +359,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		const setupInstructions =
 			typeof lastMessage?.content === 'string' ? lastMessage.content : 'Configuration complete';
 
-		console.log(`[Configurator] transformOutput called`);
+		console.log('[Configurator] transformOutput called');
 		console.log(`[Configurator] Final workflow nodes: ${subgraphOutput.workflowJSON.nodes.length}`);
 		console.log(
 			`[Configurator] Operations queued: ${subgraphOutput.workflowOperations?.length ?? 0}`,

@@ -416,7 +416,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const contextMessage = createContextMessage(contextParts);
 
 		console.log('\n========== DISCOVERY SUBGRAPH ==========');
-		console.log(`[Discovery] transformInput called`);
+		console.log('[Discovery] transformInput called');
 		console.log(`[Discovery] User request: "${userRequest.substring(0, 100)}..."`);
 		console.log(`[Discovery] Parent messages count: ${parentState.messages.length}`);
 		console.log(`[Discovery] Existing nodes: ${parentState.workflowJSON.nodes.length}`);
@@ -433,7 +433,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	) {
 		const nodesFound = subgraphOutput.nodesFound || [];
 
-		console.log(`[Discovery] transformOutput called`);
+		console.log('[Discovery] transformOutput called');
 		console.log(`[Discovery] Nodes found: ${nodesFound.length}`);
 		if (nodesFound.length > 0) {
 			console.log(`[Discovery] Node types: ${nodesFound.map((n) => n.nodeName).join(', ')}`);
