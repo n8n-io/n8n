@@ -272,7 +272,6 @@ export class WorkflowService {
 				},
 			);
 		}
-
 		// Convert 'active' boolean from frontend to 'activeVersionId' for backend
 		// Forbid updating active fields with FF on
 		if (isDraftPublishDisabled && 'active' in workflowUpdateData) {
@@ -323,7 +322,6 @@ export class WorkflowService {
 		}
 
 		const workflowSettings = workflowUpdateData.settings ?? {};
-
 		const keysAllowingDefault = [
 			'timezone',
 			'saveDataErrorExecution',
@@ -362,7 +360,6 @@ export class WorkflowService {
 			'description',
 			'updatedAt',
 		];
-
 		// Forbid updating active fields with FF on
 		if (isDraftPublishDisabled) {
 			fieldsToUpdate.push('activeVersionId', 'active');
@@ -377,7 +374,6 @@ export class WorkflowService {
 		if (versionChanged) {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
-
 		if (isDraftPublishDisabled && needsActiveVersionUpdate) {
 			const versionIdToFetch = versionChanged ? workflowUpdateData.versionId : workflow.versionId;
 			const version = await this.workflowHistoryService.getVersion(
@@ -385,14 +381,12 @@ export class WorkflowService {
 				workflowId,
 				versionIdToFetch,
 			);
-
 			updatePayload.activeVersion = WorkflowHelpers.getActiveVersionUpdateValue(
 				workflow,
 				version,
 				isNowActive,
 			);
 		}
-
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
 			if (parentFolderId !== PROJECT_ROOT) {
@@ -407,9 +401,7 @@ export class WorkflowService {
 			}
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
-
 		await this.workflowRepository.update(workflowId, updatePayload);
-
 		const tagsDisabled = this.globalConfig.tags.disabled;
 
 		if (tagIds && !tagsDisabled) {
@@ -436,22 +428,24 @@ export class WorkflowService {
 				requestOrder: tagIds,
 			});
 		}
-
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
 		this.eventService.emit('workflow-saved', {
 			user,
 			workflow: updatedWorkflow,
 			publicApi,
 		});
-
 		// Skip activation/deactivation logic if draft/publish feature flag is enabled
 		if (isDraftPublishDisabled) {
 			if (activationStatusChanged && isNowActive) {
+<<<<<<< HEAD
 				// Workflow is being activated
+=======
+>>>>>>> d2a380cb6e (fix)
 				this.eventService.emit('workflow-activated', {
 					user,
 					workflowId,
 					workflow: updatedWorkflow,
+<<<<<<< HEAD
 					publicApi,
 				});
 
@@ -460,6 +454,10 @@ export class WorkflowService {
 					updatedWorkflow.meta = remainingMeta;
 					await this.workflowRepository.update({ id: workflowId }, { meta: remainingMeta });
 				}
+=======
+					publicApi: false,
+				});
+>>>>>>> d2a380cb6e (fix)
 			} else if (activationStatusChanged && !isNowActive) {
 				// Workflow is being deactivated
 				this.eventService.emit('workflow-deactivated', {
@@ -496,7 +494,6 @@ export class WorkflowService {
 				);
 			}
 		}
-
 		return updatedWorkflow;
 	}
 
