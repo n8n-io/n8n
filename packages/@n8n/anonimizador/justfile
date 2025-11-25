@@ -1,0 +1,31 @@
+check:
+    just lint
+    just format-check
+    just typecheck
+
+run:
+    uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+sync:
+    uv sync --group dev
+
+lint:
+    uv run ruff check
+
+lintfix:
+    uv run ruff check --fix
+
+format:
+    uv run ruff format
+
+format-check:
+    uv run ruff format --check
+
+test:
+    uv run pytest
+
+test-cov:
+    uv run pytest --cov=app --cov-report=term-missing
+
+test-v:
+    uv run pytest -vv
