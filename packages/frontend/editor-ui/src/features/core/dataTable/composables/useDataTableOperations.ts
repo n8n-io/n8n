@@ -190,10 +190,10 @@ export const useDataTableOperations = ({
 			if (errorDetails.httpStatus === 409) {
 				toast.showError(
 					new Error(errorDetails.message),
-					i18n.baseText('dataTable.column.alreadyExistsError' as never),
+					i18n.baseText('dataTable.column.alreadyExistsError'),
 				);
 			} else {
-				toast.showError(error, i18n.baseText('dataTable.renameColumn.error' as never));
+				toast.showError(error, i18n.baseText('dataTable.renameColumn.error'));
 			}
 		}
 	}
