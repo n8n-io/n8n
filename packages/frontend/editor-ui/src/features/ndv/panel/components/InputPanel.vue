@@ -516,6 +516,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 									tooltip-placement="bottom"
 									telemetry-source="inputs"
 									data-test-id="execute-previous-node"
+									execution-mode="exclusive"
 									@execute="onNodeExecute"
 								/>
 								<br />
@@ -576,6 +577,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						class="mt-m"
 						telemetry-source="inputs"
 						data-test-id="execute-previous-node"
+						execution-mode="exclusive"
 						tooltip-placement="bottom"
 						:show-loading-spinner="false"
 						@execute="onNodeExecute"
