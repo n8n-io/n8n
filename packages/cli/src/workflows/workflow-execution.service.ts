@@ -496,8 +496,6 @@ export class WorkflowExecutionService {
 		}
 	}
 
-	// TODO: update the docstring
-	//
 	/**
 	 * Select the pinned trigger node to use as starter for a manual execution.
 	 *
@@ -508,7 +506,7 @@ export class WorkflowExecutionService {
 	 * @param workflow The workflow containing the nodes and connections
 	 * @param destinationNode The name of the node to find a pinned trigger for
 	 * @param pinData Pin data mapping node names to their pinned data
-	 * @returns The pinned trigger node if found, undefined otherwise
+	 * @returns The pinned trigger node if found, null otherwise
 	 */
 	selectPinnedTrigger(workflow: IWorkflowBase, destinationNode: string, pinData: IPinData) {
 		const allPinnedTriggers = this.findAllPinnedTriggers(workflow, pinData);
