@@ -67,7 +67,7 @@ async function downloadBinaryData(index: number, key: string | number) {
 							</div>
 							<div :class="$style.binaryValue">{{ data.fileName }}</div>
 						</div>
-						<div v-if="data.path || data.directory">
+						<div v-if="data.path">
 							<div>
 								<N8nText size="small" :bold="true"
 									>{{
