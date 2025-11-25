@@ -16,6 +16,7 @@ export declare namespace WorkflowRequest {
 	type CreateUpdatePayload = Partial<{
 		id: string; // deleted if sent
 		name: string;
+		description: string | null;
 		nodes: INode[];
 		connections: IConnections;
 		settings: IWorkflowSettings;
@@ -66,9 +67,17 @@ export declare namespace WorkflowRequest {
 		{ forceSave?: string }
 	>;
 
-	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string }>;
+	type NewName = AuthenticatedRequest<{}, {}, {}, { name?: string; projectId: string }>;
 
 	type ManualRun = AuthenticatedRequest<{ workflowId: string }, {}, ManualRunPayload, {}>;
 
 	type Share = AuthenticatedRequest<{ workflowId: string }, {}, { shareWithIds: string[] }>;
+
+	type Activate = AuthenticatedRequest<
+		{ workflowId: string },
+		{},
+		{ versionId: string; name?: string; description?: string }
+	>;
+
+	type Deactivate = AuthenticatedRequest<{ workflowId: string }>;
 }

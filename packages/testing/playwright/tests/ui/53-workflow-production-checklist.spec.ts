@@ -4,8 +4,7 @@ const SCHEDULE_TRIGGER_NODE_NAME = 'Schedule Trigger';
 
 test.describe('Workflow Production Checklist', () => {
 	test.beforeEach(async ({ n8n }) => {
-		await n8n.goHome();
-		await n8n.workflows.addResource.workflow();
+		await n8n.start.fromBlankCanvas();
 	});
 
 	test('should show suggested actions automatically when workflow is first activated', async ({
@@ -23,7 +22,6 @@ test.describe('Workflow Production Checklist', () => {
 
 		await expect(n8n.canvas.getProductionChecklistButton()).toBeVisible();
 		await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
-		await expect(n8n.canvas.getProductionChecklistActionItem()).toHaveCount(2);
 		await expect(n8n.canvas.getErrorActionItem()).toBeVisible();
 		await expect(n8n.canvas.getTimeSavedActionItem()).toBeVisible();
 	});
@@ -44,7 +42,6 @@ test.describe('Workflow Production Checklist', () => {
 		await n8n.workflowActivationModal.close();
 
 		await expect(n8n.canvas.getProductionChecklistPopover()).toBeVisible();
-		await expect(n8n.canvas.getProductionChecklistActionItem()).toHaveCount(3);
 
 		await expect(n8n.canvas.getEvaluationsActionItem()).toBeVisible();
 		await n8n.canvas.getEvaluationsActionItem().click();

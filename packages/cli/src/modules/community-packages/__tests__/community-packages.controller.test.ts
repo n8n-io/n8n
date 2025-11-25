@@ -31,13 +31,26 @@ describe('CommunityPackagesController', () => {
 		it('should throw error if verify in options but no checksum', async () => {
 			const request = mock<NodeRequest.Post>({
 				user: { id: 'user123' },
-				body: { name: 'n8n-nodes-test', verify: true },
+				body: { name: 'n8n-nodes-test', verify: true, version: '1.0.0' },
 			});
 			communityNodeTypesService.findVetted.mockReturnValue(undefined);
 			await expect(controller.installPackage(request)).rejects.toThrow(
 				'Package n8n-nodes-test is not vetted for installation',
 			);
 		});
+
+		it.each(['foo', 'echo "hello"', '1.a.b', '0.1.29#;ls'])(
+			'should throw error if version is invalid',
+			async (version) => {
+				const request = mock<NodeRequest.Post>({
+					user: { id: 'user123' },
+					body: { name: 'n8n-nodes-test', verify: true, version },
+				});
+				await expect(controller.installPackage(request)).rejects.toThrow(
+					`Invalid version: ${version}`,
+				);
+			},
+		);
 
 		it('should have correct version', async () => {
 			const request = mock<NodeRequest.Post>({
@@ -119,5 +132,15 @@ describe('CommunityPackagesController', () => {
 
 			expect(result).toBe(newInstalledPackage);
 		});
+
+		it.each(['foo', 'echo "hello"', '1.a.b', '0.1.29#;ls'])(
+			'should throw error if version is invalid',
+			async (version) => {
+				const req = mock<NodeRequest.Update>({
+					body: { name: 'n8n-nodes-test', version, checksum: 'a893hfdsy7399' },
+				});
+				await expect(controller.updatePackage(req)).rejects.toThrow(`Invalid version: ${version}`);
+			},
+		);
 	});
 });

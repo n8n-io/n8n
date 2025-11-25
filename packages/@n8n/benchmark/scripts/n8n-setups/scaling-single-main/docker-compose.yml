@@ -73,6 +73,7 @@ services:
     environment:
       - N8N_RUNNERS_TASK_BROKER_URI=http://n8n_worker1:5679
       - N8N_RUNNERS_AUTH_TOKEN=test
+      - NO_COLOR=1
     depends_on:
       n8n_worker1:
         condition: service_healthy
@@ -121,6 +122,7 @@ services:
     environment:
       - N8N_RUNNERS_TASK_BROKER_URI=http://n8n_worker2:5679
       - N8N_RUNNERS_AUTH_TOKEN=test
+      - NO_COLOR=1
     depends_on:
       n8n_worker2:
         condition: service_healthy
@@ -139,6 +141,7 @@ services:
       - DB_TYPE=postgresdb
       - DB_POSTGRESDB_HOST=postgres
       - DB_POSTGRESDB_PASSWORD=password
+      - N8N_METRICS=true
     ports:
       - 5678:5678
     volumes:
@@ -170,3 +173,4 @@ services:
       - K6_API_TOKEN=${K6_API_TOKEN}
       - BENCHMARK_RESULT_WEBHOOK_URL=${BENCHMARK_RESULT_WEBHOOK_URL}
       - BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER=${BENCHMARK_RESULT_WEBHOOK_AUTH_HEADER}
+      - COLLECT_APP_METRICS=true

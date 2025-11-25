@@ -24,12 +24,14 @@ import { useDataTableOperations } from '@/features/core/dataTable/composables/us
 import { useDataTableColumnFilters } from '@/features/core/dataTable/composables/useDataTableColumnFilters';
 import { useI18n } from '@n8n/i18n';
 import { GRID_FILTER_CONFIG } from '@/features/core/dataTable/utils/filterMappings';
+import { useDebounce } from '@/app/composables/useDebounce';
 
 import { ElPagination } from 'element-plus';
 registerAgGridModulesOnce();
 
 type Props = {
 	dataTable: DataTable;
+	search?: string;
 };
 
 const props = defineProps<Props>();
@@ -41,6 +43,7 @@ const emit = defineEmits<{
 const gridContainerRef = useTemplateRef<HTMLDivElement>('gridContainerRef');
 
 const i18n = useI18n();
+const { debounce } = useDebounce();
 const rowData = ref<DataTableRow[]>([]);
 const hasRecords = computed(() => rowData.value.length > 0);
 
@@ -102,6 +105,7 @@ const dataTableOperations = useDataTableOperations({
 	selectedRowIds: selection.selectedRowIds,
 	handleCopyFocusedCell: agGrid.handleCopyFocusedCell,
 	currentFilterJSON,
+	searchQuery: computed(() => props.search),
 });
 
 async function onDeleteColumnFunction(columnId: string) {
@@ -136,6 +140,18 @@ watch([agGrid.currentSortBy, agGrid.currentSortOrder], async () => {
 watch(currentFilterJSON, async () => {
 	await setCurrentPage(1);
 });
+
+const onSearchChange = async () => {
+	await setCurrentPage(1);
+};
+const debouncedOnSearchChange = debounce(onSearchChange, { debounceTime: 250, trailing: true });
+
+watch(
+	() => props.search,
+	() => {
+		void debouncedOnSearchChange();
+	},
+);
 
 defineExpose({
 	addRow: dataTableOperations.onAddRowClick,
@@ -206,7 +222,7 @@ defineExpose({
 	// AG Grid style overrides
 	--ag-foreground-color: var(--color--text);
 	--ag-cell-text-color: var(--color--text--shade-1);
-	--ag-accent-color: var(--p--color--secondary-470);
+	--ag-accent-color: var(--color--purple-600);
 	--ag-row-hover-color: var(--color--background--light-1);
 	--ag-background-color: var(--color--background--light-3);
 	--ag-border-color: var(--border-color);
@@ -223,7 +239,7 @@ defineExpose({
 	--ag-cell-horizontal-padding: var(--spacing--2xs);
 	--ag-header-height: calc(var(--ag-grid-size) * 0.8 + 32px);
 	--ag-header-column-border-height: 100%;
-	--ag-range-selection-border-color: var(--p--color--secondary-470);
+	--ag-range-selection-border-color: var(--color--purple-600);
 	--ag-input-padding-start: var(--spacing--2xs);
 	--ag-input-background-color: var(--color--text--tint-3);
 	--ag-focus-shadow: none;

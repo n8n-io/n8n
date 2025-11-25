@@ -118,7 +118,7 @@ const range = shallowRef<{
 	start: DateValue;
 	end: DateValue;
 }>({
-	start: maxDate.copy().subtract({ days: 6 }),
+	start: maxDate.copy().subtract({ days: 7 }),
 	end: maxDate.copy(),
 });
 
@@ -308,7 +308,7 @@ const projects = computed(() =>
 }
 
 .insightsBanner {
-	padding-bottom: 0;
+	margin-bottom: 0;
 
 	ul {
 		border-bottom-left-radius: 0;

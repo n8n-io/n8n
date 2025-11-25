@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { OPERATOR_GROUPS } from './constants';
 import type { FilterOperator } from './types';
 import { getFilterOperator } from './utils';
@@ -56,6 +56,13 @@ function onGroupSelect(group: string) {
 		submenu.value = group;
 	}
 }
+
+watch(
+	() => props.selected,
+	(newSelected) => {
+		selected.value = newSelected;
+	},
+);
 </script>
 
 <template>
@@ -143,6 +150,11 @@ function onGroupSelect(group: string) {
 	cursor: pointer;
 
 	&.suggested {
+		font-weight: var(--font-weight--bold);
+	}
+
+	&.selected {
+		color: var(--color--primary);
 		font-weight: var(--font-weight--bold);
 	}
 

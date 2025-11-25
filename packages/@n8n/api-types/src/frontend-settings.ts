@@ -1,6 +1,7 @@
 import type { LogLevel, WorkflowSettings } from 'n8n-workflow';
 
-import { type InsightsDateRange } from './schemas/insights.schema';
+import type { ChatHubLLMProvider, ChatProviderSettingsDto } from './chat-hub';
+import type { InsightsDateRange } from './schemas/insights.schema';
 
 export interface IVersionNotificationSettings {
 	enabled: boolean;
@@ -46,7 +47,6 @@ export interface IEnterpriseSettings {
 	showNonProdBanner: boolean;
 	debugInEditor: boolean;
 	binaryDataS3: boolean;
-	workflowHistory: boolean;
 	workerView: boolean;
 	advancedPermissions: boolean;
 	apiKeyScopes: boolean;
@@ -95,7 +95,7 @@ export interface FrontendSettings {
 	authCookie: {
 		secure: boolean;
 	};
-	binaryDataMode: 'default' | 'filesystem' | 's3';
+	binaryDataMode: 'default' | 'filesystem' | 's3' | 'database';
 	releaseChannel: 'stable' | 'beta' | 'nightly' | 'dev';
 	n8nMetadata?: {
 		userId?: string;
@@ -245,6 +245,14 @@ export type FrontendModuleSettings = {
 	mcp?: {
 		/** Whether MCP access is enabled in the instance. */
 		mcpAccessEnabled: boolean;
+	};
+
+	/**
+	 * Client settings for Chat module.
+	 */
+	'chat-hub'?: {
+		enabled: boolean;
+		providers: Record<ChatHubLLMProvider, ChatProviderSettingsDto>;
 	};
 };
 

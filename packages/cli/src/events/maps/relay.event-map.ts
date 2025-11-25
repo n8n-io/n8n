@@ -16,7 +16,7 @@ export type UserLike = {
 	email?: string;
 	firstName?: string;
 	lastName?: string;
-	role: {
+	role?: {
 		slug: string;
 	};
 };
@@ -532,6 +532,19 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
+
+	// #region SSO
+
+	'sso-user-project-access-updated': {
+		projectsRemoved: number;
+		projectsAdded: number;
+		userId: string;
+	};
+
+	'sso-user-instance-role-updated': {
+		role: string;
+		userId: string;
+	};
 
 	// #region runner
 

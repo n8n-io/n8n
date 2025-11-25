@@ -121,6 +121,20 @@ const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toL
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
 
+const globalPermissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).workflow,
+);
+const projectPermissions = computed(
+	() =>
+		getResourcePermissions(
+			projectsStore.myProjects?.find((p) => props.data.homeProject?.id === p.id)?.scopes,
+		).workflow,
+);
+
+const canCreateWorkflow = computed(
+	() => globalPermissions.value.create ?? projectPermissions.value.create,
+);
+
 const showFolders = computed(() => {
 	return props.areFoldersEnabled && route.name !== VIEWS.WORKFLOWS;
 });
@@ -168,7 +182,12 @@ const actions = computed(() => {
 		},
 	];
 
-	if (workflowPermissions.value.create && !props.readOnly && !props.data.isArchived) {
+	if (
+		workflowPermissions.value.read &&
+		canCreateWorkflow.value &&
+		!props.readOnly &&
+		!props.data.isArchived
+	) {
 		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
@@ -509,20 +528,27 @@ const tags = computed(
 		@click="onClick"
 	>
 		<template #header>
-			<N8nText
-				tag="h2"
-				bold
-				:class="{
-					[$style.cardHeading]: true,
-					[$style.cardHeadingArchived]: data.isArchived,
-				}"
-				data-test-id="workflow-card-name"
+			<N8nTooltip
+				:content="data.description"
+				:disabled="!data.description"
+				data-test-id="workflow-card-name-tooltip"
+				:popper-class="$style['description-popper']"
 			>
-				{{ data.name }}
-				<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
-					{{ locale.baseText('workflows.item.readonly') }}
-				</N8nBadge>
-			</N8nText>
+				<N8nText
+					tag="h2"
+					bold
+					:class="{
+						[$style.cardHeading]: true,
+						[$style.cardHeadingArchived]: data.isArchived,
+					}"
+					data-test-id="workflow-card-name"
+				>
+					{{ data.name }}
+					<N8nBadge v-if="!workflowPermissions.update" class="ml-3xs" theme="tertiary" bold>
+						{{ locale.baseText('workflows.item.readonly') }}
+					</N8nBadge>
+				</N8nText>
+			</N8nTooltip>
 		</template>
 		<div :class="$style.cardDescription">
 			<span v-show="data"
@@ -647,6 +673,10 @@ const tags = computed(
 
 .cardHeadingArchived {
 	color: var(--color--text--tint-1);
+}
+
+.description-popper {
+	min-width: 300px;
 }
 
 .cardDescription {

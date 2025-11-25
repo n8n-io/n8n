@@ -86,6 +86,10 @@ export class AuthService {
 			// Skip browser ID check for type files
 			'/types/nodes.json',
 			'/types/credentials.json',
+			'/mcp-oauth/authorize/',
+
+			// Skip browser ID check for chat hub attachments
+			`/${restEndpoint}/chat/conversations/:sessionId/messages/:messageId/attachments/:index`,
 		];
 	}
 

@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 import { useUserHelpers } from '@/app/composables/useUserHelpers';
-import { ABOUT_MODAL_KEY, SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT, VIEWS } from '@/app/constants';
+import { ABOUT_MODAL_KEY, VIEWS } from '@/app/constants';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
@@ -22,7 +21,6 @@ const { canUserAccessRouteByName } = useUserHelpers(router);
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
-const posthogStore = usePostHog();
 const uiStore = useUIStore();
 
 const sidebarMenuItems = computed<IMenuItem[]>(() => {
@@ -100,17 +98,6 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			route: { to: { name: VIEWS.LDAP_SETTINGS } },
 		},
 		{
-			id: 'settings-provisioning',
-			icon: 'toolbox',
-			label: i18n.baseText('settings.provisioning.title'),
-			position: 'top',
-			available:
-				canUserAccessRouteByName(VIEWS.PROVISIONING_SETTINGS) &&
-				// TODO: comment this back one once posthog experiment is done: settingsStore.isEnterpriseFeatureEnabled.provisioning,
-				posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name),
-			route: { to: { name: VIEWS.PROVISIONING_SETTINGS } },
-		},
-		{
 			id: 'settings-workersview',
 			icon: 'waypoints',
 			label: i18n.baseText('mainSidebar.workersView'),
@@ -138,6 +125,15 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		position: 'top',
 		available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
 		route: { to: { name: VIEWS.COMMUNITY_NODES } },
+	});
+
+	menuItems.push({
+		id: 'settings-migration-report',
+		icon: 'list-checks',
+		label: i18n.baseText('settings.migrationReport'),
+		position: 'top',
+		available: canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
+		route: { to: { name: VIEWS.MIGRATION_REPORT } },
 	});
 
 	// Append module-registered settings sidebar items.
@@ -184,6 +180,7 @@ const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item
 	display: flex;
 	gap: var(--spacing--3xs);
 	align-items: center;
+
 	&:hover {
 		color: var(--color--primary);
 	}
