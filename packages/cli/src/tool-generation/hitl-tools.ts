@@ -138,9 +138,8 @@ export function convertNodeToHitlTool<
 			originalDisplayName,
 		);
 
-		// Remove webhooks from description - handled by ToolHitl runtime
-		delete item.description.webhooks;
-		delete item.description.waitingNodeTooltip;
+		// Keep webhooks - original node's webhook handler will be used
+		// The execution engine handles HITL-specific behavior
 	}
 
 	setToolCodex(item.description, 'Human in the Loop');
@@ -161,8 +160,8 @@ export function createHitlTools(types: Types, known: KnownNodesAndCredentials): 
 		// Add to node types
 		types.nodes.push(wrapped);
 
-		// Use the original node's class - it handles sendAndWait already
-		// The HITL-specific supplyData wrapping will be added to handle tool gating
+		// Point to original node's class - execution engine handles HITL-specific behavior
+		// by detecting nodes with 'HitlTool' suffix
 		known.nodes[wrapped.name] = { ...known.nodes[sendAndWaitNode.name] };
 
 		copyCredentialSupport(known, sendAndWaitNode.name, wrapped.name);

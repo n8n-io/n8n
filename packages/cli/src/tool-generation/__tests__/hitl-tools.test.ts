@@ -170,9 +170,10 @@ describe('hitl-tools', () => {
 			]);
 		});
 
-		it('should remove webhooks from description', () => {
+		it('should keep webhooks in description', () => {
 			const result = convertNodeToHitlTool(fullNodeWrapper);
-			expect(result.description.webhooks).toBeUndefined();
+			expect(result.description.webhooks).toBeDefined();
+			expect(result.description.webhooks).toHaveLength(1);
 		});
 
 		it('should add toolDescription property', () => {
@@ -326,7 +327,7 @@ describe('hitl-tools', () => {
 			expect(types.nodes[1].displayName).toBe('Slack HITL Tool');
 		});
 
-		it('should use original node sourcePath for HITL tool', () => {
+		it('should point to original node class for HITL tool', () => {
 			createHitlTools(types as never, known as never);
 
 			expect(known.nodes.slackHitlTool).toEqual({
