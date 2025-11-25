@@ -170,7 +170,7 @@ it('should delete files by file IDs', async () => {
 	expect(remaining.at(0)?.fileId).toBe(fileId3);
 });
 
-it('should copy a file', async () => {
+it('should copy a file by file ID', async () => {
 	const { fileId: sourceFileId } = await dbManager.store(
 		{ type: 'execution', workflowId, executionId: 'source-exec' },
 		buffer,
@@ -265,7 +265,7 @@ it('should accept Unicode filename', async () => {
 	expect(metadata.fileName).toBe(unicodeFileName);
 });
 
-it('should copy file by path from temp file', async () => {
+it('should copy file by path', async () => {
 	const tempDir = await mkdtemp(join(tmpdir(), 'n8n-test-'));
 	const tempFilePath = join(tempDir, 'test-file.txt');
 
@@ -294,7 +294,7 @@ it('should copy file by path from temp file', async () => {
 	}
 });
 
-it('should throw FileTooLargeError in copyByFilePath when file exceeds size limit', async () => {
+it('should throw FileTooLargeError when copying oversized file by path', async () => {
 	const tempDir = await mkdtemp(join(tmpdir(), 'n8n-test-'));
 	const tempFilePath = join(tempDir, 'large-file.bin');
 
