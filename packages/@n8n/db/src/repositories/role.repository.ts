@@ -1,4 +1,3 @@
-import { DatabaseConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import { DataSource, EntityManager, In, Repository } from '@n8n/typeorm';
 import { UserError } from 'n8n-workflow';
@@ -7,10 +6,7 @@ import { ProjectRelation, Role, User } from '../entities';
 
 @Service()
 export class RoleRepository extends Repository<Role> {
-	constructor(
-		dataSource: DataSource,
-		private readonly databaseConfig: DatabaseConfig,
-	) {
+	constructor(dataSource: DataSource) {
 		super(Role, dataSource.manager);
 	}
 
