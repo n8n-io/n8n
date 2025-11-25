@@ -304,6 +304,8 @@ watch(
 
 defineExpose({
 	open: () => dropdownRef.value?.open(),
+	openCredentialSelector: (provider: ChatHubLLMProvider) =>
+		openCredentialsSelectorOrCreate(provider),
 });
 </script>
 

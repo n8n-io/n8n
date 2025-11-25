@@ -428,8 +428,8 @@ function handleSwitchAlternative(messageId: string) {
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
 
-function handleConfigureCredentials(_provider: ChatHubLLMProvider) {
-	// todo call model selector to open model
+function handleConfigureCredentials(provider: ChatHubLLMProvider) {
+	headerRef.value?.openCredentialSelector(provider);
 }
 
 function handleConfigureModel() {
