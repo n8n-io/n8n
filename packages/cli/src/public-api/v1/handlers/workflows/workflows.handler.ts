@@ -10,6 +10,7 @@ import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import {
@@ -374,6 +375,9 @@ export = {
 
 				return res.json(workflow);
 			} catch (error) {
+				if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: error.message });
+				}
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });
 				}
@@ -396,6 +400,9 @@ export = {
 
 				return res.json(workflow);
 			} catch (error) {
+				if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: error.message });
+				}
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });
 				}
