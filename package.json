@@ -117,7 +117,8 @@
       "form-data": "4.0.4",
       "tmp": "0.2.4",
       "nodemailer": "7.0.10",
-      "validator": "13.15.20"
+      "validator": "13.15.20",
+      "js-yaml": "4.1.1"
     },
     "patchedDependencies": {
       "bull@4.16.4": "patches/bull@4.16.4.patch",
