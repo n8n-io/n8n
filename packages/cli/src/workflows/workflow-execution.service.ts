@@ -180,8 +180,9 @@ export class WorkflowExecutionService {
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 				: undefined;
 
-			const triggerHasPinnedData = payload.workflowData.pinData?.[payload.triggerToStartFrom.name];
-			if (triggerHasPinnedData === undefined) {
+			const triggerHasNoPinnedData =
+				payload.workflowData.pinData?.[payload.triggerToStartFrom.name] === undefined;
+			if (triggerHasNoPinnedData) {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase({
 					userId: user.id,
 					workflowId: payload.workflowData.id,
