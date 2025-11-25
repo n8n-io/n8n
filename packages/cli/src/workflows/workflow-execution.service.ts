@@ -111,7 +111,7 @@ export class WorkflowExecutionService {
 		pushRef?: string,
 		streamingEnabled?: boolean,
 		httpResponse?: Response,
-	) {
+	): Promise<{ executionId?: string; waitingForWebhook?: boolean }> {
 		console.log('version 1');
 		function isFullManualExecutionFromKnownTriggerPayload(
 			payload: WorkflowRequest.ManualRunPayload,
@@ -304,7 +304,7 @@ export class WorkflowExecutionService {
 				console.log('pinnedTrigger', pinnedTrigger);
 			}
 
-			const executionId = this.workflowRunner.run({
+			const executionId = await this.workflowRunner.run({
 				executionMode: 'manual',
 				pinData: payload.workflowData.pinData,
 				pushRef,
