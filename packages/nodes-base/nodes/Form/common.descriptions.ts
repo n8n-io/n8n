@@ -184,7 +184,10 @@ export const formFields: INodeProperties = {
 					name: 'defaultValue',
 					description:
 						'Default date value that will be pre-filled in the form field (format: YYYY-MM-DD)',
-					type: 'string',
+					type: 'dateTime',
+					typeOptions: {
+						dateOnly: true,
+					},
 					default: '',
 					displayOptions: {
 						show: {
