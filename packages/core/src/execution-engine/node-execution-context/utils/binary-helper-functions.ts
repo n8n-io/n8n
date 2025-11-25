@@ -300,7 +300,7 @@ export async function prepareBinaryData(
 	if (filePath) {
 		const filePathParts = path.parse(filePath);
 
-		if (fullUrl !== '') {
+		if (fullUrl) {
 			returnData.path = fullUrl;
 		} else if (filePathParts.dir !== '') {
 			returnData.path = filePathParts.dir;
