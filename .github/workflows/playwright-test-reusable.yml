@@ -78,6 +78,14 @@ jobs:
         if: inputs.test-mode == 'docker-build'
         run: pnpm turbo install-browsers:ci
 
+      - name: Pre-pull Test Container Images
+        if: ${{ !contains(inputs.test-command, 'test:local') }}
+        run: |
+          # Pre-pull all test container images to avoid network changes during test execution
+          npx tsx packages/testing/containers/pull-test-images.ts || true
+        env:
+          N8N_DOCKER_IMAGE: ${{ inputs.test-mode == 'docker-build' && 'n8nio/n8n:local' || inputs.docker-image }}
+
       - name: Prepare Test Image
         if: inputs.test-mode == 'docker-pull'
         run: pnpm --filter=n8n-playwright prepare-test-image ${{ inputs.docker-image }}

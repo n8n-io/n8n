@@ -47,13 +47,13 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
-import { convertFileToChatAttachment } from '@/app/utils/fileUtils';
-import { buildUiMessages, isMatchedAgent } from './chat.utils';
+import { buildUiMessages, isLlmProviderModel, isMatchedAgent } from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { deepCopy, type INode } from 'n8n-workflow';
 import type { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -260,6 +260,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
 		status: ChatHubMessageStatus,
+		content?: string,
 	) {
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[messageId];
@@ -268,6 +269,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 
 		message.status = status;
+		if (content) {
+			message.content = content;
+		}
 		message.updatedAt = new Date().toISOString();
 	}
 
@@ -419,8 +423,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 					return;
 				}
 
-				updateMessage(sessionId, chunk.metadata.messageId, 'error');
-				onChunk(message.content ?? '');
+				updateMessage(sessionId, chunk.metadata.messageId, 'error', chunk.content);
 				break;
 			}
 		}
@@ -489,7 +492,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
 			: null;
 
-		const attachments = await Promise.all(files.map(convertFileToChatAttachment));
+		const binaryData = await Promise.all(files.map(convertFileToBinaryData));
+		const attachments = binaryData.map((attachment) => ({
+			fileName: attachment.fileName ?? 'unnamed file',
+			mimeType: attachment.mimeType,
+			data: attachment.data,
+		}));
 
 		addMessage(sessionId, {
 			id: messageId,
@@ -498,7 +506,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			name: 'User',
 			content: message,
 			provider: null,
-			model: model.provider === 'n8n' || model.provider === 'custom-agent' ? null : model.model,
+			model: isLlmProviderModel(model) ? model.model : null,
 			workflowId: null,
 			executionId: null,
 			agentId: null,
@@ -785,10 +793,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	function getAgent(model: ChatHubConversationModel) {
 		if (!agents.value) return null;
 
-		const agent = agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
+		const agent = agents.value[model.provider]?.models.find((agent) =>
+			isMatchedAgent(agent, model),
+		);
 
 		if (!agent) {
-			if (model.provider === 'custom-agent' || model.provider === 'n8n') {
+			if (!isLlmProviderModel(model)) {
 				return null;
 			}
 

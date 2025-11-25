@@ -16,6 +16,7 @@ export const chatHubLLMProviderSchema = z.enum([
 	'anthropic',
 	'google',
 	'azureOpenAi',
+	'azureEntraId',
 	'ollama',
 	'awsBedrock',
 	'vercelAiGateway',
@@ -48,6 +49,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	google: 'googlePalmApi',
 	ollama: 'ollamaApi',
 	azureOpenAi: 'azureOpenAiApi',
+	azureEntraId: 'azureEntraCognitiveServicesOAuth2Api',
 	awsBedrock: 'aws',
 	vercelAiGateway: 'vercelAiGatewayApi',
 	xAiGrok: 'xAiApi',
@@ -80,6 +82,11 @@ const googleModelSchema = z.object({
 
 const azureOpenAIModelSchema = z.object({
 	provider: z.literal('azureOpenAi'),
+	model: z.string(),
+});
+
+const azureEntraIdModelSchema = z.object({
+	provider: z.literal('azureEntraId'),
 	model: z.string(),
 });
 
@@ -143,6 +150,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	anthropicModelSchema,
 	googleModelSchema,
 	azureOpenAIModelSchema,
+	azureEntraIdModelSchema,
 	ollamaModelSchema,
 	awsBedrockModelSchema,
 	vercelAiGatewaySchema,
@@ -160,6 +168,7 @@ export type ChatHubOpenAIModel = z.infer<typeof openAIModelSchema>;
 export type ChatHubAnthropicModel = z.infer<typeof anthropicModelSchema>;
 export type ChatHubGoogleModel = z.infer<typeof googleModelSchema>;
 export type ChatHubAzureOpenAIModel = z.infer<typeof azureOpenAIModelSchema>;
+export type ChatHubAzureEntraIdModel = z.infer<typeof azureEntraIdModelSchema>;
 export type ChatHubOllamaModel = z.infer<typeof ollamaModelSchema>;
 export type ChatHubAwsBedrockModel = z.infer<typeof awsBedrockModelSchema>;
 export type ChatHubVercelAiGatewayModel = z.infer<typeof vercelAiGatewaySchema>;
@@ -174,6 +183,7 @@ export type ChatHubBaseLLMModel =
 	| ChatHubAnthropicModel
 	| ChatHubGoogleModel
 	| ChatHubAzureOpenAIModel
+	| ChatHubAzureEntraIdModel
 	| ChatHubOllamaModel
 	| ChatHubAwsBedrockModel
 	| ChatHubVercelAiGatewayModel
@@ -223,6 +233,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	anthropic: { models: [] },
 	google: { models: [] },
 	azureOpenAi: { models: [] },
+	azureEntraId: { models: [] },
 	ollama: { models: [] },
 	awsBedrock: { models: [] },
 	vercelAiGateway: { models: [] },
@@ -244,6 +255,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
  */
 export const chatAttachmentSchema = z.object({
 	data: z.string(),
+	mimeType: z.string(),
 	fileName: z.string(),
 });
 
