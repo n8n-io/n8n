@@ -295,43 +295,5 @@ describe('Chat', () => {
 			// Should focus after setting value
 			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith('focusInput');
 		});
-
-		it('should handle escape key to exit navigation mode', async () => {
-			wrapper = mount(Chat);
-			const input = wrapper.findComponent({ name: 'Input' });
-
-			// Navigate back in history
-			await input.vm.$emit('arrowKeyDown', {
-				key: 'ArrowUp',
-				currentInputValue: 'My draft message',
-			});
-
-			vi.clearAllMocks();
-
-			// Press escape
-			await input.vm.$emit('escapeKeyDown', {});
-
-			// Should restore original input
-			expect(vi.mocked(chatEventBus.emit)).toHaveBeenCalledWith(
-				'setInputValue',
-				'My draft message',
-			);
-		});
-
-		it('should not handle escape when not in navigation mode', async () => {
-			wrapper = mount(Chat);
-			const input = wrapper.findComponent({ name: 'Input' });
-
-			vi.clearAllMocks();
-
-			// Press escape without being in navigation mode
-			await input.vm.$emit('escapeKeyDown', {});
-
-			// Should not emit setInputValue
-			expect(vi.mocked(chatEventBus.emit)).not.toHaveBeenCalledWith(
-				'setInputValue',
-				expect.anything(),
-			);
-		});
 	});
 });

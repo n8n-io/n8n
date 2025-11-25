@@ -101,16 +101,6 @@ function onArrowKeyDown(payload: ArrowKeyDownPayload) {
 	}
 }
 
-function onEscapeKeyDown() {
-	// Only handle escape if we're in history navigation mode
-	if (messageHistoryIndex.value === -1) return;
-
-	// Exit history mode and restore original input
-	messageHistoryIndex.value = -1;
-	chatEventBus.emit('setInputValue', currentInputBuffer.value);
-	currentInputBuffer.value = '';
-}
-
 onMounted(async () => {
 	if (!messages.value.length && options.messageHistory) {
 		messages.value = options.messageHistory.map((m) => ({ ...m }));
@@ -149,11 +139,7 @@ onMounted(async () => {
 		<GetStarted v-if="!currentSessionId && options.showWelcomeScreen" @click:button="getStarted" />
 		<MessagesList v-else :messages="messages" />
 		<template #footer>
-			<Input
-				v-if="currentSessionId"
-				@arrow-key-down="onArrowKeyDown"
-				@escape-key-down="onEscapeKeyDown"
-			/>
+			<Input v-if="currentSessionId" @arrow-key-down="onArrowKeyDown" />
 			<GetStartedFooter v-else />
 		</template>
 	</Layout>
