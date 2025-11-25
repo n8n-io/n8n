@@ -591,9 +591,14 @@ export class WorkflowService {
 	 * Deactivates a workflow by removing it from the active workflow manager and setting activeVersionId to null.
 	 * @param user - The user deactivating the workflow
 	 * @param workflowId - The ID of the workflow to deactivate
+	 * @param publicApi - Whether this is called from the public API (affects event emission)
 	 * @returns The deactivated workflow
 	 */
-	async deactivateWorkflow(user: User, workflowId: string): Promise<WorkflowEntity> {
+	async deactivateWorkflow(
+		user: User,
+		workflowId: string,
+		publicApi: boolean = false,
+	): Promise<WorkflowEntity> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
@@ -632,7 +637,7 @@ export class WorkflowService {
 			user,
 			workflowId,
 			workflow,
-			publicApi: false,
+			publicApi,
 		});
 
 		return workflow;

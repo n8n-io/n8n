@@ -24,7 +24,6 @@ import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
 import {
 	getWorkflowById,
-	setWorkflowAsInactive,
 	updateWorkflow,
 	createWorkflow,
 	parseTagNames,
@@ -388,42 +387,20 @@ export = {
 		async (req: WorkflowRequest.Activate, res: express.Response): Promise<express.Response> => {
 			const { id } = req.params;
 
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:update'],
-			);
-
-			if (!workflow) {
-				// user trying to access a workflow they do not own
-				// or workflow does not exist
-				return res.status(404).json({ message: 'Not Found' });
-			}
-
-			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
-
-			if (workflow.activeVersionId) {
-				await activeWorkflowManager.remove(workflow.id);
-
-				await setWorkflowAsInactive(workflow.id);
-
-				// Update the workflow object for response
-				workflow.active = false;
-				workflow.activeVersionId = null;
-				workflow.activeVersion = null;
-
-				Container.get(EventService).emit('workflow-deactivated', {
-					user: req.user,
-					workflowId: workflow.id,
-					workflow,
-					publicApi: true,
-				});
+			try {
+				const workflow = await Container.get(WorkflowService).deactivateWorkflow(
+					req.user,
+					id,
+					true,
+				);
 
 				return res.json(workflow);
+			} catch (error) {
+				if (error instanceof Error) {
+					return res.status(400).json({ message: error.message });
+				}
+				throw error;
 			}
-
-			// nothing to do as the workflow is already inactive
-			return res.json(workflow);
 		},
 	],
 	getWorkflowTags: [
