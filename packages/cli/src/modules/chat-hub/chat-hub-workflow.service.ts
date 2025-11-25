@@ -12,6 +12,7 @@ import { EntityManager } from '@n8n/typeorm';
 import {
 	AGENT_LANGCHAIN_NODE_TYPE,
 	CHAT_TRIGGER_NODE_TYPE,
+	createRunExecutionData,
 	IConnections,
 	IExecuteData,
 	INode,
@@ -20,8 +21,10 @@ import {
 	IWorkflowBase,
 	MEMORY_BUFFER_WINDOW_NODE_TYPE,
 	MEMORY_MANAGER_NODE_TYPE,
+	MERGE_NODE_TYPE,
 	NodeConnectionTypes,
 	OperationalError,
+	type IBinaryData,
 } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -48,6 +51,7 @@ export class ChatHubWorkflowService {
 		projectId: string,
 		history: ChatHubMessage[],
 		humanMessage: string,
+		attachments: IBinaryData[],
 		credentials: INodeCredentials,
 		model: ChatHubConversationModel,
 		systemMessage: string | undefined,
@@ -64,6 +68,7 @@ export class ChatHubWorkflowService {
 				sessionId,
 				history,
 				humanMessage,
+				attachments,
 				credentials,
 				model,
 				systemMessage,
@@ -71,9 +76,15 @@ export class ChatHubWorkflowService {
 			});
 
 			const newWorkflow = new WorkflowEntity();
+
+			// Chat workflows are created as archived to hide them
+			// from the user by default while they are being run.
+			newWorkflow.isArchived = true;
+
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId}`;
 			newWorkflow.active = false;
+			newWorkflow.activeVersionId = null;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
@@ -123,6 +134,7 @@ export class ChatHubWorkflowService {
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId} (Title Generation)`;
 			newWorkflow.active = false;
+			newWorkflow.activeVersionId = null;
 			newWorkflow.nodes = nodes;
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
@@ -146,6 +158,38 @@ export class ChatHubWorkflowService {
 		});
 	}
 
+	prepareExecutionData(
+		triggerNode: INode,
+		sessionId: string,
+		message: string,
+		attachments: IBinaryData[],
+	): IExecuteData[] {
+		// Attachments are already processed (id field populated) by the caller
+		return [
+			{
+				node: triggerNode,
+				data: {
+					main: [
+						[
+							{
+								json: {
+									sessionId,
+									action: 'sendMessage',
+									chatInput: message,
+									files: attachments.map(({ data, ...metadata }) => metadata),
+								},
+								binary: Object.fromEntries(
+									attachments.map((attachment, index) => [`data${index}`, attachment]),
+								),
+							},
+						],
+					],
+				},
+				source: null,
+			},
+		];
+	}
+
 	private getUniqueNodeName(originalName: string, existingNames: Set<string>): string {
 		if (!existingNames.has(originalName)) {
 			return originalName;
@@ -167,6 +211,7 @@ export class ChatHubWorkflowService {
 		sessionId,
 		history,
 		humanMessage,
+		attachments,
 		credentials,
 		model,
 		systemMessage,
@@ -176,6 +221,7 @@ export class ChatHubWorkflowService {
 		sessionId: ChatSessionId;
 		history: ChatHubMessage[];
 		humanMessage: string;
+		attachments: IBinaryData[];
 		credentials: INodeCredentials;
 		model: ChatHubConversationModel;
 		systemMessage?: string;
@@ -187,6 +233,7 @@ export class ChatHubWorkflowService {
 		const memoryNode = this.buildMemoryNode(20);
 		const restoreMemoryNode = this.buildRestoreMemoryNode(history);
 		const clearMemoryNode = this.buildClearMemoryNode();
+		const mergeNode = this.buildMergeNode();
 
 		const nodes: INode[] = [
 			chatTriggerNode,
@@ -195,6 +242,7 @@ export class ChatHubWorkflowService {
 			memoryNode,
 			restoreMemoryNode,
 			clearMemoryNode,
+			mergeNode,
 		];
 
 		const nodeNames = new Set(nodes.map((node) => node.name));
@@ -220,10 +268,18 @@ export class ChatHubWorkflowService {
 		const connections: IConnections = {
 			[NODE_NAMES.CHAT_TRIGGER]: {
 				[NodeConnectionTypes.Main]: [
-					[{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 }],
+					[
+						{ node: NODE_NAMES.RESTORE_CHAT_MEMORY, type: NodeConnectionTypes.Main, index: 0 },
+						{ node: NODE_NAMES.MERGE, type: NodeConnectionTypes.Main, index: 0 },
+					],
 				],
 			},
 			[NODE_NAMES.RESTORE_CHAT_MEMORY]: {
+				[NodeConnectionTypes.Main]: [
+					[{ node: NODE_NAMES.MERGE, type: NodeConnectionTypes.Main, index: 1 }],
+				],
+			},
+			[NODE_NAMES.MERGE]: {
 				[NodeConnectionTypes.Main]: [
 					[{ node: NODE_NAMES.REPLY_AGENT, type: NodeConnectionTypes.Main, index: 0 }],
 				],
@@ -270,42 +326,21 @@ export class ChatHubWorkflowService {
 			}, {}),
 		};
 
-		const nodeExecutionStack: IExecuteData[] = [
-			{
-				node: chatTriggerNode,
-				data: {
-					main: [
-						[
-							{
-								json: {
-									sessionId,
-									action: 'sendMessage',
-									chatInput: humanMessage,
-								},
-							},
-						],
-					],
-				},
-				source: null,
-			},
-		];
+		const nodeExecutionStack = this.prepareExecutionData(
+			chatTriggerNode,
+			sessionId,
+			humanMessage,
+			attachments,
+		);
 
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
+		const executionData = createRunExecutionData({
 			executionData: {
-				contextData: {},
-				metadata: {},
 				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
 			manualData: {
 				userId,
 			},
-		};
+		});
 
 		return { nodes, connections, executionData };
 	}
@@ -362,22 +397,14 @@ export class ChatHubWorkflowService {
 			},
 		];
 
-		const executionData: IRunExecutionData = {
-			startData: {},
-			resultData: {
-				runData: {},
-			},
+		const executionData = createRunExecutionData({
 			executionData: {
-				contextData: {},
-				metadata: {},
 				nodeExecutionStack,
-				waitingExecution: {},
-				waitingExecutionSource: {},
 			},
 			manualData: {
 				userId,
 			},
-		};
+		});
 		return { nodes, connections, executionData };
 	}
 
@@ -386,7 +413,7 @@ export class ChatHubWorkflowService {
 			parameters: {},
 			type: CHAT_TRIGGER_NODE_TYPE,
 			typeVersion: 1.4,
-			position: [0, 0],
+			position: [-448, -112],
 			id: uuidv4(),
 			name: NODE_NAMES.CHAT_TRIGGER,
 			webhookId: uuidv4(),
@@ -409,7 +436,7 @@ export class ChatHubWorkflowService {
 			},
 			type: AGENT_LANGCHAIN_NODE_TYPE,
 			typeVersion: 3,
-			position: [600, 0],
+			position: [608, 0],
 			id: uuidv4(),
 			name: NODE_NAMES.REPLY_AGENT,
 		};
@@ -425,7 +452,7 @@ export class ChatHubWorkflowService {
 
 		const { provider, model } = conversationModel;
 		const common = {
-			position: [600, 300] satisfies [number, number],
+			position: [608, 304] satisfies [number, number],
 			id: uuidv4(),
 			name: NODE_NAMES.CHAT_MODEL,
 			credentials,
@@ -463,6 +490,98 @@ export class ChatHubWorkflowService {
 						options: {},
 					},
 				};
+			case 'azureOpenAi':
+			case 'azureEntraId':
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			case 'ollama': {
+				return {
+					...common,
+					parameters: {
+						model: { __rl: true, mode: 'id', value: model },
+						options: {},
+					},
+				};
+			}
+			case 'awsBedrock': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'vercelAiGateway': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'xAiGrok': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'groq': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'openRouter': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'deepSeek': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'cohere': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			case 'mistralCloud': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
+			default:
+				throw new OperationalError('Unsupported model provider');
 		}
 	}
 
@@ -475,7 +594,7 @@ export class ChatHubWorkflowService {
 			},
 			type: MEMORY_BUFFER_WINDOW_NODE_TYPE,
 			typeVersion: 1.3,
-			position: [480, 208],
+			position: [224, 304],
 			id: uuidv4(),
 			name: NODE_NAMES.MEMORY,
 		};
@@ -508,7 +627,7 @@ export class ChatHubWorkflowService {
 			},
 			type: MEMORY_MANAGER_NODE_TYPE,
 			typeVersion: 1.1,
-			position: [224, 0],
+			position: [-192, 48],
 			id: uuidv4(),
 			name: NODE_NAMES.RESTORE_CHAT_MEMORY,
 		};
@@ -525,6 +644,22 @@ export class ChatHubWorkflowService {
 			position: [976, 0],
 			id: uuidv4(),
 			name: NODE_NAMES.CLEAR_CHAT_MEMORY,
+		};
+	}
+
+	private buildMergeNode(): INode {
+		return {
+			parameters: {
+				mode: 'combine',
+				fieldsToMatchString: 'chatInput',
+				joinMode: 'enrichInput1',
+				options: {},
+			},
+			type: MERGE_NODE_TYPE,
+			typeVersion: 3.2,
+			position: [224, -96],
+			id: uuidv4(),
+			name: NODE_NAMES.MERGE,
 		};
 	}
 

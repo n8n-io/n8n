@@ -20,7 +20,7 @@ import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
 import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import ReadyToRunV2Button from '@/experiments/readyToRunWorkflowsV2/components/ReadyToRunV2Button.vue';
+import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
 import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
 import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
@@ -59,12 +59,20 @@ const headerIcon = computed((): IconOrEmoji => {
 	}
 });
 
+const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+
+const isPersonalProject = computed(() => {
+	return homeProject.value?.type === ProjectTypes.Personal;
+});
+
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
 		if (projectPages.isSharedSubPage) {
 			return i18n.baseText('projects.header.shared.title');
 		} else if (projectPages.isOverviewSubPage) {
 			return i18n.baseText('projects.menu.overview');
+		} else if (isPersonalProject.value) {
+			return i18n.baseText('projects.menu.personal');
 		}
 		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
@@ -90,12 +98,6 @@ const showSettings = computed(
 		!!projectPermissions.value.update &&
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
-
-const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
-
-const isPersonalProject = computed(() => {
-	return homeProject.value?.type === ProjectTypes.Personal;
-});
 
 const showFolders = computed(() => {
 	return (
@@ -441,7 +443,7 @@ const onSelect = (action: string) => {
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
 					<div style="display: flex; gap: var(--spacing--xs); align-items: center">
-						<ReadyToRunV2Button :has-active-callouts="props.hasActiveCallouts" />
+						<ReadyToRunButton :has-active-callouts="props.hasActiveCallouts" />
 						<ProjectCreateResource
 							data-test-id="add-resource-buttons"
 							:actions="menu"
@@ -475,7 +477,6 @@ const onSelect = (action: string) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	padding-bottom: var(--spacing--lg);
 	min-height: var(--spacing--3xl);
 }
 

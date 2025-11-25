@@ -11,13 +11,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import {
-	EnterpriseEditionFeature,
-	VIEWS,
-	EDITABLE_CANVAS_VIEWS,
-	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT,
-	MIGRATION_REPORT_EXPERIMENT,
-} from '@/app/constants';
+import { EnterpriseEditionFeature, VIEWS, EDITABLE_CANVAS_VIEWS } from '@/app/constants';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { middleware } from '@/app/utils/rbac/middleware';
 import type { RouterMiddleware } from '@/app/types/router';
@@ -27,8 +21,6 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { usePostHog } from '@/app/stores/posthog.store';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -84,8 +76,6 @@ const SettingsSourceControl = async () =>
 	await import('@/features/integrations/sourceControl.ee/views/SettingsSourceControl.vue');
 const SettingsExternalSecrets = async () =>
 	await import('@/features/integrations/externalSecrets.ee/views/SettingsExternalSecrets.vue');
-const SettingsProvisioningView = async () =>
-	await import('@/features/settings/provisioning/views/SettingsProvisioningView.vue');
 const WorkerView = async () =>
 	await import('@/features/settings/orchestration.ee/views/WorkerView.vue');
 const WorkflowHistory = async () =>
@@ -580,14 +570,10 @@ export const routes: RouteRecordRaw[] = [
 					},
 				],
 				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
 							scope: ['breakingChanges:list'],
-						},
-						custom: () => {
-							const posthogStore = usePostHog();
-							return posthogStore.isFeatureEnabled(MIGRATION_REPORT_EXPERIMENT.name);
 						},
 					},
 					telemetry: {
@@ -664,13 +650,10 @@ export const routes: RouteRecordRaw[] = [
 					},
 				],
 				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
 							scope: ['role:manage'],
-						},
-						custom: () => {
-							return useEnvFeatureFlag().check.value('CUSTOM_ROLES');
 						},
 					},
 					telemetry: {
@@ -831,39 +814,6 @@ export const routes: RouteRecordRaw[] = [
 					middlewareOptions: {
 						rbac: {
 							scope: 'ldap:manage',
-						},
-					},
-				},
-			},
-			{
-				path: 'provisioning',
-				name: VIEWS.PROVISIONING_SETTINGS,
-				components: {
-					settingsView: SettingsProvisioningView,
-				},
-				meta: {
-					middleware: ['authenticated', 'rbac', 'custom' /* 'enterprise' */],
-					middlewareOptions: {
-						/*
-						TODO: comment this back in once the custom check using experiment is no longer used
-						enterprise: {
-							feature: EnterpriseEditionFeature.Provisioning,
-						},
-						*/
-						rbac: {
-							scope: 'provisioning:manage',
-						},
-						custom: () => {
-							const posthogStore = usePostHog();
-							return posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name);
-						},
-					},
-					telemetry: {
-						pageCategory: 'settings',
-						getProperties() {
-							return {
-								feature: 'provisioning',
-							};
 						},
 					},
 				},

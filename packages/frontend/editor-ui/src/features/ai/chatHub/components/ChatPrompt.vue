@@ -1,34 +1,38 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
-import NodeIcon from '@/app/components/NodeIcon.vue';
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
-import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
-import { N8nButton, N8nIcon, N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
+import ChatFile from '@n8n/chat/components/ChatFile.vue';
+import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
-import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
+import { computed, ref, useTemplateRef, watch } from 'vue';
+import ToolsSelector from './ToolsSelector.vue';
+import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 
 const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
 	isNewSession: boolean;
+	isToolsSelectable: boolean;
+	isMissingCredentials: boolean;
 	selectedModel: ChatModelDto | null;
 	selectedTools: INode[] | null;
-	isMissingCredentials: boolean;
 }>();
 
 const emit = defineEmits<{
-	submit: [string];
+	submit: [message: string, attachments: File[]];
 	stop: [];
 	selectModel: [];
-	selectTools: [];
+	selectTools: [INode[]];
 	setCredentials: [ChatHubLLMProvider];
 }>();
 
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
+const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const message = ref('');
+const committedSpokenMessage = ref('');
+const attachments = ref<File[]>([]);
 
-const nodeTypesStore = useNodeTypesStore();
 const toast = useToast();
 
 const speechInput = useSpeechRecognition({
@@ -42,12 +46,12 @@ const placeholder = computed(() =>
 );
 
 const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
-	selectedModel?.model.provider === 'n8n' || selectedModel?.model.provider === 'custom-agent'
-		? undefined
-		: selectedModel?.model.provider,
+	isLlmProviderModel(selectedModel?.model) ? selectedModel?.model.provider : undefined,
 );
 
 function onMic() {
+	committedSpokenMessage.value = message.value;
+
 	if (speechInput.isListening.value) {
 		speechInput.stop();
 	} else {
@@ -59,12 +63,44 @@ function onStop() {
 	emit('stop');
 }
 
+function onAttach() {
+	fileInputRef.value?.click();
+}
+
+function handleFileSelect(e: Event) {
+	const target = e.target as HTMLInputElement;
+	const files = target.files;
+
+	if (!files || files.length === 0) {
+		return;
+	}
+
+	// Store File objects directly instead of converting to base64
+	for (const file of Array.from(files)) {
+		attachments.value.push(file);
+	}
+
+	// Reset input
+	if (target) {
+		target.value = '';
+	}
+
+	inputRef.value?.focus();
+}
+
+function removeAttachment(removed: File) {
+	attachments.value = attachments.value.filter((attachment) => attachment !== removed);
+}
+
 function handleSubmitForm() {
 	const trimmed = message.value.trim();
 
 	if (trimmed) {
 		speechInput.stop();
-		emit('submit', trimmed);
+		emit('submit', trimmed, attachments.value);
+		message.value = '';
+		committedSpokenMessage.value = '';
+		attachments.value = [];
 	}
 }
 
@@ -74,15 +110,30 @@ function handleKeydownTextarea(e: KeyboardEvent) {
 	if (e.key === 'Enter' && !e.shiftKey && !e.isComposing && trimmed) {
 		e.preventDefault();
 		speechInput.stop();
-		emit('submit', trimmed);
+		emit('submit', trimmed, attachments.value);
+		message.value = '';
+		committedSpokenMessage.value = '';
+		attachments.value = [];
 	}
 }
 
+function handleClickInputWrapper() {
+	inputRef.value?.focus();
+}
+
 watch(speechInput.result, (spoken) => {
-	if (spoken) {
-		message.value = spoken;
-	}
+	message.value = committedSpokenMessage.value + ' ' + spoken.trimStart();
 });
+
+watch(
+	speechInput.isFinal,
+	(final) => {
+		if (final) {
+			committedSpokenMessage.value = message.value;
+		}
+	},
+	{ flush: 'post' },
+);
 
 watch(speechInput.error, (event) => {
 	if (event?.error === 'not-allowed') {
@@ -101,32 +152,18 @@ watch(speechInput.error, (event) => {
 	}
 });
 
-function onSelectTools() {
-	emit('selectTools');
+function onSelectTools(tools: INode[]) {
+	emit('selectTools', tools);
 }
-
-onMounted(async () => {
-	await nodeTypesStore.loadNodeTypesIfNotLoaded();
-});
-
-const toolCount = computed(() => selectedTools?.length ?? 0);
-
-const displayToolNodeTypes = computed(() => {
-	const tools = selectedTools ?? [];
-	return tools
-		.slice(0, 3)
-		.map((t) => nodeTypesStore.getNodeType(t.type))
-		.filter(Boolean);
-});
-
-const toolsLabel = computed(() =>
-	toolCount.value > 0 ? `${toolCount.value} Tool${toolCount.value > 1 ? 's' : ''}` : 'Tools',
-);
 
 defineExpose({
 	focus: () => inputRef.value?.focus(),
 	setText: (text: string) => {
 		message.value = text;
+	},
+	addAttachments: (files: File[]) => {
+		attachments.value.push(...files);
+		inputRef.value?.focus();
 	},
 });
 </script>
@@ -147,93 +184,99 @@ defineExpose({
 			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
 				<template v-if="isNewSession">
 					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)">set credentials</a>
 					for {{ providerDisplayNames[llmProvider] }} to start a conversation
 				</template>
 				<template v-else>
 					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
+					<a href="" @click.prevent="emit('setCredentials', llmProvider)">set credentials</a>
 					for {{ providerDisplayNames[llmProvider] }} to continue the conversation
 				</template>
 			</N8nText>
-			<N8nInput
-				ref="inputRef"
-				v-model="message"
-				:class="$style.input"
-				type="textarea"
-				:placeholder="placeholder"
-				autocomplete="off"
-				:autosize="{ minRows: 1, maxRows: 6 }"
-				autofocus
-				:disabled="isMissingCredentials || !selectedModel"
-				@keydown="handleKeydownTextarea"
+			<input
+				ref="fileInputRef"
+				type="file"
+				:class="$style.fileInput"
+				multiple
+				@change="handleFileSelect"
 			/>
 
-			<div :class="$style.tools">
-				<N8nButton
-					:class="$style.toolsButton"
-					:disabled="isMissingCredentials || !selectedModel || isResponding"
-					aria-label="Select tools"
-					@click="onSelectTools"
-				>
-					<span v-if="toolCount" :class="$style.iconStack" aria-hidden="true">
-						<NodeIcon
-							v-for="(nodeType, i) in displayToolNodeTypes"
-							:key="`${nodeType?.name}-${i}`"
-							:style="{ zIndex: displayToolNodeTypes.length - i }"
-							:node-type="nodeType"
-							:class="[$style.icon, { [$style.iconOverlap]: i !== 0 }]"
-							:circle="true"
-							:size="12"
+			<div :class="$style.inputWrapper" @click="handleClickInputWrapper">
+				<div v-if="attachments.length > 0" :class="$style.attachments">
+					<ChatFile
+						v-for="(file, index) in attachments"
+						:key="index"
+						:file="file"
+						:is-previewable="true"
+						:is-removable="true"
+						@remove="removeAttachment"
+					/>
+				</div>
+
+				<N8nInput
+					ref="inputRef"
+					v-model="message"
+					type="textarea"
+					:placeholder="placeholder"
+					autocomplete="off"
+					:autosize="{ minRows: 1, maxRows: 6 }"
+					autofocus
+					:disabled="isMissingCredentials || !selectedModel"
+					@keydown="handleKeydownTextarea"
+				/>
+
+				<div :class="$style.footer">
+					<div v-if="isToolsSelectable" :class="$style.tools">
+						<ToolsSelector
+							:class="$style.toolsButton"
+							:selected="selectedTools ?? []"
+							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							transparent-bg
+							@select="onSelectTools"
 						/>
-					</span>
-					<span v-else :class="$style.iconFallback" aria-hidden="true">
-						<N8nIcon icon="plus" :size="12" />
-					</span>
-
-					<N8nText size="small" bold>{{ toolsLabel }}</N8nText>
-				</N8nButton>
-			</div>
-
-			<div :class="$style.actions">
-				<!-- TODO: Implement attachments
-				<N8nIconButton
-					native-type="button"
-					type="secondary"
-					title="Attach"
-					:disabled="isMissingCredentials || !selectedModel || isResponding"
-					icon="paperclip"
-					icon-size="large"
-					text
-					@click="onAttach"
-				/> -->
-				<N8nIconButton
-					v-if="speechInput.isSupported"
-					native-type="button"
-					:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
-					type="secondary"
-					:disabled="isMissingCredentials || !selectedModel || isResponding"
-					:icon="speechInput.isListening.value ? 'square' : 'mic'"
-					:class="{ [$style.recording]: speechInput.isListening.value }"
-					icon-size="large"
-					@click="onMic"
-				/>
-				<N8nIconButton
-					v-if="!isResponding"
-					native-type="submit"
-					:disabled="isMissingCredentials || !selectedModel || !message.trim()"
-					title="Send"
-					icon="arrow-up"
-					icon-size="large"
-				/>
-				<N8nIconButton
-					v-else
-					native-type="button"
-					title="Stop generating"
-					icon="square"
-					icon-size="large"
-					@click="onStop"
-				/>
+					</div>
+					<div :class="$style.actions">
+						<N8nIconButton
+							v-if="selectedModel?.allowFileUploads"
+							native-type="button"
+							type="secondary"
+							title="Attach"
+							:disabled="isMissingCredentials || isResponding"
+							icon="paperclip"
+							icon-size="large"
+							text
+							@click.stop="onAttach"
+						/>
+						<N8nIconButton
+							v-if="speechInput.isSupported"
+							native-type="button"
+							:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
+							type="secondary"
+							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							:icon="speechInput.isListening.value ? 'square' : 'mic'"
+							:class="{ [$style.recording]: speechInput.isListening.value }"
+							icon-size="large"
+							@click.stop="onMic"
+						/>
+						<N8nIconButton
+							v-if="!isResponding"
+							native-type="submit"
+							:disabled="isMissingCredentials || !selectedModel || !message.trim()"
+							title="Send"
+							icon="arrow-up"
+							icon-size="large"
+							@click.stop
+						/>
+						<N8nIconButton
+							v-else
+							native-type="button"
+							title="Stop generating"
+							icon="square"
+							icon-size="large"
+							@click.stop="onStop"
+						/>
+					</div>
+				</div>
 			</div>
 		</div>
 	</form>
@@ -271,44 +314,51 @@ defineExpose({
 	}
 }
 
-.input {
+.fileInput {
+	display: none;
+}
+
+.inputWrapper {
+	width: 100%;
+	border-radius: 16px !important;
+	padding: 16px;
+	box-shadow: 0 10px 24px 0 #00000010;
+	background-color: var(--color--background--light-3);
+	border: var(--border);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+
+	&:focus-within,
+	&:hover {
+		border-color: var(--color--secondary);
+	}
+
 	& textarea {
 		font: inherit;
 		line-height: 1.5em;
-		border-radius: 16px !important;
 		resize: none;
-		padding: 16px 16px 64px;
-		box-shadow: 0 10px 24px 0 #00000010;
-		background-color: var(--color--background--light-3);
+		background-color: transparent !important;
+		border: none !important;
+		padding: 0 !important;
 	}
+}
+
+.footer {
+	display: flex;
+	align-items: flex-end;
+	justify-content: flex-end;
+	gap: var(--spacing--sm);
 }
 
 .tools {
-	position: absolute;
-	left: 0;
-	bottom: 0;
-	padding: var(--spacing--sm);
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
+	flex-grow: 1;
 }
 
 .toolsButton {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	color: var(--color--text);
-	cursor: pointer;
-
-	border-radius: var(--radius);
-	border: var(--border);
-	background: var(--color--background--light-3);
-
-	&:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
+	/* maintain the same height with other buttons regardless of selected tools */
+	height: 30px;
 }
 
 .iconStack {
@@ -334,12 +384,7 @@ defineExpose({
 	justify-content: center;
 }
 
-/* Right-side actions */
 .actions {
-	position: absolute;
-	right: 0;
-	bottom: 0;
-	padding: var(--spacing--sm);
 	display: flex;
 	align-items: center;
 	gap: var(--spacing--2xs);
@@ -347,6 +392,12 @@ defineExpose({
 	& button path {
 		stroke-width: 2.5;
 	}
+}
+
+.attachments {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
 }
 
 .recording {
