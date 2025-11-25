@@ -52,7 +52,7 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubCredentialsService, CredentialWithProjectId } from './chat-hub-credentials.service';
+import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
@@ -1688,7 +1688,7 @@ export class ChatHubService {
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: CredentialWithProjectId;
+		credential: { id: string; projectId: string };
 	}> {
 		if (model.provider === 'n8n') {
 			return await this.resolveFromN8nWorkflow(user, model, trx);
@@ -1714,18 +1714,18 @@ export class ChatHubService {
 
 	private async resolveFromN8nWorkflow(
 		user: User,
-		model: ChatHubN8nModel,
+		{ workflowId }: ChatHubN8nModel,
 		trx: EntityManager,
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: CredentialWithProjectId;
+		credential: { id: string; projectId: string };
 	}> {
 		const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
-			model.workflowId,
+			workflowId,
 			user,
 			['workflow:read'],
-			{ includeTags: false, includeParentFolder: false },
+			{ includeTags: false, includeParentFolder: false, em: trx },
 		);
 
 		if (!workflowEntity) {
@@ -1762,11 +1762,10 @@ export class ChatHubService {
 			);
 		}
 
-		const credential = await this.chatHubCredentialsService.ensureCredentials(
-			user,
+		const credential = await this.chatHubCredentialsService.ensureWorkflowCredentials(
 			modelNode.provider,
 			llmCredentials,
-			trx,
+			workflowId,
 		);
 
 		const resolvedModel: ChatHubConversationModel = {
@@ -1807,7 +1806,7 @@ export class ChatHubService {
 	): Promise<{
 		resolvedCredentials: INodeCredentials;
 		resolvedModel: ChatHubConversationModel;
-		credential: CredentialWithProjectId;
+		credential: { id: string; projectId: string };
 	}> {
 		const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
 		if (!agent) {
