@@ -3065,7 +3065,13 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: workflow.versionId });
 
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(
+			workflow.id,
+			'activate',
+			undefined,
+			undefined,
+			owner.id,
+		);
 	});
 
 	test('should call active workflow manager with update mode if workflow is active', async () => {
@@ -3078,7 +3084,13 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: newVersionId });
 
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(
+			workflow.id,
+			'update',
+			undefined,
+			undefined,
+			owner.id,
+		);
 	});
 });
 
