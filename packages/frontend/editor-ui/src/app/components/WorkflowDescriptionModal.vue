@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, useTemplateRef, watch } from 'vue';
-import { N8nButton, N8nIconButton, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -143,38 +143,28 @@ watch(descriptionValue, (newValue) => {
 	<Modal
 		:name="WORKFLOW_DESCRIPTION_MODAL_KEY"
 		:title="i18n.baseText('generic.description')"
+		width="450"
 		:class="$style.container"
 		:event-bus="modalBus"
 	>
-		<template #footer>
-			<N8nIconButton
-				:class="{ [$style['description-button']]: true, [$style.active]: true }"
-				:square="true"
-				data-test-id="workflow-description-button"
-				icon="notebook-pen"
-				type="tertiary"
-				size="small"
-				:aria-label="i18n.baseText('workflow.description.tooltip')"
-			/>
-		</template>
 		<template #content>
 			<div
 				:class="$style['description-edit-content']"
 				data-test-id="workflow-description-edit-content"
 			>
-				<N8nInputLabel :label="i18n.baseText('generic.description')" :tooltip-text="textareaTip">
-					<N8nInput
-						ref="descriptionInput"
-						v-model="descriptionValue"
-						:placeholder="textareaTip"
-						:rows="6"
-						data-test-id="workflow-description-input"
-						type="textarea"
-						@keydown="handleKeyDown"
-					/>
-				</N8nInputLabel>
+				<N8nText size="small" color="text-light">{{ textareaTip }}</N8nText>
+				<N8nInput
+					ref="descriptionInput"
+					v-model="descriptionValue"
+					:rows="6"
+					data-test-id="workflow-description-input"
+					type="textarea"
+					@keydown="handleKeyDown"
+				/>
 			</div>
-			<footer :class="$style['popover-footer']">
+		</template>
+		<template #footer>
+			<div :class="$style['popover-footer']">
 				<N8nButton
 					:label="i18n.baseText('generic.cancel')"
 					:size="'small'"
@@ -192,7 +182,7 @@ watch(descriptionValue, (newValue) => {
 					data-test-id="workflow-description-save-button"
 					@click="save"
 				/>
-			</footer>
+			</div>
 		</template>
 	</Modal>
 </template>
@@ -220,7 +210,7 @@ watch(descriptionValue, (newValue) => {
 .description-edit-content {
 	display: flex;
 	flex-direction: column;
-	padding: var(--spacing--xs);
+	gap: var(--spacing--xs);
 	width: 400px;
 }
 
