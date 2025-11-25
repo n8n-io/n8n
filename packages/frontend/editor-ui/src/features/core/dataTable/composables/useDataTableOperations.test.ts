@@ -73,6 +73,7 @@ describe('useDataTableOperations', () => {
 			addDataTableColumn: vi.fn(),
 			deleteDataTableColumn: vi.fn(),
 			moveDataTableColumn: vi.fn(),
+			renameDataTableColumn: vi.fn(),
 			deleteRows: vi.fn(),
 			insertEmptyRow: vi.fn(),
 		} as unknown as ReturnType<typeof useDataTableStore>;
