@@ -7,6 +7,7 @@ import {
 import { SharedWorkflowRepository, type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -16,6 +17,7 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createOwner } from '../shared/db/users';
+import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 
 let workflowService: WorkflowService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
@@ -172,5 +174,35 @@ describe('update()', () => {
 		expect(workflowData.nodes).toEqual(workflow.nodes);
 		expect(workflowData.connections).toEqual(workflow.connections);
 		expect(workflowData.versionId).toBe(newVersionId);
+	});
+});
+
+describe('activateWorkflow()', () => {
+	test('should activate the provided workflow version', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		const updatedWorkflow = await workflowService.activateWorkflow(
+			owner,
+			workflow.id,
+			newVersionId,
+		);
+
+		expect(updatedWorkflow.active).toBe(true);
+		expect(updatedWorkflow.activeVersionId).toBe(newVersionId);
+		expect(updatedWorkflow.versionId).toBe(workflow.versionId);
+	});
+
+	test('should activate current workflow version if no versionId is provided', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
+
+		expect(updatedWorkflow.active).toBe(true);
+		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
 	});
 });

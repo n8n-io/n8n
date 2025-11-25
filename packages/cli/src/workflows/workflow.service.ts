@@ -520,7 +520,7 @@ export class WorkflowService {
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
-		versionId: string,
+		versionId?: string,
 		options?: { name?: string; description?: string },
 	): Promise<WorkflowEntity> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
@@ -540,7 +540,9 @@ export class WorkflowService {
 			);
 		}
 
-		if (workflow.activeVersionId === versionId) {
+		const versionToActivate = versionId ?? workflow.versionId;
+
+		if (workflow.activeVersionId === versionToActivate) {
 			return workflow;
 		}
 
@@ -548,7 +550,7 @@ export class WorkflowService {
 		const activationMode = wasActive ? 'update' : 'activate';
 
 		await this.workflowRepository.update(workflowId, {
-			activeVersionId: versionId,
+			activeVersionId: versionToActivate,
 			active: true,
 		});
 
@@ -556,7 +558,7 @@ export class WorkflowService {
 			const updateFields: WorkflowHistoryUpdate = {};
 			if (options.name !== undefined) updateFields.name = options.name;
 			if (options.description !== undefined) updateFields.description = options.description;
-			await this.workflowHistoryService.updateVersion(versionId, workflowId, updateFields);
+			await this.workflowHistoryService.updateVersion(versionToActivate, workflowId, updateFields);
 		}
 
 		const updatedWorkflow = await this.workflowRepository.findOne({
