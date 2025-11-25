@@ -193,6 +193,7 @@ const actions = computed(() => {
 	// TODO: add test to verify that moving a readonly card is not possible
 	if (
 		!props.readOnly &&
+		props.areFoldersEnabled &&
 		(workflowPermissions.value.update ||
 			(workflowPermissions.value.move && projectsStore.isTeamProjectFeatureEnabled)) &&
 		route.name !== VIEWS.SHARED_WORKFLOWS

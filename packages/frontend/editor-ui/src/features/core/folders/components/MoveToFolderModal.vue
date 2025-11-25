@@ -318,6 +318,9 @@ const isFolderSelectable = computed(() => {
 });
 
 onMounted(async () => {
+	if (!projectsStore.isTeamProjectFeatureEnabled) {
+		selectedProject.value = projectsStore.personalProject;
+	}
 	if (isResourceWorkflow.value) {
 		const [workflow, credentials] = await Promise.all([
 			workflowsStore.fetchWorkflow(props.data.resource.id),
