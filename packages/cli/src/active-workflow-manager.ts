@@ -564,14 +564,14 @@ export class ActiveWorkflowManager {
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
 		{ shouldPublish } = { shouldPublish: true },
-		userId: string | null = null,
+		userId?: string,
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
 		if (this.instanceSettings.isMultiMain && shouldPublish) {
 			void this.publisher.publishCommand({
 				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId },
+				payload: { workflowId, userId, reason: activationMode },
 			});
 
 			return added;
@@ -664,7 +664,7 @@ export class ActiveWorkflowManager {
 				versionId: dbWorkflow.versionId,
 				status: 'activated',
 				mode: activationMode,
-				userId,
+				userId: userId ?? null,
 			});
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
@@ -907,7 +907,7 @@ export class ActiveWorkflowManager {
 
 			void this.publisher.publishCommand({
 				command: 'remove-triggers-and-pollers',
-				payload: { workflowId },
+				payload: { workflowId, userId, reason },
 			});
 
 			return;
@@ -942,9 +942,21 @@ export class ActiveWorkflowManager {
 	}
 
 	@OnPubSubEvent('remove-triggers-and-pollers', { instanceType: 'main', instanceRole: 'leader' })
-	async handleRemoveTriggersAndPollers({ workflowId }: { workflowId: string }) {
+	async handleRemoveTriggersAndPollers({
+		workflowId,
+		userId,
+		reason,
+	}: PubSubCommandMap['remove-triggers-and-pollers']) {
 		await this.removeActivationError(workflowId);
 		await this.removeWorkflowTriggersAndPollers(workflowId);
+
+		await this.workflowPublishHistoryRepository.addRecord({
+			workflowId,
+			versionId: null,
+			status: 'deactivated',
+			mode: reason ?? null,
+			userId: userId ?? null,
+		});
 
 		this.push.broadcast({ type: 'workflowDeactivated', data: { workflowId } });
 
