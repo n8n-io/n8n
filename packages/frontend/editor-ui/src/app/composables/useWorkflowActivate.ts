@@ -180,7 +180,6 @@ export function useWorkflowActivate() {
 
 			void useExternalHooks().run('workflow.activeChangeCurrent', {
 				workflowId,
-				// TODO: document this
 				versionId: updatedWorkflow.activeVersion.versionId,
 				active: true,
 			});
@@ -209,7 +208,6 @@ export function useWorkflowActivate() {
 	) => {
 		updatingWorkflowActivation.value = true;
 		const workflow = workflowsStore.getWorkflowById(workflowId);
-		// TODO: should we check the passed version for node issues?
 		const hadPublishedVersion = !!workflow.activeVersion;
 
 		if (!hadPublishedVersion) {
