@@ -210,13 +210,8 @@ export class WorkflowExecutionService {
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 				: undefined;
 
-			const pinnedTrigger = this.selectPinnedTrigger(
-				payload.workflowData,
-				payload.destinationNode,
-				payload.workflowData.pinData ?? {},
-			);
-
-			if (pinnedTrigger === null) {
+			const triggerHasPinnedData = payload.workflowData.pinData?.[payload.triggerToStartFrom.name];
+			if (triggerHasPinnedData === undefined) {
 				console.log('check webhooks');
 				const additionalData = await WorkflowExecuteAdditionalData.getBase({
 					userId: user.id,

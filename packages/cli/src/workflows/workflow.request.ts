@@ -33,7 +33,7 @@ export declare namespace WorkflowRequest {
 		workflowData: IWorkflowBase;
 		agentRequest?: AiAgentRequest;
 
-		destinationNode: string;
+		destinationNode?: string;
 		triggerToStartFrom: { name: string; data?: ITaskData };
 	};
 	// 2. Full Manual Execution from Unknown Trigger
