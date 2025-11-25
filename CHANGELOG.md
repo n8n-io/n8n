@@ -1,4 +1,4 @@
-## [1.122.2](https://github.com/n8n-io/n8n/compare/n8n@1.122.1...n8n@1.122.1) (2025-11-25)
+## [1.122.2](https://github.com/n8n-io/n8n/compare/n8n@1.122.1...n8n@1.122.2) (2025-11-25)
 
 
 ### Bug Fixes
