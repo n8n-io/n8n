@@ -175,7 +175,33 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						hide: {
-							fieldType: ['file', 'html', 'hiddenField'],
+							fieldType: ['file', 'html', 'hiddenField', 'date', 'dropdown', 'radio', 'checkbox'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default date value that will be pre-filled in the form field (format: YYYY-MM-DD)',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['date'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default value that will be pre-selected. Must match one of the option labels.',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['dropdown', 'radio', 'checkbox'],
 						},
 					},
 				},
