@@ -341,6 +341,7 @@
 	"chatHub.credentials.selector.createNew": "Create new",
 	"chatHub.credentials.selector.confirm": "Select",
 	"chatHub.credentials.selector.cancel": "Cancel",
+	"chatHub.credentials.selector.deleteButton": "Delete credential",
 	"chatHub.models.byIdSelector.title": "Choose {provider} model by ID",
 	"chatHub.models.byIdSelector.choose": "Enter model identifier (e.g. \"gpt-4\")",
 	"chatHub.models.byIdSelector.confirm": "Select",

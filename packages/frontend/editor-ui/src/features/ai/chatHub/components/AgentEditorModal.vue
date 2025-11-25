@@ -4,7 +4,7 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import type { ChatHubProvider, ChatModelDto } from '@n8n/api-types';
+import type { ChatHubBaseLLMModel, ChatHubProvider, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nInput, N8nInputLabel } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
@@ -36,12 +36,18 @@ const customAgent = useCustomAgent(props.data.agentId);
 const name = ref('');
 const description = ref('');
 const systemPrompt = ref('');
-const selectedModel = ref<ChatModelDto | null>(null);
+const selectedModel = ref<ChatHubBaseLLMModel | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
 const tools = ref<INode[]>([]);
 
 const agentSelectedCredentials = ref<CredentialsMap>({});
+const credentialIdForSelectedModelProvider = computed(
+	() => selectedModel.value && agentMergedCredentials.value[selectedModel.value.provider],
+);
+const selectedAgent = computed(
+	() => selectedModel.value && chatStore.getAgent(selectedModel.value),
+);
 
 const isEditMode = computed(() => !!props.data.agentId);
 const title = computed(() =>
@@ -59,7 +65,8 @@ const isValid = computed(() => {
 	return (
 		name.value.trim().length > 0 &&
 		systemPrompt.value.trim().length > 0 &&
-		selectedModel.value !== null
+		selectedModel.value !== null &&
+		!!credentialIdForSelectedModelProvider.value
 	);
 });
 
@@ -78,7 +85,7 @@ watch(
 		name.value = agent.name;
 		description.value = agent.description ?? '';
 		systemPrompt.value = agent.systemPrompt;
-		selectedModel.value = chatStore.getAgent(agent);
+		selectedModel.value = { provider: agent.provider, model: agent.model };
 		tools.value = agent.tools || [];
 
 		if (agent.credentialId) {
@@ -88,15 +95,16 @@ watch(
 	{ immediate: true },
 );
 
-function onCredentialSelected(provider: ChatHubProvider, credentialId: string) {
+function onCredentialSelected(provider: ChatHubProvider, credentialId: string | null) {
 	agentSelectedCredentials.value = {
 		...agentSelectedCredentials.value,
 		[provider]: credentialId,
 	};
 }
 
-function onModelChange(model: ChatModelDto) {
-	selectedModel.value = model;
+function onModelChange(agent: ChatModelDto) {
+	assert(isLlmProviderModel(agent.model));
+	selectedModel.value = agent.model;
 }
 
 async function onSave() {
@@ -105,21 +113,14 @@ async function onSave() {
 	isSaving.value = true;
 	try {
 		assert(selectedModel.value);
-
-		const model = 'model' in selectedModel.value ? selectedModel.value.model : undefined;
-
-		assert(isLlmProviderModel(model));
-
-		const credentialId = agentMergedCredentials.value[model.provider];
-
-		assert(credentialId);
+		assert(credentialIdForSelectedModelProvider.value);
 
 		const payload = {
 			name: name.value.trim(),
 			description: description.value.trim() || undefined,
 			systemPrompt: systemPrompt.value.trim(),
-			...model,
-			credentialId,
+			...selectedModel.value,
+			credentialId: credentialIdForSelectedModelProvider.value,
 			tools: tools.value,
 		};
 
@@ -251,7 +252,7 @@ function onSelectTools(newTools: INode[]) {
 						:required="true"
 					>
 						<ModelSelector
-							:selected-agent="selectedModel"
+							:selected-agent="selectedAgent"
 							:include-custom-agents="false"
 							:credentials="agentMergedCredentials"
 							@change="onModelChange"
