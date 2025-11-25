@@ -112,7 +112,6 @@ export class WorkflowExecutionService {
 		streamingEnabled?: boolean,
 		httpResponse?: Response,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
-		console.log('version 1');
 		function isFullManualExecutionFromKnownTriggerPayload(
 			payload: WorkflowRequest.ManualRunPayload,
 		): payload is WorkflowRequest.FullManualExecutionFromKnownTriggerPayload {
@@ -144,17 +143,13 @@ export class WorkflowExecutionService {
 		payload.workflowData.active = false;
 		payload.workflowData.activeVersionId = null;
 
-		// TODO: fix this on the FE
+		// TODO: Will be fixed on the FE side with CAT-1808
 		if ('triggerToStartFrom' in payload) {
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
 			delete (payload as any).runData;
 		}
 
-		console.log('payload', payload);
-
 		if (isPartialManualExecutionToDestination(payload)) {
-			console.log('isPartialManualExecutionToDestination');
-
 			const destinationNode = payload.destinationNode
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 				: undefined;
@@ -176,14 +171,12 @@ export class WorkflowExecutionService {
 				// a webhook or event.
 				this.isDestinationNodeATrigger(payload.destinationNode, payload.workflowData)
 			) {
-				console.log('upgrade to FullManualExecutionFromUnknownTriggerPayload');
 				payload = {
 					workflowData: payload.workflowData,
 					destinationNode: payload.destinationNode,
 					agentRequest: payload.agentRequest,
 				} satisfies WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload;
 			} else {
-				console.log('prerequisitesAreGiven');
 				const executionId = await this.workflowRunner.run({
 					destinationNode,
 					executionMode: 'manual',
@@ -204,15 +197,12 @@ export class WorkflowExecutionService {
 		}
 
 		if (isFullManualExecutionFromKnownTriggerPayload(payload)) {
-			console.log('isFullManualExecutionFromKnownTriggerPayload');
-
 			const destinationNode = payload.destinationNode
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 				: undefined;
 
 			const triggerHasPinnedData = payload.workflowData.pinData?.[payload.triggerToStartFrom.name];
 			if (triggerHasPinnedData === undefined) {
-				console.log('check webhooks');
 				const additionalData = await WorkflowExecuteAdditionalData.getBase({
 					userId: user.id,
 					workflowId: payload.workflowData.id,
@@ -228,7 +218,6 @@ export class WorkflowExecutionService {
 					// runData,
 				});
 
-				console.log('needsWebhook', needsWebhook);
 				if (needsWebhook) {
 					return { waitingForWebhook: true };
 				}
@@ -254,8 +243,6 @@ export class WorkflowExecutionService {
 		}
 
 		if (isFullManualExecutionFromUnknownTriggerPayload(payload)) {
-			console.log('isFullManualExecutionFromUnknownTriggerPayload');
-
 			const destinationNode = payload.destinationNode
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 				: undefined;
@@ -267,7 +254,6 @@ export class WorkflowExecutionService {
 			);
 
 			if (pinnedTrigger === null) {
-				console.log('check webhooks');
 				const additionalData = await WorkflowExecuteAdditionalData.getBase({
 					userId: user.id,
 					workflowId: payload.workflowData.id,
@@ -283,15 +269,9 @@ export class WorkflowExecutionService {
 					// runData,
 				});
 
-				console.log('needsWebhook', needsWebhook);
 				if (needsWebhook) {
 					return { waitingForWebhook: true };
 				}
-			}
-
-			if (pinnedTrigger) {
-				console.log('rewrite startNodes');
-				console.log('pinnedTrigger', pinnedTrigger);
 			}
 
 			const executionId = await this.workflowRunner.run({
@@ -512,8 +492,6 @@ export class WorkflowExecutionService {
 		);
 
 		const trigger = allPinnedTriggers.find((a) => destinationParents.has(a.name));
-
-		console.log('trigger', trigger);
 
 		return trigger;
 	}
