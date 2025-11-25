@@ -524,6 +524,7 @@ export class WorkflowService {
 		options?: { versionId?: string; name?: string; description?: string },
 		publicApi: boolean = false,
 	): Promise<WorkflowEntity> {
+		const isDraftPublishDisabled = !this.globalConfig.workflows.draftPublishEnabled;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
@@ -578,11 +579,23 @@ export class WorkflowService {
 			publicApi,
 		});
 
-		await this._addToActiveWorkflowManager(user, workflowId, updatedWorkflow, activationMode, {
-			active: workflow.active,
-			activeVersionId: workflow.activeVersionId,
-			activeVersion: workflow.activeVersion,
-		});
+		await this._addToActiveWorkflowManager(
+			user,
+			workflowId,
+			updatedWorkflow,
+			activationMode,
+			isDraftPublishDisabled
+				? {
+						active: false,
+						activeVersionId: null,
+						activeVersion: null,
+					}
+				: {
+						active: workflow.active,
+						activeVersionId: workflow.activeVersionId,
+						activeVersion: workflow.activeVersion,
+					},
+		);
 
 		return updatedWorkflow;
 	}
