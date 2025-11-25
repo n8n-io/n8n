@@ -20,6 +20,7 @@ defineProps<{
 		/>
 		<N8nAvatar
 			v-else-if="agent.model.provider === 'custom-agent' || agent.model.provider === 'n8n'"
+			:class="[$style.avatar, $style[size]]"
 			:first-name="agent.name"
 			:size="size === 'lg' ? 'medium' : size === 'sm' ? 'xxsmall' : 'xsmall'"
 		/>
@@ -30,3 +31,9 @@ defineProps<{
 		/>
 	</N8nTooltip>
 </template>
+
+<style lang="scss" module>
+.avatar.md {
+	transform: scale(1.2);
+}
+</style>

@@ -28,6 +28,7 @@ import { tryToParseNumber } from '@/app/utils/typesUtils';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
+import { getResourcePermissions } from '@n8n/permissions';
 
 export function useWorkflowSaving({
 	router,
@@ -59,7 +60,11 @@ export function useWorkflowSaving({
 			cancel?: () => Promise<void>;
 		} = {},
 	) {
-		if (!uiStore.stateIsDirty || workflowsStore.workflow.isArchived) {
+		if (
+			!uiStore.stateIsDirty ||
+			workflowsStore.workflow.isArchived ||
+			!getResourcePermissions(workflowsStore.workflow.scopes).workflow.update
+		) {
 			next();
 			return;
 		}
@@ -377,10 +382,11 @@ export function useWorkflowSaving({
 			}
 
 			// workflow should not be active if there is live webhook with the same path
-			if (workflowData.active) {
+			if (workflowData.activeVersionId !== null) {
 				const conflict = await checkConflictingWebhooks(workflowData.id);
 				if (conflict) {
 					workflowData.active = false;
+					workflowData.activeVersionId = null;
 
 					toast.showMessage({
 						title: 'Conflicting Webhook Path',
@@ -390,7 +396,7 @@ export function useWorkflowSaving({
 				}
 			}
 
-			workflowState.setActive(workflowData.active || false);
+			workflowState.setActive(workflowData.activeVersionId);
 			workflowState.setWorkflowId(workflowData.id);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
 			workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });

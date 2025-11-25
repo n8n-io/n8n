@@ -302,6 +302,11 @@ export class Git implements INodeType {
 					gitConfig.push('safe.bareRepository=explicit');
 				}
 
+				const enableHooks = securityConfig.enableGitNodeHooks;
+				if (!enableHooks) {
+					gitConfig.push('core.hooksPath=/dev/null');
+				}
+
 				const gitOptions: Partial<SimpleGitOptions> = {
 					baseDir: repositoryPath,
 					config: gitConfig,

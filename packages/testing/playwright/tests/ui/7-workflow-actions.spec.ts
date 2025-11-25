@@ -262,7 +262,7 @@ test.describe('Workflow Actions', () => {
 				response.url().includes('/rest/workflows') && response.request().method() === 'GET',
 		);
 
-		await n8n.workflows.addResource.workflow();
+		await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
 
 		const workflowsResponse = await workflowsResponsePromise;
 		const responseBody = await workflowsResponse.json();
