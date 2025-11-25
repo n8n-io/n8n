@@ -99,7 +99,6 @@ describe('Test Move Binary Data Node', () => {
 										fileSize: '10 B',
 										fileName: 'example.json',
 										fileExtension: 'json',
-										origin: 'directory',
 									},
 								},
 							},

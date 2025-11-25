@@ -235,7 +235,7 @@ export const sleepWithAbort = async (ms: number, abortSignal?: AbortSignal): Pro
 		abortSignal?.addEventListener('abort', abortHandler, { once: true });
 	});
 
-export function fileTypeFromMimeType(mimeType: string): BinaryFileType | null {
+export function fileTypeFromMimeType(mimeType: string): BinaryFileType | undefined {
 	if (mimeType.startsWith('application/json')) return 'json';
 	if (mimeType.startsWith('text/html')) return 'html';
 	if (mimeType.startsWith('image/')) return 'image';
@@ -243,7 +243,7 @@ export function fileTypeFromMimeType(mimeType: string): BinaryFileType | null {
 	if (mimeType.startsWith('video/')) return 'video';
 	if (mimeType.startsWith('text/') || mimeType.startsWith('application/javascript')) return 'text';
 	if (mimeType.startsWith('application/pdf')) return 'pdf';
-	return null;
+	return;
 }
 
 export function assert<T>(condition: T, msg?: string): asserts condition {

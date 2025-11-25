@@ -66,8 +66,7 @@
 						"fileSize": "2 B",
 						"fileType": "json",
 						"mimeType": "application/json",
-						"fileName": "weird file € name.json",
-						"origin": "directory"
+						"fileName": "weird file € name.json"
 					}
 				},
 				"json": {}

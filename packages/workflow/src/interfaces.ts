@@ -59,11 +59,10 @@ export interface IBinaryData {
 	mimeType: string;
 	fileType?: BinaryFileType;
 	fileName?: string;
-	path?: string;
+	directory?: string;
 	fileExtension?: string;
 	fileSize?: string; // TODO: change this to number and store the actual value
 	id?: string;
-	origin?: 'directory' | 'url';
 }
 
 // All properties in this interface except for

@@ -236,7 +236,6 @@ export async function prepareBinaryData(
 	mimeType?: string,
 ): Promise<IBinaryData> {
 	let fileExtension: string | undefined;
-	let origin: 'directory' | 'url' = 'directory';
 	let fullUrl: string | undefined;
 	if (binaryData instanceof IncomingMessage) {
 		if (!filePath) {
@@ -246,7 +245,6 @@ export async function prepareBinaryData(
 					binaryData.contentDisposition?.filename ??
 					((responseUrl && new URL(responseUrl).pathname) ?? binaryData.req?.path)?.slice(1);
 				fullUrl = responseUrl;
-				origin = 'url';
 			} catch {}
 		}
 		if (!mimeType) {
@@ -301,12 +299,11 @@ export async function prepareBinaryData(
 		const filePathParts = path.parse(filePath);
 
 		if (fullUrl) {
-			returnData.path = fullUrl;
+			returnData.directory = fullUrl;
 		} else if (filePathParts.dir !== '') {
-			returnData.path = filePathParts.dir;
+			returnData.directory = filePathParts.dir;
 		}
 
-		returnData.origin = origin;
 		returnData.fileName = filePathParts.base;
 
 		// Remove the dot
