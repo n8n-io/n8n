@@ -77,6 +77,10 @@ export class ChatHubWorkflowService {
 
 			const newWorkflow = new WorkflowEntity();
 
+			// Chat workflows are created as archived to hide them
+			// from the user by default while they are being run.
+			newWorkflow.isArchived = true;
+
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId}`;
 			newWorkflow.active = false;
@@ -409,7 +413,7 @@ export class ChatHubWorkflowService {
 			parameters: {},
 			type: CHAT_TRIGGER_NODE_TYPE,
 			typeVersion: 1.4,
-			position: [0, 0],
+			position: [-448, -112],
 			id: uuidv4(),
 			name: NODE_NAMES.CHAT_TRIGGER,
 			webhookId: uuidv4(),
@@ -432,7 +436,7 @@ export class ChatHubWorkflowService {
 			},
 			type: AGENT_LANGCHAIN_NODE_TYPE,
 			typeVersion: 3,
-			position: [600, 0],
+			position: [608, 0],
 			id: uuidv4(),
 			name: NODE_NAMES.REPLY_AGENT,
 		};
@@ -448,7 +452,7 @@ export class ChatHubWorkflowService {
 
 		const { provider, model } = conversationModel;
 		const common = {
-			position: [600, 300] satisfies [number, number],
+			position: [608, 304] satisfies [number, number],
 			id: uuidv4(),
 			name: NODE_NAMES.CHAT_MODEL,
 			credentials,
@@ -590,7 +594,7 @@ export class ChatHubWorkflowService {
 			},
 			type: MEMORY_BUFFER_WINDOW_NODE_TYPE,
 			typeVersion: 1.3,
-			position: [480, 208],
+			position: [224, 304],
 			id: uuidv4(),
 			name: NODE_NAMES.MEMORY,
 		};
@@ -623,7 +627,7 @@ export class ChatHubWorkflowService {
 			},
 			type: MEMORY_MANAGER_NODE_TYPE,
 			typeVersion: 1.1,
-			position: [224, 0],
+			position: [-192, 48],
 			id: uuidv4(),
 			name: NODE_NAMES.RESTORE_CHAT_MEMORY,
 		};
@@ -653,7 +657,7 @@ export class ChatHubWorkflowService {
 			},
 			type: MERGE_NODE_TYPE,
 			typeVersion: 3.2,
-			position: [224, -100],
+			position: [224, -96],
 			id: uuidv4(),
 			name: NODE_NAMES.MERGE,
 		};

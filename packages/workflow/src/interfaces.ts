@@ -2477,6 +2477,17 @@ export interface ITaskMetadata {
 	 * @see AI-1414
 	 */
 	nodeWasResumed?: boolean;
+
+	/**
+	 * Time saved by this workflow execution in minutes. Used by SavedTime nodes to track
+	 * dynamic time savings that can be calculated based on execution data (e.g., number of
+	 * items processed). The behavior determines how this value interacts with the workflow's
+	 * default timeSavedPerExecution setting.
+	 */
+	timeSaved?: {
+		/** Time saved in minutes */
+		minutes: number;
+	};
 }
 
 /** The data that gets returned when a node execution starts */
