@@ -212,6 +212,26 @@ it('should rename a file', async () => {
 	expect(newFile.fileName).toBe('old.txt');
 });
 
+it('should throw `BinaryDataFileNotFoundError` when renaming non-existent file', async () => {
+	const nonExistentFileId = 'does-not-exist';
+	const newFileId = 'new-file-id-123';
+
+	const promise = dbManager.rename(nonExistentFileId, newFileId);
+
+	await expect(promise).rejects.toThrow('Binary data file not found');
+});
+
+it('should throw `BinaryDataFileNotFoundError` when copying non-existent file', async () => {
+	const nonExistentFileId = 'does-not-exist';
+
+	const promise = dbManager.copyByFileId(
+		{ type: 'execution', workflowId, executionId: 'target-exec' },
+		nonExistentFileId,
+	);
+
+	await expect(promise).rejects.toThrow('Binary data file not found');
+});
+
 it('should error on custom file with invalid `sourceType`', async () => {
 	const promise = dbManager.store(
 		{
