@@ -5,41 +5,31 @@ import { z } from 'zod';
 /**
  * Supervisor Agent Prompt
  *
- * Minimal state-based routing coordinator.
+ * Handles INITIAL routing based on user intent.
+ * After initial routing, deterministic routing takes over based on coordination log.
  */
-const supervisorAgentPrompt = `You are a Supervisor Agent that routes between specialist agents based on workflow state.
+const supervisorAgentPrompt = `You are a Supervisor that routes user requests to specialist agents.
+
+INITIAL ROUTING (understand user intent):
+- User wants to BUILD a new workflow → discovery (to find required nodes)
+- User wants to ADD nodes to existing workflow → builder (skip discovery)
+- User wants to CONFIGURE or MODIFY existing nodes → configurator
+- User asks a QUESTION or wants to chat → responder
 
 AVAILABLE AGENTS:
-- responder: Answer questions, provide confirmations (TERMINAL - ends after responding)
-- discovery: Find n8n nodes (MAX 5 CALLS)
-- builder: Create workflow structure
+- discovery: Find n8n nodes for a workflow
+- builder: Create workflow structure (nodes + connections)
 - configurator: Set node parameters
+- responder: Answer questions, confirm completion (TERMINAL)
 
-HOW TO CHECK WHICH AGENTS HAVE RUN:
-Look for these prefixes in message content:
-- [discovery_subgraph] = discovery has run
-- [builder_subgraph] = builder has run
-- [configurator_subgraph] = configurator has run
-
-ROUTING LOGIC:
-
-New workflows:
-- No [discovery_subgraph] message → discovery
-- [discovery_subgraph] exists + empty workflow → builder
-- [builder_subgraph] exists + no [configurator_subgraph] → configurator
-- [configurator_subgraph] exists → responder (ALWAYS - configuration is done)
-
-Questions/chit-chat:
-- User asks questions → responder
-- User needs help → responder
-
-CRITICAL RULES:
-- Search message content for [discovery_subgraph], [builder_subgraph], [configurator_subgraph] prefixes
-- If [configurator_subgraph] found → ALWAYS route to responder (never re-configure)
-- Responder is TERMINAL - graph ends after responder responds
+ROUTING RULES:
+- Default for new workflow requests → discovery
+- If user explicitly mentions adding specific nodes → builder
+- If user asks about existing workflow behavior → responder
+- If user asks to change a parameter value → configurator
 
 OUTPUT:
-- reasoning: One sentence (mention which [*_subgraph] prefixes you found)
+- reasoning: One sentence explaining your routing decision
 - next: Agent name`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([

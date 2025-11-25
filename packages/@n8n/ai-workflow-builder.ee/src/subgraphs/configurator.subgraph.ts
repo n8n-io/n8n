@@ -13,6 +13,7 @@ import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
+import type { CoordinationLogEntry, ConfiguratorMetadata } from '../types/coordination';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { processOperations } from '../utils/operations-processor';
@@ -370,11 +371,23 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 	}
 
 	transformInput(parentState: typeof ParentGraphState.State) {
+		const userRequest = extractUserRequest(parentState.messages);
+		console.log('\n========== CONFIGURATOR SUBGRAPH ==========');
+		console.log(`[Configurator] transformInput called`);
+		console.log(`[Configurator] User request: "${userRequest.substring(0, 100)}..."`);
+		console.log(
+			`[Configurator] Workflow nodes to configure: ${parentState.workflowJSON.nodes.length}`,
+		);
+		if (parentState.workflowJSON.nodes.length > 0) {
+			console.log(
+				`[Configurator] Node names: ${parentState.workflowJSON.nodes.map((n) => n.name).join(', ')}`,
+			);
+		}
 		return {
 			workflowJSON: parentState.workflowJSON,
 			workflowContext: parentState.workflowContext,
 			instanceUrl: '', // This needs to be passed in config or context, but for now empty
-			userRequest: extractUserRequest(parentState.messages),
+			userRequest,
 			discoveryContext: parentState.discoveryContext,
 			messages: [],
 		};
@@ -384,20 +397,47 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		subgraphOutput: typeof ConfiguratorSubgraphState.State,
 		_parentState: typeof ParentGraphState.State,
 	) {
-		// Extract final response
+		// Extract final response (setup instructions)
 		const lastMessage = subgraphOutput.messages[subgraphOutput.messages.length - 1];
-		const finalResponse =
+		const setupInstructions =
 			typeof lastMessage?.content === 'string' ? lastMessage.content : 'Configuration complete';
+
+		console.log(`[Configurator] transformOutput called`);
+		console.log(`[Configurator] Final workflow nodes: ${subgraphOutput.workflowJSON.nodes.length}`);
+		console.log(
+			`[Configurator] Operations queued: ${subgraphOutput.workflowOperations?.length ?? 0}`,
+		);
+		console.log(`[Configurator] Iterations: ${subgraphOutput.iterationCount}`);
+		console.log(
+			`[Configurator] Setup instructions preview: "${setupInstructions.substring(0, 100)}..."`,
+		);
+		console.log('============================================\n');
+
+		const nodesConfigured = subgraphOutput.workflowJSON.nodes.length;
+		const hasSetupInstructions =
+			setupInstructions.includes('Setup') ||
+			setupInstructions.includes('setup') ||
+			setupInstructions.length > 50;
+
+		// Create coordination log entry (not a message)
+		const logEntry: CoordinationLogEntry = {
+			phase: 'configurator',
+			status: 'completed',
+			timestamp: Date.now(),
+			summary: `Configured ${nodesConfigured} nodes`,
+			output: setupInstructions, // Full setup instructions for responder
+			metadata: {
+				phase: 'configurator',
+				nodesConfigured,
+				hasSetupInstructions,
+			} as ConfiguratorMetadata,
+		};
 
 		return {
 			workflowJSON: subgraphOutput.workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
-			messages: [
-				new HumanMessage({
-					content: `[configurator_subgraph] ${finalResponse}`,
-					name: 'configurator_subgraph',
-				}),
-			],
+			coordinationLog: [logEntry],
+			// NO messages - clean separation from user-facing conversation
 		};
 	}
 }

@@ -16,6 +16,7 @@ import { createAddNodeTool } from '../tools/add-node.tool';
 import { createConnectNodesTool } from '../tools/connect-nodes.tool';
 import { createRemoveConnectionTool } from '../tools/remove-connection.tool';
 import { createRemoveNodeTool } from '../tools/remove-node.tool';
+import type { CoordinationLogEntry, BuilderMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
@@ -418,8 +419,18 @@ export class BuilderSubgraph extends BaseSubgraph<
 	}
 
 	transformInput(parentState: typeof ParentGraphState.State) {
+		const userRequest = extractUserRequest(parentState.messages);
+		console.log('\n========== BUILDER SUBGRAPH ==========');
+		console.log(`[Builder] transformInput called`);
+		console.log(`[Builder] User request: "${userRequest.substring(0, 100)}..."`);
+		console.log(`[Builder] Existing workflow nodes: ${parentState.workflowJSON.nodes.length}`);
+		if (parentState.discoveryContext) {
+			console.log(
+				`[Builder] Discovery context: ${parentState.discoveryContext.nodesFound.length} nodes found`,
+			);
+		}
 		return {
-			userRequest: extractUserRequest(parentState.messages),
+			userRequest,
 			workflowJSON: parentState.workflowJSON,
 			workflowContext: parentState.workflowContext,
 			discoveryContext: parentState.discoveryContext,
@@ -431,6 +442,20 @@ export class BuilderSubgraph extends BaseSubgraph<
 		subgraphOutput: typeof BuilderSubgraphState.State,
 		_parentState: typeof ParentGraphState.State,
 	) {
+		const nodes = subgraphOutput.workflowJSON.nodes;
+		const connections = subgraphOutput.workflowJSON.connections;
+		const connectionCount = Object.values(connections).flat().length;
+
+		console.log(`[Builder] transformOutput called`);
+		console.log(`[Builder] Nodes created: ${nodes.length}`);
+		if (nodes.length > 0) {
+			console.log(`[Builder] Node names: ${nodes.map((n) => n.name).join(', ')}`);
+		}
+		console.log(`[Builder] Connections: ${connectionCount}`);
+		console.log(`[Builder] Operations queued: ${subgraphOutput.workflowOperations?.length ?? 0}`);
+		console.log(`[Builder] Iterations: ${subgraphOutput.iterationCount}`);
+		console.log('========================================\n');
+
 		// Extract builder's actual summary (last message without tool calls)
 		const builderSummary = subgraphOutput.messages
 			.slice()
@@ -443,20 +468,29 @@ export class BuilderSubgraph extends BaseSubgraph<
 						(m.tool_calls && Array.isArray(m.tool_calls) && m.tool_calls.length === 0)),
 			);
 
-		const summary =
-			typeof builderSummary?.content === 'string'
-				? builderSummary.content
-				: `Created ${subgraphOutput.workflowJSON.nodes.length} nodes: ${subgraphOutput.workflowJSON.nodes.map((n) => n.name).join(', ')}`;
+		const summaryText =
+			typeof builderSummary?.content === 'string' ? builderSummary.content : undefined;
+
+		// Create coordination log entry (not a message)
+		const logEntry: CoordinationLogEntry = {
+			phase: 'builder',
+			status: 'completed',
+			timestamp: Date.now(),
+			summary: `Created ${nodes.length} nodes with ${connectionCount} connections`,
+			output: summaryText,
+			metadata: {
+				phase: 'builder',
+				nodesCreated: nodes.length,
+				connectionsCreated: connectionCount,
+				nodeNames: nodes.map((n) => n.name),
+			} as BuilderMetadata,
+		};
 
 		return {
 			workflowJSON: subgraphOutput.workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
-			messages: [
-				new HumanMessage({
-					content: `[builder_subgraph] Builder completed: ${summary}`,
-					name: 'builder_subgraph',
-				}),
-			],
+			coordinationLog: [logEntry],
+			// NO messages - clean separation from user-facing conversation
 		};
 	}
 }

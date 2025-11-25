@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage, AIMessage } from '@langchain/core/messages';
-import { isAIMessage, HumanMessage } from '@langchain/core/messages';
+import { isAIMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
 import { tool, type StructuredTool } from '@langchain/core/tools';
@@ -16,6 +16,7 @@ import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { PromptCategorization } from '../types/categorization';
+import type { CoordinationLogEntry, DiscoveryMetadata } from '../types/coordination';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
 
@@ -392,8 +393,13 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	}
 
 	transformInput(parentState: typeof ParentGraphState.State) {
+		const userRequest = extractUserRequest(parentState.messages, 'Build a workflow');
+		console.log('\n========== DISCOVERY SUBGRAPH ==========');
+		console.log(`[Discovery] transformInput called`);
+		console.log(`[Discovery] User request: "${userRequest.substring(0, 100)}..."`);
+		console.log(`[Discovery] Parent messages count: ${parentState.messages.length}`);
 		return {
-			userRequest: extractUserRequest(parentState.messages, 'Build a workflow'),
+			userRequest,
 			messages: [],
 		};
 	}
@@ -402,46 +408,41 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		subgraphOutput: typeof DiscoverySubgraphState.State,
 		_parentState: typeof ParentGraphState.State,
 	) {
+		const nodesFound = subgraphOutput.nodesFound || [];
+
+		console.log(`[Discovery] transformOutput called`);
+		console.log(`[Discovery] Nodes found: ${nodesFound.length}`);
+		if (nodesFound.length > 0) {
+			console.log(`[Discovery] Node types: ${nodesFound.map((n) => n.nodeName).join(', ')}`);
+		}
+		console.log(`[Discovery] Best practices: ${subgraphOutput.bestPractices ? 'yes' : 'no'}`);
+		console.log(`[Discovery] Iterations: ${subgraphOutput.iterationCount}`);
+		console.log('=========================================\n');
+
 		const discoveryContext = {
-			nodesFound: subgraphOutput.nodesFound || [],
-			// Keep categorization and bestPractices from tool calls for downstream use
+			nodesFound,
 			categorization: subgraphOutput.categorization,
 			bestPractices: subgraphOutput.bestPractices,
 		};
 
-		// Create a detailed summary for the supervisor
-		const messageParts = ['[discovery_subgraph] Discovery completed.', ''];
-
-		// Add list of discovered nodes
-		if (subgraphOutput.nodesFound.length > 0) {
-			messageParts.push('**Discovered Nodes:**');
-			subgraphOutput.nodesFound.forEach(
-				({ nodeName, version, reasoning, connectionChangingParameters }) => {
-					const params =
-						connectionChangingParameters.length > 0
-							? ` [Connection params: ${connectionChangingParameters.map((p) => p.name).join(', ')}]`
-							: '';
-					messageParts.push(`- ${nodeName} v${version}: ${reasoning}${params}`);
-				},
-			);
-			messageParts.push('');
-		}
-
-		// Add best practices if available
-		if (subgraphOutput.bestPractices) {
-			messageParts.push('**Best Practices:**');
-			messageParts.push(subgraphOutput.bestPractices);
-		}
-
-		const supervisorSummary = messageParts.join('\n');
-		const summaryMessage = new HumanMessage({
-			content: supervisorSummary,
-			name: 'discovery_subgraph',
-		});
+		// Create coordination log entry (not a message)
+		const logEntry: CoordinationLogEntry = {
+			phase: 'discovery',
+			status: 'completed',
+			timestamp: Date.now(),
+			summary: `Discovered ${nodesFound.length} nodes`,
+			metadata: {
+				phase: 'discovery',
+				nodesFound: nodesFound.length,
+				nodeTypes: nodesFound.map((n) => n.nodeName),
+				hasBestPractices: !!subgraphOutput.bestPractices,
+			} as DiscoveryMetadata,
+		};
 
 		return {
 			discoveryContext,
-			messages: [summaryMessage],
+			coordinationLog: [logEntry],
+			// NO messages - clean separation from user-facing conversation
 		};
 	}
 }

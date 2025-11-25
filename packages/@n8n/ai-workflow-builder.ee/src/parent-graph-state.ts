@@ -1,6 +1,7 @@
 import type { BaseMessage } from '@langchain/core/messages';
 import { Annotation } from '@langchain/langgraph';
 
+import type { CoordinationLogEntry } from './types/coordination';
 import type { DiscoveryContext } from './types/discovery-types';
 import type { SimpleWorkflow, WorkflowOperation } from './types/workflow';
 import type { ChatPayload } from './workflow-builder-agent';
@@ -49,6 +50,12 @@ export const ParentGraphState = Annotation.Root({
 
 	// Workflow operations collected from subgraphs (hybrid approach)
 	workflowOperations: Annotation<WorkflowOperation[]>({
+		reducer: (x, y) => x.concat(y),
+		default: () => [],
+	}),
+
+	// Coordination log for tracking subgraph completion (deterministic routing)
+	coordinationLog: Annotation<CoordinationLogEntry[]>({
 		reducer: (x, y) => x.concat(y),
 		default: () => [],
 	}),
