@@ -4,9 +4,14 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { BinaryDataConfig } from 'n8n-core';
 import { FileTooLargeError, InvalidSourceTypeError, MissingSourceIdError } from 'n8n-core';
+import { mkdtemp, writeFile, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { Readable } from 'node:stream';
 
 import { DatabaseManager } from '@/binary-data/database.manager';
+
+jest.unmock('node:fs/promises');
 
 let repository: BinaryDataRepository;
 let dbManager: DatabaseManager;
@@ -258,4 +263,56 @@ it('should accept Unicode filename', async () => {
 
 	const metadata = await dbManager.getMetadata(fileId);
 	expect(metadata.fileName).toBe(unicodeFileName);
+});
+
+it('should copy file by path from temp file', async () => {
+	const tempDir = await mkdtemp(join(tmpdir(), 'n8n-test-'));
+	const tempFilePath = join(tempDir, 'test-file.txt');
+
+	try {
+		await writeFile(tempFilePath, buffer);
+
+		const { fileId, fileSize } = await dbManager.copyByFilePath(
+			{ type: 'execution', workflowId, executionId },
+			tempFilePath,
+			{ mimeType: 'text/plain', fileName: 'copied.txt' },
+		);
+
+		expect(fileSize).toBe(buffer.length);
+
+		const retrieved = await dbManager.getAsBuffer(fileId);
+		expect(retrieved).toEqual(buffer);
+
+		const metadata = await dbManager.getMetadata(fileId);
+		expect(metadata).toEqual({
+			fileName: 'copied.txt',
+			mimeType: 'text/plain',
+			fileSize: buffer.length,
+		});
+	} finally {
+		await rm(tempDir, { recursive: true, force: true });
+	}
+});
+
+it('should throw FileTooLargeError in copyByFilePath when file exceeds size limit', async () => {
+	const tempDir = await mkdtemp(join(tmpdir(), 'n8n-test-'));
+	const tempFilePath = join(tempDir, 'large-file.bin');
+
+	try {
+		const oversizedBuffer = Buffer.alloc((dbMaxFileSize + 1) * 1024 * 1024);
+		await writeFile(tempFilePath, oversizedBuffer);
+
+		const promise = dbManager.copyByFilePath(
+			{ type: 'execution', workflowId, executionId },
+			tempFilePath,
+			{ mimeType: 'application/octet-stream', fileName: 'large.bin' },
+		);
+
+		await expect(promise).rejects.toThrow(FileTooLargeError);
+
+		const count = await repository.count();
+		expect(count).toBe(0);
+	} finally {
+		await rm(tempDir, { recursive: true, force: true });
+	}
 });

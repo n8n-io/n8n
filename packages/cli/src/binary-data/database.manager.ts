@@ -14,7 +14,7 @@ import {
 	InvalidSourceTypeError,
 	MissingSourceIdError,
 } from 'n8n-core';
-import fs from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { Readable } from 'node:stream';
 import { v4 as uuid } from 'uuid';
 
@@ -140,8 +140,19 @@ export class DatabaseManager implements BinaryData.Manager {
 		metadata: BinaryData.PreWriteMetadata,
 	) {
 		const fileId = uuid();
-		const buffer = await fs.readFile(sourcePath);
+		const buffer = await readFile(sourcePath);
 		const fileSizeBytes = buffer.length;
+		const fileSizeMb = fileSizeBytes / (1024 * 1024);
+
+		if (fileSizeMb > this.config.dbMaxFileSize) {
+			throw new FileTooLargeError({
+				fileSizeMb,
+				maxFileSizeMb: this.config.dbMaxFileSize,
+				fileId,
+				fileName: metadata.fileName,
+			});
+		}
+
 		const { sourceType, sourceId } = this.toSource(targetLocation);
 
 		await this.repository.insert({
