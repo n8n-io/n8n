@@ -1,24 +1,23 @@
 <script setup lang="ts">
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { VIEWS } from '@/app/constants';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import {
 	INSIGHT_IMPACT_TYPES,
 	INSIGHTS_UNIT_IMPACT_MAPPING,
 } from '@/features/execution/insights/insights.constants';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
+import type { DateValue } from '@internationalized/date';
 import type { InsightsSummary } from '@n8n/api-types';
+import { N8nCallout, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { smartDecimal } from '@n8n/utils/number/smartDecimal';
-import { computed, ref, useCssModule, onMounted } from 'vue';
+import { computed, onMounted, ref, useCssModule } from 'vue';
 import { I18nT } from 'vue-i18n';
 import { useRoute } from 'vue-router';
 import { formatDateRange, getMatchingPreset, getTimeRangeLabels } from '../insights.utils';
 
-import { N8nCallout, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
-
 const INSIGHTS_QUEUE_MODE_WARNING_DISMISSED_KEY = 'n8n-insights-queue-mode-warning-dismissed';
-import type { DateValue } from '@internationalized/date';
 
 const props = defineProps<{
 	summary: InsightsSummaryDisplay;
