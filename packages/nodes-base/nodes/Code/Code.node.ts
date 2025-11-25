@@ -19,7 +19,6 @@ import { javascriptCodeDescription } from './descriptions/JavascriptCodeDescript
 import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
-import { NativePythonWithoutRunnerError } from './native-python-without-runner.error';
 import { PythonSandbox } from './PythonSandbox';
 import { PythonTaskRunnerSandbox } from './PythonTaskRunnerSandbox';
 import { getSandboxContext } from './Sandbox';
@@ -146,10 +145,6 @@ export class Code implements INodeType {
 			return nodeMode === 'runOnceForAllItems'
 				? [await sandbox.runCodeAllItems()]
 				: [await sandbox.runCodeForEachItem(numInputItems)];
-		}
-
-		if (language === 'pythonNative' && !isPyRunner) {
-			throw new NativePythonWithoutRunnerError();
 		}
 
 		if (isPyLang && isPyRunner) {
