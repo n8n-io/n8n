@@ -78,6 +78,10 @@ export type Part =
 				mimeType?: string;
 				fileUri?: string;
 			};
+	  }
+	| {
+			thought?: string;
+			thoughtSignature?: string;
 	  };
 
 export interface ImagenResponse {
