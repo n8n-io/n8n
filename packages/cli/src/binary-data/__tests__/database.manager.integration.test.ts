@@ -8,6 +8,7 @@ import { mkdtemp, writeFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Readable } from 'node:stream';
+import { v4 as uuid } from 'uuid';
 
 import { DatabaseManager } from '@/binary-data/database.manager';
 
@@ -200,7 +201,7 @@ it('should rename a file', async () => {
 		buffer,
 		{ mimeType: 'text/plain', fileName: 'old.txt' },
 	);
-	const newFileId = 'new-file-id-123';
+	const newFileId = uuid();
 
 	await dbManager.rename(oldFileId, newFileId);
 
@@ -213,8 +214,8 @@ it('should rename a file', async () => {
 });
 
 it('should throw `BinaryDataFileNotFoundError` when renaming non-existent file', async () => {
-	const nonExistentFileId = 'does-not-exist';
-	const newFileId = 'new-file-id-123';
+	const nonExistentFileId = uuid();
+	const newFileId = uuid();
 
 	const promise = dbManager.rename(nonExistentFileId, newFileId);
 
@@ -222,7 +223,7 @@ it('should throw `BinaryDataFileNotFoundError` when renaming non-existent file',
 });
 
 it('should throw `BinaryDataFileNotFoundError` when copying non-existent file', async () => {
-	const nonExistentFileId = 'does-not-exist';
+	const nonExistentFileId = uuid();
 
 	const promise = dbManager.copyByFileId(
 		{ type: 'execution', workflowId, executionId: 'target-exec' },
