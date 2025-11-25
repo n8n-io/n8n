@@ -3006,6 +3006,8 @@ describe('POST /workflows/:workflowId/activate', () => {
 	});
 
 	test('should preserve current active version when activation fails', async () => {
+		globalConfig.workflows.draftPublishEnabled = true;
+
 		const workflow = await createActiveWorkflow({}, owner);
 
 		const newVersionId = uuid();
@@ -3032,6 +3034,8 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(updatedWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
 
 		expect(emitSpy).not.toHaveBeenCalledWith('workflow-deactivated', expect.anything());
+
+		globalConfig.workflows.draftPublishEnabled = false;
 	});
 
 	test('should call active workflow manager with activate mode if workflow is not active', async () => {
