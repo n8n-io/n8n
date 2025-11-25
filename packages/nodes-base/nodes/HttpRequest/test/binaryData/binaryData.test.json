@@ -121,7 +121,9 @@
 						"fileType": "image",
 						"fileExtension": "png",
 						"fileName": "image.png",
-						"fileSize": "4 B"
+						"fileSize": "4 B",
+						"origin": "url",
+						"path": "https://dummy.domain/path/to/image.png"
 					}
 				},
 				"json": {}
@@ -136,7 +138,9 @@
 						"fileType": "image",
 						"fileExtension": "png",
 						"fileName": "image.png",
-						"fileSize": "4 B"
+						"fileSize": "4 B",
+						"origin": "url",
+						"path": "https://dummy.domain/path/to/image.png"
 					}
 				},
 				"json": {}
@@ -151,7 +155,9 @@
 						"fileType": "image",
 						"fileExtension": "png",
 						"fileName": "image.png",
-						"fileSize": "4 B"
+						"fileSize": "4 B",
+						"origin": "url",
+						"path": "path/to"
 					}
 				},
 				"json": {}
@@ -166,7 +172,9 @@
 						"fileType": "image",
 						"fileExtension": "png",
 						"fileName": "image.png",
-						"fileSize": "4 B"
+						"fileSize": "4 B",
+						"origin": "url",
+						"path": "https://dummy.domain/path/to/image.png"
 					}
 				},
 				"json": {}
@@ -181,7 +189,9 @@
 						"fileType": "image",
 						"fileExtension": "png",
 						"fileName": "image.png",
-						"fileSize": "4 B"
+						"fileSize": "4 B",
+						"origin": "url",
+						"path": "https://dummy.domain/path/to/image.png"
 					}
 				},
 				"json": {}
@@ -196,7 +206,9 @@
 						"fileType": "image",
 						"fileExtension": "jpg",
 						"fileName": "testing.jpg",
-						"fileSize": "7 B"
+						"fileSize": "7 B",
+						"origin": "url",
+						"path": "https://dummy.domain/custom-content-disposition"
 					}
 				},
 				"json": {}
@@ -211,7 +223,9 @@
 						"fileType": "text",
 						"fileExtension": "txt",
 						"fileName": "text.txt",
-						"fileSize": "4 B"
+						"fileSize": "4 B",
+						"origin": "url",
+						"path": "https://dummy.domain/path/to/text.txt"
 					}
 				},
 				"json": {}
