@@ -11,7 +11,18 @@ properties:
   mode:
     type: string
     enum:
-      ['cli', 'error', 'integrated', 'internal', 'manual', 'retry', 'trigger', 'webhook', 'chat']
+      [
+        'cli',
+        'error',
+        'integrated',
+        'internal',
+        'manual',
+        'retry',
+        'trigger',
+        'webhook',
+        'evaluation',
+        'chat',
+      ]
   retryOf:
     type: number
     nullable: true
