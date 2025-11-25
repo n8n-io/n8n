@@ -16,6 +16,7 @@ import {
 } from '@/features/workflows/workflowHistory/utils';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
+import { useUsersStore } from '@/features/settings/users/users.store';
 
 const props = withDefaults(
 	defineProps<{
@@ -44,6 +45,7 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 const envFeatureFlag = useEnvFeatureFlag();
+const usersStore = useUsersStore();
 
 const actionsVisible = ref(false);
 const itemElement = ref<HTMLElement | null>(null);
@@ -77,7 +79,7 @@ const versionName = computed(() => {
 	return props.item.name;
 });
 
-const publishedAt = computed(() => {
+const lastPublishInfo = computed(() => {
 	if (!props.isVersionActive) {
 		return null;
 	}
@@ -86,8 +88,24 @@ const publishedAt = computed(() => {
 	if (!lastPublishedByUser) {
 		return null;
 	}
-	const { date, time } = formatTimestamp(lastPublishedByUser.createdAt);
+	return lastPublishedByUser;
+});
+
+const publishedAt = computed(() => {
+	if (!lastPublishInfo.value) {
+		return null;
+	}
+	const { date, time } = formatTimestamp(lastPublishInfo.value.createdAt);
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
+});
+
+const publishedByUserName = computed(() => {
+	const userId = lastPublishInfo.value?.userId;
+	if (!userId) {
+		return null;
+	}
+	const user = usersStore.usersById[userId];
+	return user?.fullName ?? user?.email ?? null;
 });
 
 const idLabel = computed<string>(() =>
@@ -141,6 +159,9 @@ onMounted(() => {
 				<time v-if="publishedAt" :datetime="item.updatedAt" :class="$style.metaItem">
 					{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }} {{ publishedAt }}
 				</time>
+				<span v-if="publishedByUserName" :class="$style.metaItem">
+					{{ publishedByUserName }}
+				</span>
 				<time :datetime="item.createdAt" :class="$style.metaItem">
 					{{ i18n.baseText('workflowHistory.item.createdAtLabel') }} {{ formattedCreatedAt }}
 				</time>

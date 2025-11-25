@@ -3,7 +3,7 @@ import dateformat from 'dateformat';
 
 export const getLastPublishedByUser = (workflowPublishHistory: WorkflowPublishHistory[]) => {
 	return workflowPublishHistory.findLast(
-		(history) => history.mode === 'activate' && history.userId !== null,
+		(history) => history.status === 'activated' && history.userId !== null,
 	);
 };
 
