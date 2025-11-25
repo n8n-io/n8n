@@ -131,10 +131,10 @@ export const CRON_TEMPLATES: CronTemplate[] = [
 		category: 'common',
 	},
 	{
-		id: 'last-day-of-month',
-		name: 'Last day of month',
-		description: 'Last day of every month at midnight (approximation)',
-		expression: '0 0 28-31 * *',
+		id: 'late-in-month',
+		name: 'Late in month (28th)',
+		description: '28th day of every month at midnight (safe for all months)',
+		expression: '0 0 28 * *',
 		category: 'common',
 	},
 	{

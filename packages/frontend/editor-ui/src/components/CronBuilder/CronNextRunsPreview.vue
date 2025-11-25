@@ -81,6 +81,9 @@ const calculateRuns = () => {
 	if (!props.expression || props.expression.trim() === '') {
 		nextRuns.value = [];
 		error.value = null;
+		timeUntilNext.value = null;
+		frequencyWarning.value = null;
+		executionFrequency.value = null;
 		return;
 	}
 

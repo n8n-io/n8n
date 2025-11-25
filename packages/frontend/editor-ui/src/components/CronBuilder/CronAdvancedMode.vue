@@ -289,7 +289,18 @@ const monthPresets: Preset[] = [
 	{ label: 'Q4', values: [10, 11, 12] },
 ];
 
-const localConfig = ref<CronAdvancedConfig>({ ...props.config });
+// Deep clone helper to avoid mutating props
+function deepCloneConfig(config: CronAdvancedConfig): CronAdvancedConfig {
+	return {
+		minutes: [...config.minutes],
+		hours: [...config.hours],
+		daysOfMonth: [...config.daysOfMonth],
+		months: [...config.months],
+		daysOfWeek: [...config.daysOfWeek],
+	};
+}
+
+const localConfig = ref<CronAdvancedConfig>(deepCloneConfig(props.config));
 
 const generatedExpression = computed(() => {
 	return generateFromAdvancedMode(localConfig.value);
@@ -298,7 +309,7 @@ const generatedExpression = computed(() => {
 watch(
 	() => props.config,
 	(newConfig) => {
-		localConfig.value = { ...newConfig };
+		localConfig.value = deepCloneConfig(newConfig);
 	},
 	{ deep: true },
 );
@@ -360,23 +371,23 @@ function clearField(field: keyof CronAdvancedConfig) {
 	handleUpdate();
 }
 
-function applyPreset(field: keyof CronAdvancedConfig, values: number[]) {
-	const currentValues = localConfig.value[field] as number[];
+function applyPreset<K extends keyof CronAdvancedConfig>(field: K, values: number[]) {
+	const currentValues = localConfig.value[field];
 	const allSelected = values.every((v) => currentValues.includes(v));
 
 	if (allSelected) {
 		// Deselect all preset values
-		localConfig.value[field] = currentValues.filter((v) => !values.includes(v)) as never;
+		localConfig.value[field] = currentValues.filter((v) => !values.includes(v));
 	} else {
 		// Select all preset values
 		const newValues = [...new Set([...currentValues, ...values])];
-		localConfig.value[field] = newValues as never;
+		localConfig.value[field] = newValues;
 	}
 	handleUpdate();
 }
 
-function isPresetActive(field: keyof CronAdvancedConfig, values: number[]): boolean {
-	const currentValues = localConfig.value[field] as number[];
+function isPresetActive<K extends keyof CronAdvancedConfig>(field: K, values: number[]): boolean {
+	const currentValues = localConfig.value[field];
 	return values.length > 0 && values.every((v) => currentValues.includes(v));
 }
 

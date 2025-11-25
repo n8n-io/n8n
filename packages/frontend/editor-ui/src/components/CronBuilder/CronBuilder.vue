@@ -130,18 +130,21 @@ const humanReadable = computed(() => {
 	return getHumanReadableDescription(currentExpression.value);
 });
 
-function handleModeChange(mode: string) {
-	currentMode.value = mode as CronBuilderMode | 'template' | 'custom';
+function handleModeChange(mode: CronBuilderMode | 'template' | 'custom') {
+	// Capture the current expression before changing mode
+	const previousExpression = currentExpression.value;
+
+	currentMode.value = mode;
 
 	if (mode === 'simple') {
-		const parsed = parseToSimpleMode(currentExpression.value);
+		const parsed = parseToSimpleMode(previousExpression);
 		if (parsed) {
 			simpleConfig.value = parsed;
 		}
 	} else if (mode === 'advanced') {
-		advancedConfig.value = parseToAdvancedMode(currentExpression.value);
+		advancedConfig.value = parseToAdvancedMode(previousExpression);
 	} else if (mode === 'custom') {
-		customExpression.value = currentExpression.value;
+		customExpression.value = previousExpression;
 	}
 }
 

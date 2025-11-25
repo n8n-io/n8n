@@ -33,7 +33,8 @@ export function generateFromSimpleMode(config: CronSimpleConfig): string {
 
 		case 'monthly':
 			// Specific day of month at specified hour and minute
-			return `${minute} ${hour} ${dayOfMonth} * *`;
+			const monthField = monthInterval > 1 ? `*/${monthInterval}` : '*';
+			return `${minute} ${hour} ${dayOfMonth} ${monthField} *`;
 
 		default:
 			return '* * * * *';
