@@ -1,3 +1,13 @@
+## [1.122.2](https://github.com/n8n-io/n8n/compare/n8n@1.122.1...n8n@1.122.2) (2025-11-25)
+
+
+### Bug Fixes
+
+* **editor:** Fix issue for blinking/jumping UI when switching projects ([#22256](https://github.com/n8n-io/n8n/issues/22256)) ([ad2963c](https://github.com/n8n-io/n8n/commit/ad2963c75cfced0f74f22afc84797cf8c438972f))
+* **editor:** Missing duplicate workflow action on workflow list ([#22230](https://github.com/n8n-io/n8n/issues/22230)) ([f811511](https://github.com/n8n-io/n8n/commit/f811511d933cc07385e8e20439e7ad02c01264ab))
+
+
+
 ## [1.122.1](https://github.com/n8n-io/n8n/compare/n8n@1.122.0...n8n@1.122.1) (2025-11-24)
 
 
