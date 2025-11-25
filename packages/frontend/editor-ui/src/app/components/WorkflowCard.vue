@@ -135,10 +135,6 @@ const canCreateWorkflow = computed(
 	() => globalPermissions.value.create ?? projectPermissions.value.create,
 );
 
-const showFolders = computed(() => {
-	return props.areFoldersEnabled && route.name !== VIEWS.WORKFLOWS;
-});
-
 const showCardBreadcrumbs = computed(() => {
 	return props.showOwnershipBadge && !isSomeoneElsesWorkflow.value && cardBreadcrumbs.value.length;
 });
