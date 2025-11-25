@@ -1,4 +1,4 @@
-import type { Logger } from '@n8n/backend-common';
+import { Logger } from '@n8n/backend-common';
 import type { IContextEstablishmentHook } from '@n8n/decorators';
 import { mock } from 'jest-mock-extended';
 import type {
@@ -10,9 +10,9 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
-import type { Cipher } from '@/encryption';
+import { Cipher } from '@/encryption';
 
-import type { ExecutionContextHookRegistry } from '../execution-context-hook-registry.service';
+import { ExecutionContextHookRegistry } from '../execution-context-hook-registry.service';
 import { ExecutionContextService } from '../execution-context.service';
 
 // Mock the helper functions from n8n-workflow
@@ -27,17 +27,30 @@ const { toCredentialContext, toExecutionContextEstablishmentHookParameter } =
 
 describe('ExecutionContextService', () => {
 	let service: ExecutionContextService;
-	let mockLogger: Logger;
-	let mockRegistry: ExecutionContextHookRegistry;
-	let mockCipher: Cipher;
+	let mockLogger: jest.Mocked<Logger>;
+	let mockRegistry: jest.Mocked<ExecutionContextHookRegistry>;
+	let mockCipher: jest.Mocked<Cipher>;
 	let mockWorkflow: Workflow;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
 
-		mockLogger = mock<Logger>();
-		mockRegistry = mock<ExecutionContextHookRegistry>();
-		mockCipher = mock<Cipher>();
+		mockLogger = {
+			debug: jest.fn(),
+			info: jest.fn(),
+			warn: jest.fn(),
+			error: jest.fn(),
+		} as unknown as jest.Mocked<Logger>;
+
+		mockRegistry = {
+			getHookByName: jest.fn(),
+		} as unknown as jest.Mocked<ExecutionContextHookRegistry>;
+
+		mockCipher = {
+			decrypt: jest.fn(),
+			encrypt: jest.fn(),
+		} as unknown as jest.Mocked<Cipher>;
+
 		mockWorkflow = mock<Workflow>();
 
 		service = new ExecutionContextService(mockLogger, mockRegistry, mockCipher);
@@ -104,7 +117,7 @@ describe('ExecutionContextService', () => {
 		});
 
 		it('should encrypt credentials when present', () => {
-			const plaintextCreds = { version: 1, identity: 'token123' };
+			const plaintextCreds = { version: 1 as const, identity: 'token123' };
 			const encryptedCreds = 'encrypted_data';
 
 			const context: PlaintextExecutionContext = {
@@ -154,13 +167,15 @@ describe('ExecutionContextService', () => {
 				establishedAt: 100,
 				source: 'manual',
 				credentials: {
-					version: 1,
+					version: 1 as const,
 					identity: 'base_token',
 				},
 			};
 
 			const contextToMerge: Partial<PlaintextExecutionContext> = {
 				credentials: {
+					version: 1 as const,
+					identity: 'base_token',
 					metadata: { source: 'bearer-token' },
 				},
 			};
@@ -184,7 +199,7 @@ describe('ExecutionContextService', () => {
 				version: 1,
 				establishedAt: 100,
 				source: 'manual',
-				credentials: { version: 1, identity: 'token' },
+				credentials: { version: 1 as const, identity: 'token' },
 			};
 
 			const contextToMerge: Partial<PlaintextExecutionContext> = {
@@ -216,11 +231,14 @@ describe('ExecutionContextService', () => {
 
 	describe('augmentExecutionContextWithHooks()', () => {
 		const createMockStartItem = (
-			parameters: Record<string, unknown> = {},
+			contextEstablishmentHooks?: unknown,
 			triggerItems: INodeExecutionData[] = [{ json: {} }],
 		): IExecuteData => ({
-			node: { parameters } as INode,
+			node: {
+				parameters: contextEstablishmentHooks ? { contextEstablishmentHooks } : {},
+			} as INode,
 			data: { main: [triggerItems] },
+			source: { main: [{ previousNode: 'test' }] },
 		});
 
 		it('should return original context when no hooks configured', async () => {
@@ -230,8 +248,6 @@ describe('ExecutionContextService', () => {
 				establishedAt: Date.now(),
 				source: 'manual',
 			};
-
-			toExecutionContextEstablishmentHookParameter.mockReturnValue(null);
 
 			const result = await service.augmentExecutionContextWithHooks(
 				mockWorkflow,
@@ -248,7 +264,13 @@ describe('ExecutionContextService', () => {
 
 		it('should execute hooks sequentially and merge context updates', async () => {
 			const triggerItems: INodeExecutionData[] = [{ json: { data: 'value' } }];
-			const startItem = createMockStartItem({}, triggerItems);
+			const hookConfig = {
+				hooks: [
+					{ hookName: 'hook1', isAllowedToFail: false, opt1: 'val1' },
+					{ hookName: 'hook2', isAllowedToFail: false, opt2: 'val2' },
+				],
+			};
+			const startItem = createMockStartItem(hookConfig, triggerItems);
 			const initialContext: IExecutionContext = {
 				version: 1,
 				establishedAt: Date.now(),
@@ -260,22 +282,21 @@ describe('ExecutionContextService', () => {
 
 			mockHook1.execute.mockResolvedValue({
 				contextUpdate: {
-					credentials: { version: 1, identity: 'hook1_token' },
+					credentials: { version: 1 as const, identity: 'hook1_token' },
 				},
 			});
 
 			mockHook2.execute.mockResolvedValue({
 				contextUpdate: {
-					credentials: { metadata: { source: 'hook2' } },
+					credentials: {
+						version: 1 as const,
+						identity: 'hook1_token',
+						metadata: { source: 'hook2' },
+					},
 				},
 			});
 
-			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				executionsHooks: [
-					{ hookName: 'hook1', isAllowedToFail: false, parameters: { opt1: 'val1' } },
-					{ hookName: 'hook2', isAllowedToFail: false, parameters: { opt2: 'val2' } },
-				],
-			});
+			toExecutionContextEstablishmentHookParameter.mockReturnValue(hookConfig);
 
 			mockRegistry.getHookByName.mockImplementation((name: string) => {
 				if (name === 'hook1') return mockHook1;
@@ -299,7 +320,7 @@ describe('ExecutionContextService', () => {
 					triggerNode: startItem.node,
 					workflow: mockWorkflow,
 					triggerItems,
-					options: { opt1: 'val1' },
+					options: { hookName: 'hook1', isAllowedToFail: false, opt1: 'val1' },
 				}),
 			);
 
@@ -308,9 +329,9 @@ describe('ExecutionContextService', () => {
 					triggerNode: startItem.node,
 					workflow: mockWorkflow,
 					triggerItems,
-					options: { opt2: 'val2' },
+					options: { hookName: 'hook2', isAllowedToFail: false, opt2: 'val2' },
 					context: expect.objectContaining({
-						credentials: { version: 1, identity: 'hook1_token' },
+						credentials: { version: 1 as const, identity: 'hook1_token' },
 					}),
 				}),
 			);
@@ -326,18 +347,18 @@ describe('ExecutionContextService', () => {
 			const modifiedItems: INodeExecutionData[] = [
 				{ json: { headers: { authorization: undefined } } },
 			];
-			const startItem = createMockStartItem({}, originalItems);
+			const hookConfig = {
+				hooks: [{ hookName: 'hook', isAllowedToFail: false }],
+			};
+			const startItem = createMockStartItem(hookConfig, originalItems);
 
 			const mockHook = mock<IContextEstablishmentHook>();
 			mockHook.execute.mockResolvedValue({
 				triggerItems: modifiedItems,
-				contextUpdate: { credentials: { version: 1, identity: 'secret' } },
+				contextUpdate: { credentials: { version: 1 as const, identity: 'secret' } },
 			});
 
-			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				executionsHooks: [{ hookName: 'hook', isAllowedToFail: false, parameters: {} }],
-			});
-
+			toExecutionContextEstablishmentHookParameter.mockReturnValue(hookConfig);
 			mockRegistry.getHookByName.mockReturnValue(mockHook);
 			mockCipher.decrypt.mockReturnValue('{}');
 			toCredentialContext.mockReturnValue({});
@@ -356,7 +377,13 @@ describe('ExecutionContextService', () => {
 			const item1: INodeExecutionData[] = [{ json: { step: 1 } }];
 			const item2: INodeExecutionData[] = [{ json: { step: 2 } }];
 			const item3: INodeExecutionData[] = [{ json: { step: 3 } }];
-			const startItem = createMockStartItem({}, item1);
+			const hookConfig = {
+				hooks: [
+					{ hookName: 'hook1', isAllowedToFail: false },
+					{ hookName: 'hook2', isAllowedToFail: false },
+				],
+			};
+			const startItem = createMockStartItem(hookConfig, item1);
 
 			const mockHook1 = mock<IContextEstablishmentHook>();
 			const mockHook2 = mock<IContextEstablishmentHook>();
@@ -364,12 +391,7 @@ describe('ExecutionContextService', () => {
 			mockHook1.execute.mockResolvedValue({ triggerItems: item2 });
 			mockHook2.execute.mockResolvedValue({ triggerItems: item3 });
 
-			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				executionsHooks: [
-					{ hookName: 'hook1', isAllowedToFail: false, parameters: {} },
-					{ hookName: 'hook2', isAllowedToFail: false, parameters: {} },
-				],
-			});
+			toExecutionContextEstablishmentHookParameter.mockReturnValue(hookConfig);
 
 			mockRegistry.getHookByName.mockImplementation((name: string) => {
 				if (name === 'hook1') return mockHook1;
@@ -395,13 +417,13 @@ describe('ExecutionContextService', () => {
 			);
 		});
 
-		it('should skip hooks not found in registry', async () => {
-			const startItem = createMockStartItem();
+		it('should skip hooks not found in registry and log warning', async () => {
+			const hookConfig = {
+				hooks: [{ hookName: 'nonexistent', isAllowedToFail: false }],
+			};
+			const startItem = createMockStartItem(hookConfig);
 
-			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				executionsHooks: [{ hookName: 'nonexistent', isAllowedToFail: false, parameters: {} }],
-			});
-
+			toExecutionContextEstablishmentHookParameter.mockReturnValue(hookConfig);
 			mockRegistry.getHookByName.mockReturnValue(undefined);
 			mockCipher.decrypt.mockReturnValue('{}');
 			toCredentialContext.mockReturnValue({});
@@ -414,11 +436,19 @@ describe('ExecutionContextService', () => {
 			});
 
 			expect(result).toBeDefined();
-			expect(mockLogger.warn).toHaveBeenCalled();
+			expect(mockLogger.warn).toHaveBeenCalledWith(
+				'Execution context establishment hook nonexistent not found, skipping this hook',
+			);
 		});
 
 		it('should handle hook errors when isAllowedToFail is true', async () => {
-			const startItem = createMockStartItem();
+			const hookConfig = {
+				hooks: [
+					{ hookName: 'hook1', isAllowedToFail: true },
+					{ hookName: 'hook2', isAllowedToFail: false },
+				],
+			};
+			const startItem = createMockStartItem(hookConfig);
 			const hookError = new Error('Hook execution failed');
 
 			const mockHook1 = mock<IContextEstablishmentHook>();
@@ -426,15 +456,10 @@ describe('ExecutionContextService', () => {
 
 			mockHook1.execute.mockRejectedValue(hookError);
 			mockHook2.execute.mockResolvedValue({
-				contextUpdate: { credentials: { version: 1, identity: 'token' } },
+				contextUpdate: { credentials: { version: 1 as const, identity: 'token' } },
 			});
 
-			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				executionsHooks: [
-					{ hookName: 'hook1', isAllowedToFail: true, parameters: {} },
-					{ hookName: 'hook2', isAllowedToFail: false, parameters: {} },
-				],
-			});
+			toExecutionContextEstablishmentHookParameter.mockReturnValue(hookConfig);
 
 			mockRegistry.getHookByName.mockImplementation((name: string) => {
 				if (name === 'hook1') return mockHook1;
@@ -464,16 +489,16 @@ describe('ExecutionContextService', () => {
 		});
 
 		it('should throw hook errors when isAllowedToFail is false', async () => {
-			const startItem = createMockStartItem();
+			const hookConfig = {
+				hooks: [{ hookName: 'hook', isAllowedToFail: false }],
+			};
+			const startItem = createMockStartItem(hookConfig);
 			const hookError = new Error('Critical hook failure');
 
 			const mockHook = mock<IContextEstablishmentHook>();
 			mockHook.execute.mockRejectedValue(hookError);
 
-			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				executionsHooks: [{ hookName: 'hook', isAllowedToFail: false, parameters: {} }],
-			});
-
+			toExecutionContextEstablishmentHookParameter.mockReturnValue(hookConfig);
 			mockRegistry.getHookByName.mockReturnValue(mockHook);
 			mockCipher.decrypt.mockReturnValue('{}');
 			toCredentialContext.mockReturnValue({});
@@ -493,7 +518,10 @@ describe('ExecutionContextService', () => {
 		});
 
 		it('should decrypt context before hooks and encrypt after', async () => {
-			const startItem = createMockStartItem();
+			const hookConfig = {
+				hooks: [{ hookName: 'hook', isAllowedToFail: false }],
+			};
+			const startItem = createMockStartItem(hookConfig);
 			const encryptedContext: IExecutionContext = {
 				version: 1,
 				establishedAt: Date.now(),
@@ -504,10 +532,7 @@ describe('ExecutionContextService', () => {
 			const mockHook = mock<IContextEstablishmentHook>();
 			mockHook.execute.mockResolvedValue({});
 
-			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				executionsHooks: [{ hookName: 'hook', isAllowedToFail: false, parameters: {} }],
-			});
-
+			toExecutionContextEstablishmentHookParameter.mockReturnValue(hookConfig);
 			mockRegistry.getHookByName.mockReturnValue(mockHook);
 			mockCipher.decrypt.mockReturnValue('{"version":1,"identity":"decrypted"}');
 			toCredentialContext.mockReturnValue({ version: 1, identity: 'decrypted' });
@@ -522,7 +547,7 @@ describe('ExecutionContextService', () => {
 			expect(mockHook.execute).toHaveBeenCalledWith(
 				expect.objectContaining({
 					context: expect.objectContaining({
-						credentials: { version: 1, identity: 'decrypted' },
+						credentials: { version: 1 as const, identity: 'decrypted' },
 					}),
 				}),
 			);
