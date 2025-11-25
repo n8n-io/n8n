@@ -65,7 +65,7 @@ export const transformInsightsSummary = (data: InsightsSummary | null): Insights
 			}))
 		: [];
 
-export const timeRangeMappings = {
+export const timeRangeMappings: Record<InsightsDateRange['key'], number> = {
 	day: 1,
 	week: 7,
 	'2weeks': 14,
@@ -73,7 +73,7 @@ export const timeRangeMappings = {
 	quarter: 90,
 	'6months': 180,
 	year: 365,
-};
+} as const;
 
 export const getTimeRangeLabels = () => {
 	const i18n = useI18n();
@@ -121,10 +121,8 @@ export const getMatchingPreset = (range: { start?: DateValue; end?: DateValue })
 
 	const daysDiff = end.compare(start);
 
-	const presetEntries = Object.entries(timeRangeMappings);
-
-	for (const [key, days] of presetEntries) {
-		if (daysDiff === days) return key;
+	for (const [key, days] of Object.entries(timeRangeMappings)) {
+		if (daysDiff === days) return key as InsightsDateRange['key'];
 	}
 
 	return null;
