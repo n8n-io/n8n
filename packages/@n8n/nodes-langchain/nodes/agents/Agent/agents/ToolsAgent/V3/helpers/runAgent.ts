@@ -1,4 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import { loadMemory, processEventStream, createEngineRequests } from '@utils/agent-execution';
 import type { AgentRunnableSequence } from 'langchain/agents';
 import type { BaseChatMemory } from 'langchain/memory';
 import type {
@@ -8,17 +9,11 @@ import type {
 	EngineRequest,
 } from 'n8n-workflow';
 
-import {
-	loadMemory,
-	processEventStream,
-	createEngineRequests,
-	saveToMemory,
-} from '@utils/agent-execution';
-
 import { SYSTEM_MESSAGE } from '../../prompt';
 import type { AgentResult, RequestResponseMetadata } from '../types';
 import { buildResponseMetadata } from './buildResponseMetadata';
 import type { ItemContext } from './prepareItemContext';
+import { saveChatHistoryWithBinary } from '../../common';
 
 type RunAgentResult = AgentResult | EngineRequest<RequestResponseMetadata>;
 /**
@@ -80,6 +75,7 @@ export async function runAgent(
 			options.returnIntermediateSteps,
 			memory,
 			input,
+			options.passthroughBinaryImages ?? true,
 		);
 
 		// If result contains tool calls, build the request object like the normal flow
@@ -119,7 +115,14 @@ export async function runAgent(
 					fullOutput = `[Used tools: ${toolContext}] ${fullOutput}`;
 				}
 
-				await saveToMemory(input, fullOutput, memory);
+				await saveChatHistoryWithBinary(
+					ctx,
+					memory,
+					itemIndex,
+					input,
+					fullOutput,
+					options.passthroughBinaryImages ?? true,
+				);
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };

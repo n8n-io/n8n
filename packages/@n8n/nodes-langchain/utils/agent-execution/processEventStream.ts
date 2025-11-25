@@ -3,10 +3,10 @@ import type { IterableReadableStream } from '@langchain/core/dist/utils/stream';
 import type { AIMessageChunk, MessageContentText } from '@langchain/core/messages';
 import type { BaseChatMemory } from 'langchain/memory';
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { saveChatHistoryWithBinary } from 'nodes/agents/Agent/agents/ToolsAgent/common';
 
 import { saveToolResultsToMemory } from './memoryManagement';
 import type { AgentResult, ToolCallRequest } from './types';
+import { saveChatHistoryWithBinary } from '../../nodes/agents/Agent/agents/ToolsAgent/common';
 
 /**
  * Processes the event stream from a streaming agent execution.
