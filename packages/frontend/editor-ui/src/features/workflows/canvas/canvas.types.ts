@@ -46,6 +46,7 @@ export const enum CanvasNodeRenderType {
 	StickyNote = 'n8n-nodes-base.stickyNote',
 	AddNodes = 'n8n-nodes-internal.addNodes',
 	ChoicePrompt = 'n8n-nodes-internal.choicePrompt',
+	Frame = 'n8n-nodes-internal.frame',
 }
 
 export type CanvasNodeDefaultRenderLabelSize = 'small' | 'medium' | 'large';
@@ -98,6 +99,16 @@ export type CanvasNodeStickyNoteRender = {
 	}>;
 };
 
+export type CanvasNodeFrameRender = {
+	type: CanvasNodeRenderType.Frame;
+	options: Partial<{
+		width: number;
+		height: number;
+		color: number;
+		label: string;
+	}>;
+};
+
 export interface CanvasNodeData {
 	id: INodeUi['id'];
 	name: INodeUi['name'];
@@ -135,7 +146,8 @@ export interface CanvasNodeData {
 		| CanvasNodeDefaultRender
 		| CanvasNodeStickyNoteRender
 		| CanvasNodeAddNodesRender
-		| CanvasNodeChoicePromptRender;
+		| CanvasNodeChoicePromptRender
+		| CanvasNodeFrameRender;
 }
 
 export type CanvasNode = Node<CanvasNodeData>;
@@ -171,6 +183,7 @@ export interface CanvasInjectionData {
 
 export type CanvasNodeEventBusEvents = {
 	'update:sticky:color': never;
+	'update:frame:color': never;
 	'update:node:activated': never;
 	'update:node:class': { className: string; add?: boolean };
 };
@@ -188,6 +201,7 @@ export type CanvasEventBusEvents = {
 	};
 	tidyUp: { source: CanvasLayoutSource; nodeIdsFilter?: string[]; trackEvents?: boolean };
 	'create:sticky': never;
+	'create:frame': { nodeIds?: string[] };
 };
 
 export interface CanvasNodeInjectionData {

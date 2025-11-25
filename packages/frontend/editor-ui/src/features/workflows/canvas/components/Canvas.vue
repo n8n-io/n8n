@@ -89,6 +89,7 @@ const emit = defineEmits<{
 	'replace:node': [id: string];
 	'create:node': [source: NodeCreatorOpenSource];
 	'create:sticky': [];
+	'create:frame': [nodeIds: string[]];
 	'delete:nodes': [ids: string[]];
 	'update:nodes:enabled': [ids: string[]];
 	'copy:nodes': [ids: string[]];
@@ -349,6 +350,7 @@ const keyMap = computed(() => {
 		f2: emitWithLastSelectedNode((id) => emit('update:node:name', id)),
 		tab: () => emit('create:node', 'tab'),
 		shift_s: () => emit('create:sticky'),
+		shift_g: () => emit('create:frame', selectedNodeIds.value),
 		shift_f: () => emit('toggle:focus-panel'),
 		ctrl_alt_n: () => emit('create:workflow'),
 		ctrl_enter: () => emit('run:workflow'),
@@ -736,6 +738,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return emit('create:node', 'context_menu');
 		case 'add_sticky':
 			return emit('create:sticky');
+		case 'add_frame':
+			return emit('create:frame', nodeIds);
 		case 'copy':
 			return emit('copy:nodes', nodeIds);
 		case 'delete':
@@ -760,6 +764,8 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 			return emit('replace:node', nodeIds[0]);
 		case 'change_color':
 			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:sticky:color' });
+		case 'change_frame_color':
+			return props.eventBus.emit('nodes:action', { ids: nodeIds, action: 'update:frame:color' });
 		case 'tidy_up':
 			return await onTidyUp({ source: 'context-menu' });
 		case 'extract_sub_workflow':

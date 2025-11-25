@@ -94,6 +94,7 @@ import { useExternalSecretsStore } from '@/features/integrations/externalSecrets
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { historyBus } from '@/app/models/history';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useCanvasFrames } from '@/features/workflows/canvas/composables/useCanvasFrames';
 import { useExecutionsStore } from '@/features/execution/executions/executions.store';
 import { useCanvasStore } from '@/app/stores/canvas.store';
 import { useMessage } from '@/app/composables/useMessage';
@@ -595,11 +596,89 @@ function onExtractWorkflow(nodeIds: string[]) {
 }
 
 function onUpdateNodesPosition(events: CanvasNodeMoveEvent[]) {
-	updateNodesPosition(events, { trackHistory: true });
+	// Separate frame events from node events
+	const frameEvents: CanvasNodeMoveEvent[] = [];
+	const nodeEvents: CanvasNodeMoveEvent[] = [];
+
+	events.forEach((event) => {
+		const frame = workflowsStore.getFrameById(event.id);
+		if (frame) {
+			frameEvents.push(event);
+		} else {
+			nodeEvents.push(event);
+		}
+	});
+
+	// Handle node position updates
+	if (nodeEvents.length > 0) {
+		updateNodesPosition(nodeEvents, { trackHistory: true });
+	}
+
+	// Handle frame position updates with "move together" behavior
+	frameEvents.forEach((frameEvent) => {
+		const frame = workflowsStore.getFrameById(frameEvent.id);
+		if (!frame) return;
+
+		// Calculate delta
+		const delta = {
+			x: frameEvent.position.x - frame.position[0],
+			y: frameEvent.position.y - frame.position[1],
+		};
+
+		// Get nodes inside the frame and move them
+		const { getNodesInsideFrame } = useCanvasFrames({
+			nodes: computed(() => workflowsStore.allNodes),
+		});
+		const containedNodes = getNodesInsideFrame(frame);
+
+		// Move contained nodes
+		containedNodes.forEach((node) => {
+			const newPosition = {
+				x: node.position[0] + delta.x,
+				y: node.position[1] + delta.y,
+			};
+			updateNodePosition(node.id, newPosition, { trackHistory: false });
+		});
+
+		// Update frame position
+		workflowsStore.updateFrame(frameEvent.id, {
+			position: [frameEvent.position.x, frameEvent.position.y],
+		});
+	});
 }
 
 function onUpdateNodePosition(id: string, position: CanvasNode['position']) {
-	updateNodePosition(id, position, { trackHistory: true });
+	// Check if this is a frame
+	const frame = workflowsStore.getFrameById(id);
+	if (frame) {
+		// Calculate delta
+		const delta = {
+			x: position.x - frame.position[0],
+			y: position.y - frame.position[1],
+		};
+
+		// Get nodes inside the frame and move them
+		const { getNodesInsideFrame } = useCanvasFrames({
+			nodes: computed(() => workflowsStore.allNodes),
+		});
+		const containedNodes = getNodesInsideFrame(frame);
+
+		// Move contained nodes
+		containedNodes.forEach((node) => {
+			const newPosition = {
+				x: node.position[0] + delta.x,
+				y: node.position[1] + delta.y,
+			};
+			updateNodePosition(node.id, newPosition, { trackHistory: false });
+		});
+
+		// Update frame position
+		workflowsStore.updateFrame(id, {
+			position: [position.x, position.y],
+		});
+	} else {
+		updateNodePosition(id, position, { trackHistory: true });
+	}
 }
 
 function onRevertNodePosition({ nodeName, position }: { nodeName: string; position: XYPosition }) {
@@ -607,6 +686,13 @@ function onRevertNodePosition({ nodeName, position }: { nodeName: string; positi
 }
 
 function onDeleteNode(id: string) {
+	// Check if this ID belongs to a frame
+	const frame = workflowsStore.getFrameById(id);
+	if (frame) {
+		workflowsStore.removeFrame(id);
+		return;
+	}
+
 	const matchedFallbackNode = fallbackNodes.value.findIndex((node) => node.id === id);
 	if (matchedFallbackNode >= 0) {
 		fallbackNodes.value.splice(matchedFallbackNode, 1);
@@ -616,7 +702,29 @@ function onDeleteNode(id: string) {
 }
 
 function onDeleteNodes(ids: string[]) {
-	deleteNodes(ids);
+	// Separate frame IDs from node IDs
+	const frameIds: string[] = [];
+	const nodeIds: string[] = [];
+
+	for (const id of ids) {
+		// Check if this ID belongs to a frame
+		const frame = workflowsStore.getFrameById(id);
+		if (frame) {
+			frameIds.push(id);
+		} else {
+			nodeIds.push(id);
+		}
+	}
+
+	// Delete frames (frame only, contents remain)
+	for (const frameId of frameIds) {
+		workflowsStore.removeFrame(frameId);
+	}
+
+	// Delete regular nodes
+	if (nodeIds.length > 0) {
+		deleteNodes(nodeIds);
+	}
 }
 
 function onRevertDeleteNode({ node }: { node: INodeUi }) {
@@ -888,6 +996,12 @@ async function onRevertReplaceNodeParameters({
 }
 
 function onUpdateNodeParameters(id: string, parameters: Record<string, unknown>) {
+	// Check if this is a frame update (frames are stored separately from nodes)
+	const frame = workflowsStore.getFrameById(id);
+	if (frame) {
+		workflowsStore.updateFrame(id, parameters);
+		return;
+	}
 	setNodeParameters(id, parameters);
 }
 
@@ -1152,6 +1266,21 @@ function closeNodeCreator() {
 
 function onCreateSticky() {
 	void onAddNodesAndConnections({ nodes: [{ type: STICKY_NODE_TYPE }], connections: [] });
+}
+
+function onCreateFrame(nodeIds: string[]) {
+	const { createFrame } = useCanvasFrames({ nodes: computed(() => workflowsStore.allNodes) });
+
+	// Calculate viewport center position for empty frames
+	let position: [number, number] | undefined;
+	if (nodeIds.length === 0) {
+		const viewport = viewportBoundaries.value;
+		const centerX = viewport.xMin + (viewport.xMax - viewport.xMin) / 2 - 200; // 200 = half of default frame width
+		const centerY = viewport.yMin + (viewport.yMax - viewport.yMin) / 2 - 150; // 150 = half of default frame height
+		position = [centerX, centerY];
+	}
+
+	createFrame({ nodeIds, position });
 }
 
 function onClickConnectionAdd(connection: Connection) {
@@ -2019,6 +2148,7 @@ onBeforeUnmount(() => {
 			@click:pane="onClickPane"
 			@create:node="onOpenNodeCreatorFromCanvas"
 			@create:sticky="onCreateSticky"
+			@create:frame="onCreateFrame"
 			@delete:nodes="onDeleteNodes"
 			@update:nodes:enabled="onToggleNodesDisabled"
 			@update:nodes:pin="onPinNodes"

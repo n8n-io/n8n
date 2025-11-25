@@ -1,5 +1,5 @@
 import type { ActionDropdownItem, INodeUi } from '@/Interface';
-import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE } from '@/app/constants';
+import { NOT_DUPLICATABLE_NODE_TYPES, STICKY_NODE_TYPE, FRAME_NODE_TYPE } from '@/app/constants';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -26,7 +26,9 @@ export type ContextMenuAction =
 	| 'deselect_all'
 	| 'add_node'
 	| 'add_sticky'
+	| 'add_frame'
 	| 'change_color'
+	| 'change_frame_color'
 	| 'open_sub_workflow'
 	| 'tidy_up'
 	| 'extract_sub_workflow';
@@ -97,13 +99,16 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 	return computed(() => {
 		const nodes = targetNodes.value;
 		const onlyStickies = nodes.every((node) => node.type === STICKY_NODE_TYPE);
+		const onlyFrames = nodes.every((node) => node.type === FRAME_NODE_TYPE);
 
 		const i18nOptions = {
 			adjustToNumber: nodes.length,
 			interpolate: {
 				subject: onlyStickies
 					? i18n.baseText('contextMenu.sticky', { adjustToNumber: nodes.length })
-					: i18n.baseText('contextMenu.node', { adjustToNumber: nodes.length }),
+					: onlyFrames
+						? i18n.baseText('contextMenu.frame', { adjustToNumber: nodes.length })
+						: i18n.baseText('contextMenu.node', { adjustToNumber: nodes.length }),
 			},
 		};
 
@@ -158,12 +163,21 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					label: i18n.baseText('contextMenu.addSticky'),
 					disabled: isReadOnly.value,
 				},
+				{
+					id: 'add_frame',
+					shortcut: { shiftKey: true, keys: ['g'] },
+					label: i18n.baseText('contextMenu.addFrame'),
+					disabled: isReadOnly.value,
+				},
 				...layoutActions,
 				...selectionActions,
 			];
 		} else {
+			// Frames are visual-only elements, they shouldn't have activation/pin actions
+			const isExecutableSelection = !onlyStickies && !onlyFrames;
+
 			const menuActions: Item[] = [
-				!onlyStickies && {
+				isExecutableSelection && {
 					id: 'toggle_activation',
 					label: nodes.every((node) => node.disabled)
 						? i18n.baseText('contextMenu.activate', i18nOptions)
@@ -171,7 +185,7 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					shortcut: { keys: ['D'] },
 					disabled: isReadOnly.value,
 				},
-				!onlyStickies && {
+				isExecutableSelection && {
 					id: 'toggle_pin',
 					label: nodes.every((node) => hasPinData(node))
 						? i18n.baseText('contextMenu.unpin', i18nOptions)
@@ -179,19 +193,31 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 					shortcut: { keys: ['p'] },
 					disabled: isReadOnly.value || !nodes.every((n) => usePinnedData(n).canPinNode(true)),
 				},
-				{
+				// Don't show copy for frames (they're stored differently)
+				!onlyFrames && {
 					id: 'copy',
 					label: i18n.baseText('contextMenu.copy', i18nOptions),
 					shortcut: { metaKey: true, keys: ['C'] },
 				},
-				{
+				// Don't show duplicate for frames
+				!onlyFrames && {
 					id: 'duplicate',
 					label: i18n.baseText('contextMenu.duplicate', i18nOptions),
 					shortcut: { metaKey: true, keys: ['D'] },
 					disabled: isReadOnly.value || !nodes.every(canDuplicateNode),
 				},
+				// Show "Add frame" option when nodes (not frames) are selected
+				!onlyFrames &&
+					!onlyStickies && {
+						id: 'add_frame',
+						divided: true,
+						shortcut: { shiftKey: true, keys: ['g'] },
+						label: i18n.baseText('contextMenu.addFrameAroundSelection'),
+						disabled: isReadOnly.value,
+					},
 				...layoutActions,
-				...extractionActions,
+				// Don't show extract for frames
+				...(onlyFrames ? [] : extractionActions),
 				...selectionActions,
 				{
 					id: 'delete',
@@ -217,30 +243,38 @@ export function useContextMenuItems(targetNodeIds: ComputedRef<string[]>): Compu
 								disabled: isReadOnly.value,
 							},
 						]
-					: [
-							{
-								id: 'open',
-								label: i18n.baseText('contextMenu.open'),
-								shortcut: { keys: ['↵'] },
-							},
-							{
-								id: 'execute',
-								label: i18n.baseText('contextMenu.test'),
-								disabled: isReadOnly.value || !isExecutable(nodes[0]),
-							},
-							{
-								id: 'rename',
-								label: i18n.baseText('contextMenu.rename'),
-								shortcut: { keys: ['Space'] },
-								disabled: isReadOnly.value,
-							},
-							{
-								id: 'replace',
-								label: i18n.baseText('contextMenu.replace'),
-								shortcut: { keys: ['R'] },
-								disabled: isReadOnly.value,
-							},
-						];
+					: onlyFrames
+						? [
+								{
+									id: 'change_frame_color',
+									label: i18n.baseText('contextMenu.changeColor'),
+									disabled: isReadOnly.value,
+								},
+							]
+						: [
+								{
+									id: 'open',
+									label: i18n.baseText('contextMenu.open'),
+									shortcut: { keys: ['↵'] },
+								},
+								{
+									id: 'execute',
+									label: i18n.baseText('contextMenu.test'),
+									disabled: isReadOnly.value || !isExecutable(nodes[0]),
+								},
+								{
+									id: 'rename',
+									label: i18n.baseText('contextMenu.rename'),
+									shortcut: { keys: ['Space'] },
+									disabled: isReadOnly.value,
+								},
+								{
+									id: 'replace',
+									label: i18n.baseText('contextMenu.replace'),
+									shortcut: { keys: ['R'] },
+									disabled: isReadOnly.value,
+								},
+							];
 
 				if (NodeHelpers.isNodeWithWorkflowSelector(nodes[0])) {
 					singleNodeActions.push({

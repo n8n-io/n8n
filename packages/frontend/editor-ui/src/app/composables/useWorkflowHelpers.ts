@@ -892,6 +892,14 @@ export function useWorkflowHelpers() {
 			node.position[0] += offsetPosition[0];
 			node.position[1] += offsetPosition[1];
 		}
+
+		// Also update frame positions if present in meta
+		if (workflowData.meta?.frames) {
+			for (const frame of workflowData.meta.frames) {
+				frame.position[0] += offsetPosition[0];
+				frame.position[1] += offsetPosition[1];
+			}
+		}
 	}
 
 	function removeForeignCredentialsFromWorkflow(

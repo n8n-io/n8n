@@ -40,6 +40,7 @@ import type {
 	IConnections,
 	IDataObject,
 	ExecutionSummary,
+	IFrame,
 	INode,
 	INodeConnections,
 	INodeCredentials,
@@ -990,13 +991,66 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	}
 
 	function setWorkflowMetadata(metadata: WorkflowMetadata | undefined): void {
-		workflow.value.meta = metadata;
+		// Preserve existing frames when setting metadata (frames are client-side state
+		// that aren't yet persisted to the server, so we must preserve them here)
+		const existingFrames = workflow.value.meta?.frames;
+		workflow.value.meta = {
+			...metadata,
+			...(existingFrames?.length ? { frames: existingFrames } : {}),
+		};
 	}
 
 	function addToWorkflowMetadata(data: Partial<WorkflowMetadata>): void {
 		workflow.value.meta = {
 			...workflow.value.meta,
 			...data,
+		};
+	}
+
+	// Frame CRUD operations
+	const frames = computed(() => workflow.value.meta?.frames ?? []);
+
+	function getFrameById(frameId: string): IFrame | undefined {
+		return frames.value.find((f: IFrame) => f.id === frameId);
+	}
+
+	function addFrame(frame: IFrame): void {
+		const currentFrames = workflow.value.meta?.frames ?? [];
+		workflow.value.meta = {
+			...workflow.value.meta,
+			frames: [...currentFrames, frame],
+		};
+		useUIStore().stateIsDirty = true;
+	}
+
+	function updateFrame(frameId: string, updates: Partial<IFrame>): void {
+		const currentFrames = workflow.value.meta?.frames ?? [];
+		const frameIndex = currentFrames.findIndex((f: IFrame) => f.id === frameId);
+		if (frameIndex === -1) return;
+
+		const updatedFrames = [...currentFrames];
+		updatedFrames[frameIndex] = { ...updatedFrames[frameIndex], ...updates };
+
+		workflow.value.meta = {
+			...workflow.value.meta,
+			frames: updatedFrames,
+		};
+		useUIStore().stateIsDirty = true;
+	}
+
+	function removeFrame(frameId: string): void {
+		const currentFrames = workflow.value.meta?.frames ?? [];
+		workflow.value.meta = {
+			...workflow.value.meta,
+			frames: currentFrames.filter((f: IFrame) => f.id !== frameId),
+		};
+		useUIStore().stateIsDirty = true;
+	}
+
+	function setFrames(newFrames: IFrame[]): void {
+		workflow.value.meta = {
+			...workflow.value.meta,
+			frames: newFrames,
 		};
 	}
 
@@ -1954,6 +2008,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		setWorkflowScopes,
 		setWorkflowMetadata,
 		addToWorkflowMetadata,
+		frames,
+		getFrameById,
+		addFrame,
+		updateFrame,
+		removeFrame,
+		setFrames,
 		setWorkflow,
 		pinData,
 		unpinData,
