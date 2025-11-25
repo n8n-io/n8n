@@ -104,7 +104,10 @@ export class WaitTracker {
 			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
 		}
 		if (fullExecutionData.finished) {
-			throw new UnexpectedError('The execution did succeed and can so not be started again.');
+			const stack = new Error().stack;
+			throw new UnexpectedError('The execution did succeed and can so not be started again.', {
+				extra: { executionId, stack },
+			});
 		}
 
 		if (!fullExecutionData.workflowData.id) {
