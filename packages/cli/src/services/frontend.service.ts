@@ -15,8 +15,6 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
-import { UrlService } from './url.service';
-
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -36,6 +34,9 @@ import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
 } from '@/workflows/workflow-history/workflow-history-helper';
+
+import { AiUsageService } from './ai-usage.service';
+import { UrlService } from './url.service';
 
 export type PublicEnterpriseSettings = Pick<
 	IEnterpriseSettings,
@@ -84,6 +85,7 @@ export class FrontendService {
 		private readonly licenseState: LicenseState,
 		private readonly moduleRegistry: ModuleRegistry,
 		private readonly mfaService: MfaService,
+		private readonly aiUsageService: AiUsageService,
 	) {
 		loadNodesAndCredentials.addPostProcessor(async () => await this.generateTypes());
 		void this.generateTypes();
@@ -310,6 +312,9 @@ export class FrontendService {
 				enabled: false,
 				credits: 0,
 			},
+			ai: {
+				allowSendingParameterValues: true,
+			},
 			workflowHistory: {
 				pruneTime: getWorkflowHistoryPruneTime(),
 				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
@@ -378,6 +383,16 @@ export class FrontendService {
 		} catch {
 			this.settings.easyAIWorkflowOnboarded = false;
 		}
+
+		this.aiUsageService
+			.getAiUsageSettings()
+			.then((value) => {
+				this.settings.ai.allowSendingParameterValues = value;
+			})
+			.catch((error) => {
+				this.settings.ai.allowSendingParameterValues = false;
+				this.logger.error('Failed to get AI usage settings:', { error });
+			});
 
 		const isS3Selected = this.binaryDataConfig.mode === 's3';
 		const isS3Available = this.binaryDataConfig.availableModes.includes('s3');

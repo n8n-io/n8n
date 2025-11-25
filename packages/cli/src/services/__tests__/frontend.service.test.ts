@@ -17,6 +17,8 @@ import { FrontendService, type PublicFrontendSettings } from '@/services/fronten
 import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
+import type { AiUsageService } from '../ai-usage.service';
+
 // Mock the workflow history helper functions to avoid DI container issues in tests
 jest.mock('@/workflows/workflow-history/workflow-history-helper', () => ({
 	getWorkflowHistoryLicensePruneTime: jest.fn(() => 24),
@@ -150,6 +152,10 @@ describe('FrontendService', () => {
 		isMFAEnforced: jest.fn().mockReturnValue(false),
 	});
 
+	const aiUsageservice = mock<AiUsageService>({
+		getAiUsageSettings: jest.fn().mockResolvedValue(false),
+	});
+
 	const createMockService = () => {
 		Container.set(
 			CommunityPackagesConfig,
@@ -175,6 +181,7 @@ describe('FrontendService', () => {
 				licenseState,
 				moduleRegistry,
 				mfaService,
+				aiUsageservice,
 			),
 			license,
 		};

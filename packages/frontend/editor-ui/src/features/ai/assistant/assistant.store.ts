@@ -28,6 +28,7 @@ import AiUpdatedCodeMessage from '@/app/components/AiUpdatedCodeMessage.vue';
 import { useChatPanelStateStore } from './chatPanelState.store';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { WorkflowState } from '@/app/composables/useWorkflowState';
 
 export const ENABLED_VIEWS = ASSISTANT_ENABLED_VIEWS;
@@ -107,6 +108,10 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 			isAssistantEnabled.value &&
 			EDITABLE_CANVAS_VIEWS.includes(route.name as VIEWS),
 	);
+
+	const canManageAISettings = computed(() => {
+		return hasPermission(['rbac'], { rbac: { scope: 'aiAssistant:manage' } });
+	});
 
 	function resetAssistantChat() {
 		clearMessages();
@@ -778,6 +783,7 @@ export const useAssistantStore = defineStore(STORES.ASSISTANT, () => {
 		lastUnread,
 		isSessionEnded,
 		isFloatingButtonShown,
+		canManageAISettings,
 		onNodeExecution,
 		trackUserOpenedAssistant,
 		isNodeErrorActive,

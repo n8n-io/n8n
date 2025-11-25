@@ -7,6 +7,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
+import { useAssistantStore } from '@/features/ai/assistant/assistant.store';
 import { useRouter } from 'vue-router';
 
 import { N8nIcon, N8nLink, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
@@ -22,6 +23,7 @@ const { canUserAccessRouteByName } = useUserHelpers(router);
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const assistantStore = useAssistantStore();
 
 const sidebarMenuItems = computed<IMenuItem[]>(() => {
 	const menuItems: IMenuItem[] = [
@@ -50,6 +52,16 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			route: { to: { name: VIEWS.USERS_SETTINGS } },
 		},
 		{
+			id: 'settings-ai',
+			icon: 'sparkles',
+			label: i18n.baseText('settings.ai'),
+			position: 'top',
+			available:
+				(assistantStore.isAssistantEnabled || settingsStore.isAskAiEnabled) &&
+				canUserAccessRouteByName(VIEWS.AI_SETTINGS),
+			route: { to: { name: VIEWS.AI_SETTINGS } },
+		},
+		{
 			id: 'settings-project-roles',
 			icon: 'user-round',
 			label: i18n.baseText('settings.projectRoles'),
@@ -73,6 +85,7 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			available: canUserAccessRouteByName(VIEWS.EXTERNAL_SECRETS_SETTINGS),
 			route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
 		},
+
 		{
 			id: 'settings-source-control',
 			icon: 'git-branch',
