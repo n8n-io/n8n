@@ -495,18 +495,17 @@ export class WorkflowExecutionService {
 		}
 	}
 
-	// TODO: update the docstring
-	//
 	/**
-	 * Select the pinned activator node to use as starter for a manual execution.
+	 * Select the pinned trigger node to use as starter for a manual execution.
 	 *
-	 * In a full manual execution, select the pinned activator that was first added
-	 * to the workflow, prioritizing `n8n-nodes-base.webhook` over other activators.
+	 * Finds all pinned trigger nodes in the workflow, then returns the first pinned trigger
+	 * that is a parent of the destination node. Webhook triggers are prioritized over other
+	 * trigger types in the sorting order.
 	 *
-	 * In a partial manual execution, if the executed node has parent nodes among the
-	 * pinned activators, select the pinned activator that was first added to the workflow,
-	 * prioritizing `n8n-nodes-base.webhook` over other activators. If the executed node
-	 * has no upstream nodes and is itself is a pinned activator, select it.
+	 * @param workflow The workflow containing the nodes and connections
+	 * @param destinationNode The name of the node to find a pinned trigger for
+	 * @param pinData Pin data mapping node names to their pinned data
+	 * @returns The pinned trigger node if found, null otherwise
 	 */
 	selectPinnedTrigger(workflow: IWorkflowBase, destinationNode: string, pinData: IPinData) {
 		const allPinnedTriggers = this.findAllPinnedTriggers(workflow, pinData);
