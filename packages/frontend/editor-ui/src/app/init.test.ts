@@ -343,7 +343,7 @@ describe('Init', () => {
 
 				expect(posthogStoreSpy).toHaveBeenCalled();
 				expect(cloudStoreSpy).toHaveBeenCalled();
-				expect(bannersStore.pushBannerToStack).toHaveBeenCalledWith('TRIAL');
+				expect(bannersStore.pushBannerToStack).not.toHaveBeenCalledWith('TRIAL');
 			});
 
 			it('should push EMAIL_CONFIRMATION banner if user cloud info is not confirmed', async () => {

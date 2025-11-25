@@ -17,15 +17,14 @@ describe('BannerService', () => {
 
 	describe('dismissBanner', () => {
 		const key = 'ui.banners.dismissed';
-		const bannerName: BannerName = 'TRIAL_OVER';
 
 		it('should save the banner name to settings if no banners are dismissed yet', async () => {
 			settingsRepo.findOneBy.mockResolvedValue(null);
 
-			await bannerService.dismissBanner(bannerName);
+			await bannerService.dismissBanner('TRIAL');
 
 			expect(settingsRepo.save).toHaveBeenCalledWith(
-				{ key, value: JSON.stringify([bannerName]), loadOnStartup: true },
+				{ key, value: JSON.stringify(['TRIAL']), loadOnStartup: true },
 				{ transaction: false },
 			);
 		});
@@ -38,11 +37,27 @@ describe('BannerService', () => {
 				loadOnStartup: false,
 			});
 
-			await bannerService.dismissBanner(bannerName);
+			await bannerService.dismissBanner('TRIAL');
 
 			expect(settingsRepo.update).toHaveBeenCalledWith(
 				{ key },
-				{ value: JSON.stringify([bannerName, 'TRIAL_OVER']), loadOnStartup: true },
+				{ value: JSON.stringify(['TRIAL', 'TRIAL_OVER']), loadOnStartup: true },
+			);
+		});
+
+		it('should not create duplicate entries if already dismissed', async () => {
+			const dismissedBanners = ['TRIAL', 'TRIAL_OVER'];
+			settingsRepo.findOneBy.mockResolvedValue({
+				key,
+				value: JSON.stringify(dismissedBanners),
+				loadOnStartup: false,
+			});
+
+			await bannerService.dismissBanner('TRIAL');
+
+			expect(settingsRepo.update).toHaveBeenCalledWith(
+				{ key },
+				{ value: JSON.stringify(['TRIAL', 'TRIAL_OVER']), loadOnStartup: true },
 			);
 		});
 
@@ -51,7 +66,7 @@ describe('BannerService', () => {
 			settingsRepo.findOneBy.mockResolvedValue(null);
 			settingsRepo.save.mockRejectedValue(error);
 
-			await bannerService.dismissBanner(bannerName);
+			await bannerService.dismissBanner('TRIAL');
 
 			expect(errorReporter.error).toHaveBeenCalledWith(error);
 		});
