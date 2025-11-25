@@ -45,7 +45,6 @@ const onNameSubmit = (newName: string) => {
 };
 
 const onNameToggle = (e?: Event) => {
-	// Stop event propagation to prevent sorting when clicking to rename
 	e?.stopPropagation();
 	if (renameInput.value?.forceFocus && !isSystemColumn.value) {
 		renameInput.value.forceFocus();
@@ -115,36 +114,34 @@ const isSystemColumn = computed(() => {
 	return DATA_TABLE_SYSTEM_COLUMNS.includes(columnId);
 });
 
+// Constants for width calculation
+const CHAR_WIDTH_PX = 7; // Average character width
+const PADDING_PX = 16; // Padding and cursor space
+const MIN_WIDTH_PX = 50; // Minimum width for short names
+const MAX_WIDTH_PX = 250; // Maximum width to prevent overflow
+
 const columnWidth = computed(() => {
-	// Calculate width based on header text length
-	// Using approximately 7px per character for a tighter fit
-	const text = props.params.displayName || '';
-	const textLength = text.length;
-	// Base calculation: 7px per character + 16px for padding/cursor space
-	const calculatedWidth = textLength * 7 + 16;
-	// Set minimum to 50px for very short names, max to 250px
-	return Math.min(Math.max(calculatedWidth, 50), 250);
+	const textLength = (props.params.displayName || '').length;
+	const calculatedWidth = textLength * CHAR_WIDTH_PX + PADDING_PX;
+	return Math.min(Math.max(calculatedWidth, MIN_WIDTH_PX), MAX_WIDTH_PX);
 });
 
 const columnActionItems = computed(() => {
 	const items = [];
 
-	// Only show rename for user-defined columns
-	if (!isSystemColumn.value) {
-		items.push({
-			id: ItemAction.Rename,
-			label: i18n.baseText('dataTable.renameColumn.label'),
-			icon: 'pen',
-			customClass: 'data-table-column-header-action-item',
-		} as const);
+	items.push({
+		id: ItemAction.Rename,
+		label: i18n.baseText('dataTable.renameColumn.label'),
+		icon: 'pen',
+		customClass: 'data-table-column-header-action-item',
+	} as const);
 
-		items.push({
-			id: ItemAction.Delete,
-			label: i18n.baseText('dataTable.deleteColumn.confirm.title'),
-			icon: 'trash-2',
-			customClass: 'data-table-column-header-action-item',
-		} as const);
-	}
+	items.push({
+		id: ItemAction.Delete,
+		label: i18n.baseText('dataTable.deleteColumn.confirm.title'),
+		icon: 'trash-2',
+		customClass: 'data-table-column-header-action-item',
+	} as const);
 
 	return items;
 });
