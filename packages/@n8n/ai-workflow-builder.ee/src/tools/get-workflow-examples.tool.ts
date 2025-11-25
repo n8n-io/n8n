@@ -1,7 +1,5 @@
 import { tool } from '@langchain/core/tools';
 import type { Logger } from '@n8n/backend-common';
-import { encode as toonStringify } from '@toon-format/toon';
-import { stringify as yamlStringify } from 'yaml';
 import { z } from 'zod';
 
 import type { GetWorkflowExamplesOutput, WorkflowMetadata } from '@/types';
@@ -15,10 +13,8 @@ import {
 	createSuccessResponse,
 	createErrorResponse,
 } from './helpers';
-import { markdownStringify } from './utils/markdown-workflow.utils';
+import { mermaidStringify } from './utils/markdown-workflow.utils';
 import { fetchTemplateList, fetchTemplateByID } from './web/templates';
-
-const FORMAT_MODE: 'json' | 'toon' | 'yaml' | 'markdown' = 'markdown';
 
 /**
  * Workflow example query schema
@@ -42,22 +38,6 @@ const getWorkflowExamplesSchema = z.object({
  * Inferred types from schemas
  */
 type WorkflowExampleQuery = z.infer<typeof workflowExampleQuerySchema>;
-
-/**
- * Formats workflow for response
- */
-function formatWorkflow(workflow: WorkflowMetadata): string {
-	switch (FORMAT_MODE) {
-		case 'json':
-			return JSON.stringify(workflow);
-		case 'toon':
-			return toonStringify(workflow);
-		case 'yaml':
-			return yamlStringify(workflow);
-		case 'markdown':
-			return markdownStringify(workflow);
-	}
-}
 
 /**
  * Fetch workflow examples from the API
@@ -206,7 +186,7 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 
 				// Report completion
 				const output: GetWorkflowExamplesOutput = {
-					examples: deduplicatedResults.map((workflow) => formatWorkflow(workflow)),
+					examples: deduplicatedResults.map((workflow) => mermaidStringify(workflow)),
 					totalResults: deduplicatedResults.length,
 					message: responseMessage,
 				};
