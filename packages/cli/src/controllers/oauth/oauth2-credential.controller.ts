@@ -1,7 +1,3 @@
-import {
-	oAuthAuthorizationServerMetadataSchema,
-	dynamicClientRegistrationResponseSchema,
-} from '@n8n/api-types';
 import type {
 	ClientOAuth2Options,
 	OAuth2AuthenticationMethod,
@@ -24,11 +20,15 @@ import {
 import pkceChallenge from 'pkce-challenge';
 import * as qs from 'querystring';
 
+import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
+import {
+	oAuthAuthorizationServerMetadataSchema,
+	dynamicClientRegistrationResponseSchema,
+} from './oauth2-dynamic-client-registration.schema';
+
 import { GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE as GENERIC_OAUTH2_CREDENTIALS_WITH_EDITABLE_SCOPE } from '@/constants';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { OAuthRequest } from '@/requests';
-
-import { AbstractOAuthController, skipAuthOnOAuthCallback } from './abstract-oauth.controller';
 
 @RestController('/oauth2-credential')
 export class OAuth2CredentialController extends AbstractOAuthController {
