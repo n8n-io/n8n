@@ -173,43 +173,4 @@ describe('update()', () => {
 		expect(workflowData.connections).toEqual(workflow.connections);
 		expect(workflowData.versionId).toBe(newVersionId);
 	});
-
-	test('should remove autoDeactivated flag from meta when workflow is being activated', async () => {
-		const owner = await createOwner();
-		const workflowRepository = Container.get(WorkflowRepository);
-
-		// Create an inactive workflow with autoDeactivated flag in meta
-		const workflow = await createWorkflowWithHistory(
-			{
-				active: false,
-				meta: {
-					autoDeactivated: {
-						timestamp: '2024-01-01T00:00:00Z',
-						crashedExecutions: 3,
-					},
-				},
-			},
-			owner,
-		);
-
-		// Verify the workflow has the autoDeactivated flag
-		const workflowBeforeUpdate = await workflowRepository.findOne({
-			where: { id: workflow.id },
-		});
-		expect(workflowBeforeUpdate?.meta?.autoDeactivated).toBeDefined();
-
-		// Activate the workflow
-		const updateData = {
-			active: true,
-			versionId: workflow.versionId,
-		};
-
-		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id);
-
-		// Verify that the autoDeactivated flag has been removed
-		const workflowAfterUpdate = await workflowRepository.findOne({
-			where: { id: workflow.id },
-		});
-		expect(workflowAfterUpdate?.meta?.autoDeactivated).toBeUndefined();
-	});
 });

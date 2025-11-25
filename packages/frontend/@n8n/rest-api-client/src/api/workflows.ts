@@ -7,10 +7,6 @@ export interface WorkflowMetadata {
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
-	autoDeactivated?: {
-		timestamp: string;
-		crashedExecutions: number;
-	};
 }
 
 // Simple version of n8n-workflow.Workflow

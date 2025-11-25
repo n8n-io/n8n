@@ -59,21 +59,10 @@ export class ExecutionRecoveryService {
 				}
 
 				if (workflow.active) {
-					// Deactivate with metadata
-					await this.workflowRepository.update(
-						{ id: workflowId },
-						{
-							active: false,
-							meta: {
-								...workflow?.meta,
-								autoDeactivated: {
-									timestamp: new Date().toISOString(),
-									crashedExecutions: numberOfCrashedExecutions,
-								},
-							},
-						},
+					await this.workflowRepository.updateActiveState(workflowId, false);
+					this.logger.warn(
+						`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
 					);
-					this.logger.warn(`Disabled workflow ${workflowId} due to too many crashed executions.`);
 
 					const instanceOwner = await this.ownershipService.getInstanceOwner();
 					await this.userManagementMailer.notifyWorkflowAutodeactivated({
