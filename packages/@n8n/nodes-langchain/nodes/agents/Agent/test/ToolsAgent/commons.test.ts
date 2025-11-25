@@ -831,4 +831,49 @@ describe('handleAgentFinishOutput', () => {
 
 		expect(result).toEqual(steps);
 	});
+
+	it('should filter out thinking blocks and return only text blocks', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [
+					{ index: 0, type: 'thinking', thinking: 'Internal reasoning...' },
+					{ index: 1, type: 'text', text: 'User-facing output' },
+				],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps) as AgentFinish;
+
+		expect(result.returnValues.output).toBe('User-facing output');
+	});
+
+	it('should return thinking content when no text blocks exist', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [
+					{ index: 0, type: 'thinking', thinking: 'Only thinking content' },
+					{ index: 1, type: 'thinking', thinking: 'More thinking' },
+				],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps) as AgentFinish;
+
+		expect(result.returnValues.output).toBe('Only thinking content\nMore thinking');
+	});
+
+	it('should return empty string when no text or thinking blocks exist', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [{ index: 0, type: 'unknown' }],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps) as AgentFinish;
+
+		expect(result.returnValues.output).toBe('');
+	});
 });

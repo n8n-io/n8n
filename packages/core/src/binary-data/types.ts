@@ -1,5 +1,7 @@
 import type { Readable } from 'stream';
 
+import type { BINARY_DATA_MODES } from './binary-data.config';
+
 export namespace BinaryData {
 	type LegacyMode = 'filesystem';
 
@@ -8,7 +10,7 @@ export namespace BinaryData {
 	/**
 	 * Binary data mode selectable by user via env var config.
 	 */
-	export type ConfigMode = 'default' | 'filesystem' | 's3';
+	export type ConfigMode = (typeof BINARY_DATA_MODES)[number];
 
 	/**
 	 * Binary data mode used internally by binary data service. User-selected
@@ -34,7 +36,7 @@ export namespace BinaryData {
 
 	export type FileLocation =
 		| { type: 'execution'; workflowId: string; executionId: string }
-		| { type: 'chat-hub-message-attachment'; sessionId: string; messageId: string };
+		| { type: 'custom'; pathSegments: string[] };
 
 	export interface Manager {
 		init(): Promise<void>;

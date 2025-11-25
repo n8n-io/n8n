@@ -16,7 +16,12 @@ import type {
 	NodeConnectionType,
 	IRunData,
 } from 'n8n-workflow';
-import { ApplicationError, ManualExecutionCancelledError, NodeConnectionTypes } from 'n8n-workflow';
+import {
+	ApplicationError,
+	createRunExecutionData,
+	ManualExecutionCancelledError,
+	NodeConnectionTypes,
+} from 'n8n-workflow';
 
 import { describeCommonTests } from './shared-tests';
 import { SupplyDataContext } from '../supply-data-context';
@@ -492,7 +497,7 @@ describe('SupplyDataContext', () => {
 			});
 
 			// Create run execution data with plain object (not mock) to avoid mock functions
-			const testRunExecutionData: IRunExecutionData = {
+			const testRunExecutionData = createRunExecutionData({
 				resultData: {
 					runData: {
 						[node.name]: [
@@ -513,7 +518,7 @@ describe('SupplyDataContext', () => {
 					waitingExecution: {},
 					waitingExecutionSource: {},
 				},
-			};
+			});
 
 			const testContext = new SupplyDataContext(
 				workflow,

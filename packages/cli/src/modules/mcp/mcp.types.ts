@@ -1,4 +1,5 @@
 import { type ToolCallback } from '@modelcontextprotocol/sdk/server/mcp.js';
+import type { User } from '@n8n/db';
 import type { INode } from 'n8n-workflow';
 import type z from 'zod';
 
@@ -91,4 +92,27 @@ type SupportedTriggerNodeTypes = keyof typeof SUPPORTED_MCP_TRIGGERS;
 
 export type MCPTriggersMap = {
 	[K in SupportedTriggerNodeTypes]: INode[];
+};
+
+export type AuthFailureReason =
+	| 'missing_authorization_header'
+	| 'invalid_bearer_format'
+	| 'jwt_decode_failed'
+	| 'invalid_token'
+	| 'token_not_found_in_db'
+	| 'user_not_found'
+	| 'user_id_not_in_auth_info'
+	| 'unknown_error';
+
+export type Mcpauth_type = 'oauth' | 'api_key' | 'unknown';
+
+export type TelemetryAuthContext = {
+	reason: AuthFailureReason;
+	auth_type: Mcpauth_type;
+	error_details?: string;
+};
+
+export type UserWithContext = {
+	user: User | null;
+	context?: TelemetryAuthContext;
 };

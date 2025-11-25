@@ -9,6 +9,7 @@ import {
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
 	type ExecutionError,
+	createRunExecutionData,
 } from 'n8n-workflow';
 
 import type { IWorkflowErrorData } from '@/interfaces';
@@ -162,7 +163,7 @@ describe('WorkflowExecutionService', () => {
 			const result = await workflowExecutionService.executeManually(runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
-				destinationNode: runPayload.destinationNode,
+				destinationNode: { nodeName: runPayload.destinationNode, mode: 'inclusive' },
 				executionMode: 'manual',
 				runData: undefined,
 				pinData: runPayload.workflowData.pinData,
@@ -212,7 +213,7 @@ describe('WorkflowExecutionService', () => {
 				const result = await workflowExecutionService.executeManually(runPayload, user);
 
 				expect(workflowRunner.run).toHaveBeenCalledWith({
-					destinationNode: runPayload.destinationNode,
+					destinationNode: { nodeName: runPayload.destinationNode, mode: 'inclusive' },
 					executionMode: 'manual',
 					runData: runPayload.runData,
 					pinData: runPayload.workflowData.pinData,
@@ -701,7 +702,7 @@ describe('WorkflowExecutionService', () => {
 			expect(workflowRunnerMock.run).toHaveBeenCalledTimes(1);
 			expect(workflowRunnerMock.run).toHaveBeenCalledWith({
 				executionMode: 'error',
-				executionData: {
+				executionData: createRunExecutionData({
 					executionData: {
 						contextData: {},
 						metadata: {},
@@ -733,7 +734,7 @@ describe('WorkflowExecutionService', () => {
 						runData: {},
 					},
 					startData: {},
-				},
+				}),
 				workflowData: errorWorkflow,
 				projectId: 'project-id',
 			});

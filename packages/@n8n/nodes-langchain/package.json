@@ -1,6 +1,6 @@
 {
   "name": "@n8n/n8n-nodes-langchain",
-  "version": "1.120.0",
+  "version": "1.121.0",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -101,6 +101,7 @@
       "dist/nodes/llms/LMLemonade/LmLemonade.node.js",
       "dist/nodes/llms/LMOllama/LmOllama.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.js",
+      "dist/nodes/mcp/McpClient/McpClient.node.js",
       "dist/nodes/mcp/McpClientTool/McpClientTool.node.js",
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",
       "dist/nodes/memory/MemoryBufferWindow/MemoryBufferWindow.node.js",
