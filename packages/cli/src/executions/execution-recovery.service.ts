@@ -69,6 +69,11 @@ export class ExecutionRecoveryService {
 						recipient: instanceOwner,
 						workflow,
 					});
+
+					this.push.once('editorUiConnected', async () => {
+						await sleep(1000);
+						this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
+					});
 				}
 
 				const pendingExecutions = await this.executionRepository.findMultipleExecutions({
