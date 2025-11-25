@@ -112,11 +112,9 @@ export function renameColumnQuery(
 	newColumnName: string,
 	dbType: DataSourceOptions['type'],
 ): string {
+	// Note: Requires MySQL 8.0+, MariaDB 10.5.2+, PostgreSQL (any), SQLite 3.25+
 	// Validate both old and new column names for defense in depth
-	if (!isValidColumnName(oldColumnName)) {
-		throw new UnexpectedError('Invalid old column name');
-	}
-	if (!isValidColumnName(newColumnName)) {
+	if (!isValidColumnName(oldColumnName) || !isValidColumnName(newColumnName)) {
 		throw new UnexpectedError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
 	}
 
