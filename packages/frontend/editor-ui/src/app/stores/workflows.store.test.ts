@@ -1192,7 +1192,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
 				data: {
-					version: 0,
+					version: 1,
 					resultData: {
 						lastNodeExecuted: 'When clicking ‘Execute workflow’',
 						runData: {
@@ -1224,7 +1224,7 @@ describe('useWorkflowsStore', () => {
 			expect(workflowsStore.workflowExecutionData).toEqual({
 				...executionResponse,
 				data: {
-					version: 0,
+					version: 1,
 					resultData: {
 						lastNodeExecuted: 'Edit Fields',
 						runData: {

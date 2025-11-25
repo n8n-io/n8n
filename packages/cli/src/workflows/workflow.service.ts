@@ -6,6 +6,7 @@ import type {
 	ListQueryDb,
 	WorkflowFolderUnionFull,
 	WorkflowHistoryUpdate,
+	WorkflowHistory,
 } from '@n8n/db';
 import {
 	SharedWorkflow,
@@ -47,6 +48,12 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
+
+type RollbackPayload = {
+	active: boolean;
+	activeVersionId: string | null;
+	activeVersion: WorkflowHistory | null;
+} & Partial<Omit<WorkflowEntity, 'active' | 'activeVersionId' | 'activeVersion'>>;
 
 @Service()
 export class WorkflowService {
@@ -447,7 +454,14 @@ export class WorkflowService {
 					workflowId,
 					updatedWorkflow,
 					wasActive ? 'update' : 'activate',
-					workflow.versionId,
+					// If workflow could not be activated, set it again to inactive
+					// and revert the versionId and activeVersionId change so UI remains consistent
+					{
+						versionId: workflow.versionId,
+						active: false,
+						activeVersionId: null,
+						activeVersion: null,
+					},
 				);
 			}
 		}
@@ -457,45 +471,35 @@ export class WorkflowService {
 
 	/**
 	 * Private helper to add a workflow to the active workflow manager
-	 * @param originalVersionId - Optional versionId to roll back to if activation fails
+	 * @param rollBackOptions - Optional rollback options
 	 */
 	private async _addToActiveWorkflowManager(
 		user: User,
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		originalVersionId?: string,
+		rollbackPayload: RollbackPayload,
 	): Promise<void> {
 		try {
 			await this.externalHooks.run('workflow.activate', [workflow]);
 			await this.activeWorkflowManager.add(workflowId, mode);
 		} catch (error) {
-			// If workflow could not be activated, set it again to inactive
-			// and revert the versionId and activeVersionId change so UI remains consistent
-			const rollbackPayload: QueryDeepPartialEntity<WorkflowEntity> = {
-				active: false,
-				activeVersion: null,
-			};
-
-			// Roll back versionId if provided (used in update flow)
-			if (originalVersionId !== undefined) {
-				rollbackPayload.versionId = originalVersionId;
-			}
-
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
 			// Also set it in the returned data
-			workflow.active = false;
-			workflow.activeVersionId = null;
-			workflow.activeVersion = null;
+			workflow.active = rollbackPayload.active;
+			workflow.activeVersionId = rollbackPayload.activeVersionId;
+			workflow.activeVersion = rollbackPayload.activeVersion;
 
-			// Emit deactivation event since activation failed
-			this.eventService.emit('workflow-deactivated', {
-				user,
-				workflowId,
-				workflow,
-				publicApi: false,
-			});
+			if (!workflow.activeVersionId) {
+				// Emit deactivation event since activation failed
+				this.eventService.emit('workflow-deactivated', {
+					user,
+					workflowId,
+					workflow,
+					publicApi: false,
+				});
+			}
 
 			let message;
 			if (error instanceof NodeApiError) message = error.description;
@@ -554,6 +558,7 @@ export class WorkflowService {
 
 		const updatedWorkflow = await this.workflowRepository.findOne({
 			where: { id: workflowId },
+			relations: ['activeVersion'],
 		});
 
 		if (!updatedWorkflow) {
@@ -567,7 +572,11 @@ export class WorkflowService {
 			publicApi: false,
 		});
 
-		await this._addToActiveWorkflowManager(user, workflowId, updatedWorkflow, 'activate');
+		await this._addToActiveWorkflowManager(user, workflowId, updatedWorkflow, 'activate', {
+			active: workflow.active,
+			activeVersionId: workflow.activeVersionId,
+			activeVersion: workflow.activeVersion,
+		});
 
 		return updatedWorkflow;
 	}
