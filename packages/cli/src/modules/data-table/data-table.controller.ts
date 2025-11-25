@@ -48,6 +48,26 @@ export class DataTableController {
 		private readonly projectService: ProjectService,
 	) {}
 
+	private handleDataTableColumnOperationError(e: unknown): never {
+		if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
+			throw new NotFoundError(e.message);
+		}
+		if (
+			e instanceof DataTableColumnNameConflictError ||
+			e instanceof DataTableSystemColumnNameConflictError ||
+			e instanceof DataTableNameConflictError
+		) {
+			throw new ConflictError(e.message);
+		}
+		if (e instanceof DataTableValidationError) {
+			throw new BadRequestError(e.message);
+		}
+		if (e instanceof Error) {
+			throw new InternalServerError(e.message, e);
+		}
+		throw e;
+	}
+
 	@Middleware()
 	async validateProjectExists(
 		req: AuthenticatedRequest<{ projectId: string }>,
@@ -172,18 +192,7 @@ export class DataTableController {
 		try {
 			return await this.dataTableService.addColumn(dataTableId, req.params.projectId, dto);
 		} catch (e: unknown) {
-			if (e instanceof DataTableNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (
-				e instanceof DataTableColumnNameConflictError ||
-				e instanceof DataTableSystemColumnNameConflictError
-			) {
-				throw new ConflictError(e.message);
-			} else if (e instanceof Error) {
-				throw new InternalServerError(e.message, e);
-			} else {
-				throw e;
-			}
+			this.handleDataTableColumnOperationError(e);
 		}
 	}
 
@@ -198,13 +207,7 @@ export class DataTableController {
 		try {
 			return await this.dataTableService.deleteColumn(dataTableId, req.params.projectId, columnId);
 		} catch (e: unknown) {
-			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (e instanceof Error) {
-				throw new InternalServerError(e.message, e);
-			} else {
-				throw e;
-			}
+			this.handleDataTableColumnOperationError(e);
 		}
 	}
 
@@ -225,15 +228,7 @@ export class DataTableController {
 				dto,
 			);
 		} catch (e: unknown) {
-			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (e instanceof DataTableValidationError) {
-				throw new BadRequestError(e.message);
-			} else if (e instanceof Error) {
-				throw new InternalServerError(e.message, e);
-			} else {
-				throw e;
-			}
+			this.handleDataTableColumnOperationError(e);
 		}
 	}
 
@@ -254,18 +249,7 @@ export class DataTableController {
 				dto,
 			);
 		} catch (e: unknown) {
-			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
-				throw new NotFoundError(e.message);
-			} else if (
-				e instanceof DataTableColumnNameConflictError ||
-				e instanceof DataTableSystemColumnNameConflictError
-			) {
-				throw new ConflictError(e.message);
-			} else if (e instanceof Error) {
-				throw new InternalServerError(e.message, e);
-			} else {
-				throw e;
-			}
+			this.handleDataTableColumnOperationError(e);
 		}
 	}
 
