@@ -1561,17 +1561,6 @@ onUpdated(async () => {
 					</template>
 				</JsonEditor>
 
-				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
-					<CodeNodeEditor
-						v-if="!codeEditDialogVisible"
-						:id="parameterId"
-						:mode="codeEditorMode"
-						:model-value="modelValueString"
-						:language="editorLanguage"
-						:is-read-only="true"
-						:rows="editorRows"
-					/>
-				</div>
 				<CronBuilder
 					v-else-if="
 						parameter.name === 'expression' &&
@@ -1583,6 +1572,18 @@ onUpdated(async () => {
 					@update:model-value="valueChanged"
 					@change="valueChanged"
 				/>
+
+				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
+					<CodeNodeEditor
+						v-if="!codeEditDialogVisible"
+						:id="parameterId"
+						:mode="codeEditorMode"
+						:model-value="modelValueString"
+						:language="editorLanguage"
+						:is-read-only="true"
+						:rows="editorRows"
+					/>
+				</div>
 				<N8nInput
 					v-else
 					ref="inputField"

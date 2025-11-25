@@ -1,24 +1,24 @@
 <template>
 	<div class="cron-next-runs-preview">
 		<div class="cron-next-runs-preview__header">
-			<n8n-text bold>Next Scheduled Runs</n8n-text>
-			<n8n-icon icon="clock" size="small" />
+			<N8nText bold>Next Scheduled Runs</N8nText>
+			<N8nIcon icon="clock" size="small" />
 		</div>
 
 		<div v-if="isLoading" class="cron-next-runs-preview__loading">
-			<n8n-spinner size="small" />
-			<n8n-text size="small" color="text-light">Calculating next runs...</n8n-text>
+			<N8nSpinner size="small" />
+			<N8nText size="small" color="text-light">Calculating next runs...</N8nText>
 		</div>
 
 		<div v-else-if="error" class="cron-next-runs-preview__error">
-			<n8n-icon icon="exclamation-triangle" color="danger" />
-			<n8n-text size="small" color="danger">{{ error }}</n8n-text>
+			<N8nIcon icon="exclamation-triangle" color="danger" />
+			<N8nText size="small" color="danger">{{ error }}</N8nText>
 		</div>
 
 		<div v-else-if="nextRuns.length === 0" class="cron-next-runs-preview__empty">
-			<n8n-text size="small" color="text-light">
+			<N8nText size="small" color="text-light">
 				No upcoming runs could be calculated. Please check your cron expression.
-			</n8n-text>
+			</N8nText>
 		</div>
 
 		<div v-else class="cron-next-runs-preview__list">
@@ -28,32 +28,33 @@
 				class="cron-next-runs-preview__item"
 			>
 				<div class="cron-next-runs-preview__item-number">
-					<n8n-text size="small" color="text-light">#{{ index + 1 }}</n8n-text>
+					<N8nText size="small" color="text-light">#{{ index + 1 }}</N8nText>
 				</div>
 				<div class="cron-next-runs-preview__item-details">
-					<n8n-text size="small" bold>{{ run.readable }}</n8n-text>
-					<n8n-text v-if="index === 0 && timeUntilNext" size="xsmall" color="text-light">
+					<N8nText size="small" bold>{{ run.readable }}</N8nText>
+					<N8nText v-if="index === 0 && timeUntilNext" size="xsmall" color="text-light">
 						{{ timeUntilNext }}
-					</n8n-text>
+					</N8nText>
 				</div>
 			</div>
 		</div>
 
 		<div v-if="frequencyWarning" class="cron-next-runs-preview__warning">
-			<n8n-icon icon="exclamation-circle" color="warning" size="small" />
-			<n8n-text size="small" color="warning">{{ frequencyWarning }}</n8n-text>
+			<N8nIcon icon="exclamation-circle" color="warning" size="small" />
+			<N8nText size="small" color="warning">{{ frequencyWarning }}</N8nText>
 		</div>
 
 		<div v-if="executionFrequency" class="cron-next-runs-preview__frequency">
-			<n8n-text size="small" color="text-light">
+			<N8nText size="small" color="text-light">
 				<strong>Frequency:</strong> {{ executionFrequency }}
-			</n8n-text>
+			</N8nText>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue';
+import { N8nText, N8nIcon, N8nSpinner } from '@n8n/design-system';
 import type { NextRun } from './types';
 import {
 	calculateNextRuns,

@@ -1,14 +1,14 @@
 <template>
 	<div class="cron-advanced-mode">
-		<n8n-notice type="info" :dismissible="false">
+		<N8nNotice type="info" :dismissible="false">
 			Advanced mode allows you to select specific values for each cron field. Leave fields empty to
 			use "*" (any value).
-		</n8n-notice>
+		</N8nNotice>
 
 		<div class="cron-advanced-mode__fields">
 			<div class="cron-advanced-mode__field">
-				<n8n-input-label label="Minutes (0-59)" />
-				<n8n-select
+				<N8nInputLabel label="Minutes (0-59)" />
+				<N8nSelect
 					v-model="localConfig.minutes"
 					multiple
 					:multiple-limit="0"
@@ -21,15 +21,15 @@
 						:label="minute.toString()"
 						:value="minute"
 					/>
-				</n8n-select>
-				<n8n-text v-if="localConfig.minutes.length > 0" size="small" color="text-light">
+				</N8nSelect>
+				<N8nText v-if="localConfig.minutes.length > 0" size="small" color="text-light">
 					Selected: {{ formatSelection(localConfig.minutes) }}
-				</n8n-text>
+				</N8nText>
 			</div>
 
 			<div class="cron-advanced-mode__field">
-				<n8n-input-label label="Hours (0-23)" />
-				<n8n-select
+				<N8nInputLabel label="Hours (0-23)" />
+				<N8nSelect
 					v-model="localConfig.hours"
 					multiple
 					:multiple-limit="0"
@@ -42,15 +42,15 @@
 						:label="formatHour(hour)"
 						:value="hour"
 					/>
-				</n8n-select>
-				<n8n-text v-if="localConfig.hours.length > 0" size="small" color="text-light">
+				</N8nSelect>
+				<N8nText v-if="localConfig.hours.length > 0" size="small" color="text-light">
 					Selected: {{ formatHourSelection(localConfig.hours) }}
-				</n8n-text>
+				</N8nText>
 			</div>
 
 			<div class="cron-advanced-mode__field">
-				<n8n-input-label label="Days of Month (1-31)" />
-				<n8n-select
+				<N8nInputLabel label="Days of Month (1-31)" />
+				<N8nSelect
 					v-model="localConfig.daysOfMonth"
 					multiple
 					:multiple-limit="0"
@@ -63,15 +63,15 @@
 						:label="day.toString()"
 						:value="day"
 					/>
-				</n8n-select>
-				<n8n-text v-if="localConfig.daysOfMonth.length > 0" size="small" color="text-light">
+				</N8nSelect>
+				<N8nText v-if="localConfig.daysOfMonth.length > 0" size="small" color="text-light">
 					Selected: {{ formatSelection(localConfig.daysOfMonth) }}
-				</n8n-text>
+				</N8nText>
 			</div>
 
 			<div class="cron-advanced-mode__field">
-				<n8n-input-label label="Months (1-12)" />
-				<n8n-select
+				<N8nInputLabel label="Months (1-12)" />
+				<N8nSelect
 					v-model="localConfig.months"
 					multiple
 					:multiple-limit="0"
@@ -84,15 +84,15 @@
 						:label="monthName"
 						:value="index + 1"
 					/>
-				</n8n-select>
-				<n8n-text v-if="localConfig.months.length > 0" size="small" color="text-light">
+				</N8nSelect>
+				<N8nText v-if="localConfig.months.length > 0" size="small" color="text-light">
 					Selected: {{ formatMonthSelection(localConfig.months) }}
-				</n8n-text>
+				</N8nText>
 			</div>
 
 			<div class="cron-advanced-mode__field">
-				<n8n-input-label label="Days of Week (0-6, 0=Sunday)" />
-				<n8n-select
+				<N8nInputLabel label="Days of Week (0-6, 0=Sunday)" />
+				<N8nSelect
 					v-model="localConfig.daysOfWeek"
 					multiple
 					:multiple-limit="0"
@@ -105,15 +105,15 @@
 						:label="dayName"
 						:value="index"
 					/>
-				</n8n-select>
-				<n8n-text v-if="localConfig.daysOfWeek.length > 0" size="small" color="text-light">
+				</N8nSelect>
+				<N8nText v-if="localConfig.daysOfWeek.length > 0" size="small" color="text-light">
 					Selected: {{ formatDayOfWeekSelection(localConfig.daysOfWeek) }}
-				</n8n-text>
+				</N8nText>
 			</div>
 		</div>
 
 		<div class="cron-advanced-mode__preview">
-			<n8n-text size="small" bold>Generated Expression:</n8n-text>
+			<N8nText size="small" bold>Generated Expression:</N8nText>
 			<div class="cron-advanced-mode__expression">
 				<code>{{ generatedExpression }}</code>
 			</div>
@@ -124,6 +124,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { ElOption } from 'element-plus';
+import { N8nNotice, N8nInputLabel, N8nSelect, N8nText } from '@n8n/design-system';
 import type { CronAdvancedConfig } from './types';
 import { generateFromAdvancedMode } from './utils/cronExpressionGenerator';
 

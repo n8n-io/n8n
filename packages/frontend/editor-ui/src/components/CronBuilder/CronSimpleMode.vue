@@ -1,34 +1,34 @@
 <template>
 	<div class="cron-simple-mode">
 		<div class="cron-simple-mode__field">
-			<n8n-input-label label="Frequency" />
-			<n8n-select v-model="localConfig.frequency" @update:model-value="handleUpdate">
+			<N8nInputLabel label="Frequency" />
+			<N8nSelect v-model="localConfig.frequency" @update:model-value="handleUpdate">
 				<el-option label="Every minute" value="minute" />
 				<el-option label="Hourly" value="hourly" />
 				<el-option label="Daily" value="daily" />
 				<el-option label="Weekly" value="weekly" />
 				<el-option label="Monthly" value="monthly" />
-			</n8n-select>
+			</N8nSelect>
 		</div>
 
 		<div v-if="localConfig.frequency === 'hourly'" class="cron-simple-mode__field">
-			<n8n-input-label label="At minute" />
-			<n8n-input-number
+			<N8nInputLabel label="At minute" />
+			<N8nInputNumber
 				v-model="localConfig.minute"
 				:min="0"
 				:max="59"
 				:step="1"
 				@update:model-value="handleUpdate"
 			/>
-			<n8n-text size="small" color="text-light"
-				>Runs at minute {{ localConfig.minute || 0 }} of every hour</n8n-text
+			<N8nText size="small" color="text-light"
+				>Runs at minute {{ localConfig.minute || 0 }} of every hour</N8nText
 			>
 		</div>
 
 		<div v-if="localConfig.frequency === 'daily'" class="cron-simple-mode__fields-group">
 			<div class="cron-simple-mode__field">
-				<n8n-input-label label="Hour" />
-				<n8n-input-number
+				<N8nInputLabel label="Hour" />
+				<N8nInputNumber
 					v-model="localConfig.hour"
 					:min="0"
 					:max="23"
@@ -37,8 +37,8 @@
 				/>
 			</div>
 			<div class="cron-simple-mode__field">
-				<n8n-input-label label="Minute" />
-				<n8n-input-number
+				<N8nInputLabel label="Minute" />
+				<N8nInputNumber
 					v-model="localConfig.minute"
 					:min="0"
 					:max="59"
@@ -46,16 +46,16 @@
 					@update:model-value="handleUpdate"
 				/>
 			</div>
-			<n8n-text size="small" color="text-light">
+			<N8nText size="small" color="text-light">
 				Runs daily at {{ formatTime(localConfig.hour || 0, localConfig.minute || 0) }}
-			</n8n-text>
+			</N8nText>
 		</div>
 
 		<div v-if="localConfig.frequency === 'weekly'" class="cron-simple-mode__fields-group">
 			<div class="cron-simple-mode__field">
-				<n8n-input-label label="Days of Week" />
+				<N8nInputLabel label="Days of Week" />
 				<div class="cron-simple-mode__weekdays">
-					<n8n-checkbox
+					<N8nCheckbox
 						v-for="day in weekdays"
 						:key="day.value"
 						:model-value="isDaySelected(day.value)"
@@ -65,8 +65,8 @@
 				</div>
 			</div>
 			<div class="cron-simple-mode__field">
-				<n8n-input-label label="Hour" />
-				<n8n-input-number
+				<N8nInputLabel label="Hour" />
+				<N8nInputNumber
 					v-model="localConfig.hour"
 					:min="0"
 					:max="23"
@@ -75,8 +75,8 @@
 				/>
 			</div>
 			<div class="cron-simple-mode__field">
-				<n8n-input-label label="Minute" />
-				<n8n-input-number
+				<N8nInputLabel label="Minute" />
+				<N8nInputNumber
 					v-model="localConfig.minute"
 					:min="0"
 					:max="59"
@@ -84,16 +84,16 @@
 					@update:model-value="handleUpdate"
 				/>
 			</div>
-			<n8n-text size="small" color="text-light">
+			<N8nText size="small" color="text-light">
 				Runs {{ getSelectedDaysText() }} at
 				{{ formatTime(localConfig.hour || 0, localConfig.minute || 0) }}
-			</n8n-text>
+			</N8nText>
 		</div>
 
 		<div v-if="localConfig.frequency === 'monthly'" class="cron-simple-mode__fields-group">
 			<div class="cron-simple-mode__field">
-				<n8n-input-label label="Day of Month" />
-				<n8n-input-number
+				<N8nInputLabel label="Day of Month" />
+				<N8nInputNumber
 					v-model="localConfig.dayOfMonth"
 					:min="1"
 					:max="31"
@@ -102,8 +102,8 @@
 				/>
 			</div>
 			<div class="cron-simple-mode__field">
-				<n8n-input-label label="Hour" />
-				<n8n-input-number
+				<N8nInputLabel label="Hour" />
+				<N8nInputNumber
 					v-model="localConfig.hour"
 					:min="0"
 					:max="23"
@@ -112,8 +112,8 @@
 				/>
 			</div>
 			<div class="cron-simple-mode__field">
-				<n8n-input-label label="Minute" />
-				<n8n-input-number
+				<N8nInputLabel label="Minute" />
+				<N8nInputNumber
 					v-model="localConfig.minute"
 					:min="0"
 					:max="59"
@@ -121,10 +121,10 @@
 					@update:model-value="handleUpdate"
 				/>
 			</div>
-			<n8n-text size="small" color="text-light">
+			<N8nText size="small" color="text-light">
 				Runs on day {{ localConfig.dayOfMonth || 1 }} of every month at
 				{{ formatTime(localConfig.hour || 0, localConfig.minute || 0) }}
-			</n8n-text>
+			</N8nText>
 		</div>
 	</div>
 </template>
@@ -132,6 +132,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue';
 import { ElOption } from 'element-plus';
+import { N8nInputLabel, N8nSelect, N8nInputNumber, N8nText, N8nCheckbox } from '@n8n/design-system';
 import type { CronSimpleConfig } from './types';
 
 interface Props {

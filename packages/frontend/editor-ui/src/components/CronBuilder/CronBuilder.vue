@@ -1,7 +1,7 @@
 <template>
 	<div class="cron-builder">
 		<div class="cron-builder__mode-selector">
-			<n8n-radio-buttons
+			<N8nRadioButtons
 				v-model="currentMode"
 				:options="modeOptions"
 				@update:model-value="handleModeChange"
@@ -28,8 +28,8 @@
 			/>
 
 			<div v-else-if="currentMode === 'custom'" class="cron-builder__custom">
-				<n8n-input-label label="Cron Expression" />
-				<n8n-input
+				<N8nInputLabel label="Cron Expression" />
+				<N8nInput
 					v-model="customExpression"
 					:placeholder="'0 9 * * 1-5'"
 					@update:model-value="handleCustomExpressionUpdate"
@@ -48,13 +48,14 @@
 		</div>
 
 		<div v-if="humanReadable" class="cron-builder__description">
-			<n8n-text size="small" color="text-light">{{ humanReadable }}</n8n-text>
+			<N8nText size="small" color="text-light">{{ humanReadable }}</N8nText>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
+import { N8nRadioButtons, N8nInputLabel, N8nInput, N8nText } from '@n8n/design-system';
 import type { CronSimpleConfig, CronAdvancedConfig, CronBuilderMode } from './types';
 import {
 	generateFromSimpleMode,
@@ -129,8 +130,8 @@ const humanReadable = computed(() => {
 	return getHumanReadableDescription(currentExpression.value);
 });
 
-function handleModeChange(mode: CronBuilderMode | 'template' | 'custom') {
-	currentMode.value = mode;
+function handleModeChange(mode: string) {
+	currentMode.value = mode as CronBuilderMode | 'template' | 'custom';
 
 	if (mode === 'simple') {
 		const parsed = parseToSimpleMode(currentExpression.value);

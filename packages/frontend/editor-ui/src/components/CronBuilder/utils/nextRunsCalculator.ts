@@ -1,4 +1,4 @@
-import { sendAt } from 'cron';
+import { CronTime } from 'cron';
 import type { NextRun } from '../types';
 
 /**
@@ -11,30 +11,21 @@ export function calculateNextRuns(
 ): NextRun[] {
 	try {
 		const nextRuns: NextRun[] = [];
-		let currentDate = new Date();
 
-		// Try to get next runs using the cron library
-		for (let i = 0; i < count; i++) {
-			try {
-				// Use sendAt from cron library to get next run time
-				const nextDate = sendAt(expression, currentDate);
+		// Create CronTime object to calculate next runs
+		const cronTime = new CronTime(expression, timezone);
 
-				if (nextDate) {
-					nextRuns.push({
-						date: nextDate,
-						readable: formatReadableDate(nextDate, timezone),
-						timestamp: nextDate.getTime(),
-					});
+		// Use sendAt with count parameter to get multiple next dates
+		const nextDates = cronTime.sendAt(count);
 
-					// Move to next second after this run
-					currentDate = new Date(nextDate.getTime() + 1000);
-				} else {
-					break;
-				}
-			} catch (error) {
-				console.error('Error calculating next run:', error);
-				break;
-			}
+		// Convert Luxon DateTime objects to JavaScript Dates
+		for (const dateTime of nextDates) {
+			const jsDate = dateTime.toJSDate();
+			nextRuns.push({
+				date: jsDate,
+				readable: formatReadableDate(jsDate, timezone),
+				timestamp: jsDate.getTime(),
+			});
 		}
 
 		return nextRuns;
@@ -82,11 +73,11 @@ function formatReadableDate(date: Date, timezone?: string): string {
  */
 export function getTimeUntilNextRun(expression: string): string {
 	try {
-		const nextRun = sendAt(expression);
-		if (!nextRun) {
-			return 'Unknown';
-		}
+		const cronTime = new CronTime(expression);
+		const nextDateTime = cronTime.sendAt();
 
+		// Convert Luxon DateTime to JavaScript Date
+		const nextRun = nextDateTime.toJSDate();
 		const now = Date.now();
 		const diff = nextRun.getTime() - now;
 
@@ -182,14 +173,11 @@ export function validateCronExecutes(expression: string): {
 	error?: string;
 } {
 	try {
-		const nextRun = sendAt(expression);
+		const cronTime = new CronTime(expression);
+		const nextDateTime = cronTime.sendAt();
 
-		if (!nextRun) {
-			return {
-				isValid: false,
-				error: 'Invalid cron expression: Cannot calculate next execution time',
-			};
-		}
+		// Convert Luxon DateTime to JavaScript Date
+		const nextRun = nextDateTime.toJSDate();
 
 		// Check if next run is in the past
 		if (nextRun.getTime() < Date.now()) {

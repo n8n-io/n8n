@@ -1,7 +1,7 @@
 <template>
 	<div class="cron-template-selector">
 		<div class="cron-template-selector__categories">
-			<n8n-button
+			<N8nButton
 				v-for="category in categories"
 				:key="category"
 				:type="selectedCategory === category ? 'primary' : 'secondary'"
@@ -10,7 +10,7 @@
 				@click="selectedCategory = category"
 			>
 				{{ getCategoryLabel(category) }}
-			</n8n-button>
+			</N8nButton>
 		</div>
 
 		<div class="cron-template-selector__templates">
@@ -22,32 +22,33 @@
 				@click="handleTemplateClick(template.id)"
 			>
 				<div class="cron-template-selector__template-header">
-					<n8n-text bold>{{ template.name }}</n8n-text>
-					<n8n-icon
+					<N8nText bold>{{ template.name }}</N8nText>
+					<N8nIcon
 						v-if="selectedTemplate === template.id"
 						icon="check"
 						color="success"
 						size="small"
 					/>
 				</div>
-				<n8n-text size="small" color="text-light">{{ template.description }}</n8n-text>
+				<N8nText size="small" color="text-light">{{ template.description }}</N8nText>
 				<div class="cron-template-selector__template-expression">
-					<n8n-text size="small" color="text-dark">
+					<N8nText size="small" color="text-dark">
 						<code>{{ template.expression }}</code>
-					</n8n-text>
+					</N8nText>
 				</div>
 			</div>
 		</div>
 
 		<div v-if="filteredTemplates.length === 0" class="cron-template-selector__empty">
-			<n8n-text color="text-light">No templates found in this category</n8n-text>
+			<N8nText color="text-light">No templates found in this category</N8nText>
 		</div>
 	</div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { CRON_TEMPLATES, getTemplatesByCategory } from './utils/cronTemplates';
+import { N8nButton, N8nText, N8nIcon } from '@n8n/design-system';
+import { getTemplatesByCategory } from './utils/cronTemplates';
 import type { CronTemplate } from './types';
 
 interface Props {
@@ -61,7 +62,7 @@ interface Emits {
 const props = defineProps<Props>();
 const emit = defineEmits<Emits>();
 
-const categories: Array<CronTemplate['category']> = ['common', 'business', 'development', 'custom'];
+const categories: Array<CronTemplate['category']> = ['common', 'business', 'development'];
 const selectedCategory = ref<CronTemplate['category']>('common');
 
 const filteredTemplates = computed(() => {
