@@ -23,7 +23,7 @@ import { generateMessageId, createBuilderPayload } from './builder.utils';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import type { WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
 import pick from 'lodash/pick';
-import { jsonParse } from 'n8n-workflow';
+import { type INodeExecutionData, jsonParse } from 'n8n-workflow';
 import { useToast } from '@/app/composables/useToast';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
@@ -369,7 +369,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function captureCurrentWorkflowState() {
 		const nodePositions = new Map<string, [number, number]>();
 		const existingNodeIds = new Set<string>();
-		const pinnedDataByNodeName = new Map<string, unknown>();
+		const pinnedDataByNodeName = new Map<string, INodeExecutionData[]>();
 
 		workflowsStore.allNodes.forEach((node) => {
 			nodePositions.set(node.id, [...node.position]);
@@ -480,7 +480,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		setDefaultNodesCredentials(workflowData);
 
 		// Restore pinned data for nodes with matching names
-		const restoredPinData: Record<string, unknown> = {};
+		const restoredPinData: Record<string, INodeExecutionData[]> = {};
 		workflowData.nodes?.forEach((node) => {
 			const savedPinData = pinnedDataByNodeName.get(node.name);
 			if (savedPinData) {
