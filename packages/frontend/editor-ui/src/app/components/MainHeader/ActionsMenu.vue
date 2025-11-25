@@ -11,7 +11,6 @@ import {
 	DUPLICATE_MODAL_KEY,
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
@@ -35,6 +34,7 @@ import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { getWorkflowId } from '@/app/components/MainHeader/utils';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -81,18 +81,6 @@ const onExecutionsTab = computed(() => {
 });
 
 const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
-
-// TODO: can we not duplicate this?
-function getWorkflowId(): string | undefined {
-	let id: string | undefined = undefined;
-	if (props.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		id = props.id;
-	} else if (route.params.name && route.params.name !== 'new') {
-		id = route.params.name as string;
-	}
-
-	return id;
-}
 
 function handleFileImport() {
 	const inputRef = importFileRef.value;
@@ -326,7 +314,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.CHANGE_OWNER: {
-			const workflowId = getWorkflowId();
+			const workflowId = getWorkflowId(props.id, route.params.name);
 			if (!workflowId) {
 				return;
 			}
@@ -347,7 +335,7 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.UNPUBLISH: {
-			const workflowId = getWorkflowId();
+			const workflowId = getWorkflowId(props.id, route.params.name);
 			if (!workflowId || !activeVersion.value) {
 				return;
 			}

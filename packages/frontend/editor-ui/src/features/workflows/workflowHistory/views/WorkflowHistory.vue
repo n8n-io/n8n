@@ -310,6 +310,8 @@ const publishWorkflowVersion = async (
 
 				// Refresh the active workflow to get the updated activeVersion
 				activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
+
+				sendTelemetry('User published version from history');
 			},
 		},
 	});
@@ -336,6 +338,8 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: { versionName?: s
 			title: i18n.baseText('workflowHistory.action.unpublish.success.title'),
 			type: 'success',
 		});
+
+		sendTelemetry('User unpublished workflow from history');
 	});
 
 	uiStore.openModalWithData({
@@ -376,12 +380,9 @@ const onAction = async ({
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.PUBLISH:
 				await publishWorkflowVersion(id, data);
-				// TODO: document this event
-				sendTelemetry('User published version from history');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.UNPUBLISH:
 				await unpublishWorkflowVersion(id, data);
-				sendTelemetry('User unpublished workflow from history');
 				break;
 		}
 	} catch (error) {

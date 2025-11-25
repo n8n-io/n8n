@@ -49,6 +49,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { getWorkflowId } from '@/app/components/MainHeader/utils';
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
 	SM: 200,
@@ -158,24 +159,13 @@ watch(
 	},
 );
 
-function getWorkflowId(): string | undefined {
-	let id: string | undefined = undefined;
-	if (props.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		id = props.id;
-	} else if (route.params.name && route.params.name !== 'new') {
-		id = route.params.name as string;
-	}
-
-	return id;
-}
-
 async function onSaveButtonClick() {
 	// If the workflow is saving, do not allow another save
 	if (isWorkflowSaving.value) {
 		return;
 	}
 
-	const id = getWorkflowId();
+	const id = getWorkflowId(props.id, route.params.name);
 
 	const name = props.name;
 	const tags = props.tags as string[];
@@ -266,7 +256,7 @@ async function onNameSubmit(name: string) {
 	}
 
 	uiStore.addActiveAction('workflowSaving');
-	const id = getWorkflowId();
+	const id = getWorkflowId(props.id, route.params.name);
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
 		showCreateWorkflowSuccessToast(id);
