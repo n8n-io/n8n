@@ -1,12 +1,12 @@
 import type { WorkflowMetadata } from '@/types';
 
 import { markdownStringify } from '../markdown-workflow.utils';
-import { jackieAiAssistantWorkflow } from './workflows/jackie-ai-assistant.workflow';
+import { aiAssistantWorkflow } from './workflows/ai-assistant.workflow';
 
 describe('markdown-workflow.utils', () => {
 	describe('markdownStringify', () => {
 		it('should convert a workflow with AI agent, tools, and sticky notes to markdown', () => {
-			const result = markdownStringify(jackieAiAssistantWorkflow);
+			const result = markdownStringify(aiAssistantWorkflow);
 
 			const expected = `# Personal Life Manager with Telegram, Google Services & Voice-Enabled AI
 
@@ -64,7 +64,7 @@ flowchart TD
 
 - ## Process Telegram Request
 - 1. [In OpenRouter](https://openrouter.ai/settings/keys) click **“Create API key”** and copy it.
-  
+
   2. Open the \`\`\`OpenRouter\`\`\` node:
      * **Select Credential → Create New**
      * Paste into **API Key** and **Save**
@@ -77,28 +77,28 @@ flowchart TD
 - Caylee, your peronal AI Assistant:
   1. Get email
   2. Check calendar
-  3. Get and create to-do tasks 
-  
+  3. Get and create to-do tasks
+
   Edit the **System Message** to adjust your agent’s thinking, behavior, and replies.
 - # Try It Out!
-  
+
   Launch Jackie—your personal AI assistant that handles voice & text via Telegram to manage your digital life.
-  
+
   **To get started:**
-  
+
   1. **Connect all credentials** (Telegram, OpenAI, Gmail, etc.)
   2. **Activate the workflow** and message your Telegram bot:
      • "What emails do I have today?"
      • "Show me my calendar for tomorrow"
      • "Craete new to-do item"
      • 🎤 Send voice messages for hands-free interaction
-  
+
   ## Questions or Need Help?
-  
+
   For setup assistance, customization, or workflow support, join my Skool community!
-  
+
   ### [AI Automation Engineering Community](https://www.skool.com/ai-automation-engineering-3014)
-  
+
   Happy learning! -- Derek Cheung
 - Send message back to Telegram
 - ## [Video Tutorial](https://youtu.be/ROgf5dVqYPQ)

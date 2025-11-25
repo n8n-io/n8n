@@ -2,7 +2,7 @@ import type { WorkflowMetadata } from '@/types';
 
 // template for test: https://n8n.io/workflows/8237-personal-life-manager-with-telegram-google-services-and-voice-enabled-ai/
 
-export const jackieAiAssistantWorkflow: WorkflowMetadata = {
+export const aiAssistantWorkflow: WorkflowMetadata = {
 	name: 'Personal Life Manager with Telegram, Google Services & Voice-Enabled AI',
 	description:
 		'This project teaches you to create a personal AI assistant named Jackie that operates through Telegram. Jackie can summarize unread emails, check calendar events, manage Google Tasks, and handle both voice and text interactions. The assistant provides a comprehensive digital life management solution accessible via Telegram messaging.',
