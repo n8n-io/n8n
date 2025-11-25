@@ -2,7 +2,6 @@ import type {
 	CredentialsEntity,
 	CredentialsRepository,
 	SharedCredentialsRepository,
-	ProjectRepository,
 	UserRepository,
 	User,
 } from '@n8n/db';
@@ -49,7 +48,6 @@ describe('CredentialsService', () => {
 	const logger = mock<Logger>();
 	const credentialsTester = mock<CredentialsTester>();
 	const externalHooks = mock<ExternalHooks>();
-	const projectRepository = mock<ProjectRepository>();
 	const projectService = mock<ProjectService>();
 	const roleService = mock<RoleService>();
 	const userRepository = mock<UserRepository>();
@@ -64,7 +62,6 @@ describe('CredentialsService', () => {
 		credentialsTester,
 		externalHooks,
 		credentialTypes,
-		projectRepository,
 		projectService,
 		roleService,
 		userRepository,
