@@ -1,138 +1,102 @@
 import type { WorkflowMetadata } from '@/types';
 
 /**
- * Find nodes with incoming main connections
+ * Build a Mermaid flowchart from workflow connections
  */
-function findNodesWithIncomingConnections(
-	connections: WorkflowMetadata['workflow']['connections'],
-): Set<string> {
-	const nodesWithIncoming = new Set<string>();
-	for (const [_sourceName, sourceConns] of Object.entries(connections)) {
-		for (const [connType, connList] of Object.entries(sourceConns)) {
-			if (connType === 'main') {
-				for (const connArray of connList) {
-					if (connArray) {
-						for (const conn of connArray) {
-							nodesWithIncoming.add(conn.node);
-						}
-					}
-				}
-			}
-		}
-	}
-	return nodesWithIncoming;
-}
-
-/**
- * Group AI connections by target node
- */
-function groupAIConnectionsByTarget(
-	connections: WorkflowMetadata['workflow']['connections'],
-): Map<string, string[]> {
-	const aiConnectionsByTarget = new Map<string, string[]>();
-	for (const [sourceName, sourceConns] of Object.entries(connections)) {
-		for (const [connType, connList] of Object.entries(sourceConns)) {
-			if (connType !== 'main') {
-				for (const connArray of connList) {
-					if (connArray) {
-						for (const conn of connArray) {
-							if (!aiConnectionsByTarget.has(conn.node)) {
-								aiConnectionsByTarget.set(conn.node, []);
-							}
-							aiConnectionsByTarget.get(conn.node)!.push(`    ← [${connType}] ${sourceName}`);
-						}
-					}
-				}
-			}
-		}
-	}
-	return aiConnectionsByTarget;
-}
-
-/**
- * Build an ASCII flow diagram from nodes and connections
- */
-function buildFlowDiagram(
+function buildMermaidDiagram(
 	nodes: WorkflowMetadata['workflow']['nodes'],
 	connections: WorkflowMetadata['workflow']['connections'],
 ): string[] {
-	const lines: string[] = [];
-	const nodeMap = new Map(nodes.map((n) => [n.name, n]));
+	const lines: string[] = ['```mermaid', 'flowchart TD'];
+	const regularNodes = nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote');
 
-	// Find trigger/start nodes (nodes with no incoming main connections)
-	const nodesWithIncoming = findNodesWithIncomingConnections(connections);
+	// Create node ID mapping (n1, n2, n3...)
+	const nodeIdMap = new Map<string, string>();
+	regularNodes.forEach((node, idx) => {
+		nodeIdMap.set(node.name, `n${idx + 1}`);
+	});
 
-	const startNodes = nodes.filter(
-		(n) => !nodesWithIncoming.has(n.name) && n.type !== 'n8n-nodes-base.stickyNote',
-	);
-
-	// Build main flow
 	const visited = new Set<string>();
-	for (const startNode of startNodes) {
-		buildNodeFlow(startNode.name, connections, nodeMap, visited, lines, 0);
-	}
+	const outputConnections: string[] = [];
 
-	// Add AI connections section
-	const aiConnectionsByTarget = groupAIConnectionsByTarget(connections);
-
-	if (aiConnectionsByTarget.size > 0) {
-		lines.push('');
-		for (const [targetNode, conns] of aiConnectionsByTarget) {
-			lines.push(`[AI Connections to ${targetNode}]`);
-			lines.push(...conns);
-		}
-	}
-
-	return lines;
-}
-
-/**
- * Recursively build flow for a node
- */
-function buildNodeFlow(
-	nodeName: string,
-	connections: WorkflowMetadata['workflow']['connections'],
-	nodeMap: Map<string, WorkflowMetadata['workflow']['nodes'][0]>,
-	visited: Set<string>,
-	lines: string[],
-	depth: number,
-): void {
-	if (visited.has(nodeName)) {
-		return;
-	}
-	visited.add(nodeName);
-
-	const indent = '    '.repeat(depth);
-	lines.push(`${indent}${nodeName}`);
-
-	// Get outgoing main connections
-	const nodeConns = connections[nodeName];
-	if (!nodeConns?.main) {
-		return;
-	}
-
-	const mainConns = nodeConns.main;
-	for (let i = 0; i < mainConns.length; i++) {
-		const connArray = mainConns[i];
-		if (!connArray?.length) {
-			continue;
-		}
-
-		if (connArray.length === 1) {
-			// Single connection
-			const conn = connArray[0];
-			lines.push(`${indent}    ↓ [${conn.type}]`);
-			buildNodeFlow(conn.node, connections, nodeMap, visited, lines, depth);
-		} else {
-			// Multiple connections (branching)
-			for (let j = 0; j < connArray.length; j++) {
-				const conn = connArray[j];
-				const branchSymbol = j === 0 ? '├─' : j === connArray.length - 1 ? '└─' : '├─';
-				lines.push(`${indent}    ${branchSymbol} [${conn.type}] → ${conn.node}`);
-				// Don't recurse here to avoid complex nesting
+	// Find start nodes (no incoming main connections)
+	const nodesWithIncoming = new Set<string>();
+	for (const sourceConns of Object.values(connections)) {
+		if (sourceConns.main) {
+			for (const connArray of sourceConns.main) {
+				if (connArray) {
+					for (const conn of connArray) {
+						nodesWithIncoming.add(conn.node);
+					}
+				}
 			}
 		}
 	}
+
+	const startNodes = regularNodes.filter((n) => !nodesWithIncoming.has(n.name));
+
+	// Traverse from each start node, outputting connections in order
+	function traverse(nodeName: string) {
+		if (visited.has(nodeName)) return;
+		visited.add(nodeName);
+
+		const nodeConns = connections[nodeName];
+		if (!nodeConns) return;
+
+		const sourceId = nodeIdMap.get(nodeName);
+		if (!sourceId) return;
+
+		// Output all connections from this node
+		for (const [connType, connList] of Object.entries(nodeConns)) {
+			for (const connArray of connList) {
+				if (connArray) {
+					for (const conn of connArray) {
+						const targetId = nodeIdMap.get(conn.node);
+						if (!targetId) continue;
+
+						if (connType === 'main') {
+							outputConnections.push(`    ${sourceId} --> ${targetId}`);
+						} else {
+							// AI connections use dotted lines with labels
+							outputConnections.push(`    ${sourceId} -.${connType}.-> ${targetId}`);
+						}
+					}
+				}
+			}
+		}
+
+		// Recurse to connected nodes (main connections first)
+		if (nodeConns.main) {
+			for (const connArray of nodeConns.main) {
+				if (connArray) {
+					for (const conn of connArray) {
+						traverse(conn.node);
+					}
+				}
+			}
+		}
+	}
+
+	for (const startNode of startNodes) {
+		traverse(startNode.name);
+	}
+
+	// Add node definitions with type/params as comments
+	for (const node of regularNodes) {
+		const id = nodeIdMap.get(node.name);
+		if (id) {
+			const hasParams = Object.keys(node.parameters).length > 0;
+			const params = hasParams ? ` | ${JSON.stringify(node.parameters)}` : '';
+			lines.push(`    %% ${node.type}${params}`);
+			lines.push(`    ${id}["${node.name.replace(/"/g, "'")}"]`);
+		}
+	}
+
+	// Add connections
+	lines.push(...outputConnections);
+	lines.push('```');
+
+	return lines;
 }
 
 /**
@@ -154,43 +118,29 @@ export function markdownStringify(workflow: WorkflowMetadata): string {
 
 	// Separate sticky notes from regular nodes
 	const stickyNotes = wf.nodes.filter((node) => node.type === 'n8n-nodes-base.stickyNote');
-	const regularNodes = wf.nodes.filter((node) => node.type !== 'n8n-nodes-base.stickyNote');
 
-	// Add Nodes section
-	lines.push('## Nodes');
+	// Add Workflow Diagram section
+	lines.push('## Workflow Diagram');
 	lines.push('');
-	for (const node of regularNodes) {
-		lines.push(`### ${node.name} (${node.type})`);
-		if (Object.keys(node.parameters).length > 0) {
-			lines.push(`- Parameters: ${JSON.stringify(node.parameters)}`);
-		}
-		lines.push('');
-	}
+	lines.push(...buildMermaidDiagram(wf.nodes, wf.connections));
 
 	// Add Sticky Notes section
 	if (stickyNotes.length > 0) {
+		lines.push('');
 		lines.push('## Sticky Notes');
 		lines.push('');
 		for (const note of stickyNotes) {
 			const content = note.parameters.content as string | undefined;
 			if (content) {
-				lines.push(`### ${note.name}`);
-				lines.push(content.trim());
-				lines.push('');
+				// Indent continuation lines so they appear as part of the bullet
+				const contentLines = content.trim().split('\n');
+				const indentedContent = contentLines
+					.map((line, idx) => (idx === 0 ? `- ${line}` : `  ${line}`))
+					.join('\n');
+				lines.push(indentedContent);
 			}
 		}
 	}
-
-	// Add Workflow Flow section
-	lines.push('## Workflow Flow');
-	lines.push('');
-	lines.push('```');
-
-	// Build flow diagram from connections
-	const connectionLines = buildFlowDiagram(wf.nodes, wf.connections);
-	lines.push(...connectionLines);
-
-	lines.push('```');
 
 	return lines.join('\n');
 }
