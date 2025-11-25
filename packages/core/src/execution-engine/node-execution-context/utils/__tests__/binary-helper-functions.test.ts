@@ -653,6 +653,8 @@ describe('prepareBinaryData', () => {
 				fileName,
 				fileType: 'text',
 				mimeType: 'text/plain',
+				origin: 'directory',
+				path: undefined,
 			},
 		);
 	});
