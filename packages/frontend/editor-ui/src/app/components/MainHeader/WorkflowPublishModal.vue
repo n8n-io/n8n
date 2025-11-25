@@ -264,7 +264,7 @@ async function handlePublish() {
 					icon="triangle-alert"
 				>
 					{{
-						i18n.baseText('workflows.publishModal.overwriteActiveVersionWarning' as any, {
+						i18n.baseText('workflows.publishModal.overwriteActiveVersionWarning', {
 							interpolate: {
 								versionName: workflowsStore.workflow.activeVersion?.name ?? '',
 							},
