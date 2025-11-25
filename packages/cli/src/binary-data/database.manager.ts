@@ -1,10 +1,4 @@
-import {
-	BinaryDataFile,
-	BinaryDataRepository,
-	In,
-	SourceTypeSchema,
-	type SourceType,
-} from '@n8n/db';
+import { BinaryDataRepository, In, SourceTypeSchema, type SourceType } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	BinaryDataConfig,
@@ -167,21 +161,9 @@ export class DatabaseManager implements BinaryData.Manager {
 	}
 
 	async rename(oldFileId: string, newFileId: string) {
-		await this.repository.manager.transaction(async (tx) => {
-			const oldFile = await tx.findOneByOrFail(BinaryDataFile, { fileId: oldFileId });
+		const result = await this.repository.update({ fileId: oldFileId }, { fileId: newFileId });
 
-			await tx.insert(BinaryDataFile, {
-				fileId: newFileId,
-				sourceType: oldFile.sourceType,
-				sourceId: oldFile.sourceId,
-				data: oldFile.data,
-				mimeType: oldFile.mimeType,
-				fileName: oldFile.fileName,
-				fileSize: oldFile.fileSize,
-			});
-
-			await tx.delete(BinaryDataFile, { fileId: oldFileId });
-		});
+		if (result.affected === 0) throw new BinaryDataFileNotFoundError(oldFileId);
 	}
 
 	private toSource(location: BinaryData.FileLocation): {
