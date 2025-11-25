@@ -12,6 +12,7 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
+	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRoute } from 'vue-router';
@@ -32,6 +33,8 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
+import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -61,6 +64,8 @@ const $style = useCssModule();
 const rootStore = useRootStore();
 const tagsStore = useTagsStore();
 const workflowHelpers = useWorkflowHelpers();
+const workflowActivate = useWorkflowActivate();
+const settingsStore = useSettingsStore();
 const changeOwnerEventBus = createEventBus();
 
 const onWorkflowPage = computed(() => {
@@ -74,6 +79,8 @@ const onExecutionsTab = computed(() => {
 		VIEWS.EXECUTION_PREVIEW,
 	].includes((route.name as string) || '');
 });
+
+const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 
 // TODO: can we not duplicate this?
 function getWorkflowId(): string | undefined {
@@ -179,6 +186,19 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		label: locale.baseText('generic.settings'),
 		disabled: !onWorkflowPage.value || props.isNewWorkflow,
 	});
+
+	if (
+		settingsStore.isWorkflowDraftPublishEnabled &&
+		activeVersion.value &&
+		props.workflowPermissions.update &&
+		!props.readOnly
+	) {
+		actions.push({
+			id: WORKFLOW_MENU_ACTIONS.UNPUBLISH,
+			label: locale.baseText('menuActions.unpublish'),
+			disabled: !onWorkflowPage.value,
+		});
+	}
 
 	if ((props.workflowPermissions.delete === true && !props.readOnly) || props.isNewWorkflow) {
 		if (props.isArchived) {
@@ -322,6 +342,43 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 					resourceType: ResourceType.Workflow,
 					resourceTypeLabel: locale.baseText('generic.workflow').toLowerCase(),
 					eventBus: changeOwnerEventBus,
+				},
+			});
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.UNPUBLISH: {
+			const workflowId = getWorkflowId();
+			if (!workflowId || !activeVersion.value) {
+				return;
+			}
+
+			const buttons = [
+				{
+					text: locale.baseText('workflowHistory.action.unpublish.modal.button.cancel'),
+					type: 'tertiary',
+					action: () => {},
+				},
+				{
+					text: locale.baseText('workflowHistory.action.unpublish.modal.button.unpublish'),
+					type: 'primary',
+					action: async () => {
+						const success = await workflowActivate.unpublishWorkflowFromHistory(workflowId);
+						if (success) {
+							toast.showMessage({
+								title: locale.baseText('workflowHistory.action.unpublish.success.title'),
+								type: 'success',
+							});
+						}
+					},
+				},
+			];
+
+			uiStore.openModalWithData({
+				name: WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+				data: {
+					versionName: activeVersion.value.name,
+					beforeClose: () => {},
+					buttons,
 				},
 			});
 			break;

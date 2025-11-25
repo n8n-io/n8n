@@ -1234,6 +1234,7 @@
 	"menuActions.delete": "Delete",
 	"menuActions.archive": "Archive",
 	"menuActions.unarchive": "Unarchive",
+	"menuActions.unpublish": "Un-publish",
 	"multipleParameter.addItem": "Add item",
 	"multipleParameter.currentlyNoItemsExist": "Currently no items exist",
 	"multipleParameter.deleteItem": "Delete item",
