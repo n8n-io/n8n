@@ -64,7 +64,6 @@ function createSubgraphNodeHandler<
 			// Route to responder to report error (terminal)
 			return {
 				nextPhase: 'responder',
-				finalResponse: `Error: ${errorMessage}`,
 				messages: [
 					new HumanMessage({
 						content: `Error in ${name}: ${errorMessage}`,
@@ -217,8 +216,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 				console.log('================================================\n');
 				return {
 					messages: [response], // Only responder adds to user messages
-					finalResponse:
-						typeof response.content === 'string' ? response.content : '[Response received]',
 				};
 			})
 			// Add process_operations node for hybrid operations approach

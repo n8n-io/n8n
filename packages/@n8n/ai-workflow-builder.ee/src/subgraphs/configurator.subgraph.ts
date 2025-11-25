@@ -176,12 +176,6 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Output: Final user-facing response
-	finalResponse: Annotation<string>({
-		reducer: (x, y) => y ?? x,
-		default: () => '',
-	}),
-
 	// Internal: Safety counter
 	iterationCount: Annotation<number>({
 		reducer: (x, y) => (y ?? x) + 1,

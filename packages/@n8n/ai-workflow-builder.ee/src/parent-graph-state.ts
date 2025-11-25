@@ -36,12 +36,6 @@ export const ParentGraphState = Annotation.Root({
 		default: () => '',
 	}),
 
-	// Output: Final response to user
-	finalResponse: Annotation<string>({
-		reducer: (x, y) => y ?? x,
-		default: () => '',
-	}),
-
 	// Discovery context to pass to other agents
 	discoveryContext: Annotation<DiscoveryContext | null>({
 		reducer: (x, y) => y ?? x,
