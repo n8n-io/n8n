@@ -9,6 +9,7 @@ import { NodeHelpers, UnexpectedError, UserError } from 'n8n-workflow';
 import { join, dirname } from 'path';
 
 import { LoadNodesAndCredentials } from './load-nodes-and-credentials';
+import { convertNodeToAiTool } from './tool-generation';
 import { shouldAssignExecuteMethod } from './utils';
 
 @Service()
@@ -82,7 +83,7 @@ export class NodeTypes implements INodeTypes {
 		const clonedNode = Object.create(versionedNodeType, {
 			description: { value: clonedDescription },
 		}) as INodeType;
-		const tool = this.loadNodesAndCredentials.convertNodeToAiTool(clonedNode);
+		const tool = convertNodeToAiTool(clonedNode);
 		loadedNodes[nodeType + 'Tool'] = { sourcePath: '', type: tool };
 		return tool;
 	}
