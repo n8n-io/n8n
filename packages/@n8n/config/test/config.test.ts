@@ -258,7 +258,7 @@ describe('GlobalConfig', () => {
 					lockDuration: 60_000,
 					lockRenewTime: 10_000,
 					stalledInterval: 30_000,
-					maxStalledCount: 1,
+					maxStalledCount: 0,
 				},
 			},
 		},

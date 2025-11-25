@@ -74,7 +74,7 @@ class SettingsConfig {
 
 	/** Max number of times a stalled job will be re-processed. See Bull's [documentation](https://docs.bullmq.io/guide/workers/stalled-jobs). */
 	@Env('QUEUE_WORKER_MAX_STALLED_COUNT')
-	maxStalledCount: number = 1;
+	maxStalledCount: number = 0;
 }
 
 @Config
