@@ -4,6 +4,7 @@ import { createComponentRenderer } from '@/__tests__/render';
 import type { InsightsSummaryDisplay } from '@/features/execution/insights/insights.types';
 import { createTestingPinia } from '@pinia/testing';
 import { defaultSettings } from '@/__tests__/defaults';
+import { getLocalTimeZone, today } from '@internationalized/date';
 
 vi.mock('vue-router', () => ({
 	useRouter: () => ({}),
@@ -25,6 +26,9 @@ const renderComponent = createComponentRenderer(InsightsSummary, {
 });
 
 describe('InsightsSummary', () => {
+	const endDate = today(getLocalTimeZone());
+	const startDate = endDate.subtract({ days: 7 });
+
 	beforeEach(() => {
 		createTestingPinia({
 			initialState: { settings: { settings: defaultSettings } },
@@ -36,7 +40,8 @@ describe('InsightsSummary', () => {
 			renderComponent({
 				props: {
 					summary: [],
-					timeRange: 'week',
+					startDate,
+					endDate,
 				},
 			}),
 		).not.toThrow();
@@ -105,7 +110,8 @@ describe('InsightsSummary', () => {
 		const { html } = renderComponent({
 			props: {
 				summary,
-				timeRange: 'week',
+				startDate,
+				endDate,
 			},
 		});
 
