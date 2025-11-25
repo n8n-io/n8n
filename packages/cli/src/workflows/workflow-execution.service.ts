@@ -193,8 +193,6 @@ export class WorkflowExecutionService {
 					agentRequest: payload.agentRequest,
 					streamingEnabled,
 					httpResponse,
-					// startNodes,
-					// triggerToStartFrom: payload.triggerToStartFrom,
 				});
 				return { executionId };
 			}
@@ -219,7 +217,6 @@ export class WorkflowExecutionService {
 					pushRef,
 					triggerToStartFrom: payload.triggerToStartFrom,
 					destinationNode,
-					// runData,
 				});
 
 				if (needsWebhook) {
@@ -238,9 +235,6 @@ export class WorkflowExecutionService {
 				streamingEnabled,
 				httpResponse,
 				destinationNode,
-				// runData,
-				// startNodes,
-				// dirtyNodeNames,
 			});
 
 			return { executionId };
@@ -269,8 +263,6 @@ export class WorkflowExecutionService {
 					additionalData,
 					pushRef,
 					destinationNode,
-					// triggerToStartFrom: payload.triggerToStartFrom,
-					// runData,
 				});
 
 				if (needsWebhook) {
@@ -289,9 +281,6 @@ export class WorkflowExecutionService {
 				httpResponse,
 				destinationNode,
 				triggerToStartFrom: pinnedTrigger ? { name: pinnedTrigger.name } : undefined,
-				// startNodes,
-				// runData,
-				// dirtyNodeNames,
 			});
 
 			return { executionId };
