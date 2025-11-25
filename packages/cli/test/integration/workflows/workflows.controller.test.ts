@@ -2825,7 +2825,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		});
 
 		test('should not modify activeVersionId when explicitly provided', async () => {
-			const workflow = await createWorkflow({}, owner);
+			const workflow = await createWorkflowWithHistory({}, owner);
 			const payload = {
 				versionId: workflow.versionId,
 				activeVersionId: workflow.versionId,
@@ -3032,6 +3032,29 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(updatedWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
 
 		expect(emitSpy).not.toHaveBeenCalledWith('workflow-deactivated', expect.anything());
+	});
+
+	test('should call active workflow manager with activate mode if workflow is not active', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId });
+
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+	});
+
+	test('should call active workflow manager with update mode if workflow is active', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId });
+
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update');
 	});
 });
 
