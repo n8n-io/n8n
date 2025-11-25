@@ -192,10 +192,12 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			const prevButton = wrapper.container.querySelector('button[data-type="prev"]');
+			// Get all buttons and find the first one (prev button)
+			const buttons = wrapper.container.querySelectorAll('button');
+			const prevButton = buttons[0];
 			expect(prevButton).toBeInTheDocument();
 
-			await userEvent.click(prevButton!);
+			await userEvent.click(prevButton);
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([2]);
@@ -212,10 +214,12 @@ describe('v2/components/Pagination', () => {
 				},
 			});
 
-			const nextButton = wrapper.container.querySelector('button[data-type="next"]');
+			// Get all buttons and find the last one (next button)
+			const buttons = wrapper.container.querySelectorAll('button');
+			const nextButton = buttons[buttons.length - 1];
 			expect(nextButton).toBeInTheDocument();
 
-			await userEvent.click(nextButton!);
+			await userEvent.click(nextButton);
 
 			await waitFor(() => {
 				expect(wrapper.emitted('update:currentPage')?.[0]).toEqual([3]);
