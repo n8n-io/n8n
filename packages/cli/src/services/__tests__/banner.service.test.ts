@@ -1,4 +1,3 @@
-import type { BannerName } from '@n8n/api-types';
 import type { SettingsRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { ErrorReporter } from 'n8n-core';
