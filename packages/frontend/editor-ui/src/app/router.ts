@@ -63,8 +63,6 @@ const TemplatesCollectionView = async () =>
 	await import('@/features/workflows/templates/views/TemplatesCollectionView.vue');
 const TemplatesWorkflowView = async () =>
 	await import('@/features/workflows/templates/views/TemplatesWorkflowView.vue');
-const SetupWorkflowFromTemplateView = async () =>
-	await import('@/features/workflows/templates/views/SetupWorkflowFromTemplateView.vue');
 const TemplatesSearchView = async () =>
 	await import('@/features/workflows/templates/views/TemplatesSearchView.vue');
 const SettingsUsageAndPlan = async () =>
@@ -187,29 +185,16 @@ export const routes: RouteRecordRaw[] = [
 		},
 	},
 	// Template setup view, this is the landing view for website users
+	// Just redirects users to canvas
 	{
 		path: '/templates/:id/setup',
 		name: VIEWS.TEMPLATE_SETUP,
-		components: {
-			default: SetupWorkflowFromTemplateView,
-			sidebar: MainSidebar,
-		},
-		meta: {
-			templatesEnabled: true,
-			getRedirect: getTemplatesRedirect,
-			telemetry: {
-				getProperties(route: RouteLocation) {
-					const templatesStore = useTemplatesStore();
-					return {
-						template_id: tryToParseNumber(
-							Array.isArray(route.params.id) ? route.params.id[0] : route.params.id,
-						),
-						wf_template_repo_session_id: templatesStore.currentSessionId,
-					};
-				},
+		redirect: (to) => ({
+			name: VIEWS.TEMPLATE_IMPORT,
+			params: {
+				id: Array.isArray(to.params.id) ? to.params.id[0] : to.params.id,
 			},
-			middleware: ['authenticated'],
-		},
+		}),
 	},
 	{
 		path: '/templates/',
