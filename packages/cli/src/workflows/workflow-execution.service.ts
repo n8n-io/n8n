@@ -111,7 +111,7 @@ export class WorkflowExecutionService {
 		pushRef?: string,
 		streamingEnabled?: boolean,
 		httpResponse?: Response,
-	): Promise<{ executionId?: string; waitingForWebhook?: boolean }> {
+	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
 		console.log('version 1');
 		function isFullManualExecutionFromKnownTriggerPayload(
 			payload: WorkflowRequest.ManualRunPayload,
