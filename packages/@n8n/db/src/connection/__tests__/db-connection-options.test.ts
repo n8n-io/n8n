@@ -59,19 +59,7 @@ describe('DbConnectionOptions', () => {
 				};
 			});
 
-			it('should return SQLite connection options when type is sqlite', () => {
-				const result = dbConnectionOptions.getOptions();
-
-				expect(result).toEqual({
-					type: 'sqlite',
-					enableWAL: false,
-					...commonOptions,
-					database: path.resolve(n8nFolder, 'test.sqlite'),
-					migrations: sqliteMigrations,
-				});
-			});
-
-			it('should return SQLite connection options with pooling when poolSize > 0', () => {
+			it('should return SQLite connection options', () => {
 				dbConfig.sqlite.poolSize = 5;
 
 				const result = dbConnectionOptions.getOptions();
