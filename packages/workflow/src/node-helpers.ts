@@ -2,11 +2,11 @@
 
 /* eslint-disable @typescript-eslint/no-unsafe-assignment */
 /* eslint-disable @typescript-eslint/prefer-nullish-coalescing */
+import { ApplicationError } from '@n8n/errors';
 import get from 'lodash/get';
 import isEqual from 'lodash/isEqual';
 
 import { EXECUTE_WORKFLOW_NODE_TYPE, WORKFLOW_TOOL_LANGCHAIN_NODE_TYPE } from './constants';
-import { ApplicationError } from '@n8n/errors';
 import { NodeConnectionTypes } from './interfaces';
 import type {
 	FieldType,
@@ -34,6 +34,7 @@ import type {
 	GenericValue,
 	DisplayCondition,
 	NodeConnectionType,
+	ICredentialDataDecryptedObject,
 } from './interfaces';
 import { validateFilterParameter } from './node-parameters/filter-parameter';
 import type { IRunExecutionData } from './run-execution-data/run-execution-data';
@@ -252,11 +253,11 @@ export function isSubNodeType(
 }
 
 const getPropertyValues = (
-	nodeValues: INodeParameters,
+	nodeValues: INodeParameters | ICredentialDataDecryptedObject,
 	propertyName: string,
 	node: Pick<INode, 'typeVersion'> | null,
 	nodeTypeDescription: INodeTypeDescription | null,
-	nodeValuesRoot: INodeParameters,
+	nodeValuesRoot: INodeParameters | ICredentialDataDecryptedObject,
 ) => {
 	let value;
 	if (propertyName.charAt(0) === '/') {
@@ -350,11 +351,11 @@ const checkConditions = (
  * @param {INodeParameters} [nodeValuesRoot] The root node-parameter-data
  */
 export function displayParameter(
-	nodeValues: INodeParameters,
+	nodeValues: INodeParameters | ICredentialDataDecryptedObject,
 	parameter: INodeProperties | INodeCredentialDescription | INodePropertyOptions,
 	node: Pick<INode, 'typeVersion'> | null, // Allow null as it does also get used by credentials and they do not have versioning yet
 	nodeTypeDescription: INodeTypeDescription | null,
-	nodeValuesRoot?: INodeParameters,
+	nodeValuesRoot?: INodeParameters | ICredentialDataDecryptedObject,
 	displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 ) {
 	if (!parameter[displayKey]) {

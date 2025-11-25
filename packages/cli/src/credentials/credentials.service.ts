@@ -30,6 +30,7 @@ import type {
 import {
 	CREDENTIAL_EMPTY_VALUE,
 	deepCopy,
+	displayParameter,
 	isINodePropertyCollection,
 	NodeHelpers,
 	UnexpectedError,
@@ -868,7 +869,7 @@ export class CredentialsService {
 		// check mandatory fields are present
 		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
 		for (const property of credentialProperties) {
-			if (property.required) {
+			if (property.required && displayParameter(data, property, null, null)) {
 				const value = data[property.name];
 				if (value === undefined || value === null || value === '') {
 					throw new BadRequestError(
