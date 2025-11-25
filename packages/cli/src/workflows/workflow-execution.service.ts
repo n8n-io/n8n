@@ -116,33 +116,6 @@ export class WorkflowExecutionService {
 		streamingEnabled?: boolean,
 		httpResponse?: Response,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
-		function isFullManualExecutionFromKnownTriggerPayload(
-			payload: WorkflowRequest.ManualRunPayload,
-		): payload is WorkflowRequest.FullManualExecutionFromKnownTriggerPayload {
-			if ('triggerToStartFrom' in payload && !('runData' in payload)) {
-				return true;
-			}
-			return false;
-		}
-
-		function isFullManualExecutionFromUnknownTriggerPayload(
-			payload: WorkflowRequest.ManualRunPayload,
-		): payload is WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload {
-			if (!('triggerToStartFrom' in payload) && !('runData' in payload)) {
-				return true;
-			}
-			return false;
-		}
-
-		function isPartialManualExecutionToDestination(
-			payload: WorkflowRequest.ManualRunPayload,
-		): payload is WorkflowRequest.PartialManualExecutionToDestination {
-			if ('destinationNode' in payload && 'runData' in payload) {
-				return true;
-			}
-			return false;
-		}
-
 		// For manual testing always set to not active
 		payload.workflowData.active = false;
 		payload.workflowData.activeVersionId = null;
@@ -505,4 +478,31 @@ export class WorkflowExecutionService {
 			)
 			.sort((a) => (a.type.endsWith('webhook') ? -1 : 1));
 	}
+}
+
+function isFullManualExecutionFromKnownTriggerPayload(
+	payload: WorkflowRequest.ManualRunPayload,
+): payload is WorkflowRequest.FullManualExecutionFromKnownTriggerPayload {
+	if ('triggerToStartFrom' in payload && !('runData' in payload)) {
+		return true;
+	}
+	return false;
+}
+
+function isFullManualExecutionFromUnknownTriggerPayload(
+	payload: WorkflowRequest.ManualRunPayload,
+): payload is WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload {
+	if (!('triggerToStartFrom' in payload) && !('runData' in payload)) {
+		return true;
+	}
+	return false;
+}
+
+function isPartialManualExecutionToDestination(
+	payload: WorkflowRequest.ManualRunPayload,
+): payload is WorkflowRequest.PartialManualExecutionToDestination {
+	if ('destinationNode' in payload && 'runData' in payload) {
+		return true;
+	}
+	return false;
 }
