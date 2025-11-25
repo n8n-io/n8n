@@ -185,8 +185,10 @@ describe('GlobalConfig', () => {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
+			indexingEnabled: false,
 			disableSharing: false,
 			minScheduleIntervalSeconds: 300,
+			draftPublishEnabled: false,
 		},
 		endpoints: {
 			metrics: {

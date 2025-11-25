@@ -30,4 +30,8 @@ export class WorkflowsConfig {
 	/** Minimum allowed schedule interval in seconds for schedule triggers */
 	@Env('N8N_MIN_SCHEDULE_INTERVAL_SECONDS')
 	minScheduleIntervalSeconds: number = 300;
+
+	/** DO NOT USE - Enable draft/publish workflow feature */
+	@Env('N8N_ENV_FEAT_WORKFLOWS_DRAFT_PUBLISH_ENABLED')
+	draftPublishEnabled: boolean = false;
 }

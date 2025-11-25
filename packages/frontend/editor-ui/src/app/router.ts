@@ -21,7 +21,6 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -651,13 +650,10 @@ export const routes: RouteRecordRaw[] = [
 					},
 				],
 				meta: {
-					middleware: ['authenticated', 'rbac', 'custom'],
+					middleware: ['authenticated', 'rbac'],
 					middlewareOptions: {
 						rbac: {
 							scope: ['role:manage'],
-						},
-						custom: () => {
-							return useEnvFeatureFlag().check.value('CUSTOM_ROLES');
 						},
 					},
 					telemetry: {

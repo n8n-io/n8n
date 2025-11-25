@@ -4,11 +4,10 @@ import { MODAL_CONFIRM } from '@/app/constants';
 import { SupportedProtocols, useSSOStore } from '../sso.store';
 import { useI18n } from '@n8n/i18n';
 
-import { ElSwitch } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
+import { ElCheckbox } from 'element-plus';
+import { N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useMessage } from '@/app/composables/useMessage';
 import UserRoleProvisioningDropdown, {
 	type UserRoleProvisioningSetting,
@@ -24,7 +23,9 @@ const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
-const pageRedirectionHelper = usePageRedirectionHelper();
+const instanceId = useRootStore().instanceId;
+
+const savingForm = ref<boolean>(false);
 
 const discoveryEndpoint = ref('');
 const clientId = ref('');
@@ -59,12 +60,6 @@ const promptDescriptions: PromptDescription[] = [
 	},
 	{ label: i18n.baseText('settings.sso.settings.oidc.prompt.create'), value: 'create' },
 ];
-
-const oidcActivatedLabel = computed(() =>
-	ssoStore.isOidcLoginEnabled
-		? i18n.baseText('settings.sso.activated')
-		: i18n.baseText('settings.sso.deactivated'),
-);
 
 const authenticationContextClassReference = ref('');
 
@@ -114,8 +109,12 @@ const cannotSaveOidcSettings = computed(() => {
 async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false) {
 	if (ssoStore.oidcConfig?.loginEnabled && !ssoStore.isOidcLoginEnabled) {
 		const confirmAction = await message.confirm(
-			i18n.baseText('settings.oidc.confirmMessage.beforeSaveForm.message'),
-			i18n.baseText('settings.oidc.confirmMessage.beforeSaveForm.headline'),
+			i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.message', {
+				interpolate: { protocol: 'OIDC' },
+			}),
+			i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.headline', {
+				interpolate: { protocol: 'OIDC' },
+			}),
 			{
 				cancelButtonText: i18n.baseText(
 					'settings.ldap.confirmMessage.beforeSaveForm.cancelButtonText',
@@ -139,6 +138,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		.filter(Boolean);
 
 	try {
+		savingForm.value = true;
 		const newConfig = await ssoStore.saveOidcConfig({
 			clientId: clientId.value,
 			clientSecret: clientSecret.value,
@@ -150,6 +150,7 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 
 		if (isUserRoleProvisioningChanged()) {
 			await saveProvisioningConfig();
+			sendTrackingEventForUserProvisioning();
 			showUserRoleProvisioningDialog.value = false;
 		}
 
@@ -163,13 +164,14 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		toast.showError(error, i18n.baseText('settings.sso.settings.save.error_oidc'));
 		return;
 	} finally {
+		savingForm.value = false;
 		await getOidcConfig();
 	}
 }
 
 function sendTrackingEvent(config: OidcConfigDto) {
 	const trackingMetadata = {
-		instance_id: useRootStore().instanceId,
+		instance_id: instanceId,
 		authentication_method: SupportedProtocols.OIDC,
 		discovery_endpoint: config.discoveryEndpoint,
 		is_active: config.loginEnabled,
@@ -177,16 +179,20 @@ function sendTrackingEvent(config: OidcConfigDto) {
 	telemetry.track('User updated single sign on settings', trackingMetadata);
 }
 
-const goToUpgrade = () => {
-	void pageRedirectionHelper.goToUpgrade('sso', 'upgrade-sso');
-};
+function sendTrackingEventForUserProvisioning() {
+	telemetry.track('User updated provisioning settings', {
+		instance_id: instanceId,
+		authentication_method: SupportedProtocols.OIDC,
+		updated_setting: userRoleProvisioning.value,
+	});
+}
 
 onMounted(async () => {
 	await loadOidcConfig();
 });
 </script>
 <template>
-	<div v-if="ssoStore.isEnterpriseOidcEnabled">
+	<div>
 		<div :class="$style.group">
 			<label>Redirect URL</label>
 			<CopyInput
@@ -252,6 +258,7 @@ onMounted(async () => {
 			:new-provisioning-setting="userRoleProvisioning"
 			auth-protocol="oidc"
 			@confirm-provisioning="onOidcSettingsSave(true)"
+			@cancel="showUserRoleProvisioningDialog = false"
 		/>
 		<div :class="$style.group">
 			<label>Authentication Context Class Reference</label>
@@ -267,36 +274,23 @@ onMounted(async () => {
 				commas in order of preference.</small
 			>
 		</div>
-		<div :class="$style.group">
-			<ElSwitch
-				v-model="ssoStore.isOidcLoginEnabled"
-				data-test-id="sso-oidc-toggle"
-				:class="$style.switch"
-				:inactive-text="oidcActivatedLabel"
-			/>
+		<div :class="[$style.group, $style.checkboxGroup]">
+			<ElCheckbox v-model="ssoStore.isOidcLoginEnabled" data-test-id="sso-oidc-toggle">{{
+				i18n.baseText('settings.sso.activated')
+			}}</ElCheckbox>
 		</div>
 
 		<div :class="$style.buttons">
 			<N8nButton
 				data-test-id="sso-oidc-save"
 				size="large"
-				:disabled="cannotSaveOidcSettings"
+				:loading="savingForm"
+				:disabled="savingForm || cannotSaveOidcSettings"
 				@click="onOidcSettingsSave(false)"
 			>
 				{{ i18n.baseText('settings.sso.settings.save') }}
 			</N8nButton>
 		</div>
 	</div>
-	<N8nActionBox
-		v-else
-		data-test-id="sso-content-unlicensed"
-		:class="$style.actionBox"
-		:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
-		@click:button="goToUpgrade"
-	>
-		<template #heading>
-			<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
-		</template>
-	</N8nActionBox>
 </template>
 <style lang="scss" module src="../styles/sso-form.module.scss" />

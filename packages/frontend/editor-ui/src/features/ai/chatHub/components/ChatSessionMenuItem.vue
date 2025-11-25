@@ -88,7 +88,7 @@ function handleKeyDown(e: KeyboardEvent) {
 		return;
 	}
 
-	if (e.key === 'Enter') {
+	if (e.key === 'Enter' && !e.isComposing) {
 		handleBlur();
 	}
 }
