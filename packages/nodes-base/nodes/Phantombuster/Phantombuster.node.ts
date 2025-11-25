@@ -23,7 +23,7 @@ export class Phantombuster implements INodeType {
 		// eslint-disable-next-line n8n-nodes-base/node-class-description-icon-not-svg
 		icon: 'file:phantombuster.png',
 		group: ['input'],
-		version: 1,
+		version: 1.1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume Phantombuster API',
 		defaults: {
