@@ -148,6 +148,9 @@ export class WorkflowExecutionService {
 				// create the execution stack and have to cancel the execution, come back
 				// here and either create the runData (e.g. scheduler trigger) or wait for
 				// a webhook or event.
+				// To avoid all of that we just upgrade this execution to a
+				// FullManualExecutionFromUnknownTriggerPayload, the rest is handled
+				// automatically.
 				this.isDestinationNodeATrigger(payload.destinationNode, payload.workflowData)
 			) {
 				payload = {
