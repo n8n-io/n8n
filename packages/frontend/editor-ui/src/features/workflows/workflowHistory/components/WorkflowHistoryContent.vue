@@ -16,10 +16,11 @@ import {
 	getLastPublishedByUser,
 	formatTimestamp,
 } from '@/features/workflows/workflowHistory/utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
 
 const i18n = useI18n();
-const settingsStore = useSettingsStore();
+const envFeatureFlag = useEnvFeatureFlag();
 
 const props = defineProps<{
 	workflow: IWorkflowDb | null;
@@ -40,7 +41,9 @@ const emit = defineEmits<{
 	];
 }>();
 
-const isDraftPublishEnabled = computed(() => settingsStore.isWorkflowDraftPublishEnabled);
+const isDraftPublishEnabled = computed(() =>
+	envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG),
+);
 
 const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	if (!props.workflowVersion || !props.workflow) {

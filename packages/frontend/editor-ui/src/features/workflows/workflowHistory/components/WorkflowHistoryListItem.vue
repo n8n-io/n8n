@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-import dateformat from 'dateformat';
 import type { UserAction } from '@n8n/design-system';
 import type {
 	WorkflowHistory,
@@ -15,7 +14,8 @@ import {
 	getLastPublishedByUser,
 	formatTimestamp,
 } from '@/features/workflows/workflowHistory/utils';
-import { useSettingsStore } from '@/app/stores/settings.store';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
+import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
 
 const props = withDefaults(
 	defineProps<{
@@ -43,14 +43,16 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const settingsStore = useSettingsStore();
+const envFeatureFlag = useEnvFeatureFlag();
 
 const actionsVisible = ref(false);
 const itemElement = ref<HTMLElement | null>(null);
 const authorElement = ref<HTMLElement | null>(null);
 const isAuthorElementTruncated = ref(false);
 
-const isDraftPublishEnabled = computed(() => settingsStore.isWorkflowDraftPublishEnabled);
+const isDraftPublishEnabled = computed(() =>
+	envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG),
+);
 
 const formattedCreatedAt = computed<string>(() => {
 	const { date, time } = formatTimestamp(props.item.createdAt);
