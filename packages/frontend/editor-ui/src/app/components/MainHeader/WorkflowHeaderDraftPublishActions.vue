@@ -28,7 +28,7 @@ const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
 }>();
 
-const emit = defineEmits<{
+defineEmits<{
 	'workflow:saved': [];
 }>();
 

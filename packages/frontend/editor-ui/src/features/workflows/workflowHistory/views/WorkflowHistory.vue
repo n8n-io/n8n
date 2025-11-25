@@ -382,7 +382,7 @@ const onAction = async ({
 				await publishWorkflowVersion(id, data);
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.UNPUBLISH:
-				await unpublishWorkflowVersion(id, data);
+				unpublishWorkflowVersion(id, data);
 				break;
 		}
 	} catch (error) {

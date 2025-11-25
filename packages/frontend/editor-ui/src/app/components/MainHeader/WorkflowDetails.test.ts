@@ -605,7 +605,7 @@ describe('WorkflowDetails', () => {
 		it("should call onWorkflowMenuSelect on 'Change owner' option click", async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
-			workflowsStore.workflowsById = { [workflow.id]: workflow as IWorkflowDb };
+			workflowsStore.workflowsById = { [workflow.id]: workflow as unknown as IWorkflowDb };
 
 			const { getByTestId } = renderComponent({
 				props: {
