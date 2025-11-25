@@ -114,23 +114,7 @@ const activeNode = computed(() => workflowsStore.getNodeByName(props.activeNodeN
 const rootNode = computed(() => {
 	if (!activeNode.value) return null;
 
-	// Find the first child that has a main input connection to account for nested subnodes
-	const findRootWithMainConnection = (nodeName: string): string | null => {
-		const children = props.workflowObject.getChildNodes(nodeName, 'ALL');
-
-		for (let i = children.length - 1; i >= 0; i--) {
-			const childName = children[i];
-			// Check if this child has main input connections
-			const parentNodes = props.workflowObject.getParentNodes(childName, NodeConnectionTypes.Main);
-			if (parentNodes.length > 0) {
-				return childName;
-			}
-		}
-
-		return null;
-	};
-
-	return findRootWithMainConnection(activeNode.value.name);
+	return workflowsStore.findRootWithMainConnection(activeNode.value.name);
 });
 
 const hasRootNodeRun = computed(() => {
@@ -415,7 +399,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 		:run-index="isMappingMode ? 0 : runIndex"
 		:linked-runs="linkedRuns"
 		:can-link-runs="!mappedNode && canLinkRuns"
-		:too-much-data-title="i18n.baseText('ndv.input.tooMuchData.title')"
 		:no-data-in-branch-message="i18n.baseText('ndv.input.noOutputDataInBranch')"
 		:is-executing="isExecutingPrevious"
 		:executing-message="i18n.baseText('ndv.input.executingPrevious')"
@@ -497,7 +480,12 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 							<a
 								href="#"
 								@click.prevent="
-									runWorkflow({ destinationNode: { nodeName: activeNodeName, mode: 'exclusive' } })
+									runWorkflow({
+										destinationNode: {
+											nodeName: activeNodeName,
+											mode: 'exclusive',
+										},
+									})
 								"
 							>
 								{{ i18n.baseText('ndv.input.noOutputData.embeddedNdv.link') }}
@@ -590,7 +578,6 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						data-test-id="execute-previous-node"
 						tooltip-placement="bottom"
 						:show-loading-spinner="false"
-						execution-mode="exclusive"
 						@execute="onNodeExecute"
 					>
 						<template
@@ -629,7 +616,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 						<I18nT tag="span" keypath="ndv.input.notConnected.v2.description" scope="global">
 							<template #link>
 								<a
-									href="https://docs.n8n.io/workflows/connections/"
+									href="https://docs.n8n.io/workflows/components/connections/"
 									target="_blank"
 									@click="onConnectionHelpClick"
 								>
@@ -650,7 +637,7 @@ function handleChangeCollapsingColumn(columnName: string | null) {
 					<N8nText tag="div">
 						{{ i18n.baseText('ndv.input.notConnected.message') }}
 						<a
-							href="https://docs.n8n.io/workflows/connections/"
+							href="https://docs.n8n.io/workflows/components/connections/"
 							target="_blank"
 							@click="onConnectionHelpClick"
 						>

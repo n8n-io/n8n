@@ -7,7 +7,6 @@ import type {
 
 import type {
 	IRunData,
-	IRunExecutionData,
 	ITaskData,
 	IPinData,
 	Workflow,
@@ -15,9 +14,9 @@ import type {
 	INode,
 	IDataObject,
 	IWorkflowBase,
-	DestinationNode,
+	IDestinationNode,
 } from 'n8n-workflow';
-import { NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
+import { createRunExecutionData, NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
 
 import { useToast } from '@/app/composables/useToast';
@@ -131,7 +130,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	async function runWorkflow(options: {
-		destinationNode?: DestinationNode;
+		destinationNode?: IDestinationNode;
 		triggerNode?: string;
 		rerunTriggerNode?: boolean;
 		nodeData?: ITaskData;
@@ -324,7 +323,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
-				const nodeId = workflowsStore.getNodeByName(options.destinationNode!.nodeName)?.id;
+				const nodeId = workflowsStore.getNodeByName(options.destinationNode?.nodeName ?? '')?.id;
 				if (workflowObject.value.id && nodeId) {
 					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
 
@@ -361,13 +360,12 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				workflowId: workflowObject.value.id,
 				executedNode,
 				triggerNode: triggerToStartFrom?.name,
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: startRunData.runData ?? {},
 						pinData: workflowData.pinData,
-						workflowData,
 					},
-				} as IRunExecutionData,
+				}),
 				workflowData: {
 					id: workflowsStore.workflowId,
 					name: workflowData.name!,

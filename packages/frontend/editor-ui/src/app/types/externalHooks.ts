@@ -9,7 +9,7 @@ import type {
 	NodeConnectionType,
 	NodeParameterValue,
 	NodeParameterValueType,
-	DestinationNode,
+	IDestinationNode,
 	StartNodeData,
 } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
@@ -68,8 +68,8 @@ interface ExecutionFinishedEventData {
 	runDataExecutedStartData:
 		| {
 				startNodes?: StartNodeData[];
-				destinationNode?: DestinationNode | undefined;
-				originalDestinationNode?: DestinationNode | undefined;
+				destinationNode?: IDestinationNode | undefined;
+				originalDestinationNode?: IDestinationNode | undefined;
 				runNodeFilter?: string[] | undefined;
 		  }
 		| undefined;
