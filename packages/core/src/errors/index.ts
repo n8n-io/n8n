@@ -1,3 +1,4 @@
+export { BinaryDataFileNotFoundError } from './binary-data-file-not-found.error';
 export { FileNotFoundError } from './file-not-found.error';
 export { FileTooLargeError } from './file-too-large.error';
 export { DisallowedFilepathError } from './disallowed-filepath.error';

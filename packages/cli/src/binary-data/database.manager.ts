@@ -9,6 +9,7 @@ import { Service } from '@n8n/di';
 import {
 	BinaryDataConfig,
 	type BinaryData,
+	BinaryDataFileNotFoundError,
 	binaryToBuffer,
 	FileTooLargeError,
 	InvalidSourceTypeError,
@@ -116,20 +117,17 @@ export class DatabaseManager implements BinaryData.Manager {
 	}
 
 	async copyByFileId(targetLocation: BinaryData.FileLocation, sourceFileId: string) {
-		const sourceFile = await this.repository.findOneByOrFail({ fileId: sourceFileId });
-
 		const targetFileId = uuid();
 		const { sourceType, sourceId } = this.toSource(targetLocation);
 
-		await this.repository.insert({
-			fileId: targetFileId,
+		const success = await this.repository.copyStoredFile(
+			sourceFileId,
+			targetFileId,
 			sourceType,
 			sourceId,
-			data: sourceFile.data,
-			mimeType: sourceFile.mimeType,
-			fileName: sourceFile.fileName,
-			fileSize: sourceFile.fileSize,
-		});
+		);
+
+		if (!success) throw new BinaryDataFileNotFoundError(sourceFileId);
 
 		return targetFileId;
 	}
