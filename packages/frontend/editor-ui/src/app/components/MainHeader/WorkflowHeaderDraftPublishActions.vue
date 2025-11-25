@@ -95,21 +95,6 @@ defineExpose({
 
 <template>
 	<div :class="$style.container">
-		<SaveButton
-			type="primary"
-			:saved="isWorkflowSaved"
-			:disabled="
-				isWorkflowSaving ||
-				readOnly ||
-				isArchived ||
-				(!isNewWorkflow && !workflowPermissions.update)
-			"
-			:is-saving="isWorkflowSaving"
-			:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
-			:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
-			data-test-id="workflow-save-button"
-			@click="$emit('workflow:saved')"
-		/>
 		<div v-if="activeVersion" :class="$style.activeVersionIndicator">
 			<N8nTooltip>
 				<template #content>
@@ -125,6 +110,21 @@ defineExpose({
 			</N8nButton>
 			<span v-if="showPublishIndicator" :class="$style.publishButtonIndicator"></span>
 		</div>
+		<SaveButton
+			type="primary"
+			:saved="isWorkflowSaved"
+			:disabled="
+				isWorkflowSaving ||
+				readOnly ||
+				isArchived ||
+				(!isNewWorkflow && !workflowPermissions.update)
+			"
+			:is-saving="isWorkflowSaving"
+			:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
+			:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
+			data-test-id="workflow-save-button"
+			@click="$emit('workflow:saved')"
+		/>
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
 		<ActionsMenu
 			:id="id"
