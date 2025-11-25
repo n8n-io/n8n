@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
-
+import dateformat from 'dateformat';
 import type { UserAction } from '@n8n/design-system';
 import type {
 	WorkflowHistory,
@@ -15,16 +15,18 @@ import {
 	getLastPublishedByUser,
 	formatTimestamp,
 } from '@/features/workflows/workflowHistory/utils';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const props = withDefaults(
 	defineProps<{
 		item: WorkflowHistory;
 		index: number;
 		actions: Array<UserAction<IUser>>;
-		isSelected: boolean;
+		isSelected?: boolean;
 		isVersionActive?: boolean;
 	}>(),
 	{
+		isSelected: false,
 		isVersionActive: false,
 	},
 );
@@ -41,11 +43,14 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 
 const actionsVisible = ref(false);
 const itemElement = ref<HTMLElement | null>(null);
 const authorElement = ref<HTMLElement | null>(null);
 const isAuthorElementTruncated = ref(false);
+
+const isDraftPublishEnabled = computed(() => settingsStore.isWorkflowDraftPublishEnabled);
 
 const formattedCreatedAt = computed<string>(() => {
 	const { date, time } = formatTimestamp(props.item.createdAt);
@@ -82,6 +87,10 @@ const publishedAt = computed(() => {
 	const { date, time } = formatTimestamp(lastPublishedByUser.createdAt);
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
 });
+
+const idLabel = computed<string>(() =>
+	i18n.baseText('workflowHistory.item.id', { interpolate: { id: props.item.versionId } }),
+);
 
 const onAction = (value: string) => {
 	const action = value as WorkflowHistoryActionTypes[number];
@@ -125,7 +134,7 @@ onMounted(() => {
 		}"
 	>
 		<slot :formatted-created-at="formattedCreatedAt">
-			<p @click="onItemClick">
+			<p v-if="isDraftPublishEnabled" @click="onItemClick">
 				<span v-if="versionName" :class="$style.mainLine">{{ versionName }}</span>
 				<time v-if="publishedAt" :datetime="item.updatedAt" :class="$style.metaItem">
 					{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }} {{ publishedAt }}
@@ -138,15 +147,27 @@ onMounted(() => {
 					<span ref="authorElement" :class="$style.metaItem">{{ authors.label }}</span>
 				</N8nTooltip>
 			</p>
+			<p v-else @click="onItemClick">
+				<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>
+				<N8nTooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
+					<template #content>{{ props.item.authors }}</template>
+					<span ref="authorElement">{{ authors.label }}</span>
+				</N8nTooltip>
+				<data :value="item.versionId">{{ idLabel }}</data>
+			</p>
 		</slot>
 		<div :class="$style.tail">
+			<!-- New behavior: show "Active" badge if isVersionActive -->
 			<N8nBadge
-				v-if="props.isVersionActive"
+				v-if="isDraftPublishEnabled && props.isVersionActive"
 				size="medium"
 				:class="$style.publishedBadge"
 				:show-border="false"
 			>
 				{{ i18n.baseText('workflowHistory.item.active') }}
+			</N8nBadge>
+			<N8nBadge v-if="!isDraftPublishEnabled && props.index === 0">
+				{{ i18n.baseText('workflowHistory.item.latest') }}
 			</N8nBadge>
 			<N8nActionToggle
 				theme="dark"
@@ -179,6 +200,25 @@ onMounted(() => {
 		cursor: pointer;
 		flex: 1 1 auto;
 
+		time {
+			padding: 0 0 var(--spacing--5xs);
+			color: var(--color--text--shade-1);
+			font-size: var(--font-size--sm);
+			font-weight: var(--font-weight--bold);
+		}
+
+		span,
+		data {
+			justify-self: start;
+			max-width: 160px;
+			white-space: nowrap;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			margin-top: calc(var(--spacing--4xs) * -1);
+			font-size: var(--font-size--2xs);
+		}
+
+		// New behavior styles
 		.mainLine {
 			padding: 0 0 var(--spacing--5xs);
 			color: var(--color--text--shade-1);
@@ -194,6 +234,10 @@ onMounted(() => {
 			text-overflow: ellipsis;
 			margin-top: calc(var(--spacing--4xs) * -1);
 			font-size: var(--font-size--2xs);
+			// Reset styles that might be inherited from time selector
+			padding: 0;
+			color: var(--color--text);
+			font-weight: var(--font-weight--regular);
 		}
 	}
 

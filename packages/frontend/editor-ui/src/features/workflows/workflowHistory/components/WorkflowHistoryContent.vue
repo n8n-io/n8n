@@ -12,9 +12,14 @@ import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
 import { N8nButton, N8nIcon } from '@n8n/design-system';
-import { getLastPublishedByUser } from '@/features/workflows/workflowHistory/utils';
-import { formatTimestamp } from '@/features/workflows/workflowHistory/utils';
+import {
+	getLastPublishedByUser,
+	formatTimestamp,
+} from '@/features/workflows/workflowHistory/utils';
+import { useSettingsStore } from '@/app/stores/settings.store';
+
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 
 const props = defineProps<{
 	workflow: IWorkflowDb | null;
@@ -34,6 +39,8 @@ const emit = defineEmits<{
 		},
 	];
 }>();
+
+const isDraftPublishEnabled = computed(() => settingsStore.isWorkflowDraftPublishEnabled);
 
 const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	if (!props.workflowVersion || !props.workflow) {
@@ -66,14 +73,21 @@ const formattedPublishedAt = computed<string | null>(() => {
 
 const actions = computed(() => {
 	let filteredActions = props.actions;
+
 	if (props.isFirstItemShown) {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (props.isVersionActive) {
-		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
+	if (isDraftPublishEnabled.value) {
+		if (props.isVersionActive) {
+			filteredActions = filteredActions.filter((action) => action.value !== 'publish');
+		} else {
+			filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
+		}
 	} else {
-		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
+		filteredActions = filteredActions.filter(
+			(action) => action.value !== 'publish' && action.value !== 'unpublish',
+		);
 	}
 
 	return filteredActions;
@@ -111,7 +125,7 @@ const onAction = ({
 				@action="onAction"
 			>
 				<template #default="{ formattedCreatedAt }">
-					<section :class="$style.text">
+					<section v-if="isDraftPublishEnabled" :class="$style.text">
 						<p v-if="versionName" :class="$style.mainLine">
 							{{ versionName }}
 						</p>
@@ -134,6 +148,28 @@ const onAction = ({
 							<span>{{ props.workflowVersion.authors }}</span>
 						</p>
 						<p :class="$style.metaItem">
+							<span :class="$style.label">
+								{{ i18n.baseText('workflowHistory.content.versionId') }}:
+							</span>
+							<data :value="props.workflowVersion.versionId">{{
+								props.workflowVersion.versionId
+							}}</data>
+						</p>
+					</section>
+					<section v-else :class="$style.textOld">
+						<p>
+							<span :class="$style.label">
+								{{ i18n.baseText('workflowHistory.content.title') }}:
+							</span>
+							<time :datetime="props.workflowVersion.createdAt">{{ formattedCreatedAt }}</time>
+						</p>
+						<p>
+							<span :class="$style.label">
+								{{ i18n.baseText('workflowHistory.content.editedBy') }}:
+							</span>
+							<span>{{ props.workflowVersion.authors }}</span>
+						</p>
+						<p>
 							<span :class="$style.label">
 								{{ i18n.baseText('workflowHistory.content.versionId') }}:
 							</span>
@@ -218,6 +254,51 @@ const onAction = ({
 			text-overflow: unset;
 			padding: 0;
 			font-size: var(--font-size--sm);
+		}
+	}
+
+	.textOld {
+		display: flex;
+		flex-direction: column;
+		flex: 1 1 auto;
+
+		p {
+			display: flex;
+			align-items: center;
+			padding: 0;
+			cursor: default;
+
+			&:first-child {
+				padding-top: var(--spacing--3xs);
+				padding-bottom: var(--spacing--4xs);
+				* {
+					margin-top: auto;
+					font-size: var(--font-size--md);
+				}
+			}
+
+			&:last-child {
+				padding-top: var(--spacing--3xs);
+
+				* {
+					font-size: var(--font-size--2xs);
+				}
+			}
+
+			.label {
+				color: var(--color--text--tint-1);
+				padding-right: var(--spacing--4xs);
+			}
+
+			* {
+				max-width: unset;
+				justify-self: unset;
+				white-space: unset;
+				overflow: hidden;
+				text-overflow: unset;
+				padding: 0;
+				font-size: var(--font-size--sm);
+			}
 		}
 	}
 }

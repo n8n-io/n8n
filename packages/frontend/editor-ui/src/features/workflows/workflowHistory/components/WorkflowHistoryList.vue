@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import type { UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type {
@@ -13,16 +13,18 @@ import type { IUser } from 'n8n-workflow';
 import { I18nT } from 'vue-i18n';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { N8nLoading } from '@n8n/design-system';
+import { useSettingsStore } from '@/app/stores/settings.store';
+
 const props = defineProps<{
 	items: WorkflowHistory[];
-	selectedItem: WorkflowHistory | null;
+	selectedItem?: WorkflowHistory | null;
 	actions: Array<UserAction<IUser>>;
 	requestNumberOfItems: number;
 	lastReceivedItemsLength: number;
 	evaluatedPruneDays: number;
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
-	activeVersionId: string | undefined;
+	activeVersionId?: string;
 }>();
 
 const emit = defineEmits<{
@@ -39,6 +41,7 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
+const settingsStore = useSettingsStore();
 
 const listElement = ref<Element | null>(null);
 const shouldAutoScroll = ref(true);
@@ -52,14 +55,21 @@ const { observe: observeForLoadMore } = useIntersectionObserver({
 
 const getActions = (item: WorkflowHistory, index: number) => {
 	let filteredActions = props.actions;
+
 	if (index === 0) {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (item.versionId === props.activeVersionId) {
-		filteredActions = filteredActions.filter((action) => action.value !== 'publish');
+	if (settingsStore.isWorkflowDraftPublishEnabled) {
+		if (item.versionId === props.activeVersionId) {
+			filteredActions = filteredActions.filter((action) => action.value !== 'publish');
+		} else {
+			filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
+		}
 	} else {
-		filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
+		filteredActions = filteredActions.filter(
+			(action) => action.value !== 'publish' && action.value !== 'unpublish',
+		);
 	}
 
 	return filteredActions;
