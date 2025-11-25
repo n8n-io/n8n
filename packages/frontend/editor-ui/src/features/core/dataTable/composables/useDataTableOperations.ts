@@ -85,7 +85,7 @@ export const useDataTableOperations = ({
 	const telemetry = useTelemetry();
 	const dataTableTypes = useDataTableTypes();
 
-	const getAddColumnError = (error: unknown): { httpStatus: number; message: string } => {
+	const parseColumnOperationError = (error: unknown): { httpStatus: number; message: string } => {
 		const DEFAULT_HTTP_STATUS = 500;
 		const DEFAULT_MESSAGE = i18n.baseText('generic.unknownError');
 
@@ -155,27 +155,21 @@ export const useDataTableOperations = ({
 
 		const oldName = columnToRename.headerName;
 		const oldField = columnToRename.field;
+		if (!oldField) return;
 
-		// No change made
-		if (newName === oldName) {
-			return;
-		}
-
-		// Optimistically update the UI
 		columnToRename.headerName = newName;
 		columnToRename.field = newName;
+		// optimistically update the grid
 		setGridData({ colDefs: colDefs.value });
 
 		try {
 			await dataTableStore.renameDataTableColumn(dataTableId, projectId, columnId, newName);
 
-			// Update row data with new column name
 			rowData.value = rowData.value.map((row) => {
-				if (oldField && oldField in row) {
-					const { [oldField]: value, ...rest } = row;
-					return { ...rest, [newName]: value };
-				}
-				return row;
+				const newRow: DataTableRow = { ...row };
+				newRow[newName] = newRow[oldField];
+				delete newRow[oldField];
+				return newRow;
 			});
 			setGridData({ colDefs: colDefs.value, rowData: rowData.value });
 
@@ -190,11 +184,11 @@ export const useDataTableOperations = ({
 			columnToRename.field = oldField;
 			setGridData({ colDefs: colDefs.value });
 
-			const errorDetails = getAddColumnError(error);
+			const errorDetails = parseColumnOperationError(error);
 			if (errorDetails.httpStatus === 409) {
 				toast.showError(
 					new Error(errorDetails.message),
-					i18n.baseText('dataTable.renameColumn.alreadyExistsError' as never),
+					i18n.baseText('dataTable.column.alreadyExistsError' as never),
 				);
 			} else {
 				toast.showError(error, i18n.baseText('dataTable.renameColumn.error' as never));
@@ -217,7 +211,7 @@ export const useDataTableOperations = ({
 			});
 			return { success: true, httpStatus: 200 };
 		} catch (error) {
-			const addColumnError = getAddColumnError(error);
+			const addColumnError = parseColumnOperationError(error);
 			return {
 				success: false,
 				httpStatus: addColumnError.httpStatus,
