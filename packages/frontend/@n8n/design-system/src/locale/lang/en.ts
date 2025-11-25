@@ -89,4 +89,6 @@ export default {
 	'promptInput.monthlyCredits': 'Monthly credits: <b>{count}</b>',
 	'promptInput.creditsRenew': 'Credits renew on: <b>{date}</b>',
 	'promptInput.creditsExpire': 'Unused credits expire {date}',
+	'pagination.total': 'Total {total}',
+	'pagination.page': 'page',
 } as N8nLocale;

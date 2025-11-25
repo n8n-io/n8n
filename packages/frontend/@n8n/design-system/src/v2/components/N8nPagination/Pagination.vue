@@ -7,7 +7,8 @@ import {
 	PaginationEllipsis,
 	PaginationNext,
 } from 'reka-ui';
-import { ref, useCssModule, watch } from 'vue';
+import { computed, ref, useCssModule, watch } from 'vue';
+import { N8nSelect, N8nOption } from '@n8n/design-system';
 
 import type { PaginationProps } from './Pagination.types';
 
@@ -17,15 +18,39 @@ const props = withDefaults(defineProps<PaginationProps>(), {
 	total: 0,
 	currentPage: undefined,
 	pageSize: undefined,
+	pageSizes: () => [10, 20, 50, 100],
+	background: false,
+	hideOnSinglePage: false,
+	pagerCount: 7,
+	layout: 'prev, pager, next',
 });
 
 const emit = defineEmits<{
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'update:current-page': [page: number];
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'update:page-size': [size: number];
+	// eslint-disable-next-line @typescript-eslint/naming-convention
+	'size-change': [size: number];
 }>();
 
 const page = ref(props.currentPage ?? 1);
 const itemsPerPage = ref(props.pageSize ?? 10);
+
+const totalPages = computed(() => Math.ceil(props.total / itemsPerPage.value));
+const siblingCount = computed(() => Math.floor((props.pagerCount - 1) / 2));
+
+const shouldShowPagination = computed(() => {
+	if (!props.hideOnSinglePage) return true;
+	return totalPages.value > 1;
+});
+
+const layoutParts = computed(() => {
+	return props.layout.split(',').map((part) => part.trim());
+});
+
+const showTotal = computed(() => layoutParts.value.includes('total'));
+const showSizes = computed(() => layoutParts.value.includes('sizes'));
 
 watch(
 	() => props.currentPage,
@@ -48,51 +73,111 @@ watch(
 // Handle page changes and emit events
 function handlePageChange(newPage: number) {
 	page.value = newPage;
-
 	emit('update:current-page', newPage);
+}
+
+// Handle page size changes
+function handlePageSizeChange(newSize: number) {
+	itemsPerPage.value = newSize;
+	page.value = 1; // Reset to first page
+	emit('update:page-size', newSize);
+	emit('size-change', newSize);
+	emit('update:current-page', 1);
 }
 </script>
 
 <template>
-	<PaginationRoot
-		:total="total"
-		:items-per-page="itemsPerPage"
-		:page="page"
-		:sibling-count="2"
-		:show-edges="true"
-		:class="$style.Pagination"
-		@update:page="handlePageChange"
+	<div
+		v-if="shouldShowPagination"
+		:class="[$style.Wrapper, { [$style.HasBackground]: background }]"
 	>
-		<PaginationList v-slot="{ items }">
-			<PaginationPrev :class="[$style.Button, $style.ButtonPrev]">
-				<slot name="prev-icon">
-					<span>‹</span>
-				</slot>
-			</PaginationPrev>
+		<span v-if="showTotal" :class="$style.Total">
+			{{ $t('pagination.total', { total }) }}
+		</span>
 
-			<template v-for="(item, index) in items" :key="index">
-				<PaginationListItem
-					v-if="item.type === 'page'"
-					:value="item.value"
-					:class="[$style.Button, $style.ButtonPage, { [$style.IsActive]: item.value === page }]"
-				>
-					{{ item.value }}
-				</PaginationListItem>
-				<PaginationEllipsis v-else :index="index" :class="$style.Ellipsis">
-					&#8230;
-				</PaginationEllipsis>
-			</template>
+		<PaginationRoot
+			:total="total"
+			:items-per-page="itemsPerPage"
+			:page="page"
+			:sibling-count="siblingCount"
+			:show-edges="true"
+			:class="$style.Pagination"
+			@update:page="handlePageChange"
+		>
+			<PaginationList v-slot="{ items }" :class="$style.List">
+				<PaginationPrev :class="[$style.Button, $style.ButtonPrev]">
+					<slot name="prev-icon">
+						<span>‹</span>
+					</slot>
+				</PaginationPrev>
 
-			<PaginationNext :class="[$style.Button, $style.ButtonNext]">
-				<slot name="next-icon">
-					<span>›</span>
-				</slot>
-			</PaginationNext>
-		</PaginationList>
-	</PaginationRoot>
+				<template v-for="(item, index) in items" :key="index">
+					<PaginationListItem
+						v-if="item.type === 'page'"
+						:value="item.value"
+						:class="[$style.Button, $style.ButtonPage, { [$style.IsActive]: item.value === page }]"
+					>
+						{{ item.value }}
+					</PaginationListItem>
+					<PaginationEllipsis v-else :index="index" :class="$style.Ellipsis">
+						&#8230;
+					</PaginationEllipsis>
+				</template>
+
+				<PaginationNext :class="[$style.Button, $style.ButtonNext]">
+					<slot name="next-icon">
+						<span>›</span>
+					</slot>
+				</PaginationNext>
+			</PaginationList>
+		</PaginationRoot>
+
+		<N8nSelect
+			v-if="showSizes"
+			:model-value="itemsPerPage"
+			:class="$style.PageSizes"
+			size="small"
+			@update:model-value="handlePageSizeChange"
+		>
+			<N8nOption
+				v-for="size in pageSizes"
+				:key="size"
+				:value="size"
+				:label="`${size} / ${$t('pagination.page')}`"
+			/>
+		</N8nSelect>
+	</div>
 </template>
 
 <style module>
+.Wrapper {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--xs);
+	font-size: var(--font-size--sm);
+	height: 32px;
+}
+
+.Wrapper.HasBackground .Button {
+	background: var(--color--background--light-2) !important;
+}
+
+.Wrapper.HasBackground .Button.IsActive {
+	background: var(--color--primary--tint-3) !important;
+}
+
+.Total {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--2xs);
+	margin-right: var(--spacing--4xs);
+}
+
+.List {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+}
+
 .Pagination {
 	display: flex;
 	align-items: center;
@@ -178,5 +263,9 @@ function handlePageChange(newPage: number) {
 	display: inline-block;
 	text-align: center;
 	user-select: none;
+}
+
+.PageSizes {
+	min-width: 120px;
 }
 </style>
