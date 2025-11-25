@@ -162,11 +162,6 @@ export class WorkflowExecutionService {
 			if (
 				// If the trigger has no runData we have to upgrade to a
 				// FullManualExecutionFromUnknownTriggerPayload
-				//
-				// TODO: This function should be happy if at least one root trigger has
-				// runData, if there are multiple root triggers this will always return
-				// false, because it's impossible for more than one trigger to have
-				// runData.
 				!this.doesTriggerHaveRunData(
 					payload.destinationNode,
 					payload.workflowData,
