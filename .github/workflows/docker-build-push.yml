@@ -271,63 +271,63 @@ jobs:
           create_ecr_manifest "runners"
           create_ecr_manifest "runners-distroless"
 
-      - name: Create GHCR multi-arch manifests
-        run: |
-          RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
+      # - name: Create GHCR multi-arch manifests
+      #   run: |
+      #     RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
 
-          # Function to create manifest for an image
-          create_manifest() {
-            local IMAGE_NAME=$1
-            local MANIFEST_TAG=$2
+      #     # Function to create manifest for an image
+      #     create_manifest() {
+      #       local IMAGE_NAME=$1
+      #       local MANIFEST_TAG=$2
 
-            if [[ -z "$MANIFEST_TAG" ]]; then
-              echo "Skipping $IMAGE_NAME - no manifest tag"
-              return
-            fi
+      #       if [[ -z "$MANIFEST_TAG" ]]; then
+      #         echo "Skipping $IMAGE_NAME - no manifest tag"
+      #         return
+      #       fi
 
-            echo "Creating GHCR manifest for $IMAGE_NAME: $MANIFEST_TAG"
+      #       echo "Creating GHCR manifest for $IMAGE_NAME: $MANIFEST_TAG"
 
-            # For branch builds, only AMD64 is built
-            if [[ "$RELEASE_TYPE" == "branch" ]]; then
-              docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
-                "${MANIFEST_TAG}-amd64"
-            else
-              docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
-                "${MANIFEST_TAG}-amd64" \
-                "${MANIFEST_TAG}-arm64"
-            fi
-          }
+      #       # For branch builds, only AMD64 is built
+      #       if [[ "$RELEASE_TYPE" == "branch" ]]; then
+      #         docker buildx imagetools create \
+      #           --tag "$MANIFEST_TAG" \
+      #           "${MANIFEST_TAG}-amd64"
+      #       else
+      #         docker buildx imagetools create \
+      #           --tag "$MANIFEST_TAG" \
+      #           "${MANIFEST_TAG}-amd64" \
+      #           "${MANIFEST_TAG}-arm64"
+      #       fi
+      #     }
 
-          # Create manifests for all images
-          create_manifest "n8n" "${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}"
-          create_manifest "runners" "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
-          create_manifest "runners-distroless" "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
+      #     # Create manifests for all images
+      #     create_manifest "n8n" "${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}"
+      #     create_manifest "runners" "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
+      #     create_manifest "runners-distroless" "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
 
-      - name: Create Docker Hub manifests
-        if: needs.determine-build-context.outputs.push_to_docker == 'true'
-        run: |
-          VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
-          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
+      # - name: Create Docker Hub manifests
+      #   if: needs.determine-build-context.outputs.push_to_docker == 'true'
+      #   run: |
+      #     VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
+      #     DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
 
-          # Create manifests for each image type
-          declare -A images=(
-            ["n8n"]="${VERSION}"
-            ["runners"]="${VERSION}"
-            ["runners-distroless"]="${VERSION}-distroless"
-          )
+      #     # Create manifests for each image type
+      #     declare -A images=(
+      #       ["n8n"]="${VERSION}"
+      #       ["runners"]="${VERSION}"
+      #       ["runners-distroless"]="${VERSION}-distroless"
+      #     )
 
-          for image in "${!images[@]}"; do
-            TAG_SUFFIX="${images[$image]}"
-            IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
+      #     for image in "${!images[@]}"; do
+      #       TAG_SUFFIX="${images[$image]}"
+      #       IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
 
-            echo "Creating Docker Hub manifest for $image"
-            docker buildx imagetools create \
-              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
-          done
+      #       echo "Creating Docker Hub manifest for $image"
+      #       docker buildx imagetools create \
+      #         --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
+      #         "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
+      #         "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
+      #     done
 
   call-success-url:
     name: Call Success URL
