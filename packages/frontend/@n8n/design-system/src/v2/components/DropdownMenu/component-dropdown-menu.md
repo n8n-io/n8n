@@ -18,6 +18,7 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 - `defaultOpen?: boolean` The open state of the dropdown when initially rendered
 - `placement?: 'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end' | 'left' | 'left-start' | 'left-end' | 'right' | 'right-start' | 'right-end'` Dropdown placement relative to trigger | `default: 'bottom'`
 - `trigger?: 'click' | 'hover'` How the dropdown is triggered | `default: 'click'`
+- `activatorIcon?: IconName` Icon for the default trigger button | `default: 'ellipsis'`
 - `disabled?: boolean` When `true`, prevents the user from interacting with dropdown
 - `teleported?: boolean` Whether to teleport the dropdown to body | `default: true`
 - `maxHeight?: string | number` Maximum height of the dropdown menu
@@ -27,10 +28,6 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 - `extraPopperClass?: string` Additional CSS class for the dropdown popper
 - `closeOnParentScroll?: boolean` Whether to close dropdown when parent scrolls | `default: true`
 
-**Trigger Props**
-- `activatorIcon?: IconName` Icon for the default trigger button | `default: 'ellipsis'`
-- `activatorSize?: 'mini' | 'small' | 'medium' | 'large'` Size of the default trigger button | `default: 'medium'`
-- `activatorVariant?: 'primary' | 'secondary' | 'tertiary' | 'ghost'` Variant of the default trigger | `default: 'tertiary'`
 
 **Search-specific Props**
 - `searchable?: boolean` Enable search functionality
@@ -214,7 +211,6 @@ onMounted(async () => {
   :items="items"
   placement="bottom-start"
   :activator-icon="icon"
-  :activator-size="size"
   @select="onSelect"
   @badge-click="onBadgeClick"
 />
@@ -224,7 +220,6 @@ onMounted(async () => {
   :items="items"
   placement="bottom-start"
   :activator-icon="icon"
-  :activator-size="size"
   @select="onSelect"
   @badge-click="onBadgeClick"
 />
