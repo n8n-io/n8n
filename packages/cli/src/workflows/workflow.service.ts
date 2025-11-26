@@ -477,6 +477,7 @@ export class WorkflowService {
 						activeVersionId: null,
 						activeVersion: null,
 					},
+					publicApi,
 				);
 			}
 		}
@@ -494,6 +495,7 @@ export class WorkflowService {
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
 		rollbackPayload: RollbackPayload,
+		publicApi: boolean = false,
 	): Promise<void> {
 		try {
 			await this.externalHooks.run('workflow.activate', [workflow]);
@@ -512,7 +514,7 @@ export class WorkflowService {
 					user,
 					workflowId,
 					workflow,
-					publicApi: false,
+					publicApi,
 				});
 			}
 
@@ -606,6 +608,7 @@ export class WorkflowService {
 						activeVersionId: null,
 						activeVersion: null,
 					},
+			publicApi,
 		);
 
 		if (
