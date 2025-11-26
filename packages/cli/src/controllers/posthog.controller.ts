@@ -91,6 +91,15 @@ export class PostHogController {
 		void this.proxy(req, res, next);
 	}
 
+	@Get('/static/recorder.js', {
+		skipAuth: true,
+		usesTemplates: true,
+		rateLimit: { limit: 50, windowMs: 60_000 },
+	})
+	staticRecorderJs(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		void this.proxy(req, res, next);
+	}
+
 	// Configuration endpoints for array.js
 	@Get('/array/:apiKey/config.js', {
 		skipAuth: true,

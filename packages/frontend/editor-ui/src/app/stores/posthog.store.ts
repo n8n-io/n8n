@@ -135,6 +135,12 @@ export const usePostHog = defineStore('posthog', () => {
 		const instanceId = rootStore.instanceId;
 		const distinctId = `${instanceId}#${userId}`;
 
+		// Load session recorder before init to prevent lazy-load issues
+		const recorderScript = document.createElement('script');
+		recorderScript.src = `${settingsStore.settings.posthog.proxy}/static/recorder.js`;
+		recorderScript.async = true;
+		document.head.appendChild(recorderScript);
+
 		const options: Parameters<typeof window.posthog.init>[1] = {
 			api_host: settingsStore.settings.posthog.proxy,
 			autocapture: config.autocapture,
