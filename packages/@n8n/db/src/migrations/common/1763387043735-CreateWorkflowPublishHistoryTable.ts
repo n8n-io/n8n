@@ -23,6 +23,7 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 			)
 			.withCreatedAt.withIndexOn('workflowId')
 			.withIndexOn(['workflowId', 'versionId'])
+			.withIndexOn(['workflowId', 'createdAt'])
 			.withForeignKey('workflowId', {
 				tableName: 'workflow_entity',
 				columnName: 'id',
