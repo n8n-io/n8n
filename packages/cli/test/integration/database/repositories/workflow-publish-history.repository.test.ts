@@ -40,7 +40,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: user.id,
 			});
 
@@ -52,7 +52,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: user.id,
 			});
 			expect(record?.createdAt).toBeInstanceOf(Date);
@@ -66,7 +66,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: null,
 			});
 
@@ -78,7 +78,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: null,
 			});
 		});
@@ -93,7 +93,6 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: id1,
 				status: 'activated',
-				mode: 'activate',
 				userId: null,
 			});
 
@@ -101,7 +100,6 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: id1,
 				status: 'deactivated',
-				mode: 'update',
 				userId: null,
 			});
 
@@ -109,7 +107,6 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: id2,
 				status: 'activated',
-				mode: 'update',
 				userId: null,
 			});
 
@@ -122,17 +119,14 @@ describe('WorkflowPublishHistoryRepository', () => {
 			expect(records[0]).toMatchObject({
 				versionId: id1,
 				status: 'activated',
-				mode: 'activate',
 			});
 			expect(records[1]).toMatchObject({
 				versionId: id1,
 				status: 'deactivated',
-				mode: 'update',
 			});
 			expect(records[2]).toMatchObject({
 				versionId: id2,
 				status: 'activated',
-				mode: 'update',
 			});
 		});
 	});
@@ -148,7 +142,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: id1,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: null,
 			});
 
@@ -156,7 +150,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: id2,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: null,
 			});
 
@@ -186,7 +180,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: id1,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: null,
 			});
 
@@ -194,7 +188,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: id2,
 				status: 'deactivated',
-				mode: 'deactivate',
+
 				userId: null,
 			});
 
@@ -217,7 +211,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: id1,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: null,
 			});
 
@@ -225,7 +219,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: id2,
 				status: 'activated',
-				mode: 'update',
+
 				userId: null,
 			});
 
@@ -244,7 +238,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: null,
 			});
 
@@ -252,7 +246,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'deactivated',
-				mode: 'deactivate',
+
 				userId: null,
 			});
 
@@ -273,7 +267,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: user.id,
 			});
 
@@ -293,7 +287,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: user.id,
 			});
 
@@ -321,7 +315,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow1.id,
 				versionId: workflow1.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: null,
 			});
 
@@ -329,7 +323,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow2.id,
 				versionId: workflow2.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: null,
 			});
 
@@ -354,7 +348,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: null,
 			});
 
@@ -375,7 +369,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: null,
 			});
 
@@ -397,7 +391,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-				mode: 'activate',
+
 				userId: user.id,
 			});
 

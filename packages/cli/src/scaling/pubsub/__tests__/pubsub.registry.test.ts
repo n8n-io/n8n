@@ -130,7 +130,7 @@ describe('PubSubRegistry', () => {
 		);
 		pubSubRegistry.init();
 
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, reason: 'activate' });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
 		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId });
 
@@ -152,7 +152,7 @@ describe('PubSubRegistry', () => {
 		);
 		followerPubSubRegistry.init();
 
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, reason: 'activate' });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
 		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
 
 		pubsubEventBus.emit('restart-event-bus');
@@ -176,7 +176,7 @@ describe('PubSubRegistry', () => {
 		);
 		pubSubRegistry.init();
 
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, reason: 'activate' });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
 		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId });
 	});
@@ -196,19 +196,19 @@ describe('PubSubRegistry', () => {
 		pubSubRegistry.init();
 
 		// Initially as follower, event should be ignored
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, reason: 'activate' });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
 		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
 
 		// Change role to leader
 		instanceSettings.instanceRole = 'leader';
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, reason: 'activate' });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
 		expect(onLeaderInstanceSpy).toHaveBeenCalledTimes(1);
 		expect(onLeaderInstanceSpy).toHaveBeenCalledWith({ workflowId });
 
 		// Change back to follower
 		onLeaderInstanceSpy.mockClear();
 		instanceSettings.instanceRole = 'follower';
-		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId, reason: 'activate' });
+		pubsubEventBus.emit('add-webhooks-triggers-and-pollers', { workflowId });
 		expect(onLeaderInstanceSpy).not.toHaveBeenCalled();
 	});
 

@@ -6,8 +6,8 @@ import {
 } from '@/constants';
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
-import type { WorkflowEntity, IWorkflowDb, WorkflowPublishHistoryMode } from '@n8n/db';
-import { WorkflowRepository, WorkflowPublishHistoryRepository } from '@n8n/db';
+import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
@@ -52,6 +52,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -59,8 +60,6 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
-import { PubSubCommandMap } from './scaling/pubsub/pubsub.event-map';
-import { User } from '@n8n/api-types';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -82,7 +81,6 @@ export class ActiveWorkflowManager {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly executionService: ExecutionService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
@@ -127,7 +125,7 @@ export class ActiveWorkflowManager {
 
 		const removePromises = [];
 		for (const workflowId of activeWorkflowIds) {
-			removePromises.push(this.remove(workflowId, 'deactivate'));
+			removePromises.push(this.remove(workflowId));
 		}
 
 		await Promise.all(removePromises);
@@ -564,14 +562,13 @@ export class ActiveWorkflowManager {
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
 		{ shouldPublish } = { shouldPublish: true },
-		userId?: string,
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
 		if (this.instanceSettings.isMultiMain && shouldPublish) {
 			void this.publisher.publishCommand({
 				command: 'add-webhooks-triggers-and-pollers',
-				payload: { workflowId, userId, reason: activationMode },
+				payload: { workflowId },
 			});
 
 			return added;
@@ -659,18 +656,6 @@ export class ActiveWorkflowManager {
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
 			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
-
-			if (activationMode === 'activate' || activationMode === 'update') {
-				// We skip adding init events (e.g. on instance start) since they don't hold meaningful
-				// data and will grow the table over time without benefit
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId,
-					versionId: dbWorkflow.versionId,
-					status: 'activated',
-					mode: activationMode,
-					userId: userId ?? null,
-				});
-			}
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.register(workflowId, error.message);
@@ -899,11 +884,7 @@ export class ActiveWorkflowManager {
 	 */
 	// TODO: this should happen in a transaction
 	// maybe, see: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
-	async remove(
-		workflowId: WorkflowId,
-		reason: Extract<WorkflowPublishHistoryMode, 'update' | 'deactivate'>,
-		userId?: User['id'],
-	) {
+	async remove(workflowId: WorkflowId) {
 		if (this.instanceSettings.isMultiMain) {
 			try {
 				await this.clearWebhooks(workflowId);
@@ -916,7 +897,7 @@ export class ActiveWorkflowManager {
 
 			void this.publisher.publishCommand({
 				command: 'remove-triggers-and-pollers',
-				payload: { workflowId, userId, reason },
+				payload: { workflowId },
 			});
 
 			return;
@@ -940,17 +921,12 @@ export class ActiveWorkflowManager {
 		// if it's active in memory then it's a trigger
 		// so remove from list of actives workflows
 		await this.removeWorkflowTriggersAndPollers(workflowId);
-
-		await this.trackRemovalInPublishingHistory(workflowId, reason, userId);
 	}
 
 	@OnPubSubEvent('remove-triggers-and-pollers', { instanceType: 'main', instanceRole: 'leader' })
 	async handleRemoveTriggersAndPollers({
 		workflowId,
-		reason,
-		userId,
 	}: PubSubCommandMap['remove-triggers-and-pollers']) {
-		await this.trackRemovalInPublishingHistory(workflowId, reason, userId);
 		await this.removeActivationError(workflowId);
 		await this.removeWorkflowTriggersAndPollers(workflowId);
 
@@ -974,24 +950,6 @@ export class ActiveWorkflowManager {
 		if (wasRemoved) {
 			this.logger.debug(`Removed triggers and pollers for workflow "${workflowId}"`, {
 				workflowId,
-			});
-		}
-	}
-
-	async trackRemovalInPublishingHistory(
-		workflowId: string,
-		reason: Extract<WorkflowPublishHistoryMode, 'update' | 'deactivate'>,
-		userId?: User['id'],
-	) {
-		const workflow = await this.workflowRepository.findById(workflowId);
-		const versionId = workflow?.activeVersionId;
-		if (versionId) {
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId,
-				versionId,
-				status: 'deactivated',
-				mode: reason,
-				userId: userId ?? null,
 			});
 		}
 	}

@@ -14,11 +14,6 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 					.notNull.comment(
 						'Final state of workflow: activated (workflow is now active), deactivated (workflow is now inactive)',
 					),
-				column('mode')
-					.varchar(36)
-					.notNull.comment(
-						'Reason for status change: activate (user turned on), update (updating already active workflow), deactivate (user turned off)',
-					),
 				column('userId').uuid,
 			)
 			.withCreatedAt.withIndexOn('workflowId')
@@ -38,7 +33,6 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
-			.withEnumCheck('mode', ['activate', 'update', 'deactivate'])
 			.withEnumCheck('status', ['activated', 'deactivated']);
 
 		const workflowEntityTableName = escape.tableName('workflow_entity');
@@ -47,8 +41,8 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 		const updatedAt = escape.columnName('updatedAt');
 
 		await runQuery(
-			`INSERT INTO workflow_publish_history (workflowId, versionId, status, mode)
-				SELECT we.${id}, we.${activeVersionId}, 'activated', 'update'
+			`INSERT INTO workflow_publish_history (workflowId, versionId, status)
+				SELECT we.${id}, we.${activeVersionId}, 'activated'
 				FROM ${workflowEntityTableName} we
 				WHERE we.${activeVersionId} IS NOT NULL
 				ORDER BY we.${updatedAt} ASC`,

@@ -1,7 +1,6 @@
 import { Column, Entity, Index, JoinColumn, OneToOne, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { WithCreatedAt } from './abstract-entity';
-import { WorkflowPublishHistoryMode } from './types-db';
 import { User } from './user';
 
 @Entity()
@@ -19,9 +18,6 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 
 	@Column()
 	status: 'activated' | 'deactivated';
-
-	@Column({ type: 'varchar' })
-	mode: WorkflowPublishHistoryMode;
 
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;

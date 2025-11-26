@@ -2872,13 +2872,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: workflow.versionId });
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(
-			workflow.id,
-			'activate',
-			undefined,
-			undefined,
-			owner.id,
-		);
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
 
 		const { data } = response.body;
 		expect(data.id).toBe(workflow.id);
@@ -2950,13 +2944,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: workflow.versionId, name: newVersionName });
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(
-			workflow.id,
-			'activate',
-			undefined,
-			undefined,
-			owner.id,
-		);
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
 
 		const { data } = response.body;
 		expect(data.activeVersionId).toBe(workflow.versionId);
@@ -2978,13 +2966,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: workflow.versionId, description: newDescription });
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(
-			workflow.id,
-			'activate',
-			undefined,
-			undefined,
-			owner.id,
-		);
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
 
 		const { data } = response.body;
 		expect(data.activeVersionId).toBe(workflow.versionId);
@@ -3009,13 +2991,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		});
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(
-			workflow.id,
-			'activate',
-			undefined,
-			undefined,
-			owner.id,
-		);
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
 
 		const { data } = response.body;
 		expect(data.activeVersionId).toBe(workflow.versionId);
@@ -3065,13 +3041,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: workflow.versionId });
 
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(
-			workflow.id,
-			'activate',
-			undefined,
-			undefined,
-			owner.id,
-		);
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
 	});
 
 	test('should call active workflow manager with update mode if workflow is active', async () => {
@@ -3084,13 +3054,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: newVersionId });
 
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(
-			workflow.id,
-			'update',
-			undefined,
-			undefined,
-			owner.id,
-		);
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update');
 	});
 });
 
@@ -3101,7 +3065,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id, 'deactivate', owner.id);
+		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
 
 		const { data } = response.body;
 		expect(data.id).toBe(workflow.id);
@@ -3227,7 +3191,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(activeVersionId).toBeNull();
 		expect(active).toBe(false);
 		expect(versionId).not.toBe(workflow.versionId);
-		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id, 'deactivate', owner.id);
+		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
 
 		const updatedWorkflow = await Container.get(WorkflowRepository).findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();

@@ -15,6 +15,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -76,6 +77,7 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	async getMany(
@@ -305,11 +307,7 @@ export class WorkflowService {
 		 * will take effect only on removing and re-adding.
 		 */
 		if (isDraftPublishDisabled && wasActive) {
-			await this.activeWorkflowManager.remove(
-				workflowId,
-				isNowActive ? 'update' : 'deactivate',
-				user.id,
-			);
+			await this.activeWorkflowManager.remove(workflowId);
 		}
 
 		const workflowSettings = workflowUpdateData.settings ?? {};
@@ -486,7 +484,13 @@ export class WorkflowService {
 	): Promise<void> {
 		try {
 			await this.externalHooks.run('workflow.activate', [workflow]);
-			await this.activeWorkflowManager.add(workflowId, mode, undefined, undefined, user.id);
+			await this.activeWorkflowManager.add(workflowId, mode);
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId: workflow.versionId,
+				status: 'activated',
+				userId: user.id,
+			});
 		} catch (error) {
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
@@ -617,11 +621,18 @@ export class WorkflowService {
 		}
 
 		// Remove from active workflow manager
-		await this.activeWorkflowManager.remove(workflowId, 'deactivate', user.id);
+		await this.activeWorkflowManager.remove(workflowId);
 
 		await this.workflowRepository.update(workflowId, {
 			active: false,
 			activeVersionId: null,
+		});
+
+		await this.workflowPublishHistoryRepository.addRecord({
+			workflowId,
+			versionId: workflow.activeVersionId,
+			status: 'deactivated',
+			userId: user.id,
 		});
 
 		// Update the workflow object for response
@@ -663,7 +674,7 @@ export class WorkflowService {
 
 		if (workflow.active) {
 			// deactivate before deleting
-			await this.activeWorkflowManager.remove(workflowId, 'deactivate', user.id);
+			await this.activeWorkflowManager.remove(workflowId);
 		}
 
 		const idsForDeletion = await this.executionRepository
@@ -706,7 +717,13 @@ export class WorkflowService {
 		}
 
 		if (workflow.activeVersionId !== null) {
-			await this.activeWorkflowManager.remove(workflowId, 'deactivate', user.id);
+			await this.activeWorkflowManager.remove(workflowId);
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId: workflow.versionId,
+				status: 'deactivated',
+				userId: user.id,
+			});
 		}
 
 		const versionId = uuid();

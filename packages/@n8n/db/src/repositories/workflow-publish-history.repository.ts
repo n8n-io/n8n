@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Equal, Or, Repository } from '@n8n/typeorm';
+import { DataSource, Repository } from '@n8n/typeorm';
 
 import { WorkflowPublishHistory } from '../entities';
 
@@ -13,14 +13,12 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 		workflowId,
 		versionId,
 		status,
-		mode,
 		userId,
-	}: Pick<WorkflowPublishHistory, 'status' | 'workflowId' | 'versionId' | 'mode' | 'userId'>) {
+	}: Pick<WorkflowPublishHistory, 'status' | 'workflowId' | 'versionId' | 'userId'>) {
 		await this.insert({
 			workflowId,
 			versionId,
 			status,
-			mode,
 			userId,
 		});
 	}
@@ -46,7 +44,6 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 			where: {
 				workflowId,
 				status: 'activated',
-				mode: Or(Equal('activate'), Equal('update')),
 			},
 			relations: {
 				user: includeUser,

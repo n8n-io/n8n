@@ -416,11 +416,3 @@ export type WorkflowHistoryUpdate = Omit<
 	Partial<WorkflowHistory>,
 	'versionId' | 'workflowId' | 'createdAt' | 'updatedAt'
 >;
-
-/**
- * Types of entries in workflow publish history
- * - activate: previously inactive workflow is now activated
- * - update: already active workflow that was de- and then activated, usually as part of a version change
- * - deactivate: previously active workflow is now deactivated
- */
-export type WorkflowPublishHistoryMode = 'activate' | 'update' | 'deactivate';

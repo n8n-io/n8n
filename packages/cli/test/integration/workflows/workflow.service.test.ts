@@ -45,6 +45,7 @@ beforeAll(async () => {
 		mock(),
 		mock(),
 		Container.get(WorkflowFinderService),
+		mock(),
 	);
 });
 
