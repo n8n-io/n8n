@@ -1,13 +1,21 @@
 <script lang="ts" setup>
 import { useCanvasNodeHandle } from '../../../../composables/useCanvasNodeHandle';
-import { computed, useCssModule } from 'vue';
+import { useCanvasNode } from '../../../../composables/useCanvasNode';
+import { computed, ref, useCssModule } from 'vue';
+import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
 import { useI18n } from '@n8n/i18n';
 import CanvasHandleDot from './parts/CanvasHandleDot.vue';
+import CanvasHandlePlus from './parts/CanvasHandlePlus.vue';
+
+const emit = defineEmits<{
+	add: [];
+}>();
 
 const $style = useCssModule();
 
 const i18n = useI18n();
-const { label, isConnected, isRequired, runData } = useCanvasNodeHandle();
+const { render } = useCanvasNode();
+const { label, isConnected, isConnecting, isReadOnly, isRequired, runData } = useCanvasNodeHandle();
 
 const handleClasses = 'source';
 
@@ -18,6 +26,12 @@ const classes = computed(() => ({
 	[$style.required]: isRequired.value,
 }));
 
+const isHovered = ref(false);
+
+const renderOptions = computed(() => render.value.options as CanvasNodeDefaultRender['options']);
+
+const runDataTotal = computed(() => runData.value?.total ?? 0);
+
 const runDataLabel = computed(() =>
 	!isConnected.value && runData.value && runData.value.total > 0
 		? i18n.baseText('ndv.output.items', {
@@ -25,6 +39,19 @@ const runDataLabel = computed(() =>
 				interpolate: { count: String(runData.value.total) },
 			})
 		: '',
+);
+
+const isHandlePlusVisible = computed(() => !isConnecting.value || isHovered.value);
+
+const plusType = computed(() => (runDataTotal.value > 0 ? 'success' : 'default'));
+
+const plusLineSize = computed(
+	() =>
+		({
+			small: 46,
+			medium: 66,
+			large: 80,
+		})[(runDataTotal.value > 0 ? 'large' : renderOptions.value.outputs?.labelSize) ?? 'small'],
 );
 
 const outputLabelClasses = computed(() => ({
@@ -36,12 +63,37 @@ const runDataLabelClasses = computed(() => ({
 	[$style.label]: true,
 	[$style.runDataLabel]: true,
 }));
+
+function onMouseEnter() {
+	isHovered.value = true;
+}
+
+function onMouseLeave() {
+	isHovered.value = false;
+}
+
+function onClickAdd() {
+	emit('add');
+}
 </script>
 <template>
 	<div :class="classes">
 		<div v-if="label" :class="outputLabelClasses">{{ label }}</div>
 		<div v-if="runData" :class="runDataLabelClasses">{{ runDataLabel }}</div>
 		<CanvasHandleDot :handle-classes="handleClasses" />
+		<Transition name="canvas-node-handle-main-output">
+			<CanvasHandlePlus
+				v-if="!isConnected && !isReadOnly"
+				v-show="isHandlePlusVisible"
+				:data-plus-type="plusType"
+				:line-size="plusLineSize"
+				:handle-classes="handleClasses"
+				:type="plusType"
+				@mouseenter="onMouseEnter"
+				@mouseleave="onMouseLeave"
+				@click:plus="onClickAdd"
+			/>
+		</Transition>
 	</div>
 </template>
 
