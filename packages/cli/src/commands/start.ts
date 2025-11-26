@@ -52,7 +52,7 @@ const flagsSchema = z.object({
 @Command({
 	name: 'start',
 	description: 'Starts n8n. Makes Web-UI available and starts active workflows',
-	examples: ['', '--tunnel', '-o', '--tunnel -o'],
+	examples: ['', '-o'],
 	flagsSchema,
 })
 export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
@@ -299,34 +299,6 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 			if (shouldRunVacuum) {
 				await Container.get(ExecutionRepository).query('VACUUM;');
 			}
-		}
-
-		if (flags.tunnel) {
-			this.log('\nWaiting for tunnel ...');
-
-			let tunnelSubdomain =
-				process.env.N8N_TUNNEL_SUBDOMAIN ?? this.instanceSettings.tunnelSubdomain ?? '';
-
-			if (tunnelSubdomain === '') {
-				// When no tunnel subdomain did exist yet create a new random one
-				tunnelSubdomain = randomString(24).toLowerCase();
-
-				this.instanceSettings.update({ tunnelSubdomain });
-			}
-
-			const { default: localtunnel } = await import('@n8n/localtunnel');
-			const { port } = this.globalConfig;
-
-			const webhookTunnel = await localtunnel(port, {
-				host: 'https://hooks.n8n.cloud',
-				subdomain: tunnelSubdomain,
-			});
-
-			process.env.WEBHOOK_URL = `${webhookTunnel.url}/`;
-			this.log(`Tunnel URL: ${process.env.WEBHOOK_URL}\n`);
-			this.log(
-				'IMPORTANT! Do not share with anybody as it would give people access to your n8n instance!',
-			);
 		}
 
 		if (this.globalConfig.database.isLegacySqlite) {

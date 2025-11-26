@@ -81,19 +81,6 @@ If this data can't be found at startup n8n automatically creates a new key and a
 
 n8n must be reachable from the internet to make use of webhooks - essential for triggering workflows from external web-based services such as GitHub. To make this easier, n8n has a special tunnel service which redirects requests from our servers to your local n8n instance. You can inspect the code running this service here: [https://github.com/n8n-io/localtunnel](https://github.com/n8n-io/localtunnel)
 
-To use it simply start n8n with `--tunnel`
-
-```bash
-docker volume create n8n_data
-
-docker run -it --rm \
- --name n8n \
- -p 5678:5678 \
- -v n8n_data:/home/node/.n8n \
- docker.n8n.io/n8nio/n8n \
- start --tunnel
-```
-
 ## Use with PostgreSQL
 
 By default, n8n uses SQLite to save credentials, past executions and workflows. However, n8n also supports using PostgreSQL.

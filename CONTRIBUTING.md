@@ -178,12 +178,6 @@ To start n8n execute:
 pnpm start
 ```
 
-To start n8n with tunnel:
-
-```
-./packages/cli/bin/n8n start --tunnel
-```
-
 ## Development cycle
 
 While iterating on n8n modules code, you can run `pnpm dev`. It will then
