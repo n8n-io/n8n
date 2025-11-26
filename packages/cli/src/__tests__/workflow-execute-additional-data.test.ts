@@ -228,6 +228,29 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const [additionalDataIntegrated] = workflowExecuteMock.mock.calls[0];
 
 			expect(additionalDataIntegrated.variables).toBe(parentVariables);
+		it('should pass workflowId to getBase when executing subworkflow', async () => {
+			const getVariablesSpy = jest.spyOn(WorkflowHelpers, 'getVariables');
+			const workflowId = 'test-workflow-123';
+
+			const workflowWithId = mock<WorkflowEntity>({
+				id: workflowId,
+				name: 'Test Workflow',
+				active: false,
+				activeVersionId: null,
+				activeVersion: null,
+				nodes: [],
+				connections: {},
+			});
+
+			workflowRepository.get.mockResolvedValueOnce(workflowWithId);
+
+			await executeWorkflow(
+				mock<IExecuteWorkflowInfo>({ id: workflowId }),
+				mock<IWorkflowExecuteAdditionalData>(),
+				mock<ExecuteWorkflowOptions>({ loadedWorkflowData: undefined, doNotWaitToFinish: false }),
+			);
+
+			expect(getVariablesSpy).toHaveBeenCalledWith(workflowId, undefined);
 		});
 	});
 
