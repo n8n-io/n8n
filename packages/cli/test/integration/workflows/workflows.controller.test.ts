@@ -2942,6 +2942,24 @@ describe('POST /workflows/:workflowId/activate', () => {
 			globalConfig.workflows.draftPublishEnabled = false;
 		});
 
+		test('should activate workflow with provided versionId', async () => {
+			const workflow = await createWorkflowWithHistory({}, owner);
+			const newVersionId = uuid();
+			await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+			const response = await authOwnerAgent
+				.post(`/workflows/${workflow.id}/activate`)
+				.send({ versionId: newVersionId });
+
+			expect(response.statusCode).toBe(200);
+			expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+
+			const { data } = response.body;
+			expect(data.id).toBe(workflow.id);
+			expect(data.activeVersionId).toBe(newVersionId);
+			expect(data.activeVersion.versionId).toBe(newVersionId);
+		});
+
 		test('should update version name when provided during activation', async () => {
 			const workflow = await createWorkflowWithHistory({}, owner);
 			const newVersionName = 'Production Version';

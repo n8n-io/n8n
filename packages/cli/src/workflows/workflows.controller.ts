@@ -499,11 +499,11 @@ export class WorkflowsController {
 			throw new BadRequestError('versionId is required');
 		}
 
-		const options: { versionId: string; name?: string; description?: string } = { versionId };
-		if (name !== undefined) options.name = name;
-		if (description !== undefined) options.description = description;
-
-		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, options);
+		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
+			versionId,
+			name,
+			description,
+		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 
