@@ -1,15 +1,15 @@
-name: 'Release: Publish'
+name: "Release: Publish"
 
 on:
   pull_request:
     types:
       - closed
     branches:
-      - 'release/*'
+      - "release/*"
 
 jobs:
   build-arm64:
-    runs-on: blacksmith-4vcpu-ubuntu-2204-arm
+    runs-on: ubuntu-22.04-arm
     if: github.event.pull_request.merged == true
     env:
       NODE_OPTIONS: --max-old-space-size=6144
@@ -101,7 +101,7 @@ jobs:
         uses: ncipollo/release-action@1c89adf39833729d8f85a31ccbc451b078733c80 # v1
         with:
           commit: ${{github.event.pull_request.base.ref}}
-          tag: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
+          tag: "n8n@${{ needs.publish-to-npm.outputs.release }}"
           prerelease: true
           makeLatest: false
           body: ${{github.event.pull_request.body}}
@@ -152,7 +152,7 @@ jobs:
     uses: ./.github/workflows/sbom-generation-callable.yml
     with:
       n8n_version: ${{ needs.publish-to-npm.outputs.release }}
-      release_tag_ref: 'n8n@${{ needs.publish-to-npm.outputs.release }}'
+      release_tag_ref: "n8n@${{ needs.publish-to-npm.outputs.release }}"
     secrets: inherit
 
   trigger-release-note:

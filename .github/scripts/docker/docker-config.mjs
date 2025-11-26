@@ -33,7 +33,6 @@ class BuildContext {
       case 'workflow_dispatch':
         context.version = `branch-${this.sanitizeBranch(branch)}`;
         context.release_type = 'branch';
-        context.platforms = ['linux/amd64'];
         break;
 
       case 'push':
@@ -44,7 +43,6 @@ class BuildContext {
         } else {
           context.version = `branch-${this.sanitizeBranch(branch)}`;
           context.release_type = 'branch';
-          context.platforms = ['linux/amd64'];
         }
         break;
 
@@ -82,8 +80,8 @@ class BuildContext {
 
   buildMatrix(platforms) {
     const runners = {
-      'linux/amd64': 'blacksmith-4vcpu-ubuntu-2204',
-      'linux/arm64': 'blacksmith-4vcpu-ubuntu-2204-arm',
+      'linux/amd64': 'ubuntu-22.04',
+      'linux/arm64': 'ubuntu-22.04-arm',
     };
 
     const matrix = {

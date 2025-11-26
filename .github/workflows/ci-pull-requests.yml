@@ -103,7 +103,7 @@ jobs:
   typecheck:
     name: Typecheck
     if: needs.install-and-build.outputs.non_python_changed == 'true'
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     needs: install-and-build
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

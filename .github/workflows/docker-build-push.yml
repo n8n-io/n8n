@@ -3,29 +3,29 @@
 # - Uses docker-config.mjs for context determination, this determines what needs to be built based on the trigger
 # - Uses docker-tags.mjs for tag generation, this generates the tags for the images
 
-name: 'Docker: Build and Push'
+name: "Docker: Build and Push"
 
 env:
-  NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '22.21.0'
+  NODE_OPTIONS: "--max-old-space-size=7168"
+  NODE_VERSION: "22.21.0"
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
 
   workflow_call:
     inputs:
       n8n_version:
-        description: 'N8N version to build'
+        description: "N8N version to build"
         required: true
         type: string
       release_type:
-        description: 'Release type (stable, nightly, dev)'
+        description: "Release type (stable, nightly, dev)"
         required: false
         type: string
-        default: 'stable'
+        default: "stable"
       push_enabled:
-        description: 'Whether to push the built images'
+        description: "Whether to push the built images"
         required: false
         type: boolean
         default: true
@@ -33,12 +33,12 @@ on:
   workflow_dispatch:
     inputs:
       push_enabled:
-        description: 'Push image to registry'
+        description: "Push image to registry"
         required: false
         type: boolean
         default: true
       success_url:
-        description: 'URL to call after the build is successful'
+        description: "URL to call after the build is successful"
         required: false
         type: string
 
@@ -47,12 +47,12 @@ on:
       - opened
       - ready_for_review
     paths:
-      - '.github/workflows/docker-build-push.yml'
-      - '.github/scripts/docker/docker-config.mjs'
-      - '.github/scripts/docker/docker-tags.mjs'
-      - 'docker/images/n8n/Dockerfile'
-      - 'docker/images/runners/Dockerfile'
-      - 'docker/images/runners/Dockerfile.distroless'
+      - ".github/workflows/docker-build-push.yml"
+      - ".github/scripts/docker/docker-config.mjs"
+      - ".github/scripts/docker/docker-tags.mjs"
+      - "docker/images/n8n/Dockerfile"
+      - "docker/images/runners/Dockerfile"
+      - "docker/images/runners/Dockerfile.distroless"
 
 jobs:
   determine-build-context:
@@ -127,17 +127,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login to Docker Hub
-        if: |
-          needs.determine-build-context.outputs.push_enabled == 'true' &&
-          needs.determine-build-context.outputs.push_to_docker == 'true'
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+      - name: Configure AWS credentials
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY }}"
+          aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          aws-region: "us-west-2"
+
+      - name: Login to Amazon ECR
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push n8n Docker image
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: ./docker/images/n8n/Dockerfile
@@ -149,10 +152,12 @@ jobs:
           provenance: true
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.n8n_tags }}
+          tags: 548235256840.dkr.ecr.us-west-2.amazonaws.com/n8n-forked/n8n:${{ needs.determine-build-context.outputs.n8n_version }}-${{ matrix.platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push task runners Docker image (Alpine)
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: ./docker/images/runners/Dockerfile
@@ -164,10 +169,12 @@ jobs:
           provenance: true
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_tags }}
+          tags: 548235256840.dkr.ecr.us-west-2.amazonaws.com/n8n-forked/runners:${{ needs.determine-build-context.outputs.n8n_version }}-${{ matrix.platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push task runners Docker image (distroless)
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: ./docker/images/runners/Dockerfile.distroless
@@ -179,7 +186,9 @@ jobs:
           provenance: true
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+          tags: 548235256840.dkr.ecr.us-west-2.amazonaws.com/n8n-forked/runners-distroless:${{ needs.determine-build-context.outputs.n8n_version }}-${{ matrix.platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
@@ -199,6 +208,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY }}"
+          aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          aws-region: "us-west-2"
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Login to Docker Hub
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
@@ -206,63 +225,109 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Create GHCR multi-arch manifests
+      - name: Create ECR multi-arch manifests
         run: |
           RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
+          VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
+          ECR_BASE="548235256840.dkr.ecr.us-west-2.amazonaws.com/n8n-forked"
 
-          # Function to create manifest for an image
-          create_manifest() {
+          # Function to create manifest for an image in ECR
+          create_ecr_manifest() {
             local IMAGE_NAME=$1
-            local MANIFEST_TAG=$2
+            local MANIFEST_TAG="${ECR_BASE}/${IMAGE_NAME}:${VERSION}"
 
-            if [[ -z "$MANIFEST_TAG" ]]; then
-              echo "Skipping $IMAGE_NAME - no manifest tag"
-              return
-            fi
-
-            echo "Creating GHCR manifest for $IMAGE_NAME: $MANIFEST_TAG"
+            echo "Creating ECR manifest for ${IMAGE_NAME}: ${MANIFEST_TAG}"
 
             # For branch builds, only AMD64 is built
             if [[ "$RELEASE_TYPE" == "branch" ]]; then
               docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
+                --tag "${MANIFEST_TAG}" \
                 "${MANIFEST_TAG}-amd64"
             else
               docker buildx imagetools create \
-                --tag "$MANIFEST_TAG" \
+                --tag "${MANIFEST_TAG}" \
                 "${MANIFEST_TAG}-amd64" \
                 "${MANIFEST_TAG}-arm64"
+            fi
+
+            # Also create 'latest' tag for stable releases
+            if [[ "$RELEASE_TYPE" == "stable" ]]; then
+              echo "Creating 'latest' tag for ${IMAGE_NAME}"
+              if [[ "$RELEASE_TYPE" == "branch" ]]; then
+                docker buildx imagetools create \
+                  --tag "${ECR_BASE}/${IMAGE_NAME}:latest" \
+                  "${MANIFEST_TAG}-amd64"
+              else
+                docker buildx imagetools create \
+                  --tag "${ECR_BASE}/${IMAGE_NAME}:latest" \
+                  "${MANIFEST_TAG}-amd64" \
+                  "${MANIFEST_TAG}-arm64"
+              fi
             fi
           }
 
           # Create manifests for all images
-          create_manifest "n8n" "${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}"
-          create_manifest "runners" "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
-          create_manifest "runners-distroless" "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
+          create_ecr_manifest "n8n"
+          create_ecr_manifest "runners"
+          create_ecr_manifest "runners-distroless"
 
-      - name: Create Docker Hub manifests
-        if: needs.determine-build-context.outputs.push_to_docker == 'true'
-        run: |
-          VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
-          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
+      # - name: Create GHCR multi-arch manifests
+      #   run: |
+      #     RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
 
-          # Create manifests for each image type
-          declare -A images=(
-            ["n8n"]="${VERSION}"
-            ["runners"]="${VERSION}"
-            ["runners-distroless"]="${VERSION}-distroless"
-          )
+      #     # Function to create manifest for an image
+      #     create_manifest() {
+      #       local IMAGE_NAME=$1
+      #       local MANIFEST_TAG=$2
 
-          for image in "${!images[@]}"; do
-            TAG_SUFFIX="${images[$image]}"
-            IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
+      #       if [[ -z "$MANIFEST_TAG" ]]; then
+      #         echo "Skipping $IMAGE_NAME - no manifest tag"
+      #         return
+      #       fi
 
-            echo "Creating Docker Hub manifest for $image"
-            docker buildx imagetools create \
-              --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
-              "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
-          done
+      #       echo "Creating GHCR manifest for $IMAGE_NAME: $MANIFEST_TAG"
+
+      #       # For branch builds, only AMD64 is built
+      #       if [[ "$RELEASE_TYPE" == "branch" ]]; then
+      #         docker buildx imagetools create \
+      #           --tag "$MANIFEST_TAG" \
+      #           "${MANIFEST_TAG}-amd64"
+      #       else
+      #         docker buildx imagetools create \
+      #           --tag "$MANIFEST_TAG" \
+      #           "${MANIFEST_TAG}-amd64" \
+      #           "${MANIFEST_TAG}-arm64"
+      #       fi
+      #     }
+
+      #     # Create manifests for all images
+      #     create_manifest "n8n" "${{ needs.build-and-push-docker.outputs.primary_ghcr_manifest_tag }}"
+      #     create_manifest "runners" "${{ needs.build-and-push-docker.outputs.runners_primary_ghcr_manifest_tag }}"
+      #     create_manifest "runners-distroless" "${{ needs.build-and-push-docker.outputs.runners_distroless_primary_ghcr_manifest_tag }}"
+
+      # - name: Create Docker Hub manifests
+      #   if: needs.determine-build-context.outputs.push_to_docker == 'true'
+      #   run: |
+      #     VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
+      #     DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
+
+      #     # Create manifests for each image type
+      #     declare -A images=(
+      #       ["n8n"]="${VERSION}"
+      #       ["runners"]="${VERSION}"
+      #       ["runners-distroless"]="${VERSION}-distroless"
+      #     )
+
+      #     for image in "${!images[@]}"; do
+      #       TAG_SUFFIX="${images[$image]}"
+      #       IMAGE_NAME="${image//-distroless/}"  # Remove -distroless from image name
+
+      #       echo "Creating Docker Hub manifest for $image"
+      #       docker buildx imagetools create \
+      #         --tag "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}" \
+      #         "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-amd64" \
+      #         "${DOCKER_BASE}/${IMAGE_NAME}:${TAG_SUFFIX}-arm64"
+      #     done
 
   call-success-url:
     name: Call Success URL
@@ -281,7 +346,12 @@ jobs:
 
   security-scan:
     name: Security Scan
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    needs:
+      [
+        determine-build-context,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+      ]
     if: |
       success() &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
@@ -293,7 +363,12 @@ jobs:
 
   security-scan-runners:
     name: Security Scan (runners)
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    needs:
+      [
+        determine-build-context,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+      ]
     if: |
       success() &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
@@ -312,6 +387,6 @@ jobs:
       - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         with:
           status: ${{ needs.build-and-push-docker.result }}
-          channel: '#team-catalysts'
+          channel: "#team-catalysts"
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
