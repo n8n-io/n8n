@@ -4,12 +4,12 @@ import { Logger } from '@n8n/backend-common';
 import { ProjectRelationRepository } from '@n8n/db';
 
 import { CsvParserService } from '../csv-parser.service';
-import { DataTableColumn } from '../data-table-column.entity';
+import type { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
 import { DataTableFileCleanupService } from '../data-table-file-cleanup.service';
 import { DataTableRowsRepository } from '../data-table-rows.repository';
 import { DataTableSizeValidator } from '../data-table-size-validator.service';
-import { DataTable } from '../data-table.entity';
+import type { DataTable } from '../data-table.entity';
 import { DataTableRepository } from '../data-table.repository';
 import { DataTableService } from '../data-table.service';
 import { DataTableColumnNotFoundError } from '../errors/data-table-column-not-found.error';
