@@ -62,6 +62,23 @@ jobs:
         run: |
           git push -f origin "refs/remotes/origin/${{ env.BASE_BRANCH }}:refs/heads/release/${{ env.NEXT_RELEASE }}"
 
+      - name: Generate PR body
+        id: generate-body
+        run: |
+          set -e
+          CHANGELOG_FILE="CHANGELOG-${{ env.NEXT_RELEASE }}.md"
+          DELIMITER="EOF_$(uuidgen)"
+
+          if [ -f "${CHANGELOG_FILE}" ]; then
+            {
+              echo "content<<${DELIMITER}"
+              cat "${CHANGELOG_FILE}"
+              echo "${DELIMITER}"
+            } >> "$GITHUB_OUTPUT"
+          else
+            echo "content=No changelog generated. Likely points to fixes in our CI." >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Push the release branch, and Create the PR
         uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c # v6
         with:
@@ -71,4 +88,4 @@ jobs:
           delete-branch: true
           labels: release,release:${{ github.event.inputs.release-type }}
           title: ':rocket: Release ${{ env.NEXT_RELEASE }}'
-          body-path: 'CHANGELOG-${{ env.NEXT_RELEASE }}.md'
+          body: ${{ steps.generate-body.outputs.content }}
