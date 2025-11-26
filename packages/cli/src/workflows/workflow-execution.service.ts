@@ -239,9 +239,10 @@ export class WorkflowExecutionService {
 		user: User,
 		httpResponse?: Response,
 		streamingEnabled?: boolean,
+		executionMode: WorkflowExecuteMode = 'chat',
 	) {
 		const data: IWorkflowExecutionDataProcess = {
-			executionMode: 'chat',
+			executionMode,
 			workflowData,
 			userId: user.id,
 			executionData,
