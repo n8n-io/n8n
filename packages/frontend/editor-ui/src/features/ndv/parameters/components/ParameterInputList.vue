@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type {
+	AssignmentCollectionValue,
 	CalloutAction,
+	FilterValue,
 	INodeParameters,
 	INodeProperties,
 	NodeParameterValueType,
@@ -564,7 +566,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 			>
 				<MultipleParameter
 					:parameter="item.parameter"
-					:values="item.value as any"
+					:values="item.value as INodeParameters[]"
 					:node-values="nodeValues"
 					:path="item.path"
 					:is-read-only="isReadOnly"
@@ -670,7 +672,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						<LazyCollectionParameter
 							v-if="item.parameter.type === 'collection'"
 							:parameter="item.parameter"
-							:values="item.value as any"
+							:values="item.value as INodeParameters"
 							:node-values="nodeValues"
 							:path="item.path"
 							:is-read-only="isReadOnly"
@@ -679,7 +681,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						<LazyFixedCollectionParameter
 							v-else-if="item.parameter.type === 'fixedCollection'"
 							:parameter="item.parameter"
-							:values="item.value as any"
+							:values="item.value as Record<string, INodeParameters[]>"
 							:node-values="nodeValues"
 							:path="item.path"
 							:is-read-only="isReadOnly"
@@ -723,7 +725,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 			<FilterConditions
 				v-else-if="item.parameter.type === 'filter'"
 				:parameter="item.parameter"
-				:value="item.value as any"
+				:value="item.value as FilterValue"
 				:path="item.path"
 				:node="node"
 				:read-only="isReadOnly"
@@ -732,7 +734,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 			<AssignmentCollection
 				v-else-if="item.parameter.type === 'assignmentCollection'"
 				:parameter="item.parameter"
-				:value="item.value as any"
+				:value="item.value as AssignmentCollectionValue"
 				:path="item.path"
 				:node="node"
 				:is-read-only="isReadOnly"
