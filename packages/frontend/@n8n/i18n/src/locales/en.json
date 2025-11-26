@@ -303,6 +303,7 @@
 	"chatHub.agent.newAgent": "New Agent",
 	"chatHub.agent.configureCredentials": "Configure credentials",
 	"chatHub.agent.addModel": "Add model",
+	"chatHub.agent.credentialsMissing": "Credentials missing",
 	"chatHub.agent.editor.title.new": "New Agent",
 	"chatHub.agent.editor.title.edit": "Edit Agent",
 	"chatHub.agent.editor.name.label": "Name",

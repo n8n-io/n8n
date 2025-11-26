@@ -90,6 +90,12 @@ const credentialsName = computed(() =>
 		: undefined,
 );
 const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
+const isCredentialsMissing = computed(
+	() =>
+		isCredentialsRequired.value &&
+		selectedAgent?.model.provider &&
+		!credentials?.[selectedAgent?.model.provider],
+);
 
 const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
@@ -340,6 +346,14 @@ defineExpose({
 				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
 					{{ credentialsName }}
 				</N8nText>
+				<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
+					<N8nIcon
+						icon="node-validation-error"
+						size="xsmall"
+						:class="$style.credentialsMissingIcon"
+					/>
+					{{ i18n.baseText('chatHub.agent.credentialsMissing') }}
+				</N8nText>
 			</div>
 			<N8nIcon icon="chevron-down" size="medium" />
 		</N8nButton>
@@ -354,6 +368,11 @@ defineExpose({
 
 	/* disable underline */
 	text-decoration: none !important;
+}
+
+.credentialsMissingIcon {
+	display: inline-block;
+	margin-bottom: -1px;
 }
 
 .selected {

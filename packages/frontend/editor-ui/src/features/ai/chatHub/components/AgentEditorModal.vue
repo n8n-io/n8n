@@ -5,7 +5,7 @@ import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import type { ChatHubBaseLLMModel, ChatHubProvider, ChatModelDto } from '@n8n/api-types';
-import { N8nButton, N8nHeading, N8nInput, N8nInputLabel } from '@n8n/design-system';
+import { N8nButton, N8nHeading, N8nInput, N8nInputLabel, N8nSpinner } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
 import { createEventBus } from '@n8n/utils/event-bus';
@@ -50,6 +50,7 @@ const selectedAgent = computed(
 );
 
 const isEditMode = computed(() => !!props.data.agentId);
+const isLoadingAgent = computed(() => isEditMode.value && !customAgent.value);
 const title = computed(() =>
 	isEditMode.value
 		? i18n.baseText('chatHub.agent.editor.title.edit')
@@ -211,6 +212,7 @@ function onSelectTools(newTools: INode[]) {
 						:placeholder="i18n.baseText('chatHub.agent.editor.name.placeholder')"
 						:maxlength="128"
 						:class="$style.input"
+						:disabled="isLoadingAgent"
 					/>
 				</N8nInputLabel>
 
@@ -226,6 +228,7 @@ function onSelectTools(newTools: INode[]) {
 						:maxlength="512"
 						:rows="3"
 						:class="$style.input"
+						:disabled="isLoadingAgent"
 					/>
 				</N8nInputLabel>
 
@@ -241,6 +244,7 @@ function onSelectTools(newTools: INode[]) {
 						:placeholder="i18n.baseText('chatHub.agent.editor.systemPrompt.placeholder')"
 						:rows="6"
 						:class="$style.input"
+						:disabled="isLoadingAgent"
 					/>
 				</N8nInputLabel>
 
@@ -255,6 +259,7 @@ function onSelectTools(newTools: INode[]) {
 							:selected-agent="selectedAgent"
 							:include-custom-agents="false"
 							:credentials="agentMergedCredentials"
+							:disabled="isLoadingAgent"
 							@change="onModelChange"
 							@select-credential="onCredentialSelected"
 						/>
@@ -267,10 +272,11 @@ function onSelectTools(newTools: INode[]) {
 						:required="false"
 					>
 						<div>
-							<ToolsSelector :disabled="false" :selected="tools" @select="onSelectTools" />
+							<ToolsSelector :disabled="isLoadingAgent" :selected="tools" @select="onSelectTools" />
 						</div>
 					</N8nInputLabel>
 				</div>
+				<N8nSpinner v-if="isLoadingAgent" :class="$style.spinner" size="xlarge" />
 			</div>
 		</template>
 		<template #footer>
@@ -294,6 +300,13 @@ function onSelectTools(newTools: INode[]) {
 </template>
 
 <style lang="scss" module>
+.spinner {
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	transform: translate(-50%, -50%);
+}
+
 .content {
 	display: flex;
 	flex-direction: column;
