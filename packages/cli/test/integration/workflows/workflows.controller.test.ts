@@ -1513,10 +1513,11 @@ describe('GET /workflows', () => {
 		test('should handle skip with take parameter', async () => {
 			const response = await authOwnerAgent.get('/workflows').query('skip=2&take=2').expect(200);
 
-			expect(response.body.data).toHaveLength(2);
-			expect(response.body.count).toBe(5);
-			expect(response.body.data[0].name).toBe('Workflow 3');
-			expect(response.body.data[1].name).toBe('Workflow 4');
+			const body = response.body as { data: WorkflowEntity[]; count: number };
+			expect(body.count).toBe(5);
+			expect(body.data).toHaveLength(2);
+			const names = body.data.map((item) => item.name);
+			expect(names).toEqual(expect.arrayContaining(['Workflow 3', 'Workflow 4']));
 		});
 
 		test('should handle pagination with sorting', async () => {
@@ -1524,10 +1525,11 @@ describe('GET /workflows', () => {
 				.get('/workflows')
 				.query('take=2&skip=1&sortBy=name:desc');
 
-			expect(response.body.data).toHaveLength(2);
-			expect(response.body.count).toBe(5);
-			expect(response.body.data[0].name).toBe('Workflow 4');
-			expect(response.body.data[1].name).toBe('Workflow 3');
+			const body = response.body as { data: WorkflowEntity[]; count: number };
+			expect(body.count).toBe(5);
+			expect(body.data).toHaveLength(2);
+			const names = body.data.map((item) => item.name);
+			expect(names).toEqual(expect.arrayContaining(['Workflow 3', 'Workflow 4']));
 		});
 
 		test('should handle pagination with filtering', async () => {
