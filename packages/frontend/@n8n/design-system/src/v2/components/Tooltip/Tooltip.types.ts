@@ -1,4 +1,3 @@
-import type { TooltipRootProps, TooltipRootEmits, TooltipContentProps } from 'reka-ui';
 import type { IN8nButton } from '../../../types';
 
 export type Placement =
@@ -27,7 +26,19 @@ export type Justify =
 	| 'space-around'
 	| 'space-evenly';
 
-export interface N8nTooltipProps extends Omit<TooltipRootProps, 'open'> {
+/** Props passed to TooltipContent for advanced positioning control */
+export interface TooltipPopperOptions {
+	/** Whether tooltip should avoid collisions with viewport edges */
+	avoidCollisions?: boolean;
+	/** Padding from viewport edge when avoiding collisions */
+	collisionPadding?: number | { top?: number; right?: number; bottom?: number; left?: number };
+	/** Whether tooltip should stick to boundary when scrolling */
+	sticky?: 'partial' | 'always';
+	/** Whether tooltip should hide when trigger is fully occluded */
+	hideWhenDetached?: boolean;
+}
+
+export interface N8nTooltipProps {
 	/** Text content for the tooltip. Supports HTML (sanitized for security). */
 	content?: string;
 	/** Position of tooltip relative to trigger */
@@ -42,8 +53,8 @@ export interface N8nTooltipProps extends Omit<TooltipRootProps, 'open'> {
 	popperClass?: string;
 	/** Whether the mouse can enter the tooltip content area */
 	enterable?: boolean;
-	/** Popper.js configuration object for advanced positioning control */
-	popperOptions?: Partial<TooltipContentProps>;
+	/** Configuration object for advanced positioning control */
+	popperOptions?: TooltipPopperOptions;
 	/** Whether to append the tooltip to the body */
 	teleported?: boolean;
 	/** Offset of the tooltip from the trigger element (in pixels) */
@@ -56,7 +67,10 @@ export interface N8nTooltipProps extends Omit<TooltipRootProps, 'open'> {
 	justifyButtons?: Justify;
 }
 
-export type N8nTooltipEmits = TooltipRootEmits;
+export interface N8nTooltipEmits {
+	/** Emitted when tooltip open state changes */
+	(e: 'update:open', open: boolean): void;
+}
 
 export interface N8nTooltipSlots {
 	/** The trigger element that activates the tooltip (required) */

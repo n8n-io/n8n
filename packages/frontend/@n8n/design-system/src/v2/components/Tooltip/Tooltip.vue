@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import {
+	TooltipProvider,
 	TooltipRoot,
 	TooltipTrigger,
 	TooltipContent,
 	TooltipPortal,
 	TooltipArrow,
-	useForwardPropsEmits,
 } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
+
 import type { N8nTooltipProps, N8nTooltipEmits } from './Tooltip.types';
 import N8nButton from '../../../components/N8nButton';
 import { useInjectTooltipAppendTo } from '../../../composables/useTooltipAppendTo';
@@ -45,92 +46,75 @@ const isOpen = ref(false);
 
 watch(
 	() => props.visible,
-	(newVisible) => {
+	(newVisible, oldVisible) => {
 		if (newVisible !== undefined) {
 			isOpen.value = newVisible;
+			// Only emit on changes, not on initial mount
+			if (oldVisible !== undefined && newVisible !== oldVisible) {
+				emit('update:open', newVisible);
+			}
 		}
 	},
 	{ immediate: true },
 );
 
-// Forward props and emits to Reka UI
-const rootProps = computed(() => {
-	const {
-		content,
-		placement,
-		showAfter,
-		visible,
-		popperClass,
-		enterable,
-		popperOptions,
-		teleported,
-		offset,
-		showArrow,
-		buttons,
-		justifyButtons,
-		...rest
-	} = props;
-
-	return {
-		...rest,
-		disabled: props.disabled,
-		delayDuration: showAfter,
-		...(visible !== undefined && { open: isOpen.value }),
-	};
-});
-
-const forwarded = useForwardPropsEmits(rootProps, emit);
-
 // Reka UI handles enterable behavior via disableHoverableContent prop
 const disableHoverableContent = computed(() => !props.enterable);
+
+// Determine if we're in controlled mode
+const isControlled = computed(() => props.visible !== undefined);
+
+const handleOpenChange = (open: boolean) => {
+	isOpen.value = open;
+	emit('update:open', open);
+};
 </script>
 
 <template>
-	<TooltipRoot
-		v-bind="forwarded"
-		:disable-hoverable-content="disableHoverableContent"
-		@update:open="
-			(open) => {
-				isOpen = open;
-				emit('update:open', open);
-			}
-		"
-	>
-		<TooltipTrigger as-child>
-			<slot />
-		</TooltipTrigger>
-
-		<component
-			:is="teleported ? TooltipPortal : 'template'"
-			:to="teleported ? (appendTo ?? 'body') : undefined"
+	<TooltipProvider>
+		<TooltipRoot
+			:disabled="disabled"
+			:delay-duration="showAfter"
+			:open="isControlled ? isOpen : undefined"
+			:disable-hoverable-content="disableHoverableContent"
+			@update:open="handleOpenChange"
 		>
-			<TooltipContent
-				:side="placementParts.side"
-				:align="placementParts.align"
-				:side-offset="offset"
-				:class="popperClass ?? 'n8n-tooltip'"
-				v-bind="popperOptions ?? {}"
+			<TooltipTrigger as-child>
+				<slot />
+			</TooltipTrigger>
+
+			<component
+				:is="teleported ? TooltipPortal : 'template'"
+				:to="teleported ? (appendTo ?? 'body') : undefined"
 			>
-				<slot name="content">
-					<div v-n8n-html="content"></div>
-				</slot>
-
-				<div
-					v-if="buttons.length"
-					:class="$style.buttons"
-					:style="{ justifyContent: justifyButtons }"
+				<TooltipContent
+					:side="placementParts.side"
+					:align="placementParts.align"
+					:side-offset="offset"
+					:class="popperClass ?? 'n8n-tooltip'"
+					v-bind="popperOptions ?? {}"
 				>
-					<N8nButton
-						v-for="(button, index) in buttons"
-						:key="button.attrs.label ?? `button-${index}`"
-						v-bind="{ ...button.attrs, ...button.listeners }"
-					/>
-				</div>
+					<slot name="content">
+						<div v-n8n-html="content"></div>
+					</slot>
 
-				<TooltipArrow v-if="showArrow" :class="$style.arrow" />
-			</TooltipContent>
-		</component>
-	</TooltipRoot>
+					<div
+						v-if="buttons.length"
+						:class="$style.buttons"
+						:style="{ justifyContent: justifyButtons }"
+					>
+						<N8nButton
+							v-for="(button, index) in buttons"
+							:key="button.attrs.label ?? `button-${index}`"
+							v-bind="{ ...button.attrs, ...button.listeners }"
+						/>
+					</div>
+
+					<TooltipArrow v-if="showArrow" :class="$style.arrow" />
+				</TooltipContent>
+			</component>
+		</TooltipRoot>
+	</TooltipProvider>
 </template>
 
 <style lang="scss" module>
