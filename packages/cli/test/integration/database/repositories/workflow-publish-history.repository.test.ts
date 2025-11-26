@@ -13,7 +13,6 @@ import {
 import { Container } from '@n8n/di';
 
 import { createUser } from '../../shared/db/users';
-import { nextTick } from 'process';
 
 const id1 = '5ef472d2-9253-452c-b0fe-8eb78fb3c43b';
 const id2 = 'bf36ce2c-baf6-4b51-9f01-065c76d5cb0c';
