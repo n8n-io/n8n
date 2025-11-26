@@ -341,7 +341,8 @@ export class WorkflowService {
 			delete workflowSettings.executionTimeout;
 		}
 
-		workflowUpdateData.updatedAt = new Date(); // required due to atomic update
+		// Always set updatedAt to get millisecond precision
+		workflowUpdateData.updatedAt = new Date();
 
 		if (workflowUpdateData.name) {
 			await validateEntity(workflowUpdateData);
