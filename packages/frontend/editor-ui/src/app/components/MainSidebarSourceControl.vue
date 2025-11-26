@@ -135,7 +135,6 @@ function pullWorkfolder() {
 						</div>
 					</template>
 					<N8nButton
-						:style="{ color: accessibleTextColor }"
 						:disabled="!hasPullPermission"
 						data-test-id="main-sidebar-source-control-pull"
 						icon="arrow-down"
@@ -164,7 +163,6 @@ function pullWorkfolder() {
 						</div>
 					</template>
 					<N8nButton
-						:style="{ color: accessibleTextColor }"
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.push')"
 						:disabled="sourceControlStore.preferences.branchReadOnly || !hasPushPermission"
