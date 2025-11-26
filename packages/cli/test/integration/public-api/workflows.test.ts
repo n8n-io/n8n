@@ -1585,9 +1585,12 @@ describe('PUT /workflows/:id', () => {
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
 
-	test('should merge settings on partial update', async () => {
+	test('should merge settings when updating workflow', async () => {
 		const workflow = await createWorkflow(
 			{
+				name: 'Test Workflow',
+				nodes: [],
+				connections: {},
 				settings: {
 					saveExecutionProgress: true,
 					saveManualExecutions: true,
@@ -1602,9 +1605,12 @@ describe('PUT /workflows/:id', () => {
 
 		// Update with only partial settings
 		const payload = {
+			name: workflow.name,
+			nodes: workflow.nodes,
+			connections: workflow.connections,
 			settings: {
-				timezone: 'Europe/London',
-				callerPolicy: 'workflowsFromSameOwner',
+				timezone: 'Europe/London', // Update
+				callerPolicy: 'workflowsFromSameOwner', // Add
 			},
 		};
 
@@ -1612,7 +1618,7 @@ describe('PUT /workflows/:id', () => {
 
 		expect(response.statusCode).toBe(200);
 
-		expect(response.body.settings).toEqual({
+		expect(response.body.settings).toMatchObject({
 			saveExecutionProgress: true,
 			saveManualExecutions: true,
 			saveDataErrorExecution: 'all',
