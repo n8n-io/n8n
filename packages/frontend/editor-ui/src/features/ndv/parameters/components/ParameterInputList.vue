@@ -11,7 +11,7 @@ import {
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
-import { computed, defineAsyncComponent, onErrorCaptured, ref, watch, type WatchSource } from 'vue';
+import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -37,7 +37,7 @@ import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 
 import { captureException } from '@sentry/vue';
-import { computedWithControl } from '@vueuse/core';
+import { throttledWatch } from '@vueuse/core';
 import get from 'lodash/get';
 import { storeToRefs } from 'pinia';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
@@ -132,19 +132,33 @@ const nodeType = computed(() => {
 	return null;
 });
 
-const filteredParameters = computedWithControl(
-	[() => props.parameters, () => props.nodeValues] as WatchSource[],
+const filteredParameters = ref<INodeProperties[]>([]);
+const displayParameters = ref<Record<string, boolean>>({});
+
+throttledWatch(
+	[() => props.parameters, () => props.nodeValues, node],
 	() => {
+		// Calculate display map for all parameters
+		const displayMap: Record<string, boolean> = {};
+		for (const parameter of props.parameters) {
+			const parameterPath = getPath(parameter.name);
+			displayMap[parameterPath] = shouldDisplayNodeParameter(parameter);
+		}
+		displayParameters.value = displayMap;
+
+		// Filter parameters that should be displayed
 		const parameters = props.parameters.filter((parameter: INodeProperties) =>
 			shouldDisplayNodeParameter(parameter),
 		);
 
 		if (node.value && node.value.type === FORM_TRIGGER_NODE_TYPE) {
-			return updateFormTriggerParameters(parameters, node.value.name);
+			filteredParameters.value = updateFormTriggerParameters(parameters, node.value.name);
+			return;
 		}
 
 		if (node.value && node.value.type === FORM_NODE_TYPE) {
-			return updateFormParameters(parameters, node.value.name);
+			filteredParameters.value = updateFormParameters(parameters, node.value.name);
+			return;
 		}
 
 		if (
@@ -152,11 +166,13 @@ const filteredParameters = computedWithControl(
 			node.value.type === WAIT_NODE_TYPE &&
 			node.value.parameters.resume === 'form'
 		) {
-			return updateWaitParameters(parameters, node.value.name);
+			filteredParameters.value = updateWaitParameters(parameters, node.value.name);
+			return;
 		}
 
-		return parameters;
+		filteredParameters.value = parameters;
 	},
+	{ throttle: 200, immediate: true },
 );
 
 const filteredParameterNames = computed(() => {
