@@ -52,6 +52,7 @@ export function useNodeSettingsParameters() {
 		node: INode,
 		isToolNode: boolean,
 	) {
+		console.log('updateNodeParameter');
 		const nodeTypeDescription = nodeTypesStore.getNodeType(node.type, node.typeVersion);
 		if (!nodeTypeDescription) {
 			return;
@@ -172,6 +173,7 @@ export function useNodeSettingsParameters() {
 		path: string | undefined = '',
 		displayKey: 'displayOptions' | 'disabledOptions' = 'displayOptions',
 	): boolean {
+		console.log('shouldDisplayNodeParameter');
 		if (parameter.type === 'hidden') {
 			return false;
 		}
