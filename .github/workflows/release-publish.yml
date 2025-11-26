@@ -34,6 +34,7 @@ jobs:
       NPM_CONFIG_PROVENANCE: true
     outputs:
       release: ${{ steps.set-release.outputs.release }}
+      release_type: ${{ steps.release-type.outputs.type }}
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -73,8 +74,21 @@ jobs:
         run: npm dist-tag rm n8n rc
         continue-on-error: true
 
-      - id: set-release
+      - name: Set release version
+        id: set-release
         run: echo "release=${{ env.RELEASE }}" >> "$GITHUB_OUTPUT"
+
+      - name: Determine release type
+        id: release-type
+        run: |
+          VERSION="${{ env.RELEASE }}"
+          if [[ "$VERSION" == *"-rc."* ]]; then
+            echo "type=rc" >> "$GITHUB_OUTPUT"
+          elif [[ "$VERSION" == 1.* ]]; then
+            echo "type=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "type=stable" >> "$GITHUB_OUTPUT"
+          fi
 
   publish-to-docker-hub:
     name: Publish to DockerHub
@@ -82,7 +96,7 @@ jobs:
     uses: ./.github/workflows/docker-build-push.yml
     with:
       n8n_version: ${{ needs.publish-to-npm.outputs.release }}
-      release_type: stable
+      release_type: ${{ needs.publish-to-npm.outputs.release_type }}
     secrets: inherit
 
   create-github-release:
