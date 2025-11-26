@@ -1,58 +1,3 @@
-<template>
-	<div class="cron-builder">
-		<div class="cron-builder__mode-selector">
-			<N8nRadioButtons
-				v-model="currentMode"
-				:options="modeOptions"
-				@update:model-value="handleModeChange"
-			/>
-		</div>
-
-		<div class="cron-builder__content">
-			<CronTemplateSelector
-				v-if="currentMode === 'template'"
-				:selected-template="selectedTemplate"
-				@template-selected="handleTemplateSelected"
-			/>
-
-			<CronSimpleMode
-				v-else-if="currentMode === 'simple'"
-				:config="simpleConfig"
-				@update:config="handleSimpleConfigUpdate"
-			/>
-
-			<CronAdvancedMode
-				v-else-if="currentMode === 'advanced'"
-				:config="advancedConfig"
-				@update:config="handleAdvancedConfigUpdate"
-			/>
-
-			<div v-else-if="currentMode === 'custom'" class="cron-builder__custom">
-				<N8nInputLabel label="Cron Expression" />
-				<N8nInput
-					v-model="customExpression"
-					:placeholder="'0 9 * * 1-5'"
-					@update:model-value="handleCustomExpressionUpdate"
-				/>
-				<div v-if="validation.error" class="cron-builder__error">
-					{{ validation.error }}
-				</div>
-				<div v-if="validation.warning" class="cron-builder__warning">
-					{{ validation.warning }}
-				</div>
-			</div>
-		</div>
-
-		<div class="cron-builder__preview">
-			<CronNextRunsPreview :expression="currentExpression" :timezone="timezone" />
-		</div>
-
-		<div v-if="humanReadable" class="cron-builder__description">
-			<N8nText size="small" color="text-light">{{ humanReadable }}</N8nText>
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { N8nRadioButtons, N8nInputLabel, N8nInput, N8nText } from '@n8n/design-system';
@@ -198,6 +143,61 @@ watch(
 	{ immediate: true },
 );
 </script>
+
+<template>
+	<div class="cron-builder">
+		<div class="cron-builder__mode-selector">
+			<N8nRadioButtons
+				v-model="currentMode"
+				:options="modeOptions"
+				@update:model-value="handleModeChange"
+			/>
+		</div>
+
+		<div class="cron-builder__content">
+			<CronTemplateSelector
+				v-if="currentMode === 'template'"
+				:selected-template="selectedTemplate"
+				@template-selected="handleTemplateSelected"
+			/>
+
+			<CronSimpleMode
+				v-else-if="currentMode === 'simple'"
+				:config="simpleConfig"
+				@update:config="handleSimpleConfigUpdate"
+			/>
+
+			<CronAdvancedMode
+				v-else-if="currentMode === 'advanced'"
+				:config="advancedConfig"
+				@update:config="handleAdvancedConfigUpdate"
+			/>
+
+			<div v-else-if="currentMode === 'custom'" class="cron-builder__custom">
+				<N8nInputLabel label="Cron Expression" />
+				<N8nInput
+					v-model="customExpression"
+					:placeholder="'0 9 * * 1-5'"
+					@update:model-value="handleCustomExpressionUpdate"
+				/>
+				<div v-if="validation.error" class="cron-builder__error">
+					{{ validation.error }}
+				</div>
+				<div v-if="validation.warning" class="cron-builder__warning">
+					{{ validation.warning }}
+				</div>
+			</div>
+		</div>
+
+		<div class="cron-builder__preview">
+			<CronNextRunsPreview :expression="currentExpression" :timezone="timezone" />
+		</div>
+
+		<div v-if="humanReadable" class="cron-builder__description">
+			<N8nText size="small" color="text-light">{{ humanReadable }}</N8nText>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" scoped>
 .cron-builder {

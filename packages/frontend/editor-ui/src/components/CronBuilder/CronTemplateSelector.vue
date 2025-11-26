@@ -1,3 +1,42 @@
+<script setup lang="ts">
+import { ref, computed } from 'vue';
+import { N8nButton, N8nText, N8nIcon } from '@n8n/design-system';
+import { getTemplatesByCategory } from './utils/cronTemplates';
+import type { CronTemplate } from './types';
+
+interface Props {
+	selectedTemplate?: string;
+}
+
+interface Emits {
+	(e: 'template-selected', templateId: string): void;
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
+
+const categories: Array<CronTemplate['category']> = ['common', 'business', 'development'];
+const selectedCategory = ref<CronTemplate['category']>('common');
+
+const filteredTemplates = computed(() => {
+	return getTemplatesByCategory(selectedCategory.value);
+});
+
+function getCategoryLabel(category: CronTemplate['category']): string {
+	const labels: Record<CronTemplate['category'], string> = {
+		common: 'Common',
+		business: 'Business Hours',
+		development: 'Development',
+		custom: 'Custom',
+	};
+	return labels[category];
+}
+
+function handleTemplateClick(templateId: string) {
+	emit('template-selected', templateId);
+}
+</script>
+
 <template>
 	<div class="cron-template-selector">
 		<div class="cron-template-selector__categories">
@@ -44,45 +83,6 @@
 		</div>
 	</div>
 </template>
-
-<script setup lang="ts">
-import { ref, computed } from 'vue';
-import { N8nButton, N8nText, N8nIcon } from '@n8n/design-system';
-import { getTemplatesByCategory } from './utils/cronTemplates';
-import type { CronTemplate } from './types';
-
-interface Props {
-	selectedTemplate?: string;
-}
-
-interface Emits {
-	(e: 'template-selected', templateId: string): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
-
-const categories: Array<CronTemplate['category']> = ['common', 'business', 'development'];
-const selectedCategory = ref<CronTemplate['category']>('common');
-
-const filteredTemplates = computed(() => {
-	return getTemplatesByCategory(selectedCategory.value);
-});
-
-function getCategoryLabel(category: CronTemplate['category']): string {
-	const labels: Record<CronTemplate['category'], string> = {
-		common: 'Common',
-		business: 'Business Hours',
-		development: 'Development',
-		custom: 'Custom',
-	};
-	return labels[category];
-}
-
-function handleTemplateClick(templateId: string) {
-	emit('template-selected', templateId);
-}
-</script>
 
 <style lang="scss" scoped>
 .cron-template-selector {

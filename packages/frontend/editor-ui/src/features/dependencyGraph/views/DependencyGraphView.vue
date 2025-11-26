@@ -8,7 +8,6 @@ import DependencyGraphToolbar from '../components/DependencyGraphToolbar.vue';
 const store = useDependencyGraphStore();
 
 const hasSelectedNode = computed(() => store.selectedNode !== null);
-const nodeStats = computed(() => store.nodeStats);
 
 onUnmounted(() => {
 	store.reset();

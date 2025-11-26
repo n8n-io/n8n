@@ -103,6 +103,7 @@ export const useDependencyGraphStore = defineStore('dependencyGraph', () => {
 				workflowId,
 			);
 		} catch (err) {
+			workflowDependencies.value = null;
 			console.error('Failed to fetch workflow dependencies:', err);
 		} finally {
 			detailsLoading.value = false;
@@ -118,6 +119,7 @@ export const useDependencyGraphStore = defineStore('dependencyGraph', () => {
 				credentialId,
 			);
 		} catch (err) {
+			credentialUsage.value = null;
 			console.error('Failed to fetch credential usage:', err);
 		} finally {
 			detailsLoading.value = false;

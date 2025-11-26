@@ -1,13 +1,99 @@
+<script setup lang="ts">
+import { ref, watch } from 'vue';
+import { ElOption } from 'element-plus';
+import { N8nInputLabel, N8nSelect, N8nInputNumber, N8nText, N8nCheckbox } from '@n8n/design-system';
+import type { CronSimpleConfig } from './types';
+
+interface Props {
+	config: CronSimpleConfig;
+}
+
+interface Emits {
+	(e: 'update:config', config: CronSimpleConfig): void;
+}
+
+const props = defineProps<Props>();
+const emit = defineEmits<Emits>();
+
+const weekdays = [
+	{ label: 'Sun', value: 0 },
+	{ label: 'Mon', value: 1 },
+	{ label: 'Tue', value: 2 },
+	{ label: 'Wed', value: 3 },
+	{ label: 'Thu', value: 4 },
+	{ label: 'Fri', value: 5 },
+	{ label: 'Sat', value: 6 },
+];
+
+const localConfig = ref<CronSimpleConfig>({ ...props.config });
+
+watch(
+	() => props.config,
+	(newConfig) => {
+		localConfig.value = { ...newConfig };
+	},
+	{ deep: true },
+);
+
+function isDaySelected(day: number): boolean {
+	return localConfig.value.dayOfWeek?.includes(day) || false;
+}
+
+function handleDayToggle(day: number, checked: boolean) {
+	if (!localConfig.value.dayOfWeek) {
+		localConfig.value.dayOfWeek = [];
+	}
+
+	if (checked) {
+		if (!localConfig.value.dayOfWeek.includes(day)) {
+			localConfig.value.dayOfWeek.push(day);
+		}
+	} else {
+		localConfig.value.dayOfWeek = localConfig.value.dayOfWeek.filter((d) => d !== day);
+	}
+
+	handleUpdate();
+}
+
+function getSelectedDaysText(): string {
+	const days = localConfig.value.dayOfWeek || [];
+	if (days.length === 0) return 'every day';
+	if (days.length === 7) return 'every day';
+
+	const dayNames = days
+		.sort()
+		.map((d) => weekdays.find((wd) => wd.value === d)?.label)
+		.filter(Boolean);
+
+	if (dayNames.length === 1) return `every ${dayNames[0]}`;
+	if (dayNames.length === 2) return `every ${dayNames.join(' and ')}`;
+
+	const last = dayNames.pop();
+	return `every ${dayNames.join(', ')}, and ${last}`;
+}
+
+function formatTime(hour: number, minute: number): string {
+	const h = hour % 12 || 12;
+	const m = minute.toString().padStart(2, '0');
+	const period = hour < 12 ? 'AM' : 'PM';
+	return `${h}:${m} ${period}`;
+}
+
+function handleUpdate() {
+	emit('update:config', { ...localConfig.value });
+}
+</script>
+
 <template>
 	<div class="cron-simple-mode">
 		<div class="cron-simple-mode__field">
 			<N8nInputLabel label="Frequency" />
 			<N8nSelect v-model="localConfig.frequency" @update:model-value="handleUpdate">
-				<el-option label="Every minute" value="minute" />
-				<el-option label="Hourly" value="hourly" />
-				<el-option label="Daily" value="daily" />
-				<el-option label="Weekly" value="weekly" />
-				<el-option label="Monthly" value="monthly" />
+				<ElOption label="Every minute" value="minute" />
+				<ElOption label="Hourly" value="hourly" />
+				<ElOption label="Daily" value="daily" />
+				<ElOption label="Weekly" value="weekly" />
+				<ElOption label="Monthly" value="monthly" />
 			</N8nSelect>
 		</div>
 
@@ -128,92 +214,6 @@
 		</div>
 	</div>
 </template>
-
-<script setup lang="ts">
-import { ref, watch } from 'vue';
-import { ElOption } from 'element-plus';
-import { N8nInputLabel, N8nSelect, N8nInputNumber, N8nText, N8nCheckbox } from '@n8n/design-system';
-import type { CronSimpleConfig } from './types';
-
-interface Props {
-	config: CronSimpleConfig;
-}
-
-interface Emits {
-	(e: 'update:config', config: CronSimpleConfig): void;
-}
-
-const props = defineProps<Props>();
-const emit = defineEmits<Emits>();
-
-const weekdays = [
-	{ label: 'Sun', value: 0 },
-	{ label: 'Mon', value: 1 },
-	{ label: 'Tue', value: 2 },
-	{ label: 'Wed', value: 3 },
-	{ label: 'Thu', value: 4 },
-	{ label: 'Fri', value: 5 },
-	{ label: 'Sat', value: 6 },
-];
-
-const localConfig = ref<CronSimpleConfig>({ ...props.config });
-
-watch(
-	() => props.config,
-	(newConfig) => {
-		localConfig.value = { ...newConfig };
-	},
-	{ deep: true },
-);
-
-function isDaySelected(day: number): boolean {
-	return localConfig.value.dayOfWeek?.includes(day) || false;
-}
-
-function handleDayToggle(day: number, checked: boolean) {
-	if (!localConfig.value.dayOfWeek) {
-		localConfig.value.dayOfWeek = [];
-	}
-
-	if (checked) {
-		if (!localConfig.value.dayOfWeek.includes(day)) {
-			localConfig.value.dayOfWeek.push(day);
-		}
-	} else {
-		localConfig.value.dayOfWeek = localConfig.value.dayOfWeek.filter((d) => d !== day);
-	}
-
-	handleUpdate();
-}
-
-function getSelectedDaysText(): string {
-	const days = localConfig.value.dayOfWeek || [];
-	if (days.length === 0) return 'every day';
-	if (days.length === 7) return 'every day';
-
-	const dayNames = days
-		.sort()
-		.map((d) => weekdays.find((wd) => wd.value === d)?.label)
-		.filter(Boolean);
-
-	if (dayNames.length === 1) return `every ${dayNames[0]}`;
-	if (dayNames.length === 2) return `every ${dayNames.join(' and ')}`;
-
-	const last = dayNames.pop();
-	return `every ${dayNames.join(', ')}, and ${last}`;
-}
-
-function formatTime(hour: number, minute: number): string {
-	const h = hour % 12 || 12;
-	const m = minute.toString().padStart(2, '0');
-	const period = hour < 12 ? 'AM' : 'PM';
-	return `${h}:${m} ${period}`;
-}
-
-function handleUpdate() {
-	emit('update:config', { ...localConfig.value });
-}
-</script>
 
 <style lang="scss" scoped>
 .cron-simple-mode {

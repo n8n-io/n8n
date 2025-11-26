@@ -186,6 +186,6 @@ export function getTemplateById(id: string): CronTemplate | undefined {
 /**
  * Get all template categories
  */
-export function getTemplateCategories(): CronTemplate['category'][] {
+export function getTemplateCategories(): Array<CronTemplate['category']> {
 	return ['common', 'business', 'development', 'custom'];
 }

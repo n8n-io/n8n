@@ -362,7 +362,7 @@ export class WorkflowDependencyGraphService {
 	}
 
 	/**
-	 * Analyze the impact of deleting a resource
+	 * Analyze the impact of deleting a resource using BFS for full transitive traversal
 	 */
 	async analyzeImpact(
 		resourceType: 'credential' | 'workflow',
@@ -412,18 +412,42 @@ export class WorkflowDependencyGraphService {
 			});
 			resourceName = workflow?.name ?? 'Unknown Workflow';
 
-			// Find workflows that call this workflow (direct dependents)
-			const directDependents = await this.workflowDependencyRepository.find({
-				where: {
-					dependencyType: 'workflowCall',
-					dependencyKey: resourceId,
-				},
-			});
+			// Use BFS to find all transitive dependents
+			const visited = new Set<string>([resourceId]);
+			const directIds = new Set<string>();
+			const queue: Array<{ id: string; depth: number }> = [{ id: resourceId, depth: 0 }];
 
-			const directWorkflowIds = directDependents.map((d) => d.workflowId);
-			if (directWorkflowIds.length > 0) {
+			while (queue.length > 0) {
+				const current = queue.shift()!;
+
+				// Find workflows that call the current workflow
+				const dependents = await this.workflowDependencyRepository.find({
+					where: {
+						dependencyType: 'workflowCall',
+						dependencyKey: current.id,
+					},
+				});
+
+				for (const dep of dependents) {
+					if (!visited.has(dep.workflowId)) {
+						visited.add(dep.workflowId);
+
+						// Track if this is a direct dependent (depth 1)
+						if (current.depth === 0) {
+							directIds.add(dep.workflowId);
+						}
+
+						// Add to queue for further traversal
+						queue.push({ id: dep.workflowId, depth: current.depth + 1 });
+					}
+				}
+			}
+
+			// Fetch workflow details for all impacted workflows
+			const impactedIds = Array.from(visited).filter((id) => id !== resourceId);
+			if (impactedIds.length > 0) {
 				const workflows = await this.workflowRepository.find({
-					where: directWorkflowIds.map((id) => ({ id })),
+					where: impactedIds.map((id) => ({ id })),
 					select: ['id', 'name', 'active'],
 				});
 
@@ -432,36 +456,8 @@ export class WorkflowDependencyGraphService {
 						id: wf.id,
 						name: wf.name,
 						active: wf.active,
-						impactType: 'direct',
+						impactType: directIds.has(wf.id) ? 'direct' : 'indirect',
 					});
-				}
-
-				// Find indirect dependents (workflows that call the direct dependents)
-				const indirectDependents = await this.workflowDependencyRepository.find({
-					where: directWorkflowIds.map((id) => ({
-						dependencyType: 'workflowCall',
-						dependencyKey: id,
-					})),
-				});
-
-				const indirectWorkflowIds = indirectDependents
-					.map((d) => d.workflowId)
-					.filter((id) => !directWorkflowIds.includes(id) && id !== resourceId);
-
-				if (indirectWorkflowIds.length > 0) {
-					const indirectWorkflows = await this.workflowRepository.find({
-						where: indirectWorkflowIds.map((id) => ({ id })),
-						select: ['id', 'name', 'active'],
-					});
-
-					for (const wf of indirectWorkflows) {
-						impactedWorkflows.push({
-							id: wf.id,
-							name: wf.name,
-							active: wf.active,
-							impactType: 'indirect',
-						});
-					}
 				}
 			}
 		}

@@ -1,59 +1,5 @@
-<template>
-	<div class="cron-next-runs-preview">
-		<div class="cron-next-runs-preview__header">
-			<N8nText bold>Next Scheduled Runs</N8nText>
-			<N8nIcon icon="clock" size="small" />
-		</div>
-
-		<div v-if="isLoading" class="cron-next-runs-preview__loading">
-			<N8nSpinner size="small" />
-			<N8nText size="small" color="text-light">Calculating next runs...</N8nText>
-		</div>
-
-		<div v-else-if="error" class="cron-next-runs-preview__error">
-			<N8nIcon icon="exclamation-triangle" color="danger" />
-			<N8nText size="small" color="danger">{{ error }}</N8nText>
-		</div>
-
-		<div v-else-if="nextRuns.length === 0" class="cron-next-runs-preview__empty">
-			<N8nText size="small" color="text-light">
-				No upcoming runs could be calculated. Please check your cron expression.
-			</N8nText>
-		</div>
-
-		<div v-else class="cron-next-runs-preview__list">
-			<div
-				v-for="(run, index) in nextRuns"
-				:key="run.timestamp"
-				class="cron-next-runs-preview__item"
-			>
-				<div class="cron-next-runs-preview__item-number">
-					<N8nText size="small" color="text-light">#{{ index + 1 }}</N8nText>
-				</div>
-				<div class="cron-next-runs-preview__item-details">
-					<N8nText size="small" bold>{{ run.readable }}</N8nText>
-					<N8nText v-if="index === 0 && timeUntilNext" size="xsmall" color="text-light">
-						{{ timeUntilNext }}
-					</N8nText>
-				</div>
-			</div>
-		</div>
-
-		<div v-if="frequencyWarning" class="cron-next-runs-preview__warning">
-			<N8nIcon icon="exclamation-circle" color="warning" size="small" />
-			<N8nText size="small" color="warning">{{ frequencyWarning }}</N8nText>
-		</div>
-
-		<div v-if="executionFrequency" class="cron-next-runs-preview__frequency">
-			<N8nText size="small" color="text-light">
-				<strong>Frequency:</strong> {{ executionFrequency }}
-			</N8nText>
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue';
+import { ref, watch } from 'vue';
 import { N8nText, N8nIcon, N8nSpinner } from '@n8n/design-system';
 import type { NextRun } from './types';
 import {
@@ -124,6 +70,60 @@ watch(
 	{ immediate: true },
 );
 </script>
+
+<template>
+	<div class="cron-next-runs-preview">
+		<div class="cron-next-runs-preview__header">
+			<N8nText bold>Next Scheduled Runs</N8nText>
+			<N8nIcon icon="clock" size="small" />
+		</div>
+
+		<div v-if="isLoading" class="cron-next-runs-preview__loading">
+			<N8nSpinner size="small" />
+			<N8nText size="small" color="text-light">Calculating next runs...</N8nText>
+		</div>
+
+		<div v-else-if="error" class="cron-next-runs-preview__error">
+			<N8nIcon icon="exclamation-triangle" color="danger" />
+			<N8nText size="small" color="danger">{{ error }}</N8nText>
+		</div>
+
+		<div v-else-if="nextRuns.length === 0" class="cron-next-runs-preview__empty">
+			<N8nText size="small" color="text-light">
+				No upcoming runs could be calculated. Please check your cron expression.
+			</N8nText>
+		</div>
+
+		<div v-else class="cron-next-runs-preview__list">
+			<div
+				v-for="(run, index) in nextRuns"
+				:key="run.timestamp"
+				class="cron-next-runs-preview__item"
+			>
+				<div class="cron-next-runs-preview__item-number">
+					<N8nText size="small" color="text-light">#{{ index + 1 }}</N8nText>
+				</div>
+				<div class="cron-next-runs-preview__item-details">
+					<N8nText size="small" bold>{{ run.readable }}</N8nText>
+					<N8nText v-if="index === 0 && timeUntilNext" size="xsmall" color="text-light">
+						{{ timeUntilNext }}
+					</N8nText>
+				</div>
+			</div>
+		</div>
+
+		<div v-if="frequencyWarning" class="cron-next-runs-preview__warning">
+			<N8nIcon icon="exclamation-circle" color="warning" size="small" />
+			<N8nText size="small" color="warning">{{ frequencyWarning }}</N8nText>
+		</div>
+
+		<div v-if="executionFrequency" class="cron-next-runs-preview__frequency">
+			<N8nText size="small" color="text-light">
+				<strong>Frequency:</strong> {{ executionFrequency }}
+			</N8nText>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" scoped>
 .cron-next-runs-preview {

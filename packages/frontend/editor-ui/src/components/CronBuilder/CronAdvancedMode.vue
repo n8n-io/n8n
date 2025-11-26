@@ -1,226 +1,3 @@
-<template>
-	<div class="cron-advanced-mode">
-		<N8nNotice type="info" :dismissible="false">
-			Select specific values for each field. Empty selections default to "*" (any value).
-		</N8nNotice>
-
-		<div class="cron-advanced-mode__grid">
-			<!-- Minutes Section -->
-			<div class="cron-advanced-mode__section">
-				<div class="cron-advanced-mode__section-header">
-					<N8nText bold>Minutes</N8nText>
-					<N8nButton
-						v-if="localConfig.minutes.length > 0"
-						type="tertiary"
-						size="mini"
-						@click="clearField('minutes')"
-					>
-						Clear
-					</N8nButton>
-				</div>
-				<div class="cron-advanced-mode__quick-select">
-					<N8nButton
-						v-for="preset in minutePresets"
-						:key="preset.label"
-						:type="isPresetActive('minutes', preset.values) ? 'primary' : 'tertiary'"
-						size="mini"
-						@click="applyPreset('minutes', preset.values)"
-					>
-						{{ preset.label }}
-					</N8nButton>
-				</div>
-				<N8nSelect
-					v-model="localConfig.minutes"
-					multiple
-					:multiple-limit="0"
-					placeholder="Any minute (*)"
-					size="small"
-					@update:model-value="handleUpdate"
-				>
-					<el-option
-						v-for="minute in minuteOptions"
-						:key="minute"
-						:label="minute.toString().padStart(2, '0')"
-						:value="minute"
-					/>
-				</N8nSelect>
-				<N8nText v-if="localConfig.minutes.length > 0" size="small" color="text-light">
-					{{ formatSelection(localConfig.minutes) }}
-				</N8nText>
-			</div>
-
-			<!-- Hours Section -->
-			<div class="cron-advanced-mode__section">
-				<div class="cron-advanced-mode__section-header">
-					<N8nText bold>Hours</N8nText>
-					<N8nButton
-						v-if="localConfig.hours.length > 0"
-						type="tertiary"
-						size="mini"
-						@click="clearField('hours')"
-					>
-						Clear
-					</N8nButton>
-				</div>
-				<div class="cron-advanced-mode__quick-select">
-					<N8nButton
-						v-for="preset in hourPresets"
-						:key="preset.label"
-						:type="isPresetActive('hours', preset.values) ? 'primary' : 'tertiary'"
-						size="mini"
-						@click="applyPreset('hours', preset.values)"
-					>
-						{{ preset.label }}
-					</N8nButton>
-				</div>
-				<N8nSelect
-					v-model="localConfig.hours"
-					multiple
-					:multiple-limit="0"
-					placeholder="Any hour (*)"
-					size="small"
-					@update:model-value="handleUpdate"
-				>
-					<el-option
-						v-for="hour in hourOptions"
-						:key="hour"
-						:label="formatHour(hour)"
-						:value="hour"
-					/>
-				</N8nSelect>
-				<N8nText v-if="localConfig.hours.length > 0" size="small" color="text-light">
-					{{ formatHourSelection(localConfig.hours) }}
-				</N8nText>
-			</div>
-
-			<!-- Days of Month Section -->
-			<div class="cron-advanced-mode__section">
-				<div class="cron-advanced-mode__section-header">
-					<N8nText bold>Days of Month</N8nText>
-					<N8nButton
-						v-if="localConfig.daysOfMonth.length > 0"
-						type="tertiary"
-						size="mini"
-						@click="clearField('daysOfMonth')"
-					>
-						Clear
-					</N8nButton>
-				</div>
-				<div class="cron-advanced-mode__quick-select">
-					<N8nButton
-						v-for="preset in dayOfMonthPresets"
-						:key="preset.label"
-						:type="isPresetActive('daysOfMonth', preset.values) ? 'primary' : 'tertiary'"
-						size="mini"
-						@click="applyPreset('daysOfMonth', preset.values)"
-					>
-						{{ preset.label }}
-					</N8nButton>
-				</div>
-				<N8nSelect
-					v-model="localConfig.daysOfMonth"
-					multiple
-					:multiple-limit="0"
-					placeholder="Any day (*)"
-					size="small"
-					@update:model-value="handleUpdate"
-				>
-					<el-option
-						v-for="day in dayOfMonthOptions"
-						:key="day"
-						:label="day.toString()"
-						:value="day"
-					/>
-				</N8nSelect>
-				<N8nText v-if="localConfig.daysOfMonth.length > 0" size="small" color="text-light">
-					{{ formatSelection(localConfig.daysOfMonth) }}
-				</N8nText>
-			</div>
-
-			<!-- Months Section -->
-			<div class="cron-advanced-mode__section">
-				<div class="cron-advanced-mode__section-header">
-					<N8nText bold>Months</N8nText>
-					<N8nButton
-						v-if="localConfig.months.length > 0"
-						type="tertiary"
-						size="mini"
-						@click="clearField('months')"
-					>
-						Clear
-					</N8nButton>
-				</div>
-				<div class="cron-advanced-mode__quick-select">
-					<N8nButton
-						v-for="preset in monthPresets"
-						:key="preset.label"
-						:type="isPresetActive('months', preset.values) ? 'primary' : 'tertiary'"
-						size="mini"
-						@click="applyPreset('months', preset.values)"
-					>
-						{{ preset.label }}
-					</N8nButton>
-				</div>
-				<N8nSelect
-					v-model="localConfig.months"
-					multiple
-					:multiple-limit="0"
-					placeholder="Any month (*)"
-					size="small"
-					@update:model-value="handleUpdate"
-				>
-					<el-option
-						v-for="(monthName, index) in monthNames"
-						:key="index + 1"
-						:label="monthName"
-						:value="index + 1"
-					/>
-				</N8nSelect>
-				<N8nText v-if="localConfig.months.length > 0" size="small" color="text-light">
-					{{ formatMonthSelection(localConfig.months) }}
-				</N8nText>
-			</div>
-
-			<!-- Days of Week Section -->
-			<div class="cron-advanced-mode__section">
-				<div class="cron-advanced-mode__section-header">
-					<N8nText bold>Days of Week</N8nText>
-					<N8nButton
-						v-if="localConfig.daysOfWeek.length > 0"
-						type="tertiary"
-						size="mini"
-						@click="clearField('daysOfWeek')"
-					>
-						Clear
-					</N8nButton>
-				</div>
-				<div class="cron-advanced-mode__button-group">
-					<N8nButton
-						v-for="(dayName, index) in dayNames"
-						:key="index"
-						:type="localConfig.daysOfWeek.includes(index) ? 'primary' : 'secondary'"
-						:outline="!localConfig.daysOfWeek.includes(index)"
-						size="small"
-						@click="toggleDay(index)"
-					>
-						{{ dayName.slice(0, 3) }}
-					</N8nButton>
-				</div>
-				<N8nText v-if="localConfig.daysOfWeek.length > 0" size="small" color="text-light">
-					{{ formatDayOfWeekSelection(localConfig.daysOfWeek) }}
-				</N8nText>
-			</div>
-		</div>
-
-		<div class="cron-advanced-mode__preview">
-			<N8nText size="small" bold>Generated Expression:</N8nText>
-			<div class="cron-advanced-mode__expression">
-				<code>{{ generatedExpression }}</code>
-			</div>
-		</div>
-	</div>
-</template>
-
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue';
 import { ElOption } from 'element-plus';
@@ -407,6 +184,229 @@ function handleUpdate() {
 	emit('update:config', { ...localConfig.value });
 }
 </script>
+
+<template>
+	<div class="cron-advanced-mode">
+		<N8nNotice type="info" :dismissible="false">
+			Select specific values for each field. Empty selections default to "*" (any value).
+		</N8nNotice>
+
+		<div class="cron-advanced-mode__grid">
+			<!-- Minutes Section -->
+			<div class="cron-advanced-mode__section">
+				<div class="cron-advanced-mode__section-header">
+					<N8nText bold>Minutes</N8nText>
+					<N8nButton
+						v-if="localConfig.minutes.length > 0"
+						type="tertiary"
+						size="mini"
+						@click="clearField('minutes')"
+					>
+						Clear
+					</N8nButton>
+				</div>
+				<div class="cron-advanced-mode__quick-select">
+					<N8nButton
+						v-for="preset in minutePresets"
+						:key="preset.label"
+						:type="isPresetActive('minutes', preset.values) ? 'primary' : 'tertiary'"
+						size="mini"
+						@click="applyPreset('minutes', preset.values)"
+					>
+						{{ preset.label }}
+					</N8nButton>
+				</div>
+				<N8nSelect
+					v-model="localConfig.minutes"
+					multiple
+					:multiple-limit="0"
+					placeholder="Any minute (*)"
+					size="small"
+					@update:model-value="handleUpdate"
+				>
+					<ElOption
+						v-for="minute in minuteOptions"
+						:key="minute"
+						:label="minute.toString().padStart(2, '0')"
+						:value="minute"
+					/>
+				</N8nSelect>
+				<N8nText v-if="localConfig.minutes.length > 0" size="small" color="text-light">
+					{{ formatSelection(localConfig.minutes) }}
+				</N8nText>
+			</div>
+
+			<!-- Hours Section -->
+			<div class="cron-advanced-mode__section">
+				<div class="cron-advanced-mode__section-header">
+					<N8nText bold>Hours</N8nText>
+					<N8nButton
+						v-if="localConfig.hours.length > 0"
+						type="tertiary"
+						size="mini"
+						@click="clearField('hours')"
+					>
+						Clear
+					</N8nButton>
+				</div>
+				<div class="cron-advanced-mode__quick-select">
+					<N8nButton
+						v-for="preset in hourPresets"
+						:key="preset.label"
+						:type="isPresetActive('hours', preset.values) ? 'primary' : 'tertiary'"
+						size="mini"
+						@click="applyPreset('hours', preset.values)"
+					>
+						{{ preset.label }}
+					</N8nButton>
+				</div>
+				<N8nSelect
+					v-model="localConfig.hours"
+					multiple
+					:multiple-limit="0"
+					placeholder="Any hour (*)"
+					size="small"
+					@update:model-value="handleUpdate"
+				>
+					<ElOption
+						v-for="hour in hourOptions"
+						:key="hour"
+						:label="formatHour(hour)"
+						:value="hour"
+					/>
+				</N8nSelect>
+				<N8nText v-if="localConfig.hours.length > 0" size="small" color="text-light">
+					{{ formatHourSelection(localConfig.hours) }}
+				</N8nText>
+			</div>
+
+			<!-- Days of Month Section -->
+			<div class="cron-advanced-mode__section">
+				<div class="cron-advanced-mode__section-header">
+					<N8nText bold>Days of Month</N8nText>
+					<N8nButton
+						v-if="localConfig.daysOfMonth.length > 0"
+						type="tertiary"
+						size="mini"
+						@click="clearField('daysOfMonth')"
+					>
+						Clear
+					</N8nButton>
+				</div>
+				<div class="cron-advanced-mode__quick-select">
+					<N8nButton
+						v-for="preset in dayOfMonthPresets"
+						:key="preset.label"
+						:type="isPresetActive('daysOfMonth', preset.values) ? 'primary' : 'tertiary'"
+						size="mini"
+						@click="applyPreset('daysOfMonth', preset.values)"
+					>
+						{{ preset.label }}
+					</N8nButton>
+				</div>
+				<N8nSelect
+					v-model="localConfig.daysOfMonth"
+					multiple
+					:multiple-limit="0"
+					placeholder="Any day (*)"
+					size="small"
+					@update:model-value="handleUpdate"
+				>
+					<ElOption
+						v-for="day in dayOfMonthOptions"
+						:key="day"
+						:label="day.toString()"
+						:value="day"
+					/>
+				</N8nSelect>
+				<N8nText v-if="localConfig.daysOfMonth.length > 0" size="small" color="text-light">
+					{{ formatSelection(localConfig.daysOfMonth) }}
+				</N8nText>
+			</div>
+
+			<!-- Months Section -->
+			<div class="cron-advanced-mode__section">
+				<div class="cron-advanced-mode__section-header">
+					<N8nText bold>Months</N8nText>
+					<N8nButton
+						v-if="localConfig.months.length > 0"
+						type="tertiary"
+						size="mini"
+						@click="clearField('months')"
+					>
+						Clear
+					</N8nButton>
+				</div>
+				<div class="cron-advanced-mode__quick-select">
+					<N8nButton
+						v-for="preset in monthPresets"
+						:key="preset.label"
+						:type="isPresetActive('months', preset.values) ? 'primary' : 'tertiary'"
+						size="mini"
+						@click="applyPreset('months', preset.values)"
+					>
+						{{ preset.label }}
+					</N8nButton>
+				</div>
+				<N8nSelect
+					v-model="localConfig.months"
+					multiple
+					:multiple-limit="0"
+					placeholder="Any month (*)"
+					size="small"
+					@update:model-value="handleUpdate"
+				>
+					<ElOption
+						v-for="(monthName, index) in monthNames"
+						:key="index + 1"
+						:label="monthName"
+						:value="index + 1"
+					/>
+				</N8nSelect>
+				<N8nText v-if="localConfig.months.length > 0" size="small" color="text-light">
+					{{ formatMonthSelection(localConfig.months) }}
+				</N8nText>
+			</div>
+
+			<!-- Days of Week Section -->
+			<div class="cron-advanced-mode__section">
+				<div class="cron-advanced-mode__section-header">
+					<N8nText bold>Days of Week</N8nText>
+					<N8nButton
+						v-if="localConfig.daysOfWeek.length > 0"
+						type="tertiary"
+						size="mini"
+						@click="clearField('daysOfWeek')"
+					>
+						Clear
+					</N8nButton>
+				</div>
+				<div class="cron-advanced-mode__button-group">
+					<N8nButton
+						v-for="(dayName, index) in dayNames"
+						:key="index"
+						:type="localConfig.daysOfWeek.includes(index) ? 'primary' : 'secondary'"
+						:outline="!localConfig.daysOfWeek.includes(index)"
+						size="small"
+						@click="toggleDay(index)"
+					>
+						{{ dayName.slice(0, 3) }}
+					</N8nButton>
+				</div>
+				<N8nText v-if="localConfig.daysOfWeek.length > 0" size="small" color="text-light">
+					{{ formatDayOfWeekSelection(localConfig.daysOfWeek) }}
+				</N8nText>
+			</div>
+		</div>
+
+		<div class="cron-advanced-mode__preview">
+			<N8nText size="small" bold>Generated Expression:</N8nText>
+			<div class="cron-advanced-mode__expression">
+				<code>{{ generatedExpression }}</code>
+			</div>
+		</div>
+	</div>
+</template>
 
 <style lang="scss" scoped>
 .cron-advanced-mode {
