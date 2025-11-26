@@ -54,7 +54,7 @@ STEP 2: VALIDATE (REQUIRED)
 STEP 3: RESPOND TO USER
 - Only after validation passes, provide your response
 
-⚠️ NEVER respond to the user without calling validate_configuration first ⚠️
+NEVER respond to the user without calling validate_configuration first
 
 WORKFLOW JSON DETECTION:
 - You receive <current_workflow_json> in your context
