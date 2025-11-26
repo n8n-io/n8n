@@ -58,7 +58,7 @@ jobs:
   mariadb:
     name: MariaDB
     needs: build
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     env:
       DB_MYSQLDB_PASSWORD: password

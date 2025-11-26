@@ -7,7 +7,7 @@ on:
         description: GitHub ref to test.
         required: false
         type: string
-        default: ''
+        default: ""
       nodeVersion:
         description: Version of node to use.
         required: false
@@ -19,7 +19,7 @@ on:
         type: boolean
     secrets:
       CODECOV_TOKEN:
-        description: 'Codecov upload token.'
+        description: "Codecov upload token."
         required: false
 
 env:
@@ -28,7 +28,7 @@ env:
 jobs:
   unit-test-backend:
     name: Backend Unit Tests
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
@@ -61,7 +61,7 @@ jobs:
 
   integration-test-backend:
     name: Backend Integration Tests
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
@@ -94,7 +94,7 @@ jobs:
 
   unit-test-nodes:
     name: Nodes Unit Tests
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
@@ -127,7 +127,7 @@ jobs:
 
   unit-test-frontend:
     name: Frontend (${{ matrix.shard }}/2)
-    runs-on: blacksmith-4vcpu-ubuntu-2204
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -167,7 +167,13 @@ jobs:
   unit-test:
     name: Unit tests
     runs-on: ubuntu-latest
-    needs: [unit-test-backend, integration-test-backend, unit-test-nodes, unit-test-frontend]
+    needs:
+      [
+        unit-test-backend,
+        integration-test-backend,
+        unit-test-nodes,
+        unit-test-frontend,
+      ]
     if: always()
     steps:
       - name: Fail if tests failed
