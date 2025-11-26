@@ -21,6 +21,7 @@ const { authProtocol } = defineProps<{
 
 const i18n = useI18n();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
+
 const canManageUserProvisioning = useRBACStore().hasScope('provisioning:manage');
 
 const handleUserRoleProvisioningChange = (newValue: UserRoleProvisioningSetting) => {
