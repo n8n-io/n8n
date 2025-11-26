@@ -593,7 +593,10 @@ export class WorkflowService {
 					},
 		);
 
-		if (isDraftPublishEnabled && (options?.name || options?.description)) {
+		if (
+			isDraftPublishEnabled &&
+			(options?.name !== undefined || options?.description !== undefined)
+		) {
 			const updateFields: WorkflowHistoryUpdate = {};
 			if (options.name !== undefined) updateFields.name = options.name;
 			if (options.description !== undefined) updateFields.description = options.description;
