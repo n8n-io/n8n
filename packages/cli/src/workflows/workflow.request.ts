@@ -47,7 +47,7 @@ export declare namespace WorkflowRequest {
 	};
 
 	// 3. Partial Manual Execution to Destination
-	type PartialManualExecutionToDestination = {
+	type PartialManualExecutionToDestinationPayload = {
 		workflowData: IWorkflowBase;
 		agentRequest?: AiAgentRequest;
 
@@ -59,7 +59,7 @@ export declare namespace WorkflowRequest {
 	type ManualRunPayload =
 		| FullManualExecutionFromKnownTriggerPayload
 		| FullManualExecutionFromUnknownTriggerPayload
-		| PartialManualExecutionToDestination;
+		| PartialManualExecutionToDestinationPayload;
 
 	type Create = AuthenticatedRequest<{}, {}, CreateUpdatePayload>;
 

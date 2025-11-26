@@ -114,7 +114,7 @@ export class WorkflowExecutionService {
 
 		let workflowExecutionDataProcess: IWorkflowExecutionDataProcess | undefined;
 
-		if (isPartialManualExecutionToDestination(payload)) {
+		if (isPartialManualExecutionToDestinationPayload(payload)) {
 			const destinationNode = payload.destinationNode
 				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
 				: undefined;
@@ -595,9 +595,9 @@ function isFullManualExecutionFromUnknownTriggerPayload(
  * A partial execution payload has both `destinationNode` and `runData`.
  * This indicates execution from a specific node using existing run data.
  */
-function isPartialManualExecutionToDestination(
+function isPartialManualExecutionToDestinationPayload(
 	payload: WorkflowRequest.ManualRunPayload,
-): payload is WorkflowRequest.PartialManualExecutionToDestination {
+): payload is WorkflowRequest.PartialManualExecutionToDestinationPayload {
 	if ('destinationNode' in payload && 'runData' in payload) {
 		return true;
 	}
