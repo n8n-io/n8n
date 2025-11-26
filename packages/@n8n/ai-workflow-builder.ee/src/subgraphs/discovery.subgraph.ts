@@ -168,18 +168,6 @@ export const DiscoverySubgraphState = Annotation.Root({
 		reducer: (x, y) => y ?? x,
 	}),
 
-	// Internal: Track which node types we fetched details for
-	fetchedNodeTypes: Annotation<Map<string, INodeTypeDescription>>({
-		reducer: (x, y) => {
-			const merged = new Map(x);
-			for (const [key, value] of y) {
-				merged.set(key, value);
-			}
-			return merged;
-		},
-		default: () => new Map(),
-	}),
-
 	// Internal: Track iterations to prevent infinite loops
 	iterationCount: Annotation<number>({
 		reducer: (x, y) => (y ?? x) + 1,
@@ -202,11 +190,8 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 	private agent!: Runnable;
 	private toolMap!: Map<string, StructuredTool>;
-	private config!: DiscoverySubgraphConfig;
 
 	create(config: DiscoverySubgraphConfig) {
-		this.config = config;
-
 		// Create tools
 		const tools = [
 			createGetBestPracticesTool(),
@@ -251,7 +236,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Build the subgraph
 		const subgraph = new StateGraph(DiscoverySubgraphState)
 			.addNode('agent', this.callAgent.bind(this))
-			.addNode('tools', this.executeTools.bind(this))
+			.addNode('tools', async (state) => await executeSubgraphTools(state, this.toolMap))
 			.addNode('format_output', this.formatOutput.bind(this))
 			.addEdge('__start__', 'agent')
 			// Conditional: tools if has tool calls, format_output if submit called
@@ -283,36 +268,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		})) as AIMessage;
 
 		return { messages: [response] };
-	}
-
-	/**
-	 * Tool execution node - tracks get_node_details calls
-	 */
-	private async executeTools(state: typeof DiscoverySubgraphState.State) {
-		const result = await executeSubgraphTools(state, this.toolMap);
-
-		// Track which nodes we fetched details for
-		const lastMessage = state.messages.at(-1);
-		const fetchedNodes = new Map<string, INodeTypeDescription>();
-
-		if (lastMessage && isAIMessage(lastMessage) && lastMessage.tool_calls) {
-			for (const tc of lastMessage.tool_calls) {
-				if (tc.name === 'get_node_details') {
-					const nodeType = tc.args?.nodeType as string | undefined;
-					if (nodeType) {
-						const nodeDesc = this.config.parsedNodeTypes.find((n) => n.name === nodeType);
-						if (nodeDesc) {
-							fetchedNodes.set(nodeType, nodeDesc);
-						}
-					}
-				}
-			}
-		}
-
-		return {
-			...result,
-			fetchedNodeTypes: fetchedNodes,
-		};
 	}
 
 	/**
@@ -440,9 +395,4 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			coordinationLog: [logEntry],
 		};
 	}
-}
-
-// Export factory for backward compatibility if needed, or just use the class
-export function createDiscoverySubgraph(config: DiscoverySubgraphConfig) {
-	return new DiscoverySubgraph().create(config);
 }

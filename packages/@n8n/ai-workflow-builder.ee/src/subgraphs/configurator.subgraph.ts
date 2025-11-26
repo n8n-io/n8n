@@ -257,17 +257,10 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			return { messages: [response] };
 		};
 
-		/**
-		 * Tool execution node - uses helper for consistent execution
-		 */
-		const executeTools = async (state: typeof ConfiguratorSubgraphState.State) => {
-			return await executeSubgraphTools(state, this.toolMap);
-		};
-
 		// Build the subgraph
 		const subgraph = new StateGraph(ConfiguratorSubgraphState)
 			.addNode('agent', callAgent)
-			.addNode('tools', executeTools)
+			.addNode('tools', async (state) => await executeSubgraphTools(state, this.toolMap))
 			.addNode('process_operations', processOperations)
 			.addEdge('__start__', 'agent')
 			// Map 'tools' to tools node, END is handled automatically
@@ -351,8 +344,4 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			// NO messages - clean separation from user-facing conversation
 		};
 	}
-}
-
-export function createConfiguratorSubgraph(config: ConfiguratorSubgraphConfig) {
-	return new ConfiguratorSubgraph().create(config);
 }

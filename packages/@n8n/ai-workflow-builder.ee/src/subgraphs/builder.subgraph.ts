@@ -181,6 +181,9 @@ Common mistake to avoid:
 
 **AI Memory Connections** (ai_memory):
 - Window Buffer Memory → AI Agent
+
+**AI Vector Store in retrieve-as-tool mode** (ai_tool):
+- Vector Store → AI Agent
 </connection_type_examples>
 
 DO NOT:
@@ -310,13 +313,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 		};
 
 		/**
-		 * Tool execution node - uses helper for consistent execution
-		 */
-		const executeTools = async (state: typeof BuilderSubgraphState.State) => {
-			return await executeSubgraphTools(state, toolMap);
-		};
-
-		/**
 		 * Should continue with tools or finish?
 		 */
 		const shouldContinue = createStandardShouldContinue(MAX_BUILDER_ITERATIONS);
@@ -324,7 +320,7 @@ export class BuilderSubgraph extends BaseSubgraph<
 		// Build the subgraph
 		const subgraph = new StateGraph(BuilderSubgraphState)
 			.addNode('agent', callAgent)
-			.addNode('tools', executeTools)
+			.addNode('tools', async (state) => await executeSubgraphTools(state, toolMap))
 			.addNode('process_operations', processOperations)
 			.addEdge('__start__', 'agent')
 			// Map 'tools' to tools node, END is handled automatically
@@ -421,8 +417,4 @@ export class BuilderSubgraph extends BaseSubgraph<
 			coordinationLog: [logEntry],
 		};
 	}
-}
-
-export function createBuilderSubgraph(config: BuilderSubgraphConfig) {
-	return new BuilderSubgraph().create(config);
 }
