@@ -152,7 +152,7 @@ const savedTimeNodes = computed(() => {
 	}
 
 	if (!workflow?.value?.nodes) return [];
-	return workflow.value.nodes.filter((node) => node.type === 'n8n-nodes-base.savedTime');
+	return workflow.value.nodes.filter((node) => node.type === 'n8n-nodes-base.timeSaved');
 });
 
 const hasSavedTimeNodes = computed(() => {
