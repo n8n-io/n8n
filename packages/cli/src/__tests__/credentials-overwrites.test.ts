@@ -1155,4 +1155,126 @@ describe('CredentialsOverwrites', () => {
 			expect(settingsRepository.findByKey).not.toHaveBeenCalled();
 		});
 	});
+
+	describe('Integration with requestDefaults', () => {
+		it('should ensure overwritten fields are available for requestDefaults expressions', async () => {
+			// This test validates the fix for credential overwrites not resolving in requestDefaults.baseURL
+			// When a node has: requestDefaults: { baseURL: '=https://{{ $credentials.subdomain }}.sharepoint.com' }
+			// And credentials are overwritten with a subdomain value, it should be accessible
+
+			const overwriteData: ICredentialsOverwrite = {
+				test: { subdomain: 'tenant123', clientId: 'overwritten-client-id' },
+			};
+
+			globalConfig.credentials.overwrite.data = JSON.stringify(overwriteData);
+
+			const localCredentialsOverwrites = new CredentialsOverwrites(
+				globalConfig,
+				credentialTypes,
+				logger,
+				mock(),
+				mock(),
+			);
+
+			await localCredentialsOverwrites.init();
+
+			// Original credential data with empty subdomain (because it will be overwritten)
+			// Note: applyOverwrite only overwrites fields that are null, undefined, or ''
+			const originalData = {
+				subdomain: '', // Will be overwritten
+				clientId: '', // Will be overwritten
+			};
+
+			const result = localCredentialsOverwrites.applyOverwrite('test', originalData);
+
+			// The overwritten values should be present
+			// This is critical for requestDefaults expressions to work:
+			// baseURL: '=https://{{ $credentials.subdomain }}.sharepoint.com/_api/v2.0/'
+			expect(result).toEqual({
+				subdomain: 'tenant123',
+				clientId: 'overwritten-client-id',
+			});
+		});
+
+		it('should apply overwrites for fields used in requestDefaults even when empty', async () => {
+			const overwriteData: ICredentialsOverwrite = {
+				test: { baseUrl: 'https://overwritten.example.com' },
+			};
+
+			globalConfig.credentials.overwrite.data = JSON.stringify(overwriteData);
+
+			const localCredentialsOverwrites = new CredentialsOverwrites(
+				globalConfig,
+				credentialTypes,
+				logger,
+				mock(),
+				mock(),
+			);
+
+			await localCredentialsOverwrites.init();
+
+			// Empty baseUrl should be overwritten
+			const result = localCredentialsOverwrites.applyOverwrite('test', {
+				baseUrl: '',
+				apiKey: 'some-key',
+			});
+
+			expect(result).toEqual({
+				baseUrl: 'https://overwritten.example.com',
+				apiKey: 'some-key',
+			});
+		});
+
+		it('should handle overwritten fields with null values', async () => {
+			const overwriteData: ICredentialsOverwrite = {
+				test: { subdomain: 'tenant-from-overwrite' },
+			};
+
+			globalConfig.credentials.overwrite.data = JSON.stringify(overwriteData);
+
+			const localCredentialsOverwrites = new CredentialsOverwrites(
+				globalConfig,
+				credentialTypes,
+				logger,
+				mock(),
+				mock(),
+			);
+
+			await localCredentialsOverwrites.init();
+
+			// null value should be overwritten
+			const result = localCredentialsOverwrites.applyOverwrite('test', {
+				subdomain: null,
+				clientId: 'client',
+			});
+
+			expect(result).toHaveProperty('subdomain', 'tenant-from-overwrite');
+		});
+
+		it('should handle overwritten fields with undefined values', async () => {
+			const overwriteData: ICredentialsOverwrite = {
+				test: { token: 'overwritten-token' },
+			};
+
+			globalConfig.credentials.overwrite.data = JSON.stringify(overwriteData);
+
+			const localCredentialsOverwrites = new CredentialsOverwrites(
+				globalConfig,
+				credentialTypes,
+				logger,
+				mock(),
+				mock(),
+			);
+
+			await localCredentialsOverwrites.init();
+
+			// undefined value should be overwritten
+			const result = localCredentialsOverwrites.applyOverwrite('test', {
+				token: undefined,
+				apiKey: 'key',
+			});
+
+			expect(result).toHaveProperty('token', 'overwritten-token');
+		});
+	});
 });
