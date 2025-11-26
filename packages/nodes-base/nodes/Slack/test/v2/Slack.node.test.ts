@@ -194,6 +194,43 @@ describe('SlackV2', () => {
 			]);
 		});
 
+		it('should return channel history sorted by timestamp descending for node version >= 2.4', async () => {
+			mockExecuteFunctions.getNode.mockReturnValue({
+				...mockNode,
+				typeVersion: 2.4,
+			});
+
+			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
+				const params: Record<string, any> = {
+					resource: 'channel',
+					operation: 'history',
+					channelId: 'C123456789',
+					returnAll: true,
+					filters: {},
+				};
+				return params[paramName];
+			});
+
+			// Mock unsorted messages
+			const mockResponse = [
+				{ type: 'message', text: 'Message 2', ts: '1234567892.123456' },
+				{ type: 'message', text: 'Message 4', ts: '1234567894.123456' },
+				{ type: 'message', text: 'Message 1', ts: '1234567891.123456' },
+				{ type: 'message', text: 'Message 3', ts: '1234567893.123456' },
+			];
+			slackApiRequestAllItemsSpy.mockResolvedValue(mockResponse);
+
+			const result = await node.execute.call(mockExecuteFunctions);
+
+			// Verify messages are sorted by timestamp descending (newest first)
+			expect(result[0][0].json).toEqual([
+				{ type: 'message', text: 'Message 4', ts: '1234567894.123456' },
+				{ type: 'message', text: 'Message 3', ts: '1234567893.123456' },
+				{ type: 'message', text: 'Message 2', ts: '1234567892.123456' },
+				{ type: 'message', text: 'Message 1', ts: '1234567891.123456' },
+			]);
+		});
+
 		it('should get all channel history', async () => {
 			mockExecuteFunctions.getNodeParameter.mockImplementation((paramName: string) => {
 				const params: Record<string, any> = {

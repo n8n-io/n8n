@@ -9,7 +9,7 @@ FROM n8nio/base:${NODE_VERSION} AS system-deps
 # ==============================================================================
 # STAGE 2: Application Artifact Processor
 # ==============================================================================
-FROM alpine:3.22.0 AS app-artifact-processor
+FROM alpine:3.22.2 AS app-artifact-processor
 
 COPY ./compiled /app/
 
