@@ -2458,6 +2458,8 @@ describe('PATCH /workflows/:workflowId', () => {
 				saveDataSuccessExecution: 'all',
 				executionTimeout: 3600,
 				timezone: 'America/New_York',
+				timeSavedMode: 'fixed',
+				timeSavedPerExecution: 10,
 			},
 		};
 
@@ -2468,6 +2470,8 @@ describe('PATCH /workflows/:workflowId', () => {
 		} = response.body;
 
 		expect(response.statusCode).toBe(200);
+		expect(response.body.data.settings.timeSavedMode).toBe('fixed');
+		expect(response.body.data.settings.timeSavedPerExecution).toBe(10);
 
 		expect(id).toBe(workflow.id);
 		expect(await workflowHistoryRepository.count({ where: { workflowId: id } })).toBe(2);
@@ -2723,6 +2727,22 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(updatedWorkflow.parentFolder).toBe(null);
 	});
 
+	test('should fail if an invalid timeSavedMode is provided', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const payload = {
+			name: 'name updated',
+			versionId: workflow.versionId,
+			settings: {
+				timeSavedMode: 'invalid' as 'fixed' | 'dynamic',
+			},
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe('Invalid timeSavedMode');
+	});
+
 	test('should fail if trying update workflow parent folder with a folder that does not belong to project', async () => {
 		const ownerPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(owner.id);
 		const memberPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
@@ -2825,7 +2845,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		});
 
 		test('should not modify activeVersionId when explicitly provided', async () => {
-			const workflow = await createWorkflow({}, owner);
+			const workflow = await createWorkflowWithHistory({}, owner);
 			const payload = {
 				versionId: workflow.versionId,
 				activeVersionId: workflow.versionId,
@@ -3032,6 +3052,29 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(updatedWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
 
 		expect(emitSpy).not.toHaveBeenCalledWith('workflow-deactivated', expect.anything());
+	});
+
+	test('should call active workflow manager with activate mode if workflow is not active', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: workflow.versionId });
+
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+	});
+
+	test('should call active workflow manager with update mode if workflow is active', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId });
+
+		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update');
 	});
 });
 
