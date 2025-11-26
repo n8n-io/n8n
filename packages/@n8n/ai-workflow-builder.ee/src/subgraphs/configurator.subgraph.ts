@@ -103,18 +103,10 @@ Defaults can cause runtime failures:
 </avoid_default_traps>
 
 <response_format>
-After validation passes:
-
-If there are placeholders requiring user setup:
-**⚙️ How to Setup** (numbered format)
-- List only parameter placeholders requiring user configuration
-- Include only incomplete tasks needing user action
-- Focus on workflow-specific parameters only (credentials are handled in UI)
-
-If everything is configured:
-Provide a brief confirmation that the workflow is ready.
-
-Always end with: "Let me know if you'd like to adjust anything."
+After validation passes, provide a concise summary:
+- List any placeholders requiring user configuration (e.g., "URL placeholder needs actual endpoint")
+- Note which nodes were configured and key settings applied
+- Keep it brief - this output is used for coordination with other LLM agents, not displayed directly to users
 </response_format>
 
 <expectations>
