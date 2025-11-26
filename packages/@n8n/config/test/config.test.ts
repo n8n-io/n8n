@@ -275,7 +275,7 @@ describe('GlobalConfig', () => {
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
 			insecureMode: false,
-			isNativePythonRunnerEnabled: false,
+			isNativePythonRunnerEnabled: true,
 		},
 		sentry: {
 			backendDsn: '',
