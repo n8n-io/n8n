@@ -14,13 +14,13 @@ export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRu
 	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
-			title: 'QUEUE_WORKER_MAX_STALLED_COUNT now defaults to 0',
+			title: 'Remove QUEUE_WORKER_MAX_STALLED_COUNT',
 			description:
-				'The QUEUE_WORKER_MAX_STALLED_COUNT environment variable now defaults to 0 instead of 1',
+				'The QUEUE_WORKER_MAX_STALLED_COUNT environment variable has been removed and will be ignored',
 			category: BreakingChangeCategory.environment,
 			severity: 'low',
 			documentationUrl:
-				'https://docs.n8n.io/2-0-breaking-changes/#queue_worker_max_stalled_count-defaults-to-0',
+				'https://docs.n8n.io/2-0-breaking-changes/#remove-queue_worker_max_stalled_count',
 		};
 	}
 
@@ -39,16 +39,16 @@ export class QueueWorkerMaxStalledCountRule implements IBreakingChangeInstanceRu
 
 		result.isAffected = true;
 		result.instanceIssues.push({
-			title: 'QUEUE_WORKER_MAX_STALLED_COUNT default value changed',
+			title: 'QUEUE_WORKER_MAX_STALLED_COUNT is deprecated',
 			description:
-				'The QUEUE_WORKER_MAX_STALLED_COUNT environment variable now defaults to 0 instead of 1. If you have explicitly set this value, verify it still meets your needs.',
+				'The QUEUE_WORKER_MAX_STALLED_COUNT environment variable has been removed. Any customization will be ignored in v2.',
 			level: 'warning',
 		});
 
 		result.recommendations.push({
-			action: 'Review environment variable value',
+			action: 'Remove environment variable',
 			description:
-				'Review your QUEUE_WORKER_MAX_STALLED_COUNT setting to ensure it aligns with the new default behavior of 0 retries for stalled jobs',
+				'Remove QUEUE_WORKER_MAX_STALLED_COUNT from your environment configuration as it no longer has any effect',
 		});
 
 		return result;
