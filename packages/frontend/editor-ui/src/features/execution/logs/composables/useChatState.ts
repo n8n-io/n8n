@@ -70,7 +70,7 @@ export function useChatState(isReadOnly: boolean): ChatState {
 
 	const { sendMessage, isLoading, setLoadingState } = useChatMessaging({
 		chatTrigger: chatTriggerNode,
-		sessionId: currentSessionId.value,
+		sessionId: currentSessionId,
 		executionResultData: computed(() => workflowsStore.getWorkflowExecution?.data?.resultData),
 		onRunChatWorkflow,
 		onNewMessage: logsStore.addChatMessage,

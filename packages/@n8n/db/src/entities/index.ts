@@ -3,6 +3,7 @@ import { AnnotationTagMapping } from './annotation-tag-mapping.ee';
 import { ApiKey } from './api-key';
 import { AuthIdentity } from './auth-identity';
 import { AuthProviderSyncHistory } from './auth-provider-sync-history';
+import { BinaryDataFile, SourceTypeSchema, type SourceType } from './binary-data-file';
 import { CredentialsEntity } from './credentials-entity';
 import { EventDestinations } from './event-destinations';
 import { ExecutionAnnotation } from './execution-annotation.ee';
@@ -39,6 +40,9 @@ export {
 	Settings,
 	Variables,
 	ApiKey,
+	BinaryDataFile,
+	SourceTypeSchema,
+	type SourceType,
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
@@ -75,6 +79,7 @@ export const entities = {
 	Settings,
 	Variables,
 	ApiKey,
+	BinaryDataFile,
 	WebhookEntity,
 	AuthIdentity,
 	CredentialsEntity,
