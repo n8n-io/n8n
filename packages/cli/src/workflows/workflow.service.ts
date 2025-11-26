@@ -544,6 +544,9 @@ export class WorkflowService {
 			return workflow;
 		}
 
+		const wasActive = workflow.activeVersionId !== null;
+		const activationMode = wasActive ? 'update' : 'activate';
+
 		await this.workflowRepository.update(workflowId, {
 			activeVersionId: versionId,
 			active: true,
@@ -572,7 +575,7 @@ export class WorkflowService {
 			publicApi: false,
 		});
 
-		await this._addToActiveWorkflowManager(user, workflowId, updatedWorkflow, 'activate', {
+		await this._addToActiveWorkflowManager(user, workflowId, updatedWorkflow, activationMode, {
 			active: workflow.active,
 			activeVersionId: workflow.activeVersionId,
 			activeVersion: workflow.activeVersion,
