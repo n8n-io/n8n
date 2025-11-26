@@ -149,20 +149,20 @@ jobs:
         env:
           VITEST_SHARD: ${{ matrix.shard }}/2
 
-      - name: Upload test results to Codecov
-        if: ${{ !cancelled() }}
-        uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          name: frontend-shard-${{ matrix.shard }}
+      # - name: Upload test results to Codecov
+      #   if: ${{ !cancelled() }}
+      #   uses: codecov/test-results-action@47f89e9acb64b76debcd5ea40642d25a4adced9f # v1.1.1
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     name: frontend-shard-${{ matrix.shard }}
 
-      - name: Upload coverage to Codecov
-        if: env.COVERAGE_ENABLED == 'true'
-        uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          flags: frontend
-          name: frontend-shard-${{ matrix.shard }}
+      # - name: Upload coverage to Codecov
+      #   if: env.COVERAGE_ENABLED == 'true'
+      #   uses: codecov/codecov-action@18283e04ce6e62d37312384ff67231eb8fd56d24 # v5.4.3
+      #   with:
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     flags: frontend
+      #     name: frontend-shard-${{ matrix.shard }}
 
   unit-test:
     name: Unit tests

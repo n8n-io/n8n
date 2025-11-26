@@ -70,8 +70,8 @@ jobs:
     with:
       ref: ${{ inputs.ref }}
       collectCoverage: true
-    secrets:
-      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    # secrets:
+    #   CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
   lint:
     name: Lint
