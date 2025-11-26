@@ -122,7 +122,7 @@ describe('WorkflowExecutionService', () => {
 			const connections = {
 				...createMainConnection(hackerNewsNode.name, webhookNode.name),
 			};
-			const runPayload: WorkflowRequest.PartialManualExecutionToDestination = {
+			const runPayload: WorkflowRequest.PartialManualExecutionToDestinationPayload = {
 				workflowData: mock<IWorkflowBase>({
 					nodes: [webhookNode, hackerNewsNode],
 					connections,
@@ -163,7 +163,7 @@ describe('WorkflowExecutionService', () => {
 			const userId = 'user-id';
 			const user = mock<User>({ id: userId });
 			const node = mock<INode>();
-			const runPayload: WorkflowRequest.PartialManualExecutionToDestination = {
+			const runPayload: WorkflowRequest.PartialManualExecutionToDestinationPayload = {
 				workflowData: mock<IWorkflowBase>({ nodes: [node], connections: {} }),
 				destinationNode: node.name,
 				agentRequest: undefined,
