@@ -122,13 +122,20 @@ export class UserRepository extends Repository<User> {
 					name: userWithRole.createPersonalProjectName(),
 				}),
 			);
+
 			await entityManager.save<ProjectRelation>(
 				entityManager.create(ProjectRelation, {
 					projectId: savedProject.id,
 					userId: savedUser.id,
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					role: {
+						slug:
+							userWithRole.role.slug !== 'global:chatUser'
+								? PROJECT_OWNER_ROLE_SLUG
+								: 'project:viewer',
+					},
 				}),
 			);
+
 			return { user: userWithRole, project: savedProject };
 		};
 		if (transactionManager) {

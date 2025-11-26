@@ -28,6 +28,7 @@ export const assignableGlobalRoleSchema = z.union([
 
 export const personalRoleSchema = z.enum([
 	'project:personalOwner', // personalOwner is only used for personal projects
+	'project:personalOwnerViewer', // (Chat) user who can only view their personal project, but still owns it
 ]);
 
 // Those are the system roles for projects assignable to a user

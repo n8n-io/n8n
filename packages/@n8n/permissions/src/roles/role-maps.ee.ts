@@ -13,6 +13,7 @@ import {
 	PERSONAL_PROJECT_OWNER_SCOPES,
 	PROJECT_EDITOR_SCOPES,
 	PROJECT_VIEWER_SCOPES,
+	PERSONAL_PROJECT_OWNER_VIEWER_SCOPES,
 } from './scopes/project-scopes.ee';
 import {
 	WORKFLOW_SHARING_OWNER_SCOPES,
@@ -36,6 +37,7 @@ export const GLOBAL_SCOPE_MAP: Record<GlobalRole, Scope[]> = {
 export const PROJECT_SCOPE_MAP: Record<ProjectRole, Scope[]> = {
 	'project:admin': REGULAR_PROJECT_ADMIN_SCOPES,
 	'project:personalOwner': PERSONAL_PROJECT_OWNER_SCOPES,
+	'project:personalOwnerViewer': PERSONAL_PROJECT_OWNER_VIEWER_SCOPES,
 	'project:editor': PROJECT_EDITOR_SCOPES,
 	'project:viewer': PROJECT_VIEWER_SCOPES,
 };

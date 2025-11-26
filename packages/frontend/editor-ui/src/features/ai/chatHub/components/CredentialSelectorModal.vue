@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { N8nButton, N8nHeading, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import {
+	N8nButton,
+	N8nHeading,
+	N8nOption,
+	N8nSelect,
+	N8nText,
+	N8nTooltip,
+} from '@n8n/design-system';
 import Modal from '@/app/components/Modal.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
@@ -9,6 +16,8 @@ import { type ChatHubLLMProvider, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-
 import { providerDisplayNames } from '@/features/ai/chatHub/constants';
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
 import { useI18n } from '@n8n/i18n';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { getResourcePermissions } from '@n8n/permissions';
 
 const props = defineProps<{
 	modalName: string;
@@ -22,11 +31,16 @@ const props = defineProps<{
 
 const i18n = useI18n();
 const credentialsStore = useCredentialsStore();
+const projectStore = useProjectsStore();
 const modalBus = ref(createEventBus());
 const selectedCredentialId = ref<string | null>(props.data.initialValue);
 
 const availableCredentials = computed<ICredentialsResponse[]>(() => {
 	return credentialsStore.getCredentialsByType(PROVIDER_CREDENTIAL_TYPE_MAP[props.data.provider]);
+});
+
+const canCreateCredentials = computed(() => {
+	return getResourcePermissions(projectStore.personalProject?.scopes).credential.create;
 });
 
 function onCredentialSelect(credentialId: string) {
@@ -105,9 +119,15 @@ function onCancel() {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton type="secondary" @click="onCreateNew">
-					{{ i18n.baseText('chatHub.credentials.selector.createNew') }}
-				</N8nButton>
+				<N8nTooltip
+					placement="right"
+					:disabled="canCreateCredentials"
+					:content="i18n.baseText('chatHub.credentials.selector.createNew.permissionDenied')"
+				>
+					<N8nButton type="secondary" :disabled="!canCreateCredentials" @click="onCreateNew">
+						{{ i18n.baseText('chatHub.credentials.selector.createNew') }}
+					</N8nButton>
+				</N8nTooltip>
 				<div :class="$style.footerRight">
 					<N8nButton type="tertiary" @click="onCancel">
 						{{ i18n.baseText('chatHub.credentials.selector.cancel') }}

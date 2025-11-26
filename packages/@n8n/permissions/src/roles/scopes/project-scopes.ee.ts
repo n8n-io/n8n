@@ -127,3 +127,5 @@ export const PROJECT_VIEWER_SCOPES: Scope[] = [
 	'projectVariable:list',
 	'projectVariable:read',
 ];
+
+export const PERSONAL_PROJECT_OWNER_VIEWER_SCOPES: Scope[] = [...PROJECT_VIEWER_SCOPES];

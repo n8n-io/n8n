@@ -37,6 +37,8 @@ import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { getResourcePermissions } from '@n8n/permissions';
+import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
 
@@ -82,6 +84,7 @@ const dropdownRef = useTemplateRef('dropdownRef');
 const uiStore = useUIStore();
 const settingStore = useSettingsStore();
 const credentialsStore = useCredentialsStore();
+const projectStore = useProjectsStore();
 const telemetry = useTelemetry();
 
 const credentialsName = computed(() =>
@@ -203,11 +206,15 @@ const menu = computed(() => {
 
 const selectedLabel = computed(() => selectedAgent?.name ?? 'Select model');
 
+const canCreateCredentials = computed(() => {
+	return getResourcePermissions(projectStore.personalProject?.scopes).credential.create;
+});
+
 function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
 	const existingCredentials = credentialsStore.getCredentialsByType(credentialType);
 
-	if (existingCredentials.length === 0) {
+	if (existingCredentials.length === 0 && canCreateCredentials.value) {
 		uiStore.openNewCredential(credentialType);
 		return;
 	}
