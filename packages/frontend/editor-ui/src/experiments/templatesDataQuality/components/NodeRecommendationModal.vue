@@ -9,11 +9,12 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import TemplateCard from './TemplateCard.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nLink, N8nSpinner, N8nText } from '@n8n/design-system';
+import { storeToRefs } from 'pinia';
 
 const uiStore = useUIStore();
 const locale = useI18n();
 const templatesStore = useTemplatesDataQualityStore();
-const { websiteTemplateRepositoryURL } = useTemplatesStore();
+const { websiteTemplateRepositoryURL } = storeToRefs(useTemplatesStore());
 
 const closeModal = () => {
 	uiStore.closeModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);

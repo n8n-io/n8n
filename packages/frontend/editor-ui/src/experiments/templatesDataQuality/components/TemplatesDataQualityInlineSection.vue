@@ -6,10 +6,11 @@ import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { useTemplatesDataQualityStore } from '../stores/templatesDataQuality.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import TemplateCard from './TemplateCard.vue';
+import { storeToRefs } from 'pinia';
 
 const locale = useI18n();
 const templatesStore = useTemplatesDataQualityStore();
-const { websiteTemplateRepositoryURL } = useTemplatesStore();
+const { websiteTemplateRepositoryURL } = storeToRefs(useTemplatesStore());
 
 const templates = ref<ITemplatesWorkflowFull[]>([]);
 const isLoadingTemplates = ref(false);
