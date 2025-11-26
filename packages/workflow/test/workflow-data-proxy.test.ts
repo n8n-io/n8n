@@ -13,6 +13,10 @@ import {
 	type IWorkflowBase,
 	type WorkflowExecuteMode,
 } from '../src/interfaces';
+import {
+	createEmptyRunExecutionData,
+	createRunExecutionData,
+} from '../src/run-execution-data-factory';
 import { Workflow } from '../src/workflow';
 import { WorkflowDataProxy } from '../src/workflow-data-proxy';
 
@@ -346,8 +350,9 @@ describe('WorkflowDataProxy', () => {
 			} catch (error) {
 				expect(error).toBeInstanceOf(ExpressionError);
 				const exprError = error as ExpressionError;
-				expect(exprError.message).toEqual("Can't get data for expression");
-				expect(exprError.context.type).toEqual('paired_item_invalid_info');
+				expect(exprError.message).toContain('Paired item data for item from node');
+				expect(exprError.message).toContain('Edit Fields');
+				expect(exprError.context.type).toEqual('paired_item_no_info');
 			}
 		});
 	});
@@ -418,7 +423,7 @@ describe('WorkflowDataProxy', () => {
 
 		test.each([{ methodName: 'itemMatching' }, { methodName: 'pairedItem' }])(
 			'$methodName should throw when it cannot find a paired item',
-			async ({ methodName }) => {
+			({ methodName }) => {
 				try {
 					proxy.$('DebugHelper')[methodName](0);
 					throw new Error('should throw');
@@ -444,7 +449,7 @@ describe('WorkflowDataProxy', () => {
 			},
 		);
 
-		test('item should throw when it cannot find a paired item', async () => {
+		test('item should throw when it cannot find a paired item', () => {
 			try {
 				proxy.$('DebugHelper').item;
 				throw new Error('should throw');
@@ -560,6 +565,7 @@ describe('WorkflowDataProxy', () => {
 				],
 				connections: {},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -622,6 +628,7 @@ describe('WorkflowDataProxy', () => {
 				],
 				connections: {},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -693,7 +700,7 @@ describe('WorkflowDataProxy', () => {
 			const noRunDataProxy = getProxyFromFixture(
 				fixture.workflow,
 				{
-					data: { resultData: { runData: {} } },
+					data: createEmptyRunExecutionData(),
 					mode: 'manual',
 					startedAt: new Date(),
 					status: 'success',
@@ -1013,6 +1020,7 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
@@ -1020,11 +1028,7 @@ describe('WorkflowDataProxy', () => {
 
 			// Create run data without execution data for Telegram Trigger
 			const run = {
-				data: {
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				},
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
@@ -1079,17 +1083,14 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
 
 			const run = {
-				data: {
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				},
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
@@ -1140,17 +1141,14 @@ describe('WorkflowDataProxy', () => {
 					},
 				},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
 
 			const run = {
-				data: {
-					resultData: {
-						runData: {}, // Empty - no nodes have executed
-					},
-				},
+				data: createEmptyRunExecutionData(),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,
@@ -1214,13 +1212,14 @@ describe('WorkflowDataProxy', () => {
 				],
 				connections: {},
 				active: false,
+				activeVersionId: null,
 				isArchived: false,
 				createdAt: new Date(),
 				updatedAt: new Date(),
 			};
 
 			const run = {
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							'Real Node': [
@@ -1236,7 +1235,7 @@ describe('WorkflowDataProxy', () => {
 							],
 						},
 					},
-				},
+				}),
 				mode: 'manual' as const,
 				startedAt: new Date(),
 				status: 'success' as const,

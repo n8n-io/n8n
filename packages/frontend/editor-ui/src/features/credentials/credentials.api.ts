@@ -28,12 +28,14 @@ export async function getAllCredentials(
 	filter?: object,
 	includeScopes?: boolean,
 	onlySharedWithMe?: boolean,
+	includeGlobal?: boolean,
 ): Promise<ICredentialsResponse[]> {
 	return await makeRestApiRequest(context, 'GET', '/credentials', {
 		...(includeScopes ? { includeScopes } : {}),
 		includeData: true,
 		...(filter ? { filter } : {}),
 		...(onlySharedWithMe ? { onlySharedWithMe } : {}),
+		...(typeof includeGlobal === 'boolean' ? { includeGlobal } : {}),
 	});
 }
 

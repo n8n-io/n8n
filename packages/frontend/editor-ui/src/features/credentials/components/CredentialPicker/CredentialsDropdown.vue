@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 
-import { N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { nextTick, ref } from 'vue';
 export type CredentialOption = {
 	id: string;
 	name: string;
@@ -20,22 +21,28 @@ const emit = defineEmits<{
 
 const i18n = useI18n();
 
-const NEW_CREDENTIALS_TEXT = `- ${i18n.baseText('nodeCredentials.createNew')} -`;
+const selectRefs = ref<InstanceType<typeof N8nSelect> | null>(null);
+
+const NEW_CREDENTIALS_TEXT = i18n.baseText('nodeCredentials.createNew');
 
 const onCredentialSelected = (credentialId: string) => {
-	if (credentialId === NEW_CREDENTIALS_TEXT) {
-		emit('newCredential');
-	} else {
-		emit('credentialSelected', credentialId);
-	}
+	emit('credentialSelected', credentialId);
+};
+
+const onCreateNewCredential = async () => {
+	selectRefs.value?.blur();
+	await nextTick();
+	emit('newCredential');
 };
 </script>
 
 <template>
 	<N8nSelect
+		ref="selectRefs"
 		size="small"
 		:model-value="props.selectedCredentialId"
 		@update:model-value="onCredentialSelected"
+		:popper-class="$style.selectPopper"
 	>
 		<N8nOption
 			v-for="item in props.credentialOptions"
@@ -49,19 +56,68 @@ const onCredentialSelected = (credentialId: string) => {
 				<N8nText size="small">{{ item.typeDisplayName }}</N8nText>
 			</div>
 		</N8nOption>
-		<N8nOption
-			:key="NEW_CREDENTIALS_TEXT"
-			data-test-id="node-credentials-select-item-new"
-			:value="NEW_CREDENTIALS_TEXT"
-			:label="NEW_CREDENTIALS_TEXT"
-		>
-		</N8nOption>
+		<template #empty> </template>
+		<template #footer>
+			<button
+				type="button"
+				data-test-id="node-credentials-select-item-new"
+				:class="[$style.newCredential]"
+				@click="onCreateNewCredential()"
+			>
+				<N8nIcon size="xsmall" icon="plus" />
+				{{ NEW_CREDENTIALS_TEXT }}
+			</button>
+		</template>
 	</N8nSelect>
 </template>
 
 <style lang="scss" module>
+.selectPopper {
+	:global(.el-select-dropdown__list) {
+		padding: 0;
+	}
+
+	:has(.newCredential:hover) :global(.hover) {
+		background-color: transparent;
+	}
+
+	&:not(:has(li)) .newCredential {
+		border-top: none;
+		box-shadow: none;
+		border-radius: var(--radius);
+	}
+}
+
 .credentialOption {
 	display: flex;
 	flex-direction: column;
+}
+
+.newCredential {
+	display: flex;
+	width: 100%;
+	gap: var(--spacing--3xs);
+	align-items: center;
+	font-weight: var(--font-weight--bold);
+	padding: var(--spacing--xs) var(--spacing--md);
+	background-color: var(--color--background--light-2);
+	color: var(--color--text--shade-1);
+
+	border: 0;
+	border-top: var(--border);
+	box-shadow: var(--shadow--light);
+	clip-path: inset(-12px 0 0 0); // Only show box shadow on top
+
+	&:not([disabled]) {
+		cursor: pointer;
+		&:hover {
+			color: var(--color--primary);
+		}
+	}
+
+	&[disabled] {
+		opacity: 0.5;
+		cursor: not-allowed;
+	}
 }
 </style>

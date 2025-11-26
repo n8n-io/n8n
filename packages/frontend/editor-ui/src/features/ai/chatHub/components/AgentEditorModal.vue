@@ -13,6 +13,7 @@ import { computed, onMounted, ref } from 'vue';
 import type { CredentialsMap } from '../chat.types';
 import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
+import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 
 const props = defineProps<{
 	modalName: string;
@@ -75,7 +76,7 @@ function loadAgent() {
 	name.value = customAgent.name;
 	description.value = customAgent.description ?? '';
 	systemPrompt.value = customAgent.systemPrompt;
-	selectedModel.value = chatStore.getAgent(customAgent) ?? null;
+	selectedModel.value = chatStore.getAgent(customAgent);
 	tools.value = customAgent.tools || [];
 
 	if (customAgent.credentialId) {
@@ -109,8 +110,7 @@ async function onSave() {
 
 		const model = 'model' in selectedModel.value ? selectedModel.value.model : undefined;
 
-		assert(model);
-		assert(model.provider !== 'n8n' && model.provider !== 'custom-agent');
+		assert(isLlmProviderModel(model));
 
 		const credentialId = agentMergedCredentials.value[model.provider];
 

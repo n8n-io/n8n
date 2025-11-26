@@ -26,6 +26,7 @@ const props = defineProps<{
 	data: UsersList;
 	actions: Array<UserAction<IUser>>;
 	loading?: boolean;
+	canEditRole: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -122,7 +123,11 @@ const roleActions = computed<Array<ActionDropdownItem<Role>>>(() => [
 ]);
 
 const canUpdateRole = computed((): boolean => {
-	return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
+	if (!hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } }))
+		return false;
+	if (!props.canEditRole) return false;
+
+	return true;
 });
 
 const filterActions = (user: UsersList['items'][number]) => {
