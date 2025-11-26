@@ -2,8 +2,8 @@ import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
 import { vi } from 'vitest';
 
-import Pagination from './Pagination.vue';
 import type { PaginationProps } from './Pagination.types';
+import Pagination from './Pagination.vue';
 
 // Mock useI18n composable
 vi.mock('../../../composables/useI18n', () => ({
