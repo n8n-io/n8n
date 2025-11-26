@@ -28,6 +28,8 @@ export declare namespace WorkflowRequest {
 		uiContext?: string;
 	}>;
 
+	// TODO: Use a discriminator when CAT-1809 lands
+	//
 	// 1. Full Manual Execution from Known Trigger
 	type FullManualExecutionFromKnownTriggerPayload = {
 		workflowData: IWorkflowBase;
