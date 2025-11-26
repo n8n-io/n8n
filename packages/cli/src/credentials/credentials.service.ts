@@ -538,18 +538,28 @@ export class CredentialsService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 		const result = await dbManager.transaction(async (transactionManager) => {
-			const project =
-				projectId === undefined
-					? await this.projectRepository.getPersonalProjectForUserOrFail(
-							user.id,
-							transactionManager,
-						)
-					: await this.projectService.getProjectWithScope(
-							user,
-							projectId,
-							['credential:create'],
-							transactionManager,
-						);
+			let project = null;
+
+			if (projectId === undefined) {
+				project = await this.projectRepository.getPersonalProjectForUserOrFail(
+					user.id,
+					transactionManager,
+				);
+				// Chat users are not allowed to create credentials even in their personal project
+				const hasPermission = await userHasScopes(user, ['credential:create'], false, {
+					projectId: project.id,
+				});
+				if (!hasPermission) {
+					throw new ForbiddenError("You don't have permission to create credentials.");
+				}
+			} else {
+				project = await this.projectService.getProjectWithScope(
+					user,
+					projectId,
+					['credential:create'],
+					transactionManager,
+				);
+			}
 
 			if (typeof projectId === 'string' && project === null) {
 				throw new BadRequestError(
