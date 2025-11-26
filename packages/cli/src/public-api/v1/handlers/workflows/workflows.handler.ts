@@ -377,7 +377,7 @@ export = {
 				return res.json(workflow);
 			} catch (error) {
 				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: error.message });
+					return res.status(404).json({ message: 'Not Found' });
 				}
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });
@@ -402,7 +402,7 @@ export = {
 				return res.json(workflow);
 			} catch (error) {
 				if (error instanceof NotFoundError) {
-					return res.status(404).json({ message: error.message });
+					return res.status(404).json({ message: 'Not Found' });
 				}
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });
