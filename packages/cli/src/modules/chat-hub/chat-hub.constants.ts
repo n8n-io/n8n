@@ -1,4 +1,4 @@
-import type { ChatHubLLMProvider, InputModality } from '@n8n/api-types';
+import type { ChatHubLLMProvider, ChatModelMetadataDto } from '@n8n/api-types';
 import type { INodeTypeNameVersion } from 'n8n-workflow';
 
 export const CONVERSATION_TITLE_GENERATION_PROMPT = `Generate a concise, descriptive title for this conversation based on the user's message.
@@ -90,21 +90,209 @@ export const JSONL_STREAM_HEADERS = {
 };
 /* eslint-enable @typescript-eslint/naming-convention */
 
-/**
- * Helper function to get model metadata including capabilities and input modalities
- * TODO: Need AI-886 for the comprehensive metadata
- */
+// Default metadata for all models
+const DEFAULT_MODEL_METADATA: ChatModelMetadataDto = {
+	inputModalities: ['text', 'image', 'audio', 'video'],
+	capabilities: {
+		functionCalling: true,
+	},
+};
+
+const MODEL_METADATA_REGISTRY: Partial<
+	Record<ChatHubLLMProvider, Partial<Record<string, Partial<ChatModelMetadataDto>>>>
+> = {
+	anthropic: {
+		'claude-3-5-haiku-20241022': {
+			inputModalities: ['text', 'image'],
+		},
+		'claude-3-haiku-20240307': {
+			inputModalities: ['text', 'image'],
+		},
+		'claude-3-opus-20240229': {
+			inputModalities: ['text', 'image'],
+		},
+		'claude-3-sonnet-20240229': {
+			inputModalities: ['text', 'image'],
+		},
+		'claude-3-5-sonnet-20241022': {
+			inputModalities: ['text', 'image'],
+		},
+		'claude-3-7-sonnet-20250219': {
+			inputModalities: ['text', 'image'],
+		},
+		'claude-sonnet-4-20250514': {
+			inputModalities: ['text', 'image'],
+		},
+		'claude-sonnet-4-5-20250929': {
+			inputModalities: ['text', 'image'],
+		},
+		'claude-haiku-4-5-20251001': {
+			inputModalities: ['text', 'image'],
+		},
+		'claude-opus-4-20250514': {
+			inputModalities: ['text', 'image'],
+		},
+		'claude-opus-4-1-20250805': {
+			inputModalities: ['text', 'image'],
+		},
+	},
+	openai: {
+		'gpt-4o-mini-search-preview': {
+			inputModalities: ['text'],
+			capabilities: {
+				functionCalling: false,
+			},
+		},
+		'gpt-4o-mini-search-preview-2025-03-11': {
+			inputModalities: ['text'],
+			capabilities: {
+				functionCalling: false,
+			},
+		},
+		'gpt-4o-search-preview': {
+			inputModalities: ['text'],
+			capabilities: {
+				functionCalling: false,
+			},
+		},
+		'gpt-4o-search-preview-2025-03-11': {
+			inputModalities: ['text'],
+			capabilities: {
+				functionCalling: false,
+			},
+		},
+		'gpt-3.5-turbo': {
+			inputModalities: ['text'],
+		},
+		'gpt-4': {
+			inputModalities: ['text'],
+		},
+		'gpt-4-turbo': {
+			inputModalities: ['text', 'image'],
+		},
+		'o1-mini': {
+			inputModalities: ['text'],
+		},
+		'o1-mini-2024-09-12': {
+			inputModalities: ['text'],
+		},
+		o1: {
+			inputModalities: ['text'],
+		},
+		'o1-pro': {
+			inputModalities: ['text'],
+		},
+		'o1-pro-2025-03-19': {
+			inputModalities: ['text'],
+		},
+		'o3-mini': {
+			inputModalities: ['text'],
+		},
+		'o4-mini': {
+			inputModalities: ['text'],
+		},
+		'o4-mini-2025-04-16': {
+			inputModalities: ['text'],
+		},
+		'o4-mini-high': {
+			inputModalities: ['text'],
+		},
+		o3: {
+			inputModalities: ['text'],
+		},
+		'o3-2025-04-16': {
+			inputModalities: ['text'],
+		},
+		'o3-pro': {
+			inputModalities: ['text'],
+		},
+		'o3-pro-2025-06-10': {
+			inputModalities: ['text'],
+		},
+	},
+	mistralCloud: {
+		// Most Mistral models support text and image
+		'mistral-tiny-2312': {
+			inputModalities: ['text'],
+		},
+		'mistral-tiny-2407': {
+			inputModalities: ['text'],
+		},
+		'mistral-tiny-latest': {
+			inputModalities: ['text'],
+		},
+		'mistral-tiny': {
+			inputModalities: ['text'],
+		},
+		'mistral-small-2312': {
+			inputModalities: ['text'],
+		},
+		'mistral-small-2409': {
+			inputModalities: ['text'],
+		},
+		'mistral-small-2501': {
+			inputModalities: ['text'],
+		},
+		'mistral-small-2503': {
+			inputModalities: ['text'],
+		},
+		'mistral-small-2506': {
+			inputModalities: ['text'],
+		},
+		'mistral-small-latest': {
+			inputModalities: ['text'],
+		},
+		'open-mistral-7b': {
+			inputModalities: ['text'],
+		},
+		'open-mistral-nemo': {
+			inputModalities: ['text'],
+		},
+		'open-mistral-nemo-2407': {
+			inputModalities: ['text'],
+		},
+		'open-mixtral-8x7b': {
+			inputModalities: ['text'],
+		},
+		'open-mixtral-8x22b': {
+			inputModalities: ['text'],
+		},
+		'open-mixtral-8x22b-2404': {
+			inputModalities: ['text'],
+		},
+		'ministral-3b-2410': {
+			inputModalities: ['text'],
+		},
+		'ministral-3b-latest': {
+			inputModalities: ['text'],
+		},
+		'ministral-8b-2410': {
+			inputModalities: ['text'],
+		},
+		'ministral-8b-latest': {
+			inputModalities: ['text'],
+		},
+	},
+};
+
 export function getModelMetadata(
 	provider: ChatHubLLMProvider,
 	modelId: string,
-): { inputModalities: InputModality[]; capabilities: { functionCalling: boolean } } {
+): ChatModelMetadataDto {
+	const providerModels = MODEL_METADATA_REGISTRY[provider];
+	const modelOverride = providerModels?.[modelId];
+
+	if (!modelOverride) {
+		return DEFAULT_MODEL_METADATA;
+	}
+
+	// Merge override with default metadata
 	return {
-		inputModalities:
-			provider === 'anthropic' && modelId === 'claude-3-5-haiku-20241022'
-				? ['text']
-				: ['text', 'image', 'audio', 'video', 'file'],
+		inputModalities: modelOverride.inputModalities ?? DEFAULT_MODEL_METADATA.inputModalities,
 		capabilities: {
-			functionCalling: !(provider === 'openai' && modelId === 'gpt-4o-mini-search-preview'),
+			functionCalling:
+				modelOverride.capabilities?.functionCalling ??
+				DEFAULT_MODEL_METADATA.capabilities.functionCalling,
 		},
 	};
 }
