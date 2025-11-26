@@ -29,6 +29,7 @@ jobs:
       minor: ${{ steps.check_version.outputs.minor }}
       patch: ${{ steps.check_version.outputs.patch }}
       is_prerelease: ${{ steps.check_version.outputs.is_prerelease }}
+      is_rc: ${{ steps.check_version.outputs.is_rc }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -80,8 +81,18 @@ jobs:
 
       - run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
 
+      - name: Add RC tags to NPM
+        if: needs.validate-inputs.outputs.release_channel == 'beta' && needs.validate-inputs.outputs.is_rc == 'true'
+        run: |
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          npm dist-tag add "n8n@${VERSION}" rc
+          npm dist-tag add "n8n@${VERSION}" "${MAJOR}"
+          npm dist-tag add "n8n@${VERSION}" "${MINOR}"
+
       - name: Add beta/next tags to NPM
-        if: needs.validate-inputs.outputs.release_channel == 'beta'
+        if: needs.validate-inputs.outputs.release_channel == 'beta' && needs.validate-inputs.outputs.is_rc != 'true'
         run: |
           VERSION="${{ needs.validate-inputs.outputs.version }}"
           MAJOR="${{ needs.validate-inputs.outputs.major }}"
@@ -148,8 +159,31 @@ jobs:
           docker buildx imagetools create -t "${DOCKER_USER}/runners:${MAJOR}-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
           docker buildx imagetools create -t "${DOCKER_USER}/runners:${MINOR}-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
 
+      - name: Tag RC Docker image
+        if: needs.validate-inputs.outputs.release_channel == 'beta' && needs.validate-inputs.outputs.is_rc == 'true'
+        run: |
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          DOCKER_USER="${{ secrets.DOCKER_USERNAME }}"
+
+          # n8n image tags
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:rc" "${DOCKER_USER}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:${MAJOR}" "${DOCKER_USER}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/n8n:${MINOR}" "${DOCKER_USER}/n8n:${VERSION}"
+
+          # runners (Alpine) tags
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:rc" "${DOCKER_USER}/runners:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MAJOR}" "${DOCKER_USER}/runners:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MINOR}" "${DOCKER_USER}/runners:${VERSION}"
+
+          # runners-distroless tags
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:rc-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MAJOR}-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${DOCKER_USER}/runners:${MINOR}-distroless" "${DOCKER_USER}/runners:${VERSION}-distroless"
+
       - name: Tag beta/next Docker image
-        if: needs.validate-inputs.outputs.release_channel == 'beta'
+        if: needs.validate-inputs.outputs.release_channel == 'beta' && needs.validate-inputs.outputs.is_rc != 'true'
         run: |
           VERSION="${{ needs.validate-inputs.outputs.version }}"
           MAJOR="${{ needs.validate-inputs.outputs.major }}"
@@ -232,8 +266,31 @@ jobs:
           docker buildx imagetools create -t "${GHCR_BASE}/runners:${MAJOR}-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
           docker buildx imagetools create -t "${GHCR_BASE}/runners:${MINOR}-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
 
+      - name: Tag RC GHCR image
+        if: needs.validate-inputs.outputs.release_channel == 'beta' && needs.validate-inputs.outputs.is_rc == 'true'
+        run: |
+          VERSION="${{ needs.validate-inputs.outputs.version }}"
+          MAJOR="${{ needs.validate-inputs.outputs.major }}"
+          MINOR="${{ needs.validate-inputs.outputs.major }}.${{ needs.validate-inputs.outputs.minor }}"
+          GHCR_BASE="ghcr.io/${{ github.repository_owner }}"
+
+          # n8n image tags
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:rc" "${GHCR_BASE}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:${MAJOR}" "${GHCR_BASE}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:${MINOR}" "${GHCR_BASE}/n8n:${VERSION}"
+
+          # runners (Alpine) tags
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:rc" "${GHCR_BASE}/runners:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MAJOR}" "${GHCR_BASE}/runners:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MINOR}" "${GHCR_BASE}/runners:${VERSION}"
+
+          # runners-distroless tags
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:rc-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MAJOR}-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MINOR}-distroless" "${GHCR_BASE}/runners:${VERSION}-distroless"
+
       - name: Tag beta/next GHCR image
-        if: needs.validate-inputs.outputs.release_channel == 'beta'
+        if: needs.validate-inputs.outputs.release_channel == 'beta' && needs.validate-inputs.outputs.is_rc != 'true'
         run: |
           VERSION="${{ needs.validate-inputs.outputs.version }}"
           MAJOR="${{ needs.validate-inputs.outputs.major }}"
