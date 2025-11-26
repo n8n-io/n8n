@@ -571,6 +571,35 @@ describe('replyToEmail', () => {
 		);
 	});
 
+	test('should use ignore Reply-To header, when Reply-To header is provided for version < 2.2', async () => {
+		const messageWithReplyToHeader = {
+			...mockMessageMetadata,
+			payload: {
+				...mockMessageMetadata.payload,
+				headers: [
+					...mockMessageMetadata.payload.headers,
+					{ name: 'Reply-To', value: 'reply-to@example.com' },
+				],
+			},
+		};
+
+		mockedGoogleApiRequest
+			.mockResolvedValueOnce(messageWithReplyToHeader)
+			.mockResolvedValueOnce(mockUserProfile)
+			.mockResolvedValueOnce(mockSentMessage);
+
+		const options: IDataObject = {};
+
+		await replyToEmail.call(mockExecuteFunctions, 'message123', options, 0, 2.1);
+
+		expect(mockedEncodeEmail).toHaveBeenCalledWith(
+			expect.objectContaining({
+				// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+				to: expect.stringContaining('<john@example.com>'),
+			}),
+		);
+	});
+
 	test('should use Reply-To header instead of From, when Reply-To header is provided for version >= 2.2', async () => {
 		const messageWithReplyToHeader = {
 			...mockMessageMetadata,
