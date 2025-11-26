@@ -169,7 +169,7 @@ export class NavigationHelper {
 	 * URL: /workflows/templates/{templateId}
 	 */
 	async toTemplateImport(templateId: string): Promise<void> {
-		await this.page.goto(`/workflows/templates/${templateId}`);
+		await this.page.goto(`/templates/${templateId}/setup`);
 	}
 
 	/**
@@ -178,6 +178,14 @@ export class NavigationHelper {
 	 */
 	async toTemplateCollection(collectionId: number): Promise<void> {
 		await this.page.goto(`/collections/${collectionId}`);
+	}
+
+	/**
+	 * Navigate to template credential setup page
+	 * URL: /templates/{templateId}/setup
+	 */
+	async toTemplateCredentialSetup(templateId: number): Promise<void> {
+		await this.page.goto(`/templates/${templateId}/setup`);
 	}
 
 	/**

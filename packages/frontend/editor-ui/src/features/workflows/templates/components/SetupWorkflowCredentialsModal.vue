@@ -49,7 +49,7 @@ onUnmounted(() => {
 <template>
 	<Modal width="700px" max-height="90%" :name="props.modalName">
 		<template #header>
-			<N8nHeading tag="h2" size="xlarge">
+			<N8nHeading tag="h2" size="xlarge" data-test-id="setup-credentials-modal-title">
 				{{ i18n.baseText('setupCredentialsModal.title') }}
 			</N8nHeading>
 		</template>

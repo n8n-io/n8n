@@ -28,6 +28,7 @@ import { SettingsPersonalPage } from './SettingsPersonalPage';
 import { SettingsUsersPage } from './SettingsUsersPage';
 import { SidebarPage } from './SidebarPage';
 import { SignInPage } from './SignInPage';
+import { TemplateCredentialSetupPage } from './TemplateCredentialSetupPage';
 import { TemplatesPage } from './TemplatesPage';
 import { VariablesPage } from './VariablesPage';
 import { VersionsPage } from './VersionsPage';
@@ -72,6 +73,7 @@ export class n8nPage {
 	readonly projectSettings: ProjectSettingsPage;
 	readonly settingsPersonal: SettingsPersonalPage;
 	readonly settingsLogStreaming: SettingsLogStreamingPage;
+	readonly templateCredentialSetup: TemplateCredentialSetupPage;
 	readonly templates: TemplatesPage;
 	readonly variables: VariablesPage;
 	readonly versions: VersionsPage;
@@ -137,6 +139,7 @@ export class n8nPage {
 		this.projectSettings = new ProjectSettingsPage(page);
 		this.settingsPersonal = new SettingsPersonalPage(page);
 		this.settingsLogStreaming = new SettingsLogStreamingPage(page);
+		this.templateCredentialSetup = new TemplateCredentialSetupPage(page);
 		this.templates = new TemplatesPage(page);
 		this.variables = new VariablesPage(page);
 		this.versions = new VersionsPage(page);
