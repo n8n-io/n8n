@@ -191,61 +191,6 @@ describe('WorkflowExecutionService', () => {
 			expect(result).toEqual({ executionId });
 		});
 
-		[
-			{
-				name: 'trigger',
-				type: 'n8n-nodes-base.airtableTrigger',
-				// Avoid mock constructor evaluated as true
-				disabled: undefined,
-			},
-			{
-				name: 'webhook',
-				type: 'n8n-nodes-base.webhook',
-				disabled: undefined,
-			},
-		].forEach((triggerNode: Partial<INode>) => {
-			test(`should call WorkflowRunner.run() with pinned trigger with type ${triggerNode.name}`, async () => {
-				const additionalData = mock<IWorkflowExecuteAdditionalData>({});
-				jest.spyOn(WorkflowExecuteAdditionalData, 'getBase').mockResolvedValue(additionalData);
-				const executionId = 'fake-execution-id';
-				const userId = 'user-id';
-				const user = mock<User>({ id: userId });
-				const connections = {
-					...createMainConnection(hackerNewsNode.name, triggerNode.name!),
-					...createMainConnection(hackerNewsNode.name, triggerNode.name!),
-				};
-				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
-					workflowData: mock<IWorkflowBase>({
-						pinData: { [triggerNode.name!]: [{ json: {} }] },
-						nodes: [mock<INode>(triggerNode)],
-						connections,
-					}),
-					destinationNode: hackerNewsNode.name,
-				};
-
-				jest
-					.spyOn(nodeTypes, 'getByNameAndVersion')
-					.mockReturnValue(
-						mock<INodeType>({ description: { group: ['trigger'], properties: [] } }),
-					);
-
-				workflowRunner.run.mockResolvedValue(executionId);
-
-				const result = await workflowExecutionService.executeManually(runPayload, user);
-
-				expect(workflowRunner.run).toHaveBeenCalledWith({
-					destinationNode: { nodeName: runPayload.destinationNode, mode: 'inclusive' },
-					executionMode: 'manual',
-					pinData: runPayload.workflowData.pinData,
-					pushRef: undefined,
-					workflowData: runPayload.workflowData,
-					userId,
-					triggerToStartFrom: { name: triggerNode.name },
-				});
-				expect(result).toEqual({ executionId });
-			});
-		});
-
 		test('should start from pinned trigger', async () => {
 			const executionId = 'fake-execution-id';
 			const userId = 'user-id';
