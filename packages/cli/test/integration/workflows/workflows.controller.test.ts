@@ -2469,6 +2469,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			data: { id, versionId: updatedVersionId },
 		} = response.body;
 
+		console.log(response.body);
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.settings.timeSavedMode).toBe('fixed');
 		expect(response.body.data.settings.timeSavedPerExecution).toBe(10);
@@ -2730,8 +2731,12 @@ describe('PATCH /workflows/:workflowId', () => {
 	test('should fail if an invalid timeSavedMode is provided', async () => {
 		const workflow = await createWorkflow({}, owner);
 		const payload = {
+			name: 'name updated',
 			versionId: workflow.versionId,
-			timeSavedMode: 'invalid' as 'fixed' | 'dynamic',
+			settings: {
+				timeSavedMode: 'invalid' as 'fixed' | 'dynamic',
+				timeSavedPerExecution: 'lolol',
+			},
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
