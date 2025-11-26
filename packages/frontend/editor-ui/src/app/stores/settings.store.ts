@@ -165,10 +165,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		() => settings.value.unverifiedCommunityNodesEnabled,
 	);
 
-	const isWorkflowDraftPublishEnabled = computed(
-		() => settings.value.envFeatureFlags?.N8N_ENV_FEAT_WORKFLOWS_DRAFT_PUBLISH_ENABLED ?? false,
-	);
-
 	const allowedModules = computed(() => settings.value.allowedModules);
 
 	const isQueueModeEnabled = computed(() => settings.value.executionMode === 'queue');
@@ -375,7 +371,6 @@ export const useSettingsStore = defineStore(STORES.SETTINGS, () => {
 		pushBackend,
 		isCommunityNodesFeatureEnabled,
 		isUnverifiedPackagesEnabled,
-		isWorkflowDraftPublishEnabled,
 		allowedModules,
 		isQueueModeEnabled,
 		isMultiMain,

@@ -12,6 +12,7 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
+	WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG,
 } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRoute } from 'vue-router';
@@ -35,6 +36,7 @@ import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
+import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -67,6 +69,7 @@ const workflowHelpers = useWorkflowHelpers();
 const workflowActivate = useWorkflowActivate();
 const settingsStore = useSettingsStore();
 const changeOwnerEventBus = createEventBus();
+const envFeatureFlag = useEnvFeatureFlag();
 
 const onWorkflowPage = computed(() => {
 	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
@@ -81,6 +84,10 @@ const onExecutionsTab = computed(() => {
 });
 
 const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
+
+const isDraftPublishEnabled = computed(() => {
+	return envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG);
+});
 
 function handleFileImport() {
 	const inputRef = importFileRef.value;
@@ -176,7 +183,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	});
 
 	if (
-		settingsStore.isWorkflowDraftPublishEnabled &&
+		isDraftPublishEnabled.value &&
 		activeVersion.value &&
 		props.workflowPermissions.update &&
 		!props.readOnly

@@ -887,12 +887,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (targetWorkflow) {
 			targetWorkflow.active = true;
 			targetWorkflow.activeVersionId = activeVersion?.versionId ?? targetWorkflow.versionId;
-			targetWorkflow.activeVersion = activeVersion ?? null;
+			targetWorkflow.activeVersion = activeVersion;
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			uiStore.stateIsDirty = false;
 			workflow.value.active = true;
-			workflow.value.activeVersionId = workflow.value.versionId;
+			workflow.value.activeVersionId = activeVersion?.versionId ?? workflow.value.versionId;
 			workflow.value.activeVersion = activeVersion;
 		}
 	}
@@ -1634,17 +1634,6 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		);
 
 		setWorkflowInactive(id);
-
-		const targetWorkflow = workflowsById.value[id];
-		if (targetWorkflow) {
-			targetWorkflow.activeVersion = updatedWorkflow.activeVersion ?? null;
-			targetWorkflow.activeVersionId = updatedWorkflow.activeVersionId;
-		}
-
-		if (id === workflow.value.id) {
-			workflow.value.activeVersion = updatedWorkflow.activeVersion ?? null;
-			workflow.value.activeVersionId = updatedWorkflow.activeVersionId;
-		}
 
 		return updatedWorkflow;
 	}
