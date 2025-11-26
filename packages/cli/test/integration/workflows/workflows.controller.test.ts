@@ -2469,7 +2469,6 @@ describe('PATCH /workflows/:workflowId', () => {
 			data: { id, versionId: updatedVersionId },
 		} = response.body;
 
-		console.log(response.body);
 		expect(response.statusCode).toBe(200);
 		expect(response.body.data.settings.timeSavedMode).toBe('fixed');
 		expect(response.body.data.settings.timeSavedPerExecution).toBe(10);
