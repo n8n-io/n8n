@@ -1,0 +1,20 @@
+# Anonimizador requirements
+# These are the same dependencies listed in pyproject.toml for traditional pip install
+
+# Web framework
+fastapi>=0.115.0
+uvicorn>=0.32.0
+python-multipart>=0.0.17
+
+# File sanitization
+pillow>=11.0.0
+pikepdf>=9.4.0
+python-docx>=1.1.2
+openpyxl>=3.1.5
+
+# Cryptography and tokens
+cryptography>=43.0.3
+python-jose[cryptography]>=3.3.0
+
+# HTTP client for n8n integration
+httpx>=0.28.1
