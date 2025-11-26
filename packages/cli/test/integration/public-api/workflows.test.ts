@@ -1584,6 +1584,44 @@ describe('PUT /workflows/:id', () => {
 		);
 		expect(sharedWorkflow?.role).toEqual('workflow:owner');
 	});
+
+	test('should merge settings on partial update', async () => {
+		const workflow = await createWorkflow(
+			{
+				settings: {
+					saveExecutionProgress: true,
+					saveManualExecutions: true,
+					saveDataErrorExecution: 'all',
+					saveDataSuccessExecution: 'none',
+					executionTimeout: 3600,
+					timezone: 'America/New_York',
+				},
+			},
+			member,
+		);
+
+		// Update with only partial settings
+		const payload = {
+			settings: {
+				timezone: 'Europe/London',
+				callerPolicy: 'workflowsFromSameOwner',
+			},
+		};
+
+		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
+
+		expect(response.statusCode).toBe(200);
+
+		expect(response.body.settings).toEqual({
+			saveExecutionProgress: true,
+			saveManualExecutions: true,
+			saveDataErrorExecution: 'all',
+			saveDataSuccessExecution: 'none',
+			executionTimeout: 3600,
+			timezone: 'Europe/London', // Updated
+			callerPolicy: 'workflowsFromSameOwner', // Added
+		});
+	});
 });
 
 describe('GET /workflows/:id/tags', () => {
