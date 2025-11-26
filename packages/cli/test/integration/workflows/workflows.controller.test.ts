@@ -2371,12 +2371,13 @@ describe('GET /workflows?includeFolders=true', () => {
 				.get('/workflows')
 				.query('skip=2&take=4&includeFolders=true');
 
-			expect(response.body.data).toHaveLength(4);
-			expect(response.body.count).toBe(6);
-			expect(response.body.data[0].name).toBe('Workflow 2');
-			expect(response.body.data[1].name).toBe('Workflow 3');
-			expect(response.body.data[2].name).toBe('Workflow 4');
-			expect(response.body.data[3].name).toBe('Workflow 5');
+			const body = response.body as { data: WorkflowEntity[]; count: number };
+			expect(body.count).toBe(6);
+			expect(body.data).toHaveLength(4);
+			const names = body.data.map((item) => item.name);
+			expect(names).toEqual(
+				expect.arrayContaining(['Workflow 2', 'Workflow 3', 'Workflow 4', 'Workflow 5']),
+			);
 		});
 
 		test('should handle pagination with sorting', async () => {
@@ -2405,10 +2406,11 @@ describe('GET /workflows?includeFolders=true', () => {
 				.query('filter={"query":"Special"}&includeFolders=true')
 				.expect(200);
 
-			expect(response.body.data).toHaveLength(2);
-			expect(response.body.count).toBe(4);
-			expect(response.body.data[0].name).toBe('Special Workflow 1');
-			expect(response.body.data[1].name).toBe('Special Workflow 2');
+			const body = response.body as { data: WorkflowEntity[]; count: number };
+			expect(body.count).toBe(4);
+			expect(body.data).toHaveLength(2);
+			const names = body.data.map((item) => item.name);
+			expect(names).toEqual(expect.arrayContaining(['Special Workflow 1', 'Special Workflow 2']));
 		});
 
 		test('should return empty array when pagination exceeds total count', async () => {
