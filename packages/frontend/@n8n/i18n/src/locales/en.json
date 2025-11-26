@@ -3221,7 +3221,6 @@
 	"workflowSelectorParameterInput.createNewSubworkflow.name": "My Sub-Workflow",
 	"workflows.publishModal.title": "Publish workflow",
 	"workflows.publishModal.noTriggerMessage": "This workflow has no trigger nodes that require publishing",
-	"workflows.publishModal.noPublishedVersionMessage": "Not previously published",
 	"workflows.publishModal.versionNameLabel": "Version name",
 	"workflows.publishModal.descriptionPlaceholder": "Describe changes (optional)",
 	"workflows.publishModal.noChanges": "No changes to publish",

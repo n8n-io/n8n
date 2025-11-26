@@ -77,7 +77,6 @@ type WorkflowPublishCalloutId =
 	| 'noTrigger'
 	| 'nodeIssues'
 	| 'noChanges'
-	| 'noPublishedVersion'
 	| 'overwriteActiveVersionWarning';
 
 const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
@@ -254,9 +253,6 @@ async function handlePublish() {
 				</N8nCallout>
 				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="warning">
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
-				</N8nCallout>
-				<N8nCallout v-else-if="activeCalloutId === 'noPublishedVersion'" theme="secondary">
-					{{ i18n.baseText('workflows.publishModal.noPublishedVersionMessage') }}
 				</N8nCallout>
 				<N8nCallout
 					v-else-if="activeCalloutId === 'overwriteActiveVersionWarning'"

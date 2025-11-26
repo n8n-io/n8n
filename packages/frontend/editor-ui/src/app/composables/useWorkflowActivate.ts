@@ -137,22 +137,7 @@ export function useWorkflowActivate() {
 		options: { description?: string; name?: string } = {},
 	) => {
 		updatingWorkflowActivation.value = true;
-		const nodesIssuesExist = workflowsStore.nodesIssuesExist;
 		const wasWorkflowActive = workflowsStore.isWorkflowActive;
-
-		if (nodesIssuesExist) {
-			toast.showMessage({
-				title: i18n.baseText(
-					'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.title',
-				),
-				message: i18n.baseText(
-					'workflowActivator.showMessage.activeChangedNodesIssuesExistTrue.message',
-				),
-				type: 'error',
-			});
-			updatingWorkflowActivation.value = false;
-			return false;
-		}
 
 		const hasPublishedVersion = !!workflowsStore.workflow.activeVersion;
 
@@ -192,7 +177,7 @@ export function useWorkflowActivate() {
 			toast.showError(
 				error,
 				i18n.baseText('workflowActivator.showError.title', {
-					interpolate: { newStateName: 'activated' },
+					interpolate: { newStateName: 'published' },
 				}) + ':',
 			);
 			return false;
