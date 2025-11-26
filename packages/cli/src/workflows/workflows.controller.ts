@@ -408,7 +408,7 @@ export class WorkflowsController {
 
 		// TODO: Add zod validation for entire `rest` object before assigning to `updateData`
 		if (
-			rest.settings?.timeSavedMode &&
+			rest.settings?.timeSavedMode !== undefined &&
 			!['fixed', 'dynamic'].includes(rest.settings.timeSavedMode)
 		) {
 			throw new BadRequestError('Invalid timeSavedMode');
