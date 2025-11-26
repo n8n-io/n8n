@@ -156,19 +156,19 @@ onMounted(() => {
 		<slot :formatted-created-at="formattedCreatedAt">
 			<p v-if="isDraftPublishEnabled" @click="onItemClick">
 				<span v-if="versionName" :class="$style.mainLine">{{ versionName }}</span>
+				<time :datetime="item.createdAt" :class="$style.metaItem">
+					{{ i18n.baseText('workflowHistory.item.savedAtLabel') }} {{ formattedCreatedAt }}
+				</time>
+				<N8nTooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
+					<template #content>{{ props.item.authors }}</template>
+					<span ref="authorElement" :class="$style.metaItem">{{ authors.label }}</span>
+				</N8nTooltip>
 				<time v-if="publishedAt" :datetime="item.updatedAt" :class="$style.metaItem">
 					{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }} {{ publishedAt }}
 				</time>
 				<span v-if="publishedByUserName" :class="$style.metaItem">
 					{{ publishedByUserName }}
 				</span>
-				<time :datetime="item.createdAt" :class="$style.metaItem">
-					{{ i18n.baseText('workflowHistory.item.createdAtLabel') }} {{ formattedCreatedAt }}
-				</time>
-				<N8nTooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
-					<template #content>{{ props.item.authors }}</template>
-					<span ref="authorElement" :class="$style.metaItem">{{ authors.label }}</span>
-				</N8nTooltip>
 			</p>
 			<p v-else @click="onItemClick">
 				<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>

@@ -3064,7 +3064,7 @@
 	"workflowHistory.content.actions": "Actions",
 	"workflowHistory.item.id": "ID: {id}",
 	"workflowHistory.item.createdAt": "{date} at {time}",
-	"workflowHistory.item.createdAtLabel": "Created:",
+	"workflowHistory.item.savedAtLabel": "Saved:",
 	"workflowHistory.item.publishedAtLabel": "Published:",
 	"workflowHistory.item.actions.restore": "Restore this version",
 	"workflowHistory.item.actions.publish": "Publish this version",
