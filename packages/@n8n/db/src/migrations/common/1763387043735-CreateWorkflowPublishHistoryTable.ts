@@ -42,9 +42,10 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 
 		const workflowEntityTableName = escape.tableName('workflow_entity');
 		const activeVersionId = escape.columnName('activeVersionId');
+		const updatedAt = escape.columnName('updatedAt');
 
 		const activeWorkflows = await runQuery<Array<{ id: string; version: string }>>(
-			`SELECT we.id, we.${activeVersionId} AS version FROM ${workflowEntityTableName} we WHERE we.${activeVersionId} IS NOT NULL;`,
+			`SELECT we.id, we.${activeVersionId} AS version FROM ${workflowEntityTableName} we WHERE we.${activeVersionId} IS NOT NULL ORDER BY we.${updatedAt} ASC;`,
 		);
 
 		if (activeWorkflows.length > 0) {
