@@ -475,6 +475,12 @@ export class WorkflowExecutionService {
 	}
 }
 
+/**
+ * Type guard to check if payload is a FullManualExecutionFromKnownTriggerPayload.
+ *
+ * A known trigger payload has `triggerToStartFrom` specified but no `runData`.
+ * This indicates the user has selected a specific trigger node to start the execution from.
+ */
 function isFullManualExecutionFromKnownTriggerPayload(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.FullManualExecutionFromKnownTriggerPayload {
@@ -484,6 +490,12 @@ function isFullManualExecutionFromKnownTriggerPayload(
 	return false;
 }
 
+/**
+ * Type guard to check if payload is a FullManualExecutionFromUnknownTriggerPayload.
+ *
+ * An unknown trigger payload has neither `triggerToStartFrom` nor `runData`.
+ * The trigger will need to be determined automatically (via pinned data or webhook).
+ */
 function isFullManualExecutionFromUnknownTriggerPayload(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload {
@@ -493,6 +505,12 @@ function isFullManualExecutionFromUnknownTriggerPayload(
 	return false;
 }
 
+/**
+ * Type guard to check if payload is a PartialManualExecutionToDestination.
+ *
+ * A partial execution payload has both `destinationNode` and `runData`.
+ * This indicates execution from a specific node using existing run data.
+ */
 function isPartialManualExecutionToDestination(
 	payload: WorkflowRequest.ManualRunPayload,
 ): payload is WorkflowRequest.PartialManualExecutionToDestination {
