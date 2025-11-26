@@ -1,9 +1,15 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
-import { User, UserRepository } from '@n8n/db';
+import { ProjectRelation, User, UserRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
+import {
+	getGlobalScopes,
+	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_OWNER_VIEWER_ROLE_SLUG,
+	type AssignableGlobalRole,
+} from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -17,7 +23,6 @@ import { UserManagementMailer } from '@/user-management/email';
 
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
-import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class UserService {
@@ -287,6 +292,38 @@ export class UserService {
 
 			if (isDowngradedAdmin) {
 				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser, trx);
+			}
+
+			const isUpgradedChatUser =
+				targetUser.role.slug === 'global:chatUser' && newRole.newRoleName !== 'global:chatUser';
+
+			if (isUpgradedChatUser) {
+				// Revoke previous 'project:personalOwnerViewer' role on their personal project
+				// and grant 'project:personalOwner' role instead.
+				await trx.update(
+					ProjectRelation,
+					{
+						userId: targetUser.id,
+						role: { slug: PROJECT_OWNER_VIEWER_ROLE_SLUG },
+					},
+					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
+				);
+			}
+
+			const isDowngradedToChatUser =
+				targetUser.role.slug !== 'global:chatUser' && newRole.newRoleName === 'global:chatUser';
+
+			if (isDowngradedToChatUser) {
+				// Revoke 'project:personalOwner' role on their personal project
+				// and grant 'project:personalOwnerViewer' role instead.
+				await trx.update(
+					ProjectRelation,
+					{
+						userId: targetUser.id,
+						role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					},
+					{ role: { slug: PROJECT_OWNER_VIEWER_ROLE_SLUG } },
+				);
 			}
 		});
 	}

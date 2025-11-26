@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { PROJECT_OWNER_ROLE_SLUG } from './constants.ee';
+import { PROJECT_OWNER_ROLE_SLUG, PROJECT_OWNER_VIEWER_ROLE_SLUG } from './constants.ee';
 import { ALL_SCOPES } from './scope-information';
 
 export const roleNamespaceSchema = z.enum(['global', 'project', 'credential', 'workflow']);
@@ -38,7 +38,7 @@ export const teamRoleSchema = z.enum(['project:admin', 'project:editor', 'projec
 export const customProjectRoleSchema = z
 	.string()
 	.nonempty()
-	.refine((val) => val !== PROJECT_OWNER_ROLE_SLUG && !teamRoleSchema.safeParse(val).success, {
+	.refine((val) => !systemProjectRoleSchema.safeParse(val).success, {
 		message: 'This global role value is not assignable',
 	});
 

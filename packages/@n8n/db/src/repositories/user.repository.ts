@@ -1,6 +1,6 @@
 import type { UsersListFilterDto } from '@n8n/api-types';
 import { Service } from '@n8n/di';
-import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
+import { PROJECT_OWNER_ROLE_SLUG, PROJECT_OWNER_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import type { DeepPartial, EntityManager, SelectQueryBuilder } from '@n8n/typeorm';
 import { Brackets, DataSource, In, IsNull, Not, Repository } from '@n8n/typeorm';
 
@@ -131,7 +131,7 @@ export class UserRepository extends Repository<User> {
 						slug:
 							userWithRole.role.slug !== 'global:chatUser'
 								? PROJECT_OWNER_ROLE_SLUG
-								: 'project:viewer',
+								: PROJECT_OWNER_VIEWER_ROLE_SLUG,
 					},
 				}),
 			);
