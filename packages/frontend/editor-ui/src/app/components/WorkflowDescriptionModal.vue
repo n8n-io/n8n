@@ -4,13 +4,12 @@ import { N8nButton, N8nInput, N8nText } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
 import { createEventBus } from '@n8n/utils/event-bus';
 import Modal from './Modal.vue';
+import { onMounted } from 'vue';
 
 const props = defineProps<{
 	modalName: string;
@@ -28,15 +27,13 @@ const telemetry = useTelemetry();
 
 const settingsStore = useSettingsStore();
 const workflowStore = useWorkflowsStore();
-const uiStore = useUIStore();
 
 const descriptionValue = ref(props.data.workflowDescription ?? '');
 const descriptionInput = useTemplateRef<HTMLInputElement>('descriptionInput');
 const isSaving = ref(false);
-const lastSavedDescription = ref(props.data.workflowDescription ?? '');
 
 const normalizedCurrentValue = computed(() => (descriptionValue.value ?? '').trim());
-const normalizedLastSaved = computed(() => (lastSavedDescription.value ?? '').trim());
+const normalizedLastSaved = computed(() => (props.data.workflowDescription ?? '').trim());
 
 const canSave = computed(() => normalizedCurrentValue.value !== normalizedLastSaved.value);
 
@@ -44,53 +41,34 @@ const isMcpEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
 
-const hasWebhooks = computed(() => {
-	const workflow = workflowStore.workflow;
-	if (!workflow) return false;
-	return workflow.nodes.some((node) => !node.disabled && node.type === WEBHOOK_NODE_TYPE);
-});
-
 // Descriptive tip that will be used as textarea placeholder and input label tooltip
-// Updated based on MCP and webhook presence
-const textareaTip = computed(() => {
-	const baseTooltip = i18n.baseText('workflow.description.tooltip');
-	if (!isMcpEnabled.value) {
-		return i18n.baseText('workflow.description.tooltip');
-	}
-	const mcpTooltip = i18n.baseText('workflow.description.placeholder.mcp');
-	const webhookNotice = hasWebhooks.value
-		? i18n.baseText('workflow.description.placeholder.mcp.webhook')
-		: '';
-	return `${baseTooltip}. ${mcpTooltip}.\n${webhookNotice}`;
-});
+// Updated based on MCP presence
+const textareaTip = computed(() =>
+	isMcpEnabled.value
+		? i18n.baseText('workflow.description.mcp')
+		: i18n.baseText('workflow.description.nomcp'),
+);
 
 const saveDescription = async () => {
 	isSaving.value = true;
-	uiStore.addActiveAction('workflowSaving');
 
 	try {
 		await workflowStore.saveWorkflowDescription(
 			props.data.workflowId,
 			normalizedCurrentValue.value ?? null,
 		);
-		lastSavedDescription.value = descriptionValue.value;
-		uiStore.stateIsDirty = false;
 		telemetry.track('User set workflow description', {
 			workflow_id: props.data.workflowId,
 			description: normalizedCurrentValue.value ?? null,
 		});
 	} catch (error) {
 		toast.showError(error, i18n.baseText('workflow.description.error.title'));
-		descriptionValue.value = lastSavedDescription.value;
 	} finally {
 		isSaving.value = false;
-		uiStore.removeActiveAction('workflowSaving');
 	}
 };
 
 const cancel = () => {
-	descriptionValue.value = lastSavedDescription.value;
-	uiStore.stateIsDirty = false;
 	modalBus.emit('close');
 };
 
@@ -119,31 +97,18 @@ const handleKeyDown = async (event: KeyboardEvent) => {
 	}
 };
 
-// Sync with external prop changes
-watch(
-	() => props.data.workflowDescription,
-	(newValue) => {
-		descriptionValue.value = newValue ?? '';
-		lastSavedDescription.value = newValue ?? '';
-	},
-);
-
-// Set dirty flag when text changes
-watch(descriptionValue, (newValue) => {
-	const normalizedNewValue = (newValue ?? '').trim();
-
-	if (normalizedNewValue !== normalizedLastSaved.value) {
-		uiStore.stateIsDirty = true;
-	} else {
-		uiStore.stateIsDirty = false;
-	}
+onMounted(() => {
+	setTimeout(() => {
+		descriptionInput.value?.focus();
+	});
 });
 </script>
+
 <template>
 	<Modal
 		:name="WORKFLOW_DESCRIPTION_MODAL_KEY"
 		:title="i18n.baseText('generic.description')"
-		width="450"
+		width="500"
 		:class="$style.container"
 		:event-bus="modalBus"
 	>
@@ -152,7 +117,7 @@ watch(descriptionValue, (newValue) => {
 				:class="$style['description-edit-content']"
 				data-test-id="workflow-description-edit-content"
 			>
-				<N8nText size="small" color="text-light">{{ textareaTip }}</N8nText>
+				<N8nText color="text-base" data-test-id="descriptionTooltip">{{ textareaTip }}</N8nText>
 				<N8nInput
 					ref="descriptionInput"
 					v-model="descriptionValue"
@@ -175,7 +140,6 @@ watch(descriptionValue, (newValue) => {
 				/>
 				<N8nButton
 					:label="i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText')"
-					:size="'small'"
 					:loading="isSaving"
 					:disabled="!canSave || isSaving"
 					type="primary"
@@ -211,7 +175,7 @@ watch(descriptionValue, (newValue) => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--xs);
-	width: 400px;
+	padding: var(--spacing--s);
 }
 
 .popover-footer {
