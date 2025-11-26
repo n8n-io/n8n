@@ -13,7 +13,7 @@ import {
 import { ExecutionContextHookRegistry } from './execution-context-hook-registry.service';
 
 import { Cipher } from '@/encryption';
-import { deepMerge } from '@/utils/deepMerge';
+import { deepMerge } from '@/utils/deep-merge';
 
 @Service()
 export class ExecutionContextService {
