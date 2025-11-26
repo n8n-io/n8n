@@ -27,7 +27,7 @@ function findAllParentTriggers(workflow: Workflow, destinationNodeName: string) 
 	return parentNodes;
 }
 
-export function anyReachableRootHaveRunData(
+export function anyReachableRootHasRunData(
 	workflow: DirectedGraph,
 	destinationNodeName: string,
 	runData: IRunData,
