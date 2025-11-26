@@ -217,7 +217,7 @@ export class WorkflowExecutionService {
 				payload.workflowData.pinData ?? {},
 			);
 
-			if (pinnedTrigger === null) {
+			if (pinnedTrigger === undefined) {
 				const additionalData = await WorkflowExecuteAdditionalData.getBase({
 					userId: user.id,
 					workflowId: payload.workflowData.id,
@@ -441,12 +441,16 @@ export class WorkflowExecutionService {
 	 * @param workflow The workflow containing the nodes and connections
 	 * @param destinationNode The name of the node to find a pinned trigger for
 	 * @param pinData Pin data mapping node names to their pinned data
-	 * @returns The pinned trigger node if found, null otherwise
+	 * @returns The pinned trigger node if found, undefined otherwise
 	 */
-	selectPinnedTrigger(workflow: IWorkflowBase, destinationNode: string, pinData: IPinData) {
+	selectPinnedTrigger(
+		workflow: IWorkflowBase,
+		destinationNode: string,
+		pinData: IPinData,
+	): INode | undefined {
 		const allPinnedTriggers = this.findAllPinnedTriggers(workflow, pinData);
 
-		if (allPinnedTriggers.length === 0) return null;
+		if (allPinnedTriggers.length === 0) return undefined;
 
 		const destinationParents = new Set(
 			new Workflow({
