@@ -18,7 +18,7 @@ const props = defineProps<{
 	data: {
 		provider: ChatHubLLMProvider;
 		initialValue: string | null;
-		onSelect: (provider: ChatHubLLMProvider, credentialId: string) => void;
+		onSelect: (provider: ChatHubLLMProvider, credentialId: string | null) => void;
 		onCreateNew: (provider: ChatHubLLMProvider) => void;
 	};
 }>();
@@ -73,6 +73,10 @@ async function onDeleteCredential() {
 	try {
 		await credentialsStore.deleteCredential({ id: credentialIdToDelete });
 		selectedCredentialId.value = null;
+
+		if (credentialIdToDelete === props.data.initialValue) {
+			props.data.onSelect(props.data.provider, null);
+		}
 
 		modalBus.value.emit('close');
 	} catch (error) {
