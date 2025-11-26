@@ -4,7 +4,12 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import type { ChatHubBaseLLMModel, ChatHubProvider, ChatModelDto } from '@n8n/api-types';
+import type {
+	ChatHubBaseLLMModel,
+	ChatHubConversationModel,
+	ChatHubProvider,
+	ChatModelDto,
+} from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nInput, N8nInputLabel, N8nSpinner } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
@@ -107,9 +112,9 @@ function onCredentialSelected(provider: ChatHubProvider, credentialId: string | 
 	};
 }
 
-function onModelChange(agent: ChatModelDto) {
-	assert(isLlmProviderModel(agent.model));
-	selectedModel.value = agent.model;
+function onModelChange(model: ChatHubConversationModel) {
+	assert(isLlmProviderModel(model));
+	selectedModel.value = model;
 }
 
 async function onSave() {

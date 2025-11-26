@@ -211,14 +211,12 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 
-const canAcceptFiles = computed(() => {
-	const modalities = selectedModel.value?.metadata.inputModalities;
-	if (!modalities) {
-		return false;
-	}
-	const mimeTypes = createMimeTypes(modalities);
-	return editingMessageId.value === undefined && !!mimeTypes && !isMissingSelectedCredential.value;
-});
+const canAcceptFiles = computed(
+	() =>
+		editingMessageId.value === undefined &&
+		!!createMimeTypes(selectedModel.value?.metadata.inputModalities ?? []) &&
+		!isMissingSelectedCredential.value,
+);
 
 const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 
@@ -273,7 +271,7 @@ watch(
 		const model = findOneFromModelsResponse(models) ?? null;
 
 		if (model) {
-			void handleSelectModel(model);
+			void handleSelectAgent(model);
 		}
 	},
 	{ immediate: true },
@@ -408,16 +406,20 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	);
 }
 
-async function handleSelectModel(selection: ChatModelDto) {
+async function handleSelectModel(selection: ChatHubConversationModel) {
 	if (currentConversation.value) {
 		try {
-			await chatStore.updateSessionModel(sessionId.value, selection.model);
+			await chatStore.updateSessionModel(sessionId.value, selection);
 		} catch (error) {
 			toast.showError(error, 'Could not update selected model');
 		}
 	} else {
-		defaultModel.value = selection.model;
+		defaultModel.value = selection;
 	}
+}
+
+async function handleSelectAgent(selection: ChatModelDto) {
+	await handleSelectModel(selection.model);
 }
 
 function handleSwitchAlternative(messageId: string) {
@@ -452,7 +454,7 @@ function handleEditAgent(agentId: string) {
 		data: {
 			agentId,
 			credentials: credentialsByProvider,
-			onCreateCustomAgent: handleSelectModel,
+			onCreateCustomAgent: handleSelectAgent,
 		},
 	});
 }
@@ -462,7 +464,7 @@ function openNewAgentCreator() {
 		name: AGENT_EDITOR_MODAL_KEY,
 		data: {
 			credentials: credentialsByProvider,
-			onCreateCustomAgent: handleSelectModel,
+			onCreateCustomAgent: handleSelectAgent,
 		},
 	});
 }
