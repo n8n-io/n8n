@@ -1242,9 +1242,9 @@ describe('CredentialsOverwrites', () => {
 
 			await localCredentialsOverwrites.init();
 
-			// null value should be overwritten
+			// null value should be overwritten (using as any to bypass type checking for test)
 			const result = localCredentialsOverwrites.applyOverwrite('test', {
-				subdomain: null,
+				subdomain: null as any,
 				clientId: 'client',
 			});
 
@@ -1268,9 +1268,9 @@ describe('CredentialsOverwrites', () => {
 
 			await localCredentialsOverwrites.init();
 
-			// undefined value should be overwritten
+			// undefined value should be overwritten (using as any to bypass type checking for test)
 			const result = localCredentialsOverwrites.applyOverwrite('test', {
-				token: undefined,
+				token: undefined as any,
 				apiKey: 'key',
 			});
 
