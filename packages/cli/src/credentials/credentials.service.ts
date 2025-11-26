@@ -32,7 +32,6 @@ import {
 	deepCopy,
 	isINodePropertyCollection,
 	NodeHelpers,
-	UnexpectedError,
 } from 'n8n-workflow';
 
 import { CredentialsFinderService } from './credentials-finder.service';
@@ -538,19 +537,19 @@ export class CredentialsService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 		const result = await dbManager.transaction(async (transactionManager) => {
-			let project = null;
+			let project: Project | null = null;
 
 			if (projectId === undefined) {
-				project = await this.projectRepository.getPersonalProjectForUserOrFail(
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
 					user.id,
 					transactionManager,
 				);
 				// Chat users are not allowed to create credentials even in their personal project
 				const hasPermission = await userHasScopes(user, ['credential:create'], false, {
-					projectId: project.id,
+					projectId: personalProject.id,
 				});
-				if (!hasPermission) {
-					throw new ForbiddenError("You don't have permission to create credentials.");
+				if (hasPermission) {
+					project = personalProject;
 				}
 			} else {
 				project = await this.projectService.getProjectWithScope(
@@ -561,15 +560,10 @@ export class CredentialsService {
 				);
 			}
 
-			if (typeof projectId === 'string' && project === null) {
+			if (project === null) {
 				throw new BadRequestError(
 					"You don't have the permissions to save the credential in this project.",
 				);
-			}
-
-			// Safe guard in case the personal project does not exist for whatever reason.
-			if (project === null) {
-				throw new UnexpectedError('No personal project found');
 			}
 
 			const savedCredential = await transactionManager.save<CredentialsEntity>(newCredential);

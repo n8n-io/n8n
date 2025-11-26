@@ -138,28 +138,34 @@ export class WorkflowsController {
 
 		const { manager: dbManager } = this.projectRepository;
 
-		let project: Project | null;
+		let project: Project | null = null;
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
 			const { projectId, parentFolderId } = req.body;
-			project =
-				projectId === undefined
-					? await this.projectRepository.getPersonalProjectForUser(req.user.id, transactionManager)
-					: await this.projectService.getProjectWithScope(
-							req.user,
-							projectId,
-							['workflow:create'],
-							transactionManager,
-						);
-
-			if (typeof projectId === 'string' && project === null) {
-				throw new BadRequestError(
-					"You don't have the permissions to save the workflow in this project.",
+			if (projectId === undefined) {
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					req.user.id,
+					transactionManager,
+				);
+				// Chat users are not allowed to create workflows even in their personal project
+				const hasPermission = await userHasScopes(req.user, ['workflow:create'], false, {
+					projectId: personalProject.id,
+				});
+				if (hasPermission) {
+					project = personalProject;
+				}
+			} else {
+				project = await this.projectService.getProjectWithScope(
+					req.user,
+					projectId,
+					['workflow:create'],
+					transactionManager,
 				);
 			}
 
-			// Safe guard in case the personal project does not exist for whatever reason.
 			if (project === null) {
-				throw new UnexpectedError('No personal project found');
+				throw new BadRequestError(
+					"You don't have the permissions to save the workflow in this project.",
+				);
 			}
 
 			const workflow = await transactionManager.save<WorkflowEntity>(newWorkflow);

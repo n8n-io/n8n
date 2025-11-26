@@ -37,7 +37,7 @@ import { createFolder } from '@test-integration/db/folders';
 import { saveCredential } from '../shared/db/credentials';
 import { createCustomRoleWithScopeSlugs, cleanupRolesAndScopes } from '../shared/db/roles';
 import { assignTagToWorkflow, createTag } from '../shared/db/tags';
-import { createManyUsers, createMember, createOwner } from '../shared/db/users';
+import { createChatUser, createManyUsers, createMember, createOwner } from '../shared/db/users';
 import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
@@ -45,11 +45,12 @@ import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 let owner: User;
 let member: User;
+let chatUser: User;
 let anotherMember: User;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
-
+let authChatUserAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing'],
@@ -90,6 +91,8 @@ beforeEach(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
 	authMemberAgent = testServer.authAgentFor(member);
+	chatUser = await createChatUser();
+	authChatUserAgent = testServer.authAgentFor(chatUser);
 	anotherMember = await createMember();
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
@@ -444,6 +447,27 @@ describe('POST /workflows', () => {
 			.authAgentFor(member)
 			.post('/workflows')
 			.send({ ...workflow, projectId: project.id })
+			//
+			// ASSERT
+			//
+			.expect(400, {
+				code: 400,
+				message: "You don't have the permissions to save the workflow in this project.",
+			});
+	});
+
+	test('does not create the workflow in a personal project if the user is chat user', async () => {
+		//
+		// ARRANGE
+		//
+		const workflow = makeWorkflow();
+
+		//
+		// ACT
+		//
+		await authChatUserAgent
+			.post('/workflows')
+			.send({ ...workflow })
 			//
 			// ASSERT
 			//

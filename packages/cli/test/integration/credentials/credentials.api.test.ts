@@ -994,8 +994,10 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload() });
 
-		expect(response.statusCode).toBe(403);
-		expect(response.body.message).toBe("You don't have permission to create credentials.");
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
 	});
 
 	test('should fail when member tries to create credential with isGlobal=true', async () => {
@@ -1040,7 +1042,10 @@ describe('POST /credentials', () => {
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), isGlobal: false });
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
 	});
 
 	test('should allow member to create credential without passing isGlobal', async () => {
@@ -1063,7 +1068,10 @@ describe('POST /credentials', () => {
 
 		const response = await authChatUserAgent.post('/credentials').send(payload);
 
-		expect(response.statusCode).toBe(403);
+		expect(response.statusCode).toBe(400);
+		expect(response.body.message).toBe(
+			"You don't have the permissions to save the credential in this project.",
+		);
 	});
 });
 
