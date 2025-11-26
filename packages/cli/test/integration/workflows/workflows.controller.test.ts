@@ -2734,7 +2734,6 @@ describe('PATCH /workflows/:workflowId', () => {
 			versionId: workflow.versionId,
 			settings: {
 				timeSavedMode: 'invalid' as 'fixed' | 'dynamic',
-				timeSavedPerExecution: 'lolol',
 			},
 		};
 
