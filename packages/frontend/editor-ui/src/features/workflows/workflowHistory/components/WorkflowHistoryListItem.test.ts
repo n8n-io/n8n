@@ -72,7 +72,17 @@ describe('WorkflowHistoryListItem', () => {
 
 		await userEvent.click(getByTestId(`action-${action}`));
 		expect(emitted().action).toEqual([
-			[{ action, id: item.versionId, data: { formattedCreatedAt: expect.any(String) } }],
+			[
+				{
+					action,
+					id: item.versionId,
+					data: {
+						formattedCreatedAt: expect.any(String),
+						versionName: item.name,
+						description: item.description,
+					},
+				},
+			],
 		]);
 
 		expect(queryByText(/Latest saved/)).not.toBeInTheDocument();

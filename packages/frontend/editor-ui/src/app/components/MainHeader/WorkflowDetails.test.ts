@@ -216,6 +216,7 @@ describe('WorkflowDetails', () => {
 					nodeView: true,
 				},
 				query: { parentFolderId: '1' },
+				params: { name: 'test' },
 			});
 		});
 

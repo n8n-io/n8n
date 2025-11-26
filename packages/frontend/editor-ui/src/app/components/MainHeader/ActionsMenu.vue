@@ -34,7 +34,6 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
@@ -67,7 +66,6 @@ const rootStore = useRootStore();
 const tagsStore = useTagsStore();
 const workflowHelpers = useWorkflowHelpers();
 const workflowActivate = useWorkflowActivate();
-const settingsStore = useSettingsStore();
 const changeOwnerEventBus = createEventBus();
 const envFeatureFlag = useEnvFeatureFlag();
 
@@ -141,7 +139,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	}
 
 	if (
-		(props.workflowPermissions.delete === true && !props.readOnly && !props.isArchived) ||
+		(props.workflowPermissions.update === true && !props.readOnly && !props.isArchived) ||
 		props.isNewWorkflow
 	) {
 		actions.unshift({
