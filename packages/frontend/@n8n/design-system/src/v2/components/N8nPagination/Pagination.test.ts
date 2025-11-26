@@ -1,32 +1,29 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
+import { vi } from 'vitest';
 
 import Pagination from './Pagination.vue';
+import type { PaginationProps } from './Pagination.types';
 
-// Mock i18n
-const mockI18n = {
-	global: {
-		mocks: {
-			$t: (key: string, values?: Record<string, unknown>) => {
-				if (key === 'pagination.total') return `Total ${values?.total}`;
-				if (key === 'pagination.page') return 'page';
-				return key;
-			},
+// Mock useI18n composable
+vi.mock('../../../composables/useI18n', () => ({
+	useI18n: () => ({
+		t: (key: string, options?: { total?: number }) => {
+			if (key === 'pagination.total') return `Total ${options?.total}`;
+			if (key === 'pagination.page') return 'page';
+			return key;
 		},
-	},
-};
+	}),
+}));
 
-const renderWithI18n = (props: Record<string, unknown>) => {
-	return render(Pagination, {
-		...mockI18n,
-		props,
-	});
+const renderPagination = (props: PaginationProps) => {
+	return render(Pagination, { props });
 };
 
 describe('v2/components/N8nPagination', () => {
 	describe('rendering', () => {
 		it('should render with default props', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 			});
 			// Should render page numbers
@@ -34,7 +31,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should render page numbers', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 			});
@@ -43,7 +40,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should render prev and next buttons', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 			});
@@ -53,7 +50,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should render ellipsis when there are many pages', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 500,
 				pageSize: 10,
 			});
@@ -62,7 +59,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should hide pagination when hideOnSinglePage is true and only one page', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 5,
 				pageSize: 10,
 				hideOnSinglePage: true,
@@ -72,7 +69,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should show pagination when hideOnSinglePage is false and only one page', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 5,
 				pageSize: 10,
 				hideOnSinglePage: false,
@@ -82,7 +79,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should render with background styling', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				background: true,
@@ -92,7 +89,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should show total when layout includes total', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				layout: 'total, prev, pager, next',
@@ -101,7 +98,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should not show total when layout does not include total', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				layout: 'prev, pager, next',
@@ -110,7 +107,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should show page size selector when layout includes sizes', async () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				layout: 'prev, pager, next, sizes',
@@ -124,7 +121,7 @@ describe('v2/components/N8nPagination', () => {
 
 	describe('props', () => {
 		it('should use default pageSize when not provided', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 			});
 			// With default pageSize of 10, total 100 should show 10 pages
@@ -132,7 +129,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should use custom pageSize', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 20,
 			});
@@ -141,7 +138,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should display correct current page', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				currentPage: 3,
@@ -152,7 +149,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should default to page 1 when currentPage is not provided', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 			});
@@ -161,7 +158,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should respect custom pagerCount', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 1000,
 				pageSize: 10,
 				currentPage: 50,
@@ -174,7 +171,7 @@ describe('v2/components/N8nPagination', () => {
 
 	describe('v-model', () => {
 		it('should emit update:current-page when page changes', async () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				currentPage: 1,
@@ -191,7 +188,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should update current page when clicking next button', async () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				currentPage: 1,
@@ -211,7 +208,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should update current page when clicking prev button', async () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				currentPage: 2,
@@ -231,7 +228,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should emit update:page-size and size-change when page size changes', async () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				layout: 'prev, pager, next, sizes',
@@ -258,7 +255,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should reset to page 1 when page size changes', async () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				currentPage: 5,
@@ -286,7 +283,7 @@ describe('v2/components/N8nPagination', () => {
 
 	describe('active page state', () => {
 		it('should highlight current page', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				currentPage: 3,
@@ -300,7 +297,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should render current page correctly', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				currentPage: 2,
@@ -314,7 +311,7 @@ describe('v2/components/N8nPagination', () => {
 
 	describe('ellipsis', () => {
 		it('should render ellipsis for large page counts', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 500,
 				pageSize: 10,
 				currentPage: 1,
@@ -324,7 +321,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should not render ellipsis for small page counts', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 50,
 				pageSize: 10,
 				currentPage: 1,
@@ -337,7 +334,7 @@ describe('v2/components/N8nPagination', () => {
 
 	describe('slots', () => {
 		it('should render default prev-icon when slot is not provided', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 			});
@@ -346,7 +343,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should render default next-icon when slot is not provided', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 			});
@@ -357,7 +354,7 @@ describe('v2/components/N8nPagination', () => {
 
 	describe('edge cases', () => {
 		it('should handle single page', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 5,
 				pageSize: 10,
 			});
@@ -366,7 +363,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should handle zero total', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 0,
 				pageSize: 10,
 			});
@@ -374,7 +371,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should handle very large page numbers', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 10000,
 				pageSize: 10,
 				currentPage: 500,
@@ -383,7 +380,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should handle pageSize larger than total', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 5,
 				pageSize: 100,
 			});
@@ -394,7 +391,7 @@ describe('v2/components/N8nPagination', () => {
 
 	describe('layout configurations', () => {
 		it('should render with layout="total, prev, pager, next, sizes"', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				layout: 'total, prev, pager, next, sizes',
@@ -405,7 +402,7 @@ describe('v2/components/N8nPagination', () => {
 		});
 
 		it('should render with layout="prev, pager, next" (minimal)', () => {
-			const wrapper = renderWithI18n({
+			const wrapper = renderPagination({
 				total: 100,
 				pageSize: 10,
 				layout: 'prev, pager, next',

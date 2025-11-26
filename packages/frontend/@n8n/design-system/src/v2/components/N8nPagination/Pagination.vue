@@ -8,11 +8,14 @@ import {
 	PaginationNext,
 } from 'reka-ui';
 import { computed, ref, useCssModule, watch } from 'vue';
-import { N8nSelect, N8nOption } from '@n8n/design-system';
 
+import { useI18n } from '../../../composables/useI18n';
+import N8nOption from '../../../components/N8nOption';
+import N8nSelect from '../../../components/N8nSelect';
 import type { PaginationProps } from './Pagination.types';
 
 const $style = useCssModule();
+const { t } = useI18n();
 
 const props = withDefaults(defineProps<PaginationProps>(), {
 	total: 0,
@@ -92,7 +95,7 @@ function handlePageSizeChange(newSize: number) {
 		:class="[$style.Wrapper, { [$style.HasBackground]: background }]"
 	>
 		<span v-if="showTotal" :class="$style.Total">
-			{{ $t('pagination.total', { total }) }}
+			{{ t('pagination.total', { total }) }}
 		</span>
 
 		<PaginationRoot
@@ -143,7 +146,7 @@ function handlePageSizeChange(newSize: number) {
 				v-for="size in pageSizes"
 				:key="size"
 				:value="size"
-				:label="`${size} / ${$t('pagination.page')}`"
+				:label="`${size} / ${t('pagination.page')}`"
 			/>
 		</N8nSelect>
 	</div>
