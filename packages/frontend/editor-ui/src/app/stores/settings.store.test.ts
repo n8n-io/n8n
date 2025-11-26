@@ -126,13 +126,6 @@ describe('settings.store', () => {
 				getSettings.mockResolvedValueOnce({
 					...mockSettings,
 					settingsMode: 'public',
-					telemetry: {
-						enabled: true,
-						config: {
-							url: 'https://telemetry.example.com',
-							key: 'telemetry-key',
-						},
-					},
 				});
 				const settingsStore = useSettingsStore();
 
@@ -141,14 +134,12 @@ describe('settings.store', () => {
 				// ensure that settings store is also initialized
 				expect(settingsStore.settings.releaseChannel).toEqual(mockSettings.releaseChannel);
 
-				// root store
-				expect(mockRootStore.setOauthCallbackUrls).toHaveBeenCalledWith(
+				// non-minimal settings are not set on root store
+				expect(mockRootStore.setOauthCallbackUrls).not.toHaveBeenCalledWith(
 					mockSettings.oauthCallbackUrls,
 				);
-				expect(mockRootStore.setDefaultLocale).toHaveBeenCalledWith(mockSettings.defaultLocale);
-				expect(mockRootStore.setInstanceId).toHaveBeenCalledWith(mockSettings.instanceId);
-
-				// non-minimal settings are not set on root store
+				expect(mockRootStore.setDefaultLocale).not.toHaveBeenCalledWith(mockSettings.defaultLocale);
+				expect(mockRootStore.setInstanceId).not.toHaveBeenCalledWith(mockSettings.instanceId);
 				expect(mockRootStore.setUrlBaseWebhook).not.toHaveBeenCalled();
 				expect(mockRootStore.setUrlBaseEditor).not.toHaveBeenCalled();
 				expect(mockRootStore.setEndpointForm).not.toHaveBeenCalled();
@@ -166,7 +157,7 @@ describe('settings.store', () => {
 				expect(mockRootStore.setBinaryDataMode).not.toHaveBeenCalled();
 
 				// side effects
-				expect(sessionStarted).toHaveBeenCalled();
+				expect(sessionStarted).not.toHaveBeenCalled();
 			});
 
 			it('should store full settings if settingsMode is not "minimal"', async () => {

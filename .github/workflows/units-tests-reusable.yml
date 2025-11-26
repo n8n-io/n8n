@@ -108,7 +108,7 @@ jobs:
           node-version: ${{ inputs.nodeVersion }}
 
       - name: Test Nodes
-        run: pnpm --filter=n8n-nodes-base test
+        run: pnpm turbo test --filter=n8n-nodes-base
 
       - name: Upload test results to Codecov
         if: ${{ !cancelled() }}
