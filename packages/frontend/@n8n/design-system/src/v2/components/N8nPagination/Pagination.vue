@@ -9,10 +9,10 @@ import {
 } from 'reka-ui';
 import { computed, ref, useCssModule, watch } from 'vue';
 
+import type { PaginationProps } from './Pagination.types';
 import N8nOption from '../../../components/N8nOption';
 import N8nSelect from '../../../components/N8nSelect';
 import { useI18n } from '../../../composables/useI18n';
-import type { PaginationProps } from './Pagination.types';
 
 const $style = useCssModule();
 const { t } = useI18n();
