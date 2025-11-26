@@ -13,6 +13,7 @@ import {
 import { Container } from '@n8n/di';
 
 import { createUser } from '../../shared/db/users';
+import { nextTick } from 'process';
 
 const id1 = '5ef472d2-9253-452c-b0fe-8eb78fb3c43b';
 const id2 = 'bf36ce2c-baf6-4b51-9f01-065c76d5cb0c';
@@ -132,7 +133,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 	});
 
 	describe('getLastActivatedVersion', () => {
-		it('should return the last activated version with mode=activate', async () => {
+		it('should return the last activated version', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflow();
 			await createWorkflowHistory({ ...workflow, versionId: id1 });
@@ -142,15 +143,15 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: id1,
 				status: 'activated',
-
 				userId: null,
 			});
+
+			await new Promise((resolve) => setTimeout(resolve, 1));
 
 			await repository.addRecord({
 				workflowId: workflow.id,
 				versionId: id2,
 				status: 'activated',
-
 				userId: null,
 			});
 
