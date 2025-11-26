@@ -10,7 +10,7 @@ import { computed, onBeforeMount, onBeforeUnmount } from 'vue';
 import { useProjectsStore } from '../projects.store';
 import type { ProjectListItem } from '../projects.types';
 
-import { N8nButton, N8nMenuItem, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nMenuItem, N8nText } from '@n8n/design-system';
 
 type Props = {
 	collapsed: boolean;
@@ -26,7 +26,6 @@ const projectsStore = useProjectsStore();
 const settingsStore = useSettingsStore();
 const usersStore = useUsersStore();
 
-const isCreatingProject = computed(() => globalEntityCreation.isCreatingProject.value);
 const displayProjects = computed(() => globalEntityCreation.displayProjects.value);
 const isFoldersFeatureEnabled = computed(() => settingsStore.isFoldersFeatureEnabled);
 const hasMultipleVerifiedUsers = computed(
@@ -74,10 +73,6 @@ const personalProject = computed<IMenuItem>(() => ({
 		},
 	},
 }));
-
-const showAddFirstProject = computed(
-	() => projectsStore.isTeamProjectFeatureEnabled && !displayProjects.value.length,
-);
 
 const activeTabId = computed(() => {
 	return (
@@ -130,7 +125,9 @@ onBeforeUnmount(() => {
 			/>
 		</div>
 		<N8nText
-			v-if="!props.collapsed && projectsStore.isTeamProjectFeatureEnabled"
+			v-if="
+				!props.collapsed && projectsStore.isTeamProjectFeatureEnabled && displayProjects.length > 0
+			"
 			:class="[$style.projectsLabel]"
 			size="small"
 			bold
@@ -154,28 +151,6 @@ onBeforeUnmount(() => {
 				data-test-id="project-menu-item"
 			/>
 		</div>
-		<N8nTooltip
-			v-if="showAddFirstProject"
-			placement="right"
-			:disabled="projectsStore.hasPermissionToCreateProjects"
-			:content="locale.baseText('projects.create.permissionDenied')"
-		>
-			<N8nButton
-				:class="[
-					$style.addFirstProjectBtn,
-					{
-						[$style.collapsed]: props.collapsed,
-					},
-				]"
-				:disabled="isCreatingProject || !projectsStore.hasPermissionToCreateProjects"
-				type="secondary"
-				icon="plus"
-				data-test-id="add-first-project-button"
-				@click="globalEntityCreation.createProject('add_first_project_button')"
-			>
-				<span>{{ locale.baseText('projects.menu.addFirstProject') }}</span>
-			</N8nButton>
-		</N8nTooltip>
 	</div>
 </template>
 
