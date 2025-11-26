@@ -16,7 +16,8 @@ const nameInputRef = useTemplateRef<InstanceType<typeof N8nInput>>('nameInput');
 const i18n = useI18n();
 
 const focusInput = () => {
-	nameInputRef.value?.focus();
+	// highlight the value in the input
+	nameInputRef.value?.select();
 };
 
 defineExpose({
