@@ -620,7 +620,7 @@ describe('streaming functionality', () => {
 });
 
 describe('offloading manual executions to workers', () => {
-	let originalEnv: NodeJS.ProcessEnv;
+	let originalOffloadManualExecutionsToWorkers: string | undefined;
 	let activeExecutions: ActiveExecutions;
 	let permissionChecker: CredentialsPermissionChecker;
 	let mockHooks: core.ExecutionLifecycleHooks;
@@ -630,7 +630,7 @@ describe('offloading manual executions to workers', () => {
 	};
 
 	beforeEach(() => {
-		originalEnv = process.env;
+		originalOffloadManualExecutionsToWorkers = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
 		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
 		globalConfig.executions.mode = 'queue';
 
@@ -659,7 +659,7 @@ describe('offloading manual executions to workers', () => {
 	});
 
 	afterEach(() => {
-		process.env = originalEnv;
+		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = originalOffloadManualExecutionsToWorkers;
 		jest.resetAllMocks();
 	});
 
