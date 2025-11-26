@@ -2323,6 +2323,7 @@
 	"settings.personal.personalSettingsUpdatedError": "Problem updating your details",
 	"settings.personal.role.tooltip.default": "Default role for new users",
 	"settings.personal.role.tooltip.member": "Create and manage own workflows and credentials",
+	"settings.personal.role.tooltip.chatUser": "Access to Chat feature only",
 	"settings.personal.role.tooltip.admin": "Full access to manage workflows,tags, credentials, projects, users and more",
 	"settings.personal.role.tooltip.owner": "Manage everything{cloudAccess}",
 	"settings.personal.role.tooltip.cloud": " and access Cloud dashboard",

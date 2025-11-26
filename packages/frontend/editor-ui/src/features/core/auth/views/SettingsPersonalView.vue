@@ -131,6 +131,10 @@ const roles = computed<Record<Role, RoleContent>>(() => ({
 		name: i18n.baseText('auth.roles.member'),
 		description: i18n.baseText('settings.personal.role.tooltip.member'),
 	},
+	[ROLE.ChatUser]: {
+		name: i18n.baseText('auth.roles.chatUser'),
+		description: i18n.baseText('settings.personal.role.tooltip.chatUser'),
+	},
 	[ROLE.Admin]: {
 		name: i18n.baseText('auth.roles.admin'),
 		description: i18n.baseText('settings.personal.role.tooltip.admin'),
