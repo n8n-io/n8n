@@ -12,6 +12,7 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'non-tool-node-uses-fromai',
 	'workflow-has-no-nodes',
 	'workflow-has-no-trigger',
+	'workflow-exceeds-max-nodes-limit',
 	'node-missing-required-input',
 	'node-unsupported-connection-input',
 	'node-merge-single-input',
