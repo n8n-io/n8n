@@ -1,11 +1,30 @@
 import type { WorkflowMetadata } from '@/types';
 
 /**
+ * Options for mermaid diagram generation
+ */
+export interface MermaidOptions {
+	/** Include node type in comments (default: true) */
+	includeNodeType?: boolean;
+	/** Include node parameters in comments (default: true) */
+	includeNodeParameters?: boolean;
+	/** Include node name in node definition (default: true) */
+	includeNodeName?: boolean;
+}
+
+const DEFAULT_MERMAID_OPTIONS: Required<MermaidOptions> = {
+	includeNodeType: true,
+	includeNodeParameters: true,
+	includeNodeName: true,
+};
+
+/**
  * Build a Mermaid flowchart from workflow nodes and connections
  */
 function buildMermaidLines(
 	nodes: WorkflowMetadata['workflow']['nodes'],
 	connections: WorkflowMetadata['workflow']['connections'],
+	options: Required<MermaidOptions> = DEFAULT_MERMAID_OPTIONS,
 ): string[] {
 	const lines: string[] = ['```mermaid', 'flowchart TD'];
 	const regularNodes = nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote');
@@ -81,14 +100,28 @@ function buildMermaidLines(
 		traverse(startNode.name);
 	}
 
-	// Add node definitions with type/params as comments
+	// Add node definitions with optional type/params as comments
 	for (const node of regularNodes) {
 		const id = nodeIdMap.get(node.name);
 		if (id) {
-			const hasParams = Object.keys(node.parameters).length > 0;
-			const params = hasParams ? ` | ${JSON.stringify(node.parameters)}` : '';
-			lines.push(`    %% ${node.type}${params}`);
-			lines.push(`    ${id}["${node.name.replace(/"/g, "'")}"]`);
+			// Build comment line if type or parameters are included
+			if (options.includeNodeType || options.includeNodeParameters) {
+				const typePart = options.includeNodeType ? node.type : '';
+				const hasParams = options.includeNodeParameters && Object.keys(node.parameters).length > 0;
+				const paramsPart = hasParams ? ` | ${JSON.stringify(node.parameters)}` : '';
+
+				// Only add comment if there's content
+				if (typePart || paramsPart) {
+					lines.push(`    %% ${typePart}${paramsPart}`);
+				}
+			}
+
+			// Build node definition with optional name
+			if (options.includeNodeName) {
+				lines.push(`    ${id}["${node.name.replace(/"/g, "'")}"]`);
+			} else {
+				lines.push(`    ${id}`);
+			}
 		}
 	}
 
@@ -102,9 +135,13 @@ function buildMermaidLines(
 /**
  * Generates a Mermaid flowchart diagram from a workflow
  */
-export function mermaidStringify(workflow: WorkflowMetadata): string {
+export function mermaidStringify(workflow: WorkflowMetadata, options?: MermaidOptions): string {
 	const { workflow: wf } = workflow;
-	return buildMermaidLines(wf.nodes, wf.connections).join('\n');
+	const mergedOptions: Required<MermaidOptions> = {
+		...DEFAULT_MERMAID_OPTIONS,
+		...options,
+	};
+	return buildMermaidLines(wf.nodes, wf.connections, mergedOptions).join('\n');
 }
 
 /**
