@@ -139,15 +139,11 @@ const isEligibleForMcp = computed(() => {
 });
 
 const isTimeSavedNodeExperimentEnabled = computed(() => {
-	console.log(
-		'isTimeSavedNodeExperimentEnabled',
-		posthogStore.isFeatureEnabled(TIME_SAVED_NODE_EXPERIMENT.name),
-	);
 	return posthogStore.isFeatureEnabled(TIME_SAVED_NODE_EXPERIMENT.name);
 });
 
 const savedTimeNodes = computed(() => {
-	if (!isTimeSavedNodeExperimentEnabled) {
+	if (!isTimeSavedNodeExperimentEnabled.value) {
 		return [];
 	}
 
@@ -156,7 +152,7 @@ const savedTimeNodes = computed(() => {
 });
 
 const hasSavedTimeNodes = computed(() => {
-	if (!isTimeSavedNodeExperimentEnabled) {
+	if (!isTimeSavedNodeExperimentEnabled.value) {
 		return false;
 	}
 
