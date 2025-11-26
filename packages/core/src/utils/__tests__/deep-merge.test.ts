@@ -1,6 +1,6 @@
 import { deepCopy, type PlaintextExecutionContext } from 'n8n-workflow';
 
-import { deepMerge } from '../deepMerge';
+import { deepMerge } from '../deep-merge';
 
 // Use Record<string, unknown> for flexible test typing
 type TestObject = Record<string, unknown>;
