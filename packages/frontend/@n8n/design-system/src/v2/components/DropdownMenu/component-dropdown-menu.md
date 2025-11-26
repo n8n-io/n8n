@@ -42,43 +42,55 @@ It's built on Reka UI's `DropdownMenu` for accessibility and interaction pattern
 
 - `update:modelValue(open: boolean)` Emitted when dropdown open state changes
 - `select(value: T)` Emitted when a menu item is selected
-- `badge-click(value: T)` Emitted when a badge within a disabled item is clicked
-- `item-mouseup(item: DropdownMenuItem<T>)` Emitted on mouseup on menu items
+
+**Exposed Methods**
+
+- `open()` Programmatically opens the dropdown
+- `close()` Programmatically closes the dropdown
 
 **Slots**
 
 - `trigger` Custom trigger element (replaces default button)
 - `content` Complete custom dropdown content (replaces item list)
-- `item` Custom item rendering `{ item: DropdownMenuItem<T> }`
+- `item` Custom item rendering (replaces default N8nDropdownMenuItem) `{ item: DropdownMenuItemProps<T> }`
+- `item-leading` Pass-through to N8nDropdownMenuItem `{ item: DropdownMenuItemProps<T>, ui: { class: string } }`
+- `item-label` Pass-through to N8nDropdownMenuItem `{ item: DropdownMenuItemProps<T> }`
+- `item-trailing` Pass-through to N8nDropdownMenuItem `{ item: DropdownMenuItemProps<T>, ui: { class: string } }`
 - `loading` Custom loading state
 
 **Types**
 
 ```typescript
-type DropdownMenuItem<T = string> = {
+type DropdownMenuItemProps<T = string> = {
   id: T;
   label: string;
   icon?: IconName;
   disabled?: boolean;
   divided?: boolean; // Shows separator above item
   checked?: boolean; // Shows checkmark
-  badge?: string | number;
-  badgeProps?: BadgeProps;
-  shortcut?: KeyboardShortcutProps;
-  customClass?: string;
-  type?: 'default' | 'external-link';
-}
-
-type BadgeProps = {
-  theme?: 'primary' | 'secondary' | 'success' | 'warning' | 'danger';
-  bold?: boolean;
-}
-
-type KeyboardShortcutProps = {
-  keys: string[];
-  modifier?: 'ctrl' | 'cmd' | 'alt' | 'shift';
+  class?: string | Record<string, boolean> | Array<string>;
 }
 ```
+
+### N8nDropdownMenuItem
+
+A companion component for rendering individual dropdown items with full slot-based customization.
+
+**Props**
+
+- `id: T` Unique identifier for the item
+- `label?: string` Display text for the item
+- `icon?: IconName` Icon displayed before the label
+- `disabled?: boolean` Whether the item is disabled
+- `divided?: boolean` Whether to show a separator above the item (from `ActionDropdownItem`)
+- `checked?: boolean` Whether to show a checkmark indicator (from `ActionDropdownItem`)
+- `class?: string` Additional CSS classes
+
+**Slots**
+
+- `item-leading` Content before the label (default: icon if provided) `{ item: DropdownMenuItemProps, ui: { class: string } }`
+- `item-label` Custom label content (default: label text) `{ item: DropdownMenuItemProps }`
+- `item-trailing` Content after the label (badges, shortcuts, etc.) `{ item: DropdownMenuItemProps, ui: { class: string } }`
 
 ### Examples
 
@@ -132,39 +144,18 @@ const items = ref([
 </template>
 ```
 
-**With badges and shortcuts**
+**With badges and shortcuts using slots**
 
 ```vue
 <script setup lang="ts">
 const items = ref([
-  {
-    id: 'save',
-    label: 'Save',
-    icon: 'save',
-    shortcut: { keys: ['S'], modifier: 'cmd' }
-  },
-  {
-    id: 'share',
-    label: 'Share',
-    icon: 'share',
-    badge: 'New',
-    badgeProps: { theme: 'success', bold: true }
-  },
-  {
-    id: 'pro',
-    label: 'Pro Feature',
-    icon: 'star',
-    disabled: true,
-    badge: 'PRO',
-    badgeProps: { theme: 'primary' }
-  }
+  { id: 'save', label: 'Save', icon: 'save' },
+  { id: 'share', label: 'Share', icon: 'share' },
+  { id: 'pro', label: 'Pro Feature', icon: 'star', disabled: true }
 ])
 
-const handleBadgeClick = (itemId: string) => {
-  // Handle clicks on badges in disabled items
-  if (itemId === 'pro') {
-    // Show upgrade modal
-  }
+const handleUpgrade = () => {
+  // Show upgrade modal
 }
 </script>
 
@@ -173,8 +164,32 @@ const handleBadgeClick = (itemId: string) => {
     :items="items"
     activator-icon="ellipsis"
     @select="handleSelect"
-    @badge-click="handleBadgeClick"
-  />
+  >
+    <template #item-trailing="{ item, ui }">
+      <N8nKeyboardShortcut
+        v-if="item.id === 'save'"
+        :keys="['S']"
+        modifier="cmd"
+        :class="ui.class"
+      />
+      <N8nBadge
+        v-if="item.id === 'share'"
+        theme="success"
+        bold
+        :class="ui.class"
+      >
+        New
+      </N8nBadge>
+      <N8nBadge
+        v-if="item.id === 'pro'"
+        theme="primary"
+        :class="ui.class"
+        @click.stop="handleUpgrade"
+      >
+        PRO
+      </N8nBadge>
+    </template>
+  </N8nDropdownMenu>
 </template>
 ```
 
@@ -201,6 +216,35 @@ onMounted(async () => {
 </template>
 ```
 
+**Using N8nDropdownMenuItem for full control**
+
+```vue
+<script setup lang="ts">
+const items = ref([
+  { id: 'option-1', label: 'Option 1' },
+  { id: 'option-2', label: 'Option 2' }
+])
+</script>
+
+<template>
+  <N8nDropdownMenu :items="items" @select="handleSelect">
+    <template #item="{ item }">
+      <N8nDropdownMenuItem v-bind="item">
+        <template #item-leading="{ ui }">
+          <MyCustomIcon :class="ui.class" />
+        </template>
+        <template #item-label>
+          <span class="custom-label">{{ item.label }}</span>
+        </template>
+        <template #item-trailing="{ ui }">
+          <N8nBadge :class="ui.class">Custom</N8nBadge>
+        </template>
+      </N8nDropdownMenuItem>
+    </template>
+  </N8nDropdownMenu>
+</template>
+```
+
 ## Migration Guide
 
 ### From ActionDropdown
@@ -221,8 +265,18 @@ onMounted(async () => {
   placement="bottom-start"
   :activator-icon="icon"
   @select="onSelect"
-  @badge-click="onBadgeClick"
-/>
+>
+  <!-- Badge functionality now handled via slots -->
+  <template #item-trailing="{ item, ui }">
+    <N8nBadge
+      v-if="item.badge"
+      :class="ui.class"
+      @click.stop="onBadgeClick(item.id)"
+    >
+      {{ item.badge }}
+    </N8nBadge>
+  </template>
+</N8nDropdownMenu>
 ```
 
 ### From ActionToggle
