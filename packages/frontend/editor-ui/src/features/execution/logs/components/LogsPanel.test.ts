@@ -20,7 +20,7 @@ import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { IN_PROGRESS_EXECUTION_ID, WorkflowStateKey } from '@/app/constants';
 import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
-import { deepCopy } from 'n8n-workflow';
+import { createRunExecutionData, deepCopy } from 'n8n-workflow';
 import { createTestTaskData } from '@/__tests__/mocks';
 import { useLogsStore } from '@/app/stores/logs.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -306,9 +306,9 @@ describe('LogsPanel', () => {
 			finished: false,
 			startedAt: new Date('2025-04-20T12:34:50.000Z'),
 			stoppedAt: undefined,
-			data: {
+			data: createRunExecutionData({
 				resultData: { runData: { Chat: [createTestTaskData()] } },
-			},
+			}),
 		});
 
 		const rendered = render();

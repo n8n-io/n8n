@@ -73,7 +73,7 @@ test.describe('Projects', () => {
 			await n8n.navigate.toWorkflows();
 			await expect(n8n.workflows.cards.getWorkflows()).toHaveCount(0);
 
-			await n8n.sideBar.addWorkflowFromUniversalAdd('Personal');
+			await n8n.navigate.toWorkflow('new');
 
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 			await n8n.canvas.addNode(NOTION_NODE_NAME, { action: 'Append a block', closeNDV: true });
