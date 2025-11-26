@@ -3,6 +3,7 @@
  * @see https://api.wuyinkeji.com/doc/35
  */
 
+import { createHmac } from 'crypto';
 import type {
 	StatusResponse,
 	SubmitResponse,
@@ -20,6 +21,22 @@ export class WuyinkeProvider extends BaseSora2Provider {
 	readonly providerType = 'wuyinke' as const;
 
 	/**
+	 * Generate signature headers for wuyinke API
+	 */
+	private generateSignatureHeaders(): Record<string, string> {
+		const { apiKey, secretKey } = SORA2_CONFIG.wuyinke;
+		const timestamp = Math.floor(Date.now() / 1000).toString();
+		const signString = `key=${apiKey}&timestamp=${timestamp}`;
+		const signature = createHmac('sha256', secretKey).update(signString).digest('hex');
+
+		return {
+			'X-Api-Key': apiKey,
+			'X-Api-Timestamp': timestamp,
+			'X-Api-Sign': signature,
+		};
+	}
+
+	/**
 	 * Submit a video generation request to wuyinkeji.com
 	 */
 	async submit(request: VideoGenerationRequest): Promise<SubmitResponse> {
@@ -28,31 +45,33 @@ export class WuyinkeProvider extends BaseSora2Provider {
 		// Different endpoint for standard vs pro model
 		const endpoint = request.model === 'sora2pro' ? '/api/sora2pro/submit' : '/api/sora2/submit';
 
-		// Build request body according to wuyinkeji API
-		const body: Record<string, unknown> = {
+		// Build URL parameters
+		const params = new URLSearchParams({
+			key: apiKey,
 			prompt: request.prompt,
 			aspectRatio: request.aspectRatio,
 			duration: String(request.duration),
-		};
+		});
 
 		// Add reference image URL for image2video
 		if (request.referenceImageUrl) {
-			body.url = request.referenceImageUrl;
+			params.append('url', request.referenceImageUrl);
 		}
 
-		// Add size for standard model (sora2 supports size, sora2pro doesn't need it in wuyinke)
+		// Add size for standard model
 		if (request.model === 'sora2' && request.size) {
-			body.size = request.size;
+			params.append('size', request.size);
 		}
+
+		const signatureHeaders = this.generateSignatureHeaders();
 
 		const response = (await this.ctx.helpers.httpRequest({
 			method: 'POST',
-			url: `${baseUrl}${endpoint}?key=${apiKey}`,
+			url: `${baseUrl}${endpoint}?${params.toString()}`,
 			headers: {
-				'Content-Type': 'application/json',
+				'Content-Type': 'application/x-www-form-urlencoded',
+				...signatureHeaders,
 			},
-			body,
-			json: true,
 		})) as WuyinkeSubmitResponse;
 
 		if (response.code !== 200) {
@@ -80,10 +99,14 @@ export class WuyinkeProvider extends BaseSora2Provider {
 	 */
 	async getStatus(taskId: string): Promise<StatusResponse> {
 		const { apiKey, baseUrl } = SORA2_CONFIG.wuyinke;
+		const signatureHeaders = this.generateSignatureHeaders();
 
 		const response = (await this.ctx.helpers.httpRequest({
 			method: 'GET',
 			url: `${baseUrl}/api/sora2/detail?key=${apiKey}&id=${taskId}`,
+			headers: {
+				...signatureHeaders,
+			},
 			json: true,
 		})) as WuyinkeDetailResponse;
 

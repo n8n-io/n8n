@@ -31,7 +31,6 @@ async function processItem(
 	waitTimeout: number,
 	pollingInterval: number,
 ): Promise<VideoResult> {
-	const operation = ctx.getNodeParameter('operation', itemIndex) as Operation;
 	const prompt = ctx.getNodeParameter('prompt', itemIndex) as string;
 	const aspectRatio = ctx.getNodeParameter('aspectRatio', itemIndex) as AspectRatio;
 
@@ -41,11 +40,14 @@ async function processItem(
 			? (ctx.getNodeParameter('durationPro', itemIndex) as number)
 			: (ctx.getNodeParameter('duration', itemIndex) as number);
 
-	// Get reference image URL for image2video
-	const referenceImageUrl =
-		operation === 'image2video'
-			? (ctx.getNodeParameter('referenceImageUrl', itemIndex, '') as string)
-			: undefined;
+	// Always read referenceImageUrl for auto operation detection
+	const referenceImageUrl = ctx.getNodeParameter('referenceImageUrl', itemIndex, '') as string;
+
+	// Auto-detect operation based on referenceImageUrl presence
+	let operation = ctx.getNodeParameter('operation', itemIndex) as Operation;
+	if (operation === 'auto') {
+		operation = referenceImageUrl && referenceImageUrl.trim() !== '' ? 'image2video' : 'text2video';
+	}
 
 	if (!prompt) {
 		return {
@@ -66,7 +68,7 @@ async function processItem(
 		model,
 		duration,
 		aspectRatio,
-		referenceImageUrl: referenceImageUrl || undefined,
+		referenceImageUrl: operation === 'image2video' ? referenceImageUrl || undefined : undefined,
 	};
 
 	let lastError: Error | undefined;
@@ -156,6 +158,12 @@ export class Sora2BatchVideo implements INodeType {
 				noDataExpression: true,
 				options: [
 					{
+						name: 'Auto (Recommended)',
+						value: 'auto',
+						description: 'Automatically detect based on referenceImageUrl',
+						action: 'Auto detect operation',
+					},
+					{
 						name: 'Text to Video',
 						value: 'text2video',
 						description: 'Generate video from text prompt',
@@ -168,14 +176,19 @@ export class Sora2BatchVideo implements INodeType {
 						action: 'Generate video from image',
 					},
 				],
-				default: 'text2video',
+				default: 'auto',
 			},
 			// Provider
 			{
-				displayName: 'Primary Provider',
+				displayName: 'Provider',
 				name: 'provider',
 				type: 'options',
 				options: [
+					{
+						name: 'Auto (Load Balance)',
+						value: 'auto',
+						description: 'Distribute requests across providers when parallel > 2',
+					},
 					{
 						name: 'ttapi.io',
 						value: 'ttapi',
@@ -187,8 +200,8 @@ export class Sora2BatchVideo implements INodeType {
 						description: 'Use wuyinkeji.com as the primary provider',
 					},
 				],
-				default: 'ttapi',
-				description: 'Primary API provider for video generation',
+				default: 'auto',
+				description: 'API provider for video generation (Auto distributes load when parallel > 2)',
 			},
 			// Failover
 			{
@@ -287,18 +300,14 @@ export class Sora2BatchVideo implements INodeType {
 				placeholder:
 					'e.g. {{ $json.prompt }} or "A majestic eagle soaring over mountains at sunset"',
 			},
-			// Reference Image URL (for image2video)
+			// Reference Image URL (for image2video or auto detection)
 			{
 				displayName: 'Reference Image URL',
 				name: 'referenceImageUrl',
 				type: 'string',
-				displayOptions: {
-					show: {
-						operation: ['image2video'],
-					},
-				},
 				default: '',
-				description: 'URL of the reference image for image-to-video generation',
+				description:
+					'URL of the reference image for image-to-video generation. When operation is Auto, this field determines the operation type.',
 				placeholder: 'https://example.com/image.jpg',
 			},
 			// Options
@@ -389,28 +398,46 @@ export class Sora2BatchVideo implements INodeType {
 		const binaryPropertyName = options.binaryPropertyName ?? 'video';
 		const downloadVideo = options.downloadVideo ?? true;
 
-		// Initialize providers based on configuration (API keys from config.ts)
-		const providers: BaseSora2Provider[] = [];
-		const providerOrder: Provider[] =
-			provider === 'ttapi' ? ['ttapi', 'wuyinke'] : ['wuyinke', 'ttapi'];
+		// Create provider instances
+		const providerInstances: Record<'ttapi' | 'wuyinke', BaseSora2Provider> = {
+			ttapi: new TtapiProvider(this),
+			wuyinke: new WuyinkeProvider(this),
+		};
 
-		for (const p of providerOrder) {
-			if (p === 'ttapi') {
-				providers.push(new TtapiProvider(this));
-			} else {
-				providers.push(new WuyinkeProvider(this));
-			}
-		}
+		// Determine if we should use auto distribution (only when provider is 'auto' and parallel > 2)
+		const useAutoDistribution = provider === 'auto' && parallelRequests > 2;
+
+		// Default provider order for non-auto mode
+		const defaultProviders: BaseSora2Provider[] =
+			provider === 'wuyinke'
+				? [providerInstances.wuyinke, providerInstances.ttapi]
+				: [providerInstances.ttapi, providerInstances.wuyinke];
 
 		// Process items in parallel batches
 		for (let i = 0; i < items.length; i += parallelRequests) {
 			const batch = items.slice(i, i + parallelRequests);
 			const batchPromises = batch.map((_, batchIndex) => {
 				const itemIndex = i + batchIndex;
+
+				// Determine providers for this item
+				let itemProviders: BaseSora2Provider[];
+				if (useAutoDistribution) {
+					// Round-robin: alternate between providers based on item index
+					const primaryIndex = itemIndex % 2;
+					const providerKeys: Array<'ttapi' | 'wuyinke'> = ['ttapi', 'wuyinke'];
+					itemProviders = [
+						providerInstances[providerKeys[primaryIndex]],
+						providerInstances[providerKeys[1 - primaryIndex]],
+					];
+				} else {
+					// Non-auto mode or parallel <= 2: use fixed order
+					itemProviders = defaultProviders;
+				}
+
 				return processItem(
 					this,
 					itemIndex,
-					providers,
+					itemProviders,
 					enableFailover,
 					model,
 					waitTimeout,
@@ -424,7 +451,8 @@ export class Sora2BatchVideo implements INodeType {
 			for (const result of batchResults) {
 				if (result.success && result.videoUrl && downloadVideo) {
 					try {
-						const activeProvider = providers.find((p) => p.providerType === result.provider);
+						const activeProvider =
+							result.provider === 'ttapi' ? providerInstances.ttapi : providerInstances.wuyinke;
 						if (activeProvider) {
 							const videoBuffer = await activeProvider.downloadVideo(result.videoUrl);
 							const binaryData = await this.helpers.prepareBinaryData(

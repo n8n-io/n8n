@@ -12,7 +12,8 @@ export const SORA2_CONFIG = {
 
 	/** wuyinkeji.com configuration */
 	wuyinke: {
-		apiKey: 'N45quCPfStkmjfKC41BB4fnRkP',
+		apiKey: 'jnWcl649Q6cDPcYMyXmqBzqEsH',
+		secretKey: '92092fea234e510b8cb7108c0aa4b974',
 		baseUrl: 'https://api.wuyinkeji.com',
 	},
 } as const;

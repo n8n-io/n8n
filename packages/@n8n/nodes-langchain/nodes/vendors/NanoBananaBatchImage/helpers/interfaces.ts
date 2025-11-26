@@ -1,6 +1,87 @@
 import type { IDataObject } from 'n8n-workflow';
 
 /**
+ * Provider type for image generation
+ */
+export type Provider = 'nanoBanana' | 'wuyinke' | 'auto';
+
+/**
+ * Safety threshold type
+ */
+export type SafetyThreshold =
+	| 'OFF'
+	| 'BLOCK_NONE'
+	| 'BLOCK_LOW_AND_ABOVE'
+	| 'BLOCK_MEDIUM_AND_ABOVE'
+	| 'BLOCK_ONLY_HIGH';
+
+/**
+ * Normalized image generation request (provider-agnostic)
+ */
+export interface ImageGenerationRequest {
+	prompt: string;
+	referenceImageUrls?: string[];
+	aspectRatio: AspectRatio;
+	imageSize: ImageSize;
+	mimeType: ImageMimeType;
+	model: string;
+	systemInstruction?: string;
+	temperature?: number;
+	topP?: number;
+	maxOutputTokens?: number;
+	safetyThreshold?: SafetyThreshold;
+	personGeneration?: PersonGeneration;
+}
+
+/**
+ * Normalized generation result
+ */
+export interface GenerateResult {
+	success: boolean;
+	imageData?: Buffer;
+	mimeType?: string;
+	textResponse?: string;
+	error?: string;
+}
+
+/**
+ * Normalized status response for async providers
+ */
+export interface StatusResponse {
+	status: 'queued' | 'processing' | 'completed' | 'failed';
+	imageUrl?: string;
+	imageData?: string;
+	mimeType?: string;
+	error?: string;
+}
+
+/**
+ * Wuyinke API submit response
+ */
+export interface WuyinkeSubmitResponse {
+	code: number;
+	msg: string;
+	data: { id: number };
+}
+
+/**
+ * Wuyinke API status response
+ */
+export interface WuyinkeStatusResponse {
+	code: number;
+	msg: string;
+	data: {
+		id: number;
+		prompt: string;
+		image_url: string;
+		status: number; // 0=queued, 1=processing, 2=success, 3=failed
+		size: string;
+		created_at: string;
+		updated_at: string;
+	};
+}
+
+/**
  * Input item for batch image generation
  */
 export interface BatchImageInput {
@@ -139,11 +220,9 @@ export interface GeminiImageResponse {
 }
 
 /**
- * Streaming response chunk
+ * Streaming response chunk (same structure as GeminiImageResponse)
  */
-export interface StreamingResponse extends GeminiImageResponse {
-	// Same structure for streaming
-}
+export type StreamingResponse = GeminiImageResponse;
 
 /**
  * Credentials for API access

@@ -8,17 +8,16 @@ import { NodeOperationError } from 'n8n-workflow';
 
 import type {
 	AspectRatio,
-	Content,
-	ContentPart,
-	GeminiImageRequest,
-	GeminiImageResponse,
 	HarmBlockThreshold,
+	ImageGenerationRequest,
 	ImageMimeType,
 	ImageSize,
 	PersonGeneration,
-	SafetySetting,
+	Provider,
 } from './helpers/interfaces';
-import { apiRequest, downloadImage, getMimeTypeFromUrl, imageToBase64 } from './helpers/transport';
+import type { BaseImageProvider } from './helpers/providers/base.provider';
+import { NanoBananaProvider } from './helpers/providers/nanoBanana.provider';
+import { WuyinkeProvider } from './helpers/providers/wuyinke.provider';
 
 export class NanoBananaBatchImage implements INodeType {
 	description: INodeTypeDescription = {
@@ -28,7 +27,8 @@ export class NanoBananaBatchImage implements INodeType {
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"]}}',
-		description: 'Batch generate images using Gemini 3 Pro Image Preview',
+		description:
+			'Batch generate images using Gemini 3 Pro Image Preview with dual-provider support',
 		defaults: {
 			name: 'Nano Banana Batch Image',
 		},
@@ -56,7 +56,40 @@ export class NanoBananaBatchImage implements INodeType {
 				],
 				default: 'batchGenerate',
 			},
-			// Model selection
+			// Provider selection
+			{
+				displayName: 'Provider',
+				name: 'provider',
+				type: 'options',
+				options: [
+					{
+						name: 'Auto (Load Balance)',
+						value: 'auto',
+						description: 'Automatically distribute requests between providers when parallel > 2',
+					},
+					{
+						name: 'NanoBanana (Google AI)',
+						value: 'nanoBanana',
+						description: 'Use Google AI Platform / Gemini API only',
+					},
+					{
+						name: 'Wuyinke',
+						value: 'wuyinke',
+						description: 'Use Wuyinke API only',
+					},
+				],
+				default: 'auto',
+				description: 'Select image generation provider',
+			},
+			// Failover toggle
+			{
+				displayName: 'Enable Failover',
+				name: 'enableFailover',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to try backup provider if primary fails',
+			},
+			// Model selection (for NanoBanana provider)
 			{
 				displayName: 'Model',
 				name: 'model',
@@ -72,7 +105,7 @@ export class NanoBananaBatchImage implements INodeType {
 					},
 				],
 				default: 'gemini-3-pro-image-preview',
-				description: 'The model to use for image generation',
+				description: 'The model to use for image generation (NanoBanana provider)',
 			},
 			// Prompt field - for each input item
 			{
@@ -95,7 +128,7 @@ export class NanoBananaBatchImage implements INodeType {
 				type: 'json',
 				default: '[]',
 				description:
-					'Array of reference image URLs for image-to-image generation (max 14). Use expression {{ $json.imageUrls }} or JSON array ["url1", "url2"].',
+					'Array of reference image URLs for image-to-image generation (max 14). Use expression {{ $JSON.imageUrls }} or a JSON array ["url1", "url2"].',
 				placeholder:
 					'e.g. {{ $json.imageUrls }} or ["https://example.com/1.png", "https://example.com/2.png"]',
 			},
@@ -123,9 +156,9 @@ export class NanoBananaBatchImage implements INodeType {
 						options: [
 							{ name: '1:1 (Square)', value: '1:1' },
 							{ name: '16:9 (Landscape)', value: '16:9' },
-							{ name: '9:16 (Portrait)', value: '9:16' },
-							{ name: '4:3', value: '4:3' },
 							{ name: '3:4', value: '3:4' },
+							{ name: '4:3', value: '4:3' },
+							{ name: '9:16 (Portrait)', value: '9:16' },
 						],
 						default: '1:1',
 						description: 'Aspect ratio of the generated image',
@@ -152,7 +185,7 @@ export class NanoBananaBatchImage implements INodeType {
 							{ name: 'WebP', value: 'image/webp' },
 						],
 						default: 'image/png',
-						description: 'Output image format',
+						description: 'Output image format (NanoBanana only)',
 					},
 					{
 						displayName: 'Person Generation',
@@ -164,7 +197,7 @@ export class NanoBananaBatchImage implements INodeType {
 							{ name: "Don't Allow", value: 'DONT_ALLOW' },
 						],
 						default: 'ALLOW_ALL',
-						description: 'Control generation of people in images',
+						description: 'Control generation of people in images (NanoBanana only)',
 					},
 					{
 						displayName: 'Temperature',
@@ -176,7 +209,7 @@ export class NanoBananaBatchImage implements INodeType {
 							numberPrecision: 1,
 						},
 						default: 1,
-						description: 'Controls randomness in generation (0-2)',
+						description: 'Controls randomness in generation (0-2, NanoBanana only)',
 					},
 					{
 						displayName: 'Top P',
@@ -188,7 +221,7 @@ export class NanoBananaBatchImage implements INodeType {
 							numberPrecision: 2,
 						},
 						default: 0.95,
-						description: 'Nucleus sampling parameter',
+						description: 'Nucleus sampling parameter (NanoBanana only)',
 					},
 					{
 						displayName: 'Max Output Tokens',
@@ -198,21 +231,21 @@ export class NanoBananaBatchImage implements INodeType {
 							minValue: 1,
 						},
 						default: 32768,
-						description: 'Maximum tokens in the response',
+						description: 'Maximum tokens in the response (NanoBanana only)',
 					},
 					{
 						displayName: 'Safety Threshold',
 						name: 'safetyThreshold',
 						type: 'options',
 						options: [
-							{ name: 'Off (No Filtering)', value: 'OFF' },
-							{ name: 'Block None', value: 'BLOCK_NONE' },
 							{ name: 'Block Low and Above', value: 'BLOCK_LOW_AND_ABOVE' },
 							{ name: 'Block Medium and Above', value: 'BLOCK_MEDIUM_AND_ABOVE' },
+							{ name: 'Block None', value: 'BLOCK_NONE' },
 							{ name: 'Block Only High', value: 'BLOCK_ONLY_HIGH' },
+							{ name: 'Off (No Filtering)', value: 'OFF' },
 						],
 						default: 'OFF',
-						description: 'Safety filtering threshold for all categories',
+						description: 'Safety filtering threshold for all categories (NanoBanana only)',
 					},
 					{
 						displayName: 'Output Property Name',
@@ -230,7 +263,20 @@ export class NanoBananaBatchImage implements INodeType {
 							maxValue: 20,
 						},
 						default: 5,
-						description: 'Number of parallel API requests to make',
+						description:
+							'Number of parallel API requests. When > 2 and Provider is Auto, enables round-robin load balancing.',
+					},
+					{
+						displayName: 'Wait Timeout (Wuyinke)',
+						name: 'waitTimeout',
+						type: 'number',
+						typeOptions: {
+							minValue: 30,
+							maxValue: 600,
+						},
+						default: 300,
+						description:
+							'Max seconds to wait for Wuyinke async generation (only applies when using Wuyinke provider)',
 					},
 				],
 			},
@@ -241,6 +287,9 @@ export class NanoBananaBatchImage implements INodeType {
 		const items = this.getInputData();
 		const returnData: INodeExecutionData[] = [];
 
+		// Get parameters
+		const provider = this.getNodeParameter('provider', 0) as Provider;
+		const enableFailover = this.getNodeParameter('enableFailover', 0) as boolean;
 		const model = this.getNodeParameter('model', 0) as string;
 		const systemInstruction = this.getNodeParameter('systemInstruction', 0) as string;
 		const options = this.getNodeParameter('options', 0, {}) as {
@@ -254,191 +303,208 @@ export class NanoBananaBatchImage implements INodeType {
 			safetyThreshold?: HarmBlockThreshold;
 			binaryPropertyName?: string;
 			parallelRequests?: number;
+			waitTimeout?: number;
 		};
 
 		const parallelRequests = options.parallelRequests ?? 5;
 		const binaryPropertyName = options.binaryPropertyName ?? 'data';
 
-		// Build safety settings
-		const safetyThreshold = options.safetyThreshold ?? 'OFF';
-		const safetySettings: SafetySetting[] = [
-			{ category: 'HARM_CATEGORY_HATE_SPEECH', threshold: safetyThreshold },
-			{ category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: safetyThreshold },
-			{ category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: safetyThreshold },
-			{ category: 'HARM_CATEGORY_HARASSMENT', threshold: safetyThreshold },
-		];
+		// Create provider instances
+		const providerInstances: Record<'nanoBanana' | 'wuyinke', BaseImageProvider> = {
+			nanoBanana: new NanoBananaProvider(this),
+			wuyinke: new WuyinkeProvider(this),
+		};
 
-		// Process items in batches for parallel execution
-		const processBatch = async (batchItems: Array<{ index: number }>) => {
-			const promises = batchItems.map(async ({ index }) => {
+		// Determine if auto load-balancing should be used
+		// Only when provider is 'auto' AND parallelRequests > 2
+		const useAutoDistribution = provider === 'auto' && parallelRequests > 2;
+
+		// Default provider order (NanoBanana primary, Wuyinke backup)
+		const defaultProviders: BaseImageProvider[] =
+			provider === 'wuyinke'
+				? [providerInstances.wuyinke, providerInstances.nanoBanana]
+				: [providerInstances.nanoBanana, providerInstances.wuyinke];
+
+		/**
+		 * Process a single item with failover support
+		 */
+		const processItem = async (
+			index: number,
+			itemProviders: BaseImageProvider[],
+		): Promise<INodeExecutionData[]> => {
+			const prompt = this.getNodeParameter('prompt', index, '') as string;
+			const referenceImageUrlsInput = this.getNodeParameter('referenceImageUrls', index, []) as
+				| string
+				| string[];
+
+			if (!prompt) {
+				throw new NodeOperationError(this.getNode(), 'Prompt is required', {
+					itemIndex: index,
+				});
+			}
+
+			// Parse reference image URLs
+			let imageUrls: string[] = [];
+			if (typeof referenceImageUrlsInput === 'string') {
 				try {
-					const prompt = this.getNodeParameter('prompt', index, '') as string;
-					const referenceImageUrlsInput = this.getNodeParameter('referenceImageUrls', index, []) as
-						| string
-						| string[];
-
-					if (!prompt) {
-						throw new NodeOperationError(this.getNode(), 'Prompt is required', {
-							itemIndex: index,
-						});
-					}
-
-					// Build content parts
-					const parts: ContentPart[] = [{ text: prompt }];
-
-					// Parse reference image URLs - handle both string (JSON) and array inputs
-					let imageUrls: string[] = [];
-					if (typeof referenceImageUrlsInput === 'string') {
-						try {
-							const parsed = JSON.parse(referenceImageUrlsInput);
-							if (Array.isArray(parsed)) {
-								imageUrls = parsed.filter(
-									(url): url is string => typeof url === 'string' && url.trim() !== '',
-								);
-							}
-						} catch {
-							// If not valid JSON, treat as single URL if not empty
-							if (
-								referenceImageUrlsInput.trim() !== '' &&
-								referenceImageUrlsInput.trim() !== '[]'
-							) {
-								imageUrls = [referenceImageUrlsInput.trim()];
-							}
-						}
-					} else if (Array.isArray(referenceImageUrlsInput)) {
-						imageUrls = referenceImageUrlsInput.filter(
+					const parsed = JSON.parse(referenceImageUrlsInput);
+					if (Array.isArray(parsed)) {
+						imageUrls = parsed.filter(
 							(url): url is string => typeof url === 'string' && url.trim() !== '',
 						);
 					}
-
-					// Limit to 14 images max
-					const limitedUrls = imageUrls.slice(0, 14);
-
-					// Download and include all reference images
-					for (const imageUrl of limitedUrls) {
-						const imageBuffer = await downloadImage.call(this, imageUrl);
-						const base64Image = imageToBase64(imageBuffer);
-						const mimeType = getMimeTypeFromUrl(imageUrl);
-
-						parts.unshift({
-							inlineData: {
-								mimeType,
-								data: base64Image,
-							},
-						});
+				} catch {
+					if (referenceImageUrlsInput.trim() !== '' && referenceImageUrlsInput.trim() !== '[]') {
+						imageUrls = [referenceImageUrlsInput.trim()];
 					}
+				}
+			} else if (Array.isArray(referenceImageUrlsInput)) {
+				imageUrls = referenceImageUrlsInput.filter(
+					(url): url is string => typeof url === 'string' && url.trim() !== '',
+				);
+			}
 
-					const contents: Content[] = [
-						{
-							role: 'user',
-							parts,
-						},
-					];
+			// Limit to 14 images max
+			const limitedUrls = imageUrls.slice(0, 14);
 
-					// Build request body
-					const requestBody: GeminiImageRequest = {
-						contents,
-						systemInstruction: {
-							parts: [{ text: systemInstruction }],
-						},
-						generationConfig: {
-							temperature: options.temperature ?? 1,
-							maxOutputTokens: options.maxOutputTokens ?? 32768,
-							responseModalities: ['TEXT', 'IMAGE'],
-							topP: options.topP ?? 0.95,
-							imageConfig: {
-								aspectRatio: options.aspectRatio ?? '1:1',
-								imageSize: options.imageSize ?? '1K',
-								imageOutputOptions: {
-									mimeType: options.mimeType ?? 'image/png',
-								},
-								personGeneration: options.personGeneration ?? 'ALLOW_ALL',
-							},
-						},
-						safetySettings,
-					};
+			// Build normalized request
+			const request: ImageGenerationRequest = {
+				prompt,
+				referenceImageUrls: limitedUrls.length > 0 ? limitedUrls : undefined,
+				aspectRatio: options.aspectRatio ?? '1:1',
+				imageSize: options.imageSize ?? '1K',
+				mimeType: options.mimeType ?? 'image/png',
+				model,
+				systemInstruction,
+				temperature: options.temperature ?? 1,
+				topP: options.topP ?? 0.95,
+				maxOutputTokens: options.maxOutputTokens ?? 32768,
+				safetyThreshold: options.safetyThreshold ?? 'OFF',
+				personGeneration: options.personGeneration ?? 'ALLOW_ALL',
+			};
 
-					// Make API request
-					const endpoint = `/v1/publishers/google/models/${model}:streamGenerateContent`;
-					const response = (await apiRequest.call(this, 'POST', endpoint, {
-						body: requestBody,
-					})) as GeminiImageResponse | GeminiImageResponse[];
+			let lastError: Error | undefined;
+			let usedProvider: string | undefined;
 
-					// Handle streaming response (array of responses)
-					const responses = Array.isArray(response) ? response : [response];
+			// Try each provider with failover
+			for (let providerIndex = 0; providerIndex < itemProviders.length; providerIndex++) {
+				// Only try backup provider if failover is enabled
+				if (providerIndex > 0 && !enableFailover) {
+					break;
+				}
 
-					// Find the response with image data
-					const outputItems: INodeExecutionData[] = [];
+				const activeProvider = itemProviders[providerIndex];
+				usedProvider = activeProvider.providerType;
 
-					for (const resp of responses) {
-						if (resp.error) {
-							throw new NodeOperationError(this.getNode(), `API Error: ${resp.error.message}`, {
-								itemIndex: index,
-							});
-						}
+				try {
+					const result = await activeProvider.generate(request);
 
-						if (!resp.candidates || resp.candidates.length === 0) {
-							continue;
-						}
-
-						for (const candidate of resp.candidates) {
-							for (const part of candidate.content.parts) {
-								if ('inlineData' in part && part.inlineData) {
-									const buffer = Buffer.from(part.inlineData.data, 'base64');
-									const binaryData = await this.helpers.prepareBinaryData(
-										buffer,
-										'generated_image.png',
-										part.inlineData.mimeType,
-									);
-
-									outputItems.push({
-										json: {
-											prompt,
-											referenceImageUrls: limitedUrls.length > 0 ? limitedUrls : undefined,
-											mimeType: part.inlineData.mimeType,
-											model,
-											success: true,
-										},
-										binary: {
-											[binaryPropertyName]: binaryData,
-										},
-										pairedItem: { item: index },
-									});
-								}
-							}
-						}
-					}
-
-					// If no images were generated, return an error item
-					if (outputItems.length === 0) {
-						// Check if there's text response
-						let textResponse = '';
-						for (const resp of responses) {
-							for (const candidate of resp.candidates ?? []) {
-								for (const part of candidate.content.parts) {
-									if ('text' in part) {
-										textResponse += part.text;
-									}
-								}
-							}
-						}
+					if (result.success && result.imageData) {
+						// Success - return the image
+						const binaryData = await this.helpers.prepareBinaryData(
+							result.imageData,
+							'generated_image.png',
+							result.mimeType ?? 'image/png',
+						);
 
 						return [
 							{
 								json: {
 									prompt,
 									referenceImageUrls: limitedUrls.length > 0 ? limitedUrls : undefined,
+									mimeType: result.mimeType,
 									model,
-									success: false,
-									error: 'No image was generated',
-									textResponse: textResponse || undefined,
+									provider: activeProvider.providerType,
+									success: true,
+								},
+								binary: {
+									[binaryPropertyName]: binaryData,
 								},
 								pairedItem: { item: index },
 							},
 						];
 					}
 
-					return outputItems;
+					// Provider returned failure (not exception)
+					if (!result.success) {
+						lastError = new Error(result.error || 'Image generation failed');
+
+						// If there's a text response, include it in the error
+						if (result.textResponse) {
+							return [
+								{
+									json: {
+										prompt,
+										referenceImageUrls: limitedUrls.length > 0 ? limitedUrls : undefined,
+										model,
+										provider: activeProvider.providerType,
+										success: false,
+										error: result.error || 'No image was generated',
+										textResponse: result.textResponse,
+									},
+									pairedItem: { item: index },
+								},
+							];
+						}
+
+						// Continue to next provider if failover enabled
+						continue;
+					}
+				} catch (error) {
+					lastError = error instanceof Error ? error : new Error(String(error));
+					// Log and continue to next provider
+					this.logger.warn(
+						`Provider ${activeProvider.providerType} failed for item ${index}: ${lastError.message}`,
+					);
+					continue;
+				}
+			}
+
+			// All providers failed
+			if (this.continueOnFail()) {
+				return [
+					{
+						json: {
+							prompt,
+							referenceImageUrls: limitedUrls.length > 0 ? limitedUrls : undefined,
+							model,
+							provider: usedProvider,
+							success: false,
+							error: lastError?.message || 'All providers failed',
+						},
+						pairedItem: { item: index },
+					},
+				];
+			}
+
+			throw new NodeOperationError(
+				this.getNode(),
+				lastError?.message || 'All providers failed to generate image',
+				{ itemIndex: index },
+			);
+		};
+
+		/**
+		 * Process a batch of items
+		 */
+		const processBatch = async (batchItems: Array<{ index: number }>) => {
+			const promises = batchItems.map(async ({ index }) => {
+				let itemProviders: BaseImageProvider[];
+
+				if (useAutoDistribution) {
+					// Round-robin: alternate based on item index
+					const primaryIndex = index % 2;
+					const providerKeys: Array<'nanoBanana' | 'wuyinke'> = ['nanoBanana', 'wuyinke'];
+					itemProviders = [
+						providerInstances[providerKeys[primaryIndex]],
+						providerInstances[providerKeys[1 - primaryIndex]],
+					];
+				} else {
+					itemProviders = defaultProviders;
+				}
+
+				try {
+					return await processItem(index, itemProviders);
 				} catch (error) {
 					if (this.continueOnFail()) {
 						return [
@@ -470,7 +536,7 @@ export class NanoBananaBatchImage implements INodeType {
 		for (const batch of batches) {
 			const batchResults = await processBatch(batch);
 			for (const results of batchResults) {
-				returnData.push(...results);
+				returnData.push.apply(returnData, results);
 			}
 		}
 

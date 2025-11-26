@@ -2,11 +2,11 @@
  * Sora2 Batch Video - Type Definitions
  */
 
-export type Provider = 'ttapi' | 'wuyinke';
+export type Provider = 'ttapi' | 'wuyinke' | 'auto';
 export type Model = 'sora2' | 'sora2pro';
 export type AspectRatio = '9:16' | '16:9';
 export type Size = 'small' | 'large';
-export type Operation = 'text2video' | 'image2video';
+export type Operation = 'text2video' | 'image2video' | 'auto';
 export type TaskStatus = 'pending' | 'processing' | 'completed' | 'failed';
 
 /**
