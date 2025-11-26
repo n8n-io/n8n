@@ -1,13 +1,12 @@
 <script lang="ts" setup>
-import { SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT } from '@/app/constants';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 
 import { N8nOption, N8nSelect } from '@n8n/design-system';
 import { onMounted } from 'vue';
-import { usePostHog } from '@/app/stores/posthog.store';
 import { useUserRoleProvisioningStore } from '../composables/userRoleProvisioning.store';
 import { useI18n } from '@n8n/i18n';
 import { type SupportedProtocolType } from '../../sso.store';
+import { useRBACStore } from '@/app/stores/rbac.store';
 
 export type UserRoleProvisioningSetting =
 	| 'disabled'
@@ -21,12 +20,8 @@ const { authProtocol } = defineProps<{
 }>();
 
 const i18n = useI18n();
-const posthogStore = usePostHog();
 const userRoleProvisioningStore = useUserRoleProvisioningStore();
-
-const isUserRoleProvisioningFeatureEnabled = posthogStore.isFeatureEnabled(
-	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name,
-);
+const canManageUserProvisioning = useRBACStore().hasScope('provisioning:manage');
 
 const handleUserRoleProvisioningChange = (newValue: UserRoleProvisioningSetting) => {
 	value.value = newValue;
@@ -49,7 +44,6 @@ const getUserRoleProvisioningValueFromConfig = (
 
 type UserRoleProvisioningDescription = {
 	label: string;
-	description: string;
 	value: UserRoleProvisioningSetting;
 };
 
@@ -57,25 +51,16 @@ const userRoleProvisioningDescriptions: UserRoleProvisioningDescription[] = [
 	{
 		label: i18n.baseText('settings.sso.settings.userRoleProvisioning.option.disabled.label'),
 		value: 'disabled',
-		description: i18n.baseText(
-			'settings.sso.settings.userRoleProvisioning.option.disabled.description',
-		),
 	},
 	{
 		label: i18n.baseText('settings.sso.settings.userRoleProvisioning.option.instanceRole.label'),
 		value: 'instance_role',
-		description: i18n.baseText(
-			'settings.sso.settings.userRoleProvisioning.option.instanceRole.description',
-		),
 	},
 	{
 		label: i18n.baseText(
 			'settings.sso.settings.userRoleProvisioning.option.instanceAndProjectRoles.label',
 		),
 		value: 'instance_and_project_roles',
-		description: i18n.baseText(
-			'settings.sso.settings.userRoleProvisioning.option.instanceAndProjectRoles.description',
-		),
 	},
 ];
 
@@ -89,11 +74,11 @@ onMounted(async () => {
 });
 </script>
 <template>
-	<!-- TODO: also check for 'provisioning:manage' permission scope -->
-	<div v-if="isUserRoleProvisioningFeatureEnabled" :class="$style.group">
+	<div :class="$style.group">
 		<label>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.label') }}</label>
 		<N8nSelect
 			:model-value="value"
+			:disabled="!canManageUserProvisioning"
 			data-test-id="oidc-user-role-provisioning"
 			:class="$style.userRoleProvisioningSelect"
 			@update:model-value="handleUserRoleProvisioningChange"
@@ -104,12 +89,7 @@ onMounted(async () => {
 				:label="option.label"
 				data-test-id="oidc-user-role-provisioning-option"
 				:value="option.value"
-			>
-				<div class="list-option">
-					<div class="option-headline">{{ option.label }}</div>
-					<div class="option-description">{{ option.description }}</div>
-				</div>
-			</N8nOption>
+			/>
 		</N8nSelect>
 		<small
 			>{{ i18n.baseText('settings.sso.settings.userRoleProvisioning.help') }}

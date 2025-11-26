@@ -148,6 +148,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	data?: T;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
+	isGlobal?: boolean;
 }
 
 export interface ICredentialsEncrypted {
@@ -2476,6 +2477,17 @@ export interface ITaskMetadata {
 	 * @see AI-1414
 	 */
 	nodeWasResumed?: boolean;
+
+	/**
+	 * Time saved by this workflow execution in minutes. Used by SavedTime nodes to track
+	 * dynamic time savings that can be calculated based on execution data (e.g., number of
+	 * items processed). The behavior determines how this value interacts with the workflow's
+	 * default timeSavedPerExecution setting.
+	 */
+	timeSaved?: {
+		/** Time saved in minutes */
+		minutes: number;
+	};
 }
 
 /** The data that gets returned when a node execution starts */
@@ -2557,6 +2569,7 @@ export interface IWorkflowBase {
 	staticData?: IDataObject;
 	pinData?: IPinData;
 	versionId?: string;
+	activeVersionId: string | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
 }
@@ -2567,8 +2580,18 @@ export interface IWorkflowCredentials {
 	};
 }
 
+export interface IDestinationNode {
+	nodeName: string;
+	/**
+	 * Execution mode for the destination node:
+	 * - 'inclusive': Execute up to and including the destination node
+	 * - 'exclusive': Execute up to but excluding the destination node
+	 */
+	mode: 'inclusive' | 'exclusive';
+}
+
 export interface IWorkflowExecutionDataProcess {
-	destinationNode?: string;
+	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
@@ -2983,6 +3006,7 @@ export interface ResourceMapperField {
 	removed?: boolean;
 	options?: INodePropertyOptions[];
 	readOnly?: boolean;
+	defaultValue?: string | number | boolean | null;
 }
 
 export type FormFieldsParameter = Array<{

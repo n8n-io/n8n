@@ -173,6 +173,7 @@ describe('ProjectMembersTable', () => {
 				currentUserId: '2',
 				projectRoles: mockProjectRoles,
 				tableOptions: mockTableOptions,
+				canEditRole: true,
 			},
 		});
 	});
@@ -353,6 +354,18 @@ describe('ProjectMembersTable', () => {
 			expect(currentUserCell).toBeInTheDocument();
 			// The text should be rendered by N8nText component
 			expect(screen.getByText('Editor')).toBeInTheDocument();
+		});
+
+		it('should not show a role dropdown if canEditRole is false', () => {
+			renderComponent({
+				props: {
+					canEditRole: false,
+				},
+			});
+
+			expect(screen.queryByTestId('role-dropdown-1')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('role-dropdown-2')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('role-dropdown-3')).not.toBeInTheDocument();
 		});
 	});
 
