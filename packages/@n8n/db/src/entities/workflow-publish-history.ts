@@ -14,8 +14,8 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	@Index()
 	workflowId: string;
 
-	@Column({ type: 'varchar' })
-	versionId: string;
+	@Column({ type: 'varchar', nullable: true })
+	versionId: string | null;
 
 	@Column()
 	status: 'activated' | 'deactivated';
