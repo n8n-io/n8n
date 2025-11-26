@@ -232,10 +232,6 @@ describe('ImportService', () => {
 		const workflowWithId = await createActiveWorkflow();
 		await importService.importWorkflows([workflowWithId], ownerPersonalProject.id);
 
-		expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith(
-			workflowWithId.id,
-			undefined,
-			'deactivate',
-		);
+		expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith(workflowWithId.id, 'deactivate');
 	});
 });

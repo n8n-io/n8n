@@ -127,7 +127,7 @@ export class ActiveWorkflowManager {
 
 		const removePromises = [];
 		for (const workflowId of activeWorkflowIds) {
-			removePromises.push(this.remove(workflowId));
+			removePromises.push(this.remove(workflowId, 'deactivate'));
 		}
 
 		await Promise.all(removePromises);
@@ -901,8 +901,8 @@ export class ActiveWorkflowManager {
 	// maybe, see: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
 	async remove(
 		workflowId: WorkflowId,
+		reason: Extract<WorkflowPublishHistoryMode, 'update' | 'deactivate'>,
 		userId?: User['id'],
-		reason?: Extract<WorkflowPublishHistoryMode, 'update' | 'deactivate'>,
 	) {
 		if (this.instanceSettings.isMultiMain) {
 			try {
@@ -941,16 +941,16 @@ export class ActiveWorkflowManager {
 		// so remove from list of actives workflows
 		await this.removeWorkflowTriggersAndPollers(workflowId);
 
-		await this.trackRemovalInPublishingHistory(workflowId, userId, reason);
+		await this.trackRemovalInPublishingHistory(workflowId, reason, userId);
 	}
 
 	@OnPubSubEvent('remove-triggers-and-pollers', { instanceType: 'main', instanceRole: 'leader' })
 	async handleRemoveTriggersAndPollers({
 		workflowId,
-		userId,
 		reason,
+		userId,
 	}: PubSubCommandMap['remove-triggers-and-pollers']) {
-		await this.trackRemovalInPublishingHistory(workflowId, userId, reason);
+		await this.trackRemovalInPublishingHistory(workflowId, reason, userId);
 		await this.removeActivationError(workflowId);
 		await this.removeWorkflowTriggersAndPollers(workflowId);
 
@@ -980,8 +980,8 @@ export class ActiveWorkflowManager {
 
 	async trackRemovalInPublishingHistory(
 		workflowId: string,
+		reason: Extract<WorkflowPublishHistoryMode, 'update' | 'deactivate'>,
 		userId?: User['id'],
-		reason?: Extract<WorkflowPublishHistoryMode, 'update' | 'deactivate'>,
 	) {
 		const workflow = await this.workflowRepository.findById(workflowId);
 		const versionId = workflow?.activeVersionId;
@@ -990,7 +990,7 @@ export class ActiveWorkflowManager {
 				workflowId,
 				versionId,
 				status: 'deactivated',
-				mode: reason ?? null,
+				mode: reason,
 				userId: userId ?? null,
 			});
 		}

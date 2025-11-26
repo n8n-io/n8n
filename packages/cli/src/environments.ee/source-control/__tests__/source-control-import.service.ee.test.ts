@@ -390,7 +390,7 @@ describe('SourceControlImportService', () => {
 				}),
 				['id'],
 			);
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1', mockUserId, 'update');
+			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1', 'update', mockUserId);
 			expect(activeWorkflowManager.add).toHaveBeenCalledWith('workflow1', 'update');
 		});
 
@@ -439,8 +439,8 @@ describe('SourceControlImportService', () => {
 			);
 			expect(activeWorkflowManager.remove).toHaveBeenCalledWith(
 				'workflow1',
-				mockUserId,
 				'deactivate',
+				mockUserId,
 			);
 			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 		});

@@ -8,7 +8,7 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 			.withColumns(
 				column('id').int.primary.autoGenerate2,
 				column('workflowId').varchar(36).notNull,
-				column('versionId').varchar(36),
+				column('versionId').varchar(36).notNull,
 				column('status')
 					.varchar(36)
 					.notNull.comment(
@@ -16,14 +16,13 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 					),
 				column('mode')
 					.varchar(36)
-					.comment(
+					.notNull.comment(
 						'Reason for status change: activate (user turned on), update (updating already active workflow), deactivate (user turned off)',
 					),
 				column('userId').uuid,
 			)
 			.withCreatedAt.withIndexOn('workflowId')
 			.withIndexOn(['workflowId', 'versionId'])
-			.withIndexOn(['workflowId', 'createdAt'])
 			.withForeignKey('workflowId', {
 				tableName: 'workflow_entity',
 				columnName: 'id',
@@ -38,24 +37,22 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 				tableName: 'user',
 				columnName: 'id',
 				onDelete: 'SET NULL',
-			});
+			})
+			.withEnumCheck('mode', ['activate', 'update', 'deactivate'])
+			.withEnumCheck('status', ['activated', 'deactivated']);
 
 		const workflowEntityTableName = escape.tableName('workflow_entity');
+		const id = escape.columnName('id');
 		const activeVersionId = escape.columnName('activeVersionId');
 		const updatedAt = escape.columnName('updatedAt');
 
-		const activeWorkflows = await runQuery<Array<{ id: string; version: string }>>(
-			`SELECT we.id, we.${activeVersionId} AS version FROM ${workflowEntityTableName} we WHERE we.${activeVersionId} IS NOT NULL ORDER BY we.${updatedAt} ASC;`,
+		await runQuery(
+			`INSERT INTO workflow_publish_history (workflowId, versionId, status, mode)
+				SELECT we.${id}, we.${activeVersionId}, 'activated', 'update'
+				FROM ${workflowEntityTableName} we
+				WHERE we.${activeVersionId} IS NOT NULL
+				ORDER BY we.${updatedAt} ASC`,
 		);
-
-		if (activeWorkflows.length > 0) {
-			const values = activeWorkflows
-				.map(({ id, version }) => `('${id}', '${version}', 'activated', 'activate')`)
-				.join(',');
-			await runQuery(
-				`INSERT INTO ${workflowPublishHistoryTableName} (workflowId, versionId, status, mode) VALUES ${values};`,
-			);
-		}
 	}
 
 	async down({ schemaBuilder: { dropTable } }: MigrationContext) {

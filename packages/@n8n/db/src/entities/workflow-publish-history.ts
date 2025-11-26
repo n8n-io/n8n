@@ -14,16 +14,16 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	@Index()
 	workflowId: string;
 
-	@Column({ type: 'varchar', nullable: true })
-	versionId: string | null;
+	@Column({ type: 'varchar' })
+	versionId: string;
 
 	@Column()
 	status: 'activated' | 'deactivated';
 
 	@Column({ type: 'varchar' })
-	mode: WorkflowPublishHistoryMode | null;
+	mode: WorkflowPublishHistoryMode;
 
-	@Column({ type: 'varchar', nullable: true })
+	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
 	@OneToOne('User', {

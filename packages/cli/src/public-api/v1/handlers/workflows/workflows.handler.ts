@@ -312,7 +312,7 @@ export = {
 			if (workflow.activeVersionId !== null) {
 				// When workflow gets saved always remove it as the triggers could have been
 				// changed and so the changes would not take effect
-				await workflowManager.remove(id, req.user.id, 'update');
+				await workflowManager.remove(id, 'update', req.user.id);
 			}
 
 			try {
@@ -443,7 +443,7 @@ export = {
 			const activeWorkflowManager = Container.get(ActiveWorkflowManager);
 
 			if (workflow.activeVersionId) {
-				await activeWorkflowManager.remove(workflow.id, req.user.id, 'deactivate');
+				await activeWorkflowManager.remove(workflow.id, 'deactivate', req.user.id);
 
 				await setWorkflowAsInactive(workflow.id);
 

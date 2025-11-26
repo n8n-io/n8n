@@ -244,7 +244,7 @@ describe('remove()', () => {
 			const dbWorkflow = await createActiveWorkflow();
 
 			await activeWorkflowManager.init();
-			await activeWorkflowManager.remove(dbWorkflow.id);
+			await activeWorkflowManager.remove(dbWorkflow.id, 'deactivate');
 
 			expect(webhookService.deleteWorkflowWebhooks).toHaveBeenCalledTimes(1);
 		});
@@ -256,7 +256,7 @@ describe('remove()', () => {
 				.mockReturnValue([mock<IWebhookData>({ path: 'some-path' })]);
 
 			await activeWorkflowManager.init();
-			await activeWorkflowManager.remove(dbWorkflow.id);
+			await activeWorkflowManager.remove(dbWorkflow.id, 'deactivate');
 
 			expect(webhookService.deleteWebhook).toHaveBeenCalledTimes(1);
 		});
@@ -269,7 +269,7 @@ describe('remove()', () => {
 			);
 
 			await activeWorkflowManager.init();
-			await activeWorkflowManager.remove(dbWorkflow.id);
+			await activeWorkflowManager.remove(dbWorkflow.id, 'deactivate');
 
 			expect(removeTriggersAndPollersSpy).toHaveBeenCalledTimes(1);
 		});

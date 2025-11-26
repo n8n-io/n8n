@@ -56,14 +56,14 @@ export type PubSubCommandMap = {
 
 	'add-webhooks-triggers-and-pollers': {
 		workflowId: string;
+		reason: WorkflowActivateMode;
 		userId?: string;
-		reason?: WorkflowActivateMode;
 	};
 
 	'remove-triggers-and-pollers': {
 		workflowId: string;
+		reason: 'deactivate' | 'update';
 		userId?: string;
-		reason?: 'deactivate' | 'update';
 	};
 
 	'display-workflow-activation': {

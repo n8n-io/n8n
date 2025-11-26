@@ -307,8 +307,8 @@ export class WorkflowService {
 		if (isDraftPublishDisabled && wasActive) {
 			await this.activeWorkflowManager.remove(
 				workflowId,
-				user.id,
 				isNowActive ? 'update' : 'deactivate',
+				user.id,
 			);
 		}
 
@@ -617,7 +617,7 @@ export class WorkflowService {
 		}
 
 		// Remove from active workflow manager
-		await this.activeWorkflowManager.remove(workflowId, user.id, 'deactivate');
+		await this.activeWorkflowManager.remove(workflowId, 'deactivate', user.id);
 
 		await this.workflowRepository.update(workflowId, {
 			active: false,
@@ -663,7 +663,7 @@ export class WorkflowService {
 
 		if (workflow.active) {
 			// deactivate before deleting
-			await this.activeWorkflowManager.remove(workflowId, user.id, 'deactivate');
+			await this.activeWorkflowManager.remove(workflowId, 'deactivate', user.id);
 		}
 
 		const idsForDeletion = await this.executionRepository
@@ -706,7 +706,7 @@ export class WorkflowService {
 		}
 
 		if (workflow.activeVersionId !== null) {
-			await this.activeWorkflowManager.remove(workflowId, user.id, 'deactivate');
+			await this.activeWorkflowManager.remove(workflowId, 'deactivate', user.id);
 		}
 
 		const versionId = uuid();
