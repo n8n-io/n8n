@@ -9,8 +9,8 @@ export type WorkflowHistory = {
 	createdAt: string;
 	updatedAt: string;
 	workflowPublishHistory: WorkflowPublishHistory[];
-	name: string;
-	description: string;
+	name: string | null;
+	description: string | null;
 };
 
 export type WorkflowPublishHistory = {

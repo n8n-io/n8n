@@ -47,10 +47,7 @@ const containsTrigger = computed((): boolean => {
 });
 
 const wfHasAnyChanges = computed(() => {
-	return (
-		uiStore.stateIsDirty ||
-		workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId
-	);
+	return workflowsStore.workflow.versionId !== workflowsStore.workflow.activeVersion?.versionId;
 });
 
 const hasNodeIssues = computed(() => workflowsStore.nodesIssuesExist);
@@ -94,10 +91,6 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 
 	if (!wfHasAnyChanges.value) {
 		return 'noChanges';
-	}
-
-	if (!hasPublishedVersion.value) {
-		return 'noPublishedVersion';
 	}
 
 	if (showOverwriteActiveVersionWarning.value) {

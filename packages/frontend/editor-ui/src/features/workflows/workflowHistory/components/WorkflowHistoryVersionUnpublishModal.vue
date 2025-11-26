@@ -56,7 +56,7 @@ const onUnpublish = () => {
 		<template #footer>
 			<div :class="$style.footer">
 				<N8nButton size="medium" type="tertiary" @click="onCancel">
-					{{ i18n.baseText('workflowHistory.action.unpublish.modal.button.cancel') }}
+					{{ i18n.baseText('generic.cancel') }}
 				</N8nButton>
 				<N8nButton size="medium" type="primary" @click="onUnpublish">
 					{{ i18n.baseText('workflowHistory.action.unpublish.modal.button.unpublish') }}

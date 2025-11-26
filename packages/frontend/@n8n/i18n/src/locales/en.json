@@ -3093,7 +3093,6 @@
 	"workflowHistory.action.unpublish.success.title": "Workflow unpublished successfully",
 	"workflowHistory.action.unpublish.modal.title": "Unpublish {versionName}",
 	"workflowHistory.action.unpublish.modal.description": "This will prevent all production executions to this workflow until you publish again.",
-	"workflowHistory.action.unpublish.modal.button.cancel": "Cancel",
 	"workflowHistory.action.unpublish.modal.button.unpublish": "Unpublish",
 	"workflowHistory.button.tooltip.empty": "This workflow currently has no history to view. Once you've made your first save, you'll be able to view previous versions",
 	"workflowHistory.button.tooltip": "Workflow history to view and restore previous versions of your workflows",
