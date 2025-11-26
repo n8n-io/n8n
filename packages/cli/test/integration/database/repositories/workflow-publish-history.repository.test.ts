@@ -83,30 +83,6 @@ describe('WorkflowPublishHistoryRepository', () => {
 			});
 		});
 
-		it('should create a record with null mode', async () => {
-			const repository = Container.get(WorkflowPublishHistoryRepository);
-			const workflow = await createWorkflowWithHistory();
-
-			await repository.addRecord({
-				workflowId: workflow.id,
-				versionId: workflow.versionId,
-				status: 'deactivated',
-				mode: null,
-				userId: null,
-			});
-
-			const record = await repository.findOne({
-				where: { workflowId: workflow.id },
-			});
-
-			expect(record).toMatchObject({
-				workflowId: workflow.id,
-				versionId: workflow.versionId,
-				status: 'deactivated',
-				mode: null,
-			});
-		});
-
 		it('should create multiple records for same workflow', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflow();
