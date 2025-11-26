@@ -174,8 +174,8 @@ export const formFields: INodeProperties = {
 					type: 'string',
 					default: '',
 					displayOptions: {
-						hide: {
-							fieldType: ['file', 'html', 'hiddenField', 'date', 'dropdown', 'radio', 'checkbox'],
+						show: {
+							fieldType: ['text', 'number', 'email', 'textarea'],
 						},
 					},
 				},
@@ -204,7 +204,20 @@ export const formFields: INodeProperties = {
 					default: '',
 					displayOptions: {
 						show: {
-							fieldType: ['dropdown', 'radio', 'checkbox'],
+							fieldType: ['dropdown', 'radio'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma.',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['checkbox'],
 						},
 					},
 				},
