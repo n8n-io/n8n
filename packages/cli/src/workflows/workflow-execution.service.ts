@@ -4,7 +4,7 @@ import type { Project, User, CreateExecutionPayload } from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Response } from 'express';
-import { DirectedGraph, ErrorReporter, anyReachableRootHaveRunData } from 'n8n-core';
+import { DirectedGraph, ErrorReporter, anyReachableRootHasRunData } from 'n8n-core';
 import type {
 	IDeferredPromise,
 	IExecuteData,
@@ -17,7 +17,6 @@ import type {
 	WorkflowExecuteMode,
 	IWorkflowExecutionDataProcess,
 	IWorkflowBase,
-	IRunData,
 } from 'n8n-workflow';
 import {
 	SubworkflowOperationError,
@@ -97,18 +96,6 @@ export class WorkflowExecutionService {
 		return nodeType.description.group.includes('trigger');
 	}
 
-	private doesTriggerHaveRunData(
-		destinationNode: string,
-		workflowData: IWorkflowBase,
-		runData: IRunData,
-	) {
-		return anyReachableRootHaveRunData(
-			DirectedGraph.fromNodesAndConnections(workflowData.nodes, workflowData.connections),
-			destinationNode,
-			runData,
-		);
-	}
-
 	async executeManually(
 		payload: WorkflowRequest.ManualRunPayload,
 		user: User,
@@ -136,9 +123,12 @@ export class WorkflowExecutionService {
 			if (
 				// If the trigger has no runData we have to upgrade to a
 				// FullManualExecutionFromUnknownTriggerPayload
-				!this.doesTriggerHaveRunData(
+				!anyReachableRootHasRunData(
+					DirectedGraph.fromNodesAndConnections(
+						payload.workflowData.nodes,
+						payload.workflowData.connections,
+					),
 					payload.destinationNode,
-					payload.workflowData,
 					payload.runData,
 				) ||
 				// If the destination node is a trigger, then per definition this
