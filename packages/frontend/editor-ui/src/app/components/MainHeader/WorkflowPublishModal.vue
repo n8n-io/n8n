@@ -198,10 +198,14 @@ async function handlePublish() {
 	}
 
 	// Activate the workflow
-	const success = await workflowActivate.publishWorkflowFromCanvas(workflowsStore.workflow.id, {
-		name: versionName.value,
-		description: description.value,
-	});
+	const success = await workflowActivate.publishWorkflow(
+		workflowsStore.workflow.id,
+		workflowsStore.workflow.versionId,
+		{
+			name: versionName.value,
+			description: description.value,
+		},
+	);
 
 	if (success) {
 		// Show AI credits warning if applicable
