@@ -48,6 +48,7 @@ export interface SingleEvaluatorResult {
 
 export interface ProgrammaticChecksResult {
 	connections: ProgrammaticViolation[];
+	nodes: ProgrammaticViolation[];
 	trigger: ProgrammaticViolation[];
 	agentPrompt: ProgrammaticViolation[];
 	tools: ProgrammaticViolation[];
@@ -57,6 +58,7 @@ export interface ProgrammaticChecksResult {
 export interface ProgrammaticEvaluationResult {
 	overallScore: number;
 	connections: SingleEvaluatorResult;
+	nodes: SingleEvaluatorResult;
 	trigger: SingleEvaluatorResult;
 	agentPrompt: SingleEvaluatorResult;
 	tools: SingleEvaluatorResult;
