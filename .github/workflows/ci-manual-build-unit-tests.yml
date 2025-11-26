@@ -46,7 +46,7 @@ jobs:
 
   install-and-build:
     name: Install & Build
-    runs-on: [blacksmith-2vcpu-ubuntu-2204]
+    runs-on: [ubuntu-latest]
     env:
       NODE_OPTIONS: "--max-old-space-size=6144"
     steps:
