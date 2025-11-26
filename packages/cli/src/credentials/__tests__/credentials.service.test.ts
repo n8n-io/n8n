@@ -5,6 +5,8 @@ import type {
 	ProjectRepository,
 	UserRepository,
 	User,
+	WorkflowEntity,
+	WorkflowRepository,
 } from '@n8n/db';
 import { GLOBAL_OWNER_ROLE, GLOBAL_MEMBER_ROLE } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
@@ -21,6 +23,7 @@ import type { ProjectService } from '@/services/project.service.ee';
 import type { RoleService } from '@/services/role.service';
 import type { CredentialsTester } from '@/services/credentials-tester.service';
 import type { ExternalHooks } from '@/external-hooks';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 describe('CredentialsService', () => {
 	const credType = mock<ICredentialType>({
@@ -54,6 +57,7 @@ describe('CredentialsService', () => {
 	const roleService = mock<RoleService>();
 	const userRepository = mock<UserRepository>();
 	const credentialsFinderService = mock<CredentialsFinderService>();
+	const workflowRepository = mock<WorkflowRepository>();
 
 	const service = new CredentialsService(
 		credentialsRepository,
@@ -69,6 +73,7 @@ describe('CredentialsService', () => {
 		roleService,
 		userRepository,
 		credentialsFinderService,
+		workflowRepository,
 	);
 
 	beforeEach(() => jest.resetAllMocks());
@@ -1474,6 +1479,92 @@ describe('CredentialsService', () => {
 
 			// ASSERT
 			expect(savedCredential.isGlobal).toBeUndefined();
+		});
+	});
+
+	describe('getCredentialUsage', () => {
+		const user = { id: 'user-1', role: { scopes: [] } } as unknown as User;
+
+		it('throws when credential cannot be accessed', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(null);
+
+			await expect(service.getCredentialUsage(user, 'cred-1')).rejects.toThrow(NotFoundError);
+			expect(workflowRepository.findWorkflowsUsingCredential).not.toHaveBeenCalled();
+		});
+
+		it('returns workflows and access flags', async () => {
+			const credential = mock<CredentialsEntity>({ id: 'cred-2' });
+			credentialsFinderService.findCredentialForUser.mockResolvedValue(credential);
+
+			const workflowWithAccess = {
+				id: 'wf-1',
+				name: 'Workflow One',
+				active: true,
+				isArchived: false,
+				updatedAt: new Date('2024-01-01'),
+				shared: [
+					{
+						role: 'workflow:owner',
+						project: {
+							id: 'project-1',
+							type: 'team',
+							name: 'Team A',
+							icon: null,
+							projectRelations: [{ userId: user.id, role: { slug: 'project:editor', scopes: [] } }],
+						},
+					},
+				],
+			} as unknown as WorkflowEntity;
+
+			const workflowWithoutAccess = {
+				id: 'wf-2',
+				name: 'Workflow Two',
+				active: false,
+				isArchived: false,
+				updatedAt: new Date('2024-01-02'),
+				shared: [
+					{
+						role: 'workflow:owner',
+						project: {
+							id: 'project-2',
+							type: 'team',
+							name: 'Team B',
+							icon: null,
+							projectRelations: [
+								{ userId: 'someone-else', role: { slug: 'project:editor', scopes: [] } },
+							],
+						},
+					},
+				],
+			} as unknown as WorkflowEntity;
+
+			workflowRepository.findWorkflowsUsingCredential.mockResolvedValue([
+				workflowWithAccess,
+				workflowWithoutAccess,
+			]);
+
+			roleService.rolesWithScope.mockImplementation(async (namespace) =>
+				namespace === 'workflow' ? ['workflow:owner'] : ['project:editor'],
+			);
+
+			ownershipService.addOwnedByAndSharedWith.mockImplementation((workflowArg) => ({
+				...workflowArg,
+				homeProject: {
+					id: `${workflowArg.id}-project`,
+					name: `Project for ${workflowArg.id}`,
+					type: 'team',
+					icon: null,
+				},
+				sharedWithProjects: [],
+			}));
+
+			const result = await service.getCredentialUsage(user, credential.id);
+
+			expect(result.credentialId).toBe(credential.id);
+			expect(result.usageCount).toBe(2);
+			expect(result.workflows).toHaveLength(2);
+			expect(result.workflows[0].currentUserHasAccess).toBe(true);
+			expect(result.workflows[1].currentUserHasAccess).toBe(false);
 		});
 	});
 });

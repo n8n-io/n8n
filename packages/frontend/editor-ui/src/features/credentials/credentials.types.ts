@@ -1,4 +1,9 @@
-import type { Iso8601DateTimeString } from '@n8n/api-types';
+import type {
+	CredentialUsage,
+	CredentialUsageProject,
+	CredentialUsageWorkflow,
+	Iso8601DateTimeString,
+} from '@n8n/api-types';
 import type { ICredentialsDecrypted, ICredentialsEncrypted, ICredentialType } from 'n8n-workflow';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import type { Scope } from '@n8n/permissions';
@@ -8,6 +13,7 @@ export interface ICredentialsResponse extends ICredentialsEncrypted {
 	id: string;
 	createdAt: Iso8601DateTimeString;
 	updatedAt: Iso8601DateTimeString;
+	usageCount?: number;
 	sharedWithProjects?: ProjectSharingData[];
 	homeProject?: ProjectSharingData;
 	currentUserHasAccess?: boolean;
@@ -46,8 +52,11 @@ export interface ICredentialMap {
 export interface ICredentialsState {
 	credentialTypes: ICredentialTypeMap;
 	credentials: ICredentialMap;
+	usageById: Record<string, CredentialUsage | undefined>;
 }
 
 export interface IShareCredentialsPayload {
 	shareWithIds: string[];
 }
+
+export type { CredentialUsage, CredentialUsageProject, CredentialUsageWorkflow };

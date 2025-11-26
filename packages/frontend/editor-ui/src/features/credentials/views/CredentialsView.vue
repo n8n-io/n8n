@@ -206,10 +206,13 @@ const initialize = async () => {
 			!isPersonalView, // don't include global credentials if personal
 		),
 		credentialsStore.fetchCredentialTypes(false),
-		externalSecretsStore.fetchAllSecrets(),
 		nodeTypesStore.loadNodeTypesIfNotLoaded(),
 		isVarsEnabled ? useEnvironmentsStore().fetchAllVariables() : Promise.resolve(), // for expression resolution
 	];
+
+	if (externalSecretsStore.isEnterpriseExternalSecretsEnabled.value) {
+		loadPromises.push(externalSecretsStore.fetchAllSecrets());
+	}
 
 	await Promise.all(loadPromises);
 	maybeCreateCredential();

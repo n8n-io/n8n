@@ -26,6 +26,7 @@ import type {
 	ListQuery,
 } from '../entities/types-db';
 import { buildWorkflowsByNodesQuery } from '../utils/build-workflows-by-nodes-query';
+import { buildWorkflowsByCredentialIdQuery } from '../utils/build-workflows-by-credential-id-query';
 import { isStringArray } from '../utils/is-string-array';
 import { TimedQuery } from '../utils/timed-query';
 
@@ -847,6 +848,37 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 	async findByActiveState(activeState: boolean) {
 		return await this.findBy({ activeVersionId: activeState ? Not(IsNull()) : IsNull() });
+	}
+
+	async findWorkflowsUsingCredential(credentialId: string) {
+		const qb = this.createQueryBuilder('workflow');
+		const { whereClause, parameters } = buildWorkflowsByCredentialIdQuery(
+			credentialId,
+			this.globalConfig.database.type,
+		);
+
+		qb.where(whereClause, parameters)
+			.leftJoinAndSelect('workflow.shared', 'shared')
+			.leftJoinAndSelect('shared.project', 'project')
+			.leftJoinAndSelect('project.projectRelations', 'projectRelations')
+			.leftJoinAndSelect('projectRelations.role', 'projectRelationRole')
+			.select([
+				'workflow.id',
+				'workflow.name',
+				'workflow.active',
+				'workflow.isArchived',
+				'workflow.updatedAt',
+				'shared.role',
+				'project.id',
+				'project.name',
+				'project.type',
+				'project.icon',
+				'projectRelations.userId',
+				'projectRelationRole.slug',
+			])
+			.orderBy('workflow.updatedAt', 'DESC');
+
+		return await qb.getMany();
 	}
 
 	async moveAllToFolder(fromFolderId: string, toFolderId: string, tx: EntityManager) {

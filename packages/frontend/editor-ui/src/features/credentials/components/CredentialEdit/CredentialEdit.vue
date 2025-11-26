@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, useTemplateRef } from 'vue';
+import { computed, onMounted, ref, useTemplateRef, watch } from 'vue';
 
 import type { IUpdateInformation } from '@/Interface';
-import type { ICredentialsDecryptedResponse, ICredentialsResponse } from '../../credentials.types';
+import type {
+	CredentialUsage,
+	ICredentialsDecryptedResponse,
+	ICredentialsResponse,
+} from '../../credentials.types';
 
 import type {
 	CredentialInformation,
@@ -116,6 +120,8 @@ const isSharedWithChanged = ref(false);
 const requiredCredentials = ref(false); // Are credentials required or optional for the node
 const contentRef = ref<HTMLDivElement>();
 const isSharedGlobally = ref(false);
+const credentialUsage = ref<CredentialUsage | null>(null);
+const credentialUsageLoading = ref(false);
 
 const activeNodeType = computed(() => {
 	const activeNode = ndvStore.activeNode;
@@ -403,6 +409,59 @@ onMounted(async () => {
 
 	loading.value = false;
 });
+
+const syncCredentialUsageFromCache = (id?: string) => {
+	if (!id) {
+		credentialUsage.value = null;
+		return;
+	}
+
+	credentialUsage.value = credentialsStore.getCredentialUsageById(id) ?? null;
+};
+
+watch(
+	() => credentialId.value,
+	(id) => {
+		syncCredentialUsageFromCache(id);
+	},
+	{ immediate: true },
+);
+
+watch(
+	() => activeTab.value,
+	(tab) => {
+		if (tab === 'details') {
+			void ensureCredentialUsageLoaded();
+		}
+	},
+	{ immediate: true },
+);
+
+const ensureCredentialUsageLoaded = async (force = false) => {
+	if (!credentialId.value) {
+		return;
+	}
+
+	const cachedUsage = credentialsStore.getCredentialUsageById(credentialId.value);
+	if (cachedUsage && !force) {
+		credentialUsage.value = cachedUsage;
+		return;
+	}
+
+	credentialUsageLoading.value = true;
+	try {
+		const usage = await credentialsStore.fetchCredentialUsage(credentialId.value, {
+			forceReload: force,
+		});
+		credentialUsage.value = usage ?? null;
+	} finally {
+		credentialUsageLoading.value = false;
+	}
+};
+
+const refreshCredentialUsage = async () => {
+	await ensureCredentialUsageLoaded(true);
+};
 
 async function beforeClose() {
 	let keepEditing = false;
@@ -1258,7 +1317,12 @@ const { width } = useElementSize(credNameRef);
 					/>
 				</div>
 				<div v-else-if="activeTab === 'details' && credentialType" :class="$style.mainContent">
-					<CredentialInfo :current-credential="currentCredential" />
+					<CredentialInfo
+						:current-credential="currentCredential"
+						:credential-usage="credentialUsage"
+						:credential-usage-loading="credentialUsageLoading"
+						@refresh-usage="refreshCredentialUsage"
+					/>
 				</div>
 			</div>
 		</template>
