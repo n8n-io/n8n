@@ -100,18 +100,25 @@ function pullWorkfolder() {
 		data-test-id="main-sidebar-source-control"
 	>
 		<div :class="$style.connected" data-test-id="main-sidebar-source-control-connected">
-			<span
-				:class="$style.icon"
-				:style="{
-					color: accessibleTextColor,
-					background: sourceControlStore.preferences.branchColor,
-				}"
-			>
-				<N8nIcon icon="git-branch" size="small" />
-				<N8nText v-if="!isCollapsed" bold size="small" :class="$style.branchName">{{
-					currentBranch
-				}}</N8nText>
-			</span>
+			<N8nTooltip :disabled="!isCollapsed" :show-after="tooltipOpenDelay" placement="right">
+				<template #content>
+					<div>
+						{{ currentBranch }}
+					</div>
+				</template>
+				<span
+					:class="$style.icon"
+					:style="{
+						color: accessibleTextColor,
+						background: sourceControlStore.preferences.branchColor,
+					}"
+				>
+					<N8nIcon icon="git-branch" size="small" />
+					<N8nText v-if="!isCollapsed" bold size="small" :class="$style.branchName">{{
+						currentBranch
+					}}</N8nText>
+				</span>
+			</N8nTooltip>
 			<div>
 				<N8nTooltip
 					:disabled="!isCollapsed && hasPullPermission"
