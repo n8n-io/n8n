@@ -109,8 +109,7 @@ export class WorkflowExecutionService {
 
 		// TODO: Will be fixed on the FE side with CAT-1808
 		if ('triggerToStartFrom' in payload) {
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access
-			delete (payload as any).runData;
+			Reflect.deleteProperty(payload, 'runData');
 		}
 
 		let workflowExecutionDataProcess: IWorkflowExecutionDataProcess | undefined;
