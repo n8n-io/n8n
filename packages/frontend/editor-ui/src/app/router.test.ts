@@ -5,6 +5,7 @@ import { VIEWS } from '@/app/constants';
 import { setupServer } from '@/__tests__/server';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useRBACStore } from '@/app/stores/rbac.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Scope } from '@n8n/permissions';
 import type { RouteRecordName } from 'vue-router';
 import * as init from '@/app/init';
@@ -31,7 +32,10 @@ describe('router', () => {
 
 	beforeEach(() => {
 		settingsStore = useSettingsStore();
-		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => await Promise.resolve());
+		const usersStore = useUsersStore();
+		initializeAuthenticatedFeaturesSpy.mockImplementation(async () => {
+			await usersStore.initialize();
+		});
 	});
 
 	afterAll(() => {
