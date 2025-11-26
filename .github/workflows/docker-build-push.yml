@@ -3,29 +3,30 @@
 # - Uses docker-config.mjs for context determination, this determines what needs to be built based on the trigger
 # - Uses docker-tags.mjs for tag generation, this generates the tags for the images
 
-name: 'Docker: Build and Push'
+name: "Docker: Build and Push"
 
 env:
-  NODE_OPTIONS: '--max-old-space-size=7168'
-  NODE_VERSION: '22.21.0'
+  NODE_OPTIONS: "--max-old-space-size=7168"
+  NODE_VERSION: "22.21.0"
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
 
   workflow_call:
     inputs:
       n8n_version:
-        description: 'N8N version to build'
+        description: "N8N version to build"
         required: true
         type: string
       release_type:
-        description: 'Release type (stable, nightly, dev)'
+        description: "Release type (stable, nightly, dev)"
         required: false
         type: string
-        default: 'stable'
+        default: "stable"
       push_enabled:
-        description: 'Whether to push the built images'
+        description: "Whether to push the built images"
         required: false
         type: boolean
         default: true
@@ -33,12 +34,12 @@ on:
   workflow_dispatch:
     inputs:
       push_enabled:
-        description: 'Push image to registry'
+        description: "Push image to registry"
         required: false
         type: boolean
         default: true
       success_url:
-        description: 'URL to call after the build is successful'
+        description: "URL to call after the build is successful"
         required: false
         type: string
 
@@ -47,12 +48,12 @@ on:
       - opened
       - ready_for_review
     paths:
-      - '.github/workflows/docker-build-push.yml'
-      - '.github/scripts/docker/docker-config.mjs'
-      - '.github/scripts/docker/docker-tags.mjs'
-      - 'docker/images/n8n/Dockerfile'
-      - 'docker/images/runners/Dockerfile'
-      - 'docker/images/runners/Dockerfile.distroless'
+      - ".github/workflows/docker-build-push.yml"
+      - ".github/scripts/docker/docker-config.mjs"
+      - ".github/scripts/docker/docker-tags.mjs"
+      - "docker/images/n8n/Dockerfile"
+      - "docker/images/runners/Dockerfile"
+      - "docker/images/runners/Dockerfile.distroless"
 
 jobs:
   determine-build-context:
@@ -127,14 +128,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Login to Docker Hub
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY }}"
+          aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          aws-region: "us-west-2"
+      - name: Login to Amazon ECR
         if: |
           needs.determine-build-context.outputs.push_enabled == 'true' &&
           needs.determine-build-context.outputs.push_to_docker == 'true'
-        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+        uses: aws-actions/amazon-ecr-login@v2 # v3.4.0
 
       - name: Build and push n8n Docker image
         uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
@@ -149,7 +153,7 @@ jobs:
           provenance: true
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.n8n_tags }}
+          tags: 548235256840.dkr.ecr.us-west-2.amazonaws.com/n8n-forked/n8n:${{ needs.determine-build-context.outputs.n8n_version }}-${{ matrix.platform }}
 
       - name: Build and push task runners Docker image (Alpine)
         uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
@@ -164,7 +168,7 @@ jobs:
           provenance: true
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_tags }}
+          tags: 548235256840.dkr.ecr.us-west-2.amazonaws.com/n8n-forked/runners:${{ needs.determine-build-context.outputs.n8n_version }}-${{ matrix.platform }}
 
       - name: Build and push task runners Docker image (distroless)
         uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
@@ -179,7 +183,7 @@ jobs:
           provenance: true
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
-          tags: ${{ steps.determine-tags.outputs.runners_distroless_tags }}
+          tags: 548235256840.dkr.ecr.us-west-2.amazonaws.com/n8n-forked/runners-distroless:${{ needs.determine-build-context.outputs.n8n_version }}-${{ matrix.platform }}
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
@@ -281,7 +285,12 @@ jobs:
 
   security-scan:
     name: Security Scan
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    needs:
+      [
+        determine-build-context,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+      ]
     if: |
       success() &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
@@ -293,7 +302,12 @@ jobs:
 
   security-scan-runners:
     name: Security Scan (runners)
-    needs: [determine-build-context, build-and-push-docker, create_multi_arch_manifest]
+    needs:
+      [
+        determine-build-context,
+        build-and-push-docker,
+        create_multi_arch_manifest,
+      ]
     if: |
       success() &&
       (needs.determine-build-context.outputs.release_type == 'stable' ||
@@ -312,6 +326,6 @@ jobs:
       - uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         with:
           status: ${{ needs.build-and-push-docker.result }}
-          channel: '#team-catalysts'
+          channel: "#team-catalysts"
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: Nightly Docker build failed - ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
