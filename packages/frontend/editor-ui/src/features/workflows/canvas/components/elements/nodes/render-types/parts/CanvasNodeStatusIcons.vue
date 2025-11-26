@@ -5,7 +5,6 @@ import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { useCanvasNode } from '../../../../../composables/useCanvasNode';
 import { useI18n } from '@n8n/i18n';
 import { CanvasNodeDirtiness, CanvasNodeRenderType } from '../../../../../canvas.types';
-import { useCanvas } from '@/features/workflows/canvas/composables/useCanvas';
 import { useRoute } from 'vue-router';
 import { VIEWS } from '@/app/constants';
 
@@ -31,9 +30,6 @@ const {
 	hasExecutionErrors,
 	hasValidationErrors,
 	executionStatus,
-	executionWaiting,
-	executionWaitingForNext,
-	executionRunning,
 	hasRunData,
 	runDataIterations,
 	isDisabled,
@@ -41,7 +37,6 @@ const {
 	isNotInstalledCommunityNode,
 } = useCanvasNode();
 const route = useRoute();
-const { isExecuting } = useCanvas();
 
 const hideNodeIssues = computed(() => false); // @TODO Implement this
 const isDemoRoute = computed(() => route.name === VIEWS.DEMO);
@@ -49,13 +44,6 @@ const dirtiness = computed(() =>
 	render.value.type === CanvasNodeRenderType.Default ? render.value.options.dirtiness : undefined,
 );
 
-const isNodeExecuting = computed(() => {
-	if (!isExecuting.value) return false;
-
-	return (
-		executionRunning.value || executionWaitingForNext.value || executionStatus.value === 'running' // eslint-disable-line @typescript-eslint/prefer-nullish-coalescing
-	);
-});
 const commonClasses = computed(() => [
 	$style.status,
 	spinnerScrim ? $style.spinnerScrim : '',
