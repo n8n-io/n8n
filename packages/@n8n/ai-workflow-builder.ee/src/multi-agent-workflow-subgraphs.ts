@@ -82,11 +82,10 @@ function createSubgraphNodeHandler<
  * Parent graph orchestrates between subgraphs with minimal shared state.
  */
 export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraphConfig) {
-	const { parsedNodeTypes, llmComplexTask, logger, instanceUrl, checkpointer, llmSimpleTask } =
-		config;
+	const { parsedNodeTypes, llmComplexTask, logger, instanceUrl, checkpointer } = config;
 
-	const supervisorAgent = new SupervisorAgent({ llm: llmSimpleTask });
-	const responderAgent = new ResponderAgent({ llm: llmSimpleTask });
+	const supervisorAgent = new SupervisorAgent({ llm: llmComplexTask });
+	const responderAgent = new ResponderAgent({ llm: llmComplexTask });
 
 	// Create subgraph instances
 	const discoverySubgraph = new DiscoverySubgraph();
@@ -94,7 +93,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const configuratorSubgraph = new ConfiguratorSubgraph();
 
 	// Compile subgraphs
-	const compiledDiscovery = discoverySubgraph.create({ parsedNodeTypes, llm: llmSimpleTask });
+	const compiledDiscovery = discoverySubgraph.create({ parsedNodeTypes, llm: llmComplexTask });
 	const compiledBuilder = builderSubgraph.create({ parsedNodeTypes, llm: llmComplexTask, logger });
 	const compiledConfigurator = configuratorSubgraph.create({
 		parsedNodeTypes,

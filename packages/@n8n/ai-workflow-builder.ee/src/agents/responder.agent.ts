@@ -14,7 +14,7 @@ You have access to context about what has been built, including:
 - Builder output (workflow structure)
 - Configuration summary (setup instructions)
 
-<workflow_completion_responses>
+FOR WORKFLOW COMPLETION RESPONSES:
 When you receive [Internal Context], synthesize a clean user-facing response:
 1. Summarize what was built in a friendly way
 2. Explain the workflow structure briefly
@@ -29,21 +29,16 @@ Example response structure:
 [List any configuration steps from the context]
 
 Let me know if you'd like to adjust anything."
-</workflow_completion_responses>
 
-<conversation_style>
-For questions and general conversation:
+FOR QUESTIONS/CONVERSATIONS:
 - Be friendly and concise
 - Explain n8n capabilities when asked
 - Provide practical examples when helpful
-</conversation_style>
 
-<response_guidelines>
-- Keep responses focused and appropriately sized for the question
-- Use markdown formatting for readability when presenting structured information
-- Use flowing prose for explanations and conversation
-- Be conversational and helpful
-</response_guidelines>`;
+RESPONSE STYLE:
+- Keep responses focused and not overly long
+- Use markdown formatting for readability
+- Be conversational and helpful`;
 
 const systemPrompt = ChatPromptTemplate.fromMessages([
 	[
