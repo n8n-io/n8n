@@ -18,7 +18,7 @@ permissions:
 jobs:
   create-check-run:
     name: Create Check Run
-    runs-on: ["k8s-runners-builder"]
+    runs-on: ubuntu-latest
     if: inputs.pr_number != ''
     outputs:
       check_run_id: ${{ steps.create.outputs.check_run_id }}
@@ -46,7 +46,7 @@ jobs:
 
   install-and-build:
     name: Install & Build
-    runs-on: ["k8s-runners-builder"]
+    runs-on: [blacksmith-2vcpu-ubuntu-2204]
     env:
       NODE_OPTIONS: "--max-old-space-size=6144"
     steps:
