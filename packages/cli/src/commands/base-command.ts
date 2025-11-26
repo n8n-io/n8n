@@ -18,6 +18,7 @@ import {
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
+	ExecutionContextHookRegistry,
 } from 'n8n-core';
 import { ensureError, sleep, UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -64,6 +65,8 @@ export abstract class BaseCommand<F = never> {
 
 	protected readonly moduleRegistry = Container.get(ModuleRegistry);
 
+	protected readonly executionContextHookRegistry = Container.get(ExecutionContextHookRegistry);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -95,6 +98,8 @@ export abstract class BaseCommand<F = never> {
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
+
+		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).init();
 
 		await this.dbConnection

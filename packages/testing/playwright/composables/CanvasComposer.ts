@@ -161,4 +161,30 @@ export class CanvasComposer {
 		await expect(this.n8n.canvas.getNodeViewLoader()).toBeHidden();
 		await expect(this.n8n.canvas.getLoadingMask()).toBeHidden();
 	}
+
+	/**
+	 * Save workflow and wait for URL to be updated with the workflow ID.
+	 * Use this when you need the workflow URL/ID immediately after saving.
+	 * @returns The workflow URL after save
+	 */
+	async saveWorkflowAndWaitForUrl(): Promise<string> {
+		const isNewWorkflow = this.n8n.page.url().includes('/workflow/new');
+
+		if (isNewWorkflow) {
+			const responsePromise = this.n8n.page.waitForResponse(
+				(response) =>
+					response.url().includes('/rest/workflows') &&
+					response.request().method() === 'POST' &&
+					response.status() === 200,
+			);
+			await this.n8n.canvas.saveWorkflow();
+			await responsePromise;
+			// Wait for URL to update after response
+			await this.n8n.page.waitForURL(/\/workflow\/[a-zA-Z0-9]+$/);
+		} else {
+			await this.n8n.canvas.saveWorkflow();
+		}
+
+		return this.n8n.page.url();
+	}
 }

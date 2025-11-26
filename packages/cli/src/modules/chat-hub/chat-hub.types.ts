@@ -1,5 +1,21 @@
-import type { ChatHubConversationModel, ChatMessageId, ChatSessionId } from '@n8n/api-types';
+import type {
+	ChatHubConversationModel,
+	ChatHubProvider,
+	ChatMessageId,
+	ChatSessionId,
+	ChatAttachment,
+} from '@n8n/api-types';
 import type { INode, INodeCredentials } from 'n8n-workflow';
+import { z } from 'zod';
+
+export interface ModelWithCredentials {
+	provider: ChatHubProvider;
+	model?: string;
+	workflowId?: string;
+	credentialId: string | null;
+	agentId?: string;
+	name?: string;
+}
 
 export interface BaseMessagePayload {
 	userId: string;
@@ -12,6 +28,7 @@ export interface HumanMessagePayload extends BaseMessagePayload {
 	messageId: ChatMessageId;
 	message: string;
 	previousMessageId: ChatMessageId | null;
+	attachments: ChatAttachment[];
 	tools: INode[];
 }
 export interface RegenerateMessagePayload extends BaseMessagePayload {
@@ -31,3 +48,14 @@ export interface MessageRecord {
 	message: string;
 	hideFromUI: boolean;
 }
+
+export const validChatTriggerParamsShape = z.object({
+	availableInChat: z.literal(true),
+	agentName: z.string().min(1).optional(),
+	agentDescription: z.string().min(1).optional(),
+	options: z
+		.object({
+			allowFileUploads: z.boolean().optional(),
+		})
+		.optional(),
+});
