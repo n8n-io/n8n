@@ -151,7 +151,6 @@ export class WorkflowRunner {
 		 * so we persist all details to give workers full access to them.
 		 */
 		if (data.executionMode === 'manual' && offloadingManualExecutionsInQueueMode) {
-			console.log('offloadingManualExecutionsInQueueMode');
 			data.executionData = createRunExecutionData({
 				startData: {
 					startNodes: data.startNodes,
