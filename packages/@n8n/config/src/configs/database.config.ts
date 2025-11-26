@@ -119,7 +119,7 @@ class MysqlConfig {
 	poolSize: number = 10;
 }
 
-const sqlitePoolSizeSchema = z.number().int().gte(1);
+const sqlitePoolSizeSchema = z.coerce.number().int().gte(1);
 
 @Config
 export class SqliteConfig {
