@@ -78,6 +78,10 @@ const agentMergedCredentials = computed((): CredentialsMap => {
 	};
 });
 
+const canSelectTools = computed(
+	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
+);
+
 watch(
 	customAgent,
 	(agent) => {
@@ -266,6 +270,7 @@ function onSelectTools(newTools: INode[]) {
 					</N8nInputLabel>
 
 					<N8nInputLabel
+						v-if="canSelectTools"
 						input-name="agent-model"
 						:class="$style.input"
 						:label="i18n.baseText('chatHub.agent.editor.tools.label')"

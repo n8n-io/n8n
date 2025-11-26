@@ -47,6 +47,12 @@ const agent = computed<ChatModelDto | null>(() => {
 		description: null,
 		createdAt: null,
 		updatedAt: null,
+		metadata: {
+			inputModalities: ['text'],
+			capabilities: {
+				functionCalling: true,
+			},
+		},
 	};
 });
 

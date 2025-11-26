@@ -9,6 +9,7 @@ import {
 	findOneFromModelsResponse,
 	isLlmProvider,
 	unflattenModel,
+	createMimeTypes,
 } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
@@ -70,8 +71,9 @@ const currentConversation = computed(() =>
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 const readyToShowMessages = computed(() => chatStore.agentsReady);
 
-// TODO: This also depends on the model, not all base LLM models support tools.
-const canSelectTools = computed(() => isLlmProvider(selectedModel.value?.model.provider));
+const canSelectTools = computed(
+	() => selectedModel.value?.metadata.capabilities.functionCalling ?? false,
+);
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
@@ -209,12 +211,14 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 
-const canAcceptFiles = computed(
-	() =>
-		editingMessageId.value === undefined &&
-		!!selectedModel.value?.allowFileUploads &&
-		!isMissingSelectedCredential.value,
-);
+const canAcceptFiles = computed(() => {
+	const modalities = selectedModel.value?.metadata.inputModalities;
+	if (!modalities) {
+		return false;
+	}
+	const mimeTypes = createMimeTypes(modalities);
+	return editingMessageId.value === undefined && !!mimeTypes && !isMissingSelectedCredential.value;
+});
 
 const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
 

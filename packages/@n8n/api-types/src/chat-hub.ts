@@ -208,13 +208,22 @@ export const chatModelsRequestSchema = z.object({
 
 export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
 
+export type InputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
+
+export interface ChatModelMetadataDto {
+	inputModalities: InputModality[];
+	capabilities: {
+		functionCalling: boolean;
+	};
+}
+
 export interface ChatModelDto {
 	model: ChatHubConversationModel;
 	name: string;
 	description: string | null;
 	updatedAt: string | null;
 	createdAt: string | null;
-	allowFileUploads?: boolean;
+	metadata: ChatModelMetadataDto;
 }
 
 /**

@@ -72,7 +72,12 @@ function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
 		description: null,
 		updatedAt: null,
 		createdAt: null,
-		allowFileUploads: true,
+		metadata: {
+			inputModalities: ['text', 'image'],
+			capabilities: {
+				functionCalling: true,
+			},
+		},
 	});
 }
 
@@ -149,6 +154,12 @@ const menu = computed(() => {
 					},
 					createdAt: '',
 					updatedAt: null,
+					metadata: {
+						inputModalities: ['text'],
+						capabilities: {
+							functionCalling: true,
+						},
+					},
 				});
 			}
 		}

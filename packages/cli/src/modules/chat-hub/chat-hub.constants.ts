@@ -1,4 +1,4 @@
-import type { ChatHubLLMProvider } from '@n8n/api-types';
+import type { ChatHubLLMProvider, InputModality } from '@n8n/api-types';
 import type { INodeTypeNameVersion } from 'n8n-workflow';
 
 export const CONVERSATION_TITLE_GENERATION_PROMPT = `Generate a concise, descriptive title for this conversation based on the user's message.
@@ -89,3 +89,22 @@ export const JSONL_STREAM_HEADERS = {
 	Connection: 'keep-alive',
 };
 /* eslint-enable @typescript-eslint/naming-convention */
+
+/**
+ * Helper function to get model metadata including capabilities and input modalities
+ * TODO: Need AI-886 for the comprehensive metadata
+ */
+export function getModelMetadata(
+	provider: ChatHubLLMProvider,
+	modelId: string,
+): { inputModalities: InputModality[]; capabilities: { functionCalling: boolean } } {
+	return {
+		inputModalities:
+			provider === 'anthropic' && modelId === 'claude-3-5-haiku-20241022'
+				? ['text']
+				: ['text', 'image', 'audio', 'video', 'file'],
+		capabilities: {
+			functionCalling: !(provider === 'openai' && modelId === 'gpt-4o-mini-search-preview'),
+		},
+	};
+}
