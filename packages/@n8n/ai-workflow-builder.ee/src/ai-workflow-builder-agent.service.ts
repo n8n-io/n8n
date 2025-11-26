@@ -162,7 +162,7 @@ export class AiWorkflowBuilderService {
 			llmSimpleTask: anthropicClaude,
 			llmComplexTask: anthropicClaude,
 			logger: this.logger,
-			enableMultiAgent: true,
+			enableMultiAgent: Boolean(process.env.N8N_ENABLE_MULTI_AGENT),
 			checkpointer: this.sessionManager.getCheckpointer(),
 			tracer: tracingClient
 				? new LangChainTracer({ client: tracingClient, projectName: 'n8n-workflow-builder' })
