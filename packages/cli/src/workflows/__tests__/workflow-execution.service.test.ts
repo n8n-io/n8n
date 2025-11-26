@@ -357,7 +357,7 @@ describe('WorkflowExecutionService', () => {
 			workflow.nodes = [];
 		});
 
-		it('should return `null` if no pindata', () => {
+		it('should return `undefined` if no pindata', () => {
 			workflow.nodes.push(webhookNode, hackerNewsNode);
 			workflow.connections = {
 				...createMainConnection(hackerNewsNode.name, webhookNode.name),
@@ -365,7 +365,7 @@ describe('WorkflowExecutionService', () => {
 
 			const node = workflowExecutionService.selectPinnedTrigger(workflow, hackerNewsNode.name, {});
 
-			expect(node).toBeNull();
+			expect(node).toBeUndefined();
 		});
 
 		it('should select webhook node if only choice', () => {
@@ -383,7 +383,7 @@ describe('WorkflowExecutionService', () => {
 			expect(node).toEqual(webhookNode);
 		});
 
-		it('should return `null` if no choice', () => {
+		it('should return `undefined` if no choice', () => {
 			workflow.nodes.push(hackerNewsNode);
 
 			const node = workflowExecutionService.selectPinnedTrigger(
@@ -392,7 +392,7 @@ describe('WorkflowExecutionService', () => {
 				pinData,
 			);
 
-			expect(node).toBeNull();
+			expect(node).toBeUndefined();
 		});
 
 		it('should ignore Respond to Webhook', () => {
@@ -407,7 +407,7 @@ describe('WorkflowExecutionService', () => {
 				pinData,
 			);
 
-			expect(node).toBeNull();
+			expect(node).toBeUndefined();
 		});
 
 		it('should select execute workflow trigger if only choice', () => {
