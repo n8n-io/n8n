@@ -62,7 +62,7 @@ const handlePublish = async () => {
 	}
 
 	isPublishDisabled.value = true;
-	const success = await workflowActivate.publishWorkflowFromHistory(
+	const success = await workflowActivate.publishWorkflow(
 		props.data.workflowId,
 		props.data.versionId,
 		{

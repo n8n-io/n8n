@@ -132,61 +132,7 @@ export function useWorkflowActivate() {
 		return await updateWorkflowActivation(workflowId, true, telemetrySource);
 	};
 
-	const publishWorkflowFromCanvas = async (
-		workflowId: string,
-		options: { description?: string; name?: string } = {},
-	) => {
-		updatingWorkflowActivation.value = true;
-		const wasWorkflowActive = workflowsStore.isWorkflowActive;
-
-		const hasPublishedVersion = !!workflowsStore.workflow.activeVersion;
-
-		if (!hasPublishedVersion) {
-			const telemetryPayload = {
-				workflow_id: workflowId,
-				is_active: true,
-				previous_status: false,
-				ndv_input: false,
-			};
-			void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
-		}
-
-		try {
-			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
-				versionId: workflowsStore.workflow.versionId,
-				...options,
-			});
-
-			if (!updatedWorkflow.activeVersion) {
-				throw new Error('Failed to publish workflow');
-			}
-
-			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion);
-
-			void useExternalHooks().run('workflow.activeChangeCurrent', {
-				workflowId,
-				versionId: updatedWorkflow.activeVersion.versionId,
-				active: true,
-			});
-
-			if (!wasWorkflowActive && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
-				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
-			}
-			return true;
-		} catch (error) {
-			toast.showError(
-				error,
-				i18n.baseText('workflowActivator.showError.title', {
-					interpolate: { newStateName: 'published' },
-				}) + ':',
-			);
-			return false;
-		} finally {
-			updatingWorkflowActivation.value = false;
-		}
-	};
-
-	const publishWorkflowFromHistory = async (
+	const publishWorkflow = async (
 		workflowId: string,
 		versionId: string,
 		options?: { name?: string; description?: string },
@@ -220,7 +166,7 @@ export function useWorkflowActivate() {
 
 			void useExternalHooks().run('workflow.activeChangeCurrent', {
 				workflowId,
-				versionId,
+				versionId: updatedWorkflow.activeVersion.versionId,
 				active: true,
 			});
 
@@ -232,7 +178,7 @@ export function useWorkflowActivate() {
 			toast.showError(
 				error,
 				i18n.baseText('workflowActivator.showError.title', {
-					interpolate: { newStateName: 'activated' },
+					interpolate: { newStateName: 'published' },
 				}) + ':',
 			);
 			return false;
@@ -284,8 +230,7 @@ export function useWorkflowActivate() {
 		activateCurrentWorkflow,
 		updateWorkflowActivation,
 		updatingWorkflowActivation,
-		publishWorkflowFromCanvas,
-		publishWorkflowFromHistory,
+		publishWorkflow,
 		unpublishWorkflowFromHistory,
 	};
 }
