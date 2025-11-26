@@ -121,6 +121,20 @@ const resourceTypeLabel = computed(() => locale.baseText('generic.workflow').toL
 const currentUser = computed(() => usersStore.currentUser ?? ({} as IUser));
 const workflowPermissions = computed(() => getResourcePermissions(props.data.scopes).workflow);
 
+const globalPermissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).workflow,
+);
+const projectPermissions = computed(
+	() =>
+		getResourcePermissions(
+			projectsStore.myProjects?.find((p) => props.data.homeProject?.id === p.id)?.scopes,
+		).workflow,
+);
+
+const canCreateWorkflow = computed(
+	() => globalPermissions.value.create ?? projectPermissions.value.create,
+);
+
 const showFolders = computed(() => {
 	return props.areFoldersEnabled && route.name !== VIEWS.WORKFLOWS;
 });
@@ -168,7 +182,12 @@ const actions = computed(() => {
 		},
 	];
 
-	if (workflowPermissions.value.create && !props.readOnly && !props.data.isArchived) {
+	if (
+		workflowPermissions.value.read &&
+		canCreateWorkflow.value &&
+		!props.readOnly &&
+		!props.data.isArchived
+	) {
 		items.push({
 			label: locale.baseText('workflows.item.duplicate'),
 			value: WORKFLOW_LIST_ITEM_ACTIONS.DUPLICATE,
