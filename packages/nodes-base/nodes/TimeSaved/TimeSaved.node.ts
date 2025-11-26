@@ -52,6 +52,7 @@ export class TimeSaved implements INodeType {
 				name: 'minutesSaved',
 				type: 'number',
 				default: 0,
+				noDataExpression: true,
 				typeOptions: {
 					minValue: 0,
 				},
@@ -69,7 +70,7 @@ export class TimeSaved implements INodeType {
 			},
 		],
 		// TODO: see if we can use posthog here
-		hidden: true,
+		// hidden: true,
 	};
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {

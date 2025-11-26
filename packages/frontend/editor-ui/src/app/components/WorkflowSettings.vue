@@ -12,15 +12,7 @@ import {
 	TIME_SAVED_NODE_EXPERIMENT,
 	NODE_CREATOR_OPEN_SOURCES,
 } from '@/app/constants';
-import {
-	N8nButton,
-	N8nIcon,
-	N8nInput,
-	N8nOption,
-	N8nSelect,
-	N8nTabs,
-	N8nTooltip,
-} from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -159,18 +151,19 @@ const hasSavedTimeNodes = computed(() => {
 	return savedTimeNodes.value.length > 0;
 });
 
-const timeSavedTab = ref<'fixed' | 'conditional'>(
-	hasSavedTimeNodes.value ? 'conditional' : 'fixed',
+const timeSavedMode = ref<'fixed' | 'dynamic'>(
+	console.log('workflow', workflow.value),
+	hasSavedTimeNodes.value ? 'dynamic' : 'fixed',
 );
 
-const timeSavedTabOptions = computed(() => [
+const timeSavedModeOptions = computed(() => [
 	{
-		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.fixed'),
+		label: 'Fixed',
 		value: 'fixed' as const,
 	},
 	{
-		label: i18n.baseText('workflowSettings.timeSavedPerExecution.tab.conditional'),
-		value: 'conditional' as const,
+		label: 'Dynamic (node based)',
+		value: 'dynamic' as const,
 	},
 ]);
 
@@ -990,93 +983,114 @@ onBeforeUnmount(() => {
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
 						</div>
-						<div v-else :class="$style['time-saved-tabs']">
-							<N8nTabs
-								v-model="timeSavedTab"
-								:options="timeSavedTabOptions"
-								data-test-id="workflow-settings-time-saved-tabs"
+						<div v-else class="ignore-key-press-canvas">
+							<N8nSelect
+								v-model="timeSavedMode"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								data-test-id="workflow-settings-time-saved-mode"
+								size="medium"
+								filterable
+								:limit-popper-width="true"
+							>
+								<N8nOption
+									v-for="option in timeSavedModeOptions"
+									:key="option.value"
+									:label="option.label"
+									:value="option.value"
+								/>
+							</N8nSelect>
+						</div>
+					</ElCol>
+				</ElRow>
+				<!-- Fixed mode warning section (only shown in fixed mode when nodes exist) -->
+				<ElRow
+					v-if="isTimeSavedNodeExperimentEnabled && timeSavedMode === 'fixed' && hasSavedTimeNodes"
+				>
+					<ElCol :span="14" :offset="10">
+						<div :class="$style['time-saved-content']">
+							<div :class="$style['time-saved-warning']">
+								<span
+									v-n8n-html="
+										i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning', {
+											interpolate: {
+												link: `<a href='#' class='${$style['time-saved-link']}' data-action='openSavedTimeNodeCreator'>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.link')}</a>`,
+												action: `<strong>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.action')}</strong>`,
+											},
+										})
+									"
+								></span>
+							</div>
+						</div>
+					</ElCol>
+				</ElRow>
+				<!-- Minutes saved section (only shown in fixed mode) -->
+				<ElRow
+					v-if="isTimeSavedNodeExperimentEnabled && timeSavedMode === 'fixed' && !hasSavedTimeNodes"
+				>
+					<ElCol :span="14" :offset="10">
+						<div :class="$style['time-saved']">
+							<N8nInput
+								id="timeSavedPerExecution"
+								v-model="workflowSettings.timeSavedPerExecution"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								data-test-id="workflow-settings-time-saved-per-execution"
+								type="number"
+								min="0"
+								@update:model-value="updateTimeSavedPerExecution"
 							/>
-							<div :class="$style['time-saved-content']">
-								<!-- Fixed tab content -->
-								<div v-if="timeSavedTab === 'fixed'" :class="$style['time-saved-fixed']">
-									<div v-if="hasSavedTimeNodes" :class="$style['time-saved-warning']">
-										<span
-											v-n8n-html="
-												i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning', {
-													interpolate: {
-														link: `<a href='#' class='${$style['time-saved-link']}' data-action='openSavedTimeNodeCreator'>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.link')}</a>`,
-														action: `<strong>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.action')}</strong>`,
-													},
+							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
+						</div>
+					</ElCol>
+				</ElRow>
+				<!-- Active nodes section (only shown in dynamic mode when nodes exist) -->
+				<ElRow
+					v-if="
+						isTimeSavedNodeExperimentEnabled && timeSavedMode === 'dynamic' && hasSavedTimeNodes
+					"
+				>
+					<ElCol :span="14" :offset="10">
+						<div :class="$style['time-saved-content']">
+							<div :class="$style['time-saved-nodes-active']">
+								<div :class="$style['nodes-active-wrapper']">
+									<N8nIcon icon="clock" :class="$style['nodes-active-icon']" />
+									<div :class="$style['nodes-active-content']">
+										<div :class="$style['nodes-active-title']">
+											{{
+												i18n.baseText('workflowSettings.timeSavedPerExecution.nodesDetected', {
+													interpolate: { count: savedTimeNodes.length },
 												})
-											"
-										></span>
-									</div>
-									<div v-else :class="$style['time-saved-input']">
-										<N8nInput
-											id="timeSavedPerExecution"
-											v-model="workflowSettings.timeSavedPerExecution"
-											:disabled="readOnlyEnv || !workflowPermissions.update"
-											data-test-id="workflow-settings-time-saved-per-execution"
-											type="number"
-											min="0"
-											@update:model-value="updateTimeSavedPerExecution"
-										/>
-										<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
+											}}
+										</div>
+										<div :class="$style['nodes-active-hint']">
+											{{
+												i18n.baseText('workflowSettings.timeSavedPerExecution.nodesDetected.hint')
+											}}
+										</div>
 									</div>
 								</div>
-
-								<!-- Conditional tab content -->
-								<div v-else :class="$style['time-saved-conditional']">
-									<div v-if="!hasSavedTimeNodes" :class="$style['time-saved-no-nodes']">
-										<div :class="$style['no-nodes-title']">
-											{{ i18n.baseText('workflowSettings.timeSavedPerExecution.noNodesDetected') }}
-										</div>
-										<div
-											:class="$style['no-nodes-hint']"
-											v-n8n-html="
-												i18n.baseText(
-													'workflowSettings.timeSavedPerExecution.noNodesDetected.hint',
-													{
-														interpolate: {
-															link: `<a href='#' class='${$style['time-saved-link']}' data-action='openSavedTimeNodeCreator'>${i18n.baseText('workflowSettings.timeSavedPerExecution.noNodesDetected.link')}</a>`,
-														},
-													},
-												)
-											"
-										></div>
-									</div>
-									<div v-else :class="$style['time-saved-nodes-active']">
-										<div :class="$style['nodes-active-wrapper']">
-											<N8nIcon icon="clock" :class="$style['nodes-active-icon']" />
-											<div :class="$style['nodes-active-content']">
-												<div :class="$style['nodes-active-title']">
-													{{
-														i18n.baseText('workflowSettings.timeSavedPerExecution.nodesDetected', {
-															interpolate: { count: savedTimeNodes.length },
-														})
-													}}
-												</div>
-												<div :class="$style['nodes-active-hint']">
-													{{
-														i18n.baseText(
-															'workflowSettings.timeSavedPerExecution.nodesDetected.hint',
-														)
-													}}
-												</div>
-											</div>
-										</div>
-										<a
-											href="#"
-											:class="$style['add-more-link']"
-											data-action="openSavedTimeNodeCreator"
-										>
-											{{
-												i18n.baseText(
-													'workflowSettings.timeSavedPerExecution.nodesDetected.addMore',
-												)
-											}}
-										</a>
-									</div>
+								<a href="#" :class="$style['add-more-link']" data-action="openSavedTimeNodeCreator">
+									{{
+										i18n.baseText('workflowSettings.timeSavedPerExecution.nodesDetected.addMore')
+									}}
+								</a>
+							</div>
+						</div>
+					</ElCol>
+				</ElRow>
+				<!-- No nodes detected section (only shown in dynamic mode when no nodes) -->
+				<ElRow
+					v-if="
+						isTimeSavedNodeExperimentEnabled && timeSavedMode === 'dynamic' && !hasSavedTimeNodes
+					"
+				>
+					<ElCol :span="14" :offset="10">
+						<div :class="$style['time-saved-content']">
+							<div :class="$style['time-saved-no-nodes']">
+								<div :class="$style['no-nodes-title']">
+									{{ i18n.baseText('workflowSettings.timeSavedPerExecution.noNodesDetected') }}
+								</div>
+								<div :class="$style['no-nodes-hint']">
+									{{ i18n.baseText('workflowSettings.timeSavedPerExecution.noNodesDetected.hint') }}
 								</div>
 							</div>
 						</div>
@@ -1151,6 +1165,10 @@ onBeforeUnmount(() => {
 	span {
 		margin-left: var(--spacing--2xs);
 	}
+}
+
+.time-saved-dropdown {
+	margin-bottom: var(--spacing--sm);
 }
 
 .time-saved-tabs {
