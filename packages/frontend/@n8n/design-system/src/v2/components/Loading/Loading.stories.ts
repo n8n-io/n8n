@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3-vite';
 
-import Loading from './Loading.vue';
 import { SKELETON_VARIANTS } from './Loading.types';
+import Loading from './Loading.vue';
 
 const meta = {
 	title: 'Components V2/Loading',
