@@ -10,9 +10,10 @@ import {
 	Workflow,
 } from 'n8n-workflow';
 
-import { Cipher } from '@/encryption';
-
 import { ExecutionContextHookRegistry } from './execution-context-hook-registry.service';
+
+import { Cipher } from '@/encryption';
+import { deepMerge } from '@/utils/deepMerge';
 
 @Service()
 export class ExecutionContextService {
@@ -49,19 +50,7 @@ export class ExecutionContextService {
 		baseContext: PlaintextExecutionContext,
 		contextToMerge: Partial<PlaintextExecutionContext>,
 	): PlaintextExecutionContext {
-		const newContext = {
-			...baseContext,
-			...contextToMerge,
-		};
-
-		if (contextToMerge.credentials) {
-			newContext.credentials = {
-				...baseContext.credentials,
-				...contextToMerge.credentials,
-			};
-		}
-
-		return newContext;
+		return deepMerge(baseContext, contextToMerge);
 	}
 
 	// startItem is mutated to reflect any changes to trigger items made by the hooks
@@ -79,34 +68,29 @@ export class ExecutionContextService {
 
 		let currentTriggerItems = startItem.data['main'][0];
 
-		// startNodeParameters will hold the parameters of the start node
-		// this can be the settings for the different hooks to be executed
-		// for example to extract the bearer token from the start node data.
-
 		const contextEstablishmentHookParameters = startItem.node.parameters?.contextEstablishmentHooks;
 
-		if (
-			!contextEstablishmentHookParameters ||
-			typeof contextEstablishmentHookParameters !== 'object'
-		) {
-			// no execution establishment hooks found, we just return the original context
-			return {
-				context: contextToAugment,
-				triggerItems: currentTriggerItems,
-			};
-		}
-
-		const startNodeParameters = toExecutionContextEstablishmentHookParameter(
+		const startNodeParametersResult = toExecutionContextEstablishmentHookParameter(
 			contextEstablishmentHookParameters,
 		);
 
-		if (startNodeParameters === null) {
+		if (!startNodeParametersResult || startNodeParametersResult.error) {
+			if (startNodeParametersResult?.error) {
+				this.logger.warn(
+					`Failed to parse execution context establishment hook parameters for node ${startItem.node.name}: ${startNodeParametersResult.error.message}`,
+				);
+			}
 			// no execution establishment hooks found, we just return the original context
 			return {
 				context: contextToAugment,
 				triggerItems: currentTriggerItems,
 			};
 		}
+
+		// startNodeParameters will hold the parameters of the start node
+		// this can be the settings for the different hooks to be executed
+		// for example to extract the bearer token from the start node data.
+		const startNodeParameters = startNodeParametersResult.data;
 
 		// decrypt the context to work with plaintext data
 		let context = this.decryptExecutionContext(contextToAugment);
@@ -115,8 +99,6 @@ export class ExecutionContextService {
 		// iterate over the different hooks to extract specific data for the runtime context
 		for (const hookParameters of startNodeParameters.hooks) {
 			const hook = this.executionContextHookRegistry.getHookByName(hookParameters.hookName);
-
-			const isAllowedToFail = hookParameters.isAllowedToFail;
 
 			if (!hook) {
 				this.logger.warn(
@@ -134,7 +116,7 @@ export class ExecutionContextService {
 					options: hookParameters,
 				});
 
-				if (result.triggerItems) {
+				if (result.triggerItems !== undefined) {
 					// Update trigger items in case they were modified by the hook
 					currentTriggerItems = result.triggerItems;
 				}
@@ -148,7 +130,7 @@ export class ExecutionContextService {
 					`Failed to execute context establishment hook ${hookParameters.hookName}`,
 					{ error },
 				);
-				if (!isAllowedToFail) {
+				if (!hookParameters.isAllowedToFail) {
 					// If the hook is not allowed to fail, rethrow the error
 					throw error;
 				}

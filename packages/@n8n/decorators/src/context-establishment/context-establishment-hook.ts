@@ -265,7 +265,7 @@ export interface IContextEstablishmentHook {
 	 *
 	 * **Implementation requirements:**
 	 * 1. Extract relevant data from trigger items (headers, body, query params, etc.)
-	 * 2. Optionally modify trigger items to remove sensitive data
+	 * 2. Optionally modify trigger items to remove sensitive data, if these are not provided in the response they are not modified
 	 * 3. Return partial context updates to merge into execution context
 	 * 4. Throw errors for unrecoverable failures (stops workflow execution)
 	 *

@@ -33,13 +33,9 @@ export type ExecutionContextEstablishmentHookParameter = z.output<
  * @param obj
  * @returns
  */
-export const toExecutionContextEstablishmentHookParameter = (
-	value: object,
-): ExecutionContextEstablishmentHookParameter | null => {
-	const parseResult = ExecutionContextEstablishmentHookParameterSchema.safeParse(value);
-	if (parseResult.error) {
+export const toExecutionContextEstablishmentHookParameter = (value: unknown) => {
+	if (value === null || value === undefined || typeof value !== 'object') {
 		return null;
 	}
-
-	return parseResult.data;
+	return ExecutionContextEstablishmentHookParameterSchema.safeParse(value);
 };
