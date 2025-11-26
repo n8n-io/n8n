@@ -62,7 +62,11 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 	// ---------------------------------------------------------------------------
 
 	const hasVersionUpdates = computed(() => {
-		return settingsStore.settings.releaseChannel === 'stable' && nextVersions.value.length > 0;
+		return (
+			(settingsStore.settings.releaseChannel === 'stable' ||
+				settingsStore.settings.releaseChannel === '1') &&
+			nextVersions.value.length > 0
+		);
 	});
 
 	const hasSignificantUpdates = computed(() => {

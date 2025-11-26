@@ -33,8 +33,8 @@ function generateRcVersion(currentVersion) {
 		return `${parsed.major}.${parsed.minor}.${parsed.patch}-rc.${rcNumber}`;
 	}
 
-	// Create new RC version: <major>.<minor>.<patch>-rc.1
-	return `${parsed.major}.${parsed.minor}.${parsed.patch}-rc.1`;
+	// Create new RC version: <major>.<minor>.<patch>-rc.0
+	return `${parsed.major}.${parsed.minor}.${parsed.patch}-rc.0`;
 }
 
 const rootDir = process.cwd();

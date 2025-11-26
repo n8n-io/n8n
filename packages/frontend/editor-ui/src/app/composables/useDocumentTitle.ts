@@ -9,7 +9,7 @@ export function useDocumentTitle(windowRef?: Ref<Window | undefined>) {
 	const settingsStore = useSettingsStore();
 	const { releaseChannel } = settingsStore.settings;
 	const suffix =
-		!releaseChannel || releaseChannel === 'stable'
+		!releaseChannel || releaseChannel === 'stable' || releaseChannel === '1'
 			? DEFAULT_TITLE
 			: `${DEFAULT_TITLE}[${releaseChannel.toUpperCase()}]`;
 
