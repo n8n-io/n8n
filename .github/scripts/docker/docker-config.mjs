@@ -33,7 +33,6 @@ class BuildContext {
       case 'workflow_dispatch':
         context.version = `branch-${this.sanitizeBranch(branch)}`;
         context.release_type = 'branch';
-        context.platforms = ['linux/amd64'];
         break;
 
       case 'push':
@@ -44,7 +43,6 @@ class BuildContext {
         } else {
           context.version = `branch-${this.sanitizeBranch(branch)}`;
           context.release_type = 'branch';
-          context.platforms = ['linux/amd64'];
         }
         break;
 
