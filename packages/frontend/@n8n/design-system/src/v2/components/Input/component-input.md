@@ -13,7 +13,7 @@ A versatile text input component for collecting user text, numbers, passwords, a
 **Props**
 
 - `modelValue?: string | number | null` - The bound value of the input (v-model). Default: `''`
-- `type?: InputType` - Type of input field. Values: `'text' | 'textarea'`. Default: `'text'`
+- `type?: InputType` - Type of input field. Values: `'text' | 'textarea' | 'password'`. Default: `'text'`
 - `size?: InputSize` - Size of the input. Values: `'xlarge' | 'large' | 'medium' | 'small' | 'mini'`. Default: `'large'`
 - `placeholder?: string` - Placeholder text displayed when input is empty. Default: `''`
 - `disabled?: boolean` - When `true`, prevents user interaction and dims the input. Default: `false`
