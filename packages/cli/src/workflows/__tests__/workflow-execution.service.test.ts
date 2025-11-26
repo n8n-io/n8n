@@ -123,7 +123,11 @@ describe('WorkflowExecutionService', () => {
 				...createMainConnection(hackerNewsNode.name, webhookNode.name),
 			};
 			const runPayload: WorkflowRequest.PartialManualExecutionToDestination = {
-				workflowData: mock<IWorkflowBase>({ nodes: [webhookNode, hackerNewsNode], connections }),
+				workflowData: mock<IWorkflowBase>({
+					nodes: [webhookNode, hackerNewsNode],
+					connections,
+					pinData: undefined,
+				}),
 				agentRequest: undefined,
 				runData: { [webhookNode.name]: [toITaskData([{ data: { value: 1 } }])] },
 				destinationNode: hackerNewsNode.name,
@@ -145,7 +149,7 @@ describe('WorkflowExecutionService', () => {
 				},
 				executionMode: 'manual',
 				runData: runPayload.runData,
-				pinData: runPayload.workflowData.pinData,
+				pinData: undefined,
 				pushRef: undefined,
 				workflowData: runPayload.workflowData,
 				userId,
@@ -187,8 +191,6 @@ describe('WorkflowExecutionService', () => {
 			expect(result).toEqual({ executionId });
 		});
 
-		// TODO: unsure what this test is testing that others in this file aren't
-		// already testing. Check in with suguru
 		[
 			{
 				name: 'trigger',
@@ -212,7 +214,7 @@ describe('WorkflowExecutionService', () => {
 					...createMainConnection(hackerNewsNode.name, triggerNode.name!),
 					...createMainConnection(hackerNewsNode.name, triggerNode.name!),
 				};
-				const runPayload: WorkflowRequest.ManualRunPayload = {
+				const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
 					workflowData: mock<IWorkflowBase>({
 						pinData: { [triggerNode.name!]: [{ json: {} }] },
 						nodes: [mock<INode>(triggerNode)],
@@ -270,7 +272,7 @@ describe('WorkflowExecutionService', () => {
 				...createMainConnection(hackerNewsNode.name, unexecutedTrigger.name),
 			};
 
-			const runPayload: WorkflowRequest.ManualRunPayload = {
+			const runPayload: WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload = {
 				workflowData: {
 					id: 'abc',
 					name: 'test',
@@ -382,10 +384,6 @@ describe('WorkflowExecutionService', () => {
 				},
 				destinationNode: node.name,
 			};
-
-			// jest
-			// 	.spyOn(nodeTypes, 'getByNameAndVersion')
-			// 	.mockReturnValueOnce(mock<INodeType>({ description: { group: [] } }));
 
 			workflowRunner.run.mockResolvedValue(executionId);
 
