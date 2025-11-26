@@ -9,7 +9,7 @@ import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import * as nodeSettingsUtils from '@/features/ndv/shared/ndv.utils';
 import * as nodeTypesUtils from '@/app/utils/nodeTypesUtils';
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeParameters, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
@@ -612,6 +612,133 @@ describe('useNodeSettingsParameters', () => {
 				// The expression with $parameter.second should be deferred until 'second' is processed
 				// So resolveExpression should still be called eventually
 				expect(displayParameterSpy).toHaveBeenCalled();
+			});
+
+			it('handles mutually dependent expressions (circular dependency)', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				// Track resolution order to detect the bug:
+				// BUG: In first pass, 'first' is deferred (depends on 'second').
+				// Then 'second' is checked - it depends on 'first', but we only check
+				// remaining original keys, not pendingKeys. So 'second' is incorrectly
+				// resolved with empty params before 'first' is ever resolved.
+				const resolutionOrder: string[] = [];
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: (expr: string, siblingParameters: INodeParameters = {}) => {
+						if (expr === '={{ $parameter.second }}') {
+							resolutionOrder.push('first');
+							return (siblingParameters.second as string) ?? 'unresolved_second';
+						}
+						if (expr === '={{ $parameter.first }}') {
+							resolutionOrder.push('second');
+							return (siblingParameters.first as string) ?? 'unresolved_first';
+						}
+						return 'resolved';
+					},
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				// Both expressions reference each other - circular dependency
+				// Object.keys() returns ['first', 'second'] in insertion order
+				const nodeParameters = {
+					first: '={{ $parameter.second }}',
+					second: '={{ $parameter.first }}',
+				};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+
+				// Both should be resolved
+				expect(resolutionOrder).toContain('first');
+				expect(resolutionOrder).toContain('second');
+
+				// BUG DETECTION: If the bug exists, 'second' is resolved FIRST in the first pass
+				// (because we don't check pendingKeys), resulting in order ['second', 'first'].
+				// Correct behavior: both should be deferred to second pass, then resolved
+				// in order ['first', 'second'] (since 'first' comes before 'second' in pendingKeys).
+				//
+				// With circular deps, the original code would keep deferring both until safety limit,
+				// then resolve them. Our refactored code should defer both, then resolve in order.
+				expect(resolutionOrder[0]).toBe('first');
+			});
+
+			it('handles chained expression dependencies (a depends on b, b depends on c)', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				// Track resolution order to verify dependencies are resolved correctly
+				const resolutionOrder: string[] = [];
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: (expr: string, siblingParameters: INodeParameters = {}) => {
+						if (expr === '={{ $parameter.second }}') {
+							resolutionOrder.push('first');
+							// If second wasn't resolved yet, this would return 'unresolved'
+							return (siblingParameters.second as string) ?? 'unresolved';
+						}
+						if (expr === '={{ $parameter.third }}') {
+							resolutionOrder.push('second');
+							// If third wasn't resolved yet, this would return 'unresolved'
+							return (siblingParameters.third as string) ?? 'unresolved';
+						}
+						if (expr === '=base') {
+							resolutionOrder.push('third');
+							return 'base_value';
+						}
+						return expr;
+					},
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				// Chained: first -> second -> third (which is a plain expression)
+				const nodeParameters = {
+					first: '={{ $parameter.second }}',
+					second: '={{ $parameter.third }}',
+					third: '=base',
+				};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+
+				// Should resolve in correct order: third -> second -> first
+				// This ensures dependencies are resolved before dependents
+				expect(resolutionOrder).toEqual(['third', 'second', 'first']);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					expect.objectContaining({
+						third: 'base_value',
+						second: 'base_value',
+						first: 'base_value',
+					}),
+					mockParameter,
+					'',
+					node,
+					'displayOptions',
+				);
 			});
 
 			it('sets empty string when expression resolution throws error', () => {
