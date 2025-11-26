@@ -95,6 +95,7 @@ import ExperimentalEmbeddedNdvMapper from '@/features/workflows/canvas/experimen
 import { useExperimentalNdvStore } from '@/features/workflows/canvas/experimental/experimentalNdv.store';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import { getParameterDisplayableOptions } from '@/app/utils/nodes/nodeTransforms';
+import { CronBuilder } from '@/components/CronBuilder';
 
 import { ElColorPicker, ElDatePicker, ElDialog, ElSwitch } from 'element-plus';
 import { N8nIcon, N8nInput, N8nInputNumber, N8nOption, N8nSelect } from '@n8n/design-system';
@@ -1559,6 +1560,18 @@ onUpdated(async () => {
 						</span>
 					</template>
 				</JsonEditor>
+
+				<CronBuilder
+					v-else-if="
+						parameter.name === 'expression' &&
+						parameter.type === 'string' &&
+						node?.type === 'n8n-nodes-base.scheduleTrigger'
+					"
+					ref="inputField"
+					:model-value="displayValue"
+					@update:model-value="valueChanged"
+					@change="valueChanged"
+				/>
 
 				<div v-else-if="editorType" class="readonly-code clickable" @click="displayEditDialog()">
 					<CodeNodeEditor
