@@ -192,11 +192,11 @@ export const WithButtons = {
 			const buttons = [
 				{
 					attrs: { label: 'Cancel', type: 'secondary' as const, size: 'small' as const },
-					listeners: { click: handleCancel },
+					listeners: { onClick: handleCancel },
 				},
 				{
 					attrs: { label: 'Save', type: 'primary' as const, size: 'small' as const },
-					listeners: { click: handleSave },
+					listeners: { onClick: handleSave },
 				},
 			];
 

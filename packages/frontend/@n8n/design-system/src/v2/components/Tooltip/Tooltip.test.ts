@@ -189,20 +189,26 @@ describe('v2/components/Tooltip', () => {
 	});
 
 	describe('delayed show', () => {
-		it('should show tooltip after delay', async () => {
-			// Test that delayDuration prop is passed to TooltipRoot
-			render(Tooltip, {
+		it('should pass showAfter as delayDuration to TooltipRoot', async () => {
+			// This test verifies the prop is passed correctly
+			// The actual delay behavior is handled by Reka UI's TooltipRoot
+			const wrapper = render(Tooltip, {
 				props: {
 					content: 'Test tooltip',
 					showAfter: 500,
-					visible: true,
 				},
 				slots: {
 					default: '<button>Hover me</button>',
 				},
 			});
 
-			// When visible is true, tooltip shows immediately regardless of delay
+			// Verify the component renders with the prop
+			expect(wrapper.getByText('Hover me')).toBeInTheDocument();
+
+			// Hover and wait for tooltip (delay is handled internally by Reka UI)
+			const trigger = wrapper.getByText('Hover me');
+			await userEvent.hover(trigger);
+
 			await waitFor(() => {
 				const tooltipContent = document.querySelector('[data-dismissable-layer]');
 				expect(tooltipContent).toBeInTheDocument();
@@ -498,14 +504,14 @@ describe('v2/components/Tooltip', () => {
 		});
 	});
 
-	describe('update:open event', () => {
-		it('should emit update:open when tooltip opens', async () => {
-			const onUpdateOpen = vi.fn();
+	describe('update:visible event', () => {
+		it('should emit update:visible when tooltip opens', async () => {
+			const onUpdateVisible = vi.fn();
 
 			const wrapper = render(Tooltip, {
 				props: {
 					content: 'Test tooltip',
-					'onUpdate:open': onUpdateOpen,
+					'onUpdate:visible': onUpdateVisible,
 				},
 				slots: {
 					default: '<button>Hover me</button>',
@@ -516,18 +522,18 @@ describe('v2/components/Tooltip', () => {
 			await userEvent.hover(trigger);
 
 			await waitFor(() => {
-				expect(onUpdateOpen).toHaveBeenCalledWith(true);
+				expect(onUpdateVisible).toHaveBeenCalledWith(true);
 			});
 		});
 
-		it('should emit update:open when tooltip closes', async () => {
-			const onUpdateOpen = vi.fn();
+		it('should emit update:visible when tooltip closes', async () => {
+			const onUpdateVisible = vi.fn();
 
 			const wrapper = render(Tooltip, {
 				props: {
 					content: 'Test tooltip',
 					visible: true,
-					'onUpdate:open': onUpdateOpen,
+					'onUpdate:visible': onUpdateVisible,
 				},
 				slots: {
 					default: '<button>Hover me</button>',
@@ -542,7 +548,7 @@ describe('v2/components/Tooltip', () => {
 			await wrapper.rerender({ visible: false });
 
 			await waitFor(() => {
-				expect(onUpdateOpen).toHaveBeenCalledWith(false);
+				expect(onUpdateVisible).toHaveBeenCalledWith(false);
 			});
 		});
 	});

@@ -33,11 +33,20 @@ const emit = defineEmits<N8nTooltipEmits>();
 const appendTo = useInjectTooltipAppendTo();
 
 // Convert Element+ placement to Reka UI side + align
+type Side = 'top' | 'bottom' | 'left' | 'right';
+type Align = 'start' | 'end' | 'center';
+
+const VALID_SIDES: Side[] = ['top', 'bottom', 'left', 'right'];
+const VALID_ALIGNS: Align[] = ['start', 'end', 'center'];
+
+const isSide = (value: string): value is Side => VALID_SIDES.includes(value as Side);
+const isAlign = (value: string): value is Align => VALID_ALIGNS.includes(value as Align);
+
 const placementParts = computed(() => {
 	const [s, a] = props.placement.split('-');
 	return {
-		side: s as 'top' | 'bottom' | 'left' | 'right',
-		align: (a as 'start' | 'end') ?? 'center',
+		side: isSide(s) ? s : 'top',
+		align: isAlign(a) ? a : 'center',
 	};
 });
 
@@ -51,7 +60,7 @@ watch(
 			isOpen.value = newVisible;
 			// Only emit on changes, not on initial mount
 			if (oldVisible !== undefined && newVisible !== oldVisible) {
-				emit('update:open', newVisible);
+				emit('update:visible', newVisible);
 			}
 		}
 	},
@@ -66,7 +75,7 @@ const isControlled = computed(() => props.visible !== undefined);
 
 const handleOpenChange = (open: boolean) => {
 	isOpen.value = open;
-	emit('update:open', open);
+	emit('update:visible', open);
 };
 </script>
 

@@ -68,8 +68,8 @@ export interface N8nTooltipProps {
 }
 
 export interface N8nTooltipEmits {
-	/** Emitted when tooltip open state changes */
-	(e: 'update:open', open: boolean): void;
+	/** Emitted when tooltip visibility changes (for v-model:visible) */
+	(e: 'update:visible', visible: boolean): void;
 }
 
 export interface N8nTooltipSlots {
