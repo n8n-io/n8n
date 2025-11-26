@@ -132,59 +132,92 @@ const nodeType = computed(() => {
 	return null;
 });
 
-const filteredParameters = ref<INodeProperties[]>([]);
-const displayParameters = ref<Record<string, boolean>>({});
+// Precomputed parameter data to avoid function calls in template
+interface ParameterComputedData {
+	parameter: INodeProperties;
+	path: string;
+	value: NodeParameterValueType;
+	isMultipleValues: boolean;
+	isDisabled: boolean;
+	showOptions: boolean;
+	dependentParametersValues: string | null;
+	issues: string[];
+	isCalloutVisible: boolean;
+}
+
+const parameterItems = ref<ParameterComputedData[]>([]);
 
 throttledWatch(
 	[() => props.parameters, () => props.nodeValues, node],
 	() => {
-		// Calculate display map for all parameters
-		const displayMap: Record<string, boolean> = {};
+		// Pre-calculate disabled state map
+		const disabledMap: Record<string, boolean> = {};
 		for (const parameter of props.parameters) {
 			const parameterPath = getPath(parameter.name);
-			displayMap[parameterPath] = shouldDisplayNodeParameter(parameter);
+			// Pre-calculate disabled state
+			if (parameter.disabledOptions) {
+				disabledMap[parameterPath] = shouldDisplayNodeParameter(parameter, 'disabledOptions');
+			}
 		}
-		displayParameters.value = displayMap;
 
 		// Filter parameters that should be displayed
 		const parameters = props.parameters.filter((parameter: INodeProperties) =>
 			shouldDisplayNodeParameter(parameter),
 		);
 
+		// Apply node-specific parameter transformations
+		let filteredParameters: INodeProperties[];
 		if (node.value && node.value.type === FORM_TRIGGER_NODE_TYPE) {
-			filteredParameters.value = updateFormTriggerParameters(parameters, node.value.name);
-			return;
-		}
-
-		if (node.value && node.value.type === FORM_NODE_TYPE) {
-			filteredParameters.value = updateFormParameters(parameters, node.value.name);
-			return;
-		}
-
-		if (
+			filteredParameters = updateFormTriggerParameters(parameters, node.value.name);
+		} else if (node.value && node.value.type === FORM_NODE_TYPE) {
+			filteredParameters = updateFormParameters(parameters, node.value.name);
+		} else if (
 			node.value &&
 			node.value.type === WAIT_NODE_TYPE &&
 			node.value.parameters.resume === 'form'
 		) {
-			filteredParameters.value = updateWaitParameters(parameters, node.value.name);
-			return;
+			filteredParameters = updateWaitParameters(parameters, node.value.name);
+		} else {
+			filteredParameters = parameters;
 		}
 
-		filteredParameters.value = parameters;
+		// Compute all parameter data for template usage
+		parameterItems.value = filteredParameters.map((parameter) => {
+			const parameterPath = getPath(parameter.name);
+			const parameterValue = getParameterValue(parameter.name);
+			const isMultipleValues = multipleValues(parameter);
+			const isDisabled = disabledMap[parameterPath] ?? false;
+			const showOptions = shouldShowOptions(parameter);
+			const dependentParametersValues = getDependentParametersValues(parameter);
+			const issues = getParameterIssues(parameter);
+			const calloutVisible = parameter.type === 'callout' ? isCalloutVisible(parameter) : false;
+
+			return {
+				parameter,
+				path: parameterPath,
+				value: parameterValue,
+				isMultipleValues,
+				isDisabled,
+				showOptions,
+				dependentParametersValues,
+				issues,
+				isCalloutVisible: calloutVisible,
+			};
+		});
 	},
 	{ throttle: 200, immediate: true },
 );
 
 const filteredParameterNames = computed(() => {
-	return filteredParameters.value.map((parameter) => parameter.name);
+	return parameterItems.value.map((paramData) => paramData.parameter.name);
 });
 
 const credentialsParameterIndex = computed(() => {
-	return filteredParameters.value.findIndex((parameter) => parameter.type === 'credentials');
+	return parameterItems.value.findIndex((paramData) => paramData.parameter.type === 'credentials');
 });
 
 const calloutParameterIndex = computed(() => {
-	return filteredParameters.value.findIndex((parameter) => parameter.type === 'callout');
+	return parameterItems.value.findIndex((paramData) => paramData.parameter.type === 'callout');
 });
 
 const indexToShowSlotAt = computed(() => {
@@ -204,13 +237,13 @@ const indexToShowSlotAt = computed(() => {
 	const fieldOffset = KEEP_AUTH_IN_NDV_FOR_NODES.includes(nodeType.value?.name || '') ? 1 : 0;
 	const credentialsDependencies = getCredentialsDependencies();
 
-	filteredParameters.value.forEach((prop, propIndex) => {
-		if (credentialsDependencies.has(prop.name)) {
+	parameterItems.value.forEach((paramData, propIndex) => {
+		if (credentialsDependencies.has(paramData.parameter.name)) {
 			index = propIndex + fieldOffset;
 		}
 	});
 
-	return Math.min(index, filteredParameters.value.length - 1);
+	return Math.min(index, parameterItems.value.length - 1);
 });
 
 watch(filteredParameterNames, (newValue, oldValue) => {
@@ -518,64 +551,66 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 <template>
 	<div class="parameter-input-list-wrapper">
 		<div
-			v-for="(parameter, index) in filteredParameters"
-			:key="parameter.name"
+			v-for="(item, index) in parameterItems"
+			:key="item.parameter.name"
 			:class="{ indent }"
 			data-test-id="parameter-item"
 		>
 			<slot v-if="indexToShowSlotAt === index" />
 
 			<div
-				v-if="multipleValues(parameter) === true && parameter.type !== 'fixedCollection'"
+				v-if="item.isMultipleValues === true && item.parameter.type !== 'fixedCollection'"
 				class="parameter-item"
 			>
 				<MultipleParameter
-					:parameter="parameter"
-					:values="getParameterValue(parameter.name)"
+					:parameter="item.parameter"
+					:values="item.value as any"
 					:node-values="nodeValues"
-					:path="getPath(parameter.name)"
+					:path="item.path"
 					:is-read-only="isReadOnly"
 					@value-changed="valueChanged"
 				/>
 			</div>
 
 			<ImportCurlParameter
-				v-else-if="parameter.type === 'curlImport'"
+				v-else-if="item.parameter.type === 'curlImport'"
 				:is-read-only="isReadOnly"
 				@value-changed="valueChanged"
 			/>
 
 			<N8nNotice
-				v-else-if="parameter.type === 'notice'"
-				:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
-				:content="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+				v-else-if="item.parameter.type === 'notice'"
+				:class="['parameter-item', item.parameter.typeOptions?.containerClass ?? '']"
+				:content="i18n.nodeText(activeNode?.type).inputLabelDisplayName(item.parameter, path)"
 				@action="onNoticeAction"
 			/>
 
-			<template v-else-if="parameter.type === 'callout'">
+			<template v-else-if="item.parameter.type === 'callout'">
 				<N8nCallout
-					v-if="isCalloutVisible(parameter)"
-					:icon="(parameter.typeOptions?.calloutAction?.icon as IconName) || 'info'"
+					v-if="item.isCalloutVisible"
+					:icon="(item.parameter.typeOptions?.calloutAction?.icon as IconName) || 'info'"
 					icon-size="large"
-					:class="['parameter-item', parameter.typeOptions?.containerClass ?? '']"
+					:class="['parameter-item', item.parameter.typeOptions?.containerClass ?? '']"
 					theme="secondary"
 				>
 					<N8nText size="small">
 						<N8nText
-							v-n8n-html="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
+							v-n8n-html="
+								i18n.nodeText(activeNode?.type).inputLabelDisplayName(item.parameter, path)
+							"
 							size="small"
 						/>
-						<template v-if="parameter.typeOptions?.calloutAction">
+						<template v-if="item.parameter.typeOptions?.calloutAction">
 							{{ ' ' }}
 							<N8nLink
-								v-if="parameter.typeOptions?.calloutAction"
+								v-if="item.parameter.typeOptions?.calloutAction"
 								theme="secondary"
 								size="small"
 								:bold="true"
 								:underline="true"
-								@click="onCalloutAction(parameter.typeOptions.calloutAction)"
+								@click="onCalloutAction(item.parameter.typeOptions.calloutAction)"
 							>
-								{{ parameter.typeOptions.calloutAction.label }}
+								{{ item.parameter.typeOptions.calloutAction.label }}
 							</N8nLink>
 						</template>
 					</N8nText>
@@ -588,46 +623,43 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 							type="secondary"
 							class="callout-dismiss"
 							data-test-id="callout-dismiss-icon"
-							@click="onCalloutDismiss(parameter)"
+							@click="onCalloutDismiss(item.parameter)"
 						/>
 					</template>
 				</N8nCallout>
 			</template>
 
-			<div v-else-if="parameter.type === 'button'" class="parameter-item">
+			<div v-else-if="item.parameter.type === 'button'" class="parameter-item">
 				<ButtonParameter
-					:parameter="parameter"
+					:parameter="item.parameter"
 					:path="path"
-					:value="getParameterValue(parameter.name)"
+					:value="item.value as string"
 					:is-read-only="isReadOnly"
 					@value-changed="valueChanged"
 				/>
 			</div>
 
 			<div
-				v-else-if="['collection', 'fixedCollection'].includes(parameter.type)"
+				v-else-if="['collection', 'fixedCollection'].includes(item.parameter.type)"
 				class="multi-parameter"
 			>
 				<N8nInputLabel
-					:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(parameter, path)"
-					:tooltip-text="i18n.nodeText(activeNode?.type).inputLabelDescription(parameter, path)"
+					:label="i18n.nodeText(activeNode?.type).inputLabelDisplayName(item.parameter, path)"
+					:tooltip-text="
+						i18n.nodeText(activeNode?.type).inputLabelDescription(item.parameter, path)
+					"
 					size="small"
 					:underline="true"
-					:input-name="parameter.name"
+					:input-name="item.parameter.name"
 					color="text-dark"
 				>
 					<template
-						v-if="
-							showIssuesInLabelFor.includes(parameter.type) &&
-							getParameterIssues(parameter).length > 0
-						"
+						v-if="showIssuesInLabelFor.includes(item.parameter.type) && item.issues.length > 0"
 						#issues
 					>
 						<N8nTooltip>
 							<template #content>
-								<span v-for="(issue, i) in getParameterIssues(parameter)" :key="i">{{
-									issue
-								}}</span>
+								<span v-for="(issue, i) in item.issues" :key="i">{{ issue }}</span>
 							</template>
 							<N8nIcon icon="triangle-alert" size="small" color="danger" />
 						</N8nTooltip>
@@ -636,20 +668,20 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 				<Suspense v-if="!asyncLoadingError">
 					<template #default>
 						<LazyCollectionParameter
-							v-if="parameter.type === 'collection'"
-							:parameter="parameter"
-							:values="getParameterValue(parameter.name)"
+							v-if="item.parameter.type === 'collection'"
+							:parameter="item.parameter"
+							:values="item.value as any"
 							:node-values="nodeValues"
-							:path="getPath(parameter.name)"
+							:path="item.path"
 							:is-read-only="isReadOnly"
 							@value-changed="valueChanged"
 						/>
 						<LazyFixedCollectionParameter
-							v-else-if="parameter.type === 'fixedCollection'"
-							:parameter="parameter"
-							:values="getParameterValue(parameter.name)"
+							v-else-if="item.parameter.type === 'fixedCollection'"
+							:parameter="item.parameter"
+							:values="item.value as any"
 							:node-values="nodeValues"
-							:path="getPath(parameter.name)"
+							:path="item.path"
 							:is-read-only="isReadOnly"
 							@value-changed="valueChanged"
 						/>
@@ -666,78 +698,75 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 					{{ i18n.baseText('parameterInputList.loadingError') }}
 				</N8nText>
 				<N8nIconButton
-					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
+					v-if="hideDelete !== true && !isReadOnly && !item.parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="small"
 					icon="trash-2"
 					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
-					@click="deleteOption(parameter.name)"
+					@click="deleteOption(item.parameter.name)"
 				></N8nIconButton>
 			</div>
 			<ResourceMapper
-				v-else-if="parameter.type === 'resourceMapper'"
-				:parameter="parameter"
+				v-else-if="item.parameter.type === 'resourceMapper'"
+				:parameter="item.parameter"
 				:node="node"
-				:path="getPath(parameter.name)"
-				:dependent-parameters-values="getDependentParametersValues(parameter)"
+				:path="item.path"
+				:dependent-parameters-values="item.dependentParametersValues"
 				:is-read-only="isReadOnly"
-				:allow-empty-strings="parameter.typeOptions?.resourceMapper?.allowEmptyValues"
+				:allow-empty-strings="item.parameter.typeOptions?.resourceMapper?.allowEmptyValues"
 				input-size="small"
 				label-size="small"
 				@value-changed="valueChanged"
 			/>
 			<FilterConditions
-				v-else-if="parameter.type === 'filter'"
-				:parameter="parameter"
-				:value="getParameterValue(parameter.name)"
-				:path="getPath(parameter.name)"
+				v-else-if="item.parameter.type === 'filter'"
+				:parameter="item.parameter"
+				:value="item.value as any"
+				:path="item.path"
 				:node="node"
 				:read-only="isReadOnly"
 				@value-changed="valueChanged"
 			/>
 			<AssignmentCollection
-				v-else-if="parameter.type === 'assignmentCollection'"
-				:parameter="parameter"
-				:value="getParameterValue(parameter.name)"
-				:path="getPath(parameter.name)"
+				v-else-if="item.parameter.type === 'assignmentCollection'"
+				:parameter="item.parameter"
+				:value="item.value as any"
+				:path="item.path"
 				:node="node"
 				:is-read-only="isReadOnly"
-				:default-type="parameter.typeOptions?.assignment?.defaultType"
-				:disable-type="parameter.typeOptions?.assignment?.disableType"
+				:default-type="item.parameter.typeOptions?.assignment?.defaultType"
+				:disable-type="item.parameter.typeOptions?.assignment?.disableType"
 				@value-changed="valueChanged"
 			/>
 			<div v-else-if="credentialsParameterIndex !== index" class="parameter-item">
 				<N8nIconButton
-					v-if="hideDelete !== true && !isReadOnly && !parameter.isNodeSetting"
+					v-if="hideDelete !== true && !isReadOnly && !item.parameter.isNodeSetting"
 					type="tertiary"
 					text
 					size="small"
 					icon="trash-2"
 					class="icon-button"
 					:title="i18n.baseText('parameterInputList.delete')"
-					@click="deleteOption(parameter.name)"
+					@click="deleteOption(item.parameter.name)"
 				></N8nIconButton>
 
 				<ParameterInputFull
-					:parameter="parameter"
-					:hide-issues="hiddenIssuesInputs.includes(parameter.name)"
-					:value="getParameterValue(parameter.name)"
-					:display-options="shouldShowOptions(parameter)"
-					:path="getPath(parameter.name)"
-					:is-read-only="
-						isReadOnly ||
-						(parameter.disabledOptions && shouldDisplayNodeParameter(parameter, 'disabledOptions'))
-					"
+					:parameter="item.parameter"
+					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
+					:value="item.value"
+					:display-options="item.showOptions"
+					:path="item.path"
+					:is-read-only="isReadOnly || item.isDisabled"
 					:hide-label="false"
 					:node-values="nodeValues"
 					@update="valueChanged"
-					@blur="onParameterBlur(parameter.name)"
+					@blur="onParameterBlur(item.parameter.name)"
 				/>
 			</div>
 		</div>
-		<div v-if="filteredParameters.length === 0" :class="{ indent }">
+		<div v-if="parameterItems.length === 0" :class="{ indent }">
 			<slot />
 		</div>
 	</div>
