@@ -1,6 +1,3 @@
-import { AddMfaColumns1690000000030 } from './../common/1690000000040-AddMfaColumns';
-import { AddInputsOutputsToTestCaseExecution1752669793000 } from './../common/1752669793000-AddInputsOutputsToTestCaseExecution';
-import { LinkRoleToProjectRelationTable1753953244168 } from './../common/1753953244168-LinkRoleToProjectRelationTable';
 import { InitialMigration1587669153312 } from './1587669153312-InitialMigration';
 import { WebhookModel1589476000887 } from './1589476000887-WebhookModel';
 import { CreateIndexStoppedAt1594828256133 } from './1594828256133-CreateIndexStoppedAt';
@@ -48,9 +45,11 @@ import { UpdateParentFolderIdColumn1740445074052 } from './1740445074052-UpdateP
 import { AddProjectIdToVariableTable1758794506893 } from './1758794506893-AddProjectIdToVariableTable';
 import { AddWorkflowVersionColumn1761047826451 } from './1761047826451-AddWorkflowVersionColumn';
 import { ChangeDependencyInfoToJson1761655473000 } from './1761655473000-ChangeDependencyInfoToJson';
+import { ChangeDefaultForIdInUserTable1762771264000 } from './1762771264000-ChangeDefaultForIdInUserTable';
 import { CreateLdapEntities1674509946020 } from '../common/1674509946020-CreateLdapEntities';
 import { PurgeInvalidWorkflowConnections1675940580449 } from '../common/1675940580449-PurgeInvalidWorkflowConnections';
 import { RemoveResetPasswordColumns1690000000030 } from '../common/1690000000030-RemoveResetPasswordColumns';
+import { AddMfaColumns1690000000030 } from '../common/1690000000040-AddMfaColumns';
 import { CreateWorkflowNameIndex1691088862123 } from '../common/1691088862123-CreateWorkflowNameIndex';
 import { CreateWorkflowHistoryTable1692967111175 } from '../common/1692967111175-CreateWorkflowHistoryTable';
 import { ExecutionSoftDelete1693491613982 } from '../common/1693491613982-ExecutionSoftDelete';
@@ -97,6 +96,8 @@ import { AddScopeTables1750252139166 } from '../common/1750252139166-AddScopeTab
 import { AddRolesTables1750252139167 } from '../common/1750252139167-AddRolesTables';
 import { LinkRoleToUserTable1750252139168 } from '../common/1750252139168-LinkRoleToUserTable';
 import { RemoveOldRoleColumn1750252139170 } from '../common/1750252139170-RemoveOldRoleColumn';
+import { AddInputsOutputsToTestCaseExecution1752669793000 } from '../common/1752669793000-AddInputsOutputsToTestCaseExecution';
+import { LinkRoleToProjectRelationTable1753953244168 } from '../common/1753953244168-LinkRoleToProjectRelationTable';
 import { CreateDataStoreTables1754475614601 } from '../common/1754475614601-CreateDataStoreTables';
 import { ReplaceDataStoreTablesWithDataTables1754475614602 } from '../common/1754475614602-ReplaceDataStoreTablesWithDataTables';
 import { AddTimestampsToRoleAndRoleIndexes1756906557570 } from '../common/1756906557570-AddTimestampsToRoleAndRoleIndexes';
@@ -105,8 +106,18 @@ import { ChangeValueTypesForInsights1759399811000 } from '../common/175939981100
 import { CreateChatHubTables1760019379982 } from '../common/1760019379982-CreateChatHubTables';
 import { CreateChatHubAgentTable1760020000000 } from '../common/1760020000000-CreateChatHubAgentTable';
 import { UniqueRoleNames1760020838000 } from '../common/1760020838000-UniqueRoleNames';
+import { CreateOAuthEntities1760116750277 } from '../common/1760116750277-CreateOAuthEntities';
 import { CreateWorkflowDependencyTable1760314000000 } from '../common/1760314000000-CreateWorkflowDependencyTable';
 import { DropUnusedChatHubColumns1760965142113 } from '../common/1760965142113-DropUnusedChatHubColumns';
+import { AddAttachmentsToChatHubMessages1761773155024 } from '../common/1761773155024-AddAttachmentsToChatHubMessages';
+import { AddToolsColumnToChatHubTables1761830340990 } from '../common/1761830340990-AddToolsColumnToChatHubTables';
+import { AddWorkflowDescriptionColumn1762177736257 } from '../common/1762177736257-AddWorkflowDescriptionColumn';
+import { BackfillMissingWorkflowHistoryRecords1762763704614 } from '../common/1762763704614-BackfillMissingWorkflowHistoryRecords';
+import { AddIsGlobalColumnToCredentialsTable1762771954619 } from '../common/1762771954619-IsGlobalGlobalColumnToCredentialsTable';
+import { AddWorkflowHistoryAutoSaveFields1762847206508 } from '../common/1762847206508-AddWorkflowHistoryAutoSaveFields';
+import { AddActiveVersionIdColumn1763047800000 } from '../common/1763047800000-AddActiveVersionIdColumn';
+import { ChangeOAuthStateColumnToUnboundedVarchar1763572724000 } from '../common/1763572724000-ChangeOAuthStateColumnToUnboundedVarchar';
+import { CreateBinaryDataTable1763716655000 } from '../common/1763716655000-CreateBinaryDataTable';
 import type { Migration } from '../migration-types';
 
 export const postgresMigrations: Migration[] = [
@@ -219,4 +230,15 @@ export const postgresMigrations: Migration[] = [
 	DropUnusedChatHubColumns1760965142113,
 	AddWorkflowVersionColumn1761047826451,
 	ChangeDependencyInfoToJson1761655473000,
+	AddWorkflowDescriptionColumn1762177736257,
+	CreateOAuthEntities1760116750277,
+	BackfillMissingWorkflowHistoryRecords1762763704614,
+	ChangeDefaultForIdInUserTable1762771264000,
+	AddIsGlobalColumnToCredentialsTable1762771954619,
+	AddWorkflowHistoryAutoSaveFields1762847206508,
+	AddToolsColumnToChatHubTables1761830340990,
+	ChangeOAuthStateColumnToUnboundedVarchar1763572724000,
+	AddAttachmentsToChatHubMessages1761773155024,
+	AddActiveVersionIdColumn1763047800000,
+	CreateBinaryDataTable1763716655000,
 ];

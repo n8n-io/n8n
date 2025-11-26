@@ -98,16 +98,6 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			route: { to: { name: VIEWS.LDAP_SETTINGS } },
 		},
 		{
-			id: 'settings-provisioning',
-			icon: 'toolbox',
-			label: i18n.baseText('settings.provisioning.title'),
-			position: 'top',
-			available:
-				canUserAccessRouteByName(VIEWS.PROVISIONING_SETTINGS) &&
-				settingsStore.isEnterpriseFeatureEnabled.provisioning,
-			route: { to: { name: VIEWS.PROVISIONING_SETTINGS } },
-		},
-		{
 			id: 'settings-workersview',
 			icon: 'waypoints',
 			label: i18n.baseText('mainSidebar.workersView'),
@@ -135,6 +125,15 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		position: 'top',
 		available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
 		route: { to: { name: VIEWS.COMMUNITY_NODES } },
+	});
+
+	menuItems.push({
+		id: 'settings-migration-report',
+		icon: 'list-checks',
+		label: i18n.baseText('settings.migrationReport'),
+		position: 'top',
+		available: canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
+		route: { to: { name: VIEWS.MIGRATION_REPORT } },
 	});
 
 	// Append module-registered settings sidebar items.
@@ -181,6 +180,7 @@ const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item
 	display: flex;
 	gap: var(--spacing--3xs);
 	align-items: center;
+
 	&:hover {
 		color: var(--color--primary);
 	}

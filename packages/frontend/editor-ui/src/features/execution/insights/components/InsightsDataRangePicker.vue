@@ -8,12 +8,9 @@ import type {
 	N8nDateRangePickerRootEmits,
 } from '@n8n/design-system';
 import { N8nButton, N8nDateRangePicker, N8nIcon } from '@n8n/design-system';
-import dateformat from 'dateformat';
 import { computed, ref, shallowRef, watch } from 'vue';
+import { formatDateRange } from '../insights.utils';
 import InsightsUpgradeModal from './InsightsUpgradeModal.vue';
-
-const DATE_FORMAT_DAY_MONTH_YEAR = 'd mmm, yyyy';
-const DATE_FORMAT_DAY_MONTH = 'd mmm';
 
 type Props = Pick<N8nDateRangePickerProps, 'maxValue' | 'minValue'>;
 type Value = {
@@ -41,7 +38,7 @@ function getDaysDiff({ start, end }: DateRange) {
 	if (!start) return 0;
 	if (!end) return 0;
 
-	return end.compare(start) + 1;
+	return end.compare(start);
 }
 
 function isBeforeOrSame(dateToCompare: DateValue, referenceDate: DateValue): boolean {
@@ -135,18 +132,7 @@ const formattedRange = computed(() => {
 
 	if (!start) return 'Select range';
 
-	const startStr = start.toString();
-	const endStr = end?.toString();
-
-	if (!end || startStr === endStr) {
-		return dateformat(startStr, DATE_FORMAT_DAY_MONTH_YEAR);
-	}
-
-	if (start.year === end.year) {
-		return `${dateformat(startStr, DATE_FORMAT_DAY_MONTH)} - ${dateformat(endStr, DATE_FORMAT_DAY_MONTH_YEAR)}`;
-	}
-
-	return `${dateformat(startStr, DATE_FORMAT_DAY_MONTH_YEAR)} - ${dateformat(endStr, DATE_FORMAT_DAY_MONTH_YEAR)}`;
+	return formatDateRange({ start, end });
 });
 
 function isActiveRange(presetValue: number) {

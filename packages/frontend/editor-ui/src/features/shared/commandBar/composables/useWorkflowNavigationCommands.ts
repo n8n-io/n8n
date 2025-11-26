@@ -79,22 +79,40 @@ export function useWorkflowNavigationCommands(options: {
 
 			// Search workflows by name with minimal fields
 			const nameSearchPromise = workflowsStore.searchWorkflows({
-				name: trimmed,
-				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived'],
+				query: trimmed,
+				select: ['id', 'name', 'active', 'ownedBy', 'parentFolder', 'isArchived', 'description'],
 			});
 
 			const nodeTypeSearchPromise =
 				matchedNodeTypeNames.length > 0
 					? workflowsStore.searchWorkflows({
 							nodeTypes: matchedNodeTypeNames,
-							select: ['id', 'name', 'active', 'nodes', 'ownedBy', 'parentFolder', 'isArchived'],
+							select: [
+								'id',
+								'name',
+								'active',
+								'nodes',
+								'ownedBy',
+								'parentFolder',
+								'isArchived',
+								'description',
+							],
 						})
 					: Promise.resolve([]);
 
 			const tagSearchPromise = matchedTag
 				? workflowsStore.searchWorkflows({
 						tags: [matchedTag.name],
-						select: ['id', 'name', 'active', 'ownedBy', 'tags', 'parentFolder', 'isArchived'],
+						select: [
+							'id',
+							'name',
+							'active',
+							'ownedBy',
+							'tags',
+							'parentFolder',
+							'isArchived',
+							'description',
+						],
 					})
 				: Promise.resolve([]);
 
@@ -219,7 +237,7 @@ export function useWorkflowNavigationCommands(options: {
 		return parts.join(' / ');
 	};
 
-	const createWorkflowCommand = (workflow: IWorkflowDb): CommandBarItem => {
+	const createWorkflowCommand = (workflow: IWorkflowDb, isRoot: boolean): CommandBarItem => {
 		let keywords = workflowKeywords.value.get(workflow.id) ?? [];
 		const matchedNodeType = workflowMatchedNodeTypes.value.get(workflow.id);
 
@@ -242,6 +260,10 @@ export function useWorkflowNavigationCommands(options: {
 		const workflowName = workflow.name;
 		keywords = [...keywords, workflowName];
 
+		if (workflow.description) {
+			keywords = [...keywords, workflow.description];
+		}
+
 		if (workflow.tags && workflow.tags.length > 0) {
 			keywords = [
 				...keywords,
@@ -251,18 +273,28 @@ export function useWorkflowNavigationCommands(options: {
 
 		const suffix = getWorkflowProjectSuffix(workflow);
 
+		const name = workflow.name || i18n.baseText('commandBar.workflows.unnamed');
+		const title = isRoot
+			? i18n.baseText('generic.openResource', {
+					interpolate: { resource: name },
+				})
+			: name;
+		const section = isRoot
+			? i18n.baseText('commandBar.sections.workflows')
+			: i18n.baseText('commandBar.workflows.open');
+
 		return {
 			id: workflow.id,
+			matchAnySearchTerm: !isRoot,
 			title: {
 				component: CommandBarItemTitle,
 				props: {
-					title: workflow.name || i18n.baseText('commandBar.workflows.unnamed'),
+					title,
 					suffix,
 					...(suffix ? { suffixIcon: getProjectIcon(workflow) } : {}),
-					actionText: i18n.baseText('generic.open'),
 				},
 			},
-			section: i18n.baseText('commandBar.sections.workflows'),
+			section,
 			...(keywords.length > 0 ? { keywords } : {}),
 			...(icon ? { icon } : {}),
 			handler: () => {
@@ -276,14 +308,14 @@ export function useWorkflowNavigationCommands(options: {
 	};
 
 	const openWorkflowCommands = computed<CommandBarItem[]>(() => {
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow));
+		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, false));
 	});
 
 	const rootWorkflowItems = computed<CommandBarItem[]>(() => {
 		if (lastQuery.value.length <= 2) {
 			return [];
 		}
-		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow));
+		return workflowResults.value.map((workflow) => createWorkflowCommand(workflow, true));
 	});
 
 	const workflowNavigationCommands = computed<CommandBarItem[]>(() => {

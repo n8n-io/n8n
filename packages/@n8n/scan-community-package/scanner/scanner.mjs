@@ -81,6 +81,7 @@ const downloadAndExtractPackage = async (packageName, version) => {
 		const npmResult = spawnSync('npm', ['-q', 'pack', `${packageName}@${version}`], {
 			cwd: TEMP_DIR,
 			stdio: 'pipe',
+			shell: process.platform === 'win32',
 		});
 		if (npmResult.status !== 0) {
 			throw new Error(`npm pack failed: ${npmResult.stderr?.toString()}`);
@@ -99,6 +100,7 @@ const downloadAndExtractPackage = async (packageName, version) => {
 			{
 				cwd: TEMP_DIR,
 				stdio: 'pipe',
+				shell: process.platform === 'win32',
 			},
 		);
 		if (tarResult.status !== 0) {
@@ -119,7 +121,9 @@ const analyzePackage = async (packageDir) => {
 		cwd: packageDir,
 		allowInlineConfig: false,
 		overrideConfigFile: true,
-		overrideConfig: defineConfig(n8nCommunityNodesPlugin.configs.recommended),
+		overrideConfig: defineConfig(n8nCommunityNodesPlugin.configs.recommended, {
+			rules: { 'no-console': 'error' },
+		}),
 	});
 
 	try {

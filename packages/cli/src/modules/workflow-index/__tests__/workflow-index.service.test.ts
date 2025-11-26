@@ -7,6 +7,7 @@ import { ErrorReporter } from 'n8n-core';
 import type { INode, IWorkflowBase } from 'n8n-workflow';
 
 import { WorkflowIndexService } from '../workflow-index.service';
+import { EventService } from '@/events/event.service';
 
 describe('WorkflowIndexService', () => {
 	let service: WorkflowIndexService;
@@ -14,6 +15,7 @@ describe('WorkflowIndexService', () => {
 	const mockWorkflowRepository = mockInstance(WorkflowRepository);
 	const mockLogger = mockInstance(Logger);
 	const mockErrorReporter = mockInstance(ErrorReporter);
+	const mockEventService = mockInstance(EventService);
 
 	beforeEach(() => {
 		jest.resetAllMocks();
@@ -21,6 +23,7 @@ describe('WorkflowIndexService', () => {
 		service = new WorkflowIndexService(
 			mockWorkflowDependencyRepository,
 			mockWorkflowRepository,
+			mockEventService,
 			mockLogger,
 			mockErrorReporter,
 		);
@@ -41,6 +44,7 @@ describe('WorkflowIndexService', () => {
 		id: 'workflow-123',
 		name: 'Test Workflow',
 		active: true,
+		activeVersionId: 'some-version-id',
 		isArchived: false,
 		createdAt: new Date(),
 		updatedAt: new Date(),
@@ -240,6 +244,18 @@ describe('WorkflowIndexService', () => {
 		});
 	});
 
+	describe('init()', () => {
+		it('should register event listeners for workflow events', () => {
+			service.init();
+
+			expect(mockEventService.on).toHaveBeenCalledTimes(4);
+			expect(mockEventService.on).toHaveBeenCalledWith('server-started', expect.any(Function));
+			expect(mockEventService.on).toHaveBeenCalledWith('workflow-created', expect.any(Function));
+			expect(mockEventService.on).toHaveBeenCalledWith('workflow-saved', expect.any(Function));
+			expect(mockEventService.on).toHaveBeenCalledWith('workflow-deleted', expect.any(Function));
+		});
+	});
+
 	describe('buildIndex()', () => {
 		it('should retrieve unindexed workflows and update their dependencies', async () => {
 			const workflow1 = createWorkflowEntity([
@@ -282,6 +298,7 @@ describe('WorkflowIndexService', () => {
 			const serviceWithSmallBatch = new WorkflowIndexService(
 				mockWorkflowDependencyRepository,
 				mockWorkflowRepository,
+				mockEventService,
 				mockLogger,
 				mockErrorReporter,
 				batchSize,

@@ -60,6 +60,7 @@ export const TEMPLATES_DATA_QUALITY_EXPERIMENT = {
 	control: 'control',
 	variant1: 'variant-batch-1',
 	variant2: 'variant-batch-2',
+	variant3: 'variant-batch-3',
 };
 
 export const READY_TO_RUN_V2_EXPERIMENT = {

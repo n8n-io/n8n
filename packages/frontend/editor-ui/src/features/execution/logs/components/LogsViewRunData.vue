@@ -83,7 +83,6 @@ function handleChangeDisplayMode(value: IRunDataDisplayMode) {
 		:class="$style.component"
 		:workflow-object="logEntry.workflow"
 		:workflow-execution="logEntry.execution"
-		:too-much-data-title="locale.baseText('ndv.output.tooMuchData.title')"
 		:no-data-in-branch-message="locale.baseText('ndv.output.noOutputDataInBranch')"
 		:executing-message="locale.baseText('ndv.output.executing')"
 		:pane-type="paneType"

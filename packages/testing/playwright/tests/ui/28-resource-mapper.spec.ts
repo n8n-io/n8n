@@ -3,8 +3,7 @@ import { test, expect } from '../../fixtures/base';
 
 test.describe('Resource Mapper', () => {
 	test.beforeEach(async ({ n8n }) => {
-		await n8n.goHome();
-		await n8n.workflows.addResource.workflow();
+		await n8n.start.fromBlankCanvas();
 		await n8n.canvas.addNode(E2E_TEST_NODE_NAME, { action: 'Resource Mapping Component' });
 	});
 
