@@ -161,6 +161,7 @@
 	"activationModal.saveExecutions": "save executions.",
 	"activationModal.theseExecutionsWillNotShowUp": "These executions will not show up immediately in the editor,",
 	"activationModal.workflowActivated": "Workflow activated",
+	"activationModal.workflowPublished": "Workflow published",
 	"activationModal.yourTriggerWillNowFire": "Your trigger will now fire production executions automatically.",
 	"activationModal.yourTriggersWillNowFire": "Your triggers will now fire production executions automatically.",
 	"activationModal.yourWorkflowWillNowListenForEvents": "Your workflow will now listen for events from {serviceName} and trigger executions.",
