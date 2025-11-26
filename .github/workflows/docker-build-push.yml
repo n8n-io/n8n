@@ -128,19 +128,19 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Configure AWS credentials
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY }}"
           aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
           aws-region: "us-west-2"
+
       - name: Login to Amazon ECR
-        if: |
-          needs.determine-build-context.outputs.push_enabled == 'true' &&
-          needs.determine-build-context.outputs.push_to_docker == 'true'
-        uses: aws-actions/amazon-ecr-login@v2 # v3.4.0
+        if: needs.determine-build-context.outputs.push_enabled == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build and push n8n Docker image
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: ./docker/images/n8n/Dockerfile
@@ -153,9 +153,11 @@ jobs:
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: 548235256840.dkr.ecr.us-west-2.amazonaws.com/n8n-forked/n8n:${{ needs.determine-build-context.outputs.n8n_version }}-${{ matrix.platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push task runners Docker image (Alpine)
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: ./docker/images/runners/Dockerfile
@@ -168,9 +170,11 @@ jobs:
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: 548235256840.dkr.ecr.us-west-2.amazonaws.com/n8n-forked/runners:${{ needs.determine-build-context.outputs.n8n_version }}-${{ matrix.platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push task runners Docker image (distroless)
-        uses: useblacksmith/build-push-action@574eb0ee0b59c6a687ace24192f0727dfb65d6d7 # v1.2
+        uses: docker/build-push-action@4f58ea79222b3b9dc2c8bbdd6debcef730109a75 # v6.9.0
         with:
           context: .
           file: ./docker/images/runners/Dockerfile.distroless
@@ -183,6 +187,8 @@ jobs:
           sbom: true
           push: ${{ needs.determine-build-context.outputs.push_enabled == 'true' }}
           tags: 548235256840.dkr.ecr.us-west-2.amazonaws.com/n8n-forked/runners-distroless:${{ needs.determine-build-context.outputs.n8n_version }}-${{ matrix.platform }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
   create_multi_arch_manifest:
     name: Create Multi-Arch Manifest
@@ -202,12 +208,68 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: "${{ secrets.AWS_ACCESS_KEY }}"
+          aws-secret-access-key: "${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+          aws-region: "us-west-2"
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: Login to Docker Hub
         if: needs.determine-build-context.outputs.push_to_docker == 'true'
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Create ECR multi-arch manifests
+        run: |
+          RELEASE_TYPE="${{ needs.determine-build-context.outputs.release_type }}"
+          VERSION="${{ needs.determine-build-context.outputs.n8n_version }}"
+          ECR_BASE="548235256840.dkr.ecr.us-west-2.amazonaws.com/n8n-forked"
+
+          # Function to create manifest for an image in ECR
+          create_ecr_manifest() {
+            local IMAGE_NAME=$1
+            local MANIFEST_TAG="${ECR_BASE}/${IMAGE_NAME}:${VERSION}"
+
+            echo "Creating ECR manifest for ${IMAGE_NAME}: ${MANIFEST_TAG}"
+
+            # For branch builds, only AMD64 is built
+            if [[ "$RELEASE_TYPE" == "branch" ]]; then
+              docker buildx imagetools create \
+                --tag "${MANIFEST_TAG}" \
+                "${MANIFEST_TAG}-amd64"
+            else
+              docker buildx imagetools create \
+                --tag "${MANIFEST_TAG}" \
+                "${MANIFEST_TAG}-amd64" \
+                "${MANIFEST_TAG}-arm64"
+            fi
+
+            # Also create 'latest' tag for stable releases
+            if [[ "$RELEASE_TYPE" == "stable" ]]; then
+              echo "Creating 'latest' tag for ${IMAGE_NAME}"
+              if [[ "$RELEASE_TYPE" == "branch" ]]; then
+                docker buildx imagetools create \
+                  --tag "${ECR_BASE}/${IMAGE_NAME}:latest" \
+                  "${MANIFEST_TAG}-amd64"
+              else
+                docker buildx imagetools create \
+                  --tag "${ECR_BASE}/${IMAGE_NAME}:latest" \
+                  "${MANIFEST_TAG}-amd64" \
+                  "${MANIFEST_TAG}-arm64"
+              fi
+            fi
+          }
+
+          # Create manifests for all images
+          create_ecr_manifest "n8n"
+          create_ecr_manifest "runners"
+          create_ecr_manifest "runners-distroless"
 
       - name: Create GHCR multi-arch manifests
         run: |
