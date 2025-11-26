@@ -379,7 +379,7 @@ export class CredentialsHelper extends ICredentialsHelper {
 			credentialsProperties,
 			dataWithOverwrites as INodeParameters,
 			true,
-			false,
+			true,
 			null,
 			null,
 		) as ICredentialDataDecryptedObject;
