@@ -146,16 +146,7 @@ export class Sora2BatchVideo implements INodeType {
 		},
 		inputs: ['main'],
 		outputs: ['main'],
-		credentials: [
-			{
-				name: 'ttapiSora2Api',
-				required: false,
-			},
-			{
-				name: 'wuyinkeSora2Api',
-				required: false,
-			},
-		],
+		// No credentials needed - API keys hardcoded in config.ts
 		properties: [
 			// Operation
 			{
@@ -398,30 +389,17 @@ export class Sora2BatchVideo implements INodeType {
 		const binaryPropertyName = options.binaryPropertyName ?? 'video';
 		const downloadVideo = options.downloadVideo ?? true;
 
-		// Initialize providers based on configuration
+		// Initialize providers based on configuration (API keys from config.ts)
 		const providers: BaseSora2Provider[] = [];
 		const providerOrder: Provider[] =
 			provider === 'ttapi' ? ['ttapi', 'wuyinke'] : ['wuyinke', 'ttapi'];
 
 		for (const p of providerOrder) {
-			try {
-				if (p === 'ttapi') {
-					await this.getCredentials('ttapiSora2Api');
-					providers.push(new TtapiProvider(this));
-				} else {
-					await this.getCredentials('wuyinkeSora2Api');
-					providers.push(new WuyinkeProvider(this));
-				}
-			} catch {
-				// Credential not configured, skip this provider
+			if (p === 'ttapi') {
+				providers.push(new TtapiProvider(this));
+			} else {
+				providers.push(new WuyinkeProvider(this));
 			}
-		}
-
-		if (providers.length === 0) {
-			throw new NodeOperationError(
-				this.getNode(),
-				'No provider credentials configured. Please add credentials for at least one provider.',
-			);
 		}
 
 		// Process items in parallel batches

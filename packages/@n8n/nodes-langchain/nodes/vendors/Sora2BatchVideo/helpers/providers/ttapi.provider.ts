@@ -1,15 +1,16 @@
 /**
  * Sora2 Batch Video - ttapi.io Provider
+ * @see https://ttapi.io/docs/apiReference/sora
  */
 
 import type {
 	StatusResponse,
 	SubmitResponse,
-	TtapiCredentials,
 	TtapiFetchResponse,
 	TtapiSubmitResponse,
 	VideoGenerationRequest,
 } from '../interfaces';
+import { SORA2_CONFIG } from '../config';
 import { BaseSora2Provider } from './base.provider';
 
 /**
@@ -22,8 +23,7 @@ export class TtapiProvider extends BaseSora2Provider {
 	 * Submit a video generation request to ttapi.io
 	 */
 	async submit(request: VideoGenerationRequest): Promise<SubmitResponse> {
-		const credentials = await this.ctx.getCredentials<TtapiCredentials>('ttapiSora2Api');
-		const baseUrl = credentials.apiEndpoint || 'https://api.ttapi.io';
+		const { apiKey, baseUrl } = SORA2_CONFIG.ttapi;
 
 		// Build request body according to ttapi.io API
 		const body: Record<string, unknown> = {
@@ -47,7 +47,7 @@ export class TtapiProvider extends BaseSora2Provider {
 			method: 'POST',
 			url: `${baseUrl}/sora/generations`,
 			headers: {
-				'TT-API-KEY': credentials.apiKey,
+				'TT-API-KEY': apiKey,
 				'Content-Type': 'application/json',
 			},
 			body,
@@ -71,14 +71,13 @@ export class TtapiProvider extends BaseSora2Provider {
 	 * Get the status of a video generation task
 	 */
 	async getStatus(taskId: string): Promise<StatusResponse> {
-		const credentials = await this.ctx.getCredentials<TtapiCredentials>('ttapiSora2Api');
-		const baseUrl = credentials.apiEndpoint || 'https://api.ttapi.io';
+		const { apiKey, baseUrl } = SORA2_CONFIG.ttapi;
 
 		const response = (await this.ctx.helpers.httpRequest({
 			method: 'POST',
 			url: `${baseUrl}/sora/fetch`,
 			headers: {
-				'TT-API-KEY': credentials.apiKey,
+				'TT-API-KEY': apiKey,
 				'Content-Type': 'application/json',
 			},
 			body: { jobId: taskId },

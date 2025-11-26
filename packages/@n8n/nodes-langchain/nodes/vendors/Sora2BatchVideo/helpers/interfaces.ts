@@ -68,22 +68,6 @@ export interface NodeOptions {
 }
 
 /**
- * Credentials for ttapi.io
- */
-export interface TtapiCredentials {
-	apiKey: string;
-	apiEndpoint: string;
-}
-
-/**
- * Credentials for wuyinkeji.com
- */
-export interface WuyinkeCredentials {
-	apiKey: string;
-	apiEndpoint: string;
-}
-
-/**
  * ttapi.io API response structures
  */
 export interface TtapiSubmitResponse {

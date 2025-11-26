@@ -1,15 +1,16 @@
 /**
  * Sora2 Batch Video - wuyinkeji.com Provider
+ * @see https://api.wuyinkeji.com/doc/35
  */
 
 import type {
 	StatusResponse,
 	SubmitResponse,
 	VideoGenerationRequest,
-	WuyinkeCredentials,
 	WuyinkeDetailResponse,
 	WuyinkeSubmitResponse,
 } from '../interfaces';
+import { SORA2_CONFIG } from '../config';
 import { BaseSora2Provider } from './base.provider';
 
 /**
@@ -22,8 +23,7 @@ export class WuyinkeProvider extends BaseSora2Provider {
 	 * Submit a video generation request to wuyinkeji.com
 	 */
 	async submit(request: VideoGenerationRequest): Promise<SubmitResponse> {
-		const credentials = await this.ctx.getCredentials<WuyinkeCredentials>('wuyinkeSora2Api');
-		const baseUrl = credentials.apiEndpoint || 'https://api.wuyinkeji.com';
+		const { apiKey, baseUrl } = SORA2_CONFIG.wuyinke;
 
 		// Different endpoint for standard vs pro model
 		const endpoint = request.model === 'sora2pro' ? '/api/sora2pro/submit' : '/api/sora2/submit';
@@ -47,7 +47,7 @@ export class WuyinkeProvider extends BaseSora2Provider {
 
 		const response = (await this.ctx.helpers.httpRequest({
 			method: 'POST',
-			url: `${baseUrl}${endpoint}?key=${credentials.apiKey}`,
+			url: `${baseUrl}${endpoint}?key=${apiKey}`,
 			headers: {
 				'Content-Type': 'application/json',
 			},
@@ -79,12 +79,11 @@ export class WuyinkeProvider extends BaseSora2Provider {
 	 * Get the status of a video generation task
 	 */
 	async getStatus(taskId: string): Promise<StatusResponse> {
-		const credentials = await this.ctx.getCredentials<WuyinkeCredentials>('wuyinkeSora2Api');
-		const baseUrl = credentials.apiEndpoint || 'https://api.wuyinkeji.com';
+		const { apiKey, baseUrl } = SORA2_CONFIG.wuyinke;
 
 		const response = (await this.ctx.helpers.httpRequest({
 			method: 'GET',
-			url: `${baseUrl}/api/sora2/detail?key=${credentials.apiKey}&id=${taskId}`,
+			url: `${baseUrl}/api/sora2/detail?key=${apiKey}&id=${taskId}`,
 			json: true,
 		})) as WuyinkeDetailResponse;
 
