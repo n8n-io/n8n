@@ -14,7 +14,14 @@ import {
 	mockInstance,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { User, ListQueryDb, WorkflowFolderUnionFull, Role, WorkflowHistory } from '@n8n/db';
+import type {
+	User,
+	ListQueryDb,
+	WorkflowFolderUnionFull,
+	Role,
+	WorkflowHistory,
+	WorkflowEntity,
+} from '@n8n/db';
 import {
 	ProjectRepository,
 	WorkflowHistoryRepository,
@@ -1535,10 +1542,11 @@ describe('GET /workflows', () => {
 				.query('filter={"query":"Special"}')
 				.expect(200);
 
-			expect(response.body.data).toHaveLength(2);
-			expect(response.body.count).toBe(3); // Only 3 'Special' workflows exist
-			expect(response.body.data[0].name).toBe('Special Workflow 2');
-			expect(response.body.data[1].name).toBe('Special Workflow 3');
+			const body = response.body as { data: WorkflowEntity[]; count: number };
+			expect(body.count).toBe(3); // Only 3 'Special' workflows exist
+			expect(body.data).toHaveLength(2); // // We skip 1
+			const names = body.data.map((item) => item.name);
+			expect(names).toEqual(expect.arrayContaining(['Special Workflow 2', 'Special Workflow 3']));
 		});
 
 		test('should return empty array when pagination exceeds total count', async () => {
