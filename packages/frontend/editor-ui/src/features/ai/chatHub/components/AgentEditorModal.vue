@@ -281,15 +281,18 @@ function onSelectTools(newTools: INode[]) {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
+				<N8nButton
+					v-if="isEditMode"
+					type="secondary"
+					icon="trash-2"
+					:disabled="isDeleting"
+					:loading="isDeleting"
+					@click="onDelete"
+				/>
 				<div :class="$style.footerRight">
-					<N8nButton
-						v-if="isEditMode"
-						type="secondary"
-						icon="trash-2"
-						:disabled="isDeleting"
-						:loading="isDeleting"
-						@click="onDelete"
-					/>
+					<N8nButton type="secondary" @click="modalBus.emit('close')">{{
+						i18n.baseText('chatHub.tools.editor.cancel')
+					}}</N8nButton>
 					<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
 						{{ saveButtonLabel }}
 					</N8nButton>
@@ -325,7 +328,7 @@ function onSelectTools(newTools: INode[]) {
 
 .footer {
 	display: flex;
-	justify-content: flex-end;
+	justify-content: space-between;
 	align-items: center;
 	width: 100%;
 }
