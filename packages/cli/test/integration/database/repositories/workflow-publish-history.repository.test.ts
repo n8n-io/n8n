@@ -1,4 +1,9 @@
-import { createWorkflow, createWorkflowHistory, testDb } from '@n8n/backend-test-utils';
+import {
+	createWorkflow,
+	createWorkflowHistory,
+	createWorkflowWithHistory,
+	testDb,
+} from '@n8n/backend-test-utils';
 import {
 	UserRepository,
 	WorkflowHistoryRepository,
@@ -8,6 +13,9 @@ import {
 import { Container } from '@n8n/di';
 
 import { createUser } from '../../shared/db/users';
+
+const id1 = '5ef472d2-9253-452c-b0fe-8eb78fb3c43b';
+const id2 = 'bf36ce2c-baf6-4b51-9f01-065c76d5cb0c';
 
 describe('WorkflowPublishHistoryRepository', () => {
 	beforeAll(async () => {
@@ -26,12 +34,11 @@ describe('WorkflowPublishHistoryRepository', () => {
 		it('should create a publish history record with all fields', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const user = await createUser();
-			const workflow = await createWorkflow();
-			const workflowHistory = await createWorkflowHistory(workflow.id);
+			const workflow = await createWorkflowWithHistory({ versionId: id1 });
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: workflowHistory.versionId,
+				versionId: workflow.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: user.id,
@@ -43,7 +50,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			expect(record).toMatchObject({
 				workflowId: workflow.id,
-				versionId: workflowHistory.versionId,
+				versionId: workflow.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: user.id,
@@ -53,12 +60,11 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 		it('should create a record with null userId', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
-			const workflow = await createWorkflow();
-			const workflowHistory = await createWorkflowHistory(workflow.id);
+			const workflow = await createWorkflowWithHistory({ versionId: id1 });
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: workflowHistory.versionId,
+				versionId: workflow.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
@@ -70,45 +76,20 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			expect(record).toMatchObject({
 				workflowId: workflow.id,
-				versionId: workflowHistory.versionId,
+				versionId: workflow.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
-			});
-		});
-
-		it('should create a record with null versionId', async () => {
-			const repository = Container.get(WorkflowPublishHistoryRepository);
-			const workflow = await createWorkflow();
-
-			await repository.addRecord({
-				workflowId: workflow.id,
-				versionId: null,
-				status: 'deactivated',
-				mode: 'deactivate',
-				userId: null,
-			});
-
-			const record = await repository.findOne({
-				where: { workflowId: workflow.id },
-			});
-
-			expect(record).toMatchObject({
-				workflowId: workflow.id,
-				versionId: null,
-				status: 'deactivated',
-				mode: 'deactivate',
 			});
 		});
 
 		it('should create a record with null mode', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
-			const workflow = await createWorkflow();
-			const workflowHistory = await createWorkflowHistory(workflow.id);
+			const workflow = await createWorkflowWithHistory();
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: workflowHistory.versionId,
+				versionId: workflow.versionId,
 				status: 'deactivated',
 				mode: null,
 				userId: null,
@@ -120,7 +101,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			expect(record).toMatchObject({
 				workflowId: workflow.id,
-				versionId: workflowHistory.versionId,
+				versionId: workflow.versionId,
 				status: 'deactivated',
 				mode: null,
 			});
@@ -129,12 +110,12 @@ describe('WorkflowPublishHistoryRepository', () => {
 		it('should create multiple records for same workflow', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflow();
-			const version1 = await createWorkflowHistory(workflow.id);
-			const version2 = await createWorkflowHistory(workflow.id);
+			await createWorkflowHistory({ ...workflow, versionId: id1 });
+			await createWorkflowHistory({ ...workflow, versionId: id2 });
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version1.versionId,
+				versionId: id1,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
@@ -142,7 +123,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version1.versionId,
+				versionId: id1,
 				status: 'deactivated',
 				mode: 'update',
 				userId: null,
@@ -150,7 +131,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version2.versionId,
+				versionId: id2,
 				status: 'activated',
 				mode: 'update',
 				userId: null,
@@ -163,17 +144,17 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			expect(records).toHaveLength(3);
 			expect(records[0]).toMatchObject({
-				versionId: version1.versionId,
+				versionId: id1,
 				status: 'activated',
 				mode: 'activate',
 			});
 			expect(records[1]).toMatchObject({
-				versionId: version1.versionId,
+				versionId: id1,
 				status: 'deactivated',
 				mode: 'update',
 			});
 			expect(records[2]).toMatchObject({
-				versionId: version2.versionId,
+				versionId: id2,
 				status: 'activated',
 				mode: 'update',
 			});
@@ -184,12 +165,12 @@ describe('WorkflowPublishHistoryRepository', () => {
 		it('should return the last activated version with mode=activate', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflow();
-			const version1 = await createWorkflowHistory(workflow.id);
-			const version2 = await createWorkflowHistory(workflow.id);
+			await createWorkflowHistory({ ...workflow, versionId: id1 });
+			await createWorkflowHistory({ ...workflow, versionId: id2 });
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version1.versionId,
+				versionId: id1,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
@@ -197,7 +178,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version2.versionId,
+				versionId: id2,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
@@ -206,55 +187,8 @@ describe('WorkflowPublishHistoryRepository', () => {
 			const result = await repository.getLastActivatedVersion(workflow.id);
 
 			expect(result).toMatchObject({
-				versionId: version2.versionId,
+				versionId: id2,
 			});
-		});
-
-		it('should not return versions activated with mode=update', async () => {
-			const repository = Container.get(WorkflowPublishHistoryRepository);
-			const workflow = await createWorkflow();
-			const version1 = await createWorkflowHistory(workflow.id);
-			const version2 = await createWorkflowHistory(workflow.id);
-
-			await repository.addRecord({
-				workflowId: workflow.id,
-				versionId: version1.versionId,
-				status: 'activated',
-				mode: 'activate',
-				userId: null,
-			});
-
-			await repository.addRecord({
-				workflowId: workflow.id,
-				versionId: version2.versionId,
-				status: 'activated',
-				mode: 'update',
-				userId: null,
-			});
-
-			const result = await repository.getLastActivatedVersion(workflow.id);
-
-			expect(result).toMatchObject({
-				versionId: version1.versionId,
-			});
-		});
-
-		it('should return null if no activation with mode=activate exists', async () => {
-			const repository = Container.get(WorkflowPublishHistoryRepository);
-			const workflow = await createWorkflow();
-			const version = await createWorkflowHistory(workflow.id);
-
-			await repository.addRecord({
-				workflowId: workflow.id,
-				versionId: version.versionId,
-				status: 'activated',
-				mode: 'update',
-				userId: null,
-			});
-
-			const result = await repository.getLastActivatedVersion(workflow.id);
-
-			expect(result).toBeNull();
 		});
 
 		it('should return null if workflow was never activated', async () => {
@@ -269,11 +203,12 @@ describe('WorkflowPublishHistoryRepository', () => {
 		it('should ignore deactivation records', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflow();
-			const version = await createWorkflowHistory(workflow.id);
+			await createWorkflowHistory({ ...workflow, versionId: id1 });
+			await createWorkflowHistory({ ...workflow, versionId: id2 });
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version.versionId,
+				versionId: id1,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
@@ -281,7 +216,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version.versionId,
+				versionId: id2,
 				status: 'deactivated',
 				mode: 'deactivate',
 				userId: null,
@@ -290,7 +225,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			const result = await repository.getLastActivatedVersion(workflow.id);
 
 			expect(result).toMatchObject({
-				versionId: version.versionId,
+				versionId: id1,
 			});
 		});
 	});
@@ -299,12 +234,12 @@ describe('WorkflowPublishHistoryRepository', () => {
 		it('should return all activated versions (both activate and update modes)', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflow();
-			const version1 = await createWorkflowHistory(workflow.id);
-			const version2 = await createWorkflowHistory(workflow.id);
+			await createWorkflowHistory({ ...workflow, versionId: id1 });
+			await createWorkflowHistory({ ...workflow, versionId: id2 });
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version1.versionId,
+				versionId: id1,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
@@ -312,7 +247,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version2.versionId,
+				versionId: id2,
 				status: 'activated',
 				mode: 'update',
 				userId: null,
@@ -321,18 +256,17 @@ describe('WorkflowPublishHistoryRepository', () => {
 			const results = await repository.getPublishedVersions(workflow.id);
 
 			expect(results).toHaveLength(2);
-			expect(results.map((r) => r.versionId)).toContain(version1.versionId);
-			expect(results.map((r) => r.versionId)).toContain(version2.versionId);
+			expect(results.map((r) => r.versionId)).toContain(id1);
+			expect(results.map((r) => r.versionId)).toContain(id2);
 		});
 
 		it('should not return deactivated versions', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
-			const workflow = await createWorkflow();
-			const version = await createWorkflowHistory(workflow.id);
+			const workflow = await createWorkflowWithHistory();
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version.versionId,
+				versionId: workflow.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
@@ -340,7 +274,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version.versionId,
+				versionId: workflow.versionId,
 				status: 'deactivated',
 				mode: 'deactivate',
 				userId: null,
@@ -350,19 +284,18 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			expect(results).toHaveLength(1);
 			expect(results[0]).toMatchObject({
-				versionId: version.versionId,
+				versionId: workflow.versionId,
 			});
 		});
 
 		it('should return user when includeUser is true', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const user = await createUser();
-			const workflow = await createWorkflow();
-			const version = await createWorkflowHistory(workflow.id);
+			const workflow = await createWorkflowWithHistory();
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version.versionId,
+				versionId: workflow.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: user.id,
@@ -378,12 +311,11 @@ describe('WorkflowPublishHistoryRepository', () => {
 		it('should not return user when includeUser is false', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const user = await createUser();
-			const workflow = await createWorkflow();
-			const version = await createWorkflowHistory(workflow.id);
+			const workflow = await createWorkflowWithHistory();
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version.versionId,
+				versionId: workflow.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: user.id,
@@ -406,14 +338,12 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 		it('should handle multiple workflows independently', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
-			const workflow1 = await createWorkflow();
-			const workflow2 = await createWorkflow();
-			const version1 = await createWorkflowHistory(workflow1.id);
-			const version2 = await createWorkflowHistory(workflow2.id);
+			const workflow1 = await createWorkflowWithHistory();
+			const workflow2 = await createWorkflowWithHistory();
 
 			await repository.addRecord({
 				workflowId: workflow1.id,
-				versionId: version1.versionId,
+				versionId: workflow1.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
@@ -421,7 +351,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 			await repository.addRecord({
 				workflowId: workflow2.id,
-				versionId: version2.versionId,
+				versionId: workflow2.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
@@ -431,10 +361,10 @@ describe('WorkflowPublishHistoryRepository', () => {
 			const results2 = await repository.getPublishedVersions(workflow2.id);
 
 			expect(results1).toHaveLength(1);
-			expect(results1[0].versionId).toBe(version1.versionId);
+			expect(results1[0].versionId).toBe(workflow1.versionId);
 
 			expect(results2).toHaveLength(1);
-			expect(results2[0].versionId).toBe(version2.versionId);
+			expect(results2[0].versionId).toBe(workflow2.versionId);
 		});
 	});
 
@@ -442,12 +372,11 @@ describe('WorkflowPublishHistoryRepository', () => {
 		it('should cascade delete when workflow is deleted', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflowRepository = Container.get(WorkflowRepository);
-			const workflow = await createWorkflow();
-			const version = await createWorkflowHistory(workflow.id);
+			const workflow = await createWorkflowWithHistory();
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version.versionId,
+				versionId: workflow.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
@@ -462,38 +391,35 @@ describe('WorkflowPublishHistoryRepository', () => {
 			expect(records).toHaveLength(0);
 		});
 
-		it('should set versionId to null when workflow history version is deleted', async () => {
+		it('should cascade delete when worklfow history version is deleted', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
-			const workflow = await createWorkflow();
-			const version = await createWorkflowHistory(workflow.id);
+			const workflow = await createWorkflowWithHistory();
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version.versionId,
+				versionId: workflow.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: null,
 			});
 
-			await Container.get(WorkflowHistoryRepository).delete({ versionId: version.versionId });
+			await Container.get(WorkflowHistoryRepository).delete({ versionId: workflow.versionId });
 
-			const record = await repository.findOne({
+			const records = await repository.find({
 				where: { workflowId: workflow.id },
 			});
 
-			expect(record).toBeDefined();
-			expect(record?.versionId).toBeNull();
+			expect(records).toHaveLength(0);
 		});
 
 		it('should set userId to null when user is deleted', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const user = await createUser();
-			const workflow = await createWorkflow();
-			const version = await createWorkflowHistory(workflow.id);
+			const workflow = await createWorkflowWithHistory();
 
 			await repository.addRecord({
 				workflowId: workflow.id,
-				versionId: version.versionId,
+				versionId: workflow.versionId,
 				status: 'activated',
 				mode: 'activate',
 				userId: user.id,

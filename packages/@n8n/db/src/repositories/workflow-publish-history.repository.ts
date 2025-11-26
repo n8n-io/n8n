@@ -31,7 +31,6 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 			where: {
 				workflowId,
 				status: 'activated',
-				mode: 'activate',
 			},
 			order: { createdAt: 'DESC' },
 		});
