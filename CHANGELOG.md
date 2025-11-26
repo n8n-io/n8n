@@ -1,3 +1,13 @@
+## [1.122.3](https://github.com/n8n-io/n8n/compare/n8n@1.122.2...n8n@1.122.3) (2025-11-26)
+
+
+### Bug Fixes
+
+* **core:** Add missing workflowId when creating base subworkflowworkflow additional data ([#22312](https://github.com/n8n-io/n8n/issues/22312)) ([c204627](https://github.com/n8n-io/n8n/commit/c204627b3c9038db578821c6d8b1f86131cc8c57))
+* **Git Node:** Throw an error if the repository path is blocked ([#22253](https://github.com/n8n-io/n8n/issues/22253)) ([97ee86c](https://github.com/n8n-io/n8n/commit/97ee86cc9a1842d1a492f8b2da329bdb65b78a5a))
+
+
+
 ## [1.122.2](https://github.com/n8n-io/n8n/compare/n8n@1.122.1...n8n@1.122.2) (2025-11-25)
 
 
