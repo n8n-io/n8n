@@ -45,8 +45,6 @@ export class PostHogClient {
 
 		const fullId = [this.instanceSettings.instanceId, user.id].join('#');
 
-		console.log(await this.postHog.getAllFlags(fullId));
-
 		// cannot use local evaluation because that requires PostHog personal api key with org-wide
 		// https://github.com/PostHog/posthog/issues/4849
 		return await this.postHog.getAllFlags(fullId, {

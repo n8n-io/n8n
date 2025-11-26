@@ -146,7 +146,6 @@ export const usePostHog = defineStore('posthog', () => {
 		};
 
 		window.posthog?.init(config.apiKey, options);
-		console.log('posthog initialized', window.posthog, options, config.apiKey);
 		identify();
 
 		if (evaluatedFeatureFlags && Object.keys(evaluatedFeatureFlags).length) {
