@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import { PROJECT_OWNER_ROLE_SLUG, PROJECT_OWNER_VIEWER_ROLE_SLUG } from './constants.ee';
 import { ALL_SCOPES } from './scope-information';
 
 export const roleNamespaceSchema = z.enum(['global', 'project', 'credential', 'workflow']);
