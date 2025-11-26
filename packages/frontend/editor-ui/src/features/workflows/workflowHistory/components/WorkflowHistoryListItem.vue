@@ -180,7 +180,6 @@ onMounted(() => {
 			</p>
 		</slot>
 		<div :class="$style.tail">
-			<!-- New behavior: show "Active" badge if isVersionActive -->
 			<N8nBadge
 				v-if="isDraftPublishEnabled && props.isVersionActive"
 				size="medium"
@@ -241,7 +240,6 @@ onMounted(() => {
 			font-size: var(--font-size--2xs);
 		}
 
-		// New behavior styles
 		.mainLine {
 			padding: 0 0 var(--spacing--5xs);
 			color: var(--color--text--shade-1);
