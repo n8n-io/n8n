@@ -27,6 +27,8 @@ export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => ({
 		},
 	],
 	active: overrides.active ?? false,
+	versionId: 'some-version-id',
+	activeVersionId: overrides.active ? 'some-version-id' : null,
 	isArchived: overrides.isArchived ?? false,
 	createdAt: overrides.createdAt ?? new Date('2024-01-01T00:00:00.000Z'),
 	updatedAt: overrides.updatedAt ?? new Date('2024-01-02T00:00:00.000Z'),

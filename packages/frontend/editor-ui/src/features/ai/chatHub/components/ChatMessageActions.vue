@@ -87,7 +87,7 @@ function handleReadAloud() {
 			/>
 			<template #content>{{ isSpeaking ? 'Stop reading' : 'Read aloud' }}</template>
 		</N8nTooltip>
-		<N8nTooltip placement="bottom" :show-after="300">
+		<N8nTooltip v-if="message.status === 'success'" placement="bottom" :show-after="300">
 			<N8nIconButton icon="pen" type="tertiary" size="medium" text @click="handleEdit" />
 			<template #content>Edit</template>
 		</N8nTooltip>
