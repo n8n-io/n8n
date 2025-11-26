@@ -284,7 +284,7 @@ describe('ParameterInputList', () => {
 	 * Critical for maintaining parent-child communication during refactoring.
 	 */
 	describe('Event Emissions', () => {
-		it('should emit valueChanged event', async () => {
+		it('should emit valueChanged event', () => {
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
 			const { emitted } = renderComponent({
 				props: {
@@ -530,6 +530,7 @@ describe('ParameterInputList', () => {
 						filter: {
 							caseSensitive: true,
 							typeValidation: 'strict',
+							version: 1,
 						},
 					},
 				},
@@ -865,8 +866,11 @@ describe('ParameterInputList', () => {
 
 		it('should filter options when Form Trigger is connected', () => {
 			ndvStore.activeNode = {
+				id: 'wait-123',
 				name: 'Wait',
 				type: WAIT_NODE_TYPE,
+				typeVersion: 1,
+				position: [100, 200],
 				parameters: { resume: 'form' },
 			} as INodeUi;
 
@@ -901,8 +905,11 @@ describe('ParameterInputList', () => {
 
 		it('should not modify parameters when Form Trigger is not connected', () => {
 			ndvStore.activeNode = {
+				id: 'wait-123',
 				name: 'Wait',
 				type: WAIT_NODE_TYPE,
+				typeVersion: 1,
+				position: [100, 200],
 				parameters: { resume: 'form' },
 			} as INodeUi;
 
@@ -1133,7 +1140,7 @@ describe('ParameterInputList', () => {
 	 * Validates: rapid updates, stable keys for re-rendering, large datasets.
 	 */
 	describe('Performance-Related Behavior', () => {
-		it('should handle rapid parameter changes', () => {
+		it('should handle rapid parameter changes', async () => {
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
 			const { rerender } = renderComponent({
 				props: {
@@ -1143,12 +1150,12 @@ describe('ParameterInputList', () => {
 			});
 
 			// Simulate rapid updates
-			rerender({
+			await rerender({
 				parameters: TEST_PARAMETERS,
 				nodeValues: { ...TEST_NODE_VALUES, color: '#00ff00' },
 			});
 
-			rerender({
+			await rerender({
 				parameters: TEST_PARAMETERS,
 				nodeValues: { ...TEST_NODE_VALUES, color: '#0000ff' },
 			});
@@ -1313,7 +1320,7 @@ describe('ParameterInputList', () => {
 	 * Ensures watchers respond correctly to parameter and nodeValue changes.
 	 */
 	describe('Parameter Watchers', () => {
-		it('should handle parameter changes that affect visibility', () => {
+		it('should handle parameter changes that affect visibility', async () => {
 			const conditionalParameters: INodeProperties[] = [
 				{
 					displayName: 'Conditional Field',
@@ -1340,7 +1347,7 @@ describe('ParameterInputList', () => {
 			expect(container.querySelector('.parameter-input-list-wrapper')).toBeInTheDocument();
 
 			// Update to hide the field
-			rerender({
+			await rerender({
 				parameters: conditionalParameters,
 				nodeValues: { showField: false },
 			});
@@ -1349,7 +1356,7 @@ describe('ParameterInputList', () => {
 			expect(container.querySelector('.parameter-input-list-wrapper')).toBeInTheDocument();
 		});
 
-		it('should handle nodeValues updates', () => {
+		it('should handle nodeValues updates', async () => {
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
 			const { rerender } = renderComponent({
 				props: {
@@ -1359,7 +1366,7 @@ describe('ParameterInputList', () => {
 			});
 
 			// Update node values multiple times
-			rerender({
+			await rerender({
 				parameters: TEST_PARAMETERS,
 				nodeValues: { ...TEST_NODE_VALUES, newValue: 'test' },
 			});
