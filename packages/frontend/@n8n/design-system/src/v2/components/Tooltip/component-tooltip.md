@@ -24,6 +24,8 @@ Displays contextual information when users hover over, focus on, or tap an eleme
 - `teleported?: boolean` - Whether to append the tooltip to the body. Default: `true`
 - `offset?: number` - Offset of the tooltip from the trigger element (in pixels).
 - `showArrow?: boolean` - Whether to show the tooltip arrow. Default: `true`
+- `buttons?: IN8nButton[]` - Array of button configurations to render at the bottom of the tooltip. Default: `[]`
+- `justifyButtons?: Justify` - Horizontal alignment of buttons. Values: `'flex-start' | 'flex-end' | 'start' | 'end' | 'left' | 'right' | 'center' | 'space-between' | 'space-around' | 'space-evenly'`. Default: `'flex-end'`
 
 **Slots**
 
@@ -143,6 +145,43 @@ const showTooltip = ref(false)
     placement="top"
   >
     <span>{{ showTooltip ? 'Tooltip enabled' : 'Tooltip disabled' }}</span>
+  </N8nTooltip>
+</template>
+```
+
+**Tooltip with action buttons:**
+```typescript
+<script setup lang="ts">
+import { N8nTooltip } from '@n8n/design-system'
+
+const handleSave = () => {
+  console.log('Saved')
+}
+
+const handleCancel = () => {
+  console.log('Cancelled')
+}
+
+const buttons = [
+  {
+    attrs: { label: 'Cancel', type: 'secondary', size: 'small' },
+    listeners: { click: handleCancel }
+  },
+  {
+    attrs: { label: 'Save', type: 'primary', size: 'small' },
+    listeners: { click: handleSave }
+  }
+]
+</script>
+
+<template>
+  <N8nTooltip
+    content="Are you sure you want to proceed?"
+    :buttons="buttons"
+    justify-buttons="flex-end"
+    placement="top"
+  >
+    <span>Hover for confirmation</span>
   </N8nTooltip>
 </template>
 ```
