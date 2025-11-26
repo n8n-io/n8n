@@ -12,6 +12,7 @@ export function useCustomAgent(agentId?: MaybeRef<string | undefined>) {
 		() => toValue(agentId),
 		async (id) => {
 			if (!id) {
+				agent.value = undefined;
 				return;
 			}
 
