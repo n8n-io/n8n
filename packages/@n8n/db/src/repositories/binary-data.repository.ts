@@ -37,13 +37,13 @@ export class BinaryDataRepository extends Repository<BinaryDataFile> {
 			SELECT ${first}, ${second}, ${third}, ${data}, ${mimeType}, ${fileName}, ${fileSize}
 			FROM ${tableName}
 			WHERE ${fileId} = ${fourth}
-		`.trim();
+		`;
 
 		const args = [targetFileId, targetSourceType, targetSourceId, sourceFileId];
 
-		const result = await this.manager.connection.createQueryRunner().query(query, args, true);
+		await this.query(query, args);
 
-		return (result.affected ?? 0) > 0;
+		return await this.existsBy({ fileId: targetFileId });
 	}
 
 	private getTableName(name: string): string {
