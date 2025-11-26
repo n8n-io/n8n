@@ -10,10 +10,10 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 
+import type { Cipher } from '@/encryption';
+
 import type { ExecutionContextHookRegistry } from '../execution-context-hook-registry.service';
 import { ExecutionContextService } from '../execution-context.service';
-
-import type { Cipher } from '@/encryption';
 
 // Mock the helper functions from n8n-workflow
 jest.mock('n8n-workflow', () => ({
