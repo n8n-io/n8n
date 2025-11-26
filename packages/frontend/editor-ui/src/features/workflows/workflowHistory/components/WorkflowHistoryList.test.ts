@@ -153,7 +153,11 @@ describe('WorkflowHistoryList', () => {
 				{
 					action,
 					id: items[index].versionId,
-					data: { formattedCreatedAt: expect.any(String) },
+					data: {
+						formattedCreatedAt: expect.any(String),
+						versionName: items[index].name,
+						description: items[index].description,
+					},
 				},
 			],
 		]);
