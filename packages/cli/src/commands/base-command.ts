@@ -237,6 +237,13 @@ export abstract class BaseCommand<F = never> {
 			process.exit(1);
 		}
 
+		if (Container.get(BinaryDataConfig).availableModes.includes('database')) {
+			const binaryDataService = Container.get(BinaryDataService);
+			const { DatabaseManager } = await import('@/binary-data/database.manager');
+			const databaseManager = Container.get(DatabaseManager);
+			binaryDataService.setManager('database', databaseManager);
+		}
+
 		await Container.get(BinaryDataService).init();
 	}
 

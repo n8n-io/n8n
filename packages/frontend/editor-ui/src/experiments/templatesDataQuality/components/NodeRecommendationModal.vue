@@ -1,17 +1,20 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY, TEMPLATES_URLS } from '@/app/constants';
+import { EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY } from '@/app/constants';
 import { useUIStore } from '@/app/stores/ui.store';
 import type { ITemplatesWorkflowFull } from '@n8n/rest-api-client';
 import { onMounted, ref } from 'vue';
 import { useTemplatesDataQualityStore } from '../stores/templatesDataQuality.store';
+import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import TemplateCard from './TemplateCard.vue';
 import { useI18n } from '@n8n/i18n';
 import { N8nLink, N8nSpinner, N8nText } from '@n8n/design-system';
+import { storeToRefs } from 'pinia';
 
 const uiStore = useUIStore();
 const locale = useI18n();
 const templatesStore = useTemplatesDataQualityStore();
+const { websiteTemplateRepositoryURL } = storeToRefs(useTemplatesStore());
 
 const closeModal = () => {
 	uiStore.closeModal(EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY);
@@ -61,7 +64,7 @@ onMounted(async () => {
 				/>
 			</div>
 			<div :class="$style.seeMore">
-				<N8nLink :href="TEMPLATES_URLS.BASE_WEBSITE_URL">
+				<N8nLink :href="websiteTemplateRepositoryURL">
 					{{ locale.baseText('workflows.templatesDataQuality.seeMoreTemplates') }}
 				</N8nLink>
 			</div>

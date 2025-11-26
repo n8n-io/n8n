@@ -46,6 +46,7 @@ describe('validateWorkflow tool', () => {
 
 	const sampleValidationResult: ProgrammaticChecksResult = {
 		connections: [],
+		nodes: [],
 		trigger: [],
 		agentPrompt: [
 			{
