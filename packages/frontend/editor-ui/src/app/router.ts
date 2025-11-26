@@ -96,6 +96,9 @@ const MigrationReportView = async () =>
 const MigrationRuleReportView = async () =>
 	await import('@/features/settings/migrationReport/MigrationRuleDetail.vue');
 
+const DependencyGraphView = async () =>
+	await import('@/features/dependencyGraph/views/DependencyGraphView.vue');
+
 function getTemplatesRedirect(defaultRedirect: VIEWS[keyof VIEWS]): { name: string } | false {
 	const settingsStore = useSettingsStore();
 	const isTemplatesEnabled: boolean = settingsStore.isTemplatesEnabled;
@@ -857,6 +860,25 @@ export const routes: RouteRecordRaw[] = [
 		components: {
 			default: EntityUnAuthorised,
 			sidebar: MainSidebar,
+		},
+	},
+	{
+		path: '/dependency-graph',
+		name: VIEWS.DEPENDENCY_GRAPH,
+		components: {
+			default: DependencyGraphView,
+			sidebar: MainSidebar,
+		},
+		meta: {
+			middleware: ['authenticated'],
+			telemetry: {
+				pageCategory: 'tools',
+				getProperties() {
+					return {
+						feature: 'dependency-graph',
+					};
+				},
+			},
 		},
 	},
 	{
