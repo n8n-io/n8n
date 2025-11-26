@@ -341,8 +341,9 @@ export class WorkflowService {
 			delete workflowSettings.executionTimeout;
 		}
 
+		workflowUpdateData.updatedAt = new Date(); // required due to atomic update
+
 		if (workflowUpdateData.name) {
-			workflowUpdateData.updatedAt = new Date(); // required due to atomic update
 			await validateEntity(workflowUpdateData);
 		}
 
@@ -356,6 +357,7 @@ export class WorkflowService {
 			'pinData',
 			'versionId',
 			'description',
+			'updatedAt',
 		];
 
 		// Forbid updating active fields with FF on
