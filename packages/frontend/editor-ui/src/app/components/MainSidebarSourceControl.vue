@@ -96,9 +96,7 @@ function pullWorkfolder() {
 			[$style.collapsed]: isCollapsed,
 			[$style.isConnected]: sourceControlStore.isEnterpriseSourceControlEnabled,
 		}"
-		:style="{
-			background: sourceControlStore.preferences.branchColor,
-		}"
+		:style="{}"
 		data-test-id="main-sidebar-source-control"
 	>
 		<div :class="$style.connected" data-test-id="main-sidebar-source-control-connected">
@@ -106,6 +104,7 @@ function pullWorkfolder() {
 				:class="$style.icon"
 				:style="{
 					color: accessibleTextColor,
+					background: sourceControlStore.preferences.branchColor,
 				}"
 			>
 				<N8nIcon icon="git-branch" size="small" />
@@ -134,7 +133,7 @@ function pullWorkfolder() {
 						data-test-id="main-sidebar-source-control-pull"
 						icon="arrow-down"
 						type="tertiary"
-						size="mini"
+						:size="isCollapsed ? 'small' : 'mini'"
 						text
 						:square="isCollapsed"
 						:label="isCollapsed ? '' : i18n.baseText('settings.sourceControl.button.pull')"
@@ -166,7 +165,7 @@ function pullWorkfolder() {
 						icon="arrow-up"
 						type="tertiary"
 						text
-						size="mini"
+						:size="isCollapsed ? 'small' : 'mini'"
 						@click="pushWorkfolder"
 					/>
 				</N8nTooltip>
@@ -177,8 +176,9 @@ function pullWorkfolder() {
 
 <style lang="scss" module>
 .sync {
-	border-top: 1px solid var(--color--black-alpha-200);
-	padding: 0 var(--spacing--5xs) 0 var(--spacing--2xs);
+	border-top: var(--border);
+
+	padding: 0 var(--spacing--5xs) 0 0;
 
 	button {
 		font-size: var(--font-size--2xs);
@@ -190,7 +190,7 @@ function pullWorkfolder() {
 }
 
 .icon {
-	padding: var(--spacing--4xs) var(--spacing--2xs);
+	padding: var(--spacing--4xs) var(--spacing--xs);
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -212,17 +212,17 @@ function pullWorkfolder() {
 
 .collapsed {
 	text-align: center;
-	flex-direction: column;
-	padding-top: var(--spacing--3xs);
+	flex-direction: column-reverse;
+	padding-top: var(--spacing--4xs);
 
 	.connected {
-		flex-direction: column;
-		gap: var(--spacing--4xs);
-		padding-bottom: var(--spacing--2xs);
+		flex-direction: column-reverse;
+		gap: var(--spacing--3xs);
 		padding-right: 0;
 
 		.icon {
 			width: 100%;
+			padding: var(--spacing--3xs) 0;
 			justify-content: center;
 		}
 	}
