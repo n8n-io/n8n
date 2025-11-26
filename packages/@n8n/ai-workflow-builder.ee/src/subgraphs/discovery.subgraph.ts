@@ -1,5 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { BaseMessage, AIMessage } from '@langchain/core/messages';
+import type { BaseMessage, AIMessage, ToolMessage } from '@langchain/core/messages';
 import { isAIMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
@@ -202,16 +202,11 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	private toolMap!: Map<string, StructuredTool>;
 	private config!: DiscoverySubgraphConfig;
 
-	constructor() {
-		super();
-	}
-
 	create(config: DiscoverySubgraphConfig) {
 		this.config = config;
 
 		// Create tools
 		const tools = [
-			// createCategorizePromptTool(config.llm),
 			createGetBestPracticesTool(),
 			createNodeSearchTool(config.parsedNodeTypes),
 			createNodeDetailsTool(config.parsedNodeTypes),
@@ -274,10 +269,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Context is already in messages from transformInput
 	 */
 	private async callAgent(state: typeof DiscoverySubgraphState.State) {
-		console.log(
-			`[Discovery] callAgent iteration=${state.iterationCount} messages=${state.messages.length}`,
-		);
-
 		// Apply cache markers to accumulated messages (for tool loop iterations)
 		if (state.messages.length > 0) {
 			applySubgraphCacheMarkers(state.messages);
@@ -288,9 +279,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			messages: state.messages,
 			prompt: state.userRequest, // Keep for template compatibility
 		})) as AIMessage;
-
-		const toolCalls = response.tool_calls?.length ?? 0;
-		console.log(`[Discovery] Agent response: ${toolCalls} tool calls`);
 
 		return { messages: [response] };
 	}
@@ -350,7 +338,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		}
 
 		const bestPracticesTool = state.messages.find(
-			(m) => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
+			(m): m is ToolMessage => m.getType() === 'tool' && m?.text?.startsWith('<best_practices>'),
 		);
 		// Return raw output without hydration
 		return {
@@ -415,12 +403,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);
 
-		console.log('\n========== DISCOVERY SUBGRAPH ==========');
-		console.log('[Discovery] transformInput called');
-		console.log(`[Discovery] User request: "${userRequest.substring(0, 100)}..."`);
-		console.log(`[Discovery] Parent messages count: ${parentState.messages.length}`);
-		console.log(`[Discovery] Existing nodes: ${parentState.workflowJSON.nodes.length}`);
-
 		return {
 			userRequest,
 			messages: [contextMessage], // Context already in messages
@@ -432,16 +414,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		_parentState: typeof ParentGraphState.State,
 	) {
 		const nodesFound = subgraphOutput.nodesFound || [];
-
-		console.log('[Discovery] transformOutput called');
-		console.log(`[Discovery] Nodes found: ${nodesFound.length}`);
-		if (nodesFound.length > 0) {
-			console.log(`[Discovery] Node types: ${nodesFound.map((n) => n.nodeName).join(', ')}`);
-		}
-		console.log(`[Discovery] Best practices: ${subgraphOutput.bestPractices ? 'yes' : 'no'}`);
-		console.log(`[Discovery] Iterations: ${subgraphOutput.iterationCount}`);
-		console.log('=========================================\n');
-
 		const discoveryContext = {
 			nodesFound,
 			categorization: subgraphOutput.categorization,
@@ -465,7 +437,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		return {
 			discoveryContext,
 			coordinationLog: [logEntry],
-			// NO messages - clean separation from user-facing conversation
 		};
 	}
 }

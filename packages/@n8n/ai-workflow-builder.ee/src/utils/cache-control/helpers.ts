@@ -174,7 +174,6 @@ export function applyCacheControlMarkers(
 export function applySubgraphCacheMarkers(messages: BaseMessage[]): void {
 	const userToolIndices = findUserToolMessageIndices(messages);
 	if (userToolIndices.length === 0) {
-		console.log('[CacheControl] No user/tool messages found, skipping');
 		return;
 	}
 
@@ -191,10 +190,6 @@ export function applySubgraphCacheMarkers(messages: BaseMessage[]): void {
 			}
 		}
 	}
-
-	console.log(
-		`[CacheControl] Cleaned ${removedCount} stale markers, applying to last of ${userToolIndices.length} user/tool messages`,
-	);
 
 	// Now apply marker to the last user/tool message only
 	const lastIdx = userToolIndices[userToolIndices.length - 1];

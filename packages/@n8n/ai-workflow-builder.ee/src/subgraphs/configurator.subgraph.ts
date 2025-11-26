@@ -92,7 +92,6 @@ Defaults are traps that cause runtime failures. Examples:
 - Document Loader defaults to 'json' but MUST be 'binary' when processing files
 - HTTP Request defaults to GET but APIs often need POST
 - Vector Store mode affects available connections - set explicitly (retrieve-as-tool when using with AI Agent)
-<<<<<<< HEAD
 </avoid_default_traps>
 
 <response_format>
@@ -101,21 +100,6 @@ After validation passes, provide a concise summary:
 - Note which nodes were configured and key settings applied
 - Keep it brief - this output is used for coordination with other LLM agents, not displayed directly to users
 </response_format>
-=======
-
-RESPONSE FORMAT (only after validation):
-If there are placeholders requiring user setup:
-**⚙️ How to Setup** (numbered format)
-- List only parameter placeholders requiring user configuration
-- Include only incomplete tasks needing user action
-- NEVER instruct user to set up authentication/credentials - handled in UI
-- Focus on workflow-specific parameters only
-
-If everything is configured:
-Provide a brief confirmation that the workflow is ready.
-
-Always end with: "Let me know if you'd like to adjust anything."
->>>>>>> parent of d529b3fe01 (Improve prompt structure)
 
 DO NOT:
 - Respond before calling validate_configuration
@@ -211,7 +195,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 
 	private agent!: Runnable;
 	private toolMap!: Map<string, StructuredTool>;
-	// private config!: ConfiguratorSubgraphConfig;
 
 	create(config: ConfiguratorSubgraphConfig) {
 		// Create tools
@@ -258,10 +241,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		 * Context is already in messages from transformInput
 		 */
 		const callAgent = async (state: typeof ConfiguratorSubgraphState.State) => {
-			console.log(
-				`[Configurator] callAgent iteration=${state.iterationCount} messages=${state.messages.length}`,
-			);
-
 			// Apply cache markers to accumulated messages (for tool loop iterations)
 			applySubgraphCacheMarkers(state.messages);
 
@@ -271,11 +250,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 				instanceUrl: state.instanceUrl ?? '',
 			})) as BaseMessage;
 
-			const toolCalls =
-				'tool_calls' in response && Array.isArray(response.tool_calls)
-					? response.tool_calls.length
-					: 0;
-			console.log(`[Configurator] Agent response: ${toolCalls} tool calls`);
 			return { messages: [response] };
 		};
 
@@ -314,7 +288,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 
 		// 2. Best practices only from discovery (not full nodes list)
 		if (parentState.discoveryContext?.bestPractices) {
-			contextParts.push('=== BEST PRACTICES ===');
 			contextParts.push(parentState.discoveryContext.bestPractices);
 		}
 
@@ -328,18 +301,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);
-
-		console.log('\n========== CONFIGURATOR SUBGRAPH ==========');
-		console.log('[Configurator] transformInput called');
-		console.log(`[Configurator] User request: "${userRequest.substring(0, 100)}..."`);
-		console.log(
-			`[Configurator] Workflow nodes to configure: ${parentState.workflowJSON.nodes.length}`,
-		);
-		if (parentState.workflowJSON.nodes.length > 0) {
-			console.log(
-				`[Configurator] Node names: ${parentState.workflowJSON.nodes.map((n) => n.name).join(', ')}`,
-			);
-		}
 
 		return {
 			workflowJSON: parentState.workflowJSON,
@@ -359,17 +320,6 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		const lastMessage = subgraphOutput.messages[subgraphOutput.messages.length - 1];
 		const setupInstructions =
 			typeof lastMessage?.content === 'string' ? lastMessage.content : 'Configuration complete';
-
-		console.log('[Configurator] transformOutput called');
-		console.log(`[Configurator] Final workflow nodes: ${subgraphOutput.workflowJSON.nodes.length}`);
-		console.log(
-			`[Configurator] Operations queued: ${subgraphOutput.workflowOperations?.length ?? 0}`,
-		);
-		console.log(`[Configurator] Iterations: ${subgraphOutput.iterationCount}`);
-		console.log(
-			`[Configurator] Setup instructions preview: "${setupInstructions.substring(0, 100)}..."`,
-		);
-		console.log('============================================\n');
 
 		const nodesConfigured = subgraphOutput.workflowJSON.nodes.length;
 		const hasSetupInstructions =

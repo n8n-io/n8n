@@ -296,10 +296,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 		 * Context is already in messages from transformInput
 		 */
 		const callAgent = async (state: typeof BuilderSubgraphState.State) => {
-			console.log(
-				`[Builder] callAgent iteration=${state.iterationCount} messages=${state.messages.length}`,
-			);
-
 			// Apply cache markers to accumulated messages (for tool loop iterations)
 			applySubgraphCacheMarkers(state.messages);
 
@@ -308,11 +304,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 				messages: state.messages,
 			});
 
-			const toolCalls =
-				'tool_calls' in response && Array.isArray(response.tool_calls)
-					? response.tool_calls.length
-					: 0;
-			console.log(`[Builder] Agent response: ${toolCalls} tool calls`);
 			return { messages: [response] };
 		};
 
@@ -376,16 +367,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 		// Create initial message with context
 		const contextMessage = createContextMessage(contextParts);
 
-		console.log('\n========== BUILDER SUBGRAPH ==========');
-		console.log('[Builder] transformInput called');
-		console.log(`[Builder] User request: "${userRequest.substring(0, 100)}..."`);
-		console.log(`[Builder] Existing workflow nodes: ${parentState.workflowJSON.nodes.length}`);
-		if (parentState.discoveryContext) {
-			console.log(
-				`[Builder] Discovery context: ${parentState.discoveryContext.nodesFound.length} nodes found`,
-			);
-		}
-
 		return {
 			userRequest,
 			workflowJSON: parentState.workflowJSON,
@@ -402,16 +383,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 		const nodes = subgraphOutput.workflowJSON.nodes;
 		const connections = subgraphOutput.workflowJSON.connections;
 		const connectionCount = Object.values(connections).flat().length;
-
-		console.log('[Builder] transformOutput called');
-		console.log(`[Builder] Nodes created: ${nodes.length}`);
-		if (nodes.length > 0) {
-			console.log(`[Builder] Node names: ${nodes.map((n) => n.name).join(', ')}`);
-		}
-		console.log(`[Builder] Connections: ${connectionCount}`);
-		console.log(`[Builder] Operations queued: ${subgraphOutput.workflowOperations?.length ?? 0}`);
-		console.log(`[Builder] Iterations: ${subgraphOutput.iterationCount}`);
-		console.log('========================================\n');
 
 		// Extract builder's actual summary (last message without tool calls)
 		const builderSummary = subgraphOutput.messages
@@ -447,7 +418,6 @@ export class BuilderSubgraph extends BaseSubgraph<
 			workflowJSON: subgraphOutput.workflowJSON,
 			workflowOperations: subgraphOutput.workflowOperations ?? [],
 			coordinationLog: [logEntry],
-			// NO messages - clean separation from user-facing conversation
 		};
 	}
 }

@@ -92,36 +92,24 @@ export function getPhaseMetadata(
  * Deterministic routing based on coordination log.
  * Called AFTER a subgraph completes to determine next phase.
  */
-export function getNextPhaseFromLog(
-	log: CoordinationLogEntry[],
-	workflowHasNodes: boolean,
-): RoutingDecision {
+export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecision {
 	const lastPhase = getLastCompletedPhase(log);
-
-	console.log('[Coordination] getNextPhaseFromLog called');
-	console.log(`[Coordination] Last completed phase: ${lastPhase ?? 'none'}`);
-	console.log(`[Coordination] Workflow has nodes: ${workflowHasNodes}`);
-
 	// After discovery → always builder (builder decides what new nodes to add)
 	if (lastPhase === 'discovery') {
-		console.log('[Coordination] Discovery done → builder');
 		return 'builder';
 	}
 
 	// After builder → configurator
 	if (lastPhase === 'builder') {
-		console.log('[Coordination] Builder done → configurator');
 		return 'configurator';
 	}
 
 	// After configurator → responder (terminal)
 	if (lastPhase === 'configurator') {
-		console.log('[Coordination] Configurator done → responder (terminal)');
 		return 'responder';
 	}
 
 	// No phases completed yet → let supervisor decide
-	console.log('[Coordination] No phases completed → responder (fallback)');
 	return 'responder';
 }
 

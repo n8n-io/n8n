@@ -36,31 +36,17 @@ function createSubgraphNodeHandler<
 	TSubgraph extends BaseSubgraph<unknown, Record<string, unknown>, Record<string, unknown>>,
 >(subgraph: TSubgraph, compiledGraph: ReturnType<TSubgraph['create']>, name: string) {
 	return async (state: typeof ParentGraphState.State) => {
-		console.log(`\n>>>>>>>>>> ENTERING ${name.toUpperCase()} >>>>>>>>>>`);
-		console.log(
-			`[${name}] Input state: ${state.messages.length} messages, ${state.workflowJSON.nodes.length} nodes`,
-		);
-		console.log(`[${name}] Coordination log: ${state.coordinationLog.length} entries`);
-
 		try {
 			const input = subgraph.transformInput(state);
-			console.log(`[${name}] Invoking compiled subgraph...`);
 			const result = await compiledGraph.invoke(input);
-			console.log(`[${name}] Subgraph completed, transforming output...`);
 			const output = subgraph.transformOutput(result, state);
-			const coordLogLength =
-				'coordinationLog' in output && Array.isArray(output.coordinationLog)
-					? output.coordinationLog.length
-					: 0;
-			console.log(`[${name}] Output ready: coordinationLog +${coordLogLength} entries`);
-			console.log(`<<<<<<<<<< EXITING ${name.toUpperCase()} <<<<<<<<<<\n`);
+
 			return output;
 		} catch (error) {
 			console.error(`[${name}] ERROR:`, error);
 			const errorMessage =
 				error instanceof Error ? error.message : `An error occurred in ${name}: ${String(error)}`;
 
-			console.log(`<<<<<<<<<< EXITING ${name.toUpperCase()} (WITH ERROR) <<<<<<<<<<\n`);
 			// Route to responder to report error (terminal)
 			return {
 				nextPhase: 'responder',
@@ -107,19 +93,6 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		new StateGraph(ParentGraphState)
 			// Add Supervisor Node (only used for initial routing)
 			.addNode('supervisor', async (state) => {
-				console.log('\n========== SUPERVISOR (Initial Routing) ==========');
-				console.log(`[Supervisor] Messages: ${state.messages.length}`);
-				console.log(`[Supervisor] Workflow nodes: ${state.workflowJSON.nodes.length}`);
-				console.log(`[Supervisor] Coordination log entries: ${state.coordinationLog.length}`);
-				if (state.messages.length > 0) {
-					const lastMsg = state.messages[state.messages.length - 1];
-					const content =
-						typeof lastMsg.content === 'string'
-							? lastMsg.content.substring(0, 100)
-							: '[complex content]';
-					console.log(`[Supervisor] Last message preview: "${content}..."`);
-				}
-
 				// Supervisor only needs summary context for routing decisions
 				const contextParts: string[] = [];
 
@@ -149,21 +122,12 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					messages: messagesToSend,
 				});
 
-				console.log(`[Supervisor] ➜ Routing to: ${routing.next}`);
-				console.log(`[Supervisor] Reasoning: ${routing.reasoning}`);
-				console.log('==================================================\n');
-
 				return {
 					nextPhase: routing.next,
 				};
 			})
 			// Add Responder Node (synthesizes final user-facing response)
 			.addNode('responder', async (state) => {
-				console.log('\n========== RESPONDER (Final Response) ==========');
-				console.log(
-					`[Responder] Coordination log: ${summarizeCoordinationLog(state.coordinationLog)}`,
-				);
-				console.log(`[Responder] Workflow nodes: ${state.workflowJSON.nodes.length}`);
 				const agent = responderAgent.getAgent();
 
 				// Build context for responder from coordination log
@@ -198,39 +162,18 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					? [...state.messages, contextMessage]
 					: state.messages;
 
-				console.log(`[Responder] Context parts: ${contextParts.length}`);
-				if (contextParts.length > 0) {
-					console.log('[Responder] Context preview:');
-					contextParts.forEach((part) => console.log(`  - ${part.substring(0, 80)}...`));
-				}
-
 				const response = await agent.invoke({
 					messages: messagesToSend,
 				});
 
-				const responsePreview =
-					typeof response.content === 'string'
-						? response.content.substring(0, 150)
-						: '[complex content]';
-				console.log(`[Responder] Response preview: "${responsePreview}..."`);
-				console.log('================================================\n');
 				return {
 					messages: [response], // Only responder adds to user messages
 				};
 			})
 			// Add process_operations node for hybrid operations approach
 			.addNode('process_operations', (state) => {
-				console.log('\n---------- PROCESS OPERATIONS ----------');
-				console.log(`[ProcessOps] Operations to process: ${state.workflowOperations?.length ?? 0}`);
-				console.log(`[ProcessOps] Current workflow nodes: ${state.workflowJSON.nodes.length}`);
-
 				// Process accumulated operations and clear the queue
 				const result = processOperations(state);
-
-				console.log(
-					`[ProcessOps] Result workflow nodes: ${result.workflowJSON?.nodes?.length ?? state.workflowJSON.nodes.length}`,
-				);
-				console.log('----------------------------------------\n');
 
 				return {
 					...result,
@@ -277,15 +220,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			// Deterministic routing after subgraphs complete (based on coordination log)
 			.addConditionalEdges('process_operations', (state) => {
 				// Use deterministic routing based on coordination log
-				const next = getNextPhaseFromLog(
-					state.coordinationLog,
-					state.workflowJSON.nodes.length > 0,
-				);
-				console.log('\n---------- DETERMINISTIC ROUTER ----------');
-				console.log(`[Router] Log: ${summarizeCoordinationLog(state.coordinationLog)}`);
-				console.log(`[Router] Workflow has nodes: ${state.workflowJSON.nodes.length > 0}`);
-				console.log(`[Router] ➜ Next phase: ${next}`);
-				console.log('------------------------------------------\n');
+				const next = getNextPhaseFromLog(state.coordinationLog);
 
 				if (next === 'responder') return 'responder';
 				if (next === 'discovery') return 'discovery_subgraph';
