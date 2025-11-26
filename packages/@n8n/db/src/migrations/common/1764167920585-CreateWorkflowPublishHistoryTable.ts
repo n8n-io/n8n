@@ -2,7 +2,7 @@ import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
 const workflowPublishHistoryTableName = 'workflow_publish_history';
 
-export class CreateWorkflowPublishHistoryTable1763387043735 implements ReversibleMigration {
+export class CreateWorkflowPublishHistoryTable1764167920585 implements ReversibleMigration {
 	async up({ schemaBuilder: { createTable, column }, escape, runQuery }: MigrationContext) {
 		await createTable(workflowPublishHistoryTableName)
 			.withColumns(
@@ -41,11 +41,10 @@ export class CreateWorkflowPublishHistoryTable1763387043735 implements Reversibl
 		const updatedAt = escape.columnName('updatedAt');
 
 		await runQuery(
-			`INSERT INTO workflow_publish_history (workflowId, versionId, status)
-				SELECT we.${id}, we.${activeVersionId}, 'activated'
+			`INSERT INTO workflow_publish_history (workflowId, versionId, status, createdAt)
+				SELECT we.${id}, we.${activeVersionId}, 'activated', we.${updatedAt}
 				FROM ${workflowEntityTableName} we
-				WHERE we.${activeVersionId} IS NOT NULL
-				ORDER BY we.${updatedAt} ASC`,
+				WHERE we.${activeVersionId} IS NOT NULL`,
 		);
 	}
 
