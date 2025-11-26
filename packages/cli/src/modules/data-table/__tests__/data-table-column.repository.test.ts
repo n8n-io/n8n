@@ -1,11 +1,10 @@
 import { testModules } from '@n8n/backend-test-utils';
 import type { DataSource, EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
-import { UnexpectedError } from 'n8n-workflow';
 
 import { DataTableColumn } from '../data-table-column.entity';
 import { DataTableColumnRepository } from '../data-table-column.repository';
-import { DataTableDDLService } from '../data-table-ddl.service';
+import type { DataTableDDLService } from '../data-table-ddl.service';
 import { DataTable } from '../data-table.entity';
 import { DataTableColumnNameConflictError } from '../errors/data-table-column-name-conflict.error';
 import { DataTableSystemColumnNameConflictError } from '../errors/data-table-system-column-name-conflict.error';
@@ -83,9 +82,12 @@ describe('DataTableColumnRepository', () => {
 
 				mockEntityManager.existsBy.mockResolvedValue(false);
 				mockEntityManager.update.mockResolvedValue({ affected: 1 } as any);
-				mockEntityManager.connection = {
-					options: { type: 'postgres' },
-				} as any;
+				Object.defineProperty(mockEntityManager, 'connection', {
+					value: {
+						options: { type: 'postgres' },
+					},
+					configurable: true,
+				});
 				mockDDLService.renameColumn.mockResolvedValue(undefined);
 
 				// Act
@@ -147,9 +149,12 @@ describe('DataTableColumnRepository', () => {
 
 				mockEntityManager.existsBy.mockResolvedValue(false);
 				mockEntityManager.update.mockResolvedValue({ affected: 1 } as any);
-				mockEntityManager.connection = {
-					options: { type: 'postgres' },
-				} as any;
+				Object.defineProperty(mockEntityManager, 'connection', {
+					value: {
+						options: { type: 'postgres' },
+					},
+					configurable: true,
+				});
 				mockDDLService.renameColumn.mockResolvedValue(undefined);
 
 				// Act
@@ -182,9 +187,12 @@ describe('DataTableColumnRepository', () => {
 				for (const dbType of dbTypes) {
 					mockEntityManager.existsBy.mockResolvedValue(false);
 					mockEntityManager.update.mockResolvedValue({ affected: 1 } as any);
-					mockEntityManager.connection = {
-						options: { type: dbType },
-					} as any;
+					Object.defineProperty(mockEntityManager, 'connection', {
+						value: {
+							options: { type: dbType },
+						},
+						configurable: true,
+					});
 					mockDDLService.renameColumn.mockResolvedValue(undefined);
 
 					// Act
