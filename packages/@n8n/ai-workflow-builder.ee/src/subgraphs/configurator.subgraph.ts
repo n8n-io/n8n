@@ -7,12 +7,14 @@ import { Annotation, StateGraph } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
+import { MAX_CONFIGURATOR_ITERATIONS } from '@/constants';
 import { LLMServiceError } from '@/errors';
 
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
-import type { CoordinationLogEntry, ConfiguratorMetadata } from '../types/coordination';
+import type { CoordinationLogEntry } from '../types/coordination';
+import { createConfiguratorMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
@@ -195,8 +197,10 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 
 	private agent!: Runnable;
 	private toolMap!: Map<string, StructuredTool>;
+	private instanceUrl: string = '';
 
 	create(config: ConfiguratorSubgraphConfig) {
+		this.instanceUrl = config.instanceUrl ?? '';
 		// Create tools
 		const tools = [
 			createUpdateNodeParametersTool(
@@ -267,7 +271,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			.addNode('process_operations', processOperations)
 			.addEdge('__start__', 'agent')
 			// Map 'tools' to tools node, END is handled automatically
-			.addConditionalEdges('agent', createStandardShouldContinue(15))
+			.addConditionalEdges('agent', createStandardShouldContinue(MAX_CONFIGURATOR_ITERATIONS))
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent'); // Loop back
 
@@ -305,10 +309,10 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 		return {
 			workflowJSON: parentState.workflowJSON,
 			workflowContext: parentState.workflowContext,
-			instanceUrl: '', // This needs to be passed in config or context, but for now empty
+			instanceUrl: this.instanceUrl,
 			userRequest,
 			discoveryContext: parentState.discoveryContext,
-			messages: [contextMessage], // Context already in messages
+			messages: [contextMessage],
 		};
 	}
 
@@ -334,11 +338,10 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			timestamp: Date.now(),
 			summary: `Configured ${nodesConfigured} nodes`,
 			output: setupInstructions, // Full setup instructions for responder
-			metadata: {
-				phase: 'configurator',
+			metadata: createConfiguratorMetadata({
 				nodesConfigured,
 				hasSetupInstructions,
-			} as ConfiguratorMetadata,
+			}),
 		};
 
 		return {

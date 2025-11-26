@@ -59,3 +59,21 @@ export interface ConfiguratorMetadata {
 	/** Whether setup instructions were generated */
 	hasSetupInstructions: boolean;
 }
+
+/**
+ * Helper functions to create typed metadata objects.
+ * These eliminate the need for type assertions when creating coordination log entries.
+ */
+export function createDiscoveryMetadata(data: Omit<DiscoveryMetadata, 'phase'>): DiscoveryMetadata {
+	return { phase: 'discovery', ...data };
+}
+
+export function createBuilderMetadata(data: Omit<BuilderMetadata, 'phase'>): BuilderMetadata {
+	return { phase: 'builder', ...data };
+}
+
+export function createConfiguratorMetadata(
+	data: Omit<ConfiguratorMetadata, 'phase'>,
+): ConfiguratorMetadata {
+	return { phase: 'configurator', ...data };
+}

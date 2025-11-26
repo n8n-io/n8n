@@ -20,6 +20,20 @@ import {
 } from './utils/coordination-log';
 import { processOperations } from './utils/operations-processor';
 
+/**
+ * Maps routing decisions to graph node names.
+ * Used by both supervisor (LLM-based) and process_operations (deterministic) routing.
+ */
+function routeToNode(next: string): string {
+	const nodeMapping: Record<string, string> = {
+		responder: 'responder',
+		discovery: 'discovery_subgraph',
+		builder: 'builder_subgraph',
+		configurator: 'configurator_subgraph',
+	};
+	return nodeMapping[next] ?? 'responder';
+}
+
 export interface MultiAgentSubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llmSimpleTask: BaseChatModel;
@@ -204,31 +218,11 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			// Start flows to supervisor (initial routing only)
 			.addEdge(START, 'supervisor')
 			// Conditional Edge for Supervisor (initial routing via LLM)
-			.addConditionalEdges('supervisor', (state) => {
-				const next = state.nextPhase;
-
-				if (next === 'responder') return 'responder';
-
-				// Static name mapping
-				if (next === 'discovery') return 'discovery_subgraph';
-				if (next === 'builder') return 'builder_subgraph';
-				if (next === 'configurator') return 'configurator_subgraph';
-
-				// Default fallback to responder (terminal)
-				return 'responder';
-			})
+			.addConditionalEdges('supervisor', (state) => routeToNode(state.nextPhase))
 			// Deterministic routing after subgraphs complete (based on coordination log)
-			.addConditionalEdges('process_operations', (state) => {
-				// Use deterministic routing based on coordination log
-				const next = getNextPhaseFromLog(state.coordinationLog);
-
-				if (next === 'responder') return 'responder';
-				if (next === 'discovery') return 'discovery_subgraph';
-				if (next === 'builder') return 'builder_subgraph';
-				if (next === 'configurator') return 'configurator_subgraph';
-
-				return 'responder';
-			})
+			.addConditionalEdges('process_operations', (state) =>
+				routeToNode(getNextPhaseFromLog(state.coordinationLog)),
+			)
 			// Responder ends the workflow
 			.addEdge('responder', END)
 			// Compile the graph

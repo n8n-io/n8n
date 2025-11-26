@@ -8,6 +8,7 @@ import { Annotation, StateGraph, END } from '@langchain/langgraph';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
+import { MAX_DISCOVERY_ITERATIONS } from '@/constants';
 import { LLMServiceError } from '@/errors';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -16,7 +17,8 @@ import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
 import type { PromptCategorization } from '../types/categorization';
-import type { CoordinationLogEntry, DiscoveryMetadata } from '../types/coordination';
+import type { CoordinationLogEntry } from '../types/coordination';
+import { createDiscoveryMetadata } from '../types/coordination';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
@@ -351,8 +353,8 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Should continue with tools or finish?
 	 */
 	private shouldContinue(state: typeof DiscoverySubgraphState.State) {
-		// Safety: max 50 iterations
-		if (state.iterationCount >= 50) {
+		// Safety: prevent infinite loops
+		if (state.iterationCount >= MAX_DISCOVERY_ITERATIONS) {
 			return 'format_output'; // Try to format whatever we have, or maybe just end
 		}
 
@@ -426,12 +428,11 @@ export class DiscoverySubgraph extends BaseSubgraph<
 			status: 'completed',
 			timestamp: Date.now(),
 			summary: `Discovered ${nodesFound.length} nodes`,
-			metadata: {
-				phase: 'discovery',
+			metadata: createDiscoveryMetadata({
 				nodesFound: nodesFound.length,
 				nodeTypes: nodesFound.map((n) => n.nodeName),
 				hasBestPractices: !!subgraphOutput.bestPractices,
-			} as DiscoveryMetadata,
+			}),
 		};
 
 		return {
