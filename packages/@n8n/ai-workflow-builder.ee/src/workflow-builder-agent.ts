@@ -41,32 +41,6 @@ import { estimateTokenCountFromMessages } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
 
-function getWorkflowContext(state: typeof WorkflowState.State) {
-	const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
-	const executionData = state.workflowContext?.executionData ?? {};
-	const executionSchema = state.workflowContext?.executionSchema ?? [];
-	const workflowContext = [
-		'',
-		'<current_workflow_json>',
-		JSON.stringify(trimmedWorkflow),
-		'</current_workflow_json>',
-		'<trimmed_workflow_json_note>',
-		'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
-		'Use get_node_parameter tool to get full details when needed.',
-		'</trimmed_workflow_json_note>',
-		'',
-		'<current_simplified_execution_data>',
-		JSON.stringify(executionData),
-		'</current_simplified_execution_data>',
-		'',
-		'<current_execution_nodes_schemas>',
-		JSON.stringify(executionSchema),
-		'</current_execution_nodes_schemas>',
-	].join('\n');
-
-	return workflowContext;
-}
-
 /**
  * Determines which node to execute next based on the current state.
  * This function decides if the workflow should:
@@ -120,6 +94,32 @@ export function shouldModifyState(
 	return 'agent';
 }
 
+function getWorkflowContext(state: typeof WorkflowState.State) {
+	const trimmedWorkflow = trimWorkflowJSON(state.workflowJSON);
+	const executionData = state.workflowContext?.executionData ?? {};
+	const executionSchema = state.workflowContext?.executionSchema ?? [];
+	const workflowContext = [
+		'',
+		'<current_workflow_json>',
+		JSON.stringify(trimmedWorkflow),
+		'</current_workflow_json>',
+		'<trimmed_workflow_json_note>',
+		'Note: Large property values of the nodes in the workflow JSON above may be trimmed to fit within token limits.',
+		'Use get_node_parameter tool to get full details when needed.',
+		'</trimmed_workflow_json_note>',
+		'',
+		'<current_simplified_execution_data>',
+		JSON.stringify(executionData),
+		'</current_simplified_execution_data>',
+		'',
+		'<current_execution_nodes_schemas>',
+		JSON.stringify(executionSchema),
+		'</current_execution_nodes_schemas>',
+	].join('\n');
+
+	return workflowContext;
+}
+
 export interface WorkflowBuilderAgentConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llmSimpleTask: BaseChatModel;
@@ -152,12 +152,6 @@ export interface ChatPayload {
 		executionData?: IRunExecutionData['resultData'];
 		expressionValues?: Record<string, ExpressionValue[]>;
 	};
-	/**
-	 * Calls AI Assistant Service using deprecated credentials and endpoints
-	 * These credentials/endpoints will soon be removed
-	 * As new implementation is rolled out and builder experiment is released
-	 */
-	useDeprecatedCredentials?: boolean;
 }
 
 export class WorkflowBuilderAgent {

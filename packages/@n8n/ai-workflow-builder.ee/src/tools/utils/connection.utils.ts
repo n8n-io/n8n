@@ -372,11 +372,13 @@ export function formatConnectionMessage(
 function getNodeOutputTypes(nodeType: INodeTypeDescription): NodeConnectionType[] {
 	// Handle expression-based outputs
 	if (typeof nodeType.outputs === 'string') {
+		// console.log(`[getNodeOutputTypes] Expression-based outputs for ${nodeType.name}`);
 		const extracted = extractConnectionTypesFromExpression(nodeType.outputs);
 		if (extracted.length > 0) {
 			return extracted;
 		}
 		// If no types found in expression, return empty array
+		// console.log('[getNodeOutputTypes] No types found in expression');
 		return [];
 	}
 
@@ -400,6 +402,8 @@ function getNodeOutputTypes(nodeType: INodeTypeDescription): NodeConnectionType[
 function getNodeInputTypes(nodeType: INodeTypeDescription, node?: INode): NodeConnectionType[] {
 	// Handle expression-based inputs
 	if (typeof nodeType.inputs === 'string') {
+		// console.log(`[getNodeInputTypes] Expression-based inputs for ${nodeType.name}`);
+
 		// Special handling for Vector Store in retrieve-as-tool mode
 		// When in this mode, it only accepts AI inputs (no main input)
 		if (
@@ -407,6 +411,7 @@ function getNodeInputTypes(nodeType: INodeTypeDescription, node?: INode): NodeCo
 			nodeType.name.includes('vectorStore') &&
 			node.parameters?.mode === 'retrieve-as-tool'
 		) {
+			// console.log('[getNodeInputTypes] Vector Store in retrieve-as-tool mode - only AI inputs');
 			// Extract only AI connection types from the expression
 			const extracted = extractConnectionTypesFromExpression(nodeType.inputs);
 			return extracted.filter((type) => type.startsWith('ai_'));
@@ -417,6 +422,7 @@ function getNodeInputTypes(nodeType: INodeTypeDescription, node?: INode): NodeCo
 			return extracted;
 		}
 		// If no types found in expression, return empty array
+		// console.log('[getNodeInputTypes] No types found in expression');
 		return [];
 	}
 
@@ -471,8 +477,11 @@ export function inferConnectionType(
 		targetInputTypes.includes(outputType),
 	);
 
+	// console.log(`Matching types: [${matchingTypes.join(', ')}]`);
+
 	// Handle AI connections (sub-node to main node)
 	if (sourceIsSubNode && !targetIsSubNode) {
+		// console.log('Scenario: Sub-node to main node (AI connection)');
 		// Find AI connection types in the matches
 		const aiConnectionTypes = matchingTypes.filter((type) => type.startsWith('ai_'));
 
@@ -489,6 +498,7 @@ export function inferConnectionType(
 
 	// Handle reversed AI connections (main node to sub-node - needs swap)
 	if (!sourceIsSubNode && targetIsSubNode) {
+		// console.log('Scenario: Main node to sub-node (needs swap)');
 		// Check if target has any AI outputs that source accepts as inputs
 		const targetOutputTypes = getNodeOutputTypes(targetNodeType);
 		const sourceInputTypes = getNodeInputTypes(sourceNodeType, sourceNode);

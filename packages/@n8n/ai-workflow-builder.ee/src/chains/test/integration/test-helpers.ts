@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 
-import { anthropicHaiku45 } from '@/llm-config';
+import { anthropicClaudeSonnet45 } from '@/llm-config';
 
 /**
  * Sets up the LLM for integration testing
@@ -14,7 +14,7 @@ export async function setupIntegrationLLM(): Promise<BaseChatModel> {
 	if (!apiKey) {
 		throw new Error('N8N_AI_ANTHROPIC_KEY environment variable is required for integration tests');
 	}
-	return await anthropicHaiku45({ apiKey });
+	return await anthropicClaudeSonnet45({ apiKey });
 }
 
 /**
