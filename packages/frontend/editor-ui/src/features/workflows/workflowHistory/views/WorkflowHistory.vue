@@ -32,6 +32,7 @@ import type { IUser } from 'n8n-workflow';
 import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
+import type { WorkflowHistoryPublishModalEventBusEvents } from '../components/WorkflowHistoryPublishModal.vue';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
 
@@ -275,10 +276,37 @@ const restoreWorkflowVersion = async (
 	});
 };
 
-const publishWorkflowVersion = async (
+const publishWorkflowVersion = (
 	id: WorkflowVersionId,
 	data: { formattedCreatedAt: string; versionName?: string; description?: string },
 ) => {
+	const publishEventBus = createEventBus<WorkflowHistoryPublishModalEventBusEvents>();
+
+	publishEventBus.once('publish', (publishData) => {
+		// Update the history list with the new name and description
+		const historyItem = workflowHistory.value.find(
+			(item) => item.versionId === publishData.versionId,
+		);
+		if (historyItem) {
+			historyItem.name = publishData.name;
+			historyItem.description = publishData.description;
+		}
+
+		// Refresh the selected workflow version if it's the one that was published
+		if (selectedWorkflowVersion.value?.versionId === publishData.versionId) {
+			selectedWorkflowVersion.value = {
+				...selectedWorkflowVersion.value,
+				name: publishData.name,
+				description: publishData.description,
+			};
+		}
+
+		// Refresh the active workflow to get the updated activeVersion
+		activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
+
+		sendTelemetry('User published version from history');
+	});
+
 	uiStore.openModalWithData({
 		name: WORKFLOW_HISTORY_PUBLISH_MODAL_KEY,
 		data: {
@@ -287,30 +315,7 @@ const publishWorkflowVersion = async (
 			formattedCreatedAt: data.formattedCreatedAt,
 			versionName: data.versionName,
 			description: data.description,
-			onSuccess: (publishData: { versionId: string; name: string; description: string }) => {
-				// Update the history list with the new name and description
-				const historyItem = workflowHistory.value.find(
-					(item) => item.versionId === publishData.versionId,
-				);
-				if (historyItem) {
-					historyItem.name = publishData.name;
-					historyItem.description = publishData.description;
-				}
-
-				// Refresh the selected workflow version if it's the one that was published
-				if (selectedWorkflowVersion.value?.versionId === publishData.versionId) {
-					selectedWorkflowVersion.value = {
-						...selectedWorkflowVersion.value,
-						name: publishData.name,
-						description: publishData.description,
-					};
-				}
-
-				// Refresh the active workflow to get the updated activeVersion
-				activeWorkflow.value = workflowsStore.getWorkflowById(workflowId.value);
-
-				sendTelemetry('User published version from history');
-			},
+			eventBus: publishEventBus,
 		},
 	});
 };

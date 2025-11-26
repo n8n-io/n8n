@@ -6,8 +6,15 @@ import { WORKFLOW_HISTORY_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
+import { useUIStore } from '@/app/stores/ui.store';
 import { ref, onMounted, onBeforeUnmount, useTemplateRef } from 'vue';
 import { generateVersionName } from '@/features/workflows/workflowHistory/utils';
+import type { EventBus } from '@n8n/utils/event-bus';
+
+export type WorkflowHistoryPublishModalEventBusEvents = {
+	publish: { versionId: string; name: string; description: string };
+	cancel: undefined;
+};
 
 const props = defineProps<{
 	modalName: string;
@@ -17,13 +24,14 @@ const props = defineProps<{
 		formattedCreatedAt: string;
 		versionName?: string;
 		description?: string;
-		onSuccess?: (data: { versionId: string; name: string; description: string }) => void;
+		eventBus: EventBus<WorkflowHistoryPublishModalEventBusEvents>;
 	};
 }>();
 
 const i18n = useI18n();
-const eventBus = createEventBus();
+const modalEventBus = createEventBus();
 const workflowActivate = useWorkflowActivate();
+const uiStore = useUIStore();
 
 const publishForm = useTemplateRef<InstanceType<typeof WorkflowPublishForm>>('publishForm');
 
@@ -47,12 +55,21 @@ onMounted(() => {
 		description.value = props.data.description;
 	}
 
-	eventBus.on('opened', onModalOpened);
+	modalEventBus.on('opened', onModalOpened);
 });
 
 onBeforeUnmount(() => {
-	eventBus.off('opened', onModalOpened);
+	modalEventBus.off('opened', onModalOpened);
 });
+
+const closeModal = () => {
+	uiStore.closeModal(props.modalName);
+};
+
+const onCancel = () => {
+	props.data.eventBus.emit('cancel');
+	closeModal();
+};
 
 const isPublishDisabled = ref(false);
 
@@ -74,12 +91,12 @@ const handlePublish = async () => {
 	isPublishDisabled.value = false;
 
 	if (success) {
-		props.data.onSuccess?.({
+		props.data.eventBus.emit('publish', {
 			versionId: props.data.versionId,
 			name: versionName.value,
 			description: description.value,
 		});
-		eventBus.emit('close');
+		closeModal();
 	}
 };
 </script>
@@ -89,9 +106,9 @@ const handlePublish = async () => {
 		width="500px"
 		max-height="85vh"
 		:name="WORKFLOW_HISTORY_PUBLISH_MODAL_KEY"
-		:event-bus="eventBus"
+		:event-bus="modalEventBus"
 		:center="true"
-		:show-close="true"
+		:before-close="onCancel"
 	>
 		<template #header>
 			<N8nHeading size="xlarge">{{ i18n.baseText('workflows.publishModal.title') }}</N8nHeading>
@@ -113,7 +130,7 @@ const handlePublish = async () => {
 						type="secondary"
 						:label="i18n.baseText('generic.cancel')"
 						data-test-id="workflow-history-publish-cancel-button"
-						@click="eventBus.emit('close')"
+						@click="onCancel"
 					/>
 					<N8nButton
 						:disabled="isPublishDisabled || versionName.trim().length === 0"
