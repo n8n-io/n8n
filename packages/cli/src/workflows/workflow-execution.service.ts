@@ -113,10 +113,6 @@ export class WorkflowExecutionService {
 		}
 
 		if (isPartialManualExecutionToDestinationPayload(payload)) {
-			const destinationNode = payload.destinationNode
-				? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
-				: undefined;
-
 			if (
 				// If the trigger has no runData we have to upgrade to a
 				// FullManualExecutionFromUnknownTriggerPayload
@@ -146,6 +142,10 @@ export class WorkflowExecutionService {
 					agentRequest: payload.agentRequest,
 				} satisfies WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload;
 			} else {
+				const destinationNode = payload.destinationNode
+					? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
+					: undefined;
+
 				const executionId = await this.workflowRunner.run({
 					destinationNode,
 					executionMode: 'manual',
