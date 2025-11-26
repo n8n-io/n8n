@@ -4,6 +4,7 @@ import {
 	validateAgentPrompt,
 	validateConnections,
 	validateFromAi,
+	validateNodes,
 	validateTools,
 	validateTrigger,
 } from '@/validation/checks';
@@ -17,6 +18,7 @@ export function programmaticValidation(
 	const { generatedWorkflow } = input;
 
 	const connectionsValidationResult = validateConnections(generatedWorkflow, nodeTypes);
+	const nodesValidationResult = validateNodes(generatedWorkflow, nodeTypes);
 	const triggerValidationResult = validateTrigger(generatedWorkflow, nodeTypes);
 	const agentPromptValidationResult = validateAgentPrompt(generatedWorkflow);
 	const toolsValidationResult = validateTools(generatedWorkflow, nodeTypes);
@@ -24,6 +26,7 @@ export function programmaticValidation(
 
 	return {
 		connections: connectionsValidationResult,
+		nodes: nodesValidationResult,
 		trigger: triggerValidationResult,
 		agentPrompt: agentPromptValidationResult,
 		tools: toolsValidationResult,
