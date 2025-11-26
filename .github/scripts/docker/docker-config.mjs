@@ -86,7 +86,7 @@ class BuildContext {
   buildMatrix(platforms) {
     const runners = {
       'linux/amd64': 'ubuntu-22.04',
-      'linux/arm64': 'ubuntu-22.04-arm64',
+      'linux/arm64': 'ubuntu-22.04-arm',
     };
 
 		const matrix = {
