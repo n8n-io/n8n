@@ -91,17 +91,18 @@ export class McpSettingsController {
 			);
 		}
 
-		if (!workflow.activeVersionId && dto.availableInMCP) {
-			throw new BadRequestError('MCP access can only be set for active workflows');
-		}
+		if (dto.availableInMCP) {
+			if (!workflow.activeVersionId) {
+				throw new BadRequestError('MCP access can only be set for active workflows');
+			}
+			const nodes = workflow.activeVersion?.nodes ?? [];
+			const supportedTrigger = findMcpSupportedTrigger(nodes);
 
-		const nodes = workflow.activeVersion?.nodes ?? [];
-		const supportedTrigger = findMcpSupportedTrigger(nodes);
-
-		if (!supportedTrigger) {
-			throw new BadRequestError(
-				`MCP access can only be set for active workflows with one of the following trigger nodes: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
-			);
+			if (!supportedTrigger) {
+				throw new BadRequestError(
+					`MCP access can only be set for active workflows with one of the following trigger nodes: ${Object.values(SUPPORTED_MCP_TRIGGERS).join(', ')}.`,
+				);
+			}
 		}
 
 		const workflowUpdate = new WorkflowEntity();

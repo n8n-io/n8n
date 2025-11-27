@@ -204,9 +204,14 @@ describe('McpSettingsController', () => {
 			entity.id = workflowId;
 			entity.active = true;
 			entity.activeVersionId = overrides.active === false ? null : 'current-version-id';
-			entity.nodes = [createWebhookNode()];
+			entity.nodes = overrides.nodes ?? [createWebhookNode()];
 			entity.settings = { saveManualExecutions: true };
 			entity.versionId = 'current-version-id';
+			// @ts-expect-error activeVersion is a relation, not a plain property
+			entity.activeVersion =
+				overrides.active === false
+					? undefined
+					: { nodes: overrides.nodes ?? [createWebhookNode()] };
 			return Object.assign(entity, overrides);
 		};
 
