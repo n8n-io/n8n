@@ -11,7 +11,7 @@ import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
 import { formatTimestamp } from '@/features/workflows/workflowHistory/utils';
@@ -120,11 +120,16 @@ const onAction = ({
 				@action="onAction"
 			>
 				<template #default="{ formattedCreatedAt }">
-					<section v-if="isDraftPublishEnabled" :class="$style.text">
-						<p v-if="versionNameDisplay" :class="$style.mainLine">
-							{{ versionNameDisplay }}
-						</p>
-					</section>
+					<div v-if="isDraftPublishEnabled" :class="$style.descriptionBox">
+						<N8nTooltip :content="versionNameDisplay" v-if="versionNameDisplay">
+							<N8nText :class="$style.mainLine" bold color="text-dark">{{
+								versionNameDisplay
+							}}</N8nText>
+						</N8nTooltip>
+						<N8nText v-if="props.workflowVersion?.description" size="small" color="text-base">
+							{{ props.workflowVersion.description }}
+						</N8nText>
+					</div>
 					<section v-else :class="$style.textOld">
 						<p>
 							<span :class="$style.label">
@@ -178,51 +183,29 @@ const onAction = ({
 	width: 100%;
 }
 
+$descriptionBoxMaxWidth: 330px;
+$descriptionBoxMinWidth: 228px;
+
 .card {
 	padding: var(--spacing--sm) var(--spacing--lg) 0 var(--spacing--xl);
 	border: 0;
 	align-items: start;
 
-	.text {
+	.descriptionBox {
 		display: flex;
 		flex-direction: column;
-		flex: 1 1 auto;
-
-		p {
-			display: flex;
-			align-items: center;
-			padding: 0;
-			margin: 0;
-			cursor: default;
-			gap: var(--spacing--5xs);
-		}
+		min-width: $descriptionBoxMinWidth;
+		max-width: $descriptionBoxMaxWidth;
+		gap: var(--spacing--3xs);
+		margin-top: var(--spacing--3xs);
+		padding: var(--spacing--xs);
+		border: var(--border-width) var(--border-style) var(--color--neutral-800);
+		border-radius: var(--radius);
+		background-color: var(--color--neutral-900);
 
 		.mainLine {
-			font-size: var(--font-size--md);
-			font-weight: var(--font-weight--bold);
-			color: var(--color--text--shade-1);
-		}
-
-		.metaItem {
-			font-size: var(--font-size--sm);
-			color: var(--color--text);
-		}
-
-		.label {
-			color: var(--color--text--tint-1);
-			padding-right: var(--spacing--4xs);
-		}
-
-		time,
-		span,
-		data {
-			max-width: unset;
-			justify-self: unset;
-			white-space: unset;
-			overflow: visible;
-			text-overflow: unset;
-			padding: 0;
-			font-size: var(--font-size--sm);
+			@include mixins.utils-ellipsis;
+			cursor: default;
 		}
 	}
 
