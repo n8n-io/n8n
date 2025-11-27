@@ -3135,7 +3135,6 @@
 	"workflowSettings.timeSavedPerExecution.tab.conditional": "Conditional",
 	"workflowSettings.timeSavedPerExecution.noNodesDetected": "No time saved nodes detected",
 	"workflowSettings.timeSavedPerExecution.noNodesDetected.hint": "Add one or more time saved nodes to calculate time saved dynamically",
-	"workflowSettings.timeSavedPerExecution.noNodesDetected.link": "one or more time",
 	"workflowSettings.timeSavedPerExecution.nodesDetected": "Active - {count} time saved nodes currently setup",
 	"workflowSettings.timeSavedPerExecution.nodesDetected.hint": "Time saved is calculated dynamically based on each execution",
 	"workflowSettings.timeSavedPerExecution.nodesDetected.addMore": "Add more time saved nodes",
