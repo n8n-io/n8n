@@ -449,7 +449,7 @@ describe('ParameterInputList', () => {
 			// Find and click the activate link within the notice
 			const activateLink = container.querySelector('a[data-key="activate"]');
 			expect(activateLink).toBeInTheDocument();
-			await activateLink!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+			await fireEvent.click(activateLink);
 
 			expect(emitted('activate')).toBeDefined();
 			expect(emitted('activate')).toHaveLength(1);
