@@ -387,6 +387,7 @@ async function onSubmit(message: string, attachments: File[]) {
 		credentialsForSelectedProvider.value,
 		canSelectTools.value ? selectedTools.value : [],
 		attachments,
+		selectedModel.value.name,
 	);
 
 	inputRef.value?.setText('');
@@ -452,17 +453,16 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 }
 
 async function handleSelectModel(selection: ChatHubConversationModel, displayName?: string) {
+	const agentName = displayName ?? chatStore.getAgent(selection)?.name ?? '';
+
 	if (currentConversation.value) {
 		try {
-			await chatStore.updateSessionModel(sessionId.value, selection);
+			await chatStore.updateSessionModel(sessionId.value, selection, agentName);
 		} catch (error) {
 			toast.showError(error, 'Could not update selected model');
 		}
 	} else {
-		defaultModel.value = {
-			...selection,
-			cachedDisplayName: displayName ?? chatStore.getAgent(selection)?.name,
-		};
+		defaultModel.value = { ...selection, cachedDisplayName: agentName };
 	}
 }
 

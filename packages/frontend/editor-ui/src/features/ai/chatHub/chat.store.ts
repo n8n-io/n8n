@@ -481,6 +481,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		credentials: ChatHubSendMessageRequest['credentials'],
 		tools: INode[],
 		files: File[] = [],
+		agentName: string,
 	) {
 		const messageId = uuidv4();
 		const conversation = ensureConversation(sessionId);
@@ -523,6 +524,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			model,
 			retryOfMessageId: null,
 			tools,
+			agentName,
 		};
 
 		if (!sessions.value.byId[sessionId]) {
@@ -540,6 +542,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				previousMessageId,
 				tools,
 				attachments,
+				agentName,
 			},
 			onStreamMessage,
 			onStreamDone,
@@ -598,6 +601,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			model,
 			retryOfMessageId: null,
 			tools: [],
+			agentName: sessions.value.byId[sessionId]?.agentName ?? '',
 		};
 
 		editMessageApi(
@@ -635,6 +639,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			model,
 			retryOfMessageId: retryId,
 			tools: [],
+			agentName: sessions.value.byId[sessionId]?.agentName ?? '',
 		};
 
 		regenerateMessageApi(
@@ -691,9 +696,15 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		updateSession(sessionId, updated.session);
 	}
 
-	async function updateSessionModel(sessionId: ChatSessionId, model: ChatHubConversationModel) {
-		await updateConversationApi(rootStore.restApiContext, sessionId, model);
-		updateSession(sessionId, model);
+	async function updateSessionModel(
+		sessionId: ChatSessionId,
+		model: ChatHubConversationModel,
+		agentName: string,
+	) {
+		await updateConversationApi(rootStore.restApiContext, sessionId, {
+			agent: { model, name: agentName },
+		});
+		updateSession(sessionId, { ...model, agentName });
 	}
 
 	async function deleteSession(sessionId: ChatSessionId) {

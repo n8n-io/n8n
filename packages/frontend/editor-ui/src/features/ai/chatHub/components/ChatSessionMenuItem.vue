@@ -41,7 +41,7 @@ const agent = computed<ChatModelDto | null>(() => {
 
 	return {
 		...agent,
-		name: agent.name || (session.agentName ?? ''),
+		name: agent.name || session.agentName,
 	};
 });
 
