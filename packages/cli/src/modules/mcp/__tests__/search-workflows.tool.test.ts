@@ -19,6 +19,7 @@ describe('search-workflows MCP tool', () => {
 			const workflows = [
 				createWorkflow({
 					id: 'wrap-1',
+					activeVersionId: uuid(),
 					name: 'Wrapper',
 					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
 				}),
@@ -96,7 +97,7 @@ describe('search-workflows MCP tool', () => {
 		});
 
 		test('applies provided filters and clamps high limit', async () => {
-			const workflows = [createWorkflow({ id: 'x', active: true })];
+			const workflows = [createWorkflow({ id: 'x', activeVersionId: uuid() })];
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
@@ -128,7 +129,9 @@ describe('search-workflows MCP tool', () => {
 		});
 
 		test('formats nodes as empty array when missing', async () => {
-			const workflows = [createWorkflow({ id: 'no-nodes', activeVersion: undefined })];
+			const workflows = [
+				createWorkflow({ id: 'no-nodes', activeVersionId: 'version-no-nodes', nodes: [] }),
+			];
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
