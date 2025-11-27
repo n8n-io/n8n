@@ -99,6 +99,10 @@ const defaultModel = useLocalStorage<ChatHubConversationModelWithCachedDisplayNa
 	},
 );
 
+const defaultModelName = computed(() =>
+	defaultModel.value ? chatStore.getAgent(defaultModel.value).name : undefined,
+);
+
 const defaultTools = useLocalStorage<INode[] | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS(usersStore.currentUserId ?? 'anonymous'),
 	null,
@@ -347,6 +351,17 @@ watch(
 	(credentials) => {
 		if (credentials) {
 			void chatStore.fetchAgents(credentials);
+		}
+	},
+	{ immediate: true },
+);
+
+// Keep cached display name up-to-date
+watch(
+	defaultModelName,
+	(name) => {
+		if (defaultModel.value && name) {
+			defaultModel.value = { ...defaultModel.value, cachedDisplayName: name };
 		}
 	},
 	{ immediate: true },
