@@ -4,7 +4,12 @@ import ChatSidebarOpener from '@/features/ai/chatHub/components/ChatSidebarOpene
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
-import type { ChatHubProvider, ChatModelDto, ChatSessionId } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	ChatHubProvider,
+	ChatModelDto,
+	ChatSessionId,
+} from '@n8n/api-types';
 import { N8nButton, N8nIconButton } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useTemplateRef } from 'vue';
@@ -21,7 +26,7 @@ const emit = defineEmits<{
 	renameConversation: [id: ChatSessionId, title: string];
 	editCustomAgent: [agentId: string];
 	createCustomAgent: [];
-	selectCredential: [provider: ChatHubProvider, credentialId: string];
+	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
 	openWorkflow: [workflowId: string];
 }>();
 
@@ -42,6 +47,8 @@ function onNewChat() {
 
 defineExpose({
 	openModelSelector: () => modelSelectorRef.value?.open(),
+	openCredentialSelector: (provider: ChatHubLLMProvider) =>
+		modelSelectorRef.value?.openCredentialSelector(provider),
 });
 </script>
 
