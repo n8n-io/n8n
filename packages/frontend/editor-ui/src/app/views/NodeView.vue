@@ -748,8 +748,7 @@ async function onDuplicateNodes(ids: string[]) {
 		viewport: viewportBoundaries.value,
 	});
 
-	selectNodes(newIds);
-	fitView();
+	canvasRef.value?.ensureNodesAreVisible(newIds);
 }
 
 function onPinNodes(ids: string[], source: PinDataSource) {
