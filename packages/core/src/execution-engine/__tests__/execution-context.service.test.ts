@@ -297,8 +297,7 @@ describe('ExecutionContextService', () => {
 			});
 
 			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				success: true,
-				data: hookConfig,
+				data: { contextEstablishmentHooks: hookConfig },
 			});
 
 			mockRegistry.getHookByName.mockImplementation((name: string) => {
@@ -362,8 +361,7 @@ describe('ExecutionContextService', () => {
 			});
 
 			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				success: true,
-				data: hookConfig,
+				data: { contextEstablishmentHooks: hookConfig },
 			});
 			mockRegistry.getHookByName.mockReturnValue(mockHook);
 			mockCipher.decrypt.mockReturnValue('{}');
@@ -398,8 +396,7 @@ describe('ExecutionContextService', () => {
 			mockHook2.execute.mockResolvedValue({ triggerItems: item3 });
 
 			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				success: true,
-				data: hookConfig,
+				data: { contextEstablishmentHooks: hookConfig },
 			});
 
 			mockRegistry.getHookByName.mockImplementation((name: string) => {
@@ -433,8 +430,7 @@ describe('ExecutionContextService', () => {
 			const startItem = createMockStartItem(hookConfig);
 
 			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				success: true,
-				data: hookConfig,
+				data: { contextEstablishmentHooks: hookConfig },
 			});
 			mockRegistry.getHookByName.mockReturnValue(undefined);
 			mockCipher.decrypt.mockReturnValue('{}');
@@ -472,8 +468,7 @@ describe('ExecutionContextService', () => {
 			});
 
 			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				success: true,
-				data: hookConfig,
+				data: { contextEstablishmentHooks: hookConfig },
 			});
 
 			mockRegistry.getHookByName.mockImplementation((name: string) => {
@@ -514,8 +509,7 @@ describe('ExecutionContextService', () => {
 			mockHook.execute.mockRejectedValue(hookError);
 
 			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				success: true,
-				data: hookConfig,
+				data: { contextEstablishmentHooks: hookConfig },
 			});
 			mockRegistry.getHookByName.mockReturnValue(mockHook);
 			mockCipher.decrypt.mockReturnValue('{}');
@@ -551,8 +545,7 @@ describe('ExecutionContextService', () => {
 			mockHook.execute.mockResolvedValue({});
 
 			toExecutionContextEstablishmentHookParameter.mockReturnValue({
-				success: true,
-				data: hookConfig,
+				data: { contextEstablishmentHooks: hookConfig },
 			});
 			mockRegistry.getHookByName.mockReturnValue(mockHook);
 			mockCipher.decrypt.mockReturnValue('{"version":1,"identity":"decrypted"}');

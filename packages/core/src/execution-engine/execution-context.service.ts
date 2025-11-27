@@ -137,9 +137,6 @@ export class ExecutionContextService {
 			}
 		}
 
-		// TODO: REMOVE THIS BEFORE MERGE!!!!
-		this.logger.debug('Final execution context after applying establishment hooks', { context });
-
 		return {
 			context: this.encryptExecutionContext(context),
 			triggerItems: currentTriggerItems,
