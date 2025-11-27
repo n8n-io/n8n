@@ -108,7 +108,16 @@ defineExpose({
 		};
 
 		// Get the rect of the newly added nodes
-		const addedNodesRect = getRectOfNodes(targetNodes);
+		const addedNodesRectRaw = getRectOfNodes(targetNodes);
+
+		// Add padding around the added nodes rect (10% on each side)
+		const padding = Math.max(addedNodesRectRaw.width, addedNodesRectRaw.height) * 0.1;
+		const addedNodesRect = {
+			x: addedNodesRectRaw.x - padding,
+			y: addedNodesRectRaw.y - padding,
+			width: addedNodesRectRaw.width + padding * 2,
+			height: addedNodesRectRaw.height + padding * 2,
+		};
 
 		// Combine the current viewport with the added nodes to get the union
 		const x = Math.min(currentViewportRect.x, addedNodesRect.x);
