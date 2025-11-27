@@ -4,6 +4,7 @@ import type { ProgrammaticEvaluationInput, ProgrammaticViolation } from '@/valid
 
 import {
 	evaluateConnections,
+	evaluateNodes,
 	evaluateTools,
 	evaluateAgentPrompt,
 	evaluateFromAi,
@@ -22,6 +23,7 @@ export async function programmaticEvaluation(
 	const { generatedWorkflow, referenceWorkflow, referenceWorkflows } = input;
 
 	const connectionsEvaluationResult = evaluateConnections(generatedWorkflow, nodeTypes);
+	const nodesEvaluationResult = evaluateNodes(generatedWorkflow, nodeTypes);
 	const triggerEvaluationResult = evaluateTrigger(generatedWorkflow, nodeTypes);
 	const agentPromptEvaluationResult = evaluateAgentPrompt(generatedWorkflow);
 	const toolsEvaluationResult = evaluateTools(generatedWorkflow, nodeTypes);
@@ -75,6 +77,7 @@ export async function programmaticEvaluation(
 
 	const overallScore = calculateOverallScore({
 		connections: connectionsEvaluationResult,
+		nodes: nodesEvaluationResult,
 		trigger: triggerEvaluationResult,
 		agentPrompt: agentPromptEvaluationResult,
 		tools: toolsEvaluationResult,
@@ -85,6 +88,7 @@ export async function programmaticEvaluation(
 	return {
 		overallScore,
 		connections: connectionsEvaluationResult,
+		nodes: nodesEvaluationResult,
 		trigger: triggerEvaluationResult,
 		agentPrompt: agentPromptEvaluationResult,
 		tools: toolsEvaluationResult,
