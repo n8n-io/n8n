@@ -2598,20 +2598,20 @@ importers:
         specifier: ^1.6.0
         version: 1.6.0(typescript@5.9.2)
       '@vue-flow/background':
-        specifier: ^1.3.2
-        version: 1.3.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
+        specifier: 1.3.2
+        version: 1.3.2(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
       '@vue-flow/controls':
-        specifier: ^1.1.2
-        version: 1.1.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
+        specifier: 1.1.3
+        version: 1.1.3(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
       '@vue-flow/core':
-        specifier: 1.45.0
-        version: 1.45.0(vue@3.5.13(typescript@5.9.2))
+        specifier: 1.48.0
+        version: 1.48.0(vue@3.5.13(typescript@5.9.2))
       '@vue-flow/minimap':
-        specifier: ^1.5.2
-        version: 1.5.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
+        specifier: 1.5.4
+        version: 1.5.4(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
       '@vue-flow/node-resizer':
-        specifier: ^1.4.0
-        version: 1.4.0(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
+        specifier: 1.5.0
+        version: 1.5.0(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))
       '@vueuse/components':
         specifier: ^10.11.0
         version: 10.11.0(vue@3.5.13(typescript@5.9.2))
@@ -8885,25 +8885,25 @@ packages:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
 
-  '@vue-flow/controls@1.1.2':
-    resolution: {integrity: sha512-6dtl/JnwDBNau5h3pDBdOCK6tdxiVAOL3cyruRL61gItwq5E97Hmjmj2BIIqX2p7gU1ENg3z80Z4zlu58fGlsg==}
+  '@vue-flow/controls@1.1.3':
+    resolution: {integrity: sha512-XCf+G+jCvaWURdFlZmOjifZGw3XMhN5hHlfMGkWh9xot+9nH9gdTZtn+ldIJKtarg3B21iyHU8JjKDhYcB6JMw==}
     peerDependencies:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
 
-  '@vue-flow/core@1.45.0':
-    resolution: {integrity: sha512-+Qd4fTnCfrhfYQzlHyf5Jt7rNE4PlDnEJEJZH9v6hDZoTOeOy1RhS85cSxKYxdsJ31Ttj2v3yabhoVfBf+bmJA==}
+  '@vue-flow/core@1.48.0':
+    resolution: {integrity: sha512-keW9HGaEZEe4SKYtrzp5E+qSGJ5/z+9i2yRDtCr3o72IUnS0Ns1qQNsIbGGz0ygpKzg6LdtbVLWeYAvl3dzLQA==}
     peerDependencies:
       vue: ^3.3.0
 
-  '@vue-flow/minimap@1.5.2':
-    resolution: {integrity: sha512-XNSpWwwXfCWqJilc2eCW+3ry3r9vhF8HmUw5wrAsUTHiss4R9k5uZLABo7c3T3VdcVRJ8pTfUJ9vjpzb8H+FKg==}
+  '@vue-flow/minimap@1.5.4':
+    resolution: {integrity: sha512-l4C+XTAXnRxsRpUdN7cAVFBennC1sVRzq4bDSpVK+ag7tdMczAnhFYGgbLkUw3v3sY6gokyWwMl8CDonp8eB2g==}
     peerDependencies:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
 
-  '@vue-flow/node-resizer@1.4.0':
-    resolution: {integrity: sha512-S52MRcSpd6asza8Cl0bKM2sHGrbq7vBydKHDuPdoTD+cvjNX6XF4LSiPZOuzExePI6b+O6dg2EZ1378oOLGFpA==}
+  '@vue-flow/node-resizer@1.5.0':
+    resolution: {integrity: sha512-FmvOZ6+yVrBEf+8oJcCU20PUZ105QsyM01iiP4vTKHGJ01hzoh9d0/wP9iJkxkIpvBU59CyOHyTKQZlDr4qDhA==}
     peerDependencies:
       '@vue-flow/core': ^1.23.0
       vue: ^3.3.0
@@ -17646,8 +17646,8 @@ packages:
   vue-component-type-helpers@2.2.12:
     resolution: {integrity: sha512-YbGqHZ5/eW4SnkPNR44mKVc6ZKQoRs/Rux1sxC6rdwXb4qpbOSYfDr9DsTHolOTGmIKgM9j141mZbBeg05R1pw==}
 
-  vue-component-type-helpers@3.1.4:
-    resolution: {integrity: sha512-Uws7Ew1OzTTqHW8ZVl/qLl/HB+jf08M0NdFONbVWAx0N4gMLK8yfZDgeB77hDnBmaigWWEn5qP8T9BG59jIeyQ==}
+  vue-component-type-helpers@3.1.5:
+    resolution: {integrity: sha512-7V3yJuNWW7/1jxCcI1CswnpDsvs02Qcx/N43LkV+ZqhLj2PKj50slUflHAroNkN4UWiYfzMUUUXiNuv9khmSpQ==}
 
   vue-demi@0.14.10:
     resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
@@ -24061,7 +24061,7 @@ snapshots:
       storybook: 9.1.7(@testing-library/dom@10.4.0)(bufferutil@4.0.9)(prettier@3.6.2)(utf-8-validate@5.0.10)(vite@7.0.0(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3))
       type-fest: 2.19.0
       vue: 3.5.13(typescript@5.9.2)
-      vue-component-type-helpers: 3.1.4
+      vue-component-type-helpers: 3.1.5
 
   '@stylistic/eslint-plugin@5.0.0(eslint@9.29.0(jiti@2.6.1))':
     dependencies:
@@ -25180,17 +25180,17 @@ snapshots:
       path-browserify: 1.0.1
       vscode-uri: 3.0.8
 
-  '@vue-flow/background@1.3.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))':
+  '@vue-flow/background@1.3.2(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))':
     dependencies:
-      '@vue-flow/core': 1.45.0(vue@3.5.13(typescript@5.9.2))
+      '@vue-flow/core': 1.48.0(vue@3.5.13(typescript@5.9.2))
       vue: 3.5.13(typescript@5.9.2)
 
-  '@vue-flow/controls@1.1.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))':
+  '@vue-flow/controls@1.1.3(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))':
     dependencies:
-      '@vue-flow/core': 1.45.0(vue@3.5.13(typescript@5.9.2))
+      '@vue-flow/core': 1.48.0(vue@3.5.13(typescript@5.9.2))
       vue: 3.5.13(typescript@5.9.2)
 
-  '@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.9.2))':
+  '@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2))':
     dependencies:
       '@vueuse/core': 10.11.0(vue@3.5.13(typescript@5.9.2))
       d3-drag: 3.0.0
@@ -25201,16 +25201,16 @@ snapshots:
     transitivePeerDependencies:
       - '@vue/composition-api'
 
-  '@vue-flow/minimap@1.5.2(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))':
+  '@vue-flow/minimap@1.5.4(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))':
     dependencies:
-      '@vue-flow/core': 1.45.0(vue@3.5.13(typescript@5.9.2))
+      '@vue-flow/core': 1.48.0(vue@3.5.13(typescript@5.9.2))
       d3-selection: 3.0.0
       d3-zoom: 3.0.0
       vue: 3.5.13(typescript@5.9.2)
 
-  '@vue-flow/node-resizer@1.4.0(@vue-flow/core@1.45.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))':
+  '@vue-flow/node-resizer@1.5.0(@vue-flow/core@1.48.0(vue@3.5.13(typescript@5.9.2)))(vue@3.5.13(typescript@5.9.2))':
     dependencies:
-      '@vue-flow/core': 1.45.0(vue@3.5.13(typescript@5.9.2))
+      '@vue-flow/core': 1.48.0(vue@3.5.13(typescript@5.9.2))
       d3-drag: 3.0.0
       d3-selection: 3.0.0
       vue: 3.5.13(typescript@5.9.2)
@@ -36041,7 +36041,7 @@ snapshots:
 
   vue-component-type-helpers@2.2.12: {}
 
-  vue-component-type-helpers@3.1.4: {}
+  vue-component-type-helpers@3.1.5: {}
 
   vue-demi@0.14.10(vue@3.5.13(typescript@5.9.2)):
     dependencies:

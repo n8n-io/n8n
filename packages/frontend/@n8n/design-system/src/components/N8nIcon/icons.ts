@@ -152,6 +152,7 @@ import IconLucideMessagesSquare from '~icons/lucide/messages-square';
 import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
+import IconLucideMinus from '~icons/lucide/minus';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
@@ -198,6 +199,7 @@ import IconLucideTags from '~icons/lucide/tags';
 import IconLucideTerminal from '~icons/lucide/terminal';
 import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
 import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
+import IconLucideTimer from '~icons/lucide/timer';
 import IconLucideToggleRight from '~icons/lucide/toggle-right';
 import IconLucideTrash2 from '~icons/lucide/trash-2';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
@@ -409,6 +411,7 @@ export const deprecatedIconSet = {
 	tasks: IconLucideListChecks,
 	terminal: IconLucideTerminal,
 	'th-large': IconLucideGrid2x2,
+	timer: IconLucideTimer,
 	thumbtack: IconLucidePin,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,
@@ -590,6 +593,7 @@ export const updatedIconSet = {
 	'messages-square': IconLucideMessagesSquare,
 	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
+	minus: IconLucideMinus,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
 	'notebook-pen': IconLucideNotebookPen,
