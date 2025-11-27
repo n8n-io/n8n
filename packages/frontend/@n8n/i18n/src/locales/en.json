@@ -389,7 +389,6 @@
 	"chatHub.tools.editor.cancel": "Cancel",
 	"chatHub.tools.selector.label.count": "{count} Tool | {count} Tools",
 	"chatHub.tools.selector.label.default": "Tools",
-	"chatHub.credentials.selector.placeholder": "Select credential...",
 	"chatHub.credentials.selector.title": "Select {provider} credential",
 	"chatHub.credentials.selector.chooseOrCreate": "Choose or create a credential for {provider}",
 	"chatHub.credentials.selector.createNew": "Create new",
