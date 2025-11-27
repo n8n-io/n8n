@@ -765,7 +765,6 @@ describe('OutputParserStructured', () => {
 				});
 			});
 		});
-
 		describe('Markdown Code Fence Handling', () => {
 			beforeEach(() => {
 				thisArg.getNode.mockReturnValue(mock<INode>({ typeVersion: 1.2 }));
@@ -1199,7 +1198,7 @@ ${JSON.stringify(outputObject)}
 				expect(parsersOutput).toEqual(outputObject);
 			});
 
-			it('should NOT match fence with closing backticks on same line as content', async () => {
+			it('should match fence with closing backticks on same line as content (inline fence)', async () => {
 				const schema = `{
 					"type": "object",
 					"properties": {
@@ -1219,10 +1218,10 @@ ${JSON.stringify(outputObject)}
 					},
 				};
 
-				// Regex requires newline before closing ``` - won't match, parse fails
-				await expect(
-					response.parse(`\`\`\`json\n${JSON.stringify(outputObject)}\`\`\``, undefined, (e) => e),
-				).rejects.toThrow();
+				// With optional newlines, inline fences should now parse successfully
+				const parsersOutput = await response.parse(`\`\`\`json\n${JSON.stringify(outputObject)}\`\`\``);
+
+				expect(parsersOutput).toEqual(outputObject);
 			});
 		});
 	});

@@ -36,10 +36,15 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 			// Extract JSON from markdown code fence if present
 			// Using regex to properly match code fences, even if backticks appear in the JSON content
 			let jsonString = text.trim();
-			// Look for a markdown code fence pattern: ```json or ``` followed by content and closing ```
-			// We use non-greedy matching and require newlines around the fence to avoid matching backticks inside JSON strings
-			// Allow whitespace before the closing ``` to handle indented code blocks
-			const codeFenceMatch = jsonString.match(/```(?:json)?\s*\n([\s\S]+?)\n\s*```/);
+			// Look for a code fence with proper opening and closing
+			// Use GREEDY matching ([\s\S]+) to match to the LAST occurrence of closing ```
+			// This prevents matching backticks that appear inside JSON string values
+			// The pattern matches:
+			//   - Opening: ``` or ```json followed by optional whitespace and optional newline
+			//   - Content: Any characters (greedy - matches to last ```)
+			//   - Closing: Optional newline, optional whitespace, then ```
+			// This handles both standard fences (with newlines) and inline fences (without)
+			const codeFenceMatch = jsonString.match(/```(?:json)?\s*\n?([\s\S]+)\n?\s*```/);
 			if (codeFenceMatch) {
 				// Extract the content between the fences
 				const potentialJson = codeFenceMatch[1].trim();
