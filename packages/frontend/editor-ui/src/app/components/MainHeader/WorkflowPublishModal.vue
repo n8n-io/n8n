@@ -157,6 +157,10 @@ async function displayActivationError() {
 }
 
 async function handlePublish() {
+	if (isPublishDisabled.value) {
+		return;
+	}
+
 	// Check for conflicting webhooks before activating
 	const conflictData = await workflowHelpers.checkConflictingWebhooks(workflowsStore.workflow.id);
 
@@ -244,6 +248,7 @@ async function handlePublish() {
 					:disabled="inputsDisabled"
 					version-name-test-id="workflow-publish-version-name-input"
 					description-test-id="workflow-publish-description-input"
+					@submit="handlePublish"
 				/>
 				<div :class="$style.actions">
 					<N8nButton
