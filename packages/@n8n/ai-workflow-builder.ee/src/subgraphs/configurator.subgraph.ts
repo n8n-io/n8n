@@ -94,7 +94,6 @@ Defaults are traps that cause runtime failures. Examples:
 - Document Loader defaults to 'json' but MUST be 'binary' when processing files
 - HTTP Request defaults to GET but APIs often need POST
 - Vector Store mode affects available connections - set explicitly (retrieve-as-tool when using with AI Agent)
-</avoid_default_traps>
 
 <response_format>
 After validation passes, provide a concise summary:
