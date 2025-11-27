@@ -1,11 +1,5 @@
 import { GlobalConfig } from '@n8n/config';
-import {
-	WorkflowEntity,
-	ProjectRepository,
-	TagRepository,
-	WorkflowRepository,
-	WorkflowPublishHistoryRepository,
-} from '@n8n/db';
+import { WorkflowEntity, ProjectRepository, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
@@ -347,14 +341,6 @@ export = {
 			if (workflow.activeVersionId !== null) {
 				try {
 					await workflowManager.add(workflow.id, 'update');
-
-					const workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
-					await workflowPublishHistoryRepository.addRecord({
-						workflowId: workflow.id,
-						versionId: workflow.activeVersionId,
-						status: 'activated',
-						userId: req.user.id,
-					});
 				} catch (error) {
 					if (error instanceof Error) {
 						return res.status(400).json({ message: error.message });
@@ -458,13 +444,6 @@ export = {
 
 			if (workflow.activeVersionId) {
 				await activeWorkflowManager.remove(workflow.id);
-				const workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
-				await workflowPublishHistoryRepository.addRecord({
-					workflowId: workflow.id,
-					versionId: workflow.activeVersionId,
-					status: 'deactivated',
-					userId: req.user.id,
-				});
 
 				await setWorkflowAsInactive(workflow.id);
 
