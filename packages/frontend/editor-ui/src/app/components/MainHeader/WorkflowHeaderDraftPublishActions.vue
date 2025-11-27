@@ -95,7 +95,11 @@ defineExpose({
 
 <template>
 	<div :class="$style.container">
-		<div v-if="activeVersion" :class="$style.activeVersionIndicator">
+		<div
+			v-if="activeVersion"
+			:class="$style.activeVersionIndicator"
+			data-test-id="workflow-active-version-indicator"
+		>
 			<N8nTooltip>
 				<template #content>
 					{{ activeVersion.name }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
@@ -104,11 +108,20 @@ defineExpose({
 				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
 			</N8nTooltip>
 		</div>
-		<div :class="$style.publishButtonWrapper">
-			<N8nButton type="secondary" @click="onPublishButtonClick">
+		<div v-if="!isArchived" :class="$style.publishButtonWrapper">
+			<N8nButton
+				type="secondary"
+				:disabled="readOnly"
+				data-test-id="workflow-publish-button"
+				@click="onPublishButtonClick"
+			>
 				{{ locale.baseText('workflows.publish') }}
 			</N8nButton>
-			<span v-if="showPublishIndicator" :class="$style.publishButtonIndicator"></span>
+			<span
+				v-if="showPublishIndicator"
+				:class="$style.publishButtonIndicator"
+				data-test-id="workflow-publish-indicator"
+			></span>
 		</div>
 		<SaveButton
 			type="primary"
