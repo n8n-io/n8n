@@ -12,7 +12,9 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
 
 vi.mock('vue-router', () => ({
-	useRouter: () => ({}),
+	useRouter: () => ({
+		resolve: vi.fn(() => ({ meta: {} })),
+	}),
 	useRoute: () => reactive({}),
 	RouterLink: vi.fn(),
 }));
@@ -87,18 +89,16 @@ describe('MainSidebar', () => {
 			expect(queryByTestId('version-update-cta-button')).not.toBeInTheDocument();
 		});
 
-		it('should render version update CTA disabled when canUserUpdateVersion is false', async () => {
+		it('should not render version update CTA when canUserUpdateVersion is false', async () => {
 			versionsStore.hasVersionUpdates = true;
 			versionsStore.nextVersions = [mockVersion];
 			usersStore.canUserUpdateVersion = false;
 
-			const { findByTestId, getByText } = renderComponent();
+			const { queryByTestId, getByText } = renderComponent();
 
-			getByText('What’s New').click();
+			getByText('Help').click();
 
-			const updateButton = await findByTestId('version-update-cta-button');
-			expect(updateButton).toBeInTheDocument();
-			expect(updateButton).toBeDisabled();
+			expect(queryByTestId('version-update-cta-button')).not.toBeInTheDocument();
 		});
 
 		it('should render version update CTA enabled when canUserUpdateVersion is true and hasVersionUpdates is true', async () => {
@@ -108,7 +108,7 @@ describe('MainSidebar', () => {
 
 			const { getByText, findByTestId } = renderComponent();
 
-			getByText('What’s New').click();
+			getByText('Help').click();
 
 			const updateButton = await findByTestId('version-update-cta-button');
 			expect(updateButton).toBeInTheDocument();

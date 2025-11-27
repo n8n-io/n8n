@@ -292,9 +292,8 @@ const whatsNewItems = computed<{ available: boolean; children: IMenuElement[] }>
 		{
 			id: 'version-upgrade-cta',
 			component: VersionUpdateCTA,
-			available: versionsStore.hasVersionUpdates,
+			available: versionsStore.hasVersionUpdates && usersStore.canUserUpdateVersion,
 			props: {
-				disabled: !usersStore.canUserUpdateVersion,
 				tooltipText: !usersStore.canUserUpdateVersion
 					? i18n.baseText('whatsNew.updateNudgeTooltip')
 					: undefined,
