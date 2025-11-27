@@ -72,7 +72,7 @@ const hasSavedTimeNodes = computed(() => {
 	}
 
 	if (!props.workflow?.nodes) return false;
-	return props.workflow.nodes.some((node) => node.type === 'n8n-nodes-base.savedTime');
+	return props.workflow.nodes.some((node) => node.type === TIME_SAVED_NODE_TYPE);
 });
 
 const hasTimeSaved = computed(() => {

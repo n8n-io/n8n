@@ -3066,7 +3066,6 @@
 	"workflowSettings.timeSavedPerExecution.nodesDetected.addMore": "Add more time saved nodes",
 	"workflowSettings.timeSavedPerExecution.fixedTabWarning": "There are one or more {link} calculating time saved on this workflows dynamically. While your workflow is configured for fix time saved values, these nodes will be ignored.",
 	"workflowSettings.timeSavedPerExecution.fixedTabWarning.link": "time saved nodes",
-	"workflowSettings.timeSavedPerExecution.fixedTabWarning.action": "Remove those nodes",
 	"workflowSettings.availableInMCP": "Available in MCP",
 	"workflowSettings.availableInMCP.tooltip": "Make this workflow visible to AI Agents through n8n MCP",
 	"workflowSettings.toggleMCP.error.title": "Error updating MCP settings",

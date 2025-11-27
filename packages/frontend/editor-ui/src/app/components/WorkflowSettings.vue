@@ -11,6 +11,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	TIME_SAVED_NODE_EXPERIMENT,
 	NODE_CREATOR_OPEN_SOURCES,
+	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
 import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
 import type { WorkflowSettings } from 'n8n-workflow';
@@ -140,7 +141,7 @@ const savedTimeNodes = computed(() => {
 	}
 
 	if (!workflow?.value?.nodes) return [];
-	return workflow.value.nodes.filter((node) => node.type === 'n8n-nodes-base.timeSaved');
+	return workflow.value.nodes.filter((node) => node.type === TIME_SAVED_NODE_TYPE);
 });
 
 const hasSavedTimeNodes = computed(() => {
