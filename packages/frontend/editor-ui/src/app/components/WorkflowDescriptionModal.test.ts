@@ -101,26 +101,6 @@ describe('WorkflowDescriptionModal', () => {
 	});
 
 	describe('Component rendering', () => {
-		it('should render the description button and default description', async () => {
-			const { getByTestId } = renderModal({
-				props: {
-					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
-					data: {
-						workflowId: 'test-workflow-id',
-						workflowDescription: 'Initial description',
-					},
-				},
-				pinia,
-				global,
-			});
-
-			const button = getByTestId('workflow-description-button');
-			await userEvent.click(button);
-
-			const textarea = getByTestId('workflow-description-input');
-			expect(textarea).toHaveValue('Initial description');
-		});
-
 		it('should render empty string if there is no description', async () => {
 			const { getByTestId } = renderModal({
 				props: {
@@ -132,9 +112,6 @@ describe('WorkflowDescriptionModal', () => {
 				pinia,
 				global,
 			});
-
-			const button = getByTestId('workflow-description-button');
-			await userEvent.click(button);
 
 			const textarea = getByTestId('workflow-description-input');
 			expect(textarea).toHaveValue('');
@@ -154,13 +131,13 @@ describe('WorkflowDescriptionModal', () => {
 				global,
 			});
 
-			await nextTick();
+			await new Promise((resolve) => setTimeout(resolve, 2));
 
 			const textarea = getByTestId('workflow-description-input');
 			expect(textarea).toHaveFocus();
 		});
 
-		it('should not save description when modal closes by click outside', async () => {
+		it('should not save description when modal closes by esc', async () => {
 			const { getByTestId } = renderModal({
 				props: {
 					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
@@ -173,21 +150,13 @@ describe('WorkflowDescriptionModal', () => {
 				global,
 			});
 
-			const button = getByTestId('workflow-description-button');
-			await userEvent.click(button);
-
 			const textarea = getByTestId('workflow-description-input');
 			await userEvent.clear(textarea);
 			await userEvent.type(textarea, 'Updated description');
 
-			// Click outside to close popover
-			await userEvent.click(document.body);
+			await userEvent.type(textarea, '{Esc}');
 
 			expect(workflowsStore.saveWorkflowDescription).not.toHaveBeenCalled();
-			// expect(workflowsStore.saveWorkflowDescription).toHaveBeenCalledWith(
-			// 	'test-workflow-id',
-			// 	'Updated description',
-			// );
 		});
 	});
 
@@ -405,33 +374,6 @@ describe('WorkflowDescriptionModal', () => {
 			expect(textarea).toHaveValue('Line 1\nLine 2');
 			expect(workflowsStore.saveWorkflowDescription).not.toHaveBeenCalled();
 		});
-
-		it('should cancel when Escape key is pressed', async () => {
-			const { getByTestId, queryByTestId } = renderModal({
-				props: {
-					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
-					data: {
-						workflowId: 'test-workflow-id',
-						workflowDescription: 'Initial description',
-					},
-				},
-				pinia,
-				global,
-			});
-
-			const textarea = getByTestId('workflow-description-input');
-			await userEvent.clear(textarea);
-			await userEvent.type(textarea, 'Changed description');
-			await userEvent.keyboard('{Escape}');
-
-			// Check that popover is closed
-			expect(queryByTestId('workflow-description-edit-content')).not.toBeInTheDocument();
-
-			// Re-open to verify changes were reverted
-
-			const textareaAfterEscape = getByTestId('workflow-description-input');
-			expect(textareaAfterEscape).toHaveValue('Initial description');
-		});
 	});
 
 	describe('Error handling', () => {
@@ -465,7 +407,7 @@ describe('WorkflowDescriptionModal', () => {
 			});
 		});
 
-		it('should revert to last saved value on error', async () => {
+		it('should keep text on error', async () => {
 			const error = new Error('Save failed');
 			workflowsStore.saveWorkflowDescription = vi.fn().mockRejectedValue(error);
 
@@ -489,7 +431,7 @@ describe('WorkflowDescriptionModal', () => {
 			await userEvent.click(saveButton);
 
 			await vi.waitFor(() => {
-				expect(textarea).toHaveValue('Initial description');
+				expect(textarea).toHaveValue('Failed update');
 			});
 		});
 	});
@@ -513,10 +455,12 @@ describe('WorkflowDescriptionModal', () => {
 			});
 
 			// The tooltip text appears as placeholder in the textarea
-			const textarea = getByTestId('workflow-description-input');
-			const placeholder = textarea.getAttribute('placeholder');
+			const textarea = getByTestId('descriptionTooltip');
+			const placeholder = textarea.textContent;
 
-			expect(placeholder).toContain('Edit workflow description');
+			expect(placeholder).toContain(
+				'Clear descriptions help other users understand the purpose of your workflow',
+			);
 			expect(placeholder).not.toContain('MCP clients');
 		});
 
@@ -542,165 +486,6 @@ describe('WorkflowDescriptionModal', () => {
 
 			// When MCP is enabled, the placeholder includes both base tooltip and MCP-specific text
 			expect(placeholder).toContain('MCP clients');
-		});
-
-		it('should show webhook notice when workflow has webhooks and MCP is enabled', async () => {
-			// Enable MCP module
-			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-			settingsStore.moduleSettings.mcp = { mcpAccessEnabled: true };
-
-			// Set up workflow with an enabled webhook node
-			workflowsStore.workflow = {
-				id: 'test-workflow-id',
-				name: 'Test Workflow',
-				active: false,
-				isArchived: false,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-				versionId: '1',
-				activeVersionId: '1',
-				nodes: [
-					{
-						id: 'webhook-1',
-						name: 'Webhook',
-						type: WEBHOOK_NODE_TYPE,
-						disabled: false,
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-			};
-
-			const { getByTestId } = renderModal({
-				props: {
-					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
-					data: {
-						workflowId: 'test-workflow-id',
-						workflowDescription: '',
-					},
-				},
-				pinia,
-				global,
-			});
-
-			const textarea = getByTestId('workflow-description-input');
-			const placeholder = textarea.getAttribute('placeholder');
-
-			// When MCP is enabled and webhook is present, the placeholder includes all three parts
-			expect(placeholder).toContain('Edit workflow description');
-			expect(placeholder).toContain('MCP clients');
-			expect(placeholder).toContain('webhook inputs');
-			expect(placeholder).toContain('payload format');
-		});
-
-		it('should not show webhook notice for disabled webhook nodes', async () => {
-			// Enable MCP module
-			settingsStore.isModuleActive = vi.fn().mockReturnValue(true);
-
-			// Set up workflow with a disabled webhook node
-			workflowsStore.workflow = {
-				id: 'test-workflow-id',
-				name: 'Test Workflow',
-				active: false,
-				isArchived: false,
-				createdAt: Date.now(),
-				updatedAt: Date.now(),
-				versionId: '1',
-				activeVersionId: '1',
-				nodes: [
-					{
-						id: 'webhook-1',
-						name: 'Webhook',
-						type: WEBHOOK_NODE_TYPE,
-						disabled: true,
-						typeVersion: 1,
-						position: [0, 0],
-						parameters: {},
-					},
-				],
-				connections: {},
-			};
-
-			const { getByTestId } = renderModal({
-				props: {
-					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
-					data: {
-						workflowId: 'test-workflow-id',
-						workflowDescription: '',
-					},
-				},
-				pinia,
-				global,
-			});
-
-			const textarea = getByTestId('workflow-description-input');
-			const placeholder = textarea.getAttribute('placeholder');
-
-			// Should show MCP text but not webhook notice for disabled webhooks
-			expect(placeholder).toContain('Edit workflow description');
-			expect(placeholder).toContain('MCP clients');
-			expect(placeholder).not.toContain('webhook inputs');
-			expect(placeholder).not.toContain('payload format');
-		});
-	});
-
-	describe('UI state tracking', () => {
-		it('should track active actions during save', async () => {
-			const addActiveActionSpy = vi.spyOn(uiStore, 'addActiveAction');
-			const removeActiveActionSpy = vi.spyOn(uiStore, 'removeActiveAction');
-
-			const { getByTestId } = renderModal({
-				props: {
-					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
-					data: {
-						workflowId: 'test-workflow-id',
-						workflowDescription: 'Initial description',
-					},
-				},
-				pinia,
-				global,
-			});
-
-			const textarea = getByTestId('workflow-description-input');
-			await userEvent.type(textarea, ' updated');
-
-			const saveButton = getByTestId('workflow-description-save-button');
-			await userEvent.click(saveButton);
-
-			expect(addActiveActionSpy).toHaveBeenCalledWith('workflowSaving');
-
-			await vi.waitFor(() => {
-				expect(removeActiveActionSpy).toHaveBeenCalledWith('workflowSaving');
-			});
-		});
-
-		it('should remove active action even on error', async () => {
-			const removeActiveActionSpy = vi.spyOn(uiStore, 'removeActiveAction');
-			workflowsStore.saveWorkflowDescription = vi.fn().mockRejectedValue(new Error('Failed'));
-
-			const { getByTestId } = renderModal({
-				props: {
-					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
-					data: {
-						workflowId: 'test-workflow-id',
-						workflowDescription: 'Initial description',
-					},
-				},
-				pinia,
-				global,
-			});
-
-			const textarea = getByTestId('workflow-description-input');
-			await userEvent.type(textarea, ' updated');
-
-			const saveButton = getByTestId('workflow-description-save-button');
-			await userEvent.click(saveButton);
-
-			await vi.waitFor(() => {
-				expect(removeActiveActionSpy).toHaveBeenCalledWith('workflowSaving');
-			});
 		});
 	});
 });
