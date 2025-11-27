@@ -758,14 +758,20 @@ export class SourceControlImportService {
 				// try activating the imported workflow
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId: existingWorkflow.id,
+					versionId: importedWorkflow.activeVersionId,
+					status: 'activated',
+					userId,
+				});
+			} else {
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId: existingWorkflow.id,
+					versionId: existingWorkflow.activeVersionId,
+					status: 'deactivated',
+					userId,
+				});
 			}
-
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId: existingWorkflow.id,
-				versionId: importedWorkflow.activeVersionId ?? existingWorkflow.activeVersionId,
-				status: importedWorkflow.activeVersionId ? 'activated' : 'deactivated',
-				userId,
-			});
 		} catch (e) {
 			const error = ensureError(e);
 			this.logger.error(`Failed to activate workflow ${existingWorkflow.id}`, { error });

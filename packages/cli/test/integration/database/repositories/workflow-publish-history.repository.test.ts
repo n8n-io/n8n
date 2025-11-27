@@ -15,9 +15,6 @@ import { v4 as uuid } from 'uuid';
 
 import { createUser } from '../../shared/db/users';
 
-const id1 = uuid();
-const id2 = uuid();
-
 describe('WorkflowPublishHistoryRepository', () => {
 	beforeAll(async () => {
 		await testDb.init();
@@ -33,6 +30,8 @@ describe('WorkflowPublishHistoryRepository', () => {
 
 	describe('addRecord', () => {
 		it('should create a publish history record with all fields', async () => {
+			const id1 = uuid();
+
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const user = await createUser();
 			const workflow = await createWorkflowWithHistory({ versionId: id1 });
@@ -41,7 +40,6 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-
 				userId: user.id,
 			});
 
@@ -60,6 +58,8 @@ describe('WorkflowPublishHistoryRepository', () => {
 		});
 
 		it('should create a record with null userId', async () => {
+			const id1 = uuid();
+
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflowWithHistory({ versionId: id1 });
 
@@ -84,6 +84,9 @@ describe('WorkflowPublishHistoryRepository', () => {
 		});
 
 		it('should create multiple records for same workflow', async () => {
+			const id1 = uuid();
+			const id2 = uuid();
+
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflow();
 			await createWorkflowHistory({ ...workflow, versionId: id1 });
