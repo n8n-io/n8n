@@ -158,11 +158,8 @@ export class WorkflowRunner {
 				},
 				resultData: {
 					pinData: data.pinData,
-					// If `runData` is initialized to an empty object the execution will
-					// be treated like a partial manual execution instead of a full
-					// manual execution.
-					// So we have to set this to null to instruct
-					// `createRunExecutionData` to not initialize it.
+					// Set this to null so `createRunExecutionData` doesn't initialize it.
+					// Otherwise this will be treated as a partial execution.
 					runData: data.runData ?? null,
 				},
 				manualData: {
@@ -170,10 +167,8 @@ export class WorkflowRunner {
 					dirtyNodeNames: data.dirtyNodeNames,
 					triggerToStartFrom: data.triggerToStartFrom,
 				},
-				// If `executionData` is initialized the execution will be treated like
-				// a resumed execution after waiting, instead of a manual execution.
-				// So we have to set this to null to instruct `createRunExecutionData`
-				// to not initialize it.
+				// Set this to null so `createRunExecutionData` doesn't initialize it.
+				// Otherwise this will be treated as a resumed execution after waiting.
 				executionData: null,
 			});
 		}
