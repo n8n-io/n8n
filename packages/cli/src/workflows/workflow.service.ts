@@ -557,6 +557,7 @@ export class WorkflowService {
 		await this.workflowRepository.update(workflowId, {
 			activeVersionId: versionToActivate,
 			active: true,
+			// workflow content did not change, so we keep updatedAt as is
 			updatedAt: workflow.updatedAt,
 		});
 
@@ -647,6 +648,7 @@ export class WorkflowService {
 		await this.workflowRepository.update(workflowId, {
 			active: false,
 			activeVersionId: null,
+			// workflow content did not change, so we keep updatedAt as is
 			updatedAt: workflow.updatedAt,
 		});
 
