@@ -208,15 +208,10 @@ export class EvaluationTrigger implements INodeType {
 			const dataTableProxy = await this.helpers.getDataTableProxy(dataTableId);
 
 			const filter = await getDataTableFilter(this, 0);
-			const hasFilters = filter.filters.length > 0;
-
 			const previousRunRowId = inputData?.[0]?.json?.row_id;
 
-			// When filters are applied, we need to start from the next row after the last processed one
-			// to handle cases where the filtered result set changes between executions.
-			// We add a filter condition for id > last processed id.
 			let effectiveFilter = filter;
-			if (hasFilters && typeof previousRunRowId === 'number' && previousRunRowsLeft !== 0) {
+			if (typeof previousRunRowId === 'number' && previousRunRowsLeft !== 0) {
 				effectiveFilter = {
 					type: 'and',
 					filters: [
@@ -231,7 +226,7 @@ export class EvaluationTrigger implements INodeType {
 			}
 
 			const { data, count } = await dataTableProxy.getManyRowsAndCount({
-				skip: hasFilters ? 0 : currentIndex,
+				skip: 0,
 				take: 1,
 				filter: effectiveFilter,
 			});
@@ -240,10 +235,8 @@ export class EvaluationTrigger implements INodeType {
 				throw new NodeOperationError(this.getNode(), 'No row found');
 			}
 
-			// When using filters, count represents remaining filtered rows
-			// When not using filters, use the original logic
-			const effectiveTotal = hasFilters ? count + currentIndex : Math.min(count, maxRows);
-			const rowsLeft = Math.max(0, effectiveTotal - (currentIndex + 1));
+			const effectiveTotal = Math.min(count, maxRows);
+			const rowsLeft = Math.max(0, effectiveTotal - 1);
 
 			const currentRow = {
 				json: {
