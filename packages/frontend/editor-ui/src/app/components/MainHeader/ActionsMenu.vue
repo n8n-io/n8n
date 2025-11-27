@@ -13,6 +13,8 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
 	WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG,
+	WORKFLOW_SHARE_MODAL_KEY,
+	EnterpriseEditionFeature,
 } from '@/app/constants';
 import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useRoute } from 'vue-router';
@@ -32,6 +34,9 @@ import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTagsStore } from '@/features/shared/tags/tags.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
@@ -64,10 +69,13 @@ const uiStore = useUIStore();
 const $style = useCssModule();
 const rootStore = useRootStore();
 const tagsStore = useTagsStore();
+const settingsStore = useSettingsStore();
+const usersStore = useUsersStore();
 const workflowHelpers = useWorkflowHelpers();
 const workflowActivate = useWorkflowActivate();
 const changeOwnerEventBus = createEventBus();
 const envFeatureFlag = useEnvFeatureFlag();
+const workflowTelemetry = useTelemetry();
 
 const onWorkflowPage = computed(() => {
 	return route.meta && (route.meta.nodeView || route.meta.keepWorkflowAlive === true);
@@ -86,6 +94,10 @@ const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 const isDraftPublishEnabled = computed(() => {
 	return envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG);
 });
+
+const isSharingEnabled = computed(
+	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
+);
 
 function handleFileImport() {
 	const inputRef = importFileRef.value;
@@ -121,6 +133,14 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 			disabled: !onWorkflowPage.value,
 		},
 	];
+
+	if (isDraftPublishEnabled.value && isSharingEnabled.value) {
+		actions.push({
+			id: WORKFLOW_MENU_ACTIONS.SHARE,
+			label: locale.baseText('workflowDetails.share'),
+			disabled: !onWorkflowPage.value,
+		});
+	}
 
 	if (props.workflowPermissions.move && projectsStore.isTeamProjectFeatureEnabled) {
 		actions.push({
@@ -304,6 +324,19 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 		}
 		case WORKFLOW_MENU_ACTIONS.SETTINGS: {
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
+			break;
+		}
+		case WORKFLOW_MENU_ACTIONS.SHARE: {
+			uiStore.openModalWithData({
+				name: WORKFLOW_SHARE_MODAL_KEY,
+				data: { id: props.id },
+			});
+
+			workflowTelemetry.track('User opened sharing modal', {
+				workflow_id: props.id,
+				user_id_sharer: usersStore.currentUser?.id,
+				sub_view: route.name === VIEWS.WORKFLOWS ? 'Workflows listing' : 'Workflow editor',
+			});
 			break;
 		}
 		case WORKFLOW_MENU_ACTIONS.ARCHIVE: {
