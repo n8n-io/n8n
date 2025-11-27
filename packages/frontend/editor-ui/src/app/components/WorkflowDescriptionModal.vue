@@ -111,6 +111,7 @@ onMounted(() => {
 		width="500"
 		:class="$style.container"
 		:event-bus="modalBus"
+		:close-on-click-modal="false"
 	>
 		<template #content>
 			<div
