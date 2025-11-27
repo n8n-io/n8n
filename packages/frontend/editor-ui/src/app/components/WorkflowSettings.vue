@@ -977,7 +977,6 @@ onBeforeUnmount(() => {
 								data-test-id="workflow-settings-time-saved-per-execution"
 								type="number"
 								min="0"
-								`
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
