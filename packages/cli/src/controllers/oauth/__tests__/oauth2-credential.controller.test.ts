@@ -135,6 +135,7 @@ describe('OAuth2CredentialController', () => {
 			[
 				['authorization_code', 'refresh_token'],
 				['client_secret_basic', 'client_secret_post', 'none'],
+				['S256'],
 				['authorization_code', 'refresh_token'],
 				'none',
 				{
@@ -149,6 +150,22 @@ describe('OAuth2CredentialController', () => {
 			[
 				['authorization_code', 'refresh_token'],
 				['client_secret_basic', 'client_secret_post'],
+				['S256'],
+				['authorization_code', 'refresh_token'],
+				'none',
+				{
+					code_challenge: 'code-challenge',
+					code_challenge_method: 'S256',
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+			[
+				['authorization_code', 'refresh_token'],
+				['client_secret_basic', 'client_secret_post'],
+				[],
 				['authorization_code', 'refresh_token'],
 				'client_secret_basic',
 				{
@@ -161,6 +178,7 @@ describe('OAuth2CredentialController', () => {
 			[
 				['authorization_code', 'refresh_token'],
 				['client_secret_post'],
+				[],
 				['authorization_code', 'refresh_token'],
 				'client_secret_post',
 				{
@@ -173,6 +191,7 @@ describe('OAuth2CredentialController', () => {
 			[
 				['client_credentials'],
 				['client_secret_basic', 'client_secret_post'],
+				[],
 				['client_credentials'],
 				'client_secret_basic',
 				{
@@ -185,6 +204,7 @@ describe('OAuth2CredentialController', () => {
 			[
 				['client_credentials'],
 				['client_secret_post'],
+				[],
 				['client_credentials'],
 				'client_secret_post',
 				{
@@ -199,6 +219,7 @@ describe('OAuth2CredentialController', () => {
 			async (
 				supportedGrantTypes,
 				supportedTokenEndpointAuthMethods,
+				supportedCodeChallengeMethods,
 				expectedGrantTypes,
 				expectedTokenEndpointAuthMethod,
 				expectedQueryParams,
@@ -223,7 +244,7 @@ describe('OAuth2CredentialController', () => {
 						registration_endpoint: 'https://example.com/registration',
 						grant_types_supported: supportedGrantTypes,
 						token_endpoint_auth_methods_supported: supportedTokenEndpointAuthMethods,
-						code_challenge_methods_supported: ['S256'],
+						code_challenge_methods_supported: supportedCodeChallengeMethods,
 					})
 					.post('/registration', {
 						redirect_uris: ['http://localhost:5678/rest/oauth2-credential/callback'],
@@ -304,7 +325,6 @@ describe('OAuth2CredentialController', () => {
 					registration_endpoint: 'https://example.com/registration',
 					grant_types_supported: ['authorization_code', 'refresh_token'],
 					token_endpoint_auth_methods_supported: ['client_secret_basic'],
-					code_challenge_methods_supported: ['S256'],
 				})
 				.post('/registration', {
 					redirect_uris: ['http://localhost:5678/rest/oauth2-credential/callback'],
