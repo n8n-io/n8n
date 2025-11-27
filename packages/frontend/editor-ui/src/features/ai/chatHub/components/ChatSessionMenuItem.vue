@@ -37,12 +37,7 @@ const agent = computed<ChatModelDto | null>(() => {
 		return null;
 	}
 
-	const agent = chatStore.getAgent(model);
-
-	return {
-		...agent,
-		name: agent.name || session.agentName,
-	};
+	return chatStore.getAgent(model, session.agentName);
 });
 
 const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [

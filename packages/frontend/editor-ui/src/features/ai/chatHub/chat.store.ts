@@ -794,7 +794,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		await fetchAgents(credentials);
 	}
 
-	function getAgent(model: ChatHubConversationModel): ChatModelDto {
+	function getAgent(model: ChatHubConversationModel, fallbackName: string = ''): ChatModelDto {
 		const agent = agents.value?.[model.provider]?.models.find((agent) =>
 			isMatchedAgent(agent, model),
 		);
@@ -805,12 +805,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		return {
 			model,
-			name:
-				model.provider === 'n8n'
-					? `Workflow ${model.workflowId}`
-					: model.provider === 'custom-agent'
-						? `Custom agent ${model.agentId}`
-						: model.model,
+			name: fallbackName,
 			description: null,
 			createdAt: null,
 			updatedAt: null,

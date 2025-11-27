@@ -46,7 +46,7 @@ const credentialIdForSelectedModelProvider = computed(
 	() => selectedModel.value && agentMergedCredentials.value[selectedModel.value.provider],
 );
 const selectedAgent = computed(
-	() => selectedModel.value && chatStore.getAgent(selectedModel.value),
+	() => selectedModel.value && chatStore.getAgent(selectedModel.value, selectedModel.value.model),
 );
 
 const isEditMode = computed(() => !!props.data.agentId);

@@ -66,9 +66,7 @@ const agent = computed<ChatModelDto | null>(() => {
 		return null;
 	}
 
-	const agent = chatStore.getAgent(model);
-
-	return { ...agent, name: agent.name || (cachedAgentDisplayName ?? '') };
+	return chatStore.getAgent(model, cachedAgentDisplayName ?? undefined);
 });
 
 const attachments = computed(() =>

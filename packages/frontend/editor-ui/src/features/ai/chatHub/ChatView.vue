@@ -165,16 +165,10 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 			return null;
 		}
 
-		const agent = chatStore.getAgent(model);
-
-		return {
-			...agent,
-			name:
-				agent.name ||
-				currentConversation.value?.agentName ||
-				currentConversation.value?.model ||
-				'',
-		};
+		return chatStore.getAgent(
+			model,
+			(currentConversation.value?.agentName || currentConversation.value?.model) ?? undefined,
+		);
 	}
 
 	if (modelFromQuery.value) {
@@ -182,16 +176,14 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 	}
 
 	if (chatStore.streaming?.sessionId === sessionId.value) {
-		return chatStore.getAgent(chatStore.streaming.model);
+		return chatStore.getAgent(chatStore.streaming.model, chatStore.streaming.agentName);
 	}
 
 	if (!defaultModel.value) {
 		return null;
 	}
 
-	const agent = chatStore.getAgent(defaultModel.value);
-
-	return { ...agent, name: agent.name || defaultModel.value.cachedDisplayName };
+	return chatStore.getAgent(defaultModel.value, defaultModel.value.cachedDisplayName);
 });
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
