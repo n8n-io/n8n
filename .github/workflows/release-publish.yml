@@ -164,6 +164,69 @@ jobs:
       - name: Trigger a release note
         run: curl -u docsWorkflows:${{ secrets.N8N_WEBHOOK_DOCS_PASSWORD }} --request GET 'https://internal.users.n8n.cloud/webhook/trigger-release-note' --header 'Content-Type:application/json' --data '{"version":"${{ needs.publish-to-npm.outputs.release }}"}'
 
+  create-major-tags:
+    name: Create Major Version Tags
+    needs: [publish-to-npm, publish-to-docker-hub]
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    continue-on-error: true
+    timeout-minutes: 10
+
+    steps:
+      - name: Extract and validate major version
+        id: major
+        run: |
+          VERSION="${{ needs.publish-to-npm.outputs.release }}"
+          MAJOR="${VERSION%%.*}"
+          if [[ "$MAJOR" =~ ^[0-9]+$ ]]; then
+            echo "major=$MAJOR" >> "$GITHUB_OUTPUT"
+            echo "✅ Major version: $MAJOR (from $VERSION)"
+          else
+            echo "::error::Invalid major version: $MAJOR (from $VERSION)"
+            exit 1
+          fi
+
+      - name: Add npm major tag
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+          npm dist-tag add n8n@${{ needs.publish-to-npm.outputs.release }} ${{ steps.major.outputs.major }}
+          echo "✅ Added npm tag: ${{ steps.major.outputs.major }} -> n8n@${{ needs.publish-to-npm.outputs.release }}"
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Create Docker Hub major tags
+        run: |
+          VERSION="${{ needs.publish-to-npm.outputs.release }}"
+          MAJOR="${{ steps.major.outputs.major }}"
+          DOCKER_BASE="${{ secrets.DOCKER_USERNAME }}"
+
+          echo "Creating Docker Hub :$MAJOR tags..."
+          docker buildx imagetools create -t "${DOCKER_BASE}/n8n:${MAJOR}" "${DOCKER_BASE}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${DOCKER_BASE}/runners:${MAJOR}" "${DOCKER_BASE}/runners:${VERSION}"
+          echo "✅ Created Docker Hub tags: :$MAJOR -> :$VERSION"
+
+      - name: Login to GHCR
+        uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # v3.4.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GHCR major tags
+        run: |
+          VERSION="${{ needs.publish-to-npm.outputs.release }}"
+          MAJOR="${{ steps.major.outputs.major }}"
+          GHCR_BASE="ghcr.io/${{ github.repository_owner }}"
+
+          echo "Creating GHCR :$MAJOR tags..."
+          docker buildx imagetools create -t "${GHCR_BASE}/n8n:${MAJOR}" "${GHCR_BASE}/n8n:${VERSION}"
+          docker buildx imagetools create -t "${GHCR_BASE}/runners:${MAJOR}" "${GHCR_BASE}/runners:${VERSION}"
+          echo "✅ Created GHCR tags: :$MAJOR -> :$VERSION"
+
   # merge-back-into-master:
   #   name: Merge back into master
   #   needs: [publish-to-npm, create-github-release]
