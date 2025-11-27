@@ -1,4 +1,3 @@
-import { Container } from '@n8n/di';
 import get from 'lodash/get';
 import type {
 	Workflow,
@@ -33,14 +32,9 @@ import {
 	createEnvProviderState,
 } from 'n8n-workflow';
 
-import { BinaryDataService } from '@/binary-data/binary-data.service';
-import { FileLocation } from '@/binary-data/utils';
-
 import { NodeExecutionContext } from './node-execution-context';
 
 export class BaseExecuteContext extends NodeExecutionContext {
-	protected readonly binaryDataService = Container.get(BinaryDataService);
-
 	constructor(
 		workflow: Workflow,
 		node: INode,
@@ -155,11 +149,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			await this.putExecutionToWait(WAIT_INDEFINITELY);
 		}
 
-		const data = await this.binaryDataService.duplicateBinaryData(
-			FileLocation.ofExecution(this.workflow.id, this.additionalData.executionId!),
-			result.data,
-		);
-		return { ...result, data };
+		return result;
 	}
 
 	async getExecutionDataById(executionId: string): Promise<IRunExecutionData | undefined> {
