@@ -1,0 +1,51 @@
+get:
+  x-eov-operation-id: getWorkflowsStats
+  x-eov-operation-handler: v1/handlers/workflows/workflows.handler
+  tags:
+    - Workflow
+  summary: Retrieve workflow stats
+  description: Retrieve workflow statistics filtered by optional date ranges.
+  parameters:
+    - name: createdFrom
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+        example: 2024-01-01
+      description: Include workflows created on or after this date (UTC).
+    - name: createdTo
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+        example: 2024-01-31
+      description: Include workflows created on or before this date (UTC).
+    - name: modifiedFrom
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+        example: 2024-02-01
+      description: Include workflows last modified on or after this date (UTC).
+    - name: modifiedTo
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date
+        example: 2024-02-29
+      description: Include workflows last modified on or before this date (UTC).
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/workflowStats.yml'
+    '400':
+      $ref: '../../../../shared/spec/responses/badRequest.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'

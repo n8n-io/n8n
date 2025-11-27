@@ -23,7 +23,15 @@ export const RESOURCES = {
 	variable: [...DEFAULT_OPERATIONS] as const,
 	projectVariable: [...DEFAULT_OPERATIONS] as const,
 	workersView: ['manage'] as const,
-	workflow: ['share', 'execute', 'move', 'activate', 'deactivate', ...DEFAULT_OPERATIONS] as const,
+	workflow: [
+		'share',
+		'execute',
+		'move',
+		'activate',
+		'deactivate',
+		'stats',
+		...DEFAULT_OPERATIONS,
+	] as const,
 	folder: [...DEFAULT_OPERATIONS, 'move'] as const,
 	insights: ['list'] as const,
 	oidc: ['manage'] as const,
@@ -41,7 +49,7 @@ export const RESOURCES = {
 
 export const API_KEY_RESOURCES = {
 	tag: [...DEFAULT_OPERATIONS] as const,
-	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate'] as const,
+	workflow: [...DEFAULT_OPERATIONS, 'move', 'activate', 'deactivate', 'stats'] as const,
 	variable: ['create', 'update', 'delete', 'list'] as const,
 	securityAudit: ['generate'] as const,
 	project: ['create', 'update', 'delete', 'list'] as const,

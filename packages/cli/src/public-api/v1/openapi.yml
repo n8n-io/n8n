@@ -58,6 +58,8 @@ paths:
     $ref: './handlers/tags/spec/paths/tags.id.yml'
   /workflows:
     $ref: './handlers/workflows/spec/paths/workflows.yml'
+  /workflows/stats:
+    $ref: './handlers/workflows/spec/paths/workflows.stats.yml'
   /workflows/{id}:
     $ref: './handlers/workflows/spec/paths/workflows.id.yml'
   /workflows/{id}/activate:

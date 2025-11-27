@@ -78,6 +78,18 @@ export declare namespace WorkflowRequest {
 		}
 	>;
 
+	type GetStats = AuthenticatedRequest<
+		{}, // Params
+		{}, // ResBody
+		{}, // ReqBody
+		{
+			createdFrom?: string;
+			createdTo?: string;
+			modifiedFrom?: string;
+			modifiedTo?: string;
+		}
+	>;
+
 	type Create = AuthenticatedRequest<{}, {}, WorkflowEntity, {}>;
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;

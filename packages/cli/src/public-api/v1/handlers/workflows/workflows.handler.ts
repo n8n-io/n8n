@@ -2,7 +2,16 @@ import { GlobalConfig } from '@n8n/config';
 import { WorkflowEntity, ProjectRepository, TagRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In, IsNull, Like, Not, QueryFailedError } from '@n8n/typeorm';
+import {
+	In,
+	IsNull,
+	Like,
+	Not,
+	QueryFailedError,
+	Between,
+	MoreThanOrEqual,
+	LessThanOrEqual,
+} from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { FindOptionsWhere } from '@n8n/typeorm';
 import type express from 'express';
@@ -278,6 +287,70 @@ export = {
 					limit,
 					numberOfTotalRecords: count,
 				}),
+			});
+		},
+	],
+	getWorkflowsStats: [
+		apiKeyHasScope('workflow:stats'),
+		async (req: WorkflowRequest.GetStats, res: express.Response): Promise<express.Response> => {
+			const parseDate = (v: unknown): Date | undefined => {
+				if (v === undefined) return undefined;
+				const d = new Date(String(v));
+				return isNaN(d.getTime()) ? undefined : d;
+			};
+
+			const { createdFrom, createdTo, modifiedFrom, modifiedTo } = req.query;
+
+			const createdFromDate = parseDate(createdFrom);
+			const createdToDate = parseDate(createdTo);
+			const modifiedFromDate = parseDate(modifiedFrom);
+			const modifiedToDate = parseDate(modifiedTo);
+
+			if (createdFrom && !createdFromDate)
+				return res.status(400).json({ message: 'Invalid createdFrom date' });
+			if (createdTo && !createdToDate)
+				return res.status(400).json({ message: 'Invalid createdTo date' });
+			if (modifiedFrom && !modifiedFromDate)
+				return res.status(400).json({ message: 'Invalid modifiedFrom date' });
+			if (modifiedTo && !modifiedToDate)
+				return res.status(400).json({ message: 'Invalid modifiedTo date' });
+
+			if (createdFromDate && createdToDate && createdFromDate > createdToDate) {
+				return res
+					.status(400)
+					.json({ message: 'createdFrom must be before or equal to createdTo' });
+			}
+			if (modifiedFromDate && modifiedToDate && modifiedFromDate > modifiedToDate) {
+				return res
+					.status(400)
+					.json({ message: 'modifiedFrom must be before or equal to modifiedTo' });
+			}
+
+			const dateFilter: FindOptionsWhere<WorkflowEntity> = {};
+
+			const range = (from?: Date, to?: Date) =>
+				from && to
+					? Between(from, to)
+					: from
+						? MoreThanOrEqual(from)
+						: to
+							? LessThanOrEqual(to)
+							: undefined;
+
+			const createdRange = range(createdFromDate, createdToDate);
+			const modifiedRange = range(modifiedFromDate, modifiedToDate);
+
+			if (createdRange) dateFilter.createdAt = createdRange;
+			if (modifiedRange) dateFilter.updatedAt = modifiedRange;
+
+			let repo = Container.get(WorkflowRepository);
+
+			const total = await repo.count({ where: { ...dateFilter } });
+			const active = await repo.count({ where: { ...dateFilter, activeVersionId: Not(IsNull()) } });
+
+			return res.json({
+				total: total,
+				active: active,
 			});
 		},
 	],

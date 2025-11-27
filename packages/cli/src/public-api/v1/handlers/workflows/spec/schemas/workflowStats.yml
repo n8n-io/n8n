@@ -1,0 +1,13 @@
+type: object
+properties:
+  total:
+    type: integer
+    description: Total number of workflows.
+    example: 3
+  active:
+    type: integer
+    description: Number of active workflows.
+    example: 1
+required:
+  - total
+  - active
