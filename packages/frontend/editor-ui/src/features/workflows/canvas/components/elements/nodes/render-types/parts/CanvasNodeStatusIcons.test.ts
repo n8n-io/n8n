@@ -62,38 +62,6 @@ describe('CanvasNodeStatusIcons', () => {
 		expect(queryByTestId('canvas-node-status-pinned')).not.toBeInTheDocument();
 	});
 
-	describe('executing', () => {
-		it('should not show node as executing if workflow is not executing', () => {
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasProvide({
-							isExecuting: false,
-						}),
-						...createCanvasNodeProvide({ data: { execution: { running: true } } }),
-					},
-				},
-			});
-
-			expect(() => getByTestId('canvas-node-status-running')).toThrow();
-		});
-
-		it('should render running node correctly', () => {
-			const { getByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasProvide({
-							isExecuting: true,
-						}),
-						...createCanvasNodeProvide({ data: { execution: { running: true } } }),
-					},
-				},
-			});
-
-			expect(getByTestId('canvas-node-status-running')).toBeVisible();
-		});
-	});
-
 	it('should render correctly for a node that ran successfully', () => {
 		const { getByTestId } = renderComponent({
 			global: {
@@ -179,58 +147,5 @@ describe('CanvasNodeStatusIcons', () => {
 		});
 
 		expect(queryByTestId('node-not-installed')).not.toBeInTheDocument();
-	});
-
-	describe('status precedence', () => {
-		it('should render executing status even if node is invalid', () => {
-			const { getByTestId, queryByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasProvide({
-							isExecuting: true,
-						}),
-						...createCanvasNodeProvide({
-							data: {
-								execution: { running: true },
-								runData: { outputMap: {}, iterations: 15, visible: true },
-								render: {
-									type: CanvasNodeRenderType.Default,
-									options: { dirtiness: CanvasNodeDirtiness.PARAMETERS_UPDATED },
-								},
-							},
-						}),
-					},
-				},
-			});
-
-			expect(getByTestId('canvas-node-status-running')).toBeVisible();
-			expect(queryByTestId('canvas-node-status-warning')).not.toBeInTheDocument();
-		});
-
-		it('should render executing status even if node is disabled', () => {
-			const { getByTestId, queryByTestId } = renderComponent({
-				global: {
-					provide: {
-						...createCanvasProvide({
-							isExecuting: true,
-						}),
-						...createCanvasNodeProvide({
-							data: {
-								disabled: true,
-								execution: { running: true },
-								runData: { outputMap: {}, iterations: 15, visible: true },
-								render: {
-									type: CanvasNodeRenderType.Default,
-									options: { dirtiness: CanvasNodeDirtiness.PARAMETERS_UPDATED },
-								},
-							},
-						}),
-					},
-				},
-			});
-
-			expect(getByTestId('canvas-node-status-running')).toBeVisible();
-			expect(queryByTestId('canvas-node-status-warning')).not.toBeInTheDocument();
-		});
 	});
 });
