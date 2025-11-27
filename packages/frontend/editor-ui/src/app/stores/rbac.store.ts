@@ -48,6 +48,7 @@ export const useRBACStore = defineStore(STORES.RBAC, () => {
 		chatHub: {},
 		chatHubAgent: {},
 		breakingChanges: {},
+		apiKey: {},
 	});
 
 	function addGlobalRole(role: Role) {

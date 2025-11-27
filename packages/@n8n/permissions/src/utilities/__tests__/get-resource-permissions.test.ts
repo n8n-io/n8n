@@ -42,6 +42,7 @@ describe('permissions', () => {
 			chatHub: {},
 			chatHubAgent: {},
 			breakingChanges: {},
+			apiKey: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -77,6 +78,7 @@ describe('permissions', () => {
 			'folder:create',
 			'insights:list',
 			'breakingChanges:list',
+			'apiKey:manage',
 		];
 
 		const permissionRecord: PermissionsRecord = {
@@ -157,6 +159,9 @@ describe('permissions', () => {
 			chatHubAgent: {},
 			breakingChanges: {
 				list: true,
+			},
+			apiKey: {
+				manage: true,
 			},
 		};
 
