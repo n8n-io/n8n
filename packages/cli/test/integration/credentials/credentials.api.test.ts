@@ -45,10 +45,8 @@ const testServer = setupTestServer({ endpointGroups: ['credentials'] });
 
 let owner: User;
 let member: User;
-let chatUser: User;
 let admin: User;
 let secondMember: User;
-let viewer: User;
 
 let ownerPersonalProject: Project;
 let memberPersonalProject: Project;
@@ -68,10 +66,8 @@ beforeEach(async () => {
 
 	owner = await createOwner();
 	member = await createMember();
-	chatUser = await createChatUser();
 	admin = await createAdmin();
 	secondMember = await createMember();
-	viewer = await createMember();
 
 	ownerPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		owner.id,
@@ -79,14 +75,9 @@ beforeEach(async () => {
 	memberPersonalProject = await Container.get(ProjectRepository).getPersonalProjectForUserOrFail(
 		member.id,
 	);
-	teamProject = await createTeamProject(undefined, admin);
-	await linkUserToProject(member, teamProject, 'project:editor');
-	await linkUserToProject(viewer, teamProject, 'project:viewer');
 
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
-	authViewerAgent = testServer.authAgentFor(viewer);
-	authChatUserAgent = testServer.authAgentFor(chatUser);
 	authAdminAgent = testServer.authAgentFor(admin);
 
 	projectRepository = Container.get(ProjectRepository);
@@ -971,7 +962,12 @@ describe('POST /credentials', () => {
 	});
 
 	test('should fail when viewer user tries to create credential in team project', async () => {
-		const response = await authViewerAgent
+		const viewer = await createMember();
+		teamProject = await createTeamProject(undefined, admin);
+		await linkUserToProject(viewer, teamProject, 'project:viewer');
+
+		const response = await testServer
+			.authAgentFor(viewer)
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), projectId: teamProject.id });
 
@@ -982,7 +978,10 @@ describe('POST /credentials', () => {
 	});
 
 	test('should allow viewer user to create credential in their personal project', async () => {
-		const response = await authViewerAgent
+		const viewer = await createMember();
+
+		const response = await testServer
+			.authAgentFor(viewer)
 			.post('/credentials')
 			.send({ ...randomCredentialPayload() });
 
@@ -990,7 +989,10 @@ describe('POST /credentials', () => {
 	});
 
 	test('should fail when chat user tries to create credential in their personal project', async () => {
-		const response = await authChatUserAgent
+		const chatUser = await createChatUser();
+
+		const response = await testServer
+			.authAgentFor(chatUser)
 			.post('/credentials')
 			.send({ ...randomCredentialPayload() });
 
@@ -1038,7 +1040,9 @@ describe('POST /credentials', () => {
 	});
 
 	test('should not allow chat user to create credential with isGlobal=false', async () => {
-		const response = await authChatUserAgent
+		const chatUser = await createChatUser();
+		const response = await testServer
+			.authAgentFor(chatUser)
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), isGlobal: false });
 
@@ -1063,11 +1067,11 @@ describe('POST /credentials', () => {
 	});
 
 	test('should not allow chat user to create credential without passing isGlobal', async () => {
+		const chatUser = await createChatUser();
 		const payload = randomCredentialPayload();
 		delete payload.isGlobal;
 
-		const response = await authChatUserAgent.post('/credentials').send(payload);
-
+		const response = await testServer.authAgentFor(chatUser).post('/credentials').send(payload);
 		expect(response.statusCode).toBe(400);
 		expect(response.body.message).toBe(
 			"You don't have the permissions to save the credential in this project.",

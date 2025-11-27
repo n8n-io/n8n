@@ -51,8 +51,6 @@ let member: User;
 let memberPersonalProject: Project;
 let anotherMember: User;
 let anotherMemberPersonalProject: Project;
-let chatUser: User;
-let chatUserPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
 let authAnotherMemberAgent: SuperAgentTest;
@@ -83,9 +81,6 @@ beforeEach(async () => {
 		anotherMember.id,
 	);
 
-	chatUser = await createUser({ role: { slug: 'global:chatUser' } });
-	chatUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(chatUser.id);
-
 	authOwnerAgent = testServer.authAgentFor(owner);
 	authMemberAgent = testServer.authAgentFor(member);
 	authAnotherMemberAgent = testServer.authAgentFor(anotherMember);
@@ -114,8 +109,13 @@ describe('POST /credentials', () => {
 	});
 
 	test('chat users cannot create credentials', async () => {
+		const chatUser = await createUser({ role: { slug: 'global:chatUser' } });
+		const chatUserPersonalProject = await projectRepository.getPersonalProjectForUserOrFail(
+			chatUser.id,
+		);
+
 		const response = await testServer
-			.authAgentFor(member)
+			.authAgentFor(chatUser)
 			.post('/credentials')
 			.send({ ...randomCredentialPayload(), projectId: chatUserPersonalProject.id });
 

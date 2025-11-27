@@ -45,12 +45,10 @@ import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
 
 let owner: User;
 let member: User;
-let chatUser: User;
 let anotherMember: User;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
-let authChatUserAgent: SuperAgentTest;
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
 	enabledFeatures: ['feat:sharing'],
@@ -91,8 +89,6 @@ beforeEach(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
 	authMemberAgent = testServer.authAgentFor(member);
-	chatUser = await createChatUser();
-	authChatUserAgent = testServer.authAgentFor(chatUser);
 	anotherMember = await createMember();
 
 	folderListMissingRole = await createCustomRoleWithScopeSlugs(['workflow:read', 'workflow:list'], {
@@ -460,12 +456,14 @@ describe('POST /workflows', () => {
 		//
 		// ARRANGE
 		//
+		const chatUser = await createChatUser();
 		const workflow = makeWorkflow();
 
 		//
 		// ACT
 		//
-		await authChatUserAgent
+		await testServer
+			.authAgentFor(chatUser)
 			.post('/workflows')
 			.send({ ...workflow })
 			//
