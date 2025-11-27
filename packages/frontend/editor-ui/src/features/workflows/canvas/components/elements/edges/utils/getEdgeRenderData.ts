@@ -23,6 +23,7 @@ export function getEdgeRenderData(
 ) {
 	const { targetX, targetY, sourceX, sourceY, sourcePosition, targetPosition } = props;
 	const isConnectorStraight = sourceY === targetY;
+	const offsetX = 4;
 
 	if (!isRightOfSourceHandle(sourceX, targetX) || connectionType !== NodeConnectionTypes.Main) {
 		const segment = getBezierPath(props);
@@ -38,7 +39,7 @@ export function getEdgeRenderData(
 	const firstSegmentTargetX = (sourceX + targetX) / 2;
 	const firstSegmentTargetY = sourceY + EDGE_PADDING_BOTTOM;
 	const firstSegment = getSmoothStepPath({
-		sourceX,
+		sourceX: sourceX + offsetX,
 		sourceY,
 		targetX: firstSegmentTargetX,
 		targetY: firstSegmentTargetY,
