@@ -107,7 +107,7 @@ export class SidebarPage {
 	}
 
 	getTemplatesLink(): Locator {
-		return this.page.getByTestId('templates').locator('a');
+		return this.page.getByTestId('main-sidebar-templates').locator('a');
 	}
 
 	getVersionUpdateItem(): Locator {
