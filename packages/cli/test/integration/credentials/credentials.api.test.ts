@@ -54,8 +54,6 @@ let teamProject: Project;
 
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
-let authViewerAgent: SuperAgentTest;
-let authChatUserAgent: SuperAgentTest;
 let authAdminAgent: SuperAgentTest;
 
 let projectRepository: ProjectRepository;
