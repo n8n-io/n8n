@@ -200,7 +200,7 @@ $descriptionBoxMaxWidth: 330px;
 $descriptionBoxMinWidth: 228px;
 
 .card {
-	padding: var(--spacing--sm) var(--spacing--lg) 0 var(--spacing--xl);
+	padding: var(--spacing--sm) var(--spacing--lg) 0;
 	border: 0;
 	align-items: start;
 
