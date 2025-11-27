@@ -9,6 +9,7 @@ import {
 	User,
 	UserRepository,
 } from '@n8n/db';
+import { PROJECT_OWNER_ROLE_SLUG, PROJECT_OWNER_VIEWER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
@@ -18,9 +19,8 @@ import { UrlService } from '@/services/url.service';
 import { UserService } from '@/services/user.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
+import type { PublicApiKeyService } from '../public-api-key.service';
 import type { RoleService } from '../role.service';
-import { type PublicApiKeyService } from '../public-api-key.service';
-import { createChatUser } from '@test-integration/db/users';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -389,6 +389,44 @@ describe('UserService', () => {
 				{ role: { slug: 'global:member' } },
 			);
 			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).toHaveBeenCalled();
+		});
+
+		it('assigns chat user project:personalOwnerViewer when demoted from member', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			await userService.changeUserRole(user, { newRoleName: 'global:chatUser' });
+
+			expect(manager.update).toHaveBeenCalledWith(
+				ProjectRelation,
+				{
+					userId: user.id,
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+				},
+				{ role: { slug: PROJECT_OWNER_VIEWER_ROLE_SLUG } },
+			);
+		});
+
+		it('assigns chat user project:personalOwner when upgraded to member', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:chatUser';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			await userService.changeUserRole(user, { newRoleName: 'global:member' });
+
+			expect(manager.update).toHaveBeenCalledWith(
+				ProjectRelation,
+				{
+					userId: user.id,
+					role: { slug: PROJECT_OWNER_VIEWER_ROLE_SLUG },
+				},
+				{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
+			);
 		});
 	});
 });
