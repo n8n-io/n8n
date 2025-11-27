@@ -96,7 +96,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Google Search',
 				name: 'googleSearch',
 				type: 'boolean',
-				default: false,
+				default: true,
 				description:
 					'Whether to allow the model to search the web using Google Search to get real-time information',
 			},
@@ -104,7 +104,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Google Maps',
 				name: 'googleMaps',
 				type: 'boolean',
-				default: false,
+				default: true,
 				description:
 					'Whether to allow the model to use Google Maps for location-based queries and directions',
 			},
@@ -112,14 +112,14 @@ const properties: INodeProperties[] = [
 				displayName: 'URL Context',
 				name: 'urlContext',
 				type: 'boolean',
-				default: false,
+				default: true,
 				description: 'Whether to allow the model to read and analyze content from specific URLs',
 			},
 			{
 				displayName: 'File Search',
 				name: 'fileSearch',
 				type: 'boolean',
-				default: false,
+				default: true,
 				description:
 					'Whether to allow the model to search through indexed files for information retrieval',
 			},
@@ -127,7 +127,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Code Execution',
 				name: 'codeExecution',
 				type: 'boolean',
-				default: false,
+				default: true,
 				description:
 					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
 			},
