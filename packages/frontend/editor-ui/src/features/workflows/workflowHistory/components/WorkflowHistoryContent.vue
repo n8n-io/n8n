@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { IWorkflowDb, UserAction } from '@/Interface';
 import type {
 	WorkflowVersion,
@@ -11,7 +11,7 @@ import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nButton, N8nIcon, N8nText, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
 import { formatTimestamp } from '@/features/workflows/workflowHistory/utils';
@@ -66,6 +66,22 @@ const versionNameDisplay = computed(() => {
 	return props.workflowVersion?.name ?? formattedCreatedAt.value;
 });
 
+const MAX_DESCRIPTION_LENGTH = 200;
+const isDescriptionExpanded = ref(false);
+
+const description = computed(() => props.workflowVersion?.description ?? '');
+const isDescriptionLong = computed(() => description.value.length > MAX_DESCRIPTION_LENGTH);
+const displayDescription = computed(() => {
+	if (!isDescriptionLong.value || isDescriptionExpanded.value) {
+		return description.value;
+	}
+	return description.value.substring(0, MAX_DESCRIPTION_LENGTH) + '... ';
+});
+
+const toggleDescription = () => {
+	isDescriptionExpanded.value = !isDescriptionExpanded.value;
+};
+
 const actions = computed(() => {
 	let filteredActions = props.actions;
 
@@ -99,6 +115,13 @@ const onAction = ({
 }) => {
 	emit('action', { action, id, data });
 };
+
+watch(
+	() => props.workflowVersion,
+	() => {
+		isDescriptionExpanded.value = false;
+	},
+);
 </script>
 
 <template>
@@ -126,8 +149,15 @@ const onAction = ({
 								versionNameDisplay
 							}}</N8nText>
 						</N8nTooltip>
-						<N8nText v-if="props.workflowVersion?.description" size="small" color="text-base">
-							{{ props.workflowVersion.description }}
+						<N8nText v-if="description" size="small" color="text-base">
+							{{ displayDescription }}
+							<N8nLink v-if="isDescriptionLong" size="small" @click="toggleDescription">
+								{{
+									isDescriptionExpanded
+										? i18n.baseText('generic.showLess')
+										: i18n.baseText('generic.showMore')
+								}}
+							</N8nLink>
 						</N8nText>
 					</div>
 					<section v-else :class="$style.textOld">
@@ -199,9 +229,9 @@ $descriptionBoxMinWidth: 228px;
 		gap: var(--spacing--3xs);
 		margin-top: var(--spacing--3xs);
 		padding: var(--spacing--xs);
-		border: var(--border-width) var(--border-style) var(--color--neutral-800);
+		border: var(--border-width) var(--border-style) var(--color--foreground);
 		border-radius: var(--radius);
-		background-color: var(--color--neutral-900);
+		background-color: var(--color--background--light-3);
 
 		.mainLine {
 			@include mixins.utils-ellipsis;
