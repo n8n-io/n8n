@@ -32,7 +32,7 @@ const onUpdateClick = async () => {
 
 <template>
 	<N8nMenuItem
-		data-test-id="version-update-next-versions-link"
+		data-test-id="version-update-cta-button"
 		:item="{
 			id: 'version-update-cta',
 			icon: { value: 'status-warning', type: 'icon', color: 'primary' },
