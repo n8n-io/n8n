@@ -57,10 +57,10 @@ const {
 const emit = defineEmits<{
 	change: [ChatModelDto];
 	createCustomAgent: [];
-	selectCredential: [provider: ChatHubProvider, credentialId: string];
+	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
 }>();
 
-function handleSelectCredentials(provider: ChatHubProvider, id: string) {
+function handleSelectCredentials(provider: ChatHubProvider, id: string | null) {
 	emit('selectCredential', provider, id);
 }
 
@@ -93,6 +93,12 @@ const credentialsName = computed(() =>
 		: undefined,
 );
 const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
+const isCredentialsMissing = computed(
+	() =>
+		isCredentialsRequired.value &&
+		selectedAgent?.model.provider &&
+		!credentials?.[selectedAgent?.model.provider],
+);
 
 const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
@@ -313,11 +319,13 @@ watch(
 
 defineExpose({
 	open: () => dropdownRef.value?.open(),
+	openCredentialSelector: (provider: ChatHubLLMProvider) =>
+		openCredentialsSelectorOrCreate(provider),
 });
 </script>
 
 <template>
-	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" @select="onSelect">
+	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" teleport @select="onSelect">
 		<template #item-icon="{ item }">
 			<CredentialIcon
 				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
@@ -347,6 +355,14 @@ defineExpose({
 				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
 					{{ credentialsName }}
 				</N8nText>
+				<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
+					<N8nIcon
+						icon="node-validation-error"
+						size="xsmall"
+						:class="$style.credentialsMissingIcon"
+					/>
+					{{ i18n.baseText('chatHub.agent.credentialsMissing') }}
+				</N8nText>
 			</div>
 			<N8nIcon icon="chevron-down" size="medium" />
 		</N8nButton>
@@ -361,6 +377,11 @@ defineExpose({
 
 	/* disable underline */
 	text-decoration: none !important;
+}
+
+.credentialsMissingIcon {
+	display: inline-block;
+	margin-bottom: -1px;
 }
 
 .selected {
