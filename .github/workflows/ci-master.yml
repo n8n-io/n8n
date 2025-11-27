@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - master
-      - v1.x
+      - 1.x
     paths-ignore:
       - packages/@n8n/task-runner-python/**
 
