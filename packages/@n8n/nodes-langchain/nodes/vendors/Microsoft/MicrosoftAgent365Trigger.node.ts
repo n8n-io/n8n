@@ -16,7 +16,7 @@ import { createAuthConfig } from './utils';
 
 export class MicrosoftAgent365Trigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Microsoft 365 Agent Trigger',
+		displayName: 'Microsoft Agent 365 Trigger',
 		name: 'microsoftAgent365Trigger',
 		icon: 'file:Agent365.svg',
 		group: ['trigger'],
