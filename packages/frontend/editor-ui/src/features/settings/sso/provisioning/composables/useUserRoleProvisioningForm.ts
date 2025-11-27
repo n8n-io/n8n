@@ -2,12 +2,16 @@ import { computed, ref } from 'vue';
 import { useUserRoleProvisioningStore } from './userRoleProvisioning.store';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 import { type UserRoleProvisioningSetting } from '../components/UserRoleProvisioningDropdown.vue';
+import { type SupportedProtocolType } from '../../sso.store';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 /**
  * Composable for managing user role provisioning form logic in SSO settings.
  */
-export function useUserRoleProvisioningForm() {
+export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 	const provisioningStore = useUserRoleProvisioningStore();
+	const telemetry = useTelemetry();
 	const formValue = ref<UserRoleProvisioningSetting>('disabled');
 
 	const getUserRoleProvisioningValueFromConfig = (
@@ -53,17 +57,31 @@ export function useUserRoleProvisioningForm() {
 		);
 	});
 
+	const sendTrackingEventForUserProvisioning = (updatedSetting: UserRoleProvisioningSetting) => {
+		telemetry.track('User updated provisioning settings', {
+			instance_id: useRootStore().instanceId,
+			authentication_method: protocol,
+			updated_setting: updatedSetting,
+		});
+	};
+
 	/**
 	 * Saves the current user role provisioning setting to the store.
 	 */
 	const saveProvisioningConfig = async (isDisablingSso: boolean): Promise<void> => {
 		const newSetting: UserRoleProvisioningSetting = isDisablingSso ? 'disabled' : formValue.value;
+		const currentValue = getUserRoleProvisioningValueFromConfig(
+			provisioningStore.provisioningConfig,
+		);
+
+		if (newSetting === currentValue) {
+			return;
+		}
 
 		await provisioningStore.saveProvisioningConfig(getProvisioningConfigFromFormValue(newSetting));
+		formValue.value = newSetting;
 
-		if (isDisablingSso) {
-			formValue.value = 'disabled';
-		}
+		sendTrackingEventForUserProvisioning(newSetting);
 	};
 
 	const initFormValue = () => {
