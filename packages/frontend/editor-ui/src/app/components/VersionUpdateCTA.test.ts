@@ -1,16 +1,14 @@
 import userEvent from '@testing-library/user-event';
 import { createTestingPinia } from '@pinia/testing';
-import { waitFor } from '@testing-library/vue';
+import { waitFor, within } from '@testing-library/vue';
 import { createComponentRenderer } from '@/__tests__/render';
 import { mockedStore, type MockedStore } from '@/__tests__/utils';
 import { useUIStore } from '@/app/stores/ui.store';
 import { WHATS_NEW_MODAL_KEY } from '@/app/constants';
 import { useVersionsStore } from '@/app/stores/versions.store';
 import type { Version } from '@n8n/rest-api-client/api/versions';
-
 import VersionUpdateCTA from './VersionUpdateCTA.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 
 vi.mock('@/app/composables/usePageRedirectionHelper', () => {
 	const goToVersions = vi.fn();
@@ -40,7 +38,6 @@ let uiStore: MockedStore<typeof useUIStore>;
 let versionsStore: MockedStore<typeof useVersionsStore>;
 
 const telemetry = useTelemetry();
-const pageRedirectionHelper = usePageRedirectionHelper();
 
 const version: Version = {
 	name: '1.100.0',
@@ -83,9 +80,9 @@ describe('VersionUpdateCTA', () => {
 
 		const { getByTestId } = renderComponent();
 
-		await waitFor(() => expect(getByTestId('version-update-cta-button')).toBeInTheDocument());
+		const update = getByTestId('version-update-cta-button');
 
-		await userEvent.click(getByTestId('version-update-cta-button'));
+		await userEvent.click(within(update).getByRole('menuitem'));
 
 		expect(telemetry.track).toHaveBeenCalledWith('User clicked on update button', {
 			source: 'main-sidebar',
