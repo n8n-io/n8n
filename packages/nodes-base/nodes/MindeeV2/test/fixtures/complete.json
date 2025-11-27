@@ -1,0 +1,295 @@
+{
+	"inference": {
+		"id": "12345678-1234-1234-1234-123456789ABC",
+		"model": {
+			"id": "12345678-1234-1234-1234-123456789ABC"
+		},
+		"file": {
+			"name": "complete.jpg",
+			"alias": null,
+			"page_count": 1,
+			"mime_type": "image/jpeg"
+		},
+		"result": {
+			"fields": {
+				"date": {
+					"value": "2019-11-02"
+				},
+				"taxes": {
+					"items": [
+						{
+							"fields": {
+								"base": {
+									"value": 31.5
+								},
+								"rate": {
+									"value": 0.05
+								},
+								"amount": {
+									"value": 9.75
+								}
+							}
+						}
+					]
+				},
+				"locale": {
+					"fields": {
+						"country": {
+							"value": "FR"
+						},
+						"currency": {
+							"value": "EUR"
+						},
+						"language": {
+							"value": "fr"
+						}
+					}
+				},
+				"due_date": {
+					"value": "2019-02-26"
+				},
+				"total_net": {
+					"value": 195.0
+				},
+				"total_tax": {
+					"value": 9.75
+				},
+				"line_items": {
+					"items": [
+						{
+							"fields": {
+								"quantity": {
+									"value": 1.0
+								},
+								"tax_rate": {
+									"value": 1.0
+								},
+								"tax_amount": {
+									"value": 1.4
+								},
+								"unit_price": {
+									"value": 100.0
+								},
+								"description": {
+									"value": "Front and rear brake cables"
+								},
+								"total_price": {
+									"value": 100.0
+								},
+								"product_code": {
+									"value": "FakeCode01"
+								},
+								"unit_measure": {
+									"value": "liter"
+								}
+							}
+						},
+						{
+							"fields": {
+								"quantity": {
+									"value": 2.0
+								},
+								"tax_rate": {
+									"value": null
+								},
+								"tax_amount": {
+									"value": null
+								},
+								"unit_price": {
+									"value": 25.0
+								},
+								"description": {
+									"value": "New set of pedal arms"
+								},
+								"total_price": {
+									"value": 50.0
+								},
+								"product_code": {
+									"value": null
+								},
+								"unit_measure": {
+									"value": null
+								}
+							}
+						},
+						{
+							"fields": {
+								"quantity": {
+									"value": 3.0
+								},
+								"tax_rate": {
+									"value": null
+								},
+								"tax_amount": {
+									"value": null
+								},
+								"unit_price": {
+									"value": 15.0
+								},
+								"description": {
+									"value": "Labor 3hrs"
+								},
+								"total_price": {
+									"value": 45.0
+								},
+								"product_code": {
+									"value": null
+								},
+								"unit_measure": {
+									"value": null
+								}
+							}
+						}
+					]
+				},
+				"total_amount": {
+					"value": 204.75
+				},
+				"customer_name": {
+					"value": "Jessie M Horne"
+				},
+				"document_type": {
+					"value": "invoice"
+				},
+				"supplier_name": {
+					"value": "John Smith"
+				},
+				"tips_gratuity": {
+					"value": null
+				},
+				"invoice_number": {
+					"value": "INT-001"
+				},
+				"receipt_number": {
+					"value": null
+				},
+				"customer_address": {
+					"fields": {
+						"city": {
+							"value": "New York"
+						},
+						"state": {
+							"value": "NY"
+						},
+						"value": {
+							"value": "4312 Wood Road\nNew York, NY 10031"
+						},
+						"po_box": {
+							"value": "111111"
+						},
+						"country": {
+							"value": "USA"
+						},
+						"postal_code": {
+							"value": "10031"
+						},
+						"street_name": {
+							"value": "Wood Road"
+						},
+						"street_number": {
+							"value": "4312"
+						},
+						"address_complement": {
+							"value": "On the Moon"
+						}
+					}
+				},
+				"supplier_address": {
+					"fields": {
+						"city": {
+							"value": "FakeCity"
+						},
+						"state": {
+							"value": "WY"
+						},
+						"po_box": {
+							"value": "3814Z"
+						},
+						"country": {
+							"value": "USA"
+						},
+						"complete": {
+							"value": "1, Fake Street, 00001, Fake City USA"
+						},
+						"postal_code": {
+							"value": "00001"
+						},
+						"street_name": {
+							"value": "Fake Street"
+						},
+						"street_number": {
+							"value": "1"
+						},
+						"address_complement": {
+							"value": "On Mars"
+						}
+					}
+				},
+				"purchase_category": {
+					"value": "food"
+				},
+				"purchase_subcategory": {
+					"value": "restaurant"
+				},
+				"supplier_phone_number": {
+					"value": "01.11.11.11.11"
+				},
+				"supplier_company_registration": {
+					"items": [
+						{
+							"fields": {
+								"type": {
+									"value": "VAT"
+								},
+								"number": {
+									"value": "FR 11 111 111 111"
+								}
+							}
+						},
+						{
+							"fields": {
+								"type": {
+									"value": "SIRET"
+								},
+								"number": {
+									"value": "11111111111111"
+								}
+							}
+						}
+					]
+				},
+				"customer_company_registrations": {
+					"items": [
+						{
+							"fields": {
+								"type": {
+									"value": "VAT"
+								},
+								"number": {
+									"value": "FR 22 222 222 222"
+								}
+							}
+						},
+						{
+							"fields": {
+								"type": {
+									"value": "SIRET"
+								},
+								"number": {
+									"value": "22222222222222"
+								}
+							}
+						}
+					]
+				}
+			},
+			"raw_text": null
+		},
+		"active_options": {
+			"raw_text": false,
+			"rag": false,
+			"polygon": false,
+			"confidence": false
+		}
+	}
+}
