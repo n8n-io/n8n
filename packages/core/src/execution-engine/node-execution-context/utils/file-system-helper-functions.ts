@@ -99,6 +99,8 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		}
 		return await fsWriteFile(filePath, content, { encoding: 'binary', flag });
 	},
+
+	isFilePathBlocked,
 });
 
 /**

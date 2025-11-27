@@ -9,9 +9,8 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 import { STORES } from '@n8n/stores';
-import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
+import { WEBHOOK_NODE_TYPE, WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
@@ -86,6 +85,7 @@ describe('WorkflowDescriptionModal', () => {
 			id: 'test-workflow-id',
 			name: 'Test Workflow',
 			active: false,
+			activeVersionId: null,
 			isArchived: false,
 			createdAt: Date.now(),
 			updatedAt: Date.now(),
@@ -124,7 +124,10 @@ describe('WorkflowDescriptionModal', () => {
 		it('should render empty string if there is no description', async () => {
 			const { getByTestId } = renderModal({
 				props: {
-					workflowId: 'test-workflow-id',
+					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
+					data: {
+						workflowId: 'test-workflow-id',
+					},
 				},
 				pinia,
 				global,
@@ -142,7 +145,10 @@ describe('WorkflowDescriptionModal', () => {
 		it('should focus textarea when modal opens', async () => {
 			const { getByTestId } = renderModal({
 				props: {
-					workflowId: 'test-workflow-id',
+					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
+					data: {
+						workflowId: 'test-workflow-id',
+					},
 				},
 				pinia,
 				global,
@@ -262,8 +268,11 @@ describe('WorkflowDescriptionModal', () => {
 		it('should disable save button when whitespace-only changes result in same trimmed value', async () => {
 			const { getByTestId } = renderModal({
 				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: '',
+					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
+					data: {
+						workflowId: 'test-workflow-id',
+						workflowDescription: '',
+					},
 				},
 				pinia,
 				global,
@@ -281,8 +290,11 @@ describe('WorkflowDescriptionModal', () => {
 		it('should not save on Enter key when only whitespace is entered', async () => {
 			const { getByTestId } = renderModal({
 				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: '',
+					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
+					data: {
+						workflowId: 'test-workflow-id',
+						workflowDescription: '',
+					},
 				},
 				pinia,
 				global,
@@ -375,8 +387,11 @@ describe('WorkflowDescriptionModal', () => {
 		it('should allow new lines with Shift+Enter', async () => {
 			const { getByTestId } = renderModal({
 				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: '',
+					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
+					data: {
+						workflowId: 'test-workflow-id',
+						workflowDescription: '',
+					},
 				},
 				pinia,
 				global,
@@ -487,8 +502,11 @@ describe('WorkflowDescriptionModal', () => {
 
 			const { getByTestId } = renderModal({
 				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: '',
+					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
+					data: {
+						workflowId: 'test-workflow-id',
+						workflowDescription: '',
+					},
 				},
 				pinia,
 				global,
@@ -497,8 +515,8 @@ describe('WorkflowDescriptionModal', () => {
 			// The tooltip text appears as placeholder in the textarea
 			const textarea = getByTestId('workflow-description-input');
 			const placeholder = textarea.getAttribute('placeholder');
+
 			expect(placeholder).toContain('Edit workflow description');
-			// When MCP is disabled, should not contain MCP-specific text
 			expect(placeholder).not.toContain('MCP clients');
 		});
 
@@ -509,8 +527,11 @@ describe('WorkflowDescriptionModal', () => {
 
 			const { getByTestId } = renderModal({
 				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: '',
+					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
+					data: {
+						workflowId: 'test-workflow-id',
+						workflowDescription: '',
+					},
 				},
 				pinia,
 				global,
@@ -537,6 +558,7 @@ describe('WorkflowDescriptionModal', () => {
 				createdAt: Date.now(),
 				updatedAt: Date.now(),
 				versionId: '1',
+				activeVersionId: '1',
 				nodes: [
 					{
 						id: 'webhook-1',
@@ -553,8 +575,11 @@ describe('WorkflowDescriptionModal', () => {
 
 			const { getByTestId } = renderModal({
 				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: '',
+					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
+					data: {
+						workflowId: 'test-workflow-id',
+						workflowDescription: '',
+					},
 				},
 				pinia,
 				global,
@@ -583,6 +608,7 @@ describe('WorkflowDescriptionModal', () => {
 				createdAt: Date.now(),
 				updatedAt: Date.now(),
 				versionId: '1',
+				activeVersionId: '1',
 				nodes: [
 					{
 						id: 'webhook-1',
@@ -599,8 +625,11 @@ describe('WorkflowDescriptionModal', () => {
 
 			const { getByTestId } = renderModal({
 				props: {
-					workflowId: 'test-workflow-id',
-					workflowDescription: '',
+					modalName: WORKFLOW_DESCRIPTION_MODAL_KEY,
+					data: {
+						workflowId: 'test-workflow-id',
+						workflowDescription: '',
+					},
 				},
 				pinia,
 				global,

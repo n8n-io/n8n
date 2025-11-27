@@ -80,7 +80,7 @@ describe('MCPConnectionInstructions', () => {
 		// Both tabs
 		const tabs = container.querySelectorAll('.n8n-tabs .tab');
 		expect(tabs).toHaveLength(2);
-		expect(tabs[0]).toHaveTextContent('oAuth');
+		expect(tabs[0]).toHaveTextContent('OAuth');
 		expect(tabs[1]).toHaveTextContent('Access Token');
 		// OAuth tab should be active by default
 		expect(getByTestId('oauth-instructions')).toBeInTheDocument();
