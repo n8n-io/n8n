@@ -132,6 +132,9 @@ export class WorkflowExecutionService {
 			return { executionId };
 		}
 
+		// We are doing a full execution, so remove runData if present.
+		Reflect.deleteProperty(payload, 'runData');
+
 		// Case 2: Full execution from a known trigger.
 		if (isFullExecutionFromKnownTrigger(payload)) {
 			// Check if we need a webhook.
