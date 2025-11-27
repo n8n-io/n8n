@@ -1,15 +1,15 @@
 <script setup lang="ts">
-import Canvas from './Canvas.vue';
-import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
-import type { Workflow } from 'n8n-workflow';
+import type { ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
 import type { IWorkflowDb } from '@/Interface';
-import { useCanvasMapping } from '../composables/useCanvasMapping';
 import type { EventBus } from '@n8n/utils/event-bus';
 import { createEventBus } from '@n8n/utils/event-bus';
-import type { CanvasEventBusEvents } from '../canvas.types';
-import { useVueFlow } from '@vue-flow/core';
+import { getRectOfNodes, useVueFlow } from '@vue-flow/core';
 import { throttledRef } from '@vueuse/core';
-import type { ContextMenuAction } from '@/features/shared/contextMenu/composables/useContextMenuItems';
+import type { Workflow } from 'n8n-workflow';
+import { computed, ref, toRef, useCssModule, useTemplateRef } from 'vue';
+import type { CanvasEventBusEvents } from '../canvas.types';
+import { useCanvasMapping } from '../composables/useCanvasMapping';
+import Canvas from './Canvas.vue';
 
 defineOptions({
 	inheritAttrs: false,
@@ -39,7 +39,15 @@ const props = withDefaults(
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 
-const { onNodesInitialized } = useVueFlow(props.id);
+const {
+	onNodesInitialized,
+	getSelectedNodes,
+	getViewport,
+	viewport,
+	viewportRef,
+	getNodes,
+	fitBounds,
+} = useVueFlow(props.id);
 
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
@@ -58,10 +66,11 @@ const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping(
 });
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
-onNodesInitialized(() => {
-	if (!initialFitViewDone.value || props.showFallbackNodes) {
+const { off } = onNodesInitialized(() => {
+	if (!initialFitViewDone.value) {
 		props.eventBus.emit('fitView');
 		initialFitViewDone.value = true;
+		off();
 	}
 });
 
@@ -71,6 +80,50 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 defineExpose({
 	executeContextMenuAction: (action: ContextMenuAction, nodeIds: string[]) =>
 		canvasRef.value?.executeContextMenuAction(action, nodeIds),
+	test: (ids: string[]) => {
+		const vp = viewport.value;
+		const canvasElement = viewportRef.value;
+
+		if (!canvasElement) {
+			return;
+		}
+
+		// Find nodes by IDs
+		const targetNodes = getNodes.value.filter((node) => ids.includes(node.id));
+
+		if (targetNodes.length === 0) {
+			return;
+		}
+
+		const nodeRect = getRectOfNodes(targetNodes);
+
+		// Get canvas dimensions
+		const canvasWidth = canvasElement.clientWidth;
+		const canvasHeight = canvasElement.clientHeight;
+
+		// Transform node rectangle from canvas coordinates to screen coordinates
+		const screenRect = {
+			x: nodeRect.x * vp.zoom + vp.x,
+			y: nodeRect.y * vp.zoom + vp.y,
+			width: nodeRect.width * vp.zoom,
+			height: nodeRect.height * vp.zoom,
+		};
+
+		// Check if ALL nodes are fully visible within the viewport (not just intersecting)
+		const isFullyVisible =
+			screenRect.x >= 0 &&
+			screenRect.y >= 0 &&
+			screenRect.x + screenRect.width <= canvasWidth &&
+			screenRect.y + screenRect.height <= canvasHeight;
+
+		if (!isFullyVisible) {
+			const insertionDone = onNodesInitialized(() => {
+				props.eventBus.emit('fitView');
+				props.eventBus.emit('nodes:select', { ids });
+				insertionDone.off();
+			});
+		}
+	},
 });
 </script>
 
