@@ -11,11 +11,12 @@ import {
 	WorkflowRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { v4 as uuid } from 'uuid';
 
 import { createUser } from '../../shared/db/users';
 
-const id1 = '5ef472d2-9253-452c-b0fe-8eb78fb3c43b';
-const id2 = 'bf36ce2c-baf6-4b51-9f01-065c76d5cb0c';
+const id1 = uuid();
+const id2 = uuid();
 
 describe('WorkflowPublishHistoryRepository', () => {
 	beforeAll(async () => {
