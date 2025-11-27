@@ -137,6 +137,8 @@
 	"generic.your": "Your",
 	"generic.apiKey": "API Key",
 	"generic.search": "Search",
+	"generic.showMore": "Show more",
+	"generic.showLess": "Show less",
 	"about.aboutN8n": "About n8n",
 	"about.close": "Close",
 	"about.license": "License",
