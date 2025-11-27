@@ -86,20 +86,19 @@ function pullWorkfolder() {
 
 <template>
 	<div
-		v-if="
-			sourceControlAvailable &&
-			sourceControlStore.preferences.connected &&
-			sourceControlStore.preferences.branchName
-		"
+		v-if="sourceControlAvailable"
 		:class="{
 			[$style.sync]: true,
 			[$style.collapsed]: isCollapsed,
 			[$style.isConnected]: sourceControlStore.isEnterpriseSourceControlEnabled,
 		}"
-		:style="{}"
 		data-test-id="main-sidebar-source-control"
 	>
-		<div :class="$style.connected" data-test-id="main-sidebar-source-control-connected">
+		<div
+			v-if="sourceControlStore.preferences.connected && sourceControlStore.preferences.branchName"
+			:class="$style.connected"
+			data-test-id="main-sidebar-source-control-connected"
+		>
 			<N8nTooltip :disabled="!isCollapsed" :show-after="tooltipOpenDelay" placement="right">
 				<template #content>
 					<div>
@@ -181,8 +180,6 @@ function pullWorkfolder() {
 
 <style lang="scss" module>
 .sync {
-	border-top: var(--border);
-
 	padding: 0 var(--spacing--5xs) 0 0;
 
 	button {
@@ -206,6 +203,7 @@ function pullWorkfolder() {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	border-top: var(--border);
 	padding-right: var(--spacing--4xs);
 }
 
