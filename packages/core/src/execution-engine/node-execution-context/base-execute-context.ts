@@ -111,7 +111,9 @@ export class BaseExecuteContext extends NodeExecutionContext {
 	}
 
 	async putExecutionToWait(waitTill: Date): Promise<void> {
+		console.log('putExecutionToWait');
 		this.runExecutionData.waitTill = waitTill;
+		// TODO: use .?
 		if (this.additionalData.setExecutionStatus) {
 			this.additionalData.setExecutionStatus('waiting');
 		}
@@ -139,6 +141,7 @@ export class BaseExecuteContext extends NodeExecutionContext {
 				options.parentExecution.executionContext = this.getExecutionContext();
 			}
 		}
+		console.log('start child');
 		const result = await this.additionalData.executeWorkflow(workflowInfo, this.additionalData, {
 			...options,
 			parentWorkflowId: this.workflow.id,
@@ -147,11 +150,13 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			node: this.node,
 			parentCallbackManager,
 		});
+		console.log('finish child');
 
 		// If a sub-workflow execution goes into the waiting state
 		if (result.waitTill) {
 			// then put the parent workflow execution also into the waiting state,
 			// but do not use the sub-workflow `waitTill` to avoid WaitTracker resuming the parent execution at the same time as the sub-workflow
+			console.log('put parent to sleep');
 			await this.putExecutionToWait(WAIT_INDEFINITELY);
 		}
 

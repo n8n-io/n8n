@@ -7,6 +7,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
@@ -644,10 +645,86 @@ export async function executeWebhook(
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void executePromise.then(() => {
-				const waitTracker = Container.get(WaitTracker);
-				void waitTracker.startExecution(parentExecution.executionId);
-			});
+			void executePromise
+				.then(async (subworkflowResults) => {
+					if (!subworkflowResults) return;
+
+					const lastExecutedNodeData =
+						WorkflowHelpers.getDataLastExecutedNodeData(subworkflowResults);
+					if (!lastExecutedNodeData?.data) return;
+
+					console.log('=== WebhookHelpers: Child completed, updating parent ===');
+					console.log('Child final output:', JSON.stringify(lastExecutedNodeData.data, null, 2));
+
+					try {
+						const executionRepository = Container.get(ExecutionRepository);
+						const parent = await executionRepository.findSingleExecution(
+							parentExecution.executionId,
+							{
+								includeData: true,
+								unflattenData: true,
+							},
+						);
+
+						if (!parent || parent.status !== 'waiting') return;
+
+						const parentWithSubWorkflowResults = {
+							data: { ...parent.data },
+						};
+
+						if (
+							!parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack ||
+							parentWithSubWorkflowResults.data.executionData.nodeExecutionStack.length === 0
+						) {
+							return;
+						}
+
+						console.log(
+							'Parent nodeExecutionStack[0].data BEFORE update:',
+							JSON.stringify(
+								parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data,
+								null,
+								2,
+							),
+						);
+
+						// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
+						// so that the Execute Workflow node returns the correct data when parent execution is resumed
+						// and the Execute Workflow node is executed again in disabled mode.
+						parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data =
+							lastExecutedNodeData.data;
+
+						console.log(
+							'Parent nodeExecutionStack[0].data AFTER update:',
+							JSON.stringify(
+								parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data,
+								null,
+								2,
+							),
+						);
+
+						await executionRepository.updateExistingExecution(
+							parentExecution.executionId,
+							parentWithSubWorkflowResults,
+						);
+
+						console.log('=== WebhookHelpers: Parent execution updated in DB ===');
+					} catch (error: unknown) {
+						Container.get(Logger).error(
+							'Could not copy sub workflow result to waiting parent execution',
+							{
+								executionId,
+								parentExecutionId: parentExecution.executionId,
+								workflowId: workflow.id,
+								error,
+							},
+						);
+					}
+				})
+				.then(() => {
+					const waitTracker = Container.get(WaitTracker);
+					void waitTracker.startExecution(parentExecution.executionId);
+				});
 		}
 
 		if (!didSendResponse) {

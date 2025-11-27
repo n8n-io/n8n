@@ -8,7 +8,7 @@ import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflo
 import { ActiveExecutions } from '@/active-executions';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
-import { shouldRestartParentExecution } from './workflow-helpers';
+import { getDataLastExecutedNodeData, shouldRestartParentExecution } from './workflow-helpers';
 
 @Service()
 export class WaitTracker {
@@ -91,6 +91,8 @@ export class WaitTracker {
 	}
 
 	async startExecution(executionId: string) {
+		console.log('=== WaitTracker.startExecution called ===');
+		console.log('executionId:', executionId);
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
@@ -99,6 +101,8 @@ export class WaitTracker {
 			includeData: true,
 			unflattenData: true,
 		});
+		console.log('Execution status:', fullExecutionData?.status);
+		console.log('Has parentExecution:', !!fullExecutionData?.data?.parentExecution);
 
 		if (!fullExecutionData) {
 			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
@@ -129,9 +133,81 @@ export class WaitTracker {
 		const { parentExecution } = fullExecutionData.data;
 		if (shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			void this.activeExecutions.getPostExecutePromise(executionId).then(() => {
-				void this.startExecution(parentExecution.executionId);
-			});
+			void this.activeExecutions
+				.getPostExecutePromise(executionId)
+				.then(async (subworkflowResults) => {
+					if (!subworkflowResults) return;
+
+					const lastExecutedNodeData = getDataLastExecutedNodeData(subworkflowResults);
+					if (!lastExecutedNodeData?.data) return;
+
+					console.log('--- WaitTracker: Child completed, updating parent');
+					console.log('Child final output:', JSON.stringify(lastExecutedNodeData.data, null, 2));
+
+					try {
+						const parent = await this.executionRepository.findSingleExecution(
+							parentExecution.executionId,
+							{
+								includeData: true,
+								unflattenData: true,
+							},
+						);
+
+						if (!parent || parent.status !== 'waiting') return;
+
+						const parentWithSubWorkflowResults = {
+							data: { ...parent.data },
+						};
+
+						if (
+							!parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack ||
+							parentWithSubWorkflowResults.data.executionData.nodeExecutionStack.length === 0
+						) {
+							return;
+						}
+
+						console.log(
+							'Parent nodeExecutionStack[0].data BEFORE update:',
+							JSON.stringify(
+								parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data,
+								null,
+								2,
+							),
+						);
+
+						// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
+						// so that the Execute Workflow node returns the correct data when parent execution is resumed
+						// and the Execute Workflow node is executed again in disabled mode.
+						parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data =
+							lastExecutedNodeData.data;
+
+						console.log(
+							'Parent nodeExecutionStack[0].data AFTER update:',
+							JSON.stringify(
+								parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data,
+								null,
+								2,
+							),
+						);
+
+						await this.executionRepository.updateExistingExecution(
+							parentExecution.executionId,
+							parentWithSubWorkflowResults,
+						);
+
+						console.log('--- WaitTracker: Parent execution updated in DB');
+					} catch (error: unknown) {
+						this.logger.error('Could not copy sub workflow result to waiting parent execution', {
+							executionId,
+							parentExecutionId: parentExecution.executionId,
+							workflowId,
+							error,
+						});
+					}
+				})
+				.then(() => {
+					void this.startExecution(parentExecution.executionId);
+				});
 		}
 	}
 

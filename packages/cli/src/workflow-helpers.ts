@@ -18,8 +18,10 @@ import { OwnershipService } from './services/ownership.service';
  * Returns the data of the last executed node
  */
 export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
+	console.trace('--- getDataLastExecutedNodeData');
 	const { runData, pinData = {} } = inputData.data.resultData;
 	const { lastNodeExecuted } = inputData.data.resultData;
+	console.log('lastNodeExecuted', lastNodeExecuted);
 
 	if (lastNodeExecuted === undefined) {
 		return undefined;
