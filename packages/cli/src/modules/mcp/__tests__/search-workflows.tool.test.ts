@@ -55,7 +55,7 @@ describe('search-workflows MCP tool', () => {
 				createWorkflow({
 					id: 'b',
 					name: 'Beta',
-					active: true,
+					activeVersionId: 'version-b',
 					nodes: [
 						{ name: 'Execute subworkflow', type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } as INode,
 					],
@@ -72,8 +72,8 @@ describe('search-workflows MCP tool', () => {
 				{
 					id: 'a',
 					name: 'Alpha',
+					description: undefined,
 					active: false,
-					activeVersionId: null,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
@@ -82,8 +82,8 @@ describe('search-workflows MCP tool', () => {
 				{
 					id: 'b',
 					name: 'Beta',
+					description: undefined,
 					active: true,
-					activeVersionId: workflows[1].versionId,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,
@@ -125,7 +125,7 @@ describe('search-workflows MCP tool', () => {
 		});
 
 		test('formats nodes as empty array when missing', async () => {
-			const workflows = [createWorkflow({ id: 'no-nodes', nodes: undefined })];
+			const workflows = [createWorkflow({ id: 'no-nodes', activeVersion: undefined })];
 			const workflowService = mockInstance(WorkflowService, {
 				getMany: jest.fn().mockResolvedValue({ workflows, count: 1 }),
 			});
