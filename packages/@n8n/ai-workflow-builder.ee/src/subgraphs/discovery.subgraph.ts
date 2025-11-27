@@ -5,6 +5,7 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 import type { Runnable } from '@langchain/core/runnables';
 import { tool, type StructuredTool } from '@langchain/core/tools';
 import { Annotation, StateGraph, END } from '@langchain/langgraph';
+import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
@@ -16,7 +17,6 @@ import type { ParentGraphState } from '../parent-graph-state';
 import { createGetBestPracticesTool } from '../tools/get-best-practices.tool';
 import { createNodeDetailsTool } from '../tools/node-details.tool';
 import { createNodeSearchTool } from '../tools/node-search.tool';
-import type { PromptCategorization } from '../types/categorization';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createDiscoveryMetadata } from '../types/coordination';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
@@ -182,6 +182,7 @@ export const DiscoverySubgraphState = Annotation.Root({
 export interface DiscoverySubgraphConfig {
 	parsedNodeTypes: INodeTypeDescription[];
 	llm: BaseChatModel;
+	logger?: Logger;
 }
 
 export class DiscoverySubgraph extends BaseSubgraph<
@@ -194,8 +195,11 @@ export class DiscoverySubgraph extends BaseSubgraph<
 
 	private agent!: Runnable;
 	private toolMap!: Map<string, StructuredTool>;
+	private logger?: Logger;
 
 	create(config: DiscoverySubgraphConfig) {
+		this.logger = config.logger;
+
 		// Create tools
 		const tools = [
 			createGetBestPracticesTool(),
@@ -292,7 +296,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		}
 
 		if (!output) {
-			console.error('[Discovery] No submit tool call found in last message');
+			this.logger?.error('[Discovery] No submit tool call found in last message');
 			return {
 				nodesFound: [],
 			};
@@ -338,7 +342,7 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// No tool calls = agent is done (or failed to call tool)
 		// In this pattern, we expect a tool call. If none, we might want to force it or just end.
 		// For now, let's treat it as an end, but ideally we'd reprompt.
-		console.warn('[Discovery Subgraph] Agent stopped without submitting results');
+		this.logger?.warn('[Discovery Subgraph] Agent stopped without submitting results');
 		return 'end';
 	}
 

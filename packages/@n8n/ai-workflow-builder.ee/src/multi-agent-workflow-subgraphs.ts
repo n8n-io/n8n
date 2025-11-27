@@ -48,7 +48,12 @@ export interface MultiAgentSubgraphConfig {
  */
 function createSubgraphNodeHandler<
 	TSubgraph extends BaseSubgraph<unknown, Record<string, unknown>, Record<string, unknown>>,
->(subgraph: TSubgraph, compiledGraph: ReturnType<TSubgraph['create']>, name: string) {
+>(
+	subgraph: TSubgraph,
+	compiledGraph: ReturnType<TSubgraph['create']>,
+	name: string,
+	logger?: Logger,
+) {
 	return async (state: typeof ParentGraphState.State) => {
 		try {
 			const input = subgraph.transformInput(state);
@@ -57,7 +62,7 @@ function createSubgraphNodeHandler<
 
 			return output;
 		} catch (error) {
-			console.error(`[${name}] ERROR:`, error);
+			logger?.error(`[${name}] ERROR:`, { error });
 			const errorMessage =
 				error instanceof Error ? error.message : `An error occurred in ${name}: ${String(error)}`;
 
@@ -93,7 +98,11 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 	const configuratorSubgraph = new ConfiguratorSubgraph();
 
 	// Compile subgraphs
-	const compiledDiscovery = discoverySubgraph.create({ parsedNodeTypes, llm: llmComplexTask });
+	const compiledDiscovery = discoverySubgraph.create({
+		parsedNodeTypes,
+		llm: llmComplexTask,
+		logger,
+	});
 	const compiledBuilder = builderSubgraph.create({ parsedNodeTypes, llm: llmComplexTask, logger });
 	const compiledConfigurator = configuratorSubgraph.create({
 		parsedNodeTypes,
@@ -197,11 +206,16 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			// Add Subgraph Nodes (using helper to reduce duplication)
 			.addNode(
 				'discovery_subgraph',
-				createSubgraphNodeHandler(discoverySubgraph, compiledDiscovery, 'discovery_subgraph'),
+				createSubgraphNodeHandler(
+					discoverySubgraph,
+					compiledDiscovery,
+					'discovery_subgraph',
+					logger,
+				),
 			)
 			.addNode(
 				'builder_subgraph',
-				createSubgraphNodeHandler(builderSubgraph, compiledBuilder, 'builder_subgraph'),
+				createSubgraphNodeHandler(builderSubgraph, compiledBuilder, 'builder_subgraph', logger),
 			)
 			.addNode(
 				'configurator_subgraph',
@@ -209,6 +223,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					configuratorSubgraph,
 					compiledConfigurator,
 					'configurator_subgraph',
+					logger,
 				),
 			)
 			// Connect all subgraphs to process_operations
