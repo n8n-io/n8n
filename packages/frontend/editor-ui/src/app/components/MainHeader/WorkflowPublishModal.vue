@@ -60,24 +60,7 @@ const isPublishDisabled = computed(() => {
 	return inputsDisabled.value || versionName.value.trim().length === 0;
 });
 
-const hasPublishedVersion = computed(() => {
-	return !!workflowsStore.workflow.activeVersion;
-});
-
-const showOverwriteActiveVersionWarning = computed(() => {
-	return (
-		hasPublishedVersion.value &&
-		wfHasAnyChanges.value &&
-		containsTrigger.value &&
-		!hasNodeIssues.value
-	);
-});
-
-type WorkflowPublishCalloutId =
-	| 'noTrigger'
-	| 'nodeIssues'
-	| 'noChanges'
-	| 'overwriteActiveVersionWarning';
+type WorkflowPublishCalloutId = 'noTrigger' | 'nodeIssues' | 'noChanges';
 
 const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 	if (!containsTrigger.value) {
@@ -90,10 +73,6 @@ const activeCalloutId = computed<WorkflowPublishCalloutId | null>(() => {
 
 	if (!wfHasAnyChanges.value) {
 		return 'noChanges';
-	}
-
-	if (showOverwriteActiveVersionWarning.value) {
-		return 'overwriteActiveVersionWarning';
 	}
 
 	return null;
@@ -257,19 +236,6 @@ async function handlePublish() {
 				</N8nCallout>
 				<N8nCallout v-else-if="activeCalloutId === 'noChanges'" theme="warning">
 					{{ i18n.baseText('workflows.publishModal.noChanges') }}
-				</N8nCallout>
-				<N8nCallout
-					v-else-if="activeCalloutId === 'overwriteActiveVersionWarning'"
-					theme="warning"
-					icon="triangle-alert"
-				>
-					{{
-						i18n.baseText('workflows.publishModal.overwriteActiveVersionWarning', {
-							interpolate: {
-								versionName: workflowsStore.workflow.activeVersion?.name ?? '',
-							},
-						})
-					}}
 				</N8nCallout>
 				<WorkflowPublishForm
 					ref="publishForm"
