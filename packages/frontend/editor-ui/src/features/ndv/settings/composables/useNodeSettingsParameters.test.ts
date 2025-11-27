@@ -620,11 +620,7 @@ describe('useNodeSettingsParameters', () => {
 				mockNodeHelpers();
 				displayParameterSpy.mockReturnValueOnce(true);
 
-				// Track resolution order to detect the bug:
-				// BUG: In first pass, 'first' is deferred (depends on 'second').
-				// Then 'second' is checked - it depends on 'first', but we only check
-				// remaining original keys, not pendingKeys. So 'second' is incorrectly
-				// resolved with empty params before 'first' is ever resolved.
+				// Track resolution order to detect any bugs:
 				const resolutionOrder: string[] = [];
 				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
 				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
