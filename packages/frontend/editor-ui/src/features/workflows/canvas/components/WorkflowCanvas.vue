@@ -39,15 +39,7 @@ const props = withDefaults(
 const canvasRef = useTemplateRef('canvas');
 const $style = useCssModule();
 
-const {
-	onNodesInitialized,
-	getSelectedNodes,
-	getViewport,
-	viewport,
-	viewportRef,
-	getNodes,
-	fitBounds,
-} = useVueFlow(props.id);
+const { onNodesInitialized, viewport, viewportRef, getNodes, fitBounds } = useVueFlow(props.id);
 
 const workflow = toRef(props, 'workflow');
 const workflowObject = toRef(props, 'workflowObject');
