@@ -20,7 +20,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 		name: 'microsoftAgent365Trigger',
 		icon: 'file:Agent365.svg',
 		group: ['trigger'],
-		description: 'Trigger for Microsoft 365 Agent API',
+		description: 'Trigger for Microsoft Agent 365',
 		codex: {
 			categories: ['Core Nodes'],
 			resources: {
