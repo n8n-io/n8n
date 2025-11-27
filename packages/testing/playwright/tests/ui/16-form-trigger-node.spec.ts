@@ -26,21 +26,25 @@ test.describe('Form Trigger', () => {
 
 		// Add first field - Number type with required flag
 		await n8n.ndv.addFixedCollectionItem();
+		await n8n.ndv.fillParameterInputByName('fieldName', 'testField1');
 		await n8n.ndv.fillParameterInputByName('fieldLabel', 'Test Field 1');
 		await n8n.ndv.selectOptionInParameterDropdown('fieldType', 'Number');
 		await n8n.ndv.setParameterSwitch('requiredField', true);
 
 		// Add second field - Text type
 		await n8n.ndv.addFixedCollectionItem();
+		await n8n.ndv.fillParameterInputByName('fieldName', 'testField2', 1);
 		await n8n.ndv.fillParameterInputByName('fieldLabel', 'Test Field 2', 1);
 
 		// Add third field - Date type
 		await n8n.ndv.addFixedCollectionItem();
+		await n8n.ndv.fillParameterInputByName('fieldName', 'testField3', 2);
 		await n8n.ndv.fillParameterInputByName('fieldLabel', 'Test Field 3', 2);
 		await n8n.ndv.selectOptionInParameterDropdown('fieldType', 'Date', 2);
 
 		// Add fourth field - Dropdown type with options
 		await n8n.ndv.addFixedCollectionItem();
+		await n8n.ndv.fillParameterInputByName('fieldName', 'testField4', 3);
 		await n8n.ndv.fillParameterInputByName('fieldLabel', 'Test Field 4', 3);
 		await n8n.ndv.selectOptionInParameterDropdown('fieldType', 'Dropdown', 3);
 
