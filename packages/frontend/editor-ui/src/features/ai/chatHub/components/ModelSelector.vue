@@ -37,6 +37,7 @@ import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { truncateBeforeLast } from '@n8n/utils';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
 
@@ -346,10 +347,10 @@ defineExpose({
 			/>
 			<div :class="$style.selected">
 				<div>
-					{{ selectedLabel }}
+					{{ truncateBeforeLast(selectedLabel, 30) }}
 				</div>
 				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
-					{{ credentialsName }}
+					{{ truncateBeforeLast(credentialsName, 30) }}
 				</N8nText>
 				<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
 					<N8nIcon
@@ -385,13 +386,6 @@ defineExpose({
 	flex-direction: column;
 	align-items: start;
 	gap: var(--spacing--4xs);
-	max-width: 200px;
-
-	& > div {
-		max-width: 100%;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
 }
 
 .icon {
