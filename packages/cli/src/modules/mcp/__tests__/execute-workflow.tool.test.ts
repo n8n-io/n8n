@@ -188,6 +188,7 @@ describe('execute-workflow MCP tool', () => {
 		describe('webhook trigger execution', () => {
 			test('executes workflow with webhook trigger and webhook data', async () => {
 				const workflow = createWorkflow({
+					activeVersionId: new Date().getTime(),
 					nodes: [
 						{
 							id: 'node-1',
@@ -257,6 +258,7 @@ describe('execute-workflow MCP tool', () => {
 
 			test('executes workflow with webhook trigger and default GET method', async () => {
 				const workflow = createWorkflow({
+					activeVersionId: new Date().getTime(),
 					nodes: [
 						{
 							id: 'node-1',
@@ -310,6 +312,7 @@ describe('execute-workflow MCP tool', () => {
 		describe('chat trigger execution', () => {
 			test('executes workflow with chat trigger and chat input', async () => {
 				const workflow = createWorkflow({
+					activeVersionId: new Date().getTime(),
 					nodes: [
 						{
 							id: 'node-1',
@@ -366,6 +369,7 @@ describe('execute-workflow MCP tool', () => {
 		describe('form trigger execution', () => {
 			test('executes workflow with form trigger and form data', async () => {
 				const workflow = createWorkflow({
+					activeVersionId: new Date().getTime(),
 					nodes: [
 						{
 							id: 'node-1',
@@ -428,6 +432,7 @@ describe('execute-workflow MCP tool', () => {
 		describe('execution results handling', () => {
 			test('handles successful execution', async () => {
 				const workflow = createWorkflow({
+					activeVersionId: new Date().getTime(),
 					nodes: [
 						{
 							id: 'node-1',
@@ -473,6 +478,7 @@ describe('execute-workflow MCP tool', () => {
 
 			test('handles execution with error status', async () => {
 				const workflow = createWorkflow({
+					activeVersionId: new Date().getTime(),
 					nodes: [
 						{
 							id: 'node-1',
@@ -520,6 +526,7 @@ describe('execute-workflow MCP tool', () => {
 
 			test('handles execution with result data error', async () => {
 				const workflow = createWorkflow({
+					activeVersionId: new Date().getTime(),
 					nodes: [
 						{
 							id: 'node-1',
@@ -567,6 +574,7 @@ describe('execute-workflow MCP tool', () => {
 
 			test('handles workflow returning undefined data', async () => {
 				const workflow = createWorkflow({
+					activeVersionId: new Date().getTime(),
 					nodes: [
 						{
 							id: 'node-1',
@@ -610,6 +618,7 @@ describe('execute-workflow MCP tool', () => {
 		describe('workflow with no inputs', () => {
 			test('executes workflow without any inputs', async () => {
 				const workflow = createWorkflow({
+					activeVersionId: new Date().getTime(),
 					nodes: [
 						{
 							id: 'node-1',
@@ -657,6 +666,7 @@ describe('execute-workflow MCP tool', () => {
 		describe('telemetry tracking', () => {
 			test('tracks successful execution with tool handler', async () => {
 				const workflow = createWorkflow({
+					activeVersionId: new Date().getTime(),
 					nodes: [
 						{
 							id: 'node-1',
@@ -745,6 +755,7 @@ describe('execute-workflow MCP tool', () => {
 		describe('multiple trigger nodes', () => {
 			test('uses first eligible trigger node when multiple are present', async () => {
 				const workflow = createWorkflow({
+					activeVersionId: new Date().getTime(),
 					nodes: [
 						{
 							id: 'node-1',

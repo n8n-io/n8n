@@ -49,6 +49,7 @@ describe('search-workflows MCP tool', () => {
 			const workflows = [
 				createWorkflow({
 					id: 'a',
+					activeVersionId: new Date().getTime(),
 					name: 'Alpha',
 					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
 				}),
@@ -73,7 +74,7 @@ describe('search-workflows MCP tool', () => {
 					id: 'a',
 					name: 'Alpha',
 					description: undefined,
-					active: false,
+					active: true,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
 					triggerCount: 1,

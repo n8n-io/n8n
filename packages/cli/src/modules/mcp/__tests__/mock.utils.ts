@@ -24,21 +24,23 @@ const testNodes = [
 	},
 ];
 
-export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => ({
-	id: 'wf-1',
-	name: 'My wf',
-	nodes: overrides.nodes ?? testNodes,
-	active: overrides.active ?? false,
-	versionId: 'some-version-id',
-	activeVersionId: overrides.activeVersionId ? 'some-version-id' : null,
-	isArchived: overrides.isArchived ?? false,
-	createdAt: overrides.createdAt ?? new Date('2024-01-01T00:00:00.000Z'),
-	updatedAt: overrides.updatedAt ?? new Date('2024-01-02T00:00:00.000Z'),
-	triggerCount: overrides.triggerCount ?? 1,
-	settings: overrides.settings ?? { availableInMCP: true },
-	pinData: overrides.pinData ?? { should: 'be-removed' },
-	activeVersion: overrides.activeVersion ?? {
+export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => {
+	const activeVersionId = overrides.activeVersionId ?? null;
+	const testActiveVersion = overrides.activeVersion ?? { nodes: overrides.nodes ?? testNodes };
+	const activeVersion = activeVersionId ? testActiveVersion : undefined;
+	return {
+		id: 'wf-1',
+		name: 'My wf',
 		nodes: overrides.nodes ?? testNodes,
-	},
-	...overrides,
-});
+		versionId: 'some-version-id',
+		activeVersionId,
+		isArchived: overrides.isArchived ?? false,
+		createdAt: overrides.createdAt ?? new Date('2024-01-01T00:00:00.000Z'),
+		updatedAt: overrides.updatedAt ?? new Date('2024-01-02T00:00:00.000Z'),
+		triggerCount: overrides.triggerCount ?? 1,
+		settings: overrides.settings ?? { availableInMCP: true },
+		pinData: overrides.pinData ?? { should: 'be-removed' },
+		activeVersion,
+		...overrides,
+	};
+};
