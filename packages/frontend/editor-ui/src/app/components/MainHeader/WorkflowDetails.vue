@@ -10,7 +10,7 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
-	WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG,
+	IS_DRAFT_PUBLISH_ENABLED,
 } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
@@ -48,7 +48,6 @@ import { N8nBadge, N8nInlineTextEdit } from '@n8n/design-system';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
@@ -78,7 +77,6 @@ const emit = defineEmits<{
 const $style = useCssModule();
 
 const settingsStore = useSettingsStore();
-const envFeatureFlag = useEnvFeatureFlag();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
@@ -145,10 +143,6 @@ const currentFolderForBreadcrumbs = computed(() => {
 		return foldersStore.getCachedFolder(folderId);
 	}
 	return null;
-});
-
-const isDraftPublishEnabled = computed(() => {
-	return envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG);
 });
 
 watch(
@@ -566,7 +560,7 @@ onBeforeUnmount(() => {
 		<PushConnectionTracker class="actions">
 			<WorkflowProductionChecklist v-if="!isNewWorkflow" :workflow="workflowsStore.workflow" />
 			<WorkflowHeaderDraftPublishActions
-				v-if="isDraftPublishEnabled"
+				v-if="IS_DRAFT_PUBLISH_ENABLED"
 				:id="id"
 				ref="workflowHeaderActions"
 				:tags="tags"

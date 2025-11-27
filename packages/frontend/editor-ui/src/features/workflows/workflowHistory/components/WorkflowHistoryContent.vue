@@ -8,13 +8,11 @@ import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
 import { N8nButton, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
+import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 import { formatTimestamp } from '@/features/workflows/workflowHistory/utils';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 const i18n = useI18n();
-const envFeatureFlag = useEnvFeatureFlag();
 
 const props = defineProps<{
 	workflow: IWorkflowDb | null;
@@ -29,9 +27,7 @@ const emit = defineEmits<{
 	action: [value: WorkflowHistoryAction];
 }>();
 
-const isDraftPublishEnabled = computed(() =>
-	envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG),
-);
+const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
 
 const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	if (!props.workflowVersion || !props.workflow) {
@@ -80,7 +76,7 @@ const actions = computed(() => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (isDraftPublishEnabled.value) {
+	if (isDraftPublishEnabled) {
 		if (props.isVersionActive) {
 			filteredActions = filteredActions.filter((action) => action.value !== 'publish');
 		} else {

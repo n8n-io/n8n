@@ -33,8 +33,7 @@ import { N8nBadge, N8nButton, N8nHeading } from '@n8n/design-system';
 import { createEventBus } from '@n8n/utils/event-bus';
 import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../components/WorkflowHistoryVersionUnpublishModal.vue';
 import type { WorkflowHistoryPublishModalEventBusEvents } from '../components/WorkflowHistoryPublishModal.vue';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
+import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 type WorkflowHistoryActionRecord = {
@@ -69,7 +68,6 @@ const workflowHistoryStore = useWorkflowHistoryStore();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const workflowActivate = useWorkflowActivate();
-const envFeatureFlag = useEnvFeatureFlag();
 const canRender = ref(true);
 const isListLoading = ref(true);
 const requestNumberOfItems = ref(20);
@@ -94,9 +92,7 @@ const workflowActiveVersionId = computed(() => {
 	return workflowsStore.getWorkflowById(workflowId.value)?.activeVersion?.versionId;
 });
 
-const isDraftPublishEnabled = computed(() =>
-	envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG),
-);
+const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
 
 const actions = computed<Array<UserAction<IUser>>>(() =>
 	workflowHistoryActionTypes
@@ -184,7 +180,7 @@ const openRestorationModal = async (
 			},
 		];
 
-		if (isWorkflowActivated && !isDraftPublishEnabled.value) {
+		if (isWorkflowActivated && !isDraftPublishEnabled) {
 			buttons.push({
 				text: i18n.baseText('workflowHistory.action.restore.modal.button.deactivateAndRestore'),
 				type: 'tertiary',
@@ -255,7 +251,7 @@ const restoreWorkflowVersion = async (
 	const workflow = await workflowsStore.fetchWorkflow(workflowId.value);
 	let deactivateAndRestore = false;
 
-	if (!isDraftPublishEnabled.value) {
+	if (!isDraftPublishEnabled) {
 		const modalAction = await openRestorationModal(workflow.active, data.formattedCreatedAt);
 		if (modalAction === WorkflowHistoryVersionRestoreModalActions.cancel) {
 			return;

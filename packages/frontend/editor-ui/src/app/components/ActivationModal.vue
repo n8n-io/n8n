@@ -19,24 +19,18 @@ import { useI18n } from '@n8n/i18n';
 
 import { ElCheckbox } from 'element-plus';
 import { N8nButton, N8nText } from '@n8n/design-system';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
+import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 const checked = ref(false);
 
 const executionsStore = useExecutionsStore();
 const workflowsStore = useWorkflowsStore();
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
-const envFeatureFlag = useEnvFeatureFlag();
 const router = useRouter();
 const i18n = useI18n();
 
-const isDraftPublishEnabled = computed(() => {
-	return envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG);
-});
-
 const modalTitle = computed(() => {
-	if (isDraftPublishEnabled.value) {
+	if (IS_DRAFT_PUBLISH_ENABLED) {
 		return i18n.baseText('activationModal.workflowPublished');
 	}
 	return i18n.baseText('activationModal.workflowActivated');

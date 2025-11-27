@@ -10,7 +10,7 @@ import {
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
-	WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG,
+	IS_DRAFT_PUBLISH_ENABLED,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -31,7 +31,6 @@ import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { getResourcePermissions } from '@n8n/permissions';
 import { computed } from 'vue';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 export function useWorkflowSaving({
 	router,
@@ -49,7 +48,6 @@ export function useWorkflowSaving({
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
-	const envFeatureFlag = useEnvFeatureFlag();
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
 
@@ -139,15 +137,11 @@ export function useWorkflowSaving({
 		);
 	}
 
-	const isDraftPublishEnabled = computed(() => {
-		return envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG);
-	});
-
 	async function getWorkflowDeactivationInfo(
 		workflowId: string,
 		request: WorkflowDataUpdate,
 	): Promise<Partial<NotificationOptions> | undefined> {
-		if (isDraftPublishEnabled.value) {
+		if (IS_DRAFT_PUBLISH_ENABLED) {
 			return undefined;
 		}
 

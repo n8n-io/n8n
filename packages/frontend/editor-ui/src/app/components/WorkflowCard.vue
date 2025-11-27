@@ -5,7 +5,7 @@ import {
 	MODAL_CONFIRM,
 	VIEWS,
 	WORKFLOW_SHARE_MODAL_KEY,
-	WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG,
+	IS_DRAFT_PUBLISH_ENABLED,
 } from '@/app/constants';
 import { PROJECT_MOVE_RESOURCE_MODAL } from '@/features/collaboration/projects/projects.constants';
 import { useMessage } from '@/app/composables/useMessage';
@@ -26,7 +26,6 @@ import { ResourceType } from '@/features/collaboration/projects/projects.utils';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { UserAction, WorkflowResource } from '@/Interface';
 import type { IUser } from 'n8n-workflow';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import {
 	type ProjectSharingData,
 	ProjectTypes,
@@ -110,7 +109,6 @@ const workflowsStore = useWorkflowsStore();
 const projectsStore = useProjectsStore();
 const foldersStore = useFoldersStore();
 const mcpStore = useMCPStore();
-const envFeatureFlag = useEnvFeatureFlag();
 const hiddenBreadcrumbsItemsAsync = ref<Promise<PathItem[]>>(new Promise(() => {}));
 const cachedHiddenBreadcrumbsItems = ref<PathItem[]>([]);
 
@@ -273,9 +271,7 @@ const isSomeoneElsesWorkflow = computed(
 		props.data.homeProject?.id !== projectsStore.personalProject?.id,
 );
 
-const isDraftPublishEnabled = computed(() => {
-	return envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG);
-});
+const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
 
 const isWorkflowPublished = computed(() => {
 	return props.data.activeVersionId !== null;

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import type { UserAction } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import type {
@@ -12,8 +12,7 @@ import type { IUser } from 'n8n-workflow';
 import { I18nT } from 'vue-i18n';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { N8nLoading } from '@n8n/design-system';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
+import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 const props = defineProps<{
@@ -36,7 +35,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const envFeatureFlag = useEnvFeatureFlag();
 const listElement = ref<Element | null>(null);
 const shouldAutoScroll = ref(true);
 
@@ -47,10 +45,6 @@ const { observe: observeForLoadMore } = useIntersectionObserver({
 		emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length }),
 });
 
-const isDraftPublishEnabled = computed(() => {
-	return envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG);
-});
-
 const getActions = (item: WorkflowHistory, index: number) => {
 	let filteredActions = props.actions;
 
@@ -58,7 +52,7 @@ const getActions = (item: WorkflowHistory, index: number) => {
 		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
 	}
 
-	if (isDraftPublishEnabled.value) {
+	if (IS_DRAFT_PUBLISH_ENABLED) {
 		if (item.versionId === props.activeVersionId) {
 			filteredActions = filteredActions.filter((action) => action.value !== 'publish');
 		} else {
