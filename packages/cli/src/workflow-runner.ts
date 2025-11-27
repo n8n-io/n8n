@@ -159,7 +159,7 @@ export class WorkflowRunner {
 				resultData: {
 					pinData: data.pinData,
 					// Set this to null so `createRunExecutionData` doesn't initialize it.
-					// Otherwise this will be treated as a partial execution.
+					// Otherwise this would be treated as a partial execution.
 					runData: data.runData ?? null,
 				},
 				manualData: {
@@ -168,7 +168,7 @@ export class WorkflowRunner {
 					triggerToStartFrom: data.triggerToStartFrom,
 				},
 				// Set this to null so `createRunExecutionData` doesn't initialize it.
-				// Otherwise this will be treated as a resumed execution after waiting.
+				// Otherwise this would be treated as a resumed execution after waiting.
 				executionData: null,
 			});
 		}
