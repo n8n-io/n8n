@@ -167,11 +167,6 @@ export const DiscoverySubgraphState = Annotation.Root({
 		default: () => [],
 	}),
 
-	// Output: Categorization result
-	categorization: Annotation<PromptCategorization | undefined>({
-		reducer: (x, y) => y ?? x,
-	}),
-
 	// Output: Best practices documentation
 	bestPractices: Annotation<string | undefined>({
 		reducer: (x, y) => y ?? x,
@@ -382,7 +377,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		const nodesFound = subgraphOutput.nodesFound || [];
 		const discoveryContext = {
 			nodesFound,
-			categorization: subgraphOutput.categorization,
 			bestPractices: subgraphOutput.bestPractices,
 		};
 

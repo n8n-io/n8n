@@ -51,11 +51,6 @@ export function buildDiscoveryContextBlock(
 
 	const parts: string[] = [];
 
-	if (discoveryContext.categorization) {
-		const { techniques, confidence } = discoveryContext.categorization;
-		parts.push(`Workflow Type: ${techniques.join(', ')} (Confidence: ${confidence})`);
-	}
-
 	if (discoveryContext.nodesFound.length > 0) {
 		parts.push('Discovered Nodes:');
 		discoveryContext.nodesFound.forEach(

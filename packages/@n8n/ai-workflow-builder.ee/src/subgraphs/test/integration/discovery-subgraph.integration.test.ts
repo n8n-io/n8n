@@ -268,13 +268,8 @@ describe('Discovery Subgraph - Integration Tests', () => {
 				messages: [],
 			});
 
-			// Categorization and bestPractices are in internal state, not in submit schema
-			expect(result.categorization).toBeDefined();
-			expect(result.categorization?.techniques).toBeDefined();
-			expect(Array.isArray(result.categorization?.techniques)).toBe(true);
 			expect(result.bestPractices).toBeDefined();
 
-			// But the main output should have the simplified schema
 			expect(result.nodesFound).toBeDefined();
 			expect(Array.isArray(result.nodesFound)).toBe(true);
 		});
