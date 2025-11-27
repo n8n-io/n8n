@@ -661,11 +661,6 @@ describe('useNodeSettingsParameters', () => {
 				expect(resolutionOrder).toContain('first');
 				expect(resolutionOrder).toContain('second');
 
-				// BUG DETECTION: If the bug exists, 'second' is resolved FIRST in the first pass
-				// (because we don't check pendingKeys), resulting in order ['second', 'first'].
-				// Correct behavior: both should be deferred to second pass, then resolved
-				// in order ['first', 'second'] (since 'first' comes before 'second' in pendingKeys).
-				//
 				// With circular deps, the original code would keep deferring both until safety limit,
 				// then resolve them. Our refactored code should defer both, then resolve in order.
 				expect(resolutionOrder[0]).toBe('first');
