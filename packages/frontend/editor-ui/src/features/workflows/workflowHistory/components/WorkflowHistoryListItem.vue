@@ -14,8 +14,7 @@ import {
 	getLastPublishedByUser,
 	formatTimestamp,
 } from '@/features/workflows/workflowHistory/utils';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
-import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
+import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
@@ -39,7 +38,6 @@ const emit = defineEmits<{
 }>();
 
 const i18n = useI18n();
-const envFeatureFlag = useEnvFeatureFlag();
 const usersStore = useUsersStore();
 
 const actionsVisible = ref(false);
@@ -47,9 +45,7 @@ const itemElement = ref<HTMLElement | null>(null);
 const authorElement = ref<HTMLElement | null>(null);
 const isAuthorElementTruncated = ref(false);
 
-const isDraftPublishEnabled = computed(() =>
-	envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG),
-);
+const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
 
 const formattedCreatedAt = computed<string>(() => {
 	const { date, time } = formatTimestamp(props.item.createdAt);

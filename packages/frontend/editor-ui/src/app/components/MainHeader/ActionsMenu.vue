@@ -12,7 +12,7 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_HISTORY_VERSION_UNPUBLISH,
-	WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG,
+	IS_DRAFT_PUBLISH_ENABLED,
 	WORKFLOW_SHARE_MODAL_KEY,
 	EnterpriseEditionFeature,
 } from '@/app/constants';
@@ -40,7 +40,6 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowActivate } from '@/app/composables/useWorkflowActivate';
 import { getWorkflowId } from '@/app/components/MainHeader/utils';
-import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 
 const props = defineProps<{
 	workflowPermissions: PermissionsRecord['workflow'];
@@ -74,7 +73,6 @@ const usersStore = useUsersStore();
 const workflowHelpers = useWorkflowHelpers();
 const workflowActivate = useWorkflowActivate();
 const changeOwnerEventBus = createEventBus();
-const envFeatureFlag = useEnvFeatureFlag();
 const workflowTelemetry = useTelemetry();
 
 const onWorkflowPage = computed(() => {
@@ -91,9 +89,7 @@ const onExecutionsTab = computed(() => {
 
 const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 
-const isDraftPublishEnabled = computed(() => {
-	return envFeatureFlag.check.value(WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG);
-});
+const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
 
 const isSharingEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Sharing],
@@ -134,7 +130,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		},
 	];
 
-	if (isDraftPublishEnabled.value && isSharingEnabled.value) {
+	if (isDraftPublishEnabled && isSharingEnabled.value) {
 		actions.push({
 			id: WORKFLOW_MENU_ACTIONS.SHARE,
 			label: locale.baseText('workflowDetails.share'),
@@ -201,7 +197,7 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 	});
 
 	if (
-		isDraftPublishEnabled.value &&
+		isDraftPublishEnabled &&
 		activeVersion.value &&
 		props.workflowPermissions.update &&
 		!props.readOnly
