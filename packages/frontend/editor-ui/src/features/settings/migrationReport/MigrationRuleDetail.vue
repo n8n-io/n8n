@@ -60,7 +60,7 @@ const tableHeaders = ref<Array<TableHeader<AffectedWorkflow>>>([
 		width: 200,
 	},
 	{
-		title: i18n.baseText('settings.migrationReport.detail.table.issue'),
+		title: i18n.baseText('settings.migrationReport.detail.table.status'),
 		key: 'active',
 		value: (row: AffectedWorkflow) =>
 			row.active
@@ -69,7 +69,7 @@ const tableHeaders = ref<Array<TableHeader<AffectedWorkflow>>>([
 		width: 40,
 	},
 	{
-		title: i18n.baseText('settings.migrationReport.detail.table.nodeAffected'),
+		title: i18n.baseText('settings.migrationReport.detail.table.nodesAffected'),
 		key: 'issues',
 	},
 	{

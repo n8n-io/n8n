@@ -158,7 +158,9 @@ jobs:
   trigger-release-note:
     name: Trigger a release note
     needs: [publish-to-npm, create-github-release]
-    if: github.event.pull_request.merged == true
+    if: |
+      github.event.pull_request.merged == true &&
+      !contains(needs.publish-to-npm.outputs.release, '-rc.')
     runs-on: ubuntu-latest
     steps:
       - name: Trigger a release note
