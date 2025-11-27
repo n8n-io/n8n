@@ -27,7 +27,6 @@ import {
 	VIEWS,
 	WHATS_NEW_MODAL_KEY,
 	EXPERIMENT_TEMPLATES_DATA_QUALITY_KEY,
-	SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT,
 } from '@/app/constants';
 import { EXTERNAL_LINKS } from '@/app/constants/externalLinks';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
@@ -63,7 +62,6 @@ import { useRouter } from 'vue-router';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { useSidebarLayout } from '../composables/useSidebarLayout';
-import { usePostHog } from '../stores/posthog.store';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -73,7 +71,6 @@ const templatesStore = useTemplatesStore();
 const uiStore = useUIStore();
 const usersStore = useUsersStore();
 const versionsStore = useVersionsStore();
-const posthogStore = usePostHog();
 const workflowsStore = useWorkflowsStore();
 const sourceControlStore = useSourceControlStore();
 const personalizedTemplatesV2Store = usePersonalizedTemplatesV2Store();
@@ -382,17 +379,6 @@ const settingsItems = computed<IMenuItem[]>(() => {
 			position: 'top',
 			available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
 			route: { to: { name: VIEWS.LDAP_SETTINGS } },
-		},
-		{
-			id: 'settings-provisioning',
-			icon: 'toolbox',
-			label: i18n.baseText('settings.provisioning.title'),
-			position: 'top',
-			available:
-				canUserAccessRouteByName(VIEWS.PROVISIONING_SETTINGS) &&
-				// TODO: comment this back one once posthog experiment is done: settingsStore.isEnterpriseFeatureEnabled.provisioning,
-				posthogStore.isFeatureEnabled(SSO_JUST_IN_TIME_PROVSIONING_EXPERIMENT.name),
-			route: { to: { name: VIEWS.PROVISIONING_SETTINGS } },
 		},
 		{
 			id: 'settings-workersview',
