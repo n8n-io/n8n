@@ -204,7 +204,9 @@ const menu = computed(() => {
 	return menuItems;
 });
 
-const selectedLabel = computed(() => selectedAgent?.name ?? 'Select model');
+const selectedLabel = computed(
+	() => selectedAgent?.name ?? i18n.baseText('chatHub.models.selector.defaultLabel'),
+);
 
 const canCreateCredentials = computed(() => {
 	return getResourcePermissions(projectStore.personalProject?.scopes).credential.create;
