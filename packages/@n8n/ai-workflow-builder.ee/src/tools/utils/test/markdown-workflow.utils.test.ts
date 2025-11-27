@@ -1,6 +1,10 @@
 import type { WorkflowMetadata } from '@/types';
 
-import { mermaidStringify, stickyNotesStringify } from '../markdown-workflow.utils';
+import {
+	mermaidStringify,
+	processWorkflowExamples,
+	stickyNotesStringify,
+} from '../markdown-workflow.utils';
 import { aiAssistantWorkflow } from './workflows/ai-assistant.workflow';
 
 describe('markdown-workflow.utils', () => {
@@ -337,6 +341,154 @@ flowchart TD
 			const result = stickyNotesStringify(workflow);
 
 			expect(result).toEqual('');
+		});
+	});
+
+	describe('processWorkflowExamples', () => {
+		it('should generate mermaid diagrams and collect node configurations in one pass', () => {
+			const workflow1: WorkflowMetadata = {
+				name: 'Workflow 1',
+				workflow: {
+					name: 'Workflow 1',
+					nodes: [
+						{
+							parameters: { updates: ['message'] },
+							id: 'node1',
+							name: 'Telegram Trigger',
+							type: 'n8n-nodes-base.telegramTrigger',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+						{
+							parameters: { chatId: '123', text: 'Hello' },
+							id: 'node2',
+							name: 'Send Message',
+							type: 'n8n-nodes-base.telegram',
+							position: [200, 0],
+							typeVersion: 1,
+						},
+					],
+					connections: {
+						// eslint-disable-next-line @typescript-eslint/naming-convention
+						'Telegram Trigger': {
+							main: [[{ node: 'Send Message', type: 'main', index: 0 }]],
+						},
+					},
+				},
+			};
+
+			const workflow2: WorkflowMetadata = {
+				name: 'Workflow 2',
+				workflow: {
+					name: 'Workflow 2',
+					nodes: [
+						{
+							parameters: { chatId: '456', text: 'World' },
+							id: 'node3',
+							name: 'Another Telegram',
+							type: 'n8n-nodes-base.telegram',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+						{
+							parameters: { operation: 'getAll' },
+							id: 'node4',
+							name: 'Gmail',
+							type: 'n8n-nodes-base.gmail',
+							position: [200, 0],
+							typeVersion: 1,
+						},
+					],
+					connections: {},
+				},
+			};
+
+			const results = processWorkflowExamples([workflow1, workflow2], {
+				includeNodeParameters: false,
+			});
+
+			// Should return results for each workflow
+			expect(results).toHaveLength(2);
+
+			// Each result should have mermaid string
+			expect(results[0].mermaid).toContain('```mermaid');
+			expect(results[0].mermaid).toContain('n8n-nodes-base.telegramTrigger');
+			expect(results[1].mermaid).toContain('n8n-nodes-base.gmail');
+
+			// Node configurations should be accumulated across all workflows
+			const nodeConfigs = results[1].nodeConfigurations;
+
+			// Should have telegram trigger config from workflow1 with version info
+			expect(nodeConfigs['n8n-nodes-base.telegramTrigger']).toHaveLength(1);
+			expect(nodeConfigs['n8n-nodes-base.telegramTrigger'][0]).toEqual({
+				version: 1,
+				parameters: { updates: ['message'] },
+			});
+
+			// Should have both telegram configs (from workflow1 and workflow2) with version info
+			expect(nodeConfigs['n8n-nodes-base.telegram']).toHaveLength(2);
+			expect(nodeConfigs['n8n-nodes-base.telegram']).toContainEqual({
+				version: 1,
+				parameters: { chatId: '123', text: 'Hello' },
+			});
+			expect(nodeConfigs['n8n-nodes-base.telegram']).toContainEqual({
+				version: 1,
+				parameters: { chatId: '456', text: 'World' },
+			});
+
+			// Should have gmail config from workflow2 with version info
+			expect(nodeConfigs['n8n-nodes-base.gmail']).toHaveLength(1);
+			expect(nodeConfigs['n8n-nodes-base.gmail'][0]).toEqual({
+				version: 1,
+				parameters: { operation: 'getAll' },
+			});
+		});
+
+		it('should return empty configurations for empty workflow list', () => {
+			const results = processWorkflowExamples([]);
+
+			expect(results).toHaveLength(0);
+		});
+
+		it('should skip nodes with empty parameters', () => {
+			const workflow: WorkflowMetadata = {
+				name: 'Empty Params',
+				workflow: {
+					name: 'Empty Params',
+					nodes: [
+						{
+							parameters: {},
+							id: 'node1',
+							name: 'Empty Node',
+							type: 'n8n-nodes-base.noOp',
+							position: [0, 0],
+							typeVersion: 1,
+						},
+						{
+							parameters: { value: 'test' },
+							id: 'node2',
+							name: 'Set Node',
+							type: 'n8n-nodes-base.set',
+							position: [200, 0],
+							typeVersion: 1,
+						},
+					],
+					connections: {},
+				},
+			};
+
+			const results = processWorkflowExamples([workflow]);
+			const nodeConfigs = results[0].nodeConfigurations;
+
+			// Should not have noOp since it has empty parameters
+			expect(nodeConfigs['n8n-nodes-base.noOp']).toBeUndefined();
+
+			// Should have set node config with version info
+			expect(nodeConfigs['n8n-nodes-base.set']).toHaveLength(1);
+			expect(nodeConfigs['n8n-nodes-base.set'][0]).toEqual({
+				version: 1,
+				parameters: { value: 'test' },
+			});
 		});
 	});
 });

@@ -164,6 +164,21 @@ export interface WorkflowMetadata {
 }
 
 /**
+ * A node configuration entry with version information
+ */
+export interface NodeConfigurationEntry {
+	version: number;
+	parameters: INodeParameters;
+}
+
+/**
+ * Map of node type to array of parameter configurations with version info
+ * Key: node type (e.g., 'n8n-nodes-base.telegram')
+ * Value: array of configuration entries with version and parameters
+ */
+export type NodeConfigurationsMap = Record<string, NodeConfigurationEntry[]>;
+
+/**
  * Output type for get workflow examples tool
  */
 export interface GetWorkflowExamplesOutput {
@@ -173,4 +188,5 @@ export interface GetWorkflowExamplesOutput {
 		workflow: string;
 	}>;
 	totalResults: number;
+	nodeConfigurations: NodeConfigurationsMap;
 }

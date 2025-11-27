@@ -289,6 +289,7 @@ describe('WorkflowBuilderAgent', () => {
 				validationHistory: [],
 				techniqueCategories: [],
 				previousSummary: 'EMPTY',
+				nodeConfigurations: {},
 			};
 		};
 

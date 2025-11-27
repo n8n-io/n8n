@@ -5,6 +5,7 @@ import { isCommand } from '@langchain/langgraph';
 
 import { ToolExecutionError, WorkflowStateError } from '../errors';
 import type { ToolExecutorOptions } from '../types/config';
+import type { NodeConfigurationsMap } from '../types/tools';
 import type { WorkflowOperation } from '../types/workflow';
 import type { WorkflowState } from '../workflow-state';
 
@@ -147,6 +148,20 @@ export async function executeToolsInParallel(
 		}
 	}
 
+	// Collect all node configurations (merge by node type)
+	const allNodeConfigurations: NodeConfigurationsMap = {};
+
+	for (const update of stateUpdates) {
+		if (update.nodeConfigurations && typeof update.nodeConfigurations === 'object') {
+			for (const [nodeType, configs] of Object.entries(update.nodeConfigurations)) {
+				if (!allNodeConfigurations[nodeType]) {
+					allNodeConfigurations[nodeType] = [];
+				}
+				allNodeConfigurations[nodeType].push(...configs);
+			}
+		}
+	}
+
 	// Return the combined update
 	const finalUpdate: Partial<typeof WorkflowState.State> = {
 		messages: allMessages,
@@ -162,6 +177,10 @@ export async function executeToolsInParallel(
 
 	if (allValidationHistory.length > 0) {
 		finalUpdate.validationHistory = allValidationHistory;
+	}
+
+	if (Object.keys(allNodeConfigurations).length > 0) {
+		finalUpdate.nodeConfigurations = allNodeConfigurations;
 	}
 
 	return finalUpdate;

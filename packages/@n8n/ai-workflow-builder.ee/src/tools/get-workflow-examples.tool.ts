@@ -14,7 +14,7 @@ import {
 	createSuccessResponse,
 	createErrorResponse,
 } from './helpers';
-import { mermaidStringify } from './utils/markdown-workflow.utils';
+import { processWorkflowExamples } from './utils/markdown-workflow.utils';
 import { fetchTemplateList, fetchTemplateByID } from './web/templates';
 
 /** Agent node type identifier */
@@ -335,23 +335,46 @@ export function createGetWorkflowExamplesTool(logger?: Logger, opts?: WorkflowEx
 					deduplicatedResults = filtered;
 				}
 
-				// format the results to mermaid and build output object
-				const formattedResults = deduplicatedResults.map((workflow) => ({
+				// Process workflows to get mermaid diagrams and collect node configurations in one pass
+				const processedResults = processWorkflowExamples(deduplicatedResults, {
+					includeNodeParameters: false,
+				});
+
+				// Get the accumulated node configurations from the last result (all results share the same map)
+				const nodeConfigurations =
+					processedResults.length > 0
+						? processedResults[processedResults.length - 1].nodeConfigurations
+						: {};
+
+				// Debug: Log the collected configurations
+				logger?.debug('Collected node configurations from workflow examples', {
+					nodeTypeCount: Object.keys(nodeConfigurations).length,
+					nodeTypes: Object.keys(nodeConfigurations),
+					configCounts: Object.fromEntries(
+						Object.entries(nodeConfigurations).map(([type, configs]) => [type, configs.length]),
+					),
+				});
+
+				// Build output with formatted results
+				const formattedResults = deduplicatedResults.map((workflow, index) => ({
 					name: workflow.name,
 					description: workflow.description,
-					workflow: mermaidStringify(workflow),
+					workflow: processedResults[index].mermaid,
 				}));
 				const output: GetWorkflowExamplesOutput = {
 					examples: formattedResults,
 					totalResults: deduplicatedResults.length,
+					nodeConfigurations,
 				};
 
 				// Build response message and report
 				const responseMessage = buildResponseMessage(output);
 				reporter.complete(output);
 
-				// Return success response
-				return createSuccessResponse(config, responseMessage);
+				// Return success response with node configurations stored in state
+				return createSuccessResponse(config, responseMessage, {
+					nodeConfigurations,
+				});
 			} catch (error) {
 				// Handle validation or unexpected errors
 				if (error instanceof z.ZodError) {

@@ -1,4 +1,7 @@
-import type { WorkflowMetadata } from '@/types';
+import type { INodeParameters } from 'n8n-workflow';
+
+import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
+import type { NodeConfigurationsMap, WorkflowMetadata } from '@/types';
 
 /**
  * Options for mermaid diagram generation
@@ -10,24 +13,46 @@ export interface MermaidOptions {
 	includeNodeParameters?: boolean;
 	/** Include node name in node definition (default: true) */
 	includeNodeName?: boolean;
+	/** Collect node configurations while processing (default: false) */
+	collectNodeConfigurations?: boolean;
+}
+
+/**
+ * Result of mermaid stringification with optional node configurations
+ */
+export interface MermaidResult {
+	mermaid: string;
+	nodeConfigurations: NodeConfigurationsMap;
 }
 
 const DEFAULT_MERMAID_OPTIONS: Required<MermaidOptions> = {
 	includeNodeType: true,
 	includeNodeParameters: true,
 	includeNodeName: true,
+	collectNodeConfigurations: false,
 };
 
 /**
+ * Result from buildMermaidLines including collected configurations
+ */
+interface BuildMermaidResult {
+	lines: string[];
+	nodeConfigurations: NodeConfigurationsMap;
+}
+
+/**
  * Build a Mermaid flowchart from workflow nodes and connections
+ * Optionally collects node configurations while processing
  */
 function buildMermaidLines(
 	nodes: WorkflowMetadata['workflow']['nodes'],
 	connections: WorkflowMetadata['workflow']['connections'],
 	options: Required<MermaidOptions> = DEFAULT_MERMAID_OPTIONS,
-): string[] {
+	existingConfigurations?: NodeConfigurationsMap,
+): BuildMermaidResult {
 	const lines: string[] = ['```mermaid', 'flowchart TD'];
 	const regularNodes = nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote');
+	const nodeConfigurations: NodeConfigurationsMap = existingConfigurations ?? {};
 
 	// Create node ID mapping (n1, n2, n3...)
 	const nodeIdMap = new Map<string, string>();
@@ -104,11 +129,28 @@ function buildMermaidLines(
 	for (const node of regularNodes) {
 		const id = nodeIdMap.get(node.name);
 		if (id) {
+			const hasParams = Object.keys(node.parameters).length > 0;
+
+			// Collect node configurations if enabled (with version info)
+			// Skip examples that exceed the character limit
+			if (options.collectNodeConfigurations && hasParams) {
+				const parametersStr = JSON.stringify(node.parameters);
+				if (parametersStr.length <= MAX_NODE_EXAMPLE_CHARS) {
+					if (!nodeConfigurations[node.type]) {
+						nodeConfigurations[node.type] = [];
+					}
+					nodeConfigurations[node.type].push({
+						version: node.typeVersion,
+						parameters: node.parameters as INodeParameters,
+					});
+				}
+			}
+
 			// Build comment line if type or parameters are included
 			if (options.includeNodeType || options.includeNodeParameters) {
 				const typePart = options.includeNodeType ? node.type : '';
-				const hasParams = options.includeNodeParameters && Object.keys(node.parameters).length > 0;
-				const paramsPart = hasParams ? ` | ${JSON.stringify(node.parameters)}` : '';
+				const paramsPart =
+					options.includeNodeParameters && hasParams ? ` | ${JSON.stringify(node.parameters)}` : '';
 
 				// Only add comment if there's content
 				if (typePart || paramsPart) {
@@ -129,7 +171,7 @@ function buildMermaidLines(
 	lines.push(...outputConnections);
 	lines.push('```');
 
-	return lines;
+	return { lines, nodeConfigurations };
 }
 
 /**
@@ -141,7 +183,37 @@ export function mermaidStringify(workflow: WorkflowMetadata, options?: MermaidOp
 		...DEFAULT_MERMAID_OPTIONS,
 		...options,
 	};
-	return buildMermaidLines(wf.nodes, wf.connections, mergedOptions).join('\n');
+	const result = buildMermaidLines(wf.nodes, wf.connections, mergedOptions);
+	return result.lines.join('\n');
+}
+
+/**
+ * Process multiple workflows and generate mermaid diagrams while collecting node configurations
+ * This is more efficient than calling mermaidStringify and extractNodeConfigurations separately
+ */
+export function processWorkflowExamples(
+	workflows: WorkflowMetadata[],
+	options?: Omit<MermaidOptions, 'collectNodeConfigurations'>,
+): MermaidResult[] {
+	const mergedOptions: Required<MermaidOptions> = {
+		...DEFAULT_MERMAID_OPTIONS,
+		...options,
+		collectNodeConfigurations: true,
+	};
+
+	// Accumulate configurations across all workflows
+	const allConfigurations: NodeConfigurationsMap = {};
+
+	const results: MermaidResult[] = workflows.map((workflow) => {
+		const { workflow: wf } = workflow;
+		const result = buildMermaidLines(wf.nodes, wf.connections, mergedOptions, allConfigurations);
+		return {
+			mermaid: result.lines.join('\n'),
+			nodeConfigurations: result.nodeConfigurations,
+		};
+	});
+
+	return results;
 }
 
 /**
