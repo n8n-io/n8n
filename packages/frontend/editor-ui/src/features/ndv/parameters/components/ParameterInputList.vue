@@ -134,11 +134,13 @@ const nodeType = computed(() => {
 	return null;
 });
 
-// Precomputed parameter data to avoid function calls in template
+// Precomputed parameter data to avoid repeated function calls in template
+// Note: `value` is intentionally NOT included here to prevent re-renders when values change.
+// Values are fetched via getParameterValue() in the template to avoid CodeMirror cursor
+// position issues when typing in editors.
 interface ParameterComputedData {
 	parameter: INodeProperties;
 	path: string;
-	value: NodeParameterValueType;
 	isMultipleValues: boolean;
 	isDisabled: boolean;
 	showOptions: boolean;
@@ -187,9 +189,10 @@ throttledWatch(
 		}
 
 		// Compute all parameter data for template usage
+		// Note: `value` is intentionally NOT included to prevent re-renders when values change
+		// Values are fetched via getParameterValue() in the template instead
 		parameterItems.value = filteredParameters.map((parameter) => {
 			const parameterPath = getPath(parameter.name);
-			const parameterValue = getParameterValue(parameter.name);
 			const isMultipleValues = multipleValues(parameter);
 			const isDisabled = disabledMap[parameterPath] ?? false;
 			const showOptions = shouldShowOptions(parameter);
@@ -200,7 +203,6 @@ throttledWatch(
 			return {
 				parameter,
 				path: parameterPath,
-				value: parameterValue,
 				isMultipleValues,
 				isDisabled,
 				showOptions,
@@ -564,7 +566,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 			>
 				<MultipleParameter
 					:parameter="item.parameter"
-					:values="item.value as INodeParameters[]"
+					:values="getParameterValue<INodeParameters[]>(item.parameter.name)"
 					:node-values="nodeValues"
 					:path="item.path"
 					:is-read-only="isReadOnly"
@@ -633,7 +635,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 				<ButtonParameter
 					:parameter="item.parameter"
 					:path="path"
-					:value="item.value as string"
+					:value="getParameterValue<string>(item.parameter.name)"
 					:is-read-only="isReadOnly"
 					@value-changed="valueChanged"
 				/>
@@ -670,7 +672,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						<LazyCollectionParameter
 							v-if="item.parameter.type === 'collection'"
 							:parameter="item.parameter"
-							:values="item.value as INodeParameters"
+							:values="getParameterValue<INodeParameters>(item.parameter.name)"
 							:node-values="nodeValues"
 							:path="item.path"
 							:is-read-only="isReadOnly"
@@ -679,7 +681,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 						<LazyFixedCollectionParameter
 							v-else-if="item.parameter.type === 'fixedCollection'"
 							:parameter="item.parameter"
-							:values="item.value as Record<string, INodeParameters[]>"
+							:values="getParameterValue<Record<string, INodeParameters[]>>(item.parameter.name)"
 							:node-values="nodeValues"
 							:path="item.path"
 							:is-read-only="isReadOnly"
@@ -723,7 +725,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 			<FilterConditions
 				v-else-if="item.parameter.type === 'filter'"
 				:parameter="item.parameter"
-				:value="item.value as FilterValue"
+				:value="getParameterValue<FilterValue>(item.parameter.name)"
 				:path="item.path"
 				:node="node"
 				:read-only="isReadOnly"
@@ -732,7 +734,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 			<AssignmentCollection
 				v-else-if="item.parameter.type === 'assignmentCollection'"
 				:parameter="item.parameter"
-				:value="item.value as AssignmentCollectionValue"
+				:value="getParameterValue<AssignmentCollectionValue>(item.parameter.name)"
 				:path="item.path"
 				:node="node"
 				:is-read-only="isReadOnly"
@@ -755,7 +757,7 @@ async function onCalloutDismiss(parameter: INodeProperties) {
 				<ParameterInputFull
 					:parameter="item.parameter"
 					:hide-issues="hiddenIssuesInputs.includes(item.parameter.name)"
-					:value="item.value"
+					:value="getParameterValue(item.parameter.name)"
 					:display-options="item.showOptions"
 					:path="item.path"
 					:is-read-only="isReadOnly || item.isDisabled"
