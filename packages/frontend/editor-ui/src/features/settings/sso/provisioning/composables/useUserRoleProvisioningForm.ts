@@ -1,4 +1,4 @@
-import { computed, type Ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useUserRoleProvisioningStore } from './userRoleProvisioning.store';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 import { type UserRoleProvisioningSetting } from '../components/UserRoleProvisioningDropdown.vue';
@@ -6,10 +6,9 @@ import { type UserRoleProvisioningSetting } from '../components/UserRoleProvisio
 /**
  * Composable for managing user role provisioning form logic in SSO settings.
  */
-export function useUserRoleProvisioningForm(
-	userRoleProvisioning: Ref<UserRoleProvisioningSetting>,
-) {
+export function useUserRoleProvisioningForm() {
 	const provisioningStore = useUserRoleProvisioningStore();
+	const formValue = ref<UserRoleProvisioningSetting>('disabled');
 
 	const getUserRoleProvisioningValueFromConfig = (
 		config?: ProvisioningConfig,
@@ -50,7 +49,7 @@ export function useUserRoleProvisioningForm(
 	const isUserRoleProvisioningChanged = computed<boolean>(() => {
 		return (
 			getUserRoleProvisioningValueFromConfig(provisioningStore.provisioningConfig) !==
-			userRoleProvisioning.value
+			formValue.value
 		);
 	});
 
@@ -58,13 +57,27 @@ export function useUserRoleProvisioningForm(
 	 * Saves the current user role provisioning setting to the store.
 	 */
 	const saveProvisioningConfig = async (isDisablingSso: boolean): Promise<void> => {
-		const newSetting: UserRoleProvisioningSetting = isDisablingSso
-			? 'disabled'
-			: userRoleProvisioning.value;
+		const newSetting: UserRoleProvisioningSetting = isDisablingSso ? 'disabled' : formValue.value;
+
 		await provisioningStore.saveProvisioningConfig(getProvisioningConfigFromFormValue(newSetting));
+
+		if (isDisablingSso) {
+			formValue.value = 'disabled';
+		}
 	};
 
+	const initFormValue = () => {
+		void provisioningStore.getProvisioningConfig().then(() => {
+			formValue.value = getUserRoleProvisioningValueFromConfig(
+				provisioningStore.provisioningConfig,
+			);
+		});
+	};
+
+	initFormValue();
+
 	return {
+		formValue,
 		isUserRoleProvisioningChanged,
 		saveProvisioningConfig,
 	};

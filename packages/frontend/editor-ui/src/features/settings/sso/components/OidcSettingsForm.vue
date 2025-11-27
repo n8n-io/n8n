@@ -9,14 +9,12 @@ import { N8nButton, N8nInput, N8nOption, N8nSelect } from '@n8n/design-system';
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
-import UserRoleProvisioningDropdown, {
-	type UserRoleProvisioningSetting,
-} from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { type OidcConfigDto } from '@n8n/api-types';
 import ConfirmProvisioningDialog from '../provisioning/components/ConfirmProvisioningDialog.vue';
+import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 
 const i18n = useI18n();
 const ssoStore = useSSOStore();
@@ -32,10 +30,12 @@ const clientId = ref('');
 const clientSecret = ref('');
 
 const showUserRoleProvisioningDialog = ref(false);
-const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
 
-const { isUserRoleProvisioningChanged, saveProvisioningConfig } =
-	useUserRoleProvisioningForm(userRoleProvisioning);
+const {
+	formValue: userRoleProvisioning,
+	isUserRoleProvisioningChanged,
+	saveProvisioningConfig,
+} = useUserRoleProvisioningForm();
 
 type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
 
@@ -158,9 +158,6 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		});
 		await saveProvisioningConfig(isDisablingOidcLogin);
 
-		if (isDisablingOidcLogin) {
-			userRoleProvisioning.value = 'disabled';
-		}
 		if (isUserRoleProvisioningChanged.value) {
 			sendTrackingEventForUserProvisioning();
 		}

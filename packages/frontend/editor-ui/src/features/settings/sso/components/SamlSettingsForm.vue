@@ -10,9 +10,7 @@ import { N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
 import { useMessage } from '@/app/composables/useMessage';
 import { computed, onMounted, ref } from 'vue';
-import UserRoleProvisioningDropdown, {
-	type UserRoleProvisioningSetting,
-} from '../provisioning/components/UserRoleProvisioningDropdown.vue';
+import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -55,10 +53,11 @@ const entityId = ref();
 
 const showUserRoleProvisioningDialog = ref(false);
 
-const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
-
-const { isUserRoleProvisioningChanged, saveProvisioningConfig } =
-	useUserRoleProvisioningForm(userRoleProvisioning);
+const {
+	formValue: userRoleProvisioning,
+	isUserRoleProvisioningChanged,
+	saveProvisioningConfig,
+} = useUserRoleProvisioningForm();
 
 async function loadSamlConfig() {
 	if (!ssoStore.isEnterpriseSamlEnabled) {
@@ -237,9 +236,6 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 		});
 
 		await saveProvisioningConfig(isDisablingSamlLogin);
-		if (isDisablingSamlLogin) {
-			userRoleProvisioning.value = 'disabled';
-		}
 		if (isUserRoleProvisioningChanged.value) {
 			sendTrackingEventForUserProvisioning();
 		}
