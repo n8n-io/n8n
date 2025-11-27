@@ -11,6 +11,7 @@ import type {
 	ChatSessionId,
 } from '@n8n/api-types';
 import { N8nButton, N8nIconButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -32,6 +33,7 @@ const emit = defineEmits<{
 const sidebar = useChatHubSidebarState();
 const router = useRouter();
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
+const i18n = useI18n();
 
 function onModelChange(selection: ChatModelDto) {
 	emit('selectModel', selection);
@@ -61,6 +63,7 @@ defineExpose({
 				icon="square-pen"
 				text
 				icon-size="large"
+				:aria-label="i18n.baseText('chatHub.chat.header.button.newChat')"
 				@click="onNewChat"
 			/>
 			<ModelSelector
@@ -82,7 +85,7 @@ defineExpose({
 			type="secondary"
 			size="small"
 			icon="settings"
-			label="Edit Agent"
+			:label="i18n.baseText('chatHub.chat.header.button.editAgent')"
 			@click="emit('editCustomAgent', selectedModel.model.agentId)"
 		/>
 		<N8nButton
@@ -91,7 +94,7 @@ defineExpose({
 			type="secondary"
 			size="small"
 			icon="settings"
-			label="Open Workflow"
+			:label="i18n.baseText('chatHub.chat.header.button.openWorkflow')"
 			@click="emit('openWorkflow', selectedModel.model.workflowId)"
 		/>
 	</div>

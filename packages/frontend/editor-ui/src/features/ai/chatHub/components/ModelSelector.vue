@@ -207,7 +207,9 @@ const menu = computed(() => {
 	return menuItems;
 });
 
-const selectedLabel = computed(() => selectedAgent?.name ?? 'Select model');
+const selectedLabel = computed(
+	() => selectedAgent?.name ?? i18n.baseText('chatHub.models.selector.defaultLabel'),
+);
 
 function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
