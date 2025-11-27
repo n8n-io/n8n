@@ -26,6 +26,15 @@ type ColumnOptions = {
 	metadataColumnName: string;
 };
 
+const skipTableCreation: INodeProperties = {
+	displayName: 'Skip Table Validation & Creation',
+	name: 'skipInitializationCheck',
+	type: 'boolean',
+	default: false,
+	description:
+		'Whether to validate and automatically create the table/collection if it does not exist. Disable this if your credentials only allow data manipulation (DML) and do not have permission to create tables.',
+};
+
 const sharedFields: INodeProperties[] = [
 	{
 		displayName: 'Table Name',
@@ -35,6 +44,7 @@ const sharedFields: INodeProperties[] = [
 		description:
 			'The table name to store the vectors in. If table does not exist, it will be created.',
 	},
+	skipTableCreation,
 ];
 
 const collectionField: INodeProperties = {
@@ -195,9 +205,12 @@ class ExtendedPGVectorStore extends PGVectorStore {
 		const postgresqlVectorStore = new this(embeddings, rest);
 
 		await postgresqlVectorStore._initializeClient();
-		await postgresqlVectorStore.ensureTableInDatabase(dimensions);
-		if (postgresqlVectorStore.collectionTableName) {
-			await postgresqlVectorStore.ensureCollectionTableInDatabase();
+
+		if (!args.skipInitializationCheck) {
+			await postgresqlVectorStore.ensureTableInDatabase(dimensions);
+			if (postgresqlVectorStore.collectionTableName) {
+				await postgresqlVectorStore.ensureCollectionTableInDatabase();
+			}
 		}
 
 		return postgresqlVectorStore;
@@ -241,12 +254,21 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 		const credentials = await context.getCredentials('postgres');
 		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
 		const pool = pgConf.db.$pool as unknown as pg.Pool;
+		const skipTableValidationAndCreation = context.getNodeParameter(
+			'skipInitializationCheck',
+			0,
+			false,
+		);
 
 		const config: PGVectorStoreArgs = {
 			pool,
 			tableName,
 			filter,
 		};
+
+		if (skipTableValidationAndCreation && typeof skipTableValidationAndCreation === 'boolean') {
+			config.skipInitializationCheck = skipTableValidationAndCreation;
+		}
 
 		const collectionOptions = context.getNodeParameter(
 			'options.collection.values',
@@ -285,10 +307,20 @@ export class VectorStorePGVector extends createVectorStoreNode<ExtendedPGVectorS
 		const pgConf = await configurePostgres.call(context, credentials as PostgresNodeCredentials);
 		const pool = pgConf.db.$pool as unknown as pg.Pool;
 
+		const skipTableValidationAndCreation = context.getNodeParameter(
+			'skipInitializationCheck',
+			0,
+			false,
+		);
+
 		const config: PGVectorStoreArgs = {
 			pool,
 			tableName,
 		};
+
+		if (skipTableValidationAndCreation && typeof skipTableValidationAndCreation === 'boolean') {
+			config.skipInitializationCheck = skipTableValidationAndCreation;
+		}
 
 		const collectionOptions = context.getNodeParameter(
 			'options.collection.values',
