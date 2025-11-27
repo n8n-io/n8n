@@ -1,4 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { BaseMessage } from '@langchain/core/messages';
+import { isAIMessage } from '@langchain/core/messages';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
 import {
@@ -6,6 +8,7 @@ import {
 	shouldRunIntegrationTests,
 } from '@/chains/test/integration/test-helpers';
 import { DiscoverySubgraph } from '@/subgraphs/discovery.subgraph';
+import { WorkflowTechnique, type WorkflowTechniqueType } from '@/types/categorization';
 
 import { loadNodesFromFile } from '../../../../evaluations/load-nodes';
 
@@ -79,6 +82,71 @@ const testPrompts = [
 	},
 ];
 
+// Test prompts for technique categorization (parity with promptCategorizationChain)
+const techniqueTestPrompts = [
+	{
+		name: 'Monitoring workflow',
+		prompt:
+			'Create a workflow that monitors my website every 5 minutes and sends me a Slack notification if it goes down',
+		expectedTechniques: [WorkflowTechnique.MONITORING, WorkflowTechnique.NOTIFICATION],
+	},
+	{
+		name: 'Form input with AI',
+		prompt:
+			'Set up a form to collect user feedback, analyze sentiment with AI, and store the results in Airtable',
+		expectedTechniques: [
+			WorkflowTechnique.FORM_INPUT,
+			WorkflowTechnique.DATA_ANALYSIS,
+			WorkflowTechnique.DATA_TRANSFORMATION,
+		],
+	},
+	{
+		name: 'Scraping and research',
+		prompt:
+			'Scrape competitor pricing daily and generate a weekly summary report with price changes',
+		expectedTechniques: [
+			WorkflowTechnique.SCHEDULING,
+			WorkflowTechnique.SCRAPING_AND_RESEARCH,
+			WorkflowTechnique.DATA_EXTRACTION,
+		],
+	},
+	{
+		name: 'Chatbot workflow',
+		prompt:
+			'Build a chatbot that can answer customer questions about our product catalog using information from our knowledge base',
+		expectedTechniques: [WorkflowTechnique.CHATBOT, WorkflowTechnique.KNOWLEDGE_BASE],
+	},
+	{
+		name: 'Document processing',
+		prompt:
+			'Extract data from PDF invoices uploaded via form and update our accounting spreadsheet',
+		expectedTechniques: [
+			WorkflowTechnique.FORM_INPUT,
+			WorkflowTechnique.DOCUMENT_PROCESSING,
+			WorkflowTechnique.DATA_EXTRACTION,
+		],
+	},
+	{
+		name: 'Scheduled content generation',
+		prompt: 'Generate and post daily social media content about trending topics in AI',
+		expectedTechniques: [
+			WorkflowTechnique.SCHEDULING,
+			WorkflowTechnique.CONTENT_GENERATION,
+			WorkflowTechnique.NOTIFICATION,
+		],
+	},
+	{
+		name: 'Human in the loop approval',
+		prompt:
+			'When a new customer signs up for premium plan, send approval request to sales team before activating',
+		expectedTechniques: [
+			WorkflowTechnique.HUMAN_IN_THE_LOOP,
+			WorkflowTechnique.NOTIFICATION,
+			WorkflowTechnique.TRIAGE,
+		],
+	},
+];
+
 // Helper to check if expected nodes are discovered
 function hasExpectedNodes(
 	discovered: Array<{ nodeName: string; version: number; reasoning: string }>,
@@ -105,6 +173,44 @@ function calculateNodeFrequency(
 	return frequency;
 }
 
+// Helper to extract techniques from get_best_practices tool call in messages
+function extractTechniquesFromMessages(messages: BaseMessage[]): WorkflowTechniqueType[] {
+	for (const msg of messages) {
+		if (isAIMessage(msg) && msg.tool_calls) {
+			const bestPracticesCall = msg.tool_calls.find((tc) => tc.name === 'get_best_practices');
+			if (bestPracticesCall?.args?.techniques) {
+				return bestPracticesCall.args.techniques as WorkflowTechniqueType[];
+			}
+		}
+	}
+	return [];
+}
+
+// Helper to check if expected techniques are present
+function hasExpectedTechniques(
+	result: WorkflowTechniqueType[],
+	expected: WorkflowTechniqueType[],
+): { hasAll: boolean; missing: WorkflowTechniqueType[] } {
+	const missing = expected.filter((tech) => !result.includes(tech));
+	return {
+		hasAll: missing.length === 0,
+		missing,
+	};
+}
+
+// Helper to calculate technique frequency
+function calculateTechniqueFrequency(
+	results: Array<{ techniques: WorkflowTechniqueType[] }>,
+): Map<WorkflowTechniqueType, number> {
+	const frequency = new Map<WorkflowTechniqueType, number>();
+	for (const result of results) {
+		for (const technique of result.techniques) {
+			frequency.set(technique, (frequency.get(technique) ?? 0) + 1);
+		}
+	}
+	return frequency;
+}
+
 describe('Discovery Subgraph - Integration Tests', () => {
 	let llm: BaseChatModel;
 	let parsedNodeTypes: INodeTypeDescription[];
@@ -114,7 +220,7 @@ describe('Discovery Subgraph - Integration Tests', () => {
 	const skipTests = !shouldRunIntegrationTests();
 
 	// Set default timeout for all tests in this suite
-	jest.setTimeout(120000); // 2 minutes
+	jest.setTimeout(420000); // 2 minutes
 
 	beforeAll(async () => {
 		if (skipTests) {
@@ -406,6 +512,78 @@ describe('Discovery Subgraph - Integration Tests', () => {
 			}
 
 			// At least 70% should match expected nodes (allowing for LLM variation)
+			expect(matchRate).toBeGreaterThanOrEqual(70);
+		});
+	});
+
+	describe('Technique Categorization (parity with promptCategorizationChain)', () => {
+		it('should select correct techniques via get_best_practices for all test prompts', async () => {
+			if (skipTests) return;
+
+			console.log('\n📊 Running technique categorization test suite...\n');
+
+			const results: Array<{
+				name: string;
+				prompt: string;
+				techniques: WorkflowTechniqueType[];
+				expectedMatch: boolean;
+				missing: WorkflowTechniqueType[];
+			}> = [];
+
+			// Run all technique test prompts
+			for (const test of techniqueTestPrompts) {
+				const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
+				const result = await compiled.invoke({
+					userRequest: test.prompt,
+					messages: [],
+				});
+
+				// Extract techniques from get_best_practices tool call
+				const techniques = extractTechniquesFromMessages(result.messages);
+				const check = hasExpectedTechniques(techniques, test.expectedTechniques);
+
+				results.push({
+					name: test.name,
+					prompt: test.prompt,
+					techniques,
+					expectedMatch: check.hasAll,
+					missing: check.missing,
+				});
+
+				// Log individual result
+				console.log(`✓ ${test.name}`);
+				console.log(`  Techniques: ${techniques.join(', ') || '(none)'}`);
+				console.log(`  Expected: ${test.expectedTechniques.join(', ')}`);
+				if (!check.hasAll) {
+					console.log(`  ⚠️  Missing expected: ${check.missing.join(', ')}`);
+				}
+				console.log('');
+			}
+
+			// Calculate and display statistics
+			const frequency = calculateTechniqueFrequency(results);
+			const sortedFrequency = Array.from(frequency.entries()).sort((a, b) => b[1] - a[1]);
+
+			console.log('\n📈 Technique Frequency:');
+			console.log('─'.repeat(60));
+			for (const [technique, count] of sortedFrequency) {
+				const percentage = ((count / results.length) * 100).toFixed(1);
+				console.log(`  ${technique.padEnd(30)} ${count} (${percentage}%)`);
+			}
+			console.log('');
+
+			// Calculate match rate
+			const matchCount = results.filter((r) => r.expectedMatch).length;
+			const matchRate = (matchCount / results.length) * 100;
+			console.log(`✓ Expected technique match rate: ${matchRate.toFixed(1)}%`);
+			console.log(`  ${matchCount}/${results.length} prompts matched all expected techniques\n`);
+
+			// All results should have techniques (discovery should call get_best_practices)
+			for (const result of results) {
+				expect(result.techniques.length).toBeGreaterThan(0);
+			}
+
+			// At least 70% should match expected techniques (allowing for LLM variation)
 			expect(matchRate).toBeGreaterThanOrEqual(70);
 		});
 	});
