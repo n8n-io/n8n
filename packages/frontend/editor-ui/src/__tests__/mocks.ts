@@ -13,7 +13,13 @@ import type {
 	ITaskData,
 	INodeProperties,
 } from 'n8n-workflow';
-import { FORM_TRIGGER_NODE_TYPE, NodeConnectionTypes, NodeHelpers, Workflow } from 'n8n-workflow';
+import {
+	createEmptyRunExecutionData,
+	FORM_TRIGGER_NODE_TYPE,
+	NodeConnectionTypes,
+	NodeHelpers,
+	Workflow,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 import { mock } from 'vitest-mock-extended';
 
@@ -72,6 +78,7 @@ export const mockNodeTypeDescription = ({
 	description,
 	webhooks,
 	eventTriggerDescription,
+	maxNodes,
 }: Partial<INodeTypeDescription> = {}) =>
 	mock<INodeTypeDescription>({
 		name,
@@ -84,7 +91,7 @@ export const mockNodeTypeDescription = ({
 		},
 		defaultVersion: Array.isArray(version) ? version[version.length - 1] : version,
 		properties: properties as [],
-		maxNodes: Infinity,
+		maxNodes: maxNodes ?? Infinity,
 		group: (group ?? EXECUTABLE_TRIGGER_NODE_TYPES.includes(name)) ? ['trigger'] : [],
 		inputs,
 		outputs,
@@ -200,7 +207,8 @@ export function createTestWorkflow({
 		active,
 		isArchived,
 		settings,
-		versionId: '1',
+		versionId: 'v1',
+		activeVersionId: active ? 'v1' : null,
 		meta: {},
 		pinData,
 		...rest,
@@ -283,11 +291,7 @@ export function createTestWorkflowExecutionResponse(
 		mode: 'manual',
 		status: 'error',
 		workflowData: createTestWorkflow(),
-		data: {
-			resultData: {
-				runData: {},
-			},
-		},
+		data: createEmptyRunExecutionData(),
 		createdAt: '2025-04-16T00:00:00.000Z',
 		startedAt: '2025-04-16T00:00:01.000Z',
 		...data,

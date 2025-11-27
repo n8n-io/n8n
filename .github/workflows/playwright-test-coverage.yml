@@ -33,6 +33,7 @@ jobs:
           pnpm --filter n8n-playwright test:local \
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
+          BUILD_WITH_COVERAGE: 'true'
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}

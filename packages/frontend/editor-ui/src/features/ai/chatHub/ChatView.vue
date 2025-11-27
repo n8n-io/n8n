@@ -5,7 +5,11 @@ import {
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_TOOLS,
 	VIEWS,
 } from '@/app/constants';
-import { findOneFromModelsResponse, unflattenModel } from '@/features/ai/chatHub/chat.utils';
+import {
+	findOneFromModelsResponse,
+	isLlmProvider,
+	unflattenModel,
+} from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
 import ChatPrompt from '@/features/ai/chatHub/components/ChatPrompt.vue';
@@ -27,7 +31,7 @@ import {
 	type ChatHubSendMessageRequest,
 	type ChatModelDto,
 } from '@n8n/api-types';
-import { N8nIconButton, N8nScrollArea } from '@n8n/design-system';
+import { N8nIconButton, N8nScrollArea, N8nText } from '@n8n/design-system';
 import { useLocalStorage, useMediaQuery, useScroll } from '@vueuse/core';
 import { v4 as uuidv4 } from 'uuid';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
@@ -36,7 +40,9 @@ import { useChatStore } from './chat.store';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCredentials';
+import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import { INodesSchema, type INode } from 'n8n-workflow';
+import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
 
 const router = useRouter();
 const route = useRoute();
@@ -65,11 +71,7 @@ const currentConversationTitle = computed(() => currentConversation.value?.title
 const readyToShowMessages = computed(() => chatStore.agentsReady);
 
 // TODO: This also depends on the model, not all base LLM models support tools.
-const canSelectTools = computed(
-	() =>
-		selectedModel.value?.model.provider !== 'custom-agent' &&
-		selectedModel.value?.model.provider !== 'n8n',
-);
+const canSelectTools = computed(() => isLlmProvider(selectedModel.value?.model.provider));
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
@@ -115,6 +117,7 @@ const defaultTools = useLocalStorage<INode[] | null>(
 );
 
 const toolsSelection = ref<INode[] | null>(null);
+const shouldSkipNextScrollTrigger = ref(false);
 
 const selectedTools = computed<INode[]>(() => {
 	if (currentConversation.value?.tools) {
@@ -138,19 +141,19 @@ const modelFromQuery = computed<ChatModelDto | null>(() => {
 	}
 
 	if (typeof agentId === 'string') {
-		return chatStore.getAgent({ provider: 'custom-agent', agentId }) ?? null;
+		return chatStore.getAgent({ provider: 'custom-agent', agentId });
 	}
 
 	if (typeof workflowId === 'string') {
-		return chatStore.getAgent({ provider: 'n8n', workflowId }) ?? null;
+		return chatStore.getAgent({ provider: 'n8n', workflowId });
 	}
 
 	return null;
 });
 
-const selectedModel = computed<ChatModelDto | undefined>(() => {
+const selectedModel = computed<ChatModelDto | null>(() => {
 	if (!chatStore.agentsReady) {
-		return undefined;
+		return null;
 	}
 
 	if (modelFromQuery.value) {
@@ -160,14 +163,14 @@ const selectedModel = computed<ChatModelDto | undefined>(() => {
 	if (currentConversation.value?.provider) {
 		const model = unflattenModel(currentConversation.value);
 
-		return model ? chatStore.getAgent(model) : undefined;
+		return model ? chatStore.getAgent(model) : null;
 	}
 
 	if (chatStore.streaming?.sessionId === sessionId.value) {
 		return chatStore.getAgent(chatStore.streaming.model);
 	}
 
-	return defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined;
+	return defaultModel.value ? chatStore.getAgent(defaultModel.value) : null;
 });
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
@@ -183,7 +186,7 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 			return null;
 		}
 
-		if (provider === 'custom-agent' || provider === 'n8n') {
+		if (!isLlmProvider(provider)) {
 			return {};
 		}
 
@@ -206,6 +209,15 @@ const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvid
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
 
+const canAcceptFiles = computed(
+	() =>
+		editingMessageId.value === undefined &&
+		!!selectedModel.value?.allowFileUploads &&
+		!isMissingSelectedCredential.value,
+);
+
+const fileDrop = useFileDrop(canAcceptFiles, onFilesDropped);
+
 function scrollToBottom(smooth: boolean) {
 	scrollContainerRef.value?.scrollTo({
 		top: scrollableRef.value?.scrollHeight,
@@ -224,6 +236,11 @@ watch(
 	[readyToShowMessages, () => chatMessages.value[chatMessages.value.length - 1]?.id],
 	([ready, lastMessageId]) => {
 		if (!ready || !lastMessageId) {
+			return;
+		}
+
+		if (shouldSkipNextScrollTrigger.value) {
+			shouldSkipNextScrollTrigger.value = false;
 			return;
 		}
 
@@ -303,7 +320,7 @@ watch(
 	{ immediate: true },
 );
 
-function onSubmit(message: string) {
+function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
 		isResponding.value ||
@@ -314,13 +331,15 @@ function onSubmit(message: string) {
 	}
 
 	didSubmitInCurrentSession.value = true;
+	editingMessageId.value = undefined;
 
-	chatStore.sendMessage(
+	void chatStore.sendMessage(
 		sessionId.value,
 		message,
 		selectedModel.value.model,
 		credentialsForSelectedProvider.value,
 		canSelectTools.value ? selectedTools.value : [],
+		attachments,
 	);
 
 	inputRef.value?.setText('');
@@ -375,7 +394,7 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 		return;
 	}
 
-	const messageToRetry = message.retryOfMessageId ?? message.id;
+	const messageToRetry = message.id;
 
 	chatStore.regenerateMessage(
 		sessionId.value,
@@ -398,6 +417,7 @@ async function handleSelectModel(selection: ChatModelDto) {
 }
 
 function handleSwitchAlternative(messageId: string) {
+	shouldSkipNextScrollTrigger.value = true;
 	chatStore.switchAlternative(sessionId.value, messageId);
 }
 
@@ -455,21 +475,34 @@ function handleOpenWorkflow(workflowId: string) {
 
 	window.open(routeData.href, '_blank');
 }
+
+function onFilesDropped(files: File[]) {
+	inputRef.value?.addAttachments(files);
+}
 </script>
 
 <template>
-	<div
-		:class="[
-			$style.component,
-			{
-				[$style.isNewSession]: isNewSession,
-				[$style.isMobileDevice]: isMobileDevice,
-			},
-		]"
+	<ChatLayout
+		:class="{
+			[$style.chatLayout]: true,
+			[$style.isNewSession]: isNewSession,
+			[$style.isExistingSession]: !isNewSession,
+			[$style.isMobileDevice]: isMobileDevice,
+			[$style.isDraggingFile]: fileDrop.isDragging.value,
+		}"
+		@dragenter="fileDrop.handleDragEnter"
+		@dragleave="fileDrop.handleDragLeave"
+		@dragover="fileDrop.handleDragOver"
+		@drop="fileDrop.handleDrop"
+		@paste="fileDrop.handlePaste"
 	>
+		<div v-if="fileDrop.isDragging.value" :class="$style.dropOverlay">
+			<N8nText size="large" color="text-dark">Drop files here to attach</N8nText>
+		</div>
+
 		<ChatConversationHeader
 			ref="headerRef"
-			:selected-model="selectedModel ?? null"
+			:selected-model="selectedModel"
 			:credentials="credentialsByProvider"
 			:ready-to-show-model-selector="chatStore.agentsReady"
 			@select-model="handleSelectModel"
@@ -531,7 +564,7 @@ function handleOpenWorkflow(workflowId: string) {
 					<ChatPrompt
 						ref="inputRef"
 						:class="$style.prompt"
-						:selected-model="selectedModel ?? null"
+						:selected-model="selectedModel"
 						:selected-tools="selectedTools"
 						:is-responding="isResponding"
 						:is-tools-selectable="canSelectTools"
@@ -546,25 +579,12 @@ function handleOpenWorkflow(workflowId: string) {
 				</div>
 			</div>
 		</N8nScrollArea>
-	</div>
+	</ChatLayout>
 </template>
 
 <style lang="scss" module>
-.component {
-	margin: var(--spacing--4xs);
-	width: 100%;
-	background-color: var(--color--background--light-2);
-	border: var(--border);
-	border-radius: var(--radius);
-	display: flex;
-	flex-direction: column;
-	align-items: stretch;
-	overflow: hidden;
-
-	&.isMobileDevice {
-		margin: 0;
-		border: none;
-	}
+.chatLayout {
+	position: relative;
 }
 
 .scrollArea {
@@ -621,7 +641,7 @@ function handleOpenWorkflow(workflowId: string) {
 	justify-content: center;
 
 	.isMobileDevice &,
-	.component:not(.isNewSession) & {
+	.isExistingSession & {
 		position: absolute;
 		bottom: 0;
 		left: 0;
@@ -647,5 +667,23 @@ function handleOpenWorkflow(workflowId: string) {
 	left: auto;
 	box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.15);
 	border-radius: 50%;
+}
+
+.isDraggingFile {
+	border-color: var(--color--secondary);
+}
+
+.dropOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	background-color: color-mix(in srgb, var(--color--background--light-2) 95%, transparent);
+	pointer-events: none;
 }
 </style>
