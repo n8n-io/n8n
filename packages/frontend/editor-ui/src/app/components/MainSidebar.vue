@@ -600,6 +600,7 @@ const onLogout = () => {
 				:shortcut="{ keys: ['['] }"
 			>
 				<N8nIconButton
+					id="toggle-sidebar-button"
 					size="small"
 					type="highlight"
 					icon="panel-left"
@@ -693,9 +694,7 @@ const onLogout = () => {
 					:collapsed="isCollapsed"
 					:plan-name="cloudPlanStore.currentPlanData?.displayName"
 				/>
-
 				<div :class="$style.bottomMenu">
-					<BecomeTemplateCreatorCta v-if="!isCollapsed && !userIsTrialing" />
 					<div :class="$style.bottomMenuItems">
 						<template v-for="item in visibleMenuItems" :key="item.id">
 							<N8nPopoverReka
@@ -707,6 +706,9 @@ const onLogout = () => {
 							>
 								<template #content>
 									<div :class="$style.popover">
+										<template v-if="item.id === 'help' && whatsNewItems.available">
+											<BecomeTemplateCreatorCta v-if="!isCollapsed && !userIsTrialing" />
+										</template>
 										<template v-for="child in item.children" :key="child.id">
 											<component
 												:is="child.component"
@@ -728,7 +730,6 @@ const onLogout = () => {
 												<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
 											</template>
 										</template>
-
 										<template v-if="item.id === 'settings-item'">
 											<span :class="$style.divider" />
 											<N8nMenuItem
@@ -740,6 +741,7 @@ const onLogout = () => {
 								</template>
 								<template #trigger>
 									<N8nMenuItem
+										:data-test-id="`main-sidebar-${item.id}`"
 										:item="item"
 										:compact="isCollapsed"
 										@click="() => handleSelect(item.id)"
@@ -748,6 +750,7 @@ const onLogout = () => {
 							</N8nPopoverReka>
 							<N8nMenuItem
 								v-else
+								:data-test-id="`main-sidebar-${item.id}`"
 								:item="item"
 								:compact="isCollapsed"
 								@click="() => handleSelect(item.id)"

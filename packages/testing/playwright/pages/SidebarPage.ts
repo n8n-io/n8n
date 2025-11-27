@@ -65,8 +65,8 @@ export class SidebarPage {
 		return this.page.getByTestId('add-first-project-button');
 	}
 
-	getUserMenu(): Locator {
-		return this.page.getByTestId('main-sidebar-user-menu');
+	getSettings(): Locator {
+		return this.page.getByTestId('main-sidebar-settings');
 	}
 
 	getLogoutMenuItem(): Locator {
@@ -77,8 +77,12 @@ export class SidebarPage {
 		return this.page.getByTestId('about-modal');
 	}
 
+	getHelp(): Locator {
+		return this.page.getByTestId('main-sidebar-help');
+	}
+
 	async clickAboutMenuItem(): Promise<void> {
-		await this.page.getByTestId('help').click();
+		await this.getHelp().click();
 		await this.page.getByTestId('about').click();
 	}
 
@@ -102,13 +106,13 @@ export class SidebarPage {
 		return this.page.getByTestId('templates').locator('a');
 	}
 
-	async openUserMenu(): Promise<void> {
-		await this.getUserMenu().click();
+	async openSettings(): Promise<void> {
+		await this.getSettings().click();
 	}
 
 	async clickSignout(): Promise<void> {
 		await this.expand();
-		await this.openUserMenu();
+		await this.openSettings();
 		await this.getLogoutMenuItem().click();
 	}
 
@@ -122,14 +126,8 @@ export class SidebarPage {
 	}
 
 	async expand() {
-		const collapseButton = this.page.locator('#collapse-change-button');
-		const chevronRight = this.page.locator(
-			'#collapse-change-button svg[data-icon="chevron-right"]',
-		);
-
+		const collapseButton = this.page.locator('#toggle-sidebar-button');
 		await expect(collapseButton).toBeVisible();
-		if (await chevronRight.isVisible()) {
-			await collapseButton.click();
-		}
+		await collapseButton.click();
 	}
 }
