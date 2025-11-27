@@ -14,7 +14,6 @@ Displays loading placeholders (skeleton screens) while content is being fetched 
 **Props**
 
 - `animated?: boolean` - Controls whether the skeleton shows pulsing animation. Default: `true`
-- `loading?: boolean` - Controls whether the loading skeleton is displayed. When `false`, the skeleton is hidden. Default: `true`
 - `rows?: number` - Number of skeleton rows to display. Default: `1`
 - `cols?: number` - Number of skeleton columns to display. When set (non-zero), overrides row-based layout. Default: `0`
 - `shrinkLast?: boolean` - Whether to shrink the last row to a shorter width. Only applies to `'h1'` and `'p'` variants when `rows > 1`. Default: `true`
@@ -40,8 +39,8 @@ import { N8nLoading } from '@n8n/design-system'
   <!-- Simple 3-row skeleton -->
   <N8nLoading :rows="3" />
 
-  <!-- Conditional loading with 5 rows -->
-  <N8nLoading :loading="isLoading" :rows="5" />
+  <!-- Conditional loading with 5 rows (use v-if for visibility control) -->
+  <N8nLoading v-if="isLoading" :rows="5" />
 </template>
 ```
 
@@ -93,13 +92,13 @@ import { N8nLoading } from '@n8n/design-system'
 import { ref } from 'vue'
 import { N8nLoading } from '@n8n/design-system'
 
-const loading = ref(true)
+const isLoading = ref(true)
 const loadingRows = ref(5)
 </script>
 
 <template>
   <!-- Animated paragraph skeleton -->
-  <N8nLoading :loading="loading" :rows="loadingRows" animated variant="p" />
+  <N8nLoading v-if="isLoading" :rows="loadingRows" animated variant="p" />
 
   <!-- Static text skeleton without animation -->
   <N8nLoading :class="$style.loading" :animated="false" variant="text" />
@@ -139,14 +138,14 @@ const template = ref(null)
 <template>
   <div>
     <!-- Show skeleton until data loads -->
-    <N8nLoading :loading="!template" :rows="1" variant="button" />
-    <N8nLoading :loading="!template || !template.name" :rows="2" variant="h1" />
+    <N8nLoading v-if="!template" :rows="1" variant="button" />
+    <N8nLoading v-if="!template?.name" :rows="2" variant="h1" />
 
     <!-- Show actual content when loaded -->
-    <div v-if="template">
+    <template v-if="template">
       <h1>{{ template.name }}</h1>
       <p>{{ template.description }}</p>
-    </div>
+    </template>
   </div>
 </template>
 ```
@@ -158,8 +157,8 @@ import { N8nLoading } from '@n8n/design-system'
 </script>
 
 <template>
-  <!-- Renders 4 columns instead of rows -->
-  <N8nLoading :cols="4" variant="rect" />
+  <!-- Renders 4 columns instead of rows (variant is ignored when cols is set) -->
+  <N8nLoading :cols="4" />
 </template>
 ```
 
