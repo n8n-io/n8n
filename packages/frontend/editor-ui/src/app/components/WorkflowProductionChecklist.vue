@@ -73,7 +73,9 @@ const hasSavedTimeNodes = computed(() => {
 	}
 
 	if (!props.workflow?.nodes) return false;
-	return props.workflow.nodes.some((node) => node.type === TIME_SAVED_NODE_TYPE);
+	return props.workflow.nodes.some(
+		(node) => node.type === TIME_SAVED_NODE_TYPE && node.disabled !== true,
+	);
 });
 
 const hasTimeSaved = computed(() => {

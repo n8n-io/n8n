@@ -141,7 +141,9 @@ const savedTimeNodes = computed(() => {
 	}
 
 	if (!workflow?.value?.nodes) return [];
-	return workflow.value.nodes.filter((node) => node.type === TIME_SAVED_NODE_TYPE);
+	return workflow.value.nodes.filter(
+		(node) => node.type === TIME_SAVED_NODE_TYPE && node.disabled !== true,
+	);
 });
 
 const hasSavedTimeNodes = computed(() => {
