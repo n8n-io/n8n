@@ -90,7 +90,9 @@
     "overrides": {
       "ast-types": "0.16.1",
       "@azure/identity": "^4.3.0",
-      "@lezer/common": "^1.2.0",
+      "@lezer/common": "1.2.1",
+      "@lezer/lr": "^1.4.2",
+      "@lezer/highlight": "^1.2.1",
       "@mistralai/mistralai": "^1.10.0",
       "@n8n/typeorm>@sentry/node": "catalog:",
       "@types/node": "^20.17.50",

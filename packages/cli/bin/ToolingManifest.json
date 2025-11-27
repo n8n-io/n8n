@@ -1,0 +1,10 @@
+{
+	"mcpServers": [
+		{
+			"mcpServerName": "mcp_MailTools"
+		},
+		{
+			"mcpServerName": "mcp_WordServer"
+		}
+	]
+}
