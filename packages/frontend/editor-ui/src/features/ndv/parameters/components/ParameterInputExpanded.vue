@@ -22,7 +22,7 @@ import { storeToRefs } from 'pinia';
 import { N8nInputLabel, N8nLink, N8nText } from '@n8n/design-system';
 
 const LazyFixedCollectionParameter = defineAsyncComponent(
-	async () => await import('./FixedCollectionParameter.vue'),
+	async () => await import('./FixedCollection/FixedCollectionParameter.vue'),
 );
 
 type Props = {
