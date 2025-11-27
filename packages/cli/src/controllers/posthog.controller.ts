@@ -72,13 +72,22 @@ export class PostHogController {
 		return await this.proxy(req, res, next);
 	}
 
-	// Static files - specific endpoint for array.js
+	// Static files - specific endpoint for array.js and lazy-recorder.js
 	@Get('/static/array.js', {
 		skipAuth: true,
 		usesTemplates: true,
 		rateLimit: { limit: 50, windowMs: 60_000 },
 	})
 	staticArrayJs(req: AuthenticatedRequest, res: Response, next: NextFunction) {
+		void this.proxy(req, res, next);
+	}
+
+	@Get('/static/lazy-recorder.js', {
+		skipAuth: true,
+		usesTemplates: true,
+		rateLimit: { limit: 50, windowMs: 60_000 },
+	})
+	staticLazyRecorderJs(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		void this.proxy(req, res, next);
 	}
 

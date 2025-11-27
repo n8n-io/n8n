@@ -18,6 +18,7 @@ import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useI18n } from '@n8n/i18n';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -42,6 +43,7 @@ const clipboard = useClipboard();
 const chatStore = useChatStore();
 const rootStore = useRootStore();
 const { isCtrlKeyPressed } = useDeviceSupport();
+const i18n = useI18n();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -179,6 +181,15 @@ onBeforeMount(() => {
 		</div>
 		<div :class="$style.content">
 			<div v-if="isEditing" :class="$style.editContainer">
+				<div v-if="attachments.length > 0" :class="$style.attachments">
+					<ChatFile
+						v-for="(attachment, index) in attachments"
+						:key="index"
+						:file="attachment.file"
+						:is-removable="false"
+						:href="attachment.downloadUrl"
+					/>
+				</div>
 				<N8nInput
 					ref="textarea"
 					v-model="editedText"
@@ -188,14 +199,16 @@ onBeforeMount(() => {
 					@keydown="handleKeydownTextarea"
 				/>
 				<div :class="$style.editActions">
-					<N8nButton type="secondary" size="small" @click="handleCancelEdit"> Cancel </N8nButton>
+					<N8nButton type="secondary" size="small" @click="handleCancelEdit">
+						{{ i18n.baseText('chatHub.message.edit.cancel') }}
+					</N8nButton>
 					<N8nButton
 						type="primary"
 						size="small"
 						:disabled="!editedText.trim()"
 						@click="handleConfirmEdit"
 					>
-						Send
+						{{ i18n.baseText('chatHub.message.edit.send') }}
 					</N8nButton>
 				</div>
 			</div>
@@ -217,7 +230,7 @@ onBeforeMount(() => {
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="
 							message.status === 'error' && !message.content
-								? 'Error: Unknown error occurred'
+								? i18n.baseText('chatHub.message.error.unknown')
 								: message.content
 						"
 						:options="markdownOptions"
@@ -278,7 +291,10 @@ onBeforeMount(() => {
 	display: flex;
 	flex-wrap: wrap;
 	gap: var(--spacing--2xs);
-	margin-top: var(--spacing--xs);
+
+	.chatMessage & {
+		margin-top: var(--spacing--xs);
+	}
 }
 
 .chatMessage {
@@ -407,9 +423,20 @@ onBeforeMount(() => {
 }
 
 .editContainer {
+	width: 100%;
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--xs);
+	background-color: var(--color--background--light-3);
+	border: var(--border);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
+	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+
+	&:focus-within,
+	&:hover {
+		border-color: var(--color--secondary);
+	}
 }
 
 .textarea {
@@ -418,8 +445,11 @@ onBeforeMount(() => {
 
 .textarea textarea {
 	font-family: inherit;
-	background-color: var(--color--background--light-3);
-	border-radius: var(--radius--lg);
+	line-height: 1.5em;
+	resize: none;
+	background-color: transparent !important;
+	border: none !important;
+	padding: 0 !important;
 }
 
 .editActions {
