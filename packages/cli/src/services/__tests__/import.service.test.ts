@@ -351,8 +351,8 @@ describe('ImportService', () => {
 				{ id: 1, name: 'Test' },
 				{ id: 2, name: 'Test2' },
 			]);
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":1,"name":"Test"}');
-			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":2,"name":"Test2"}');
+			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":1,"name":"Test"}', undefined);
+			expect(mockCipher.decrypt).toHaveBeenCalledWith('{"id":2,"name":"Test2"}', undefined);
 		});
 
 		it('should handle empty lines in JSONL file', async () => {
@@ -488,6 +488,38 @@ describe('ImportService', () => {
 
 			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
 			expect(mockEntityManager.insert).not.toHaveBeenCalled();
+		});
+
+		it('should import entities with a custom encryption key', async () => {
+			const importMetadata = {
+				entityFiles: {
+					user: ['/test/input/user.jsonl'],
+				},
+				tableNames: ['user'],
+			};
+
+			mockDataSource.driver.escapeQueryWithParameters = jest
+				.fn()
+				.mockReturnValue(['INSERT COMMAND', { data: 'data' }]);
+
+			const mockEntities = [{ id: 1, name: 'Test User' }];
+			const mockContent = JSON.stringify(mockEntities[0]);
+			jest.mocked(readFile).mockResolvedValue(mockContent);
+
+			await importService.importEntitiesFromFiles(
+				'/test/input',
+				mockEntityManager,
+				Object.keys(importMetadata.entityFiles),
+				importMetadata.entityFiles,
+				'custom-encryption-key',
+			);
+
+			expect(mockCipher.decrypt).toHaveBeenCalledWith(
+				'{"id":1,"name":"Test User"}',
+				'custom-encryption-key',
+			);
+			expect(readFile).toHaveBeenCalledWith('/test/input/user.jsonl', 'utf8');
+			expect(mockEntityManager.query).toHaveBeenCalledWith('INSERT COMMAND', { data: 'data' });
 		});
 	});
 

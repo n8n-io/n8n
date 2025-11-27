@@ -1,5 +1,6 @@
 import type { Response } from 'express';
 import isbot from 'isbot';
+import * as a from 'node:assert';
 import { DateTime } from 'luxon';
 import type {
 	INodeExecutionData,
@@ -335,8 +336,9 @@ export function addFormResponseDataToReturnItem(
 				value = value[0];
 			}
 		}
-		if (field.fieldType === 'date' && value && field.formatDate !== '') {
-			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
+		if (field.fieldType === 'date' && value && field.formatDate) {
+			const datetime = DateTime.fromFormat(String(value), 'yyyy-mm-dd');
+			value = datetime.toFormat(field.formatDate as string);
 		}
 		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
 			value = [value];
@@ -352,6 +354,8 @@ export async function prepareFormReturnItem(
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
 ) {
+	const req = context.getRequestObject() as MultiPartFormData.Request;
+	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
 	const files = (context.getBodyData().files as IDataObject) ?? {};
 
