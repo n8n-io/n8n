@@ -50,6 +50,7 @@ import '@/controllers/tags.controller';
 import '@/controllers/translation.controller';
 import '@/controllers/folder.controller';
 import '@/controllers/users.controller';
+import '@/controllers/user-search.controller';
 import '@/controllers/user-settings.controller';
 import '@/controllers/workflow-statistics.controller';
 import '@/controllers/api-keys.controller';
