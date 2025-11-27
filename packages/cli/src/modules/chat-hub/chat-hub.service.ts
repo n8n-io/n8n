@@ -1987,6 +1987,8 @@ export class ChatHubService {
 		agentName: string,
 		trx?: EntityManager,
 	) {
+		await this.ensureValidModel(user, model);
+
 		return await this.sessionRepository.createChatSession(
 			{
 				id: sessionId,
@@ -2170,44 +2172,20 @@ export class ChatHubService {
 		const sessionUpdates: Partial<ChatHubSession> = {};
 
 		if (updates.agent) {
+			const model = updates.agent.model;
+
+			await this.ensureValidModel(user, model);
+
 			sessionUpdates.agentName = updates.agent.name;
-			sessionUpdates.provider = updates.agent.model.provider;
+			sessionUpdates.provider = model.provider;
 			sessionUpdates.model = null;
 			sessionUpdates.credentialId = null;
 			sessionUpdates.agentId = null;
 			sessionUpdates.workflowId = null;
 
 			if (updates.agent.model.provider === 'n8n') {
-				// Validate the workflow exists and is accessible
-				const workflow = await this.workflowFinderService.findWorkflowForUser(
-					updates.agent.model.workflowId,
-					user,
-					['workflow:read'],
-					{ includeTags: false, includeParentFolder: false },
-				);
-
-				if (!workflow) {
-					throw new BadRequestError('Workflow not found');
-				}
-
-				const chatTriggers = workflow.nodes.filter((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-
-				if (chatTriggers.length !== 1) {
-					throw new BadRequestError('Workflow must have exactly one chat trigger');
-				}
-
 				sessionUpdates.workflowId = updates.agent.model.workflowId;
 			} else if (updates.agent.model.provider === 'custom-agent') {
-				// Validate the agent exists and is accessible
-				const agent = await this.chatHubAgentService.getAgentById(
-					updates.agent.model.agentId,
-					user.id,
-				);
-
-				if (!agent) {
-					throw new BadRequestError('Agent not found');
-				}
-
 				sessionUpdates.agentId = updates.agent.model.agentId;
 			} else {
 				sessionUpdates.model = updates.agent.model.model;
@@ -2232,5 +2210,36 @@ export class ChatHubService {
 
 		await this.chatHubAttachmentService.deleteAllBySessionId(sessionId);
 		await this.sessionRepository.deleteChatHubSession(sessionId);
+	}
+
+	private async ensureValidModel(user: User, model: ChatHubConversationModel) {
+		if (model.provider === 'custom-agent') {
+			// Find the agent to get its name
+			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
+			if (!agent) {
+				throw new BadRequestError('Agent not found for chat session initialization');
+			}
+		}
+
+		if (model.provider === 'n8n') {
+			// Find the workflow to get its name
+			const workflow = await this.workflowFinderService.findWorkflowForUser(
+				model.workflowId,
+				user,
+				['workflow:read'],
+				{ includeTags: false, includeParentFolder: false },
+			);
+
+			if (!workflow) {
+				throw new BadRequestError('Workflow not found for chat session initialization');
+			}
+
+			const chatTrigger = workflow.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+			if (!chatTrigger) {
+				throw new BadRequestError(
+					'Chat trigger not found in workflow for chat session initialization',
+				);
+			}
+		}
 	}
 }
