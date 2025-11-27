@@ -81,6 +81,10 @@ export class SidebarPage {
 		return this.page.getByTestId('main-sidebar-help');
 	}
 
+	async clickHelpMenuItem(): Promise<void> {
+		await this.getHelp().click();
+	}
+
 	async clickAboutMenuItem(): Promise<void> {
 		await this.getHelp().click();
 		await this.page.getByTestId('about').click();
@@ -104,6 +108,10 @@ export class SidebarPage {
 
 	getTemplatesLink(): Locator {
 		return this.page.getByTestId('templates').locator('a');
+	}
+
+	getVersionUpdateItem(): Locator {
+		return this.page.getByTestId('version-update-cta-button');
 	}
 
 	async openSettings(): Promise<void> {
