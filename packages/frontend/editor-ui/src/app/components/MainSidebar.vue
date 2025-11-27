@@ -475,7 +475,6 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					<N8nIcon
 						data-test-id="read-only-env-icon"
 						icon="lock"
-						size="xsmall"
 						:class="$style.readOnlyEnvironmentIcon"
 					/>
 				</N8nTooltip>
@@ -551,7 +550,9 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 				/>
 
 				<div :class="$style.bottomMenu">
+					<<<<<<< HEAD
 					<BecomeTemplateCreatorCta v-if="fullyExpanded && !userIsTrialing" />
+					======= >>>>>>> 922d3fcac5 (move template creator cta)
 					<div :class="$style.bottomMenuItems">
 						<template v-for="item in visibleMenuItems" :key="item.id">
 							<N8nPopoverReka
@@ -563,9 +564,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 							>
 								<template #content>
 									<div :class="$style.popover">
-										<N8nText :class="$style.popoverTitle" bold color="foreground-xdark">{{
-											item.label
-										}}</N8nText>
+										<BecomeTemplateCreatorCta v-if="!userIsTrialing" />
 										<template v-for="child in item.children" :key="child.id">
 											<component
 												:is="child.component"
