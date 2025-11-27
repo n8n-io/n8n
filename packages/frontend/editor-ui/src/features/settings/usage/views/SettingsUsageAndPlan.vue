@@ -138,6 +138,11 @@ const onEulaCancel = () => {
 	activationKey.value = '';
 };
 
+const onActivationCancel = () => {
+	activationKeyModal.value = false;
+	activationKey.value = '';
+};
+
 onMounted(async () => {
 	documentTitle.set(locale.baseText('settings.usageAndPlan.title'));
 	usageStore.setLoading(true);
@@ -185,10 +190,6 @@ const onViewPlans = () => {
 
 const onManagePlan = () => {
 	sendUsageTelemetry('manage_plan');
-};
-
-const onDialogClosed = () => {
-	activationKey.value = '';
 };
 
 const onDialogOpened = () => {
@@ -307,7 +308,6 @@ const openCommunityRegisterModal = () => {
 				top="0"
 				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 				:modal-class="$style.center"
-				@closed="onDialogClosed"
 				@opened="onDialogOpened"
 			>
 				<template #default>
@@ -318,7 +318,7 @@ const openCommunityRegisterModal = () => {
 					/>
 				</template>
 				<template #footer>
-					<N8nButton type="secondary" @click="activationKeyModal = false">
+					<N8nButton type="secondary" @click="onActivationCancel">
 						{{ locale.baseText('settings.usageAndPlan.dialog.activation.cancel') }}
 					</N8nButton>
 					<N8nButton :disabled="!activationKey" @click="() => onLicenseActivation()">
