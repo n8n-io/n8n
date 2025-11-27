@@ -17,6 +17,7 @@ import {
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
+import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 const props = withDefaults(
 	defineProps<{
@@ -32,13 +33,7 @@ const props = withDefaults(
 	},
 );
 const emit = defineEmits<{
-	action: [
-		value: {
-			action: WorkflowHistoryActionTypes[number];
-			id: WorkflowVersionId;
-			data: { formattedCreatedAt: string; versionName?: string; description?: string };
-		},
-	];
+	action: [value: WorkflowHistoryAction];
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
 	mounted: [value: { index: number; offsetTop: number; isSelected: boolean }];
 }>();
