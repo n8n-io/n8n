@@ -131,6 +131,7 @@ onBeforeUnmount(() => {
 			:class="[$style.projectsLabel]"
 			size="small"
 			bold
+			role="heading"
 			color="text-light"
 		>
 			{{ locale.baseText('projects.menu.title') }}

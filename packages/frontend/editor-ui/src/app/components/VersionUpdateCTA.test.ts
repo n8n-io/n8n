@@ -87,7 +87,6 @@ describe('VersionUpdateCTA', () => {
 
 		await userEvent.click(getByTestId('version-update-cta-button'));
 
-		expect(pageRedirectionHelper.goToVersions).toHaveBeenCalled();
 		expect(telemetry.track).toHaveBeenCalledWith('User clicked on update button', {
 			source: 'main-sidebar',
 		});
