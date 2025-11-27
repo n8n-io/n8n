@@ -57,7 +57,10 @@ describe('InstanceSettings', () => {
 		it('should check if the settings file has the correct permissions', () => {
 			mockFs.readFileSync.mockReturnValueOnce(JSON.stringify({ encryptionKey: 'test_key' }));
 			mockFs.statSync.mockReturnValueOnce({ mode: 0o600 } as fs.Stats);
-			const settings = createInstanceSettings({ encryptionKey: 'test_key' });
+			const settings = createInstanceSettings({
+				encryptionKey: 'test_key',
+				enforceSettingsFilePermissions: true,
+			});
 			expect(settings.encryptionKey).toEqual('test_key');
 			expect(settings.instanceId).toEqual(
 				'6ce26c63596f0cc4323563c529acfca0cccb0e57f6533d79a60a42c9ff862ae7',
@@ -65,18 +68,22 @@ describe('InstanceSettings', () => {
 			expect(mockFs.statSync).toHaveBeenCalledWith('/test/.n8n/config');
 		});
 
-		it('should check the permissions but not fix them if settings file has incorrect permissions by default', () => {
+		it('should check the permissions and fix them if settings file has incorrect permissions by default', () => {
 			mockFs.readFileSync.mockReturnValueOnce(JSON.stringify({ encryptionKey: 'test_key' }));
 			mockFs.statSync.mockReturnValueOnce({ mode: 0o644 } as fs.Stats);
-			createInstanceSettings();
+			createInstanceSettings({
+				enforceSettingsFilePermissions: true,
+			});
 			expect(mockFs.statSync).toHaveBeenCalledWith('/test/.n8n/config');
-			expect(mockFs.chmodSync).not.toHaveBeenCalled();
+			expect(mockFs.chmodSync).toHaveBeenCalledWith('/test/.n8n/config', 0o600);
 		});
 
 		it("should not check the permissions if 'N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS' is false", () => {
 			process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'false';
 			mockFs.readFileSync.mockReturnValueOnce(JSON.stringify({ encryptionKey: 'test_key' }));
-			createInstanceSettings();
+			createInstanceSettings({
+				enforceSettingsFilePermissions: false,
+			});
 			expect(mockFs.statSync).not.toHaveBeenCalled();
 			expect(mockFs.chmodSync).not.toHaveBeenCalled();
 		});
@@ -100,8 +107,11 @@ describe('InstanceSettings', () => {
 			mockFs.writeFileSync.mockReturnValue();
 		});
 
-		it('should create a new settings file without explicit permissions if N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS is not set', () => {
-			const settings = createInstanceSettings({ encryptionKey: 'key_2' });
+		it('should create a new settings file with explicit permissions if N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS is not set', () => {
+			const settings = createInstanceSettings({
+				encryptionKey: 'key_2',
+				enforceSettingsFilePermissions: true,
+			});
 			expect(settings.encryptionKey).not.toEqual('test_key');
 			expect(mockFs.mkdirSync).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
 			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
@@ -109,14 +119,17 @@ describe('InstanceSettings', () => {
 				expect.stringContaining('"encryptionKey":'),
 				{
 					encoding: 'utf-8',
-					mode: undefined,
+					mode: 0o600,
 				},
 			);
 		});
 
 		it('should create a new settings file without explicit permissions if N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false', () => {
 			process.env.N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS = 'false';
-			const settings = createInstanceSettings({ encryptionKey: 'key_2' });
+			const settings = createInstanceSettings({
+				encryptionKey: 'key_2',
+				enforceSettingsFilePermissions: false,
+			});
 			expect(settings.encryptionKey).not.toEqual('test_key');
 			expect(mockFs.mkdirSync).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
 			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
@@ -148,7 +161,10 @@ describe('InstanceSettings', () => {
 		});
 
 		it('should pick up the encryption key from config', () => {
-			const settings = createInstanceSettings({ encryptionKey: 'env_key' });
+			const settings = createInstanceSettings({
+				encryptionKey: 'env_key',
+				enforceSettingsFilePermissions: true,
+			});
 			expect(settings.encryptionKey).toEqual('env_key');
 			expect(settings.instanceId).toEqual(
 				'2c70e12b7a0646f92279f427c7b38e7334d8e5389cff167a1dc30e73f826b683',
@@ -160,22 +176,7 @@ describe('InstanceSettings', () => {
 				expect.stringContaining('"encryptionKey":'),
 				{
 					encoding: 'utf-8',
-					mode: undefined,
-				},
-			);
-		});
-
-		it("should not set the permissions of the settings file if 'N8N_IGNORE_SETTINGS_FILE_PERMISSIONS' is true", () => {
-			process.env.N8N_IGNORE_SETTINGS_FILE_PERMISSIONS = 'true';
-			const settings = createInstanceSettings({ encryptionKey: 'key_2' });
-			expect(settings.encryptionKey).not.toEqual('test_key');
-			expect(mockFs.mkdirSync).toHaveBeenCalledWith('/test/.n8n', { recursive: true });
-			expect(mockFs.writeFileSync).toHaveBeenCalledWith(
-				'/test/.n8n/config',
-				expect.stringContaining('"encryptionKey":'),
-				{
-					encoding: 'utf-8',
-					mode: undefined,
+					mode: 0o600,
 				},
 			);
 		});
