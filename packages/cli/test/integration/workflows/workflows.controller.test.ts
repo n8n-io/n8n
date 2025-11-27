@@ -43,7 +43,6 @@ import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
-import { vi } from 'zod/dist/types/v4/locales';
 
 let owner: User;
 let member: User;
