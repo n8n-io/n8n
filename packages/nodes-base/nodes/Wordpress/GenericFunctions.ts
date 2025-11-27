@@ -12,20 +12,22 @@ export async function wordpressApiRequest(
 	this: IExecuteFunctions | ILoadOptionsFunctions,
 	method: IHttpRequestMethods,
 	resource: string,
-
 	body: any = {},
 	qs: IDataObject = {},
 	uri?: string,
 	option: IDataObject = {},
 ): Promise<any> {
 	const credentials = await this.getCredentials('wordpressApi');
-
+	let headers: Record<string, string> = {
+		Accept: 'application/json',
+		'Content-Type': 'application/json',
+		'User-Agent': 'n8n',
+	};
+	if (!['HEAD', 'GET'].includes(method)) {
+		headers['Cache-Control'] = 'no-cache';
+	}
 	let options: IRequestOptions = {
-		headers: {
-			Accept: 'application/json',
-			'Content-Type': 'application/json',
-			'User-Agent': 'n8n',
-		},
+		headers,
 		method,
 		qs,
 		body,
