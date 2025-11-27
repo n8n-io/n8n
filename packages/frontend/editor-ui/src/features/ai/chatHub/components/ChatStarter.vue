@@ -1,15 +1,21 @@
 <script setup lang="ts">
 import { useUsersStore } from '@/features/settings/users/users.store';
 import { N8nHeading } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { computed } from 'vue';
 
 defineProps<{ isMobileDevice: boolean }>();
 
 const userStore = useUsersStore();
+const i18n = useI18n();
 
-const greetings = computed(
-	() => `Hello, ${userStore.currentUser?.firstName ?? userStore.currentUser?.fullName ?? 'User'}!`,
-);
+const greetings = computed(() => {
+	const name =
+		userStore.currentUser?.firstName ??
+		userStore.currentUser?.fullName ??
+		i18n.baseText('chatHub.chat.greeting.fallback');
+	return i18n.baseText('chatHub.chat.greeting', { interpolate: { name } });
+});
 </script>
 
 <template>
