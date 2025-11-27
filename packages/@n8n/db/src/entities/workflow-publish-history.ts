@@ -10,7 +10,6 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	id: number;
 
 	@Column({ type: 'varchar' })
-	@Index()
 	workflowId: string;
 
 	@Column({ type: 'varchar' })

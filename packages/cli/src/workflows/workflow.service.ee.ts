@@ -378,6 +378,12 @@ export class EnterpriseWorkflowService {
 		return [...usedCredentials.values()];
 	}
 
+	private isActiveWorkflow(
+		workflow: WorkflowEntity,
+	): workflow is WorkflowEntity & { activeVersionId: string } {
+		return workflow.activeVersionId !== null;
+	}
+
 	async transferFolder(
 		user: User,
 		sourceProjectId: string,
@@ -403,9 +409,7 @@ export class EnterpriseWorkflowService {
 			},
 		});
 
-		const activeWorkflows = workflows
-			.filter((w) => w.activeVersionId !== null)
-			.map((w) => w as WorkflowEntity & { activeVersionId: string });
+		const activeWorkflows = workflows.filter((x) => this.isActiveWorkflow(x));
 
 		// 3. get destination project
 		const destinationProject = await this.projectService.getProjectWithScope(

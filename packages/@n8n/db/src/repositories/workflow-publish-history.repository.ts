@@ -22,34 +22,4 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 			userId,
 		});
 	}
-
-	async getLastActivatedVersion(workflowId: string) {
-		return await this.findOne({
-			select: ['versionId'],
-			where: {
-				workflowId,
-				status: 'activated',
-			},
-			order: { createdAt: 'DESC' },
-		});
-	}
-
-	async getPublishedVersions(workflowId: string, includeUser?: boolean) {
-		const select: Array<keyof WorkflowPublishHistory> = ['versionId', 'createdAt'];
-		if (includeUser) {
-			select.push('user');
-		}
-		const result = await this.find({
-			select,
-			where: {
-				workflowId,
-				status: 'activated',
-			},
-			relations: {
-				user: includeUser,
-			},
-		});
-
-		return result;
-	}
 }
