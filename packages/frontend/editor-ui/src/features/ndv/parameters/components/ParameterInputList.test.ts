@@ -8,6 +8,7 @@ import {
 	createMockNodeTypes,
 	mockLoadedNodeType,
 } from '@/__tests__/mocks';
+import { fireEvent } from '@testing-library/vue';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 
@@ -337,42 +338,121 @@ describe('ParameterInputList', () => {
 	 * Critical for maintaining parent-child communication during refactoring.
 	 */
 	describe('Event Emissions', () => {
-		it('should emit valueChanged event', () => {
-			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { emitted } = renderComponent({
-				props: {
-					parameters: TEST_PARAMETERS,
-					nodeValues: TEST_NODE_VALUES,
+		// Create a separate render function for event emission tests that uses interactive stubs
+		const renderWithInteractiveStub = createComponentRenderer(ParameterInputList, {
+			props: {
+				hideDelete: true,
+				indent: true,
+				isReadOnly: false,
+			},
+			global: {
+				stubs: {
+					Suspense: { template: '<div data-test-id="suspense-stub"><slot></slot></div>' },
 				},
-			});
-
-			// Simulate value change through the component
-			// The actual emission would happen through child component interactions
-			expect(emitted()).toBeDefined();
+			},
 		});
 
-		it('should emit parameterBlur event', () => {
+		it('should emit valueChanged event when child component emits update', async () => {
+			// Use a string parameter that renders ParameterInputFull (not fixedCollection, notice, or callout)
+			const stringParameter: INodeProperties[] = [
+				{
+					displayName: 'Test String',
+					name: 'testString',
+					type: 'string',
+					default: '',
+				},
+			];
+
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { emitted } = renderComponent({
+			const { getByTestId, emitted } = renderWithInteractiveStub({
 				props: {
-					parameters: TEST_PARAMETERS,
-					nodeValues: TEST_NODE_VALUES,
+					parameters: stringParameter,
+					nodeValues: { testString: '' },
+				},
+				global: {
+					stubs: {
+						// Create a stub that emits update event when clicked
+						ParameterInputFull: {
+							template:
+								"<div data-test-id=\"parameter-input-clickable\" @click=\"$emit('update', { name: 'testParam', value: 'testValue' })\"></div>",
+							emits: ['update', 'blur'],
+						},
+					},
 				},
 			});
 
-			expect(emitted()).toBeDefined();
+			// Click on the stubbed ParameterInputFull to trigger the update event
+			const parameterInput = getByTestId('parameter-input-clickable');
+			await fireEvent.click(parameterInput);
+
+			expect(emitted('valueChanged')).toBeDefined();
+			expect(emitted('valueChanged')).toHaveLength(1);
+			expect(emitted('valueChanged')![0]).toEqual([{ name: 'testParam', value: 'testValue' }]);
 		});
 
-		it('should emit activate event when notice action is triggered', () => {
+		it('should emit parameterBlur event when child component emits blur', async () => {
+			// Use a string parameter that renders ParameterInputFull (not fixedCollection, notice, or callout)
+			const stringParameter: INodeProperties[] = [
+				{
+					displayName: 'Test String',
+					name: 'testString',
+					type: 'string',
+					default: '',
+				},
+			];
+
 			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
-			const { emitted } = renderComponent({
+			const { getByTestId, emitted } = renderWithInteractiveStub({
 				props: {
-					parameters: TEST_PARAMETERS,
+					parameters: stringParameter,
+					nodeValues: { testString: '' },
+				},
+				global: {
+					stubs: {
+						// Create a stub that emits blur event when focused out
+						ParameterInputFull: {
+							template:
+								'<div data-test-id="parameter-input-blurable" tabindex="0" @blur="$emit(\'blur\')"></div>',
+							emits: ['update', 'blur'],
+						},
+					},
+				},
+			});
+
+			// Trigger blur on the stubbed ParameterInputFull
+			const parameterInput = getByTestId('parameter-input-blurable');
+			await fireEvent.blur(parameterInput);
+
+			expect(emitted('parameterBlur')).toBeDefined();
+			expect(emitted('parameterBlur')).toHaveLength(1);
+		});
+
+		it('should emit activate event when notice action is triggered', async () => {
+			// Create a notice parameter with an activate action link
+			const noticeWithActivateAction: INodeProperties[] = [
+				{
+					displayName: 'Click to <a href="#" data-key="activate">activate</a> this feature',
+					name: 'activateNotice',
+					type: 'notice',
+					default: '',
+				},
+			];
+
+			ndvStore.activeNode = TEST_NODE_NO_ISSUES;
+			const { container, emitted } = renderComponent({
+				props: {
+					parameters: noticeWithActivateAction,
 					nodeValues: TEST_NODE_VALUES,
 				},
 			});
 
-			expect(emitted()).toBeDefined();
+			// Find and click the activate link within the notice
+			const activateLink = container.querySelector('a[data-key="activate"]');
+			expect(activateLink).toBeInTheDocument();
+			await activateLink!.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+
+			expect(emitted('activate')).toBeDefined();
+			expect(emitted('activate')).toHaveLength(1);
 		});
 	});
 
