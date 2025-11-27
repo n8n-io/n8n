@@ -30,6 +30,7 @@ describe('JS TaskRunner execution on internal mode', () => {
 	runnerConfig.mode = 'internal';
 	runnerConfig.enabled = true;
 	runnerConfig.port = 45678;
+	runnerConfig.isNativePythonRunnerEnabled = false;
 
 	const taskRunnerModule = Container.get(TaskRunnerModule);
 	const taskRequester = Container.get(LocalTaskRequester);

@@ -38,7 +38,6 @@ docker buildx build \
 N8N_RUNNERS_ENABLED=true \
 N8N_RUNNERS_MODE=external \
 N8N_RUNNERS_AUTH_TOKEN=test \
-N8N_NATIVE_PYTHON_RUNNER=true \
 N8N_LOG_LEVEL=debug \
 pnpm start
 ```
