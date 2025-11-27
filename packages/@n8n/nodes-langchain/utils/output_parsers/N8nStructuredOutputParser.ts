@@ -33,7 +33,6 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 		]);
 
 		try {
-			const jsonString = text.includes('```') ? text.split(/```(?:json)?/)[1] : text;
 			// Extract JSON from markdown code fence if present
 			// Using regex to properly match code fences, even if backticks appear in the JSON content
 			let jsonString = text.trim();
