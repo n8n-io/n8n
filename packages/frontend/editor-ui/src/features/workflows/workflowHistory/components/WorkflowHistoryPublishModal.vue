@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import Modal from '@/app/components/Modal.vue';
-import { N8nHeading, N8nButton, N8nCallout } from '@n8n/design-system';
+import { N8nHeading, N8nButton } from '@n8n/design-system';
 import WorkflowPublishForm from '@/app/components/WorkflowPublishForm.vue';
 import { WORKFLOW_HISTORY_PUBLISH_MODAL_KEY } from '@/app/constants';
 import { useI18n } from '@n8n/i18n';
@@ -115,9 +115,6 @@ const handlePublish = async () => {
 		</template>
 		<template #content>
 			<div :class="$style.content">
-				<N8nCallout theme="warning" icon="triangle-alert">
-					{{ i18n.baseText('workflowHistory.publishModal.description') }}
-				</N8nCallout>
 				<WorkflowPublishForm
 					ref="publishForm"
 					v-model:version-name="versionName"
