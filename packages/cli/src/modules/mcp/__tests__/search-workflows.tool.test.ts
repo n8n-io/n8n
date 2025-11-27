@@ -49,7 +49,7 @@ describe('search-workflows MCP tool', () => {
 			const workflows = [
 				createWorkflow({
 					id: 'a',
-					activeVersionId: new Date().getTime(),
+					activeVersionId: new Date().getTime().toString(),
 					name: 'Alpha',
 					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
 				}),
