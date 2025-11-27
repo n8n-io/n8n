@@ -39,5 +39,9 @@ export const toExecutionContextEstablishmentHookParameter = (value: unknown) => 
 	if (value === null || value === undefined || typeof value !== 'object') {
 		return null;
 	}
+	// Quick check to avoid unnecessary parsing attempts
+	if (!('executionsHooksVersion' in value)) {
+		return null;
+	}
 	return ExecutionContextEstablishmentHookParameterSchema.safeParse(value);
 };

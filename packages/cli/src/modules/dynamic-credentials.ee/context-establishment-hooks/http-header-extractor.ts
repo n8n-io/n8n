@@ -29,6 +29,10 @@ function isUnsafeRegexPattern(pattern: string): boolean {
 	return nestedQuantifier.test(pattern) || overlappingAlt.test(pattern);
 }
 
+function isHeaderObject(obj: unknown): obj is Record<string, unknown> {
+	return obj !== null && obj !== undefined && typeof obj === 'object' && !Array.isArray(obj);
+}
+
 // Reusable VM context and pre-compiled script for safe regex execution
 // This avoids memory overhead of creating new contexts per call
 const regexContext = createContext({
@@ -123,14 +127,9 @@ export class HttpHeaderExtractor implements IContextEstablishmentHook {
 		}
 
 		const [triggerItem] = options.triggerItems;
-		const headers = triggerItem.json['headers'] as Record<string, unknown> | undefined;
+		const headers = triggerItem.json['headers'];
 
-		if (
-			headers &&
-			typeof headers === 'object' &&
-			!Array.isArray(headers) &&
-			normalizedHeaderName in headers
-		) {
+		if (isHeaderObject(headers) && normalizedHeaderName in headers) {
 			const headerValue = headers[normalizedHeaderName];
 
 			if (typeof headerValue === 'string') {

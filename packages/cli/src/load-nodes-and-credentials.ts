@@ -281,9 +281,13 @@ export class LoadNodesAndCredentials {
 		});
 	}
 
+	private shouldInjectContextEstablishmentHooks() {
+		return process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS === 'true';
+	}
+
 	private injectContextEstablishmentHooks() {
 		// Check if the feature is enabled via environment variable
-		const isEnabled = process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS === 'true';
+		const isEnabled = this.shouldInjectContextEstablishmentHooks();
 
 		if (!isEnabled) {
 			this.logger.debug('Context establishment hooks feature is disabled');
@@ -566,7 +570,10 @@ export class LoadNodesAndCredentials {
 			throw new UnrecognizedNodeTypeError(packageName, nodeType);
 		}
 		const loadedNode = loader.getNode(nodeType);
-		if ('properties' in loadedNode.type.description) {
+		if (
+			this.shouldInjectContextEstablishmentHooks() &&
+			'properties' in loadedNode.type.description
+		) {
 			this.augmentNodeTypeDescription(loadedNode.type.description);
 		}
 		return loadedNode;
