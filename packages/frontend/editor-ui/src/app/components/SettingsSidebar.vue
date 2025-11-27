@@ -7,7 +7,7 @@ import { hasPermission } from '@/app/utils/rbac/permissions';
 import { useI18n } from '@n8n/i18n';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 
 import { N8nIcon, N8nLink, N8nMenuItem, N8nText, type IMenuItem } from '@n8n/design-system';
 const emit = defineEmits<{
@@ -15,6 +15,7 @@ const emit = defineEmits<{
 }>();
 
 const router = useRouter();
+const route = useRoute();
 const i18n = useI18n();
 
 const { canUserAccessRouteByName } = useUserHelpers(router);
@@ -143,6 +144,17 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 });
 
 const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item.available));
+
+const isItemActive = (item: IMenuItem) => {
+	if (!item.route?.to) return false;
+
+	// Check if route name matches
+	if (typeof item.route.to === 'object' && 'name' in item.route.to) {
+		return route.name === item.route.to.name;
+	}
+
+	return false;
+};
 </script>
 
 <template>
@@ -154,7 +166,12 @@ const visibleItems = computed(() => sidebarMenuItems.value.filter((item) => item
 			<N8nText bold>{{ i18n.baseText('settings') }}</N8nText>
 		</div>
 		<div :class="$style.items">
-			<N8nMenuItem v-for="item in visibleItems" :key="item.id" :item="item" />
+			<N8nMenuItem
+				v-for="item in visibleItems"
+				:key="item.id"
+				:item="item"
+				:active="isItemActive(item)"
+			/>
 		</div>
 		<div :class="$style.versionContainer">
 			<N8nLink size="small" @click="uiStore.openModal(ABOUT_MODAL_KEY)">
