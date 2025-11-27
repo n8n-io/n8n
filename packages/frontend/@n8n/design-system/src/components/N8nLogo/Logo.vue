@@ -15,7 +15,7 @@ const props = defineProps<
 				collapsed: boolean;
 		  }
 	) & {
-		releaseChannel?: 'stable' | 'beta' | 'nightly' | 'dev';
+		releaseChannel?: 'stable' | 'beta' | 'nightly' | 'dev' | '1' | 'rc';
 	}
 >();
 
