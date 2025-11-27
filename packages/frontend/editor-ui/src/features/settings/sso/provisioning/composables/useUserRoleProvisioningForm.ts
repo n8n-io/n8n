@@ -1,4 +1,4 @@
-import type { Ref } from 'vue';
+import { computed, type Ref } from 'vue';
 import { useUserRoleProvisioningStore } from './userRoleProvisioning.store';
 import type { ProvisioningConfig } from '@n8n/rest-api-client/api/provisioning';
 import { type UserRoleProvisioningSetting } from '../components/UserRoleProvisioningDropdown.vue';
@@ -47,20 +47,21 @@ export function useUserRoleProvisioningForm(
 		}
 	};
 
-	const isUserRoleProvisioningChanged = (): boolean => {
+	const isUserRoleProvisioningChanged = computed<boolean>(() => {
 		return (
 			getUserRoleProvisioningValueFromConfig(provisioningStore.provisioningConfig) !==
 			userRoleProvisioning.value
 		);
-	};
+	});
 
 	/**
 	 * Saves the current user role provisioning setting to the store.
 	 */
-	const saveProvisioningConfig = async (): Promise<void> => {
-		await provisioningStore.saveProvisioningConfig(
-			getProvisioningConfigFromFormValue(userRoleProvisioning.value),
-		);
+	const saveProvisioningConfig = async (isDisablingSso: boolean): Promise<void> => {
+		const newSetting: UserRoleProvisioningSetting = isDisablingSso
+			? 'disabled'
+			: userRoleProvisioning.value;
+		await provisioningStore.saveProvisioningConfig(getProvisioningConfigFromFormValue(newSetting));
 	};
 
 	return {

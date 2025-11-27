@@ -100,14 +100,28 @@ const cannotSaveOidcSettings = computed(() => {
 		ssoStore.oidcConfig?.discoveryEndpoint === discoveryEndpoint.value &&
 		ssoStore.oidcConfig?.loginEnabled === ssoStore.isOidcLoginEnabled &&
 		ssoStore.oidcConfig?.prompt === prompt.value &&
-		!isUserRoleProvisioningChanged() &&
+		!isUserRoleProvisioningChanged.value &&
 		storedAcrString === authenticationContextClassReference.value &&
 		currentAcrString === storedAcrString
 	);
 });
 
 async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false) {
-	if (ssoStore.oidcConfig?.loginEnabled && !ssoStore.isOidcLoginEnabled) {
+	const isLoginEnabledChanged = ssoStore.oidcConfig?.loginEnabled !== ssoStore.isOidcLoginEnabled;
+	const isEnablingOidcLogin = isLoginEnabledChanged && !ssoStore.oidcConfig?.loginEnabled;
+
+	if (
+		!provisioningChangesConfirmed &&
+		((isUserRoleProvisioningChanged.value && ssoStore.oidcConfig?.loginEnabled) ||
+			(isEnablingOidcLogin && userRoleProvisioning.value !== 'disabled'))
+	) {
+		showUserRoleProvisioningDialog.value = true;
+		return;
+	}
+
+	const isDisablingOidcLogin = isLoginEnabledChanged && ssoStore.oidcConfig?.loginEnabled === true;
+
+	if (isDisablingOidcLogin) {
 		const confirmAction = await message.confirm(
 			i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.message', {
 				interpolate: { protocol: 'OIDC' },
@@ -127,11 +141,6 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 		if (confirmAction !== MODAL_CONFIRM) return;
 	}
 
-	if (isUserRoleProvisioningChanged() && !provisioningChangesConfirmed) {
-		showUserRoleProvisioningDialog.value = true;
-		return;
-	}
-
 	const acrArray = authenticationContextClassReference.value
 		.split(',')
 		.map((s) => s.trim())
@@ -147,12 +156,15 @@ async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false)
 			loginEnabled: ssoStore.isOidcLoginEnabled,
 			authenticationContextClassReference: acrArray,
 		});
+		await saveProvisioningConfig(isDisablingOidcLogin);
 
-		if (isUserRoleProvisioningChanged()) {
-			await saveProvisioningConfig();
-			sendTrackingEventForUserProvisioning();
-			showUserRoleProvisioningDialog.value = false;
+		if (isDisablingOidcLogin) {
+			userRoleProvisioning.value = 'disabled';
 		}
+		if (isUserRoleProvisioningChanged.value) {
+			sendTrackingEventForUserProvisioning();
+		}
+		showUserRoleProvisioningDialog.value = false;
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.OIDC;

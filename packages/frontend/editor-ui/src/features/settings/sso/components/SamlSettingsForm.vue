@@ -102,7 +102,7 @@ const isSaveEnabled = computed(() => {
 	};
 	const isSamlLoginEnabledChanged = ssoStore.isSamlLoginEnabled !== samlLoginEnabled.value;
 	return (
-		isUserRoleProvisioningChanged() || isIdentityProviderChanged() || isSamlLoginEnabledChanged
+		isUserRoleProvisioningChanged.value || isIdentityProviderChanged() || isSamlLoginEnabledChanged
 	);
 });
 
@@ -190,7 +190,8 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 		savingForm.value = true;
 		validateSamlInput();
 
-		const isDisablingSamlLogin = ssoStore.isSamlLoginEnabled && !samlLoginEnabled.value;
+		const loginEnabledChanged = samlLoginEnabled.value !== ssoStore.isSamlLoginEnabled;
+		const isDisablingSamlLogin = loginEnabledChanged && ssoStore.isSamlLoginEnabled === true;
 
 		if (isDisablingSamlLogin) {
 			const confirmDisablingSaml = await promptConfirmDisablingSamlLogin();
@@ -199,9 +200,18 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			}
 		}
 
-		if (!isDisablingSamlLogin && isUserRoleProvisioningChanged() && !provisioningChangesConfirmed) {
+		const isEnablingSamlLogin = loginEnabledChanged && !ssoStore.isSamlLoginEnabled;
+
+		if (
+			!provisioningChangesConfirmed &&
+			((isUserRoleProvisioningChanged.value && ssoStore.isSamlLoginEnabled) ||
+				(isEnablingSamlLogin && userRoleProvisioning.value !== 'disabled'))
+		) {
 			showUserRoleProvisioningDialog.value = true;
 			return;
+		}
+		if (provisioningChangesConfirmed) {
+			showUserRoleProvisioningDialog.value = false;
 		}
 
 		const metaDataConfig: Partial<SamlPreferences> =
@@ -226,10 +236,12 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			loginEnabled: samlLoginEnabled.value,
 		});
 
-		if (isUserRoleProvisioningChanged()) {
-			await saveProvisioningConfig();
+		await saveProvisioningConfig(isDisablingSamlLogin);
+		if (isDisablingSamlLogin) {
+			userRoleProvisioning.value = 'disabled';
+		}
+		if (isUserRoleProvisioningChanged.value) {
 			sendTrackingEventForUserProvisioning();
-			showUserRoleProvisioningDialog.value = false;
 		}
 
 		// Update store with saved protocol selection
