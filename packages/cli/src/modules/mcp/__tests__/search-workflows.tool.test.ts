@@ -9,6 +9,8 @@ import { Telemetry } from '@/telemetry';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
+import { v4 as uuid } from 'uuid';
+
 describe('search-workflows MCP tool', () => {
 	const user = Object.assign(new User(), { id: 'user-1' });
 
@@ -49,7 +51,7 @@ describe('search-workflows MCP tool', () => {
 			const workflows = [
 				createWorkflow({
 					id: 'a',
-					activeVersionId: new Date().getTime().toString(),
+					activeVersionId: uuid(),
 					name: 'Alpha',
 					nodes: [{ name: 'Start', type: MANUAL_TRIGGER_NODE_TYPE } as INode],
 				}),
