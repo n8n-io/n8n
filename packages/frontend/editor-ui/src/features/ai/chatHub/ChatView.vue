@@ -367,7 +367,7 @@ watch(
 	{ immediate: true },
 );
 
-async function onSubmit(message: string, attachments: File[]) {
+function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
 		isResponding.value ||
