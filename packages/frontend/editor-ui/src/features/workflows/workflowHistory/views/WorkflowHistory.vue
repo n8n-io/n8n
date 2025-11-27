@@ -99,14 +99,16 @@ const isDraftPublishEnabled = computed(() =>
 );
 
 const actions = computed<Array<UserAction<IUser>>>(() =>
-	workflowHistoryActionTypes.map((value) => ({
-		label: i18n.baseText(`workflowHistory.item.actions.${value}`),
-		disabled:
-			(value === 'clone' && !workflowPermissions.value.create) ||
-			(value === 'restore' && !workflowPermissions.value.update) ||
-			((value === 'publish' || value === 'unpublish') && !workflowPermissions.value.update),
-		value,
-	})),
+	workflowHistoryActionTypes
+		.filter((value) => !(value === 'publish' && activeWorkflow.value?.isArchived))
+		.map((value) => ({
+			label: i18n.baseText(`workflowHistory.item.actions.${value}`),
+			disabled:
+				(value === 'clone' && !workflowPermissions.value.create) ||
+				(value === 'restore' && !workflowPermissions.value.update) ||
+				((value === 'publish' || value === 'unpublish') && !workflowPermissions.value.update),
+			value,
+		})),
 );
 
 const isFirstItemShown = computed(() => workflowHistory.value[0]?.versionId === versionId.value);
