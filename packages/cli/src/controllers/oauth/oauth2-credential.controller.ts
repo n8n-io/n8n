@@ -277,7 +277,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		codeChallengeMethods: string[],
 	): { grantType: OAuth2GrantType; authentication?: OAuth2AuthenticationMethod } {
 		if (grantTypes.includes('authorization_code') && grantTypes.includes('refresh_token')) {
-			if (codeChallengeMethods.includes('S256') && tokenEndpointAuthMethods.includes('none')) {
+			if (codeChallengeMethods.includes('S256')) {
 				return { grantType: 'pkce' };
 			}
 
