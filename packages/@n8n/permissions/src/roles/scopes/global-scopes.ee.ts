@@ -112,6 +112,7 @@ export const GLOBAL_OWNER_SCOPES: Scope[] = [
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
 	'breakingChanges:list',
+	'apiKey:manage',
 ];
 
 export const GLOBAL_ADMIN_SCOPES = GLOBAL_OWNER_SCOPES.concat();
@@ -141,6 +142,7 @@ export const GLOBAL_MEMBER_SCOPES: Scope[] = [
 	'chatHubAgent:update',
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
+	'apiKey:manage',
 ];
 
 export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [
