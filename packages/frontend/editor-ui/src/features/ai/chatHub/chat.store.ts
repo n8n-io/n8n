@@ -805,7 +805,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		return {
 			model,
-			name: '',
+			name:
+				model.provider === 'n8n'
+					? `Workflow ${model.workflowId}`
+					: model.provider === 'custom-agent'
+						? `Custom agent ${model.agentId}`
+						: model.model,
 			description: null,
 			createdAt: null,
 			updatedAt: null,
