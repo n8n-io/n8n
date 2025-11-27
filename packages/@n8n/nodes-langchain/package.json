@@ -50,7 +50,8 @@
       "dist/credentials/WolframAlphaApi.credentials.js",
       "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
-      "dist/credentials/ZepApi.credentials.js"
+      "dist/credentials/ZepApi.credentials.js",
+      "dist/credentials/BurnCloudApi.credentials.ts"
     ],
     "nodes": [
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",
@@ -101,6 +102,7 @@
       "dist/nodes/llms/LMLemonade/LmLemonade.node.js",
       "dist/nodes/llms/LMOllama/LmOllama.node.js",
       "dist/nodes/llms/LMOpenHuggingFaceInference/LmOpenHuggingFaceInference.node.js",
+      "dist/nodes/llms/LmChatBurnCloud/LmChatBurnCloud.node.js",
       "dist/nodes/mcp/McpClient/McpClient.node.js",
       "dist/nodes/mcp/McpClientTool/McpClientTool.node.js",
       "dist/nodes/mcp/McpTrigger/McpTrigger.node.js",

@@ -13251,5 +13251,29 @@
 			}
 		},
 		"type": "node"
+	},
+	{
+		"uuid": "268d3763-de4f-45be-88d1-e50d1804e4da",
+		"key": "@n8n/n8n-nodes-langchain.lmChatBurnCloud",
+		"subcategory": "*",
+		"properties": {
+			"displayName": "BurnCloud Chat Model",
+			"defaults": {
+				"name": "BurnCloud Chat Model"
+			},
+			"description": "Language Model BurnCloud",
+			"name": "@n8n/n8n-nodes-langchain.lmChatBurnCloud",
+			"group": ["transform"],
+			"iconUrl": "icons/@n8n/n8n-nodes-langchain/dist/nodes/llms/LmChatBurnCloud/burncloud.svg",
+			"outputs": ["ai_languageModel"],
+			"codex": {
+				"categories": ["AI"],
+				"subcategories": {
+					"AI": ["Language Models", "Root Nodes"],
+					"Language Models": ["Chat Models (Recommended)"]
+				}
+			}
+		},
+		"type": "node"
 	}
 ]

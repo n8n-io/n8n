@@ -67,6 +67,7 @@ Purpose: Orchestrates logic, tool use, and LLM calls for intelligent responses
 - Google Gemini Chat Model (@n8n/n8n-nodes-langchain.lmChatGoogleGemini)
 - xAI Grok Chat Model (@n8n/n8n-nodes-langchain.lmChatXAiGrok)
 - DeepSeek Chat Model (@n8n/n8n-nodes-langchain.lmChatDeepSeek)
+- BurnCloud Chat Model (@n8n/n8n-nodes-langchain.lmChatBurnCloud)
 
 Purpose: Connect to LLMs for natural, context-aware responses
 
