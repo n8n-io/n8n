@@ -246,6 +246,81 @@ describe('OAuth2CredentialController', () => {
 				});
 			},
 		);
+
+		it.each([
+			[
+				{
+					authorization_endpoint: 'invalid',
+					token_endpoint: 'https://example.com/token',
+					registration_endpoint: 'https://example.com/registration',
+				},
+			],
+			[
+				{
+					authorization_endpoint: 'https://example.com/auth',
+					token_endpoint: 'invalid',
+					registration_endpoint: 'https://example.com/registration',
+				},
+			],
+			[
+				{
+					authorization_endpoint: 'https://example.com/auth',
+					token_endpoint: 'https://example.com/token',
+					registration_endpoint: 'invalid',
+				},
+			],
+		])(
+			'should throw a BadRequestError when OAuth2 server metadata is invalid',
+			async (response) => {
+				credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+				credentialsHelper.getDecrypted.mockResolvedValueOnce({});
+				credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
+					useDynamicClientRegistration: true,
+					serverUrl: 'https://example.com',
+				});
+				nock('https://example.com')
+					.get('/.well-known/oauth-authorization-server')
+					.reply(200, response);
+
+				const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+				await expect(controller.getAuthUri(req)).rejects.toThrowError(
+					/Invalid OAuth2 server metadata/,
+				);
+			},
+		);
+
+		it('should throw a BadRequestError when the registration response is invalid', async () => {
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
+				useDynamicClientRegistration: true,
+				serverUrl: 'https://example.com',
+			});
+			nock('https://example.com')
+				.get('/.well-known/oauth-authorization-server')
+				.reply(200, {
+					authorization_endpoint: 'https://example.com/auth',
+					token_endpoint: 'https://example.com/token',
+					registration_endpoint: 'https://example.com/registration',
+					grant_types_supported: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					code_challenge_methods_supported: ['S256'],
+				})
+				.post('/registration', {
+					redirect_uris: ['http://localhost:5678/rest/oauth2-credential/callback'],
+					token_endpoint_auth_method: 'client_secret_basic',
+					grant_types: ['authorization_code', 'refresh_token'],
+					response_types: ['code'],
+					client_name: 'n8n',
+					client_uri: 'https://n8n.io/',
+				})
+				.reply(200, { invalid: 'invalid' });
+
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			await expect(controller.getAuthUri(req)).rejects.toThrowError(
+				/Invalid client registration response/,
+			);
+		});
 	});
 
 	describe('handleCallback', () => {
