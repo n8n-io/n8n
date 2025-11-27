@@ -11,6 +11,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	AuthenticatedRequest,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import {
 	Body,
@@ -87,6 +88,7 @@ export class WorkflowsController {
 		private readonly folderService: FolderService,
 		private readonly workflowFinderService: WorkflowFinderService,
 		private readonly executionService: ExecutionService,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	@Post('/')

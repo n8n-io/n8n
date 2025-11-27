@@ -20,6 +20,7 @@ import {
 	WorkflowHistoryRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -42,6 +43,7 @@ import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 import { makeWorkflow, MOCK_PINDATA } from '../shared/utils/';
+import { vi } from 'zod/dist/types/v4/locales';
 
 let owner: User;
 let member: User;
@@ -68,6 +70,7 @@ let workflowHistoryRepository: WorkflowHistoryRepository;
 let eventService: EventService;
 let globalConfig: GlobalConfig;
 let folderListMissingRole: Role;
+let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
 beforeEach(async () => {
 	await testDb.truncate([
@@ -86,6 +89,7 @@ beforeEach(async () => {
 	workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 	eventService = Container.get(EventService);
 	globalConfig = Container.get(GlobalConfig);
+	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
 	member = await createMember();
@@ -2503,6 +2507,8 @@ describe('PATCH /workflows/:workflowId', () => {
 	});
 
 	test('should activate workflow without changing version ID', async () => {
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+
 		const workflow = await createWorkflowWithHistory({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
@@ -2522,9 +2528,16 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(versionId).toBe(workflow.versionId);
 		expect(active).toBe(true);
 		expect(activeVersionId).toBe(workflow.versionId);
+		expect(addRecordSpy).toBeCalledWith({
+			status: 'activated',
+			userId: owner.id,
+			versionId: workflow.versionId,
+			workflowId: workflow.id,
+		});
 	});
 
 	test('should deactivate workflow without changing version ID', async () => {
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 		const payload = {
 			versionId: workflow.versionId,
@@ -2545,6 +2558,12 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(versionId).toBe(workflow.versionId);
 		expect(active).toBe(false);
 		expect(activeVersionId).toBeNull();
+		expect(addRecordSpy).toBeCalledWith({
+			status: 'deactivated',
+			userId: owner.id,
+			versionId: workflow.versionId,
+			workflowId: workflow.id,
+		});
 	});
 
 	test('should set activeVersionId when activating via PATCH', async () => {
@@ -2769,6 +2788,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		});
 
 		test('should not deactivate workflow when updating with active: false', async () => {
+			const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 			const workflow = await createActiveWorkflow({}, owner);
 			await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -2784,6 +2804,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const { data } = response.body;
 			expect(data.activeVersionId).toBe(workflow.versionId);
+			expect(addRecordSpy).not.toBeCalled();
 		});
 
 		test('should NOT write "active" field to database when updating with active: true', async () => {
@@ -2841,6 +2862,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		});
 
 		test('should allow updating active workflow without updating its active version', async () => {
+			const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 			const workflow = await createActiveWorkflow({}, owner);
 			await setActiveVersion(workflow.id, workflow.versionId);
 
@@ -2859,12 +2881,14 @@ describe('PATCH /workflows/:workflowId', () => {
 			expect(data.name).toBe('Updated Active Workflow');
 			expect(data.versionId).not.toBe(workflow.versionId); // New version created
 			expect(data.activeVersionId).toBe(workflow.versionId); // Should remain active
+			expect(addRecordSpy).not.toBeCalled();
 		});
 	});
 });
 
 describe('POST /workflows/:workflowId/activate', () => {
 	test('should activate workflow with provided versionId', async () => {
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		const response = await authOwnerAgent
@@ -2878,6 +2902,12 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(data.id).toBe(workflow.id);
 		expect(data.activeVersionId).toBe(workflow.versionId);
 		expect(data.activeVersion.versionId).toBe(workflow.versionId);
+		expect(addRecordSpy).toBeCalledWith({
+			status: 'activated',
+			userId: owner.id,
+			versionId: workflow.versionId,
+			workflowId: workflow.id,
+		});
 	});
 
 	test('should send activated event', async () => {
@@ -3012,6 +3042,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
 
 		const emitSpy = jest.spyOn(eventService, 'emit');
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 
 		activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Validation failed'));
 
@@ -3032,9 +3063,11 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(updatedWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
 
 		expect(emitSpy).not.toHaveBeenCalledWith('workflow-deactivated', expect.anything());
+		expect(addRecordSpy).not.toBeCalled();
 	});
 
 	test('should call active workflow manager with activate mode if workflow is not active', async () => {
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflowWithHistory({}, owner);
 
 		await authOwnerAgent
@@ -3042,9 +3075,16 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: workflow.versionId });
 
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(addRecordSpy).toBeCalledWith({
+			status: 'activated',
+			userId: owner.id,
+			versionId: workflow.versionId,
+			workflowId: workflow.id,
+		});
 	});
 
 	test('should call active workflow manager with update mode if workflow is active', async () => {
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 
 		const newVersionId = uuid();
@@ -3055,11 +3095,18 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: newVersionId });
 
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update');
+		expect(addRecordSpy).toBeCalledWith({
+			status: 'activated',
+			userId: owner.id,
+			versionId: workflow.versionId,
+			workflowId: workflow.id,
+		});
 	});
 });
 
 describe('POST /workflows/:workflowId/deactivate', () => {
 	test('should deactivate active workflow', async () => {
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createActiveWorkflow({}, owner);
 
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
@@ -3071,6 +3118,12 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 		expect(data.id).toBe(workflow.id);
 		expect(data.active).toBe(false);
 		expect(data.activeVersionId).toBeNull();
+		expect(addRecordSpy).toBeCalledWith({
+			status: 'deactivated',
+			userId: owner.id,
+			versionId: workflow.versionId,
+			workflowId: workflow.id,
+		});
 	});
 
 	test('should send deactivated event', async () => {
@@ -3083,12 +3136,14 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 	});
 
 	test('should handle deactivating already inactive workflow', async () => {
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const workflow = await createWorkflow({}, owner);
 
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
 
 		expect(response.statusCode).toBe(200);
 		expect(activeWorkflowManagerLike.remove).not.toBeCalled();
+		expect(addRecordSpy).not.toBeCalled();
 
 		const { data } = response.body;
 		expect(data.activeVersionId).toBeNull();

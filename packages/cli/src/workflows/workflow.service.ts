@@ -447,6 +447,12 @@ export class WorkflowService {
 					workflow: updatedWorkflow,
 					publicApi: false,
 				});
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId,
+					versionId: workflow.versionId,
+					status: 'deactivated',
+					userId: user.id,
+				});
 			}
 
 			if (isNowActive) {
