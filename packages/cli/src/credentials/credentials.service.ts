@@ -537,28 +537,22 @@ export class CredentialsService {
 
 		const { manager: dbManager } = this.credentialsRepository;
 		const result = await dbManager.transaction(async (transactionManager) => {
-			let project: Project | null = null;
-
 			if (projectId === undefined) {
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
 					user.id,
 					transactionManager,
 				);
-				// Chat users are not allowed to create credentials even in their personal project
-				const hasPermission = await userHasScopes(user, ['credential:create'], false, {
-					projectId: personalProject.id,
-				});
-				if (hasPermission) {
-					project = personalProject;
-				}
-			} else {
-				project = await this.projectService.getProjectWithScope(
-					user,
-					projectId,
-					['credential:create'],
-					transactionManager,
-				);
+				// Chat users are not allowed to create credentials even within their personal project,
+				// so even though we found the project ensure it gets found via expected scope too.
+				projectId = personalProject.id;
 			}
+
+			const project = await this.projectService.getProjectWithScope(
+				user,
+				projectId,
+				['credential:create'],
+				transactionManager,
+			);
 
 			if (project === null) {
 				throw new BadRequestError(

@@ -140,27 +140,25 @@ export class WorkflowsController {
 
 		let project: Project | null = null;
 		const savedWorkflow = await dbManager.transaction(async (transactionManager) => {
-			const { projectId, parentFolderId } = req.body;
+			const { parentFolderId } = req.body;
+			let { projectId } = req.body;
+
 			if (projectId === undefined) {
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
 					req.user.id,
 					transactionManager,
 				);
-				// Chat users are not allowed to create workflows even in their personal project
-				const hasPermission = await userHasScopes(req.user, ['workflow:create'], false, {
-					projectId: personalProject.id,
-				});
-				if (hasPermission) {
-					project = personalProject;
-				}
-			} else {
-				project = await this.projectService.getProjectWithScope(
-					req.user,
-					projectId,
-					['workflow:create'],
-					transactionManager,
-				);
+				// Chat users are not allowed to create workflows even within their personal project,
+				// so even though we found the project ensure it gets found via expected scope too.
+				projectId = personalProject.id;
 			}
+
+			project = await this.projectService.getProjectWithScope(
+				req.user,
+				projectId,
+				['workflow:create'],
+				transactionManager,
+			);
 
 			if (project === null) {
 				throw new BadRequestError(
