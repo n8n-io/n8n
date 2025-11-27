@@ -79,7 +79,6 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-
 				userId: null,
 			});
 		});
@@ -97,12 +96,16 @@ describe('WorkflowPublishHistoryRepository', () => {
 				userId: null,
 			});
 
+			await new Promise((resolve) => setTimeout(resolve, 1));
+
 			await repository.addRecord({
 				workflowId: workflow.id,
 				versionId: id1,
 				status: 'deactivated',
 				userId: null,
 			});
+
+			await new Promise((resolve) => setTimeout(resolve, 1));
 
 			await repository.addRecord({
 				workflowId: workflow.id,
