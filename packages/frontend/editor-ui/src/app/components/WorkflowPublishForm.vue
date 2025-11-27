@@ -15,9 +15,17 @@ const nameInputRef = useTemplateRef<InstanceType<typeof N8nInput>>('nameInput');
 
 const i18n = useI18n();
 
+const emit = defineEmits<{
+	submit: [];
+}>();
+
 const focusInput = () => {
 	// highlight the value in the input
 	nameInputRef.value?.select();
+};
+
+const handleEnterKey = () => {
+	emit('submit');
 };
 
 defineExpose({
@@ -40,6 +48,7 @@ defineExpose({
 				:disabled="disabled"
 				size="large"
 				:data-test-id="versionNameTestId"
+				@keydown.enter="handleEnterKey"
 			/>
 		</N8nInputLabel>
 		<N8nInputLabel
