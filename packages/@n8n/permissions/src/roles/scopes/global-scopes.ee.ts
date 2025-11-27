@@ -150,7 +150,4 @@ export const GLOBAL_CHAT_USER_SCOPES: Scope[] = [
 	'chatHubAgent:update',
 	'chatHubAgent:delete',
 	'chatHubAgent:list',
-	'mcp:oauth',
-	'mcpApiKey:create',
-	'mcpApiKey:rotate',
 ];

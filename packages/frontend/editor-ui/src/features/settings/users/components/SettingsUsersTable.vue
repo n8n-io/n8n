@@ -101,10 +101,6 @@ const headers = ref<Array<TableHeader<Item>>>([
 	},
 ]);
 
-const isChatHubEnabled = computed((): boolean => {
-	return settingsStore.isChatFeatureEnabled;
-});
-
 const roles = computed<Partial<Record<Role, { label: string; desc: string }>>>(() => ({
 	[ROLE.Owner]: { label: i18n.baseText('auth.roles.owner'), desc: '' },
 	[ROLE.Admin]: {
@@ -115,7 +111,7 @@ const roles = computed<Partial<Record<Role, { label: string; desc: string }>>>((
 		label: i18n.baseText('auth.roles.member'),
 		desc: i18n.baseText('settings.users.table.row.role.description.member'),
 	},
-	...(isChatHubEnabled.value && {
+	...(settingsStore.isChatFeatureEnabled && {
 		[ROLE.ChatUser]: {
 			label: i18n.baseText('auth.roles.chatUser'),
 			desc: i18n.baseText('settings.users.table.row.role.description.chatUser'),
@@ -129,7 +125,7 @@ const roleActions = computed<Array<ActionDropdownItem<Role>>>(() => [
 		id: ROLE.Member,
 		label: i18n.baseText('auth.roles.member'),
 	},
-	...(isChatHubEnabled.value
+	...(settingsStore.isChatFeatureEnabled
 		? [
 				{
 					id: ROLE.ChatUser,
