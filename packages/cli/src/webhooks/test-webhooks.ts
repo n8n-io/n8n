@@ -179,20 +179,7 @@ export class TestWebhooks implements IWebhookManager {
 
 			this.clearTimeout(key);
 
-			const isChatTrigger = Object.values(workflow.nodes).some(
-				(node: any) =>
-					node.type === 'n8n-nodes-langchain.chatTrigger' || node.type.includes('chatTrigger'),
-			);
-
-			if (!isChatTrigger) {
-				await this.deactivateWebhooks(workflow);
-			} else {
-				// For ChatTrigger, set a longer timeout before deactivating
-				const chatWebhookKey = `${workflowEntity.id}:chat-session`;
-				this.clearTimeout(chatWebhookKey); // Clear any existing timeout
-
-				await this.deactivateWebhooks(workflow);
-			}
+			await this.deactivateWebhooks(workflow);
 		});
 	}
 
