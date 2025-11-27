@@ -50,14 +50,9 @@ const {
 	onOverviewPanelResizeEnd,
 } = useLogsPanelLayout(workflowName, popOutContainer, popOutContent, container, logsContainer);
 
-const {
-	currentSessionId,
-	messages,
-	previousChatMessages,
-	sendMessage,
-	refreshSession,
-	displayExecution,
-} = useChatState(props.isReadOnly);
+const { currentSessionId, messages, refreshSession, displayExecution } = useChatState(
+	props.isReadOnly,
+);
 
 const { entries, execution, hasChat, latestNodeNameById, resetExecutionData, loadSubExecution } =
 	useLogsExecutionData({ isEnabled: isOpen });
@@ -181,16 +176,13 @@ function handleChangeOutputTableColumnCollapsing(columnName: string | null) {
 							data-test-id="canvas-chat"
 							:is-open="isOpen"
 							:is-read-only="isReadOnly"
-							:messages="messages"
 							:session-id="currentSessionId"
-							:past-chat-messages="previousChatMessages"
 							:show-close-button="false"
 							:is-new-logs-enabled="true"
 							:is-header-clickable="!isPoppedOut"
 							@close="onToggleOpen"
 							@refresh-session="refreshSession"
 							@display-execution="displayExecution"
-							@send-message="sendMessage"
 							@click-header="onToggleOpen"
 						/>
 					</N8nResizeWrapper>

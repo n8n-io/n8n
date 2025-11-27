@@ -132,8 +132,8 @@ async function handleStreamingMessage(config: StreamingMessageConfig): Promise<v
 		onBeginMessage: (nodeId: string, runIndex?: number) => {
 			handleNodeStart(nodeId, streamingManager, runIndex);
 		},
-		onEndMessage: (nodeId: string, runIndex?: number) => {
-			handleNodeComplete(nodeId, streamingManager, runIndex);
+		onEndMessage: async (nodeId: string, runIndex?: number) => {
+			await handleNodeComplete(nodeId, streamingManager, runIndex, text, options);
 		},
 	};
 
@@ -259,11 +259,12 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 				return;
 			}
 
-			const existingSessionId = localStorage.getItem(localStorageSessionIdKey);
-			const sessionId = existingSessionId ?? uuidv4();
+			// Use provided sessionId if available, otherwise check localStorage or generate new one
+			let sessionId = options.sessionId ?? localStorage.getItem(localStorageSessionIdKey);
 
 			// Save to localStorage if it was newly generated
-			if (!existingSessionId) {
+			if (!sessionId) {
+				sessionId = uuidv4();
 				localStorage.setItem(localStorageSessionIdKey, sessionId);
 			}
 
@@ -278,21 +279,25 @@ export const ChatPlugin: Plugin<ChatOptions> = {
 			// Always set currentSessionId to preserve manually set sessionIds
 			currentSessionId.value = sessionId;
 
+			// Store the sessionId in localStorage for future use
+			localStorage.setItem(localStorageSessionIdKey, sessionId);
+
 			return sessionId;
 		}
 
 		// eslint-disable-next-line @typescript-eslint/require-await
 		async function startNewSession() {
+			// Use provided sessionId if available, otherwise generate new one
 			const existingSessionId = localStorage.getItem(localStorageSessionIdKey);
 
 			// Only preserve existing sessionId if loadPreviousSession is enabled
 			// When loadPreviousSession is false, always generate a new session
-			if (existingSessionId && options.loadPreviousSession) {
+			if (existingSessionId && options.loadPreviousSession && !options.sessionId) {
 				// Preserve existing sessionId (e.g., manually set by user)
 				currentSessionId.value = existingSessionId;
 			} else {
+				currentSessionId.value = options.sessionId ?? uuidv4();
 				// Generate new UUID and save to localStorage
-				currentSessionId.value = uuidv4();
 				localStorage.setItem(localStorageSessionIdKey, currentSessionId.value);
 			}
 		}

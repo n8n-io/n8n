@@ -41,6 +41,8 @@ test.describe('AI-812-partial-execs-broken-when-using-chat-trigger', () => {
 	test('should do partial execution when using chat trigger and context-menu execute node', async ({
 		n8n,
 	}) => {
+		// Workaround to prevent the context menu be blocked by the tabbar
+		await n8n.canvas.dragNodeToRelativePosition('Edit Fields', 0, -100);
 		await n8n.canvas.executeNodeFromContextMenu('Edit Fields');
 
 		await expect(n8n.canvas.logsPanel.getManualChatModal()).toBeVisible();

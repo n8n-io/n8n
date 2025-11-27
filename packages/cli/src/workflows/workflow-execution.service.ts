@@ -98,7 +98,14 @@ export class WorkflowExecutionService {
 		streamingEnabled?: boolean,
 		httpResponse?: Response,
 	) {
-		const { workflowData, startNodes, dirtyNodeNames, triggerToStartFrom, agentRequest } = payload;
+		const {
+			workflowData,
+			startNodes,
+			dirtyNodeNames,
+			triggerToStartFrom,
+			agentRequest,
+			chatSessionId,
+		} = payload;
 		let { runData } = payload;
 		const destinationNode = payload.destinationNode
 			? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
@@ -155,6 +162,7 @@ export class WorkflowExecutionService {
 				pushRef,
 				destinationNode,
 				triggerToStartFrom,
+				chatSessionId,
 			});
 
 			if (needsWebhook) return { waitingForWebhook: true };
