@@ -151,11 +151,6 @@ const hasSavedTimeNodes = computed(() => {
 	return savedTimeNodes.value.length > 0;
 });
 
-const timeSavedMode = ref<'fixed' | 'dynamic'>(
-	console.log('workflow', workflow.value),
-	hasSavedTimeNodes.value ? 'dynamic' : 'fixed',
-);
-
 const timeSavedModeOptions = computed(() => [
 	{
 		label: 'Fixed',
@@ -523,6 +518,9 @@ onMounted(async () => {
 
 	const workflowSettingsData = deepCopy(workflowsStore.workflowSettings);
 
+	if (workflowSettingsData.timeSavedMode === undefined) {
+		workflowSettingsData.timeSavedMode = 'fixed';
+	}
 	if (workflowSettingsData.timezone === undefined) {
 		workflowSettingsData.timezone = 'DEFAULT';
 	}
@@ -979,13 +977,14 @@ onBeforeUnmount(() => {
 								data-test-id="workflow-settings-time-saved-per-execution"
 								type="number"
 								min="0"
+								`
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
 						</div>
 						<div v-else class="ignore-key-press-canvas">
 							<N8nSelect
-								v-model="timeSavedMode"
+								v-model="workflowSettings.timeSavedMode"
 								:disabled="readOnlyEnv || !workflowPermissions.update"
 								data-test-id="workflow-settings-time-saved-mode"
 								size="medium"
@@ -1004,28 +1003,7 @@ onBeforeUnmount(() => {
 				</ElRow>
 				<!-- Fixed mode warning section (only shown in fixed mode when nodes exist) -->
 				<ElRow
-					v-if="isTimeSavedNodeExperimentEnabled && timeSavedMode === 'fixed' && hasSavedTimeNodes"
-				>
-					<ElCol :span="14" :offset="10">
-						<div :class="$style['time-saved-content']">
-							<div :class="$style['time-saved-warning']">
-								<span
-									v-n8n-html="
-										i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning', {
-											interpolate: {
-												link: `<a href='#' class='${$style['time-saved-link']}' data-action='openSavedTimeNodeCreator'>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.link')}</a>`,
-												action: `<strong>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.action')}</strong>`,
-											},
-										})
-									"
-								></span>
-							</div>
-						</div>
-					</ElCol>
-				</ElRow>
-				<!-- Minutes saved section (only shown in fixed mode) -->
-				<ElRow
-					v-if="isTimeSavedNodeExperimentEnabled && timeSavedMode === 'fixed' && !hasSavedTimeNodes"
+					v-if="isTimeSavedNodeExperimentEnabled && workflowSettings.timeSavedMode === 'fixed'"
 				>
 					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved']">
@@ -1042,10 +1020,36 @@ onBeforeUnmount(() => {
 						</div>
 					</ElCol>
 				</ElRow>
+				<ElRow
+					v-if="
+						isTimeSavedNodeExperimentEnabled &&
+						workflowSettings.timeSavedMode === 'fixed' &&
+						hasSavedTimeNodes
+					"
+				>
+					<ElCol :span="14" :offset="10">
+						<div :class="$style['time-saved-content']">
+							<div :class="$style['time-saved-warning']">
+								<span
+									v-n8n-html="
+										i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning', {
+											interpolate: {
+												link: `<a href='#' class='${$style['time-saved-link']}' data-action='openSavedTimeNodeCreator'>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.link')}</a>`,
+											},
+										})
+									"
+								></span>
+							</div>
+						</div>
+					</ElCol>
+				</ElRow>
+				<!-- Minutes saved section (only shown in fixed mode) -->
 				<!-- Active nodes section (only shown in dynamic mode when nodes exist) -->
 				<ElRow
 					v-if="
-						isTimeSavedNodeExperimentEnabled && timeSavedMode === 'dynamic' && hasSavedTimeNodes
+						isTimeSavedNodeExperimentEnabled &&
+						workflowSettings.timeSavedMode === 'dynamic' &&
+						hasSavedTimeNodes
 					"
 				>
 					<ElCol :span="14" :offset="10">
@@ -1080,7 +1084,9 @@ onBeforeUnmount(() => {
 				<!-- No nodes detected section (only shown in dynamic mode when no nodes) -->
 				<ElRow
 					v-if="
-						isTimeSavedNodeExperimentEnabled && timeSavedMode === 'dynamic' && !hasSavedTimeNodes
+						isTimeSavedNodeExperimentEnabled &&
+						workflowSettings.timeSavedMode === 'dynamic' &&
+						!hasSavedTimeNodes
 					"
 				>
 					<ElCol :span="14" :offset="10">
