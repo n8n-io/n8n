@@ -57,6 +57,58 @@ flowchart TD
 			expect(result).toEqual(expected);
 		});
 
+		it('should convert a workflow with AI agent and tools to mermaid diagram without node parameters', () => {
+			const result = mermaidStringify(aiAssistantWorkflow, { includeNodeParameters: false });
+
+			const expected = `\`\`\`mermaid
+flowchart TD
+    %% n8n-nodes-base.googleCalendarTool
+    n1["Google Calendar"]
+    %% @n8n/n8n-nodes-langchain.memoryBufferWindow
+    n2["Window Buffer Memory"]
+    %% n8n-nodes-base.gmailTool
+    n3["Get Email"]
+    %% n8n-nodes-base.telegramTrigger
+    n4["Listen for incoming events"]
+    %% n8n-nodes-base.telegram
+    n5["Telegram"]
+    %% n8n-nodes-base.if
+    n6["If"]
+    %% n8n-nodes-base.set
+    n7["Voice or Text"]
+    %% n8n-nodes-base.telegram
+    n8["Get Voice File"]
+    %% @n8n/n8n-nodes-langchain.lmChatOpenRouter
+    n9["OpenRouter"]
+    %% n8n-nodes-base.googleTasksTool
+    n10["Create a task in Google Tasks"]
+    %% n8n-nodes-base.googleTasksTool
+    n11["Get many tasks in Google Tasks"]
+    %% @n8n/n8n-nodes-langchain.openAi
+    n12["Transcribe a recording"]
+    %% n8n-nodes-base.gmailTool
+    n13["Send Email"]
+    %% @n8n/n8n-nodes-langchain.agent
+    n14["Jackie, AI Assistant 👩🏻‍🏫"]
+    n1 -.ai_tool.-> n14
+    n2 -.ai_memory.-> n14
+    n3 -.ai_tool.-> n14
+    n4 --> n7
+    n7 --> n6
+    n6 --> n8
+    n6 --> n14
+    n8 --> n12
+    n12 --> n14
+    n14 --> n5
+    n9 -.ai_languageModel.-> n14
+    n10 -.ai_tool.-> n14
+    n11 -.ai_tool.-> n14
+    n13 -.ai_tool.-> n14
+\`\`\``;
+
+			expect(result).toEqual(expected);
+		});
+
 		it('should handle workflow with single node', () => {
 			const workflow: WorkflowMetadata = {
 				name: 'Simple Workflow',
