@@ -81,7 +81,6 @@ defineExpose({
 	executeContextMenuAction: (action: ContextMenuAction, nodeIds: string[]) =>
 		canvasRef.value?.executeContextMenuAction(action, nodeIds),
 	ensureNodesAreVisible: (ids: string[]) => {
-		const vp = viewport.value;
 		const canvasElement = viewportRef.value;
 
 		if (!canvasElement) {
@@ -95,69 +94,55 @@ defineExpose({
 			return;
 		}
 
-		// Get canvas dimensions
-		const canvasWidth = canvasElement.clientWidth;
-		const canvasHeight = canvasElement.clientHeight;
+		const insertionDone = onNodesInitialized(() => {
+			// Get the current viewport after nodes are initialized
+			const vp = viewport.value;
+			const canvasWidth = canvasElement.clientWidth;
+			const canvasHeight = canvasElement.clientHeight;
 
-		// Calculate current viewport bounds in canvas coordinates
-		const currentViewportRect = {
-			x: -vp.x / vp.zoom,
-			y: -vp.y / vp.zoom,
-			width: canvasWidth / vp.zoom,
-			height: canvasHeight / vp.zoom,
-		};
+			// Get the rect of the newly added nodes
+			const nodesRect = getRectOfNodes(targetNodes);
 
-		// Get the rect of the newly added nodes
-		const addedNodesRectRaw = getRectOfNodes(targetNodes);
+			// Check if nodes are visible in current viewport
+			const screenX = nodesRect.x * vp.zoom + vp.x;
+			const screenY = nodesRect.y * vp.zoom + vp.y;
+			const screenWidth = nodesRect.width * vp.zoom;
+			const screenHeight = nodesRect.height * vp.zoom;
 
-		// Add padding around the added nodes rect (10% on each side)
-		const padding = Math.max(addedNodesRectRaw.width, addedNodesRectRaw.height) * 0.1;
-		const addedNodesRect = {
-			x: addedNodesRectRaw.x - padding,
-			y: addedNodesRectRaw.y - padding,
-			width: addedNodesRectRaw.width + padding * 2,
-			height: addedNodesRectRaw.height + padding * 2,
-		};
+			const isFullyVisible =
+				screenX >= 0 &&
+				screenY >= 0 &&
+				screenX + screenWidth <= canvasWidth &&
+				screenY + screenHeight <= canvasHeight;
 
-		// Combine the current viewport with the added nodes to get the union
-		const x = Math.min(currentViewportRect.x, addedNodesRect.x);
-		const y = Math.min(currentViewportRect.y, addedNodesRect.y);
-		const x2 = Math.max(
-			currentViewportRect.x + currentViewportRect.width,
-			addedNodesRect.x + addedNodesRect.width,
-		);
-		const y2 = Math.max(
-			currentViewportRect.y + currentViewportRect.height,
-			addedNodesRect.y + addedNodesRect.height,
-		);
-		const combinedRect = {
-			x,
-			y,
-			width: x2 - x,
-			height: y2 - y,
-		};
+			if (!isFullyVisible) {
+				// Calculate viewport bounds in canvas coordinates
+				const viewportRect = {
+					x: -vp.x / vp.zoom,
+					y: -vp.y / vp.zoom,
+					width: canvasWidth / vp.zoom,
+					height: canvasHeight / vp.zoom,
+				};
 
-		// Transform combined rectangle to screen coordinates for visibility check
-		const screenRect = {
-			x: addedNodesRect.x * vp.zoom + vp.x,
-			y: addedNodesRect.y * vp.zoom + vp.y,
-			width: addedNodesRect.width * vp.zoom,
-			height: addedNodesRect.height * vp.zoom,
-		};
+				// Combine current viewport with nodes rect
+				const minX = Math.min(viewportRect.x, nodesRect.x);
+				const minY = Math.min(viewportRect.y, nodesRect.y);
+				const maxX = Math.max(viewportRect.x + viewportRect.width, nodesRect.x + nodesRect.width);
+				const maxY = Math.max(viewportRect.y + viewportRect.height, nodesRect.y + nodesRect.height);
 
-		// Check if ALL nodes are fully visible within the viewport (not just intersecting)
-		const isFullyVisible =
-			screenRect.x >= 0 &&
-			screenRect.y >= 0 &&
-			screenRect.x + screenRect.width <= canvasWidth &&
-			screenRect.y + screenRect.height <= canvasHeight;
+				const combinedRect = {
+					x: minX,
+					y: minY,
+					width: maxX - minX,
+					height: maxY - minY,
+				};
 
-		if (!isFullyVisible) {
-			const insertionDone = onNodesInitialized(() => {
-				void fitBounds(combinedRect, { padding: 0.1, duration: 300 });
-				insertionDone.off();
-			});
-		}
+				void fitBounds(combinedRect, { padding: 0.15, duration: 100 });
+			}
+
+			props.eventBus.emit('nodes:select', { ids });
+			insertionDone.off();
+		});
 	},
 });
 </script>

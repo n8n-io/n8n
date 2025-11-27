@@ -729,7 +729,6 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 	const ids = result.nodes?.map((node) => node.id) ?? [];
 
 	canvasRef.value?.ensureNodesAreVisible(ids);
-	selectNodes(ids);
 }
 
 async function onCutNodes(ids: string[]) {
@@ -1046,7 +1045,6 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 	});
 
 	canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
-	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 }
 
 function addImportEventBindings() {
