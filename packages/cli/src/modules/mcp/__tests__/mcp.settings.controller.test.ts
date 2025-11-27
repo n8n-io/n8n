@@ -284,6 +284,7 @@ describe('McpSettingsController', () => {
 		test('persists MCP availability when validation passes', async () => {
 			const workflow = createWorkflow({
 				activeVersionId: uuid(),
+				settings: { saveManualExecutions: true },
 				nodes: [
 					createWebhookNode({ disabled: false }),
 					{
@@ -313,7 +314,7 @@ describe('McpSettingsController', () => {
 			expect(updateArgs[0]).toEqual(user);
 			expect(updateArgs[1]).toBeInstanceOf(WorkflowEntity);
 			expect(updateArgs[1].settings).toEqual({ saveManualExecutions: true, availableInMCP: true });
-			expect(updateArgs[1].versionId).toEqual('current-version-id');
+			expect(updateArgs[1].versionId).toEqual('some-version-id');
 			expect(updateArgs[2]).toEqual(workflowId);
 			expect(updateArgs[5]).toEqual(false);
 

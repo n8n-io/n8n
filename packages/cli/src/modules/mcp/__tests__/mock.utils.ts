@@ -1,7 +1,7 @@
 import type { WorkflowEntity } from '@n8n/db';
-import { MANUAL_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE } from 'n8n-workflow';
+import { MANUAL_TRIGGER_NODE_TYPE, WEBHOOK_NODE_TYPE, type INode } from 'n8n-workflow';
 
-const testNodes = [
+const testNodes: INode[] = [
 	{
 		id: 'node-1',
 		name: 'Webhook',
@@ -24,14 +24,16 @@ const testNodes = [
 	},
 ];
 
-export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => {
+export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}): WorkflowEntity => {
 	const activeVersionId = overrides.activeVersionId ?? null;
 	const testActiveVersion = overrides.activeVersion ?? { nodes: overrides.nodes ?? testNodes };
 	const activeVersion = activeVersionId ? testActiveVersion : undefined;
 	return {
 		id: 'wf-1',
 		name: 'My wf',
+		description: null,
 		nodes: overrides.nodes ?? testNodes,
+		connections: {},
 		versionId: 'some-version-id',
 		activeVersionId,
 		active: activeVersionId !== null,
@@ -43,5 +45,5 @@ export const createWorkflow = (overrides: Partial<WorkflowEntity> = {}) => {
 		pinData: overrides.pinData ?? { should: 'be-removed' },
 		activeVersion,
 		...overrides,
-	};
+	} as WorkflowEntity;
 };

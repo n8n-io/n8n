@@ -76,7 +76,7 @@ describe('search-workflows MCP tool', () => {
 				{
 					id: 'a',
 					name: 'Alpha',
-					description: undefined,
+					description: null,
 					active: true,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
@@ -86,7 +86,7 @@ describe('search-workflows MCP tool', () => {
 				{
 					id: 'b',
 					name: 'Beta',
-					description: undefined,
+					description: null,
 					active: true,
 					createdAt: new Date('2024-01-01T00:00:00.000Z').toISOString(),
 					updatedAt: new Date('2024-01-02T00:00:00.000Z').toISOString(),
