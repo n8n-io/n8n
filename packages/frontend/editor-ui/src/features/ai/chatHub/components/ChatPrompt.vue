@@ -10,11 +10,11 @@ import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 
-const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
+const { selectedModel, selectedTools, issue } = defineProps<{
 	isResponding: boolean;
 	isNewSession: boolean;
 	isToolsSelectable: boolean;
-	isMissingCredentials: boolean;
+	issue: 'missingCredentials' | 'missingAgent' | null;
 	selectedModel: ChatModelDto | null;
 	selectedTools: INode[] | null;
 }>();
@@ -171,7 +171,7 @@ defineExpose({
 <template>
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
-			<N8nText v-if="!selectedModel" :class="$style.callout">
+			<N8nText v-if="issue === 'missingAgent'" :class="$style.callout">
 				<template v-if="isNewSession">
 					Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
 					conversation
@@ -181,7 +181,7 @@ defineExpose({
 					the conversation
 				</template>
 			</N8nText>
-			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
+			<N8nText v-else-if="issue === 'missingCredentials' && llmProvider" :class="$style.callout">
 				<template v-if="isNewSession">
 					Please
 					<a href="" @click.prevent="emit('setCredentials', llmProvider)">set credentials</a>
@@ -221,7 +221,7 @@ defineExpose({
 					autocomplete="off"
 					:autosize="{ minRows: 1, maxRows: 6 }"
 					autofocus
-					:disabled="isMissingCredentials || !selectedModel"
+					:disabled="!!issue"
 					@keydown="handleKeydownTextarea"
 				/>
 
@@ -230,7 +230,7 @@ defineExpose({
 						<ToolsSelector
 							:class="$style.toolsButton"
 							:selected="selectedTools ?? []"
-							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							:disabled="!!issue || isResponding"
 							transparent-bg
 							@select="onSelectTools"
 						/>
@@ -241,7 +241,7 @@ defineExpose({
 							native-type="button"
 							type="secondary"
 							title="Attach"
-							:disabled="isMissingCredentials || isResponding"
+							:disabled="!!issue || isResponding"
 							icon="paperclip"
 							icon-size="large"
 							text
@@ -252,7 +252,7 @@ defineExpose({
 							native-type="button"
 							:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
 							type="secondary"
-							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							:disabled="!!issue || isResponding"
 							:icon="speechInput.isListening.value ? 'square' : 'mic'"
 							:class="{ [$style.recording]: speechInput.isListening.value }"
 							icon-size="large"
@@ -261,7 +261,7 @@ defineExpose({
 						<N8nIconButton
 							v-if="!isResponding"
 							native-type="submit"
-							:disabled="isMissingCredentials || !selectedModel || !message.trim()"
+							:disabled="!!issue || !message.trim()"
 							title="Send"
 							icon="arrow-up"
 							icon-size="large"

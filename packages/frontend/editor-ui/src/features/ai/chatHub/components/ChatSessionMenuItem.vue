@@ -37,16 +37,9 @@ const agent = computed<ChatModelDto | null>(() => {
 
 	const agent = chatStore.getAgent(model);
 
-	if (agent) {
-		return agent;
-	}
-
 	return {
-		model,
-		name: session.agentName || '',
-		description: null,
-		createdAt: null,
-		updatedAt: null,
+		...agent,
+		name: agent.name || (session.agentName ?? ''),
 	};
 });
 

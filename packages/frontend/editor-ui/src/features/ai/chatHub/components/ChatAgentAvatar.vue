@@ -1,13 +1,18 @@
 <script setup lang="ts">
 import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { type ChatModelDto, PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { N8nAvatar, N8nIcon, N8nTooltip } from '@n8n/design-system';
+import { computed } from 'vue';
 
 defineProps<{
 	agent: ChatModelDto | null;
 	size: 'sm' | 'md' | 'lg';
 	tooltip?: boolean;
 }>();
+
+const credentialsStore = useCredentialsStore();
+const isCredentialsIconReady = computed(() => credentialsStore.allCredentialTypes.length > 0);
 </script>
 
 <template>
@@ -26,6 +31,7 @@ defineProps<{
 		/>
 		<CredentialIcon
 			v-else
+			:class="[$style.credentialsIcon, { [$style.isReady]: isCredentialsIconReady }]"
 			:credential-type-name="PROVIDER_CREDENTIAL_TYPE_MAP[agent.model.provider]"
 			:size="size === 'sm' ? 16 : size === 'lg' ? 40 : 20"
 		/>
@@ -35,5 +41,13 @@ defineProps<{
 <style lang="scss" module>
 .avatar.md {
 	transform: scale(1.2);
+}
+
+.credentialsIcon {
+	visibility: hidden;
+
+	&.isReady {
+		visibility: visible;
+	}
 }
 </style>

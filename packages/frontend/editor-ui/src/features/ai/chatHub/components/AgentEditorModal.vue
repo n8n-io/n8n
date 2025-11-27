@@ -256,6 +256,7 @@ function onSelectTools(newTools: INode[]) {
 							:selected-agent="selectedModel"
 							:include-custom-agents="false"
 							:credentials="agentMergedCredentials"
+							warn-missing-credentials
 							@change="onModelChange"
 							@select-credential="onCredentialSelected"
 						/>

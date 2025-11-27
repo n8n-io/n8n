@@ -45,11 +45,13 @@ const {
 	includeCustomAgents = true,
 	credentials,
 	text,
+	warnMissingCredentials = false,
 } = defineProps<{
 	selectedAgent: ChatModelDto | null;
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
 	text?: boolean;
+	warnMissingCredentials?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -90,6 +92,13 @@ const credentialsName = computed(() =>
 		: undefined,
 );
 const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
+const isCredentialsMissing = computed(
+	() =>
+		warnMissingCredentials &&
+		isCredentialsRequired.value &&
+		selectedAgent?.model.provider &&
+		!credentials?.[selectedAgent?.model.provider],
+);
 
 const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
