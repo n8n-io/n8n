@@ -2,7 +2,6 @@ import { createComponentRenderer } from '@/__tests__/render';
 import { type MockedStore, mockedStore } from '@/__tests__/utils';
 import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
-import { nextTick } from 'vue';
 import WorkflowDescriptionModal from '@/app/components/WorkflowDescriptionModal.vue';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -10,7 +9,7 @@ import { useSettingsStore } from '@/app/stores/settings.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { STORES } from '@n8n/stores';
-import { WEBHOOK_NODE_TYPE, WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
+import { WORKFLOW_DESCRIPTION_MODAL_KEY } from '../constants';
 
 vi.mock('@/app/composables/useToast', () => {
 	const showError = vi.fn();
