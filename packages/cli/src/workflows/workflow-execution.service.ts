@@ -132,8 +132,8 @@ export class WorkflowExecutionService {
 			return { executionId };
 		}
 
-		// We are doing a full execution, so remove runData if present.
-		Reflect.deleteProperty(payload, 'runData');
+		// If necessary, convert to a full manual execution.
+		upgradeToFullManualExecution(payload);
 
 		// Case 2: Full execution from a known trigger.
 		if (isFullExecutionFromKnownTrigger(payload)) {
@@ -492,4 +492,9 @@ function triggerHasNoPinnedData(
 	payload: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload,
 ) {
 	return payload.workflowData.pinData?.[payload.triggerToStartFrom.name] === undefined;
+}
+function upgradeToFullManualExecution(payload: WorkflowRequest.ManualRunPayload) {
+	// If the payload has runData or executionData, remove them to convert to full execution.
+	Reflect.deleteProperty(payload, 'runData');
+	Reflect.deleteProperty(payload, 'dirtyNodeNames');
 }
