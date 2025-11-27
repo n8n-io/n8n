@@ -55,44 +55,6 @@ body:
       placeholder: ex. Ubuntu Linux 22.04
     validations:
       required: true
-  - type: input
-    id: n8n-version
-    attributes:
-      label: n8n Version
-      placeholder: ex. 1.25.0
-    validations:
-      required: true
-  - type: input
-    id: nodejs-version
-    attributes:
-      label: Node.js Version
-      placeholder: ex. 22.16.0
-    validations:
-      required: true
-  - type: dropdown
-    id: db
-    attributes:
-      label: Database
-      options:
-        - SQLite (default)
-        - PostgreSQL
-        - MySQL
-        - MariaDB
-      default: 0
-    validations:
-      required: true
-  - type: dropdown
-    id: execution-mode
-    attributes:
-      label: Execution mode
-      description: '[Info](https://docs.n8n.io/hosting/scaling/queue-mode/)'
-      options:
-        - main (default)
-        - queue
-        - own (deprecated)
-      default: 0
-    validations:
-      required: true
   - type: dropdown
     id: hosting
     attributes:
