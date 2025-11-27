@@ -7,6 +7,7 @@ import { CHAT_CONVERSATION_VIEW } from '@/features/ai/chatHub/constants';
 import { type ChatModelDto, type ChatHubSessionDto } from '@n8n/api-types';
 import { N8nInput } from '@n8n/design-system';
 import type { ActionDropdownItem } from '@n8n/design-system/types';
+import { useI18n } from '@n8n/i18n';
 import { computed, nextTick, ref, useTemplateRef, watch } from 'vue';
 
 const { session, isRenaming, active } = defineProps<{
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 const input = useTemplateRef('input');
 const editedLabel = ref('');
 const chatStore = useChatStore();
+const i18n = useI18n();
 
 type SessionAction = 'rename' | 'delete';
 
@@ -53,12 +55,12 @@ const agent = computed<ChatModelDto | null>(() => {
 const dropdownItems = computed<Array<ActionDropdownItem<SessionAction>>>(() => [
 	{
 		id: 'rename',
-		label: 'Rename',
+		label: i18n.baseText('chatHub.session.actions.rename'),
 		icon: 'pencil',
 	},
 	{
 		id: 'delete',
-		label: 'Delete',
+		label: i18n.baseText('chatHub.session.actions.delete'),
 		icon: 'trash-2',
 	},
 ]);

@@ -695,6 +695,7 @@ export interface BaseHelperFunctions {
 }
 
 export interface FileSystemHelperFunctions {
+	isFilePathBlocked(filePath: string): Promise<boolean>;
 	createReadStream(path: PathLike): Promise<Readable>;
 	getStoragePath(): string;
 	writeContentToFile(
@@ -2737,6 +2738,7 @@ export interface IWorkflowSettings {
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
 	timeSavedPerExecution?: number;
+	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
 }
 
