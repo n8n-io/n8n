@@ -111,9 +111,9 @@ const onLicenseActivation = async (eulaUri?: string) => {
 	} catch (error: unknown) {
 		// Check if error requires EULA acceptance using type guard
 		if (isEulaError(error)) {
-			activationKeyModal.value = false;
 			eulaUrl.value = error.meta.eulaUrl;
 			eulaModal.value = true;
+			activationKeyModal.value = false;
 			return;
 		}
 
@@ -141,6 +141,13 @@ const onEulaCancel = () => {
 const onActivationCancel = () => {
 	activationKeyModal.value = false;
 	activationKey.value = '';
+};
+
+const onActivationModalClose = () => {
+	// Only clear key if not transitioning to EULA flow
+	if (!eulaModal.value) {
+		onActivationCancel();
+	}
 };
 
 onMounted(async () => {
@@ -308,6 +315,7 @@ const openCommunityRegisterModal = () => {
 				top="0"
 				:title="locale.baseText('settings.usageAndPlan.dialog.activation.title')"
 				:modal-class="$style.center"
+				@closed="onActivationModalClose"
 				@opened="onDialogOpened"
 			>
 				<template #default>
