@@ -274,28 +274,25 @@ export class UserService {
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}
 
-	async changeUserRole(user: User, targetUser: User, newRole: RoleChangeRequestDto) {
+	async changeUserRole(user: User, newRole: RoleChangeRequestDto) {
 		// Check that new role exists
 		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
 
 		return await this.userRepository.manager.transaction(async (trx) => {
-			await trx.update(User, { id: targetUser.id }, { role: { slug: newRole.newRoleName } });
+			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
 
 			const isAdminRole = (roleName: string) => {
 				return roleName === 'global:admin' || roleName === 'global:owner';
 			};
 
-			const isDowngradedAdmin =
-				user.role.slug === 'global:owner' &&
-				targetUser.role.slug === 'global:admin' &&
-				!isAdminRole(newRole.newRoleName);
+			const isDowngradedAdmin = isAdminRole(user.role.slug) && !isAdminRole(newRole.newRoleName);
 
 			if (isDowngradedAdmin) {
-				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser, trx);
+				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(user, trx);
 			}
 
 			const isUpgradedChatUser =
-				targetUser.role.slug === 'global:chatUser' && newRole.newRoleName !== 'global:chatUser';
+				user.role.slug === 'global:chatUser' && newRole.newRoleName !== 'global:chatUser';
 
 			if (isUpgradedChatUser) {
 				// Revoke previous 'project:personalOwnerViewer' role on their personal project
@@ -303,7 +300,7 @@ export class UserService {
 				await trx.update(
 					ProjectRelation,
 					{
-						userId: targetUser.id,
+						userId: user.id,
 						role: { slug: PROJECT_OWNER_VIEWER_ROLE_SLUG },
 					},
 					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
@@ -311,7 +308,7 @@ export class UserService {
 			}
 
 			const isDowngradedToChatUser =
-				targetUser.role.slug !== 'global:chatUser' && newRole.newRoleName === 'global:chatUser';
+				user.role.slug !== 'global:chatUser' && newRole.newRoleName === 'global:chatUser';
 
 			if (isDowngradedToChatUser) {
 				// Revoke 'project:personalOwner' role on their personal project
@@ -319,7 +316,7 @@ export class UserService {
 				await trx.update(
 					ProjectRelation,
 					{
-						userId: targetUser.id,
+						userId: user.id,
 						role: { slug: PROJECT_OWNER_ROLE_SLUG },
 					},
 					{ role: { slug: PROJECT_OWNER_VIEWER_ROLE_SLUG } },
