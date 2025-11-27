@@ -74,9 +74,12 @@ export class McpSettingsController {
 		@Param('workflowId') workflowId: string,
 		@Body dto: UpdateWorkflowAvailabilityDto,
 	) {
-		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, req.user, [
-			'workflow:update',
-		]);
+		const workflow = await this.workflowFinderService.findWorkflowForUser(
+			workflowId,
+			req.user,
+			['workflow:update'],
+			{ includeActiveVersion: true },
+		);
 
 		if (!workflow) {
 			this.logger.warn('User attempted to update MCP availability without permissions', {
@@ -92,7 +95,8 @@ export class McpSettingsController {
 			throw new BadRequestError('MCP access can only be set for active workflows');
 		}
 
-		const supportedTrigger = findMcpSupportedTrigger(workflow);
+		const nodes = workflow.activeVersion?.nodes ?? [];
+		const supportedTrigger = findMcpSupportedTrigger(nodes);
 
 		if (!supportedTrigger) {
 			throw new BadRequestError(
