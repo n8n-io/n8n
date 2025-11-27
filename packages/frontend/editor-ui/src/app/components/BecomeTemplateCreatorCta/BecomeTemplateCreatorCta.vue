@@ -51,8 +51,8 @@ const onClick = () => {
 	flex-direction: column;
 	background-color: var(--color--background--light-2);
 	border: var(--border);
-	margin: var(--spacing--2xs);
 	border-radius: var(--radius);
+	width: 260px;
 }
 
 .textAndCloseButton {

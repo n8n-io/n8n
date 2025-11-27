@@ -600,7 +600,6 @@ const onLogout = () => {
 					<N8nIcon
 						data-test-id="read-only-env-icon"
 						icon="lock"
-						size="xsmall"
 						:class="$style.readOnlyEnvironmentIcon"
 					/>
 				</N8nTooltip>
@@ -711,7 +710,6 @@ const onLogout = () => {
 				/>
 
 				<div :class="$style.bottomMenu">
-					<BecomeTemplateCreatorCta v-if="!isCollapsed && !userIsTrialing" />
 					<div :class="$style.bottomMenuItems">
 						<template v-for="item in visibleMenuItems" :key="item.id">
 							<N8nPopoverReka
@@ -723,6 +721,7 @@ const onLogout = () => {
 							>
 								<template #content>
 									<div :class="$style.popover">
+										<BecomeTemplateCreatorCta v-if="!userIsTrialing" />
 										<template v-for="child in item.children" :key="child.id">
 											<component
 												:is="child.component"
