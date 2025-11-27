@@ -11,4 +11,5 @@ export const enum WORKFLOW_MENU_ACTIONS {
 	RENAME = 'rename',
 	CHANGE_OWNER = 'change-owner',
 	UNPUBLISH = 'unpublish',
+	SHARE = 'share',
 }
