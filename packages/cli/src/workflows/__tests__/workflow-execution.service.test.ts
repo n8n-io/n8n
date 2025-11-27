@@ -143,10 +143,7 @@ describe('WorkflowExecutionService', () => {
 			const result = await workflowExecutionService.executeManually(runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
-				destinationNode: {
-					nodeName: runPayload.destinationNode,
-					mode: 'inclusive',
-				},
+				destinationNode: runPayload.destinationNode,
 				executionMode: 'manual',
 				runData: runPayload.runData,
 				pinData: undefined,
@@ -181,7 +178,7 @@ describe('WorkflowExecutionService', () => {
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
 				runData: undefined,
-				destinationNode: { nodeName: runPayload.destinationNode, mode: 'inclusive' },
+				destinationNode: runPayload.destinationNode,
 				executionMode: 'manual',
 				pinData: runPayload.workflowData.pinData,
 				pushRef: undefined,
@@ -240,10 +237,7 @@ describe('WorkflowExecutionService', () => {
 			const result = await workflowExecutionService.executeManually(runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
-				destinationNode: {
-					nodeName: runPayload.destinationNode,
-					mode: 'inclusive',
-				},
+				destinationNode: runPayload.destinationNode,
 				executionMode: 'manual',
 				pinData: runPayload.workflowData.pinData,
 				pushRef: undefined,
