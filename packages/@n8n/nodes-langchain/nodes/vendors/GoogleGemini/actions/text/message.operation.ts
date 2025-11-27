@@ -1,14 +1,13 @@
+import { getConnectedTools } from '@utils/helpers';
 import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
+	updateDisplayOptions,
 	validateNodeParameters,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
-
-import { getConnectedTools } from '@utils/helpers';
 
 import type {
 	GenerateContentRequest,
@@ -87,6 +86,54 @@ const properties: INodeProperties[] = [
 		default: false,
 	},
 	{
+		displayName: 'Built-in Tools',
+		name: 'builtInTools',
+		placeholder: 'Add Built-in Tool',
+		type: 'collection',
+		default: {},
+		options: [
+			{
+				displayName: 'Google Search',
+				name: 'googleSearch',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to allow the model to search the web using Google Search to get real-time information',
+			},
+			{
+				displayName: 'Google Maps',
+				name: 'googleMaps',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to allow the model to use Google Maps for location-based queries and directions',
+			},
+			{
+				displayName: 'URL Context',
+				name: 'urlContext',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to allow the model to read and analyze content from specific URLs',
+			},
+			{
+				displayName: 'File Search',
+				name: 'fileSearch',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to allow the model to search through indexed files for information retrieval',
+			},
+			{
+				displayName: 'Code Execution',
+				name: 'codeExecution',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
+			},
+		],
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',
@@ -99,14 +146,6 @@ const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				placeholder: 'e.g. You are a helpful assistant',
-			},
-			{
-				displayName: 'Code Execution',
-				name: 'codeExecution',
-				type: 'boolean',
-				default: false,
-				description:
-					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
 			},
 			{
 				displayName: 'Frequency Penalty',
@@ -243,11 +282,11 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 	const options = this.getNodeParameter('options', i, {});
+	const builtInTools = this.getNodeParameter('builtInTools', i, {}) as IDataObject;
 	validateNodeParameters(
 		options,
 		{
 			systemMessage: { type: 'string', required: false },
-			codeExecution: { type: 'boolean', required: false },
 			frequencyPenalty: { type: 'number', required: false },
 			maxOutputTokens: { type: 'number', required: false },
 			candidateCount: { type: 'number', required: false },
@@ -300,10 +339,37 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools.pop();
 	}
 
-	if (options.codeExecution) {
-		tools.push({
-			codeExecution: {},
-		});
+	// Add built-in tools
+	if (builtInTools) {
+		if (builtInTools.googleSearch) {
+			tools.push({
+				googleSearch: {},
+			});
+		}
+
+		if (builtInTools.googleMaps) {
+			tools.push({
+				googleMaps: {},
+			});
+		}
+
+		if (builtInTools.urlContext) {
+			tools.push({
+				urlContext: {},
+			});
+		}
+
+		if (builtInTools.fileSearch) {
+			tools.push({
+				fileSearch: {},
+			});
+		}
+
+		if (builtInTools.codeExecution) {
+			tools.push({
+				codeExecution: {},
+			});
+		}
 	}
 
 	const contents: Content[] = messages.map((m) => ({
