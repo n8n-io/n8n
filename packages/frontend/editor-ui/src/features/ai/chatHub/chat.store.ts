@@ -73,7 +73,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}>({ byId: {}, ids: null, hasMore: false, nextCursor: null });
 	const sessionsLoadingMore = ref(false);
 
-	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 	const streaming = ref<ChatStreamingState>();
 	const settingsLoading = ref(false);
 	const settings = ref<Record<ChatHubLLMProvider, ChatProviderSettingsDto> | null>(null);
@@ -523,6 +522,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			sessionId,
 			model,
 			retryOfMessageId: null,
+			tools,
 		};
 
 		if (!sessions.value.byId[sessionId]) {
@@ -597,6 +597,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			sessionId,
 			model,
 			retryOfMessageId: null,
+			tools: [],
 		};
 
 		editMessageApi(
@@ -633,6 +634,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			sessionId,
 			model,
 			retryOfMessageId: retryId,
+			tools: [],
 		};
 
 		regenerateMessageApi(
@@ -714,9 +716,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function fetchCustomAgent(agentId: string): Promise<ChatHubAgentDto> {
-		const agent = await fetchAgentApi(rootStore.restApiContext, agentId);
-		currentEditingAgent.value = agent;
-		return agent;
+		return await fetchAgentApi(rootStore.restApiContext, agentId);
 	}
 
 	function getCustomAgent(agentId: string) {
@@ -843,7 +843,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		 */
 		agents: computed(() => agents.value ?? emptyChatModelsResponse),
 		agentsReady: computed(() => agents.value !== undefined),
-		currentEditingAgent,
 		getAgent,
 		fetchAgents,
 		getCustomAgent,

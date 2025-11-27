@@ -343,7 +343,7 @@ export function createSessionFromStreamingState(streaming: ChatStreamingState): 
 		agentName: null,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
-		tools: [],
+		tools: streaming.tools,
 		...flattenModel(streaming.model),
 	};
 }
