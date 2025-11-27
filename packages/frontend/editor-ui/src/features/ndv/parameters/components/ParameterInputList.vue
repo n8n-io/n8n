@@ -13,7 +13,7 @@ import {
 	NodeHelpers,
 	resolveRelativePath,
 } from 'n8n-workflow';
-import { computed, defineAsyncComponent, onErrorCaptured, ref, watch } from 'vue';
+import { computed, defineAsyncComponent, onErrorCaptured, ref } from 'vue';
 
 import type { INodeUi, IUpdateInformation } from '@/Interface';
 
@@ -149,6 +149,9 @@ interface ParameterComputedData {
 
 const parameterItems = ref<ParameterComputedData[]>([]);
 
+// Track previous parameter names for cleanup when parameters are removed from display
+let previousParameterNames: string[] = [];
+
 throttledWatch(
 	[() => props.parameters, () => props.nodeValues, node],
 	() => {
@@ -206,13 +209,27 @@ throttledWatch(
 				isCalloutVisible: calloutVisible,
 			};
 		});
+
+		// Get new parameter names
+		const newParameterNames = parameterItems.value.map((paramData) => paramData.parameter.name);
+
+		// Clean up removed parameters - emit valueChanged for parameters that no longer display
+		// This handles the edge-case when a parameter display depends on another field with an expression
+		for (const parameter of previousParameterNames) {
+			if (!newParameterNames.includes(parameter)) {
+				emit('valueChanged', {
+					name: `${props.path}.${parameter}`,
+					node: ndvStore.activeNode?.name || '',
+					value: undefined,
+				});
+			}
+		}
+
+		// Update previous names for next comparison
+		previousParameterNames = newParameterNames;
 	},
 	{ throttle: 200, immediate: true },
 );
-
-const filteredParameterNames = computed(() => {
-	return parameterItems.value.map((paramData) => paramData.parameter.name);
-});
 
 const credentialsParameterIndex = computed(() => {
 	return parameterItems.value.findIndex((paramData) => paramData.parameter.type === 'credentials');
@@ -246,25 +263,6 @@ const indexToShowSlotAt = computed(() => {
 	});
 
 	return Math.min(index, parameterItems.value.length - 1);
-});
-
-watch(filteredParameterNames, (newValue, oldValue) => {
-	if (newValue === undefined) {
-		return;
-	}
-	// After a parameter does not get displayed anymore make sure that its value gets removed
-	// Is only needed for the edge-case when a parameter gets displayed depending on another field
-	// which contains an expression.
-	for (const parameter of oldValue) {
-		if (!newValue.includes(parameter)) {
-			const parameterData = {
-				name: `${props.path}.${parameter}`,
-				node: ndvStore.activeNode?.name || '',
-				value: undefined,
-			};
-			emit('valueChanged', parameterData);
-		}
-	}
 });
 
 function updateFormTriggerParameters(parameters: INodeProperties[], triggerName: string) {
