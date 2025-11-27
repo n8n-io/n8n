@@ -33,7 +33,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 		},
 		version: [1],
 		defaults: {
-			name: 'Microsoft 365 Agent',
+			name: 'Microsoft Agent 365',
 		},
 		inputs: `={{
 				((hasOutputParser, needsFallback) => {
