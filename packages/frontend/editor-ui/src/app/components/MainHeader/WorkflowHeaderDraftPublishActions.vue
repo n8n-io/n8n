@@ -169,6 +169,6 @@ defineExpose({
 	height: 7px;
 	background-color: var(--color--primary);
 	border-radius: 50%;
-	box-shadow: 0 0 0 2px var(--color--background);
+	box-shadow: 0 0 0 2px var(--color--background--light-3);
 }
 </style>
