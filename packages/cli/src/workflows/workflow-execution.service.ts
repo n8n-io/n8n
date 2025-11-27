@@ -116,24 +116,25 @@ export class WorkflowExecutionService {
 			: undefined;
 
 		// Case 1: Partial execution to a destination node, and we have enough runData to start the execution.
-		if (this.isPartialExecutionToDestination(payload)) {
-			// All we need to to is run the workflow.
-			const executionId = await this.workflowRunner.run({
-				destinationNode,
-				executionMode: 'manual',
-				runData: payload.runData,
-				pinData: payload.workflowData.pinData,
-				pushRef,
-				workflowData: payload.workflowData,
-				userId: user.id,
-				dirtyNodeNames: payload.dirtyNodeNames,
-				agentRequest: payload.agentRequest,
-			});
-			return { executionId };
-		}
+		if (isPartialExecution(payload)) {
+			if (this.partialExecutionFulfilsPreconditions(payload)) {
+				// All we need to to do is run the workflow.
+				const executionId = await this.workflowRunner.run({
+					destinationNode,
+					executionMode: 'manual',
+					runData: payload.runData,
+					pinData: payload.workflowData.pinData,
+					pushRef,
+					workflowData: payload.workflowData,
+					userId: user.id,
+					dirtyNodeNames: payload.dirtyNodeNames,
+					agentRequest: payload.agentRequest,
+				});
 
-		// If necessary, convert to a full manual execution.
-		upgradeToFullManualExecution(payload);
+				return { executionId };
+			}
+			payload = upgradeToFullManualExecutionFromUnknownTrigger(payload);
+		}
 
 		// Case 2: Full execution from a known trigger.
 		if (isFullExecutionFromKnownTrigger(payload)) {
@@ -429,25 +430,18 @@ export class WorkflowExecutionService {
 	}
 
 	/**
-	 * Check whether this is a partial execution to some destination node. A partial execution
-	 * does not need a trigger, because it has enough run data.
-	 *
-	 * This first acts as a type guard, and then checks whether the destination node is reachable
-	 * from any trigger node with the provided run data.
+	 * Checks if there is enough run data to run this as a partial execution and
+	 * that we're not having the edge case that the destination node itself is a
+	 * trigger.
 	 */
-	private isPartialExecutionToDestination(
-		payload: WorkflowRequest.ManualRunPayload,
-	): payload is WorkflowRequest.PartialManualExecutionToDestinationPayload {
-		if (!('destinationNode' in payload)) {
-			return false;
-		}
-		if (!('runData' in payload)) {
-			return false;
-		}
+	private partialExecutionFulfilsPreconditions(
+		payload: WorkflowRequest.PartialManualExecutionToDestinationPayload,
+	): boolean {
 		// If the destination is a trigger node, we treat it as a full execution.
 		if (this.isDestinationNodeATrigger(payload.destinationNode, payload.workflowData)) {
 			return false;
 		}
+
 		// If we have enough run data to reach the destination from a trigger it's a partial execution.
 		// Otherwise it's a full execution.
 		return anyReachableRootHasRunData(
@@ -459,6 +453,18 @@ export class WorkflowExecutionService {
 			payload.runData,
 		);
 	}
+}
+
+/**
+ * Type guard to check if payload is a PartialManualExecutionToDestinationPayload.
+ *
+ * A partial execution payload has both `destinationNode` and `runData`.
+ * This indicates execution to a specific node using existing run data.
+ */
+function isPartialExecution(
+	payload: WorkflowRequest.ManualRunPayload,
+): payload is WorkflowRequest.PartialManualExecutionToDestinationPayload {
+	return 'destinationNode' in payload && 'runData' in payload;
 }
 
 /**
@@ -477,7 +483,7 @@ function isFullExecutionFromKnownTrigger(
  * Type guard to check if payload is a FullManualExecutionFromUnknownTriggerPayload.
  *
  * An unknown trigger payload has neither `triggerToStartFrom` nor `runData`.
- * The trigger will need to be determined automatically (via pinned data or webhook).
+ * The trigger will need to be determined.
  */
 function isFullExecutionFromUnknownTrigger(
 	payload: WorkflowRequest.ManualRunPayload,
@@ -493,8 +499,14 @@ function triggerHasNoPinnedData(
 ) {
 	return payload.workflowData.pinData?.[payload.triggerToStartFrom.name] === undefined;
 }
-function upgradeToFullManualExecution(payload: WorkflowRequest.ManualRunPayload) {
+
+function upgradeToFullManualExecutionFromUnknownTrigger(
+	payload: WorkflowRequest.PartialManualExecutionToDestinationPayload,
+): WorkflowRequest.FullManualExecutionFromUnknownTriggerPayload {
 	// If the payload has runData or executionData, remove them to convert to full execution.
-	Reflect.deleteProperty(payload, 'runData');
-	Reflect.deleteProperty(payload, 'dirtyNodeNames');
+	return {
+		workflowData: payload.workflowData,
+		destinationNode: payload.destinationNode,
+		agentRequest: payload.agentRequest,
+	};
 }
