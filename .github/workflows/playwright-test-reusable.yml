@@ -35,13 +35,13 @@ on:
 
     secrets:
       CURRENTS_RECORD_KEY:
-        required: true
+        required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_URL:
-        required: true
+        required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_USER:
-        required: true
+        required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD:
-        required: true
+        required: false
 
 env:
   PLAYWRIGHT_BROWSERS_PATH: packages/testing/playwright/ms-playwright-cache

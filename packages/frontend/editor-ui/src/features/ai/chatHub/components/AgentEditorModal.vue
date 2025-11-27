@@ -206,7 +206,17 @@ function onSelectTools(newTools: INode[]) {
 		min-height="400px"
 	>
 		<template #header>
-			<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
+			<div :class="$style.header">
+				<N8nHeading tag="h2" size="large">{{ title }}</N8nHeading>
+				<N8nButton
+					v-if="isEditMode"
+					type="secondary"
+					icon="trash-2"
+					:disabled="isDeleting"
+					:loading="isDeleting"
+					@click="onDelete"
+				/>
+			</div>
 		</template>
 		<template #content>
 			<div :class="$style.content">
@@ -291,22 +301,12 @@ function onSelectTools(newTools: INode[]) {
 		</template>
 		<template #footer>
 			<div :class="$style.footer">
-				<N8nButton
-					v-if="isEditMode"
-					type="secondary"
-					icon="trash-2"
-					:disabled="isDeleting"
-					:loading="isDeleting"
-					@click="onDelete"
-				/>
-				<div :class="$style.footerRight">
-					<N8nButton type="secondary" @click="modalBus.emit('close')">{{
-						i18n.baseText('chatHub.tools.editor.cancel')
-					}}</N8nButton>
-					<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
-						{{ saveButtonLabel }}
-					</N8nButton>
-				</div>
+				<N8nButton type="secondary" @click="modalBus.emit('close')">{{
+					i18n.baseText('chatHub.tools.editor.cancel')
+				}}</N8nButton>
+				<N8nButton type="primary" :disabled="!isValid || isSaving" @click="onSave">
+					{{ saveButtonLabel }}
+				</N8nButton>
 			</div>
 		</template>
 	</Modal>
@@ -318,6 +318,14 @@ function onSelectTools(newTools: INode[]) {
 	left: 50%;
 	top: 50%;
 	transform: translate(-50%, -50%);
+}
+
+.header {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--s);
+	padding-right: var(--spacing--xl);
 }
 
 .content {
@@ -340,11 +348,6 @@ function onSelectTools(newTools: INode[]) {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	width: 100%;
-}
-
-.footerRight {
-	display: flex;
 	gap: var(--spacing--2xs);
 }
 </style>
