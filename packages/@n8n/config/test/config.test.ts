@@ -95,13 +95,13 @@ describe('GlobalConfig', () => {
 			},
 			sqlite: {
 				database: 'database.sqlite',
-				enableWAL: false,
+				enableWAL: true,
 				executeVacuumOnStartup: false,
-				poolSize: 0,
+				poolSize: 3,
 			},
 			tablePrefix: '',
 			type: 'sqlite',
-			isLegacySqlite: true,
+			isLegacySqlite: false,
 			pingIntervalSeconds: 2,
 		},
 		credentials: {
