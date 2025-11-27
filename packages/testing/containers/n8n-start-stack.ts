@@ -5,6 +5,7 @@ import { getDockerImageFromEnv } from './docker-image';
 import { DockerImageNotFoundError } from './docker-image-not-found-error';
 import type { N8NConfig, N8NStack } from './n8n-test-container-creation';
 import { createN8NStack } from './n8n-test-container-creation';
+import { DEFAULT_DEX_PORT } from './n8n-test-container-dex';
 import { BASE_PERFORMANCE_PLANS, isValidPerformancePlan } from './performance-plans';
 
 // ANSI colors for terminal output
@@ -40,6 +41,8 @@ ${colors.yellow}Options:${colors.reset}
   --queue           Enable queue mode (requires PostgreSQL)
   --task-runner     Enable external task runner container
   --source-control  Enable source control (Git) container for testing
+  --email           Enable email testing with Mailpit SMTP server
+  --oidc            Enable OIDC authentication with Dex provider
   --mains <n>       Number of main instances (default: 1)
   --workers <n>     Number of worker instances (default: 1)
   --name <name>     Project name for parallel runs
@@ -74,6 +77,12 @@ ${colors.yellow}Examples:${colors.reset}
   ${colors.bright}# With source control (Git) testing${colors.reset}
   npm run stack --postgres --source-control
 
+  ${colors.bright}# With email testing (Mailpit)${colors.reset}
+  npm run stack --postgres --email
+
+  ${colors.bright}# With OIDC authentication (Dex)${colors.reset}
+  npm run stack --postgres --oidc
+
   ${colors.bright}# Custom scaling${colors.reset}
   npm run stack --queue --mains 3 --workers 5
 
@@ -107,6 +116,8 @@ async function main() {
 			queue: { type: 'boolean' },
 			'task-runner': { type: 'boolean' },
 			'source-control': { type: 'boolean' },
+			email: { type: 'boolean' },
+			oidc: { type: 'boolean' },
 			mains: { type: 'string' },
 			workers: { type: 'string' },
 			name: { type: 'string' },
@@ -127,6 +138,8 @@ async function main() {
 		postgres: values.postgres ?? false,
 		taskRunner: values['task-runner'] ?? false,
 		sourceControl: values['source-control'] ?? false,
+		email: values.email ?? false,
+		oidc: values.oidc ?? false,
 		projectName: values.name ?? `n8n-stack-${Math.random().toString(36).substring(7)}`,
 	};
 
@@ -255,6 +268,23 @@ function displayConfig(config: N8NConfig) {
 		log.info('  Repository: n8n-test-repo');
 	} else {
 		log.info('Source Control: disabled');
+	}
+
+	// Display email testing status
+	if (config.email) {
+		log.info('Email: enabled (Mailpit SMTP server)');
+		log.info('  Web UI will be available on a mapped port');
+	} else {
+		log.info('Email: disabled');
+	}
+
+	// Display OIDC status
+	if (config.oidc) {
+		log.info(`OIDC: enabled (Dex provider on port ${DEFAULT_DEX_PORT})`);
+		log.info('  Test user: test@n8n.io / testpassword');
+		log.info('  Client ID: n8n-test-client');
+	} else {
+		log.info('OIDC: disabled');
 	}
 
 	if (config.resourceQuota) {
