@@ -299,8 +299,8 @@ export class WorkflowService {
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 
-		// Merge settings for public API to support partial updates
-		if (publicApi && workflowUpdateData.settings && workflow.settings) {
+		// Merge settings to support partial updates
+		if (workflowUpdateData.settings && workflow.settings) {
 			workflowUpdateData.settings = {
 				...workflow.settings,
 				...workflowUpdateData.settings,
