@@ -1678,11 +1678,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			description,
 		});
 
-		workflowsById.value[id] = {
-			...workflowsById.value[id],
-			description: updated.description,
-			versionId: updated.versionId,
-		};
+		if (workflowsById.value[id]) {
+			workflowsById.value[id] = {
+				...workflowsById.value[id],
+				description: updated.description,
+				versionId: updated.versionId,
+			};
+		}
 
 		// Update local store state
 		if (isCurrentWorkflow) {

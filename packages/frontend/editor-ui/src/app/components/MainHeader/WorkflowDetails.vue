@@ -227,11 +227,13 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 		});
 	}
 
-	actions.unshift({
-		id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
-		label: locale.baseText('menuActions.editDescription'),
-		disabled: !onWorkflowPage.value || isNewWorkflow.value,
-	});
+	if (!props.readOnly && workflowPermissions.value.update) {
+		actions.unshift({
+			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
+			label: locale.baseText('menuActions.editDescription'),
+			disabled: !onWorkflowPage.value || isNewWorkflow.value,
+		});
+	}
 
 	actions.push({
 		id: WORKFLOW_MENU_ACTIONS.SETTINGS,
