@@ -733,6 +733,7 @@ const onLogout = () => {
 										<template v-if="item.id === 'settings-item'">
 											<span :class="$style.divider" />
 											<N8nMenuItem
+												:data-test-id="'main-sidebar-log-out'"
 												:item="{ id: 'sign-out', label: 'Sign out', icon: 'door-open' }"
 												@click="onLogout"
 											/>

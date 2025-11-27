@@ -66,11 +66,11 @@ export class SidebarPage {
 	}
 
 	getSettings(): Locator {
-		return this.page.getByTestId('main-sidebar-settings');
+		return this.page.getByTestId('main-sidebar-settings-item');
 	}
 
 	getLogoutMenuItem(): Locator {
-		return this.page.getByTestId('user-menu-item-logout');
+		return this.page.getByTestId('main-sidebar-log-out');
 	}
 
 	getAboutModal(): Locator {
