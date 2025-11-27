@@ -40,9 +40,13 @@ export class CreateWorkflowPublishHistoryTable1764167920585 implements Reversibl
 		const id = escape.columnName('id');
 		const activeVersionId = escape.columnName('activeVersionId');
 		const updatedAt = escape.columnName('updatedAt');
+		const workflowId = escape.columnName('workflowId');
+		const versionId = escape.columnName('versionId');
+		const status = escape.columnName('status');
+		const createdAt = escape.columnName('createdAt');
 
 		await runQuery(
-			`INSERT INTO ${escapedWPHName} (workflowId, versionId, status, createdAt)
+			`INSERT INTO ${escapedWPHName} (${workflowId}, ${versionId}, ${status}, ${createdAt})
 				SELECT we.${id}, we.${activeVersionId}, 'activated', we.${updatedAt}
 				FROM ${workflowEntityTableName} we
 				WHERE we.${activeVersionId} IS NOT NULL`,
