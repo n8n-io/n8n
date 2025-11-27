@@ -146,7 +146,10 @@ function extractMessageContent(messages: MessageContent[]): string | null {
 
 /**
  * Remove context tags from message content that are used for AI context
- * but shouldn't be displayed to users
+ * but shouldn't be displayed to users.
+ *
+ * This removes the entire context block from <current_workflow_json> through
+ * </current_execution_nodes_schemas>
  */
 export function cleanContextTags(text: string): string {
 	return text.replace(/\n*<current_workflow_json>[\s\S]*?<\/current_execution_nodes_schemas>/, '');
@@ -158,7 +161,7 @@ export function cleanContextTags(text: string): string {
 
 /** Handle delete_messages node update */
 function processDeleteMessages(update: unknown): StreamOutput | null {
-	const typed = update as { messages?: MessageContent[] };
+	const typed = update as { messages?: MessageContent[] } | undefined;
 	if (!typed?.messages?.length) return null;
 
 	const messageChunk: AgentMessageChunk = {
@@ -171,7 +174,7 @@ function processDeleteMessages(update: unknown): StreamOutput | null {
 
 /** Handle compact_messages node update */
 function processCompactMessages(update: unknown): StreamOutput | null {
-	const typed = update as { messages?: MessageContent[] };
+	const typed = update as { messages?: MessageContent[] } | undefined;
 	if (!typed?.messages?.length) return null;
 
 	const content = extractMessageContent(typed.messages);
@@ -187,7 +190,7 @@ function processCompactMessages(update: unknown): StreamOutput | null {
 
 /** Handle process_operations node update */
 function processOperationsUpdate(update: unknown): StreamOutput | null {
-	const typed = update as { workflowJSON?: unknown; workflowOperations?: unknown };
+	const typed = update as { workflowJSON?: unknown; workflowOperations?: unknown } | undefined;
 	if (!typed?.workflowJSON || typed.workflowOperations === undefined) return null;
 
 	const workflowUpdateChunk: WorkflowUpdateChunk = {
@@ -202,7 +205,7 @@ function processOperationsUpdate(update: unknown): StreamOutput | null {
 function processAgentNodeUpdate(nodeName: string, update: unknown): StreamOutput | null {
 	if (!shouldEmitFromNode(nodeName)) return null;
 
-	const typed = update as { messages?: MessageContent[] };
+	const typed = update as { messages?: MessageContent[] } | undefined;
 	if (!typed?.messages?.length) return null;
 
 	const content = extractMessageContent(typed.messages);
@@ -287,7 +290,7 @@ function processSubgraphEvent(event: SubgraphEvent): StreamOutput | null {
 /** Process a parent graph event */
 function processParentEvent(event: ParentEvent): StreamOutput | null {
 	const [streamMode, chunk] = event;
-	if (typeof streamMode !== 'string' || streamMode.length <= 1) return null;
+	if (!streamMode || typeof streamMode !== 'string') return null;
 
 	return processStreamChunk(streamMode, chunk);
 }
