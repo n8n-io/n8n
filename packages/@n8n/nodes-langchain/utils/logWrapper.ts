@@ -10,7 +10,7 @@ import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_comp
 import type { StructuredTool, Tool } from '@langchain/core/tools';
 import { VectorStore } from '@langchain/core/vectorstores';
 import { TextSplitter } from '@langchain/textsplitters';
-import type { BaseDocumentLoader } from 'langchain/dist/document_loaders/base';
+import type { BaseDocumentLoader } from '@langchain/classic/dist/document_loaders/base';
 import { OpenAIEmbeddings, AzureOpenAIEmbeddings } from '@langchain/openai';
 import type {
 	IDataObject,

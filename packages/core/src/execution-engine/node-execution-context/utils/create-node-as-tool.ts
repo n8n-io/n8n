@@ -104,9 +104,9 @@ function createTool(options: CreateNodeAsToolOptions) {
 	return new DynamicStructuredTool({
 		name,
 		description,
-		schema,
-		func: async (toolArgs: z.infer<typeof schema>) => await handleToolInvocation(toolArgs),
-	});
+		schema: schema as any,
+		func: async (toolArgs: IDataObject) => await handleToolInvocation(toolArgs),
+	}) as DynamicStructuredTool;
 }
 
 /**

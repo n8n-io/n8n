@@ -5,8 +5,8 @@ import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import type { Document } from '@langchain/core/documents';
 import type { TextSplitter } from '@langchain/textsplitters';
 import { createWriteStream } from 'fs';
-import { JSONLoader } from 'langchain/document_loaders/fs/json';
-import { TextLoader } from 'langchain/document_loaders/fs/text';
+import { JSONLoader } from '@langchain/classic/document_loaders/fs/json';
+import { TextLoader } from '@langchain/classic/document_loaders/fs/text';
 import type {
 	IBinaryData,
 	IExecuteFunctions,

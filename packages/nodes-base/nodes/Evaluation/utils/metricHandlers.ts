@@ -242,7 +242,7 @@ export const metricHandlers = {
 				},
 			);
 		}
-		const chain = chatPrompt.pipe(llm.withStructuredOutput(responseSchema));
+		const chain = chatPrompt.pipe(llm.withStructuredOutput(responseSchema as any)) as any;
 
 		try {
 			const response = await chain.invoke({
@@ -333,7 +333,7 @@ export const metricHandlers = {
 				},
 			);
 		}
-		const chain = chatPrompt.pipe(llm.withStructuredOutput(responseSchema));
+		const chain = chatPrompt.pipe(llm.withStructuredOutput(responseSchema as any)) as any;
 
 		try {
 			const response = await chain.invoke({

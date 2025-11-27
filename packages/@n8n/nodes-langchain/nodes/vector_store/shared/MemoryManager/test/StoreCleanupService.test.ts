@@ -1,5 +1,5 @@
 import { mock } from 'jest-mock-extended';
-import type { MemoryVectorStore } from 'langchain/vectorstores/memory';
+import type { MemoryVectorStore } from '@langchain/classic/vectorstores/memory';
 
 import { StoreCleanupService } from '../StoreCleanupService';
 import type { VectorStoreMetadata } from '../types';

@@ -1,7 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
 import { trimMessages } from '@langchain/core/messages';
-import type { BaseChatMemory } from 'langchain/memory';
+import type { BaseChatMemory } from '@langchain/classic/memory';
 
 import type { ToolCallData } from './types';
 

@@ -1,6 +1,6 @@
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { BaseRetriever } from '@langchain/core/retrievers';
-import { MultiQueryRetriever } from 'langchain/retrievers/multi_query';
+import { MultiQueryRetriever } from '@langchain/classic/retrievers/multi_query';
 import {
 	NodeConnectionTypes,
 	type INodeType,

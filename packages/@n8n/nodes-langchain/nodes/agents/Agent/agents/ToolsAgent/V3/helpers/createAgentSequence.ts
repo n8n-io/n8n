@@ -1,9 +1,9 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { ChatPromptTemplate } from '@langchain/core/prompts';
 import { RunnableSequence } from '@langchain/core/runnables';
-import { type AgentRunnableSequence, createToolCallingAgent } from 'langchain/agents';
-import type { BaseChatMemory } from 'langchain/memory';
-import type { DynamicStructuredTool, Tool } from 'langchain/tools';
+import { type AgentRunnableSequence, createToolCallingAgent } from '@langchain/classic/agents';
+import type { BaseChatMemory } from '@langchain/classic/memory';
+import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 

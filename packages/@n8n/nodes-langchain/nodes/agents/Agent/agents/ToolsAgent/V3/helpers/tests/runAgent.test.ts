@@ -1,7 +1,7 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { mock } from 'jest-mock-extended';
-import type { AgentRunnableSequence } from 'langchain/agents';
-import type { Tool } from 'langchain/tools';
+import type { AgentRunnableSequence } from '@langchain/classic/agents';
+import type { Tool } from '@langchain/classic/tools';
 import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
 
 import * as agentExecution from '@utils/agent-execution';

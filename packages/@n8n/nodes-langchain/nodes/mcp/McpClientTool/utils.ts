@@ -1,7 +1,7 @@
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from '@langchain/core/tools';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
-import { Toolkit } from 'langchain/agents';
+import { Toolkit } from '@langchain/classic/agents';
 import { type IDataObject } from 'n8n-workflow';
 import { z } from 'zod';
 

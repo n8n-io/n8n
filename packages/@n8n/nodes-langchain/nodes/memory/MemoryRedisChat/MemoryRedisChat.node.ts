@@ -1,6 +1,6 @@
 import type { RedisChatMessageHistoryInput } from '@langchain/redis';
 import { RedisChatMessageHistory } from '@langchain/redis';
-import { BufferMemory, BufferWindowMemory } from 'langchain/memory';
+import { BufferMemory, BufferWindowMemory } from '@langchain/classic/memory';
 import {
 	NodeOperationError,
 	type INodeType,

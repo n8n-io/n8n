@@ -1,5 +1,5 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AgentExecutor } from 'langchain/agents';
+import type { AgentExecutor } from '@langchain/classic/agents';
 import type { IExecuteFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 

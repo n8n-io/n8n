@@ -1,8 +1,8 @@
 import { PromptTemplate } from '@langchain/core/prompts';
 import { ChatOpenAI } from '@langchain/openai';
-import type { AgentExecutorInput } from 'langchain/agents';
-import { AgentExecutor, OpenAIAgent } from 'langchain/agents';
-import { BufferMemory, type BaseChatMemory } from 'langchain/memory';
+import type { AgentExecutorInput } from '@langchain/classic/agents';
+import { AgentExecutor, OpenAIAgent } from '@langchain/classic/agents';
+import { BufferMemory, type BaseChatMemory } from '@langchain/classic/memory';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
