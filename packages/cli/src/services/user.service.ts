@@ -269,20 +269,18 @@ export class UserService {
 		return { usersInvited, usersCreated: toCreateUsers.map(({ email }) => email) };
 	}
 
-	async changeUserRole(user: User, targetUser: User, newRole: RoleChangeRequestDto) {
+	async changeUserRole(user: User, newRole: RoleChangeRequestDto) {
 		// Check that new role exists
 		await this.roleService.checkRolesExist([newRole.newRoleName], 'global');
 
 		return await this.userRepository.manager.transaction(async (trx) => {
-			await trx.update(User, { id: targetUser.id }, { role: { slug: newRole.newRoleName } });
+			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
 
 			const adminDowngradedToMember =
-				user.role.slug === 'global:owner' &&
-				targetUser.role.slug === 'global:admin' &&
-				newRole.newRoleName === 'global:member';
+				user.role.slug === 'global:admin' && newRole.newRoleName === 'global:member';
 
 			if (adminDowngradedToMember) {
-				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(targetUser, trx);
+				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(user, trx);
 			}
 		});
 	}
