@@ -1,4 +1,9 @@
-import { createWorkflowWithHistory, testDb, mockInstance } from '@n8n/backend-test-utils';
+import {
+	createWorkflowWithHistory,
+	createActiveWorkflow,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import { SharedWorkflowRepository, type WorkflowEntity, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
@@ -44,19 +49,24 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-	await testDb.truncate(['WorkflowEntity']);
+	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory']);
 	jest.restoreAllMocks();
 });
 
 describe('update()', () => {
 	test('should remove and re-add to active workflows on `active: true` payload', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflowWithHistory({ active: true }, owner);
+		const workflow = await createActiveWorkflow({}, owner);
 
 		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
 		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
 
-		await workflowService.update(owner, workflow, workflow.id);
+		const updateData = {
+			active: true,
+			versionId: workflow.versionId,
+		};
+
+		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id);
 
 		expect(removeSpy).toHaveBeenCalledTimes(1);
 		const [removedWorkflowId] = removeSpy.mock.calls[0];
@@ -70,13 +80,17 @@ describe('update()', () => {
 
 	test('should remove from active workflows on `active: false` payload', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflowWithHistory({ active: true }, owner);
+		const workflow = await createActiveWorkflow({}, owner);
 
 		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
 		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
 
-		workflow.active = false;
-		await workflowService.update(owner, workflow, workflow.id);
+		const updateData = {
+			active: false,
+			versionId: workflow.versionId,
+		};
+
+		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id);
 
 		expect(removeSpy).toHaveBeenCalledTimes(1);
 		const [removedWorkflowId] = removeSpy.mock.calls[0];
@@ -89,7 +103,7 @@ describe('update()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
-		const updateData: Partial<WorkflowEntity> = {
+		const updateData = {
 			nodes: [
 				{
 					id: 'new-node',
@@ -116,11 +130,11 @@ describe('update()', () => {
 
 	test('should not save workflow history version when updating only active status', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflowWithHistory({ active: false }, owner);
+		const workflow = await createWorkflowWithHistory({}, owner);
 
 		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
 
-		const updateData: Partial<WorkflowEntity> = {
+		const updateData = {
 			active: true,
 			versionId: workflow.versionId,
 		};
@@ -132,13 +146,12 @@ describe('update()', () => {
 
 	test('should save workflow history version with backfilled data when versionId changes', async () => {
 		const owner = await createOwner();
-		const workflow = await createWorkflowWithHistory({ active: false }, owner);
+		const workflow = await createWorkflowWithHistory({}, owner);
 
 		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
 
 		const newVersionId = 'new-version-id-123';
-		const updateData: Partial<WorkflowEntity> = {
-			active: true,
+		const updateData = {
 			versionId: newVersionId,
 		};
 

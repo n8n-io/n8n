@@ -18,6 +18,7 @@ import {
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
+	ExecutionContextHookRegistry,
 } from 'n8n-core';
 import { ensureError, sleep, UnexpectedError, UserError } from 'n8n-workflow';
 
@@ -64,6 +65,8 @@ export abstract class BaseCommand<F = never> {
 
 	protected readonly moduleRegistry = Container.get(ModuleRegistry);
 
+	protected readonly executionContextHookRegistry = Container.get(ExecutionContextHookRegistry);
+
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
 	 */
@@ -95,6 +98,8 @@ export abstract class BaseCommand<F = never> {
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
+
+		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).init();
 
 		await this.dbConnection
@@ -230,6 +235,13 @@ export abstract class BaseCommand<F = never> {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			this.logger.error(`Failed to init object store: ${error.message}`, { error });
 			process.exit(1);
+		}
+
+		if (Container.get(BinaryDataConfig).availableModes.includes('database')) {
+			const binaryDataService = Container.get(BinaryDataService);
+			const { DatabaseManager } = await import('@/binary-data/database.manager');
+			const databaseManager = Container.get(DatabaseManager);
+			binaryDataService.setManager('database', databaseManager);
 		}
 
 		await Container.get(BinaryDataService).init();

@@ -1,6 +1,6 @@
 {
   "name": "@n8n/ai-workflow-builder",
-  "version": "0.31.0",
+  "version": "0.32.0",
   "scripts": {
     "clean": "rimraf dist .turbo",
     "typecheck": "tsc --noEmit",
@@ -28,7 +28,11 @@
     "eval:langsmith": "USE_LANGSMITH_EVAL=true tsx evaluations",
     "eval:generate": "GENERATE_TEST_CASES=true tsx evaluations",
     "eval:categorize": "tsx scripts/categorize-prompts.ts",
-    "eval:pairwise": "USE_PAIRWISE_EVAL=true tsx evaluations"
+    "eval:pairwise": "USE_PAIRWISE_EVAL=true tsx evaluations",
+    "python:check": "cd evaluations/programmatic/python && just check",
+    "python:test": "cd evaluations/programmatic/python && just test",
+    "python:lint": "cd evaluations/programmatic/python && just lint",
+    "python:format": "cd evaluations/programmatic/python && just format"
   },
   "main": "dist/index.js",
   "module": "src/index.ts",

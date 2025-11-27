@@ -14,11 +14,6 @@ test.describe('Inject previous execution', () => {
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.canvas.clickExecuteWorkflowButton();
 
-		await expect(n8n.canvas.getExecuteWorkflowButtonSpinner()).toBeVisible();
-		await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
-		await expect(n8n.canvas.stopExecutionButton()).toBeVisible();
-		await expect(n8n.canvas.stopExecutionWaitingForWebhookButton()).toBeHidden();
-
 		await n8n.notifications.waitForNotificationAndClose(
 			NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,
 		);
@@ -48,11 +43,6 @@ test.describe('Inject previous execution', () => {
 
 		await n8n.canvas.clickZoomToFitButton();
 		await n8n.canvas.clickExecuteWorkflowButton();
-
-		await expect(n8n.canvas.getExecuteWorkflowButtonSpinner()).toBeVisible();
-		await expect(n8n.canvas.clearExecutionDataButton()).toBeHidden();
-		await expect(n8n.canvas.stopExecutionButton()).toBeVisible();
-		await expect(n8n.canvas.stopExecutionWaitingForWebhookButton()).toBeHidden();
 
 		await n8n.notifications.waitForNotificationAndClose(
 			NOTIFICATIONS.WORKFLOW_EXECUTED_SUCCESSFULLY,

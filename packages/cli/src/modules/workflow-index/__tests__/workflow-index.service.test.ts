@@ -44,6 +44,7 @@ describe('WorkflowIndexService', () => {
 		id: 'workflow-123',
 		name: 'Test Workflow',
 		active: true,
+		activeVersionId: 'some-version-id',
 		isArchived: false,
 		createdAt: new Date(),
 		updatedAt: new Date(),
