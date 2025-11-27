@@ -11,6 +11,7 @@ const mockWorkflows: WorkflowResource[] = [
 		name: 'Test Workflow 1',
 		resourceType: 'workflow',
 		active: true,
+		activeVersionId: 'version-1',
 		createdAt: '2023-01-01T00:00:00.000Z',
 		updatedAt: '2023-01-01T00:00:00.000Z',
 		homeProject: {
@@ -31,6 +32,7 @@ const mockWorkflows: WorkflowResource[] = [
 		name: 'Test Workflow 2',
 		resourceType: 'workflow',
 		active: false,
+		activeVersionId: null,
 		createdAt: '2023-01-01T00:00:00.000Z',
 		updatedAt: '2023-01-01T00:00:00.000Z',
 		homeProject: {

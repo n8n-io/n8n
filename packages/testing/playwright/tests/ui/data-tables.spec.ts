@@ -40,9 +40,7 @@ test.describe('Data Table list view', () => {
 		}
 
 		// Go to overview, both data tables should be visible
-		await n8n.sideBar.clickHomeMenuItem();
-		await n8n.dataTable.clickDataTableOverviewTab();
-
+		await n8n.navigate.toDatatables();
 		for (const project of TEST_PROJECTS) {
 			await expect(n8n.dataTable.getDataTableCardByName(project.dataTable)).toBeVisible();
 		}

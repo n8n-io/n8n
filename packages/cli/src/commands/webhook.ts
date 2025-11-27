@@ -82,7 +82,7 @@ export class Webhook extends BaseCommand {
 		});
 		Container.get(LogStreamingEventRelay).init();
 
-		await this.moduleRegistry.initModules();
+		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 	}
 
 	async run() {

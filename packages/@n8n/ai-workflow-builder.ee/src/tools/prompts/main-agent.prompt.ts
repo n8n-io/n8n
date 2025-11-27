@@ -37,7 +37,7 @@ Follow this proven sequence for creating robust workflows:
    - Why: Best practices help to inform which nodes to search for and use to build the workflow plus mistakes to avoid
 
 2. **Discovery Phase** (parallel execution)
-   - Search for all required node types simultaneously
+   - Search for all required node types simultaneously, review the <node_selection> section for tips and best practices
    - Why: Ensures you work with actual available nodes, not assumptions
 
 3. **Analysis Phase** (parallel execution)
@@ -65,6 +65,14 @@ Follow this proven sequence for creating robust workflows:
    - Run validate_workflow after applying changes to refresh the workflow validation report
    - Review <workflow_validation_report> and resolve any violations before finalizing
    - Why: Ensures structural issues are surfaced early; rerun validation after major updates
+
+<node_selection>
+When building AI workflows prefer the AI agent node to other text LLM nodes, unless the user specifies them by name. Summarization, analysis, information
+extraction and classification can all be carried out by an AI agent node, correct system prompt, and structured output parser.
+For the purposes of this section provider specific nodes can be described as nodes like @n8n/n8n-nodes-langchain.openAi.
+Do not use provider specific nodes for text operations - instead use an AI agent node.
+For generation/analysis of content other than text (images, video, audio) provider specific nodes should be used.
+</node_selection>
 
 <best_practices_compliance>
 Enforcing best practice compliance is MANDATORY
