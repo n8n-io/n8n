@@ -5,7 +5,6 @@ import { useI18n } from '@n8n/i18n';
 import type {
 	WorkflowHistory,
 	WorkflowVersionId,
-	WorkflowHistoryActionTypes,
 	WorkflowHistoryRequestParams,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
@@ -13,9 +12,9 @@ import type { IUser } from 'n8n-workflow';
 import { I18nT } from 'vue-i18n';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
 import { N8nLoading } from '@n8n/design-system';
-import { useSettingsStore } from '@/app/stores/settings.store';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
+import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 const props = defineProps<{
 	items: WorkflowHistory[];
@@ -30,20 +29,13 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	action: [
-		value: {
-			action: WorkflowHistoryActionTypes[number];
-			id: WorkflowVersionId;
-			data: { formattedCreatedAt: string; versionName?: string; description?: string };
-		},
-	];
+	action: [value: WorkflowHistoryAction];
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
 	loadMore: [value: WorkflowHistoryRequestParams];
 	upgrade: [];
 }>();
 
 const i18n = useI18n();
-const settingsStore = useSettingsStore();
 const envFeatureFlag = useEnvFeatureFlag();
 const listElement = ref<Element | null>(null);
 const shouldAutoScroll = ref(true);
@@ -81,15 +73,7 @@ const getActions = (item: WorkflowHistory, index: number) => {
 	return filteredActions;
 };
 
-const onAction = ({
-	action,
-	id,
-	data,
-}: {
-	action: WorkflowHistoryActionTypes[number];
-	id: WorkflowVersionId;
-	data: { formattedCreatedAt: string; versionName?: string; description?: string };
-}) => {
+const onAction = ({ action, id, data }: WorkflowHistoryAction) => {
 	shouldAutoScroll.value = false;
 	emit('action', { action, id, data });
 };

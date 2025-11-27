@@ -1,11 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import type { IWorkflowDb, UserAction } from '@/Interface';
-import type {
-	WorkflowVersion,
-	WorkflowHistoryActionTypes,
-	WorkflowVersionId,
-} from '@n8n/rest-api-client/api/workflowHistory';
+import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import { useI18n } from '@n8n/i18n';
@@ -15,6 +11,7 @@ import { N8nButton, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-sy
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
 import { formatTimestamp } from '@/features/workflows/workflowHistory/utils';
+import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 const i18n = useI18n();
 const envFeatureFlag = useEnvFeatureFlag();
@@ -29,13 +26,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-	action: [
-		value: {
-			action: WorkflowHistoryActionTypes[number];
-			id: WorkflowVersionId;
-			data: { formattedCreatedAt: string; versionName?: string; description?: string };
-		},
-	];
+	action: [value: WorkflowHistoryAction];
 }>();
 
 const isDraftPublishEnabled = computed(() =>
@@ -104,15 +95,7 @@ const actions = computed(() => {
 	return filteredActions;
 });
 
-const onAction = ({
-	action,
-	id,
-	data,
-}: {
-	action: WorkflowHistoryActionTypes[number];
-	id: WorkflowVersionId;
-	data: { formattedCreatedAt: string; versionName?: string; description?: string };
-}) => {
+const onAction = ({ action, id, data }: WorkflowHistoryAction) => {
 	emit('action', { action, id, data });
 };
 

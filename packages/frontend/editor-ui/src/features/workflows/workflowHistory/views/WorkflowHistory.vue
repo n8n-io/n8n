@@ -35,6 +35,7 @@ import type { WorkflowHistoryVersionUnpublishModalEventBusEvents } from '../comp
 import type { WorkflowHistoryPublishModalEventBusEvents } from '../components/WorkflowHistoryPublishModal.vue';
 import { useEnvFeatureFlag } from '@/features/shared/envFeatureFlag/useEnvFeatureFlag';
 import { WORKFLOWS_DRAFT_PUBLISH_ENABLED_FLAG } from '@/app/constants';
+import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
 type WorkflowHistoryActionRecord = {
 	[K in Uppercase<WorkflowHistoryActionTypes[number]>]: Lowercase<K>;
@@ -276,10 +277,7 @@ const restoreWorkflowVersion = async (
 	});
 };
 
-const publishWorkflowVersion = (
-	id: WorkflowVersionId,
-	data: { formattedCreatedAt: string; versionName?: string; description?: string },
-) => {
+const publishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAction['data']) => {
 	const publishEventBus = createEventBus<WorkflowHistoryPublishModalEventBusEvents>();
 
 	publishEventBus.once('publish', (publishData) => {
@@ -320,7 +318,7 @@ const publishWorkflowVersion = (
 	});
 };
 
-const unpublishWorkflowVersion = (id: WorkflowVersionId, data: { versionName?: string }) => {
+const unpublishWorkflowVersion = (id: WorkflowVersionId, data: WorkflowHistoryAction['data']) => {
 	if (workflowActiveVersionId.value !== id) {
 		return;
 	}
@@ -354,15 +352,7 @@ const unpublishWorkflowVersion = (id: WorkflowVersionId, data: { versionName?: s
 	});
 };
 
-const onAction = async ({
-	action,
-	id,
-	data,
-}: {
-	action: WorkflowHistoryActionTypes[number];
-	id: WorkflowVersionId;
-	data: { formattedCreatedAt: string; versionName?: string; description?: string };
-}) => {
+const onAction = async ({ action, id, data }: WorkflowHistoryAction) => {
 	try {
 		switch (action) {
 			case WORKFLOW_HISTORY_ACTIONS.OPEN:
