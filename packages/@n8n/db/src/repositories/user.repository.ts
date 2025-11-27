@@ -158,7 +158,7 @@ export class UserRepository extends Repository<User> {
 		return await this.findOne({
 			where: {
 				projectRelations: {
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_OWNER_VIEWER_ROLE_SLUG]) },
 					project: { sharedWorkflows: { workflowId, role: 'workflow:owner' } },
 				},
 			},
@@ -175,7 +175,7 @@ export class UserRepository extends Repository<User> {
 		return await this.findOne({
 			where: {
 				projectRelations: {
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_OWNER_VIEWER_ROLE_SLUG]) },
 					projectId,
 				},
 			},

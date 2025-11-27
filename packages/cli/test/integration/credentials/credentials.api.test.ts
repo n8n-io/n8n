@@ -977,6 +977,8 @@ describe('POST /credentials', () => {
 
 	test('should allow viewer user to create credential in their personal project', async () => {
 		const viewer = await createMember();
+		teamProject = await createTeamProject(undefined, admin);
+		await linkUserToProject(viewer, teamProject, 'project:viewer');
 
 		const response = await testServer
 			.authAgentFor(viewer)

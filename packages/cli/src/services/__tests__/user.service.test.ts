@@ -1,7 +1,14 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
-import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, Role, User, UserRepository } from '@n8n/db';
+import {
+	GLOBAL_ADMIN_ROLE,
+	GLOBAL_MEMBER_ROLE,
+	ProjectRelation,
+	Role,
+	User,
+	UserRepository,
+} from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
@@ -13,6 +20,7 @@ import type { UserManagementMailer } from '@/user-management/email';
 
 import type { RoleService } from '../role.service';
 import { type PublicApiKeyService } from '../public-api-key.service';
+import { createChatUser } from '@test-integration/db/users';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
