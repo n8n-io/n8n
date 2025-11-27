@@ -30,6 +30,7 @@ describe('eligibleModules', () => {
 			'mcp',
 			'provisioning',
 			'breaking-changes',
+			'dynamic-credentials',
 		]);
 	});
 
@@ -43,6 +44,7 @@ describe('eligibleModules', () => {
 			'mcp',
 			'provisioning',
 			'breaking-changes',
+			'dynamic-credentials',
 		]);
 	});
 
