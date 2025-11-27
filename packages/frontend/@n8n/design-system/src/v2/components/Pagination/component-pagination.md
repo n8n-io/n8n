@@ -17,7 +17,6 @@ Displays data in paged format and provides navigation between pages. Enables use
 - `total?: number` - Total number of items across all pages. Used to calculate total page count. Default: `0`
 - `pagerCount?: number` - Maximum number of page buttons to display in the pager. Must be an odd number. Default: `7`
 - `layout?: string` - Order and elements to display in the pagination. Comma-separated values: `'prev' | 'pager' | 'next'`. Default: `'prev, pager, next'`
-- `background?: boolean` - Whether to add background color to pagination buttons. Default: `false`
 
 **Events**
 
@@ -44,7 +43,7 @@ const currentPage = ref(1)
 </template>
 ```
 
-**With background and custom pager count:**
+**With custom pager count:**
 ```typescript
 <script setup lang="ts">
 import { ref } from 'vue'
@@ -57,7 +56,6 @@ const totalRows = 150
 
 <template>
   <N8nPagination
-    background
     :pager-count="5"
     :page-size="rowsPerPage"
     :total="totalRows"
@@ -132,7 +130,6 @@ const paginatedItems = computed(() => {
     <!-- Pagination controls -->
     <N8nPagination
       v-if="totalPages > 1"
-      background
       :pager-count="5"
       :page-size="pageSize"
       :total="allItems.length"
