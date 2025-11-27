@@ -727,9 +727,9 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		viewport: viewportBoundaries.value,
 	});
 	const ids = result.nodes?.map((node) => node.id) ?? [];
-	// selectNodes(ids);
 
-	canvasRef.value?.test(ids);
+	canvasRef.value?.ensureNodesAreVisible(ids);
+	selectNodes(ids);
 }
 
 async function onCutNodes(ids: string[]) {
@@ -1045,10 +1045,8 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 		viewport: viewportBoundaries.value,
 	});
 
-	canvasRef.value?.test(workflowData.nodes?.map((node) => node.id) ?? []);
-
-	// fitView();
-	// selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
+	canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
+	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 }
 
 function addImportEventBindings() {

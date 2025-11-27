@@ -80,7 +80,7 @@ const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 defineExpose({
 	executeContextMenuAction: (action: ContextMenuAction, nodeIds: string[]) =>
 		canvasRef.value?.executeContextMenuAction(action, nodeIds),
-	test: (ids: string[]) => {
+	ensureNodesAreVisible: (ids: string[]) => {
 		const vp = viewport.value;
 		const canvasElement = viewportRef.value;
 
@@ -95,18 +95,45 @@ defineExpose({
 			return;
 		}
 
-		const nodeRect = getRectOfNodes(targetNodes);
-
 		// Get canvas dimensions
 		const canvasWidth = canvasElement.clientWidth;
 		const canvasHeight = canvasElement.clientHeight;
 
-		// Transform node rectangle from canvas coordinates to screen coordinates
+		// Calculate current viewport bounds in canvas coordinates
+		const currentViewportRect = {
+			x: -vp.x / vp.zoom,
+			y: -vp.y / vp.zoom,
+			width: canvasWidth / vp.zoom,
+			height: canvasHeight / vp.zoom,
+		};
+
+		// Get the rect of the newly added nodes
+		const addedNodesRect = getRectOfNodes(targetNodes);
+
+		// Combine the current viewport with the added nodes to get the union
+		const x = Math.min(currentViewportRect.x, addedNodesRect.x);
+		const y = Math.min(currentViewportRect.y, addedNodesRect.y);
+		const x2 = Math.max(
+			currentViewportRect.x + currentViewportRect.width,
+			addedNodesRect.x + addedNodesRect.width,
+		);
+		const y2 = Math.max(
+			currentViewportRect.y + currentViewportRect.height,
+			addedNodesRect.y + addedNodesRect.height,
+		);
+		const combinedRect = {
+			x,
+			y,
+			width: x2 - x,
+			height: y2 - y,
+		};
+
+		// Transform combined rectangle to screen coordinates for visibility check
 		const screenRect = {
-			x: nodeRect.x * vp.zoom + vp.x,
-			y: nodeRect.y * vp.zoom + vp.y,
-			width: nodeRect.width * vp.zoom,
-			height: nodeRect.height * vp.zoom,
+			x: addedNodesRect.x * vp.zoom + vp.x,
+			y: addedNodesRect.y * vp.zoom + vp.y,
+			width: addedNodesRect.width * vp.zoom,
+			height: addedNodesRect.height * vp.zoom,
 		};
 
 		// Check if ALL nodes are fully visible within the viewport (not just intersecting)
@@ -118,8 +145,7 @@ defineExpose({
 
 		if (!isFullyVisible) {
 			const insertionDone = onNodesInitialized(() => {
-				props.eventBus.emit('fitView');
-				props.eventBus.emit('nodes:select', { ids });
+				void fitBounds(combinedRect, { padding: 0.1, duration: 300 });
 				insertionDone.off();
 			});
 		}
