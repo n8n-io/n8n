@@ -36,7 +36,7 @@ export declare namespace WorkflowRequest {
 		workflowData: IWorkflowBase;
 		agentRequest?: AiAgentRequest;
 
-		destinationNode?: string;
+		destinationNode?: IDestinationNode;
 		triggerToStartFrom: { name: string; data?: ITaskData };
 	};
 	// 2. Full Manual Execution from Unknown Trigger
@@ -44,7 +44,7 @@ export declare namespace WorkflowRequest {
 		workflowData: IWorkflowBase;
 		agentRequest?: AiAgentRequest;
 
-		destinationNode: string;
+		destinationNode: IDestinationNode;
 	};
 
 	// 3. Partial Manual Execution to Destination
@@ -53,7 +53,7 @@ export declare namespace WorkflowRequest {
 		agentRequest?: AiAgentRequest;
 
 		runData: IRunData;
-		destinationNode: string;
+		destinationNode: IDestinationNode;
 		dirtyNodeNames: string[];
 	};
 

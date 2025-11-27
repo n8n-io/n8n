@@ -130,7 +130,7 @@ describe('WorkflowExecutionService', () => {
 				}),
 				agentRequest: undefined,
 				runData: { [webhookNode.name]: [toITaskData([{ data: { value: 1 } }])] },
-				destinationNode: hackerNewsNode.name,
+				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 				dirtyNodeNames: [],
 			};
 
@@ -165,7 +165,7 @@ describe('WorkflowExecutionService', () => {
 			const node = mock<INode>();
 			const runPayload: WorkflowRequest.PartialManualExecutionToDestinationPayload = {
 				workflowData: mock<IWorkflowBase>({ nodes: [node], connections: {} }),
-				destinationNode: node.name,
+				destinationNode: { nodeName: node.name, mode: 'inclusive' },
 				agentRequest: undefined,
 				runData: { [node.name]: [toITaskData([{ data: { value: 1 } }])] },
 				dirtyNodeNames: [],
@@ -232,7 +232,7 @@ describe('WorkflowExecutionService', () => {
 					createdAt: new Date(),
 					updatedAt: new Date(),
 				},
-				destinationNode: hackerNewsNode.name,
+				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 			};
 
 			workflowRunner.run.mockResolvedValue(executionId);
@@ -327,7 +327,7 @@ describe('WorkflowExecutionService', () => {
 					createdAt: new Date(),
 					updatedAt: new Date(),
 				},
-				destinationNode: node.name,
+				destinationNode: { nodeName: node.name, mode: 'inclusive' },
 			};
 
 			workflowRunner.run.mockResolvedValue(executionId);
