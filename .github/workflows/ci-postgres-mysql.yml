@@ -137,10 +137,60 @@ jobs:
         working-directory: packages/cli
         run: pnpm test:postgres
 
+  postgres-18:
+    name: Postgres 18
+    needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 20
+    env:
+      DB_POSTGRESDB_PASSWORD: password
+      DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+      - name: Start Postgres 18
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
+        with:
+          compose-file: ./.github/docker-compose.yml
+          services: |
+            postgres-18
+
+      - name: Test Postgres 18
+        working-directory: packages/cli
+        run: pnpm test:postgres
+
+  postgres-18-fips:
+    name: Postgres 18 (FIPS)
+    needs: build
+    runs-on: blacksmith-2vcpu-ubuntu-2204
+    timeout-minutes: 20
+    env:
+      DB_POSTGRESDB_PASSWORD: password
+      DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
+
+      - name: Setup and Build
+        uses: n8n-io/n8n/.github/actions/setup-nodejs-blacksmith@f5fbbbe0a28a886451c886cac6b49192a39b0eea # v1.104.1
+
+      - name: Start Postgres 18 (FIPS)
+        uses: isbang/compose-action@802a148945af6399a338c7906c267331b39a71af # v2.0.0
+        with:
+          compose-file: ./.github/docker-compose.yml
+          services: |
+            postgres-18-fips
+
+      - name: Test Postgres 18 (FIPS)
+        working-directory: packages/cli
+        run: pnpm test:postgres
+
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
-    needs: [sqlite-pooled, mariadb, postgres, mysql]
+    needs: [sqlite-pooled, mariadb, postgres, postgres-18, postgres-18-fips, mysql]
     steps:
       - name: Notify Slack on failure
         uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
