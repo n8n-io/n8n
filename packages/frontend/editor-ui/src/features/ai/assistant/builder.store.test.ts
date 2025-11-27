@@ -1169,6 +1169,322 @@ describe('AI Builder store', () => {
 		});
 	});
 
+	describe('applyWorkflowUpdate with pinned data preservation', () => {
+		it('should preserve pinned data for nodes with matching names', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow with nodes that have pinned data
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [0, 0] as [number, number],
+				parameters: {},
+			};
+			const node2 = {
+				id: 'node2-id',
+				name: 'Set',
+				type: 'n8n-nodes-base.set',
+				position: [0, 0] as [number, number],
+				typeVersion: 1,
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1, node2];
+			workflowsStore.workflow.nodes = [node1, node2];
+
+			// Mock pinned data for these nodes
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+			const pinnedData2 = [{ json: { data: 'test2' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					if (nodeName === 'Set') return pinnedData2;
+					return undefined;
+				}),
+			);
+
+			// Create workflow update with the same node names but different IDs
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'new-node2-id',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						position: [450, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify pinned data was preserved for nodes with matching names
+			expect(result.workflowData?.pinData).toEqual({
+				'HTTP Request': pinnedData1,
+				Set: pinnedData2,
+			});
+		});
+
+		it('should preserve pinned data only for nodes that still exist', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow with three nodes
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+			const node2 = {
+				id: 'node2-id',
+				name: 'Set',
+				type: 'n8n-nodes-base.set',
+				typeVersion: 1,
+				position: [450, 300] as [number, number],
+				parameters: {},
+			};
+			const node3 = {
+				id: 'node3-id',
+				name: 'Code',
+				type: 'n8n-nodes-base.code',
+				typeVersion: 1,
+				position: [650, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1, node2, node3];
+			workflowsStore.workflow.nodes = [node1, node2, node3];
+
+			// Mock pinned data for all three nodes
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+			const pinnedData2 = [{ json: { data: 'test2' } }];
+			const pinnedData3 = [{ json: { data: 'test3' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					if (nodeName === 'Set') return pinnedData2;
+					if (nodeName === 'Code') return pinnedData3;
+					return undefined;
+				}),
+			);
+
+			// Create workflow update with only two of the three nodes
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						position: [250, 300] as [number, number],
+						typeVersion: 1,
+						parameters: {},
+					},
+					{
+						id: 'new-node2-id',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [450, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify only pinned data for existing nodes was preserved
+			expect(result.workflowData?.pinData).toEqual({
+				'HTTP Request': pinnedData1,
+				Set: pinnedData2,
+			});
+
+			// Code node's pinned data should not be included
+			expect(result.workflowData?.pinData).not.toHaveProperty('Code');
+		});
+
+		it('should not add pinData property if no pinned data exists', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow without pinned data
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1];
+			workflowsStore.workflow.nodes = [node1];
+
+			// Mock no pinned data
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(vi.fn(() => undefined));
+
+			// Create workflow update
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify pinData property is not added
+			expect(result.workflowData?.pinData).toBeUndefined();
+		});
+
+		it('should handle nodes with renamed names correctly', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1];
+			workflowsStore.workflow.nodes = [node1];
+
+			// Mock pinned data
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					return undefined;
+				}),
+			);
+
+			// Create workflow update with renamed node
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request1',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify pinned data was not preserved since the name changed
+			expect(result.workflowData?.pinData).toBeUndefined();
+		});
+
+		it('should preserve pinned data when adding new nodes', () => {
+			const builderStore = useBuilderStore();
+
+			// Set up initial workflow with one node
+			const node1 = {
+				id: 'node1-id',
+				name: 'HTTP Request',
+				type: 'n8n-nodes-base.httpRequest',
+				typeVersion: 1,
+				position: [250, 300] as [number, number],
+				parameters: {},
+			};
+
+			workflowsStore.allNodes = [node1];
+			workflowsStore.workflow.nodes = [node1];
+
+			// Mock pinned data for the existing node
+			const pinnedData1 = [{ json: { data: 'test1' } }];
+
+			vi.spyOn(workflowsStore, 'pinDataByNodeName', 'get').mockReturnValue(
+				vi.fn((nodeName: string) => {
+					if (nodeName === 'HTTP Request') return pinnedData1;
+					return undefined;
+				}),
+			);
+
+			// Create workflow update with existing node plus a new node
+			const workflowJson = JSON.stringify({
+				nodes: [
+					{
+						id: 'new-node1-id',
+						name: 'HTTP Request',
+						type: 'n8n-nodes-base.httpRequest',
+						typeVersion: 1,
+						position: [250, 300] as [number, number],
+						parameters: {},
+					},
+					{
+						id: 'new-node2-id',
+						name: 'Set',
+						type: 'n8n-nodes-base.set',
+						typeVersion: 1,
+						position: [450, 300] as [number, number],
+						parameters: {},
+					},
+				],
+				connections: {},
+			});
+
+			// Apply the workflow update
+			const result = builderStore.applyWorkflowUpdate(workflowJson);
+
+			// Verify the update was successful
+			expect(result.success).toBe(true);
+
+			// Verify pinned data was preserved only for the existing node
+			expect(result.workflowData?.pinData).toEqual({
+				'HTTP Request': pinnedData1,
+			});
+
+			// New node should not have pinned data
+			expect(result.workflowData?.pinData).not.toHaveProperty('Set');
+		});
+	});
+
 	describe('Credits management', () => {
 		it('should update builder credits correctly', () => {
 			const builderStore = useBuilderStore();
