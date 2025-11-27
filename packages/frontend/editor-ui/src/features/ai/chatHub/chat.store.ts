@@ -529,6 +529,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 
 		if (!sessions.value.byId[sessionId]) {
 			sessions.value.byId[sessionId] = createSessionFromStreamingState(streaming.value);
+			if (!sessions.value.ids) {
+				sessions.value.ids = [];
+			}
+			sessions.value.ids.unshift(sessionId);
 		}
 
 		sendMessageApi(
