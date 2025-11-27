@@ -382,7 +382,7 @@ const onAction = async ({
 				sendTelemetry('User restored version');
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.PUBLISH:
-				await publishWorkflowVersion(id, data);
+				publishWorkflowVersion(id, data);
 				break;
 			case WORKFLOW_HISTORY_ACTIONS.UNPUBLISH:
 				unpublishWorkflowVersion(id, data);
