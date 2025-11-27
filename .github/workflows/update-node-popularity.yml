@@ -56,5 +56,5 @@ jobs:
           branch: update-node-popularity
           base: master
           delete-branch: true
-          author: n8n Bot <18347049+n8n-bot@users.noreply.github.com>
-          committer: n8n Bot <18347049+n8n-bot@users.noreply.github.com>
+          author: n8n Bot <191478365+n8n-bot@users.noreply.github.com>
+          committer: n8n Bot <191478365+n8n-bot@users.noreply.github.com>

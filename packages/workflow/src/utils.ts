@@ -2,6 +2,7 @@ import { ApplicationError } from '@n8n/errors';
 import { parse as esprimaParse, Syntax } from 'esprima-next';
 import type { Node as SyntaxNode, ExpressionStatement } from 'esprima-next';
 import FormData from 'form-data';
+import { jsonrepair } from 'jsonrepair';
 import merge from 'lodash/merge';
 
 import { ALPHABET } from './constants';
@@ -109,7 +110,7 @@ type MutuallyExclusive<T, U> =
 	| (T & { [k in Exclude<keyof U, keyof T>]?: never })
 	| (U & { [k in Exclude<keyof T, keyof U>]?: never });
 
-type JSONParseOptions<T> = { acceptJSObject?: boolean } & MutuallyExclusive<
+type JSONParseOptions<T> = { acceptJSObject?: boolean; repairJSON?: boolean } & MutuallyExclusive<
 	{ errorMessage?: string },
 	{ fallbackValue?: T }
 >;
@@ -120,6 +121,7 @@ type JSONParseOptions<T> = { acceptJSObject?: boolean } & MutuallyExclusive<
  * @param {string} jsonString - The JSON string to parse.
  * @param {Object} [options] - Optional settings for parsing the JSON string. Either `fallbackValue` or `errorMessage` can be set, but not both.
  * @param {boolean} [options.acceptJSObject=false] - If true, attempts to recover from common JSON format errors by parsing the JSON string as a JavaScript Object.
+ * @param {boolean} [options.repairJSON=false] - If true, attempts to repair common JSON format errors by repairing the JSON string.
  * @param {string} [options.errorMessage] - A custom error message to throw if the JSON string cannot be parsed.
  * @param {*} [options.fallbackValue] - A fallback value to return if the JSON string cannot be parsed.
  * @returns {Object} - The parsed object, or the fallback value if parsing fails and `fallbackValue` is set.
@@ -132,6 +134,14 @@ export const jsonParse = <T>(jsonString: string, options?: JSONParseOptions<T>):
 			try {
 				const jsonStringCleaned = parseJSObject(jsonString);
 				return jsonStringCleaned as T;
+			} catch (e) {
+				// Ignore this error and return the original error or the fallback value
+			}
+		}
+		if (options?.repairJSON) {
+			try {
+				const jsonStringCleaned = jsonrepair(jsonString);
+				return JSON.parse(jsonStringCleaned) as T;
 			} catch (e) {
 				// Ignore this error and return the original error or the fallback value
 			}

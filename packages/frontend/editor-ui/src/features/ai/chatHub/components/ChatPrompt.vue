@@ -8,6 +8,9 @@ import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
+import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { useI18n } from '@n8n/i18n';
+import { I18nT } from 'vue-i18n';
 
 const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
 	isResponding: boolean;
@@ -29,9 +32,11 @@ const emit = defineEmits<{
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
 const fileInputRef = useTemplateRef<HTMLInputElement>('fileInputRef');
 const message = ref('');
+const committedSpokenMessage = ref('');
 const attachments = ref<File[]>([]);
 
 const toast = useToast();
+const i18n = useI18n();
 
 const speechInput = useSpeechRecognition({
 	continuous: true,
@@ -39,17 +44,22 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
-const placeholder = computed(() =>
-	selectedModel ? `Message ${selectedModel.name ?? 'a model'}...` : 'Select a model',
-);
+const placeholder = computed(() => {
+	if (selectedModel) {
+		return i18n.baseText('chatHub.chat.prompt.placeholder.withModel', {
+			interpolate: { model: selectedModel.name ?? 'a model' },
+		});
+	}
+	return i18n.baseText('chatHub.chat.prompt.placeholder.selectModel');
+});
 
 const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
-	selectedModel?.model.provider === 'n8n' || selectedModel?.model.provider === 'custom-agent'
-		? undefined
-		: selectedModel?.model.provider,
+	isLlmProviderModel(selectedModel?.model) ? selectedModel?.model.provider : undefined,
 );
 
 function onMic() {
+	committedSpokenMessage.value = message.value;
+
 	if (speechInput.isListening.value) {
 		speechInput.stop();
 	} else {
@@ -97,6 +107,7 @@ function handleSubmitForm() {
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
 		message.value = '';
+		committedSpokenMessage.value = '';
 		attachments.value = [];
 	}
 }
@@ -109,6 +120,7 @@ function handleKeydownTextarea(e: KeyboardEvent) {
 		speechInput.stop();
 		emit('submit', trimmed, attachments.value);
 		message.value = '';
+		committedSpokenMessage.value = '';
 		attachments.value = [];
 	}
 }
@@ -118,23 +130,31 @@ function handleClickInputWrapper() {
 }
 
 watch(speechInput.result, (spoken) => {
-	if (spoken) {
-		message.value = spoken;
-	}
+	message.value = committedSpokenMessage.value + ' ' + spoken.trimStart();
 });
+
+watch(
+	speechInput.isFinal,
+	(final) => {
+		if (final) {
+			committedSpokenMessage.value = message.value;
+		}
+	},
+	{ flush: 'post' },
+);
 
 watch(speechInput.error, (event) => {
 	if (event?.error === 'not-allowed') {
 		toast.showError(
-			new Error('Microphone access denied'),
-			'Please allow microphone access to use voice input',
+			new Error(i18n.baseText('chatHub.chat.prompt.microphone.accessDenied')),
+			i18n.baseText('chatHub.chat.prompt.microphone.allowAccess'),
 		);
 		return;
 	}
 
 	if (event?.error === 'no-speech') {
 		toast.showMessage({
-			title: 'No speech detected. Please try again',
+			title: i18n.baseText('chatHub.chat.prompt.microphone.noSpeech'),
 			type: 'warning',
 		});
 	}
@@ -160,33 +180,55 @@ defineExpose({
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
 			<N8nText v-if="!selectedModel" :class="$style.callout">
-				<template v-if="isNewSession">
-					Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
-					conversation
-				</template>
-				<template v-else>
-					Please <a href="" @click.prevent="emit('selectModel')">reselect a model</a> to continue
-					the conversation
-				</template>
+				<I18nT
+					:keypath="
+						isNewSession
+							? 'chatHub.chat.prompt.callout.selectModel.new'
+							: 'chatHub.chat.prompt.callout.selectModel.existing'
+					"
+					tag="span"
+					scope="global"
+				>
+					<template #link>
+						<a href="" @click.prevent="emit('selectModel')">{{
+							i18n.baseText(
+								isNewSession
+									? 'chatHub.chat.prompt.callout.selectModel.new.link'
+									: 'chatHub.chat.prompt.callout.selectModel.existing.link',
+							)
+						}}</a>
+					</template>
+				</I18nT>
 			</N8nText>
 			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
-				<template v-if="isNewSession">
-					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
-					for {{ providerDisplayNames[llmProvider] }} to start a conversation
-				</template>
-				<template v-else>
-					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)"> set credentials </a>
-					for {{ providerDisplayNames[llmProvider] }} to continue the conversation
-				</template>
+				<I18nT
+					:keypath="
+						isNewSession
+							? 'chatHub.chat.prompt.callout.setCredentials.new'
+							: 'chatHub.chat.prompt.callout.setCredentials.existing'
+					"
+					tag="span"
+					scope="global"
+				>
+					<template #link>
+						<a href="" @click.prevent="emit('setCredentials', llmProvider)">{{
+							i18n.baseText(
+								isNewSession
+									? 'chatHub.chat.prompt.callout.setCredentials.new.link'
+									: 'chatHub.chat.prompt.callout.setCredentials.existing.link',
+							)
+						}}</a>
+					</template>
+					<template #provider>
+						{{ providerDisplayNames[llmProvider] }}
+					</template>
+				</I18nT>
 			</N8nText>
 			<input
 				ref="fileInputRef"
 				type="file"
 				:class="$style.fileInput"
 				multiple
-				accept="image/*,.pdf,.doc,.docx,.txt"
 				@change="handleFileSelect"
 			/>
 
@@ -217,8 +259,10 @@ defineExpose({
 				<div :class="$style.footer">
 					<div v-if="isToolsSelectable" :class="$style.tools">
 						<ToolsSelector
+							:class="$style.toolsButton"
 							:selected="selectedTools ?? []"
 							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							transparent-bg
 							@select="onSelectTools"
 						/>
 					</div>
@@ -227,7 +271,7 @@ defineExpose({
 							v-if="selectedModel?.allowFileUploads"
 							native-type="button"
 							type="secondary"
-							title="Attach"
+							:title="i18n.baseText('chatHub.chat.prompt.button.attach')"
 							:disabled="isMissingCredentials || isResponding"
 							icon="paperclip"
 							icon-size="large"
@@ -237,7 +281,11 @@ defineExpose({
 						<N8nIconButton
 							v-if="speechInput.isSupported"
 							native-type="button"
-							:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
+							:title="
+								speechInput.isListening.value
+									? i18n.baseText('chatHub.chat.prompt.button.stopRecording')
+									: i18n.baseText('chatHub.chat.prompt.button.voiceInput')
+							"
 							type="secondary"
 							:disabled="isMissingCredentials || !selectedModel || isResponding"
 							:icon="speechInput.isListening.value ? 'square' : 'mic'"
@@ -249,7 +297,7 @@ defineExpose({
 							v-if="!isResponding"
 							native-type="submit"
 							:disabled="isMissingCredentials || !selectedModel || !message.trim()"
-							title="Send"
+							:title="i18n.baseText('chatHub.chat.prompt.button.send')"
 							icon="arrow-up"
 							icon-size="large"
 							@click.stop
@@ -257,7 +305,7 @@ defineExpose({
 						<N8nIconButton
 							v-else
 							native-type="button"
-							title="Stop generating"
+							:title="i18n.baseText('chatHub.chat.prompt.button.stopGenerating')"
 							icon="square"
 							icon-size="large"
 							@click.stop="onStop"
@@ -315,9 +363,10 @@ defineExpose({
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--sm);
+	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 
 	&:focus-within,
-	&:hover {
+	&:hover:has(textarea:not(:disabled)) {
 		border-color: var(--color--secondary);
 	}
 
@@ -343,21 +392,8 @@ defineExpose({
 }
 
 .toolsButton {
-	display: flex;
-	align-items: center;
-	gap: var(--spacing--2xs);
-	padding: var(--spacing--3xs) var(--spacing--xs);
-	color: var(--color--text);
-	cursor: pointer;
-
-	border-radius: var(--radius);
-	border: var(--border);
-	background: var(--color--background--light-3);
-
-	&:disabled {
-		opacity: 0.6;
-		cursor: not-allowed;
-	}
+	/* maintain the same height with other buttons regardless of selected tools */
+	height: 30px;
 }
 
 .iconStack {
