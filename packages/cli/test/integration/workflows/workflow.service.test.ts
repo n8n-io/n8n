@@ -162,14 +162,9 @@ describe('update()', () => {
 			versionId: newVersionId,
 		};
 
-		await workflowService.update(
-			owner,
-			updateData as WorkflowEntity,
-			workflow.id,
-			undefined,
-			undefined,
-			true, // forceSave
-		);
+		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id, {
+			forceSave: true,
+		});
 
 		expect(saveVersionSpy).toHaveBeenCalledTimes(1);
 		const [user, workflowData, workflowId] = saveVersionSpy.mock.calls[0];

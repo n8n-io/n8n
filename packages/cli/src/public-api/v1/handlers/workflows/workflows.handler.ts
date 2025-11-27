@@ -9,28 +9,16 @@ import type express from 'express';
 import { v4 as uuid } from 'uuid';
 import { z } from 'zod';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
-import {
-	addNodeIds,
-	getActiveVersionUpdateValue,
-	replaceInvalidCredentials,
-} from '@/workflow-helpers';
+import { addNodeIds, replaceInvalidCredentials } from '@/workflow-helpers';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-history.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import { EnterpriseWorkflowService } from '@/workflows/workflow.service.ee';
 
-import {
-	getWorkflowById,
-	updateWorkflow,
-	createWorkflow,
-	parseTagNames,
-	getWorkflowTags,
-	updateTags,
-} from './workflows.service';
+import { createWorkflow, parseTagNames, getWorkflowTags, updateTags } from './workflows.service';
 import type { WorkflowRequest } from '../../../types';
 import {
 	apiKeyHasScope,
@@ -287,76 +275,28 @@ export = {
 			const { id } = req.params;
 			const updateData = new WorkflowEntity();
 			Object.assign(updateData, req.body);
-			updateData.id = id;
-			updateData.versionId = uuid();
-
-			const workflow = await Container.get(WorkflowFinderService).findWorkflowForUser(
-				id,
-				req.user,
-				['workflow:update'],
-				{ includeActiveVersion: true },
-			);
-
-			if (!workflow) {
-				// user trying to access a workflow they do not own
-				// or workflow does not exist
-				return res.status(404).json({ message: 'Not Found' });
-			}
-
-			await replaceInvalidCredentials(updateData);
-			addNodeIds(updateData);
-
-			const workflowManager = Container.get(ActiveWorkflowManager);
-
-			if (workflow.activeVersionId !== null) {
-				// When workflow gets saved always remove it as the triggers could have been
-				// changed and so the changes would not take effect
-				await workflowManager.remove(id);
-			}
 
 			try {
-				// First add a record to workflow history to be able to get the full version object during the update
-				await Container.get(WorkflowHistoryService).saveVersion(req.user, updateData, workflow.id);
-
-				const updatedVersion = await Container.get(WorkflowHistoryService).getVersion(
+				const updatedWorkflow = await Container.get(WorkflowService).update(
 					req.user,
+					updateData,
 					id,
-					updateData.versionId,
+					{
+						forceSave: true, // Skip version conflict check for public API
+						publicApi: true,
+					},
 				);
 
-				updateData.activeVersion = getActiveVersionUpdateValue(
-					workflow,
-					updatedVersion,
-					undefined, // active is read-only
-				);
-
-				await updateWorkflow(workflow, updateData);
+				return res.json(updatedWorkflow);
 			} catch (error) {
+				if (error instanceof NotFoundError) {
+					return res.status(404).json({ message: 'Not Found' });
+				}
 				if (error instanceof Error) {
 					return res.status(400).json({ message: error.message });
 				}
+				throw error;
 			}
-
-			if (workflow.activeVersionId !== null) {
-				try {
-					await workflowManager.add(workflow.id, 'update');
-				} catch (error) {
-					if (error instanceof Error) {
-						return res.status(400).json({ message: error.message });
-					}
-				}
-			}
-
-			const updatedWorkflow = await getWorkflowById(workflow.id);
-
-			await Container.get(ExternalHooks).run('workflow.afterUpdate', [updateData]);
-			Container.get(EventService).emit('workflow-saved', {
-				user: req.user,
-				workflow: updateData,
-				publicApi: true,
-			});
-
-			return res.json(updatedWorkflow);
 		},
 	],
 	activateWorkflow: [

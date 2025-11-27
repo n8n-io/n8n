@@ -214,10 +214,14 @@ export class WorkflowService {
 		user: User,
 		workflowUpdateData: WorkflowEntity,
 		workflowId: string,
-		tagIds?: string[],
-		parentFolderId?: string,
-		forceSave?: boolean,
+		options: {
+			tagIds?: string[];
+			parentFolderId?: string;
+			forceSave?: boolean;
+			publicApi?: boolean;
+		} = {},
 	): Promise<WorkflowEntity> {
+		const { tagIds, parentFolderId, forceSave = false, publicApi = false } = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
@@ -295,6 +299,14 @@ export class WorkflowService {
 
 		WorkflowHelpers.addNodeIds(workflowUpdateData);
 
+		// Merge settings to support partial updates
+		if (workflowUpdateData.settings && workflow.settings) {
+			workflowUpdateData.settings = {
+				...workflow.settings,
+				...workflowUpdateData.settings,
+			};
+		}
+
 		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
 		/**
@@ -329,8 +341,10 @@ export class WorkflowService {
 			delete workflowSettings.executionTimeout;
 		}
 
+		// Always set updatedAt to get millisecond precision
+		workflowUpdateData.updatedAt = new Date();
+
 		if (workflowUpdateData.name) {
-			workflowUpdateData.updatedAt = new Date(); // required due to atomic update
 			await validateEntity(workflowUpdateData);
 		}
 
@@ -344,6 +358,7 @@ export class WorkflowService {
 			'pinData',
 			'versionId',
 			'description',
+			'updatedAt',
 		];
 
 		// Forbid updating active fields with FF on
@@ -424,7 +439,7 @@ export class WorkflowService {
 		this.eventService.emit('workflow-saved', {
 			user,
 			workflow: updatedWorkflow,
-			publicApi: false,
+			publicApi,
 		});
 
 		// Skip activation/deactivation logic if draft/publish feature flag is enabled
@@ -435,7 +450,7 @@ export class WorkflowService {
 					user,
 					workflowId,
 					workflow: updatedWorkflow,
-					publicApi: false,
+					publicApi,
 				});
 			} else if (activationStatusChanged && !isNowActive) {
 				// Workflow is being deactivated
@@ -443,7 +458,7 @@ export class WorkflowService {
 					user,
 					workflowId,
 					workflow: updatedWorkflow,
-					publicApi: false,
+					publicApi,
 				});
 			}
 
@@ -462,6 +477,7 @@ export class WorkflowService {
 						activeVersionId: null,
 						activeVersion: null,
 					},
+					publicApi,
 				);
 			}
 		}
