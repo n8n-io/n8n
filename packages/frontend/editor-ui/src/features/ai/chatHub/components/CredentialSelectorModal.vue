@@ -91,7 +91,7 @@ function onCancel() {
 				<N8nSelect
 					:model-value="selectedCredentialId"
 					size="large"
-					placeholder="Select credential..."
+					:placeholder="i18n.baseText('chatHub.credentials.selector.placeholder')"
 					@update:model-value="onCredentialSelect"
 				>
 					<N8nOption
