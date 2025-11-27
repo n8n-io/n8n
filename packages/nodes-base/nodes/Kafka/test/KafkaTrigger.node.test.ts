@@ -132,6 +132,91 @@ describe('KafkaTrigger Node', () => {
 		expect(mockConsumerDisconnect).toHaveBeenCalled();
 	});
 
+	it('should handle SSL when CA is provided', async () => {
+		await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: true,
+				sslCa: 'test-ca',
+				ignoreSslIssues: true,
+				authentication: true,
+				username: 'test-user',
+				password: 'test-password',
+				saslMechanism: 'plain',
+			},
+		});
+
+		expect(Kafka).toHaveBeenCalledWith({
+			clientId: 'n8n-kafka',
+			brokers: ['localhost:9092'],
+			ssl: {
+				rejectUnauthorized: false,
+				ca: 'test-ca',
+				key: undefined,
+				cert: undefined,
+				passphrase: undefined,
+			},
+			logLevel: logLevel.ERROR,
+			sasl: {
+				username: 'test-user',
+				password: 'test-password',
+				mechanism: 'plain',
+			},
+		});
+	});
+
+	it('should handle mTLS authentication when certificate and key are provided', async () => {
+		await testTriggerNode(KafkaTrigger, {
+			mode: 'trigger',
+			node: {
+				parameters: {
+					topic: 'test-topic',
+					groupId: 'test-group',
+					useSchemaRegistry: false,
+				},
+			},
+			credential: {
+				brokers: 'localhost:9092',
+				clientId: 'n8n-kafka',
+				ssl: true,
+				sslCert: 'test-cert',
+				sslKey: 'test-key',
+				sslKeyPassword: 'test-key-password',
+				authentication: true,
+				username: 'test-user',
+				password: 'test-password',
+				saslMechanism: 'plain',
+			},
+		});
+
+		expect(Kafka).toHaveBeenCalledWith({
+			clientId: 'n8n-kafka',
+			brokers: ['localhost:9092'],
+			ssl: {
+				rejectUnauthorized: true,
+				ca: undefined,
+				key: 'test-key',
+				cert: 'test-cert',
+				passphrase: 'test-key-password',
+			},
+			logLevel: logLevel.ERROR,
+			sasl: {
+				username: 'test-user',
+				password: 'test-password',
+				mechanism: 'plain',
+			},
+		});
+	});
+
 	it('should handle authentication when credentials are provided', async () => {
 		await testTriggerNode(KafkaTrigger, {
 			mode: 'trigger',
@@ -156,7 +241,12 @@ describe('KafkaTrigger Node', () => {
 		expect(Kafka).toHaveBeenCalledWith({
 			clientId: 'n8n-kafka',
 			brokers: ['localhost:9092'],
-			ssl: true,
+			ssl: {
+				rejectUnauthorized: true,
+				ca: undefined,
+				key: undefined,
+				cert: undefined,
+			},
 			logLevel: logLevel.ERROR,
 			sasl: {
 				username: 'test-user',
