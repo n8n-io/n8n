@@ -15,6 +15,9 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	@Column({ type: 'varchar' })
 	versionId: string;
 
+	// Note that we only track "permanent" deactivations
+	// We don't explicitly track the deactivations of a previous active version
+	// which happens when a new active version of an already active workflow is published
 	@Column()
 	status: 'activated' | 'deactivated';
 
