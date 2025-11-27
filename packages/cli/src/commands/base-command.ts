@@ -31,7 +31,6 @@ import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus'
 import { TelemetryEventRelay } from '@/events/relays/telemetry.event-relay';
 import { ExternalHooks } from '@/external-hooks';
 import { License } from '@/license';
-import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { CommunityPackagesConfig } from '@/modules/community-packages/community-packages.config';
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
@@ -98,9 +97,6 @@ export abstract class BaseCommand<F = never> {
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
-
-		await this.executionContextHookRegistry.init();
-		await Container.get(LoadNodesAndCredentials).init();
 
 		await this.dbConnection
 			.init()

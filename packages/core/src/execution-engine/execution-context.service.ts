@@ -68,7 +68,7 @@ export class ExecutionContextService {
 
 		let currentTriggerItems = startItem.data['main'][0];
 
-		const contextEstablishmentHookParameters = startItem.node.parameters?.contextEstablishmentHooks;
+		const contextEstablishmentHookParameters = startItem.node.parameters;
 
 		const startNodeParametersResult = toExecutionContextEstablishmentHookParameter(
 			contextEstablishmentHookParameters,
@@ -97,7 +97,7 @@ export class ExecutionContextService {
 
 		// based on startNodeParameters, startNodeType and currentTriggerItems we can now
 		// iterate over the different hooks to extract specific data for the runtime context
-		for (const hookParameters of startNodeParameters.hooks) {
+		for (const hookParameters of startNodeParameters.contextEstablishmentHooks.hooks) {
 			const hook = this.executionContextHookRegistry.getHookByName(hookParameters.hookName);
 
 			if (!hook) {
@@ -136,6 +136,9 @@ export class ExecutionContextService {
 				}
 			}
 		}
+
+		// TODO: REMOVE THIS BEFORE MERGE!!!!
+		this.logger.debug('Final execution context after applying establishment hooks', { context });
 
 		return {
 			context: this.encryptExecutionContext(context),

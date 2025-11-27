@@ -11,6 +11,7 @@ export const MODULE_NAMES = [
 	'chat-hub',
 	'provisioning',
 	'breaking-changes',
+	'dynamic-credentials',
 ] as const;
 
 export type ModuleName = (typeof MODULE_NAMES)[number];
