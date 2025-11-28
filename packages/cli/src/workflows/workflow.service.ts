@@ -521,6 +521,7 @@ export class WorkflowService {
 				});
 			}
 		} catch (error) {
+			const previouslyActiveId = workflow.activeVersionId;
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
 			// Also set it in the returned data
@@ -536,6 +537,15 @@ export class WorkflowService {
 					workflow,
 					publicApi,
 				});
+				if (previouslyActiveId !== null) {
+					// sanity check - previouslyActiveId should always exist at this stage
+					await this.workflowPublishHistoryRepository.addRecord({
+						workflowId,
+						versionId: previouslyActiveId,
+						status: 'deactivated',
+						userId: user.id,
+					});
+				}
 			}
 
 			let message;
