@@ -104,7 +104,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Google Maps',
 				name: 'googleMaps',
 				type: 'collection',
-				default: {},
+				default: { latitude: '', longitude: '' },
 				options: [
 					{
 						displayName: 'Latitude',
@@ -368,15 +368,17 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		const googleMapsOptions = builtInTools.googleMaps as IDataObject | undefined;
+		const googleMapsOptions = builtInTools.googleMaps as
+			| { values?: { latitude?: number | string; longitude?: number | string } }
+			| undefined;
 		if (googleMapsOptions) {
 			tools.push({
 				googleMaps: {},
 			});
 
 			// Build toolConfig with retrievalConfig if latitude/longitude are provided
-			const latitude = googleMapsOptions.latitude as number | string | undefined;
-			const longitude = googleMapsOptions.longitude as number | string | undefined;
+			const latitude = googleMapsOptions.values?.latitude;
+			const longitude = googleMapsOptions.values?.longitude;
 			if (
 				latitude !== undefined &&
 				latitude !== '' &&
