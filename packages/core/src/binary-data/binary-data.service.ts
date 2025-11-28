@@ -173,15 +173,27 @@ export class BinaryDataService {
 	}
 
 	async deleteManyByBinaryDataId(ids: string[]) {
-		const manager = this.managers[this.mode];
+		const fileIdsByMode = new Map<string, string[]>();
 
-		const fileIds = ids.flatMap((attachmentId) => {
-			const [, fileId] = attachmentId.split(':'); // remove mode
+		for (const attachmentId of ids) {
+			const [mode, fileId] = attachmentId.split(':');
+			const entry = fileIdsByMode.get(mode) ?? [];
 
-			return fileId ? [fileId] : [];
-		});
+			fileIdsByMode.set(mode, entry.concat([fileId]));
+		}
 
-		await manager.deleteManyByFileId?.(fileIds);
+		for (const [mode, fileIds] of fileIdsByMode) {
+			const manager = this.managers[mode];
+
+			if (!manager) {
+				this.errorReporter.warn(
+					`File manager of mode ${mode} is missing. Cannot delete these files: ${fileIds.join(', ')}`,
+				);
+				continue;
+			}
+
+			await manager.deleteManyByFileId?.(fileIds);
+		}
 	}
 
 	async duplicateBinaryData(
