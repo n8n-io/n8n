@@ -1,21 +1,15 @@
 import type { ModuleInterface } from '@n8n/decorators';
 import { BackendModule, OnShutdown } from '@n8n/decorators';
-import { Container } from '@n8n/di';
 
 @BackendModule({ name: 'source-control' })
 export class SourceControlModule implements ModuleInterface {
 	async init() {
-		await import('./source-control.controller.ee');
-
-		const { SourceControlService } = await import('./source-control.service.ee');
-		Container.get(SourceControlService).start();
+		// TODO: import controllers and services
 	}
 
 	@OnShutdown()
 	async shutdown() {
-		const { SourceControlService } = await import('./source-control.service.ee');
-
-		await Container.get(SourceControlService).shutdown();
+		// TODO: shutdown controllers and services
 	}
 
 	async entities() {
@@ -23,8 +17,6 @@ export class SourceControlModule implements ModuleInterface {
 	}
 
 	async context() {
-		const { SourceControlService } = await import('./source-control.service.ee');
-
-		return { sourceControlProxy: Container.get(SourceControlService) };
+		return {};
 	}
 }
