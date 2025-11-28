@@ -115,3 +115,27 @@ export async function getLastSuccessfulExecution(
 		`/workflows/${workflowId}/executions/last-successful`,
 	);
 }
+
+export async function activateWorkflow(
+	context: IRestApiContext,
+	workflowId: string,
+	data: { versionId: string; name?: string; description?: string },
+): Promise<IWorkflowDb> {
+	return await makeRestApiRequest<IWorkflowDb>(
+		context,
+		'POST',
+		`/workflows/${workflowId}/activate`,
+		data,
+	);
+}
+
+export async function deactivateWorkflow(
+	context: IRestApiContext,
+	workflowId: string,
+): Promise<IWorkflowDb> {
+	return await makeRestApiRequest<IWorkflowDb>(
+		context,
+		'POST',
+		`/workflows/${workflowId}/deactivate`,
+	);
+}
