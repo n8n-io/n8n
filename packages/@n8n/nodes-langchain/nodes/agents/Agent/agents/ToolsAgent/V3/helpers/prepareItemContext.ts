@@ -4,6 +4,7 @@ import { NodeOperationError } from 'n8n-workflow';
 import type { IExecuteFunctions, ISupplyDataFunctions, EngineResponse } from 'n8n-workflow';
 
 import { buildSteps, type ToolCallData } from '@utils/agent-execution';
+import { AgentTokenTracker } from '@utils/agent-execution/AgentTokenTracker';
 import { getPromptInputByType } from '@utils/helpers';
 import { getOptionalOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
@@ -22,6 +23,7 @@ export type ItemContext = {
 	prompt: ChatPromptTemplate;
 	options: AgentOptions;
 	outputParser: N8nOutputParser | undefined;
+	tokenTracker: AgentTokenTracker;
 };
 
 /**
@@ -66,6 +68,9 @@ export async function prepareItemContext(
 	});
 	const prompt: ChatPromptTemplate = preparePrompt(messages);
 
+	// Create token tracker for this item
+	const tokenTracker = new AgentTokenTracker();
+
 	return {
 		itemIndex,
 		input,
@@ -74,5 +79,6 @@ export async function prepareItemContext(
 		prompt,
 		options,
 		outputParser,
+		tokenTracker,
 	};
 }

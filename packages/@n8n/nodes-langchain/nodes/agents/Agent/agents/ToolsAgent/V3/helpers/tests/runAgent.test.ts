@@ -5,8 +5,9 @@ import type { Tool } from 'langchain/tools';
 import type { IExecuteFunctions, INode, EngineResponse } from 'n8n-workflow';
 
 import * as agentExecution from '@utils/agent-execution';
+import { AgentTokenTracker } from '@utils/agent-execution/AgentTokenTracker';
 
-import type { RequestResponseMetadata } from '../../types';
+import type { RequestResponseMetadata, AgentResult } from '../../types';
 import type { ItemContext } from '../prepareItemContext';
 import { runAgent } from '../runAgent';
 
@@ -59,6 +60,7 @@ describe('runAgent - iteration count tracking', () => {
 				returnIntermediateSteps: false,
 			},
 			outputParser: undefined,
+			tokenTracker: new AgentTokenTracker(),
 		};
 
 		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
@@ -114,6 +116,7 @@ describe('runAgent - iteration count tracking', () => {
 				returnIntermediateSteps: false,
 			},
 			outputParser: undefined,
+			tokenTracker: new AgentTokenTracker(),
 		};
 
 		const response: EngineResponse<RequestResponseMetadata> = {
@@ -172,6 +175,7 @@ describe('runAgent - iteration count tracking', () => {
 				enableStreaming: true,
 			},
 			outputParser: undefined,
+			tokenTracker: new AgentTokenTracker(),
 		};
 
 		const mockContext = mock<IExecuteFunctions>({
@@ -234,6 +238,7 @@ describe('runAgent - iteration count tracking', () => {
 				returnIntermediateSteps: false,
 			},
 			outputParser: undefined,
+			tokenTracker: new AgentTokenTracker(),
 		};
 
 		// Mock the agent to return a final result (no tool calls)
@@ -247,5 +252,125 @@ describe('runAgent - iteration count tracking', () => {
 		expect(result).toHaveProperty('output');
 		expect(result).not.toHaveProperty('actions');
 		expect(result).not.toHaveProperty('metadata');
+	});
+
+	it('should include token usage in final result when tokens are tracked', async () => {
+		const mockExecutor = mock<AgentRunnableSequence>({
+			invoke: jest.fn().mockResolvedValue({
+				returnValues: {
+					output: 'Final answer',
+				},
+			}),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const mockTokenTracker = new AgentTokenTracker();
+
+		// Manually simulate token tracking
+		jest.spyOn(mockTokenTracker, 'getAccumulatedTokens').mockReturnValue({
+			promptTokens: 100,
+			completionTokens: 50,
+			totalTokens: 150,
+			isEstimate: false,
+		});
+
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps: [],
+			tools: [],
+			prompt: mock(),
+			options: {
+				maxIterations: 10,
+				returnIntermediateSteps: false,
+			},
+			outputParser: undefined,
+			tokenTracker: mockTokenTracker,
+		};
+
+		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		jest.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		const result = await runAgent(mockContext, mockExecutor, itemContext, mockModel, undefined);
+
+		expect(result).toHaveProperty('output');
+		expect(result).toHaveProperty('tokenUsage');
+		expect((result as AgentResult).tokenUsage).toMatchObject({
+			promptTokens: 100,
+			completionTokens: 50,
+			totalTokens: 150,
+			isEstimate: false,
+		});
+	});
+
+	it('should merge token usage with previous accumulated tokens', async () => {
+		const mockExecutor = mock<AgentRunnableSequence>({
+			invoke: jest.fn().mockResolvedValue({
+				returnValues: {
+					output: 'Final answer',
+				},
+			}),
+		});
+		const mockModel = mock<BaseChatModel>();
+		const mockTokenTracker = new AgentTokenTracker();
+
+		// Simulate current iteration tokens
+		jest.spyOn(mockTokenTracker, 'getAccumulatedTokens').mockReturnValue({
+			promptTokens: 50,
+			completionTokens: 30,
+			totalTokens: 80,
+			isEstimate: false,
+		});
+
+		const itemContext: ItemContext = {
+			itemIndex: 0,
+			input: 'test input',
+			steps: [],
+			tools: [],
+			prompt: mock(),
+			options: {
+				maxIterations: 10,
+				returnIntermediateSteps: false,
+			},
+			outputParser: undefined,
+			tokenTracker: mockTokenTracker,
+		};
+
+		// Simulate previous accumulated tokens from earlier iterations
+		const response: EngineResponse<RequestResponseMetadata> = {
+			actionResponses: [],
+			metadata: {
+				itemIndex: 0,
+				previousRequests: [],
+				iterationCount: 2,
+				accumulatedTokens: {
+					promptTokens: 100,
+					completionTokens: 60,
+					totalTokens: 160,
+					isEstimate: false,
+				},
+			},
+		};
+
+		jest.spyOn(agentExecution, 'loadMemory').mockResolvedValue([]);
+		jest.spyOn(agentExecution, 'saveToMemory').mockResolvedValue();
+		mockContext.getExecutionCancelSignal.mockReturnValue(new AbortController().signal);
+
+		const result = await runAgent(
+			mockContext,
+			mockExecutor,
+			itemContext,
+			mockModel,
+			undefined,
+			response,
+		);
+
+		expect(result).toHaveProperty('tokenUsage');
+		expect((result as AgentResult).tokenUsage).toMatchObject({
+			promptTokens: 150, // 100 + 50
+			completionTokens: 90, // 60 + 30
+			totalTokens: 240, // 160 + 80
+			isEstimate: false,
+		});
 	});
 });
