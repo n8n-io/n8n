@@ -38,7 +38,7 @@ import { SourceControlService } from '@/environments.ee/source-control/source-co
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 import type { ExportableFolder } from '@/modules/source-control.ee/types/exportable-folders';
 import type { ExportableWorkflow } from '@/modules/source-control.ee/types/exportable-workflow';
-import type { RemoteResourceOwner } from '@/environments.ee/source-control/types/resource-owner';
+import type { RemoteResourceOwner } from '@/modules/source-control.ee/types/resource-owner';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
