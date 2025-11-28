@@ -40,6 +40,10 @@ export class SidebarPage {
 		await this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' }).click();
 	}
 
+	getProjectButtonInUniversalAdd(): Locator {
+		return this.page.getByTestId('navigation-menu-item').filter({ hasText: 'Project' });
+	}
+
 	async addWorkflowFromUniversalAdd(projectName: string) {
 		await this.universalAdd();
 		await this.page.getByTestId('universal-add').getByText('Workflow').click();
@@ -134,8 +138,13 @@ export class SidebarPage {
 	}
 
 	async expand() {
-		const collapseButton = this.page.locator('#toggle-sidebar-button');
-		await expect(collapseButton).toBeVisible();
-		await collapseButton.click();
+		const logo = this.page.getByTestId('n8n-logo');
+		const isExpanded = await logo.isVisible();
+
+		if (!isExpanded) {
+			const collapseButton = this.page.locator('#toggle-sidebar-button');
+			await expect(collapseButton).toBeVisible();
+			await collapseButton.click();
+		}
 	}
 }
