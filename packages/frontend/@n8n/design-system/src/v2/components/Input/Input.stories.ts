@@ -6,7 +6,7 @@ import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import Input from './Input.vue';
 
 const meta = {
-	title: 'Design system v3/Input',
+	title: 'Components v2/Input',
 	component: Input,
 	parameters: {
 		docs: {
