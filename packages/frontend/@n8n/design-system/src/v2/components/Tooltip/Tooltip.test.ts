@@ -1,6 +1,5 @@
 import userEvent from '@testing-library/user-event';
 import { render, waitFor } from '@testing-library/vue';
-import { vi } from 'vitest';
 
 import Tooltip from './Tooltip.vue';
 
