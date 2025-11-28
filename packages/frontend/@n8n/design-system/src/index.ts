@@ -12,6 +12,8 @@ export { default as N8nCheckbox2 } from './v2/components/Checkbox/Checkbox.vue';
 export type * from './v2/components/Checkbox/Checkbox.types';
 export { default as N8nPagination2 } from './v2/components/Pagination/Pagination.vue';
 export type * from './v2/components/Pagination/Pagination.types';
+export { default as N8nInput2 } from './v2/components/Input/Input.vue';
+export type * from './v2/components/Input/Input.types';
 export { default as N8nTooltip2 } from './v2/components/Tooltip/Tooltip.vue';
 export type * from './v2/components/Tooltip/Tooltip.types';
 export { locale };
