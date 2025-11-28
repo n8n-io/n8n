@@ -17,7 +17,7 @@ import {
 } from './constants';
 import { generateSshKeyPair, isSourceControlLicensed } from './source-control-helper.ee';
 import { SourceControlConfig } from './source-control.config';
-import type { KeyPairType } from '../../environments.ee/source-control/types/key-pair-type';
+import type { KeyPairType } from './types/key-pair-type';
 import { SourceControlPreferences } from './types/source-control-preferences';
 
 @Service()

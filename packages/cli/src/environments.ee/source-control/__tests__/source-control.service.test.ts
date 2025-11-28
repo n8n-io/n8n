@@ -10,11 +10,11 @@ import { SourceControlPreferencesService } from '@/modules/source-control.ee/sou
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
-import type { SourceControlExportService } from '../source-control-export.service.ee';
+import type { SourceControlExportService } from '../../../modules/source-control.ee/source-control-export.service.ee';
 import type { SourceControlGitService } from '../../../modules/source-control.ee/source-control-git.service.ee';
-import type { SourceControlImportService } from '../source-control-import.service.ee';
-import type { SourceControlScopedService } from '../source-control-scoped.service';
-import type { ExportResult } from '../types/export-result';
+import type { SourceControlImportService } from '../../../modules/source-control.ee/source-control-import.service.ee';
+import type { SourceControlScopedService } from '../../../modules/source-control.ee/source-control-scoped.service';
+import type { ExportResult } from '../../../modules/source-control.ee/types/export-result';
 
 // Mock the status service to avoid complex dependency issues
 const mockStatusService = {

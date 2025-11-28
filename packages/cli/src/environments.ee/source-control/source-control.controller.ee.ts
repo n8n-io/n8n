@@ -13,11 +13,11 @@ import {
 } from '../../modules/source-control.ee/middleware/source-control-enabled-middleware.ee';
 import { getRepoType } from '../../modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
-import { SourceControlScopedService } from './source-control-scoped.service';
+import { SourceControlScopedService } from '../../modules/source-control.ee/source-control-scoped.service';
 import { SourceControlService } from './source-control.service.ee';
-import type { ImportResult } from './types/import-result';
+import type { ImportResult } from '../../modules/source-control.ee/types/import-result';
 import { SourceControlRequest } from './types/requests';
-import { SourceControlGetStatus } from './types/source-control-get-status';
+import { SourceControlGetStatus } from '../../modules/source-control.ee/types/source-control-get-status';
 import type { SourceControlPreferences } from '../../modules/source-control.ee/types/source-control-preferences';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';

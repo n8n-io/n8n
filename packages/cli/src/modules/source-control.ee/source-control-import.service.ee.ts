@@ -47,14 +47,14 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
-} from '../../modules/source-control.ee/constants';
+} from './constants';
 import {
 	getCredentialExportPath,
 	getProjectExportPath,
 	getWorkflowExportPath,
-} from '../../modules/source-control.ee/source-control-helper.ee';
+} from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
-import { VariablesService } from '../variables/variables.service.ee';
+import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import type {
 	ExportableCredential,
 	StatusExportableCredential,
@@ -67,9 +67,9 @@ import type {
 	RemoteResourceOwner,
 	StatusResourceOwner,
 	TeamResourceOwner,
-} from './types/resource-owner';
-import type { SourceControlContext } from './types/source-control-context';
-import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+} from '../../environments.ee/source-control/types/resource-owner';
+import type { SourceControlContext } from '../../environments.ee/source-control/types/source-control-context';
+import type { SourceControlWorkflowVersionId } from '../../environments.ee/source-control/types/source-control-workflow-version-id';
 
 const findOwnerProject = (
 	owner: RemoteResourceOwner,

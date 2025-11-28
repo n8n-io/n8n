@@ -9,7 +9,7 @@ import type { SourceControlPreferencesService } from '../../../modules/source-co
 import { SourceControlController } from '../source-control.controller.ee';
 import type { SourceControlService } from '../source-control.service.ee';
 import type { SourceControlRequest } from '../types/requests';
-import type { SourceControlGetStatus } from '../types/source-control-get-status';
+import type { SourceControlGetStatus } from '../../../modules/source-control.ee/types/source-control-get-status';
 
 describe('SourceControlController', () => {
 	let controller: SourceControlController;

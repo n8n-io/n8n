@@ -8,7 +8,7 @@ import { UserError } from 'n8n-workflow';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
-import { SourceControlGitService } from '../../modules/source-control.ee/source-control-git.service.ee';
+import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	hasOwnerChanged,
 	getFoldersPath,
@@ -17,16 +17,16 @@ import {
 	getTrackingInformationFromPullResult,
 	getVariablesPath,
 	isWorkflowModified,
-} from '../../modules/source-control.ee/source-control-helper.ee';
+} from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
-import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProjectWithFileName } from './types/exportable-project';
 import { ExportableVariable } from './types/exportable-variable';
-import { SourceControlContext } from './types/source-control-context';
-import type { SourceControlGetStatus } from './types/source-control-get-status';
-import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
+import { SourceControlContext } from '../../environments.ee/source-control/types/source-control-context';
+import type { SourceControlGetStatus } from '../../environments.ee/source-control/types/source-control-get-status';
+import type { SourceControlWorkflowVersionId } from '../../environments.ee/source-control/types/source-control-workflow-version-id';
 
 @Service()
 export class SourceControlStatusService {

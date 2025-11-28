@@ -1,6 +1,6 @@
 import type { INode, IConnections, IWorkflowSettings } from 'n8n-workflow';
 
-import type { RemoteResourceOwner } from './resource-owner';
+import type { RemoteResourceOwner } from '../../../environments.ee/source-control/types/resource-owner';
 
 export interface ExportableWorkflow {
 	id: string;

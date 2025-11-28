@@ -17,9 +17,9 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 } from './constants';
-import type { ExportedFolders } from '../../environments.ee/source-control/types/exportable-folders';
-import type { KeyPair } from '../../environments.ee/source-control/types/key-pair';
-import type { KeyPairType } from '../../environments.ee/source-control/types/key-pair-type';
+import type { ExportedFolders } from './types/exportable-folders';
+import type { KeyPair } from './types/key-pair';
+import type { KeyPairType } from './types/key-pair-type';
 import type { SourceControlWorkflowVersionId } from '../../environments.ee/source-control/types/source-control-workflow-version-id';
 import type { StatusResourceOwner } from '../../environments.ee/source-control/types/resource-owner';
 
