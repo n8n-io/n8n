@@ -6,6 +6,7 @@ import { N8nButton } from '@n8n/design-system';
 import type { INode } from 'n8n-workflow';
 import { computed, onMounted } from 'vue';
 import { TOOLS_SELECTOR_MODAL_KEY } from '../constants';
+import { useI18n } from '@n8n/i18n';
 
 const { selected, transparentBg = false } = defineProps<{
 	disabled: boolean;
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 
 const uiStore = useUIStore();
 const nodeTypesStore = useNodeTypesStore();
+const i18n = useI18n();
 
 const toolCount = computed(() => selected.length ?? 0);
 
@@ -29,9 +31,12 @@ const displayToolNodeTypes = computed(() => {
 		.filter(Boolean);
 });
 
-const toolsLabel = computed(() =>
-	toolCount.value > 0 ? `${toolCount.value} Tool${toolCount.value > 1 ? 's' : ''}` : 'Tools',
-);
+const toolsLabel = computed(() => {
+	if (toolCount.value > 0) {
+		return i18n.baseText('chatHub.tools.selector.label.count', { adjustToNumber: toolCount.value });
+	}
+	return i18n.baseText('chatHub.tools.selector.label.default');
+});
 
 onMounted(async () => {
 	await nodeTypesStore.loadNodeTypesIfNotLoaded();
@@ -55,7 +60,6 @@ const onClick = () => {
 		native-type="button"
 		:class="[$style.toolsButton, { [$style.transparentBg]: transparentBg }]"
 		:disabled="disabled"
-		aria-label="Select tools"
 		:icon="toolCount > 0 ? undefined : 'plus'"
 		@click="onClick"
 	>
@@ -81,7 +85,7 @@ const onClick = () => {
 	gap: var(--spacing--2xs);
 
 	&.transparentBg {
-		background-color: transparent;
+		background-color: transparent !important;
 	}
 }
 

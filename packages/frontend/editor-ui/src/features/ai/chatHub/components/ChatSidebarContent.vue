@@ -17,6 +17,8 @@ import { useIntersectionObserver } from '@vueuse/core';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
 import SkeletonMenuItem from './SkeletonMenuItem.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
+import { useI18n } from '@n8n/i18n';
 
 defineProps<{ isMobileDevice: boolean }>();
 
@@ -27,7 +29,12 @@ const toast = useToast();
 const message = useMessage();
 const sidebar = useChatHubSidebarState();
 const settingsStore = useSettingsStore();
+const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();
+const readyToShowSessions = computed(
+	() => chatStore.sessionsReady && credentialsStore.allCredentialTypes.length > 0,
+);
+const i18n = useI18n();
 
 const renamingSessionId = ref<string>();
 const loadMoreTrigger = ref<HTMLElement | null>(null);
@@ -51,17 +58,17 @@ async function handleConfirmRename(sessionId: string, newLabel: string) {
 		await chatStore.renameSession(sessionId, newLabel);
 		renamingSessionId.value = undefined;
 	} catch (error) {
-		toast.showError(error, 'Could not update the conversation title.');
+		toast.showError(error, i18n.baseText('chatHub.session.updateTitle.error'));
 	}
 }
 
 async function handleDeleteSession(sessionId: string) {
 	const confirmed = await message.confirm(
-		'Are you sure you want to delete this conversation?',
-		'Delete conversation',
+		i18n.baseText('chatHub.session.delete.confirm.message'),
+		i18n.baseText('chatHub.session.delete.confirm.title'),
 		{
-			confirmButtonText: 'Delete',
-			cancelButtonText: 'Cancel',
+			confirmButtonText: i18n.baseText('chatHub.session.delete.confirm.button'),
+			cancelButtonText: i18n.baseText('chatHub.session.delete.cancel.button'),
 		},
 	);
 
@@ -71,13 +78,13 @@ async function handleDeleteSession(sessionId: string) {
 
 	try {
 		await chatStore.deleteSession(sessionId);
-		toast.showMessage({ type: 'success', title: 'Conversation is deleted' });
+		toast.showMessage({ type: 'success', title: i18n.baseText('chatHub.session.delete.success') });
 
 		if (sessionId === currentSessionId.value) {
 			void router.push({ name: CHAT_VIEW });
 		}
 	} catch (error) {
-		toast.showError(error, 'Could not delete the conversation');
+		toast.showError(error, i18n.baseText('chatHub.session.delete.error'));
 	}
 }
 
@@ -116,7 +123,7 @@ onMounted(() => {
 			</RouterLink>
 			<N8nIconButton
 				v-if="sidebar.canBeStatic.value"
-				title="Toggle menu"
+				:title="i18n.baseText('chatHub.sidebar.button.toggle')"
 				icon="panel-left"
 				type="tertiary"
 				text
@@ -131,14 +138,14 @@ onMounted(() => {
 					name: CHAT_VIEW,
 					force: true, // to focus input again when the user is already in CHAT_VIEW
 				}"
-				label="New Chat"
+				:label="i18n.baseText('chatHub.sidebar.link.newChat')"
 				icon="square-pen"
 				:active="route.name === CHAT_VIEW"
 				@click="handleNewChatClick"
 			/>
 			<ChatSidebarLink
 				:to="{ name: CHAT_AGENTS_VIEW }"
-				label="Custom Agents"
+				:label="i18n.baseText('chatHub.sidebar.link.customAgents')"
 				icon="robot"
 				:active="route.name === CHAT_AGENTS_VIEW"
 				@click="sidebar.toggleOpen(false)"
@@ -146,13 +153,11 @@ onMounted(() => {
 		</div>
 		<N8nScrollArea as-child type="scroll">
 			<div :class="$style.items">
-				<div
-					v-if="groupedConversations.length === 0 && !chatStore.sessionsReady"
-					:class="$style.group"
-				>
+				<div v-if="!readyToShowSessions" :class="$style.group">
 					<SkeletonMenuItem v-for="i in 10" :key="`loading-${i}`" />
 				</div>
 				<div
+					v-else
 					v-for="(group, index) in groupedConversations"
 					:key="group.group"
 					:class="$style.group"
