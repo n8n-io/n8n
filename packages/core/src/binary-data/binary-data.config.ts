@@ -21,7 +21,7 @@ const dbMaxFileSizeSchema = z
 @Config
 export class BinaryDataConfig {
 	/** Available modes of binary data storage, as comma separated strings. */
-	availableModes: z.infer<typeof availableModesSchema> = ['filesystem'];
+	availableModes: z.infer<typeof availableModesSchema> = ['filesystem', 's3', 'database'];
 
 	/** Storage mode for binary data. Defaults to 'filesystem' in regular mode, 'database' in scaling mode. */
 	@Env('N8N_DEFAULT_BINARY_DATA_MODE', binaryDataModesSchema)
