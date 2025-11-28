@@ -1,6 +1,7 @@
-import { CredentialsRepository } from '@n8n/db';
+import { CredentialsRepository, ExecutionRepository } from '@n8n/db';
 import type { WorkflowEntity, WorkflowHistory } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Logger } from '@n8n/backend-common';
 import type {
 	IDataObject,
 	INodeCredentialsDetails,
@@ -217,6 +218,93 @@ export function shouldRestartParentExecution(
 		return true; // Preserve existing behavior for executions started before the flag was introduced for backward compatibility.
 	}
 	return parentExecution.shouldResume;
+}
+
+/**
+ * Updates a parent execution's nodeExecutionStack with the final results from a completed child execution.
+ * This ensures that when the parent resumes, the Execute Workflow node (running in disabled mode)
+ * returns the correct data from the child workflow's last node, rather than the original input.
+ *
+ * @param childExecutionId - The execution ID of the completed child workflow
+ * @param parentExecutionId - The execution ID of the waiting parent workflow
+ * @param subworkflowResults - The final execution results from the child workflow
+ * @param workflowId - The workflow ID (used for error logging)
+ * @returns Promise that resolves when the parent execution has been updated
+ */
+export async function updateParentExecutionWithChildResults(
+	childExecutionId: string,
+	parentExecutionId: string,
+	subworkflowResults: IRun,
+	workflowId: string,
+): Promise<void> {
+	const lastExecutedNodeData = getDataLastExecutedNodeData(subworkflowResults);
+	if (!lastExecutedNodeData?.data) return;
+
+	console.log('=== updateParentExecutionWithChildResults ===');
+	console.log('Child final output:', JSON.stringify(lastExecutedNodeData.data, null, 2));
+
+	try {
+		const executionRepository = Container.get(ExecutionRepository);
+		const parent = await executionRepository.findSingleExecution(parentExecutionId, {
+			includeData: true,
+			unflattenData: true,
+		});
+
+		if (!parent || parent.status !== 'waiting') {
+			console.log('Parent not found or not waiting. status:', parent?.status);
+			return;
+		}
+
+		const parentWithSubWorkflowResults = {
+			data: { ...parent.data },
+		};
+
+		if (
+			!parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack ||
+			parentWithSubWorkflowResults.data.executionData.nodeExecutionStack.length === 0
+		) {
+			console.log('Parent nodeExecutionStack is empty');
+			return;
+		}
+
+		console.log(
+			'Parent nodeExecutionStack[0].data BEFORE update:',
+			JSON.stringify(
+				parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data,
+				null,
+				2,
+			),
+		);
+
+		// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
+		// so that the Execute Workflow node returns the correct data when parent execution is resumed
+		// and the Execute Workflow node is executed again in disabled mode.
+		parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data =
+			lastExecutedNodeData.data;
+
+		console.log(
+			'Parent nodeExecutionStack[0].data AFTER update:',
+			JSON.stringify(
+				parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data,
+				null,
+				2,
+			),
+		);
+
+		await executionRepository.updateExistingExecution(
+			parentExecutionId,
+			parentWithSubWorkflowResults,
+		);
+
+		console.log('=== Parent execution updated in DB ===');
+	} catch (error: unknown) {
+		Container.get(Logger).error('Could not copy sub workflow result to waiting parent execution', {
+			childExecutionId,
+			parentExecutionId,
+			workflowId,
+			error,
+		});
+	}
 }
 
 /**
