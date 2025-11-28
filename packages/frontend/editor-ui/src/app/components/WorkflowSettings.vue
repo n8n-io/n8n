@@ -9,7 +9,11 @@ import {
 	EnterpriseEditionFeature,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	WORKFLOW_SETTINGS_MODAL_KEY,
+	TIME_SAVED_NODE_EXPERIMENT,
+	NODE_CREATOR_OPEN_SOURCES,
+	TIME_SAVED_NODE_TYPE,
 } from '@/app/constants';
+import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
 import type { WorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useSettingsStore } from '@/app/stores/settings.store';
@@ -26,9 +30,12 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useDebounce } from '@/app/composables/useDebounce';
 import { injectWorkflowState } from '@/app/composables/useWorkflowState';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
+import { useGlobalLinkActions } from '@/app/composables/useGlobalLinkActions';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
 
 import { ElCol, ElRow, ElSwitch } from 'element-plus';
-import { N8nButton, N8nIcon, N8nInput, N8nOption, N8nSelect, N8nTooltip } from '@n8n/design-system';
+
 const route = useRoute();
 const i18n = useI18n();
 const externalHooks = useExternalHooks();
@@ -36,6 +43,7 @@ const toast = useToast();
 const modalBus = createEventBus();
 const telemetry = useTelemetry();
 const { isEligibleForMcpAccess, trackMcpAccessEnabledForWorkflow, mcpTriggerMap } = useMcp();
+const { registerCustomAction, unregisterCustomAction } = useGlobalLinkActions();
 
 const rootStore = useRootStore();
 const settingsStore = useSettingsStore();
@@ -43,6 +51,8 @@ const sourceControlStore = useSourceControlStore();
 const workflowsStore = useWorkflowsStore();
 const workflowState = injectWorkflowState();
 const workflowsEEStore = useWorkflowsEEStore();
+const posthogStore = usePostHog();
+const nodeCreatorStore = useNodeCreatorStore();
 
 const isLoading = ref(true);
 const workflowCallerPolicyOptions = ref<Array<{ key: string; value: string }>>([]);
@@ -120,6 +130,40 @@ const isEligibleForMcp = computed(() => {
 	if (!workflow?.value?.active) return false;
 	return isEligibleForMcpAccess(workflow.value);
 });
+
+const isTimeSavedNodeExperimentEnabled = computed(() => {
+	return posthogStore.isFeatureEnabled(TIME_SAVED_NODE_EXPERIMENT.name);
+});
+
+const savedTimeNodes = computed(() => {
+	if (!isTimeSavedNodeExperimentEnabled.value) {
+		return [];
+	}
+
+	if (!workflow?.value?.nodes) return [];
+	return workflow.value.nodes.filter(
+		(node) => node.type === TIME_SAVED_NODE_TYPE && node.disabled !== true,
+	);
+});
+
+const hasSavedTimeNodes = computed(() => {
+	if (!isTimeSavedNodeExperimentEnabled.value) {
+		return false;
+	}
+
+	return savedTimeNodes.value.length > 0;
+});
+
+const timeSavedModeOptions = computed(() => [
+	{
+		label: 'Fixed',
+		value: 'fixed' as const,
+	},
+	{
+		label: 'Dynamic (node based)',
+		value: 'dynamic' as const,
+	},
+]);
 
 const onCallerIdsInput = (str: string) => {
 	workflowSettings.value.callerIds = /^[a-zA-Z0-9,\s]+$/.test(str)
@@ -477,6 +521,9 @@ onMounted(async () => {
 
 	const workflowSettingsData = deepCopy(workflowsStore.workflowSettings);
 
+	if (workflowSettingsData.timeSavedMode === undefined) {
+		workflowSettingsData.timeSavedMode = 'fixed';
+	}
 	if (workflowSettingsData.timezone === undefined) {
 		workflowSettingsData.timezone = 'DEFAULT';
 	}
@@ -519,10 +566,24 @@ onMounted(async () => {
 	telemetry.track('User opened workflow settings', {
 		workflow_id: workflowsStore.workflowId,
 	});
+
+	// Register custom action for opening SavedTime node creator
+	registerCustomAction({
+		key: 'openSavedTimeNodeCreator',
+		action: () => {
+			// Close the workflow settings modal
+			closeDialog();
+			// Open node creator for regular nodes
+			nodeCreatorStore.openNodeCreatorForRegularNodes(
+				NODE_CREATOR_OPEN_SOURCES.NODE_CONNECTION_ACTION,
+			);
+		},
+	});
 });
 
 onBeforeUnmount(() => {
 	debouncedLoadWorkflows.cancel?.();
+	unregisterCustomAction('openSavedTimeNodeCreator');
 });
 </script>
 
@@ -911,6 +972,42 @@ onBeforeUnmount(() => {
 						</label>
 					</ElCol>
 					<ElCol :span="14">
+						<div v-if="!isTimeSavedNodeExperimentEnabled" :class="$style['time-saved']">
+							<N8nInput
+								id="timeSavedPerExecution"
+								v-model="workflowSettings.timeSavedPerExecution"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								data-test-id="workflow-settings-time-saved-per-execution"
+								type="number"
+								min="0"
+								@update:model-value="updateTimeSavedPerExecution"
+							/>
+							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
+						</div>
+						<div v-else class="ignore-key-press-canvas">
+							<N8nSelect
+								v-model="workflowSettings.timeSavedMode"
+								:disabled="readOnlyEnv || !workflowPermissions.update"
+								data-test-id="workflow-settings-time-saved-mode"
+								size="medium"
+								filterable
+								:limit-popper-width="true"
+							>
+								<N8nOption
+									v-for="option in timeSavedModeOptions"
+									:key="option.value"
+									:label="option.label"
+									:value="option.value"
+								/>
+							</N8nSelect>
+						</div>
+					</ElCol>
+				</ElRow>
+				<!-- Fixed mode warning section (only shown in fixed mode when nodes exist) -->
+				<ElRow
+					v-if="isTimeSavedNodeExperimentEnabled && workflowSettings.timeSavedMode === 'fixed'"
+				>
+					<ElCol :span="14" :offset="10">
 						<div :class="$style['time-saved']">
 							<N8nInput
 								id="timeSavedPerExecution"
@@ -922,6 +1019,88 @@ onBeforeUnmount(() => {
 								@update:model-value="updateTimeSavedPerExecution"
 							/>
 							<span>{{ i18n.baseText('workflowSettings.timeSavedPerExecution.hint') }}</span>
+						</div>
+					</ElCol>
+				</ElRow>
+				<ElRow
+					v-if="
+						isTimeSavedNodeExperimentEnabled &&
+						workflowSettings.timeSavedMode === 'fixed' &&
+						hasSavedTimeNodes
+					"
+				>
+					<ElCol :span="14" :offset="10">
+						<div :class="$style['time-saved-content']">
+							<div :class="$style['time-saved-warning']">
+								<span
+									v-n8n-html="
+										i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning', {
+											interpolate: {
+												link: `<a href='#' class='${$style['time-saved-link']}' data-action='openSavedTimeNodeCreator'>${i18n.baseText('workflowSettings.timeSavedPerExecution.fixedTabWarning.link')}</a>`,
+											},
+										})
+									"
+								></span>
+							</div>
+						</div>
+					</ElCol>
+				</ElRow>
+				<!-- Minutes saved section (only shown in fixed mode) -->
+				<!-- Active nodes section (only shown in dynamic mode when nodes exist) -->
+				<ElRow
+					v-if="
+						isTimeSavedNodeExperimentEnabled &&
+						workflowSettings.timeSavedMode === 'dynamic' &&
+						hasSavedTimeNodes
+					"
+				>
+					<ElCol :span="14" :offset="10">
+						<div :class="$style['time-saved-content']">
+							<div :class="$style['time-saved-nodes-active']">
+								<div :class="$style['nodes-active-wrapper']">
+									<N8nIcon icon="clock" :class="$style['nodes-active-icon']" />
+									<div :class="$style['nodes-active-content']">
+										<div :class="$style['nodes-active-title']">
+											{{
+												i18n.baseText('workflowSettings.timeSavedPerExecution.nodesDetected', {
+													interpolate: { count: savedTimeNodes.length },
+												})
+											}}
+										</div>
+										<div :class="$style['nodes-active-hint']">
+											{{
+												i18n.baseText('workflowSettings.timeSavedPerExecution.nodesDetected.hint')
+											}}
+										</div>
+									</div>
+								</div>
+								<a href="#" :class="$style['add-more-link']" data-action="openSavedTimeNodeCreator">
+									{{
+										i18n.baseText('workflowSettings.timeSavedPerExecution.nodesDetected.addMore')
+									}}
+								</a>
+							</div>
+						</div>
+					</ElCol>
+				</ElRow>
+				<!-- No nodes detected section (only shown in dynamic mode when no nodes) -->
+				<ElRow
+					v-if="
+						isTimeSavedNodeExperimentEnabled &&
+						workflowSettings.timeSavedMode === 'dynamic' &&
+						!hasSavedTimeNodes
+					"
+				>
+					<ElCol :span="14" :offset="10">
+						<div :class="$style['time-saved-content']">
+							<div :class="$style['time-saved-no-nodes']">
+								<div :class="$style['no-nodes-title']">
+									{{ i18n.baseText('workflowSettings.timeSavedPerExecution.noNodesDetected') }}
+								</div>
+								<div :class="$style['no-nodes-hint']">
+									{{ i18n.baseText('workflowSettings.timeSavedPerExecution.noNodesDetected.hint') }}
+								</div>
+							</div>
 						</div>
 					</ElCol>
 				</ElRow>
@@ -993,6 +1172,111 @@ onBeforeUnmount(() => {
 
 	span {
 		margin-left: var(--spacing--2xs);
+	}
+}
+
+.time-saved-dropdown {
+	margin-bottom: var(--spacing--sm);
+}
+
+.time-saved-tabs {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--sm);
+}
+
+.time-saved-content {
+	padding: var(--spacing--sm);
+	border: var(--border-width) var(--border-style) var(--color--foreground);
+	border-radius: var(--radius);
+	background-color: var(--color--background--light-2);
+}
+
+.time-saved-input {
+	display: flex;
+	align-items: center;
+
+	:global(.el-input) {
+		width: var(--spacing--3xl);
+	}
+
+	span {
+		margin-left: var(--spacing--2xs);
+	}
+}
+
+.time-saved-warning {
+	color: var(--color--text);
+	line-height: var(--line-height--xl);
+}
+
+.time-saved-link {
+	color: var(--color--primary);
+	text-decoration: none;
+
+	&:hover {
+		text-decoration: underline;
+	}
+}
+
+.time-saved-no-nodes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.no-nodes-title {
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+}
+
+.no-nodes-hint {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
+}
+
+.time-saved-nodes-active {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--xs);
+}
+
+.nodes-active-wrapper {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--spacing--2xs);
+}
+
+.nodes-active-icon {
+	color: var(--color--primary);
+	margin-top: var(--spacing--5xs);
+}
+
+.nodes-active-content {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--5xs);
+	flex: 1;
+}
+
+.nodes-active-title {
+	font-weight: var(--font-weight--bold);
+	color: var(--color--text);
+}
+
+.nodes-active-hint {
+	color: var(--color--text--tint-1);
+	font-size: var(--font-size--sm);
+}
+
+.add-more-link {
+	color: var(--color--primary);
+	text-decoration: none;
+	font-size: var(--font-size--sm);
+
+	&:hover {
+		text-decoration: underline;
 	}
 }
 </style>
