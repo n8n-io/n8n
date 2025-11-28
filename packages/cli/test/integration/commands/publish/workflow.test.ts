@@ -60,29 +60,7 @@ test('publish:workflow does not publish when --all flag is used', async () => {
 	});
 });
 
-test('publish:workflow does not publish when --id is missing', async () => {
-	//
-	// ARRANGE
-	//
-	const workflow = await createWorkflowWithTriggerAndHistory();
-
-	//
-	// ACT
-	//
-	await command.run(['--versionId=abc']);
-
-	//
-	// ASSERT
-	//
-	// Verify the workflow was not publishd
-	const unchangedWorkflow = await getWorkflowById(workflow.id);
-	expect(unchangedWorkflow).toMatchObject({
-		activeVersionId: null,
-		active: false,
-	});
-});
-
-test('publish:workflow publishs current version when --versionId is missing', async () => {
+test('publish:workflow publishes current version when --versionId is missing', async () => {
 	//
 	// ARRANGE
 	//
@@ -103,6 +81,20 @@ test('publish:workflow publishs current version when --versionId is missing', as
 	});
 });
 
+test('unpublish:workflow throws error when workflow does not exist', async () => {
+	//
+	// ARRANGE
+	//
+	const nonExistentWorkflowId = 'non-existent-workflow-id';
+
+	//
+	// ACT & ASSERT
+	//
+	await expect(command.run([`--id=${nonExistentWorkflowId}`])).rejects.toThrow(
+		`Workflow "${nonExistentWorkflowId}" not found.`,
+	);
+});
+
 test('publish:workflow throws error when version does not exist', async () => {
 	//
 	// ARRANGE
@@ -115,7 +107,5 @@ test('publish:workflow throws error when version does not exist', async () => {
 	//
 	await expect(
 		command.run([`--id=${workflow.id}`, `--versionId=${nonExistentVersionId}`]),
-	).rejects.toThrow(
-		`Version "${nonExistentVersionId}" not found for workflow "${workflow.id}". Please verify the version ID is correct.`,
-	);
+	).rejects.toThrow(`Version "${nonExistentVersionId}" not found for workflow "${workflow.id}".`);
 });

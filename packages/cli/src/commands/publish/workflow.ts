@@ -34,25 +34,13 @@ export class PublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSche
 			return;
 		}
 
-		if (!flags.id) {
-			this.logger.error('The --id flag is required. Please specify a workflow ID.');
-			this.logger.error('Example: publish:workflow --id=5 [--versionId=abc123]');
-			return;
-		}
-
 		if (flags.versionId) {
 			this.logger.info(`Publishing workflow with ID: ${flags.id}, version: ${flags.versionId}`);
 		} else {
 			this.logger.info(`Publishing workflow with ID: ${flags.id} (current version)`);
 		}
 
-		try {
-			await Container.get(WorkflowRepository).publishVersion(flags.id, flags.versionId);
-			this.logger.info('Workflow published successfully');
-		} catch (error) {
-			this.logger.error('Failed to publish workflow. Please check the workflow ID and version ID.');
-			throw error;
-		}
+		await Container.get(WorkflowRepository).publishVersion(flags.id, flags.versionId);
 
 		this.logger.info('Note: Changes will not take effect if n8n is running.');
 		this.logger.info('Please restart n8n for changes to take effect if n8n is currently running.');

@@ -90,7 +90,7 @@ describe('WorkflowRepository', () => {
 			await expect(
 				workflowRepository.publishVersion(workflow.id, nonExistentVersionId),
 			).rejects.toThrow(
-				`Version "${nonExistentVersionId}" not found for workflow "${workflow.id}". Please verify the version ID is correct.`,
+				`Version "${nonExistentVersionId}" not found for workflow "${workflow.id}".`,
 			);
 		});
 

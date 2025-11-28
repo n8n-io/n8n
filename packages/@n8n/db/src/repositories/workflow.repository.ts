@@ -826,6 +826,12 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	async updateActiveState(workflowId: string, newState: boolean) {
+		const workflow = await this.findById(workflowId);
+
+		if (!workflow) {
+			throw new UserError(`Workflow "${workflowId}" not found.`);
+		}
+
 		if (newState) {
 			return await this.createQueryBuilder()
 				.update(WorkflowEntity)
@@ -854,9 +860,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 			});
 
 			if (!workflow) {
-				throw new UserError(
-					`Workflow "${workflowId}" not found. Please verify the workflow ID is correct.`,
-				);
+				throw new UserError(`Workflow "${workflowId}" not found.`);
 			}
 
 			versionIdToPublish = workflow.versionId;
@@ -868,7 +872,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		});
 		if (!version) {
 			throw new UserError(
-				`Version "${versionIdToPublish}" not found for workflow "${workflowId}". Please verify the version ID is correct.`,
+				`Version "${versionIdToPublish}" not found for workflow "${workflowId}".`,
 			);
 		}
 

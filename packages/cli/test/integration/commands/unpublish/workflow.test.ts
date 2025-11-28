@@ -71,7 +71,7 @@ test('unpublish:workflow can unpublish a specific workflow', async () => {
 	});
 });
 
-test('unpublish:workflow shows error when neither --all nor --id is provided', async () => {
+test('unpublish:workflow does nothing when neither --all nor --id is provided', async () => {
 	//
 	// ARRANGE
 	//
@@ -100,7 +100,7 @@ test('unpublish:workflow shows error when neither --all nor --id is provided', a
 	});
 });
 
-test('unpublish:workflow shows error when both --all and --id are provided', async () => {
+test('unpublish:workflow does nothing when both --all and --id are provided', async () => {
 	//
 	// ARRANGE
 	//
@@ -127,4 +127,18 @@ test('unpublish:workflow shows error when both --all and --id are provided', asy
 		activeVersionId: workflows[1].versionId,
 		active: true,
 	});
+});
+
+test('unpublish:workflow throws error when workflow does not exist', async () => {
+	//
+	// ARRANGE
+	//
+	const nonExistentWorkflowId = 'non-existent-workflow-id';
+
+	//
+	// ACT & ASSERT
+	//
+	await expect(command.run([`--id=${nonExistentWorkflowId}`])).rejects.toThrow(
+		`Workflow "${nonExistentWorkflowId}" not found.`,
+	);
 });
