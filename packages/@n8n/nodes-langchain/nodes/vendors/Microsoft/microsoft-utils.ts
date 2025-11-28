@@ -7,13 +7,9 @@ import type {
 	CloudAdapter,
 } from '@microsoft/agents-hosting';
 
-import {
-	MemoryStorage,
-	// AttachmentDownloader,
-	AgentApplication,
-} from '@microsoft/agents-hosting';
+import { MemoryStorage, AgentApplication } from '@microsoft/agents-hosting';
 import { NodeOperationError, type IWebhookFunctions } from 'n8n-workflow';
-import { ms365AgentExecute } from './utils';
+
 import {
 	type AgentDetails,
 	ExecutionType,
@@ -24,10 +20,23 @@ import {
 	ObservabilityManager,
 	type Builder,
 } from '@microsoft/agents-a365-observability';
-import { getObservabilityAuthenticationScope } from '@microsoft/agents-a365-runtime';
+import {
+	getObservabilityAuthenticationScope,
+	Utility as RuntimeUtility,
+} from '@microsoft/agents-a365-runtime';
 import { type Activity, ActivityTypes } from '@microsoft/agents-activity';
+import { v4 as uuid } from 'uuid';
+import { invokeAgent } from './langchain-utils';
 
-export function createAgent(agentNode: IWebhookFunctions, adapter: CloudAdapter) {
+import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a365-tooling';
+
+import type { ClientConfig, Connection } from '@langchain/mcp-adapters';
+import { MultiServerMCPClient } from '@langchain/mcp-adapters';
+
+export function createMicrosoftAgentApplication(
+	agentNode: IWebhookFunctions,
+	adapter: CloudAdapter,
+) {
 	const storage = new MemoryStorage();
 
 	const agentApplication: AgentApplication<TurnState> = new AgentApplication<TurnState>({
@@ -53,12 +62,52 @@ export function createAgent(agentNode: IWebhookFunctions, adapter: CloudAdapter)
 	return agentApplication;
 }
 
-export const onActivityConfig = (
+async function getMicrosoftMcpTools(turnContext: TurnContext, authToken: string) {
+	const configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
+
+	Utility.ValidateAuthToken(authToken);
+
+	// @ts-expect-error Type mismatch due to multiple versions of @microsoft/agents-hosting
+	const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
+	const servers = await configService.listToolServers(agenticAppId, authToken);
+	const mcpServers: Record<string, Connection> = {};
+
+	const tenantId =
+		(turnContext.activity.recipient as any)?.tenantId ||
+		(turnContext.activity as any)?.channelData?.tenant?.id;
+
+	for (const server of servers) {
+		const headers: Record<string, string> = {};
+		if (authToken) {
+			headers['Authorization'] = `Bearer ${authToken}`;
+		}
+
+		if (tenantId) {
+			headers['x-ms-tenant-id'] = tenantId;
+		}
+
+		mcpServers[server.mcpServerName] = {
+			type: 'http',
+			url: server.url,
+			headers,
+		} as Connection;
+	}
+
+	if (Object.keys(mcpServers).length === 0) return [];
+
+	const mcpClientConfig = { mcpServers } as ClientConfig;
+
+	const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
+	const mcpTools = await multiServerMcpClient.getTools();
+
+	return mcpTools;
+}
+
+const configureActivityCallback = (
 	agentNode: IWebhookFunctions,
 	credentials: { clientId?: string; tenantId?: string },
 	mcpTokenRef: { token: string | undefined },
 ) => {
-	const responseFeedback = agentNode.getNodeParameter('responseFeedback', false) as boolean;
 	const agentDescription = agentNode.getNodeParameter('agentDescription') as string;
 	const { clientId, tenantId } = credentials;
 
@@ -74,10 +123,12 @@ export const onActivityConfig = (
 			tenantId: (turnContext.activity.recipient as any)?.tenantId ?? tenantId ?? '',
 		};
 
+		const correlationId = uuid();
+
 		const baggageScope = new BaggageBuilder()
 			.tenantId(tenantDetails.tenantId)
 			.agentId(agentInfo.agentId)
-			.correlationId('7ff6dca0-917c-4bb0-b31a-794e533d8aad') // TODO: add correlationId - can be any uuid generated on the spot
+			.correlationId(correlationId)
 			.agentName(agentInfo.agentName)
 			.conversationId(turnContext.activity.conversation?.id)
 			.build();
@@ -99,49 +150,29 @@ export const onActivityConfig = (
 			await invokeAgentScope.withActiveSpanAsync(async () => {
 				invokeAgentScope.recordInputMessages([turnContext.activity.text ?? 'Unknown text']);
 
-				try {
-					let llmResponse: string;
-
-					if (!responseFeedback) {
-						llmResponse = await ms365AgentExecute(
-							agentNode,
-							turnContext,
-							agentDescription,
-							{
-								configurable: { thread_id: turnContext.activity.conversation!.id },
-							},
-							mcpAuthToken,
-						);
-
-						invokeAgentScope.recordOutputMessages([`n8n Response: ${llmResponse}`]);
-
-						await turnContext.sendActivity(llmResponse);
-						return;
+				let microsoftMcpTools = undefined;
+				if (mcpAuthToken) {
+					try {
+						microsoftMcpTools = await getMicrosoftMcpTools(turnContext, mcpAuthToken);
+					} catch (error) {
+						console.log('Error retrieving MCP tools');
 					}
+				}
 
-					turnContext.streamingResponse.setFeedbackLoop(true);
-					turnContext.streamingResponse.setSensitivityLabel({
-						type: 'https://schema.org/Message',
-						'@type': 'CreativeWork',
-						name: 'Internal',
-					});
-					turnContext.streamingResponse.setGeneratedByAILabel(true);
-					turnContext.streamingResponse.queueInformativeUpdate('Processing your request...');
-
-					llmResponse = await ms365AgentExecute(
+				try {
+					const response = await invokeAgent(
 						agentNode,
-						turnContext,
+						turnContext.activity.text || '',
 						agentDescription,
 						{
 							configurable: { thread_id: turnContext.activity.conversation!.id },
 						},
-						mcpAuthToken,
+						microsoftMcpTools,
 					);
 
-					invokeAgentScope.recordOutputMessages([`n8n Response: ${llmResponse}`]);
+					invokeAgentScope.recordOutputMessages([`n8n Agent Response: ${response}`]);
 
-					turnContext.streamingResponse.queueTextChunk(llmResponse);
-					await turnContext.streamingResponse.endStream();
+					await turnContext.sendActivity(response);
 				} finally {
 					invokeAgentScope.dispose();
 				}
@@ -150,11 +181,11 @@ export const onActivityConfig = (
 	};
 };
 
-export function adapterProcessCallbackConfig(
+export function configureAdapterProcessCallback(
 	agentNode: IWebhookFunctions,
 	agent: AgentApplication<TurnState<DefaultConversationState, DefaultUserState>>,
 	authConfig: AuthConfiguration,
-	data: {
+	trackData: {
 		inputText: string;
 		activities: string[];
 	},
@@ -166,12 +197,10 @@ export function adapterProcessCallbackConfig(
 			'agentic',
 		);
 
-		const observability = ObservabilityManager.configure(
-			(builder: Builder) =>
-				builder
-					.withService('TypeScript Sample Agent', '1.0.0')
-					.withTokenResolver((_agentId: string, _tenantId: string) => aauToken || '')
-					.withClusterCategory('preprod'), // Use 'prod' for production tenants
+		const observability = ObservabilityManager.configure((builder: Builder) =>
+			builder
+				.withService('TypeScript Sample Agent', '1.0.0')
+				.withTokenResolver((_agentId: string, _tenantId: string) => aauToken || ''),
 		);
 
 		observability.start();
@@ -182,24 +211,24 @@ export function adapterProcessCallbackConfig(
 			const tokenResult = await agent.authorization.getToken(turnContext, 'agentic');
 			mcpTokenRef.token = tokenResult.token;
 		} catch (error) {
-			console.error('Error getting MCP token with getToken:', error);
+			console.error('Error getting MCP token');
 		}
 
 		try {
 			const originalSendActivity = turnContext.sendActivity.bind(turnContext);
-			data.inputText = turnContext.activity.text || '';
+			trackData.inputText = turnContext.activity.text || '';
 			const sendActivityWrapper = async (activityOrText: string | Activity) => {
 				if (typeof activityOrText === 'string') {
-					data.activities.push(activityOrText);
+					trackData.activities.push(activityOrText);
 				} else if (activityOrText.text) {
-					data.activities.push(activityOrText.text);
+					trackData.activities.push(activityOrText.text);
 				}
 				return await originalSendActivity(activityOrText);
 			};
 
 			turnContext.sendActivity = sendActivityWrapper;
 
-			const onActivity = onActivityConfig(agentNode, authConfig, mcpTokenRef);
+			const onActivity = configureActivityCallback(agentNode, authConfig, mcpTokenRef);
 			agent.onActivity(ActivityTypes.Message, onActivity, ['agentic']);
 
 			await agent.run(turnContext);
@@ -210,3 +239,44 @@ export function adapterProcessCallbackConfig(
 		}
 	};
 }
+
+export const createAuthConfig = (credentials: {
+	clientId: string;
+	tenantId: string;
+	clientSecret: string;
+}) => {
+	const { clientId, tenantId, clientSecret } = credentials;
+	const connections: Map<string, AuthConfiguration> = new Map();
+	connections.set('serviceConnection', {
+		clientId,
+		clientSecret,
+		tenantId,
+		authority: 'https://login.microsoftonline.com',
+		issuers: [
+			'https://api.botframework.com',
+			`https://sts.windows.net/${tenantId}/`,
+			`https://login.microsoftonline.com/${tenantId}/v2.0`,
+		],
+	});
+
+	const config = {
+		clientId,
+		clientSecret,
+		tenantId,
+		authority: 'https://login.microsoftonline.com',
+		issuers: [
+			'https://api.botframework.com',
+			`https://sts.windows.net/${tenantId}/`,
+			`https://login.microsoftonline.com/${tenantId}/v2.0`,
+		],
+		connections,
+		connectionsMap: [
+			{
+				connection: 'serviceConnection',
+				serviceUrl: '*',
+			},
+		],
+	};
+
+	return config;
+};
