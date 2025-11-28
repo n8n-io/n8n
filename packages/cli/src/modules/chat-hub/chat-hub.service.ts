@@ -1871,6 +1871,9 @@ export class ChatHubService {
 			workflowData,
 			executionData,
 			user,
+			undefined,
+			false,
+			'chat',
 		);
 
 		const executionId = started.executionId;
