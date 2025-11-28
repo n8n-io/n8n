@@ -8,7 +8,7 @@ import { UserError } from 'n8n-workflow';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import { EventService } from '@/events/event.service';
 
-import { SourceControlGitService } from './source-control-git.service.ee';
+import { SourceControlGitService } from '../../modules/source-control.ee/source-control-git.service.ee';
 import {
 	hasOwnerChanged,
 	getFoldersPath,

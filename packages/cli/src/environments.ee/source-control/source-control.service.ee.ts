@@ -18,7 +18,7 @@ import {
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from '../../modules/source-control.ee/constants';
 import { SourceControlExportService } from './source-control-export.service.ee';
-import { SourceControlGitService } from './source-control-git.service.ee';
+import { SourceControlGitService } from '../../modules/source-control.ee/source-control-git.service.ee';
 import {
 	getTagsPath,
 	getTrackingInformationFromPostPushResult,

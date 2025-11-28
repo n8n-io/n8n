@@ -16,7 +16,7 @@ import { InstanceSettings } from 'n8n-core';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 
-import type { SourceControlGitService } from '../source-control-git.service.ee';
+import type { SourceControlGitService } from '../../../modules/source-control.ee/source-control-git.service.ee';
 import * as sourceControlHelper from '../../../modules/source-control.ee/source-control-helper.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
 import { SourceControlPreferencesService } from '../../../modules/source-control.ee/source-control-preferences.service.ee';

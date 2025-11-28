@@ -29,7 +29,7 @@ import {
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
 } from '@/modules/source-control.ee/constants';
 import { SourceControlExportService } from '@/environments.ee/source-control/source-control-export.service.ee';
-import type { SourceControlGitService } from '@/environments.ee/source-control/source-control-git.service.ee';
+import type { SourceControlGitService } from '@/modules/source-control.ee/source-control-git.service.ee';
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/environments.ee/source-control/source-control-scoped.service';
