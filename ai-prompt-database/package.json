@@ -1,0 +1,49 @@
+{
+  "name": "ai-prompt-database",
+  "version": "1.0.0",
+  "description": "Base de dados de prompts de IA com CLI e API REST",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "cli": "tsx src/cli/index.ts",
+    "api": "tsx src/api/index.ts",
+    "test": "jest",
+    "lint": "eslint src --ext .ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "bin": {
+    "ai-prompts": "./dist/cli/index.js"
+  },
+  "keywords": [
+    "ai",
+    "prompts",
+    "database",
+    "cli",
+    "api"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "commander": "^12.0.0",
+    "express": "^4.18.2",
+    "chalk": "^5.3.0",
+    "inquirer": "^9.2.12",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^20.10.6",
+    "@types/uuid": "^9.0.7",
+    "@types/inquirer": "^9.0.7",
+    "typescript": "^5.3.3",
+    "tsx": "^4.7.0",
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.11",
+    "eslint": "^8.56.0",
+    "@typescript-eslint/eslint-plugin": "^6.18.1",
+    "@typescript-eslint/parser": "^6.18.1"
+  }
+}

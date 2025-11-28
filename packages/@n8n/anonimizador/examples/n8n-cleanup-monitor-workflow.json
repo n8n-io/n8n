@@ -1,0 +1,130 @@
+{
+  "name": "Anonimizador Cleanup Monitor",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "anonimizador-cleanup",
+        "responseMode": "onReceived",
+        "responseData": "allEntries"
+      },
+      "id": "webhook-trigger",
+      "name": "Cleanup Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{ $json.stats.errors }}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "filter-errors",
+      "name": "Has Errors?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "channel": "#alerts",
+        "text": "⚠️ Anonimizador Cleanup Alert\n\nTimestamp: {{ $json.timestamp }}\nFiles checked: {{ $json.stats.checked }}\nFiles deleted: {{ $json.stats.deleted }}\nErrors: {{ $json.stats.errors }}\n\nFailed files: {{ $json.stats.failed_files.join(', ') }}",
+        "otherOptions": {}
+      },
+      "id": "slack-notification",
+      "name": "Send Slack Alert",
+      "type": "n8n-nodes-base.slack",
+      "typeVersion": 2.2,
+      "position": [690, 200],
+      "credentials": {
+        "slackApi": {
+          "id": "YOUR_SLACK_CREDENTIALS_ID",
+          "name": "Slack account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fromEmail": "alerts@example.com",
+        "toEmail": "admin@example.com",
+        "subject": "Anonimizador Cleanup Error Alert",
+        "text": "Cleanup operation encountered errors:\n\nTimestamp: {{ $json.timestamp }}\nFiles checked: {{ $json.stats.checked }}\nFiles deleted: {{ $json.stats.deleted }}\nErrors: {{ $json.stats.errors }}\n\nFailed files:\n{{ $json.stats.failed_files.join('\\n') }}"
+      },
+      "id": "email-notification",
+      "name": "Send Email Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [690, 400],
+      "credentials": {
+        "smtp": {
+          "id": "YOUR_SMTP_CREDENTIALS_ID",
+          "name": "SMTP account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "no-op",
+      "name": "No Errors",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [690, 500]
+    }
+  ],
+  "connections": {
+    "Cleanup Webhook": {
+      "main": [
+        [
+          {
+            "node": "Has Errors?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Errors?": {
+      "main": [
+        [
+          {
+            "node": "Send Slack Alert",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Send Email Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "No Errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "anonimizador"
+    },
+    {
+      "name": "monitoring"
+    }
+  ],
+  "pinData": {}
+}

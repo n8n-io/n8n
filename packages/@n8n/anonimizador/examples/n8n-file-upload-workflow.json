@@ -1,0 +1,104 @@
+{
+  "name": "Anonimizador File Upload Handler",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "upload-file",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-upload",
+      "name": "Upload Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://anonimizador:8000/upload",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "http-upload",
+      "name": "Upload to Anonimizador",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "values": {
+          "string": [
+            {
+              "name": "download_url",
+              "value": "=http://anonimizador:8000/download?token={{ $json.download_token }}"
+            },
+            {
+              "name": "file_id",
+              "value": "={{ $json.file_id }}"
+            },
+            {
+              "name": "expires_in",
+              "value": "={{ $json.token_expires_in_seconds }} seconds"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-response",
+      "name": "Format Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [690, 300]
+    }
+  ],
+  "connections": {
+    "Upload Trigger": {
+      "main": [
+        [
+          {
+            "node": "Upload to Anonimizador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Anonimizador": {
+      "main": [
+        [
+          {
+            "node": "Format Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "name": "anonimizador"
+    },
+    {
+      "name": "file-upload"
+    }
+  ],
+  "pinData": {}
+}
