@@ -158,7 +158,7 @@ export = {
 					versionId,
 				);
 
-				Container.get(EventService).emit('user-retrieved-workflow', {
+				Container.get(EventService).emit('user-retrieved-workflow-version', {
 					userId: req.user.id,
 					publicApi: true,
 				});
