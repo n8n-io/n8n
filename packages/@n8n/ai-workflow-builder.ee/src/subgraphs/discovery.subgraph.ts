@@ -9,7 +9,6 @@ import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 import { z } from 'zod';
 
-import { MAX_DISCOVERY_ITERATIONS } from '@/constants';
 import { LLMServiceError } from '@/errors';
 import {
 	TechniqueDescription,
@@ -335,12 +334,6 @@ export const DiscoverySubgraphState = Annotation.Root({
 	bestPractices: Annotation<string | undefined>({
 		reducer: (x, y) => y ?? x,
 	}),
-
-	// Internal: Track iterations to prevent infinite loops
-	iterationCount: Annotation<number>({
-		reducer: (x, y) => (y ?? x) + 1,
-		default: () => 0,
-	}),
 });
 
 export interface DiscoverySubgraphConfig {
@@ -482,11 +475,6 @@ export class DiscoverySubgraph extends BaseSubgraph<
 	 * Should continue with tools or finish?
 	 */
 	private shouldContinue(state: typeof DiscoverySubgraphState.State) {
-		// Safety: prevent infinite loops
-		if (state.iterationCount >= MAX_DISCOVERY_ITERATIONS) {
-			return 'format_output'; // Try to format whatever we have, or maybe just end
-		}
-
 		const lastMessage = state.messages[state.messages.length - 1];
 
 		if (

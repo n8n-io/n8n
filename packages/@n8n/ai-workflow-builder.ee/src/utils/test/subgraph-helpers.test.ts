@@ -64,27 +64,11 @@ describe('subgraph-helpers', () => {
 	});
 
 	describe('createStandardShouldContinue', () => {
-		const shouldContinue = createStandardShouldContinue(5);
+		// Note: Iteration limits are now enforced via LangGraph's recursionLimit at invoke time
+		const shouldContinue = createStandardShouldContinue();
 
-		it('should return END when iteration limit is reached', () => {
+		it('should return "tools" when tool calls exist', () => {
 			const state = {
-				iterationCount: 5,
-				messages: [new AIMessage({ content: '', tool_calls: [{ name: 'test', args: {} }] })],
-			};
-			expect(shouldContinue(state)).toBe(END);
-		});
-
-		it('should return END when iteration count exceeds limit', () => {
-			const state = {
-				iterationCount: 10,
-				messages: [new AIMessage({ content: '', tool_calls: [{ name: 'test', args: {} }] })],
-			};
-			expect(shouldContinue(state)).toBe(END);
-		});
-
-		it('should return "tools" when tool calls exist and under limit', () => {
-			const state = {
-				iterationCount: 2,
 				messages: [
 					new AIMessage({
 						content: '',
@@ -97,7 +81,6 @@ describe('subgraph-helpers', () => {
 
 		it('should return END when no tool calls in last message', () => {
 			const state = {
-				iterationCount: 2,
 				messages: [new AIMessage('Regular response without tools')],
 			};
 			expect(shouldContinue(state)).toBe(END);
@@ -105,7 +88,6 @@ describe('subgraph-helpers', () => {
 
 		it('should return END when tool_calls is empty array', () => {
 			const state = {
-				iterationCount: 2,
 				messages: [new AIMessage({ content: 'Done', tool_calls: [] })],
 			};
 			expect(shouldContinue(state)).toBe(END);
@@ -113,7 +95,6 @@ describe('subgraph-helpers', () => {
 
 		it('should return END for empty messages array', () => {
 			const state = {
-				iterationCount: 0,
 				messages: [] as BaseMessage[],
 			};
 			expect(shouldContinue(state)).toBe(END);
@@ -121,7 +102,6 @@ describe('subgraph-helpers', () => {
 
 		it('should check only the last message for tool calls', () => {
 			const state = {
-				iterationCount: 1,
 				messages: [
 					new AIMessage({
 						content: '',
@@ -131,15 +111,6 @@ describe('subgraph-helpers', () => {
 				],
 			};
 			expect(shouldContinue(state)).toBe(END);
-		});
-
-		it('should work with different max iteration values', () => {
-			const strictLimit = createStandardShouldContinue(2);
-			const state = {
-				iterationCount: 2,
-				messages: [new AIMessage({ content: '', tool_calls: [{ name: 'test', args: {} }] })],
-			};
-			expect(strictLimit(state)).toBe(END);
 		});
 	});
 });

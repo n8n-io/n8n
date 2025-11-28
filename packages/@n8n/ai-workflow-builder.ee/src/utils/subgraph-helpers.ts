@@ -133,14 +133,10 @@ export function extractUserRequest(messages: BaseMessage[], defaultValue = ''): 
 
 /**
  * Standard shouldContinue logic for tool-based subgraphs
- * Checks iteration limit and presence of tool calls
+ * Checks presence of tool calls to determine if we should continue to tools node.
  */
-export function createStandardShouldContinue(maxIterations: number) {
-	return (state: { iterationCount: number; messages: BaseMessage[] }) => {
-		if (state.iterationCount >= maxIterations) {
-			return END;
-		}
-
+export function createStandardShouldContinue() {
+	return (state: { messages: BaseMessage[] }) => {
 		const lastMessage = state.messages[state.messages.length - 1];
 		const hasToolCalls =
 			lastMessage &&

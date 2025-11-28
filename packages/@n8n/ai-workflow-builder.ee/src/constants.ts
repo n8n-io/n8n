@@ -41,6 +41,6 @@ export const AVG_CHARS_PER_TOKEN_ANTHROPIC = 3.5;
  * Maximum iterations for subgraph tool loops.
  * Prevents infinite loops when agents keep calling tools without finishing.
  */
-export const MAX_BUILDER_ITERATIONS = 15;
-export const MAX_CONFIGURATOR_ITERATIONS = 15;
+export const MAX_BUILDER_ITERATIONS = 30;
+export const MAX_CONFIGURATOR_ITERATIONS = 30;
 export const MAX_DISCOVERY_ITERATIONS = 50;

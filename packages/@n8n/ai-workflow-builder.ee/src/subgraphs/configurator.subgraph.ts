@@ -7,7 +7,6 @@ import { Annotation, StateGraph } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { INodeTypeDescription } from 'n8n-workflow';
 
-import { MAX_CONFIGURATOR_ITERATIONS } from '@/constants';
 import { LLMServiceError } from '@/errors';
 
 import { BaseSubgraph } from './subgraph-interface';
@@ -172,12 +171,6 @@ export const ConfiguratorSubgraphState = Annotation.Root({
 		},
 		default: () => [],
 	}),
-
-	// Internal: Safety counter
-	iterationCount: Annotation<number>({
-		reducer: (x, y) => (y ?? x) + 1,
-		default: () => 0,
-	}),
 });
 
 export interface ConfiguratorSubgraphConfig {
@@ -268,7 +261,7 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			.addNode('process_operations', processOperations)
 			.addEdge('__start__', 'agent')
 			// Map 'tools' to tools node, END is handled automatically
-			.addConditionalEdges('agent', createStandardShouldContinue(MAX_CONFIGURATOR_ITERATIONS))
+			.addConditionalEdges('agent', createStandardShouldContinue())
 			.addEdge('tools', 'process_operations')
 			.addEdge('process_operations', 'agent'); // Loop back
 

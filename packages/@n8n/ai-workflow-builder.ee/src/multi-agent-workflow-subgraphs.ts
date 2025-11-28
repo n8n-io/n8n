@@ -6,6 +6,11 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 
 import { ResponderAgent } from './agents/responder.agent';
 import { SupervisorAgent } from './agents/supervisor.agent';
+import {
+	MAX_BUILDER_ITERATIONS,
+	MAX_CONFIGURATOR_ITERATIONS,
+	MAX_DISCOVERY_ITERATIONS,
+} from './constants';
 import { ParentGraphState } from './parent-graph-state';
 import { BuilderSubgraph } from './subgraphs/builder.subgraph';
 import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
@@ -49,11 +54,12 @@ function createSubgraphNodeHandler<
 	compiledGraph: ReturnType<TSubgraph['create']>,
 	name: string,
 	logger?: Logger,
+	recursionLimit?: number,
 ) {
 	return async (state: typeof ParentGraphState.State) => {
 		try {
 			const input = subgraph.transformInput(state);
-			const result = await compiledGraph.invoke(input);
+			const result = await compiledGraph.invoke(input, { recursionLimit });
 			const output = subgraph.transformOutput(result, state);
 
 			return output;
@@ -169,11 +175,18 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					compiledDiscovery,
 					'discovery_subgraph',
 					logger,
+					MAX_DISCOVERY_ITERATIONS,
 				),
 			)
 			.addNode(
 				'builder_subgraph',
-				createSubgraphNodeHandler(builderSubgraph, compiledBuilder, 'builder_subgraph', logger),
+				createSubgraphNodeHandler(
+					builderSubgraph,
+					compiledBuilder,
+					'builder_subgraph',
+					logger,
+					MAX_BUILDER_ITERATIONS,
+				),
 			)
 			.addNode(
 				'configurator_subgraph',
@@ -182,6 +195,7 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 					compiledConfigurator,
 					'configurator_subgraph',
 					logger,
+					MAX_CONFIGURATOR_ITERATIONS,
 				),
 			)
 			// Connect all subgraphs to process_operations

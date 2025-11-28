@@ -1,5 +1,9 @@
 type StateRecord = Record<string, unknown>;
 
+interface InvokeConfig {
+	recursionLimit?: number;
+}
+
 export interface ISubgraph<
 	TConfig = unknown,
 	TChildState extends StateRecord = StateRecord,
@@ -8,7 +12,7 @@ export interface ISubgraph<
 	name: string;
 	description: string;
 	create(config: TConfig): {
-		invoke: (input: Partial<TChildState>) => Promise<TChildState>;
+		invoke: (input: Partial<TChildState>, config?: InvokeConfig) => Promise<TChildState>;
 	};
 	transformInput: (parentState: TParentState) => Partial<TChildState>;
 	transformOutput: (childOutput: TChildState, parentState: TParentState) => Partial<TParentState>;
@@ -24,7 +28,7 @@ export abstract class BaseSubgraph<
 	abstract description: string;
 
 	abstract create(config: TConfig): {
-		invoke: (input: Partial<TChildState>) => Promise<TChildState>;
+		invoke: (input: Partial<TChildState>, config?: InvokeConfig) => Promise<TChildState>;
 	};
 
 	/**
