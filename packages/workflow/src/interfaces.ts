@@ -1448,6 +1448,7 @@ export interface INodePropertyTypeOptions {
 	showAlpha?: boolean; // Supported by: color
 	sortable?: boolean; // Supported when "multipleValues" set to true
 	expirable?: boolean; // Supported by: hidden (only in the credentials)
+	dateOnly?: boolean; // Supported by: dateTime
 	resourceMapper?: ResourceMapperTypeOptions;
 	filter?: FilterTypeOptions;
 	assignment?: AssignmentTypeOptions;
@@ -3023,6 +3024,7 @@ export type FormFieldsParameter = Array<{
 	formatDate?: string;
 	html?: string;
 	placeholder?: string;
+	defaultValue?: string;
 	fieldName?: string;
 	fieldValue?: string;
 	limitSelection?: 'exact' | 'range' | 'unlimited';

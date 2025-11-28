@@ -168,6 +168,60 @@ export const formFields: INodeProperties = {
 					},
 				},
 				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description: 'Default value that will be pre-filled in the form field',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['text', 'number', 'email', 'textarea'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default date value that will be pre-filled in the form field (format: YYYY-MM-DD)',
+					type: 'dateTime',
+					typeOptions: {
+						dateOnly: true,
+					},
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['date'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default value that will be pre-selected. Must match one of the option labels.',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['dropdown', 'radio'],
+						},
+					},
+				},
+				{
+					displayName: 'Default Value',
+					name: 'defaultValue',
+					description:
+						'Default value(s) that will be pre-selected. Must match one or multiple of the option labels. Separate multiple pre-selected options with a comma.',
+					type: 'string',
+					default: '',
+					displayOptions: {
+						show: {
+							fieldType: ['checkbox'],
+						},
+					},
+				},
+				{
 					displayName: 'Field Value',
 					name: 'fieldValue',
 					description:
