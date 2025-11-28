@@ -1,7 +1,7 @@
 import { Container } from '@n8n/di';
 import type { RequestHandler } from 'express';
 
-import { isSourceControlLicensed } from '../source-control-helper.ee';
+import { isSourceControlLicensed } from '../../../modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '../../../modules/source-control.ee/source-control-preferences.service.ee';
 
 export const sourceControlLicensedAndEnabledMiddleware: RequestHandler = (_req, res, next) => {

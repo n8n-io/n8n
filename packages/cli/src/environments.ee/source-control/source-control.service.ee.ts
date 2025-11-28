@@ -25,7 +25,7 @@ import {
 	getTrackingInformationFromPullResult,
 	normalizeAndValidateSourceControlledFilePath,
 	sourceControlFoldersExistCheck,
-} from './source-control-helper.ee';
+} from '../../modules/source-control.ee/source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
 import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
 import {

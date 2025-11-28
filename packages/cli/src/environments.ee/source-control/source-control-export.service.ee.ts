@@ -39,7 +39,7 @@ import {
 	readTagAndMappingsFromSourceControlFile,
 	sourceControlFoldersExistCheck,
 	stringContainsExpression,
-} from './source-control-helper.ee';
+} from '../../modules/source-control.ee/source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { VariablesService } from '../variables/variables.service.ee';
 import type { ExportResult } from './types/export-result';

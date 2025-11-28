@@ -22,7 +22,7 @@ import {
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { License } from '@/license';
 
-import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
+import type { SourceControlWorkflowVersionId } from '../../../environments.ee/source-control/types/source-control-workflow-version-id';
 
 function createWorkflowVersion(
 	overrides: Partial<SourceControlWorkflowVersionId> = {},
@@ -462,7 +462,7 @@ describe('readTagAndMappingsFromSourceControlFile', () => {
 		const filePath = 'invalid/path/tags-and-mappings.json';
 		// Import the function after resetting modules
 		const { readTagAndMappingsFromSourceControlFile } = await import(
-			'@/environments.ee/source-control/source-control-helper.ee'
+			'@/modules/source-control.ee/source-control-helper.ee'
 		);
 		const result = await readTagAndMappingsFromSourceControlFile(filePath);
 		expect(result).toEqual({
@@ -483,7 +483,7 @@ describe('readFoldersFromSourceControlFile', () => {
 		const filePath = 'invalid/path/folders.json';
 		// Import the function after resetting modules
 		const { readFoldersFromSourceControlFile } = await import(
-			'@/environments.ee/source-control/source-control-helper.ee'
+			'@/modules/source-control.ee/source-control-helper.ee'
 		);
 		const result = await readFoldersFromSourceControlFile(filePath);
 		expect(result).toEqual({

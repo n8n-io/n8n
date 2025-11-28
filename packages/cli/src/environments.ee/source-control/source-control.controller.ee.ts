@@ -11,7 +11,7 @@ import {
 	sourceControlLicensedMiddleware,
 	sourceControlLicensedAndEnabledMiddleware,
 } from './middleware/source-control-enabled-middleware.ee';
-import { getRepoType } from './source-control-helper.ee';
+import { getRepoType } from '../../modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlService } from './source-control.service.ee';

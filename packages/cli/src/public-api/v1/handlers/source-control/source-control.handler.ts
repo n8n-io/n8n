@@ -7,7 +7,7 @@ import type { StatusResult } from 'simple-git';
 import {
 	getTrackingInformationFromPullResult,
 	isSourceControlLicensed,
-} from '@/environments.ee/source-control/source-control-helper.ee';
+} from '@/modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
 import type { ImportResult } from '@/environments.ee/source-control/types/import-result';
