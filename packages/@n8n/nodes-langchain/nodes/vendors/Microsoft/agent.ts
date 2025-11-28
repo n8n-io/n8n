@@ -67,7 +67,7 @@ export const onActivityConfig = (
 
 		const agentInfo: AgentDetails = {
 			agentId: (turnContext.activity.recipient as any)?.agenticAppId ?? clientId,
-			agentName: (turnContext.activity.recipient as any)?.name ?? 'Microsoft Agent',
+			agentName: (turnContext.activity.recipient as any)?.name ?? 'Microsoft Agent 365',
 		};
 
 		const tenantDetails: TenantDetails = {
