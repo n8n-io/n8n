@@ -397,6 +397,14 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools.pop();
 	}
 
+	if (this.getNode().typeVersion < 1.1) {
+		if (options.codeExecution) {
+			tools.push({
+				codeExecution: {},
+			});
+		}
+	}
+
 	// Add built-in tools and build toolConfig
 	let toolConfig: GenerateContentRequest['toolConfig'];
 	if (this.getNode().typeVersion >= 1.1) {
@@ -468,14 +476,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 					codeExecution: {},
 				});
 			}
-		}
-	}
-
-	if (this.getNode().typeVersion < 1.1) {
-		if (options.codeExecution) {
-			tools.push({
-				codeExecution: {},
-			});
 		}
 	}
 
