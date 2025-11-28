@@ -1257,26 +1257,36 @@ describe('stream-processor', () => {
 			expect(results).toHaveLength(0);
 		});
 
-		it('should allow events from subgraphs when node is in SKIPPED_NODES list', async () => {
-			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
-				// 'tools' node is in SKIPPED_NODES - these events should pass through filtering
-				// but won't produce output because 'tools' doesn't emit messages
+		it('should not filter subgraph events when node is in SKIPPED_NODES list', async () => {
+			async function* mockStream(): AsyncGenerator<
+				[string[], string, unknown] | [string, unknown],
+				void,
+				unknown
+			> {
+				// 'tools' node is in SKIPPED_NODES - subgraph filtering should NOT block this event
+				// (subgraph filtering only blocks events with EMITTING nodes like 'agent')
 				yield [
 					['builder_subgraph:uuid'],
 					'updates',
 					{ tools: { messages: [{ content: 'Tool execution' }] } },
 				];
+				// Follow-up parent event to verify stream processing continues normally
+				yield ['updates', { agent: { messages: [{ content: 'Parent response' }] } }];
 			}
 
-			const processor = createStreamProcessor(mockStream());
+			const processor = createStreamProcessor(
+				mockStream() as AsyncGenerator<[string, unknown], void, unknown>,
+			);
 			const results: StreamOutput[] = [];
 
 			for await (const output of processor) {
 				results.push(output);
 			}
 
-			// No output because 'tools' node doesn't emit, but filtering didn't block it
-			expect(results).toHaveLength(0);
+			// First event: no output because 'tools' doesn't emit (but wasn't filtered)
+			// Second event: parent 'agent' produces output, proving stream wasn't blocked
+			expect(results).toHaveLength(1);
+			expect((results[0].messages[0] as AgentMessageChunk).text).toBe('Parent response');
 		});
 	});
 
