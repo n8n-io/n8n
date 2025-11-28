@@ -12,6 +12,7 @@ import {
 	Workflow,
 	type IRunExecutionData,
 	type WorkflowExecuteMode,
+	type ExecutionError,
 } from 'n8n-workflow';
 
 import { JobProcessor } from '../job-processor';
@@ -110,11 +111,68 @@ describe('JobProcessor', () => {
 				mock(),
 			);
 
-			await jobProcessor.processJob(mock<Job>());
+			const job = mock<Job>();
+
+			await jobProcessor.processJob(job);
 
 			expect(manualExecutionService.runManually).toHaveBeenCalledTimes(1);
+
+			expect(job.progress).toHaveBeenCalledWith(
+				expect.objectContaining({
+					kind: 'job-finished',
+					success: true,
+				}),
+			);
 		},
 	);
+
+	it('should send job-finished with success=false when execution has errors', async () => {
+		const executionRepository = mock<ExecutionRepository>();
+		// First call: initial execution fetch (no error yet)
+		executionRepository.findSingleExecution.mockResolvedValueOnce(
+			mock<IExecutionResponse>({
+				mode: 'manual',
+				workflowData: { nodes: [] },
+				data: mock<IRunExecutionData>({
+					executionData: undefined,
+				}),
+			}),
+		);
+		// Second call: after execution completes, fetch again to check for errors
+		executionRepository.findSingleExecution.mockResolvedValueOnce(
+			mock<IExecutionResponse>({
+				status: 'error',
+				data: {
+					resultData: {
+						error: mock<ExecutionError>(),
+					},
+				},
+			}),
+		);
+
+		const manualExecutionService = mock<ManualExecutionService>();
+		const jobProcessor = new JobProcessor(
+			logger,
+			executionRepository,
+			mock(),
+			mock(),
+			mock(),
+			manualExecutionService,
+			executionsConfig,
+			mock(),
+		);
+
+		const job = mock<Job>();
+
+		await jobProcessor.processJob(job);
+
+		expect(job.progress).toHaveBeenCalledWith(
+			expect.objectContaining({
+				kind: 'job-finished',
+				success: false,
+			}),
+		);
+	});
 
 	it('should pass additional data for partial executions to run', async () => {
 		const executionRepository = mock<ExecutionRepository>();

@@ -152,6 +152,7 @@ import IconLucideMessagesSquare from '~icons/lucide/messages-square';
 import IconLucideMic from '~icons/lucide/mic';
 import IconLucideMilestone from '~icons/lucide/milestone';
 import IconLucideMinimize2 from '~icons/lucide/minimize-2';
+import IconLucideMinus from '~icons/lucide/minus';
 import IconLucideMousePointer from '~icons/lucide/mouse-pointer';
 import IconLucideNetwork from '~icons/lucide/network';
 import IconLucideNotebookPen from '~icons/lucide/notebook-pen';
@@ -181,12 +182,14 @@ import IconLucideSearch from '~icons/lucide/search';
 import IconLucideSend from '~icons/lucide/send';
 import IconLucideServer from '~icons/lucide/server';
 import IconLucideSettings from '~icons/lucide/settings';
+import IconLucideSettings2 from '~icons/lucide/settings-2';
 import IconLucideShare from '~icons/lucide/share';
 import IconLucideSlidersHorizontal from '~icons/lucide/sliders-horizontal';
 import IconLucideSmile from '~icons/lucide/smile';
 import IconLucideSparkles from '~icons/lucide/sparkles';
 import IconLucideSquare from '~icons/lucide/square';
 import IconLucideSquareCheck from '~icons/lucide/square-check';
+import IconLucideSquareMinus from '~icons/lucide/square-minus';
 import IconLucideSquarePen from '~icons/lucide/square-pen';
 import IconLucideSquarePlus from '~icons/lucide/square-plus';
 import IconLucideStickyNote from '~icons/lucide/sticky-note';
@@ -196,6 +199,7 @@ import IconLucideTags from '~icons/lucide/tags';
 import IconLucideTerminal from '~icons/lucide/terminal';
 import IconLucideThumbsDown from '~icons/lucide/thumbs-down';
 import IconLucideThumbsUp from '~icons/lucide/thumbs-up';
+import IconLucideTimer from '~icons/lucide/timer';
 import IconLucideToggleRight from '~icons/lucide/toggle-right';
 import IconLucideTrash2 from '~icons/lucide/trash-2';
 import IconLucideTreePine from '~icons/lucide/tree-pine';
@@ -407,6 +411,7 @@ export const deprecatedIconSet = {
 	tasks: IconLucideListChecks,
 	terminal: IconLucideTerminal,
 	'th-large': IconLucideGrid2x2,
+	timer: IconLucideTimer,
 	thumbtack: IconLucidePin,
 	'thumbs-down': IconLucideThumbsDown,
 	'thumbs-up': IconLucideThumbsUp,
@@ -588,6 +593,7 @@ export const updatedIconSet = {
 	'messages-square': IconLucideMessagesSquare,
 	mic: IconLucideMic,
 	milestone: IconLucideMilestone,
+	minus: IconLucideMinus,
 	'mouse-pointer': IconLucideMousePointer,
 	network: IconLucideNetwork,
 	'notebook-pen': IconLucideNotebookPen,
@@ -616,6 +622,7 @@ export const updatedIconSet = {
 	scissors: IconLucideScissors,
 	search: IconLucideSearch,
 	settings: IconLucideSettings,
+	settings2: IconLucideSettings2,
 	send: IconLucideSend,
 	server: IconLucideServer,
 	share: IconLucideShare,
@@ -624,6 +631,7 @@ export const updatedIconSet = {
 	sparkles: IconLucideSparkles,
 	square: IconLucideSquare,
 	'square-check': IconLucideSquareCheck,
+	'square-minus': IconLucideSquareMinus,
 	'square-pen': IconLucideSquarePen,
 	'square-plus': IconLucideSquarePlus,
 	'sticky-note': IconLucideStickyNote,

@@ -24,10 +24,17 @@ import type { NodeApiError } from './errors/node-api.error';
 import type { NodeOperationError } from './errors/node-operation.error';
 import type { WorkflowActivationError } from './errors/workflow-activation.error';
 import type { WorkflowOperationError } from './errors/workflow-operation.error';
+import type {
+	IExecutionContext,
+	WorkflowExecuteModeValues as WorkflowExecuteMode,
+} from './execution-context';
 import type { ExecutionStatus } from './execution-status';
 import type { Result } from './result';
 import type { Workflow } from './workflow';
 import type { EnvProviderState } from './workflow-data-proxy-env-provider';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
+
+export type { WorkflowExecuteModeValues as WorkflowExecuteMode } from './execution-context';
 
 export interface IAdditionalCredentialOptions {
 	oauth2?: IOAuth2Options;
@@ -141,6 +148,7 @@ export interface ICredentialsDecrypted<T extends object = ICredentialDataDecrypt
 	data?: T;
 	homeProject?: ProjectSharingData;
 	sharedWithProjects?: ProjectSharingData[];
+	isGlobal?: boolean;
 }
 
 export interface ICredentialsEncrypted {
@@ -687,6 +695,7 @@ export interface BaseHelperFunctions {
 }
 
 export interface FileSystemHelperFunctions {
+	isFilePathBlocked(filePath: string): Promise<boolean>;
 	createReadStream(path: PathLike): Promise<Readable>;
 	getStoragePath(): string;
 	writeContentToFile(
@@ -925,6 +934,8 @@ export interface FunctionsBase {
 	getMode?: () => WorkflowExecuteMode;
 	getActivationMode?: () => WorkflowActivateMode;
 	getChatTrigger: () => INode | null;
+
+	getExecutionContext: () => IExecutionContext | undefined;
 
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
@@ -2401,48 +2412,6 @@ export interface IRun {
 	jobId?: string;
 }
 
-// Contains all the data which is needed to execute a workflow and so also to
-// start restart it again after it did fail.
-// The RunData, ExecuteData and WaitForExecution contain often the same data.
-export interface IRunExecutionData {
-	startData?: {
-		startNodes?: StartNodeData[];
-		destinationNode?: string;
-		originalDestinationNode?: string;
-		runNodeFilter?: string[];
-	};
-	resultData: {
-		error?: ExecutionError;
-		runData: IRunData;
-		pinData?: IPinData;
-		lastNodeExecuted?: string;
-		metadata?: Record<string, string>;
-	};
-	executionData?: {
-		contextData: IExecuteContextData;
-		nodeExecutionStack: IExecuteData[];
-		metadata: {
-			// node-name: metadata by runIndex
-			[key: string]: ITaskMetadata[];
-		};
-		waitingExecution: IWaitingForExecution;
-		waitingExecutionSource: IWaitingForExecutionSource | null;
-	};
-	parentExecution?: RelatedExecution;
-	/**
-	 * This is used to prevent breaking change
-	 * for waiting executions started before signature validation was added
-	 */
-	validateSignature?: boolean;
-	waitTill?: Date;
-	pushRef?: string;
-
-	/** Data needed for a worker to run a manual execution. */
-	manualData?: Pick<
-		IWorkflowExecutionDataProcess,
-		'dirtyNodeNames' | 'triggerToStartFrom' | 'userId'
-	>;
-}
 export type SchemaType =
 	| 'string'
 	| 'number'
@@ -2477,6 +2446,7 @@ export interface RelatedExecution {
 	workflowId: string;
 	// In the case of a parent execution, whether the parent should be resumed when the sub execution finishes.
 	shouldResume?: boolean;
+	executionContext?: IExecutionContext;
 }
 
 type SubNodeExecutionDataAction = {
@@ -2508,6 +2478,17 @@ export interface ITaskMetadata {
 	 * @see AI-1414
 	 */
 	nodeWasResumed?: boolean;
+
+	/**
+	 * Time saved by this workflow execution in minutes. Used by SavedTime nodes to track
+	 * dynamic time savings that can be calculated based on execution data (e.g., number of
+	 * items processed). The behavior determines how this value interacts with the workflow's
+	 * default timeSavedPerExecution setting.
+	 */
+	timeSaved?: {
+		/** Time saved in minutes */
+		minutes: number;
+	};
 }
 
 /** The data that gets returned when a node execution starts */
@@ -2589,6 +2570,7 @@ export interface IWorkflowBase {
 	staticData?: IDataObject;
 	pinData?: IPinData;
 	versionId?: string;
+	activeVersionId: string | null;
 	versionCounter?: number;
 	meta?: WorkflowFEMeta;
 }
@@ -2599,8 +2581,18 @@ export interface IWorkflowCredentials {
 	};
 }
 
+export interface IDestinationNode {
+	nodeName: string;
+	/**
+	 * Execution mode for the destination node:
+	 * - 'inclusive': Execute up to and including the destination node
+	 * - 'exclusive': Execute up to but excluding the destination node
+	 */
+	mode: 'inclusive' | 'exclusive';
+}
+
 export interface IWorkflowExecutionDataProcess {
-	destinationNode?: string;
+	destinationNode?: IDestinationNode;
 	restartExecutionId?: string;
 	executionMode: WorkflowExecuteMode;
 	/**
@@ -2721,18 +2713,6 @@ export interface IWorkflowExecuteAdditionalData {
 	): Promise<Result<T, E>>;
 }
 
-export type WorkflowExecuteMode =
-	| 'cli'
-	| 'error'
-	| 'integrated'
-	| 'internal'
-	| 'manual'
-	| 'retry'
-	| 'trigger'
-	| 'webhook'
-	| 'evaluation'
-	| 'chat';
-
 export type WorkflowActivateMode =
 	| 'init'
 	| 'create' // unused
@@ -2758,6 +2738,7 @@ export interface IWorkflowSettings {
 	executionTimeout?: number;
 	executionOrder?: 'v0' | 'v1';
 	timeSavedPerExecution?: number;
+	timeSavedMode?: 'fixed' | 'dynamic';
 	availableInMCP?: boolean;
 }
 
@@ -3027,6 +3008,7 @@ export interface ResourceMapperField {
 	removed?: boolean;
 	options?: INodePropertyOptions[];
 	readOnly?: boolean;
+	defaultValue?: string | number | boolean | null;
 }
 
 export type FormFieldsParameter = Array<{

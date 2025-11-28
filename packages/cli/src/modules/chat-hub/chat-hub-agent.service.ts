@@ -2,13 +2,14 @@ import { ChatModelsResponse } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import type { User } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { INode } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
-
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 import type { ChatHubAgent } from './chat-hub-agent.entity';
 import { ChatHubAgentRepository } from './chat-hub-agent.repository';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 
 @Service()
 export class ChatHubAgentService {
@@ -31,6 +32,7 @@ export class ChatHubAgentService {
 				},
 				createdAt: agent.createdAt.toISOString(),
 				updatedAt: agent.updatedAt.toISOString(),
+				allowFileUploads: true,
 			})),
 		};
 	}
@@ -56,6 +58,7 @@ export class ChatHubAgentService {
 			credentialId: string;
 			provider: ChatHubAgent['provider'];
 			model: string;
+			tools: INode[];
 		},
 	): Promise<ChatHubAgent> {
 		// Ensure user has access to credentials if provided
@@ -72,6 +75,7 @@ export class ChatHubAgentService {
 			credentialId: data.credentialId,
 			provider: data.provider,
 			model: data.model,
+			tools: data.tools,
 		});
 
 		this.logger.info(`Chat agent created: ${id} by user ${user.id}`);
@@ -88,6 +92,7 @@ export class ChatHubAgentService {
 			credentialId?: string;
 			provider?: string;
 			model?: string;
+			tools?: INode[];
 		},
 	): Promise<ChatHubAgent> {
 		// First check if the agent exists and belongs to the user
@@ -109,6 +114,7 @@ export class ChatHubAgentService {
 		if (updates.provider !== undefined)
 			updateData.provider = updates.provider as ChatHubAgent['provider'];
 		if (updates.model !== undefined) updateData.model = updates.model ?? null;
+		if (updates.tools !== undefined) updateData.tools = updates.tools;
 
 		const agent = await this.chatAgentRepository.updateAgent(id, updateData);
 

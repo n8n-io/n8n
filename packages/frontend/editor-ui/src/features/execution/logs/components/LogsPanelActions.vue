@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { useI18n } from '@n8n/i18n';
-import { useStyles } from '@/app/composables/useStyles';
 import { computed } from 'vue';
 
 import { N8nActionDropdown, N8nIconButton, N8nTooltip } from '@n8n/design-system';
@@ -19,9 +18,7 @@ const {
 
 const emit = defineEmits<{ popOut: []; toggleOpen: []; toggleSyncSelection: [] }>();
 
-const appStyles = useStyles();
 const locales = useI18n();
-const tooltipZIndex = computed(() => appStyles.APP_Z_INDEXES.ASK_ASSISTANT_FLOATING_BUTTON + 100);
 const popOutButtonText = computed(() => locales.baseText('runData.panel.actions.popOut'));
 const toggleButtonText = computed(() =>
 	locales.baseText(isOpen ? 'runData.panel.actions.collapse' : 'runData.panel.actions.open'),
@@ -50,11 +47,7 @@ function handleSelectMenuItem(selected: string) {
 
 <template>
 	<div :class="$style.container">
-		<N8nTooltip
-			v-if="!isOpen && showPopOutButton"
-			:z-index="tooltipZIndex"
-			:content="popOutButtonText"
-		>
+		<N8nTooltip v-if="!isOpen && showPopOutButton" :content="popOutButtonText">
 			<N8nIconButton
 				icon="pop-out"
 				type="tertiary"
@@ -77,9 +70,9 @@ function handleSelectMenuItem(selected: string) {
 		/>
 		<KeyboardShortcutTooltip
 			v-if="showToggleButton"
+			:key="`tooltip-${isOpen}`"
 			:label="locales.baseText('generic.shortcutHint')"
 			:shortcut="{ keys: ['l'] }"
-			:z-index="tooltipZIndex"
 		>
 			<N8nIconButton
 				type="tertiary"

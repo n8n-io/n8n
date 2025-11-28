@@ -14,7 +14,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { WEBHOOK_NODE_TYPE } from 'n8n-workflow';
 
 type Props = {
 	workflowId: string;
@@ -39,31 +38,20 @@ const descriptionInput = useTemplateRef<HTMLInputElement>('descriptionInput');
 const isSaving = ref(false);
 const lastSavedDescription = ref(props.workflowDescription);
 
-const normalizedCurrentValue = computed(() => (descriptionValue.value || '').trim());
-const normalizedLastSaved = computed(() => (lastSavedDescription.value || '').trim());
+const normalizedCurrentValue = computed(() => (descriptionValue.value ?? '').trim());
+const normalizedLastSaved = computed(() => (lastSavedDescription.value ?? '').trim());
 
 const canSave = computed(() => normalizedCurrentValue.value !== normalizedLastSaved.value);
 
-const isMcpEnabled = computed(() => settingsStore.isModuleActive('mcp'));
+const isMcpEnabled = computed(
+	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
+);
 
-const hasWebhooks = computed(() => {
-	const workflow = workflowStore.workflow;
-	if (!workflow) return false;
-	return workflow.nodes.some((node) => !node.disabled && node.type === WEBHOOK_NODE_TYPE);
-});
-
-// Descriptive tip that will be used as textarea placeholder and input label tooltip
-// Updated based on MCP and webhook presence
 const textareaTip = computed(() => {
-	const baseTooltip = i18n.baseText('workflow.description.tooltip');
 	if (!isMcpEnabled.value) {
 		return i18n.baseText('workflow.description.tooltip');
 	}
-	const mcpTooltip = i18n.baseText('workflow.description.placeholder.mcp');
-	const webhookNotice = hasWebhooks.value
-		? i18n.baseText('workflow.description.placeholder.mcp.webhook')
-		: '';
-	return `${baseTooltip}. ${mcpTooltip}.\n${webhookNotice}`;
+	return i18n.baseText('workflow.description.placeholder.mcp');
 });
 
 const saveDescription = async () => {
@@ -192,6 +180,14 @@ watch(descriptionValue, (newValue) => {
 					</div>
 					<footer :class="$style['popover-footer']">
 						<N8nButton
+							:label="i18n.baseText('generic.cancel')"
+							:size="'small'"
+							:disabled="isSaving"
+							type="tertiary"
+							data-test-id="workflow-description-cancel-button"
+							@click="cancel"
+						/>
+						<N8nButton
 							:label="i18n.baseText('generic.unsavedWork.confirmMessage.confirmButtonText')"
 							:size="'small'"
 							:loading="isSaving"
@@ -199,14 +195,6 @@ watch(descriptionValue, (newValue) => {
 							type="primary"
 							data-test-id="workflow-description-save-button"
 							@click="save"
-						/>
-						<N8nButton
-							:label="i18n.baseText('generic.cancel')"
-							:size="'small'"
-							:disabled="isSaving"
-							type="tertiary"
-							data-test-id="workflow-description-cancel-button"
-							@click="cancel"
 						/>
 					</footer>
 				</template>
@@ -219,7 +207,6 @@ watch(descriptionValue, (newValue) => {
 .description-button {
 	border: none;
 	position: relative;
-	top: var(--spacing--5xs);
 
 	&.active {
 		color: var(--color--background--shade-2);

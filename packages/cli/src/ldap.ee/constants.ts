@@ -67,6 +67,9 @@ export const LDAP_CONFIG_SCHEMA = {
 		searchTimeout: {
 			type: 'number',
 		},
+		enforceEmailUniqueness: {
+			type: 'boolean',
+		},
 	},
 	required: [
 		'loginEnabled',
@@ -104,4 +107,5 @@ export const NON_SENSIBLE_LDAP_CONFIG_PROPERTIES: Array<keyof LdapConfig> = [
 	'searchPageSize',
 	'searchTimeout',
 	'loginLabel',
+	'enforceEmailUniqueness',
 ];

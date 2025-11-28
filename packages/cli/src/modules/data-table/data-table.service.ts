@@ -28,19 +28,22 @@ import type {
 } from 'n8n-workflow';
 import { DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP, validateFieldType } from 'n8n-workflow';
 
-import { RoleService } from '@/services/role.service';
-
+import { CsvParserService } from './csv-parser.service';
 import { DataTableColumn } from './data-table-column.entity';
 import { DataTableColumnRepository } from './data-table-column.repository';
+import { DataTableFileCleanupService } from './data-table-file-cleanup.service';
 import { DataTableRowsRepository } from './data-table-rows.repository';
 import { DataTableSizeValidator } from './data-table-size-validator.service';
 import { DataTableRepository } from './data-table.repository';
 import { columnTypeToFieldType } from './data-table.types';
 import { DataTableColumnNotFoundError } from './errors/data-table-column-not-found.error';
+import { FileUploadError } from './errors/data-table-file-upload.error';
 import { DataTableNameConflictError } from './errors/data-table-name-conflict.error';
 import { DataTableNotFoundError } from './errors/data-table-not-found.error';
 import { DataTableValidationError } from './errors/data-table-validation.error';
 import { normalizeRows } from './utils/sql-utils';
+
+import { RoleService } from '@/services/role.service';
 
 @Service()
 export class DataTableService {
@@ -52,6 +55,8 @@ export class DataTableService {
 		private readonly dataTableSizeValidator: DataTableSizeValidator,
 		private readonly projectRelationRepository: ProjectRelationRepository,
 		private readonly roleService: RoleService,
+		private readonly csvParserService: CsvParserService,
+		private readonly fileCleanupService: DataTableFileCleanupService,
 	) {
 		this.logger = this.logger.scoped('data-table');
 	}
@@ -64,9 +69,59 @@ export class DataTableService {
 
 		const result = await this.dataTableRepository.createDataTable(projectId, dto.name, dto.columns);
 
+		if (dto.fileId) {
+			try {
+				await this.importDataFromFile(projectId, result.id, dto.fileId, dto.hasHeaders ?? true);
+				await this.fileCleanupService.deleteFile(dto.fileId);
+			} catch (error) {
+				await this.deleteDataTable(result.id, projectId);
+				throw error;
+			}
+		}
+
 		this.dataTableSizeValidator.reset();
 
 		return result;
+	}
+
+	private async importDataFromFile(
+		projectId: string,
+		dataTableId: string,
+		fileId: string,
+		hasHeaders: boolean,
+	) {
+		try {
+			const tableColumns = await this.getColumns(dataTableId, projectId);
+
+			const csvMetadata = await this.csvParserService.parseFile(fileId, hasHeaders);
+
+			const columnMapping = new Map<string, string>();
+			csvMetadata.columns.forEach((csvColumn, index) => {
+				if (tableColumns[index]) {
+					columnMapping.set(csvColumn.name, tableColumns[index].name);
+				}
+			});
+
+			const csvRows = await this.csvParserService.parseFileData(fileId, hasHeaders);
+
+			const transformedRows = csvRows.map((csvRow) => {
+				const transformedRow: DataTableRow = {};
+				for (const [csvColName, value] of Object.entries(csvRow)) {
+					const tableColName = columnMapping.get(csvColName);
+					if (tableColName) {
+						transformedRow[tableColName] = value;
+					}
+				}
+				return transformedRow;
+			});
+
+			if (transformedRows.length > 0) {
+				await this.insertRows(dataTableId, projectId, transformedRows);
+			}
+		} catch (error) {
+			this.logger.error('Failed to import data from CSV file', { error, fileId, dataTableId });
+			throw new FileUploadError(error instanceof Error ? error.message : 'Failed to read CSV file');
+		}
 	}
 
 	// Updates data table properties (currently limited to renaming)
@@ -161,6 +216,7 @@ export class DataTableService {
 			const result = await this.dataTableRowsRepository.getManyAndCount(
 				dataTableId,
 				transformedDto,
+				columns,
 				em,
 			);
 			return {
@@ -631,5 +687,110 @@ export class DataTableService {
 			quotaStatus: this.dataTableSizeValidator.sizeToState(allSizeData.totalBytes),
 			dataTables: accessibleDataTables,
 		};
+	}
+
+	async generateDataTableCsv(
+		dataTableId: string,
+		projectId: string,
+	): Promise<{ csvContent: string; dataTableName: string }> {
+		const dataTable = await this.validateDataTableExists(dataTableId, projectId);
+
+		const columns = await this.dataTableColumnRepository.getColumns(dataTableId);
+
+		const { data: rows } = await this.dataTableRowsRepository.getManyAndCount(
+			dataTableId,
+			{
+				skip: 0,
+			},
+			columns,
+		);
+
+		const csvContent = this.buildCsvContent(rows, columns);
+
+		return {
+			csvContent,
+			dataTableName: dataTable.name,
+		};
+	}
+
+	private buildCsvContent(rows: DataTableRowReturn[], columns: DataTableColumn[]): string {
+		const sortedColumns = [...columns].sort((a, b) => a.index - b.index);
+
+		const userHeaders = sortedColumns.map((col) => col.name);
+		const headers = ['id', ...userHeaders, 'createdAt', 'updatedAt'];
+
+		const csvRows: string[] = [headers.map((h) => this.escapeCsvValue(h)).join(',')];
+
+		for (const row of rows) {
+			const values: string[] = [];
+
+			values.push(this.escapeCsvValue(row.id));
+
+			for (const column of sortedColumns) {
+				const value = row[column.name];
+				values.push(this.escapeCsvValue(this.formatValueForCsv(value, column.type)));
+			}
+
+			values.push(this.escapeCsvValue(this.formatDateForCsv(row.createdAt)));
+			values.push(this.escapeCsvValue(this.formatDateForCsv(row.updatedAt)));
+
+			csvRows.push(values.join(','));
+		}
+
+		return csvRows.join('\n');
+	}
+
+	private formatValueForCsv(value: unknown, columnType: DataTableColumnType): string {
+		if (value === null || value === undefined) {
+			return '';
+		}
+
+		if (columnType === 'date') {
+			if (value instanceof Date || typeof value === 'string') {
+				return this.formatDateForCsv(value);
+			}
+		}
+
+		if (columnType === 'boolean') {
+			return String(value);
+		}
+
+		if (columnType === 'number') {
+			return String(value);
+		}
+
+		return String(value);
+	}
+
+	private formatDateForCsv(date: Date | string): string {
+		if (date instanceof Date) {
+			return date.toISOString();
+		}
+		// If it's already a string, try to parse and format
+		const parsed = new Date(date);
+		return !isNaN(parsed.getTime()) ? parsed.toISOString() : String(date);
+	}
+
+	private escapeCsvValue(value: unknown): string {
+		const str = String(value);
+
+		// RFC 4180 compliant escaping:
+		// - If value contains comma, quote, or newline, wrap in quotes
+		// - Also wrap if value has leading/trailing spaces to prevent trimming
+		// - Escape quotes by doubling them
+		const hasLeadingOrTrailingSpace =
+			str.length > 0 && (str[0] === ' ' || str[str.length - 1] === ' ');
+
+		if (
+			str.includes(',') ||
+			str.includes('"') ||
+			str.includes('\n') ||
+			str.includes('\r') ||
+			hasLeadingOrTrailingSpace
+		) {
+			return `"${str.replace(/"/g, '""')}"`;
+		}
+
+		return str;
 	}
 }
