@@ -494,7 +494,7 @@ export class EnterpriseWorkflowService {
 			await this.workflowPublishHistoryRepository.addRecord({
 				workflowId,
 				versionId,
-				status: 'deactivated',
+				event: 'deactivated',
 				userId,
 			});
 

@@ -2542,7 +2542,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(active).toBe(true);
 		expect(activeVersionId).toBe(workflow.versionId);
 		expect(addRecordSpy).toBeCalledWith({
-			status: 'activated',
+			event: 'activated',
 			userId: owner.id,
 			versionId: workflow.versionId,
 			workflowId: workflow.id,
@@ -2572,7 +2572,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(active).toBe(false);
 		expect(activeVersionId).toBeNull();
 		expect(addRecordSpy).toBeCalledWith({
-			status: 'deactivated',
+			event: 'deactivated',
 			userId: owner.id,
 			versionId: workflow.versionId,
 			workflowId: workflow.id,
@@ -2932,7 +2932,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(data.activeVersionId).toBe(workflow.versionId);
 		expect(data.activeVersion.versionId).toBe(workflow.versionId);
 		expect(addRecordSpy).toBeCalledWith({
-			status: 'activated',
+			event: 'activated',
 			userId: owner.id,
 			versionId: workflow.versionId,
 			workflowId: workflow.id,
@@ -3185,7 +3185,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
 		expect(addRecordSpy).toBeCalledWith({
-			status: 'activated',
+			event: 'activated',
 			userId: owner.id,
 			versionId: workflow.versionId,
 			workflowId: workflow.id,
@@ -3208,7 +3208,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 		expect(data.active).toBe(false);
 		expect(data.activeVersionId).toBeNull();
 		expect(addRecordSpy).toBeCalledWith({
-			status: 'deactivated',
+			event: 'deactivated',
 			userId: owner.id,
 			versionId: workflow.versionId,
 			workflowId: workflow.id,

@@ -19,7 +19,7 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	// We don't explicitly track the deactivations of a previous active version
 	// which happens when a new active version of an already active workflow is published
 	@Column()
-	status: 'activated' | 'deactivated';
+	event: 'activated' | 'deactivated';
 
 	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;

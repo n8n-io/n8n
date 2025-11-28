@@ -774,14 +774,14 @@ export class SourceControlImportService {
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId: existingWorkflow.id,
 					versionId: existingWorkflow.activeVersionId,
-					status: 'activated',
+					event: 'activated',
 					userId,
 				});
 			} else {
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId: existingWorkflow.id,
 					versionId: existingWorkflow.activeVersionId,
-					status: 'deactivated',
+					event: 'deactivated',
 					userId,
 				});
 			}

@@ -39,7 +39,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			await repository.addRecord({
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
-				status: 'activated',
+				event: 'activated',
 				userId: user.id,
 			});
 
@@ -50,7 +50,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			expect(record).toMatchObject({
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
-				status: 'activated',
+				event: 'activated',
 
 				userId: user.id,
 			});
@@ -66,7 +66,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			await repository.addRecord({
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
-				status: 'activated',
+				event: 'activated',
 				userId: null,
 			});
 
@@ -77,7 +77,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			expect(record).toMatchObject({
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
-				status: 'activated',
+				event: 'activated',
 				userId: null,
 			});
 		});
@@ -94,7 +94,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			await repository.addRecord({
 				workflowId: workflow.id,
 				versionId: id1,
-				status: 'activated',
+				event: 'activated',
 				userId: null,
 			});
 
@@ -103,7 +103,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			await repository.addRecord({
 				workflowId: workflow.id,
 				versionId: id1,
-				status: 'deactivated',
+				event: 'deactivated',
 				userId: null,
 			});
 
@@ -112,7 +112,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			await repository.addRecord({
 				workflowId: workflow.id,
 				versionId: id2,
-				status: 'activated',
+				event: 'activated',
 				userId: null,
 			});
 
@@ -124,15 +124,15 @@ describe('WorkflowPublishHistoryRepository', () => {
 			expect(records).toHaveLength(3);
 			expect(records[0]).toMatchObject({
 				versionId: id1,
-				status: 'activated',
+				event: 'activated',
 			});
 			expect(records[1]).toMatchObject({
 				versionId: id1,
-				status: 'deactivated',
+				event: 'deactivated',
 			});
 			expect(records[2]).toMatchObject({
 				versionId: id2,
-				status: 'activated',
+				event: 'activated',
 			});
 		});
 	});
@@ -146,7 +146,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			await repository.addRecord({
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
-				status: 'activated',
+				event: 'activated',
 				userId: null,
 			});
 
@@ -166,7 +166,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			await repository.addRecord({
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
-				status: 'activated',
+				event: 'activated',
 				userId: null,
 			});
 
@@ -187,8 +187,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			await repository.addRecord({
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
-				status: 'activated',
-
+				event: 'activated',
 				userId: user.id,
 			});
 

@@ -93,7 +93,7 @@ describe('update()', () => {
 		expect(activationMode).toBe('update');
 
 		expect(addRecordSpy).toBeCalledWith({
-			status: 'activated',
+			event: 'activated',
 			workflowId: workflow.id,
 			versionId: workflow.versionId,
 			userId: owner.id,
@@ -121,7 +121,7 @@ describe('update()', () => {
 
 		expect(addSpy).not.toHaveBeenCalled();
 		expect(addRecordSpy).toBeCalledWith({
-			status: 'deactivated',
+			event: 'deactivated',
 			workflowId: workflow.id,
 			versionId: workflow.versionId,
 			userId: owner.id,
@@ -173,7 +173,7 @@ describe('update()', () => {
 
 		expect(saveVersionSpy).not.toHaveBeenCalled();
 		expect(addRecordSpy).toBeCalledWith({
-			status: 'activated',
+			event: 'activated',
 			workflowId: workflow.id,
 			versionId: workflow.versionId,
 			userId: owner.id,
@@ -220,7 +220,7 @@ describe('activateWorkflow()', () => {
 		expect(updatedWorkflow.active).toBe(true);
 		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
 		expect(addRecordSpy).toBeCalledWith({
-			status: 'activated',
+			event: 'activated',
 			workflowId: workflow.id,
 			versionId: workflow.versionId,
 			userId: owner.id,
@@ -245,7 +245,7 @@ describe('activateWorkflow()', () => {
 		expect(updatedWorkflow.versionId).toBe(workflow.versionId);
 
 		expect(addRecordSpy).toBeCalledWith({
-			status: 'activated',
+			event: 'activated',
 			workflowId: workflow.id,
 			versionId: workflow.versionId,
 			userId: owner.id,
@@ -272,7 +272,7 @@ describe('activateWorkflow()', () => {
 		expect(updatedWorkflow.versionId).toBe(workflow.versionId);
 
 		expect(addRecordSpy).toBeCalledWith({
-			status: 'activated',
+			event: 'activated',
 			workflowId: workflow.id,
 			versionId: newVersionId,
 			userId: owner.id,

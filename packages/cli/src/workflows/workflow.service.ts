@@ -466,7 +466,7 @@ export class WorkflowService {
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
 					versionId: workflow.activeVersionId,
-					status: 'deactivated',
+					event: 'deactivated',
 					userId: user.id,
 				});
 			}
@@ -532,7 +532,7 @@ export class WorkflowService {
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
 					versionId: previouslyActiveId,
-					status: 'deactivated',
+					event: 'deactivated',
 					userId: user.id,
 				});
 			}
@@ -548,7 +548,7 @@ export class WorkflowService {
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
 					versionId: workflow.activeVersionId,
-					status: 'activated',
+					event: 'activated',
 					userId: user.id,
 				});
 			}
@@ -699,7 +699,7 @@ export class WorkflowService {
 		await this.workflowPublishHistoryRepository.addRecord({
 			workflowId,
 			versionId: workflow.activeVersionId,
-			status: 'deactivated',
+			event: 'deactivated',
 			userId: user.id,
 		});
 
@@ -789,7 +789,7 @@ export class WorkflowService {
 			await this.workflowPublishHistoryRepository.addRecord({
 				workflowId,
 				versionId: workflow.activeVersionId,
-				status: 'deactivated',
+				event: 'deactivated',
 				userId: user.id,
 			});
 		}

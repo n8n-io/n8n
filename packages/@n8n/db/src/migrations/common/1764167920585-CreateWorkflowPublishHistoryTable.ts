@@ -9,10 +9,10 @@ export class CreateWorkflowPublishHistoryTable1764167920585 implements Reversibl
 				column('id').int.primary.autoGenerate2,
 				column('workflowId').varchar(36).notNull,
 				column('versionId').varchar(36).notNull,
-				column('status')
+				column('event')
 					.varchar(36)
 					.notNull.comment(
-						'Final state of workflow: activated (workflow is now active), deactivated (workflow is now inactive)',
+						'Type of history record: activated (workflow is now active), deactivated (workflow is now inactive)',
 					),
 				column('userId').uuid,
 			)
@@ -32,7 +32,7 @@ export class CreateWorkflowPublishHistoryTable1764167920585 implements Reversibl
 				columnName: 'id',
 				onDelete: 'SET NULL',
 			})
-			.withEnumCheck('status', ['activated', 'deactivated']);
+			.withEnumCheck('event', ['activated', 'deactivated']);
 
 		const escapedWphTableName = escape.tableName(workflowPublishHistoryTableName);
 		const workflowEntityTableName = escape.tableName('workflow_entity');
@@ -40,12 +40,12 @@ export class CreateWorkflowPublishHistoryTable1764167920585 implements Reversibl
 		const activeVersionId = escape.columnName('activeVersionId');
 		const workflowId = escape.columnName('workflowId');
 		const versionId = escape.columnName('versionId');
-		const status = escape.columnName('status');
+		const event = escape.columnName('event');
 		const updatedAt = escape.columnName('updatedAt');
 		const createdAt = escape.columnName('createdAt');
 
 		await runQuery(
-			`INSERT INTO ${escapedWphTableName} (${workflowId}, ${versionId}, ${status}, ${createdAt})
+			`INSERT INTO ${escapedWphTableName} (${workflowId}, ${versionId}, ${event}, ${createdAt})
 				SELECT we.${id}, we.${activeVersionId}, 'activated', we.${updatedAt}
 				FROM ${workflowEntityTableName} we
 				WHERE we.${activeVersionId} IS NOT NULL`,

@@ -12,13 +12,13 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 	async addRecord({
 		workflowId,
 		versionId,
-		status,
+		event,
 		userId,
-	}: Pick<WorkflowPublishHistory, 'status' | 'workflowId' | 'versionId' | 'userId'>) {
+	}: Pick<WorkflowPublishHistory, 'event' | 'workflowId' | 'versionId' | 'userId'>) {
 		await this.insert({
 			workflowId,
 			versionId,
-			status,
+			event,
 			userId,
 		});
 	}

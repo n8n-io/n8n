@@ -93,7 +93,7 @@ export class ImportService {
 					await this.workflowPublishHistoryRepository.addRecord({
 						workflowId: workflow.id,
 						versionId: workflow.activeVersionId ?? workflow.versionId ?? 'no id found',
-						status: 'deactivated',
+						event: 'deactivated',
 						userId: null,
 					});
 
