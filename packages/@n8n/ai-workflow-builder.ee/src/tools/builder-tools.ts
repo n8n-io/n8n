@@ -8,7 +8,6 @@ import type { BuilderFeatureFlags } from '@/workflow-builder-agent';
 import { createAddNodeTool, getAddNodeToolBase } from './add-node.tool';
 import { CATEGORIZE_PROMPT_TOOL, createCategorizePromptTool } from './categorize-prompt.tool';
 import { CONNECT_NODES_TOOL, createConnectNodesTool } from './connect-nodes.tool';
-// import { createGetAgentExamplesTool, GET_AGENT_EXAMPLES_TOOL } from './get-agent-examples.tool';
 import { createGetBestPracticesTool, GET_BEST_PRACTICES_TOOL } from './get-best-practices.tool';
 import { createGetNodeParameterTool, GET_NODE_PARAMETER_TOOL } from './get-node-parameter.tool';
 import {
@@ -51,7 +50,6 @@ export function getBuilderTools({
 
 	// Add remaining tools
 	tools.push(
-		//createGetAgentExamplesTool(logger),
 		createNodeSearchTool(parsedNodeTypes),
 		createNodeDetailsTool(parsedNodeTypes),
 		createAddNodeTool(parsedNodeTypes),
@@ -88,7 +86,6 @@ export function getBuilderToolsForDisplay({
 
 	// Add remaining tools
 	tools.push(
-		//GET_AGENT_EXAMPLES_TOOL,
 		NODE_SEARCH_TOOL,
 		NODE_DETAILS_TOOL,
 		getAddNodeToolBase(nodeTypes),
