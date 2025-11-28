@@ -15,6 +15,7 @@ import {
 	WorkflowTagMappingRepository,
 	SharedWorkflowRepository,
 	WorkflowRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { Scope } from '@n8n/permissions';
@@ -26,7 +27,7 @@ import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPar
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
-import { NodeApiError, PROJECT_ROOT } from 'n8n-workflow';
+import { NodeApiError, PROJECT_ROOT, assert } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -76,6 +77,7 @@ export class WorkflowService {
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
 		private readonly workflowFinderService: WorkflowFinderService,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {}
 
 	async getMany(
@@ -460,6 +462,13 @@ export class WorkflowService {
 					workflow: updatedWorkflow,
 					publicApi,
 				});
+				assert(workflow.activeVersionId !== null);
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId,
+					versionId: workflow.activeVersionId,
+					event: 'deactivated',
+					userId: user.id,
+				});
 			}
 
 			if (isNowActive) {
@@ -497,10 +506,13 @@ export class WorkflowService {
 		rollbackPayload: RollbackPayload,
 		publicApi: boolean = false,
 	): Promise<void> {
+		let didPublish = false;
 		try {
 			await this.externalHooks.run('workflow.activate', [workflow]);
 			await this.activeWorkflowManager.add(workflowId, mode);
+			didPublish = true;
 		} catch (error) {
+			const previouslyActiveId = workflow.activeVersionId;
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
 			// Also set it in the returned data
@@ -516,14 +528,30 @@ export class WorkflowService {
 					workflow,
 					publicApi,
 				});
+				assert(previouslyActiveId !== null);
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId,
+					versionId: previouslyActiveId,
+					event: 'deactivated',
+					userId: user.id,
+				});
 			}
-
 			let message;
 			if (error instanceof NodeApiError) message = error.description;
 			message = message ?? (error as Error).message;
 
 			// Now return the original error for UI to display
 			throw new BadRequestError(message);
+		} finally {
+			if (didPublish) {
+				assert(workflow.activeVersionId !== null);
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId,
+					versionId: workflow.activeVersionId,
+					event: 'activated',
+					userId: user.id,
+				});
+			}
 		}
 	}
 
@@ -668,6 +696,13 @@ export class WorkflowService {
 			updatedAt: workflow.updatedAt,
 		});
 
+		await this.workflowPublishHistoryRepository.addRecord({
+			workflowId,
+			versionId: workflow.activeVersionId,
+			event: 'deactivated',
+			userId: user.id,
+		});
+
 		// Update the workflow object for response
 		workflow.active = false;
 		workflow.activeVersionId = null;
@@ -751,6 +786,12 @@ export class WorkflowService {
 
 		if (workflow.activeVersionId !== null) {
 			await this.activeWorkflowManager.remove(workflowId);
+			await this.workflowPublishHistoryRepository.addRecord({
+				workflowId,
+				versionId: workflow.activeVersionId,
+				event: 'deactivated',
+				userId: user.id,
+			});
 		}
 
 		const versionId = uuid();
