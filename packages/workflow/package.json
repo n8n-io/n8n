@@ -51,7 +51,7 @@
     "vitest-mock-extended": "catalog:"
   },
   "dependencies": {
-    "@n8n/errors": "workspace:^",
+    "@n8n/errors": "workspace:*",
     "@n8n/tournament": "1.0.6",
     "ast-types": "0.16.1",
     "callsites": "catalog:",

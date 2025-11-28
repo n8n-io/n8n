@@ -28,8 +28,8 @@
   },
   "devDependencies": {
     "@currents/playwright": "^1.15.3",
-    "@n8n/api-types": "workspace:^",
-    "@n8n/constants": "workspace:^",
+    "@n8n/api-types": "workspace:*",
+    "@n8n/constants": "workspace:*",
     "@n8n/db": "workspace:*",
     "@playwright/test": "1.56.0",
     "@types/lodash": "catalog:",

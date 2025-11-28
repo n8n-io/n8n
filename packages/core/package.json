@@ -28,7 +28,7 @@
     "bin"
   ],
   "devDependencies": {
-    "@n8n/errors": "workspace:^",
+    "@n8n/errors": "workspace:*",
     "@n8n/typescript-config": "workspace:*",
     "@types/express": "catalog:",
     "@types/jsonwebtoken": "catalog:",
@@ -41,7 +41,7 @@
   "dependencies": {
     "@aws-sdk/client-s3": "3.808.0",
     "@langchain/core": "catalog:",
-    "@n8n/backend-common": "workspace:^",
+    "@n8n/backend-common": "workspace:*",
     "@n8n/client-oauth2": "workspace:*",
     "@n8n/config": "workspace:*",
     "@n8n/constants": "workspace:*",
