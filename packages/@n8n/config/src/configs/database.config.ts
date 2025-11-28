@@ -5,6 +5,17 @@ import { Config, Env, Nested } from '../decorators';
 const dbLoggingOptionsSchema = z.enum(['query', 'error', 'schema', 'warn', 'info', 'log', 'all']);
 type DbLoggingOptions = z.infer<typeof dbLoggingOptionsSchema>;
 
+class MySqlMariaDbNotSupportedError extends Error {
+	// Workaround to not get this reported to Sentry
+	readonly cause: { level: 'warning' } = {
+		level: 'warning',
+	};
+
+	constructor() {
+		super('MySQL and MariaDB have been removed. Please migrate to PostgreSQL.');
+	}
+}
+
 @Config
 class LoggingConfig {
 	/** Whether database logging is enabled. */
@@ -183,4 +194,10 @@ export class DatabaseConfig {
 
 	@Nested
 	sqlite: SqliteConfig;
+
+	sanitize() {
+		if (this.type === 'mariadb' || this.type === 'mysqldb') {
+			throw new MySqlMariaDbNotSupportedError();
+		}
+	}
 }

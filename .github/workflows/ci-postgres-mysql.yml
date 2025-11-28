@@ -60,6 +60,7 @@ jobs:
     needs: build
     runs-on: blacksmith-4vcpu-ubuntu-2204
     timeout-minutes: 30
+    if: false
     env:
       DB_MYSQLDB_PASSWORD: password
       DB_MYSQLDB_POOL_SIZE: 1
@@ -89,6 +90,7 @@ jobs:
     needs: build
     runs-on: blacksmith-2vcpu-ubuntu-2204
     timeout-minutes: 20
+    if: false
     env:
       DB_MYSQLDB_PASSWORD: password
       DB_MYSQLDB_POOL_SIZE: 1
@@ -140,7 +142,7 @@ jobs:
   notify-on-failure:
     name: Notify Slack on failure
     runs-on: ubuntu-latest
-    needs: [sqlite-pooled, mariadb, postgres, mysql]
+    needs: [sqlite-pooled, postgres]
     steps:
       - name: Notify Slack on failure
         uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
