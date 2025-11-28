@@ -11,6 +11,11 @@ import { z } from 'zod';
 
 import { MAX_DISCOVERY_ITERATIONS } from '@/constants';
 import { LLMServiceError } from '@/errors';
+import {
+	TechniqueDescription,
+	WorkflowTechnique,
+	type WorkflowTechniqueType,
+} from '@/types/categorization';
 
 import { BaseSubgraph } from './subgraph-interface';
 import type { ParentGraphState } from '../parent-graph-state';
@@ -22,6 +27,136 @@ import { createDiscoveryMetadata } from '../types/coordination';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import { buildWorkflowSummary, createContextMessage } from '../utils/context-builders';
 import { executeSubgraphTools, extractUserRequest } from '../utils/subgraph-helpers';
+
+/**
+ * Example categorizations to guide technique selection
+ * Expanded with diverse examples to improve accuracy
+ */
+const exampleCategorizations: Array<{
+	prompt: string;
+	techniques: WorkflowTechniqueType[];
+}> = [
+	{
+		prompt: 'Monitor social channels for product mentions and auto-respond with campaign messages',
+		techniques: [
+			WorkflowTechnique.MONITORING,
+			WorkflowTechnique.CHATBOT,
+			WorkflowTechnique.CONTENT_GENERATION,
+		],
+	},
+	{
+		prompt: 'Collect partner referral submissions and verify client instances via BigQuery',
+		techniques: [
+			WorkflowTechnique.FORM_INPUT,
+			WorkflowTechnique.HUMAN_IN_THE_LOOP,
+			WorkflowTechnique.NOTIFICATION,
+		],
+	},
+	{
+		prompt: 'Scrape competitor pricing pages weekly and generate a summary report of changes',
+		techniques: [
+			WorkflowTechnique.SCHEDULING,
+			WorkflowTechnique.SCRAPING_AND_RESEARCH,
+			WorkflowTechnique.DATA_EXTRACTION,
+			WorkflowTechnique.DATA_ANALYSIS,
+		],
+	},
+	{
+		prompt: 'Process uploaded PDF contracts to extract client details and update CRM records',
+		techniques: [
+			WorkflowTechnique.DOCUMENT_PROCESSING,
+			WorkflowTechnique.DATA_EXTRACTION,
+			WorkflowTechnique.DATA_TRANSFORMATION,
+			WorkflowTechnique.ENRICHMENT,
+		],
+	},
+	{
+		prompt: 'Build a searchable internal knowledge base from past support tickets',
+		techniques: [
+			WorkflowTechnique.DATA_TRANSFORMATION,
+			WorkflowTechnique.DATA_ANALYSIS,
+			WorkflowTechnique.KNOWLEDGE_BASE,
+		],
+	},
+	// Additional examples to address common misclassifications
+	{
+		prompt: 'Create an AI agent that writes and sends personalized emails to leads',
+		techniques: [WorkflowTechnique.CONTENT_GENERATION, WorkflowTechnique.NOTIFICATION],
+	},
+	{
+		prompt:
+			'Fetch trending topics from Google Trends and Reddit, select the best ones, and create social posts',
+		techniques: [
+			WorkflowTechnique.SCRAPING_AND_RESEARCH,
+			WorkflowTechnique.TRIAGE,
+			WorkflowTechnique.CONTENT_GENERATION,
+		],
+	},
+	{
+		prompt:
+			'Trigger when a new contact is created in HubSpot and enrich their profile with LinkedIn data',
+		techniques: [WorkflowTechnique.MONITORING, WorkflowTechnique.ENRICHMENT],
+	},
+	{
+		prompt: 'Get stock prices from financial APIs and analyze volatility patterns',
+		techniques: [WorkflowTechnique.SCRAPING_AND_RESEARCH, WorkflowTechnique.DATA_ANALYSIS],
+	},
+	{
+		prompt: 'Generate video reels from templates and auto-post to social media on schedule',
+		techniques: [
+			WorkflowTechnique.SCHEDULING,
+			WorkflowTechnique.DOCUMENT_PROCESSING,
+			WorkflowTechnique.CONTENT_GENERATION,
+		],
+	},
+	{
+		prompt: 'Receive news from Telegram channels, filter relevant ones, and forward to my channel',
+		techniques: [
+			WorkflowTechnique.MONITORING,
+			WorkflowTechnique.TRIAGE,
+			WorkflowTechnique.NOTIFICATION,
+		],
+	},
+	{
+		prompt: 'Analyze YouTube video performance data and generate a weekly report',
+		techniques: [
+			WorkflowTechnique.SCRAPING_AND_RESEARCH,
+			WorkflowTechnique.DATA_ANALYSIS,
+			WorkflowTechnique.DATA_TRANSFORMATION,
+		],
+	},
+	{
+		prompt:
+			'Create a chatbot that answers questions using data from a Google Sheet as knowledge base',
+		techniques: [WorkflowTechnique.CHATBOT, WorkflowTechnique.KNOWLEDGE_BASE],
+	},
+	{
+		prompt: 'Form submission with file upload triggers document extraction and approval workflow',
+		techniques: [
+			WorkflowTechnique.FORM_INPUT,
+			WorkflowTechnique.DOCUMENT_PROCESSING,
+			WorkflowTechnique.HUMAN_IN_THE_LOOP,
+		],
+	},
+];
+
+/**
+ * Format technique descriptions for prompt
+ */
+function formatTechniqueList(): string {
+	return Object.entries(TechniqueDescription)
+		.map(([key, description]) => `- **${key}**: ${description}`)
+		.join('\n');
+}
+
+/**
+ * Format example categorizations for prompt
+ */
+function formatExampleCategorizations(): string {
+	return exampleCategorizations
+		.map((example) => `- ${example.prompt} → ${example.techniques.join(', ')}`)
+		.join('\n');
+}
 
 /**
  * Strict Output Schema for Discovery
@@ -78,6 +213,35 @@ PROCESS:
    - Version number from <version> tag (required - extract the number)
    - Connection-changing parameters from <connections> section
 6. **Call submit_discovery_results** with complete nodesFound array
+
+TECHNIQUE CATEGORIZATION:
+When calling get_best_practices, select techniques that match the user's workflow intent.
+
+<available_techniques>
+{techniques}
+</available_techniques>
+
+<example_categorizations>
+{exampleCategorizations}
+</example_categorizations>
+
+<technique_clarifications>
+Common distinctions to get right:
+- **NOTIFICATION vs CHATBOT**: Use NOTIFICATION when SENDING emails/messages/alerts (including to Telegram CHANNELS which are broadcast-only). Use CHATBOT only when RECEIVING and REPLYING to direct messages in a conversation.
+- **MONITORING**: Use when workflow TRIGGERS on external events (new record created, status changed, incoming webhook, new message in channel). NOT just scheduled runs.
+- **SCRAPING_AND_RESEARCH vs DATA_EXTRACTION**: Use SCRAPING when fetching from EXTERNAL sources (APIs, websites, social media). Use DATA_EXTRACTION for parsing INTERNAL data you already have.
+- **TRIAGE**: Use when SELECTING, PRIORITIZING, ROUTING, or QUALIFYING items (e.g., "pick the best", "route to correct team", "qualify leads").
+- **DOCUMENT_PROCESSING**: Use for ANY file handling - PDFs, images, videos, Excel, Google Sheets, audio files, file uploads in forms.
+- **HUMAN_IN_THE_LOOP**: Use when workflow PAUSES for human approval, review, signing documents, responding to polls, or any manual input before continuing.
+- **DATA_ANALYSIS**: Use when ANALYZING, CLASSIFYING, IDENTIFYING PATTERNS, or UNDERSTANDING data (e.g., "analyze outcomes", "learn from previous", "classify by type", "identify trends").
+- **KNOWLEDGE_BASE**: Use when storing/retrieving from a DATA SOURCE for Q&A - includes vector DBs, spreadsheets used as databases, document collections.
+- **DATA_TRANSFORMATION**: Use when CONVERTING data format, creating REPORTS/SUMMARIES from analyzed data, or restructuring output.
+</technique_clarifications>
+
+Technique selection rules:
+- Select ALL techniques that apply (most workflows use 2-4)
+- Maximum 5 techniques
+- Only select techniques you're confident apply
 
 CONNECTION-CHANGING PARAMETERS - CRITICAL RULES:
 
@@ -272,7 +436,9 @@ export class DiscoverySubgraph extends BaseSubgraph<
 		// Messages already contain context from transformInput
 		const response = (await this.agent.invoke({
 			messages: state.messages,
-			prompt: state.userRequest, // Keep for template compatibility
+			prompt: state.userRequest,
+			techniques: formatTechniqueList(),
+			exampleCategorizations: formatExampleCategorizations(),
 		})) as AIMessage;
 
 		return { messages: [response] };

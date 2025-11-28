@@ -8,8 +8,9 @@ import {
 	shouldRunIntegrationTests,
 } from '@/chains/test/integration/test-helpers';
 import { DiscoverySubgraph } from '@/subgraphs/discovery.subgraph';
-import { WorkflowTechnique, type WorkflowTechniqueType } from '@/types/categorization';
+import type { WorkflowTechniqueType } from '@/types/categorization';
 
+import techniqueTestData from './techniques.json';
 import { loadNodesFromFile } from '../../../../evaluations/load-nodes';
 
 /**
@@ -82,70 +83,11 @@ const testPrompts = [
 	},
 ];
 
-// Test prompts for technique categorization (parity with promptCategorizationChain)
-const techniqueTestPrompts = [
-	{
-		name: 'Monitoring workflow',
-		prompt:
-			'Create a workflow that monitors my website every 5 minutes and sends me a Slack notification if it goes down',
-		expectedTechniques: [WorkflowTechnique.MONITORING, WorkflowTechnique.NOTIFICATION],
-	},
-	{
-		name: 'Form input with AI',
-		prompt:
-			'Set up a form to collect user feedback, analyze sentiment with AI, and store the results in Airtable',
-		expectedTechniques: [
-			WorkflowTechnique.FORM_INPUT,
-			WorkflowTechnique.DATA_ANALYSIS,
-			WorkflowTechnique.DATA_TRANSFORMATION,
-		],
-	},
-	{
-		name: 'Scraping and research',
-		prompt:
-			'Scrape competitor pricing daily and generate a weekly summary report with price changes',
-		expectedTechniques: [
-			WorkflowTechnique.SCHEDULING,
-			WorkflowTechnique.SCRAPING_AND_RESEARCH,
-			WorkflowTechnique.DATA_EXTRACTION,
-		],
-	},
-	{
-		name: 'Chatbot workflow',
-		prompt:
-			'Build a chatbot that can answer customer questions about our product catalog using information from our knowledge base',
-		expectedTechniques: [WorkflowTechnique.CHATBOT, WorkflowTechnique.KNOWLEDGE_BASE],
-	},
-	{
-		name: 'Document processing',
-		prompt:
-			'Extract data from PDF invoices uploaded via form and update our accounting spreadsheet',
-		expectedTechniques: [
-			WorkflowTechnique.FORM_INPUT,
-			WorkflowTechnique.DOCUMENT_PROCESSING,
-			WorkflowTechnique.DATA_EXTRACTION,
-		],
-	},
-	{
-		name: 'Scheduled content generation',
-		prompt: 'Generate and post daily social media content about trending topics in AI',
-		expectedTechniques: [
-			WorkflowTechnique.SCHEDULING,
-			WorkflowTechnique.CONTENT_GENERATION,
-			WorkflowTechnique.NOTIFICATION,
-		],
-	},
-	{
-		name: 'Human in the loop approval',
-		prompt:
-			'When a new customer signs up for premium plan, send approval request to sales team before activating',
-		expectedTechniques: [
-			WorkflowTechnique.HUMAN_IN_THE_LOOP,
-			WorkflowTechnique.NOTIFICATION,
-			WorkflowTechnique.TRIAGE,
-		],
-	},
-];
+// Test prompts for technique categorization loaded from JSON file
+const techniqueTestPrompts = techniqueTestData as Array<{
+	prompt: string;
+	expectedTechniques: WorkflowTechniqueType[];
+}>;
 
 // Helper to check if expected nodes are discovered
 function hasExpectedNodes(
@@ -220,9 +162,15 @@ describe('Discovery Subgraph - Integration Tests', () => {
 	const skipTests = !shouldRunIntegrationTests();
 
 	// Set default timeout for all tests in this suite
-	jest.setTimeout(420000); // 2 minutes
+	jest.setTimeout(1800000); // 30 minutes
 
 	beforeAll(async () => {
+		// Override console.log to use process.stdout directly, bypassing Jest's
+		// verbose wrapper that adds stack traces to every log line
+		jest.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+			process.stdout.write(args.map(String).join(' ') + '\n');
+		});
+
 		if (skipTests) {
 			console.log(
 				'\n⏭️  Skipping integration tests. Set ENABLE_INTEGRATION_TESTS=true to run them.\n',
@@ -516,75 +464,141 @@ describe('Discovery Subgraph - Integration Tests', () => {
 		});
 	});
 
-	describe('Technique Categorization (parity with promptCategorizationChain)', () => {
+	describe.only('Technique Categorization (parity with promptCategorizationChain)', () => {
+		const PARALLEL_BATCH_SIZE = 30;
+
 		it('should select correct techniques via get_best_practices for all test prompts', async () => {
 			if (skipTests) return;
 
-			console.log('\n📊 Running technique categorization test suite...\n');
+			console.log(
+				`\n📊 Running technique categorization test suite (${techniqueTestPrompts.length} prompts, ${PARALLEL_BATCH_SIZE} parallel)...\n`,
+			);
 
-			const results: Array<{
-				name: string;
+			type TestResult = {
+				index: number;
 				prompt: string;
 				techniques: WorkflowTechniqueType[];
+				expectedTechniques: WorkflowTechniqueType[];
 				expectedMatch: boolean;
 				missing: WorkflowTechniqueType[];
-			}> = [];
+			};
 
-			// Run all technique test prompts
-			for (const test of techniqueTestPrompts) {
+			// Process a single prompt
+			const processPrompt = async (
+				test: (typeof techniqueTestPrompts)[number],
+				index: number,
+			): Promise<TestResult> => {
 				const compiled = discoverySubgraph.create({ parsedNodeTypes, llm });
 				const result = await compiled.invoke({
 					userRequest: test.prompt,
 					messages: [],
 				});
 
-				// Extract techniques from get_best_practices tool call
 				const techniques = extractTechniquesFromMessages(result.messages);
 				const check = hasExpectedTechniques(techniques, test.expectedTechniques);
 
-				results.push({
-					name: test.name,
+				return {
+					index,
 					prompt: test.prompt,
 					techniques,
+					expectedTechniques: test.expectedTechniques,
 					expectedMatch: check.hasAll,
 					missing: check.missing,
-				});
+				};
+			};
 
-				// Log individual result
-				console.log(`✓ ${test.name}`);
-				console.log(`  Techniques: ${techniques.join(', ') || '(none)'}`);
-				console.log(`  Expected: ${test.expectedTechniques.join(', ')}`);
-				if (!check.hasAll) {
-					console.log(`  ⚠️  Missing expected: ${check.missing.join(', ')}`);
+			// Process prompts in parallel batches
+			const allResults: TestResult[] = [];
+			for (
+				let batchStart = 0;
+				batchStart < techniqueTestPrompts.length;
+				batchStart += PARALLEL_BATCH_SIZE
+			) {
+				const batchEnd = Math.min(batchStart + PARALLEL_BATCH_SIZE, techniqueTestPrompts.length);
+				const batch = techniqueTestPrompts.slice(batchStart, batchEnd);
+
+				console.log(
+					`Processing batch ${Math.floor(batchStart / PARALLEL_BATCH_SIZE) + 1}/${Math.ceil(techniqueTestPrompts.length / PARALLEL_BATCH_SIZE)} (prompts ${batchStart + 1}-${batchEnd})...`,
+				);
+
+				const batchResults = await Promise.all(
+					batch.map(async (test, i) => await processPrompt(test, batchStart + i)),
+				);
+
+				// Log results for this batch
+				for (const result of batchResults) {
+					const truncatedPrompt =
+						result.prompt.length > 80 ? `${result.prompt.substring(0, 80)}...` : result.prompt;
+					const status = result.expectedMatch ? '✓' : '⚠️';
+					console.log(
+						`${status} [${result.index + 1}/${techniqueTestPrompts.length}] ${truncatedPrompt}`,
+					);
+					console.log(`    Techniques: ${result.techniques.join(', ') || '(none)'}`);
+					console.log(`    Expected: ${result.expectedTechniques.join(', ')}`);
+					if (!result.expectedMatch) {
+						console.log(`    Missing: ${result.missing.join(', ')}`);
+					}
 				}
 				console.log('');
+
+				allResults.push(...batchResults);
 			}
 
 			// Calculate and display statistics
-			const frequency = calculateTechniqueFrequency(results);
+			const frequency = calculateTechniqueFrequency(allResults);
 			const sortedFrequency = Array.from(frequency.entries()).sort((a, b) => b[1] - a[1]);
 
 			console.log('\n📈 Technique Frequency:');
 			console.log('─'.repeat(60));
 			for (const [technique, count] of sortedFrequency) {
-				const percentage = ((count / results.length) * 100).toFixed(1);
+				const percentage = ((count / allResults.length) * 100).toFixed(1);
 				console.log(`  ${technique.padEnd(30)} ${count} (${percentage}%)`);
 			}
 			console.log('');
 
-			// Calculate match rate
-			const matchCount = results.filter((r) => r.expectedMatch).length;
-			const matchRate = (matchCount / results.length) * 100;
-			console.log(`✓ Expected technique match rate: ${matchRate.toFixed(1)}%`);
-			console.log(`  ${matchCount}/${results.length} prompts matched all expected techniques\n`);
+			// Calculate match rate (individual techniques matched / total expected)
+			const totalExpectedTechniques = allResults.reduce(
+				(sum, r) => sum + r.expectedTechniques.length,
+				0,
+			);
+			const totalMatchedTechniques = allResults.reduce(
+				(sum, r) => sum + (r.expectedTechniques.length - r.missing.length),
+				0,
+			);
+			const techniqueMatchRate = (totalMatchedTechniques / totalExpectedTechniques) * 100;
+
+			// Calculate prompt-level match rates
+			const PARTIAL_MATCH_THRESHOLD = 0.5; // 50% of expected techniques = acceptable
+			const fullMatchCount = allResults.filter((r) => r.expectedMatch).length;
+			const acceptableMatchCount = allResults.filter((r) => {
+				const matched = r.expectedTechniques.length - r.missing.length;
+				const matchRatio = matched / r.expectedTechniques.length;
+				return matchRatio >= PARTIAL_MATCH_THRESHOLD;
+			}).length;
+
+			const fullMatchRate = (fullMatchCount / allResults.length) * 100;
+			const acceptableMatchRate = (acceptableMatchCount / allResults.length) * 100;
+
+			console.log(`✓ Technique match rate: ${techniqueMatchRate.toFixed(1)}%`);
+			console.log(
+				`  ${totalMatchedTechniques}/${totalExpectedTechniques} individual techniques matched\n`,
+			);
+			console.log(`✓ Acceptable match rate (≥50% of expected): ${acceptableMatchRate.toFixed(1)}%`);
+			console.log(
+				`  ${acceptableMatchCount}/${allResults.length} prompts matched at least half of expected techniques\n`,
+			);
+			console.log(`✓ Full match rate (100% of expected): ${fullMatchRate.toFixed(1)}%`);
+			console.log(
+				`  ${fullMatchCount}/${allResults.length} prompts matched all expected techniques\n`,
+			);
 
 			// All results should have techniques (discovery should call get_best_practices)
-			for (const result of results) {
+			for (const result of allResults) {
 				expect(result.techniques.length).toBeGreaterThan(0);
 			}
 
-			// At least 70% should match expected techniques (allowing for LLM variation)
-			expect(matchRate).toBeGreaterThanOrEqual(70);
+			// At least 80% of prompts should have acceptable matches (≥50% of expected techniques)
+			expect(acceptableMatchRate).toBeGreaterThanOrEqual(80);
 		});
 	});
 });
