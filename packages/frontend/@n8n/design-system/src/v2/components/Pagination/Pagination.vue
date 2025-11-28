@@ -101,9 +101,27 @@ const layoutParts = computed(() => props.layout?.split(',').map((s) => s.trim())
 const showPrev = computed(() => layoutParts.value.includes('prev'));
 const showNext = computed(() => layoutParts.value.includes('next'));
 const showPager = computed(() => layoutParts.value.includes('pager'));
-const showSizes = computed(() => layoutParts.value.includes('sizes'));
-const showTotal = computed(() => layoutParts.value.includes('total'));
-const showJumper = computed(() => layoutParts.value.includes('jumper'));
+
+// Deduplicated layout parts - group prev/pager/next into single 'pager-group' entry
+// The pager group renders at the position of the first pager-related part encountered
+const deduplicatedLayoutParts = computed(() => {
+	const pagerParts = new Set(['prev', 'pager', 'next']);
+	const result: string[] = [];
+	let pagerGroupAdded = false;
+
+	for (const part of layoutParts.value) {
+		if (pagerParts.has(part)) {
+			if (!pagerGroupAdded) {
+				result.push('pager-group');
+				pagerGroupAdded = true;
+			}
+			// Skip subsequent pager parts
+		} else {
+			result.push(part);
+		}
+	}
+	return result;
+});
 
 // Forward props to Reka UI
 const rootProps = useForwardPropsEmits(reactivePick(props, 'disabled', 'showEdges'), emit);
@@ -185,84 +203,89 @@ const handleJumperSubmit = () => {
 		:class="['n8n-pagination', $style.PaginationContainer, variant, size, backgroundClass]"
 		v-bind="$attrs"
 	>
-		<!-- Total count -->
-		<div v-if="showTotal" :class="$style.Total">
-			{{ totalText }}
-		</div>
+		<!-- Render layout parts in order specified by layout prop -->
+		<template v-for="part in deduplicatedLayoutParts" :key="part">
+			<!-- Total count -->
+			<div v-if="part === 'total'" :class="$style.Total">
+				{{ totalText }}
+			</div>
 
-		<!-- Page size selector -->
-		<N8nSelect
-			v-if="showSizes"
-			:model-value="String(internalPageSize)"
-			:items="pageSizeItems"
-			:size="props.size === 'small' ? 'xsmall' : 'small'"
-			:variant="props.variant === 'ghost' ? 'ghost' : 'default'"
-			:disabled="disabled"
-			:class="$style.PageSizeSelect"
-			@update:model-value="handlePageSizeUpdate"
-		/>
-
-		<PaginationRoot
-			v-bind="rootProps"
-			:page="page"
-			:items-per-page="itemsPerPage"
-			:total="totalItems"
-			:sibling-count="siblingCount"
-			:show-edges="showEdges"
-			@update:page="handlePageUpdate"
-		>
-			<PaginationList v-slot="{ items }" :class="$style.PaginationList">
-				<!-- Previous button -->
-				<PaginationPrev v-if="showPrev" v-slot="slotProps" :class="$style.PaginationButton">
-					<slot name="prev" v-bind="slotProps">
-						<span v-if="prevText">{{ prevText }}</span>
-						<Icon v-else :icon="prevIcon" />
-					</slot>
-				</PaginationPrev>
-
-				<!-- Page items -->
-				<template v-if="showPager">
-					<template
-						v-for="(item, index) in items"
-						:key="item.type === 'ellipsis' ? `ellipsis-${index}` : item.value"
-					>
-						<!-- Ellipsis button -->
-						<PaginationEllipsis
-							v-if="item.type === 'ellipsis'"
-							:index="index"
-							:class="[$style.PaginationEllipsis, $style.PaginationButton]"
-						>
-							<span aria-hidden="true">&#8230;</span>
-						</PaginationEllipsis>
-						<PaginationListItem v-else :value="item.value" :class="$style.PaginationItem">
-							{{ item.value }}
-						</PaginationListItem>
-					</template>
-				</template>
-
-				<!-- Next button -->
-				<PaginationNext v-if="showNext" v-slot="slotProps" :class="$style.PaginationButton">
-					<slot name="next" v-bind="slotProps">
-						<span v-if="nextText">{{ nextText }}</span>
-						<Icon v-else :icon="nextIcon" />
-					</slot>
-				</PaginationNext>
-			</PaginationList>
-		</PaginationRoot>
-
-		<!-- Page jumper -->
-		<div v-if="showJumper" :class="$style.Jumper">
-			<span :class="$style.JumperText">Go to</span>
-			<input
-				v-model="jumperValue"
-				type="number"
-				:min="1"
-				:max="pageCount"
-				:class="$style.JumperInput"
+			<!-- Page size selector -->
+			<N8nSelect
+				v-else-if="part === 'sizes'"
+				:model-value="String(internalPageSize)"
+				:items="pageSizeItems"
+				:size="props.size === 'small' ? 'xsmall' : 'small'"
+				:variant="props.variant === 'ghost' ? 'ghost' : 'default'"
 				:disabled="disabled"
-				@keyup.enter="handleJumperSubmit"
+				:class="$style.PageSizeSelect"
+				@update:model-value="handlePageSizeUpdate"
 			/>
-		</div>
+
+			<!-- Pager (prev, pages, next) -->
+			<PaginationRoot
+				v-else-if="part === 'pager-group'"
+				v-bind="rootProps"
+				:page="page"
+				:items-per-page="itemsPerPage"
+				:total="totalItems"
+				:sibling-count="siblingCount"
+				:show-edges="showEdges"
+				@update:page="handlePageUpdate"
+			>
+				<PaginationList v-slot="{ items }" :class="$style.PaginationList">
+					<!-- Previous button -->
+					<PaginationPrev v-if="showPrev" v-slot="slotProps" :class="$style.PaginationButton">
+						<slot name="prev" v-bind="slotProps">
+							<span v-if="prevText">{{ prevText }}</span>
+							<Icon v-else :icon="prevIcon" />
+						</slot>
+					</PaginationPrev>
+
+					<!-- Page items -->
+					<template v-if="showPager">
+						<template
+							v-for="(item, index) in items"
+							:key="item.type === 'ellipsis' ? `ellipsis-${index}` : item.value"
+						>
+							<!-- Ellipsis button -->
+							<PaginationEllipsis
+								v-if="item.type === 'ellipsis'"
+								:index="index"
+								:class="[$style.PaginationEllipsis, $style.PaginationButton]"
+							>
+								<span aria-hidden="true">&#8230;</span>
+							</PaginationEllipsis>
+							<PaginationListItem v-else :value="item.value" :class="$style.PaginationItem">
+								{{ item.value }}
+							</PaginationListItem>
+						</template>
+					</template>
+
+					<!-- Next button -->
+					<PaginationNext v-if="showNext" v-slot="slotProps" :class="$style.PaginationButton">
+						<slot name="next" v-bind="slotProps">
+							<span v-if="nextText">{{ nextText }}</span>
+							<Icon v-else :icon="nextIcon" />
+						</slot>
+					</PaginationNext>
+				</PaginationList>
+			</PaginationRoot>
+
+			<!-- Page jumper -->
+			<div v-else-if="part === 'jumper'" :class="$style.Jumper">
+				<span :class="$style.JumperText">Go to</span>
+				<input
+					v-model="jumperValue"
+					type="number"
+					:min="1"
+					:max="pageCount"
+					:class="$style.JumperInput"
+					:disabled="disabled"
+					@keyup.enter="handleJumperSubmit"
+				/>
+			</div>
+		</template>
 	</div>
 </template>
 
