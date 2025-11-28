@@ -59,7 +59,6 @@ describe('ImportService', () => {
 			mockWorkflowIndexService,
 			Container.get(DatabaseConfig),
 			mock(),
-			mock(),
 		);
 	});
 

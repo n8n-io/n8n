@@ -161,7 +161,7 @@ describe('WorkflowPublishHistoryRepository', () => {
 			expect(records).toHaveLength(0);
 		});
 
-		it('should cascade delete when worklfow history version is deleted', async () => {
+		it('should cascade delete when workflow history version is deleted', async () => {
 			const repository = Container.get(WorkflowPublishHistoryRepository);
 			const workflow = await createWorkflowWithHistory();
 

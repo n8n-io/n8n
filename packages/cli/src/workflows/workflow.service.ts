@@ -464,7 +464,7 @@ export class WorkflowService {
 				});
 				await this.workflowPublishHistoryRepository.addRecord({
 					workflowId,
-					versionId: workflow.versionId,
+					versionId: workflow.activeVersionId ?? workflow.versionId,
 					status: 'deactivated',
 					userId: user.id,
 				});
@@ -774,7 +774,7 @@ export class WorkflowService {
 			await this.activeWorkflowManager.remove(workflowId);
 			await this.workflowPublishHistoryRepository.addRecord({
 				workflowId,
-				versionId: workflow.versionId,
+				versionId: workflow.activeVersionId,
 				status: 'deactivated',
 				userId: user.id,
 			});
