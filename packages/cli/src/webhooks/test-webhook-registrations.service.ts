@@ -10,7 +10,7 @@ const TEST_WEBHOOK_REGISTRATION_VERSION = 1;
 export type TestWebhookRegistration = {
 	// A simple versioning to be safe. If you make a breaking change in the type, bump the version.
 	// Any old records in the cache will just be ignored.
-	version?: typeof TEST_WEBHOOK_REGISTRATION_VERSION;
+	version: typeof TEST_WEBHOOK_REGISTRATION_VERSION;
 	pushRef?: string;
 	workflowEntity: IWorkflowBase;
 	destinationNode?: IDestinationNode;
