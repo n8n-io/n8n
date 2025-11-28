@@ -92,7 +92,12 @@ export class TestWebhookRegistrationsService {
 
 	async getRegistrationsHash() {
 		const val = await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
-		return isTestWebhookRegistration(val) ? val : undefined;
+		for (const key in val) {
+			if (!isTestWebhookRegistration(val[key])) {
+				delete val[key];
+			}
+		}
+		return val;
 	}
 
 	async deregisterAll() {
