@@ -85,7 +85,26 @@ export function getPhaseMetadata(
 	phase: SubgraphPhase,
 ): DiscoveryMetadata | BuilderMetadata | ConfiguratorMetadata | null {
 	const entry = getPhaseEntry(log, phase);
-	return entry?.metadata ?? null;
+	if (!entry) return null;
+
+	// Error entries have phase: 'error' in metadata, completed entries have the subgraph phase
+	if (entry.metadata.phase === 'error') return null;
+
+	return entry.metadata;
+}
+
+/**
+ * Check if any phase has an error status
+ */
+export function hasErrorInLog(log: CoordinationLogEntry[]): boolean {
+	return log.some((entry) => entry.status === 'error');
+}
+
+/**
+ * Get error entry from coordination log (if any)
+ */
+export function getErrorEntry(log: CoordinationLogEntry[]): CoordinationLogEntry | null {
+	return log.find((entry) => entry.status === 'error') ?? null;
 }
 
 /**
@@ -93,6 +112,11 @@ export function getPhaseMetadata(
  * Called AFTER a subgraph completes to determine next phase.
  */
 export function getNextPhaseFromLog(log: CoordinationLogEntry[]): RoutingDecision {
+	// If any phase errored, route to responder to report the error
+	if (hasErrorInLog(log)) {
+		return 'responder';
+	}
+
 	const lastPhase = getLastCompletedPhase(log);
 	// After discovery → always builder (builder decides what new nodes to add)
 	if (lastPhase === 'discovery') {

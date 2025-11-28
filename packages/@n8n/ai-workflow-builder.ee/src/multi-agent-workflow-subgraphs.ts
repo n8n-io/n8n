@@ -11,13 +11,10 @@ import { BuilderSubgraph } from './subgraphs/builder.subgraph';
 import { ConfiguratorSubgraph } from './subgraphs/configurator.subgraph';
 import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
+import type { SubgraphPhase } from './types/coordination';
+import { createErrorMetadata } from './types/coordination';
 import { buildWorkflowSummary } from './utils/context-builders';
-import {
-	getNextPhaseFromLog,
-	getConfiguratorOutput,
-	getBuilderOutput,
-	summarizeCoordinationLog,
-} from './utils/coordination-log';
+import { getNextPhaseFromLog, summarizeCoordinationLog } from './utils/coordination-log';
 import { processOperations } from './utils/operations-processor';
 
 /**
@@ -66,7 +63,11 @@ function createSubgraphNodeHandler<
 			const errorMessage =
 				error instanceof Error ? error.message : `An error occurred in ${name}: ${String(error)}`;
 
+			// Extract phase from subgraph name (e.g., 'discovery_subgraph' → 'discovery')
+			const phase = name.replace('_subgraph', '') as SubgraphPhase;
+
 			// Route to responder to report error (terminal)
+			// Add error entry to coordination log so getNextPhaseFromLog routes to responder
 			return {
 				nextPhase: 'responder',
 				messages: [
@@ -74,6 +75,18 @@ function createSubgraphNodeHandler<
 						content: `Error in ${name}: ${errorMessage}`,
 						name: 'system_error',
 					}),
+				],
+				coordinationLog: [
+					{
+						phase,
+						status: 'error' as const,
+						timestamp: Date.now(),
+						summary: `Error: ${errorMessage}`,
+						metadata: createErrorMetadata({
+							failedSubgraph: phase,
+							errorMessage,
+						}),
+					},
 				],
 			};
 		}
@@ -151,42 +164,11 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			})
 			// Add Responder Node (synthesizes final user-facing response)
 			.addNode('responder', async (state) => {
-				const agent = responderAgent.getAgent();
-
-				// Build context for responder from coordination log
-				const contextParts: string[] = [];
-
-				if (state.discoveryContext?.nodesFound.length) {
-					contextParts.push(
-						`**Discovery:** Found ${state.discoveryContext.nodesFound.length} relevant nodes`,
-					);
-				}
-
-				const builderOutput = getBuilderOutput(state.coordinationLog);
-				if (builderOutput) {
-					contextParts.push(`**Builder:** ${builderOutput}`);
-				} else if (state.workflowJSON.nodes.length) {
-					contextParts.push(`**Workflow:** ${state.workflowJSON.nodes.length} nodes created`);
-				}
-
-				const configuratorOutput = getConfiguratorOutput(state.coordinationLog);
-				if (configuratorOutput) {
-					contextParts.push(`**Configuration:**\n${configuratorOutput}`);
-				}
-
-				const contextMessage =
-					contextParts.length > 0
-						? new HumanMessage({
-								content: `[Internal Context - Use this to craft your response]\n${contextParts.join('\n\n')}`,
-							})
-						: null;
-
-				const messagesToSend = contextMessage
-					? [...state.messages, contextMessage]
-					: state.messages;
-
-				const response = await agent.invoke({
-					messages: messagesToSend,
+				const response = await responderAgent.invoke({
+					messages: state.messages,
+					coordinationLog: state.coordinationLog,
+					discoveryContext: state.discoveryContext,
+					workflowJSON: state.workflowJSON,
 				});
 
 				return {

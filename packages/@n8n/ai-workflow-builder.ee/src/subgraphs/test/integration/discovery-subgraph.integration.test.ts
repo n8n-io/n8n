@@ -464,7 +464,7 @@ describe('Discovery Subgraph - Integration Tests', () => {
 		});
 	});
 
-	describe.only('Technique Categorization (parity with promptCategorizationChain)', () => {
+	describe('Technique Categorization (parity with promptCategorizationChain)', () => {
 		const PARALLEL_BATCH_SIZE = 30;
 
 		it('should select correct techniques via get_best_practices for all test prompts', async () => {

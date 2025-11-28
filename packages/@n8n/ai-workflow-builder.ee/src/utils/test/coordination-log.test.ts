@@ -6,6 +6,8 @@ import {
 	getConfiguratorOutput,
 	getBuilderOutput,
 	getNextPhaseFromLog,
+	hasErrorInLog,
+	getErrorEntry,
 	summarizeCoordinationLog,
 } from '../coordination-log';
 
@@ -119,6 +121,51 @@ describe('coordination-log utilities', () => {
 		});
 	});
 
+	describe('hasErrorInLog', () => {
+		it('should return false for empty log', () => {
+			expect(hasErrorInLog([])).toBe(false);
+		});
+
+		it('should return false when all phases completed successfully', () => {
+			const log = [createLogEntry('discovery'), createLogEntry('builder')];
+			expect(hasErrorInLog(log)).toBe(false);
+		});
+
+		it('should return true when any phase has error', () => {
+			const log = [createLogEntry('discovery'), createLogEntry('builder', 'error')];
+			expect(hasErrorInLog(log)).toBe(true);
+		});
+
+		it('should return true when first phase errors', () => {
+			const log = [createLogEntry('discovery', 'error')];
+			expect(hasErrorInLog(log)).toBe(true);
+		});
+	});
+
+	describe('getErrorEntry', () => {
+		it('should return null for empty log', () => {
+			expect(getErrorEntry([])).toBeNull();
+		});
+
+		it('should return null when no errors', () => {
+			const log = [createLogEntry('discovery'), createLogEntry('builder')];
+			expect(getErrorEntry(log)).toBeNull();
+		});
+
+		it('should return error entry when present', () => {
+			const log = [createLogEntry('discovery'), createLogEntry('builder', 'error')];
+			const errorEntry = getErrorEntry(log);
+			expect(errorEntry?.phase).toBe('builder');
+			expect(errorEntry?.status).toBe('error');
+		});
+
+		it('should return first error entry when multiple errors', () => {
+			const log = [createLogEntry('discovery', 'error'), createLogEntry('builder', 'error')];
+			const errorEntry = getErrorEntry(log);
+			expect(errorEntry?.phase).toBe('discovery');
+		});
+	});
+
 	describe('getNextPhaseFromLog', () => {
 		it('should return responder for empty log', () => {
 			expect(getNextPhaseFromLog([])).toBe('responder');
@@ -139,6 +186,25 @@ describe('coordination-log utilities', () => {
 				createLogEntry('discovery'),
 				createLogEntry('builder'),
 				createLogEntry('configurator'),
+			];
+			expect(getNextPhaseFromLog(log)).toBe('responder');
+		});
+
+		it('should return responder when discovery errors', () => {
+			const log = [createLogEntry('discovery', 'error')];
+			expect(getNextPhaseFromLog(log)).toBe('responder');
+		});
+
+		it('should return responder when builder errors after successful discovery', () => {
+			const log = [createLogEntry('discovery'), createLogEntry('builder', 'error')];
+			expect(getNextPhaseFromLog(log)).toBe('responder');
+		});
+
+		it('should return responder when configurator errors', () => {
+			const log = [
+				createLogEntry('discovery'),
+				createLogEntry('builder'),
+				createLogEntry('configurator', 'error'),
 			];
 			expect(getNextPhaseFromLog(log)).toBe('responder');
 		});

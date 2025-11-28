@@ -30,7 +30,11 @@ export interface CoordinationLogEntry {
 	metadata: CoordinationMetadata;
 }
 
-export type CoordinationMetadata = DiscoveryMetadata | BuilderMetadata | ConfiguratorMetadata;
+export type CoordinationMetadata =
+	| DiscoveryMetadata
+	| BuilderMetadata
+	| ConfiguratorMetadata
+	| ErrorMetadata;
 
 export interface DiscoveryMetadata {
 	phase: 'discovery';
@@ -60,6 +64,14 @@ export interface ConfiguratorMetadata {
 	hasSetupInstructions: boolean;
 }
 
+export interface ErrorMetadata {
+	phase: 'error';
+	/** The subgraph that failed */
+	failedSubgraph: SubgraphPhase;
+	/** Error message */
+	errorMessage: string;
+}
+
 /**
  * Helper functions to create typed metadata objects.
  * These eliminate the need for type assertions when creating coordination log entries.
@@ -76,4 +88,8 @@ export function createConfiguratorMetadata(
 	data: Omit<ConfiguratorMetadata, 'phase'>,
 ): ConfiguratorMetadata {
 	return { phase: 'configurator', ...data };
+}
+
+export function createErrorMetadata(data: Omit<ErrorMetadata, 'phase'>): ErrorMetadata {
+	return { phase: 'error', ...data };
 }

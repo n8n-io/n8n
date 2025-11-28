@@ -1,5 +1,12 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
+import type { AIMessage, BaseMessage } from '@langchain/core/messages';
+import { HumanMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+
+import type { CoordinationLogEntry } from '../types/coordination';
+import type { DiscoveryContext } from '../types/discovery-types';
+import type { SimpleWorkflow } from '../types/workflow';
+import { getErrorEntry, getBuilderOutput, getConfiguratorOutput } from '../utils/coordination-log';
 
 /**
  * Responder Agent Prompt
@@ -7,7 +14,7 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
  * Synthesizes final user-facing responses from workflow building context.
  * Also handles conversational queries.
  */
-const responderAgentPrompt = `You are a helpful AI assistant for n8n workflow automation.
+const RESPONDER_PROMPT = `You are a helpful AI assistant for n8n workflow automation.
 
 You have access to context about what has been built, including:
 - Discovery results (nodes found)
@@ -46,7 +53,7 @@ const systemPrompt = ChatPromptTemplate.fromMessages([
 		[
 			{
 				type: 'text',
-				text: responderAgentPrompt,
+				text: RESPONDER_PROMPT,
 				cache_control: { type: 'ephemeral' },
 			},
 		],
@@ -59,10 +66,24 @@ export interface ResponderAgentConfig {
 }
 
 /**
+ * Context required for the responder to generate a response
+ */
+export interface ResponderContext {
+	/** Conversation messages */
+	messages: BaseMessage[];
+	/** Coordination log tracking subgraph completion */
+	coordinationLog: CoordinationLogEntry[];
+	/** Discovery results (nodes found) */
+	discoveryContext?: DiscoveryContext | null;
+	/** Current workflow state */
+	workflowJSON: SimpleWorkflow;
+}
+
+/**
  * Responder Agent
  *
+ * Synthesizes final user-facing responses from workflow building context.
  * Handles conversational queries and explanations.
- * No tools - just friendly conversation about capabilities.
  */
 export class ResponderAgent {
 	private llm: BaseChatModel;
@@ -72,9 +93,63 @@ export class ResponderAgent {
 	}
 
 	/**
-	 * Get the agent's LLM (no tools needed for responder)
+	 * Build internal context message from coordination log and state
 	 */
-	getAgent() {
-		return systemPrompt.pipe(this.llm);
+	private buildContextMessage(context: ResponderContext): HumanMessage | null {
+		const contextParts: string[] = [];
+
+		// Check for errors first - if there's an error, surface it prominently
+		const errorEntry = getErrorEntry(context.coordinationLog);
+		if (errorEntry) {
+			contextParts.push(
+				`**Error:** An error occurred in the ${errorEntry.phase} phase: ${errorEntry.summary}`,
+			);
+			contextParts.push(
+				'Please apologize to the user and explain that something went wrong while building their workflow.',
+			);
+		}
+
+		// Discovery context
+		if (context.discoveryContext?.nodesFound.length) {
+			contextParts.push(
+				`**Discovery:** Found ${context.discoveryContext.nodesFound.length} relevant nodes`,
+			);
+		}
+
+		// Builder output
+		const builderOutput = getBuilderOutput(context.coordinationLog);
+		if (builderOutput) {
+			contextParts.push(`**Builder:** ${builderOutput}`);
+		} else if (context.workflowJSON.nodes.length) {
+			contextParts.push(`**Workflow:** ${context.workflowJSON.nodes.length} nodes created`);
+		}
+
+		// Configurator output
+		const configuratorOutput = getConfiguratorOutput(context.coordinationLog);
+		if (configuratorOutput) {
+			contextParts.push(`**Configuration:**\n${configuratorOutput}`);
+		}
+
+		if (contextParts.length === 0) {
+			return null;
+		}
+
+		return new HumanMessage({
+			content: `[Internal Context - Use this to craft your response]\n${contextParts.join('\n\n')}`,
+		});
+	}
+
+	/**
+	 * Invoke the responder agent with the given context
+	 */
+	async invoke(context: ResponderContext): Promise<AIMessage> {
+		const agent = systemPrompt.pipe(this.llm);
+
+		const contextMessage = this.buildContextMessage(context);
+		const messagesToSend = contextMessage
+			? [...context.messages, contextMessage]
+			: context.messages;
+
+		return (await agent.invoke({ messages: messagesToSend })) as AIMessage;
 	}
 }
