@@ -340,7 +340,7 @@ export function createSessionFromStreamingState(streaming: ChatStreamingState): 
 		ownerId: '',
 		lastMessageAt: new Date().toISOString(),
 		credentialId: null,
-		agentName: null,
+		agentName: streaming.agentName,
 		createdAt: new Date().toISOString(),
 		updatedAt: new Date().toISOString(),
 		tools: streaming.tools,

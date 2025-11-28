@@ -509,7 +509,19 @@
 									>
 										{{#each multiSelectOptions}}
 											<div class='multiselect-option'>
-												<input type='checkbox' class='multiselect-checkbox' id='{{id}}' value='{{label}}' />
+												{{#if ../radioSelect}}
+													{{#if (eq ../defaultValue label)}}
+														<input type='checkbox' class='multiselect-checkbox' id='{{id}}' value='{{label}}' checked />
+													{{else}}
+														<input type='checkbox' class='multiselect-checkbox' id='{{id}}' value='{{label}}' />
+													{{/if}}
+												{{else}}
+													{{#if (includes ../defaultValue label)}}
+														<input type='checkbox' class='multiselect-checkbox' id='{{id}}' value='{{label}}' checked />
+													{{else}}
+														<input type='checkbox' class='multiselect-checkbox' id='{{id}}' value='{{label}}' />
+													{{/if}}
+												{{/if}}
 												<label for='{{id}}'>{{label}}</label>
 											</div>
 										{{/each}}
@@ -525,9 +537,17 @@
 									<label class='form-label {{inputRequired}}' for='{{id}}'>{{label}}</label>
 									<div class='select-input'>
 										<select id='{{id}}' name='{{id}}' class='{{inputRequired}}'>
-											<option value='' disabled selected>Select an option ...</option>
+											{{#if defaultValue}}
+												<option value='' disabled>Select an option ...</option>
+											{{else}}
+												<option value='' disabled selected>Select an option ...</option>
+											{{/if}}
 											{{#each selectOptions}}
-												<option value='{{this}}'>{{this}}</option>
+												{{#if (eq ../defaultValue this)}}
+													<option value='{{this}}' selected>{{this}}</option>
+												{{else}}
+													<option value='{{this}}'>{{this}}</option>
+												{{/if}}
 											{{/each}}
 										</select>
 									</div>
@@ -750,17 +770,20 @@
 				}
 
 				if (data.exact && values.length !== data.exact) {
-					updateError(errorElement, 'add', `You must select ${data.exact} options`);
+					const optionText = data.exact === 1 ? 'option' : 'options';
+					updateError(errorElement, 'add', `You must select exactly ${data.exact} ${optionText}`);
 					return false;
 				}
 
 				if (data.minSelect && values.length < data.minSelect) {
-					updateError(errorElement, 'add', `You must select at least ${data.minSelect} options`);
+					const optionText = data.minSelect === 1 ? 'option' : 'options';
+					updateError(errorElement, 'add', `You must select at least ${data.minSelect} ${optionText}`);
 					return false;
 				}
 
 				if(data.maxSelect && values.length > data.maxSelect) {
-					updateError(errorElement, 'add', `You can select a maximum of ${data.maxSelect} options`);
+					const optionText = data.maxSelect === 1 ? 'option' : 'options';
+					updateError(errorElement, 'add', `You can select a maximum of ${data.maxSelect} ${optionText}`);
 					return false;
 				}
 

@@ -14,3 +14,14 @@ export interface InstanceDetectionReport {
 	instanceIssues: BreakingChangeInstanceIssue[];
 	recommendations: BreakingChangeRecommendation[];
 }
+
+/**
+ * Report returned by batch workflow rules after processing all workflows.
+ * Used when a rule needs to correlate data across multiple workflows before producing results.
+ */
+export interface BatchWorkflowDetectionReport {
+	affectedWorkflows: Array<{
+		workflowId: string;
+		issues: BreakingChangeWorkflowIssue[];
+	}>;
+}
