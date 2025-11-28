@@ -143,7 +143,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId } = renderComponent();
 
-			await userEvent.click(getByTestId('workflow-publish-button'));
+			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 
 			expect(mockSaveCurrentWorkflow).not.toHaveBeenCalled();
 			expect(openModalSpy).toHaveBeenCalledWith({
@@ -158,7 +158,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId } = renderComponent();
 
-			await userEvent.click(getByTestId('workflow-publish-button'));
+			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 
 			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, true);
 			expect(openModalSpy).toHaveBeenCalledWith({
@@ -178,7 +178,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			await userEvent.click(getByTestId('workflow-publish-button'));
+			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 
 			expect(mockSaveCurrentWorkflow).toHaveBeenCalledWith({}, true);
 			expect(openModalSpy).toHaveBeenCalledWith({
@@ -194,7 +194,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 
 			const { getByTestId } = renderComponent();
 
-			await userEvent.click(getByTestId('workflow-publish-button'));
+			await userEvent.click(getByTestId('workflow-open-publish-modal-button'));
 
 			expect(mockSaveCurrentWorkflow).toHaveBeenCalled();
 			expect(openModalSpy).not.toHaveBeenCalled();
@@ -367,7 +367,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 			expect(saveButton).toBeDisabled();
 		});
 
-		it('should render disabled publish button when read-only', () => {
+		it('should render publish button when read-only', () => {
 			const { getByTestId } = renderComponent({
 				props: {
 					...defaultWorkflowProps,
@@ -375,8 +375,8 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			const publishButton = getByTestId('workflow-publish-button');
-			expect(publishButton).toBeDisabled();
+			const publishButton = getByTestId('workflow-open-publish-modal-button');
+			expect(publishButton).toBeInTheDocument();
 		});
 	});
 
@@ -389,7 +389,7 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				},
 			});
 
-			expect(queryByTestId('workflow-publish-button')).not.toBeInTheDocument();
+			expect(queryByTestId('workflow-open-publish-modal-button')).not.toBeInTheDocument();
 		});
 
 		it('should render disabled save button when workflow is archived', () => {
