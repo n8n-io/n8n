@@ -33,11 +33,6 @@ export interface N8nTooltipProps {
 	showArrow?: boolean;
 }
 
-export interface N8nTooltipEmits {
-	/** Emitted when tooltip visibility changes (for v-model:visible) */
-	(e: 'update:visible', visible: boolean): void;
-}
-
 export interface N8nTooltipSlots {
 	/** The trigger element that activates the tooltip (required) */
 	default: () => void;

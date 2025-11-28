@@ -9,7 +9,7 @@ import {
 } from 'reka-ui';
 import { computed, ref, watch } from 'vue';
 
-import type { N8nTooltipProps, N8nTooltipEmits } from './Tooltip.types';
+import type { N8nTooltipProps } from './Tooltip.types';
 import { useInjectTooltipAppendTo } from '../../../composables/useTooltipAppendTo';
 
 defineOptions({
@@ -24,8 +24,6 @@ const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	showArrow: true,
 	offset: 6,
 });
-
-const emit = defineEmits<N8nTooltipEmits>();
 
 // Get append-to target from composable
 const appendTo = useInjectTooltipAppendTo();
@@ -53,13 +51,9 @@ const isOpen = ref(false);
 
 watch(
 	() => props.visible,
-	(newVisible, oldVisible) => {
+	(newVisible) => {
 		if (newVisible !== undefined) {
 			isOpen.value = newVisible;
-			// Only emit on changes, not on initial mount
-			if (oldVisible !== undefined && newVisible !== oldVisible) {
-				emit('update:visible', newVisible);
-			}
 		}
 	},
 	{ immediate: true },
@@ -73,7 +67,6 @@ const isControlled = computed(() => props.visible !== undefined);
 
 const handleOpenChange = (open: boolean) => {
 	isOpen.value = open;
-	emit('update:visible', open);
 };
 </script>
 
