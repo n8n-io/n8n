@@ -92,14 +92,14 @@ async function getMicrosoftMcpTools(turnContext: TurnContext, mcpAuthToken: stri
 		} as Connection;
 	}
 
-	if (Object.keys(mcpServers).length === 0) return [];
+	if (Object.keys(mcpServers).length === 0) return undefined;
 
 	const mcpClientConfig = { mcpServers } as ClientConfig;
 
-	const multiServerMcpClient = new MultiServerMCPClient(mcpClientConfig);
-	const mcpTools = await multiServerMcpClient.getTools();
+	const client = new MultiServerMCPClient(mcpClientConfig);
+	const tools = await client.getTools();
 
-	return mcpTools;
+	return { tools, client };
 }
 
 const configureActivityCallback = (
@@ -145,9 +145,12 @@ const configureActivityCallback = (
 				invokeAgentScope.recordInputMessages([inputText || 'Unknown text']);
 
 				let microsoftMcpTools = undefined;
+				let mcpClient = undefined;
 				if (mcpTokenRef.token) {
 					try {
-						microsoftMcpTools = await getMicrosoftMcpTools(turnContext, mcpTokenRef.token);
+						const result = await getMicrosoftMcpTools(turnContext, mcpTokenRef.token);
+						mcpClient = result?.client;
+						microsoftMcpTools = result?.tools;
 					} catch (error) {
 						console.log('Error retrieving MCP tools');
 					}
@@ -168,6 +171,7 @@ const configureActivityCallback = (
 
 					await turnContext.sendActivity(response);
 				} finally {
+					if (mcpClient) await mcpClient.close();
 					invokeAgentScope.dispose();
 				}
 			});
