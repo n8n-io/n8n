@@ -9,16 +9,16 @@ import type {
 import { getInputs } from '../../agents/Agent/V2/utils';
 
 import {
+	type ActivityCapture,
 	configureAdapterProcessCallback,
 	createMicrosoftAgentApplication,
 	type MicrosoftAgent365Credentials,
 } from './microsoft-utils';
 
-// TODO : remove after resolved ====================
-//Request deduplication cache to prevent processing the same message twice
+// TODO : remove after resolved ====================================
 const processedMessages = new Map<string, number>();
-const MESSAGE_CACHE_TTL = 60000; // 1 minute
-//===================================================
+const MESSAGE_CACHE_TTL = 60000;
+//==================================================================
 
 export class MicrosoftAgent365Trigger implements INodeType {
 	description: INodeTypeDescription = {
@@ -162,62 +162,39 @@ export class MicrosoftAgent365Trigger implements INodeType {
 			};
 		}
 
-		// TODO: remove after resolved ====================
+		// TODO: remove after resolved =================================================
 		const messageId = req.body?.id;
 
-		// Check if we've already processed this message
 		if (messageId && processedMessages.has(messageId)) {
 			console.log(`Duplicate message detected: ${messageId}, skipping processing`);
-			// Send success response to Microsoft to stop retrying
 			res.status(200).end();
 			return {
 				noWebhookResponse: true,
 			};
 		}
 
-		// Mark message as being processed
 		if (messageId) {
 			processedMessages.set(messageId, Date.now());
-			// Clean up old entries
 			for (const [id, timestamp] of processedMessages.entries()) {
 				if (Date.now() - timestamp > MESSAGE_CACHE_TTL) {
 					processedMessages.delete(id);
 				}
 			}
 		}
-		//===================================================
+		//================================================================================
 
 		const credentials = (await this.getCredentials(
 			'microsoftAgent365Api',
 		)) as MicrosoftAgent365Credentials;
 
-		// const envCredentials: Record<string, string | undefined> = {
-		// 	connections__serviceConnection__settings__clientId: credentials.clientId,
-		// 	connections__serviceConnection__settings__clientSecret: credentials.clientSecret,
+		const agent = createMicrosoftAgentApplication(credentials);
 
-		// 	connections__serviceConnection__settings__tenantId: credentials.tenantId,
-
-		// 	connectionsMap__0__connection: 'serviceConnection',
-		// 	connectionsMap__0__serviceUrl: '*',
-
-		// 	agentic_type: 'agentic',
-		// 	agentic_scopes: 'https://graph.microsoft.com/.default',
-		// 	agentic_connectionName: 'serviceConnection',
-		// };
-
-		const agentApplication = createMicrosoftAgentApplication(this, credentials);
-
-		const trackData = {
-			inputText: '',
-			activities: [],
+		const activityCapture: ActivityCapture = {
+			input: '',
+			output: [],
 		};
 
-		const callback = configureAdapterProcessCallback(
-			this,
-			agentApplication,
-			credentials,
-			trackData,
-		);
+		const callback = configureAdapterProcessCallback(this, agent, credentials, activityCapture);
 
 		(req as any).user = {
 			aud: credentials.clientId || 'mock-client-id',
@@ -225,16 +202,11 @@ export class MicrosoftAgent365Trigger implements INodeType {
 			azp: credentials.clientId || 'mock-client-id',
 		};
 
-		await agentApplication.adapter.process(req, res, callback);
+		await agent.adapter.process(req, res, callback);
 
 		return {
 			noWebhookResponse: true,
-			workflowData: [
-				this.helpers.returnJsonArray({
-					input: { text: trackData.inputText },
-					output: trackData.activities,
-				}),
-			],
+			workflowData: [this.helpers.returnJsonArray({ ...activityCapture })],
 		};
 	}
 }

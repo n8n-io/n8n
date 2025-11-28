@@ -20,33 +20,35 @@ import type { DynamicStructuredTool } from 'langchain/tools';
 import type { ToolInputSchemaBase } from '@langchain/core/dist/tools/types';
 
 export async function invokeAgent(
-	agentNode: IWebhookFunctions,
+	nodeContext: IWebhookFunctions,
 	input: string,
 	systemMessage?: string,
 	invokeOptions: RunnableConfig = {},
 	microsoftMcpTools: Array<DynamicStructuredTool<ToolInputSchemaBase, any, any, any>> = [],
 ): Promise<string> {
-	const needsFallback = agentNode.getNodeParameter('needsFallback', false) as boolean;
-	const memory = await getOptionalMemory(agentNode);
-	const model = await getChatModel(agentNode, 0);
+	const needsFallback = nodeContext.getNodeParameter('needsFallback', false) as boolean;
+	const memory = await getOptionalMemory(nodeContext);
+	const model = await getChatModel(nodeContext, 0);
+
 	assert(model, 'Please connect a model to the Chat Model input');
-	const fallbackModel = needsFallback ? await getChatModel(agentNode, 1) : null;
+
+	const fallbackModel = needsFallback ? await getChatModel(nodeContext, 1) : null;
 
 	if (needsFallback && !fallbackModel) {
 		throw new NodeOperationError(
-			agentNode.getNode(),
+			nodeContext.getNode(),
 			'Please connect a model to the Fallback Model input or disable the fallback option',
 		);
 	}
 
-	const outputParser = await getOptionalOutputParser(agentNode, 0);
-	let tools = await getTools(agentNode, outputParser);
+	const outputParser = await getOptionalOutputParser(nodeContext, 0);
+	let tools = await getTools(nodeContext, outputParser);
 
 	if (microsoftMcpTools.length) {
 		tools = tools.concat(microsoftMcpTools);
 	}
 
-	const options = agentNode.getNodeParameter('options', {}) as {
+	const options = nodeContext.getNodeParameter('options', {}) as {
 		systemMessage?: string;
 		maxIterations?: number;
 	};
@@ -87,7 +89,7 @@ export async function invokeAgent(
 	if (result.status === 'rejected') {
 		const error = result.reason as Error;
 
-		throw new NodeOperationError(agentNode.getNode(), error);
+		throw new NodeOperationError(nodeContext.getNode(), error);
 	}
 	const response = result;
 

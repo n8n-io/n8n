@@ -10,7 +10,6 @@ import { MemoryStorage, AgentApplication, CloudAdapter } from '@microsoft/agents
 import { NodeOperationError, type IWebhookFunctions } from 'n8n-workflow';
 
 import {
-	type AgentDetails,
 	ExecutionType,
 	type InvokeAgentDetails,
 	InvokeAgentScope,
@@ -38,16 +37,18 @@ export type MicrosoftAgent365Credentials = {
 	clientSecret: string;
 };
 
-export function createMicrosoftAgentApplication(
-	agentNode: IWebhookFunctions,
-	credentials: MicrosoftAgent365Credentials,
-) {
-	const authConfig: AuthConfiguration = createAuthConfig(credentials);
-	const adapter = new CloudAdapter(authConfig);
+export type ActivityCapture = {
+	input: string;
+	output: string[];
+};
 
+export function createMicrosoftAgentApplication(credentials: MicrosoftAgent365Credentials) {
+	const authConfig: AuthConfiguration = createAuthConfig(credentials);
+
+	const adapter = new CloudAdapter(authConfig);
 	const storage = new MemoryStorage();
 
-	const agentApplication: AgentApplication<TurnState> = new AgentApplication<TurnState>({
+	const agent: AgentApplication<TurnState> = new AgentApplication<TurnState>({
 		adapter,
 		storage,
 		authorization: {
@@ -58,36 +59,26 @@ export function createMicrosoftAgentApplication(
 		},
 	});
 
-	const welcomeMessage = agentNode.getNodeParameter(
-		'welcomeMessage',
-		"Hello! I'm here to help you!",
-	) as string;
-
-	agentApplication.onConversationUpdate('membersAdded', async (context) => {
-		await context.sendActivity(welcomeMessage);
-	});
-
-	return agentApplication;
+	return agent;
 }
 
-async function getMicrosoftMcpTools(turnContext: TurnContext, authToken: string) {
+async function getMicrosoftMcpTools(turnContext: TurnContext, mcpAuthToken: string) {
 	const configService: McpToolServerConfigurationService = new McpToolServerConfigurationService();
 
-	Utility.ValidateAuthToken(authToken);
+	Utility.ValidateAuthToken(mcpAuthToken);
 
 	// @ts-expect-error Type mismatch due to multiple versions of @microsoft/agents-hosting
-	const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, authToken);
-	const servers = await configService.listToolServers(agenticAppId, authToken);
+	const agenticAppId = RuntimeUtility.ResolveAgentIdentity(turnContext, mcpAuthToken);
+	const servers = await configService.listToolServers(agenticAppId, mcpAuthToken);
 	const mcpServers: Record<string, Connection> = {};
 
 	const tenantId =
-		(turnContext.activity.recipient as any)?.tenantId ||
-		(turnContext.activity as any)?.channelData?.tenant?.id;
+		turnContext.activity.recipient?.tenantId || turnContext.activity?.channelData?.tenant?.id;
 
 	for (const server of servers) {
 		const headers: Record<string, string> = {};
-		if (authToken) {
-			headers['Authorization'] = `Bearer ${authToken}`;
+		if (mcpAuthToken) {
+			headers['Authorization'] = `Bearer ${mcpAuthToken}`;
 		}
 
 		if (tenantId) {
@@ -112,56 +103,51 @@ async function getMicrosoftMcpTools(turnContext: TurnContext, authToken: string)
 }
 
 const configureActivityCallback = (
-	agentNode: IWebhookFunctions,
+	nodeContext: IWebhookFunctions,
 	credentials: MicrosoftAgent365Credentials,
 	mcpTokenRef: { token: string | undefined },
 ) => {
-	const agentDescription = agentNode.getNodeParameter('agentDescription') as string;
+	const agentDescription = nodeContext.getNodeParameter('agentDescription') as string;
 	const { clientId, tenantId } = credentials;
 
 	return async (turnContext: TurnContext) => {
-		const mcpAuthToken = mcpTokenRef.token;
-
-		const agentInfo: AgentDetails = {
-			agentId: (turnContext.activity.recipient as any)?.agenticAppId ?? clientId,
-			agentName: (turnContext.activity.recipient as any)?.name ?? 'Microsoft Agent 365',
-		};
-
+		const agentId = turnContext.activity.recipient?.agenticAppId ?? clientId;
+		const agentName = turnContext.activity.recipient?.name ?? 'Microsoft Agent 365';
 		const tenantDetails: TenantDetails = {
-			tenantId: (turnContext.activity.recipient as any)?.tenantId ?? tenantId ?? '',
+			tenantId: turnContext.activity.recipient?.tenantId ?? tenantId ?? '',
 		};
-
-		const correlationId = uuid();
+		const conversationId = turnContext.activity.conversation?.id;
+		const inputText = turnContext.activity.text || '';
 
 		const baggageScope = new BaggageBuilder()
 			.tenantId(tenantDetails.tenantId)
-			.agentId(agentInfo.agentId)
-			.correlationId(correlationId)
-			.agentName(agentInfo.agentName)
-			.conversationId(turnContext.activity.conversation?.id)
+			.agentId(agentId)
+			.correlationId(uuid())
+			.agentName(agentName)
+			.conversationId(conversationId)
 			.build();
 
 		await baggageScope.run(async () => {
 			const invokeAgentDetails: InvokeAgentDetails = {
-				agentId: agentInfo.agentId,
-				agentName: agentInfo.agentName,
-				conversationId: turnContext.activity.conversation?.id,
+				agentId,
+				agentName,
+				conversationId,
 				request: {
-					content: turnContext.activity.text || 'Unknown text',
+					content: inputText || 'Unknown text',
 					executionType: ExecutionType.HumanToAgent,
-					sessionId: turnContext.activity.conversation?.id,
+					sessionId: conversationId,
 				},
 			};
 
 			const invokeAgentScope = InvokeAgentScope.start(invokeAgentDetails, tenantDetails);
 
 			await invokeAgentScope.withActiveSpanAsync(async () => {
-				invokeAgentScope.recordInputMessages([turnContext.activity.text ?? 'Unknown text']);
+				invokeAgentScope.recordInputMessages([inputText || 'Unknown text']);
 
 				let microsoftMcpTools = undefined;
-				if (mcpAuthToken) {
+				if (mcpTokenRef.token) {
 					try {
-						microsoftMcpTools = await getMicrosoftMcpTools(turnContext, mcpAuthToken);
+						microsoftMcpTools = await getMicrosoftMcpTools(turnContext, mcpTokenRef.token);
 					} catch (error) {
 						console.log('Error retrieving MCP tools');
 					}
@@ -169,8 +155,8 @@ const configureActivityCallback = (
 
 				try {
 					const response = await invokeAgent(
-						agentNode,
-						turnContext.activity.text || '',
+						nodeContext,
+						inputText,
 						agentDescription,
 						{
 							configurable: { thread_id: turnContext.activity.conversation!.id },
@@ -190,13 +176,10 @@ const configureActivityCallback = (
 };
 
 export function configureAdapterProcessCallback(
-	agentNode: IWebhookFunctions,
+	nodeContext: IWebhookFunctions,
 	agent: AgentApplication<TurnState<DefaultConversationState, DefaultUserState>>,
-	authConfig: MicrosoftAgent365Credentials,
-	trackData: {
-		inputText: string;
-		activities: string[];
-	},
+	credentials: MicrosoftAgent365Credentials,
+	activityCapture: ActivityCapture,
 ) {
 	return async (turnContext: TurnContext) => {
 		const { token: aauToken } = await agent.authorization.exchangeToken(
@@ -224,24 +207,33 @@ export function configureAdapterProcessCallback(
 
 		try {
 			const originalSendActivity = turnContext.sendActivity.bind(turnContext);
-			trackData.inputText = turnContext.activity.text || '';
+			activityCapture.input = turnContext.activity.text || '';
 			const sendActivityWrapper = async (activityOrText: string | Activity) => {
 				if (typeof activityOrText === 'string') {
-					trackData.activities.push(activityOrText);
+					activityCapture.output.push(activityOrText);
 				} else if (activityOrText.text) {
-					trackData.activities.push(activityOrText.text);
+					activityCapture.output.push(activityOrText.text);
 				}
 				return await originalSendActivity(activityOrText);
 			};
 
 			turnContext.sendActivity = sendActivityWrapper;
 
-			const onActivity = configureActivityCallback(agentNode, authConfig, mcpTokenRef);
+			const welcomeMessage = nodeContext.getNodeParameter(
+				'welcomeMessage',
+				"Hello! I'm here to help you!",
+			) as string;
+
+			agent.onConversationUpdate('membersAdded', async (context) => {
+				await context.sendActivity(welcomeMessage);
+			});
+
+			const onActivity = configureActivityCallback(nodeContext, credentials, mcpTokenRef);
 			agent.onActivity(ActivityTypes.Message, onActivity, ['agentic']);
 
 			await agent.run(turnContext);
 		} catch (error) {
-			throw new NodeOperationError(agentNode.getNode(), error);
+			throw new NodeOperationError(nodeContext.getNode(), error);
 		} finally {
 			await observability.shutdown();
 		}
