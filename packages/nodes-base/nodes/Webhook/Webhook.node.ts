@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import { createWriteStream } from 'fs';
-import { rm, stat } from 'fs/promises';
+import { stat } from 'fs/promises';
 import isbot from 'isbot';
 import type {
 	IWebhookFunctions,
@@ -8,11 +8,9 @@ import type {
 	INodeExecutionData,
 	INodeTypeDescription,
 	IWebhookResponseData,
-	MultiPartFormData,
 	INodeProperties,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
-import * as a from 'node:assert';
 import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
 import { v4 as uuid } from 'uuid';
@@ -34,6 +32,7 @@ import { WebhookAuthorizationError } from './error';
 import {
 	checkResponseModeConfiguration,
 	configuredOutputs,
+	handleFormData,
 	isIpWhitelisted,
 	setupOutputConnection,
 	validateWebhookAuthentication,
@@ -252,7 +251,7 @@ export class Webhook extends Node {
 		}
 
 		if (req.contentType === 'multipart/form-data') {
-			return await this.handleFormData(context, prepareOutput);
+			return await handleFormData(context, prepareOutput);
 		}
 
 		if (nodeVersion > 1 && !req.body && !options.rawBody) {
@@ -310,69 +309,6 @@ export class Webhook extends Node {
 
 	private async validateAuth(context: IWebhookFunctions) {
 		return await validateWebhookAuthentication(context, this.authPropertyName);
-	}
-
-	private async handleFormData(
-		context: IWebhookFunctions,
-		prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
-	) {
-		const req = context.getRequestObject() as MultiPartFormData.Request;
-		a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
-		const options = context.getNodeParameter('options', {}) as IDataObject;
-		const { data, files } = req.body;
-
-		const returnItem: INodeExecutionData = {
-			json: {
-				headers: req.headers,
-				params: req.params,
-				query: req.query,
-				body: data,
-			},
-		};
-
-		if (files && Object.keys(files).length) {
-			returnItem.binary = {};
-		}
-
-		let count = 0;
-
-		for (const key of Object.keys(files)) {
-			const processFiles: MultiPartFormData.File[] = [];
-			let multiFile = false;
-			if (Array.isArray(files[key])) {
-				processFiles.push(...files[key]);
-				multiFile = true;
-			} else {
-				processFiles.push(files[key]);
-			}
-
-			let fileCount = 0;
-			for (const file of processFiles) {
-				let binaryPropertyName = key;
-				if (binaryPropertyName.endsWith('[]')) {
-					binaryPropertyName = binaryPropertyName.slice(0, -2);
-				}
-				if (multiFile) {
-					binaryPropertyName += fileCount++;
-				}
-				if (options.binaryPropertyName) {
-					binaryPropertyName = `${options.binaryPropertyName}${count}`;
-				}
-
-				returnItem.binary![binaryPropertyName] = await context.nodeHelpers.copyBinaryFile(
-					file.filepath,
-					file.originalFilename ?? file.newFilename,
-					file.mimetype,
-				);
-
-				// Delete original file to prevent tmp directory from growing too large
-				await rm(file.filepath, { force: true });
-
-				count += 1;
-			}
-		}
-
-		return { workflowData: prepareOutput(returnItem) };
 	}
 
 	private async handleBinaryData(
