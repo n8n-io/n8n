@@ -33,7 +33,7 @@ function isLastRow(index: number, total: number): boolean {
 	<Primitive
 		v-if="loading"
 		as="div"
-		:class="['n8n-loading', `n8n-loading-${variant}`, $style.loading]"
+        :class="['n8n-loading', `n8n-loading-${variant}`, 'el-skeleton', $style.loading]"
 		aria-hidden="true"
 	>
 		<!-- Column-based layout -->
