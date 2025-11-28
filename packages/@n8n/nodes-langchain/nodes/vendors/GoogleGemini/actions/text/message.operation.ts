@@ -1,14 +1,14 @@
+import { getConnectedTools } from '@utils/helpers';
 import {
 	type IDataObject,
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
+	jsonParse,
+	updateDisplayOptions,
 	validateNodeParameters,
 } from 'n8n-workflow';
-import { updateDisplayOptions } from 'n8n-workflow';
 import zodToJsonSchema from 'zod-to-json-schema';
-
-import { getConnectedTools } from '@utils/helpers';
 
 import type {
 	GenerateContentRequest,
@@ -87,6 +87,97 @@ const properties: INodeProperties[] = [
 		default: false,
 	},
 	{
+		displayName: 'Built-in Tools',
+		name: 'builtInTools',
+		placeholder: 'Add Built-in Tool',
+		type: 'collection',
+		default: {},
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
+		options: [
+			{
+				displayName: 'Google Search',
+				name: 'googleSearch',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to allow the model to search the web using Google Search to get real-time information',
+			},
+			{
+				displayName: 'Google Maps',
+				name: 'googleMaps',
+				type: 'collection',
+				default: { latitude: '', longitude: '' },
+				options: [
+					{
+						displayName: 'Latitude',
+						name: 'latitude',
+						type: 'number',
+						default: '',
+						description: 'The latitude coordinate for location-based queries',
+						typeOptions: {
+							numberPrecision: 6,
+						},
+					},
+					{
+						displayName: 'Longitude',
+						name: 'longitude',
+						type: 'number',
+						default: '',
+						description: 'The longitude coordinate for location-based queries',
+						typeOptions: {
+							numberPrecision: 6,
+						},
+					},
+				],
+			},
+			{
+				displayName: 'URL Context',
+				name: 'urlContext',
+				type: 'boolean',
+				default: true,
+				description: 'Whether to allow the model to read and analyze content from specific URLs',
+			},
+			{
+				displayName: 'File Search',
+				name: 'fileSearch',
+				type: 'collection',
+				default: { fileSearchStoreNames: '[]' },
+				options: [
+					{
+						displayName: 'File Search Store Names',
+						name: 'fileSearchStoreNames',
+						description:
+							'The file search store names to use for the file search. File search stores are managed via Google AI Studio.',
+						type: 'json',
+						default: '[]',
+						required: true,
+					},
+					{
+						displayName: 'Metadata Filter',
+						name: 'metadataFilter',
+						type: 'string',
+						default: '',
+						description:
+							'Use metadata filter to search within a subset of documents. Example: author="Robert Graves".',
+						placeholder: 'e.g. author="John Doe"',
+					},
+				],
+			},
+			{
+				displayName: 'Code Execution',
+				name: 'codeExecution',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
+			},
+		],
+	},
+	{
 		displayName: 'Options',
 		name: 'options',
 		placeholder: 'Add Option',
@@ -107,6 +198,11 @@ const properties: INodeProperties[] = [
 				default: false,
 				description:
 					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { eq: 1 } }],
+					},
+				},
 			},
 			{
 				displayName: 'Frequency Penalty',
@@ -243,6 +339,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 	const simplify = this.getNodeParameter('simplify', i, true) as boolean;
 	const jsonOutput = this.getNodeParameter('jsonOutput', i, false) as boolean;
 	const options = this.getNodeParameter('options', i, {});
+	const builtInTools = this.getNodeParameter('builtInTools', i, {}) as IDataObject;
 	validateNodeParameters(
 		options,
 		{
@@ -300,10 +397,86 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools.pop();
 	}
 
-	if (options.codeExecution) {
-		tools.push({
-			codeExecution: {},
-		});
+	if (this.getNode().typeVersion === 1) {
+		if (options.codeExecution) {
+			tools.push({
+				codeExecution: {},
+			});
+		}
+	}
+
+	// Add built-in tools and build toolConfig
+	let toolConfig: GenerateContentRequest['toolConfig'];
+	if (this.getNode().typeVersion >= 1.1) {
+		if (builtInTools) {
+			if (builtInTools.googleSearch) {
+				tools.push({
+					googleSearch: {},
+				});
+			}
+
+			const googleMapsOptions = builtInTools.googleMaps as IDataObject | undefined;
+			if (googleMapsOptions) {
+				tools.push({
+					googleMaps: {},
+				});
+
+				// Build toolConfig with retrievalConfig if latitude/longitude are provided
+				const latitude = googleMapsOptions.latitude as number | string | undefined;
+				const longitude = googleMapsOptions.longitude as number | string | undefined;
+				if (
+					latitude !== undefined &&
+					latitude !== '' &&
+					longitude !== undefined &&
+					longitude !== ''
+				) {
+					toolConfig = {
+						retrievalConfig: {
+							latLng: {
+								latitude: Number(latitude),
+								longitude: Number(longitude),
+							},
+						},
+					};
+				}
+			}
+
+			if (builtInTools.urlContext) {
+				tools.push({
+					urlContext: {},
+				});
+			}
+
+			const fileSearchOptions = builtInTools.fileSearch as IDataObject | undefined;
+			if (fileSearchOptions) {
+				const fileSearchStoreNamesRaw = fileSearchOptions.fileSearchStoreNames as
+					| string
+					| undefined;
+				const metadataFilter = fileSearchOptions.metadataFilter as string | undefined;
+				let fileSearchStoreNames: string[] | undefined;
+				if (fileSearchStoreNamesRaw) {
+					const parsed = jsonParse(fileSearchStoreNamesRaw, {
+						errorMessage: 'Failed to parse file search store names',
+					});
+					if (Array.isArray(parsed)) {
+						fileSearchStoreNames = parsed;
+					}
+				}
+
+				tools.push({
+					fileSearch: {
+						...(fileSearchStoreNames && { fileSearchStoreNames }),
+						...(metadataFilter && { metadataFilter }),
+					},
+				});
+			}
+
+			if (builtInTools.codeExecution) {
+				tools.push({
+					codeExecution: {},
+				});
+			}
+		}
 	}
 
 	const contents: Content[] = messages.map((m) => ({
@@ -317,6 +490,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		systemInstruction: options.systemMessage
 			? { parts: [{ text: options.systemMessage }] }
 			: undefined,
+		...(toolConfig && { toolConfig }),
 	};
 
 	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
