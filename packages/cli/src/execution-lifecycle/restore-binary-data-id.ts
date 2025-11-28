@@ -1,7 +1,7 @@
 import { Logger } from '@n8n/backend-common';
 import { Container } from '@n8n/di';
 import type { BinaryData } from 'n8n-core';
-import { BinaryDataService } from 'n8n-core';
+import { BinaryDataConfig, BinaryDataService } from 'n8n-core';
 import type { IRun, WorkflowExecuteMode } from 'n8n-workflow';
 
 /**
@@ -25,7 +25,7 @@ export async function restoreBinaryDataId(
 	executionId: string,
 	workflowExecutionMode: WorkflowExecuteMode,
 ) {
-	if (workflowExecutionMode !== 'webhook') {
+	if (workflowExecutionMode !== 'webhook' || Container.get(BinaryDataConfig).mode === 'default') {
 		return;
 	}
 
