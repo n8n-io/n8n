@@ -34,6 +34,7 @@ const {
 	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
+	shouldPromptUserToConfirmUserRoleProvisioningChange,
 } = useUserRoleProvisioningForm(SupportedProtocols.OIDC);
 
 type PromptType = 'login' | 'none' | 'consent' | 'select_account' | 'create';
@@ -106,20 +107,19 @@ const cannotSaveOidcSettings = computed(() => {
 });
 
 async function onOidcSettingsSave(provisioningChangesConfirmed: boolean = false) {
-	const isLoginEnabledChanged = ssoStore.oidcConfig?.loginEnabled !== ssoStore.isOidcLoginEnabled;
-	const isEnablingOidcLogin = isLoginEnabledChanged && !ssoStore.oidcConfig?.loginEnabled;
-
 	if (
 		!provisioningChangesConfirmed &&
-		((isUserRoleProvisioningChanged.value && ssoStore.oidcConfig?.loginEnabled) ||
-			(isEnablingOidcLogin && userRoleProvisioning.value !== 'disabled'))
+		shouldPromptUserToConfirmUserRoleProvisioningChange({
+			currentLoginEnabled: !!ssoStore.oidcConfig?.loginEnabled,
+			loginEnabledFormValue: ssoStore.isOidcLoginEnabled,
+		})
 	) {
 		showUserRoleProvisioningDialog.value = true;
 		return;
 	}
 
+	const isLoginEnabledChanged = ssoStore.oidcConfig?.loginEnabled !== ssoStore.isOidcLoginEnabled;
 	const isDisablingOidcLogin = isLoginEnabledChanged && ssoStore.oidcConfig?.loginEnabled === true;
-
 	if (isDisablingOidcLogin) {
 		const confirmAction = await message.confirm(
 			i18n.baseText('settings.sso.confirmMessage.beforeSaveForm.message', {

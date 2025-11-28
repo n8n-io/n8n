@@ -56,6 +56,7 @@ const {
 	formValue: userRoleProvisioning,
 	isUserRoleProvisioningChanged,
 	saveProvisioningConfig,
+	shouldPromptUserToConfirmUserRoleProvisioningChange,
 } = useUserRoleProvisioningForm(SupportedProtocols.SAML);
 
 async function loadSamlConfig() {
@@ -190,19 +191,17 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			}
 		}
 
-		const isEnablingSamlLogin = loginEnabledChanged && !ssoStore.isSamlLoginEnabled;
-
 		if (
 			!provisioningChangesConfirmed &&
-			((isUserRoleProvisioningChanged.value && ssoStore.isSamlLoginEnabled) ||
-				(isEnablingSamlLogin && userRoleProvisioning.value !== 'disabled'))
+			shouldPromptUserToConfirmUserRoleProvisioningChange({
+				currentLoginEnabled: !!ssoStore.isSamlLoginEnabled,
+				loginEnabledFormValue: samlLoginEnabled.value,
+			})
 		) {
 			showUserRoleProvisioningDialog.value = true;
 			return;
 		}
-		if (provisioningChangesConfirmed) {
-			showUserRoleProvisioningDialog.value = false;
-		}
+		showUserRoleProvisioningDialog.value = false;
 
 		const metaDataConfig: Partial<SamlPreferences> =
 			ipsType.value === IdentityProviderSettingsType.URL

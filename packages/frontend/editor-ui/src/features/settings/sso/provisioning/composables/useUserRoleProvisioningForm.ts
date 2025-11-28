@@ -84,6 +84,22 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		sendTrackingEventForUserProvisioning(newSetting);
 	};
 
+	const shouldPromptUserToConfirmUserRoleProvisioningChange = ({
+		currentLoginEnabled,
+		loginEnabledFormValue,
+	}: { currentLoginEnabled: boolean; loginEnabledFormValue: boolean }) => {
+		const isLoginEnabledChanged = currentLoginEnabled !== loginEnabledFormValue;
+		const isEnablingSsoLogin = isLoginEnabledChanged && !currentLoginEnabled;
+		const isDisablingSsoLogin = isLoginEnabledChanged && currentLoginEnabled;
+		const isEnablingSsoAlongSideProvisioning = isEnablingSsoLogin && formValue.value !== 'disabled';
+		const isChangingProvisioningSettingWhileLoginWasAlreadyEnabled =
+			isUserRoleProvisioningChanged.value && currentLoginEnabled && !isDisablingSsoLogin;
+
+		return (
+			isEnablingSsoAlongSideProvisioning || isChangingProvisioningSettingWhileLoginWasAlreadyEnabled
+		);
+	};
+
 	const initFormValue = () => {
 		void provisioningStore.getProvisioningConfig().then(() => {
 			formValue.value = getUserRoleProvisioningValueFromConfig(
@@ -98,5 +114,6 @@ export function useUserRoleProvisioningForm(protocol: SupportedProtocolType) {
 		formValue,
 		isUserRoleProvisioningChanged,
 		saveProvisioningConfig,
+		shouldPromptUserToConfirmUserRoleProvisioningChange,
 	};
 }
