@@ -1,4 +1,4 @@
-import type { IWorkflowSettings, IConnections, INode, IPinData } from 'n8n-workflow';
+import type { IWorkflowSettings, IConnections, INode, IPinData, IFrame } from 'n8n-workflow';
 
 import type { ITag } from './tags';
 
@@ -7,6 +7,7 @@ export interface WorkflowMetadata {
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
+	frames?: IFrame[];
 }
 
 // Simple version of n8n-workflow.Workflow

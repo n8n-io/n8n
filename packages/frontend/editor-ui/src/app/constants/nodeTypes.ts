@@ -46,6 +46,7 @@ export const MICROSOFT_TEAMS_NODE_TYPE = 'n8n-nodes-base.microsoftTeams';
 export const N8N_NODE_TYPE = 'n8n-nodes-base.n8n';
 export const NO_OP_NODE_TYPE = 'n8n-nodes-base.noOp';
 export const STICKY_NODE_TYPE = 'n8n-nodes-base.stickyNote';
+export const FRAME_NODE_TYPE = 'n8n-nodes-internal.frame';
 export const NOTION_TRIGGER_NODE_TYPE = 'n8n-nodes-base.notionTrigger';
 export const PAGERDUTY_NODE_TYPE = 'n8n-nodes-base.pagerDuty';
 export const SALESFORCE_NODE_TYPE = 'n8n-nodes-base.salesforce';

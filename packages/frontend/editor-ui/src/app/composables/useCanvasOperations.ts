@@ -88,6 +88,7 @@ import type {
 	IConnection,
 	IConnections,
 	IDataObject,
+	IFrame,
 	INode,
 	INodeConnections,
 	INodeCredentials,
@@ -2099,6 +2100,11 @@ export function useCanvasOperations() {
 				await importWorkflowTags(workflowData);
 			}
 
+			// Import frames if present in the pasted/imported data
+			if (workflowData.meta?.frames && Array.isArray(workflowData.meta.frames)) {
+				importWorkflowFrames(workflowData);
+			}
+
 			if (workflowData.name) {
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: true });
 			}
@@ -2140,6 +2146,20 @@ export function useCanvasOperations() {
 		}, []);
 
 		workflowsStore.addWorkflowTagIds(tagIds);
+	}
+
+	function importWorkflowFrames(workflowData: WorkflowDataUpdate) {
+		if (!workflowData.meta?.frames) return;
+
+		// Import frames from pasted/imported data
+		// Each frame gets a new ID to avoid conflicts
+		for (const frame of workflowData.meta.frames) {
+			const newFrame: IFrame = {
+				...frame,
+				id: crypto.randomUUID(), // Generate new ID to avoid conflicts
+			};
+			workflowsStore.addFrame(newFrame);
+		}
 	}
 
 	async function fetchWorkflowDataFromUrl(url: string): Promise<WorkflowDataUpdate | undefined> {

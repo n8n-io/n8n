@@ -51,11 +51,18 @@ const nodes = computed(() => {
 });
 const connections = computed(() => props.workflow.connections);
 
-const { nodes: mappedNodes, connections: mappedConnections } = useCanvasMapping({
+const {
+	nodes: mappedNodes,
+	connections: mappedConnections,
+	frames: mappedFrames,
+} = useCanvasMapping({
 	nodes,
 	connections,
 	workflowObject,
 });
+
+// Combine nodes and frames for rendering
+const allMappedNodes = computed(() => [...mappedFrames.value, ...mappedNodes.value]);
 
 const initialFitViewDone = ref(false); // Workaround for https://github.com/bcakmakoglu/vue-flow/issues/1636
 onNodesInitialized(() => {
@@ -65,7 +72,7 @@ onNodesInitialized(() => {
 	}
 });
 
-const mappedNodesThrottled = throttledRef(mappedNodes, 200);
+const allMappedNodesThrottled = throttledRef(allMappedNodes, 200);
 const mappedConnectionsThrottled = throttledRef(mappedConnections, 200);
 
 defineExpose({
@@ -81,7 +88,7 @@ defineExpose({
 				v-if="workflow"
 				:id="id"
 				ref="canvas"
-				:nodes="executing ? mappedNodesThrottled : mappedNodes"
+				:nodes="executing ? allMappedNodesThrottled : allMappedNodes"
 				:connections="executing ? mappedConnectionsThrottled : mappedConnections"
 				:event-bus="eventBus"
 				:read-only="readOnly"

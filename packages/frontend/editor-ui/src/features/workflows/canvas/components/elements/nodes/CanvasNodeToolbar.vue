@@ -11,6 +11,7 @@ import CanvasNodeStatusIcons from './render-types/parts/CanvasNodeStatusIcons.vu
 
 import { N8nIconButton, N8nTooltip } from '@n8n/design-system';
 import CanvasNodeStickyColorSelector from './toolbar/CanvasNodeStickyColorSelector.vue';
+import CanvasNodeFrameColorSelector from './toolbar/CanvasNodeFrameColorSelector.vue';
 
 const emit = defineEmits<{
 	delete: [];
@@ -45,12 +46,14 @@ const nodeDisabledTitle = computed(() => {
 });
 
 const isStickyColorSelectorOpen = ref(false);
+const isFrameColorSelectorOpen = ref(false);
 const isHovered = ref(false);
 
 const classes = computed(() => ({
 	[$style.canvasNodeToolbar]: true,
 	[$style.readOnly]: props.readOnly,
-	[$style.forceVisible]: isHovered.value || isStickyColorSelectorOpen.value,
+	[$style.forceVisible]:
+		isHovered.value || isStickyColorSelectorOpen.value || isFrameColorSelectorOpen.value,
 	[$style.isExperimentalNdvActive]: isExperimentalNdvActive.value,
 }));
 
@@ -75,6 +78,10 @@ const isStickyNoteChangeColorVisible = computed(
 	() => !props.readOnly && render.value.type === CanvasNodeRenderType.StickyNote,
 );
 
+const isFrameChangeColorVisible = computed(
+	() => !props.readOnly && render.value.type === CanvasNodeRenderType.Frame,
+);
+
 function executeNode() {
 	emit('run');
 }
@@ -88,6 +95,12 @@ function onDeleteNode() {
 }
 
 function onChangeStickyColor(color: number) {
+	emit('update', {
+		color,
+	});
+}
+
+function onChangeFrameColor(color: number) {
 	emit('update', {
 		color,
 	});
@@ -171,6 +184,11 @@ function onFocusNode() {
 				v-if="isStickyNoteChangeColorVisible"
 				v-model:visible="isStickyColorSelectorOpen"
 				@update="onChangeStickyColor"
+			/>
+			<CanvasNodeFrameColorSelector
+				v-if="isFrameChangeColorVisible"
+				v-model:visible="isFrameColorSelectorOpen"
+				@update="onChangeFrameColor"
 			/>
 			<N8nIconButton
 				data-test-id="overflow-node-button"

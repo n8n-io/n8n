@@ -2746,11 +2746,27 @@ export interface IWorkflowSettings {
 	availableInMCP?: boolean;
 }
 
+/**
+ * Represents a visual frame/group on the workflow canvas.
+ * Frames are visual-only elements that help organize workflows
+ * without affecting execution logic.
+ */
+export interface IFrame {
+	id: string;
+	name: string;
+	position: [number, number];
+	width: number;
+	height: number;
+	color: number; // 1-7, matching sticky note color palette
+	label?: string;
+}
+
 export interface WorkflowFEMeta {
 	onboardingId?: string;
 	templateId?: string;
 	instanceId?: string;
 	templateCredsSetupCompleted?: boolean;
+	frames?: IFrame[];
 }
 
 export interface WorkflowTestData {
@@ -3154,6 +3170,7 @@ export interface IUserSettings {
 	easyAIWorkflowOnboarded?: boolean;
 	userClaimedAiCredits?: boolean;
 	dismissedCallouts?: Record<string, boolean>;
+	autosaveEnabled?: boolean;
 }
 
 export interface IProcessedDataConfig {

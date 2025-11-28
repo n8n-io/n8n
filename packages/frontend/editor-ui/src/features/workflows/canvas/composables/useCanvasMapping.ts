@@ -19,6 +19,7 @@ import type {
 	CanvasNodeData,
 	CanvasNodeDefaultRender,
 	CanvasNodeDefaultRenderLabelSize,
+	CanvasNodeFrameRender,
 	CanvasNodeStickyNoteRender,
 	ExecutionOutputMap,
 } from '../canvas.types';
@@ -33,6 +34,7 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IConnections,
+	IFrame,
 	INodeExecutionData,
 	INodeTypeDescription,
 	ITaskData,
@@ -103,6 +105,18 @@ export function useCanvasMapping({
 		return {
 			type: CanvasNodeRenderType.ChoicePrompt,
 			options: {},
+		};
+	}
+
+	function createFrameRenderType(frame: IFrame): CanvasNodeFrameRender {
+		return {
+			type: CanvasNodeRenderType.Frame,
+			options: {
+				width: frame.width,
+				height: frame.height,
+				color: frame.color,
+				label: frame.label,
+			},
 		};
 	}
 
@@ -577,15 +591,17 @@ export function useCanvasMapping({
 	);
 
 	const additionalNodePropertiesById = computed(() => {
-		type StickyNoteBoundingBox = BoundingBox & {
+		type ElementBoundingBox = BoundingBox & {
 			id: string;
 			area: number;
 			zIndex: number;
 		};
 
 		const stickyNodeBaseZIndex = -100;
+		const frameBaseZIndex = -200;
 
-		const stickyNodeBoundingBoxes = nodes.value.reduce<StickyNoteBoundingBox[]>((acc, node) => {
+		// Collect sticky note bounding boxes
+		const stickyNodeBoundingBoxes = nodes.value.reduce<ElementBoundingBox[]>((acc, node) => {
 			if (node.type === STICKY_NODE_TYPE) {
 				const x = node.position[0];
 				const y = node.position[1];
@@ -606,11 +622,38 @@ export function useCanvasMapping({
 			return acc;
 		}, []);
 
+		// Collect frame bounding boxes
+		const frameBoundingBoxes = workflowsStore.frames.reduce<ElementBoundingBox[]>(
+			(acc: ElementBoundingBox[], frame: IFrame) => {
+				acc.push({
+					id: frame.id,
+					x: frame.position[0],
+					y: frame.position[1],
+					width: frame.width,
+					height: frame.height,
+					area: frame.width * frame.height,
+					zIndex: frameBaseZIndex,
+				});
+				return acc;
+			},
+			[],
+		);
+
+		// Sort and assign z-index for sticky notes (smaller on top)
 		const sortedStickyNodeBoundingBoxes = stickyNodeBoundingBoxes.sort((a, b) => b.area - a.area);
 		sortedStickyNodeBoundingBoxes.forEach((node, index) => {
 			node.zIndex = stickyNodeBaseZIndex + index;
 		});
 
+		// Sort and assign z-index for frames (smaller on top)
+		const sortedFrameBoundingBoxes = frameBoundingBoxes.sort(
+			(a: ElementBoundingBox, b: ElementBoundingBox) => b.area - a.area,
+		);
+		sortedFrameBoundingBoxes.forEach((frame: ElementBoundingBox, index: number) => {
+			frame.zIndex = frameBaseZIndex + index;
+		});
+
+		// Handle overlap for sticky notes
 		for (let i = 0; i < sortedStickyNodeBoundingBoxes.length; i++) {
 			const node1 = sortedStickyNodeBoundingBoxes[i];
 			for (let j = i + 1; j < sortedStickyNodeBoundingBoxes.length; j++) {
@@ -627,7 +670,23 @@ export function useCanvasMapping({
 			}
 		}
 
-		return sortedStickyNodeBoundingBoxes.reduce<Record<string, Partial<CanvasNode>>>(
+		// Handle overlap for frames
+		for (let i = 0; i < sortedFrameBoundingBoxes.length; i++) {
+			const frame1 = sortedFrameBoundingBoxes[i];
+			for (let j = i + 1; j < sortedFrameBoundingBoxes.length; j++) {
+				const frame2 = sortedFrameBoundingBoxes[j];
+				if (checkOverlap(frame1, frame2)) {
+					if (frame1.area < frame2.area && frame1.zIndex <= frame2.zIndex) {
+						frame1.zIndex = frame2.zIndex + 1;
+					} else if (frame2.area < frame1.area && frame2.zIndex <= frame1.zIndex) {
+						frame2.zIndex = frame1.zIndex + 1;
+					}
+				}
+			}
+		}
+
+		// Combine results
+		const result = sortedStickyNodeBoundingBoxes.reduce<Record<string, Partial<CanvasNode>>>(
 			(acc, node) => {
 				acc[node.id] = {
 					style: {
@@ -639,6 +698,17 @@ export function useCanvasMapping({
 			},
 			{},
 		);
+
+		// Add frame z-indexes
+		sortedFrameBoundingBoxes.forEach((frame: ElementBoundingBox) => {
+			result[frame.id] = {
+				style: {
+					zIndex: frame.zIndex,
+				},
+			};
+		});
+
+		return result;
 	});
 
 	const simulatedNodeTypeDescriptionByNodeId = computed(() => {
@@ -726,6 +796,52 @@ export function useCanvasMapping({
 				};
 			}),
 		];
+	});
+
+	const mappedFrames = computed<CanvasNode[]>(() => {
+		return workflowsStore.frames.map<CanvasNode>((frame: IFrame) => {
+			const data: CanvasNodeData = {
+				id: frame.id,
+				name: frame.name,
+				subtitle: '',
+				type: CanvasNodeRenderType.Frame,
+				typeVersion: 1,
+				disabled: false,
+				inputs: [],
+				outputs: [],
+				connections: {
+					[CanvasConnectionMode.Input]: {},
+					[CanvasConnectionMode.Output]: {},
+				},
+				issues: {
+					execution: [],
+					validation: [],
+					visible: false,
+				},
+				pinnedData: {
+					count: 0,
+					visible: false,
+				},
+				execution: {
+					running: false,
+				},
+				runData: {
+					iterations: 0,
+					visible: false,
+				},
+				render: createFrameRenderType(frame),
+			};
+
+			return {
+				id: frame.id,
+				label: frame.name,
+				type: 'canvas-node',
+				position: { x: frame.position[0], y: frame.position[1] },
+				data,
+				...additionalNodePropertiesById.value[frame.id],
+				draggable: true,
+			};
+		});
 	});
 
 	const mappedConnections = computed<CanvasConnection[]>(() => {
@@ -868,5 +984,6 @@ export function useCanvasMapping({
 		nodeHasIssuesById,
 		connections: mappedConnections,
 		nodes: mappedNodes,
+		frames: mappedFrames,
 	};
 }

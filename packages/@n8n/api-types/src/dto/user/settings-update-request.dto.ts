@@ -6,4 +6,5 @@ export class SettingsUpdateRequestDto extends Z.class({
 	allowSSOManualLogin: z.boolean().optional(),
 	easyAIWorkflowOnboarded: z.boolean().optional(),
 	dismissedCallouts: z.record(z.string(), z.boolean()).optional(),
+	autosaveEnabled: z.boolean().optional(),
 }) {}
