@@ -46,7 +46,7 @@ export function normalizeFileSelector(fileSelectorRaw: string) {
 
 	const isWindows = /^[a-zA-Z]:/.test(fileSelector);
 	if (isWindows) {
-		fileSelector = path.normalize(fileSelector).replace(/\\/g, '/');
+		fileSelector = path.win32.normalize(fileSelector).replace(/\\/g, '/');
 	}
 
 	fileSelector = escapeSpecialCharacters(fileSelector);
