@@ -7,11 +7,12 @@ import {
 	createActiveWorkflow,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { Project, TagEntity, User } from '@n8n/db';
+import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
 import { ProjectRepository, WorkflowHistoryRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
+import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { STARTING_NODES } from '@/constants';
@@ -21,6 +22,7 @@ import { Telemetry } from '@/telemetry';
 
 import { createTag } from '../shared/db/tags';
 import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/users';
+import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
@@ -626,6 +628,95 @@ describe('GET /workflows/:id', () => {
 		expect(response.body.activeVersion.versionId).toBe(workflow.versionId);
 		expect(response.body.activeVersion.nodes).toEqual(workflow.nodes);
 		expect(response.body.activeVersion.connections).toEqual(workflow.connections);
+	});
+});
+
+describe('GET /workflows/:id/:versionId', () => {
+	test(
+		'should fail due to missing API Key',
+		testWithAPIKey('get', '/workflows/123/version-123', null),
+	);
+
+	test(
+		'should fail due to invalid API Key',
+		testWithAPIKey('get', '/workflows/123/version-123', 'abcXYZ'),
+	);
+
+	test('should fail due to non-existing workflow', async () => {
+		const response = await authOwnerAgent.get('/workflows/non-existing/version-123');
+		expect(response.statusCode).toBe(404);
+	});
+
+	test('should fail due to non-existing version', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/non-existing-version`);
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Version not found');
+	});
+
+	test('should retrieve workflow version', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const versionId = uuid();
+		const versionData = {
+			versionId,
+			workflowId: workflow.id,
+			nodes: [
+				{
+					id: 'node1',
+					name: 'Start',
+					type: 'n8n-nodes-base.start',
+					parameters: {},
+					position: [0, 0] as [number, number],
+					typeVersion: 1,
+				},
+			],
+			connections: {},
+			authors: 'Test User',
+			name: 'Version Name',
+			description: 'Version Description',
+		};
+		await createWorkflowHistoryItem(workflow.id, versionData);
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/${versionId}`);
+
+		const body = response.body as Partial<WorkflowHistory>;
+		expect(body).toEqual({
+			workflowId: workflow.id,
+			versionId,
+			name: 'Version Name',
+			description: 'Version Description',
+			nodes: versionData.nodes,
+			connections: versionData.connections,
+			authors: 'Test User',
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			createdAt: expect.any(String),
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			updatedAt: expect.any(String),
+		});
+	});
+
+	test('should retrieve version for non-owned workflow when owner', async () => {
+		const workflow = await createWorkflow({}, member);
+
+		const versionId = uuid();
+		const versionName = 'Version Name';
+		await createWorkflowHistoryItem(workflow.id, { versionId, name: versionName });
+
+		const response = await authOwnerAgent.get(`/workflows/${workflow.id}/${versionId}`);
+
+		expect(response.statusCode).toBe(200);
+		expect(response.body.name).toBe(versionName);
+	});
+
+	test('should fail to retrieve version without read permission', async () => {
+		const workflow = await createWorkflow({}, owner);
+		const versionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId });
+
+		const response = await authMemberAgent.get(`/workflows/${workflow.id}/${versionId}`);
+
+		expect(response.statusCode).toBe(403);
 	});
 });
 
