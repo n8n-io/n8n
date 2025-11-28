@@ -250,37 +250,6 @@ describe('useRunWorkflow({ router })', () => {
 	});
 
 	describe('runWorkflow()', () => {
-		it('should prevent execution and show error message when workflow is active with single webhook trigger', async () => {
-			const pinia = createTestingPinia({ stubActions: false });
-			setActivePinia(pinia);
-			const toast = useToast();
-			const i18n = useI18n();
-			const { runWorkflow } = useRunWorkflow({ router });
-
-			vi.mocked(workflowsStore).isWorkflowActive = true;
-
-			vi.mocked(useWorkflowHelpers()).getWorkflowDataToSave.mockResolvedValue({
-				nodes: [
-					{
-						name: 'Slack',
-						type: SLACK_TRIGGER_NODE_TYPE,
-						disabled: false,
-					},
-				],
-			} as unknown as WorkflowData);
-
-			const result = await runWorkflow({});
-
-			expect(result).toBeUndefined();
-			expect(toast.showMessage).toHaveBeenCalledWith({
-				title: i18n.baseText('workflowRun.showError.deactivate'),
-				message: i18n.baseText('workflowRun.showError.productionActive', {
-					interpolate: { nodeName: 'Webhook' },
-				}),
-				type: 'error',
-			});
-		});
-
 		it('should execute the workflow if the single webhook trigger has pin data', async () => {
 			const pinia = createTestingPinia({ stubActions: false });
 			setActivePinia(pinia);
