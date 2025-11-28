@@ -18,14 +18,10 @@ Displays contextual information when users hover over, focus on, or tap an eleme
 - `disabled?: boolean` - When `true`, prevents the tooltip from showing.
 - `showAfter?: number` - Delay in milliseconds before showing tooltip after trigger is hovered. Default: `0`
 - `visible?: boolean` - Manual control of tooltip visibility (programmatic show/hide).
-- `popperClass?: string` - Custom CSS class name for the tooltip popper element.
 - `enterable?: boolean` - Whether the mouse can enter the tooltip content area. Default: `true`
-- `popperOptions?: object` - Popper.js configuration object for advanced positioning control.
 - `teleported?: boolean` - Whether to append the tooltip to the body. Default: `true`
-- `offset?: number` - Offset of the tooltip from the trigger element (in pixels).
+- `offset?: number` - Offset of the tooltip from the trigger element (in pixels). Default: `6`
 - `showArrow?: boolean` - Whether to show the tooltip arrow. Default: `true`
-- `buttons?: IN8nButton[]` - Array of button configurations to render at the bottom of the tooltip. Default: `[]`
-- `justifyButtons?: Justify` - Horizontal alignment of buttons. Values: `'flex-start' | 'flex-end' | 'start' | 'end' | 'left' | 'right' | 'center' | 'space-between' | 'space-around' | 'space-evenly'`. Default: `'flex-end'`
 
 **Slots**
 
@@ -112,23 +108,6 @@ const showTooltip = () => {
 </template>
 ```
 
-**Custom popper class:**
-```typescript
-<script setup lang="ts">
-import { N8nTooltip } from '@n8n/design-system'
-</script>
-
-<template>
-  <N8nTooltip
-    content="Styled tooltip"
-    popper-class="custom-tooltip-class"
-    placement="top"
-  >
-    <span>Hover for custom styled tooltip</span>
-  </N8nTooltip>
-</template>
-```
-
 **Disabled tooltip:**
 ```typescript
 <script setup lang="ts">
@@ -145,43 +124,6 @@ const showTooltip = ref(false)
     placement="top"
   >
     <span>{{ showTooltip ? 'Tooltip enabled' : 'Tooltip disabled' }}</span>
-  </N8nTooltip>
-</template>
-```
-
-**Tooltip with action buttons:**
-```typescript
-<script setup lang="ts">
-import { N8nTooltip } from '@n8n/design-system'
-
-const handleSave = () => {
-  console.log('Saved')
-}
-
-const handleCancel = () => {
-  console.log('Cancelled')
-}
-
-const buttons = [
-  {
-    attrs: { label: 'Cancel', type: 'secondary', size: 'small' },
-    listeners: { click: handleCancel }
-  },
-  {
-    attrs: { label: 'Save', type: 'primary', size: 'small' },
-    listeners: { click: handleSave }
-  }
-]
-</script>
-
-<template>
-  <N8nTooltip
-    content="Are you sure you want to proceed?"
-    :buttons="buttons"
-    justify-buttons="flex-end"
-    placement="top"
-  >
-    <span>Hover for confirmation</span>
   </N8nTooltip>
 </template>
 ```

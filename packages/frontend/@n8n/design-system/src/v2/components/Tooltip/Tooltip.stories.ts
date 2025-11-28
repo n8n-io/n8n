@@ -177,46 +177,6 @@ export const CustomContentSlot = {
 	},
 } satisfies Story;
 
-export const WithButtons = {
-	render: (args) => ({
-		components: { Tooltip, N8nButton },
-		setup() {
-			const handleSave = () => {
-				alert('Saved!');
-			};
-
-			const handleCancel = () => {
-				alert('Cancelled!');
-			};
-
-			const buttons = [
-				{
-					attrs: { label: 'Cancel', type: 'secondary' as const, size: 'small' as const },
-					listeners: { onClick: handleCancel },
-				},
-				{
-					attrs: { label: 'Save', type: 'primary' as const, size: 'small' as const },
-					listeners: { onClick: handleSave },
-				},
-			];
-
-			return { args, buttons };
-		},
-		template: `
-		<div style="display: flex; justify-content: center; align-items: center; padding: 100px;">
-			<Tooltip v-bind="args" :buttons="buttons">
-				<N8nButton label="Hover for confirmation" />
-			</Tooltip>
-		</div>
-		`,
-	}),
-	args: {
-		content: 'Are you sure you want to proceed?',
-		placement: 'top',
-		justifyButtons: 'flex-end',
-	},
-} satisfies Story;
-
 export const DelayedShow = {
 	render: (args) => ({
 		components: { Tooltip, N8nButton },

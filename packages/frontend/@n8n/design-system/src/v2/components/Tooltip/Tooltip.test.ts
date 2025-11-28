@@ -274,26 +274,8 @@ describe('v2/components/Tooltip', () => {
 		});
 	});
 
-	describe('custom popper class', () => {
-		it('should apply custom popper class', async () => {
-			render(Tooltip, {
-				props: {
-					content: 'Test tooltip',
-					popperClass: 'custom-tooltip-class',
-					visible: true,
-				},
-				slots: {
-					default: '<button>Hover me</button>',
-				},
-			});
-
-			await waitFor(() => {
-				const tooltipContent = document.querySelector('.custom-tooltip-class');
-				expect(tooltipContent).toBeInTheDocument();
-			});
-		});
-
-		it('should apply default n8n-tooltip class when no popperClass provided', async () => {
+	describe('default class', () => {
+		it('should apply default n8n-tooltip class', async () => {
 			render(Tooltip, {
 				props: {
 					content: 'Test tooltip',
@@ -308,87 +290,6 @@ describe('v2/components/Tooltip', () => {
 				const tooltipContent = document.querySelector('.n8n-tooltip');
 				expect(tooltipContent).toBeInTheDocument();
 			});
-		});
-	});
-
-	describe('buttons feature', () => {
-		it('should render buttons at the bottom of tooltip', async () => {
-			const buttons = [
-				{
-					attrs: { label: 'Cancel', type: 'secondary' as const, size: 'small' as const },
-				},
-				{
-					attrs: { label: 'Save', type: 'primary' as const, size: 'small' as const },
-				},
-			];
-
-			const wrapper = render(Tooltip, {
-				props: {
-					content: 'Confirm action?',
-					buttons,
-					visible: true,
-				},
-				slots: {
-					default: '<button>Hover me</button>',
-				},
-			});
-
-			await waitFor(() => {
-				const tooltipContent = document.querySelector('[data-dismissable-layer]');
-				expect(tooltipContent).toBeInTheDocument();
-			});
-
-			const cancelButton = wrapper.getByText('Cancel');
-			const saveButton = wrapper.getByText('Save');
-
-			expect(cancelButton).toBeInTheDocument();
-			expect(saveButton).toBeInTheDocument();
-		});
-
-		it('should apply justifyButtons prop', async () => {
-			const buttons = [
-				{
-					attrs: { label: 'Button', type: 'primary' as const, size: 'small' as const },
-				},
-			];
-
-			render(Tooltip, {
-				props: {
-					content: 'Test',
-					buttons,
-					justifyButtons: 'center',
-					visible: true,
-				},
-				slots: {
-					default: '<button>Hover me</button>',
-				},
-			});
-
-			await waitFor(() => {
-				const buttonsContainer = document.querySelector('[style*="justify-content"]');
-				expect(buttonsContainer).toHaveStyle({ justifyContent: 'center' });
-			});
-		});
-
-		it('should not render buttons container when buttons array is empty', async () => {
-			render(Tooltip, {
-				props: {
-					content: 'Test tooltip',
-					buttons: [],
-					visible: true,
-				},
-				slots: {
-					default: '<button>Hover me</button>',
-				},
-			});
-
-			await waitFor(() => {
-				const tooltipContent = document.querySelector('[data-dismissable-layer]');
-				expect(tooltipContent).toBeInTheDocument();
-			});
-
-			const buttonsContainer = document.querySelector('[style*="justify-content"]');
-			expect(buttonsContainer).not.toBeInTheDocument();
 		});
 	});
 
@@ -549,28 +450,6 @@ describe('v2/components/Tooltip', () => {
 
 			await waitFor(() => {
 				expect(onUpdateVisible).toHaveBeenCalledWith(false);
-			});
-		});
-	});
-
-	describe('popperOptions', () => {
-		it('should pass popperOptions to TooltipContent', async () => {
-			render(Tooltip, {
-				props: {
-					content: 'Test tooltip',
-					visible: true,
-					popperOptions: {
-						avoidCollisions: false,
-					},
-				},
-				slots: {
-					default: '<button>Hover me</button>',
-				},
-			});
-
-			await waitFor(() => {
-				const tooltipContent = document.querySelector('[data-dismissable-layer]');
-				expect(tooltipContent).toBeInTheDocument();
 			});
 		});
 	});

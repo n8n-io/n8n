@@ -10,7 +10,6 @@ import {
 import { computed, ref, watch } from 'vue';
 
 import type { N8nTooltipProps, N8nTooltipEmits } from './Tooltip.types';
-import N8nButton from '../../../components/N8nButton';
 import { useInjectTooltipAppendTo } from '../../../composables/useTooltipAppendTo';
 
 defineOptions({
@@ -23,8 +22,6 @@ const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	enterable: true,
 	teleported: true,
 	showArrow: true,
-	justifyButtons: 'flex-end',
-	buttons: () => [],
 	offset: 6,
 });
 
@@ -101,24 +98,11 @@ const handleOpenChange = (open: boolean) => {
 					:side="placementParts.side"
 					:align="placementParts.align"
 					:side-offset="offset"
-					:class="popperClass ?? 'n8n-tooltip'"
-					v-bind="popperOptions ?? {}"
+					class="n8n-tooltip"
 				>
 					<slot name="content">
 						<div v-n8n-html="content"></div>
 					</slot>
-
-					<div
-						v-if="buttons.length"
-						:class="$style.buttons"
-						:style="{ justifyContent: justifyButtons }"
-					>
-						<N8nButton
-							v-for="(button, index) in buttons"
-							:key="button.attrs.label ?? `button-${index}`"
-							v-bind="{ ...button.attrs, ...button.listeners }"
-						/>
-					</div>
 
 					<TooltipArrow v-if="showArrow" :class="$style.arrow" />
 				</TooltipContent>
@@ -128,13 +112,6 @@ const handleOpenChange = (open: boolean) => {
 </template>
 
 <style lang="scss" module>
-.buttons {
-	display: flex;
-	align-items: center;
-	margin-top: var(--spacing--sm);
-	gap: var(--spacing--2xs);
-}
-
 .arrow {
 	fill: currentColor;
 }
