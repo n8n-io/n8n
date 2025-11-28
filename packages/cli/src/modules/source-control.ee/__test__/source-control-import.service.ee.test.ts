@@ -21,7 +21,7 @@ import fsp from 'node:fs/promises';
 
 import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 
-import { SourceControlImportService } from '../../../modules/source-control.ee/source-control-import.service.ee';
+import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportableFolder } from '../types/exportable-folders';
 import type { ExportableProject } from '../types/exportable-project';

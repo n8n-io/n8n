@@ -22,7 +22,7 @@ import {
 import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { License } from '@/license';
 
-import type { SourceControlWorkflowVersionId } from '../../../environments.ee/source-control/types/source-control-workflow-version-id';
+import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
 function createWorkflowVersion(
 	overrides: Partial<SourceControlWorkflowVersionId> = {},
