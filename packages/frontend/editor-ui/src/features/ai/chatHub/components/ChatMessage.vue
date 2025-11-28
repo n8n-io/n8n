@@ -20,16 +20,18 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 
-const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
-	message: ChatMessage;
-	compact: boolean;
-	isEditing: boolean;
-	isStreaming: boolean;
-	/**
-	 * minHeight allows scrolling agent's response to the top while it is being generated
-	 */
-	minHeight?: number;
-}>();
+const { message, compact, isEditing, isStreaming, minHeight, cachedAgentDisplayName } =
+	defineProps<{
+		message: ChatMessage;
+		compact: boolean;
+		isEditing: boolean;
+		isStreaming: boolean;
+		cachedAgentDisplayName: string | null;
+		/**
+		 * minHeight allows scrolling agent's response to the top while it is being generated
+		 */
+		minHeight?: number;
+	}>();
 
 const emit = defineEmits<{
 	startEdit: [];
@@ -60,7 +62,11 @@ const speech = useSpeechSynthesis(messageContent, {
 const agent = computed<ChatModelDto | null>(() => {
 	const model = unflattenModel(message);
 
-	return model ? chatStore.getAgent(model) : null;
+	if (!model) {
+		return null;
+	}
+
+	return chatStore.getAgent(model, cachedAgentDisplayName ?? undefined);
 });
 
 const attachments = computed(() =>
