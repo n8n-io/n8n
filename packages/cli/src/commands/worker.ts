@@ -118,7 +118,7 @@ export class Worker extends BaseCommand<z.infer<typeof flagsSchema>> {
 		await this.moduleRegistry.initModules(this.instanceSettings.instanceType);
 
 		await this.executionContextHookRegistry.init();
-		await Container.get(LoadNodesAndCredentials).init();
+		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
 	async initEventBus() {

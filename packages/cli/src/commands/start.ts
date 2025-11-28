@@ -265,7 +265,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		await this.executionContextHookRegistry.init();
-		await Container.get(LoadNodesAndCredentials).init();
+		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
 	async initOrchestration() {
