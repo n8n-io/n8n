@@ -33,7 +33,27 @@ export class N8nStructuredOutputParser extends StructuredOutputParser<
 		]);
 
 		try {
-			const jsonString = text.includes('```') ? text.split(/```(?:json)?/)[1] : text;
+			// Extract JSON from markdown code fence if present
+			// Using regex to properly match code fences, even if backticks appear in the JSON content
+			let jsonString = text.trim();
+			// Look for a code fence with proper opening and closing
+			// Use GREEDY matching ([\s\S]+) to match to the LAST occurrence of closing ```
+			// This prevents matching backticks that appear inside JSON string values
+			// The pattern matches:
+			//   - Opening: ``` or ```json followed by optional whitespace and optional newline
+			//   - Content: Any characters (greedy - matches to last ```)
+			//   - Closing: Optional newline, optional whitespace, then ```
+			// This handles both standard fences (with newlines) and inline fences (without)
+			const codeFenceMatch = jsonString.match(/```(?:json)?\s*\n?([\s\S]+)\n?\s*```/);
+			if (codeFenceMatch) {
+				// Extract the content between the fences
+				const potentialJson = codeFenceMatch[1].trim();
+				// Validate that what we extracted looks like JSON (starts with { or [)
+				// This helps avoid false positives from backticks inside JSON conten
+				if (potentialJson.startsWith('{') || potentialJson.startsWith('[')) {
+					jsonString = potentialJson;
+				}
+			}
 			const json = JSON.parse(jsonString.trim());
 			const parsed = await this.schema.parseAsync(json);
 
