@@ -67,9 +67,9 @@ import type {
 	RemoteResourceOwner,
 	StatusResourceOwner,
 	TeamResourceOwner,
-} from '../../environments.ee/source-control/types/resource-owner';
-import type { SourceControlContext } from '../../environments.ee/source-control/types/source-control-context';
-import type { SourceControlWorkflowVersionId } from '../../environments.ee/source-control/types/source-control-workflow-version-id';
+} from './types/resource-owner';
+import type { SourceControlContext } from './types/source-control-context';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
 const findOwnerProject = (
 	owner: RemoteResourceOwner,

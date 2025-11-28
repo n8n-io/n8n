@@ -24,9 +24,9 @@ import type { StatusExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProjectWithFileName } from './types/exportable-project';
 import { ExportableVariable } from './types/exportable-variable';
-import { SourceControlContext } from '../../environments.ee/source-control/types/source-control-context';
-import type { SourceControlGetStatus } from '../../environments.ee/source-control/types/source-control-get-status';
-import type { SourceControlWorkflowVersionId } from '../../environments.ee/source-control/types/source-control-workflow-version-id';
+import { SourceControlContext } from './types/source-control-context';
+import type { SourceControlGetStatus } from './types/source-control-get-status';
+import type { SourceControlWorkflowVersionId } from './types/source-control-workflow-version-id';
 
 @Service()
 export class SourceControlStatusService {

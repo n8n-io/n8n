@@ -23,7 +23,7 @@ import { SourceControlPreferencesService } from '../source-control-preferences.s
 import { SourceControlStatusService } from '../source-control-status.service.ee';
 import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { ExportableProjectWithFileName } from '../types/exportable-project';
-import type { SourceControlWorkflowVersionId } from '../../../environments.ee/source-control/types/source-control-workflow-version-id';
+import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';
 
 describe('getStatus', () => {
 	const sourceControlImportService = mock<SourceControlImportService>();

@@ -38,7 +38,7 @@ import fsp from 'node:fs/promises';
 import { SourceControlImportService } from '@/modules/source-control.ee/source-control-import.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
-import { SourceControlContext } from '@/environments.ee/source-control/types/source-control-context';
+import { SourceControlContext } from '@/modules/source-control.ee/types/source-control-context';
 import type { IWorkflowToImport } from '@/interfaces';
 import { createFolder } from '@test-integration/db/folders';
 import { assignTagToWorkflow, createTag } from '@test-integration/db/tags';
