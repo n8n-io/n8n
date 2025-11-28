@@ -195,7 +195,7 @@ const properties: INodeProperties[] = [
 				displayName: 'Code Execution',
 				name: 'codeExecution',
 				type: 'boolean',
-				default: true,
+				default: false,
 				description:
 					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
 				displayOptions: {
@@ -344,6 +344,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		options,
 		{
 			systemMessage: { type: 'string', required: false },
+			codeExecution: { type: 'boolean', required: false },
 			frequencyPenalty: { type: 'number', required: false },
 			maxOutputTokens: { type: 'number', required: false },
 			candidateCount: { type: 'number', required: false },
@@ -353,7 +354,6 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			topK: { type: 'number', required: false },
 			thinkingBudget: { type: 'number', required: false },
 			maxToolsIterations: { type: 'number', required: false },
-			codeExecution: { type: 'boolean', required: false },
 		},
 		this.getNode(),
 	);
