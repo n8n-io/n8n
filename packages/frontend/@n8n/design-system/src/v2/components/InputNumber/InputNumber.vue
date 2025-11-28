@@ -291,7 +291,7 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 }
 
 .ButtonDown {
-	border-radius: 0 0 calc(var(--radius) - 1px) 0;
+	border-radius: 0 0 calc(var(--radius) - 1px);
 }
 
 /* Size variants for stacked controls */
