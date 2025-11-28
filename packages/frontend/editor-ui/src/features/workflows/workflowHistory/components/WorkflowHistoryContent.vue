@@ -1,36 +1,33 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref, watch } from 'vue';
 import type { IWorkflowDb, UserAction } from '@/Interface';
-import type {
-	WorkflowVersion,
-	WorkflowHistoryActionTypes,
-	WorkflowVersionId,
-} from '@n8n/rest-api-client/api/workflowHistory';
+import type { WorkflowVersion } from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowPreview from '@/app/components/WorkflowPreview.vue';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nButton, N8nIcon } from '@n8n/design-system';
+import { N8nButton, N8nIcon, N8nLink, N8nText, N8nTooltip } from '@n8n/design-system';
+import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
+import { formatTimestamp } from '@/features/workflows/workflowHistory/utils';
+import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
+
 const i18n = useI18n();
 
 const props = defineProps<{
 	workflow: IWorkflowDb | null;
 	workflowVersion: WorkflowVersion | null;
 	actions: Array<UserAction<IUser>>;
+	isVersionActive?: boolean;
 	isListLoading?: boolean;
 	isFirstItemShown?: boolean;
 }>();
 
 const emit = defineEmits<{
-	action: [
-		value: {
-			action: WorkflowHistoryActionTypes[number];
-			id: WorkflowVersionId;
-			data: { formattedCreatedAt: string };
-		},
-	];
+	action: [value: WorkflowHistoryAction];
 }>();
+
+const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
 
 const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	if (!props.workflowVersion || !props.workflow) {
@@ -44,23 +41,66 @@ const workflowVersionPreview = computed<IWorkflowDb | undefined>(() => {
 	};
 });
 
-const actions = computed(() =>
-	props.isFirstItemShown
-		? props.actions.filter((action) => action.value !== 'restore')
-		: props.actions,
-);
+const formattedCreatedAt = computed<string>(() => {
+	if (!props.workflowVersion) {
+		return '';
+	}
+	const { date, time } = formatTimestamp(props.workflowVersion.createdAt);
+	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
+});
 
-const onAction = ({
-	action,
-	id,
-	data,
-}: {
-	action: WorkflowHistoryActionTypes[number];
-	id: WorkflowVersionId;
-	data: { formattedCreatedAt: string };
-}) => {
+const versionNameDisplay = computed(() => {
+	return props.workflowVersion?.name ?? formattedCreatedAt.value;
+});
+
+const MAX_DESCRIPTION_LENGTH = 200;
+const isDescriptionExpanded = ref(false);
+
+const description = computed(() => props.workflowVersion?.description ?? '');
+const isDescriptionLong = computed(() => description.value.length > MAX_DESCRIPTION_LENGTH);
+const displayDescription = computed(() => {
+	if (!isDescriptionLong.value || isDescriptionExpanded.value) {
+		return description.value;
+	}
+	return description.value.substring(0, MAX_DESCRIPTION_LENGTH) + '... ';
+});
+
+const toggleDescription = () => {
+	isDescriptionExpanded.value = !isDescriptionExpanded.value;
+};
+
+const actions = computed(() => {
+	let filteredActions = props.actions;
+
+	if (props.isFirstItemShown) {
+		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
+	}
+
+	if (isDraftPublishEnabled) {
+		if (props.isVersionActive) {
+			filteredActions = filteredActions.filter((action) => action.value !== 'publish');
+		} else {
+			filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
+		}
+	} else {
+		filteredActions = filteredActions.filter(
+			(action) => action.value !== 'publish' && action.value !== 'unpublish',
+		);
+	}
+
+	return filteredActions;
+});
+
+const onAction = ({ action, id, data }: WorkflowHistoryAction) => {
 	emit('action', { action, id, data });
 };
+
+watch(
+	() => props.workflowVersion,
+	() => {
+		isDescriptionExpanded.value = false;
+	},
+);
 </script>
 
 <template>
@@ -77,12 +117,29 @@ const onAction = ({
 				:class="$style.card"
 				:index="-1"
 				:item="props.workflowVersion"
-				:is-active="false"
+				:is-selected="false"
 				:actions="actions"
 				@action="onAction"
 			>
 				<template #default="{ formattedCreatedAt }">
-					<section :class="$style.text">
+					<div v-if="isDraftPublishEnabled" :class="$style.descriptionBox">
+						<N8nTooltip :content="versionNameDisplay" v-if="versionNameDisplay">
+							<N8nText :class="$style.mainLine" bold color="text-dark">{{
+								versionNameDisplay
+							}}</N8nText>
+						</N8nTooltip>
+						<N8nText v-if="description" size="small" color="text-base">
+							{{ displayDescription }}
+							<N8nLink v-if="isDescriptionLong" size="small" @click="toggleDescription">
+								{{
+									isDescriptionExpanded
+										? i18n.baseText('generic.showLess')
+										: i18n.baseText('generic.showMore')
+								}}
+							</N8nLink>
+						</N8nText>
+					</div>
+					<section v-else :class="$style.textOld">
 						<p>
 							<span :class="$style.label">
 								{{ i18n.baseText('workflowHistory.content.title') }}:
@@ -135,12 +192,33 @@ const onAction = ({
 	width: 100%;
 }
 
+$descriptionBoxMaxWidth: 330px;
+$descriptionBoxMinWidth: 228px;
+
 .card {
-	padding: var(--spacing--sm) var(--spacing--lg) 0 var(--spacing--xl);
+	padding: var(--spacing--sm) var(--spacing--lg) 0;
 	border: 0;
 	align-items: start;
 
-	.text {
+	.descriptionBox {
+		display: flex;
+		flex-direction: column;
+		min-width: $descriptionBoxMinWidth;
+		max-width: $descriptionBoxMaxWidth;
+		gap: var(--spacing--3xs);
+		margin-top: var(--spacing--3xs);
+		padding: var(--spacing--xs);
+		border: var(--border-width) var(--border-style) var(--color--foreground);
+		border-radius: var(--radius);
+		background-color: var(--color--background--light-3);
+
+		.mainLine {
+			@include mixins.utils-ellipsis;
+			cursor: default;
+		}
+	}
+
+	.textOld {
 		display: flex;
 		flex-direction: column;
 		flex: 1 1 auto;

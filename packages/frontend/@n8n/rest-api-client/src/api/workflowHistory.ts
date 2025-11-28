@@ -1,4 +1,4 @@
-import type { IConnections, INode } from 'n8n-workflow';
+import type { IConnections, INode, WorkflowActivateMode } from 'n8n-workflow';
 
 import type { IRestApiContext } from '../types';
 import { get } from '../utils';
@@ -8,6 +8,19 @@ export type WorkflowHistory = {
 	authors: string;
 	createdAt: string;
 	updatedAt: string;
+	workflowPublishHistory: WorkflowPublishHistory[];
+	name: string | null;
+	description: string | null;
+};
+
+export type WorkflowPublishHistory = {
+	createdAt: string;
+	id: number;
+	mode: WorkflowActivateMode | 'deactivate' | null;
+	status: 'activated' | 'deactivated';
+	userId: string | null;
+	versionId: string;
+	workflowId: string;
 };
 
 export type WorkflowVersionId = WorkflowHistory['versionId'];
@@ -18,7 +31,9 @@ export type WorkflowVersion = WorkflowHistory & {
 	connections: IConnections;
 };
 
-export type WorkflowHistoryActionTypes = ['restore', 'clone', 'open', 'download'];
+export type WorkflowHistoryActionTypes = Array<
+	'restore' | 'publish' | 'unpublish' | 'clone' | 'open' | 'download'
+>;
 
 export type WorkflowHistoryRequestParams = { take: number; skip?: number };
 
