@@ -220,6 +220,7 @@ export class WorkflowRunner {
 		) {
 			const postExecutePromise = this.activeExecutions.getPostExecutePromise(executionId);
 			postExecutePromise.catch((error) => {
+				console.log(error);
 				if (error instanceof ExecutionCancelledError) return;
 				this.errorReporter.error(error, {
 					extra: { executionId, workflowId },

@@ -12,6 +12,8 @@ import {
 	shouldRestartParentExecution,
 	updateParentExecutionWithChildResults,
 } from './workflow-helpers';
+import { setTimeout } from 'node:timers/promises';
+import { Time } from '@n8n/constants';
 
 @Service()
 export class WaitTracker {
@@ -77,7 +79,7 @@ export class WaitTracker {
 				const triggerTime = execution.waitTill!.getTime() - new Date().getTime();
 				this.waitingExecutions[executionId] = {
 					executionId,
-					timer: setTimeout(() => {
+					timer: global.setTimeout(() => {
 						void this.startExecution(executionId);
 					}, triggerTime),
 				};
@@ -104,6 +106,7 @@ export class WaitTracker {
 			includeData: true,
 			unflattenData: true,
 		});
+		await setTimeout(Math.random() * 10 * Time.seconds.toMilliseconds);
 		console.log('Execution status:', fullExecutionData?.status);
 		console.log('Has parentExecution:', !!fullExecutionData?.data?.parentExecution);
 
@@ -131,7 +134,11 @@ export class WaitTracker {
 		};
 
 		// Start the execution again
+		console.log(
+			`>>> BEFORE workflowRunner.run for execution ${executionId}, status was: ${fullExecutionData.status}`,
+		);
 		await this.workflowRunner.run(data, false, false, executionId);
+		console.log(`>>> AFTER workflowRunner.run for execution ${executionId}`);
 
 		const { parentExecution } = fullExecutionData.data;
 		if (shouldRestartParentExecution(parentExecution)) {

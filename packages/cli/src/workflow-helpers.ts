@@ -14,6 +14,8 @@ import { v4 as uuid } from 'uuid';
 
 import { VariablesService } from '@/environments.ee/variables/variables.service.ee';
 import { OwnershipService } from './services/ownership.service';
+import { setTimeout } from 'node:timers/promises';
+import { Time } from '@n8n/constants';
 
 /**
  * Returns the data of the last executed node
@@ -255,9 +257,7 @@ export async function updateParentExecutionWithChildResults(
 			return;
 		}
 
-		const parentWithSubWorkflowResults = {
-			data: { ...parent.data },
-		};
+		const parentWithSubWorkflowResults = { data: { ...parent.data } };
 
 		if (
 			!parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack ||
@@ -290,6 +290,8 @@ export async function updateParentExecutionWithChildResults(
 				2,
 			),
 		);
+
+		await setTimeout(Math.random() * 5 * Time.seconds.toMilliseconds);
 
 		await executionRepository.updateExistingExecution(
 			parentExecutionId,

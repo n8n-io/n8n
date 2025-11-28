@@ -52,6 +52,9 @@ export class ActiveExecutions {
 	 * Add a new active execution
 	 */
 	async add(executionData: IWorkflowExecutionDataProcess, executionId?: string): Promise<string> {
+		console.log(
+			`>>> ActiveExecutions.add called for executionId: ${executionId}, workflowName: ${executionData.workflowData.name}`,
+		);
 		let executionStatus: ExecutionStatus = executionId ? 'running' : 'new';
 		const mode = executionData.executionMode;
 		if (executionId === undefined) {
@@ -94,7 +97,14 @@ export class ActiveExecutions {
 				// this is resuming, so keep `startedAt` as it was
 			};
 
+			console.log(
+				`>>> ActiveExecutions.add - RESUMING execution ${executionId} - BEFORE updateExistingExecution, setting status to: ${executionStatus}`,
+			);
+			const timestamp = Date.now();
 			await this.executionRepository.updateExistingExecution(executionId, execution);
+			console.log(
+				`>>> ActiveExecutions.add - RESUMING execution ${executionId} - AFTER updateExistingExecution (took ${Date.now() - timestamp}ms)`,
+			);
 		}
 
 		const resumingExecution = this.activeExecutions[executionId];
