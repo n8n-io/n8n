@@ -11,6 +11,7 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	LOG_STREAM_MODAL_KEY,
 	MFA_SETUP_MODAL_KEY,
+	VERSIONS_MODAL_KEY,
 	NEW_ASSISTANT_SESSION_MODAL,
 	NPS_SURVEY_MODAL_KEY,
 	PROMPT_MFA_CODE_MODAL_KEY,
@@ -114,6 +115,7 @@ import NodeRecommendationModalTDQ from '@/experiments/templatesDataQuality/compo
 import VariableModal from '@/features/settings/environments.ee/components/VariableModal.vue';
 import WorkflowPublishModal from '@/app/components/MainHeader/WorkflowPublishModal.vue';
 import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/components/WorkflowHistoryPublishModal.vue';
+import UpdatesPanel from './UpdatesPanel.vue';
 </script>
 
 <template>
@@ -176,6 +178,10 @@ import WorkflowHistoryPublishModal from '@/features/workflows/workflowHistory/co
 
 		<ModalRoot :name="ANNOTATION_TAGS_MANAGER_MODAL_KEY">
 			<AnnotationTagsManager />
+		</ModalRoot>
+
+		<ModalRoot :name="VERSIONS_MODAL_KEY" :keep-alive="true">
+			<UpdatesPanel />
 		</ModalRoot>
 
 		<ModalRoot :name="NPS_SURVEY_MODAL_KEY" :keep-alive="true">
