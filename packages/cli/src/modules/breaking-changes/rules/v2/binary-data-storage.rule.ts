@@ -32,7 +32,7 @@ export class BinaryDataStorageRule implements IBreakingChangeInstanceRule {
 	}
 
 	async detect(): Promise<InstanceDetectionReport> {
-		if ((this.config.mode as string) !== 'default') {
+		if (this.config.mode !== 'default') {
 			return {
 				isAffected: false,
 				instanceIssues: [],
