@@ -58,6 +58,23 @@ export const formFields: INodeProperties = {
 			values: [
 				{
 					displayName: 'Field Name',
+					name: 'fieldName',
+					description:
+						'The name of the field, used in input attributes and referenced by the workflow',
+					required: true,
+					type: 'string',
+					default: '',
+					displayOptions: {
+						hide: {
+							fieldType: ['html'],
+						},
+						show: {
+							'@version': [{ _cnd: { gte: 2.4 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Label',
 					name: 'fieldLabel',
 					type: 'string',
 					default: '',
@@ -67,6 +84,26 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						hide: {
 							fieldType: ['hiddenField', 'html'],
+						},
+						show: {
+							'@version': [{ _cnd: { gte: 2.4 } }],
+						},
+					},
+				},
+				{
+					displayName: 'Field Name',
+					name: 'fieldLabel',
+					type: 'string',
+					default: '',
+					placeholder: 'e.g. What is your name?',
+					description: 'Label that appears above the input field',
+					required: true,
+					displayOptions: {
+						hide: {
+							fieldType: ['hiddenField', 'html'],
+						},
+						show: {
+							'@version': [{ _cnd: { lt: 2.4 } }],
 						},
 					},
 				},
@@ -80,6 +117,7 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['hiddenField'],
+							'@version': [{ _cnd: { lt: 2.4 } }],
 						},
 					},
 				},
