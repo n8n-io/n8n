@@ -189,7 +189,6 @@ export class WorkflowExecutionService {
 					}),
 					pushRef,
 					destinationNode: payload.destinationNode,
-					destinationNode,
 					workflowIsActive,
 				}))
 			) {
