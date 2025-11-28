@@ -14,4 +14,6 @@ export { default as N8nPagination2 } from './v2/components/Pagination/Pagination
 export type * from './v2/components/Pagination/Pagination.types';
 export { default as N8nInput2 } from './v2/components/Input/Input.vue';
 export type * from './v2/components/Input/Input.types';
+export { default as N8nInputNumber2 } from './v2/components/InputNumber/InputNumber.vue';
+export type * from './v2/components/InputNumber/InputNumber.types';
 export { locale };
