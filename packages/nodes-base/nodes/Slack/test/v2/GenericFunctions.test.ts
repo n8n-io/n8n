@@ -1,9 +1,10 @@
 import type { IExecuteFunctions } from 'n8n-workflow';
-import { NodeOperationError } from 'n8n-workflow';
+import { NodeOperationError, sleep } from 'n8n-workflow';
 
 import {
 	slackApiRequest,
 	slackApiRequestAllItems,
+	slackApiRequestAllItemsWithRateLimit,
 	processThreadOptions,
 	getMessageContent,
 } from '../../V2/GenericFunctions';
@@ -11,6 +12,7 @@ import {
 jest.mock('n8n-workflow', () => ({
 	...jest.requireActual('n8n-workflow'),
 	NodeApiError: jest.fn(),
+	sleep: jest.fn().mockResolvedValue(undefined),
 }));
 
 describe('Slack V2 > GenericFunctions', () => {
@@ -38,6 +40,17 @@ describe('Slack V2 > GenericFunctions', () => {
 				.mockResolvedValue(mockResponse);
 
 			await expect(slackApiRequest.call(mockExecuteFunctions, 'GET', '/test')).rejects.toThrow();
+		});
+
+		it('should not handle paid_teams_only error if simple:false', async () => {
+			const mockResponse = { ok: false, error: 'paid_teams_only' };
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValue(mockResponse);
+
+			await expect(
+				slackApiRequest.call(mockExecuteFunctions, 'GET', '/test', {}, {}, {}, { simple: false }),
+			).resolves.toEqual(mockResponse);
 		});
 
 		it('should handle missing_scope error with needed scopes', async () => {
@@ -359,6 +372,552 @@ describe('Slack V2 > GenericFunctions', () => {
 			);
 
 			expect(result).toEqual([{ text: 'test' }]);
+		});
+	});
+
+	describe('slackApiRequestAllItemsWithRateLimit', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			(sleep as jest.Mock).mockResolvedValue(undefined);
+		});
+
+		it('should paginate successfully without rate limits', async () => {
+			const responses = [
+				{
+					statusCode: 200,
+					body: {
+						ok: true,
+						channels: [{ id: 'ch1' }],
+						response_metadata: { next_cursor: 'cursor1' },
+					},
+				},
+				{
+					statusCode: 200,
+					body: {
+						ok: true,
+						channels: [{ id: 'ch2' }],
+						response_metadata: { next_cursor: '' },
+					},
+				},
+			];
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockImplementationOnce(() => responses[0])
+				.mockImplementationOnce(() => responses[1]);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+			);
+
+			expect(result.data).toEqual([{ id: 'ch1' }, { id: 'ch2' }]);
+			expect(sleep).not.toHaveBeenCalled();
+		});
+
+		it('should retry on 429 error with retry-after header', async () => {
+			const rateLimitError = {
+				statusCode: 429,
+				body: {
+					error: 'rate_limit_exceeded',
+				},
+				headers: {
+					'retry-after': '2',
+				},
+			};
+
+			const successResponse = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					channels: [{ id: 'ch1' }],
+					response_metadata: { next_cursor: '' },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValueOnce(rateLimitError)
+				.mockResolvedValueOnce(successResponse);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+			);
+
+			expect(result.data).toEqual([{ id: 'ch1' }]);
+			expect(sleep).toHaveBeenCalledTimes(1);
+			expect(sleep).toHaveBeenCalledWith(2000); // 2 seconds * 1000
+		});
+
+		it('should retry on 429 error with Retry-After header (capitalized)', async () => {
+			const rateLimitError = {
+				statusCode: 429,
+				body: {
+					error: 'rate_limit_exceeded',
+				},
+				headers: {
+					'Retry-After': '5',
+				},
+			};
+
+			const successResponse = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					channels: [{ id: 'ch1' }],
+					response_metadata: { next_cursor: '' },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValueOnce(rateLimitError)
+				.mockResolvedValueOnce(successResponse);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+			);
+
+			expect(result.data).toEqual([{ id: 'ch1' }]);
+			expect(sleep).toHaveBeenCalledWith(5000); // 5 seconds * 1000
+		});
+
+		it('should use fallbackDelay when Retry-After header is missing', async () => {
+			const rateLimitError = {
+				statusCode: 429,
+				body: {
+					error: 'rate_limit_exceeded',
+				},
+				headers: {},
+			};
+
+			const successResponse = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					channels: [{ id: 'ch1' }],
+					response_metadata: { next_cursor: '' },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValueOnce(rateLimitError)
+				.mockResolvedValueOnce(successResponse);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+				{},
+				{},
+				{ fallbackDelay: 10000 },
+			);
+
+			expect(result.data).toEqual([{ id: 'ch1' }]);
+			expect(sleep).toHaveBeenCalledWith(10000);
+		});
+
+		it('should retry multiple times on consecutive 429 errors', async () => {
+			const rateLimitError = {
+				statusCode: 429,
+				body: {
+					error: 'rate_limit_exceeded',
+				},
+				headers: {
+					'retry-after': '1',
+				},
+			};
+
+			const successResponse = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					channels: [{ id: 'ch1' }],
+					response_metadata: { next_cursor: '' },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValueOnce(rateLimitError)
+				.mockResolvedValueOnce(rateLimitError)
+				.mockResolvedValueOnce(successResponse);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+				{},
+				{},
+				{ maxRetries: 3 },
+			);
+
+			expect(result.data).toEqual([{ id: 'ch1' }]);
+			expect(sleep).toHaveBeenCalledTimes(2);
+			expect(sleep).toHaveBeenNthCalledWith(1, 1000);
+			expect(sleep).toHaveBeenNthCalledWith(2, 1000);
+		});
+
+		it('should throw error when maxRetries exceeded with onFail: throw (default)', async () => {
+			const rateLimitError = {
+				statusCode: 429,
+				headers: {
+					'retry-after': '1',
+				},
+				body: {
+					error: 'rate_limit_exceeded',
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValue(rateLimitError);
+
+			await expect(
+				slackApiRequestAllItemsWithRateLimit(
+					mockExecuteFunctions,
+					'channels',
+					'GET',
+					'conversations.list',
+					{},
+					{},
+					{ maxRetries: 2 },
+				),
+			).rejects.toThrow(/Slack error response: "rate_limit_exceeded"/);
+
+			expect(sleep).toHaveBeenCalledTimes(2); // Should retry 2 times
+		});
+
+		it('should return partial data when maxRetries exceeded with onFail: stop', async () => {
+			const rateLimitError = {
+				statusCode: 429,
+				body: {
+					error: 'rate_limit_exceeded',
+				},
+				headers: {
+					'retry-after': '1',
+				},
+			};
+
+			const firstPageResponse = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					channels: [{ id: 'ch1' }],
+					response_metadata: { next_cursor: 'cursor1' },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValue(rateLimitError)
+				.mockResolvedValueOnce(firstPageResponse);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+				{},
+				{},
+				{ maxRetries: 2, onFail: 'stop' },
+			);
+
+			expect(result.data).toEqual([{ id: 'ch1' }]);
+			expect(result.cursor).toBe('cursor1');
+			expect(sleep).toHaveBeenCalledTimes(3);
+		});
+
+		it('should return nextPage when using legacy pagination with onFail: stop', async () => {
+			const rateLimitError = {
+				statusCode: 429,
+				body: {
+					error: 'rate_limit_exceeded',
+				},
+				headers: {
+					'retry-after': '1',
+				},
+			};
+
+			const firstPageResponse = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					channels: [{ id: 'ch1' }],
+					paging: { pages: 3, page: 1 },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValue(rateLimitError)
+				.mockResolvedValueOnce(firstPageResponse);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+				{},
+				{},
+				{ maxRetries: 1, onFail: 'stop' },
+			);
+
+			expect(result.data).toEqual([{ id: 'ch1' }]);
+			// Returns the page from the last successful response (responseData.paging.page)
+			expect(result.page).toBe('1');
+		});
+
+		it('should return nextPage from property paging when using onFail: stop', async () => {
+			const rateLimitError = {
+				statusCode: 429,
+				body: {
+					error: 'rate_limit_exceeded',
+				},
+				headers: {
+					'retry-after': '1',
+				},
+			};
+
+			const firstPageResponse = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					messages: {
+						matches: [{ text: 'msg1' }],
+					},
+					paging: { pages: 2, page: 1 },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValue(rateLimitError)
+				.mockResolvedValueOnce(firstPageResponse);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'messages',
+				'GET',
+				'search.messages',
+				{},
+				{},
+				{ maxRetries: 1, onFail: 'stop' },
+			);
+
+			expect(result.data).toEqual([{ text: 'msg1' }]);
+			// Returns the page from the last successful response (responseData[propertyName].paging.page)
+			expect(result.page).toBe('1');
+		});
+
+		it('should handle rate limit in middle of pagination', async () => {
+			const rateLimitError = {
+				statusCode: 429,
+				body: {
+					error: 'rate_limit_exceeded',
+				},
+				headers: {
+					'retry-after': '1',
+				},
+			};
+
+			const responses = [
+				{
+					statusCode: 200,
+					body: {
+						ok: true,
+						channels: [{ id: 'ch1' }],
+						response_metadata: { next_cursor: 'cursor1' },
+					},
+				},
+				rateLimitError,
+				{
+					statusCode: 200,
+					body: {
+						ok: true,
+						channels: [{ id: 'ch2' }],
+						response_metadata: { next_cursor: '' },
+					},
+				},
+			];
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockImplementationOnce(() => responses[0])
+				.mockResolvedValueOnce(responses[1])
+				.mockImplementationOnce(() => responses[2]);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+			);
+
+			expect(result.data).toEqual([{ id: 'ch1' }, { id: 'ch2' }]);
+			expect(sleep).toHaveBeenCalledTimes(1);
+		});
+
+		it('should handle non-429 errors by throwing immediately', async () => {
+			const otherError = {
+				statusCode: 500,
+				body: {
+					error: 'Internal Server Error',
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValue(otherError);
+
+			await expect(
+				slackApiRequestAllItemsWithRateLimit(
+					mockExecuteFunctions,
+					'channels',
+					'GET',
+					'conversations.list',
+				),
+			).rejects.toThrow(/Slack error response: "Internal Server Error"/);
+
+			expect(sleep).not.toHaveBeenCalled();
+		});
+
+		it('should use files.list endpoint with count parameter', async () => {
+			const response = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					files: [{ id: 'file1' }],
+					response_metadata: { next_cursor: '' },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValue(response);
+
+			await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'files',
+				'GET',
+				'files.list',
+			);
+
+			expect(mockExecuteFunctions.helpers.requestWithAuthentication).toHaveBeenCalledWith(
+				'slackApi',
+				expect.objectContaining({
+					qs: expect.objectContaining({
+						count: 100,
+					}),
+				}),
+				expect.any(Object),
+			);
+		});
+
+		it('should handle pagination with paging info', async () => {
+			const responses = [
+				{
+					statusCode: 200,
+					body: {
+						ok: true,
+						channels: [{ id: 'ch1' }],
+						paging: { pages: 2, page: 1 },
+					},
+				},
+				{
+					statusCode: 200,
+					body: {
+						ok: true,
+						channels: [{ id: 'ch2' }],
+						paging: { pages: 2, page: 2 },
+					},
+				},
+			];
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockImplementationOnce(() => responses[0])
+				.mockImplementationOnce(() => responses[1]);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+			);
+
+			expect(result.data).toEqual([{ id: 'ch1' }, { id: 'ch2' }]);
+		});
+
+		it('should handle matches in response', async () => {
+			const response = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					messages: {
+						matches: [{ text: 'test' }],
+					},
+					response_metadata: { next_cursor: '' },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValue(response);
+
+			const result = await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'messages',
+				'GET',
+				'search.messages',
+			);
+
+			expect(result.data).toEqual([{ text: 'test' }]);
+		});
+
+		it('should use default options when not provided', async () => {
+			const rateLimitError = {
+				statusCode: 429,
+				body: {
+					error: 'rate_limit_exceeded',
+				},
+				headers: {},
+			};
+
+			const successResponse = {
+				statusCode: 200,
+				body: {
+					ok: true,
+					channels: [{ id: 'ch1' }],
+					response_metadata: { next_cursor: '' },
+				},
+			};
+
+			mockExecuteFunctions.helpers.requestWithAuthentication = jest
+				.fn()
+				.mockResolvedValueOnce(rateLimitError)
+				.mockResolvedValueOnce(successResponse);
+
+			await slackApiRequestAllItemsWithRateLimit(
+				mockExecuteFunctions,
+				'channels',
+				'GET',
+				'conversations.list',
+			);
+
+			// Should use default fallbackDelay of 30000
+			expect(sleep).toHaveBeenCalledWith(30000);
 		});
 	});
 
