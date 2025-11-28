@@ -21,7 +21,7 @@ import { captor, mock } from 'jest-mock-extended';
 import { Cipher, type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
-import type { VariablesService } from '../../variables/variables.service.ee';
+import type { VariablesService } from '../../../environments.ee/variables/variables.service.ee';
 import { SourceControlExportService } from '../source-control-export.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import { SourceControlContext } from '../types/source-control-context';

@@ -30,6 +30,7 @@ describe('eligibleModules', () => {
 			'mcp',
 			'provisioning',
 			'breaking-changes',
+			'source-control',
 		]);
 	});
 
@@ -43,6 +44,7 @@ describe('eligibleModules', () => {
 			'mcp',
 			'provisioning',
 			'breaking-changes',
+			'source-control',
 		]);
 	});
 

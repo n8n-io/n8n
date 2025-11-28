@@ -41,7 +41,7 @@ import {
 	stringContainsExpression,
 } from './source-control-helper.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
-import { VariablesService } from '../variables/variables.service.ee';
+import { VariablesService } from '../../environments.ee/variables/variables.service.ee';
 import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import { ExportableProject } from './types/exportable-project';
