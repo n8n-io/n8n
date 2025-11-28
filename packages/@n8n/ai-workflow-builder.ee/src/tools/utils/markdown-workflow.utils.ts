@@ -1,5 +1,3 @@
-import type { INodeParameters } from 'n8n-workflow';
-
 import { MAX_NODE_EXAMPLE_CHARS } from '@/constants';
 import type { NodeConfigurationsMap, WorkflowMetadata } from '@/types';
 
@@ -40,46 +38,92 @@ interface BuildMermaidResult {
 	nodeConfigurations: NodeConfigurationsMap;
 }
 
-/**
- * Build a Mermaid flowchart from workflow nodes and connections
- * Optionally collects node configurations while processing
- */
-function buildMermaidLines(
-	nodes: WorkflowMetadata['workflow']['nodes'],
-	connections: WorkflowMetadata['workflow']['connections'],
-	options: Required<MermaidOptions> = DEFAULT_MERMAID_OPTIONS,
-	existingConfigurations?: NodeConfigurationsMap,
-): BuildMermaidResult {
-	const lines: string[] = ['```mermaid', 'flowchart TD'];
-	const regularNodes = nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote');
-	const nodeConfigurations: NodeConfigurationsMap = existingConfigurations ?? {};
+type WorkflowNode = WorkflowMetadata['workflow']['nodes'][number];
+type WorkflowConnections = WorkflowMetadata['workflow']['connections'];
 
-	// Create node ID mapping (n1, n2, n3...)
+/**
+ * Create a mapping of node names to short IDs (n1, n2, n3...)
+ */
+function createNodeIdMap(nodes: WorkflowNode[]): Map<string, string> {
 	const nodeIdMap = new Map<string, string>();
-	regularNodes.forEach((node, idx) => {
+	nodes.forEach((node, idx) => {
 		nodeIdMap.set(node.name, `n${idx + 1}`);
 	});
+	return nodeIdMap;
+}
 
+/**
+ * Find all nodes that have incoming main connections
+ */
+function findNodesWithIncomingConnections(connections: WorkflowConnections): Set<string> {
+	const nodesWithIncoming = new Set<string>();
+	Object.values(connections)
+		.filter((conn) => conn.main)
+		.forEach((sourceConnections) => {
+			for (const connArray of sourceConnections.main) {
+				if (!connArray) {
+					continue;
+				}
+				for (const conn of connArray) {
+					nodesWithIncoming.add(conn.node);
+				}
+			}
+		});
+	return nodesWithIncoming;
+}
+
+/**
+ * Format a connection line for mermaid output
+ */
+function formatConnectionLine(sourceId: string, targetId: string, connType: string): string {
+	return connType === 'main'
+		? `    ${sourceId} --> ${targetId}`
+		: `    ${sourceId} -.${connType}.-> ${targetId}`;
+}
+
+/**
+ * Extract all connection lines from a node's connections
+ */
+function extractNodeConnectionLines(
+	nodeConns: WorkflowConnections[string],
+	sourceId: string,
+	nodeIdMap: Map<string, string>,
+): string[] {
+	return Object.entries(nodeConns).flatMap(([connType, connList]) =>
+		connList
+			.filter((connArray): connArray is NonNullable<typeof connArray> => connArray !== null)
+			.flatMap((connArray) =>
+				connArray
+					.map((conn) => {
+						const targetId = nodeIdMap.get(conn.node);
+						return targetId ? formatConnectionLine(sourceId, targetId, connType) : null;
+					})
+					.filter((line): line is string => line !== null),
+			),
+	);
+}
+
+/**
+ * Get all target node names from main connections
+ */
+function getMainConnectionTargets(nodeConns: WorkflowConnections[string]): string[] {
+	if (!nodeConns.main) return [];
+	return nodeConns.main
+		.filter((connArray): connArray is NonNullable<typeof connArray> => connArray !== null)
+		.flatMap((connArray) => connArray.map((conn) => conn.node));
+}
+
+/**
+ * Build connection lines by traversing the workflow graph
+ */
+function buildConnectionLines(
+	connections: WorkflowConnections,
+	nodeIdMap: Map<string, string>,
+	startNodes: WorkflowNode[],
+): string[] {
 	const visited = new Set<string>();
 	const outputConnections: string[] = [];
 
-	// Find start nodes (no incoming main connections)
-	const nodesWithIncoming = new Set<string>();
-	for (const sourceConns of Object.values(connections)) {
-		if (sourceConns.main) {
-			for (const connArray of sourceConns.main) {
-				if (connArray) {
-					for (const conn of connArray) {
-						nodesWithIncoming.add(conn.node);
-					}
-				}
-			}
-		}
-	}
-
-	const startNodes = regularNodes.filter((n) => !nodesWithIncoming.has(n.name));
-
-	// Traverse from each start node, outputting connections in order
 	function traverse(nodeName: string) {
 		if (visited.has(nodeName)) return;
 		visited.add(nodeName);
@@ -90,86 +134,102 @@ function buildMermaidLines(
 		const sourceId = nodeIdMap.get(nodeName);
 		if (!sourceId) return;
 
-		// Output all connections from this node
-		for (const [connType, connList] of Object.entries(nodeConns)) {
-			for (const connArray of connList) {
-				if (connArray) {
-					for (const conn of connArray) {
-						const targetId = nodeIdMap.get(conn.node);
-						if (!targetId) continue;
-
-						if (connType === 'main') {
-							outputConnections.push(`    ${sourceId} --> ${targetId}`);
-						} else {
-							// AI connections use dotted lines with labels
-							outputConnections.push(`    ${sourceId} -.${connType}.-> ${targetId}`);
-						}
-					}
-				}
-			}
-		}
-
-		// Recurse to connected nodes (main connections first)
-		if (nodeConns.main) {
-			for (const connArray of nodeConns.main) {
-				if (connArray) {
-					for (const conn of connArray) {
-						traverse(conn.node);
-					}
-				}
-			}
-		}
+		outputConnections.push(...extractNodeConnectionLines(nodeConns, sourceId, nodeIdMap));
+		getMainConnectionTargets(nodeConns).forEach((target) => traverse(target));
 	}
 
-	for (const startNode of startNodes) {
-		traverse(startNode.name);
-	}
+	startNodes.forEach((node) => traverse(node.name));
+	return outputConnections;
+}
 
-	// Add node definitions with optional type/params as comments
-	for (const node of regularNodes) {
+/**
+ * Collect node configuration if it meets size requirements
+ */
+function maybeCollectNodeConfiguration(
+	node: WorkflowNode,
+	nodeConfigurations: NodeConfigurationsMap,
+): void {
+	const hasParams = Object.keys(node.parameters).length > 0;
+	if (!hasParams) return;
+
+	const parametersStr = JSON.stringify(node.parameters);
+	if (parametersStr.length <= MAX_NODE_EXAMPLE_CHARS) {
+		if (!nodeConfigurations[node.type]) {
+			nodeConfigurations[node.type] = [];
+		}
+		nodeConfigurations[node.type].push({
+			version: node.typeVersion,
+			parameters: node.parameters,
+		});
+	}
+}
+
+/**
+ * Build node definition lines (comments and node declarations)
+ */
+function buildNodeDefinitionLines(
+	nodes: WorkflowNode[],
+	nodeIdMap: Map<string, string>,
+	options: Required<MermaidOptions>,
+	nodeConfigurations: NodeConfigurationsMap,
+): string[] {
+	const lines: string[] = [];
+
+	for (const node of nodes) {
 		const id = nodeIdMap.get(node.name);
-		if (id) {
-			const hasParams = Object.keys(node.parameters).length > 0;
+		if (!id) continue;
 
-			// Collect node configurations if enabled (with version info)
-			// Skip examples that exceed the character limit
-			if (options.collectNodeConfigurations && hasParams) {
-				const parametersStr = JSON.stringify(node.parameters);
-				if (parametersStr.length <= MAX_NODE_EXAMPLE_CHARS) {
-					if (!nodeConfigurations[node.type]) {
-						nodeConfigurations[node.type] = [];
-					}
-					nodeConfigurations[node.type].push({
-						version: node.typeVersion,
-						parameters: node.parameters as INodeParameters,
-					});
-				}
+		const hasParams = Object.keys(node.parameters).length > 0;
+
+		if (options.collectNodeConfigurations) {
+			maybeCollectNodeConfiguration(node, nodeConfigurations);
+		}
+
+		if (options.includeNodeType || options.includeNodeParameters) {
+			const typePart = options.includeNodeType ? node.type : '';
+			const paramsPart =
+				options.includeNodeParameters && hasParams ? ` | ${JSON.stringify(node.parameters)}` : '';
+
+			if (typePart || paramsPart) {
+				lines.push(`    %% ${typePart}${paramsPart}`);
 			}
+		}
 
-			// Build comment line if type or parameters are included
-			if (options.includeNodeType || options.includeNodeParameters) {
-				const typePart = options.includeNodeType ? node.type : '';
-				const paramsPart =
-					options.includeNodeParameters && hasParams ? ` | ${JSON.stringify(node.parameters)}` : '';
-
-				// Only add comment if there's content
-				if (typePart || paramsPart) {
-					lines.push(`    %% ${typePart}${paramsPart}`);
-				}
-			}
-
-			// Build node definition with optional name
-			if (options.includeNodeName) {
-				lines.push(`    ${id}["${node.name.replace(/"/g, "'")}"]`);
-			} else {
-				lines.push(`    ${id}`);
-			}
+		if (options.includeNodeName) {
+			lines.push(`    ${id}["${node.name.replace(/"/g, "'")}"]`);
+		} else {
+			lines.push(`    ${id}`);
 		}
 	}
 
-	// Add connections
-	lines.push(...outputConnections);
-	lines.push('```');
+	return lines;
+}
+
+/**
+ * Build a Mermaid flowchart from workflow nodes and connections
+ */
+function buildMermaidLines(
+	nodes: WorkflowMetadata['workflow']['nodes'],
+	connections: WorkflowConnections,
+	options: Required<MermaidOptions> = DEFAULT_MERMAID_OPTIONS,
+	existingConfigurations?: NodeConfigurationsMap,
+): BuildMermaidResult {
+	const regularNodes = nodes.filter((n) => n.type !== 'n8n-nodes-base.stickyNote');
+	const nodeConfigurations: NodeConfigurationsMap = existingConfigurations ?? {};
+
+	const nodeIdMap = createNodeIdMap(regularNodes);
+	const nodesWithIncoming = findNodesWithIncomingConnections(connections);
+	const startNodes = regularNodes.filter((n) => !nodesWithIncoming.has(n.name));
+
+	const connectionLines = buildConnectionLines(connections, nodeIdMap, startNodes);
+	const nodeDefinitionLines = buildNodeDefinitionLines(
+		regularNodes,
+		nodeIdMap,
+		options,
+		nodeConfigurations,
+	);
+
+	const lines = ['```mermaid', 'flowchart TD', ...nodeDefinitionLines, ...connectionLines, '```'];
 
 	return { lines, nodeConfigurations };
 }
