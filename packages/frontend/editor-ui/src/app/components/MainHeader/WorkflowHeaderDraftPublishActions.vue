@@ -111,8 +111,7 @@ defineExpose({
 		<div v-if="!isArchived" :class="$style.publishButtonWrapper">
 			<N8nButton
 				type="secondary"
-				:disabled="readOnly"
-				data-test-id="workflow-publish-button"
+				data-test-id="workflow-open-publish-modal-button"
 				@click="onPublishButtonClick"
 			>
 				{{ locale.baseText('workflows.publish') }}
