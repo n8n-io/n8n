@@ -26,7 +26,7 @@ import { workflowNameChain } from './chains/workflow-name';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
 import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
-import { mainAgentPrompt } from './tools/prompts/main-agent.prompt';
+import { createMainAgentPrompt } from './tools/prompts/main-agent.prompt';
 import type { SimpleWorkflow } from './types/workflow';
 import {
 	applyCacheControlMarkers,
@@ -144,6 +144,10 @@ export interface ExpressionValue {
 	nodeType?: string;
 }
 
+export interface BuilderFeatureFlags {
+	templateExamples?: boolean;
+}
+
 export interface ChatPayload {
 	message: string;
 	workflowContext?: {
@@ -152,6 +156,7 @@ export interface ChatPayload {
 		executionData?: IRunExecutionData['resultData'];
 		expressionValues?: Record<string, ExpressionValue[]>;
 	};
+	featureFlags?: BuilderFeatureFlags;
 }
 
 export class WorkflowBuilderAgent {
@@ -178,23 +183,29 @@ export class WorkflowBuilderAgent {
 		this.onGenerationSuccess = config.onGenerationSuccess;
 	}
 
-	private getBuilderTools(): BuilderTool[] {
+	private getBuilderTools(featureFlags?: BuilderFeatureFlags): BuilderTool[] {
 		return getBuilderTools({
 			parsedNodeTypes: this.parsedNodeTypes,
 			instanceUrl: this.instanceUrl,
 			llmComplexTask: this.llmComplexTask,
 			logger: this.logger,
+			featureFlags,
 		});
 	}
 
-	private createWorkflow() {
-		const builderTools = this.getBuilderTools();
+	private createWorkflow(featureFlags?: BuilderFeatureFlags) {
+		const builderTools = this.getBuilderTools(featureFlags);
 
 		// Extract just the tools for LLM binding
 		const tools = builderTools.map((bt) => bt.tool);
 
 		// Create a map for quick tool lookup
 		const toolMap = new Map(tools.map((tool) => [tool.name, tool]));
+
+		// Create the prompt with feature flag options
+		const mainAgentPrompt = createMainAgentPrompt({
+			includeExamplesPhase: featureFlags?.templateExamples === true,
+		});
 
 		const callModel = async (state: typeof WorkflowState.State) => {
 			if (!this.llmSimpleTask) {
@@ -441,7 +452,9 @@ export class WorkflowBuilderAgent {
 	}
 
 	private setupAgentAndConfigs(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
-		const agent = this.createWorkflow().compile({ checkpointer: this.checkpointer });
+		const agent = this.createWorkflow(payload.featureFlags).compile({
+			checkpointer: this.checkpointer,
+		});
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user

@@ -1,5 +1,6 @@
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
+import { usePostHog } from '@/app/stores/posthog.store';
 import type { IRunExecutionData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 
@@ -17,6 +18,7 @@ export function createBuilderPayload(
 	} = {},
 ): ChatRequest.UserChatMessage {
 	const assistantHelpers = useAIAssistantHelpers();
+	const posthogStore = usePostHog();
 	const workflowContext: ChatRequest.WorkflowContext = {};
 
 	if (options.workflow) {
@@ -48,12 +50,18 @@ export function createBuilderPayload(
 		);
 	}
 
+	// Get feature flags from Posthog
+	const featureFlags: ChatRequest.BuilderFeatureFlags = {
+		templateExamples: posthogStore.isFeatureEnabled('ai_builder_template_examples'),
+	};
+
 	return {
 		role: 'user',
 		type: 'message',
 		text,
 		quickReplyType: options.quickReplyType,
 		workflowContext,
+		featureFlags,
 	};
 }
 
