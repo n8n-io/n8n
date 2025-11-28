@@ -21,6 +21,7 @@ describe('GoogleGemini Node', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+		executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 1 } as INode);
 	});
 
 	describe('Text -> Message', () => {
@@ -35,13 +36,10 @@ describe('GoogleGemini Node', () => {
 						return true;
 					case 'jsonOutput':
 						return true;
-					case 'builtInTools':
-						return {
-							codeExecution: true,
-						};
 					case 'options':
 						return {
 							systemMessage: 'You are a helpful assistant.',
+							codeExecution: true,
 							frequencyPenalty: 0,
 							maxOutputTokens: 100,
 							candidateCount: 1,
@@ -184,495 +182,553 @@ describe('GoogleGemini Node', () => {
 			);
 		});
 
-		it('should include Google Search tool when enabled', async () => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
-				switch (parameter) {
-					case 'modelId':
-						return 'models/gemini-2.5-flash';
-					case 'messages.values':
-						return [{ role: 'user', content: 'What is the weather today?' }];
-					case 'simplify':
-						return true;
-					case 'jsonOutput':
-						return false;
-					case 'builtInTools':
-						return {
-							googleSearch: true,
-						};
-					case 'options':
-						return {};
-					default:
-						return undefined;
-				}
-			});
-			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
-			apiRequestMock.mockResolvedValue({
-				candidates: [
-					{
-						content: {
-							parts: [{ text: 'The weather is sunny.' }],
-							role: 'model',
-						},
-					},
-				],
-			});
-
-			await text.message.execute.call(executeFunctionsMock, 0);
-
-			expect(apiRequestMock).toHaveBeenCalledWith(
-				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
-				expect.objectContaining({
-					body: expect.objectContaining({
-						tools: expect.arrayContaining([
-							{
-								googleSearch: {},
+		describe('Version 1.0', () => {
+			it('should use codeExecution from options for version 1.0', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Hello, world!' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {};
+						case 'options':
+							return {
+								codeExecution: true,
+							};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [{ text: 'Hello, world!' }],
+								role: 'model',
 							},
-						]),
+						},
+					],
+				});
+
+				await text.message.execute.call(executeFunctionsMock, 0);
+
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([
+								{
+									codeExecution: {},
+								},
+							]),
+						}),
 					}),
-				}),
-			);
+				);
+			});
 		});
 
-		it('should include Google Maps tool when enabled', async () => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
-				switch (parameter) {
-					case 'modelId':
-						return 'models/gemini-2.5-flash';
-					case 'messages.values':
-						return [{ role: 'user', content: 'Find restaurants near me' }];
-					case 'simplify':
-						return true;
-					case 'jsonOutput':
-						return false;
-					case 'builtInTools':
-						return {
-							googleMaps: {},
-						};
-					case 'options':
-						return {};
-					default:
-						return undefined;
-				}
-			});
-			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
-			apiRequestMock.mockResolvedValue({
-				candidates: [
-					{
-						content: {
-							parts: [{ text: 'Here are some restaurants.' }],
-							role: 'model',
-						},
-					},
-				],
+		describe('Version 1.1', () => {
+			beforeEach(() => {
+				executeFunctionsMock.getNode.mockReturnValue({ typeVersion: 1.1 } as INode);
 			});
 
-			await text.message.execute.call(executeFunctionsMock, 0);
-
-			expect(apiRequestMock).toHaveBeenCalledWith(
-				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
-				expect.objectContaining({
-					body: expect.objectContaining({
-						tools: expect.arrayContaining([
-							{
-								googleMaps: {},
+			it('should include Google Search tool when enabled', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'What is the weather today?' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {
+								googleSearch: true,
+							};
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [{ text: 'The weather is sunny.' }],
+								role: 'model',
 							},
-						]),
+						},
+					],
+				});
+
+				await text.message.execute.call(executeFunctionsMock, 0);
+
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([
+								{
+									googleSearch: {},
+								},
+							]),
+						}),
 					}),
-				}),
-			);
-		});
-
-		it('should include toolConfig with latLng when Google Maps has coordinates', async () => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
-				switch (parameter) {
-					case 'modelId':
-						return 'models/gemini-2.5-flash';
-					case 'messages.values':
-						return [{ role: 'user', content: 'Find restaurants near me' }];
-					case 'simplify':
-						return true;
-					case 'jsonOutput':
-						return false;
-					case 'builtInTools':
-						return {
-							googleMaps: {
-								latitude: 34.050481,
-								longitude: -118.248526,
-							},
-						};
-					case 'options':
-						return {};
-					default:
-						return undefined;
-				}
-			});
-			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
-			apiRequestMock.mockResolvedValue({
-				candidates: [
-					{
-						content: {
-							parts: [{ text: 'Here are some restaurants.' }],
-							role: 'model',
-						},
-					},
-				],
+				);
 			});
 
-			await text.message.execute.call(executeFunctionsMock, 0);
-
-			expect(apiRequestMock).toHaveBeenCalledWith(
-				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
-				expect.objectContaining({
-					body: expect.objectContaining({
-						tools: expect.arrayContaining([
-							{
+			it('should include Google Maps tool when enabled', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Find restaurants near me' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {
 								googleMaps: {},
+							};
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [{ text: 'Here are some restaurants.' }],
+								role: 'model',
 							},
-						]),
-						toolConfig: {
-							retrievalConfig: {
-								latLng: {
+						},
+					],
+				});
+
+				await text.message.execute.call(executeFunctionsMock, 0);
+
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([
+								{
+									googleMaps: {},
+								},
+							]),
+						}),
+					}),
+				);
+			});
+
+			it('should include toolConfig with latLng when Google Maps has coordinates', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Find restaurants near me' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {
+								googleMaps: {
 									latitude: 34.050481,
 									longitude: -118.248526,
 								},
+							};
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [{ text: 'Here are some restaurants.' }],
+								role: 'model',
 							},
 						},
-					}),
-				}),
-			);
-		});
+					],
+				});
 
-		it('should include URL Context tool when enabled', async () => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
-				switch (parameter) {
-					case 'modelId':
-						return 'models/gemini-2.5-flash';
-					case 'messages.values':
-						return [{ role: 'user', content: 'Summarize this URL' }];
-					case 'simplify':
-						return true;
-					case 'jsonOutput':
-						return false;
-					case 'builtInTools':
-						return {
-							urlContext: true,
-						};
-					case 'options':
-						return {};
-					default:
-						return undefined;
-				}
-			});
-			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
-			apiRequestMock.mockResolvedValue({
-				candidates: [
-					{
-						content: {
-							parts: [{ text: 'URL summary.' }],
-							role: 'model',
-						},
-					},
-				],
-			});
+				await text.message.execute.call(executeFunctionsMock, 0);
 
-			await text.message.execute.call(executeFunctionsMock, 0);
-
-			expect(apiRequestMock).toHaveBeenCalledWith(
-				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
-				expect.objectContaining({
-					body: expect.objectContaining({
-						tools: expect.arrayContaining([
-							{
-								urlContext: {},
-							},
-						]),
-					}),
-				}),
-			);
-		});
-
-		it('should include File Search tool with fileSearchStoreNames when enabled', async () => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
-				switch (parameter) {
-					case 'modelId':
-						return 'models/gemini-2.5-flash';
-					case 'messages.values':
-						return [{ role: 'user', content: 'Search my files' }];
-					case 'simplify':
-						return true;
-					case 'jsonOutput':
-						return false;
-					case 'builtInTools':
-						return {
-							fileSearch: {
-								fileSearchStoreNames: '["store1", "store2"]',
-							},
-						};
-					case 'options':
-						return {};
-					default:
-						return undefined;
-				}
-			});
-			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
-			apiRequestMock.mockResolvedValue({
-				candidates: [
-					{
-						content: {
-							parts: [{ text: 'File search results.' }],
-							role: 'model',
-						},
-					},
-				],
-			});
-
-			await text.message.execute.call(executeFunctionsMock, 0);
-
-			expect(apiRequestMock).toHaveBeenCalledWith(
-				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
-				expect.objectContaining({
-					body: expect.objectContaining({
-						tools: expect.arrayContaining([
-							{
-								fileSearch: {
-									fileSearchStoreNames: ['store1', 'store2'],
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([
+								{
+									googleMaps: {},
+								},
+							]),
+							toolConfig: {
+								retrievalConfig: {
+									latLng: {
+										latitude: 34.050481,
+										longitude: -118.248526,
+									},
 								},
 							},
-						]),
+						}),
 					}),
-				}),
-			);
-		});
+				);
+			});
 
-		it('should include File Search tool with metadataFilter when provided', async () => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
-				switch (parameter) {
-					case 'modelId':
-						return 'models/gemini-2.5-flash';
-					case 'messages.values':
-						return [{ role: 'user', content: 'Tell me about the book' }];
-					case 'simplify':
-						return true;
-					case 'jsonOutput':
-						return false;
-					case 'builtInTools':
-						return {
-							fileSearch: {
-								fileSearchStoreNames: '["store1"]',
-								metadataFilter: 'author="Robert Graves"',
+			it('should include URL Context tool when enabled', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Summarize this URL' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {
+								urlContext: true,
+							};
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [{ text: 'URL summary.' }],
+								role: 'model',
 							},
-						};
-					case 'options':
-						return {};
-					default:
-						return undefined;
-				}
-			});
-			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
-			apiRequestMock.mockResolvedValue({
-				candidates: [
-					{
-						content: {
-							parts: [{ text: 'Book information.' }],
-							role: 'model',
 						},
-					},
-				],
+					],
+				});
+
+				await text.message.execute.call(executeFunctionsMock, 0);
+
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([
+								{
+									urlContext: {},
+								},
+							]),
+						}),
+					}),
+				);
 			});
 
-			await text.message.execute.call(executeFunctionsMock, 0);
-
-			expect(apiRequestMock).toHaveBeenCalledWith(
-				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
-				expect.objectContaining({
-					body: expect.objectContaining({
-						tools: expect.arrayContaining([
-							{
+			it('should include File Search tool with fileSearchStoreNames when enabled', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Search my files' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {
 								fileSearch: {
-									fileSearchStoreNames: ['store1'],
+									fileSearchStoreNames: '["store1", "store2"]',
+								},
+							};
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [{ text: 'File search results.' }],
+								role: 'model',
+							},
+						},
+					],
+				});
+
+				await text.message.execute.call(executeFunctionsMock, 0);
+
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([
+								{
+									fileSearch: {
+										fileSearchStoreNames: ['store1', 'store2'],
+									},
+								},
+							]),
+						}),
+					}),
+				);
+			});
+
+			it('should include File Search tool with metadataFilter when provided', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Tell me about the book' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {
+								fileSearch: {
+									fileSearchStoreNames: '["store1"]',
 									metadataFilter: 'author="Robert Graves"',
 								},
+							};
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [{ text: 'Book information.' }],
+								role: 'model',
 							},
-						]),
-					}),
-				}),
-			);
-		});
-
-		it('should include Code Execution tool when enabled', async () => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
-				switch (parameter) {
-					case 'modelId':
-						return 'models/gemini-2.5-flash';
-					case 'messages.values':
-						return [{ role: 'user', content: 'Calculate 2+2' }];
-					case 'simplify':
-						return true;
-					case 'jsonOutput':
-						return false;
-					case 'builtInTools':
-						return {
-							codeExecution: true,
-						};
-					case 'options':
-						return {};
-					default:
-						return undefined;
-				}
-			});
-			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
-			apiRequestMock.mockResolvedValue({
-				candidates: [
-					{
-						content: {
-							parts: [{ text: 'The result is 4.' }],
-							role: 'model',
 						},
-					},
-				],
-			});
+					],
+				});
 
-			await text.message.execute.call(executeFunctionsMock, 0);
+				await text.message.execute.call(executeFunctionsMock, 0);
 
-			expect(apiRequestMock).toHaveBeenCalledWith(
-				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
-				expect.objectContaining({
-					body: expect.objectContaining({
-						tools: expect.arrayContaining([
-							{
-								codeExecution: {},
-							},
-						]),
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([
+								{
+									fileSearch: {
+										fileSearchStoreNames: ['store1'],
+										metadataFilter: 'author="Robert Graves"',
+									},
+								},
+							]),
+						}),
 					}),
-				}),
-			);
-		});
-
-		it('should include multiple built-in tools when enabled', async () => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
-				switch (parameter) {
-					case 'modelId':
-						return 'models/gemini-2.5-flash';
-					case 'messages.values':
-						return [{ role: 'user', content: 'Complex query' }];
-					case 'simplify':
-						return true;
-					case 'jsonOutput':
-						return false;
-					case 'builtInTools':
-						return {
-							googleSearch: true,
-							urlContext: true,
-							codeExecution: true,
-						};
-					case 'options':
-						return {};
-					default:
-						return undefined;
-				}
+				);
 			});
-			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
-			apiRequestMock.mockResolvedValue({
-				candidates: [
-					{
-						content: {
-							parts: [{ text: 'Response with multiple tools.' }],
-							role: 'model',
+
+			it('should include Code Execution tool when enabled', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Calculate 2+2' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {
+								codeExecution: true,
+							};
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [{ text: 'The result is 4.' }],
+								role: 'model',
+							},
 						},
-					},
-				],
-			});
+					],
+				});
 
-			await text.message.execute.call(executeFunctionsMock, 0);
+				await text.message.execute.call(executeFunctionsMock, 0);
 
-			expect(apiRequestMock).toHaveBeenCalledWith(
-				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
-				expect.objectContaining({
-					body: expect.objectContaining({
-						tools: expect.arrayContaining([
-							{
-								googleSearch: {},
-							},
-							{
-								urlContext: {},
-							},
-							{
-								codeExecution: {},
-							},
-						]),
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([
+								{
+									codeExecution: {},
+								},
+							]),
+						}),
 					}),
-				}),
-			);
-		});
-
-		it('should not include toolConfig when Google Maps coordinates are empty', async () => {
-			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
-				switch (parameter) {
-					case 'modelId':
-						return 'models/gemini-2.5-flash';
-					case 'messages.values':
-						return [{ role: 'user', content: 'Find restaurants' }];
-					case 'simplify':
-						return true;
-					case 'jsonOutput':
-						return false;
-					case 'builtInTools':
-						return {
-							googleMaps: {
-								latitude: '',
-								longitude: '',
-							},
-						};
-					case 'options':
-						return {};
-					default:
-						return undefined;
-				}
+				);
 			});
-			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
-			apiRequestMock.mockResolvedValue({
-				candidates: [
-					{
-						content: {
-							parts: [{ text: 'Restaurants found.' }],
-							role: 'model',
+
+			it('should include multiple built-in tools when enabled', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Complex query' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {
+								googleSearch: true,
+								urlContext: true,
+								codeExecution: true,
+							};
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [{ text: 'Response with multiple tools.' }],
+								role: 'model',
+							},
 						},
-					},
-				],
+					],
+				});
+
+				await text.message.execute.call(executeFunctionsMock, 0);
+
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([
+								{
+									googleSearch: {},
+								},
+								{
+									urlContext: {},
+								},
+								{
+									codeExecution: {},
+								},
+							]),
+						}),
+					}),
+				);
 			});
 
-			await text.message.execute.call(executeFunctionsMock, 0);
-
-			expect(apiRequestMock).toHaveBeenCalledWith(
-				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
-				expect.objectContaining({
-					body: expect.not.objectContaining({
-						toolConfig: expect.anything(),
-					}),
-				}),
-			);
-			expect(apiRequestMock).toHaveBeenCalledWith(
-				'POST',
-				'/v1beta/models/gemini-2.5-flash:generateContent',
-				expect.objectContaining({
-					body: expect.objectContaining({
-						tools: expect.arrayContaining([
-							{
-								googleMaps: {},
+			it('should not include toolConfig when Google Maps coordinates are empty', async () => {
+				executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+					switch (parameter) {
+						case 'modelId':
+							return 'models/gemini-2.5-flash';
+						case 'messages.values':
+							return [{ role: 'user', content: 'Find restaurants' }];
+						case 'simplify':
+							return true;
+						case 'jsonOutput':
+							return false;
+						case 'builtInTools':
+							return {
+								googleMaps: {
+									latitude: '',
+									longitude: '',
+								},
+							};
+						case 'options':
+							return {};
+						default:
+							return undefined;
+					}
+				});
+				executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+				apiRequestMock.mockResolvedValue({
+					candidates: [
+						{
+							content: {
+								parts: [{ text: 'Restaurants found.' }],
+								role: 'model',
 							},
-						]),
+						},
+					],
+				});
+
+				await text.message.execute.call(executeFunctionsMock, 0);
+
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.not.objectContaining({
+							toolConfig: expect.anything(),
+						}),
 					}),
-				}),
-			);
+				);
+				expect(apiRequestMock).toHaveBeenCalledWith(
+					'POST',
+					'/v1beta/models/gemini-2.5-flash:generateContent',
+					expect.objectContaining({
+						body: expect.objectContaining({
+							tools: expect.arrayContaining([
+								{
+									googleMaps: {},
+								},
+							]),
+						}),
+					}),
+				);
+			});
 		});
 	});
 

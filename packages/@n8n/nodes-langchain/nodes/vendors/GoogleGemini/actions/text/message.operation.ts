@@ -399,79 +399,84 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 
 	// Add built-in tools and build toolConfig
 	let toolConfig: GenerateContentRequest['toolConfig'];
-	if (builtInTools) {
-		if (builtInTools.googleSearch) {
-			tools.push({
-				googleSearch: {},
-			});
-		}
-
-		const googleMapsOptions = builtInTools.googleMaps as IDataObject | undefined;
-		if (googleMapsOptions) {
-			tools.push({
-				googleMaps: {},
-			});
-
-			// Build toolConfig with retrievalConfig if latitude/longitude are provided
-			const latitude = googleMapsOptions.latitude as number | string | undefined;
-			const longitude = googleMapsOptions.longitude as number | string | undefined;
-			if (
-				latitude !== undefined &&
-				latitude !== '' &&
-				longitude !== undefined &&
-				longitude !== ''
-			) {
-				toolConfig = {
-					retrievalConfig: {
-						latLng: {
-							latitude: Number(latitude),
-							longitude: Number(longitude),
-						},
-					},
-				};
-			}
-		}
-
-		if (builtInTools.urlContext) {
-			tools.push({
-				urlContext: {},
-			});
-		}
-
-		const fileSearchOptions = builtInTools.fileSearch as IDataObject | undefined;
-		if (fileSearchOptions) {
-			const fileSearchStoreNamesRaw = fileSearchOptions.fileSearchStoreNames as string | undefined;
-			const metadataFilter = fileSearchOptions.metadataFilter as string | undefined;
-			let fileSearchStoreNames: string[] | undefined;
-			if (fileSearchStoreNamesRaw) {
-				const parsed = jsonParse(fileSearchStoreNamesRaw, {
-					errorMessage: 'Failed to parse file search store names',
+	if (this.getNode().typeVersion >= 1.1) {
+		if (builtInTools) {
+			if (builtInTools.googleSearch) {
+				tools.push({
+					googleSearch: {},
 				});
-				if (Array.isArray(parsed)) {
-					fileSearchStoreNames = parsed;
+			}
+
+			const googleMapsOptions = builtInTools.googleMaps as IDataObject | undefined;
+			if (googleMapsOptions) {
+				tools.push({
+					googleMaps: {},
+				});
+
+				// Build toolConfig with retrievalConfig if latitude/longitude are provided
+				const latitude = googleMapsOptions.latitude as number | string | undefined;
+				const longitude = googleMapsOptions.longitude as number | string | undefined;
+				if (
+					latitude !== undefined &&
+					latitude !== '' &&
+					longitude !== undefined &&
+					longitude !== ''
+				) {
+					toolConfig = {
+						retrievalConfig: {
+							latLng: {
+								latitude: Number(latitude),
+								longitude: Number(longitude),
+							},
+						},
+					};
 				}
 			}
 
-			tools.push({
-				fileSearch: {
-					...(fileSearchStoreNames && { fileSearchStoreNames }),
-					...(metadataFilter && { metadataFilter }),
-				},
-			});
-		}
+			if (builtInTools.urlContext) {
+				tools.push({
+					urlContext: {},
+				});
+			}
 
-		if (builtInTools.codeExecution) {
+			const fileSearchOptions = builtInTools.fileSearch as IDataObject | undefined;
+			if (fileSearchOptions) {
+				const fileSearchStoreNamesRaw = fileSearchOptions.fileSearchStoreNames as
+					| string
+					| undefined;
+				const metadataFilter = fileSearchOptions.metadataFilter as string | undefined;
+				let fileSearchStoreNames: string[] | undefined;
+				if (fileSearchStoreNamesRaw) {
+					const parsed = jsonParse(fileSearchStoreNamesRaw, {
+						errorMessage: 'Failed to parse file search store names',
+					});
+					if (Array.isArray(parsed)) {
+						fileSearchStoreNames = parsed;
+					}
+				}
+
+				tools.push({
+					fileSearch: {
+						...(fileSearchStoreNames && { fileSearchStoreNames }),
+						...(metadataFilter && { metadataFilter }),
+					},
+				});
+			}
+
+			if (builtInTools.codeExecution) {
+				tools.push({
+					codeExecution: {},
+				});
+			}
+		}
+	}
+
+	if (this.getNode().typeVersion < 1.1) {
+		if (options.codeExecution) {
 			tools.push({
 				codeExecution: {},
 			});
 		}
-	}
-
-	// Handle codeExecution from options for version < 1.1
-	if (options.codeExecution) {
-		tools.push({
-			codeExecution: {},
-		});
 	}
 
 	const contents: Content[] = messages.map((m) => ({
