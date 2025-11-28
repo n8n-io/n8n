@@ -8,7 +8,7 @@ import N8nIcon from '@n8n/design-system/components/N8nIcon/Icon.vue';
 import Tooltip from './Tooltip.vue';
 
 const meta = {
-	title: 'Components V2/Tooltip',
+	title: 'Components v2/Tooltip',
 	component: Tooltip,
 	parameters: {
 		docs: {
