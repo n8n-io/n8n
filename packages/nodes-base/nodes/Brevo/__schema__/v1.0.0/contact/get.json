@@ -1,6 +1,14 @@
 {
     "type": "object",
     "properties": {
+        "attributes": {
+            "type": "object",
+            "properties": {
+                "FIRSTNAME": {
+                    "type": "string"
+                }
+            }
+        },
         "createdAt": {
             "type": "string"
         },
@@ -26,5 +34,5 @@
             "type": "boolean"
         }
     },
-    "version": 1
+    "version": 2
 }

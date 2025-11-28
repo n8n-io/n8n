@@ -1,4 +1,4 @@
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
 import type { ComponentInstance } from 'vue';
 
 import N8nRecycleScroller from './RecycleScroller.vue';

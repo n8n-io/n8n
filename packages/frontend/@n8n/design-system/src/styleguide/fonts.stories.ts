@@ -1,4 +1,4 @@
-import { type StoryFn } from '@storybook/vue3';
+import { type StoryFn } from '@storybook/vue3-vite';
 
 import Sizes from './Sizes.vue';
 import VariableTable from './VariableTable.vue';
@@ -12,7 +12,7 @@ export const FontSize: StoryFn = () => ({
 		Sizes,
 	},
 	template:
-		"<sizes :variables=\"['--font-size-3xs', '--font-size-2xs','--font-size-xs','--font-size-s','--font-size-m','--font-size-l','--font-size-xl','--font-size-2xl']\" attr=\"font-size\" />",
+		"<sizes :variables=\"['--font-size--3xs', '--font-size--2xs','--font-size--xs','--font-size--sm','--font-size--md','--font-size--lg','--font-size--xl','--font-size--2xl']\" attr=\"font-size\" />",
 });
 
 const Template =
@@ -25,11 +25,11 @@ const Template =
 	});
 
 export const LineHeight = Template(
-	"<variable-table :variables=\"['--font-line-height-compact','--font-line-height-regular','--font-line-height-loose','--font-line-height-xloose']\" />",
+	"<variable-table :variables=\"['--line-height--sm','--line-height--md','--line-height--lg','--line-height--xl']\" />",
 );
 
 export const FontWeight = Template(
-	'<variable-table :variables="[\'--font-weight-regular\',\'--font-weight-bold\']" attr="font-weight" />',
+	'<variable-table :variables="[\'--font-weight--regular\',\'--font-weight--bold\']" attr="font-weight" />',
 );
 
 export const FontFamily = Template(

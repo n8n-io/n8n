@@ -11,7 +11,12 @@ import type {
 	INodeTypeBaseDescription,
 } from 'n8n-workflow';
 
-import { promptTypeOptions, textFromPreviousNode, textInput } from '@utils/descriptions';
+import {
+	promptTypeOptions,
+	textFromGuardrailsNode,
+	textFromPreviousNode,
+	textInput,
+} from '@utils/descriptions';
 
 import { conversationalAgentProperties } from '../agents/ConversationalAgent/description';
 import { conversationalAgentExecute } from '../agents/ConversationalAgent/execute';
@@ -91,6 +96,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
 						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
 						'@n8n/n8n-nodes-langchain.lmChatGroq',
+						'@n8n/n8n-nodes-langchain.lmChatLemonade',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
@@ -99,6 +105,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						'@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
 						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
 						'@n8n/n8n-nodes-langchain.modelSelector',
 					],
@@ -123,6 +130,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatAnthropic',
 						'@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
 						'@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
+						'@n8n/n8n-nodes-langchain.lmChatLemonade',
 						'@n8n/n8n-nodes-langchain.lmChatMistralCloud',
 						'@n8n/n8n-nodes-langchain.lmChatOllama',
 						'@n8n/n8n-nodes-langchain.lmChatOpenAi',
@@ -131,6 +139,7 @@ function getInputs(
 						'@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 						'@n8n/n8n-nodes-langchain.lmChatDeepSeek',
 						'@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+						'@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
 						'@n8n/n8n-nodes-langchain.lmChatXAiGrok',
 					],
 				},
@@ -311,6 +320,20 @@ export class AgentV1 implements INodeType {
 					},
 				},
 				{
+					// eslint-disable-next-line n8n-nodes-base/node-param-display-name-miscased
+					displayName: 'Get started faster with our',
+					name: 'preBuiltAgentsCallout',
+					type: 'callout',
+					typeOptions: {
+						calloutAction: {
+							label: 'pre-built agents',
+							icon: 'bot',
+							type: 'openPreBuiltAgentsCollection',
+						},
+					},
+					default: '',
+				},
+				{
 					displayName:
 						"This node is using Agent that has been deprecated. Please switch to using 'Tools Agent' instead.",
 					name: 'deprecated',
@@ -357,6 +380,12 @@ export class AgentV1 implements INodeType {
 							'@version': [{ _cnd: { lte: 1.2 } }],
 							agent: ['sqlAgent'],
 						},
+					},
+				},
+				{
+					...textFromGuardrailsNode,
+					displayOptions: {
+						show: { promptType: ['guardrails'], '@version': [{ _cnd: { gte: 1.7 } }] },
 					},
 				},
 				{

@@ -10,6 +10,7 @@ import { extend, extendOptional } from './extensions';
 import { extendSyntax } from './extensions/expression-extension';
 import { extendedFunctions } from './extensions/extended-functions';
 import { getGlobalState } from './global-state';
+import { createEmptyRunExecutionData } from './run-execution-data-factory';
 import type {
 	IDataObject,
 	IExecuteData,
@@ -17,7 +18,6 @@ import type {
 	INodeExecutionData,
 	INodeParameterResourceLocator,
 	INodeParameters,
-	IRunExecutionData,
 	IWorkflowDataProxyAdditionalKeys,
 	IWorkflowDataProxyData,
 	NodeParameterValue,
@@ -26,6 +26,7 @@ import type {
 } from './interfaces';
 import type { Workflow } from './workflow';
 import { WorkflowDataProxy } from './workflow-data-proxy';
+import type { IRunExecutionData } from './run-execution-data/run-execution-data';
 
 const IS_FRONTEND_IN_DEV_MODE =
 	typeof process === 'object' &&
@@ -52,117 +53,7 @@ setErrorHandler((error: Error) => {
 export class Expression {
 	constructor(private readonly workflow: Workflow) {}
 
-	static resolveWithoutWorkflow(expression: string, data: IDataObject = {}) {
-		return evaluateExpression(expression, data);
-	}
-
-	/**
-	 * Converts an object to a string in a way to make it clear that
-	 * the value comes from an object
-	 *
-	 */
-	convertObjectValueToString(value: object): string {
-		if (value instanceof DateTime && value.invalidReason !== null) {
-			throw new ApplicationError('invalid DateTime');
-		}
-
-		if (value === null) {
-			return 'null';
-		}
-
-		let typeName = value.constructor.name ?? 'Object';
-		if (DateTime.isDateTime(value)) {
-			typeName = 'DateTime';
-		}
-
-		let result = '';
-		if (value instanceof Date) {
-			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
-			result = DateTime.fromJSDate(value, {
-				zone: this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone,
-			}).toISO();
-		} else if (DateTime.isDateTime(value)) {
-			result = value.toString();
-		} else {
-			result = JSON.stringify(value);
-		}
-
-		result = result
-			.replace(/,"/g, ', "') // spacing for
-			.replace(/":/g, '": '); // readability
-
-		return `[${typeName}: ${result}]`;
-	}
-
-	/**
-	 * Resolves the parameter value.  If it is an expression it will execute it and
-	 * return the result. For everything simply the supplied value will be returned.
-	 *
-	 * @param {(IRunExecutionData | null)} runExecutionData
-	 * @param {boolean} [returnObjectAsString=false]
-	 */
-	// TODO: Clean that up at some point and move all the options into an options object
-	// eslint-disable-next-line complexity
-	resolveSimpleParameterValue(
-		parameterValue: NodeParameterValue,
-		siblingParameters: INodeParameters,
-		runExecutionData: IRunExecutionData | null,
-		runIndex: number,
-		itemIndex: number,
-		activeNodeName: string,
-		connectionInputData: INodeExecutionData[],
-		mode: WorkflowExecuteMode,
-		additionalKeys: IWorkflowDataProxyAdditionalKeys,
-		executeData?: IExecuteData,
-		returnObjectAsString = false,
-		selfData = {},
-		contextNodeName?: string,
-	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
-		// Check if it is an expression
-		if (!isExpression(parameterValue)) {
-			// Is no expression so return value
-			return parameterValue;
-		}
-
-		// Is an expression
-
-		// Remove the equal sign
-
-		parameterValue = parameterValue.substr(1);
-
-		// Generate a data proxy which allows to query workflow data
-		const dataProxy = new WorkflowDataProxy(
-			this.workflow,
-			runExecutionData,
-			runIndex,
-			itemIndex,
-			activeNodeName,
-			connectionInputData,
-			siblingParameters,
-			mode,
-			additionalKeys,
-			executeData,
-			-1,
-			selfData,
-			contextNodeName,
-		);
-		const data = dataProxy.getDataProxy();
-
-		// Support only a subset of process properties
-		data.process =
-			typeof process !== 'undefined'
-				? {
-						arch: process.arch,
-						env: process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true' ? {} : process.env,
-						platform: process.platform,
-						pid: process.pid,
-						ppid: process.ppid,
-						release: process.release,
-						version: process.pid,
-						versions: process.versions,
-					}
-				: {};
-
+	static initializeGlobalContext(data: IDataObject) {
 		/**
 		 * Denylist
 		 */
@@ -288,6 +179,120 @@ export class Expression {
 		// eslint-disable-next-line id-denylist
 		data.Boolean = Boolean;
 		data.Symbol = Symbol;
+	}
+
+	static resolveWithoutWorkflow(expression: string, data: IDataObject = {}) {
+		return evaluateExpression(expression, data);
+	}
+
+	/**
+	 * Converts an object to a string in a way to make it clear that
+	 * the value comes from an object
+	 *
+	 */
+	convertObjectValueToString(value: object): string {
+		if (value instanceof DateTime && value.invalidReason !== null) {
+			throw new ApplicationError('invalid DateTime');
+		}
+
+		if (value === null) {
+			return 'null';
+		}
+
+		let typeName = value.constructor.name ?? 'Object';
+		if (DateTime.isDateTime(value)) {
+			typeName = 'DateTime';
+		}
+
+		let result = '';
+		if (value instanceof Date) {
+			// We don't want to use JSON.stringify for dates since it disregards workflow timezone
+			result = DateTime.fromJSDate(value, {
+				zone: this.workflow.settings?.timezone ?? getGlobalState().defaultTimezone,
+			}).toISO();
+		} else if (DateTime.isDateTime(value)) {
+			result = value.toString();
+		} else {
+			result = JSON.stringify(value);
+		}
+
+		result = result
+			.replace(/,"/g, ', "') // spacing for
+			.replace(/":/g, '": '); // readability
+
+		return `[${typeName}: ${result}]`;
+	}
+
+	/**
+	 * Resolves the parameter value.  If it is an expression it will execute it and
+	 * return the result. For everything simply the supplied value will be returned.
+	 *
+	 * @param {(IRunExecutionData | null)} runExecutionData
+	 * @param {boolean} [returnObjectAsString=false]
+	 */
+	// TODO: Clean that up at some point and move all the options into an options object
+	// eslint-disable-next-line complexity
+	resolveSimpleParameterValue(
+		parameterValue: NodeParameterValue,
+		siblingParameters: INodeParameters,
+		runExecutionData: IRunExecutionData | null,
+		runIndex: number,
+		itemIndex: number,
+		activeNodeName: string,
+		connectionInputData: INodeExecutionData[],
+		mode: WorkflowExecuteMode,
+		additionalKeys: IWorkflowDataProxyAdditionalKeys,
+		executeData?: IExecuteData,
+		returnObjectAsString = false,
+		selfData = {},
+		contextNodeName?: string,
+	): NodeParameterValue | INodeParameters | NodeParameterValue[] | INodeParameters[] {
+		// Check if it is an expression
+		if (!isExpression(parameterValue)) {
+			// Is no expression so return value
+			return parameterValue;
+		}
+
+		// Is an expression
+
+		// Remove the equal sign
+
+		parameterValue = parameterValue.substr(1);
+
+		// Generate a data proxy which allows to query workflow data
+		const dataProxy = new WorkflowDataProxy(
+			this.workflow,
+			runExecutionData,
+			runIndex,
+			itemIndex,
+			activeNodeName,
+			connectionInputData,
+			siblingParameters,
+			mode,
+			additionalKeys,
+			executeData,
+			-1,
+			selfData,
+			contextNodeName,
+		);
+		const data = dataProxy.getDataProxy();
+
+		// Support only a subset of process properties
+		data.process =
+			typeof process !== 'undefined'
+				? {
+						arch: process.arch,
+						env: process.env.N8N_BLOCK_ENV_ACCESS_IN_NODE === 'true' ? {} : process.env,
+						platform: process.platform,
+						pid: process.pid,
+						ppid: process.ppid,
+						release: process.release,
+						version: process.pid,
+						versions: process.versions,
+					}
+				: {};
+
+		Expression.initializeGlobalContext(data);
 
 		// expression extensions
 		data.extend = extend;
@@ -310,8 +315,6 @@ export class Expression {
 		const extendedExpression = extendSyntax(parameterValue);
 		const returnValue = this.renderExpression(extendedExpression, data);
 		if (typeof returnValue === 'function') {
-			if (returnValue.name === '$') throw new ApplicationError('invalid syntax');
-
 			if (returnValue.name === 'DateTime')
 				throw new ApplicationError('this is a DateTime, please access its methods');
 
@@ -369,11 +372,7 @@ export class Expression {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
+		const runData = createEmptyRunExecutionData();
 
 		return this.getParameterValue(
 			parameterValue,
@@ -412,11 +411,7 @@ export class Expression {
 		const runIndex = 0;
 		const itemIndex = 0;
 		const connectionInputData: INodeExecutionData[] = [];
-		const runData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			},
-		};
+		const runData = createEmptyRunExecutionData();
 
 		// Resolve the "outer" main values
 		const returnData = this.getParameterValue(

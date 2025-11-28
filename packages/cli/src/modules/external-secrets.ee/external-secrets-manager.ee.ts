@@ -28,7 +28,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 
 	initialized = false;
 
-	updateInterval: NodeJS.Timeout;
+	updateInterval?: NodeJS.Timeout;
 
 	initRetryTimeouts: Record<string, NodeJS.Timeout> = {};
 
@@ -46,33 +46,40 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 	}
 
 	async init(): Promise<void> {
-		if (!this.initialized) {
-			if (!this.initializingPromise) {
-				this.initializingPromise = new Promise<void>(async (resolve) => {
+		if (this.initialized) return;
+		if (!this.initializingPromise) {
+			this.initializingPromise = (async () => {
+				try {
 					await this.internalInit();
-					this.initialized = true;
-					resolve();
-					this.initializingPromise = undefined;
 					this.updateInterval = setInterval(
 						async () => await this.updateSecrets(),
 						this.config.updateInterval * 1000,
 					);
-				});
-			}
-			await this.initializingPromise;
+					this.initialized = true;
+				} catch (error) {
+					this.logger.error('External secrets manager failed to initialize', {
+						error: ensureError(error),
+					});
+					throw error;
+				} finally {
+					this.initializingPromise = undefined;
+				}
+			})();
 		}
+		await this.initializingPromise;
 
 		this.logger.debug('External secrets manager initialized');
 	}
 
 	shutdown() {
-		clearInterval(this.updateInterval);
+		if (this.updateInterval) clearInterval(this.updateInterval);
 		Object.values(this.providers).forEach((p) => {
 			// Disregard any errors as we're shutting down anyway
 			void p.disconnect().catch(() => {});
 		});
 		Object.values(this.initRetryTimeouts).forEach((v) => clearTimeout(v));
 
+		this.initialized = false;
 		this.logger.debug('External secrets manager shut down');
 	}
 
@@ -87,6 +94,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 			await this.reloadProvider(provider, backoff);
 		}
 
+		await this.updateSecrets();
 		this.logger.debug('External secrets managed reloaded all providers');
 	}
 
@@ -287,6 +295,7 @@ export class ExternalSecretsManager implements IExternalSecretsManager {
 		await this.saveAndSetSettings(settings);
 		this.cachedSettings = settings;
 		await this.reloadProvider(provider);
+		await this.updateSecrets();
 		this.broadcastReloadExternalSecretsProviders();
 
 		void this.trackProviderSave(provider, isNewProvider, userId);

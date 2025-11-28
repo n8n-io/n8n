@@ -9,6 +9,12 @@ import {
 	INSTANCE_ADMIN_CREDENTIALS,
 } from '../config/test-users';
 import { TestError } from '../Types';
+import { CredentialApiHelper } from './credential-api-helper';
+import { ProjectApiHelper } from './project-api-helper';
+import { TagApiHelper } from './tag-api-helper';
+import { UserApiHelper } from './user-api-helper';
+import { VariablesApiHelper } from './variables-api-helper';
+import { WorkflowApiHelper } from './workflow-api-helper';
 
 export interface LoginResponseData {
 	id: string;
@@ -30,10 +36,22 @@ const DB_TAGS = {
 } as const;
 
 export class ApiHelpers {
-	private request: APIRequestContext;
+	request: APIRequestContext;
+	workflows: WorkflowApiHelper;
+	projects: ProjectApiHelper;
+	credentials: CredentialApiHelper;
+	variables: VariablesApiHelper;
+	users: UserApiHelper;
+	tags: TagApiHelper;
 
 	constructor(requestContext: APIRequestContext) {
 		this.request = requestContext;
+		this.workflows = new WorkflowApiHelper(this);
+		this.projects = new ProjectApiHelper(this);
+		this.credentials = new CredentialApiHelper(this);
+		this.variables = new VariablesApiHelper(this);
+		this.users = new UserApiHelper(this);
+		this.tags = new TagApiHelper(this);
 	}
 
 	// ===== MAIN SETUP METHODS =====
@@ -124,6 +142,10 @@ export class ApiHelpers {
 		return await this.loginAndSetCookies(credentials);
 	}
 
+	async login(credentials: { email: string; password: string }): Promise<LoginResponseData> {
+		return await this.loginAndSetCookies(credentials);
+	}
+
 	// ===== CONFIGURATION METHODS =====
 
 	async setFeature(feature: string, enabled: boolean): Promise<void> {
@@ -144,6 +166,41 @@ export class ApiHelpers {
 		});
 	}
 
+	// ===== FEATURE FLAG METHODS =====
+
+	async setEnvFeatureFlags(flags: Record<string, string>): Promise<{
+		data: {
+			success: boolean;
+			message: string;
+			flags: Record<string, string>;
+		};
+	}> {
+		const response = await this.request.patch('/rest/e2e/env-feature-flags', {
+			data: { flags },
+		});
+		return await response.json();
+	}
+
+	async clearEnvFeatureFlags(): Promise<{
+		data: {
+			success: boolean;
+			message: string;
+			flags: Record<string, string>;
+		};
+	}> {
+		const response = await this.request.patch('/rest/e2e/env-feature-flags', {
+			data: { flags: {} },
+		});
+		return await response.json();
+	}
+
+	async getEnvFeatureFlags(): Promise<{
+		data: Record<string, string>;
+	}> {
+		const response = await this.request.get('/rest/e2e/env-feature-flags');
+		return await response.json();
+	}
+
 	// ===== CONVENIENCE METHODS =====
 
 	async enableFeature(feature: string): Promise<void> {
@@ -160,9 +217,19 @@ export class ApiHelpers {
 
 	async get(path: string, params?: URLSearchParams) {
 		const response = await this.request.get(path, { params });
-
 		const { data } = await response.json();
 		return data;
+	}
+
+	/**
+	 * Check if n8n is healthy
+	 * @returns True if n8n is healthy, false otherwise
+	 */
+	async isHealthy(probe: 'liveness' | 'readiness' = 'liveness'): Promise<boolean> {
+		const url = probe === 'liveness' ? '/healthz' : '/healthz/readiness';
+		const response = await this.request.get(url);
+		const data = await response.json();
+		return data.status === 'ok';
 	}
 
 	// ===== PRIVATE METHODS =====
@@ -175,6 +242,7 @@ export class ApiHelpers {
 				emailOrLdapLoginId: credentials.email,
 				password: credentials.password,
 			},
+			maxRetries: 3,
 		});
 
 		if (!response.ok()) {

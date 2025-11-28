@@ -1,0 +1,33 @@
+name: 'GitHub Node.js Build Setup for Github Hosted Runners'
+description: 'Configures Node.js with pnpm, installs dependencies, enables Turborepo caching, and builds the project or an optional command.'
+
+inputs:
+  node-version:
+    description: 'Node.js version to use. Uses latest 22.x by default.'
+    required: false
+    default: '22.x'
+  build-command:
+    description: 'Command to execute for building the project or an optional command. Leave empty to skip build step.'
+    required: false
+    default: 'pnpm build'
+    type: string
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Setup pnpm and Install Dependencies
+      uses: pnpm/action-setup@a7487c7e89a18df4991f7f222e4898a00d66ddda # v4.1.0
+      with:
+        run_install: true
+
+    - name: Configure Turborepo Cache
+      uses: rharkor/caching-for-turbo@2b4b5b14a8d16b8556a58993a8ac331d56d8906d # v2.3.2
+
+    - name: Build Project
+      run: ${{ inputs.build-command }}
+      shell: bash

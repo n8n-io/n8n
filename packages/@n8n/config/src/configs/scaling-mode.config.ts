@@ -62,11 +62,11 @@ class RedisConfig {
 class SettingsConfig {
 	/** How long (in milliseconds) is the lease period for a worker processing a job. */
 	@Env('QUEUE_WORKER_LOCK_DURATION')
-	lockDuration: number = 30_000;
+	lockDuration: number = 60_000;
 
 	/** How often (in milliseconds) a worker must renew the lease. */
 	@Env('QUEUE_WORKER_LOCK_RENEW_TIME')
-	lockRenewTime: number = 15_000;
+	lockRenewTime: number = 10_000;
 
 	/** How often (in milliseconds) Bull must check for stalled jobs. `0` to disable. */
 	@Env('QUEUE_WORKER_STALLED_INTERVAL')

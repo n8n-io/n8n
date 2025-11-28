@@ -1,8 +1,7 @@
+import * as helpers from '@utils/helpers';
 import { mockDeep } from 'jest-mock-extended';
 import type { IExecuteFunctions, IBinaryData, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-
-import * as helpers from '@utils/helpers';
 
 import * as audio from './actions/audio';
 import * as file from './actions/file';
@@ -18,6 +17,7 @@ describe('GoogleGemini Node', () => {
 	const getConnectedToolsMock = jest.spyOn(helpers, 'getConnectedTools');
 	const downloadFileMock = jest.spyOn(utils, 'downloadFile');
 	const uploadFileMock = jest.spyOn(utils, 'uploadFile');
+	const transferFileMock = jest.spyOn(utils, 'transferFile');
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -80,7 +80,7 @@ describe('GoogleGemini Node', () => {
 			expect(apiRequestMock).toHaveBeenCalledWith(
 				'POST',
 				'/v1beta/models/gemini-2.5-flash:generateContent',
-				{
+				expect.objectContaining({
 					body: {
 						contents: [
 							{
@@ -105,6 +105,76 @@ describe('GoogleGemini Node', () => {
 						},
 						systemInstruction: {
 							parts: [{ text: 'You are a helpful assistant.' }],
+						},
+					},
+				}),
+			);
+		});
+
+		it('should include thinking options when the thinking budget is specified', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/gemini-2.5-flash';
+					case 'messages.values':
+						return [{ role: 'user', content: 'Hello, world!' }];
+					case 'simplify':
+						return true;
+					case 'jsonOutput':
+						return false;
+					case 'options':
+						return {
+							thinkingBudget: 1024,
+							maxOutputTokens: 100,
+							temperature: 0.5,
+						};
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getNodeInputs.mockReturnValue([{ type: 'main' }]);
+			apiRequestMock.mockResolvedValue({
+				candidates: [
+					{
+						content: {
+							parts: [{ text: 'Hello with thinking!' }],
+							role: 'model',
+						},
+					},
+				],
+			});
+
+			const result = await text.message.execute.call(executeFunctionsMock, 0);
+
+			expect(result).toEqual([
+				{
+					json: {
+						content: {
+							parts: [{ text: 'Hello with thinking!' }],
+							role: 'model',
+						},
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				'/v1beta/models/gemini-2.5-flash:generateContent',
+				{
+					body: {
+						contents: [
+							{
+								parts: [{ text: 'Hello, world!' }],
+								role: 'user',
+							},
+						],
+						tools: [],
+						generationConfig: {
+							maxOutputTokens: 100,
+							temperature: 0.5,
+							thinkingConfig: {
+								thinkingBudget: 1024,
+							},
 						},
 					},
 				},
@@ -630,11 +700,7 @@ describe('GoogleGemini Node', () => {
 						return undefined;
 				}
 			});
-			downloadFileMock.mockResolvedValue({
-				fileContent: Buffer.from('test'),
-				mimeType: 'application/pdf',
-			});
-			uploadFileMock.mockResolvedValue({
+			transferFileMock.mockResolvedValue({
 				fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
 				mimeType: 'application/pdf',
 			});
@@ -649,11 +715,11 @@ describe('GoogleGemini Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(downloadFileMock).toHaveBeenCalledWith(
+			expect(transferFileMock).toHaveBeenCalledWith(
+				0,
 				'https://example.com/file.pdf',
 				'application/octet-stream',
 			);
-			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'application/pdf');
 		});
 
 		it('should upload file from binary data', async () => {
@@ -667,16 +733,7 @@ describe('GoogleGemini Node', () => {
 						return undefined;
 				}
 			});
-			const mockBinaryData: IBinaryData = {
-				mimeType: 'application/pdf',
-				fileName: 'test.pdf',
-				fileSize: '1024',
-				fileExtension: 'pdf',
-				data: 'test',
-			};
-			executeFunctionsMock.helpers.assertBinaryData.mockReturnValue(mockBinaryData);
-			executeFunctionsMock.helpers.getBinaryDataBuffer.mockResolvedValue(Buffer.from('test'));
-			uploadFileMock.mockResolvedValue({
+			transferFileMock.mockResolvedValue({
 				fileUri: 'https://generativelanguage.googleapis.com/v1/files/abc123',
 				mimeType: 'application/pdf',
 			});
@@ -692,7 +749,7 @@ describe('GoogleGemini Node', () => {
 					pairedItem: { item: 0 },
 				},
 			]);
-			expect(uploadFileMock).toHaveBeenCalledWith(Buffer.from('test'), 'application/pdf');
+			expect(transferFileMock).toHaveBeenCalledWith(0, undefined, 'application/octet-stream');
 		});
 	});
 
@@ -1006,6 +1063,72 @@ describe('GoogleGemini Node', () => {
 			expect(downloadFileMock).toHaveBeenCalledWith('https://example.com/video.mp4', 'video/mp4', {
 				key: 'test-api-key',
 			});
+		});
+
+		it('should not pass durationSeconds if not provided', async () => {
+			executeFunctionsMock.getNodeParameter.mockImplementation((parameter: string) => {
+				switch (parameter) {
+					case 'modelId':
+						return 'models/veo-3.0-generate-002';
+					case 'prompt':
+						return 'Panning wide shot of a calico kitten sleeping in the sunshine';
+					case 'options':
+						return {
+							aspectRatio: '16:9',
+							personGeneration: 'dont_allow',
+							sampleCount: 1,
+						};
+					case 'returnAs':
+						return 'url';
+					default:
+						return undefined;
+				}
+			});
+			executeFunctionsMock.getCredentials.mockResolvedValue({ apiKey: 'test-api-key' });
+			apiRequestMock.mockResolvedValue({
+				name: 'operations/123',
+				done: true,
+				response: {
+					generateVideoResponse: {
+						generatedSamples: [
+							{
+								video: {
+									uri: 'https://example.com/video.mp4',
+								},
+							},
+						],
+					},
+				},
+			});
+
+			const result = await video.generate.execute.call(executeFunctionsMock, 0);
+
+			expect(result).toEqual([
+				{
+					json: {
+						url: 'https://example.com/video.mp4',
+					},
+					pairedItem: { item: 0 },
+				},
+			]);
+			expect(apiRequestMock).toHaveBeenCalledWith(
+				'POST',
+				'/v1beta/models/veo-3.0-generate-002:predictLongRunning',
+				{
+					body: {
+						instances: [
+							{
+								prompt: 'Panning wide shot of a calico kitten sleeping in the sunshine',
+							},
+						],
+						parameters: {
+							aspectRatio: '16:9',
+							personGeneration: 'dont_allow',
+							sampleCount: 1,
+						},
+					},
+				},
+			);
 		});
 
 		it('should handle errors from video generation', async () => {

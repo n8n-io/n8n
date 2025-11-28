@@ -1,14 +1,31 @@
 <script setup lang="ts">
-import { PopoverContent, PopoverPortal, PopoverRoot, PopoverTrigger } from 'reka-ui';
+import {
+	PopoverContent,
+	type PopoverContentProps,
+	PopoverPortal,
+	PopoverRoot,
+	type PopoverRootProps,
+	PopoverTrigger,
+} from 'reka-ui';
+import type { CSSProperties } from 'vue';
 
 import N8nScrollArea from '../N8nScrollArea/N8nScrollArea.vue';
 
-interface Props {
-	open?: boolean;
+interface Props
+	extends Pick<PopoverContentProps, 'side' | 'align' | 'sideFlip' | 'sideOffset' | 'reference'>,
+		Pick<PopoverRootProps, 'open'> {
 	/**
 	 * Whether to enable scrolling in the popover content
 	 */
 	enableScrolling?: boolean;
+	/**
+	 * Whether to enable slide-in animation
+	 */
+	enableSlideIn?: boolean;
+	/**
+	 * Whether to suppress auto-focus behavior when the content includes focusable element
+	 */
+	suppressAutoFocus?: boolean;
 	/**
 	 * Scrollbar visibility behavior
 	 */
@@ -18,9 +35,17 @@ interface Props {
 	 */
 	width?: string;
 	/**
+	 * z-index of popover content
+	 */
+	zIndex?: number | CSSProperties['zIndex'];
+	/**
 	 * Popover max height
 	 */
 	maxHeight?: string;
+	/**
+	 * Additional class name set to PopperContent
+	 */
+	contentClass?: string;
 }
 
 interface Emits {
@@ -32,10 +57,21 @@ const props = withDefaults(defineProps<Props>(), {
 	maxHeight: undefined,
 	width: undefined,
 	enableScrolling: true,
+	enableSlideIn: true,
 	scrollType: 'hover',
+	sideOffset: 5,
+	sideFlip: undefined,
+	suppressAutoFocus: false,
+	zIndex: 999,
 });
 
 const emit = defineEmits<Emits>();
+
+function handleOpenAutoFocus(e: Event) {
+	if (props.suppressAutoFocus) {
+		e.preventDefault();
+	}
+}
 </script>
 
 <template>
@@ -44,21 +80,29 @@ const emit = defineEmits<Emits>();
 			<slot name="trigger"></slot>
 		</PopoverTrigger>
 		<PopoverPortal>
-			<PopoverContent side="bottom" :side-offset="5" :class="$style.popoverContent">
+			<PopoverContent
+				role="dialog"
+				:side="side"
+				:side-flip="sideFlip"
+				:align="align"
+				:side-offset="sideOffset"
+				:class="[$style.popoverContent, contentClass, { [$style.enableSlideIn]: enableSlideIn }]"
+				:style="{ width, zIndex }"
+				:reference="reference"
+				@open-auto-focus="handleOpenAutoFocus"
+			>
 				<N8nScrollArea
 					v-if="enableScrolling"
-					:max-height="props.maxHeight"
+					:max-height="maxHeight"
 					:type="scrollType"
 					:enable-vertical-scroll="true"
 					:enable-horizontal-scroll="false"
 				>
-					<div :class="$style.contentContainer" :style="{ width }">
-						<slot name="content" :close="() => emit('update:open', false)" />
-					</div>
-				</N8nScrollArea>
-				<div v-else :class="$style.contentContainer" :style="{ width }">
 					<slot name="content" :close="() => emit('update:open', false)" />
-				</div>
+				</N8nScrollArea>
+				<template v-else>
+					<slot name="content" :close="() => emit('update:open', false)" />
+				</template>
 			</PopoverContent>
 		</PopoverPortal>
 	</PopoverRoot>
@@ -66,20 +110,18 @@ const emit = defineEmits<Emits>();
 
 <style lang="scss" module>
 .popoverContent {
-	border-radius: var(--border-radius-base);
-	background-color: var(--color-foreground-xlight);
-	border: var(--border-base);
+	border-radius: var(--radius);
+	background-color: var(--color--foreground--tint-2);
+	border: var(--border);
 	box-shadow:
-		rgba(0, 0, 0, 0.1) 0px 10px 15px -3px,
-		rgba(0, 0, 0, 0.05) 0px 4px 6px -2px;
-	animation-duration: 400ms;
-	animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+		rgba(0, 0, 0, 0.1) 0 10px 15px -3px,
+		rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
 	will-change: transform, opacity;
-	z-index: 1;
-}
 
-.contentContainer {
-	padding: var(--spacing-s);
+	&.enableSlideIn {
+		animation-duration: 400ms;
+		animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+	}
 }
 
 .popoverContent[data-state='open'][data-side='top'] {

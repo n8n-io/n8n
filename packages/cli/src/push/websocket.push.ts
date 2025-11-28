@@ -20,7 +20,12 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 
 		const onMessage = async (data: WebSocket.RawData) => {
 			try {
-				const buffer = Array.isArray(data) ? Buffer.concat(data) : Buffer.from(data);
+				const buffer = Array.isArray(data)
+					? Buffer.concat(data)
+					: data instanceof ArrayBuffer
+						? Buffer.from(data)
+						: data;
+
 				const msg: unknown = JSON.parse(buffer.toString('utf8'));
 
 				// Client sends application level heartbeat messages to react
@@ -63,8 +68,8 @@ export class WebSocketPush extends AbstractPush<WebSocket> {
 		connection.close();
 	}
 
-	protected sendToOneConnection(connection: WebSocket, data: string): void {
-		connection.send(data);
+	protected sendToOneConnection(connection: WebSocket, data: string, asBinary: boolean): void {
+		connection.send(data, { binary: asBinary });
 	}
 
 	protected ping(connection: WebSocket): void {

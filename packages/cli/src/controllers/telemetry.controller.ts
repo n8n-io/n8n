@@ -39,8 +39,12 @@ export class TelemetryController {
 	async page(req: AuthenticatedRequest, res: Response, next: NextFunction) {
 		await this.proxy(req, res, next);
 	}
-	@Get('/rudderstack/sourceConfig', { skipAuth: true, rateLimit: { limit: 50, windowMs: 60_000 } })
-	async sourceConfig() {
+	@Get('/rudderstack/sourceConfig', {
+		skipAuth: true,
+		rateLimit: { limit: 50, windowMs: 60_000 },
+		usesTemplates: true,
+	})
+	async sourceConfig(_: Request, res: Response) {
 		const response = await fetch('https://api-rs.n8n.io/sourceConfig', {
 			headers: {
 				authorization:
@@ -54,6 +58,7 @@ export class TelemetryController {
 
 		const config: unknown = await response.json();
 
-		return config;
+		// write directly to response to avoid wrapping the config in `data` key which is not expected by RudderStack sdk
+		res.json(config);
 	}
 }

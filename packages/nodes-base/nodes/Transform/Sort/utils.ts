@@ -2,7 +2,7 @@ import { NodeVM } from '@n8n/vm2';
 import type { IExecuteFunctions, INodeExecutionData } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-const returnRegExp = /\breturn\b/g;
+const returnRegExp = /\breturn\b/;
 export function sortByCode(
 	this: IExecuteFunctions,
 	items: INodeExecutionData[],

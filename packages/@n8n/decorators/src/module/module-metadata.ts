@@ -1,10 +1,16 @@
+import type { InstanceType } from '@n8n/constants';
 import { Service } from '@n8n/di';
 
 import type { LicenseFlag, ModuleClass } from './module';
 
+/**
+ * Internal representation of a registered module.
+ * For field descriptions, see {@link BackendModuleOptions}.
+ */
 type ModuleEntry = {
 	class: ModuleClass;
-	licenseFlag?: LicenseFlag;
+	licenseFlag?: LicenseFlag | LicenseFlag[];
+	instanceTypes?: InstanceType[];
 };
 
 @Service()

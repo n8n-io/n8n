@@ -1,6 +1,11 @@
 import { DismissBannerRequestDto, OwnerSetupRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { AuthenticatedRequest, SettingsRepository, UserRepository } from '@n8n/db';
+import {
+	AuthenticatedRequest,
+	GLOBAL_OWNER_ROLE,
+	SettingsRepository,
+	UserRepository,
+} from '@n8n/db';
 import { Body, GlobalScope, Post, RestController } from '@n8n/decorators';
 import { Response } from 'express';
 
@@ -44,7 +49,8 @@ export class OwnerController {
 		}
 
 		let owner = await this.userRepository.findOneOrFail({
-			where: { role: 'global:owner' },
+			where: { role: { slug: GLOBAL_OWNER_ROLE.slug } },
+			relations: ['role'],
 		});
 		owner.email = email;
 		owner.firstName = firstName;

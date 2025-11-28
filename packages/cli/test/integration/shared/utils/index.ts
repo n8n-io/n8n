@@ -8,6 +8,7 @@ import {
 	InstanceSettings,
 	UnrecognizedNodeTypeError,
 	type DirectoryLoader,
+	type ErrorReporter,
 } from 'n8n-core';
 import { Ftp } from 'n8n-nodes-base/credentials/Ftp.credentials';
 import { GithubApi } from 'n8n-nodes-base/credentials/GithubApi.credentials';
@@ -115,7 +116,8 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
 		availableModes: [mode],
 		localStoragePath: '',
 	});
-	const binaryDataService = new BinaryDataService(config);
+	const errorReporter = mock<ErrorReporter>();
+	const binaryDataService = new BinaryDataService(config, errorReporter);
 	await binaryDataService.init();
 	Container.set(BinaryDataService, binaryDataService);
 }
@@ -194,6 +196,7 @@ export function makeWorkflow(options?: {
 
 	workflow.name = 'My Workflow';
 	workflow.active = false;
+	workflow.activeVersionId = null;
 	workflow.connections = {};
 	workflow.nodes = [node];
 

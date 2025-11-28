@@ -1,6 +1,5 @@
 import jwt from 'jsonwebtoken';
 import set from 'lodash/set';
-import { isHtmlRenderedContentType, sandboxHtmlResponse } from 'n8n-core';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -84,8 +83,7 @@ export class RespondToWebhook implements INodeType {
 		name: 'respondToWebhook',
 		group: ['transform'],
 		version: [1, 1.1, 1.2, 1.3, 1.4, 1.5],
-		// Keep the default version at 1.4 until streaming is fully supported
-		defaultVersion: 1.4,
+		defaultVersion: 1.5,
 		description: 'Returns data for Webhook',
 		defaults: {
 			name: 'Respond to Webhook',
@@ -402,9 +400,6 @@ export class RespondToWebhook implements INodeType {
 				}
 			}
 
-			const hasHtmlContentType =
-				headers['content-type'] && isHtmlRenderedContentType(headers['content-type'] as string);
-
 			let statusCode = (options.responseCode as number) || 200;
 			let responseBody: IN8nHttpResponse | Readable;
 			if (respondWith === 'json') {
@@ -480,13 +475,9 @@ export class RespondToWebhook implements INodeType {
 					this.sendChunk('end', 0);
 				}
 			} else if (respondWith === 'text') {
-				// If a user doesn't set the content-type header and uses html, the html can still be rendered on the browser
 				const rawBody = this.getNodeParameter('responseBody', 0) as string;
-				if (hasHtmlContentType || !headers['content-type']) {
-					responseBody = sandboxHtmlResponse(rawBody);
-				} else {
-					responseBody = rawBody;
-				}
+				responseBody = rawBody;
+
 				// Send the raw body to the stream
 				if (shouldStream) {
 					this.sendChunk('begin', 0);
@@ -562,15 +553,6 @@ export class RespondToWebhook implements INodeType {
 
 				await this.putExecutionToWait(WAIT_INDEFINITELY);
 				return [[{ json: {}, sendMessage: message }]];
-			}
-
-			if (
-				hasHtmlContentType &&
-				respondWith !== 'text' &&
-				respondWith !== 'binary' &&
-				responseBody
-			) {
-				responseBody = sandboxHtmlResponse(JSON.stringify(responseBody as string));
 			}
 
 			response = {

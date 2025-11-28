@@ -58,6 +58,12 @@ export class VectorStoreZepLoad implements INodeType {
 		outputNames: ['Vector Store'],
 		properties: [
 			{
+				displayName: 'This Zep integration is deprecated and will be removed in a future version.',
+				name: 'deprecationNotice',
+				type: 'notice',
+				default: '',
+			},
+			{
 				displayName: 'Collection Name',
 				name: 'collectionName',
 				type: 'string',

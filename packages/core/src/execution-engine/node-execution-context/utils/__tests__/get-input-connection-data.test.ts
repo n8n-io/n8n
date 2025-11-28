@@ -13,6 +13,7 @@ import type {
 	IExecuteFunctions,
 	IRunData,
 	ITaskData,
+	EngineRequest,
 } from 'n8n-workflow';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
@@ -611,6 +612,35 @@ describe('makeHandleToolInvocation', () => {
 		]);
 	});
 
+	it('should handle engine requests and return a warning message', async () => {
+		const mockContext = mock<IExecuteFunctions>();
+		contextFactory.mockReturnValue(mockContext);
+		const mockResult: EngineRequest = { actions: [], metadata: {} };
+		execute.mockResolvedValueOnce(mockResult);
+
+		const handleToolInvocation = makeHandleToolInvocation(
+			contextFactory,
+			connectedNode,
+			connectedNodeType,
+			runExecutionData,
+		);
+		const result = await handleToolInvocation(toolArgs);
+
+		expect(result).toBe(
+			'"Error: The Tool attempted to return an engine request, which is not supported in Agents"',
+		);
+		expect(mockContext.addOutputData).toHaveBeenCalledWith(NodeConnectionTypes.AiTool, 0, [
+			[
+				{
+					json: {
+						response:
+							'Error: The Tool attempted to return an engine request, which is not supported in Agents',
+					},
+				},
+			],
+		]);
+	});
+
 	it('should continue if json and binary data exist', async () => {
 		const warnFn = jest.fn();
 		const mockContext = mock<IExecuteFunctions>({
@@ -655,9 +685,9 @@ describe('makeHandleToolInvocation', () => {
 			connectedNodeType,
 			runExecutionData,
 		);
-		const result = await handleToolInvocation(toolArgs);
+		const result = handleToolInvocation(toolArgs);
 
-		expect(result).toBe('Error during node execution: Execution failed');
+		await expect(result).rejects.toThrow('Execution failed');
 		expect(mockContext.addOutputData).toHaveBeenCalledWith(
 			NodeConnectionTypes.AiTool,
 			0,
@@ -744,11 +774,12 @@ describe('makeHandleToolInvocation', () => {
 				runExecutionData,
 			);
 
-			const result = await handleToolInvocation(toolArgs);
+			const result = handleToolInvocation(toolArgs);
+
+			await expect(result).rejects.toThrow('Test error');
 
 			expect(contextFactory).toHaveBeenCalledTimes(1);
 			expect(connectedNodeType.execute).toHaveBeenCalledTimes(1);
-			expect(result).toContain('Error during node execution');
 		});
 
 		it('should retry up to maxTries when retryOnFail is true', async () => {
@@ -769,11 +800,11 @@ describe('makeHandleToolInvocation', () => {
 				runExecutionData,
 			);
 
-			const result = await handleToolInvocation(toolArgs);
+			const result = handleToolInvocation(toolArgs);
 
+			await expect(result).rejects.toThrow('Test error');
 			expect(contextFactory).toHaveBeenCalledTimes(3);
 			expect(connectedNodeType.execute).toHaveBeenCalledTimes(3);
-			expect(result).toContain('Error during node execution');
 		});
 
 		it('should succeed on retry after initial failure', async () => {
@@ -831,7 +862,8 @@ describe('makeHandleToolInvocation', () => {
 					runExecutionData,
 				);
 
-				await handleToolInvocation(toolArgs);
+				const result = handleToolInvocation(toolArgs);
+				await expect(result).rejects.toThrow('Test error');
 
 				expect(connectedNodeType.execute).toHaveBeenCalledTimes(expected);
 			}
@@ -859,7 +891,9 @@ describe('makeHandleToolInvocation', () => {
 				runExecutionData,
 			);
 
-			await handleToolInvocation(toolArgs);
+			const result = handleToolInvocation(toolArgs);
+
+			await expect(result).rejects.toThrow('Test error');
 
 			expect(sleepWithAbortSpy).toHaveBeenCalledWith(1500, undefined);
 			sleepWithAbortSpy.mockRestore();
@@ -968,9 +1002,9 @@ describe('makeHandleToolInvocation', () => {
 				runExecutionData,
 			);
 
-			const result = await handleToolInvocation(toolArgs);
+			const result = handleToolInvocation(toolArgs);
 
-			expect(result).toBe('Error during node execution: Execution was cancelled');
+			await expect(result).rejects.toThrow('Execution was cancelled');
 			expect(connectedNodeType.execute).toHaveBeenCalledTimes(1);
 		});
 

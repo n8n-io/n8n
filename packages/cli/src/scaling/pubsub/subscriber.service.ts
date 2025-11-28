@@ -1,4 +1,5 @@
 import { Logger } from '@n8n/backend-common';
+import { ExecutionsConfig } from '@n8n/config';
 import { Service } from '@n8n/di';
 import type { Redis as SingleNodeClient, Cluster as MultiNodeClient } from 'ioredis';
 import debounce from 'lodash/debounce';
@@ -6,7 +7,6 @@ import { InstanceSettings } from 'n8n-core';
 import { jsonParse } from 'n8n-workflow';
 import type { LogMetadata } from 'n8n-workflow';
 
-import config from '@/config';
 import { RedisClientService } from '@/services/redis-client.service';
 
 import { PubSubEventBus } from './pubsub.eventbus';
@@ -24,9 +24,10 @@ export class Subscriber {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly pubsubEventBus: PubSubEventBus,
 		private readonly redisClientService: RedisClientService,
+		private readonly executionsConfig: ExecutionsConfig,
 	) {
 		// @TODO: Once this class is only ever initialized in scaling mode, throw in the next line instead.
-		if (config.getEnv('executions.mode') !== 'queue') return;
+		if (this.executionsConfig.mode !== 'queue') return;
 
 		this.logger = this.logger.scoped(['scaling', 'pubsub']);
 

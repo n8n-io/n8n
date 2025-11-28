@@ -1,6 +1,6 @@
 /* eslint-disable n8n-nodes-base/node-execute-block-wrong-error-thrown */
 import { createWriteStream } from 'fs';
-import { stat } from 'fs/promises';
+import { rm, stat } from 'fs/promises';
 import isbot from 'isbot';
 import type {
 	IWebhookFunctions,
@@ -12,6 +12,7 @@ import type {
 	INodeProperties,
 } from 'n8n-workflow';
 import { BINARY_ENCODING, NodeOperationError, Node } from 'n8n-workflow';
+import * as a from 'node:assert';
 import { pipeline } from 'stream/promises';
 import { file as tmpFile } from 'tmp-promise';
 import { v4 as uuid } from 'uuid';
@@ -316,6 +317,7 @@ export class Webhook extends Node {
 		prepareOutput: (data: INodeExecutionData) => INodeExecutionData[][],
 	) {
 		const req = context.getRequestObject() as MultiPartFormData.Request;
+		a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 		const options = context.getNodeParameter('options', {}) as IDataObject;
 		const { data, files } = req.body;
 
@@ -362,6 +364,9 @@ export class Webhook extends Node {
 					file.originalFilename ?? file.newFilename,
 					file.mimetype,
 				);
+
+				// Delete original file to prevent tmp directory from growing too large
+				await rm(file.filepath, { force: true });
 
 				count += 1;
 			}

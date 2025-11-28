@@ -15,6 +15,7 @@ describe('permissions', () => {
 			externalSecretsProvider: {},
 			externalSecret: {},
 			eventBusDestination: {},
+			execution: {},
 			ldap: {},
 			license: {},
 			logStreaming: {},
@@ -22,15 +23,25 @@ describe('permissions', () => {
 			orchestration: {},
 			project: {},
 			saml: {},
+			provisioning: {},
 			securityAudit: {},
 			sourceControl: {},
 			tag: {},
 			user: {},
 			variable: {},
+			projectVariable: {},
 			workersView: {},
 			workflow: {},
+			workflowTags: {},
 			folder: {},
 			insights: {},
+			dataTable: {},
+			mcp: {},
+			mcpApiKey: {},
+			role: {},
+			chatHub: {},
+			chatHubAgent: {},
+			breakingChanges: {},
 		});
 	});
 	it('getResourcePermissions', () => {
@@ -53,6 +64,8 @@ describe('permissions', () => {
 			'user:list',
 			'variable:list',
 			'variable:read',
+			'projectVariable:list',
+			'projectVariable:read',
 			'workflow:create',
 			'workflow:delete',
 			'workflow:execute',
@@ -63,6 +76,7 @@ describe('permissions', () => {
 			'workflow:update',
 			'folder:create',
 			'insights:list',
+			'breakingChanges:list',
 		];
 
 		const permissionRecord: PermissionsRecord = {
@@ -96,6 +110,9 @@ describe('permissions', () => {
 			},
 			saml: {},
 			oidc: {},
+			provisioning: {},
+			mcp: {},
+			mcpApiKey: {},
 			securityAudit: {},
 			sourceControl: {},
 			tag: {
@@ -108,6 +125,10 @@ describe('permissions', () => {
 				list: true,
 			},
 			variable: {
+				list: true,
+				read: true,
+			},
+			projectVariable: {
 				list: true,
 				read: true,
 			},
@@ -126,6 +147,15 @@ describe('permissions', () => {
 				create: true,
 			},
 			insights: {
+				list: true,
+			},
+			dataTable: {},
+			execution: {},
+			workflowTags: {},
+			role: {},
+			chatHub: {},
+			chatHubAgent: {},
+			breakingChanges: {
 				list: true,
 			},
 		};

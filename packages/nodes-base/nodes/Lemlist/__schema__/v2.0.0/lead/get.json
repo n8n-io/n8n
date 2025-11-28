@@ -21,10 +21,7 @@
         },
         "lastName": {
             "type": "string"
-        },
-        "phone": {
-            "type": "string"
         }
     },
-    "version": 1
+    "version": 2
 }

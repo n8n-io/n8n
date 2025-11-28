@@ -8,6 +8,7 @@ import { CacheService } from '@/services/cache/cache.service';
 export type TestWebhookRegistration = {
 	pushRef?: string;
 	workflowEntity: IWorkflowBase;
+	// TODO: update this type to close CAT-1265 properly
 	destinationNode?: string;
 	webhook: IWebhookData;
 };
@@ -69,6 +70,10 @@ export class TestWebhookRegistrationsService {
 		if (!hash) return [];
 
 		return Object.values(hash);
+	}
+
+	async getRegistrationsHash() {
+		return await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
 	}
 
 	async deregisterAll() {

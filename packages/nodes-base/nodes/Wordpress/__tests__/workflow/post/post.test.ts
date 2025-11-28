@@ -10,6 +10,10 @@ describe('Wordpress > Post Workflows', () => {
 		mock.get('/wp-json/wp/v2/posts/1').reply(200, postGet);
 		mock.get('/wp-json/wp/v2/posts').query({ per_page: 10, page: 1 }).reply(200, postGetMany);
 		mock
+			.get('/wp-json/wp/v2/posts')
+			.query({ per_page: 10, page: 1, before: '2026-01-01T00:00:00' })
+			.reply(200, postGetMany);
+		mock
 			.post('/wp-json/wp/v2/posts', {
 				title: 'New Post',
 				author: 1,

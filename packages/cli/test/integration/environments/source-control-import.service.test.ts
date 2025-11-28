@@ -94,6 +94,7 @@ describe('SourceControlImportService', () => {
 			folderRepository,
 			mock<InstanceSettings>({ n8nFolder: '/some-path' }),
 			sourceControlScopedService,
+			mock(),
 		);
 	});
 
@@ -1325,7 +1326,7 @@ describe('SourceControlImportService', () => {
 			expect(sharing).toBeTruthy();
 		});
 
-		it('should not change the owner if the credential is owned by somebody else on the target instance', async () => {
+		it('should change the owner to match source control when credential is owned by somebody else on the target instance', async () => {
 			cipher.encrypt.mockReturnValue('some-encrypted-data');
 
 			const importingUser = await getGlobalOwner();
@@ -1359,13 +1360,22 @@ describe('SourceControlImportService', () => {
 				importingUser.id,
 			);
 
+			// Verify the source project was created
+			const sourceProject = await projectRepository.findOne({
+				where: { id: sourceProjectId },
+			});
+			expect(sourceProject).toBeTruthy();
+			expect(sourceProject?.name).toBe('Sales');
+			expect(sourceProject?.type).toBe('team');
+
+			// Verify ownership changed to match source control
 			await expect(
 				sharedCredentialsRepository.findBy({
 					credentialsId: credential.id,
 				}),
 			).resolves.toMatchObject([
 				{
-					projectId: targetProject.id,
+					projectId: sourceProjectId,
 					role: 'credential:owner',
 				},
 			]);
@@ -1380,6 +1390,76 @@ describe('SourceControlImportService', () => {
 					data: 'some-encrypted-data',
 				},
 			]);
+		});
+
+		it('should import global credentials with isGlobal flag set to true', async () => {
+			const importingUser = await getGlobalOwner();
+
+			fsp.readFile = jest.fn().mockResolvedValue(Buffer.from('some-content'));
+
+			const CREDENTIAL_ID = nanoid();
+
+			const stub: ExportableCredential = {
+				id: CREDENTIAL_ID,
+				name: 'Global Test Credential',
+				type: 'globalCredentialType',
+				data: {},
+				ownedBy: null,
+				isGlobal: true,
+			};
+
+			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+
+			cipher.encrypt.mockReturnValue('some-encrypted-data');
+
+			await service.importCredentialsFromWorkFolder(
+				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
+				importingUser.id,
+			);
+
+			const importedCredential = await credentialsRepository.findOneBy({
+				id: CREDENTIAL_ID,
+			});
+
+			expect(importedCredential).toBeTruthy();
+			expect(importedCredential?.isGlobal).toBe(true);
+			expect(importedCredential?.name).toBe('Global Test Credential');
+			expect(importedCredential?.type).toBe('globalCredentialType');
+		});
+
+		it('should import non-global credentials with isGlobal flag set to false', async () => {
+			const importingUser = await getGlobalOwner();
+
+			fsp.readFile = jest.fn().mockResolvedValue(Buffer.from('some-content'));
+
+			const CREDENTIAL_ID = nanoid();
+
+			const stub: ExportableCredential = {
+				id: CREDENTIAL_ID,
+				name: 'Standard Credential',
+				type: 'standardCredentialType',
+				data: {},
+				ownedBy: null,
+				isGlobal: false,
+			};
+
+			jest.spyOn(utils, 'jsonParse').mockReturnValue(stub);
+
+			cipher.encrypt.mockReturnValue('some-encrypted-data');
+
+			await service.importCredentialsFromWorkFolder(
+				[mock<SourceControlledFile>({ id: CREDENTIAL_ID })],
+				importingUser.id,
+			);
+
+			const importedCredential = await credentialsRepository.findOneBy({
+				id: CREDENTIAL_ID,
+			});
+
+			expect(importedCredential).toBeTruthy();
+			expect(importedCredential?.isGlobal).toBe(false);
+			expect(importedCredential?.name).toBe('Standard Credential');
+			expect(importedCredential?.type).toBe('standardCredentialType');
 		});
 	});
 });

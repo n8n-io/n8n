@@ -1,5 +1,5 @@
-import { action } from '@storybook/addon-actions';
-import type { StoryFn } from '@storybook/vue3';
+import type { StoryFn } from '@storybook/vue3-vite';
+import { action } from 'storybook/actions';
 
 import N8nTabs from './Tabs.vue';
 import type { TabOptions } from '../../types/tabs';
@@ -9,7 +9,7 @@ export default {
 	component: N8nTabs,
 	argTypes: {},
 	parameters: {
-		backgrounds: { default: '--color-background-xlight' },
+		backgrounds: { default: '--color--background--light-3' },
 	},
 };
 
@@ -35,6 +35,7 @@ const Template: StoryFn = (args, { argTypes }) => ({
 
 export const Example = Template.bind({});
 Example.args = {
+	modelValue: 'first',
 	options: [
 		{
 			label: 'First',
@@ -104,23 +105,27 @@ const options: Array<TabOptions<string>> = [
 
 export const TabVariants = Template.bind({});
 TabVariants.args = {
+	modelValue: 'first',
 	options,
 };
 
 export const WithSmallSize = Template.bind({});
 WithSmallSize.args = {
+	modelValue: 'first',
 	options,
 	size: 'small',
 };
 
 export const WithModernVariant = Template.bind({});
 WithModernVariant.args = {
+	modelValue: 'first',
 	variant: 'modern',
 	options,
 };
 
 export const WithSmallAndModern = Template.bind({});
 WithSmallAndModern.args = {
+	modelValue: 'first',
 	variant: 'modern',
 	options,
 	size: 'small',

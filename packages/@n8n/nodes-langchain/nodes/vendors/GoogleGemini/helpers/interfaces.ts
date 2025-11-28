@@ -1,4 +1,44 @@
+import type {
+	GenerateContentConfig,
+	GenerationConfig,
+	GenerateContentParameters,
+} from '@google/genai';
 import type { IDataObject } from 'n8n-workflow';
+export { Modality } from '@google/genai';
+
+/* type created based on: https://ai.google.dev/api/generate-content#generationconfig */
+export type GenerateContentGenerationConfig = Pick<
+	GenerationConfig,
+	| 'stopSequences'
+	| 'responseMimeType'
+	| 'responseSchema'
+	| 'responseJsonSchema'
+	| 'responseModalities'
+	| 'candidateCount'
+	| 'maxOutputTokens'
+	| 'temperature'
+	| 'topP'
+	| 'topK'
+	| 'seed'
+	| 'presencePenalty'
+	| 'frequencyPenalty'
+	| 'responseLogprobs'
+	| 'logprobs'
+	| 'speechConfig'
+	| 'thinkingConfig'
+	| 'mediaResolution'
+>;
+
+/* Type created based on: https://ai.google.dev/api/generate-content#method:-models.streamgeneratecontent */
+export interface GenerateContentRequest extends IDataObject {
+	contents: GenerateContentParameters['contents'];
+	tools?: GenerateContentConfig['tools'];
+	toolConfig?: GenerateContentConfig['toolConfig'];
+	systemInstruction?: GenerateContentConfig['systemInstruction'];
+	safetySettings?: GenerateContentConfig['safetySettings'];
+	generationConfig?: GenerateContentGenerationConfig;
+	cachedContent?: string;
+}
 
 export interface GenerateContentResponse {
 	candidates: Array<{

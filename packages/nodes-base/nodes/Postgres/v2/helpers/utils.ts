@@ -6,7 +6,7 @@ import type {
 	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
 
 import type {
 	ColumnInfo,
@@ -486,20 +486,24 @@ export async function uniqueColumns(db: PgpDatabase, table: string, schema = 'pu
 	return unique as IDataObject[];
 }
 
-export async function getEnums(db: PgpDatabase): Promise<EnumInfo[]> {
-	const enumsData = await db.any(
+export async function getEnums(db: PgpDatabase): Promise<Map<string, string[]>> {
+	const enums = await db.any<EnumInfo>(
 		'SELECT pg_type.typname, pg_enum.enumlabel FROM pg_type JOIN pg_enum ON pg_enum.enumtypid = pg_type.oid;',
 	);
-	return enumsData as EnumInfo[];
+
+	return enums.reduce((map, { typname, enumlabel }) => {
+		const existingValues = map.get(typname) ?? [];
+		map.set(typname, [...existingValues, enumlabel]);
+		return map;
+	}, new Map<string, string[]>());
 }
 
-export function getEnumValues(enumInfo: EnumInfo[], enumName: string): INodePropertyOptions[] {
-	return enumInfo.reduce((acc, current) => {
-		if (current.typname === enumName) {
-			acc.push({ name: current.enumlabel, value: current.enumlabel });
-		}
-		return acc;
-	}, [] as INodePropertyOptions[]);
+export function getEnumValues(
+	enumInfo: Map<string, string[]>,
+	enumName: string,
+): INodePropertyOptions[] {
+	const values = enumInfo.get(enumName) ?? [];
+	return values.map((value) => ({ name: value, value }));
 }
 
 export async function doesRowExist(
@@ -566,6 +570,7 @@ export const configureTableSchemaUpdater = (initialSchema: string, initialTable:
  * @param schema table schema
  * @param node INode
  * @param itemIndex the index of the current item
+ * @returns a new data object with the arrays converted to postgres format
  */
 export const convertArraysToPostgresFormat = (
 	data: IDataObject,
@@ -573,10 +578,11 @@ export const convertArraysToPostgresFormat = (
 	node: INode,
 	itemIndex = 0,
 ) => {
+	const newData = deepCopy(data);
 	for (const columnInfo of schema) {
-		//in case column type is array we need to convert it to fornmat that postgres understands
+		// in case column type is array we need to convert it to fornmat that postgres understands
 		if (columnInfo.data_type.toUpperCase() === 'ARRAY') {
-			let columnValue = data[columnInfo.column_name];
+			let columnValue = newData[columnInfo.column_name];
 
 			if (typeof columnValue === 'string') {
 				columnValue = jsonParse(columnValue);
@@ -603,8 +609,8 @@ export const convertArraysToPostgresFormat = (
 					return entry;
 				});
 
-				//wrap in {} instead of [] as postgres does and join with ,
-				data[columnInfo.column_name] = `{${arrayEntries.join(',')}}`;
+				// wrap in {} instead of [] as postgres does and join with ,
+				newData[columnInfo.column_name] = `{${arrayEntries.join(',')}}`;
 			} else {
 				if (columnInfo.is_nullable === 'NO') {
 					throw new NodeOperationError(
@@ -618,4 +624,6 @@ export const convertArraysToPostgresFormat = (
 			}
 		}
 	}
+
+	return newData;
 };

@@ -13,9 +13,6 @@
         "id": {
             "type": "string"
         },
-        "isInline": {
-            "type": "boolean"
-        },
         "lastModifiedDateTime": {
             "type": "string"
         },
@@ -26,5 +23,5 @@
             "type": "integer"
         }
     },
-    "version": 1
+    "version": 2
 }

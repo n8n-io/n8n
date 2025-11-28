@@ -172,7 +172,10 @@ describe('Form Node', () => {
 		});
 
 		it('should return form data for POST request', async () => {
-			mockWebhookFunctions.getRequestObject.mockReturnValue({ method: 'POST' } as Request);
+			mockWebhookFunctions.getRequestObject.mockReturnValue({
+				method: 'POST',
+				contentType: 'multipart/form-data',
+			} as Request);
 			mockWebhookFunctions.getParentNodes.mockReturnValue([
 				{
 					type: 'n8n-nodes-base.formTrigger',
@@ -245,7 +248,7 @@ describe('Form Node', () => {
 						message: 'Test Message',
 						redirectUrl: '',
 						title: 'Test Title',
-						responseText: '<div>hey</div>',
+						responseText: '<div>hey</div><script>alert("hi")</script>',
 						responseBinary: encodeURIComponent(JSON.stringify('')),
 					},
 				},
@@ -292,6 +295,7 @@ describe('Form Node', () => {
 				const mockResponseObject = {
 					render: jest.fn(),
 					redirect: jest.fn(),
+					setHeader: jest.fn(),
 				};
 				mockWebhookFunctions.getResponseObject.mockReturnValue(
 					mockResponseObject as unknown as Response,
@@ -375,6 +379,7 @@ describe('Form Node', () => {
 
 			const mockResponseObject = {
 				render: jest.fn(),
+				setHeader: jest.fn(),
 			};
 			mockWebhookFunctions.getResponseObject.mockReturnValue(
 				mockResponseObject as unknown as Response,
@@ -403,6 +408,7 @@ describe('Form Node', () => {
 				if (paramName === 'completionMessage') return 'Test Message';
 				if (paramName === 'redirectUrl') return 'https://n8n.io';
 				if (paramName === 'formFields.values') return [];
+				if (paramName === 'responseText') return '';
 
 				return {};
 			});
@@ -420,6 +426,7 @@ describe('Form Node', () => {
 				render: jest.fn(),
 				redirect: jest.fn(),
 				send: jest.fn(),
+				setHeader: jest.fn(),
 			};
 			mockWebhookFunctions.getResponseObject.mockReturnValue(
 				mockResponseObject as unknown as Response,

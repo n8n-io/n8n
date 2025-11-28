@@ -4,7 +4,6 @@ import { Container, Service } from '@n8n/di';
 import { caching } from 'cache-manager';
 import { jsonStringify, UserError } from 'n8n-workflow';
 
-import config from '@/config';
 import { MalformedRefreshValueError } from '@/errors/cache-errors/malformed-refresh-value.error';
 import { UncacheableValueError } from '@/errors/cache-errors/uncacheable-value.error';
 import type {
@@ -31,7 +30,7 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 
 	async init() {
 		const { backend } = this.globalConfig.cache;
-		const mode = config.getEnv('executions.mode');
+		const { mode } = this.globalConfig.executions;
 
 		const useRedis = backend === 'redis' || (backend === 'auto' && mode === 'queue');
 
@@ -40,9 +39,12 @@ export class CacheService extends TypedEmitter<CacheEvents> {
 			const redisClientService = Container.get(RedisClientService);
 
 			const prefixBase = this.globalConfig.redis.prefix;
-			const prefix = redisClientService.toValidPrefix(
-				`${prefixBase}:${this.globalConfig.cache.redis.prefix}:`,
-			);
+			const cachePrefix = this.globalConfig.cache.redis.prefix;
+
+			// For cluster mode, we need to ensure proper hash tagging: {n8n:cache}:
+			// instead of {n8n:cache:} to keep the colon outside the hash tag
+			const hashTagPart = `${prefixBase}:${cachePrefix}`;
+			const prefix = redisClientService.toValidPrefix(hashTagPart) + ':';
 
 			const redisClient = redisClientService.createClient({
 				type: 'cache(n8n)',

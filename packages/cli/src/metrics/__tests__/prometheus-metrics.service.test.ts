@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { WorkflowRepository } from '@n8n/db';
+import type { WorkflowRepository, LicenseMetricsRepository } from '@n8n/db';
 import type express from 'express';
 import promBundle from 'express-prom-bundle';
 import { mock } from 'jest-mock-extended';
@@ -8,7 +8,6 @@ import type { InstanceSettings } from 'n8n-core';
 import { EventMessageTypeNames } from 'n8n-workflow';
 import promClient from 'prom-client';
 
-import config from '@/config';
 import type { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { EventService } from '@/events/event.service';
 
@@ -30,6 +29,7 @@ describe('PrometheusMetricsService', () => {
 	let eventService: EventService;
 	let instanceSettings: InstanceSettings;
 	let workflowRepository: WorkflowRepository;
+	let licenseMetricsRepository: LicenseMetricsRepository;
 	let prometheusMetricsService: PrometheusMetricsService;
 
 	beforeEach(() => {
@@ -49,6 +49,9 @@ describe('PrometheusMetricsService', () => {
 					includeApiStatusCodeLabel: false,
 					includeQueueMetrics: false,
 					includeWorkflowNameLabel: false,
+					includeWorkflowStatistics: false,
+					activeWorkflowCountInterval: 30,
+					workflowStatisticsInterval: 30,
 				},
 				rest: 'rest',
 				form: 'form',
@@ -58,6 +61,9 @@ describe('PrometheusMetricsService', () => {
 				webhookTest: 'webhook-test',
 				webhookWaiting: 'webhook-waiting',
 			},
+			executions: {
+				mode: 'regular',
+			},
 		});
 
 		app = mock<express.Application>();
@@ -65,6 +71,7 @@ describe('PrometheusMetricsService', () => {
 		eventService = mock<EventService>();
 		instanceSettings = mock<InstanceSettings>({ instanceType: 'main' });
 		workflowRepository = mock<WorkflowRepository>();
+		licenseMetricsRepository = mock<LicenseMetricsRepository>();
 
 		prometheusMetricsService = new PrometheusMetricsService(
 			mock(),
@@ -73,6 +80,7 @@ describe('PrometheusMetricsService', () => {
 			eventService,
 			instanceSettings,
 			workflowRepository,
+			licenseMetricsRepository,
 		);
 
 		promClient.Counter.prototype.inc = jest.fn();
@@ -95,6 +103,7 @@ describe('PrometheusMetricsService', () => {
 				customGlobalConfig,
 				mock(),
 				instanceSettings,
+				mock(),
 				mock(),
 			);
 
@@ -174,7 +183,7 @@ describe('PrometheusMetricsService', () => {
 				includeStatusCode: false,
 			});
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
 				name: 'n8n_last_activity',
 				help: 'last instance activity (backend request) in Unix time (seconds).',
 			});
@@ -202,19 +211,19 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should set up queue metrics if enabled', async () => {
-			config.set('executions.mode', 'queue');
+			globalConfig.executions.mode = 'queue';
 			prometheusMetricsService.enableMetric('queue');
 
 			await prometheusMetricsService.init(app);
 
 			// call 1 is for `n8n_version_info` (always enabled)
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
 				name: 'n8n_scaling_mode_queue_jobs_waiting',
 				help: 'Current number of enqueued jobs waiting for pickup in scaling mode.',
 			});
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(4, {
 				name: 'n8n_scaling_mode_queue_jobs_active',
 				help: 'Current number of jobs being processed across all workers in scaling mode.',
 			});
@@ -233,18 +242,18 @@ describe('PrometheusMetricsService', () => {
 		});
 
 		it('should not set up queue metrics if enabled but not on scaling mode', async () => {
-			config.set('executions.mode', 'regular');
+			globalConfig.executions.mode = 'regular';
 			prometheusMetricsService.enableMetric('queue');
 
 			await prometheusMetricsService.init(app);
 
-			expect(promClient.Gauge).toHaveBeenCalledTimes(2); // version metric + active workflow count metric
+			expect(promClient.Gauge).toHaveBeenCalledTimes(3); // version metric + active workflow count metric + instance role metric
 			expect(promClient.Counter).toHaveBeenCalledTimes(0); // cache metrics
 			expect(eventService.on).not.toHaveBeenCalled();
 		});
 
 		it('should not set up queue metrics if enabled and on scaling mode but instance is not main', async () => {
-			config.set('executions.mode', 'queue');
+			globalConfig.executions.mode = 'queue';
 			prometheusMetricsService.enableMetric('queue');
 			// @ts-expect-error private field
 			instanceSettings.instanceType = 'worker';
@@ -260,9 +269,9 @@ describe('PrometheusMetricsService', () => {
 			await prometheusMetricsService.init(app);
 
 			// First call is n8n version metric
-			expect(promClient.Gauge).toHaveBeenCalledTimes(2);
+			expect(promClient.Gauge).toHaveBeenCalledTimes(3);
 
-			expect(promClient.Gauge).toHaveBeenNthCalledWith(2, {
+			expect(promClient.Gauge).toHaveBeenNthCalledWith(3, {
 				name: 'n8n_active_workflow_count',
 				help: 'Total number of active workflows.',
 				collect: expect.any(Function),
@@ -528,6 +537,37 @@ describe('PrometheusMetricsService', () => {
 			});
 
 			expect(promClient.Counter.prototype.inc).toHaveBeenCalledWith({}, 1);
+		});
+	});
+
+	describe('instance role metric', () => {
+		it('should set up instance role metric for main instance', async () => {
+			// @ts-expect-error Private field
+			instanceSettings.instanceType = 'main';
+
+			await prometheusMetricsService.init(app);
+
+			expect(promClient.Gauge).toHaveBeenCalledWith({
+				name: 'n8n_instance_role_leader',
+				help: 'Whether this main instance is the leader (1) or not (0).',
+			});
+		});
+
+		it('should not set up instance role metric for worker instance', async () => {
+			// @ts-expect-error Private field
+			instanceSettings.instanceType = 'worker';
+
+			await prometheusMetricsService.init(app);
+
+			// Only version and active workflow count metrics should be created
+			expect(promClient.Gauge).toHaveBeenCalledTimes(2);
+
+			// Verify instance role metric was not created
+			const calls = (promClient.Gauge as jest.Mock).mock.calls;
+			const hasInstanceRoleMetric = calls.some(
+				(call) => call[0]?.name === 'n8n_instance_role_leader',
+			);
+			expect(hasInstanceRoleMetric).toBe(false);
 		});
 	});
 });

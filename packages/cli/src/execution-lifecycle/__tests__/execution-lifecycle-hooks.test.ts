@@ -2,7 +2,6 @@ import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import type { Project } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
-import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import {
 	BinaryDataService,
@@ -11,7 +10,7 @@ import {
 	ExecutionLifecycleHooks,
 	BinaryDataConfig,
 } from 'n8n-core';
-import { ExpressionError } from 'n8n-workflow';
+import { createRunExecutionData, ExpressionError } from 'n8n-workflow';
 import type {
 	IRunExecutionData,
 	ITaskData,
@@ -63,6 +62,7 @@ describe('Execution Lifecycle Hooks', () => {
 		id: workflowId,
 		name: 'Test Workflow',
 		active: true,
+		activeVersionId: 'some-version-id',
 		isArchived: false,
 		connections: {},
 		nodes: [
@@ -118,26 +118,26 @@ describe('Execution Lifecycle Hooks', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		workflowData.settings = {};
-		successfulRun.data = {
+		successfulRun.data = createRunExecutionData({
 			resultData: {
 				runData: {},
 			},
-		};
-		failedRun.data = {
+		});
+		failedRun.data = createRunExecutionData({
 			resultData: {
 				runData: {},
 				error: expressionError,
 			},
-		};
-		successfulRunWithRewiredDestination.data = {
+		});
+		successfulRunWithRewiredDestination.data = createRunExecutionData({
 			startData: {
-				destinationNode: 'PartialExecutionToolExecutor',
-				originalDestinationNode: nodeName,
+				destinationNode: { nodeName: 'PartialExecutionToolExecutor', mode: 'inclusive' },
+				originalDestinationNode: { nodeName, mode: 'inclusive' },
 			},
 			resultData: {
 				runData: {},
 			},
-		};
+		});
 	});
 
 	const workflowEventTests = (expectedUserId?: string) => {
@@ -183,7 +183,10 @@ describe('Execution Lifecycle Hooks', () => {
 					userId: expectedUserId,
 				});
 
-				expect(successfulRunWithRewiredDestination.data.startData?.destinationNode).toBe(nodeName);
+				expect(successfulRunWithRewiredDestination.data.startData?.destinationNode).toEqual({
+					nodeName,
+					mode: 'inclusive',
+				});
 				expect(
 					successfulRunWithRewiredDestination.data.startData?.originalDestinationNode,
 				).toBeUndefined();
@@ -309,12 +312,69 @@ describe('Execution Lifecycle Hooks', () => {
 		});
 
 		describe('nodeExecuteAfter', () => {
-			it('should send nodeExecuteAfter push event', async () => {
-				await lifecycleHooks.runHook('nodeExecuteAfter', [nodeName, taskData, runExecutionData]);
+			it('should send nodeExecuteAfter and nodeExecuteAfterData push events', async () => {
+				const mockTaskData: ITaskData = {
+					startTime: 1,
+					executionTime: 1,
+					executionIndex: 0,
+					source: [],
+					data: {
+						main: [
+							[
+								{
+									json: { key: 'value' },
+									binary: {
+										data: {
+											id: '123',
+											data: '',
+											mimeType: 'text/plain',
+										},
+									},
+								},
+							],
+						],
+					},
+				};
 
-				expect(push.send).toHaveBeenCalledWith(
-					{ type: 'nodeExecuteAfter', data: { executionId, nodeName, data: taskData } },
+				await lifecycleHooks.runHook('nodeExecuteAfter', [
+					nodeName,
+					mockTaskData,
+					runExecutionData,
+				]);
+
+				const { data: _, ...taskDataWithoutData } = mockTaskData;
+
+				expect(push.send).toHaveBeenNthCalledWith(
+					1,
+					{
+						type: 'nodeExecuteAfter',
+						data: {
+							executionId,
+							nodeName,
+							itemCountByConnectionType: {
+								main: [1],
+							},
+							data: taskDataWithoutData,
+						},
+					},
 					pushRef,
+				);
+
+				expect(push.send).toHaveBeenNthCalledWith(
+					2,
+					{
+						type: 'nodeExecuteAfterData',
+						data: {
+							executionId,
+							nodeName,
+							itemCountByConnectionType: {
+								main: [1],
+							},
+							data: mockTaskData,
+						},
+					},
+					pushRef,
+					true,
 				);
 			});
 
@@ -380,7 +440,6 @@ describe('Execution Lifecycle Hooks', () => {
 						type: 'executionFinished',
 						data: {
 							executionId,
-							rawData: stringify(successfulRun.data),
 							status: 'success',
 							workflowId: 'test-workflow-id',
 						},
