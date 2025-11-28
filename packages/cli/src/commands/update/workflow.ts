@@ -20,6 +20,7 @@ const flagsSchema = z.object({
 })
 export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
+		const workflowRepository = Container.get(WorkflowRepository);
 		const { flags } = this;
 
 		this.logger.warn('⚠️  WARNING: The "update:workflow" command is deprecated.\n');
@@ -49,11 +50,29 @@ export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchem
 		const newState = flags.active === 'true';
 		const action = newState ? 'Activating' : 'Deactivating';
 
-		// Block all activation attempts - users must migrate to the new command
-		if (newState) {
-			this.logger.error('Workflow activation via "update:workflow" is no longer supported.');
+		// Backwards compatibility: if --id and --active=true, activate the current version
+		if (flags.id && newState) {
+			this.logger.info(`Activating workflow ${flags.id} with current version`);
+			this.logger.warn(`Please use: activate:workflow --id=${flags.id}\n`);
+			try {
+				await workflowRepository.activateVersion(flags.id);
+			} catch (error) {
+				this.logger.error('Failed to activate workflow');
+				throw error;
+			}
+
+			this.logger.info('Note: Changes will not take effect if n8n is running.');
+			this.logger.info(
+				'Please restart n8n for changes to take effect if n8n is currently running.',
+			);
+			return;
+		}
+
+		// Block activation with --all flag
+		if (flags.all && newState) {
+			this.logger.error('Workflow activation via "update:workflow --all" is no longer supported.');
 			this.logger.error(
-				'Please use: activate:workflow --id=<workflow-id> --versionId=<version-id>',
+				'Please activate workflows individually using: activate:workflow --id=<workflow-id>',
 			);
 			return;
 		}
@@ -67,13 +86,13 @@ export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchem
 
 		if (flags.id) {
 			this.logger.info(`${action} workflow with ID: ${flags.id}`);
-			await Container.get(WorkflowRepository).updateActiveState(flags.id, newState);
+			await workflowRepository.updateActiveState(flags.id, newState);
 		} else {
 			this.logger.info(`${action} all workflows`);
-			await Container.get(WorkflowRepository).deactivateAll();
+			await workflowRepository.deactivateAll();
 		}
 
-		this.logger.info('Activation or deactivation will not take effect if n8n is running.');
+		this.logger.info('Note: Changes will not take effect if n8n is running.');
 		this.logger.info('Please restart n8n for changes to take effect if n8n is currently running.');
 	}
 

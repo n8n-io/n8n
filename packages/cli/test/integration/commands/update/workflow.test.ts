@@ -82,7 +82,7 @@ test('update:workflow can deactivate all workflows', async () => {
 	expect(workflow2?.activeVersion).toBeNull();
 });
 
-test('update:workflow does not activate when trying to activate a specific workflow', async () => {
+test('update:workflow activates current version when --active=true (backwards compatibility)', async () => {
 	//
 	// ARRANGE
 	//
@@ -96,11 +96,12 @@ test('update:workflow does not activate when trying to activate a specific workf
 	//
 	// ASSERT
 	//
-	// Verify workflow was NOT activated
+	// Verify workflow was activated with current version
 	const workflowRepo = Container.get(WorkflowRepository);
-	const unchangedWorkflow = await workflowRepo.findOneBy({ id: workflow.id });
+	const updatedWorkflow = await workflowRepo.findOneBy({ id: workflow.id });
 
-	expect(unchangedWorkflow?.activeVersionId).toBeNull();
+	expect(updatedWorkflow?.activeVersionId).toBe(workflow.versionId);
+	expect(updatedWorkflow?.active).toBe(true);
 });
 
 test('update:workflow can deactivate a specific workflow', async () => {
