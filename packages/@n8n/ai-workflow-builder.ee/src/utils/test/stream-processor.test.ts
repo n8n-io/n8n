@@ -7,7 +7,12 @@ import type {
 	StreamOutput,
 } from '../../types/streaming';
 import type { BuilderToolBase } from '../stream-processor';
-import { processStreamChunk, createStreamProcessor, formatMessages } from '../stream-processor';
+import {
+	processStreamChunk,
+	createStreamProcessor,
+	formatMessages,
+	cleanContextTags,
+} from '../stream-processor';
 
 describe('stream-processor', () => {
 	describe('processStreamChunk', () => {
@@ -1035,6 +1040,341 @@ describe('stream-processor', () => {
 				type: 'output',
 				data: { success: true, connectionId: 'conn-1' },
 			});
+		});
+	});
+
+	describe('createStreamProcessor with subgraph events', () => {
+		it('should process parent events [streamMode, data]', async () => {
+			async function* mockStream(): AsyncGenerator<[string, unknown], void, unknown> {
+				yield ['updates', { agent: { messages: [{ content: 'Hello from parent' }] } }];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(1);
+			expect((results[0].messages[0] as AgentMessageChunk).text).toBe('Hello from parent');
+		});
+
+		it('should process subgraph events [namespace[], streamMode, data]', async () => {
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				// Non-skipped subgraph event
+				yield [['some_other_graph'], 'updates', { agent: { messages: [{ content: 'Test' }] } }];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(1);
+		});
+
+		it('should filter out message events from builder_subgraph namespace', async () => {
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				// UUID-appended namespace format used by LangGraph
+				yield [
+					['builder_subgraph:612f4bc3-b308-53a8-b2e8-01543d375dff'],
+					'updates',
+					{ agent: { messages: [{ content: 'Internal builder message' }] } },
+				];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(0);
+		});
+
+		it('should filter out message events from discovery_subgraph namespace', async () => {
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				yield [
+					['discovery_subgraph:abc-123'],
+					'updates',
+					{ agent: { messages: [{ content: 'Internal discovery message' }] } },
+				];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(0);
+		});
+
+		it('should filter out message events from configurator_subgraph namespace', async () => {
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				yield [
+					['configurator_subgraph:xyz-789'],
+					'updates',
+					{ configurator: { messages: [{ content: 'Internal config message' }] } },
+				];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(0);
+		});
+
+		it('should allow tool progress events from subgraphs', async () => {
+			const toolChunk: ToolProgressChunk = {
+				id: 'tool-1',
+				toolCallId: 'call-1',
+				type: 'tool',
+				role: 'assistant',
+				toolName: 'add_nodes',
+				status: 'running',
+				updates: [],
+			};
+
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				yield [['builder_subgraph:uuid'], 'custom', toolChunk];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(1);
+			expect((results[0].messages[0] as ToolProgressChunk).toolName).toBe('add_nodes');
+		});
+
+		it('should allow process_operations events from subgraphs', async () => {
+			const workflowData = { nodes: [], connections: {} };
+
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				yield [
+					['builder_subgraph:uuid'],
+					'updates',
+					{ process_operations: { workflowJSON: workflowData, workflowOperations: null } },
+				];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(1);
+			expect((results[0].messages[0] as WorkflowUpdateChunk).type).toBe('workflow-updated');
+		});
+
+		it('should handle mixed parent and subgraph events', async () => {
+			async function* mockStream(): AsyncGenerator<
+				[string, unknown] | [string[], string, unknown],
+				void,
+				unknown
+			> {
+				// Parent event
+				yield ['updates', { responder: { messages: [{ content: 'User-facing response' }] } }];
+				// Filtered subgraph event
+				yield [
+					['builder_subgraph:uuid'],
+					'updates',
+					{ agent: { messages: [{ content: 'Internal' }] } },
+				];
+				// Another parent event
+				yield ['custom', { type: 'tool', toolName: 'test_tool' } as ToolProgressChunk];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(2);
+			expect((results[0].messages[0] as AgentMessageChunk).text).toBe('User-facing response');
+			expect((results[1].messages[0] as ToolProgressChunk).toolName).toBe('test_tool');
+		});
+
+		it('should ignore malformed events', async () => {
+			async function* mockStream(): AsyncGenerator<unknown, void, unknown> {
+				yield ['updates', { agent: { messages: [{ content: 'Valid' }] } }];
+				yield null;
+				yield undefined;
+				yield 'just a string';
+				yield 12345;
+				yield { not: 'an array' };
+				yield ['updates', { agent: { messages: [{ content: 'Also valid' }] } }];
+			}
+
+			// Cast to expected type for processor
+			const processor = createStreamProcessor(
+				mockStream() as AsyncGenerator<[string, unknown], void, unknown>,
+			);
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			expect(results).toHaveLength(2);
+		});
+
+		it('should handle nested namespace arrays', async () => {
+			async function* mockStream(): AsyncGenerator<[string[], string, unknown], void, unknown> {
+				// Nested namespaces like parent:child:grandchild
+				yield [
+					['parent_graph', 'builder_subgraph:uuid'],
+					'updates',
+					{ agent: { messages: [{ content: 'Nested internal' }] } },
+				];
+			}
+
+			const processor = createStreamProcessor(mockStream());
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			// Should be filtered because one of the namespaces matches skipped prefix
+			expect(results).toHaveLength(0);
+		});
+
+		it('should not filter subgraph events when node is in SKIPPED_NODES list', async () => {
+			async function* mockStream(): AsyncGenerator<
+				[string[], string, unknown] | [string, unknown],
+				void,
+				unknown
+			> {
+				// 'tools' node is in SKIPPED_NODES - subgraph filtering should NOT block this event
+				// (subgraph filtering only blocks events with EMITTING nodes like 'agent')
+				yield [
+					['builder_subgraph:uuid'],
+					'updates',
+					{ tools: { messages: [{ content: 'Tool execution' }] } },
+				];
+				// Follow-up parent event to verify stream processing continues normally
+				yield ['updates', { agent: { messages: [{ content: 'Parent response' }] } }];
+			}
+
+			const processor = createStreamProcessor(
+				mockStream() as AsyncGenerator<[string, unknown], void, unknown>,
+			);
+			const results: StreamOutput[] = [];
+
+			for await (const output of processor) {
+				results.push(output);
+			}
+
+			// First event: no output because 'tools' doesn't emit (but wasn't filtered)
+			// Second event: parent 'agent' produces output, proving stream wasn't blocked
+			expect(results).toHaveLength(1);
+			expect((results[0].messages[0] as AgentMessageChunk).text).toBe('Parent response');
+		});
+	});
+
+	describe('cleanContextTags', () => {
+		// Import cleanContextTags for direct testing
+		it('should remove workflow context tags from text', () => {
+			const input = `Question here
+<current_workflow_json>
+{"nodes": []}
+</current_workflow_json>
+<current_simplified_execution_data>
+{}
+</current_simplified_execution_data>
+<current_execution_nodes_schemas>
+[]
+</current_execution_nodes_schemas>`;
+
+			const result = cleanContextTags(input);
+			expect(result).toBe('Question here');
+		});
+
+		it('should handle text without context tags', () => {
+			const input = 'Plain text without any tags';
+			const result = cleanContextTags(input);
+			expect(result).toBe('Plain text without any tags');
+		});
+	});
+
+	describe('edge cases', () => {
+		it('should handle responder node messages (user-facing)', () => {
+			const chunk = {
+				responder: {
+					messages: [{ content: 'Final response to user' }],
+				},
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeDefined();
+			expect(result?.messages).toHaveLength(1);
+			const message = result?.messages[0] as AgentMessageChunk;
+			expect(message.text).toBe('Final response to user');
+		});
+
+		it('should skip supervisor node messages', () => {
+			const chunk = {
+				supervisor: {
+					messages: [{ content: 'Supervisor internal message' }],
+				},
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeNull();
+		});
+
+		it('should skip tools node messages', () => {
+			const chunk = {
+				tools: {
+					messages: [{ content: 'Tool execution result' }],
+				},
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeNull();
+		});
+
+		it('should filter messages containing workflow context XML', () => {
+			const chunk = {
+				agent: {
+					messages: [{ content: 'Here is <current_workflow_json>{}</current_workflow_json>' }],
+				},
+			};
+
+			const result = processStreamChunk('updates', chunk);
+
+			expect(result).toBeNull();
+		});
+
+		it('should handle stream mode with single character (edge case)', () => {
+			// Single character stream modes should return null (length <= 1 check)
+			const result = processStreamChunk('u', { agent: { messages: [{ content: 'Test' }] } });
+
+			// Actually processStreamChunk handles this at the processParentEvent level
+			// but processStreamChunk itself doesn't have this check - it checks mode names
+			// 'u' is not 'updates' or 'custom', so it returns null
+			expect(result).toBeNull();
 		});
 	});
 });

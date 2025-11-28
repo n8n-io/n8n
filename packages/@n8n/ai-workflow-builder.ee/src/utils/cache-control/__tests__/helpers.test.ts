@@ -5,6 +5,7 @@ import {
 	findUserToolMessageIndices,
 	cleanStaleWorkflowContext,
 	applyCacheControlMarkers,
+	applySubgraphCacheMarkers,
 } from '../helpers';
 
 describe('Cache Control Helpers', () => {
@@ -451,6 +452,115 @@ describe('Cache Control Helpers', () => {
 
 			// Verify last message has cache marker
 			const lastContent = messages[4].content as Array<{ cache_control?: unknown }>;
+			expect(lastContent[0].cache_control).toEqual({ type: 'ephemeral' });
+		});
+	});
+
+	describe('applySubgraphCacheMarkers', () => {
+		it('should do nothing for empty messages', () => {
+			const messages: BaseMessage[] = [];
+			applySubgraphCacheMarkers(messages);
+			expect(messages).toHaveLength(0);
+		});
+
+		it('should do nothing when no user/tool messages exist', () => {
+			const messages = [new AIMessage('response')];
+			applySubgraphCacheMarkers(messages);
+			expect(messages[0].content).toBe('response');
+		});
+
+		it('should apply cache marker to single user message', () => {
+			const messages = [new HumanMessage('user request')];
+			applySubgraphCacheMarkers(messages);
+
+			const content = messages[0].content as Array<{
+				type: string;
+				text: string;
+				cache_control?: { type: string };
+			}>;
+			expect(content[0].text).toBe('user request');
+			expect(content[0].cache_control).toEqual({ type: 'ephemeral' });
+		});
+
+		it('should apply cache marker only to last user/tool message', () => {
+			const messages = [
+				new HumanMessage('first message'),
+				new AIMessage('response'),
+				new ToolMessage({ content: 'tool result', tool_call_id: '1' }),
+			];
+
+			applySubgraphCacheMarkers(messages);
+
+			// First message should NOT have cache marker (stays string)
+			expect(typeof messages[0].content).toBe('string');
+
+			// Tool message (last user/tool) should have cache marker
+			const toolContent = messages[2].content as Array<{
+				cache_control?: { type: string };
+			}>;
+			expect(toolContent[0].cache_control).toEqual({ type: 'ephemeral' });
+		});
+
+		it('should remove existing cache markers from old messages', () => {
+			// Set up message with existing cache marker
+			const message0 = new HumanMessage('first');
+			message0.content = [
+				{
+					type: 'text' as const,
+					text: 'first',
+					cache_control: { type: 'ephemeral' as const },
+				},
+			];
+
+			const messages = [
+				message0,
+				new AIMessage('response'),
+				new ToolMessage({ content: 'tool result', tool_call_id: '1' }),
+			];
+
+			applySubgraphCacheMarkers(messages);
+
+			// First message's cache marker should be removed
+			const content0 = messages[0].content as Array<{ cache_control?: unknown }>;
+			expect(content0[0].cache_control).toBeUndefined();
+
+			// Last message should have the cache marker
+			const toolContent = messages[2].content as Array<{
+				cache_control?: { type: string };
+			}>;
+			expect(toolContent[0].cache_control).toEqual({ type: 'ephemeral' });
+		});
+
+		it('should handle array content in last message', () => {
+			const toolMessage = new ToolMessage({ content: 'result', tool_call_id: '1' });
+			toolMessage.content = [{ type: 'text' as const, text: 'result' }];
+
+			const messages = [toolMessage];
+			applySubgraphCacheMarkers(messages);
+
+			const content = messages[0].content as Array<{
+				text: string;
+				cache_control?: { type: string };
+			}>;
+			expect(content[0].cache_control).toEqual({ type: 'ephemeral' });
+		});
+
+		it('should handle multiple tool messages in sequence', () => {
+			const messages = [
+				new ToolMessage({ content: 'tool 1', tool_call_id: '1' }),
+				new ToolMessage({ content: 'tool 2', tool_call_id: '2' }),
+				new ToolMessage({ content: 'tool 3', tool_call_id: '3' }),
+			];
+
+			applySubgraphCacheMarkers(messages);
+
+			// Only the last tool message should have the marker
+			expect(typeof messages[0].content).toBe('string');
+			expect(typeof messages[1].content).toBe('string');
+
+			const lastContent = messages[2].content as Array<{
+				cache_control?: { type: string };
+			}>;
 			expect(lastContent[0].cache_control).toEqual({ type: 'ephemeral' });
 		});
 	});
