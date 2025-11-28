@@ -48,7 +48,7 @@ export const randomCredentialPayload = ({
 	isGlobal,
 }: { isManaged?: boolean; isGlobal?: boolean } = {}): CredentialPayload => ({
 	name: randomName(),
-	type: randomName(),
+	type: 'githubApi',
 	data: { accessToken: randomString(6, 16) },
 	isManaged,
 	isGlobal,

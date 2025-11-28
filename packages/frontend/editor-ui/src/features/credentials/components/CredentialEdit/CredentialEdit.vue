@@ -690,6 +690,7 @@ async function saveCredential(): Promise<ICredentialsResponse | null> {
 	if (!requiredPropertiesFilled.value) {
 		showValidationWarning.value = true;
 		scrollToTop();
+		return null;
 	} else {
 		showValidationWarning.value = false;
 	}

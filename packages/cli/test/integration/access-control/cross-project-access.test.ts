@@ -63,6 +63,8 @@ describe('Cross-Project Access Control Tests', () => {
 			passwordReset: jest.fn(),
 		});
 
+		await utils.initCredentialsTypes();
+
 		// Create standard users
 		owner = await createOwner();
 		member1 = await createMember();

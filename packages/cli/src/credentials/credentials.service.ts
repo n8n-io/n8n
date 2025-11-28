@@ -30,6 +30,7 @@ import type {
 import {
 	CREDENTIAL_EMPTY_VALUE,
 	deepCopy,
+	displayParameter,
 	isINodePropertyCollection,
 	NodeHelpers,
 	UnexpectedError,
@@ -39,7 +40,7 @@ import { CredentialsFinderService } from './credentials-finder.service';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
-import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
+import { createCredentialsFromCredentialsEntity, CredentialsHelper } from '@/credentials-helper';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { ExternalHooks } from '@/external-hooks';
@@ -76,6 +77,7 @@ export class CredentialsService {
 		private readonly roleService: RoleService,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly credentialsHelper: CredentialsHelper,
 	) {}
 
 	private async addGlobalCredentials(
@@ -863,6 +865,23 @@ export class CredentialsService {
 		return await this.createCredential({ ...dto, isManaged: false }, user);
 	}
 
+	private checkCredentialData(type: string, data: ICredentialDataDecryptedObject) {
+		// check mandatory fields are present
+		const credentialProperties = this.credentialsHelper.getCredentialsProperties(type);
+		for (const property of credentialProperties) {
+			if (property.required && displayParameter(data, property, null, null)) {
+				const value = data[property.name];
+				if (value === undefined || value === null || value === '') {
+					throw new BadRequestError(
+						`The field "${property.name}" is mandatory for credentials of type "${type}"`,
+					);
+				}
+			}
+		}
+
+		// TODO: add further validation if needed
+	}
+
 	/**
 	 * Create a new managed credential in user's account and return it along the scopes.
 	 * Managed credentials are managed by n8n and cannot be edited by the user.
@@ -872,6 +891,7 @@ export class CredentialsService {
 	}
 
 	private async createCredential(opts: CreateCredentialOptions, user: User) {
+		this.checkCredentialData(opts.type, opts.data as ICredentialDataDecryptedObject);
 		const encryptedCredential = this.createEncryptedData({
 			id: null,
 			name: opts.name,

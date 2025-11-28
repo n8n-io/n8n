@@ -20,6 +20,7 @@ import { randomString } from 'n8n-workflow';
 
 import { CREDENTIAL_BLANKING_VALUE } from '@/constants';
 import { CredentialsService } from '@/credentials/credentials.service';
+import { createCredentialsFromCredentialsEntity } from '@/credentials-helper';
 import { CredentialsTester } from '@/services/credentials-tester.service';
 
 import {
@@ -31,11 +32,13 @@ import {
 } from '../shared/db/credentials';
 import { createAdmin, createManyUsers, createMember, createOwner } from '../shared/db/users';
 import type { SuperAgentTest } from '../shared/types';
-import { setupTestServer } from '../shared/utils';
+import { initCredentialsTypes, setupTestServer } from '../shared/utils';
 
 const { any } = expect;
 
-const testServer = setupTestServer({ endpointGroups: ['credentials'] });
+const testServer = setupTestServer({
+	endpointGroups: ['credentials'],
+});
 
 let owner: User;
 let member: User;
@@ -51,6 +54,10 @@ let authAdminAgent: SuperAgentTest;
 
 let projectRepository: ProjectRepository;
 let sharedCredentialsRepository: SharedCredentialsRepository;
+
+beforeAll(async () => {
+	await initCredentialsTypes();
+});
 
 beforeEach(async () => {
 	await testDb.truncate(['SharedCredentials', 'CredentialsEntity']);
@@ -792,7 +799,6 @@ describe('POST /credentials', () => {
 		const payload = randomCredentialPayload();
 
 		const response = await authMemberAgent.post('/credentials').send(payload);
-
 		expect(response.statusCode).toBe(200);
 
 		const { id, name, type, data: encryptedData, scopes } = response.body.data;
@@ -1301,15 +1307,16 @@ describe('PATCH /credentials/:id', () => {
 			.query({ includeData: true })
 			.expect(200);
 
-		const { id, data } = response.body.data;
+		const { id } = response.body.data;
 
 		expect(id).toBe(savedCredential.id);
-		// was overwritten
-		expect(data.accessToken).toBe(patchPayload.data.accessToken);
 		// was not overwritten
 		const dbCredential = await getCredentialById(savedCredential.id);
-		const unencryptedData = Container.get(CredentialsService).decrypt(dbCredential!);
-		expect(unencryptedData.oauthTokenData).toEqual(credential.data.oauthTokenData);
+		const unencryptedData = createCredentialsFromCredentialsEntity(dbCredential!);
+		expect(unencryptedData.getData().oauthTokenData).toEqual(credential.data.oauthTokenData);
+
+		// was overwritten
+		expect(unencryptedData.getData().accessToken).toBe(patchPayload.data.accessToken);
 	});
 
 	test('should fail with invalid inputs', async () => {
