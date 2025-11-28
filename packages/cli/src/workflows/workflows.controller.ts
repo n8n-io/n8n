@@ -120,7 +120,9 @@ export class WorkflowsController {
 			// This is a new workflow, so we simply check if the user has access to
 			// all used credentials
 
-			const allCredentials = await this.credentialsService.getMany(req.user);
+			const allCredentials = await this.credentialsService.getMany(req.user, {
+				includeGlobal: true,
+			});
 
 			try {
 				this.enterpriseWorkflowService.validateCredentialPermissionsToUser(
@@ -181,11 +183,29 @@ export class WorkflowsController {
 
 			await transactionManager.save<SharedWorkflow>(newSharedWorkflow);
 
+			await this.workflowHistoryService.saveVersion(
+				req.user,
+				workflow,
+				workflow.id,
+				transactionManager,
+			);
+
+			const shouldActivate = req.body.active === true;
+			if (shouldActivate) {
+				workflow.activeVersionId = workflow.versionId;
+				await transactionManager.save(workflow);
+			}
+
 			return await this.workflowFinderService.findWorkflowForUser(
 				workflow.id,
 				req.user,
 				['workflow:read'],
-				{ em: transactionManager, includeTags: true, includeParentFolder: true },
+				{
+					em: transactionManager,
+					includeTags: true,
+					includeParentFolder: true,
+					includeActiveVersion: true,
+				},
 			);
 		});
 
@@ -193,8 +213,6 @@ export class WorkflowsController {
 			this.logger.error('Failed to create workflow', { userId: req.user.id });
 			throw new InternalServerError('Failed to save workflow');
 		}
-
-		await this.workflowHistoryService.saveVersion(req.user, savedWorkflow, savedWorkflow.id);
 
 		if (tagIds && !this.globalConfig.tags.disabled && savedWorkflow.tags) {
 			savedWorkflow.tags = this.tagService.sortByRequestOrder(savedWorkflow.tags, {
@@ -325,7 +343,11 @@ export class WorkflowsController {
 				workflowId,
 				req.user,
 				['workflow:read'],
-				{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
+				{
+					includeTags: !this.globalConfig.tags.disabled,
+					includeParentFolder: true,
+					includeActiveVersion: true,
+				},
 			);
 
 			if (!workflow) {
@@ -353,7 +375,11 @@ export class WorkflowsController {
 			workflowId,
 			req.user,
 			['workflow:read'],
-			{ includeTags: !this.globalConfig.tags.disabled, includeParentFolder: true },
+			{
+				includeTags: !this.globalConfig.tags.disabled,
+				includeParentFolder: true,
+				includeActiveVersion: true,
+			},
 		);
 
 		if (!workflow) {
@@ -379,6 +405,15 @@ export class WorkflowsController {
 
 		let updateData = new WorkflowEntity();
 		const { tags, parentFolderId, ...rest } = req.body;
+
+		// TODO: Add zod validation for entire `rest` object before assigning to `updateData`
+		if (
+			rest.settings?.timeSavedMode !== undefined &&
+			!['fixed', 'dynamic'].includes(rest.settings.timeSavedMode)
+		) {
+			throw new BadRequestError('Invalid timeSavedMode');
+		}
+
 		Object.assign(updateData, rest);
 
 		const isSharingEnabled = this.license.isSharingEnabled();
@@ -390,14 +425,11 @@ export class WorkflowsController {
 			);
 		}
 
-		const updatedWorkflow = await this.workflowService.update(
-			req.user,
-			updateData,
-			workflowId,
-			tags,
+		const updatedWorkflow = await this.workflowService.update(req.user, updateData, workflowId, {
+			tagIds: tags,
 			parentFolderId,
-			isSharingEnabled ? forceSave : true,
-		);
+			forceSave: isSharingEnabled ? forceSave : true,
+		});
 
 		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
 
@@ -461,6 +493,39 @@ export class WorkflowsController {
 		}
 
 		return workflow;
+	}
+
+	@Post('/:workflowId/activate')
+	@ProjectScope('workflow:update')
+	async activate(req: WorkflowRequest.Activate) {
+		const { workflowId } = req.params;
+		const { versionId, name, description } = req.body;
+
+		if (!versionId) {
+			throw new BadRequestError('versionId is required');
+		}
+
+		const workflow = await this.workflowService.activateWorkflow(req.user, workflowId, {
+			versionId,
+			name,
+			description,
+		});
+
+		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+
+		return { ...workflow, scopes };
+	}
+
+	@Post('/:workflowId/deactivate')
+	@ProjectScope('workflow:update')
+	async deactivate(req: WorkflowRequest.Deactivate) {
+		const { workflowId } = req.params;
+
+		const workflow = await this.workflowService.deactivateWorkflow(req.user, workflowId);
+
+		const scopes = await this.workflowService.getWorkflowScopes(req.user, workflowId);
+
+		return { ...workflow, scopes };
 	}
 
 	@Post('/:workflowId/run')

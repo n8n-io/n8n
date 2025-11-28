@@ -98,6 +98,7 @@ const defaults: Omit<IWorkflowDb, 'id'> & { settings: NonNullable<IWorkflowDb['s
 	name: '',
 	description: '',
 	active: false,
+	activeVersionId: null,
 	isArchived: false,
 	createdAt: -1,
 	updatedAt: -1,
@@ -171,7 +172,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	const isNewWorkflow = computed(() => workflow.value.id === PLACEHOLDER_EMPTY_WORKFLOW_ID);
 
-	const isWorkflowActive = computed(() => workflow.value.active);
+	const isWorkflowActive = computed(() => workflow.value.activeVersionId !== null);
 
 	const workflowTriggerNodes = computed(() =>
 		workflow.value.nodes.filter((node: INodeUi) => {
@@ -878,12 +879,15 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (index === -1) {
 			activeWorkflows.value.push(targetWorkflowId);
 		}
-		if (workflowsById.value[targetWorkflowId]) {
-			workflowsById.value[targetWorkflowId].active = true;
+		const targetWorkflow = workflowsById.value[targetWorkflowId];
+		if (targetWorkflow) {
+			targetWorkflow.active = true;
+			targetWorkflow.activeVersionId = targetWorkflow.versionId;
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			uiStore.stateIsDirty = false;
 			workflow.value.active = true;
+			workflow.value.activeVersionId = workflow.value.versionId;
 		}
 	}
 
@@ -892,8 +896,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (index !== -1) {
 			activeWorkflows.value.splice(index, 1);
 		}
-		if (workflowsById.value[targetWorkflowId]) {
-			workflowsById.value[targetWorkflowId].active = false;
+		const targetWorkflow = workflowsById.value[targetWorkflowId];
+		if (targetWorkflow) {
+			targetWorkflow.active = false;
+			targetWorkflow.activeVersionId = null;
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			workflow.value.active = false;
@@ -1040,11 +1046,19 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			delete nodeMetadata.value[nodeName].pinnedDataLastRemovedAt;
 		}
 
-		const storedPinData = payload.data.map((item) =>
-			isJsonKeyObject(item)
-				? { json: item.json, ...(item.binary && { binary: item.binary }) }
-				: { json: item },
-		);
+		const storedPinData = payload.data.map((item) => {
+			// Store only essential properties: json, binary, and pairedItem
+			// Exclude runtime properties (error, metadata, evaluationData, etc.)
+			if (isJsonKeyObject(item)) {
+				const { json, binary, pairedItem } = item;
+				return {
+					json,
+					...(binary && { binary }),
+					...(pairedItem !== undefined && { pairedItem }),
+				};
+			}
+			return { json: item };
+		});
 
 		workflow.value.pinData[nodeName] = storedPinData;
 		workflowObject.value.setPinData(workflow.value.pinData);

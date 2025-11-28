@@ -16,6 +16,15 @@ const props = withDefaults(defineProps<Props>(), {
 	allowCopy: true,
 	maxWidth: undefined,
 });
+
+const emit = defineEmits<{
+	copy: [value: string];
+}>();
+
+const handleCopy = async (value: string) => {
+	await copy(value);
+	emit('copy', value);
+};
 </script>
 
 <template>
@@ -37,7 +46,7 @@ const props = withDefaults(defineProps<Props>(), {
 					:icon="copied ? 'clipboard-check' : 'clipboard'"
 					:square="true"
 					:class="$style['copy-button']"
-					@click="copy(props.value)"
+					@click="handleCopy(props.value)"
 				/>
 			</N8nTooltip>
 		</div>

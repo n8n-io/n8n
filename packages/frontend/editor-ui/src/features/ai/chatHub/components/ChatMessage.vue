@@ -3,17 +3,22 @@ import { useClipboard } from '@/app/composables/useClipboard';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
-import type { ChatMessageId } from '@n8n/api-types';
+import type { ChatMessageId, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
 import type MarkdownIt from 'markdown-it';
 import markdownLink from 'markdown-it-link-attributes';
-import { computed, nextTick, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
 import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
-import { useAgent } from '@/features/ai/chatHub/composables/useAgent';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import ChatFile from '@n8n/chat/components/ChatFile.vue';
+import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useI18n } from '@n8n/i18n';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -35,6 +40,10 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
+const chatStore = useChatStore();
+const rootStore = useRootStore();
+const { isCtrlKeyPressed } = useDeviceSupport();
+const i18n = useI18n();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -48,8 +57,23 @@ const speech = useSpeechSynthesis(messageContent, {
 	volume: 1,
 });
 
-const model = computed(() => unflattenModel(message));
-const agent = useAgent(model);
+const agent = computed<ChatModelDto | null>(() => {
+	const model = unflattenModel(message);
+
+	return model ? chatStore.getAgent(model) : null;
+});
+
+const attachments = computed(() =>
+	message.attachments.map(({ fileName, mimeType }, index) => ({
+		file: new File([], fileName ?? 'file', { type: mimeType }), // Placeholder file for display
+		downloadUrl: buildChatAttachmentUrl(
+			rootStore.restApiContext,
+			message.sessionId,
+			message.id,
+			index,
+		),
+	})),
+);
 
 async function handleCopy() {
 	const text = message.content;
@@ -74,6 +98,15 @@ function handleConfirmEdit() {
 	}
 
 	emit('update', { ...message, content: editedText.value });
+}
+
+function handleKeydownTextarea(e: KeyboardEvent) {
+	const trimmed = editedText.value.trim();
+
+	if (e.key === 'Enter' && isCtrlKeyPressed(e) && !e.isComposing && trimmed) {
+		e.preventDefault();
+		handleConfirmEdit();
+	}
 }
 
 function handleRegenerate() {
@@ -106,16 +139,22 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 // Watch for isEditing prop changes to initialize edit mode
 watch(
 	() => isEditing,
-	async (editing) => {
-		if (editing) {
-			editedText.value = message.content;
-			await nextTick();
-			textareaRef.value?.focus();
-		} else {
-			editedText.value = '';
-		}
+	(editing) => {
+		editedText.value = editing ? message.content : '';
 	},
 	{ immediate: true },
+);
+
+watch(
+	textareaRef,
+	async (textarea) => {
+		if (textarea) {
+			await new Promise((r) => setTimeout(r, 0));
+			textarea.focus();
+			textarea.$el.scrollIntoView({ block: 'nearest' });
+		}
+	},
+	{ immediate: true, flush: 'post' },
 );
 
 onBeforeMount(() => {
@@ -142,33 +181,56 @@ onBeforeMount(() => {
 		</div>
 		<div :class="$style.content">
 			<div v-if="isEditing" :class="$style.editContainer">
+				<div v-if="attachments.length > 0" :class="$style.attachments">
+					<ChatFile
+						v-for="(attachment, index) in attachments"
+						:key="index"
+						:file="attachment.file"
+						:is-removable="false"
+						:href="attachment.downloadUrl"
+					/>
+				</div>
 				<N8nInput
 					ref="textarea"
 					v-model="editedText"
 					type="textarea"
 					:autosize="{ minRows: 3, maxRows: 20 }"
 					:class="$style.textarea"
+					@keydown="handleKeydownTextarea"
 				/>
 				<div :class="$style.editActions">
-					<N8nButton type="secondary" size="small" @click="handleCancelEdit"> Cancel </N8nButton>
+					<N8nButton type="secondary" size="small" @click="handleCancelEdit">
+						{{ i18n.baseText('chatHub.message.edit.cancel') }}
+					</N8nButton>
 					<N8nButton
 						type="primary"
 						size="small"
 						:disabled="!editedText.trim()"
 						@click="handleConfirmEdit"
 					>
-						Send
+						{{ i18n.baseText('chatHub.message.edit.send') }}
 					</N8nButton>
 				</div>
 			</div>
-			<template v-else>
+			<div v-else>
 				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
+					<div v-if="attachments.length > 0" :class="$style.attachments">
+						<ChatFile
+							v-for="(attachment, index) in attachments"
+							:key="index"
+							:file="attachment.file"
+							:is-removable="false"
+							:href="attachment.downloadUrl"
+						/>
+					</div>
+					<div v-if="message.type === 'human'">{{ message.content }}</div>
 					<VueMarkdown
+						v-else
 						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="
 							message.status === 'error' && !message.content
-								? 'Error: Unknown error occurred'
+								? i18n.baseText('chatHub.message.error.unknown')
 								: message.content
 						"
 						:options="markdownOptions"
@@ -190,7 +252,7 @@ onBeforeMount(() => {
 					@read-aloud="handleReadAloud"
 					@switchAlternative="handleSwitchAlternative"
 				/>
-			</template>
+			</div>
 		</div>
 	</div>
 </template>
@@ -225,15 +287,30 @@ onBeforeMount(() => {
 	flex-direction: column;
 }
 
+.attachments {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+
+	.chatMessage & {
+		margin-top: var(--spacing--xs);
+	}
+}
+
 .chatMessage {
-	display: block;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 	position: relative;
 	max-width: fit-content;
+	overflow-wrap: break-word;
 
 	.user & {
-		padding: var(--spacing--3xs) var(--spacing--sm);
+		padding: var(--spacing--2xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
+		white-space-collapse: preserve-breaks;
+		line-height: 1.8;
 	}
 }
 
@@ -346,15 +423,33 @@ onBeforeMount(() => {
 }
 
 .editContainer {
+	width: 100%;
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--xs);
+	background-color: var(--color--background--light-3);
+	border: var(--border);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
+	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+
+	&:focus-within,
+	&:hover {
+		border-color: var(--color--secondary);
+	}
+}
+
+.textarea {
+	scroll-margin-block: var(--spacing--sm);
 }
 
 .textarea textarea {
 	font-family: inherit;
-	background-color: var(--color--background--light-3);
-	border-radius: var(--radius--lg);
+	line-height: 1.5em;
+	resize: none;
+	background-color: transparent !important;
+	border: none !important;
+	padding: 0 !important;
 }
 
 .editActions {

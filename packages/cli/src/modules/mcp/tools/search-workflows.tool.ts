@@ -146,13 +146,14 @@ export async function searchWorkflows(
 		},
 		select: {
 			id: true,
+			activeVersionId: true,
 			name: true,
 			description: true,
 			active: true,
 			createdAt: true,
 			updatedAt: true,
 			triggerCount: true,
-			nodes: true,
+			activeVersion: true,
 		},
 	};
 
@@ -165,15 +166,27 @@ export async function searchWorkflows(
 	);
 
 	const formattedWorkflows: SearchWorkflowsItem[] = (workflows as WorkflowEntity[]).map(
-		({ id, name, description, active, createdAt, updatedAt, triggerCount, nodes }) => ({
+		({
 			id,
 			name,
 			description,
-			active,
+			activeVersionId,
+			createdAt,
+			updatedAt,
+			triggerCount,
+			activeVersion,
+		}) => ({
+			id,
+			name,
+			description,
+			active: activeVersionId !== null,
 			createdAt: createdAt.toISOString(),
 			updatedAt: updatedAt.toISOString(),
 			triggerCount,
-			nodes: (nodes ?? []).map((node: INode) => ({ name: node.name, type: node.type })),
+			nodes: (activeVersion?.nodes ?? []).map((node: INode) => ({
+				name: node.name,
+				type: node.type,
+			})),
 		}),
 	);
 
