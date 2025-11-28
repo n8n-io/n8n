@@ -16,12 +16,11 @@ Displays floating content anchored to a trigger element. Popovers are used for d
 - `trigger?: 'click' | 'hover'` - How to trigger the popover. Default: `'click'`
 - `placement?: Placement` - Position of popover relative to trigger. Values: `'top' | 'top-start' | 'top-end' | 'bottom' | 'bottom-start' | 'bottom-end' | 'left' | 'left-start' | 'left-end' | 'right' | 'right-start' | 'right-end'`. Default: `'bottom'`
 - `width?: string | number` - Popover width. Can be a number (pixels) or string (e.g., `'auto'`, `'304px'`).
-- `popperClass?: string` - Custom CSS class name for the popover content element.
-- `popperStyle?: CSSProperties` - Inline styles object for the popover content element.
+- `contentClass?: string` - Custom CSS class name for the popover content element.
+- `contentStyle?: CSSProperties` - Inline styles object for the popover content element.
 - `teleported?: boolean` - Whether to append the popover to the body element. Default: `true`
 - `showArrow?: boolean` - Whether to show the arrow pointing to the trigger. Default: `true`
 - `offset?: number` - Offset of the popover from the trigger element (in pixels).
-- `disabled?: boolean` - When `true`, prevents the popover from showing. Default: `false`
 
 **Events**
 
@@ -94,8 +93,8 @@ import { N8nPopover, N8nIconButton } from '@n8n/design-system'
   <N8nPopover
     trigger="click"
     placement="top"
-    popper-class="custom-popover"
-    :popper-style="{ padding: 'var(--spacing-xs)' }"
+    content-class="custom-popover"
+    :content-style="{ padding: 'var(--spacing-xs)' }"
     :width="208"
   >
     <template #reference>
