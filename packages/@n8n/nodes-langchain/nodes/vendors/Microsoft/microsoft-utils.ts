@@ -4,10 +4,9 @@ import type {
 	DefaultUserState,
 	TurnContext,
 	TurnState,
-	CloudAdapter,
 } from '@microsoft/agents-hosting';
 
-import { MemoryStorage, AgentApplication } from '@microsoft/agents-hosting';
+import { MemoryStorage, AgentApplication, CloudAdapter } from '@microsoft/agents-hosting';
 import { NodeOperationError, type IWebhookFunctions } from 'n8n-workflow';
 
 import {
@@ -33,10 +32,19 @@ import { McpToolServerConfigurationService, Utility } from '@microsoft/agents-a3
 import type { ClientConfig, Connection } from '@langchain/mcp-adapters';
 import { MultiServerMCPClient } from '@langchain/mcp-adapters';
 
+export type MicrosoftAgent365Credentials = {
+	clientId: string;
+	tenantId: string;
+	clientSecret: string;
+};
+
 export function createMicrosoftAgentApplication(
 	agentNode: IWebhookFunctions,
-	adapter: CloudAdapter,
+	credentials: MicrosoftAgent365Credentials,
 ) {
+	const authConfig: AuthConfiguration = createAuthConfig(credentials);
+	const adapter = new CloudAdapter(authConfig);
+
 	const storage = new MemoryStorage();
 
 	const agentApplication: AgentApplication<TurnState> = new AgentApplication<TurnState>({
@@ -105,7 +113,7 @@ async function getMicrosoftMcpTools(turnContext: TurnContext, authToken: string)
 
 const configureActivityCallback = (
 	agentNode: IWebhookFunctions,
-	credentials: { clientId?: string; tenantId?: string },
+	credentials: MicrosoftAgent365Credentials,
 	mcpTokenRef: { token: string | undefined },
 ) => {
 	const agentDescription = agentNode.getNodeParameter('agentDescription') as string;
@@ -184,7 +192,7 @@ const configureActivityCallback = (
 export function configureAdapterProcessCallback(
 	agentNode: IWebhookFunctions,
 	agent: AgentApplication<TurnState<DefaultConversationState, DefaultUserState>>,
-	authConfig: AuthConfiguration,
+	authConfig: MicrosoftAgent365Credentials,
 	trackData: {
 		inputText: string;
 		activities: string[];
@@ -240,11 +248,7 @@ export function configureAdapterProcessCallback(
 	};
 }
 
-export const createAuthConfig = (credentials: {
-	clientId: string;
-	tenantId: string;
-	clientSecret: string;
-}) => {
+const createAuthConfig = (credentials: MicrosoftAgent365Credentials) => {
 	const { clientId, tenantId, clientSecret } = credentials;
 	const connections: Map<string, AuthConfiguration> = new Map();
 	connections.set('serviceConnection', {

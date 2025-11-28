@@ -1,4 +1,3 @@
-import { type AuthConfiguration, CloudAdapter } from '@microsoft/agents-hosting';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type {
 	INodeType,
@@ -12,7 +11,7 @@ import { getInputs } from '../../agents/Agent/V2/utils';
 import {
 	configureAdapterProcessCallback,
 	createMicrosoftAgentApplication,
-	createAuthConfig,
+	type MicrosoftAgent365Credentials,
 } from './microsoft-utils';
 
 // TODO : remove after resolved ====================
@@ -188,11 +187,9 @@ export class MicrosoftAgent365Trigger implements INodeType {
 		}
 		//===================================================
 
-		const credentials = (await this.getCredentials('microsoftAgent365Api')) as {
-			tenantId: string;
-			clientId: string;
-			clientSecret: string;
-		};
+		const credentials = (await this.getCredentials(
+			'microsoftAgent365Api',
+		)) as MicrosoftAgent365Credentials;
 
 		// const envCredentials: Record<string, string | undefined> = {
 		// 	connections__serviceConnection__settings__clientId: credentials.clientId,
@@ -208,27 +205,27 @@ export class MicrosoftAgent365Trigger implements INodeType {
 		// 	agentic_connectionName: 'serviceConnection',
 		// };
 
-		// const authConfig: AuthConfiguration = loadAuthConfigFromCredentials(envCredentials);
-		const authConfig: AuthConfiguration = createAuthConfig(credentials);
-
-		const adapter = new CloudAdapter(authConfig);
-
-		const agentApplication = createMicrosoftAgentApplication(this, adapter);
+		const agentApplication = createMicrosoftAgentApplication(this, credentials);
 
 		const trackData = {
 			inputText: '',
 			activities: [],
 		};
 
-		const callback = configureAdapterProcessCallback(this, agentApplication, authConfig, trackData);
+		const callback = configureAdapterProcessCallback(
+			this,
+			agentApplication,
+			credentials,
+			trackData,
+		);
 
 		(req as any).user = {
-			aud: authConfig.clientId || 'mock-client-id',
-			appid: authConfig.clientId || 'mock-client-id',
-			azp: authConfig.clientId || 'mock-client-id',
+			aud: credentials.clientId || 'mock-client-id',
+			appid: credentials.clientId || 'mock-client-id',
+			azp: credentials.clientId || 'mock-client-id',
 		};
 
-		await adapter.process(req, res, callback);
+		await agentApplication.adapter.process(req, res, callback);
 
 		return {
 			noWebhookResponse: true,
