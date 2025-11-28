@@ -6,7 +6,7 @@ import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decora
 import express from 'express';
 import type { PullResult } from 'simple-git';
 
-import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
+import { SOURCE_CONTROL_DEFAULT_BRANCH } from '../../modules/source-control.ee/constants';
 import {
 	sourceControlLicensedMiddleware,
 	sourceControlLicensedAndEnabledMiddleware,

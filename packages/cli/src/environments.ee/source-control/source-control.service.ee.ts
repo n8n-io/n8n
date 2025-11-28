@@ -16,7 +16,7 @@ import {
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
-} from './constants';
+} from '../../modules/source-control.ee/constants';
 import { SourceControlExportService } from './source-control-export.service.ee';
 import { SourceControlGitService } from './source-control-git.service.ee';
 import {

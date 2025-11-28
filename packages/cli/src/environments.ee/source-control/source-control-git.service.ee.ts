@@ -22,7 +22,7 @@ import {
 	SOURCE_CONTROL_DEFAULT_EMAIL,
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_ORIGIN,
-} from './constants';
+} from '../../modules/source-control.ee/constants';
 import { sourceControlFoldersExistCheck } from '../../modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
 import type { SourceControlPreferences } from '../../modules/source-control.ee/types/source-control-preferences';

@@ -47,7 +47,7 @@ import {
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
-} from './constants';
+} from '../../modules/source-control.ee/constants';
 import {
 	getCredentialExportPath,
 	getProjectExportPath,

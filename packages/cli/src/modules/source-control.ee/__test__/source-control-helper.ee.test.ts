@@ -8,7 +8,7 @@ import path from 'path';
 import {
 	SOURCE_CONTROL_SSH_FOLDER,
 	SOURCE_CONTROL_GIT_FOLDER,
-} from '@/environments.ee/source-control/constants';
+} from '@/modules/source-control.ee/constants';
 import {
 	hasOwnerChanged,
 	generateSshKeyPair,

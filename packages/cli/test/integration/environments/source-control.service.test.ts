@@ -27,7 +27,7 @@ import {
 	SOURCE_CONTROL_FOLDERS_EXPORT_FILE,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
-} from '@/environments.ee/source-control/constants';
+} from '@/modules/source-control.ee/constants';
 import { SourceControlExportService } from '@/environments.ee/source-control/source-control-export.service.ee';
 import type { SourceControlGitService } from '@/environments.ee/source-control/source-control-git.service.ee';
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';

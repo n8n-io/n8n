@@ -16,7 +16,7 @@ import {
 	SOURCE_CONTROL_GIT_KEY_COMMENT,
 	SOURCE_CONTROL_TAGS_EXPORT_FILE,
 	SOURCE_CONTROL_VARIABLES_EXPORT_FILE,
-} from '../../environments.ee/source-control/constants';
+} from './constants';
 import type { ExportedFolders } from '../../environments.ee/source-control/types/exportable-folders';
 import type { KeyPair } from '../../environments.ee/source-control/types/key-pair';
 import type { KeyPairType } from '../../environments.ee/source-control/types/key-pair-type';
