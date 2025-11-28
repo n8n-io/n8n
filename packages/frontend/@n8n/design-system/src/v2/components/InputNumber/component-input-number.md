@@ -17,7 +17,8 @@ A number input component allowing users to enter and adjust numeric values. Supp
 - `max?: number` - Maximum allowed value. Default: `Infinity`
 - `step?: number` - Increment/decrement step amount. Default: `1`
 - `precision?: number` - Number of decimal places. Maps to Reka UI `formatOptions.maximumFractionDigits`.
-- `controls?: boolean` - Whether to show increment/decrement buttons. Default: `true`
+- `controls?: boolean` - Whether to show increment/decrement buttons. Default: `false`
+- `controlsPosition?: 'both' | 'right'` - Position of control buttons. `'both'` places −/+ on left/right sides. `'right'` places stacked up/down arrows on the right. Default: `'right'`
 - `disabled?: boolean` - Disables the input. Default: `false`
 - `placeholder?: string` - Placeholder text when empty.
 
@@ -49,12 +50,11 @@ const value = ref(0)
 </template>
 ```
 
-**Without controls (most common usage):**
+**Basic usage (controls hidden by default):**
 
 ```vue
 <N8nInputNumber
   v-model="count"
-  :controls="false"
   :min="0"
   placeholder="Enter number"
 />
@@ -85,16 +85,16 @@ const value = ref(0)
 **Size variants:**
 
 ```vue
-<N8nInputNumber v-model="value" size="mini" :controls="false" />
-<N8nInputNumber v-model="value" size="small" :controls="false" />
-<N8nInputNumber v-model="value" size="medium" :controls="false" />
-<N8nInputNumber v-model="value" size="large" :controls="false" />
+<N8nInputNumber v-model="value" size="mini" />
+<N8nInputNumber v-model="value" size="small" />
+<N8nInputNumber v-model="value" size="medium" />
+<N8nInputNumber v-model="value" size="large" />
 ```
 
-**Custom control buttons:**
+**With controls and custom buttons:**
 
 ```vue
-<N8nInputNumber v-model="quantity" :min="1" :max="99">
+<N8nInputNumber v-model="quantity" :min="1" :max="99" :controls="true">
   <template #decrement>
     <N8nIcon icon="minus" size="small" />
   </template>
