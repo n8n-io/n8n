@@ -6,13 +6,8 @@ import { FROM_AI_PARAMETERS_MODAL_KEY, AI_MCP_TOOL_NODE_TYPE } from '@/app/const
 import { useAgentRequestStore, type IAgentRequest } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
-import {
-	type INode,
-	type FromAIArgument,
-	type IDataObject,
-	NodeConnectionTypes,
-	traverseNodeParameters,
-} from 'n8n-workflow';
+import type { INode, FromAIArgument, IDataObject } from 'n8n-workflow';
+import { traverseNodeParameters, NodeConnectionTypes } from 'n8n-workflow';
 import type { FormFieldValueUpdate, IFormInput } from '@n8n/design-system';
 import { computed, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
@@ -153,6 +148,17 @@ const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFo
 	return result;
 };
 
+function checkImplicitInput(node: INode) {
+	// Check if this is a Vector Store node with 'retrieve-as-tool' operation
+	// These nodes always have an implicit 'query' parameter for the query
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	const aiSubcategories = nodeType?.codex?.subcategories?.AI;
+	const isVectorStoreToolNode =
+		aiSubcategories?.includes('Vector Stores') && aiSubcategories?.includes('Tools');
+	const mode = node.parameters.mode;
+	return isVectorStoreToolNode && mode === 'retrieve-as-tool';
+}
+
 watch(
 	[node, selectedTool],
 	async ([newNode, newSelectedTool]) => {
@@ -202,18 +208,18 @@ watch(
 				},
 			});
 		});
-		if (result.length === 0) {
-			let inputQuery = inputOverrides?.query;
-			if (typeof inputQuery === 'object') {
-				inputQuery = JSON.stringify(inputQuery);
-			}
+
+		const hasImplicitInput = checkImplicitInput(newNode);
+		if (result.length === 0 || hasImplicitInput) {
+			const key = hasImplicitInput ? 'input' : 'query';
+			const inputQuery = inputOverrides?.[key];
 			const queryValue =
 				inputQuery ??
-				agentRequestStore.getQueryValue(workflowsStore.workflowId, newNode.id, 'query') ??
+				agentRequestStore.getQueryValue(workflowsStore.workflowId, newNode.id, key) ??
 				'';
 
-			result.push({
-				name: 'query',
+			result.unshift({
+				name: hasImplicitInput ? 'query.input' : 'query',
 				initialValue: (queryValue as string) ?? '',
 				properties: {
 					label: 'Query',
