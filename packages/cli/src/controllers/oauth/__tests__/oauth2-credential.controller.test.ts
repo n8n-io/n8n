@@ -135,6 +135,7 @@ describe('OAuth2CredentialController', () => {
 			[
 				['authorization_code', 'refresh_token'],
 				['client_secret_basic', 'client_secret_post', 'none'],
+				['S256'],
 				['authorization_code', 'refresh_token'],
 				'none',
 				{
@@ -149,6 +150,22 @@ describe('OAuth2CredentialController', () => {
 			[
 				['authorization_code', 'refresh_token'],
 				['client_secret_basic', 'client_secret_post'],
+				['S256'],
+				['authorization_code', 'refresh_token'],
+				'none',
+				{
+					code_challenge: 'code-challenge',
+					code_challenge_method: 'S256',
+					client_id: 'test-client-id',
+					redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+					response_type: 'code',
+					scope: 'openid',
+				},
+			],
+			[
+				['authorization_code', 'refresh_token'],
+				['client_secret_basic', 'client_secret_post'],
+				[],
 				['authorization_code', 'refresh_token'],
 				'client_secret_basic',
 				{
@@ -161,6 +178,7 @@ describe('OAuth2CredentialController', () => {
 			[
 				['authorization_code', 'refresh_token'],
 				['client_secret_post'],
+				[],
 				['authorization_code', 'refresh_token'],
 				'client_secret_post',
 				{
@@ -173,6 +191,7 @@ describe('OAuth2CredentialController', () => {
 			[
 				['client_credentials'],
 				['client_secret_basic', 'client_secret_post'],
+				[],
 				['client_credentials'],
 				'client_secret_basic',
 				{
@@ -185,6 +204,7 @@ describe('OAuth2CredentialController', () => {
 			[
 				['client_credentials'],
 				['client_secret_post'],
+				[],
 				['client_credentials'],
 				'client_secret_post',
 				{
@@ -199,6 +219,7 @@ describe('OAuth2CredentialController', () => {
 			async (
 				supportedGrantTypes,
 				supportedTokenEndpointAuthMethods,
+				supportedCodeChallengeMethods,
 				expectedGrantTypes,
 				expectedTokenEndpointAuthMethod,
 				expectedQueryParams,
@@ -223,7 +244,7 @@ describe('OAuth2CredentialController', () => {
 						registration_endpoint: 'https://example.com/registration',
 						grant_types_supported: supportedGrantTypes,
 						token_endpoint_auth_methods_supported: supportedTokenEndpointAuthMethods,
-						code_challenge_methods_supported: ['S256'],
+						code_challenge_methods_supported: supportedCodeChallengeMethods,
 					})
 					.post('/registration', {
 						redirect_uris: ['http://localhost:5678/rest/oauth2-credential/callback'],
@@ -304,7 +325,6 @@ describe('OAuth2CredentialController', () => {
 					registration_endpoint: 'https://example.com/registration',
 					grant_types_supported: ['authorization_code', 'refresh_token'],
 					token_endpoint_auth_methods_supported: ['client_secret_basic'],
-					code_challenge_methods_supported: ['S256'],
 				})
 				.post('/registration', {
 					redirect_uris: ['http://localhost:5678/rest/oauth2-credential/callback'],
@@ -320,6 +340,59 @@ describe('OAuth2CredentialController', () => {
 			await expect(controller.getAuthUri(req)).rejects.toThrowError(
 				/Invalid client registration response/,
 			);
+		});
+
+		it('should request scopes from scopes_supported for dynamic client registration', async () => {
+			jest.spyOn(Csrf.prototype, 'secretSync').mockReturnValueOnce(csrfSecret);
+			jest.spyOn(Csrf.prototype, 'create').mockReturnValueOnce('token');
+			jest.spyOn(pkceChallenge, 'default').mockResolvedValueOnce({
+				code_verifier: 'code-verifier',
+				code_challenge: 'code-challenge',
+			});
+			credentialsFinderService.findCredentialForUser.mockResolvedValueOnce(credential);
+			credentialsHelper.getDecrypted.mockResolvedValueOnce({});
+			credentialsHelper.applyDefaultsAndOverwrites.mockResolvedValue({
+				useDynamicClientRegistration: true,
+				serverUrl: 'https://example.com',
+			});
+			nock('https://example.com')
+				.get('/.well-known/oauth-authorization-server')
+				.reply(200, {
+					authorization_endpoint: 'https://example.com/auth',
+					token_endpoint: 'https://example.com/token',
+					registration_endpoint: 'https://example.com/registration',
+					grant_types_supported: ['authorization_code', 'refresh_token'],
+					token_endpoint_auth_methods_supported: ['client_secret_basic'],
+					code_challenge_methods_supported: ['S256'],
+					scopes_supported: ['openid', 'somescope'],
+				})
+				.post('/registration', {
+					redirect_uris: ['http://localhost:5678/rest/oauth2-credential/callback'],
+					token_endpoint_auth_method: 'none',
+					grant_types: ['authorization_code', 'refresh_token'],
+					response_types: ['code'],
+					client_name: 'n8n',
+					client_uri: 'https://n8n.io/',
+					scope: 'openid somescope',
+				})
+				.reply(200, { client_id: 'test-client-id', client_secret: 'test-client-secret' });
+
+			const req = mock<OAuthRequest.OAuth2Credential.Auth>({ user, query: { id: '1' } });
+			const authUri = await controller.getAuthUri(req);
+
+			const url = new URL(authUri);
+			expect(url.origin).toEqual('https://example.com');
+			expect(url.pathname).toEqual('/auth');
+			Object.entries({
+				code_challenge: 'code-challenge',
+				code_challenge_method: 'S256',
+				client_id: 'test-client-id',
+				redirect_uri: 'http://localhost:5678/rest/oauth2-credential/callback',
+				response_type: 'code',
+				scope: 'openid somescope',
+			}).forEach(([param, value]) => {
+				expect(url.searchParams.get(param)).toEqual(value);
+			});
 		});
 	});
 

@@ -20,6 +20,7 @@ import { pythonCodeDescription } from './descriptions/PythonCodeDescription';
 import { JavaScriptSandbox } from './JavaScriptSandbox';
 import { JsTaskRunnerSandbox } from './JsTaskRunnerSandbox';
 import { NativePythonWithoutRunnerError } from './native-python-without-runner.error';
+import { PythonRunnerUnavailableError } from './python-runner-unavailable.error';
 import { PythonSandbox } from './PythonSandbox';
 import { PythonTaskRunnerSandbox } from './PythonTaskRunnerSandbox';
 import { getSandboxContext } from './Sandbox';
@@ -148,8 +149,17 @@ export class Code implements INodeType {
 				: [await sandbox.runCodeForEachItem(numInputItems)];
 		}
 
-		if (language === 'pythonNative' && !isPyRunner) {
-			throw new NativePythonWithoutRunnerError();
+		if (language === 'pythonNative') {
+			if (!isPyRunner) {
+				throw new NativePythonWithoutRunnerError();
+			}
+
+			const runnerStatus = this.getRunnerStatus('python');
+			if (!runnerStatus.available) {
+				throw new PythonRunnerUnavailableError(
+					runnerStatus.reason as 'python' | 'venv' | undefined,
+				);
+			}
 		}
 
 		if (isPyLang && isPyRunner) {

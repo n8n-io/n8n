@@ -259,8 +259,7 @@ const contextItems = computed(() => {
 				const variablesEmptyNotice: RenderNotice = {
 					type: 'notice',
 					id: 'notice-variablesEmpty',
-					// Increase level to indent under $vars
-					level: (renderItem.level ?? 0) + 1,
+					level: renderItem.level ?? 0,
 					message: i18n.baseText('dataMapping.schemaView.variablesEmpty'),
 				};
 				return [renderItem, variablesEmptyNotice];
@@ -558,6 +557,7 @@ const onDragEnd = (el: HTMLElement) => {
 											size="small"
 											type="secondary"
 											hide-icon
+											execution-mode="exclusive"
 										/>
 									</template>
 								</I18nT>
