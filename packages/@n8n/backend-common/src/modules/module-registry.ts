@@ -37,6 +37,7 @@ export class ModuleRegistry {
 		'mcp',
 		'provisioning',
 		'breaking-changes',
+		'dynamic-credentials',
 	];
 
 	private readonly activeModules: string[] = [];

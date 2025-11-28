@@ -281,9 +281,13 @@ export class LoadNodesAndCredentials {
 		});
 	}
 
+	private shouldInjectContextEstablishmentHooks() {
+		return process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS === 'true';
+	}
+
 	private injectContextEstablishmentHooks() {
 		// Check if the feature is enabled via environment variable
-		const isEnabled = process.env.N8N_ENV_FEAT_CONTEXT_ESTABLISHMENT_HOOKS === 'true';
+		const isEnabled = this.shouldInjectContextEstablishmentHooks();
 
 		if (!isEnabled) {
 			this.logger.debug('Context establishment hooks feature is disabled');
@@ -298,110 +302,115 @@ export class LoadNodesAndCredentials {
 			`Injecting context establishment hooks for ${triggerNodes.length} trigger nodes`,
 		);
 
-		triggerNodes.forEach((node: INodeTypeDescription) => {
-			const hooks = this.executionContextHookRegistry.getHookForTriggerType(node.name);
+		triggerNodes.forEach(this.augmentNodeTypeDescription);
+	}
 
-			if (hooks.length > 0) {
-				this.logger.debug(`Found ${hooks.length} hooks for trigger node: ${node.name}`);
-			}
+	private augmentNodeTypeDescription = (node: INodeTypeDescription) => {
+		const hooks = this.executionContextHookRegistry.getHookForTriggerType(node.name);
 
-			// Only inject hook properties if there are applicable hooks
-			if (hooks.length === 0) return;
+		if (hooks.length > 0) {
+			this.logger.debug(`Found ${hooks.length} hooks for trigger node: ${node.name}`);
+		}
 
-			// Create a fixedCollection with multipleValues for multiple hook selection
-			// Each hook becomes a separate item that can be added multiple times
-			const allHookValues: INodeProperties[] = [
-				{
-					displayName: 'Hook',
-					name: 'hookName',
-					type: 'options',
-					options: hooks.map((hook) => {
-						const displayName = hook.hookDescription.displayName ?? hook.hookDescription.name;
-						return {
-							name: displayName,
-							value: hook.hookDescription.name,
-							description: `Use ${displayName} hook`,
-						};
-					}),
-					// No default - force user to explicitly select a hook
-					// This ensures hookName is always serialized in the workflow JSON
-					default: '',
-					description: 'Select which context establishment hook to use',
-					required: true,
-				},
-				{
-					displayName: 'Allow Failure',
-					name: 'isAllowedToFail',
-					type: 'boolean',
-					default: false,
-					description: 'Whether to continue workflow execution if this hook fails',
-				},
-			];
+		// Only inject hook properties if there are applicable hooks
+		if (hooks.length === 0) return;
 
-			// Add all hook-specific options with display conditions
-			for (const hook of hooks) {
-				const hookOptions = hook.hookDescription.options ?? [];
-				if (hookOptions.length > 0) {
-					for (const hookOption of hookOptions) {
-						// Add display condition to show only when this specific hook is selected
-						const enhancedOption: INodeProperties = {
-							...hookOption,
-							displayOptions: {
-								...hookOption.displayOptions,
-								show: {
-									...hookOption.displayOptions?.show,
-									hookName: [hook.hookDescription.name],
-								},
+		// This prevents double-injection if the function is called multiple times on the same node
+		if (node.properties.some((p) => p.name === 'executionsHooksVersion')) return;
+
+		// Create a fixedCollection with multipleValues for multiple hook selection
+		// Each hook becomes a separate item that can be added multiple times
+		const allHookValues: INodeProperties[] = [
+			{
+				displayName: 'Hook',
+				name: 'hookName',
+				type: 'options',
+				options: hooks.map((hook) => {
+					const displayName = hook.hookDescription.displayName ?? hook.hookDescription.name;
+					return {
+						name: displayName,
+						value: hook.hookDescription.name,
+						description: `Use ${displayName} hook`,
+					};
+				}),
+				// No default - force user to explicitly select a hook
+				// This ensures hookName is always serialized in the workflow JSON
+				default: '',
+				description: 'Select which context establishment hook to use',
+				required: true,
+			},
+			{
+				displayName: 'Allow Failure',
+				name: 'isAllowedToFail',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to continue workflow execution if this hook fails',
+			},
+		];
+
+		// Add all hook-specific options with display conditions
+		for (const hook of hooks) {
+			const hookOptions = hook.hookDescription.options ?? [];
+			if (hookOptions.length > 0) {
+				for (const hookOption of hookOptions) {
+					// Add display condition to show only when this specific hook is selected
+					const enhancedOption: INodeProperties = {
+						...hookOption,
+						displayOptions: {
+							...hookOption.displayOptions,
+							show: {
+								...hookOption.displayOptions?.show,
+								hookName: [hook.hookDescription.name],
 							},
-						};
-						allHookValues.push(enhancedOption);
-					}
+						},
+					};
+					allHookValues.push(enhancedOption);
 				}
 			}
+		}
 
-			// Create a hidden version property to track the hooks format version
-			const executionsHooksVersion: INodeProperties = {
-				displayName: 'Executions Hooks Version',
-				name: 'executionsHooksVersion',
-				type: 'hidden',
-				default: 1,
-			};
+		// Create a hidden version property to track the hooks format version
+		const executionsHooksVersion: INodeProperties = {
+			displayName: 'Executions Hooks Version',
+			name: 'executionsHooksVersion',
+			type: 'hidden',
+			default: 1,
+		};
 
-			// Create the main context establishment hooks property as a fixedCollection
-			const contextHooksProperty: INodeProperties = {
-				displayName: 'Context Establishment Hooks',
-				name: 'contextEstablishmentHooks',
-				type: 'fixedCollection',
-				placeholder: 'Add Hook',
-				default: {},
-				typeOptions: {
-					multipleValues: true,
+		// Create the main context establishment hooks property as a fixedCollection
+		const contextHooksProperty: INodeProperties = {
+			displayName: 'Context Establishment Hooks',
+			name: 'contextEstablishmentHooks',
+			type: 'fixedCollection',
+			placeholder: 'Add Hook',
+			default: {},
+			typeOptions: {
+				multipleValues: true,
+			},
+			options: [
+				{
+					name: 'hooks',
+					displayName: 'Hooks',
+					values: allHookValues,
 				},
-				options: [
-					{
-						name: 'hooks',
-						displayName: 'Hooks',
-						values: allHookValues,
-					},
-				],
-				description:
-					'Add and configure context establishment hooks to extract data from trigger items. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/hooks/" target="_blank">Learn more</a>',
-			};
+			],
+			description:
+				'Add and configure context establishment hooks to extract data from trigger items. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/hooks/" target="_blank">Learn more</a>',
+		};
 
-			// Create a notice that always appears after the hooks collection
-			const contextHooksNotice: INodeProperties = {
-				displayName:
-					'Context establishment hooks allow you to extract data from trigger items to use in subsequent nodes. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/hooks/" target="_blank">Learn more</a>',
-				name: 'contextHooksNotice',
-				type: 'notice',
-				default: '',
-			};
+		// Create a notice that always appears after the hooks collection
+		const contextHooksNotice: INodeProperties = {
+			displayName:
+				'Context establishment hooks allow you to extract data from trigger items to use in subsequent nodes. <a href="https://docs.n8n.io/integrations/builtin/core-nodes/hooks/" target="_blank">Learn more</a>',
+			name: 'contextHooksNotice',
+			type: 'notice',
+			default: '',
+		};
 
-			node.properties.push(executionsHooksVersion);
-			node.properties.push(contextHooksProperty);
-			node.properties.push(contextHooksNotice);
-		});
-	}
+		node.properties.push(executionsHooksVersion);
+		node.properties.push(contextHooksProperty);
+		node.properties.push(contextHooksNotice);
+	};
 
 	/**
 	 * Run a loader of source files of nodes and credentials in a directory.
@@ -560,7 +569,14 @@ export class LoadNodesAndCredentials {
 		if (!loader) {
 			throw new UnrecognizedNodeTypeError(packageName, nodeType);
 		}
-		return loader.getNode(nodeType);
+		const loadedNode = loader.getNode(nodeType);
+		if (
+			this.shouldInjectContextEstablishmentHooks() &&
+			'properties' in loadedNode.type.description
+		) {
+			this.augmentNodeTypeDescription(loadedNode.type.description);
+		}
+		return loadedNode;
 	}
 
 	getCredential(credentialType: string): LoadedClass<ICredentialType> {

@@ -35,6 +35,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 import { BaseCommand } from './base-command';
 import { CredentialsOverwrites } from '@/credentials-overwrites';
 import { DeprecationService } from '@/deprecation/deprecation.service';
+import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 const open = require('open');
@@ -262,6 +263,9 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 			Container.get(MultiMainSetup).registerEventHandlers();
 		}
+
+		await this.executionContextHookRegistry.init();
+		await Container.get(LoadNodesAndCredentials).postProcessLoaders();
 	}
 
 	async initOrchestration() {

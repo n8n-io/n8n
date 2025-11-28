@@ -2,14 +2,16 @@ import z from 'zod/v4';
 
 const ExecutionContextEstablishmentHookParameterSchemaV1 = z.object({
 	executionsHooksVersion: z.literal(1),
-	hooks: z.array(
-		z
-			.object({
-				hookName: z.string(),
-				isAllowedToFail: z.boolean().optional().default(false),
-			})
-			.loose(),
-	),
+	contextEstablishmentHooks: z.object({
+		hooks: z.array(
+			z
+				.object({
+					hookName: z.string(),
+					isAllowedToFail: z.boolean().optional().default(false),
+				})
+				.loose(),
+		),
+	}),
 });
 
 export type ExecutionContextEstablishmentHookParameterV1 = z.output<
@@ -17,7 +19,7 @@ export type ExecutionContextEstablishmentHookParameterV1 = z.output<
 >;
 
 export const ExecutionContextEstablishmentHookParameterSchema = z
-	.discriminatedUnion('contextEstablishmentHooks.executionsHooksVersion', [
+	.discriminatedUnion('executionsHooksVersion', [
 		ExecutionContextEstablishmentHookParameterSchemaV1,
 	])
 	.meta({
@@ -35,6 +37,10 @@ export type ExecutionContextEstablishmentHookParameter = z.output<
  */
 export const toExecutionContextEstablishmentHookParameter = (value: unknown) => {
 	if (value === null || value === undefined || typeof value !== 'object') {
+		return null;
+	}
+	// Quick check to avoid unnecessary parsing attempts
+	if (!('executionsHooksVersion' in value)) {
 		return null;
 	}
 	return ExecutionContextEstablishmentHookParameterSchema.safeParse(value);
