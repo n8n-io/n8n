@@ -22,7 +22,6 @@ import {
 } from '@/features/ai/chatHub/constants';
 import { useUsersStore } from '@/features/settings/users/users.store';
 import {
-	chatHubConversationModelSchema,
 	type ChatHubLLMProvider,
 	PROVIDER_CREDENTIAL_TYPE_MAP,
 	type ChatHubConversationModel,
@@ -43,6 +42,10 @@ import { useChatCredentials } from '@/features/ai/chatHub/composables/useChatCre
 import ChatLayout from '@/features/ai/chatHub/components/ChatLayout.vue';
 import { INodesSchema, type INode } from 'n8n-workflow';
 import { useFileDrop } from '@/features/ai/chatHub/composables/useFileDrop';
+import {
+	type ChatHubConversationModelWithCachedDisplayName,
+	chatHubConversationModelWithCachedDisplayNameSchema,
+} from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
 
 const router = useRouter();
@@ -65,12 +68,9 @@ const isNewSession = computed(() => sessionId.value !== route.params.id);
 const scrollableRef = useTemplateRef('scrollable');
 const scrollContainerRef = computed(() => scrollableRef.value?.parentElement ?? null);
 const currentConversation = computed(() =>
-	sessionId.value
-		? chatStore.sessions.find((session) => session.id === sessionId.value)
-		: undefined,
+	sessionId.value ? chatStore.sessions.byId[sessionId.value] : undefined,
 );
 const currentConversationTitle = computed(() => currentConversation.value?.title);
-const readyToShowMessages = computed(() => chatStore.agentsReady);
 
 // TODO: This also depends on the model, not all base LLM models support tools.
 const canSelectTools = computed(() => isLlmProvider(selectedModel.value?.model.provider));
@@ -80,7 +80,7 @@ const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	offset: { bottom: 100 },
 });
 
-const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
+const defaultModel = useLocalStorage<ChatHubConversationModelWithCachedDisplayName | null>(
 	LOCAL_STORAGE_CHAT_HUB_SELECTED_MODEL(usersStore.currentUserId ?? 'anonymous'),
 	null,
 	{
@@ -89,7 +89,7 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 		serializer: {
 			read: (value) => {
 				try {
-					return chatHubConversationModelSchema.parse(JSON.parse(value));
+					return chatHubConversationModelWithCachedDisplayNameSchema.parse(JSON.parse(value));
 				} catch (error) {
 					return null;
 				}
@@ -97,6 +97,10 @@ const defaultModel = useLocalStorage<ChatHubConversationModel | null>(
 			write: (value) => JSON.stringify(value),
 		},
 	},
+);
+
+const defaultModelName = computed(() =>
+	defaultModel.value ? chatStore.getAgent(defaultModel.value).name : undefined,
 );
 
 const defaultTools = useLocalStorage<INode[] | null>(
@@ -154,25 +158,32 @@ const modelFromQuery = computed<ChatModelDto | null>(() => {
 });
 
 const selectedModel = computed<ChatModelDto | null>(() => {
-	if (!chatStore.agentsReady) {
-		return null;
+	if (!isNewSession.value) {
+		const model = currentConversation.value ? unflattenModel(currentConversation.value) : null;
+
+		if (!model) {
+			return null;
+		}
+
+		return chatStore.getAgent(
+			model,
+			(currentConversation.value?.agentName || currentConversation.value?.model) ?? undefined,
+		);
 	}
 
 	if (modelFromQuery.value) {
 		return modelFromQuery.value;
 	}
 
-	if (currentConversation.value?.provider) {
-		const model = unflattenModel(currentConversation.value);
-
-		return model ? chatStore.getAgent(model) : null;
-	}
-
 	if (chatStore.streaming?.sessionId === sessionId.value) {
-		return chatStore.getAgent(chatStore.streaming.model);
+		return chatStore.getAgent(chatStore.streaming.model, chatStore.streaming.agentName);
 	}
 
-	return defaultModel.value ? chatStore.getAgent(defaultModel.value) : null;
+	if (!defaultModel.value) {
+		return null;
+	}
+
+	return chatStore.getAgent(defaultModel.value, defaultModel.value.cachedDisplayName);
 });
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
@@ -207,6 +218,21 @@ const credentialsForSelectedProvider = computed<ChatHubSendMessageRequest['crede
 	},
 );
 const isMissingSelectedCredential = computed(() => !credentialsForSelectedProvider.value);
+const issue = computed<null | 'missingCredentials' | 'missingAgent'>(() => {
+	if (!chatStore.agentsReady) {
+		return null;
+	}
+
+	if (!selectedModel.value) {
+		return 'missingAgent';
+	}
+
+	if (isMissingSelectedCredential.value) {
+		return 'missingCredentials';
+	}
+
+	return null;
+});
 
 const editingMessageId = ref<string>();
 const didSubmitInCurrentSession = ref(false);
@@ -235,9 +261,9 @@ function scrollToMessage(messageId: ChatMessageId) {
 
 // Scroll to the bottom when a new message is added
 watch(
-	[readyToShowMessages, () => chatMessages.value[chatMessages.value.length - 1]?.id],
-	([ready, lastMessageId]) => {
-		if (!ready || !lastMessageId) {
+	() => chatMessages.value[chatMessages.value.length - 1]?.id,
+	(lastMessageId) => {
+		if (!lastMessageId) {
 			return;
 		}
 
@@ -271,7 +297,7 @@ watch(
 		const model = findOneFromModelsResponse(models) ?? null;
 
 		if (model) {
-			void handleSelectModel(model);
+			void handleSelectAgent(model);
 		}
 	},
 	{ immediate: true },
@@ -322,6 +348,17 @@ watch(
 	{ immediate: true },
 );
 
+// Keep cached display name up-to-date
+watch(
+	defaultModelName,
+	(name) => {
+		if (defaultModel.value && name) {
+			defaultModel.value = { ...defaultModel.value, cachedDisplayName: name };
+		}
+	},
+	{ immediate: true },
+);
+
 function onSubmit(message: string, attachments: File[]) {
 	if (
 		!message.trim() ||
@@ -342,6 +379,7 @@ function onSubmit(message: string, attachments: File[]) {
 		credentialsForSelectedProvider.value,
 		canSelectTools.value ? selectedTools.value : [],
 		attachments,
+		selectedModel.value.name,
 	);
 
 	inputRef.value?.setText('');
@@ -406,16 +444,22 @@ function handleRegenerateMessage(message: ChatHubMessageDto) {
 	);
 }
 
-async function handleSelectModel(selection: ChatModelDto) {
+async function handleSelectModel(selection: ChatHubConversationModel, displayName?: string) {
+	const agentName = displayName ?? chatStore.getAgent(selection)?.name ?? '';
+
 	if (currentConversation.value) {
 		try {
-			await chatStore.updateSessionModel(sessionId.value, selection.model);
+			await chatStore.updateSessionModel(sessionId.value, selection, agentName);
 		} catch (error) {
 			toast.showError(error, 'Could not update selected model');
 		}
 	} else {
-		defaultModel.value = selection.model;
+		defaultModel.value = { ...selection, cachedDisplayName: agentName };
 	}
+}
+
+async function handleSelectAgent(selection: ChatModelDto) {
+	await handleSelectModel(selection.model, selection.name);
 }
 
 function handleSwitchAlternative(messageId: string) {
@@ -501,8 +545,8 @@ function onFilesDropped(files: File[]) {
 			ref="headerRef"
 			:selected-model="selectedModel"
 			:credentials="credentialsByProvider"
-			:ready-to-show-model-selector="chatStore.agentsReady"
-			@select-model="handleSelectModel"
+			:ready-to-show-model-selector="isNewSession || !!currentConversation"
+			@select-model="handleSelectAgent"
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"
@@ -510,7 +554,6 @@ function onFilesDropped(files: File[]) {
 		/>
 
 		<N8nScrollArea
-			v-if="readyToShowMessages"
 			type="scroll"
 			:enable-vertical-scroll="true"
 			:enable-horizontal-scroll="false"
@@ -532,6 +575,7 @@ function onFilesDropped(files: File[]) {
 						:compact="isMobileDevice"
 						:is-editing="editingMessageId === message.id"
 						:is-streaming="message.status === 'running'"
+						:cached-agent-display-name="selectedModel?.name ?? null"
 						:min-height="
 							didSubmitInCurrentSession &&
 							message.type === 'ai' &&
@@ -567,6 +611,7 @@ function onFilesDropped(files: File[]) {
 						:is-tools-selectable="canSelectTools"
 						:is-missing-credentials="isMissingSelectedCredential"
 						:is-new-session="isNewSession"
+						:issue="issue"
 						@submit="onSubmit"
 						@stop="onStop"
 						@select-model="handleConfigureModel"
