@@ -10,7 +10,12 @@ import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { CanvasNodeDirtiness } from '@/features/workflows/canvas/canvas.types';
 import { createTestingPinia } from '@pinia/testing';
-import { NodeConnectionTypes, type IConnections, type IRunData } from 'n8n-workflow';
+import {
+	createRunExecutionData,
+	NodeConnectionTypes,
+	type IConnections,
+	type IRunData,
+} from 'n8n-workflow';
 import { defineComponent } from 'vue';
 import { createRouter, createWebHistory, type RouteLocationNormalizedLoaded } from 'vue-router';
 import { useWorkflowState, injectWorkflowState, type WorkflowState } from './useWorkflowState';
@@ -148,7 +153,7 @@ describe(useNodeDirtiness, () => {
 				workflowData: workflowsStore.workflow,
 				startedAt: runAt,
 				createdAt: runAt,
-				data: {
+				data: createRunExecutionData({
 					resultData: {
 						runData: {
 							b: [
@@ -162,7 +167,7 @@ describe(useNodeDirtiness, () => {
 							],
 						},
 					},
-				},
+				}),
 			});
 
 			expect(useNodeDirtiness().dirtinessByName.value).toEqual({});
@@ -457,7 +462,7 @@ describe(useNodeDirtiness, () => {
 			workflowData: workflow,
 			startedAt: NODE_RUN_AT,
 			createdAt: NODE_RUN_AT,
-			data: { resultData: { runData } },
+			data: createRunExecutionData({ resultData: { runData } }),
 		});
 
 		// prepare for making changes to the workflow

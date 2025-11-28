@@ -1,7 +1,7 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
-import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, User, UserRepository } from '@n8n/db';
+import { GLOBAL_ADMIN_ROLE, GLOBAL_MEMBER_ROLE, Role, User, UserRepository } from '@n8n/db';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
@@ -12,6 +12,7 @@ import { UserService } from '@/services/user.service';
 import type { UserManagementMailer } from '@/user-management/email';
 
 import type { RoleService } from '../role.service';
+import { type PublicApiKeyService } from '../public-api-key.service';
 
 describe('UserService', () => {
 	const globalConfig = mockInstance(GlobalConfig, {
@@ -23,21 +24,20 @@ describe('UserService', () => {
 		editorBaseUrl: '',
 	});
 	const urlService = new UrlService(globalConfig);
+	const manager = mock<EntityManager>();
 	const userRepository = mockInstance(UserRepository, {
-		manager: mock<EntityManager>({
-			transaction: async (cb) =>
-				typeof cb === 'function' ? await cb(mock<EntityManager>()) : await Promise.resolve(),
-		}),
+		manager,
 	});
 	const roleService = mock<RoleService>();
 	const mailer = mock<UserManagementMailer>();
+	const publicApiKeyService = mock<PublicApiKeyService>();
 	const userService = new UserService(
 		mock(),
 		userRepository,
 		mailer,
 		urlService,
 		mock(),
-		mock(),
+		publicApiKeyService,
 		roleService,
 		globalConfig,
 	);
@@ -50,6 +50,11 @@ describe('UserService', () => {
 
 	afterEach(() => {
 		jest.clearAllMocks();
+		// Restore default transaction implementation after each test (because some mock it)
+		manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
+			const runInTransaction = (arg2 ?? arg1) as (entityManager: EntityManager) => Promise<unknown>;
+			return await runInTransaction(mock<EntityManager>());
+		});
 	});
 
 	describe('toPublic', () => {
@@ -320,6 +325,62 @@ describe('UserService', () => {
 			await expect(userService.inviteUsers(owner, invitations)).rejects.toThrowError(
 				'Role nonexistent:role does not exist',
 			);
+		});
+	});
+
+	describe('changeUserRole', () => {
+		beforeEach(() => {
+			jest.clearAllMocks();
+			manager.transaction.mockImplementation(async (arg1: unknown, arg2?: unknown) => {
+				const runInTransaction = (arg2 ?? arg1) as (
+					entityManager: EntityManager,
+				) => Promise<unknown>;
+				return await runInTransaction(manager);
+			});
+		});
+
+		it('throws an error if provided user role does not exist', async () => {
+			const user = new User();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+
+			await expect(
+				userService.changeUserRole(user, { newRoleName: 'global:invalid' }),
+			).rejects.toThrowError('Role nonexistent:role does not exist');
+		});
+
+		it('updates the role of the given user', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			await userService.changeUserRole(user, { newRoleName: 'global:admin' });
+
+			expect(manager.update).toHaveBeenCalledWith(
+				User,
+				{ id: user.id },
+				{ role: { slug: 'global:admin' } },
+			);
+			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).not.toHaveBeenCalled();
+		});
+
+		it('removes higher privilege scopes from API tokens of user who is demoted from admin', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:admin';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			await userService.changeUserRole(user, { newRoleName: 'global:member' });
+
+			expect(manager.update).toHaveBeenCalledWith(
+				User,
+				{ id: user.id },
+				{ role: { slug: 'global:member' } },
+			);
+			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).toHaveBeenCalled();
 		});
 	});
 });

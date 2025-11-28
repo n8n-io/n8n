@@ -28,7 +28,7 @@ const assertHintsAreShown = ({ isSwaggerUIEnabled }: { isSwaggerUIEnabled: boole
 	expect(webhookDocsLink).toBeInTheDocument();
 	expect(webhookDocsLink).toHaveAttribute(
 		'href',
-		'https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/',
+		'https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.webhook/',
 	);
 	expect(webhookDocsLink).toHaveAttribute('target', '_blank');
 

@@ -12,6 +12,8 @@ import type {
 	INodeTypeDescription,
 	INodeType,
 	INodeProperties,
+	NodeTypeAndVersion,
+	INode,
 } from 'n8n-workflow';
 
 import { configureInputs, configureWaitTillDate } from './util';
@@ -116,6 +118,7 @@ const limitWaitTimeOption: INodeProperties = {
 
 export class Chat implements INodeType {
 	description: INodeTypeDescription = {
+		usableAsTool: true,
 		displayName: 'Respond to Chat',
 		name: 'chat',
 		icon: 'fa:comments',
@@ -165,6 +168,7 @@ export class Chat implements INodeType {
 				name: CHAT_WAIT_USER_REPLY,
 				type: 'boolean',
 				default: true,
+				noDataExpression: true,
 			},
 			{
 				displayName: 'Options',
@@ -172,6 +176,11 @@ export class Chat implements INodeType {
 				type: 'collection',
 				placeholder: 'Add Option',
 				default: {},
+				displayOptions: {
+					hide: {
+						'@tool': [true],
+					},
+				},
 				options: [
 					{
 						displayName: 'Add Memory Input Connection',
@@ -181,6 +190,20 @@ export class Chat implements INodeType {
 					},
 					limitWaitTimeOption,
 				],
+			},
+			{
+				displayName: 'Options',
+				name: 'options',
+				type: 'collection',
+				placeholder: 'Add Option',
+				default: {},
+				options: [limitWaitTimeOption],
+				displayOptions: {
+					show: {
+						'@tool': [true],
+						[`/${CHAT_WAIT_USER_REPLY}`]: [true],
+					},
+				},
 			},
 		],
 	};
@@ -220,9 +243,16 @@ export class Chat implements INodeType {
 			includeNodeParameters: true,
 		});
 
-		const chatTrigger = connectedNodes.find(
+		let chatTrigger: INode | NodeTypeAndVersion | undefined | null = connectedNodes.find(
 			(node) => node.type === CHAT_TRIGGER_NODE_TYPE && !node.disabled,
 		);
+
+		if (!chatTrigger) {
+			try {
+				// try to get chat trigger from workflow if node working as a tool
+				chatTrigger = this.getChatTrigger();
+			} catch (error) {}
+		}
 
 		if (!chatTrigger) {
 			throw new NodeOperationError(

@@ -136,7 +136,8 @@ export const usePostHog = defineStore('posthog', () => {
 		const distinctId = `${instanceId}#${userId}`;
 
 		const options: Parameters<typeof window.posthog.init>[1] = {
-			api_host: settingsStore.settings.posthog.proxy,
+			// FIXME: Removing the proxy for now until we test the fixes properly
+			api_host: 'https://us.i.posthog.com', //settingsStore.settings.posthog.proxy,
 			autocapture: config.autocapture,
 			disable_session_recording: config.disableSessionRecording,
 			debug: config.debug,

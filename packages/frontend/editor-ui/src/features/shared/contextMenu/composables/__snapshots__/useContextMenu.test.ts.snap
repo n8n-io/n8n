@@ -79,6 +79,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     },
   },
   {
+    "disabled": true,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -172,6 +173,7 @@ exports[`useContextMenu > Read-only mode > should return the correct actions whe
     },
   },
   {
+    "disabled": true,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -305,6 +307,7 @@ exports[`useContextMenu > should return the correct actions opening the menu fro
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -438,6 +441,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -531,6 +535,7 @@ exports[`useContextMenu > should return the correct actions when right clicking 
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -676,6 +681,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -821,6 +827,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (disabled) whe
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -966,6 +973,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -1111,6 +1119,7 @@ exports[`useContextMenu > should show "Go to Sub-workflow" action (enabled) when
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up workflow",
@@ -1209,6 +1218,7 @@ exports[`useContextMenu > should support opening and closing (default = right cl
     },
   },
   {
+    "disabled": false,
     "divided": true,
     "id": "tidy_up",
     "label": "Tidy up selection",

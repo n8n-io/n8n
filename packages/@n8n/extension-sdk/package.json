@@ -1,6 +1,6 @@
 {
   "name": "@n8n/extension-sdk",
-  "version": "0.8.0",
+  "version": "0.9.0",
   "type": "module",
   "files": [
     "dist",
@@ -9,22 +9,22 @@
     "README.md"
   ],
   "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.mts",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
     "./backend": {
-      "types": "./dist/backend/index.d.ts",
-      "import": "./dist/backend/index.js",
+      "types": "./dist/backend/index.d.mts",
+      "import": "./dist/backend/index.mjs",
       "require": "./dist/backend/index.cjs"
     },
     "./frontend": {
-      "types": "./dist/frontend/index.d.ts",
-      "import": "./dist/frontend/index.js",
+      "types": "./dist/frontend/index.d.mts",
+      "import": "./dist/frontend/index.mjs",
       "require": "./dist/frontend/index.cjs"
     },
     "./*": "./*"

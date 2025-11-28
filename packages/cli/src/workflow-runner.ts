@@ -18,6 +18,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 } from 'n8n-workflow';
 import {
+	createRunExecutionData,
 	ExecutionCancelledError,
 	ManualExecutionCancelledError,
 	TimeoutExecutionCancelledError,
@@ -104,7 +105,7 @@ export class WorkflowRunner {
 		}
 
 		const fullRunData: IRun = {
-			data: {
+			data: createRunExecutionData({
 				resultData: {
 					error: {
 						...error,
@@ -113,7 +114,7 @@ export class WorkflowRunner {
 					},
 					runData: {},
 				},
-			},
+			}),
 			finished: false,
 			mode: executionMode,
 			startedAt,
@@ -138,6 +139,40 @@ export class WorkflowRunner {
 		restartExecutionId?: string,
 		responsePromise?: IDeferredPromise<IExecuteResponsePromiseData>,
 	): Promise<string> {
+		const offloadingManualExecutionsInQueueMode =
+			this.executionsConfig.mode === 'queue' &&
+			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS === 'true';
+
+		/**
+		 * Historically, manual executions in scaling mode ran in the main process,
+		 * so some execution details were never persisted in the database.
+		 *
+		 * Currently, manual executions in scaling mode are offloaded to workers,
+		 * so we persist all details to give workers full access to them.
+		 */
+		if (data.executionMode === 'manual' && offloadingManualExecutionsInQueueMode) {
+			data.executionData = createRunExecutionData({
+				startData: {
+					startNodes: data.startNodes,
+					destinationNode: data.destinationNode,
+				},
+				resultData: {
+					pinData: data.pinData,
+					// Set this to null so `createRunExecutionData` doesn't initialize it.
+					// Otherwise this would be treated as a partial execution.
+					runData: data.runData ?? null,
+				},
+				manualData: {
+					userId: data.userId,
+					dirtyNodeNames: data.dirtyNodeNames,
+					triggerToStartFrom: data.triggerToStartFrom,
+				},
+				// Set this to null so `createRunExecutionData` doesn't initialize it.
+				// Otherwise this would be treated as a resumed execution after waiting.
+				executionData: null,
+			});
+		}
+
 		// Register a new execution
 		const executionId = await this.activeExecutions.add(data, restartExecutionId);
 
@@ -235,7 +270,7 @@ export class WorkflowRunner {
 			name: data.workflowData.name,
 			nodes: data.workflowData.nodes,
 			connections: data.workflowData.connections,
-			active: data.workflowData.active,
+			active: data.workflowData.activeVersionId !== null,
 			nodeTypes: this.nodeTypes,
 			staticData: data.workflowData.staticData,
 			settings: workflowSettings,
