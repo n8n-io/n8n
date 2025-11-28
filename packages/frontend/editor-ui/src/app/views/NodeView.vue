@@ -68,6 +68,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
+	WORKFLOW_PUBLISH_MODAL_KEY,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -768,6 +769,29 @@ async function onSaveWorkflow() {
 	if (saved) {
 		canvasEventBus.emit('saved:workflow');
 	}
+}
+
+async function onPublishWorkflow() {
+	const workflowIsArchived = workflowsStore.workflow.isArchived;
+	const isReadOnly = isCanvasReadOnly.value;
+
+	if (workflowIsArchived || isReadOnly) {
+		return;
+	}
+
+	// If there are unsaved changes, save the workflow first
+	if (uiStore.stateIsDirty || workflowsStore.isNewWorkflow) {
+		const saved = await workflowSaving.saveCurrentWorkflow({}, true);
+		if (!saved) {
+			// If save failed, don't open the modal
+			return;
+		}
+	}
+
+	uiStore.openModalWithData({
+		name: WORKFLOW_PUBLISH_MODAL_KEY,
+		data: {},
+	});
 }
 
 function onContextMenuAction(action: ContextMenuAction, nodeIds: string[]) {
@@ -2028,6 +2052,7 @@ onBeforeUnmount(() => {
 			@replace:node="onClickReplaceNode"
 			@run:workflow="runEntireWorkflow('main')"
 			@save:workflow="onSaveWorkflow"
+			@publish:workflow="onPublishWorkflow"
 			@create:workflow="onCreateWorkflow"
 			@viewport:change="onViewportChange"
 			@selection:end="onSelectionEnd"
