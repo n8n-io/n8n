@@ -366,7 +366,7 @@ const goToUpgrade = () => {
 									@update:model-value="handleCheckAllExistingChange"
 								/>
 							</th>
-							<th colspan="8">
+							<th colspan="9">
 								{{
 									i18n.baseText('executionsList.selectAll', {
 										adjustToNumber: total,
@@ -387,6 +387,9 @@ const goToUpgrade = () => {
 							</th>
 							<th>
 								{{ i18n.baseText('generic.workflow') }}
+							</th>
+							<th>
+								{{ i18n.baseText('executionsList.flags') }}
 							</th>
 							<th>{{ i18n.baseText('executionsList.status') }}</th>
 							<th>
@@ -429,7 +432,7 @@ const goToUpgrade = () => {
 							</tr>
 						</template>
 						<tr>
-							<td colspan="9" style="text-align: center">
+							<td colspan="10" style="text-align: center">
 								<template v-if="!executions.length">
 									<span data-test-id="execution-list-empty">
 										{{ i18n.baseText('executionsList.empty') }}

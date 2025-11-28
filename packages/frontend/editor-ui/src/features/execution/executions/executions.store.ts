@@ -53,12 +53,17 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const executionsCount = ref(0);
 	const executionsCountEstimated = ref(false);
 	const concurrentExecutionsCount = ref(0);
+	const compareExecutions = (a: ExecutionSummaryWithScopes, b: ExecutionSummaryWithScopes) => {
+		const pinnedDiff = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+		if (pinnedDiff !== 0) return pinnedDiff;
+
+		return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+	};
+
 	const executions = computed(() => {
 		const data = Object.values(executionsById.value);
 
-		data.sort((a, b) => {
-			return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-		});
+		data.sort(compareExecutions);
 
 		return data;
 	});
@@ -96,7 +101,11 @@ export const useExecutionsStore = defineStore('executions', () => {
 	const currentExecutions = computed(() => {
 		const data = Object.values(currentExecutionsById.value);
 
-		data.sort(sortFn);
+		data.sort((a, b) => {
+			const pinnedDiff = Number(Boolean(b.pinned)) - Number(Boolean(a.pinned));
+			if (pinnedDiff !== 0) return pinnedDiff;
+			return sortFn(a, b);
+		});
 
 		return data;
 	});
@@ -220,6 +229,35 @@ export const useExecutionsStore = defineStore('executions', () => {
 		}
 	}
 
+	function patchExecutionState(
+		id: string,
+		patch: Partial<ExecutionSummaryWithScopes & { customData?: Record<string, string> }>,
+	) {
+		if (executionsById.value[id]) {
+			executionsById.value = {
+				...executionsById.value,
+				[id]: {
+					...executionsById.value[id],
+					...patch,
+				},
+			};
+		}
+
+		if (currentExecutionsById.value[id]) {
+			currentExecutionsById.value = {
+				...currentExecutionsById.value,
+				[id]: {
+					...currentExecutionsById.value[id],
+					...patch,
+				},
+			};
+		}
+
+		if (activeExecution.value?.id === id) {
+			activeExecution.value = { ...activeExecution.value, ...patch };
+		}
+	}
+
 	async function annotateExecution(
 		id: string,
 		data: { tags?: string[]; vote?: AnnotationVote | null },
@@ -236,6 +274,44 @@ export const useExecutionsStore = defineStore('executions', () => {
 		if (updatedExecution.id === activeExecution.value?.id) {
 			activeExecution.value = updatedExecution;
 		}
+	}
+
+	type ExecutionNoteMetadata = {
+		note: string | null;
+		noteUpdatedAt: string | null;
+		noteUpdatedBy: string | null;
+	};
+
+	type ExecutionPinMetadata = {
+		pinned: boolean;
+		pinnedAt: string | null;
+		pinnedBy: string | null;
+	};
+
+	async function updateExecutionNote(id: string, note: string | null) {
+		const payload = await makeRestApiRequest<ExecutionNoteMetadata>(
+			rootStore.restApiContext,
+			'PATCH',
+			`/executions/${id}/note`,
+			{ note },
+		);
+
+		patchExecutionState(id, payload);
+
+		return payload;
+	}
+
+	async function updateExecutionPin(id: string, pinned: boolean) {
+		const payload = await makeRestApiRequest<ExecutionPinMetadata>(
+			rootStore.restApiContext,
+			'PATCH',
+			`/executions/${id}/pin`,
+			{ pinned },
+		);
+
+		patchExecutionState(id, payload);
+
+		return payload;
 	}
 
 	async function stopCurrentExecution(executionId: string): Promise<IExecutionsStopData> {
@@ -301,6 +377,8 @@ export const useExecutionsStore = defineStore('executions', () => {
 	return {
 		loading,
 		annotateExecution,
+		updateExecutionNote,
+		updateExecutionPin,
 		executionsById,
 		executions,
 		executionsCount,

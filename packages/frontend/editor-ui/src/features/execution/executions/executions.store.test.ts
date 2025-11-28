@@ -3,6 +3,7 @@ import { setActivePinia, createPinia } from 'pinia';
 
 import type { ExecutionSummaryWithScopes } from './executions.types';
 import { useExecutionsStore } from './executions.store';
+import { makeRestApiRequest } from '@n8n/rest-api-client';
 
 vi.mock('@n8n/rest-api-client', () => ({
 	makeRestApiRequest: vi.fn(),
@@ -10,10 +11,12 @@ vi.mock('@n8n/rest-api-client', () => ({
 
 describe('executions.store', () => {
 	let executionsStore: ReturnType<typeof useExecutionsStore>;
+	const makeRestApiRequestMock = vi.mocked(makeRestApiRequest);
 
 	beforeEach(() => {
 		setActivePinia(createPinia());
 		executionsStore = useExecutionsStore();
+		makeRestApiRequestMock.mockReset();
 	});
 
 	describe('deleteExecutions', () => {
@@ -72,6 +75,61 @@ describe('executions.store', () => {
 			await executionsStore.deleteExecutions({ deleteBefore: new Date() });
 
 			expect(executionsStore.executions).toEqual([]);
+		});
+	});
+
+	describe('execution metadata updates', () => {
+		const execution = {
+			id: 'note-test',
+			mode: 'manual',
+			status: 'success',
+			createdAt: new Date(),
+			startedAt: new Date(),
+			workflowId: 'wf',
+			scopes: [],
+		} as ExecutionSummaryWithScopes;
+
+		beforeEach(() => {
+			executionsStore.addExecution(execution);
+			executionsStore.activeExecution = execution;
+		});
+
+		it('updates note metadata', async () => {
+			makeRestApiRequestMock.mockResolvedValueOnce({
+				note: 'Investigate payload',
+				noteUpdatedAt: '2025-01-01T00:00:00.000Z',
+				noteUpdatedBy: 'user-1',
+			});
+
+			await executionsStore.updateExecutionNote(execution.id, 'Investigate payload');
+
+			expect(makeRestApiRequestMock).toHaveBeenCalledWith(
+				expect.anything(),
+				'PATCH',
+				`/executions/${execution.id}/note`,
+				{ note: 'Investigate payload' },
+			);
+			expect(executionsStore.executionsById[execution.id].note).toBe('Investigate payload');
+			expect(executionsStore.activeExecution?.note).toBe('Investigate payload');
+		});
+
+		it('updates pin metadata', async () => {
+			makeRestApiRequestMock.mockResolvedValueOnce({
+				pinned: true,
+				pinnedAt: '2025-01-02T00:00:00.000Z',
+				pinnedBy: 'user-1',
+			});
+
+			await executionsStore.updateExecutionPin(execution.id, true);
+
+			expect(makeRestApiRequestMock).toHaveBeenCalledWith(
+				expect.anything(),
+				'PATCH',
+				`/executions/${execution.id}/pin`,
+				{ pinned: true },
+			);
+			expect(executionsStore.executionsById[execution.id].pinned).toBe(true);
+			expect(executionsStore.activeExecution?.pinned).toBe(true);
 		});
 	});
 

@@ -35,6 +35,14 @@ export declare namespace ExecutionRequest {
 		vote?: AnnotationVote | null;
 	};
 
+	type ExecutionNotePayload = {
+		note: string | null;
+	};
+
+	type ExecutionPinPayload = {
+		pinned: boolean;
+	};
+
 	type GetMany = AuthenticatedRequest<{}, {}, {}, QueryParams.GetMany> & {
 		rangeQuery: ExecutionSummaries.RangeQuery; // parsed from query params
 	};
@@ -48,6 +56,10 @@ export declare namespace ExecutionRequest {
 	type Stop = AuthenticatedRequest<RouteParams.ExecutionId>;
 
 	type Update = AuthenticatedRequest<RouteParams.ExecutionId, {}, ExecutionUpdatePayload, {}>;
+
+	type UpdateNote = AuthenticatedRequest<RouteParams.ExecutionId, {}, ExecutionNotePayload, {}>;
+
+	type UpdatePin = AuthenticatedRequest<RouteParams.ExecutionId, {}, ExecutionPinPayload, {}>;
 }
 
 export type StopResult = {

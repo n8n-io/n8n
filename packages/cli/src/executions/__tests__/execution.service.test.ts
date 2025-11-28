@@ -1,6 +1,6 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import type { IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import type { IExecutionResponse, ExecutionRepository, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workflow';
@@ -8,6 +8,7 @@ import { ManualExecutionCancelledError, WorkflowOperationError } from 'n8n-workf
 import type { ActiveExecutions } from '@/active-executions';
 import type { ConcurrencyControlService } from '@/concurrency/concurrency-control.service';
 import { AbortedExecutionRetryError } from '@/errors/aborted-execution-retry.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { MissingExecutionStopError } from '@/errors/missing-execution-stop.error';
 import { ExecutionService } from '@/executions/execution.service';
 import type { ExecutionRequest } from '@/executions/execution.types';
@@ -42,6 +43,108 @@ describe('ExecutionService', () => {
 	beforeEach(() => {
 		globalConfig.executions.mode = 'regular';
 		jest.clearAllMocks();
+	});
+
+	describe('updateNote', () => {
+		const user = { id: 'user-id' } as User;
+
+		it('should persist note metadata', async () => {
+			executionRepository.findIfAccessible.mockResolvedValue(
+				mock<IExecutionResponse>({ id: '123' }),
+			);
+
+			const payload: ExecutionRequest.ExecutionNotePayload = { note: 'Investigating failure' };
+
+			const result = await executionService.updateNote('123', payload, ['wf'], user);
+
+			expect(executionRepository.update).toHaveBeenCalledWith(
+				{ id: '123' },
+				expect.objectContaining({
+					note: payload.note,
+					noteUpdatedBy: user.id,
+				}),
+			);
+			expect(result.note).toBe(payload.note);
+		});
+
+		it('should clear note when payload note is null', async () => {
+			executionRepository.findIfAccessible.mockResolvedValue(
+				mock<IExecutionResponse>({ id: '123' }),
+			);
+
+			const payload: ExecutionRequest.ExecutionNotePayload = { note: null };
+
+			const result = await executionService.updateNote('123', payload, ['wf'], user);
+
+			expect(executionRepository.update).toHaveBeenCalledWith(
+				{ id: '123' },
+				expect.objectContaining({
+					note: null,
+					noteUpdatedAt: null,
+					noteUpdatedBy: null,
+				}),
+			);
+			expect(result.note).toBeNull();
+		});
+
+		it('should throw NotFoundError when execution inaccessible', async () => {
+			executionRepository.findIfAccessible.mockResolvedValue(undefined);
+
+			await expect(executionService.updateNote('321', { note: 'test' }, [], user)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
+	});
+
+	describe('updatePin', () => {
+		const user = { id: 'user-id' } as User;
+
+		it('should pin execution', async () => {
+			executionRepository.findIfAccessible.mockResolvedValue(
+				mock<IExecutionResponse>({ id: '555' }),
+			);
+
+			const payload: ExecutionRequest.ExecutionPinPayload = { pinned: true };
+
+			const result = await executionService.updatePin('555', payload, ['wf'], user);
+
+			expect(executionRepository.update).toHaveBeenCalledWith(
+				{ id: '555' },
+				expect.objectContaining({
+					pinned: true,
+					pinnedBy: user.id,
+				}),
+			);
+			expect(result.pinned).toBe(true);
+		});
+
+		it('should unpin execution', async () => {
+			executionRepository.findIfAccessible.mockResolvedValue(
+				mock<IExecutionResponse>({ id: '555' }),
+			);
+
+			const payload: ExecutionRequest.ExecutionPinPayload = { pinned: false };
+
+			const result = await executionService.updatePin('555', payload, ['wf'], user);
+
+			expect(executionRepository.update).toHaveBeenCalledWith(
+				{ id: '555' },
+				expect.objectContaining({
+					pinned: false,
+					pinnedAt: null,
+					pinnedBy: null,
+				}),
+			);
+			expect(result.pinned).toBe(false);
+		});
+
+		it('should throw NotFoundError when execution inaccessible', async () => {
+			executionRepository.findIfAccessible.mockResolvedValue(undefined);
+
+			await expect(executionService.updatePin('999', { pinned: true }, [], user)).rejects.toThrow(
+				NotFoundError,
+			);
+		});
 	});
 
 	describe('retry', () => {

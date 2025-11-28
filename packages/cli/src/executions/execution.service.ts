@@ -70,6 +70,7 @@ export const schemaGetExecutionsQueryFilter = {
 		annotationTags: { type: 'array', items: { type: 'string' } },
 		vote: { type: 'string' },
 		projectId: { type: 'string' },
+		pinned: { type: 'boolean' },
 	},
 	$defs: {
 		metadata: {
@@ -280,6 +281,9 @@ export class ExecutionService {
 			workflowData: execution.workflowData,
 			customData: execution.customData,
 			annotation: execution.annotation,
+			pinned: execution.pinned ?? false,
+			pinnedAt: execution.pinnedAt ?? null,
+			pinnedBy: execution.pinnedBy ?? null,
 		};
 	}
 
@@ -543,6 +547,78 @@ export class ExecutionService {
 		for (const s of summaries) {
 			s.scopes = scopes[s.workflowId] ?? [];
 		}
+	}
+
+	async updateNote(
+		executionId: string,
+		payload: ExecutionRequest.ExecutionNotePayload,
+		sharedWorkflowIds: string[],
+		user: User,
+	) {
+		const execution = await this.executionRepository.findIfAccessible(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			this.logger.info(
+				'Attempt to update execution note was blocked due to insufficient permissions',
+				{
+					executionId,
+					userId: user.id,
+				},
+			);
+
+			throw new NotFoundError('Execution not found');
+		}
+
+		const timestamp = payload.note ? new Date() : null;
+
+		const updatePayload = {
+			note: payload.note,
+			noteUpdatedAt: timestamp,
+			noteUpdatedBy: timestamp ? user.id : null,
+		};
+
+		await this.executionRepository.update({ id: executionId }, updatePayload);
+
+		return updatePayload;
+	}
+
+	async updatePin(
+		executionId: string,
+		payload: ExecutionRequest.ExecutionPinPayload,
+		sharedWorkflowIds: string[],
+		user: User,
+	) {
+		const execution = await this.executionRepository.findIfAccessible(
+			executionId,
+			sharedWorkflowIds,
+		);
+
+		if (!execution) {
+			this.logger.info(
+				'Attempt to update execution pin was blocked due to insufficient permissions',
+				{
+					executionId,
+					userId: user.id,
+				},
+			);
+
+			throw new NotFoundError('Execution not found');
+		}
+
+		const timestamp = payload.pinned ? new Date() : null;
+
+		const updatePayload = {
+			pinned: payload.pinned,
+			pinnedAt: timestamp,
+			pinnedBy: payload.pinned ? user.id : null,
+		};
+
+		await this.executionRepository.update({ id: executionId }, updatePayload);
+
+		return updatePayload;
 	}
 
 	async annotate(

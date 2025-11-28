@@ -46,6 +46,7 @@ export function getDefaultExecutionFilters(): ExecutionFilterType {
 		annotationTags: [],
 		metadata: [],
 		vote: 'all',
+		pinnedOnly: false,
 	};
 }
 
@@ -79,6 +80,10 @@ export const executionFilterToQueryFilter = (
 
 	if (filter.endDate) {
 		queryFilter.startedBefore = filter.endDate;
+	}
+
+	if (filter.pinnedOnly) {
+		queryFilter.pinned = true;
 	}
 
 	switch (filter.status as ExecutionStatus) {

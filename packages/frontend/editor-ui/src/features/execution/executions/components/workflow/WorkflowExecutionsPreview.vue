@@ -13,12 +13,13 @@ import { getResourcePermissions } from '@n8n/permissions';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import type { AnnotationVote, ExecutionSummary } from 'n8n-workflow';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { useExecutionsStore } from '../../executions.store';
+import { convertToDisplayDate } from '@/app/utils/formatters/dateFormatter';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
-import { N8nButton, N8nIconButton, N8nSpinner, N8nText } from '@n8n/design-system';
+import { N8nButton, N8nIconButton, N8nInput, N8nSpinner, N8nText } from '@n8n/design-system';
 import VoteButtons from './VoteButtons.vue';
 
 type RetryDropdownRef = InstanceType<typeof ElDropdown>;
@@ -86,6 +87,33 @@ const activeExecution = computed(() => {
 });
 
 const vote = computed(() => activeExecution.value?.annotation?.vote || null);
+const noteDraft = ref('');
+const isSavingNote = ref(false);
+const isUpdatingPin = ref(false);
+const isPinned = computed(() => Boolean(activeExecution.value?.pinned));
+const canEditExecution = computed(() => workflowPermissions.value.update);
+
+watch(
+	() => activeExecution.value?.note,
+	(note) => {
+		noteDraft.value = note ?? '';
+	},
+	{ immediate: true },
+);
+
+const isNoteDirty = computed(() => (noteDraft.value ?? '') !== (activeExecution.value?.note ?? ''));
+
+const noteLastUpdatedLabel = computed(() => {
+	const updatedAt = activeExecution.value?.noteUpdatedAt;
+	if (!updatedAt) {
+		return '';
+	}
+
+	const { date, time } = convertToDisplayDate(updatedAt);
+	return locale.baseText('executionDetails.note.lastUpdated', {
+		interpolate: { when: `${date} ${time}` },
+	});
+});
 
 async function onDeleteExecution(): Promise<void> {
 	// Prepend the message with a note about annotations if they exist
@@ -141,6 +169,53 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 		showError(e, 'executionAnnotationView.vote.error');
 	}
 };
+
+async function onSaveNote() {
+	if (
+		!activeExecution.value?.id ||
+		!isNoteDirty.value ||
+		isSavingNote.value ||
+		!canEditExecution.value
+	) {
+		return;
+	}
+
+	isSavingNote.value = true;
+	try {
+		await executionsStore.updateExecutionNote(activeExecution.value.id, noteDraft.value);
+	} catch (error) {
+		showError(error, 'executionDetails.note.error');
+	} finally {
+		isSavingNote.value = false;
+	}
+}
+
+async function onClearNote() {
+	if (
+		!activeExecution.value?.id ||
+		(!noteDraft.value && !activeExecution.value.note) ||
+		!canEditExecution.value
+	) {
+		return;
+	}
+	noteDraft.value = '';
+	await onSaveNote();
+}
+
+async function togglePin() {
+	if (!activeExecution.value?.id || isUpdatingPin.value || !canEditExecution.value) {
+		return;
+	}
+
+	isUpdatingPin.value = true;
+	try {
+		await executionsStore.updateExecutionPin(activeExecution.value.id, !isPinned.value);
+	} catch (error) {
+		showError(error, 'executionDetails.pin.error');
+	} finally {
+		isUpdatingPin.value = false;
+	}
+}
 </script>
 
 <template>
@@ -256,6 +331,47 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 					v-if="isAnnotationEnabled && execution"
 					:execution="execution"
 				/>
+				<div :class="$style.executionNote">
+					<div :class="$style.noteHeader">
+						<N8nText size="small" color="text-dark">
+							{{ locale.baseText('executionDetails.note.heading') }}
+						</N8nText>
+						<div :class="$style.noteActions">
+							<N8nButton
+								size="small"
+								type="secondary"
+								:loading="isSavingNote"
+								:disabled="!canEditExecution || !isNoteDirty || isSavingNote"
+								data-test-id="execution-note-save"
+								@click="onSaveNote"
+							>
+								{{ locale.baseText('executionDetails.note.save') }}
+							</N8nButton>
+							<N8nButton
+								size="small"
+								text
+								:disabled="
+									!canEditExecution || (!noteDraft && !activeExecution?.note) || isSavingNote
+								"
+								data-test-id="execution-note-clear"
+								@click="onClearNote"
+							>
+								{{ locale.baseText('executionDetails.note.clear') }}
+							</N8nButton>
+						</div>
+					</div>
+					<N8nInput
+						v-model="noteDraft"
+						type="textarea"
+						:rows="3"
+						:placeholder="locale.baseText('executionDetails.note.placeholder')"
+						data-test-id="execution-note-input"
+						:disabled="!canEditExecution"
+					/>
+					<N8nText v-if="noteLastUpdatedLabel" size="small" color="text-light" class="mt-2xs">
+						{{ noteLastUpdatedLabel }}
+					</N8nText>
+				</div>
 			</div>
 
 			<div :class="$style.actions">
@@ -317,6 +433,22 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 				/>
 
 				<N8nIconButton
+					:title="
+						isPinned
+							? locale.baseText('executionsList.pin.unpin')
+							: locale.baseText('executionsList.pin.pin')
+					"
+					icon="bookmark"
+					type="tertiary"
+					size="medium"
+					:loading="isUpdatingPin"
+					:disabled="!canEditExecution || isUpdatingPin"
+					:class="[$style.pinButton, { [$style.pinButtonActive]: isPinned }]"
+					data-test-id="execution-preview-pin-button"
+					@click="togglePin"
+				/>
+
+				<N8nIconButton
 					:title="locale.baseText('executionDetails.deleteExecution')"
 					:disabled="!workflowPermissions.update"
 					icon="trash-2"
@@ -365,6 +497,15 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 	}
 }
 
+.pinButton {
+	color: var(--color--foreground--shade-1);
+	margin: 0 var(--spacing--2xs);
+}
+
+.pinButtonActive {
+	color: var(--color--warning--shade-1);
+}
+
 .executionDetailsLeft {
 	display: flex;
 	flex-direction: column;
@@ -379,6 +520,27 @@ const onVoteClick = async (voteValue: AnnotationVote) => {
 
 .voteButtons {
 	margin-bottom: 2px;
+}
+
+.executionNote {
+	margin-top: var(--spacing--sm);
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--3xs);
+}
+
+.noteHeader {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: var(--spacing--sm);
+	flex-wrap: wrap;
+}
+
+.noteActions {
+	display: inline-flex;
+	gap: var(--spacing--2xs);
+	align-items: center;
 }
 
 .spinner {

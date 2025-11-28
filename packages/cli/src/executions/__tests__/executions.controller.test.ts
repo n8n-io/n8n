@@ -1,4 +1,4 @@
-import type { ExecutionSummaries } from '@n8n/db';
+import type { ExecutionSummaries, User } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -21,6 +21,84 @@ describe('ExecutionsController', () => {
 
 	beforeEach(() => {
 		jest.clearAllMocks();
+	});
+
+	describe('updateNote', () => {
+		const user = { id: 'user-id' } as User;
+
+		it('should 400 when execution id invalid', async () => {
+			const req = mock<ExecutionRequest.UpdateNote>({ params: { id: 'abc' } });
+			await expect(executionsController.updateNote(req)).rejects.toThrow(BadRequestError);
+		});
+
+		it('should throw NotFound when user has no accessible workflows', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+			const req = mock<ExecutionRequest.UpdateNote>({
+				params: { id: '1' },
+				body: { note: 'hello' },
+				user,
+			});
+
+			await expect(executionsController.updateNote(req)).rejects.toThrow(NotFoundError);
+		});
+
+		it('should call service when payload valid', async () => {
+			const workflows = ['wf1'];
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(workflows);
+			const req = mock<ExecutionRequest.UpdateNote>({
+				params: { id: '1' },
+				body: { note: 'hello' },
+				user,
+			});
+
+			await executionsController.updateNote(req);
+
+			expect(executionService.updateNote).toHaveBeenCalledWith(
+				req.params.id,
+				{ note: 'hello' },
+				workflows,
+				user,
+			);
+		});
+	});
+
+	describe('updatePin', () => {
+		const user = { id: 'user-id' } as User;
+
+		it('should 400 when execution id invalid', async () => {
+			const req = mock<ExecutionRequest.UpdatePin>({ params: { id: 'abc' } });
+			await expect(executionsController.updatePin(req)).rejects.toThrow(BadRequestError);
+		});
+
+		it('should throw NotFound when user has no accessible workflows', async () => {
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue([]);
+			const req = mock<ExecutionRequest.UpdatePin>({
+				params: { id: '1' },
+				body: { pinned: true },
+				user,
+			});
+
+			await expect(executionsController.updatePin(req)).rejects.toThrow(NotFoundError);
+		});
+
+		it('should call service when payload valid', async () => {
+			const workflows = ['wf1'];
+			workflowSharingService.getSharedWorkflowIds.mockResolvedValue(workflows);
+			const req = mock<ExecutionRequest.UpdatePin>({
+				params: { id: '1' },
+				body: { pinned: true },
+				user,
+			});
+
+			await executionsController.updatePin(req);
+
+			expect(executionService.updatePin).toHaveBeenCalledWith(
+				req.params.id,
+				{ pinned: true },
+				workflows,
+				user,
+			);
+		});
 	});
 
 	describe('getOne', () => {

@@ -12,6 +12,8 @@ import type { ExecutionStatus, ExecutionSummary } from 'n8n-workflow';
 import { WAIT_INDEFINITELY } from 'n8n-workflow';
 import { computed, ref, useCssModule } from 'vue';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
+import { useExecutionsStore } from '../../executions.store';
+import { useToast } from '@/app/composables/useToast';
 
 import { ElDropdown, ElDropdownItem, ElDropdownMenu } from 'element-plus';
 import {
@@ -51,10 +53,15 @@ const props = withDefaults(
 const style = useCssModule();
 const locale = useI18n();
 const executionHelpers = useExecutionHelpers();
+const executionsStore = useExecutionsStore();
+const { showError } = useToast();
 
 const isStopping = ref(false);
+const isPinning = ref(false);
 
 const isRunning = computed(() => props.execution.status === 'running');
+const isPinned = computed(() => Boolean(props.execution.pinned));
+const hasNote = computed(() => Boolean(props.execution.note && props.execution.note.trim().length));
 
 const isWaitTillIndefinite = computed(() => {
 	if (!props.execution.waitTill) {
@@ -172,6 +179,21 @@ async function handleActionItemClick(commandData: Command) {
 	//@ts-ignore todo: fix this type
 	emit(commandData, props.execution);
 }
+
+async function togglePin(event: MouseEvent) {
+	event.stopPropagation();
+	if (!props.execution.id || isPinning.value || !props.workflowPermissions.update) {
+		return;
+	}
+	isPinning.value = true;
+	try {
+		await executionsStore.updateExecutionPin(props.execution.id, !isPinned.value);
+	} catch (error) {
+		showError(error, 'executionDetails.pin.error');
+	} finally {
+		isPinning.value = false;
+	}
+}
 </script>
 <template>
 	<tr :class="classes">
@@ -198,6 +220,32 @@ async function handleActionItemClick(commandData: Command) {
 					{{ execution.workflowName || workflowName }}
 				</RouterLink>
 			</N8nTooltip>
+		</td>
+		<td>
+			<div :class="$style.flags">
+				<N8nTooltip v-if="hasNote" :content="props.execution.note ?? ''" placement="top">
+					<N8nIcon icon="file-text" :class="$style.noteIcon" />
+				</N8nTooltip>
+				<N8nTooltip
+					placement="top"
+					:content="
+						isPinned
+							? locale.baseText('executionsList.pin.unpin')
+							: locale.baseText('executionsList.pin.pin')
+					"
+				>
+					<N8nIconButton
+						type="tertiary"
+						size="small"
+						icon="bookmark"
+						:loading="isPinning"
+						:disabled="!workflowPermissions.update"
+						:class="[$style.pinButton, { [$style.pinButtonActive]: isPinned }]"
+						data-test-id="global-execution-pin-button"
+						@click.stop="togglePin"
+					/>
+				</N8nTooltip>
+			</div>
 		</td>
 		<td data-test-id="execution-status">
 			<GlobalExecutionsListItemQueuedTooltip
@@ -340,5 +388,23 @@ tr.dangerBg {
 	font-size: var(--font-size--sm);
 	line-height: var(--line-height--lg);
 	max-width: 450px;
+}
+
+.flags {
+	display: inline-flex;
+	align-items: center;
+	gap: var(--spacing--3xs);
+}
+
+.noteIcon {
+	color: var(--color--foreground--shade-1);
+}
+
+.pinButton {
+	color: var(--color--foreground--shade-1);
+}
+
+.pinButtonActive {
+	color: var(--color--warning--shade-1);
 }
 </style>

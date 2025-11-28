@@ -77,6 +77,7 @@ export interface IGetExecutionsQueryFilter {
 	metadata?: Array<{ key: string; value: string; exactMatch?: boolean }>;
 	startedAfter?: string;
 	startedBefore?: string;
+	pinned?: boolean;
 }
 
 function parseFiltersToQueryBuilder(
@@ -118,6 +119,11 @@ function parseFiltersToQueryBuilder(
 	if (filters?.workflowId) {
 		qb.andWhere({
 			workflowId: filters.workflowId,
+		});
+	}
+	if (filters?.pinned !== undefined) {
+		qb.andWhere({
+			pinned: filters.pinned,
 		});
 	}
 }
@@ -840,6 +846,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		createdAt: true,
 		startedAt: true,
 		stoppedAt: true,
+		note: true,
+		noteUpdatedAt: true,
+		noteUpdatedBy: true,
+		pinned: true,
+		pinnedAt: true,
+		pinnedBy: true,
 	};
 
 	private annotationFields = {
@@ -927,6 +939,9 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		startedAt: Date | string | null;
 		stoppedAt?: Date | string;
 		waitTill?: Date | string | null;
+		noteUpdatedAt?: Date | string | null;
+		pinnedAt?: Date | string | null;
+		pinned?: boolean | number | string;
 	}): ExecutionSummary {
 		execution.id = execution.id.toString();
 
@@ -961,6 +976,28 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 				execution.stoppedAt instanceof Date
 					? execution.stoppedAt.toISOString()
 					: normalizeDateString(execution.stoppedAt);
+		}
+
+		if ('noteUpdatedAt' in execution && execution.noteUpdatedAt) {
+			execution.noteUpdatedAt =
+				execution.noteUpdatedAt instanceof Date
+					? execution.noteUpdatedAt.toISOString()
+					: normalizeDateString(execution.noteUpdatedAt);
+		}
+
+		if ('pinnedAt' in execution && execution.pinnedAt) {
+			execution.pinnedAt =
+				execution.pinnedAt instanceof Date
+					? execution.pinnedAt.toISOString()
+					: normalizeDateString(execution.pinnedAt);
+		}
+
+		if ('pinned' in execution) {
+			execution.pinned =
+				execution.pinned === true ||
+				execution.pinned === 1 ||
+				execution.pinned === '1' ||
+				execution.pinned === 'true';
 		}
 
 		return execution as ExecutionSummary;
@@ -1002,6 +1039,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			annotationTags,
 			vote,
 			projectId,
+			pinned,
 		} = query;
 
 		const fields = Object.keys(this.summaryFields)
@@ -1036,6 +1074,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		if (workflowId) qb.andWhere({ workflowId });
 		if (startedBefore) qb.andWhere({ startedAt: lessThanOrEqual(startedBefore) });
 		if (startedAfter) qb.andWhere({ startedAt: moreThanOrEqual(startedAfter) });
+		if (pinned !== undefined) qb.andWhere({ pinned });
 
 		if (metadata?.length === 1) {
 			const [{ key, value, exactMatch }] = metadata;

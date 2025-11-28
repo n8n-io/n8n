@@ -6,7 +6,11 @@ import { ExecutionService } from './execution.service';
 import { EnterpriseExecutionsService } from './execution.service.ee';
 import { ExecutionRequest } from './execution.types';
 import { parseRangeQuery } from './parse-range-query.middleware';
-import { validateExecutionUpdatePayload } from './validation';
+import {
+	validateExecutionNotePayload,
+	validateExecutionPinPayload,
+	validateExecutionUpdatePayload,
+} from './validation';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -148,5 +152,31 @@ export class ExecutionsController {
 		await this.executionService.annotate(req.params.id, validatedPayload, workflowIds);
 
 		return await this.executionService.findOne(req, workflowIds);
+	}
+
+	@Patch('/:id/note')
+	async updateNote(req: ExecutionRequest.UpdateNote) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		const payload = validateExecutionNotePayload(req.body);
+		return await this.executionService.updateNote(req.params.id, payload, workflowIds, req.user);
+	}
+
+	@Patch('/:id/pin')
+	async updatePin(req: ExecutionRequest.UpdatePin) {
+		if (!isPositiveInteger(req.params.id)) {
+			throw new BadRequestError('Execution ID is not a number');
+		}
+
+		const workflowIds = await this.getAccessibleWorkflowIds(req.user, 'workflow:read');
+		if (workflowIds.length === 0) throw new NotFoundError('Execution not found');
+
+		const payload = validateExecutionPinPayload(req.body);
+		return await this.executionService.updatePin(req.params.id, payload, workflowIds, req.user);
 	}
 }

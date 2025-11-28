@@ -88,4 +88,22 @@ export class ExecutionEntity {
 
 	@ManyToOne('WorkflowEntity')
 	workflow: WorkflowEntity;
+
+	@Column({ type: 'text', nullable: true })
+	note: string | null;
+
+	@DateTimeColumn({ nullable: true })
+	noteUpdatedAt: Date | null;
+
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	noteUpdatedBy: string | null;
+
+	@Column({ default: false })
+	pinned: boolean;
+
+	@DateTimeColumn({ nullable: true })
+	pinnedAt: Date | null;
+
+	@Column({ type: 'varchar', length: 36, nullable: true })
+	pinnedBy: string | null;
 }

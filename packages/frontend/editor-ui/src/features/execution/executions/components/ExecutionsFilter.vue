@@ -68,6 +68,7 @@ const getDefaultFilter = (): ExecutionFilterType => ({
 	endDate: '',
 	metadata: [{ key: '', value: '', exactMatch: false }],
 	vote: 'all',
+	pinnedOnly: false,
 });
 const filter = reactive(getDefaultFilter());
 
@@ -111,6 +112,7 @@ const countSelectedFilterProps = computed(() => {
 		!isEmpty(filter.metadata),
 		!!filter.startDate,
 		!!filter.endDate,
+		filter.pinnedOnly,
 	].filter(Boolean);
 
 	return nonDefaultFilters.length;
@@ -241,6 +243,11 @@ onBeforeMount(() => {
 						:value="item.id"
 					/>
 				</N8nSelect>
+			</div>
+			<div :class="$style.group">
+				<N8nCheckbox v-model="filter.pinnedOnly" data-test-id="executions-filter-pinned-checkbox">
+					{{ locale.baseText('executionsFilter.pinnedOnly') }}
+				</N8nCheckbox>
 			</div>
 			<div :class="$style.group">
 				<label for="execution-filter-start-date">{{
