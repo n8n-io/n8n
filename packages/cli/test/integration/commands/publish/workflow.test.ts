@@ -5,18 +5,18 @@ import {
 	getWorkflowById,
 } from '@n8n/backend-test-utils';
 
-import { ActivateWorkflowCommand } from '@/commands/activate/workflow';
+import { PublishWorkflowCommand } from '@/commands/publish/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 mockInstance(LoadNodesAndCredentials);
-const command = setupTestCommand(ActivateWorkflowCommand);
+const command = setupTestCommand(PublishWorkflowCommand);
 
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory']);
 });
 
-test('activate:workflow can activate a specific workflow version', async () => {
+test('publish:workflow can publish a specific workflow version', async () => {
 	//
 	// ARRANGE
 	//
@@ -38,7 +38,7 @@ test('activate:workflow can activate a specific workflow version', async () => {
 	});
 });
 
-test('activate:workflow does not activate when --all flag is used', async () => {
+test('publish:workflow does not publish when --all flag is used', async () => {
 	//
 	// ARRANGE
 	//
@@ -52,7 +52,7 @@ test('activate:workflow does not activate when --all flag is used', async () => 
 	//
 	// ASSERT
 	//
-	// Verify the workflow was not activated (--all flag prevents activation)
+	// Verify the workflow was not published (--all flag prevents publishing)
 	const unchangedWorkflow = await getWorkflowById(workflow.id);
 	expect(unchangedWorkflow).toMatchObject({
 		activeVersionId: null,
@@ -60,7 +60,7 @@ test('activate:workflow does not activate when --all flag is used', async () => 
 	});
 });
 
-test('activate:workflow does not activate when --id is missing', async () => {
+test('publish:workflow does not publish when --id is missing', async () => {
 	//
 	// ARRANGE
 	//
@@ -74,7 +74,7 @@ test('activate:workflow does not activate when --id is missing', async () => {
 	//
 	// ASSERT
 	//
-	// Verify the workflow was not activated
+	// Verify the workflow was not publishd
 	const unchangedWorkflow = await getWorkflowById(workflow.id);
 	expect(unchangedWorkflow).toMatchObject({
 		activeVersionId: null,
@@ -82,7 +82,7 @@ test('activate:workflow does not activate when --id is missing', async () => {
 	});
 });
 
-test('activate:workflow activates current version when --versionId is missing', async () => {
+test('publish:workflow publishs current version when --versionId is missing', async () => {
 	//
 	// ARRANGE
 	//
@@ -103,7 +103,7 @@ test('activate:workflow activates current version when --versionId is missing', 
 	});
 });
 
-test('activate:workflow throws error when version does not exist', async () => {
+test('publish:workflow throws error when version does not exist', async () => {
 	//
 	// ARRANGE
 	//

@@ -19,7 +19,7 @@ beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory']);
 });
 
-test('update:workflow does not activate when trying to activate all workflows', async () => {
+test('update:workflow does not publish when trying to publish all workflows', async () => {
 	//
 	// ARRANGE
 	//
@@ -36,7 +36,7 @@ test('update:workflow does not activate when trying to activate all workflows', 
 	//
 	// ASSERT
 	//
-	// Verify workflows were NOT activated (activation is no longer supported)
+	// Verify workflows were NOT published (publishing all is no longer supported)
 	const workflowRepo = Container.get(WorkflowRepository);
 	const workflow1 = await workflowRepo.findOneBy({ id: workflows[0].id });
 	const workflow2 = await workflowRepo.findOneBy({ id: workflows[1].id });
@@ -45,7 +45,7 @@ test('update:workflow does not activate when trying to activate all workflows', 
 	expect(workflow2?.activeVersionId).toBeNull();
 });
 
-test('update:workflow can deactivate all workflows', async () => {
+test('update:workflow can unpublish all workflows', async () => {
 	//
 	// ARRANGE
 	//
@@ -82,7 +82,7 @@ test('update:workflow can deactivate all workflows', async () => {
 	expect(workflow2?.activeVersion).toBeNull();
 });
 
-test('update:workflow activates current version when --active=true (backwards compatibility)', async () => {
+test('update:workflow publishes current version when --active=true (backwards compatibility)', async () => {
 	//
 	// ARRANGE
 	//
@@ -96,7 +96,7 @@ test('update:workflow activates current version when --active=true (backwards co
 	//
 	// ASSERT
 	//
-	// Verify workflow was activated with current version
+	// Verify workflow was published with current version
 	const workflowRepo = Container.get(WorkflowRepository);
 	const updatedWorkflow = await workflowRepo.findOneBy({ id: workflow.id });
 
@@ -104,7 +104,7 @@ test('update:workflow activates current version when --active=true (backwards co
 	expect(updatedWorkflow?.active).toBe(true);
 });
 
-test('update:workflow can deactivate a specific workflow', async () => {
+test('update:workflow can unpublish a specific workflow', async () => {
 	//
 	// ARRANGE
 	//

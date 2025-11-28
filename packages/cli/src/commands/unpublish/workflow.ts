@@ -6,17 +6,17 @@ import { z } from 'zod';
 import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
-	all: z.boolean().describe('Deactivate all workflows').optional(),
-	id: z.string().describe('The ID of the workflow to deactivate').optional(),
+	all: z.boolean().describe('Unpublish all workflows').optional(),
+	id: z.string().describe('The ID of the workflow to unpublish').optional(),
 });
 
 @Command({
-	name: 'deactivate:workflow',
-	description: 'Deactivate workflow(s)',
+	name: 'unpublish:workflow',
+	description: 'Unpublish workflow(s)',
 	examples: ['--all', '--id=5'],
 	flagsSchema,
 })
-export class DeactivateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+export class UnpublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
 		const { flags } = this;
 
@@ -31,13 +31,13 @@ export class DeactivateWorkflowCommand extends BaseCommand<z.infer<typeof flagsS
 		}
 
 		if (flags.id) {
-			this.logger.info(`Deactivating workflow with ID: ${flags.id}`);
+			this.logger.info(`Unpublishing workflow with ID: ${flags.id}`);
 			await Container.get(WorkflowRepository).updateActiveState(flags.id, false);
-			this.logger.info('Workflow deactivated successfully');
+			this.logger.info('Workflow unpublished successfully');
 		} else {
-			this.logger.info('Deactivating all workflows');
-			await Container.get(WorkflowRepository).deactivateAll();
-			this.logger.info('All workflows deactivated successfully');
+			this.logger.info('Unpublishing all workflows');
+			await Container.get(WorkflowRepository).unpublishAll();
+			this.logger.info('All workflows unpublished successfully');
 		}
 
 		this.logger.info('Note: Changes will not take effect if n8n is running.');
@@ -45,7 +45,7 @@ export class DeactivateWorkflowCommand extends BaseCommand<z.infer<typeof flagsS
 	}
 
 	async catch(error: Error) {
-		this.logger.error('Error deactivating workflow(s). See log messages for details.');
+		this.logger.error('Error unpublishing workflow(s). See log messages for details.');
 		this.logger.error('\nGOT ERROR');
 		this.logger.error('====================================');
 		this.logger.error(error.message);

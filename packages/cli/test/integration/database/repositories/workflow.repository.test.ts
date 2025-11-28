@@ -28,8 +28,8 @@ describe('WorkflowRepository', () => {
 		await testDb.terminate();
 	});
 
-	describe('activateVersion', () => {
-		it('should activate a specific workflow version', async () => {
+	describe('publishVersion', () => {
+		it('should publish a specific workflow version', async () => {
 			//
 			// ARRANGE
 			//
@@ -41,7 +41,7 @@ describe('WorkflowRepository', () => {
 			//
 			// ACT
 			//
-			await workflowRepository.activateVersion(workflow.id, targetVersionId);
+			await workflowRepository.publishVersion(workflow.id, targetVersionId);
 
 			//
 			// ASSERT
@@ -52,7 +52,7 @@ describe('WorkflowRepository', () => {
 			expect(updatedWorkflow?.active).toBe(true);
 		});
 
-		it('should update activeVersionId when activating an already active workflow', async () => {
+		it('should update activeVersionId when publishing an already published workflow', async () => {
 			//
 			// ARRANGE
 			//
@@ -64,7 +64,7 @@ describe('WorkflowRepository', () => {
 			//
 			// ACT
 			//
-			await workflowRepository.activateVersion(workflow.id, newVersionId);
+			await workflowRepository.publishVersion(workflow.id, newVersionId);
 
 			//
 			// ASSERT
@@ -88,15 +88,36 @@ describe('WorkflowRepository', () => {
 			// ACT & ASSERT
 			//
 			await expect(
-				workflowRepository.activateVersion(workflow.id, nonExistentVersionId),
+				workflowRepository.publishVersion(workflow.id, nonExistentVersionId),
 			).rejects.toThrow(
 				`Version "${nonExistentVersionId}" not found for workflow "${workflow.id}". Please verify the version ID is correct.`,
 			);
 		});
+
+		it('should publish current version when versionId is not provided', async () => {
+			//
+			// ARRANGE
+			//
+			const workflowRepository = Container.get(WorkflowRepository);
+			const workflow = await createWorkflowWithTriggerAndHistory();
+
+			//
+			// ACT
+			//
+			await workflowRepository.publishVersion(workflow.id);
+
+			//
+			// ASSERT
+			//
+			const updatedWorkflow = await getWorkflowById(workflow.id);
+
+			expect(updatedWorkflow?.activeVersionId).toBe(workflow.versionId);
+			expect(updatedWorkflow?.active).toBe(true);
+		});
 	});
 
-	describe('deactivateAll', () => {
-		it('should deactivate all workflows and clear activeVersionId', async () => {
+	describe('unpublishAll', () => {
+		it('should unpublish all workflows and clear activeVersionId', async () => {
 			//
 			// ARRANGE
 			//
@@ -110,7 +131,7 @@ describe('WorkflowRepository', () => {
 			//
 			// ACT
 			//
-			await workflowRepository.deactivateAll();
+			await workflowRepository.unpublishAll();
 			//
 			// ASSERT
 			//

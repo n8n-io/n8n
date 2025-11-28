@@ -13,8 +13,7 @@ const flagsSchema = z.object({
 
 @Command({
 	name: 'update:workflow',
-	description:
-		'[DEPRECATED] Update workflows - use activate:workflow or deactivate:workflow instead',
+	description: '[DEPRECATED] Update workflows - use publish:workflow or unpublish:workflow instead',
 	examples: ['--all --active=false', '--id=5 --active=true'],
 	flagsSchema,
 })
@@ -50,14 +49,14 @@ export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchem
 		const newState = flags.active === 'true';
 		const action = newState ? 'Activating' : 'Deactivating';
 
-		// Backwards compatibility: if --id and --active=true, activate the current version
+		// Backwards compatibility: if --id and --active=true, publish the current version
 		if (flags.id && newState) {
-			this.logger.info(`Activating workflow ${flags.id} with current version`);
-			this.logger.warn(`Please use: activate:workflow --id=${flags.id}\n`);
+			this.logger.info(`Publishing workflow ${flags.id} with current version`);
+			this.logger.warn(`Please use: publish:workflow --id=${flags.id}\n`);
 			try {
-				await workflowRepository.activateVersion(flags.id);
+				await workflowRepository.publishVersion(flags.id);
 			} catch (error) {
-				this.logger.error('Failed to activate workflow');
+				this.logger.error('Failed to publish workflow');
 				throw error;
 			}
 
@@ -68,20 +67,20 @@ export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchem
 			return;
 		}
 
-		// Block activation with --all flag
+		// Block publishing with --all flag
 		if (flags.all && newState) {
-			this.logger.error('Workflow activation via "update:workflow --all" is no longer supported.');
+			this.logger.error('Workflow publishing via "update:workflow --all" is no longer supported.');
 			this.logger.error(
-				'Please activate workflows individually using: activate:workflow --id=<workflow-id>',
+				'Please publish workflows individually using: publish:workflow --id=<workflow-id>',
 			);
 			return;
 		}
 
-		// Show appropriate replacement command suggestion for deactivation
+		// Show appropriate replacement command suggestion for unpublishing
 		if (flags.id) {
-			this.logger.warn(`Please use: deactivate:workflow --id=${flags.id}\n`);
+			this.logger.warn(`Please use: unpublish:workflow --id=${flags.id}\n`);
 		} else {
-			this.logger.warn('Please use: deactivate:workflow --all\n');
+			this.logger.warn('Please use: unpublish:workflow --all\n');
 		}
 
 		if (flags.id) {
@@ -89,7 +88,7 @@ export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchem
 			await workflowRepository.updateActiveState(flags.id, newState);
 		} else {
 			this.logger.info(`${action} all workflows`);
-			await workflowRepository.deactivateAll();
+			await workflowRepository.unpublishAll();
 		}
 
 		this.logger.info('Note: Changes will not take effect if n8n is running.');

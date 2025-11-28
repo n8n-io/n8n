@@ -5,18 +5,18 @@ import {
 	getWorkflowById,
 } from '@n8n/backend-test-utils';
 
-import { DeactivateWorkflowCommand } from '@/commands/deactivate/workflow';
+import { UnpublishWorkflowCommand } from '@/commands/unpublish/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
 
 mockInstance(LoadNodesAndCredentials);
-const command = setupTestCommand(DeactivateWorkflowCommand);
+const command = setupTestCommand(UnpublishWorkflowCommand);
 
 beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory']);
 });
 
-test('deactivate:workflow can deactivate all workflows', async () => {
+test('unpublish:workflow can unpublish all workflows', async () => {
 	//
 	// ARRANGE
 	//
@@ -44,7 +44,7 @@ test('deactivate:workflow can deactivate all workflows', async () => {
 	});
 });
 
-test('deactivate:workflow can deactivate a specific workflow', async () => {
+test('unpublish:workflow can unpublish a specific workflow', async () => {
 	//
 	// ARRANGE
 	//
@@ -58,10 +58,10 @@ test('deactivate:workflow can deactivate a specific workflow', async () => {
 	//
 	// ASSERT
 	//
-	const deactivatedWorkflow = await getWorkflowById(workflows[0].id);
+	const unpublishedWorkflow = await getWorkflowById(workflows[0].id);
 	const activeWorkflow = await getWorkflowById(workflows[1].id);
 
-	expect(deactivatedWorkflow).toMatchObject({
+	expect(unpublishedWorkflow).toMatchObject({
 		activeVersionId: null,
 		active: false,
 	});
@@ -71,7 +71,7 @@ test('deactivate:workflow can deactivate a specific workflow', async () => {
 	});
 });
 
-test('deactivate:workflow shows error when neither --all nor --id is provided', async () => {
+test('unpublish:workflow shows error when neither --all nor --id is provided', async () => {
 	//
 	// ARRANGE
 	//
@@ -100,7 +100,7 @@ test('deactivate:workflow shows error when neither --all nor --id is provided', 
 	});
 });
 
-test('deactivate:workflow shows error when both --all and --id are provided', async () => {
+test('unpublish:workflow shows error when both --all and --id are provided', async () => {
 	//
 	// ARRANGE
 	//

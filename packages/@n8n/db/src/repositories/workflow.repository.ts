@@ -841,13 +841,13 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 	}
 
 	/**
-	 * Activate a specific version of a workflow
+	 * Publish a specific version of a workflow
 	 * @param workflowId - The ID of the workflow
-	 * @param versionId - The ID of the version to activate (optional; if not provided, uses the current version)
+	 * @param versionId - The ID of the version to publish (optional; if not provided, uses the current version)
 	 * */
-	async activateVersion(workflowId: string, versionId?: string) {
-		let versionIdToActivate = versionId;
-		if (!versionIdToActivate) {
+	async publishVersion(workflowId: string, versionId?: string) {
+		let versionIdToPublish = versionId;
+		if (!versionIdToPublish) {
 			const workflow = await this.findOne({
 				where: { id: workflowId },
 				select: ['id', 'versionId'],
@@ -859,26 +859,26 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 				);
 			}
 
-			versionIdToActivate = workflow.versionId;
+			versionIdToPublish = workflow.versionId;
 		}
 
 		const version = await this.workflowHistoryRepository.findOneBy({
 			workflowId,
-			versionId: versionIdToActivate,
+			versionId: versionIdToPublish,
 		});
 		if (!version) {
 			throw new UserError(
-				`Version "${versionIdToActivate}" not found for workflow "${workflowId}". Please verify the version ID is correct.`,
+				`Version "${versionIdToPublish}" not found for workflow "${workflowId}". Please verify the version ID is correct.`,
 			);
 		}
 
 		return await this.update(
 			{ id: workflowId },
-			{ active: true, activeVersionId: versionIdToActivate },
+			{ active: true, activeVersionId: versionIdToPublish },
 		);
 	}
 
-	async deactivateAll() {
+	async unpublishAll() {
 		return await this.update(
 			{ activeVersionId: Not(IsNull()) },
 			{ active: false, activeVersionId: null },

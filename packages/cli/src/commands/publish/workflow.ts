@@ -6,53 +6,51 @@ import { z } from 'zod';
 import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
-	id: z.string().describe('The ID of the workflow to activate'),
+	id: z.string().describe('The ID of the workflow to publish'),
 	versionId: z
 		.string()
-		.describe('The version ID to activate. If not provided, activates the current version')
+		.describe('The version ID to publish. If not provided, publishes the current version')
 		.optional(),
 	all: z.boolean().describe('(Deprecated) This flag is no longer supported').optional(),
 });
 
 @Command({
-	name: 'activate:workflow',
+	name: 'publish:workflow',
 	description:
-		'Activate a specific version of a workflow. If no version is specified, activates the current version.',
+		'Publish a specific version of a workflow. If no version is specified, publishes the current version.',
 	examples: ['--id=5 --versionId=abc123', '--id=5'],
 	flagsSchema,
 })
-export class ActivateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
+export class PublishWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
 		const { flags } = this;
 
 		// Educate users who try to use --all flag
 		if (flags.all) {
-			this.logger.error('The --all flag is no longer supported for workflow activation.');
+			this.logger.error('The --all flag is no longer supported for workflow publishing.');
 			this.logger.error(
-				'Please activate workflows individually using: activate:workflow --id=<workflow-id> [--versionId=<version-id>]',
+				'Please publish workflows individually using: publish:workflow --id=<workflow-id> [--versionId=<version-id>]',
 			);
 			return;
 		}
 
 		if (!flags.id) {
 			this.logger.error('The --id flag is required. Please specify a workflow ID.');
-			this.logger.error('Example: activate:workflow --id=5 [--versionId=abc123]');
+			this.logger.error('Example: publish:workflow --id=5 [--versionId=abc123]');
 			return;
 		}
 
 		if (flags.versionId) {
-			this.logger.info(`Activating workflow with ID: ${flags.id}, version: ${flags.versionId}`);
+			this.logger.info(`Publishing workflow with ID: ${flags.id}, version: ${flags.versionId}`);
 		} else {
-			this.logger.info(`Activating workflow with ID: ${flags.id} (current version)`);
+			this.logger.info(`Publishing workflow with ID: ${flags.id} (current version)`);
 		}
 
 		try {
-			await Container.get(WorkflowRepository).activateVersion(flags.id, flags.versionId);
-			this.logger.info('Workflow activated successfully');
+			await Container.get(WorkflowRepository).publishVersion(flags.id, flags.versionId);
+			this.logger.info('Workflow published successfully');
 		} catch (error) {
-			this.logger.error(
-				'Failed to activate workflow. Please check the workflow ID and version ID.',
-			);
+			this.logger.error('Failed to publish workflow. Please check the workflow ID and version ID.');
 			throw error;
 		}
 
