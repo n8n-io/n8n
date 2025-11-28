@@ -101,6 +101,10 @@ export class WorkflowExecutionService {
 		user: User,
 		pushRef?: string,
 	): Promise<{ executionId: string } | { waitingForWebhook: boolean }> {
+		// Store workflow active state before clearing it for manual execution
+		const workflowIsActive =
+			payload.workflowData.active || payload.workflowData.activeVersionId !== null;
+
 		// For manual testing always set to not active
 		payload.workflowData.active = false;
 		payload.workflowData.activeVersionId = null;
@@ -146,6 +150,7 @@ export class WorkflowExecutionService {
 					pushRef,
 					triggerToStartFrom: payload.triggerToStartFrom,
 					destinationNode: payload.destinationNode,
+					workflowIsActive,
 				}))
 			) {
 				return { waitingForWebhook: true };
@@ -184,6 +189,8 @@ export class WorkflowExecutionService {
 					}),
 					pushRef,
 					destinationNode: payload.destinationNode,
+					destinationNode,
+					workflowIsActive,
 				}))
 			) {
 				return { waitingForWebhook: true };
