@@ -13,8 +13,6 @@ import {
 	shouldRestartParentExecution,
 	updateParentExecutionWithChildResults,
 } from './workflow-helpers';
-import { setTimeout } from 'node:timers/promises';
-import { Time } from '@n8n/constants';
 
 @Service()
 export class WaitTracker {
@@ -107,7 +105,6 @@ export class WaitTracker {
 			includeData: true,
 			unflattenData: true,
 		});
-		await setTimeout(Math.random() * 10 * Time.seconds.toMilliseconds);
 		console.log('Execution status:', fullExecutionData?.status);
 		console.log('Has parentExecution:', !!fullExecutionData?.data?.parentExecution);
 
