@@ -123,6 +123,7 @@ createChat({
 		'Hi there! 👋',
 		'My name is Nathan. How can I assist you today?'
 	],
+	starterPrompts: [],
 	i18n: {
 		en: {
 			title: 'Hi there! 👋',
@@ -130,6 +131,7 @@ createChat({
 			footer: '',
 			getStarted: 'New Conversation',
 			inputPlaceholder: 'Type your question..',
+			resetConversation: 'Reset conversation',
 		},
 	},
 	enableStreaming: false,
@@ -194,6 +196,10 @@ createChat({
 - **Type**: `string[]`
 - **Description**: The initial messages to be displayed in the Chat window.
 
+### `starterPrompts`
+- **Type**: `Array<string | { label: string; message: string }>`
+- **Description**: List of starter prompts to display when the chat is empty.
+
 ### `allowFileUploads`
 - **Type**: `Ref<boolean> | boolean`
 - **Default**: `false`
@@ -248,6 +254,10 @@ The Chat window is entirely customizable using CSS variables.
 	--chat--subtitle--font-size: inherit;
 	--chat--subtitle--line-height: 1.8;
 
+	--chat--header--actions--gap: 8px;
+	--chat--close--button--color: inherit;
+	--chat--close--button--color-hover: var(--chat--color--primary);
+
 	--chat--textarea--height: 50px;
 
 	--chat--message--font-size: 1rem;
@@ -261,6 +271,13 @@ The Chat window is entirely customizable using CSS variables.
 	--chat--message--user--color: var(--chat--color-white);
 	--chat--message--user--border: none;
 	--chat--message--pre--background: rgba(0, 0, 0, 0.05);
+
+	--chat--starter-prompt--background: var(--chat--color-white);
+	--chat--starter-prompt--color: var(--chat--color--primary);
+	--chat--starter-prompt--border: 1px solid var(--chat--color--primary);
+	--chat--starter-prompt--border-radius: var(--chat--border-radius);
+	--chat--starter-prompt--hover--background: var(--chat--color--primary);
+	--chat--starter-prompt--hover--color: var(--chat--color-white);
 
 	--chat--toggle--background: var(--chat--color--primary);
 	--chat--toggle--hover--background: var(--chat--color--primary-shade-50);
