@@ -115,6 +115,7 @@ export interface Tool {
 	urlContext?: object;
 	fileSearch?: {
 		fileSearchStoreNames?: string[];
+		metadataFilter?: string;
 	};
 	codeExecution?: object;
 }

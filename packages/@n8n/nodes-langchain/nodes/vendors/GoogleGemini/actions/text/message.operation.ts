@@ -151,6 +151,15 @@ const properties: INodeProperties[] = [
 						default: '[]',
 						required: true,
 					},
+					{
+						displayName: 'Metadata Filter',
+						name: 'metadataFilter',
+						type: 'string',
+						default: '',
+						description:
+							'Use metadata filter to search within a subset of documents. Example: author="Robert Graves".',
+						placeholder: 'e.g. author="John Doe"',
+					},
 				],
 			},
 			{
@@ -413,6 +422,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		const fileSearchOptions = builtInTools.fileSearch as IDataObject | undefined;
 		if (fileSearchOptions) {
 			const fileSearchStoreNamesRaw = fileSearchOptions.fileSearchStoreNames as string | undefined;
+			const metadataFilter = fileSearchOptions.metadataFilter as string | undefined;
 			let fileSearchStoreNames: string[] | undefined;
 			if (fileSearchStoreNamesRaw) {
 				const parsed = jsonParse(fileSearchStoreNamesRaw, {
@@ -424,7 +434,10 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			}
 
 			tools.push({
-				fileSearch: fileSearchStoreNames ? { fileSearchStoreNames } : {},
+				fileSearch: {
+					...(fileSearchStoreNames && { fileSearchStoreNames }),
+					...(metadataFilter && { metadataFilter }),
+				},
 			});
 		}
 
