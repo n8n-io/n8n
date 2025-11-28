@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { UserManagementConfig } from '../src/configs/user-management.config';
+import type { DatabaseConfig } from '../src/index';
 import { GlobalConfig } from '../src/index';
 
 jest.mock('fs');
@@ -103,7 +104,7 @@ describe('GlobalConfig', () => {
 			type: 'sqlite',
 			isLegacySqlite: false,
 			pingIntervalSeconds: 2,
-		},
+		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
 			overwrite: {
