@@ -57,11 +57,11 @@ import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import ProjectNavigation from '@/features/collaboration/projects/components/ProjectNavigation.vue';
 import KeyboardShortcutTooltip from './KeyboardShortcutTooltip.vue';
 import { useCommandBar } from '@/features/shared/commandBar/composables/useCommandBar';
-import { useUserHelpers } from '../composables/useUserHelpers';
-import { useRouter } from 'vue-router';
 import MainSidebarSourceControl from './MainSidebarSourceControl.vue';
 import TemplateTooltip from '@/experiments/personalizedTemplatesV3/components/TemplateTooltip.vue';
 import { useSidebarLayout } from '../composables/useSidebarLayout';
+import { useSettingsItems } from '../composables/useSettingsItems';
+import { useRouter } from 'vue-router';
 
 const becomeTemplateCreatorStore = useBecomeTemplateCreatorStore();
 const cloudPlanStore = useCloudPlanStore();
@@ -78,6 +78,7 @@ const personalizedTemplatesV3Store = usePersonalizedTemplatesV3Store();
 const templatesDataQualityStore = useTemplatesDataQualityStore();
 
 const i18n = useI18n();
+const router = useRouter();
 const telemetry = useTelemetry();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const { getReportingURL } = useBugReporting();
@@ -91,6 +92,8 @@ useKeybindings({
 });
 
 const { isEnabled: isCommandBarEnabled } = useCommandBar();
+
+const { settingsItems } = useSettingsItems();
 
 // Component data
 const basePath = ref('');
@@ -253,7 +256,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		label: i18n.baseText('mainSidebar.settings'),
 		icon: 'settings',
 		available: true,
-		children: visibleSettingsItems.value,
+		children: settingsItems.value,
 	},
 ]);
 
@@ -301,130 +304,6 @@ const whatsNewItems = computed<{ available: boolean; children: IMenuElement[] }>
 		},
 	],
 }));
-
-const router = useRouter();
-const { canUserAccessRouteByName } = useUserHelpers(router);
-
-const settingsItems = computed<IMenuItem[]>(() => {
-	const menuItems: IMenuItem[] = [
-		{
-			id: 'settings-usage-and-plan',
-			icon: 'chart-column-decreasing',
-			label: i18n.baseText('settings.usageAndPlan.title'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.USAGE),
-			route: { to: { name: VIEWS.USAGE } },
-		},
-		{
-			id: 'settings-personal',
-			icon: 'circle-user-round',
-			label: i18n.baseText('settings.personal'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.PERSONAL_SETTINGS),
-			route: { to: { name: VIEWS.PERSONAL_SETTINGS } },
-		},
-		{
-			id: 'settings-users',
-			icon: 'user-round',
-			label: i18n.baseText('settings.users'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.USERS_SETTINGS),
-			route: { to: { name: VIEWS.USERS_SETTINGS } },
-		},
-		{
-			id: 'settings-project-roles',
-			icon: 'user-round',
-			label: i18n.baseText('settings.projectRoles'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.PROJECT_ROLES_SETTINGS),
-			route: { to: { name: VIEWS.PROJECT_ROLES_SETTINGS } },
-		},
-		{
-			id: 'settings-api',
-			icon: 'plug',
-			label: i18n.baseText('settings.n8napi'),
-			position: 'top',
-			available: settingsStore.isPublicApiEnabled && canUserAccessRouteByName(VIEWS.API_SETTINGS),
-			route: { to: { name: VIEWS.API_SETTINGS } },
-		},
-		{
-			id: 'settings-external-secrets',
-			icon: 'vault',
-			label: i18n.baseText('settings.externalSecrets.title'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.EXTERNAL_SECRETS_SETTINGS),
-			route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
-		},
-		{
-			id: 'settings-source-control',
-			icon: 'git-branch',
-			label: i18n.baseText('settings.sourceControl.title'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
-			route: { to: { name: VIEWS.SOURCE_CONTROL } },
-		},
-		{
-			id: 'settings-sso',
-			icon: 'user-lock',
-			label: i18n.baseText('settings.sso'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
-			route: { to: { name: VIEWS.SSO_SETTINGS } },
-		},
-		{
-			id: 'settings-ldap',
-			icon: 'network',
-			label: i18n.baseText('settings.ldap'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
-			route: { to: { name: VIEWS.LDAP_SETTINGS } },
-		},
-		{
-			id: 'settings-workersview',
-			icon: 'waypoints',
-			label: i18n.baseText('mainSidebar.workersView'),
-			position: 'top',
-			available:
-				settingsStore.isQueueModeEnabled &&
-				hasPermission(['rbac'], { rbac: { scope: 'workersView:manage' } }),
-			route: { to: { name: VIEWS.WORKER_VIEW } },
-		},
-	];
-
-	menuItems.push({
-		id: 'settings-log-streaming',
-		icon: 'log-in',
-		label: i18n.baseText('settings.log-streaming'),
-		position: 'top',
-		available: canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS),
-		route: { to: { name: VIEWS.LOG_STREAMING_SETTINGS } },
-	});
-
-	menuItems.push({
-		id: 'settings-community-nodes',
-		icon: 'box',
-		label: i18n.baseText('settings.communityNodes'),
-		position: 'top',
-		available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
-		route: { to: { name: VIEWS.COMMUNITY_NODES } },
-	});
-
-	menuItems.push({
-		id: 'settings-migration-report',
-		icon: 'list-checks',
-		label: i18n.baseText('settings.migrationReport'),
-		position: 'top',
-		available: canUserAccessRouteByName(VIEWS.MIGRATION_REPORT),
-		route: { to: { name: VIEWS.MIGRATION_REPORT } },
-	});
-
-	// Append module-registered settings sidebar items.
-	const moduleItems = uiStore.settingsSidebarItems;
-
-	return menuItems.concat(moduleItems.filter((item) => !menuItems.some((m) => m.id === item.id)));
-});
-
-const visibleSettingsItems = computed(() => settingsItems.value.filter((item) => item.available));
 
 const createBtn = ref<InstanceType<typeof N8nNavigationDropdown>>();
 
