@@ -127,116 +127,116 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			settingsStore.isChatFeatureEnabled &&
 			hasPermission(['rbac'], { rbac: { scope: 'chatHub:message' } }),
 	},
-	{
-		// Link to in-app pre-built agent templates, available experiment is enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
-		position: 'bottom',
-		available:
-			settingsStore.isTemplatesEnabled &&
-			calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			!isTemplatesExperimentEnabled.value,
-		route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
-	},
-	{
-		// Link to personalized template modal, available when V2, V3 or data quality experiment is enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
-		position: 'bottom',
-		available: settingsStore.isTemplatesEnabled && isTemplatesExperimentEnabled.value,
-	},
-	{
-		// Link to in-app templates, available if custom templates are enabled and experiment is disabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
-		position: 'bottom',
-		available:
-			settingsStore.isTemplatesEnabled &&
-			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
-		route: { to: { name: VIEWS.TEMPLATES } },
-	},
-	{
-		// Link to website templates, available if custom templates are not enabled
-		id: 'templates',
-		icon: 'package-open',
-		label: i18n.baseText('generic.templates'),
-		position: 'bottom',
-		available:
-			settingsStore.isTemplatesEnabled &&
-			!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
-			!templatesStore.hasCustomTemplatesHost &&
-			!isTemplatesExperimentEnabled.value,
-		link: {
-			href: templatesStore.websiteTemplateRepositoryURL,
-			target: '_blank',
-		},
-	},
-	{
-		id: 'insights',
-		icon: 'chart-column-decreasing',
-		label: 'Insights',
-		position: 'bottom',
-		route: { to: { name: VIEWS.INSIGHTS } },
-		available:
-			settingsStore.isModuleActive('insights') &&
-			hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
-	},
+	// {
+	// 	// Link to in-app pre-built agent templates, available experiment is enabled
+	// 	id: 'templates',
+	// 	icon: 'package-open',
+	// 	label: i18n.baseText('generic.templates'),
+	// 	position: 'bottom',
+	// 	available:
+	// 		settingsStore.isTemplatesEnabled &&
+	// 		calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+	// 		!isTemplatesExperimentEnabled.value,
+	// 	route: { to: { name: VIEWS.PRE_BUILT_AGENT_TEMPLATES } },
+	// },
+	// {
+	// 	// Link to personalized template modal, available when V2, V3 or data quality experiment is enabled
+	// 	id: 'templates',
+	// 	icon: 'package-open',
+	// 	label: i18n.baseText('generic.templates'),
+	// 	position: 'bottom',
+	// 	available: settingsStore.isTemplatesEnabled && isTemplatesExperimentEnabled.value,
+	// },
+	// {
+	// 	// Link to in-app templates, available if custom templates are enabled and experiment is disabled
+	// 	id: 'templates',
+	// 	icon: 'package-open',
+	// 	label: i18n.baseText('generic.templates'),
+	// 	position: 'bottom',
+	// 	available:
+	// 		settingsStore.isTemplatesEnabled &&
+	// 		!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+	// 		templatesStore.hasCustomTemplatesHost &&
+	// 		!isTemplatesExperimentEnabled.value,
+	// 	route: { to: { name: VIEWS.TEMPLATES } },
+	// },
+	// {
+	// 	// Link to website templates, available if custom templates are not enabled
+	// 	id: 'templates',
+	// 	icon: 'package-open',
+	// 	label: i18n.baseText('generic.templates'),
+	// 	position: 'bottom',
+	// 	available:
+	// 		settingsStore.isTemplatesEnabled &&
+	// 		!calloutHelpers.isPreBuiltAgentsCalloutVisible.value &&
+	// 		!templatesStore.hasCustomTemplatesHost &&
+	// 		!isTemplatesExperimentEnabled.value,
+	// 	link: {
+	// 		href: templatesStore.websiteTemplateRepositoryURL,
+	// 		target: '_blank',
+	// 	},
+	// },
+	// {
+	// 	id: 'insights',
+	// 	icon: 'chart-column-decreasing',
+	// 	label: 'Insights',
+	// 	position: 'bottom',
+	// 	route: { to: { name: VIEWS.INSIGHTS } },
+	// 	available:
+	// 		settingsStore.isModuleActive('insights') &&
+	// 		hasPermission(['rbac'], { rbac: { scope: 'insights:list' } }),
+	// },
 	{
 		id: 'help',
 		icon: 'circle-help',
 		label: i18n.baseText('mainSidebar.help'),
 		position: 'bottom',
 		children: [
-			{
-				id: 'quickstart',
-				icon: 'video',
-				label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
-				link: {
-					href: EXTERNAL_LINKS.QUICKSTART_VIDEO,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'docs',
-				icon: 'book',
-				label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
-				link: {
-					href: EXTERNAL_LINKS.DOCUMENTATION,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'forum',
-				icon: 'users',
-				label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
-				link: {
-					href: EXTERNAL_LINKS.FORUM,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'examples',
-				icon: 'graduation-cap',
-				label: i18n.baseText('mainSidebar.helpMenuItems.course'),
-				link: {
-					href: EXTERNAL_LINKS.COURSES,
-					target: '_blank',
-				},
-			},
-			{
-				id: 'report-bug',
-				icon: 'bug',
-				label: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
-				link: {
-					href: getReportingURL(),
-					target: '_blank',
-				},
-			},
+			// {
+			// 	id: 'quickstart',
+			// 	icon: 'video',
+			// 	label: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
+			// 	link: {
+			// 		href: EXTERNAL_LINKS.QUICKSTART_VIDEO,
+			// 		target: '_blank',
+			// 	},
+			// },
+			// {
+			// 	id: 'docs',
+			// 	icon: 'book',
+			// 	label: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
+			// 	link: {
+			// 		href: EXTERNAL_LINKS.DOCUMENTATION,
+			// 		target: '_blank',
+			// 	},
+			// },
+			// {
+			// 	id: 'forum',
+			// 	icon: 'users',
+			// 	label: i18n.baseText('mainSidebar.helpMenuItems.forum'),
+			// 	link: {
+			// 		href: EXTERNAL_LINKS.FORUM,
+			// 		target: '_blank',
+			// 	},
+			// },
+			// {
+			// 	id: 'examples',
+			// 	icon: 'graduation-cap',
+			// 	label: i18n.baseText('mainSidebar.helpMenuItems.course'),
+			// 	link: {
+			// 		href: EXTERNAL_LINKS.COURSES,
+			// 		target: '_blank',
+			// 	},
+			// },
+			// {
+			// 	id: 'report-bug',
+			// 	icon: 'bug',
+			// 	label: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
+			// 	link: {
+			// 		href: getReportingURL(),
+			// 		target: '_blank',
+			// 	},
+			// },
 			{
 				id: 'about',
 				icon: 'info',
@@ -245,52 +245,52 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 			},
 		],
 	},
-	{
-		id: 'whats-new',
-		icon: 'bell',
-		notification: showWhatsNewNotification.value,
-		label: i18n.baseText('mainSidebar.whatsNew'),
-		position: 'bottom',
-		available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
-		children: [
-			...versionsStore.whatsNewArticles.map(
-				(article) =>
-					({
-						id: `whats-new-article-${article.id}`,
-						label: article.title,
-						size: 'small',
-						customIconSize: 'small',
-						icon: {
-							type: 'emoji',
-							value: '•',
-							color: !versionsStore.isWhatsNewArticleRead(article.id) ? 'primary' : 'text-light',
-						},
-					}) satisfies IMenuItem,
-			),
-			{
-				id: 'full-changelog',
-				icon: 'external-link',
-				label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
-				link: {
-					href: RELEASE_NOTES_URL,
-					target: '_blank',
-				},
-				size: 'small',
-				customIconSize: 'small',
-			},
-			{
-				id: 'version-upgrade-cta',
-				component: VersionUpdateCTA,
-				available: versionsStore.hasVersionUpdates,
-				props: {
-					disabled: !usersStore.canUserUpdateVersion,
-					tooltipText: !usersStore.canUserUpdateVersion
-						? i18n.baseText('whatsNew.updateNudgeTooltip')
-						: undefined,
-				},
-			},
-		],
-	},
+	// {
+	// 	id: 'whats-new',
+	// 	icon: 'bell',
+	// 	notification: showWhatsNewNotification.value,
+	// 	label: i18n.baseText('mainSidebar.whatsNew'),
+	// 	position: 'bottom',
+	// 	available: versionsStore.hasVersionUpdates || versionsStore.whatsNewArticles.length > 0,
+	// 	children: [
+	// 		...versionsStore.whatsNewArticles.map(
+	// 			(article) =>
+	// 				({
+	// 					id: `whats-new-article-${article.id}`,
+	// 					label: article.title,
+	// 					size: 'small',
+	// 					customIconSize: 'small',
+	// 					icon: {
+	// 						type: 'emoji',
+	// 						value: '•',
+	// 						color: !versionsStore.isWhatsNewArticleRead(article.id) ? 'primary' : 'text-light',
+	// 					},
+	// 				}) satisfies IMenuItem,
+	// 		),
+	// 		{
+	// 			id: 'full-changelog',
+	// 			icon: 'external-link',
+	// 			label: i18n.baseText('mainSidebar.whatsNew.fullChangelog'),
+	// 			link: {
+	// 				href: RELEASE_NOTES_URL,
+	// 				target: '_blank',
+	// 			},
+	// 			size: 'small',
+	// 			customIconSize: 'small',
+	// 		},
+	// 		{
+	// 			id: 'version-upgrade-cta',
+	// 			component: VersionUpdateCTA,
+	// 			available: versionsStore.hasVersionUpdates,
+	// 			props: {
+	// 				disabled: !usersStore.canUserUpdateVersion,
+	// 				tooltipText: !usersStore.canUserUpdateVersion
+	// 					? i18n.baseText('whatsNew.updateNudgeTooltip')
+	// 					: undefined,
+	// 			},
+	// 		},
+	// 	],
+	// },
 ]);
 
 const visibleMenuItems = computed(() =>
@@ -460,7 +460,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 					v-if="sourceControlStore.preferences.branchReadOnly && !isCollapsed"
 					placement="bottom"
 				>
-					<template #content>
+					<!-- <template #content>
 						<I18nT keypath="readOnlyEnv.tooltip" scope="global">
 							<template #link>
 								<N8nLink
@@ -471,7 +471,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 								</N8nLink>
 							</template>
 						</I18nT>
-					</template>
+					</template> -->
 					<N8nIcon
 						data-test-id="read-only-env-icon"
 						icon="lock"
@@ -505,7 +505,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 						<N8nIcon style="margin-left: auto; margin-right: 5px" icon="lock" size="xsmall" />
 					</N8nTooltip>
 				</template>
-				<template #[createProjectAppendSlotName]="{ item }">
+				<!-- <template #[createProjectAppendSlotName]="{ item }">
 					<N8nTooltip
 						v-if="sourceControlStore.preferences.branchReadOnly"
 						placement="right"
@@ -534,7 +534,7 @@ onClickOutside(createBtn as Ref<VueInstance>, () => {
 							{{ upgradeLabel }}
 						</N8nButton>
 					</N8nTooltip>
-				</template>
+				</template> -->
 			</N8nNavigationDropdown>
 		</div>
 		<N8nScrollArea as-child>

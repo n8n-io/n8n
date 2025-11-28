@@ -1,4 +1,4 @@
-import { sublimeSearch } from '@n8n/utils/dist/search/sublimeSearch';
+import { sublimeSearch } from '@n8n/utils/search/sublimeSearch';
 import type { INodeTypeDescription, NodeConnectionType } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -38,11 +38,10 @@ export class NodeSearchEngine {
 	 */
 	searchByName(query: string, limit: number = 20): NodeSearchResult[] {
 		// Use sublimeSearch for fuzzy matching
-		const searchResults = sublimeSearch<INodeTypeDescription>(
-			query,
-			this.nodeTypes,
-			NODE_SEARCH_KEYS,
-		);
+		const searchResults = sublimeSearch(query, this.nodeTypes, NODE_SEARCH_KEYS) as Array<{
+			item: INodeTypeDescription;
+			score: number;
+		}>;
 
 		// Map results to NodeSearchResult format and apply limit
 		return searchResults

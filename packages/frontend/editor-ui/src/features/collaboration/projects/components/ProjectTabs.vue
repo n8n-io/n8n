@@ -110,9 +110,9 @@ const options = computed<Array<TabOptions<string>>>(() => {
 		tabs.push(createTab('mainSidebar.executions', 'executions', routes));
 	}
 
-	if (props.pageType === 'overview' || isTeamProject.value) {
-		tabs.push(createTab('mainSidebar.variables', 'variables', routes));
-	}
+	// if (props.pageType === 'overview' || isTeamProject.value) {
+	// 	tabs.push(createTab('mainSidebar.variables', 'variables', routes));
+	// }
 
 	if (props.additionalTabs?.length) {
 		const processedAdditionalTabs = processDynamicTabs(props.additionalTabs, projectId.value);

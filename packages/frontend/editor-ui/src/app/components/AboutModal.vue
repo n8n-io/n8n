@@ -68,6 +68,7 @@ const copyDebugInfoToClipboard = async () => {
 						<N8nText>{{ rootStore.versionCli }}</N8nText>
 					</ElCol>
 				</ElRow>
+				<!--
 				<ElRow>
 					<ElCol :span="8" class="info-name">
 						<N8nText>{{ i18n.baseText('about.sourceCode') }}</N8nText>
@@ -76,6 +77,7 @@ const copyDebugInfoToClipboard = async () => {
 						<N8nLink to="https://github.com/n8n-io/n8n">https://github.com/n8n-io/n8n</N8nLink>
 					</ElCol>
 				</ElRow>
+				
 				<ElRow>
 					<ElCol :span="8" class="info-name">
 						<N8nText>{{ i18n.baseText('about.license') }}</N8nText>
@@ -86,6 +88,7 @@ const copyDebugInfoToClipboard = async () => {
 						</N8nLink>
 					</ElCol>
 				</ElRow>
+				-->
 				<ElRow>
 					<ElCol :span="8" class="info-name">
 						<N8nText>{{ i18n.baseText('about.thirdPartyLicenses') }}</N8nText>

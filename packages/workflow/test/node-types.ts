@@ -29,8 +29,7 @@ const stickyNode: LoadedClass<INodeType> = {
 					name: 'content',
 					type: 'string',
 					required: true,
-					default:
-						"## I'm a note \n**Double click** to edit me. [Guide](https://docs.n8n.io/workflows/sticky-notes/)",
+					default: "## I'm a note \n**Double click** to edit me. ",
 				},
 				{ displayName: 'Height', name: 'height', type: 'number', required: true, default: 160 },
 				{ displayName: 'Width', name: 'width', type: 'number', required: true, default: 240 },

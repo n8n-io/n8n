@@ -30,54 +30,54 @@ export function useGenericCommands(): CommandGroup {
 	const { getReportingURL } = useBugReporting();
 
 	const genericCommands = computed<CommandBarItem[]>(() => [
-		{
-			id: ITEM_ID.WHATS_NEW,
-			title: i18n.baseText('mainSidebar.whatsNew'),
-			section: i18n.baseText('commandBar.sections.general'),
-			handler: () => {
-				uiStore.openModal(WHATS_NEW_MODAL_KEY);
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'bell',
-				},
-			},
-			keywords: [
-				i18n.baseText('mainSidebar.whatsNew').toLowerCase(),
-				i18n.baseText('mainSidebar.whatsNew.fullChangelog').toLowerCase(),
-			],
-		},
-		{
-			id: ITEM_ID.TEMPLATES,
-			title: i18n.baseText('generic.templates'),
-			section: i18n.baseText('commandBar.sections.general'),
-			handler: () => {
-				void router.push({ name: VIEWS.PRE_BUILT_AGENT_TEMPLATES });
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'package-open',
-				},
-			},
-			keywords: [i18n.baseText('generic.templates').toLowerCase()],
-		},
-		{
-			id: ITEM_ID.VARIABLES,
-			title: i18n.baseText('mainSidebar.variables'),
-			section: i18n.baseText('commandBar.sections.general'),
-			handler: () => {
-				void router.push({ name: VIEWS.HOME_VARIABLES });
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'variable',
-				},
-			},
-			keywords: [i18n.baseText('mainSidebar.variables').toLowerCase()],
-		},
+		// {
+		// 	id: ITEM_ID.WHATS_NEW,
+		// 	title: i18n.baseText('mainSidebar.whatsNew'),
+		// 	section: i18n.baseText('commandBar.sections.general'),
+		// 	handler: () => {
+		// 		uiStore.openModal(WHATS_NEW_MODAL_KEY);
+		// 	},
+		// 	icon: {
+		// 		component: N8nIcon,
+		// 		props: {
+		// 			icon: 'bell',
+		// 		},
+		// 	},
+		// 	keywords: [
+		// 		i18n.baseText('mainSidebar.whatsNew').toLowerCase(),
+		// 		i18n.baseText('mainSidebar.whatsNew.fullChangelog').toLowerCase(),
+		// 	],
+		// },
+		// {
+		// 	id: ITEM_ID.TEMPLATES,
+		// 	title: i18n.baseText('generic.templates'),
+		// 	section: i18n.baseText('commandBar.sections.general'),
+		// 	handler: () => {
+		// 		void router.push({ name: VIEWS.PRE_BUILT_AGENT_TEMPLATES });
+		// 	},
+		// 	icon: {
+		// 		component: N8nIcon,
+		// 		props: {
+		// 			icon: 'package-open',
+		// 		},
+		// 	},
+		// 	keywords: [i18n.baseText('generic.templates').toLowerCase()],
+		// },
+		// {
+		// 	id: ITEM_ID.VARIABLES,
+		// 	title: i18n.baseText('mainSidebar.variables'),
+		// 	section: i18n.baseText('commandBar.sections.general'),
+		// 	handler: () => {
+		// 		void router.push({ name: VIEWS.HOME_VARIABLES });
+		// 	},
+		// 	icon: {
+		// 		component: N8nIcon,
+		// 		props: {
+		// 			icon: 'variable',
+		// 		},
+		// 	},
+		// 	keywords: [i18n.baseText('mainSidebar.variables').toLowerCase()],
+		// },
 		{
 			id: ITEM_ID.INSIGHTS,
 			title: 'Insights',
@@ -93,81 +93,81 @@ export function useGenericCommands(): CommandGroup {
 			},
 			keywords: ['insights'],
 		},
-		{
-			id: ITEM_ID.QUICKSTART,
-			title: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
-			section: i18n.baseText('mainSidebar.help'),
-			handler: () => {
-				window.open(EXTERNAL_LINKS.QUICKSTART_VIDEO, '_blank', 'noreferrer');
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'video',
-				},
-			},
-			keywords: [i18n.baseText('mainSidebar.helpMenuItems.quickstart').toLowerCase()],
-		},
-		{
-			id: ITEM_ID.DOCUMENTATION,
-			title: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
-			section: i18n.baseText('mainSidebar.help'),
-			handler: () => {
-				window.open(EXTERNAL_LINKS.DOCUMENTATION, '_blank', 'noreferrer');
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'book',
-				},
-			},
-			keywords: [i18n.baseText('mainSidebar.helpMenuItems.documentation').toLowerCase()],
-		},
-		{
-			id: ITEM_ID.FORUM,
-			title: i18n.baseText('mainSidebar.helpMenuItems.forum'),
-			section: i18n.baseText('mainSidebar.help'),
-			handler: () => {
-				window.open(EXTERNAL_LINKS.FORUM, '_blank', 'noreferrer');
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'users',
-				},
-			},
-			keywords: [i18n.baseText('mainSidebar.helpMenuItems.forum').toLowerCase()],
-		},
-		{
-			id: ITEM_ID.COURSE,
-			title: i18n.baseText('mainSidebar.helpMenuItems.course'),
-			section: i18n.baseText('mainSidebar.help'),
-			handler: () => {
-				window.open(EXTERNAL_LINKS.COURSES, '_blank', 'noreferrer');
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'graduation-cap',
-				},
-			},
-			keywords: [i18n.baseText('mainSidebar.helpMenuItems.course').toLowerCase()],
-		},
-		{
-			id: ITEM_ID.REPORT_BUG,
-			title: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
-			section: i18n.baseText('mainSidebar.help'),
-			handler: () => {
-				window.open(getReportingURL(), '_blank', 'noreferrer');
-			},
-			icon: {
-				component: N8nIcon,
-				props: {
-					icon: 'bug',
-				},
-			},
-			keywords: [i18n.baseText('mainSidebar.helpMenuItems.reportBug').toLowerCase()],
-		},
+		// {
+		// 	id: ITEM_ID.QUICKSTART,
+		// 	title: i18n.baseText('mainSidebar.helpMenuItems.quickstart'),
+		// 	section: i18n.baseText('mainSidebar.help'),
+		// 	handler: () => {
+		// 		window.open(EXTERNAL_LINKS.QUICKSTART_VIDEO, '_blank', 'noreferrer');
+		// 	},
+		// 	icon: {
+		// 		component: N8nIcon,
+		// 		props: {
+		// 			icon: 'video',
+		// 		},
+		// 	},
+		// 	keywords: [i18n.baseText('mainSidebar.helpMenuItems.quickstart').toLowerCase()],
+		// },
+		// {
+		// 	id: ITEM_ID.DOCUMENTATION,
+		// 	title: i18n.baseText('mainSidebar.helpMenuItems.documentation'),
+		// 	section: i18n.baseText('mainSidebar.help'),
+		// 	handler: () => {
+		// 		window.open(EXTERNAL_LINKS.DOCUMENTATION, '_blank', 'noreferrer');
+		// 	},
+		// 	icon: {
+		// 		component: N8nIcon,
+		// 		props: {
+		// 			icon: 'book',
+		// 		},
+		// 	},
+		// 	keywords: [i18n.baseText('mainSidebar.helpMenuItems.documentation').toLowerCase()],
+		// },
+		// {
+		// 	id: ITEM_ID.FORUM,
+		// 	title: i18n.baseText('mainSidebar.helpMenuItems.forum'),
+		// 	section: i18n.baseText('mainSidebar.help'),
+		// 	handler: () => {
+		// 		window.open(EXTERNAL_LINKS.FORUM, '_blank', 'noreferrer');
+		// 	},
+		// 	icon: {
+		// 		component: N8nIcon,
+		// 		props: {
+		// 			icon: 'users',
+		// 		},
+		// 	},
+		// 	keywords: [i18n.baseText('mainSidebar.helpMenuItems.forum').toLowerCase()],
+		// },
+		// {
+		// 	id: ITEM_ID.COURSE,
+		// 	title: i18n.baseText('mainSidebar.helpMenuItems.course'),
+		// 	section: i18n.baseText('mainSidebar.help'),
+		// 	handler: () => {
+		// 		window.open(EXTERNAL_LINKS.COURSES, '_blank', 'noreferrer');
+		// 	},
+		// 	icon: {
+		// 		component: N8nIcon,
+		// 		props: {
+		// 			icon: 'graduation-cap',
+		// 		},
+		// 	},
+		// 	keywords: [i18n.baseText('mainSidebar.helpMenuItems.course').toLowerCase()],
+		// },
+		// {
+		// 	id: ITEM_ID.REPORT_BUG,
+		// 	title: i18n.baseText('mainSidebar.helpMenuItems.reportBug'),
+		// 	section: i18n.baseText('mainSidebar.help'),
+		// 	handler: () => {
+		// 		window.open(getReportingURL(), '_blank', 'noreferrer');
+		// 	},
+		// 	icon: {
+		// 		component: N8nIcon,
+		// 		props: {
+		// 			icon: 'bug',
+		// 		},
+		// 	},
+		// 	keywords: [i18n.baseText('mainSidebar.helpMenuItems.reportBug').toLowerCase()],
+		// },
 		{
 			id: ITEM_ID.ABOUT,
 			title: i18n.baseText('mainSidebar.aboutN8n'),

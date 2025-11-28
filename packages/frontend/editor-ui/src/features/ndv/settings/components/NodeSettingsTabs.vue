@@ -114,16 +114,16 @@ const options = computed(() => {
 		});
 	}
 
-	if (documentationUrl.value) {
-		ret.push({
-			value: 'docs',
-			href: documentationUrl.value,
-			align: 'right',
-			...(props.compact
-				? { icon: 'book-open', tooltip: i18n.baseText('nodeSettings.docs') }
-				: { label: i18n.baseText('nodeSettings.docs') }),
-		});
-	}
+	// if (documentationUrl.value) {
+	// 	ret.push({
+	// 		value: 'docs',
+	// 		href: documentationUrl.value,
+	// 		align: 'right',
+	// 		...(props.compact
+	// 			? { icon: 'book-open', tooltip: i18n.baseText('nodeSettings.docs') }
+	// 			: { label: i18n.baseText('nodeSettings.docs') }),
+	// 	});
+	// }
 
 	return ret;
 });
