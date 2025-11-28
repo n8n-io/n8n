@@ -13,13 +13,16 @@ const flagsSchema = z.object({
 
 @Command({
 	name: 'update:workflow',
-	description: 'Update workflows',
+	description:
+		'[DEPRECATED] Update workflows - use activate:workflow or deactivate:workflow instead',
 	examples: ['--all --active=false', '--id=5 --active=true'],
 	flagsSchema,
 })
 export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
 	async run() {
 		const { flags } = this;
+
+		this.logger.warn('⚠️  WARNING: The "update:workflow" command is deprecated.\n');
 
 		if (!flags.all && !flags.id) {
 			this.logger.error('Either option "--all" or "--id" have to be set!');
@@ -46,16 +49,28 @@ export class UpdateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchem
 		const newState = flags.active === 'true';
 		const action = newState ? 'Activating' : 'Deactivating';
 
+		// Block all activation attempts - users must migrate to the new command
+		if (newState) {
+			this.logger.error('Workflow activation via "update:workflow" is no longer supported.');
+			this.logger.error(
+				'Please use: activate:workflow --id=<workflow-id> --versionId=<version-id>',
+			);
+			return;
+		}
+
+		// Show appropriate replacement command suggestion for deactivation
+		if (flags.id) {
+			this.logger.warn(`Please use: deactivate:workflow --id=${flags.id}\n`);
+		} else {
+			this.logger.warn('Please use: deactivate:workflow --all\n');
+		}
+
 		if (flags.id) {
 			this.logger.info(`${action} workflow with ID: ${flags.id}`);
 			await Container.get(WorkflowRepository).updateActiveState(flags.id, newState);
 		} else {
 			this.logger.info(`${action} all workflows`);
-			if (newState) {
-				await Container.get(WorkflowRepository).activateAll();
-			} else {
-				await Container.get(WorkflowRepository).deactivateAll();
-			}
+			await Container.get(WorkflowRepository).deactivateAll();
 		}
 
 		this.logger.info('Activation or deactivation will not take effect if n8n is running.');

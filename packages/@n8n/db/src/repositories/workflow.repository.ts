@@ -10,9 +10,10 @@ import type {
 	FindOptionsRelations,
 	EntityManager,
 } from '@n8n/typeorm';
-import { PROJECT_ROOT } from 'n8n-workflow';
+import { PROJECT_ROOT, UserError } from 'n8n-workflow';
 
 import { FolderRepository } from './folder.repository';
+import { WorkflowHistoryRepository } from './workflow-history.repository';
 import {
 	WebhookEntity,
 	TagEntity,
@@ -54,6 +55,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		dataSource: DataSource,
 		private readonly globalConfig: GlobalConfig,
 		private readonly folderRepository: FolderRepository,
+		private readonly workflowHistoryRepository: WorkflowHistoryRepository,
 	) {
 		super(WorkflowEntity, dataSource.manager);
 	}
@@ -838,24 +840,25 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		}
 	}
 
+	async activateVersion(workflowId: string, versionId: string) {
+		const version = await this.workflowHistoryRepository.findOneBy({
+			workflowId,
+			versionId,
+		});
+		if (!version) {
+			throw new UserError(
+				`Version "${versionId}" not found for workflow "${workflowId}". Please verify the version ID is correct.`,
+			);
+		}
+
+		return await this.update({ id: workflowId }, { active: true, activeVersionId: versionId });
+	}
+
 	async deactivateAll() {
 		return await this.update(
 			{ activeVersionId: Not(IsNull()) },
 			{ active: false, activeVersionId: null },
 		);
-	}
-
-	// We're planning to remove this command in V2, so for now set activeVersion to the current version
-	async activateAll() {
-		await this.manager
-			.createQueryBuilder()
-			.update(WorkflowEntity)
-			.set({
-				active: true,
-				activeVersionId: () => 'versionId',
-			})
-			.where('activeVersionId IS NULL')
-			.execute();
 	}
 
 	async findByActiveState(activeState: boolean) {

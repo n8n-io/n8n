@@ -19,7 +19,7 @@ beforeEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory']);
 });
 
-test('update:workflow can activate all workflows', async () => {
+test('update:workflow does not activate when trying to activate all workflows', async () => {
 	//
 	// ARRANGE
 	//
@@ -27,8 +27,6 @@ test('update:workflow can activate all workflows', async () => {
 		createWorkflowWithTriggerAndHistory({}),
 		createWorkflowWithTriggerAndHistory({}),
 	]);
-	expect(workflows[0].activeVersionId).toBeNull();
-	expect(workflows[1].activeVersionId).toBeNull();
 
 	//
 	// ACT
@@ -38,21 +36,13 @@ test('update:workflow can activate all workflows', async () => {
 	//
 	// ASSERT
 	//
-	// Verify activeVersionId is now set to the current versionId
+	// Verify workflows were NOT activated (activation is no longer supported)
 	const workflowRepo = Container.get(WorkflowRepository);
-	const workflow1 = await workflowRepo.findOne({
-		where: { id: workflows[0].id },
-		relations: ['activeVersion'],
-	});
-	const workflow2 = await workflowRepo.findOne({
-		where: { id: workflows[1].id },
-		relations: ['activeVersion'],
-	});
+	const workflow1 = await workflowRepo.findOneBy({ id: workflows[0].id });
+	const workflow2 = await workflowRepo.findOneBy({ id: workflows[1].id });
 
-	expect(workflow1?.activeVersionId).toBe(workflows[0].versionId);
-	expect(workflow1?.activeVersion?.versionId).toBe(workflows[0].versionId);
-	expect(workflow2?.activeVersionId).toBe(workflows[1].versionId);
-	expect(workflow2?.activeVersion?.versionId).toBe(workflows[1].versionId);
+	expect(workflow1?.activeVersionId).toBeNull();
+	expect(workflow2?.activeVersionId).toBeNull();
 });
 
 test('update:workflow can deactivate all workflows', async () => {
@@ -92,30 +82,25 @@ test('update:workflow can deactivate all workflows', async () => {
 	expect(workflow2?.activeVersion).toBeNull();
 });
 
-test('update:workflow can activate a specific workflow', async () => {
+test('update:workflow does not activate when trying to activate a specific workflow', async () => {
 	//
 	// ARRANGE
 	//
-	const workflows = (
-		await Promise.all([
-			createWorkflowWithTriggerAndHistory(),
-			createWorkflowWithTriggerAndHistory(),
-		])
-	).sort((wf1, wf2) => wf1.id.localeCompare(wf2.id));
+	const workflow = await createWorkflowWithTriggerAndHistory();
 
 	//
 	// ACT
 	//
-	await command.run([`--id=${workflows[0].id}`, '--active=true']);
+	await command.run([`--id=${workflow.id}`, '--active=true']);
 
 	//
 	// ASSERT
 	//
-	const after = (await getAllWorkflows()).sort((wf1, wf2) => wf1.id.localeCompare(wf2.id));
-	expect(after).toMatchObject([
-		{ activeVersionId: workflows[0].versionId },
-		{ activeVersionId: null },
-	]);
+	// Verify workflow was NOT activated
+	const workflowRepo = Container.get(WorkflowRepository);
+	const unchangedWorkflow = await workflowRepo.findOneBy({ id: workflow.id });
+
+	expect(unchangedWorkflow?.activeVersionId).toBeNull();
 });
 
 test('update:workflow can deactivate a specific workflow', async () => {
