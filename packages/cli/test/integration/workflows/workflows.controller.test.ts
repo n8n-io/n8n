@@ -12,7 +12,6 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { GlobalConfig } from '@n8n/config';
 import type {
 	User,
 	ListQueryDb,
@@ -73,7 +72,6 @@ let projectRepository: ProjectRepository;
 let workflowRepository: WorkflowRepository;
 let workflowHistoryRepository: WorkflowHistoryRepository;
 let eventService: EventService;
-let globalConfig: GlobalConfig;
 let folderListMissingRole: Role;
 let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 
@@ -93,7 +91,6 @@ beforeEach(async () => {
 	workflowRepository = Container.get(WorkflowRepository);
 	workflowHistoryRepository = Container.get(WorkflowHistoryRepository);
 	eventService = Container.get(EventService);
-	globalConfig = Container.get(GlobalConfig);
 	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	owner = await createOwner();
 	authOwnerAgent = testServer.authAgentFor(owner);
