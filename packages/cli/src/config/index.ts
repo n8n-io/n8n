@@ -1,4 +1,4 @@
-import { inTest, Logger } from '@n8n/backend-common';
+import { inTest } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import convict from 'convict';
@@ -29,8 +29,6 @@ const config = convict(schema, { args: [] });
 
 // eslint-disable-next-line @typescript-eslint/unbound-method
 config.getEnv = config.get;
-
-const logger = Container.get(Logger);
 
 // Load overwrites when not in tests
 if (!inE2ETests && !inTest) {
