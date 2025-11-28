@@ -210,7 +210,7 @@ const onAfterLeave = () => {
     @after-leave="onAfterLeave"
   >
     <template #reference>
-      <span>Hover me</span>
+      <span>Click me</span>
     </template>
     <div>Animated popover</div>
   </N8nPopover>
