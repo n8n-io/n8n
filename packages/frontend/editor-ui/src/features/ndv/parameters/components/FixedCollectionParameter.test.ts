@@ -6,7 +6,6 @@ import { createTestingPinia } from '@pinia/testing';
 import userEvent from '@testing-library/user-event';
 import { fireEvent, waitFor } from '@testing-library/vue';
 import { setActivePinia } from 'pinia';
-import { nextTick } from 'vue';
 
 describe('FixedCollectionParameter.vue', () => {
 	const pinia = createTestingPinia({
@@ -144,9 +143,8 @@ describe('FixedCollectionParameter.vue', () => {
 			nodeValues: { parameters: { rules: { p0: [{ p0: 'Updated' }] } } },
 			values: { p0: [{ p0: 'Updated' }] },
 		});
-		await nextTick();
 		expect(input).toBeInTheDocument();
-		expect(input).toHaveValue('Updated');
+		await waitFor(() => expect(input).toHaveValue('Updated'));
 		expect(document.activeElement).toBe(input);
 	});
 });

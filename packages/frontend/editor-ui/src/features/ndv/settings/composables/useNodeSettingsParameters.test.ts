@@ -3,15 +3,17 @@ import { setActivePinia } from 'pinia';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useNodeSettingsParameters } from './useNodeSettingsParameters';
 import * as nodeHelpers from '@/app/composables/useNodeHelpers';
 import * as workflowHelpers from '@/app/composables/useWorkflowHelpers';
 import * as nodeSettingsUtils from '@/features/ndv/shared/ndv.utils';
 import * as nodeTypesUtils from '@/app/utils/nodeTypesUtils';
-import type { INodeProperties, INodeTypeDescription } from 'n8n-workflow';
+import type { INodeParameters, INodeProperties, INodeTypeDescription } from 'n8n-workflow';
 import type { MockedStore } from '@/__tests__/utils';
 import { mockedStore } from '@/__tests__/utils';
 import type { INodeUi } from '@/Interface';
+import { CHAT_TRIGGER_NODE_TYPE, HTTP_REQUEST_NODE_TYPE, WEBHOOK_NODE_TYPE } from '@/app/constants';
 
 describe('useNodeSettingsParameters', () => {
 	beforeEach(() => {
@@ -109,6 +111,7 @@ describe('useNodeSettingsParameters', () => {
 		}
 
 		let nodeTypesStore: MockedStore<typeof useNodeTypesStore>;
+		let settingsStore: MockedStore<typeof useSettingsStore>;
 
 		const mockParameter: INodeProperties = {
 			name: 'foo',
@@ -136,161 +139,1004 @@ describe('useNodeSettingsParameters', () => {
 			setActivePinia(createTestingPinia());
 
 			nodeTypesStore = mockedStore(useNodeTypesStore);
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValueOnce(mockNodeType);
+			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(mockNodeType);
+
+			settingsStore = mockedStore(useSettingsStore);
 		});
 
 		afterEach(() => {
-			vi.clearAllMocks();
+			vi.resetAllMocks();
 		});
 
-		it('returns false for hidden parameter type', () => {
-			mockNodeHelpers();
+		describe('hidden parameter type', () => {
+			it('returns false for hidden parameter type', () => {
+				mockNodeHelpers();
 
-			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-			const result = shouldDisplayNodeParameter({}, null, { ...mockParameter, type: 'hidden' });
-			expect(result).toBe(false);
-		});
-
-		it('returns false for custom API call with mustHideDuringCustomApiCall', () => {
-			vi.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall').mockReturnValueOnce(true);
-			mockNodeHelpers({ isCustomApiCallSelected: true });
-
-			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
-
-			const result = shouldDisplayNodeParameter({}, null, mockParameter);
-			expect(result).toBe(false);
-		});
-
-		it('returns false if parameter is auth-related', () => {
-			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(true);
-			vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(mockParameter);
-			mockNodeHelpers();
-
-			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
-
-			const result = shouldDisplayNodeParameter({}, null, mockParameter);
-			expect(result).toBe(false);
-		});
-
-		it('returns true if displayOptions is undefined', () => {
-			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
-			mockNodeHelpers();
-
-			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
-
-			const result = shouldDisplayNodeParameter({}, null, {
-				...mockParameter,
-				displayOptions: undefined,
+				const result = shouldDisplayNodeParameter({}, null, { ...mockParameter, type: 'hidden' });
+				expect(result).toBe(false);
 			});
-			expect(result).toBe(true);
+
+			it('does not call displayParameter for hidden parameters', () => {
+				mockNodeHelpers();
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				shouldDisplayNodeParameter({}, null, { ...mockParameter, type: 'hidden' });
+				expect(displayParameterSpy).not.toHaveBeenCalled();
+			});
 		});
 
-		it('calls displayParameter with correct arguments', () => {
-			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
-			mockNodeHelpers();
-			displayParameterSpy.mockReturnValueOnce(false);
+		describe('custom API call handling', () => {
+			it('returns false for custom API call with mustHideDuringCustomApiCall', () => {
+				vi.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall').mockReturnValueOnce(true);
+				mockNodeHelpers({ isCustomApiCallSelected: true });
 
-			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
 
-			const parameter: INodeProperties = {
-				name: 'foo',
-				type: 'string',
-				displayName: 'Foo',
-				disabledOptions: {},
-				default: '',
-			};
-			const nodeParameters = { foo: 'bar' };
-			const node: INodeUi = {
-				id: '1',
-				name: 'Node1',
-				position: [0, 0],
-				typeVersion: 1,
-				type: 'n8n-nodes-base.set',
-				parameters: nodeParameters,
-			};
+				const result = shouldDisplayNodeParameter({}, null, mockParameter);
+				expect(result).toBe(false);
+			});
 
-			const result = shouldDisplayNodeParameter(
-				nodeParameters,
-				node,
-				parameter,
-				'',
-				'disabledOptions',
-			);
+			it('returns true when custom API call selected but mustHideDuringCustomApiCall is false', () => {
+				vi.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers({ isCustomApiCallSelected: true });
+				displayParameterSpy.mockReturnValueOnce(true);
 
-			expect(displayParameterSpy).toHaveBeenCalledWith(
-				nodeParameters,
-				parameter,
-				'',
-				node,
-				'disabledOptions',
-			);
-			expect(result).toBe(false);
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = shouldDisplayNodeParameter({}, null, mockParameter);
+				expect(result).toBe(true);
+			});
+
+			it('does not check mustHideDuringCustomApiCall when custom API call is not selected', () => {
+				const mustHideSpy = vi
+					.spyOn(nodeSettingsUtils, 'mustHideDuringCustomApiCall')
+					.mockReturnValueOnce(true);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers({ isCustomApiCallSelected: false });
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				shouldDisplayNodeParameter({}, null, mockParameter);
+				expect(mustHideSpy).not.toHaveBeenCalled();
+			});
 		});
 
-		it('calls displayParameter with default displayOptions', () => {
-			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
-			mockNodeHelpers();
-			displayParameterSpy.mockReturnValueOnce(true);
-
-			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
-
-			const nodeParameters = { foo: 'bar' };
-			const node: INodeUi = {
-				id: '1',
-				name: 'Node1',
-				position: [0, 0],
-				typeVersion: 1,
-				type: 'n8n-nodes-base.set',
-				parameters: nodeParameters,
+		describe('auth-related parameter handling', () => {
+			const authParameter: INodeProperties = {
+				name: 'authentication',
+				type: 'options',
+				displayName: 'Authentication',
+				default: 'none',
+				options: [
+					{ name: 'None', value: 'none' },
+					{ name: 'OAuth2', value: 'oauth2' },
+				],
 			};
 
-			const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+			it('returns false if parameter is auth-related', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(true);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
+				mockNodeHelpers();
 
-			expect(displayParameterSpy).toHaveBeenCalledWith(
-				nodeParameters,
-				mockParameter,
-				'',
-				node,
-				'displayOptions',
-			);
-			expect(result).toBe(true);
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = shouldDisplayNodeParameter({}, null, mockParameter);
+				expect(result).toBe(false);
+			});
+
+			it('returns false when parameter name matches main auth field name', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
+				mockNodeHelpers();
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = shouldDisplayNodeParameter(
+					{},
+					{
+						id: '1',
+						name: 'Node1',
+						position: [0, 0],
+						typeVersion: 1,
+						type: 'test',
+						parameters: {},
+					},
+					authParameter,
+				);
+				expect(result).toBe(false);
+			});
+
+			it('shows auth field when node type is in KEEP_AUTH_IN_NDV_FOR_NODES', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(true);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const node: INodeUi = {
+					id: '1',
+					name: 'HTTP Request',
+					position: [0, 0],
+					typeVersion: 1,
+					type: HTTP_REQUEST_NODE_TYPE,
+					parameters: {},
+				};
+
+				const result = shouldDisplayNodeParameter({}, node, authParameter);
+				expect(result).toBe(true);
+			});
+
+			it('shows auth field when node type is webhook (in KEEP_AUTH_IN_NDV_FOR_NODES)', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(true);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const node: INodeUi = {
+					id: '1',
+					name: 'Webhook',
+					position: [0, 0],
+					typeVersion: 1,
+					type: WEBHOOK_NODE_TYPE,
+					parameters: {},
+				};
+
+				const result = shouldDisplayNodeParameter({}, node, authParameter);
+				expect(result).toBe(true);
+			});
+
+			it('shows parameter when no main auth field exists', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = shouldDisplayNodeParameter({}, null, mockParameter);
+				expect(result).toBe(true);
+			});
+
+			it('shows non-auth parameter when main auth field exists', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(authParameter);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'test',
+					parameters: {},
+				};
+
+				const result = shouldDisplayNodeParameter({}, node, mockParameter);
+				expect(result).toBe(true);
+			});
 		});
 
-		it('resolves expressions and calls displayParameter with resolved parameters', () => {
-			vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
-			mockNodeHelpers();
-			displayParameterSpy.mockReturnValueOnce(true);
-			const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
-			vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
-				...originalWorkflowHelpers,
-				resolveExpression: (expr: string) => (expr === '=1+1' ? 2 : expr),
-			}));
-
-			const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
-
-			const nodeParameters = { foo: '=1+1' };
-			const node: INodeUi = {
-				id: '1',
-				name: 'Node1',
-				position: [0, 0],
-				typeVersion: 1,
-				type: 'n8n-nodes-base.set',
-				parameters: nodeParameters,
+		describe('chat trigger availableInChat parameter', () => {
+			const chatTriggerNodeType: INodeTypeDescription = {
+				...mockNodeType,
+				name: CHAT_TRIGGER_NODE_TYPE,
 			};
 
-			const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+			const availableInChatParameter: INodeProperties = {
+				name: 'availableInChat',
+				type: 'boolean',
+				displayName: 'Available in Chat',
+				default: false,
+			};
 
-			expect(displayParameterSpy).toHaveBeenCalledWith(
-				{ foo: 2 },
-				mockParameter,
-				'',
-				node,
-				'displayOptions',
-			);
+			it('hides availableInChat when chat feature is disabled', () => {
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
 
-			expect(displayParameterSpy).toHaveBeenCalled();
-			expect(result).toBe(true);
+				settingsStore.isChatFeatureEnabled = false;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const node: INodeUi = {
+					id: '1',
+					name: 'Chat Trigger',
+					position: [0, 0],
+					typeVersion: 1,
+					type: CHAT_TRIGGER_NODE_TYPE,
+					parameters: {},
+				};
+
+				const result = shouldDisplayNodeParameter({}, node, availableInChatParameter);
+				expect(result).toBe(false);
+			});
+
+			it('shows availableInChat when chat feature is enabled', () => {
+				nodeTypesStore.getNodeType = vi.fn().mockReturnValue(chatTriggerNodeType);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				settingsStore.isChatFeatureEnabled = true;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const node: INodeUi = {
+					id: '1',
+					name: 'Chat Trigger',
+					position: [0, 0],
+					typeVersion: 1,
+					type: CHAT_TRIGGER_NODE_TYPE,
+					parameters: {},
+				};
+
+				const result = shouldDisplayNodeParameter({}, node, availableInChatParameter);
+				expect(result).toBe(true);
+			});
+
+			it('does not affect availableInChat on non-chat trigger nodes', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				settingsStore.isChatFeatureEnabled = false;
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const node: INodeUi = {
+					id: '1',
+					name: 'Other Node',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.other',
+					parameters: {},
+				};
+
+				const result = shouldDisplayNodeParameter({}, node, availableInChatParameter);
+				expect(result).toBe(true);
+			});
+		});
+
+		describe('displayOptions handling', () => {
+			it('returns true if displayOptions is undefined', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = shouldDisplayNodeParameter({}, null, {
+					...mockParameter,
+					displayOptions: undefined,
+				});
+				expect(result).toBe(true);
+			});
+
+			it('returns true if disabledOptions is undefined when using disabledOptions displayKey', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const parameterWithoutDisabledOptions: INodeProperties = {
+					...mockParameter,
+					displayOptions: { show: { resource: ['user'] } },
+				};
+
+				const result = shouldDisplayNodeParameter(
+					{},
+					null,
+					parameterWithoutDisabledOptions,
+					'',
+					'disabledOptions',
+				);
+				expect(result).toBe(true);
+			});
+		});
+
+		describe('path parameter handling', () => {
+			it('gets rawValues from path when path is provided', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = {
+					nested: {
+						foo: 'bar',
+					},
+				};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter, 'nested');
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					nodeParameters,
+					mockParameter,
+					'nested',
+					node,
+					'displayOptions',
+				);
+				expect(result).toBe(true);
+			});
+
+			it('returns false when rawValues at path is null', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = {
+					nested: null,
+				};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const result = shouldDisplayNodeParameter(
+					nodeParameters as unknown as Record<string, string>,
+					node,
+					mockParameter,
+					'nested',
+				);
+				expect(result).toBe(false);
+			});
+
+			it('returns false when rawValues at path is undefined', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = {};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const result = shouldDisplayNodeParameter(
+					nodeParameters,
+					node,
+					mockParameter,
+					'nonexistent.path',
+				);
+				expect(result).toBe(false);
+			});
+		});
+
+		describe('expression resolution', () => {
+			it('resolves expressions and calls displayParameter with resolved parameters', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: (expr: string) => (expr === '=1+1' ? 2 : expr),
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = { foo: '=1+1' };
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					{ foo: 2 },
+					mockParameter,
+					'',
+					node,
+					'displayOptions',
+				);
+
+				expect(displayParameterSpy).toHaveBeenCalled();
+				expect(result).toBe(true);
+			});
+
+			it('defers resolution when expression references missing parameter with $parameter', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const resolveExpressionSpy = vi.fn();
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: resolveExpressionSpy,
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = {
+					first: '={{ $parameter.second }}',
+					second: 'value',
+				};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+
+				// The expression with $parameter.second should be deferred until 'second' is processed
+				// So resolveExpression should still be called eventually
+				expect(displayParameterSpy).toHaveBeenCalled();
+			});
+
+			it('handles mutually dependent expressions (circular dependency)', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				// Track resolution order to detect any bugs:
+				const resolutionOrder: string[] = [];
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: (expr: string, siblingParameters: INodeParameters = {}) => {
+						if (expr === '={{ $parameter.second }}') {
+							resolutionOrder.push('first');
+							return (siblingParameters.second as string) ?? 'unresolved_second';
+						}
+						if (expr === '={{ $parameter.first }}') {
+							resolutionOrder.push('second');
+							return (siblingParameters.first as string) ?? 'unresolved_first';
+						}
+						return 'resolved';
+					},
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				// Both expressions reference each other - circular dependency
+				// Object.keys() returns ['first', 'second'] in insertion order
+				const nodeParameters = {
+					first: '={{ $parameter.second }}',
+					second: '={{ $parameter.first }}',
+				};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+
+				// Both should be resolved
+				expect(resolutionOrder).toContain('first');
+				expect(resolutionOrder).toContain('second');
+
+				// With circular deps, the original code would keep deferring both until safety limit,
+				// then resolve them. Our refactored code should defer both, then resolve in order.
+				expect(resolutionOrder[0]).toBe('first');
+			});
+
+			it('handles chained expression dependencies (a depends on b, b depends on c)', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				// Track resolution order to verify dependencies are resolved correctly
+				const resolutionOrder: string[] = [];
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: (expr: string, siblingParameters: INodeParameters = {}) => {
+						if (expr === '={{ $parameter.second }}') {
+							resolutionOrder.push('first');
+							// If second wasn't resolved yet, this would return 'unresolved'
+							return (siblingParameters.second as string) ?? 'unresolved';
+						}
+						if (expr === '={{ $parameter.third }}') {
+							resolutionOrder.push('second');
+							// If third wasn't resolved yet, this would return 'unresolved'
+							return (siblingParameters.third as string) ?? 'unresolved';
+						}
+						if (expr === '=base') {
+							resolutionOrder.push('third');
+							return 'base_value';
+						}
+						return expr;
+					},
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				// Chained: first -> second -> third (which is a plain expression)
+				const nodeParameters = {
+					first: '={{ $parameter.second }}',
+					second: '={{ $parameter.third }}',
+					third: '=base',
+				};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+
+				// Should resolve in correct order: third -> second -> first
+				// This ensures dependencies are resolved before dependents
+				expect(resolutionOrder).toEqual(['third', 'second', 'first']);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					expect.objectContaining({
+						third: 'base_value',
+						second: 'base_value',
+						first: 'base_value',
+					}),
+					mockParameter,
+					'',
+					node,
+					'displayOptions',
+				);
+			});
+
+			it('sets empty string when expression resolution throws error', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: () => {
+						throw new Error('Invalid expression');
+					},
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = { foo: '=invalid{{expression' };
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					{ foo: '' },
+					mockParameter,
+					'',
+					node,
+					'displayOptions',
+				);
+				expect(result).toBe(true);
+			});
+
+			it('handles non-expression values without resolving', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+				const resolveExpressionSpy = vi.fn();
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: resolveExpressionSpy,
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = { foo: 'plain value' };
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+
+				expect(resolveExpressionSpy).not.toHaveBeenCalled();
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					nodeParameters,
+					mockParameter,
+					'',
+					node,
+					'displayOptions',
+				);
+			});
+
+			it('resolves expressions with path and calls displayParameter with deepCopy', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: (expr: string) => (expr === '=resolved' ? 'resolved_value' : expr),
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = {
+					nested: {
+						foo: '=resolved',
+					},
+				};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter, 'nested');
+
+				// When path is provided and expressions are resolved, it should deepCopy and set the resolved values
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					expect.objectContaining({
+						nested: { foo: 'resolved_value' },
+					}),
+					mockParameter,
+					'nested',
+					node,
+					'displayOptions',
+				);
+				expect(result).toBe(true);
+			});
+
+			it('handles mixed expression and non-expression values', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+				const originalWorkflowHelpers = workflowHelpers.useWorkflowHelpers();
+				vi.spyOn(workflowHelpers, 'useWorkflowHelpers').mockImplementation(() => ({
+					...originalWorkflowHelpers,
+					resolveExpression: () => 'resolved',
+				}));
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = {
+					expr: '=expression',
+					plain: 'plain value',
+					number: 42,
+				};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					{ expr: 'resolved', plain: 'plain value', number: 42 },
+					mockParameter,
+					'',
+					node,
+					'displayOptions',
+				);
+			});
+		});
+
+		describe('displayParameter delegation', () => {
+			it('calls displayParameter with correct arguments', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(false);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const parameter: INodeProperties = {
+					name: 'foo',
+					type: 'string',
+					displayName: 'Foo',
+					disabledOptions: {},
+					default: '',
+				};
+				const nodeParameters = { foo: 'bar' };
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const result = shouldDisplayNodeParameter(
+					nodeParameters,
+					node,
+					parameter,
+					'',
+					'disabledOptions',
+				);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					nodeParameters,
+					parameter,
+					'',
+					node,
+					'disabledOptions',
+				);
+				expect(result).toBe(false);
+			});
+
+			it('calls displayParameter with default displayOptions', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = { foo: 'bar' };
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					nodeParameters,
+					mockParameter,
+					'',
+					node,
+					'displayOptions',
+				);
+				expect(result).toBe(true);
+			});
+
+			it('returns the result from displayParameter', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(false);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = { foo: 'bar' };
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				expect(result).toBe(false);
+
+				displayParameterSpy.mockReturnValueOnce(true);
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+
+				const result2 = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+				expect(result2).toBe(true);
+			});
+		});
+
+		describe('edge cases', () => {
+			it('handles null node parameter', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const result = shouldDisplayNodeParameter({ foo: 'bar' }, null, mockParameter);
+				expect(result).toBe(true);
+			});
+
+			it('handles empty nodeParameters', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: {},
+				};
+
+				const result = shouldDisplayNodeParameter({}, node, mockParameter);
+				expect(result).toBe(true);
+			});
+
+			it('handles undefined path parameter (uses empty string default)', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = { foo: 'bar' };
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				// Call without path parameter (uses default empty string)
+				const result = shouldDisplayNodeParameter(nodeParameters, node, mockParameter);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					nodeParameters,
+					mockParameter,
+					'',
+					node,
+					'displayOptions',
+				);
+				expect(result).toBe(true);
+			});
+
+			it('handles non-string values in nodeParameters', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = {
+					stringVal: 'test',
+					numberVal: 123,
+					boolVal: true,
+					arrayVal: [1, 2, 3],
+					objectVal: { nested: 'value' },
+				};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const result = shouldDisplayNodeParameter(
+					nodeParameters as unknown as Record<string, string>,
+					node,
+					mockParameter,
+				);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					nodeParameters,
+					mockParameter,
+					'',
+					node,
+					'displayOptions',
+				);
+				expect(result).toBe(true);
+			});
+
+			it('handles deeply nested paths', () => {
+				vi.spyOn(nodeTypesUtils, 'isAuthRelatedParameter').mockReturnValueOnce(false);
+				vi.spyOn(nodeTypesUtils, 'getMainAuthField').mockReturnValueOnce(null);
+				mockNodeHelpers();
+				displayParameterSpy.mockReturnValueOnce(true);
+
+				const { shouldDisplayNodeParameter } = useNodeSettingsParameters();
+
+				const nodeParameters = {
+					level1: {
+						level2: {
+							level3: {
+								foo: 'bar',
+							},
+						},
+					},
+				};
+				const node: INodeUi = {
+					id: '1',
+					name: 'Node1',
+					position: [0, 0],
+					typeVersion: 1,
+					type: 'n8n-nodes-base.set',
+					parameters: nodeParameters,
+				};
+
+				const result = shouldDisplayNodeParameter(
+					nodeParameters,
+					node,
+					mockParameter,
+					'level1.level2.level3',
+				);
+
+				expect(displayParameterSpy).toHaveBeenCalledWith(
+					nodeParameters,
+					mockParameter,
+					'level1.level2.level3',
+					node,
+					'displayOptions',
+				);
+				expect(result).toBe(true);
+			});
 		});
 	});
 });
