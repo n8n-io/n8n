@@ -462,12 +462,15 @@ export class WorkflowService {
 					workflow: updatedWorkflow,
 					publicApi,
 				});
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId,
-					versionId: workflow.activeVersionId ?? workflow.versionId,
-					status: 'deactivated',
-					userId: user.id,
-				});
+				if (workflow.activeVersionId !== null) {
+					// sanity check - activeVersionId should always be defined at this stage
+					await this.workflowPublishHistoryRepository.addRecord({
+						workflowId,
+						versionId: workflow.activeVersionId,
+						status: 'deactivated',
+						userId: user.id,
+					});
+				}
 			}
 
 			if (isNowActive) {
