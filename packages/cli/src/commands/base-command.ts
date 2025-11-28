@@ -20,7 +20,7 @@ import {
 	ErrorReporter,
 	ExecutionContextHookRegistry,
 } from 'n8n-core';
-import { ensureError, sleep, UnexpectedError, UserError } from 'n8n-workflow';
+import { ensureError, sleep, UnexpectedError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
