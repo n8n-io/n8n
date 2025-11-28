@@ -16,7 +16,7 @@ import {
 	SOURCE_CONTROL_PREFERENCES_DB_KEY,
 } from './constants';
 import { generateSshKeyPair, isSourceControlLicensed } from './source-control-helper.ee';
-import { SourceControlConfig } from '../../environments.ee/source-control/source-control.config';
+import { SourceControlConfig } from './source-control.config';
 import type { KeyPairType } from '../../environments.ee/source-control/types/key-pair-type';
 import { SourceControlPreferences } from './types/source-control-preferences';
 
