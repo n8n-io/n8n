@@ -19,7 +19,7 @@ import type { EventService } from '@/events/event.service';
 import type { SourceControlGitService } from '../source-control-git.service.ee';
 import * as sourceControlHelper from '../source-control-helper.ee';
 import type { SourceControlImportService } from '../source-control-import.service.ee';
-import { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from '../../../modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlStatusService } from '../source-control-status.service.ee';
 import type { StatusExportableCredential } from '../types/exportable-credential';
 import type { ExportableProjectWithFileName } from '../types/exportable-project';

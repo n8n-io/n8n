@@ -18,8 +18,8 @@ import {
 	getTrackingInformationFromPullResult,
 	isWorkflowModified,
 	sourceControlFoldersExistCheck,
-} from '@/environments.ee/source-control/source-control-helper.ee';
-import type { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
+} from '../source-control-helper.ee';
+import type { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import type { License } from '@/license';
 
 import type { SourceControlWorkflowVersionId } from '../types/source-control-workflow-version-id';

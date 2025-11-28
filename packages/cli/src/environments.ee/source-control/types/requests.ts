@@ -4,7 +4,7 @@ import type { SourceControlCommit } from './source-control-commit';
 import type { SourceControlDisconnect } from './source-control-disconnect';
 import type { SourceControlGenerateKeyPair } from './source-control-generate-key-pair';
 import type { SourceControlGetStatus } from './source-control-get-status';
-import type { SourceControlPreferences } from './source-control-preferences';
+import type { SourceControlPreferences } from '../../../modules/source-control.ee/types/source-control-preferences';
 import type { SourceControlPush } from './source-control-push';
 import type { SourceControlSetBranch } from './source-control-set-branch';
 import type { SourceControlSetReadOnly } from './source-control-set-read-only';

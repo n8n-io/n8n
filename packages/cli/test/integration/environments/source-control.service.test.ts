@@ -31,7 +31,7 @@ import {
 import { SourceControlExportService } from '@/environments.ee/source-control/source-control-export.service.ee';
 import type { SourceControlGitService } from '@/environments.ee/source-control/source-control-git.service.ee';
 import { SourceControlImportService } from '@/environments.ee/source-control/source-control-import.service.ee';
-import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/environments.ee/source-control/source-control-scoped.service';
 import { SourceControlStatusService } from '@/environments.ee/source-control/source-control-status.service.ee';
 import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';

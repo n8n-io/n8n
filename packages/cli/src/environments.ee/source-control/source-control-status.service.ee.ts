@@ -19,7 +19,7 @@ import {
 	isWorkflowModified,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
-import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
 import type { StatusExportableCredential } from './types/exportable-credential';
 import type { ExportableFolder } from './types/exportable-folders';
 import type { ExportableProjectWithFileName } from './types/exportable-project';

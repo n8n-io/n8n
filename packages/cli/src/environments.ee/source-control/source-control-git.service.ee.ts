@@ -24,8 +24,8 @@ import {
 	SOURCE_CONTROL_ORIGIN,
 } from './constants';
 import { sourceControlFoldersExistCheck } from './source-control-helper.ee';
-import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
-import type { SourceControlPreferences } from './types/source-control-preferences';
+import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
+import type { SourceControlPreferences } from '../../modules/source-control.ee/types/source-control-preferences';
 
 /**
  * Service for interacting with locally cloned git repositories.

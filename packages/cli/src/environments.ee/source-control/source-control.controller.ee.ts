@@ -12,13 +12,13 @@ import {
 	sourceControlLicensedAndEnabledMiddleware,
 } from './middleware/source-control-enabled-middleware.ee';
 import { getRepoType } from './source-control-helper.ee';
-import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlService } from './source-control.service.ee';
 import type { ImportResult } from './types/import-result';
 import { SourceControlRequest } from './types/requests';
 import { SourceControlGetStatus } from './types/source-control-get-status';
-import type { SourceControlPreferences } from './types/source-control-preferences';
+import type { SourceControlPreferences } from '../../modules/source-control.ee/types/source-control-preferences';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

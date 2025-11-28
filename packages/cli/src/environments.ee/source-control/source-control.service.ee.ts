@@ -27,7 +27,7 @@ import {
 	sourceControlFoldersExistCheck,
 } from './source-control-helper.ee';
 import { SourceControlImportService } from './source-control-import.service.ee';
-import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
 import {
 	filterByType,
 	getDeletedResources,
@@ -38,7 +38,7 @@ import { SourceControlStatusService } from './source-control-status.service.ee';
 import type { ImportResult } from './types/import-result';
 import { SourceControlContext } from './types/source-control-context';
 import type { SourceControlGetStatus } from './types/source-control-get-status';
-import type { SourceControlPreferences } from './types/source-control-preferences';
+import type { SourceControlPreferences } from '../../modules/source-control.ee/types/source-control-preferences';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';

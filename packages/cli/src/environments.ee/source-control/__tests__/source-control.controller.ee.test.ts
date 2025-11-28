@@ -5,7 +5,7 @@ import { mock } from 'jest-mock-extended';
 
 import type { EventService } from '@/events/event.service';
 
-import type { SourceControlPreferencesService } from '../source-control-preferences.service.ee';
+import type { SourceControlPreferencesService } from '../../../modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlController } from '../source-control.controller.ee';
 import type { SourceControlService } from '../source-control.service.ee';
 import type { SourceControlRequest } from '../types/requests';
