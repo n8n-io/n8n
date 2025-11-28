@@ -5,7 +5,8 @@ import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document
 import type { VectorStore } from '@langchain/core/vectorstores';
 import type { MockProxy } from 'jest-mock-extended';
 import { mock } from 'jest-mock-extended';
-import { DynamicTool } from 'langchain/tools';
+import type { DynamicTool } from 'langchain/tools';
+import { DynamicStructuredTool } from 'langchain/tools';
 import type { ISupplyDataFunctions } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -97,7 +98,7 @@ describe('handleRetrieveAsToolOperation', () => {
 		jest.clearAllMocks();
 	});
 
-	it('should create a dynamic tool with the correct name and description on version <= 1.2', async () => {
+	it('should create a structured tool with the correct name and description on version <= 1.2', async () => {
 		mockContext.getNode.mockReturnValueOnce({
 			id: 'testNode',
 			typeVersion: 1.2,
@@ -113,35 +114,37 @@ describe('handleRetrieveAsToolOperation', () => {
 			mockEmbeddings,
 			0,
 		)) as {
-			response: DynamicTool;
+			response: DynamicStructuredTool;
 		};
 
 		expect(result).toHaveProperty('response');
-		expect(result.response).toBeInstanceOf(DynamicTool);
+		// Tool is always a DynamicStructuredTool because we always add 'input' as extraArg
+		expect(result.response).toBeInstanceOf(DynamicStructuredTool);
 		expect(result.response.name).toBe('test_knowledge_base');
 		expect(result.response.description).toBe('Search the test knowledge base');
 
 		// Check logWrapper was called
-		expect(logWrapper).toHaveBeenCalledWith(expect.any(DynamicTool), mockContext);
+		expect(logWrapper).toHaveBeenCalledWith(expect.any(DynamicStructuredTool), mockContext);
 	});
 
-	it('should create a dynamic tool with the correct name and description on version > 1.2', async () => {
+	it('should create a structured tool with the correct name and description on version > 1.2', async () => {
 		const result = (await handleRetrieveAsToolOperation(
 			mockContext,
 			mockArgs,
 			mockEmbeddings,
 			0,
 		)) as {
-			response: DynamicTool;
+			response: DynamicStructuredTool;
 		};
 
 		expect(result).toHaveProperty('response');
-		expect(result.response).toBeInstanceOf(DynamicTool);
+		// Tool is always a DynamicStructuredTool because we always add 'input' as extraArg
+		expect(result.response).toBeInstanceOf(DynamicStructuredTool);
 		expect(result.response.name).toBe('Test_Knowledge_Base');
 		expect(result.response.description).toBe('Search the test knowledge base');
 
 		// Check logWrapper was called
-		expect(logWrapper).toHaveBeenCalledWith(expect.any(DynamicTool), mockContext);
+		expect(logWrapper).toHaveBeenCalledWith(expect.any(DynamicStructuredTool), mockContext);
 	});
 
 	it('should create a tool that can search the vector store', async () => {
@@ -333,9 +336,10 @@ describe('handleRetrieveAsToolOperation', () => {
 			]);
 
 			const result = await handleRetrieveAsToolOperation(mockContext, mockArgs, mockEmbeddings, 0);
-			const tool = result.response as DynamicTool;
+			const tool = result.response as DynamicStructuredTool;
 
-			const toolResult = await tool.invoke('test query');
+			// DynamicStructuredTool expects an object with 'input' key
+			const toolResult = await tool.invoke({ input: 'test query' });
 
 			// Check that relevanceScore is used but not included in the final metadata
 			const parsedFirst = JSON.parse(toolResult[0].text);

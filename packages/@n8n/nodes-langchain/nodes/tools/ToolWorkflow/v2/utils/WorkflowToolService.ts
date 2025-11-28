@@ -8,7 +8,6 @@ import { getCurrentWorkflowInputData } from 'n8n-nodes-base/dist/utils/workflowI
 import type {
 	ExecuteWorkflowData,
 	ExecutionError,
-	FromAIArgument,
 	IDataObject,
 	IExecuteFunctions,
 	IExecuteWorkflowInfo,
@@ -21,15 +20,17 @@ import type {
 	ResourceMapperValue,
 } from 'n8n-workflow';
 import {
-	generateZodSchema,
 	jsonParse,
 	NodeConnectionTypes,
 	NodeOperationError,
 	parseErrorMetadata,
 	sleepWithAbort,
-	traverseNodeParameters,
 } from 'n8n-workflow';
-import { z } from 'zod';
+
+import {
+	createZodSchemaFromArgs,
+	extractFromAIParameters,
+} from '../../../../../utils/fromAIToolFactory';
 
 function isNodeExecutionData(data: unknown): data is INodeExecutionData[] {
 	return isArray(data) && Boolean(data.length) && isObject(data[0]) && 'json' in data[0];
@@ -207,7 +208,7 @@ export class WorkflowToolService {
 
 		// Create structured tool if input schema is provided
 		return this.useSchema
-			? await this.createStructuredTool(name, description, toolHandler)
+			? this.createStructuredTool(name, description, toolHandler)
 			: new DynamicTool({ name, description, func: toolHandler });
 	}
 
@@ -404,44 +405,23 @@ export class WorkflowToolService {
 	/**
 	 *  Create structured tool by parsing the sub-workflow input schema
 	 */
-	private async createStructuredTool(
+	private createStructuredTool(
 		name: string,
 		description: string,
 		func: (
 			query: string | IDataObject,
 			runManager?: CallbackManagerForToolRun,
 		) => Promise<string | IDataObject | IDataObject[]>,
-	): Promise<DynamicStructuredTool | DynamicTool> {
-		const collectedArguments = await this.extractFromAIParameters();
+	): DynamicStructuredTool | DynamicTool {
+		const collectedArguments = extractFromAIParameters(this.baseContext.getNode().parameters);
 
 		// If there are no `fromAI` arguments, fallback to creating a simple tool
 		if (collectedArguments.length === 0) {
 			return new DynamicTool({ name, description, func });
 		}
 
-		// Otherwise, prepare Zod schema  and create a structured tool
-		const schema = this.createZodSchema(collectedArguments);
+		// Otherwise, prepare Zod schema and create a structured tool
+		const schema = createZodSchemaFromArgs(collectedArguments);
 		return new DynamicStructuredTool({ schema, name, description, func });
-	}
-
-	private async extractFromAIParameters(): Promise<FromAIArgument[]> {
-		const collectedArguments: FromAIArgument[] = [];
-		traverseNodeParameters(this.baseContext.getNode().parameters, collectedArguments);
-
-		const uniqueArgsMap = new Map<string, FromAIArgument>();
-		for (const arg of collectedArguments) {
-			uniqueArgsMap.set(arg.key, arg);
-		}
-
-		return Array.from(uniqueArgsMap.values());
-	}
-
-	private createZodSchema(args: FromAIArgument[]): z.ZodObject<any> {
-		const schemaObj = args.reduce((acc: Record<string, z.ZodTypeAny>, placeholder) => {
-			acc[placeholder.key] = generateZodSchema(placeholder);
-			return acc;
-		}, {});
-
-		return z.object(schemaObj).required();
 	}
 }
