@@ -113,7 +113,7 @@ export async function runPairwiseLangsmithEvaluation(repetitions: number = 1): P
 			throw new Error('Langsmith client not initialized');
 		}
 
-		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? 'workflow-builder-pairwise-prompts';
+		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? 'notion-pairwise-workflows';
 		console.log(pc.blue(`➔ Using dataset: ${datasetName}`));
 
 		// Verify dataset exists
