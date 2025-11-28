@@ -192,6 +192,19 @@ const properties: INodeProperties[] = [
 				placeholder: 'e.g. You are a helpful assistant',
 			},
 			{
+				displayName: 'Code Execution',
+				name: 'codeExecution',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.1 } }],
+					},
+				},
+			},
+			{
 				displayName: 'Frequency Penalty',
 				name: 'frequencyPenalty',
 				default: 0,
@@ -298,19 +311,6 @@ const properties: INodeProperties[] = [
 				typeOptions: {
 					minValue: 0,
 					numberPrecision: 0,
-				},
-			},
-			{
-				displayName: 'Code Execution',
-				name: 'codeExecution',
-				type: 'boolean',
-				default: true,
-				description:
-					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
-				displayOptions: {
-					show: {
-						'@version': [{ _cnd: { lt: 1.1 } }],
-					},
 				},
 			},
 		],
