@@ -15,6 +15,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
+import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -109,7 +110,23 @@ defineExpose({
 			</N8nTooltip>
 		</div>
 		<div v-if="!isArchived" :class="$style.publishButtonWrapper">
+			<KeyboardShortcutTooltip
+				v-if="!readOnly"
+				:label="i18n.baseText('workflows.publishModal.title')"
+				:shortcut="{ keys: ['p'], shiftKey: true }"
+				placement="bottom"
+			>
+				<N8nButton
+					type="secondary"
+					:disabled="readOnly"
+					data-test-id="workflow-publish-button"
+					@click="onPublishButtonClick"
+				>
+					{{ locale.baseText('workflows.publish') }}
+				</N8nButton>
+			</KeyboardShortcutTooltip>
 			<N8nButton
+				v-else
 				type="secondary"
 				:disabled="readOnly"
 				data-test-id="workflow-publish-button"
