@@ -1,3 +1,12 @@
+## [1.121.4](https://github.com/n8n-io/n8n/compare/n8n@1.121.3...n8n@1.121.4) (2025-11-28)
+
+
+### Bug Fixes
+
+* **core:** Introduce batch workflow rule to fix subworkflow with wait node detection ([#22447](https://github.com/n8n-io/n8n/issues/22447)) ([39c460c](https://github.com/n8n-io/n8n/commit/39c460c37c85380fd8a4e6ab560037c286db1c7f))
+
+
+
 ## [1.121.3](https://github.com/n8n-io/n8n/compare/n8n@1.121.2...n8n@1.121.3) (2025-11-26)
 
 
