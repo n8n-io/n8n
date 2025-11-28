@@ -14,8 +14,10 @@ import type { PyTaskRunnerProcess } from '@/task-runners/task-runner-process-py'
 import { TaskRunnerProcessRestartLoopDetector } from '@/task-runners/task-runner-process-restart-loop-detector';
 
 import { MissingAuthTokenError } from './errors/missing-auth-token.error';
+import { MissingRequirementsError } from './errors/missing-requirements.error';
 import type { TaskBrokerServer } from './task-broker/task-broker-server';
 import type { LocalTaskRequester } from './task-managers/local-task-requester';
+import { TaskRequester } from './task-managers/task-requester';
 
 /**
  * Module responsible for loading and starting task runner. Task runner can be
@@ -126,6 +128,15 @@ export class TaskRunnerModule {
 
 		if (this.runnerConfig.isNativePythonRunnerEnabled) {
 			const { PyTaskRunnerProcess } = await import('@/task-runners/task-runner-process-py');
+
+			const failureReason = await PyTaskRunnerProcess.checkRequirements();
+			if (failureReason) {
+				Container.get(TaskRequester).setRunnerUnavailable('python', failureReason);
+				const error = new MissingRequirementsError(failureReason);
+				this.logger.warn(error.message);
+				return; // allow bootup, will fail at execution time
+			}
+
 			this.pyRunnerProcess = Container.get(PyTaskRunnerProcess);
 			this.pyRunnerProcessRestartLoopDetector = new TaskRunnerProcessRestartLoopDetector(
 				this.pyRunnerProcess,

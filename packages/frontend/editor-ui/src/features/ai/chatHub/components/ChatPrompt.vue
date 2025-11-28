@@ -9,12 +9,14 @@ import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { useI18n } from '@n8n/i18n';
+import { I18nT } from 'vue-i18n';
 
-const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
+const { selectedModel, selectedTools, issue } = defineProps<{
 	isResponding: boolean;
 	isNewSession: boolean;
 	isToolsSelectable: boolean;
-	isMissingCredentials: boolean;
+	issue: 'missingCredentials' | 'missingAgent' | null;
 	selectedModel: ChatModelDto | null;
 	selectedTools: INode[] | null;
 }>();
@@ -34,6 +36,7 @@ const committedSpokenMessage = ref('');
 const attachments = ref<File[]>([]);
 
 const toast = useToast();
+const i18n = useI18n();
 
 const speechInput = useSpeechRecognition({
 	continuous: true,
@@ -41,9 +44,14 @@ const speechInput = useSpeechRecognition({
 	lang: navigator.language,
 });
 
-const placeholder = computed(() =>
-	selectedModel ? `Message ${selectedModel.name ?? 'a model'}...` : 'Select a model',
-);
+const placeholder = computed(() => {
+	if (selectedModel) {
+		return i18n.baseText('chatHub.chat.prompt.placeholder.withModel', {
+			interpolate: { model: selectedModel.name ?? 'a model' },
+		});
+	}
+	return i18n.baseText('chatHub.chat.prompt.placeholder.selectModel');
+});
 
 const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
 	isLlmProviderModel(selectedModel?.model) ? selectedModel?.model.provider : undefined,
@@ -138,15 +146,15 @@ watch(
 watch(speechInput.error, (event) => {
 	if (event?.error === 'not-allowed') {
 		toast.showError(
-			new Error('Microphone access denied'),
-			'Please allow microphone access to use voice input',
+			new Error(i18n.baseText('chatHub.chat.prompt.microphone.accessDenied')),
+			i18n.baseText('chatHub.chat.prompt.microphone.allowAccess'),
 		);
 		return;
 	}
 
 	if (event?.error === 'no-speech') {
 		toast.showMessage({
-			title: 'No speech detected. Please try again',
+			title: i18n.baseText('chatHub.chat.prompt.microphone.noSpeech'),
 			type: 'warning',
 		});
 	}
@@ -171,27 +179,50 @@ defineExpose({
 <template>
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
-			<N8nText v-if="!selectedModel" :class="$style.callout">
-				<template v-if="isNewSession">
-					Please <a href="" @click.prevent="emit('selectModel')">select a model</a> to start a
-					conversation
-				</template>
-				<template v-else>
-					Please <a href="" @click.prevent="emit('selectModel')">reselect a model</a> to continue
-					the conversation
-				</template>
+			<N8nText v-if="issue === 'missingAgent'" :class="$style.callout">
+				<I18nT
+					:keypath="
+						isNewSession
+							? 'chatHub.chat.prompt.callout.selectModel.new'
+							: 'chatHub.chat.prompt.callout.selectModel.existing'
+					"
+					tag="span"
+					scope="global"
+				>
+					<template #link>
+						<a href="" @click.prevent="emit('selectModel')">{{
+							i18n.baseText(
+								isNewSession
+									? 'chatHub.chat.prompt.callout.selectModel.new.link'
+									: 'chatHub.chat.prompt.callout.selectModel.existing.link',
+							)
+						}}</a>
+					</template>
+				</I18nT>
 			</N8nText>
-			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
-				<template v-if="isNewSession">
-					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)">set credentials</a>
-					for {{ providerDisplayNames[llmProvider] }} to start a conversation
-				</template>
-				<template v-else>
-					Please
-					<a href="" @click.prevent="emit('setCredentials', llmProvider)">set credentials</a>
-					for {{ providerDisplayNames[llmProvider] }} to continue the conversation
-				</template>
+			<N8nText v-else-if="issue === 'missingCredentials' && llmProvider" :class="$style.callout">
+				<I18nT
+					:keypath="
+						isNewSession
+							? 'chatHub.chat.prompt.callout.setCredentials.new'
+							: 'chatHub.chat.prompt.callout.setCredentials.existing'
+					"
+					tag="span"
+					scope="global"
+				>
+					<template #link>
+						<a href="" @click.prevent="emit('setCredentials', llmProvider)">{{
+							i18n.baseText(
+								isNewSession
+									? 'chatHub.chat.prompt.callout.setCredentials.new.link'
+									: 'chatHub.chat.prompt.callout.setCredentials.existing.link',
+							)
+						}}</a>
+					</template>
+					<template #provider>
+						{{ providerDisplayNames[llmProvider] }}
+					</template>
+				</I18nT>
 			</N8nText>
 			<input
 				ref="fileInputRef"
@@ -221,7 +252,7 @@ defineExpose({
 					autocomplete="off"
 					:autosize="{ minRows: 1, maxRows: 6 }"
 					autofocus
-					:disabled="isMissingCredentials || !selectedModel"
+					:disabled="!!issue"
 					@keydown="handleKeydownTextarea"
 				/>
 
@@ -230,7 +261,7 @@ defineExpose({
 						<ToolsSelector
 							:class="$style.toolsButton"
 							:selected="selectedTools ?? []"
-							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							:disabled="!!issue || isResponding"
 							transparent-bg
 							@select="onSelectTools"
 						/>
@@ -240,8 +271,8 @@ defineExpose({
 							v-if="selectedModel?.allowFileUploads"
 							native-type="button"
 							type="secondary"
-							title="Attach"
-							:disabled="isMissingCredentials || isResponding"
+							:title="i18n.baseText('chatHub.chat.prompt.button.attach')"
+							:disabled="!!issue || isResponding"
 							icon="paperclip"
 							icon-size="large"
 							text
@@ -250,9 +281,13 @@ defineExpose({
 						<N8nIconButton
 							v-if="speechInput.isSupported"
 							native-type="button"
-							:title="speechInput.isListening.value ? 'Stop recording' : 'Voice input'"
+							:title="
+								speechInput.isListening.value
+									? i18n.baseText('chatHub.chat.prompt.button.stopRecording')
+									: i18n.baseText('chatHub.chat.prompt.button.voiceInput')
+							"
 							type="secondary"
-							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							:disabled="!!issue || isResponding"
 							:icon="speechInput.isListening.value ? 'square' : 'mic'"
 							:class="{ [$style.recording]: speechInput.isListening.value }"
 							icon-size="large"
@@ -261,8 +296,8 @@ defineExpose({
 						<N8nIconButton
 							v-if="!isResponding"
 							native-type="submit"
-							:disabled="isMissingCredentials || !selectedModel || !message.trim()"
-							title="Send"
+							:disabled="!!issue || !message.trim()"
+							:title="i18n.baseText('chatHub.chat.prompt.button.send')"
 							icon="arrow-up"
 							icon-size="large"
 							@click.stop
@@ -270,7 +305,7 @@ defineExpose({
 						<N8nIconButton
 							v-else
 							native-type="button"
-							title="Stop generating"
+							:title="i18n.baseText('chatHub.chat.prompt.button.stopGenerating')"
 							icon="square"
 							icon-size="large"
 							@click.stop="onStop"
@@ -331,7 +366,7 @@ defineExpose({
 	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
 
 	&:focus-within,
-	&:hover {
+	&:hover:has(textarea:not(:disabled)) {
 		border-color: var(--color--secondary);
 	}
 

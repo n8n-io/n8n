@@ -274,4 +274,8 @@ export class BaseExecuteContext extends NodeExecutionContext {
 			this.executeData,
 		);
 	}
+
+	getRunnerStatus(taskType: string): { available: true } | { available: false; reason?: string } {
+		return this.additionalData.getRunnerStatus?.(taskType) ?? { available: true };
+	}
 }
