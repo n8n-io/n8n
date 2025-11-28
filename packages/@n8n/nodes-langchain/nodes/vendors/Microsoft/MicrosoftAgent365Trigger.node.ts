@@ -55,6 +55,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				httpMethod: 'POST',
 				responseMode: 'onReceived',
 				path: 'webhook',
+				ndvHideMethod: true,
 			},
 			{
 				name: 'default',
@@ -62,6 +63,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 				responseMode: 'onReceived',
 				path: 'webhook',
 				ndvHideUrl: true,
+				ndvHideMethod: true,
 			},
 		],
 		credentials: [
