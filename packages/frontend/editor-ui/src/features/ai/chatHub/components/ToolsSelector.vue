@@ -85,7 +85,7 @@ const onClick = () => {
 	gap: var(--spacing--2xs);
 
 	&.transparentBg {
-		background-color: transparent;
+		background-color: transparent !important;
 	}
 }
 

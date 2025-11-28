@@ -58,7 +58,6 @@ const sortOptions = computed(() => [
 ]);
 
 function handleCreateAgent() {
-	chatStore.currentEditingAgent = null;
 	uiStore.openModalWithData({
 		name: AGENT_EDITOR_MODAL_KEY,
 		data: {
@@ -81,18 +80,13 @@ async function handleEditAgent(model: ChatHubConversationModel) {
 	}
 
 	if (model.provider === 'custom-agent') {
-		try {
-			await chatStore.fetchCustomAgent(model.agentId);
-			uiStore.openModalWithData({
-				name: AGENT_EDITOR_MODAL_KEY,
-				data: {
-					agentId: model.agentId,
-					credentials: credentialsByProvider,
-				},
-			});
-		} catch (error) {
-			toast.showError(error, i18n.baseText('chatHub.agents.loadError'));
-		}
+		uiStore.openModalWithData({
+			name: AGENT_EDITOR_MODAL_KEY,
+			data: {
+				agentId: model.agentId,
+				credentials: credentialsByProvider,
+			},
+		});
 	}
 }
 

@@ -17,6 +17,7 @@ import { useIntersectionObserver } from '@vueuse/core';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
 import SkeletonMenuItem from './SkeletonMenuItem.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useI18n } from '@n8n/i18n';
 
 defineProps<{ isMobileDevice: boolean }>();
@@ -28,7 +29,11 @@ const toast = useToast();
 const message = useMessage();
 const sidebar = useChatHubSidebarState();
 const settingsStore = useSettingsStore();
+const credentialsStore = useCredentialsStore();
 const telemetry = useTelemetry();
+const readyToShowSessions = computed(
+	() => chatStore.sessionsReady && credentialsStore.allCredentialTypes.length > 0,
+);
 const i18n = useI18n();
 
 const renamingSessionId = ref<string>();
@@ -148,13 +153,11 @@ onMounted(() => {
 		</div>
 		<N8nScrollArea as-child type="scroll">
 			<div :class="$style.items">
-				<div
-					v-if="groupedConversations.length === 0 && !chatStore.sessionsReady"
-					:class="$style.group"
-				>
+				<div v-if="!readyToShowSessions" :class="$style.group">
 					<SkeletonMenuItem v-for="i in 10" :key="`loading-${i}`" />
 				</div>
 				<div
+					v-else
 					v-for="(group, index) in groupedConversations"
 					:key="group.group"
 					:class="$style.group"
