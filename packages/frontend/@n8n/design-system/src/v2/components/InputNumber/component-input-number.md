@@ -18,6 +18,7 @@ A number input component allowing users to enter and adjust numeric values. Supp
 - `step?: number` - Increment/decrement step amount. Default: `1`
 - `precision?: number` - Number of decimal places. Maps to Reka UI `formatOptions.maximumFractionDigits`.
 - `controls?: boolean` - Whether to show increment/decrement buttons. Default: `false`
+- `controlsPosition?: 'both' | 'right'` - Position of control buttons. `'both'` places −/+ on left/right sides. `'right'` places stacked up/down arrows on the right. Default: `'right'`
 - `disabled?: boolean` - Disables the input. Default: `false`
 - `placeholder?: string` - Placeholder text when empty.
 

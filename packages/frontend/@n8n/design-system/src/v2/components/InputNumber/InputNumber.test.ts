@@ -61,10 +61,11 @@ describe('v2/components/InputNumber', () => {
 	});
 
 	describe('controls', () => {
-		it('should show increment and decrement buttons when controls is true', () => {
+		it('should show increment and decrement buttons when controls is true (both mode)', () => {
 			const wrapper = render(InputNumber, {
 				props: {
 					controls: true,
+					controlsPosition: 'both',
 				},
 			});
 			const buttons = wrapper.container.querySelectorAll('button');
@@ -73,10 +74,25 @@ describe('v2/components/InputNumber', () => {
 			expect(buttons[1]).toHaveTextContent('+');
 		});
 
-		it('should increment value when clicking increment button', async () => {
+		it('should show stacked arrow buttons when controls is true (right mode)', () => {
 			const wrapper = render(InputNumber, {
 				props: {
 					controls: true,
+					controlsPosition: 'right',
+				},
+			});
+			const buttons = wrapper.container.querySelectorAll('button');
+			expect(buttons).toHaveLength(2);
+			// Right mode: increment (up arrow) first, decrement (down arrow) second
+			expect(buttons[0]).toHaveAttribute('aria-label', 'Increase');
+			expect(buttons[1]).toHaveAttribute('aria-label', 'Decrease');
+		});
+
+		it('should increment value when clicking increment button (both mode)', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					controls: true,
+					controlsPosition: 'both',
 					modelValue: 5,
 				},
 			});
@@ -90,15 +106,50 @@ describe('v2/components/InputNumber', () => {
 			});
 		});
 
-		it('should decrement value when clicking decrement button', async () => {
+		it('should decrement value when clicking decrement button (both mode)', async () => {
 			const wrapper = render(InputNumber, {
 				props: {
 					controls: true,
+					controlsPosition: 'both',
 					modelValue: 5,
 				},
 			});
 			const buttons = wrapper.container.querySelectorAll('button');
 			const decrementButton = buttons[0];
+
+			await userEvent.click(decrementButton);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([4]);
+			});
+		});
+
+		it('should increment value when clicking up arrow (right mode)', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					controls: true,
+					controlsPosition: 'right',
+					modelValue: 5,
+				},
+			});
+			const incrementButton = wrapper.getByLabelText('Increase');
+
+			await userEvent.click(incrementButton);
+
+			await waitFor(() => {
+				expect(wrapper.emitted('update:modelValue')?.[0]).toEqual([6]);
+			});
+		});
+
+		it('should decrement value when clicking down arrow (right mode)', async () => {
+			const wrapper = render(InputNumber, {
+				props: {
+					controls: true,
+					controlsPosition: 'right',
+					modelValue: 5,
+				},
+			});
+			const decrementButton = wrapper.getByLabelText('Decrease');
 
 			await userEvent.click(decrementButton);
 
@@ -147,6 +198,7 @@ describe('v2/components/InputNumber', () => {
 					modelValue: 1,
 					min: 0,
 					controls: true,
+					controlsPosition: 'both',
 				},
 			});
 
@@ -171,6 +223,7 @@ describe('v2/components/InputNumber', () => {
 					modelValue: 9,
 					max: 10,
 					controls: true,
+					controlsPosition: 'both',
 				},
 			});
 
@@ -195,6 +248,7 @@ describe('v2/components/InputNumber', () => {
 					modelValue: 0,
 					step: 5,
 					controls: true,
+					controlsPosition: 'both',
 				},
 			});
 
@@ -239,6 +293,7 @@ describe('v2/components/InputNumber', () => {
 			const wrapper = render(InputNumber, {
 				props: {
 					controls: true,
+					controlsPosition: 'both',
 				},
 				slots: {
 					increment: '<span data-test-id="custom-increment">UP</span>',
@@ -252,6 +307,7 @@ describe('v2/components/InputNumber', () => {
 			const wrapper = render(InputNumber, {
 				props: {
 					controls: true,
+					controlsPosition: 'both',
 				},
 				slots: {
 					decrement: '<span data-test-id="custom-decrement">DOWN</span>',
