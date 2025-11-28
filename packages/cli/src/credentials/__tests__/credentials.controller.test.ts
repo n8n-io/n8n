@@ -281,4 +281,28 @@ describe('CredentialsController', () => {
 			);
 		});
 	});
+
+	describe('getUsage', () => {
+		it('should delegate to credentialsService', async () => {
+			const usageReq = {
+				user: { id: 'user-id' },
+				params: { credentialId: 'cred-1' },
+			} as unknown as CredentialRequest.Usage;
+
+			const usageResult = { credentialId: 'cred-1', usageCount: 0, workflows: [] };
+			credentialsService.getCredentialUsage.mockResolvedValue(usageResult as any);
+
+			const response = await credentialsController.getUsage(
+				usageReq,
+				res,
+				usageReq.params.credentialId,
+			);
+
+			expect(credentialsService.getCredentialUsage).toHaveBeenCalledWith(
+				usageReq.user,
+				usageReq.params.credentialId,
+			);
+			expect(response).toEqual(usageResult);
+		});
+	});
 });

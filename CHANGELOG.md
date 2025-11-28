@@ -41,6 +41,7 @@
 * Add best practices for all builder categories ([#21943](https://github.com/n8n-io/n8n/issues/21943)) ([214a7e9](https://github.com/n8n-io/n8n/commit/214a7e9af3c0c74772526ff24c2fdce9da50058c))
 * Add support for global credentials  ([#21700](https://github.com/n8n-io/n8n/issues/21700)) ([55c3150](https://github.com/n8n-io/n8n/commit/55c3150c1126c277a3bfff5ff2fce07b4a667969))
 * **ai-builder:** Add python script for workflow comparison ([#21927](https://github.com/n8n-io/n8n/issues/21927)) ([246387e](https://github.com/n8n-io/n8n/commit/246387e3c985fe8de9078749be587b91bd9c898d))
+* **editor:** Surface credential usage insights inside the credential details panel
 * **ai-builder:** Send workflow validation issues to telemetry ([#21837](https://github.com/n8n-io/n8n/issues/21837)) ([0a355cc](https://github.com/n8n-io/n8n/commit/0a355ccadbd49f824611a8b5dbda43afffdeb83d))
 * Block UI updates for instance / project roles if provisioning enabed ([#22095](https://github.com/n8n-io/n8n/issues/22095)) ([72cdca2](https://github.com/n8n-io/n8n/commit/72cdca23d6b58352618a7386799ce43a260f320c))
 * **core:** Allow creating data tables from csv files ([#21051](https://github.com/n8n-io/n8n/issues/21051)) ([2830665](https://github.com/n8n-io/n8n/commit/2830665f7a325b3e4d8cf12b9f51eca76961268b))

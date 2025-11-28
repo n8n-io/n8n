@@ -88,6 +88,8 @@ export declare namespace CredentialRequest {
 
 	type Delete = Get;
 
+	type Usage = AuthenticatedRequest<{ credentialId: string }>;
+
 	type GetAll = AuthenticatedRequest<{}, {}, {}, { filter: string }>;
 
 	type Update = AuthenticatedRequest<{ credentialId: string }, {}, CredentialProperties>;

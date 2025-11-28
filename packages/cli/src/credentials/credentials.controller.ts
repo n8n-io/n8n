@@ -133,6 +133,16 @@ export class CredentialsController {
 		return { ...credential, scopes };
 	}
 
+	@Get('/:credentialId/usage')
+	@ProjectScope('credential:read')
+	async getUsage(
+		req: CredentialRequest.Usage,
+		_res: unknown,
+		@Param('credentialId') credentialId: string,
+	) {
+		return await this.credentialsService.getCredentialUsage(req.user, credentialId);
+	}
+
 	// TODO: Write at least test cases for the failure paths.
 	@Post('/test')
 	async testCredentials(req: CredentialRequest.Test) {
