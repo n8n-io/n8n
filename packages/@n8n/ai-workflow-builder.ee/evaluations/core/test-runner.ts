@@ -57,6 +57,7 @@ export function createErrorResult(testCase: TestCase, error: unknown): TestResul
 		programmaticEvaluationResult: {
 			overallScore: 0,
 			connections: { violations: [], score: 0 },
+			nodes: { violations: [], score: 0 },
 			trigger: { violations: [], score: 0 },
 			agentPrompt: { violations: [], score: 0 },
 			tools: { violations: [], score: 0 },

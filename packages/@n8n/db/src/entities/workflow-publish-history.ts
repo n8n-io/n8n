@@ -8,7 +8,6 @@ import {
 	PrimaryGeneratedColumn,
 	Relation,
 } from '@n8n/typeorm';
-import { WorkflowActivateMode } from 'n8n-workflow';
 
 import { WithCreatedAt } from './abstract-entity';
 import { User } from './user';
@@ -21,22 +20,18 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	id: number;
 
 	@Column({ type: 'varchar' })
-	@Index()
 	workflowId: string;
 
-	@Column({ type: 'varchar', nullable: true })
-	versionId: string | null;
-
-	@Column()
-	status: 'activated' | 'deactivated';
-
-	// We only expect 'activate', 'update' and 'init' from WorkflowActivateMode
-	// But this makes usage wrt typings easier.
-	// If you ever see other values here this would be unexpected though
 	@Column({ type: 'varchar' })
-	mode: WorkflowActivateMode | 'deactivate' | null;
+	versionId: string;
 
-	@Column({ type: 'varchar', nullable: true })
+	// Note that we only track "permanent" deactivations
+	// We don't explicitly track the deactivations of a previous active version
+	// which happens when a new active version of an already active workflow is published
+	@Column()
+	event: 'activated' | 'deactivated';
+
+	@Column({ type: 'uuid', nullable: true })
 	userId: string | null;
 
 	@OneToOne('User', {

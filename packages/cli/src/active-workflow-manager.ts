@@ -7,7 +7,7 @@ import {
 import { Logger } from '@n8n/backend-common';
 import { WorkflowsConfig } from '@n8n/config';
 import type { WorkflowEntity, IWorkflowDb } from '@n8n/db';
-import { WorkflowRepository, WorkflowPublishHistoryRepository } from '@n8n/db';
+import { WorkflowRepository } from '@n8n/db';
 import { OnLeaderStepdown, OnLeaderTakeover, OnPubSubEvent, OnShutdown } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import chunk from 'lodash/chunk';
@@ -52,6 +52,7 @@ import { ExternalHooks } from '@/external-hooks';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
+import { PubSubCommandMap } from '@/scaling/pubsub/pubsub.event-map';
 import { ActiveWorkflowsService } from '@/services/active-workflows.service';
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import { WebhookService } from '@/webhooks/webhook.service';
@@ -59,7 +60,6 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
-import { PubSubCommandMap } from './scaling/pubsub/pubsub.event-map';
 import { User } from '@n8n/api-types';
 
 interface QueuedActivation {
@@ -82,7 +82,6 @@ export class ActiveWorkflowManager {
 		private readonly nodeTypes: NodeTypes,
 		private readonly webhookService: WebhookService,
 		private readonly workflowRepository: WorkflowRepository,
-		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 		private readonly activationErrorsService: ActivationErrorsService,
 		private readonly executionService: ExecutionService,
 		private readonly workflowStaticDataService: WorkflowStaticDataService,
@@ -659,13 +658,6 @@ export class ActiveWorkflowManager {
 
 			const triggerCount = this.countTriggers(workflow, additionalData);
 			await this.workflowRepository.updateWorkflowTriggerCount(workflow.id, triggerCount);
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId,
-				versionId: dbWorkflow.versionId,
-				status: 'activated',
-				mode: activationMode,
-				userId,
-			});
 		} catch (e) {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			await this.activationErrorsService.register(workflowId, error.message);
@@ -931,18 +923,12 @@ export class ActiveWorkflowManager {
 		// if it's active in memory then it's a trigger
 		// so remove from list of actives workflows
 		await this.removeWorkflowTriggersAndPollers(workflowId);
-
-		await this.workflowPublishHistoryRepository.addRecord({
-			workflowId,
-			versionId: null,
-			status: 'deactivated',
-			mode: reason ?? null,
-			userId: userId ?? null,
-		});
 	}
 
 	@OnPubSubEvent('remove-triggers-and-pollers', { instanceType: 'main', instanceRole: 'leader' })
-	async handleRemoveTriggersAndPollers({ workflowId }: { workflowId: string }) {
+	async handleRemoveTriggersAndPollers({
+		workflowId,
+	}: PubSubCommandMap['remove-triggers-and-pollers']) {
 		await this.removeActivationError(workflowId);
 		await this.removeWorkflowTriggersAndPollers(workflowId);
 

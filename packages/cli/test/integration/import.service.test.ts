@@ -58,6 +58,7 @@ describe('ImportService', () => {
 			mockActiveWorkflowManager,
 			mockWorkflowIndexService,
 			Container.get(DatabaseConfig),
+			mock(),
 		);
 	});
 

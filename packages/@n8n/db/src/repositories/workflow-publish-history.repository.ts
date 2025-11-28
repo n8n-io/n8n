@@ -1,5 +1,5 @@
 import { Service } from '@n8n/di';
-import { DataSource, Equal, Or, Repository } from '@n8n/typeorm';
+import { DataSource, Repository } from '@n8n/typeorm';
 
 import { WorkflowPublishHistory } from '../entities';
 
@@ -12,49 +12,14 @@ export class WorkflowPublishHistoryRepository extends Repository<WorkflowPublish
 	async addRecord({
 		workflowId,
 		versionId,
-		status,
-		mode,
+		event,
 		userId,
-	}: Pick<WorkflowPublishHistory, 'status' | 'workflowId' | 'versionId' | 'mode' | 'userId'>) {
-		// We skip init events on instance start since they don't hold meaningful data
-		// and will grow the table over time without benefit
-		if (mode === 'init') return;
-
+	}: Pick<WorkflowPublishHistory, 'event' | 'workflowId' | 'versionId' | 'userId'>) {
 		await this.insert({
 			workflowId,
 			versionId,
-			status,
-			mode,
+			event,
 			userId,
 		});
-	}
-
-	async getLastActivatedVersion(workflowId: string) {
-		return await this.findOne({
-			select: ['versionId'],
-			where: {
-				workflowId,
-				status: 'activated',
-				mode: 'activate',
-			},
-			order: { createdAt: 'DESC' },
-		});
-	}
-
-	async getPublishedVersions(workflowId: string, includeUser?: boolean) {
-		const select: Array<keyof WorkflowPublishHistory> = ['versionId', 'createdAt'];
-		if (includeUser) {
-			select.push('user');
-		}
-		const result = await this.find({
-			select,
-			where: {
-				workflowId,
-				status: 'activated',
-				mode: Or(Equal('activate'), Equal('update')),
-			},
-		});
-
-		return result;
 	}
 }

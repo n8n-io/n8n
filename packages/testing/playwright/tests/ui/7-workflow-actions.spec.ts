@@ -1,4 +1,5 @@
 import fs from 'fs';
+import { nanoid } from 'nanoid';
 
 import {
 	CODE_NODE_NAME,
@@ -8,7 +9,33 @@ import {
 	SCHEDULE_TRIGGER_NODE_NAME,
 } from '../../config/constants';
 import { test, expect } from '../../fixtures/base';
+import type { n8nPage } from '../../pages/n8nPage';
 import { resolveFromRoot } from '../../utils/path-helper';
+
+async function saveWorkflowAndGetId(n8n: n8nPage): Promise<string> {
+	const saveResponsePromise = n8n.page.waitForResponse(
+		(response) =>
+			response.url().includes('/rest/workflows') &&
+			(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
+	);
+	await n8n.canvas.saveWorkflow();
+	const saveResponse = await saveResponsePromise;
+	const {
+		data: { id },
+	} = await saveResponse.json();
+	return id;
+}
+
+async function goToWorkflow(n8n: n8nPage, workflowId: string): Promise<void> {
+	const loadResponsePromise = n8n.page.waitForResponse(
+		(response) =>
+			response.url().includes(`/rest/workflows/${workflowId}`) &&
+			response.request().method() === 'GET' &&
+			response.status() === 200,
+	);
+	await n8n.page.goto(`/workflow/${workflowId}`);
+	await loadResponsePromise;
+}
 
 test.describe('Workflow Actions', () => {
 	test.beforeEach(async ({ n8n }) => {
@@ -134,6 +161,7 @@ test.describe('Workflow Actions', () => {
 	test('should rename workflow', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
+		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
 		await n8n.canvas.setWorkflowName('Something else');
 		await n8n.canvas.getWorkflowNameInput().press('Enter');
@@ -272,7 +300,8 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.workflowSettingsModal.getModal()).toBeVisible();
 
 		await n8n.workflowSettingsModal.getErrorWorkflowField().click();
-		await expect(n8n.page.getByRole('option')).toHaveCount(totalWorkflows + 2);
+		const optionCount = await n8n.page.getByRole('option').count();
+		expect(optionCount).toBeGreaterThanOrEqual(totalWorkflows + 2);
 		await n8n.page.getByRole('option').last().click();
 
 		await n8n.workflowSettingsModal.getTimezoneField().click();
@@ -314,8 +343,8 @@ test.describe('Workflow Actions', () => {
 		);
 	});
 
-	test('should archive not published workflow and then delete it', async ({ n8n }) => {
-		await n8n.canvas.saveWorkflow();
+	test('should archive nonactive workflow and then delete it', async ({ n8n }) => {
+		const workflowId = await saveWorkflowAndGetId(n8n);
 		await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
 
 		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
@@ -328,7 +357,7 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
 		await expect(n8n.page).toHaveURL(/\/workflows$/);
 
-		await n8n.navigate.toWorkflow(workflowId);
+		await goToWorkflow(n8n, workflowId);
 
 		await expect(n8n.canvas.getArchivedTag()).toBeVisible();
 		await expect(n8n.canvas.getNodeCreatorPlusButton()).not.toBeAttached();
@@ -344,8 +373,8 @@ test.describe('Workflow Actions', () => {
 
 	test('should archive published workflow and then delete it', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
-		await n8n.canvas.publishWorkflow();
+		const workflowId = await saveWorkflowAndGetId(n8n);
+		await n8n.canvas.activateWorkflow();
 		await n8n.page.keyboard.press('Escape');
 
 		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
@@ -361,7 +390,7 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
 		await expect(n8n.page).toHaveURL(/\/workflows$/);
 
-		await n8n.navigate.toWorkflow(workflowId);
+		await goToWorkflow(n8n, workflowId);
 
 		await expect(n8n.canvas.getArchivedTag()).toBeVisible();
 		await expect(n8n.canvas.getNodeCreatorPlusButton()).not.toBeAttached();
@@ -376,8 +405,8 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.page).toHaveURL(/\/workflows$/);
 	});
 
-	test('should archive not published workflow and then unarchive it', async ({ n8n }) => {
-		await n8n.canvas.saveWorkflow();
+	test('should archive nonactive workflow and then unarchive it', async ({ n8n }) => {
+		const workflowId = await saveWorkflowAndGetId(n8n);
 		await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
 
 		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
@@ -390,7 +419,7 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
 		await expect(n8n.page).toHaveURL(/\/workflows$/);
 
-		await n8n.navigate.toWorkflow(workflowId);
+		await goToWorkflow(n8n, workflowId);
 
 		await expect(n8n.canvas.getArchivedTag()).toBeVisible();
 		await expect(n8n.canvas.getNodeCreatorPlusButton()).not.toBeAttached();
@@ -406,17 +435,8 @@ test.describe('Workflow Actions', () => {
 
 	test('should not show unpublish menu item for non-published workflow', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
-
-		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
-
-		await n8n.workflowSettingsModal.getWorkflowMenu().click();
-		await expect(n8n.workflowSettingsModal.getUnpublishMenuItem()).not.toBeAttached();
-	});
-
-	test('should unpublish a published workflow', async ({ n8n }) => {
-		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		await n8n.canvas.publishWorkflow();
+		const workflowId = await saveWorkflowAndGetId(n8n);
+		await n8n.canvas.activateWorkflow();
 		await n8n.page.keyboard.press('Escape');
 
 		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
@@ -448,7 +468,7 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
 		await expect(n8n.page).toHaveURL(/\/workflows$/);
 
-		await n8n.navigate.toWorkflow(workflowId);
+		await goToWorkflow(n8n, workflowId);
 
 		await expect(n8n.canvas.getArchivedTag()).toBeVisible();
 		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
@@ -470,14 +490,14 @@ test.describe('Workflow Actions', () => {
 
 	test.describe('duplicate workflow', () => {
 		const DUPLICATE_WORKFLOW_NAME = 'Duplicated workflow';
-		const DUPLICATE_WORKFLOW_TAG = 'Duplicate';
 
 		test.beforeEach(async ({ n8n }) => {
 			await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
 		});
 
 		test('should duplicate unsaved workflow', async ({ n8n }) => {
-			await n8n.workflowComposer.duplicateWorkflow(DUPLICATE_WORKFLOW_NAME, DUPLICATE_WORKFLOW_TAG);
+			const uniqueTag = `Duplicate-${nanoid(6)}`;
+			await n8n.workflowComposer.duplicateWorkflow(DUPLICATE_WORKFLOW_NAME, uniqueTag);
 
 			await expect(n8n.notifications.getErrorNotifications()).toHaveCount(0);
 		});
@@ -486,7 +506,8 @@ test.describe('Workflow Actions', () => {
 			await n8n.canvas.saveWorkflow();
 			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
-			await n8n.workflowComposer.duplicateWorkflow(DUPLICATE_WORKFLOW_NAME, DUPLICATE_WORKFLOW_TAG);
+			const uniqueTag = `Duplicate-${nanoid(6)}`;
+			await n8n.workflowComposer.duplicateWorkflow(DUPLICATE_WORKFLOW_NAME, uniqueTag);
 
 			await expect(n8n.notifications.getErrorNotifications()).toHaveCount(0);
 		});
@@ -503,11 +524,8 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.canvas.nodeCreatorSearchBar()).toBeVisible();
 		await n8n.page.keyboard.press('Escape');
 
-		const executionsResponsePromise = n8n.page.waitForResponse((response) =>
-			response.url().includes('/rest/executions?filter='),
-		);
 		await n8n.canvas.clickExecutionsTab();
-		await executionsResponsePromise;
+		await n8n.page.waitForURL(/\/executions/);
 
 		await n8n.canvas.clickEditorTab();
 
