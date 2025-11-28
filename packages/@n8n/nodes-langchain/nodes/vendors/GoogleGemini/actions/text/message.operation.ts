@@ -103,10 +103,30 @@ const properties: INodeProperties[] = [
 			{
 				displayName: 'Google Maps',
 				name: 'googleMaps',
-				type: 'boolean',
-				default: true,
-				description:
-					'Whether to allow the model to use Google Maps for location-based queries and directions',
+				type: 'collection',
+				default: {},
+				options: [
+					{
+						displayName: 'Latitude',
+						name: 'latitude',
+						type: 'number',
+						default: '',
+						description: 'The latitude coordinate for location-based queries',
+						typeOptions: {
+							numberPrecision: 6,
+						},
+					},
+					{
+						displayName: 'Longitude',
+						name: 'longitude',
+						type: 'number',
+						default: '',
+						description: 'The longitude coordinate for location-based queries',
+						typeOptions: {
+							numberPrecision: 6,
+						},
+					},
+				],
 			},
 			{
 				displayName: 'URL Context',
@@ -339,7 +359,8 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools.pop();
 	}
 
-	// Add built-in tools
+	// Add built-in tools and build toolConfig
+	let toolConfig: GenerateContentRequest['toolConfig'];
 	if (builtInTools) {
 		if (builtInTools.googleSearch) {
 			tools.push({
@@ -347,10 +368,30 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		if (builtInTools.googleMaps) {
+		const googleMapsOptions = builtInTools.googleMaps as IDataObject | undefined;
+		if (googleMapsOptions) {
 			tools.push({
 				googleMaps: {},
 			});
+
+			// Build toolConfig with retrievalConfig if latitude/longitude are provided
+			const latitude = googleMapsOptions.latitude as number | string | undefined;
+			const longitude = googleMapsOptions.longitude as number | string | undefined;
+			if (
+				latitude !== undefined &&
+				latitude !== '' &&
+				longitude !== undefined &&
+				longitude !== ''
+			) {
+				toolConfig = {
+					retrievalConfig: {
+						latLng: {
+							latitude: Number(latitude),
+							longitude: Number(longitude),
+						},
+					},
+				};
+			}
 		}
 
 		if (builtInTools.urlContext) {
@@ -383,6 +424,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		systemInstruction: options.systemMessage
 			? { parts: [{ text: options.systemMessage }] }
 			: undefined,
+		...(toolConfig && { toolConfig }),
 	};
 
 	let response = (await apiRequest.call(this, 'POST', `/v1beta/${model}:generateContent`, {
