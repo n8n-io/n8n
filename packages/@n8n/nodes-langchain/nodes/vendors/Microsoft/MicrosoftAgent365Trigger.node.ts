@@ -23,11 +23,11 @@ const MESSAGE_CACHE_TTL = 60000; // 1 minute
 
 export class MicrosoftAgent365Trigger implements INodeType {
 	description: INodeTypeDescription = {
-		displayName: 'Microsoft 365 Agent Trigger',
+		displayName: 'Microsoft Agent 365 Trigger',
 		name: 'microsoftAgent365Trigger',
 		icon: 'file:Agent365.svg',
 		group: ['trigger'],
-		description: 'Trigger for Microsoft 365 Agent API',
+		description: 'Trigger for Microsoft Agent 365',
 		codex: {
 			categories: ['Core Nodes'],
 			resources: {
@@ -40,7 +40,7 @@ export class MicrosoftAgent365Trigger implements INodeType {
 		},
 		version: [1],
 		defaults: {
-			name: 'Microsoft 365 Agent',
+			name: 'Microsoft Agent 365',
 		},
 		inputs: `={{
 				((hasOutputParser, needsFallback) => {
