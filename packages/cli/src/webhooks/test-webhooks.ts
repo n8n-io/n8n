@@ -3,7 +3,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import { InstanceSettings } from 'n8n-core';
-import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
+import { UserError, WebhookPathTakenError, Workflow } from 'n8n-workflow';
 import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
@@ -331,7 +331,7 @@ export class TestWebhooks implements IWebhookManager {
 				SINGLE_WEBHOOK_TRIGGERS.includes(workflow.getNode(w.node)?.type ?? ''),
 			);
 			if (singleWebhookTrigger) {
-				throw new Error(
+				throw new UserError(
 					`Cannot test webhook for node "${singleWebhookTrigger.node}" while workflow is active. Please deactivate the workflow first.`,
 				);
 			}
