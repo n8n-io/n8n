@@ -183,6 +183,5 @@ onMounted(() => {
 	display: flex;
 	justify-content: flex-end;
 	gap: var(--spacing--2xs);
-	padding: 0 var(--spacing--xs) var(--spacing--xs);
 }
 </style>
