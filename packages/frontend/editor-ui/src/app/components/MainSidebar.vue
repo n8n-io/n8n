@@ -252,7 +252,7 @@ const mainMenuItems = computed<IMenuItem[]>(() => [
 		],
 	},
 	{
-		id: 'settings-item',
+		id: 'settings',
 		label: i18n.baseText('mainSidebar.settings'),
 		icon: 'settings',
 		available: true,
@@ -576,18 +576,17 @@ const onLogout = () => {
 				<div :class="$style.bottomMenu">
 					<div :class="$style.bottomMenuItems">
 						<template v-for="item in visibleMenuItems" :key="item.id">
+							<!-- Help popover -->
 							<N8nPopoverReka
-								v-if="item.children"
-								:key="item.id"
+								v-if="item.children && item.id === 'help'"
+								key="help"
 								side="right"
 								align="end"
 								:side-offset="12"
 							>
 								<template #content>
 									<div :class="$style.popover">
-										<template v-if="item.id === 'help' && whatsNewItems.available">
-											<BecomeTemplateCreatorCta v-if="!isCollapsed && !userIsTrialing" />
-										</template>
+										<BecomeTemplateCreatorCta v-if="!isCollapsed && !userIsTrialing" />
 										<template v-for="child in item.children" :key="child.id">
 											<component
 												:is="child.component"
@@ -596,7 +595,7 @@ const onLogout = () => {
 											/>
 											<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
 										</template>
-										<template v-if="item.id === 'help' && whatsNewItems.available">
+										<template v-if="whatsNewItems.available">
 											<N8nText bold size="small" :class="$style.popoverTitle" color="text-light"
 												>What's new</N8nText
 											>
@@ -609,14 +608,6 @@ const onLogout = () => {
 												<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
 											</template>
 										</template>
-										<template v-if="item.id === 'settings-item'">
-											<span :class="$style.divider" />
-											<N8nMenuItem
-												:data-test-id="'main-sidebar-log-out'"
-												:item="{ id: 'sign-out', label: 'Sign out', icon: 'door-open' }"
-												@click="onLogout"
-											/>
-										</template>
 									</div>
 								</template>
 								<template #trigger>
@@ -628,6 +619,42 @@ const onLogout = () => {
 									/>
 								</template>
 							</N8nPopoverReka>
+							<!-- Settings popover -->
+							<N8nPopoverReka
+								v-else-if="item.children && item.id === 'settings'"
+								key="settings"
+								side="right"
+								align="end"
+								:side-offset="12"
+							>
+								<template #content>
+									<div :class="$style.popover">
+										<template v-for="child in item.children" :key="child.id">
+											<component
+												:is="child.component"
+												v-if="isCustomMenuItem(child)"
+												v-bind="child.props"
+											/>
+											<N8nMenuItem v-else :item="child" @click="() => handleSelect(child.id)" />
+										</template>
+										<span :class="$style.divider" />
+										<N8nMenuItem
+											:data-test-id="'main-sidebar-log-out'"
+											:item="{ id: 'sign-out', label: 'Sign out', icon: 'door-open' }"
+											@click="onLogout"
+										/>
+									</div>
+								</template>
+								<template #trigger>
+									<N8nMenuItem
+										:data-test-id="`main-sidebar-${item.id}`"
+										:item="item"
+										:compact="isCollapsed"
+										@click="() => handleSelect(item.id)"
+									/>
+								</template>
+							</N8nPopoverReka>
+							<!-- Items without children -->
 							<N8nMenuItem
 								v-else
 								:data-test-id="`main-sidebar-${item.id}`"
@@ -651,7 +678,7 @@ const onLogout = () => {
 	height: 100%;
 	display: flex;
 	flex-direction: column;
-	border-right: var(--border-width) var(--border-style) var(--color--foreground);
+	border-right: var(--border);
 	background-color: var(--menu--color--background, var(--color--background--light-2));
 
 	.header {
@@ -671,7 +698,7 @@ const onLogout = () => {
 	}
 
 	&.sideMenuCollapsed {
-		width: 42px;
+		width: $sidebar-width;
 		min-width: auto;
 
 		.header {

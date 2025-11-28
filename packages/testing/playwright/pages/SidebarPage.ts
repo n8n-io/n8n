@@ -70,7 +70,7 @@ export class SidebarPage {
 	}
 
 	getSettings(): Locator {
-		return this.page.getByTestId('main-sidebar-settings-item');
+		return this.page.getByTestId('main-sidebar-settings');
 	}
 
 	getLogoutMenuItem(): Locator {
