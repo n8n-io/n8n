@@ -32,6 +32,11 @@ on:
         required: false
         default: ''
         type: string
+      runner:
+        description: 'GitHub runner to use'
+        required: false
+        default: 'blacksmith-2vcpu-ubuntu-2204'
+        type: string
 
     secrets:
       CURRENTS_RECORD_KEY:
@@ -41,6 +46,10 @@ on:
       QA_PERFORMANCE_METRICS_WEBHOOK_USER:
         required: false
       QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD:
+        required: false
+      N8N_LICENSE_ACTIVATION_KEY:
+        required: false
+      N8N_ENCRYPTION_KEY:
         required: false
 
 env:
@@ -52,7 +61,7 @@ env:
 
 jobs:
   test:
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ${{ inputs.runner }}
     strategy:
       fail-fast: false
       matrix:
@@ -101,3 +110,4 @@ jobs:
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}
           QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_PASSWORD }}
+          N8N_LICENSE_ACTIVATION_KEY: ${{ secrets.N8N_LICENSE_ACTIVATION_KEY }}
