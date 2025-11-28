@@ -702,7 +702,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 
 		// Handle special fields separately
 		const regularFields = Object.entries(select).filter(
-			([field]) => !['ownedBy', 'tags', 'parentFolder'].includes(field),
+			([field]) => !['ownedBy', 'tags', 'parentFolder', 'activeVersion'].includes(field),
 		);
 
 		// Add regular fields
@@ -725,6 +725,7 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		const areTagsRequested = isDefaultSelect || select?.tags;
 		const isOwnedByIncluded = isDefaultSelect || select?.ownedBy;
 		const isParentFolderIncluded = isDefaultSelect || select?.parentFolder;
+		const isActiveVersionIncluded = select?.activeVersion;
 
 		if (isParentFolderIncluded) {
 			qb.leftJoin('workflow.parentFolder', 'parentFolder').addSelect([
@@ -741,6 +742,18 @@ export class WorkflowRepository extends Repository<WorkflowEntity> {
 		if (isOwnedByIncluded) {
 			this.applyOwnedByRelation(qb);
 		}
+
+		if (isActiveVersionIncluded) {
+			this.applyActiveVersionRelation(qb);
+		}
+	}
+
+	private applyActiveVersionRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {
+		qb.leftJoin('workflow.activeVersion', 'activeVersion').addSelect([
+			'activeVersion.versionId',
+			'activeVersion.nodes',
+			'activeVersion.connections',
+		]);
 	}
 
 	private applyTagsRelation(qb: SelectQueryBuilder<WorkflowEntity>): void {

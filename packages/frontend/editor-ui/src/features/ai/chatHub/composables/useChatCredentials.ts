@@ -81,14 +81,20 @@ export function useChatCredentials(userId: string) {
 
 	const credentialsByProvider = computed<CredentialsMap | null>(() =>
 		isCredentialsReady.value
-			? {
-					...autoSelectCredentials.value,
-					...selectedCredentials.value,
-				}
+			? chatHubProviderSchema.options.reduce<CredentialsMap>((acc, provider) => {
+					const cred = selectedCredentials.value[provider] ?? null;
+
+					acc[provider] =
+						cred && credentialsStore.allCredentials.some((c) => c.id === cred)
+							? cred
+							: autoSelectCredentials.value[provider];
+
+					return acc;
+				}, {})
 			: null,
 	);
 
-	function selectCredential(provider: ChatHubProvider, id: string) {
+	function selectCredential(provider: ChatHubProvider, id: string | null) {
 		selectedCredentials.value = { ...selectedCredentials.value, [provider]: id };
 	}
 
