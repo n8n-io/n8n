@@ -1100,6 +1100,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 						name: 'some-project',
 						icon: null,
 						type: 'team',
+						creatorId: owner.id,
 						description: null,
 						id: expect.any(String),
 						createdAt: expect.any(String),
