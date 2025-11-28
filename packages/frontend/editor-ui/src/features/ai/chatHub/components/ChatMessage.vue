@@ -18,6 +18,7 @@ import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useI18n } from '@n8n/i18n';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -42,6 +43,7 @@ const clipboard = useClipboard();
 const chatStore = useChatStore();
 const rootStore = useRootStore();
 const { isCtrlKeyPressed } = useDeviceSupport();
+const i18n = useI18n();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -197,14 +199,16 @@ onBeforeMount(() => {
 					@keydown="handleKeydownTextarea"
 				/>
 				<div :class="$style.editActions">
-					<N8nButton type="secondary" size="small" @click="handleCancelEdit"> Cancel </N8nButton>
+					<N8nButton type="secondary" size="small" @click="handleCancelEdit">
+						{{ i18n.baseText('chatHub.message.edit.cancel') }}
+					</N8nButton>
 					<N8nButton
 						type="primary"
 						size="small"
 						:disabled="!editedText.trim()"
 						@click="handleConfirmEdit"
 					>
-						Send
+						{{ i18n.baseText('chatHub.message.edit.send') }}
 					</N8nButton>
 				</div>
 			</div>
@@ -226,7 +230,7 @@ onBeforeMount(() => {
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="
 							message.status === 'error' && !message.content
-								? 'Error: Unknown error occurred'
+								? i18n.baseText('chatHub.message.error.unknown')
 								: message.content
 						"
 						:options="markdownOptions"
