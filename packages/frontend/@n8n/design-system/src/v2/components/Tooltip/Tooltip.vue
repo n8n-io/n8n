@@ -25,6 +25,7 @@ const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	showArrow: true,
 	justifyButtons: 'flex-end',
 	buttons: () => [],
+	offset: 6,
 });
 
 const emit = defineEmits<N8nTooltipEmits>();
@@ -136,5 +137,26 @@ const handleOpenChange = (open: boolean) => {
 
 .arrow {
 	fill: currentColor;
+}
+
+// Global styles for teleported tooltip content
+// TODO: Remove :not(.el-popper) selector once Element+ is fully removed
+:global(.n8n-tooltip:not(.el-popper)) {
+	max-width: 180px;
+	padding: 10px;
+	font-size: 12px;
+	line-height: var(--line-height--md);
+	border-radius: 4px;
+	background: var(--color--background--shade-2);
+	color: var(--color--foreground--tint-2);
+	word-wrap: break-word;
+
+	img {
+		max-width: 100%;
+	}
+
+	svg {
+		fill: var(--color--background--shade-2);
+	}
 }
 </style>
