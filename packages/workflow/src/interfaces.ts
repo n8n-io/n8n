@@ -1498,7 +1498,7 @@ type NonEmptyArray<T> = [T, ...T[]];
 export type FilterTypeCombinator = 'and' | 'or';
 
 export type FilterTypeOptions = {
-	version: 1 | 2 | {}; // required so nodes are pinned on a version
+	version: 1 | 2 | 3 | {}; // required so nodes are pinned on a version
 	caseSensitive?: boolean | string; // default = true
 	leftValue?: string; // when set, user can't edit left side of condition
 	allowedCombinators?: NonEmptyArray<FilterTypeCombinator>; // default = ['and', 'or']
@@ -3094,7 +3094,7 @@ export type FilterOptionsValue = {
 	caseSensitive: boolean;
 	leftValue: string;
 	typeValidation: 'strict' | 'loose';
-	version: 1 | 2;
+	version: 1 | 2 | 3;
 };
 
 export type FilterValue = {

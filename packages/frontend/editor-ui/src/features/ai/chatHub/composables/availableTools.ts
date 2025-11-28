@@ -1,5 +1,5 @@
 import { type ChatHubAgentTool } from '@n8n/api-types';
-import { type INode, JINA_AI_TOOL_NODE_TYPE, SEAR_XNG_TOOL_NODE_TYPE } from 'n8n-workflow';
+import { type INode, JINA_AI_TOOL_NODE_TYPE } from 'n8n-workflow';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface ChatHubToolProvider {
@@ -57,51 +57,6 @@ export const AVAILABLE_TOOLS: Record<ChatHubAgentTool, ChatHubToolProvider> = {
 					position: [0, 0],
 					id: uuidv4(),
 					name: 'Search web in Jina AI',
-				},
-			},
-			{
-				title: 'Deep Research',
-				node: {
-					parameters: {
-						resource: 'research',
-						operation: 'deepResearch',
-						researchQuery:
-							"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Research_Query', ``, 'string') }}",
-						options: {},
-						requestOptions: {},
-					},
-					type: JINA_AI_TOOL_NODE_TYPE,
-					typeVersion: 1,
-					position: [0, 0],
-					id: uuidv4(),
-					name: 'Perform deep research in Jina AI',
-				},
-			},
-		],
-	},
-	[SEAR_XNG_TOOL_NODE_TYPE]: {
-		name: 'SearXNG',
-		description: 'Use SearXNG to search the web for relevant information.',
-		credentialType: 'searXngApi',
-		tools: [
-			{
-				title: 'Web Search',
-				node: {
-					parameters: {
-						options: {
-							numResults:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Number_of_Results', ``, 'number') }}",
-							pageNumber:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Search_Page_Number', ``, 'number') }}",
-							language:
-								"={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Language', ``, 'string') }}",
-						},
-					},
-					type: SEAR_XNG_TOOL_NODE_TYPE,
-					typeVersion: 1,
-					position: [0, 0],
-					id: uuidv4(),
-					name: 'Search web in SearXNG',
 				},
 			},
 		],
