@@ -7,6 +7,7 @@ export const oAuthAuthorizationServerMetadataSchema = z.object({
 	grant_types_supported: z.array(z.string()).optional(),
 	token_endpoint_auth_methods_supported: z.array(z.string()).optional(),
 	code_challenge_methods_supported: z.array(z.string()).optional(),
+	scopes_supported: z.array(z.string()).optional(),
 });
 
 export const dynamicClientRegistrationResponseSchema = z.object({
