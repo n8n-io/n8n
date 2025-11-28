@@ -40,7 +40,6 @@ const mockWorkflowWithMultipleNodes = {
 	active: false,
 	numberOfExecutions: 50,
 	lastUpdatedAt: new Date('2024-01-10'),
-	lastExecutedAt: null,
 	issues: [
 		{
 			nodeId: 'node-2',
