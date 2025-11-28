@@ -18,6 +18,7 @@ import {
 	MODAL_CONFIRM,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
+	WORKFLOW_DESCRIPTION_MODAL_KEY,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	WORKFLOW_SHARE_MODAL_KEY,
@@ -74,7 +75,6 @@ import {
 	N8nInlineTextEdit,
 	N8nTooltip,
 } from '@n8n/design-system';
-import WorkflowDescriptionPopover from './WorkflowDescriptionPopover.vue';
 
 const WORKFLOW_NAME_BP_TO_WIDTH: { [key: string]: number } = {
 	XS: 150,
@@ -224,6 +224,14 @@ const workflowMenuItems = computed<Array<ActionDropdownItem<WORKFLOW_MENU_ACTION
 				!onWorkflowPage.value ||
 				onExecutionsTab.value ||
 				sourceControlStore.preferences.branchReadOnly,
+		});
+	}
+
+	if (!props.readOnly && workflowPermissions.value.update) {
+		actions.unshift({
+			id: WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION,
+			label: locale.baseText('menuActions.editDescription'),
+			disabled: !onWorkflowPage.value || isNewWorkflow.value,
 		});
 	}
 
@@ -642,6 +650,20 @@ async function onWorkflowMenuSelect(action: WORKFLOW_MENU_ACTIONS): Promise<void
 
 			break;
 		}
+		case WORKFLOW_MENU_ACTIONS.EDIT_DESCRIPTION: {
+			const workflowId = getWorkflowId();
+			if (!workflowId) return;
+
+			const workflowDescription = workflowsStore.getWorkflowById(workflowId).description;
+			uiStore.openModalWithData({
+				name: WORKFLOW_DESCRIPTION_MODAL_KEY,
+				data: {
+					workflowId,
+					workflowDescription,
+				},
+			});
+			break;
+		}
 		case WORKFLOW_MENU_ACTIONS.SETTINGS: {
 			uiStore.openModal(WORKFLOW_SETTINGS_MODAL_KEY);
 			break;
@@ -869,11 +891,6 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 				>
 					{{ locale.baseText('workflows.item.archived') }}
 				</N8nBadge>
-				<WorkflowDescriptionPopover
-					v-else-if="!props.readOnly && workflowPermissions.update"
-					:workflow-id="props.id"
-					:workflow-description="props.description"
-				/>
 			</span>
 		</span>
 
