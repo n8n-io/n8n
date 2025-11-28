@@ -66,12 +66,14 @@ const classes = computed(() => {
 		[$style.success]: hasRunData.value && executionStatus.value === 'success',
 		[$style.error]: hasExecutionErrors.value,
 		[$style.pinned]: hasPinnedData.value,
-		[$style.waiting]: executionWaiting.value ?? executionStatus.value === 'waiting',
+		[$style.waiting]: executionWaiting.value || executionStatus.value === 'waiting',
 		[$style.running]: executionRunning.value || executionWaitingForNext.value,
 		[$style.configurable]: renderOptions.value.configurable,
 		[$style.configuration]: renderOptions.value.configuration,
 		[$style.trigger]: renderOptions.value.trigger,
 		[$style.warning]: renderOptions.value.dirtiness !== undefined,
+		waiting: executionWaiting.value || executionStatus.value === 'waiting',
+		running: executionRunning.value || executionWaitingForNext.value,
 	};
 });
 
