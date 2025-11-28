@@ -82,7 +82,7 @@ test('activate:workflow does not activate when --id is missing', async () => {
 	});
 });
 
-test('activate:workflow does not activate when --versionId is missing', async () => {
+test('activate:workflow activates current version when --versionId is missing', async () => {
 	//
 	// ARRANGE
 	//
@@ -91,15 +91,15 @@ test('activate:workflow does not activate when --versionId is missing', async ()
 	//
 	// ACT
 	//
-	await command.run(['--id=123']);
+	await command.run([`--id=${workflow.id}`]);
 
 	//
 	// ASSERT
 	//
-	const unchangedWorkflow = await getWorkflowById(workflow.id);
-	expect(unchangedWorkflow).toMatchObject({
-		activeVersionId: null,
-		active: false,
+	const updatedWorkflow = await getWorkflowById(workflow.id);
+	expect(updatedWorkflow).toMatchObject({
+		activeVersionId: workflow.versionId,
+		active: true,
 	});
 });
 

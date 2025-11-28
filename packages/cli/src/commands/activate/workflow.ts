@@ -7,14 +7,18 @@ import { BaseCommand } from '../base-command';
 
 const flagsSchema = z.object({
 	id: z.string().describe('The ID of the workflow to activate'),
-	versionId: z.string().describe('The version ID to activate'),
+	versionId: z
+		.string()
+		.describe('The version ID to activate. If not provided, activates the current version')
+		.optional(),
 	all: z.boolean().describe('(Deprecated) This flag is no longer supported').optional(),
 });
 
 @Command({
 	name: 'activate:workflow',
-	description: 'Activate a specific version of a workflow',
-	examples: ['--id=5 --versionId=abc123'],
+	description:
+		'Activate a specific version of a workflow. If no version is specified, activates the current version.',
+	examples: ['--id=5 --versionId=abc123', '--id=5'],
 	flagsSchema,
 })
 export class ActivateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSchema>> {
@@ -25,26 +29,23 @@ export class ActivateWorkflowCommand extends BaseCommand<z.infer<typeof flagsSch
 		if (flags.all) {
 			this.logger.error('The --all flag is no longer supported for workflow activation.');
 			this.logger.error(
-				'Please activate workflows individually using: activate:workflow --id=<workflow-id> --versionId=<version-id>',
+				'Please activate workflows individually using: activate:workflow --id=<workflow-id> [--versionId=<version-id>]',
 			);
 			return;
 		}
 
 		if (!flags.id) {
 			this.logger.error('The --id flag is required. Please specify a workflow ID.');
-			this.logger.error('Example: activate:workflow --id=5 --versionId=abc123');
+			this.logger.error('Example: activate:workflow --id=5 [--versionId=abc123]');
 			return;
 		}
 
-		if (!flags.versionId) {
-			this.logger.error(
-				'The --versionId flag is required. Please specify a version ID to activate.',
-			);
-			this.logger.error('Example: activate:workflow --id=5 --versionId=abc123');
-			return;
+		if (flags.versionId) {
+			this.logger.info(`Activating workflow with ID: ${flags.id}, version: ${flags.versionId}`);
+		} else {
+			this.logger.info(`Activating workflow with ID: ${flags.id} (current version)`);
 		}
 
-		this.logger.info(`Activating workflow with ID: ${flags.id}, version: ${flags.versionId}`);
 		try {
 			await Container.get(WorkflowRepository).activateVersion(flags.id, flags.versionId);
 			this.logger.info('Workflow activated successfully');
