@@ -51,7 +51,7 @@ const credentialIdForSelectedModelProvider = computed(
 	() => selectedModel.value && agentMergedCredentials.value[selectedModel.value.provider],
 );
 const selectedAgent = computed(
-	() => selectedModel.value && chatStore.getAgent(selectedModel.value),
+	() => selectedModel.value && chatStore.getAgent(selectedModel.value, selectedModel.value.model),
 );
 
 const isEditMode = computed(() => !!props.data.agentId);
@@ -279,6 +279,7 @@ function onSelectTools(newTools: INode[]) {
 							:include-custom-agents="false"
 							:credentials="agentMergedCredentials"
 							:disabled="isLoadingAgent"
+							warn-missing-credentials
 							@change="onModelChange"
 							@select-credential="onCredentialSelected"
 						/>

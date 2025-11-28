@@ -12,11 +12,11 @@ import { isLlmProviderModel, createMimeTypes } from '@/features/ai/chatHub/chat.
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 
-const { selectedModel, selectedTools, isMissingCredentials } = defineProps<{
+const { selectedModel, selectedTools, issue } = defineProps<{
 	isResponding: boolean;
 	isNewSession: boolean;
 	isToolsSelectable: boolean;
-	isMissingCredentials: boolean;
+	issue: 'missingCredentials' | 'missingAgent' | null;
 	selectedModel: ChatModelDto | null;
 	selectedTools: INode[] | null;
 }>();
@@ -186,7 +186,7 @@ defineExpose({
 <template>
 	<form :class="$style.prompt" @submit.prevent="handleSubmitForm">
 		<div :class="$style.inputWrap">
-			<N8nText v-if="!selectedModel" :class="$style.callout">
+			<N8nText v-if="issue === 'missingAgent'" :class="$style.callout">
 				<I18nT
 					:keypath="
 						isNewSession
@@ -207,7 +207,7 @@ defineExpose({
 					</template>
 				</I18nT>
 			</N8nText>
-			<N8nText v-else-if="isMissingCredentials && llmProvider" :class="$style.callout">
+			<N8nText v-else-if="issue === 'missingCredentials' && llmProvider" :class="$style.callout">
 				<I18nT
 					:keypath="
 						isNewSession
@@ -260,7 +260,7 @@ defineExpose({
 					autocomplete="off"
 					:autosize="{ minRows: 1, maxRows: 6 }"
 					autofocus
-					:disabled="isMissingCredentials || !selectedModel"
+					:disabled="!!issue"
 					@keydown="handleKeydownTextarea"
 				/>
 
@@ -269,7 +269,7 @@ defineExpose({
 						<ToolsSelector
 							:class="$style.toolsButton"
 							:selected="selectedTools ?? []"
-							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							:disabled="!!issue || isResponding"
 							transparent-bg
 							@select="onSelectTools"
 						/>
@@ -280,7 +280,7 @@ defineExpose({
 							native-type="button"
 							type="secondary"
 							:title="i18n.baseText('chatHub.chat.prompt.button.attach')"
-							:disabled="isMissingCredentials || isResponding"
+							:disabled="!!issue || isResponding"
 							icon="paperclip"
 							icon-size="large"
 							text
@@ -295,7 +295,7 @@ defineExpose({
 									: i18n.baseText('chatHub.chat.prompt.button.voiceInput')
 							"
 							type="secondary"
-							:disabled="isMissingCredentials || !selectedModel || isResponding"
+							:disabled="!!issue || isResponding"
 							:icon="speechInput.isListening.value ? 'square' : 'mic'"
 							:class="{ [$style.recording]: speechInput.isListening.value }"
 							icon-size="large"
@@ -304,7 +304,7 @@ defineExpose({
 						<N8nIconButton
 							v-if="!isResponding"
 							native-type="submit"
-							:disabled="isMissingCredentials || !selectedModel || !message.trim()"
+							:disabled="!!issue || !message.trim()"
 							:title="i18n.baseText('chatHub.chat.prompt.button.send')"
 							icon="arrow-up"
 							icon-size="large"

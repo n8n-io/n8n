@@ -8,6 +8,8 @@ import { CredentialsService } from '@/credentials/credentials.service';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 
+import { v4 as uuid } from 'uuid';
+
 jest.mock('../tools/webhook-utils', () => ({
 	getTriggerDetails: jest.fn().mockResolvedValue('MOCK_TRIGGER_DETAILS'),
 }));
@@ -46,7 +48,7 @@ describe('get-workflow-details MCP tool', () => {
 
 	describe('handler tests', () => {
 		test('returns sanitized workflow and trigger info (active)', async () => {
-			const workflow = createWorkflow({ active: true });
+			const workflow = createWorkflow({ activeVersionId: uuid() });
 			const workflowFinderService = mockInstance(WorkflowFinderService, {
 				findWorkflowForUser: jest.fn().mockResolvedValue(workflow),
 			});
@@ -68,8 +70,11 @@ describe('get-workflow-details MCP tool', () => {
 		});
 
 		test('throws for not found/archived/unavailable workflow', async () => {
-			const archived = createWorkflow({ isArchived: true });
-			const unavailable = createWorkflow({ settings: { availableInMCP: false } });
+			const archived = createWorkflow({ activeVersionId: uuid(), isArchived: true });
+			const unavailable = createWorkflow({
+				activeVersionId: uuid(),
+				settings: { availableInMCP: false },
+			});
 
 			const credentialsService = mockInstance(CredentialsService, {});
 			const endpoints = { webhook: 'webhook', webhookTest: 'webhook-test' };
