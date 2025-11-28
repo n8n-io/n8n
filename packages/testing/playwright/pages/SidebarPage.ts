@@ -103,7 +103,7 @@ export class SidebarPage {
 	}
 
 	getAdminPanel(): Locator {
-		return this.page.getByTestId('cloud-admin');
+		return this.page.getByTestId('main-sidebar-cloud-admin');
 	}
 
 	getTrialBanner(): Locator {
