@@ -10,7 +10,7 @@ import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import {
 	sourceControlLicensedMiddleware,
 	sourceControlLicensedAndEnabledMiddleware,
-} from './middleware/source-control-enabled-middleware.ee';
+} from '../../modules/source-control.ee/middleware/source-control-enabled-middleware.ee';
 import { getRepoType } from '../../modules/source-control.ee/source-control-helper.ee';
 import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from './source-control-scoped.service';
