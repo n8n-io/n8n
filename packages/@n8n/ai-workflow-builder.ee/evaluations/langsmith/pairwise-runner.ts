@@ -1,22 +1,40 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import { evaluate } from 'langsmith/evaluation';
-import type { Run, Example } from 'langsmith/schemas';
 import type { EvaluationResult as LangsmithEvaluationResult } from 'langsmith/evaluation';
+import type { Run, Example } from 'langsmith/schemas';
+import type { INodeTypeDescription } from 'n8n-workflow';
 import pc from 'picocolors';
 
+import type { SimpleWorkflow } from '../../src/types/workflow';
 import { evaluateWorkflowPairwise } from '../chains/pairwise-evaluator';
 import { setupTestEnvironment, createAgent } from '../core/environment';
 import { generateRunId, isWorkflowStateValues } from '../types/langsmith';
 import { consumeGenerator, formatHeader, getChatPayload } from '../utils/evaluation-helpers';
-import type { INodeTypeDescription } from 'n8n-workflow';
 
 interface PairwiseDatasetInput {
 	evals: {
-		dos: string[];
-		donts: string[];
+		dos: string;
+		donts: string;
 	};
 	prompt: string;
+}
+
+interface PairwiseGeneratorOutput {
+	workflow: SimpleWorkflow;
+	evalCriteria: PairwiseDatasetInput['evals'];
+	prompt: string;
+}
+
+function isPairwiseGeneratorOutput(outputs: unknown): outputs is PairwiseGeneratorOutput {
+	if (!outputs || typeof outputs !== 'object') return false;
+
+	const obj = outputs as Record<string, unknown>;
+
+	if (!obj.workflow || typeof obj.workflow !== 'object') return false;
+	if (!obj.evalCriteria || typeof obj.evalCriteria !== 'object') return false;
+
+	return true;
 }
 
 function createPairwiseWorkflowGenerator(
@@ -53,12 +71,13 @@ function createPairwiseWorkflowGenerator(
 function createPairwiseLangsmithEvaluator(llm: BaseChatModel) {
 	return async (rootRun: Run, _example?: Example): Promise<LangsmithEvaluationResult[]> => {
 		const outputs = rootRun.outputs;
-		if (!outputs || !outputs.workflow || !outputs.evalCriteria) {
+
+		if (!isPairwiseGeneratorOutput(outputs)) {
 			return [
 				{
 					key: 'pairwise_score',
 					score: 0,
-					comment: 'Missing workflow or evaluation criteria in outputs',
+					comment: 'Missing or invalid workflow/evaluation criteria in outputs',
 				},
 			];
 		}
@@ -116,23 +135,40 @@ export async function runPairwiseLangsmithEvaluation(repetitions: number = 1): P
 		const datasetName = process.env.LANGSMITH_DATASET_NAME ?? 'notion-pairwise-workflows';
 		console.log(pc.blue(`➔ Using dataset: ${datasetName}`));
 
-		// Verify dataset exists
+		// Verify dataset exists and get dataset info
+		let datasetId: string;
 		try {
-			await lsClient.readDataset({ datasetName });
+			const dataset = await lsClient.readDataset({ datasetName });
+			datasetId = dataset.id;
 		} catch (error) {
 			console.error(pc.red(`✗ Dataset "${datasetName}" not found`));
 			process.exit(1);
+		}
+
+		// Check if we should limit examples
+		const maxExamplesEnv = process.env.EVAL_MAX_EXAMPLES;
+		const maxExamples = maxExamplesEnv ? parseInt(maxExamplesEnv, 10) : undefined;
+
+		// Fetch examples if limiting, otherwise use dataset name
+		let data: string | Example[] = datasetName;
+		if (maxExamples && maxExamples > 0) {
+			console.log(pc.yellow(`➔ Limiting to ${maxExamples} example(s)`));
+			const examples: Example[] = [];
+			for await (const example of lsClient.listExamples({ datasetId })) {
+				examples.push(example);
+				if (examples.length >= maxExamples) break;
+			}
+			data = examples;
 		}
 
 		const generateWorkflow = createPairwiseWorkflowGenerator(parsedNodeTypes, llm, tracer);
 		const evaluator = createPairwiseLangsmithEvaluator(llm);
 
 		await evaluate(generateWorkflow, {
-			data: datasetName,
+			data,
 			evaluators: [evaluator],
 			maxConcurrency: 5,
-			// @ts-ignore
-			experimentPrefix: `pairwise-eval-${llm.modelName ?? 'unknown'}`,
+			experimentPrefix: 'pairwise-evals',
 			numRepetitions: repetitions,
 		});
 

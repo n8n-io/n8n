@@ -6,8 +6,8 @@ import type { SimpleWorkflow } from '../../src/types/workflow';
 
 export interface PairwiseEvaluationInput {
 	evalCriteria: {
-		dos: string[];
-		donts: string[];
+		dos: string;
+		donts: string;
 	};
 	workflowJSON: SimpleWorkflow;
 }
@@ -86,11 +86,9 @@ export async function evaluateWorkflowPairwise(
 	llm: BaseChatModel,
 	input: PairwiseEvaluationInput,
 ): Promise<PairwiseEvaluationResult> {
-	// Format criteria into a checklist
-	const criteriaList = [
-		...input.evalCriteria.dos.map((c) => `- [DO] ${c}`),
-		...input.evalCriteria.donts.map((c) => `- [DONT] ${c}`),
-	].join('\n');
+	const dos = input.evalCriteria?.dos ?? '';
+	const donts = input.evalCriteria?.donts ?? '';
+	const criteriaList = `[DO]\n${dos}\n\n[DONT]\n${donts}`;
 
 	const result = await invokeEvaluatorChain(createPairwiseEvaluatorChain(llm), {
 		userPrompt: criteriaList,
