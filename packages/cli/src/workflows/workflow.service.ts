@@ -511,12 +511,15 @@ export class WorkflowService {
 		try {
 			await this.externalHooks.run('workflow.activate', [workflow]);
 			await this.activeWorkflowManager.add(workflowId, mode);
-			await this.workflowPublishHistoryRepository.addRecord({
-				workflowId,
-				versionId: workflow.versionId,
-				status: 'activated',
-				userId: user.id,
-			});
+			if (workflow.activeVersionId !== null) {
+				// sanity check - activeVersionId should always exist at this stage
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId,
+					versionId: workflow.activeVersionId,
+					status: 'activated',
+					userId: user.id,
+				});
+			}
 		} catch (error) {
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
