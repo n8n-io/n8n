@@ -148,6 +148,29 @@ describe('WaitNodeSubworkflowRule', () => {
 			expect(report.affectedWorkflows).toHaveLength(1);
 		});
 
+		it('should flag parent when waitForSubWorkflow is an expression (treated as true)', async () => {
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+			]);
+
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+					options: { waitForSubWorkflow: '={{ $json.shouldWait }}' },
+				}),
+			]);
+
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			// Expression is treated as true to avoid false negatives
+			expect(report.affectedWorkflows).toHaveLength(1);
+			expect(report.affectedWorkflows[0].workflowId).toBe('parent-wf-1');
+		});
+
 		it('should NOT flag parent when sub-workflow has no waiting nodes', async () => {
 			// Create a sub-workflow WITHOUT waiting nodes
 			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [

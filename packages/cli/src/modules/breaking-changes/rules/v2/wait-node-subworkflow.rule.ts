@@ -115,8 +115,11 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule
 		for (const node of executeWorkflowNodes) {
 			// Check if waitForSubWorkflow is enabled (default is true)
 			const options = node.parameters.options as INodeParameters | undefined;
-			const waitForSubWorkflow = options?.waitForSubWorkflow ?? true;
-			if (!waitForSubWorkflow) {
+			const waitForSubWorkflowValue = options?.waitForSubWorkflow;
+			// If waitForSubWorkflow is explicitly false, skip. Otherwise treat as true (default).
+			// Expressions (strings starting with =) are treated as true to avoid false negatives.
+			const isExplicitlyFalse = waitForSubWorkflowValue === false;
+			if (isExplicitlyFalse) {
 				continue; // Skip if not waiting for sub-workflow completion
 			}
 
