@@ -744,26 +744,31 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		payload: ChatHubCreateAgentRequest,
 		credentials: CredentialsMap,
 	): Promise<ChatModelDto> {
-		const agent = await createAgentApi(rootStore.restApiContext, payload);
-		const agentModel = {
+		const customAgent = await createAgentApi(rootStore.restApiContext, payload);
+		const baseModel = agents.value?.[customAgent.provider]?.models.find(
+			(model) => model.name === customAgent.model,
+		);
+		const agent: ChatModelDto = {
 			model: {
 				provider: 'custom-agent' as const,
-				agentId: agent.id,
+				agentId: customAgent.id,
 			},
-			name: agent.name,
-			description: agent.description ?? null,
-			createdAt: agent.createdAt,
-			updatedAt: agent.updatedAt,
-			tools: agent.tools,
-			allowFileUploads: true,
+			name: customAgent.name,
+			description: customAgent.description ?? null,
+			createdAt: customAgent.createdAt,
+			updatedAt: customAgent.updatedAt,
+			metadata: baseModel?.metadata ?? {
+				capabilities: { functionCalling: false },
+				inputModalities: [],
+			},
 		};
-		agents.value?.['custom-agent'].models.push(agentModel);
+		agents.value?.['custom-agent'].models.push(agent);
 
 		await fetchAgents(credentials);
 
 		telemetry.track('User created agent', { ...flattenModel(payload) });
 
-		return agentModel;
+		return agent;
 	}
 
 	async function updateCustomAgent(
@@ -813,7 +818,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			description: null,
 			createdAt: null,
 			updatedAt: null,
-			allowFileUploads: true,
+			// Assume file attachment and tools are supported
+			metadata: {
+				inputModalities: ['text', 'file'],
+				capabilities: {
+					functionCalling: true,
+				},
+			},
 		};
 	}
 

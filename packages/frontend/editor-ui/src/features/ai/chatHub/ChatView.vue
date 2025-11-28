@@ -9,6 +9,7 @@ import {
 	findOneFromModelsResponse,
 	isLlmProvider,
 	unflattenModel,
+	createMimeTypes,
 } from '@/features/ai/chatHub/chat.utils';
 import ChatConversationHeader from '@/features/ai/chatHub/components/ChatConversationHeader.vue';
 import ChatMessage from '@/features/ai/chatHub/components/ChatMessage.vue';
@@ -72,8 +73,9 @@ const currentConversation = computed(() =>
 );
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 
-// TODO: This also depends on the model, not all base LLM models support tools.
-const canSelectTools = computed(() => isLlmProvider(selectedModel.value?.model.provider));
+const canSelectTools = computed(
+	() => selectedModel.value?.metadata.capabilities.functionCalling ?? false,
+);
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
 	throttle: 100,
@@ -240,7 +242,7 @@ const didSubmitInCurrentSession = ref(false);
 const canAcceptFiles = computed(
 	() =>
 		editingMessageId.value === undefined &&
-		!!selectedModel.value?.allowFileUploads &&
+		!!createMimeTypes(selectedModel.value?.metadata.inputModalities ?? []) &&
 		!isMissingSelectedCredential.value,
 );
 
@@ -494,7 +496,7 @@ function handleEditAgent(agentId: string) {
 		data: {
 			agentId,
 			credentials: credentialsByProvider,
-			onCreateCustomAgent: handleSelectModel,
+			onCreateCustomAgent: handleSelectAgent,
 		},
 	});
 }
@@ -504,7 +506,7 @@ function openNewAgentCreator() {
 		name: AGENT_EDITOR_MODAL_KEY,
 		data: {
 			credentials: credentialsByProvider,
-			onCreateCustomAgent: handleSelectModel,
+			onCreateCustomAgent: handleSelectAgent,
 		},
 	});
 }
@@ -546,7 +548,7 @@ function onFilesDropped(files: File[]) {
 			:selected-model="selectedModel"
 			:credentials="credentialsByProvider"
 			:ready-to-show-model-selector="isNewSession || !!currentConversation"
-			@select-model="handleSelectAgent"
+			@select-model="handleSelectModel"
 			@edit-custom-agent="handleEditAgent"
 			@create-custom-agent="openNewAgentCreator"
 			@select-credential="selectCredential"

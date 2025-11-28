@@ -8,7 +8,7 @@ import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
-import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { isLlmProviderModel, createMimeTypes } from '@/features/ai/chatHub/chat.utils';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
 
@@ -56,6 +56,13 @@ const placeholder = computed(() => {
 const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
 	isLlmProviderModel(selectedModel?.model) ? selectedModel?.model.provider : undefined,
 );
+
+const acceptedMimeTypes = computed(() => {
+	const modalities = selectedModel?.metadata.inputModalities;
+	return modalities ? createMimeTypes(modalities) : undefined;
+});
+
+const canUploadFiles = computed(() => !!acceptedMimeTypes.value);
 
 function onMic() {
 	committedSpokenMessage.value = message.value;
@@ -228,6 +235,7 @@ defineExpose({
 				ref="fileInputRef"
 				type="file"
 				:class="$style.fileInput"
+				:accept="acceptedMimeTypes"
 				multiple
 				@change="handleFileSelect"
 			/>
@@ -268,7 +276,7 @@ defineExpose({
 					</div>
 					<div :class="$style.actions">
 						<N8nIconButton
-							v-if="selectedModel?.allowFileUploads"
+							v-if="canUploadFiles"
 							native-type="button"
 							type="secondary"
 							:title="i18n.baseText('chatHub.chat.prompt.button.attach')"

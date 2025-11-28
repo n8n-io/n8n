@@ -16,6 +16,7 @@ import {
 	ChatHubN8nModel,
 	ChatHubCustomAgentModel,
 	emptyChatModelsResponse,
+	type InputModality,
 	type ChatHubUpdateConversationRequest,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
@@ -47,7 +48,12 @@ import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import type { ChatHubMessage } from './chat-hub-message.entity';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import {
+	JSONL_STREAM_HEADERS,
+	NODE_NAMES,
+	PROVIDER_NODE_TYPE_MAP,
+	getModelMetadata,
+} from './chat-hub.constants';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	HumanMessagePayload,
@@ -205,17 +211,20 @@ export class ChatHubService {
 		);
 
 		return {
-			models: resourceLocatorResults.results.map((result) => ({
-				name: result.name,
-				description: result.description ?? null,
-				model: {
-					provider: 'openai',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-				allowFileUploads: true,
-			})),
+			models: resourceLocatorResults.results.map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? null,
+					model: {
+						provider: 'openai',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('openai', modelId),
+				};
+			}),
 		};
 	}
 
@@ -233,17 +242,20 @@ export class ChatHubService {
 		);
 
 		return {
-			models: resourceLocatorResults.results.map((result) => ({
-				name: result.name,
-				description: result.description ?? null,
-				model: {
-					provider: 'anthropic',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-				allowFileUploads: true,
-			})),
+			models: resourceLocatorResults.results.map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? null,
+					model: {
+						provider: 'anthropic',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('anthropic', modelId),
+				};
+			}),
 		};
 	}
 
@@ -299,17 +311,20 @@ export class ChatHubService {
 		);
 
 		return {
-			models: results.map((result) => ({
-				name: result.name,
-				description: result.description ?? null,
-				model: {
-					provider: 'google',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-				allowFileUploads: true,
-			})),
+			models: results.map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? null,
+					model: {
+						provider: 'google',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('google', modelId),
+				};
+			}),
 		};
 	}
 
@@ -358,17 +373,20 @@ export class ChatHubService {
 		);
 
 		return {
-			models: results.map((result) => ({
-				name: result.name,
-				description: result.description ?? null,
-				model: {
-					provider: 'ollama',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-				allowFileUploads: true,
-			})),
+			models: results.map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? null,
+					model: {
+						provider: 'ollama',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('ollama', modelId),
+				};
+			}),
 		};
 	}
 
@@ -476,17 +494,20 @@ export class ChatHubService {
 		]);
 
 		return {
-			models: foundationModels.concat(inferenceProfileModels).map((result) => ({
-				name: result.name,
-				description: result.description ?? String(result.value),
-				model: {
-					provider: 'awsBedrock',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-				allowFileUploads: true,
-			})),
+			models: foundationModels.concat(inferenceProfileModels).map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? modelId,
+					model: {
+						provider: 'awsBedrock',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('awsBedrock', modelId),
+				};
+			}),
 		};
 	}
 
@@ -539,16 +560,20 @@ export class ChatHubService {
 		);
 
 		return {
-			models: results.map((result) => ({
-				name: result.name,
-				description: result.description ?? String(result.value),
-				model: {
-					provider: 'mistralCloud',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-			})),
+			models: results.map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? modelId,
+					model: {
+						provider: 'mistralCloud',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('mistralCloud', modelId),
+				};
+			}),
 		};
 	}
 
@@ -596,16 +621,20 @@ export class ChatHubService {
 		);
 
 		return {
-			models: results.map((result) => ({
-				name: result.name,
-				description: result.description ?? null,
-				model: {
-					provider: 'cohere',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-			})),
+			models: results.map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? null,
+					model: {
+						provider: 'cohere',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('cohere', modelId),
+				};
+			}),
 		};
 	}
 
@@ -652,16 +681,20 @@ export class ChatHubService {
 		);
 
 		return {
-			models: results.map((result) => ({
-				name: result.name,
-				description: result.description ?? String(result.value),
-				model: {
-					provider: 'deepSeek',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-			})),
+			models: results.map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? modelId,
+					model: {
+						provider: 'deepSeek',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('deepSeek', modelId),
+				};
+			}),
 		};
 	}
 
@@ -708,16 +741,20 @@ export class ChatHubService {
 		);
 
 		return {
-			models: results.map((result) => ({
-				name: result.name,
-				description: result.description ?? null,
-				model: {
-					provider: 'openRouter',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-			})),
+			models: results.map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? null,
+					model: {
+						provider: 'openRouter',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('openRouter', modelId),
+				};
+			}),
 		};
 	}
 
@@ -764,16 +801,20 @@ export class ChatHubService {
 		);
 
 		return {
-			models: results.map((result) => ({
-				name: result.name,
-				description: result.description ?? null,
-				model: {
-					provider: 'groq',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-			})),
+			models: results.map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? null,
+					model: {
+						provider: 'groq',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('groq', modelId),
+				};
+			}),
 		};
 	}
 
@@ -820,16 +861,20 @@ export class ChatHubService {
 		);
 
 		return {
-			models: results.map((result) => ({
-				name: result.name,
-				description: result.description ?? null,
-				model: {
-					provider: 'xAiGrok',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-			})),
+			models: results.map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? null,
+					model: {
+						provider: 'xAiGrok',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('xAiGrok', modelId),
+				};
+			}),
 		};
 	}
 
@@ -876,16 +921,20 @@ export class ChatHubService {
 		);
 
 		return {
-			models: results.map((result) => ({
-				name: result.name,
-				description: result.description ?? String(result.value),
-				model: {
-					provider: 'vercelAiGateway',
-					model: String(result.value),
-				},
-				createdAt: null,
-				updatedAt: null,
-			})),
+			models: results.map((result) => {
+				const modelId = String(result.value);
+				return {
+					name: result.name,
+					description: result.description ?? modelId,
+					model: {
+						provider: 'vercelAiGateway',
+						model: modelId,
+					},
+					createdAt: null,
+					updatedAt: null,
+					metadata: getModelMetadata('vercelAiGateway', modelId),
+				};
+			}),
 		};
 	}
 
@@ -916,6 +965,7 @@ export class ChatHubService {
 						return [];
 					}
 
+					const inputModalities = this.parseInputModalities(chatTriggerParams.options);
 					return [
 						{
 							name: chatTriggerParams.agentName ?? workflow.name ?? 'Unknown Agent',
@@ -926,7 +976,12 @@ export class ChatHubService {
 							},
 							createdAt: workflow.createdAt ? workflow.createdAt.toISOString() : null,
 							updatedAt: workflow.updatedAt ? workflow.updatedAt.toISOString() : null,
-							allowFileUploads: chatTriggerParams.options?.allowFileUploads ?? false,
+							metadata: {
+								inputModalities,
+								capabilities: {
+									functionCalling: true, // n8n workflows support tools
+								},
+							},
 						},
 					];
 				}),
@@ -1309,10 +1364,6 @@ export class ChatHubService {
 
 		if (!agent.provider || !agent.model) {
 			throw new BadRequestError('Provider or model not set for agent');
-		}
-
-		if (agent.provider === 'n8n' || agent.provider === 'custom-agent') {
-			throw new BadRequestError('Invalid provider');
 		}
 
 		const credentialId = agent.credentialId;
@@ -1831,10 +1882,6 @@ export class ChatHubService {
 			throw new BadRequestError('Agent not found for title generation');
 		}
 
-		if (agent.provider === 'n8n' || agent.provider === 'custom-agent') {
-			throw new BadRequestError('Invalid provider for title generation');
-		}
-
 		const credentialId = agent.credentialId;
 		if (!credentialId) {
 			throw new BadRequestError('Credentials not set for agent');
@@ -2210,6 +2257,53 @@ export class ChatHubService {
 
 		await this.chatHubAttachmentService.deleteAllBySessionId(sessionId);
 		await this.sessionRepository.deleteChatHubSession(sessionId);
+	}
+
+	/**
+	 * Parses input modalities from chat trigger options
+	 * Converts MIME types string to InputModality array
+	 */
+	private parseInputModalities(options?: {
+		allowFileUploads?: boolean;
+		allowedFilesMimeTypes?: string;
+	}): InputModality[] {
+		const allowFileUploads = options?.allowFileUploads ?? false;
+		const allowedFilesMimeTypes = options?.allowedFilesMimeTypes;
+
+		if (!allowFileUploads) {
+			return ['text'];
+		}
+
+		// If no specific MIME types specified, default to text and file
+		if (!allowedFilesMimeTypes) {
+			return ['text', 'file'];
+		}
+
+		// Parse MIME types string to determine modalities
+		const modalities = new Set<InputModality>(['text']);
+
+		// If wildcard, support all modalities
+		if (allowedFilesMimeTypes === '*/*') {
+			return ['text', 'image', 'audio', 'video', 'file'];
+		}
+
+		// Parse comma-separated MIME types
+		const mimeTypes = allowedFilesMimeTypes.split(',').map((type) => type.trim());
+
+		for (const mimeType of mimeTypes) {
+			if (mimeType.startsWith('image/')) {
+				modalities.add('image');
+			} else if (mimeType.startsWith('audio/')) {
+				modalities.add('audio');
+			} else if (mimeType.startsWith('video/')) {
+				modalities.add('video');
+			} else {
+				// Any other MIME type falls under generic 'file'
+				modalities.add('file');
+			}
+		}
+
+		return Array.from(modalities);
 	}
 
 	private async ensureValidModel(user: User, model: ChatHubConversationModel) {

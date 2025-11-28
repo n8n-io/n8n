@@ -1,4 +1,4 @@
-import { ChatHubProvider } from '@n8n/api-types';
+import { ChatHubLLMProvider } from '@n8n/api-types';
 import { WithTimestamps, User, CredentialsEntity, JsonColumn } from '@n8n/db';
 import { Column, Entity, ManyToOne, JoinColumn, PrimaryGeneratedColumn } from '@n8n/typeorm';
 import { INode } from 'n8n-workflow';
@@ -40,23 +40,23 @@ export class ChatHubAgent extends WithTimestamps {
 	owner?: User;
 
 	/*
-	 * ID of the selected credential to use by default with the selected LLM provider (if applicable).
+	 * ID of the selected credential to use by default with the selected LLM provider.
 	 */
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	credentialId: string | null;
 
 	/**
-	 * The selected credential to use by default with the selected LLM provider (if applicable).
+	 * The selected credential to use by default with the selected LLM provider.
 	 */
 	@ManyToOne('CredentialsEntity', { onDelete: 'SET NULL', nullable: true })
 	@JoinColumn({ name: 'credentialId' })
 	credential?: CredentialsEntity | null;
 
 	/*
-	 * Enum value of the LLM provider to use, e.g. 'openai', 'anthropic', 'google', 'n8n' (if applicable).
+	 * Enum value of the LLM provider to use, e.g. 'openai', 'anthropic', 'google'.
 	 */
 	@Column({ type: 'varchar', length: 16, nullable: true })
-	provider: ChatHubProvider;
+	provider: ChatHubLLMProvider;
 
 	/*
 	 * LLM model to use from the provider (if applicable)
