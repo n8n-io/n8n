@@ -397,7 +397,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 		tools.pop();
 	}
 
-	if (this.getNode().typeVersion < 1.1) {
+	if (this.getNode().typeVersion === 1) {
 		if (options.codeExecution) {
 			tools.push({
 				codeExecution: {},
