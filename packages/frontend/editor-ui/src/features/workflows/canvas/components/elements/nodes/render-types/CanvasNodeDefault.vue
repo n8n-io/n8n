@@ -88,11 +88,23 @@ const nodeSize = computed(() =>
 	),
 );
 
-const styles = computed(() => ({
-	'--canvas-node--width': `${nodeSize.value.width}px`,
-	'--canvas-node--height': `${nodeSize.value.height}px`,
-	'--node--icon--size': `${iconSize.value}px`,
-}));
+const styles = computed(() => {
+	// Calculate border opacity for light mode based on zoom level
+	// At zoom = 1.0 (100%): opacity = 0.15 (baseline)
+	// At zoom < 1.0: opacity increases gradually
+	// Capped at 0.25 to prevent excessive darkening
+	const baseOpacity = 0.15;
+	const maxOpacity = 0.4;
+	const zoom = viewport.value.zoom;
+	const zoomAdjustedOpacity = zoom >= 1.0 ? baseOpacity : Math.min(baseOpacity / zoom, maxOpacity);
+
+	return {
+		'--canvas-node--width': `${nodeSize.value.width}px`,
+		'--canvas-node--height': `${nodeSize.value.height}px`,
+		'--node--icon--size': `${iconSize.value}px`,
+		'--canvas-node--border--opacity': zoomAdjustedOpacity.toFixed(3),
+	};
+});
 
 const dataTestId = computed(() => {
 	let type = 'default';
@@ -207,7 +219,7 @@ function onActivate(event: MouseEvent) {
 		var(
 			--canvas-node--border-color,
 			light-dark(
-				oklch(from var(--color--neutral-black) l c h / 0.15),
+				oklch(from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity, 0.15)),
 				oklch(from var(--color--neutral-white) l c h / 0.085)
 			)
 		);
