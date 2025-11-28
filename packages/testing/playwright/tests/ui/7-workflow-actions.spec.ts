@@ -404,6 +404,33 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.canvas.getNodeCreatorPlusButton()).toBeVisible();
 	});
 
+	test('should not show unpublish menu item for non-published workflow', async ({ n8n }) => {
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+		await n8n.canvas.saveWorkflow();
+
+		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
+
+		await n8n.workflowSettingsModal.getWorkflowMenu().click();
+		await expect(n8n.workflowSettingsModal.getUnpublishMenuItem()).not.toBeAttached();
+	});
+
+	test('should unpublish a published workflow', async ({ n8n }) => {
+		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
+		await n8n.canvas.publishWorkflow();
+		await n8n.page.keyboard.press('Escape');
+
+		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
+
+		await n8n.workflowSettingsModal.getWorkflowMenu().click();
+		await n8n.workflowSettingsModal.clickUnpublishMenuItem();
+
+		await expect(n8n.workflowSettingsModal.getUnpublishModal()).toBeVisible();
+		await n8n.workflowSettingsModal.confirmUnpublishModal();
+
+		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
+		await expect(n8n.canvas.getPublishedIndicator()).not.toBeVisible();
+	});
+
 	test('should unpublish published workflow on archive', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		await n8n.canvas.saveWorkflow();
