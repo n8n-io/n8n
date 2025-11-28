@@ -4,6 +4,7 @@ import {
 	type IExecuteFunctions,
 	type INodeExecutionData,
 	type INodeProperties,
+	jsonParse,
 	updateDisplayOptions,
 	validateNodeParameters,
 } from 'n8n-workflow';
@@ -138,10 +139,19 @@ const properties: INodeProperties[] = [
 			{
 				displayName: 'File Search',
 				name: 'fileSearch',
-				type: 'boolean',
-				default: true,
-				description:
-					'Whether to allow the model to search through indexed files for information retrieval',
+				type: 'collection',
+				default: { fileSearchStoreNames: '[]' },
+				options: [
+					{
+						displayName: 'File Search Store Names',
+						name: 'fileSearchStoreNames',
+						description:
+							'The file search store names to use for the file search. File search stores are managed via Google AI Studio.',
+						type: 'json',
+						default: '[]',
+						required: true,
+					},
+				],
 			},
 			{
 				displayName: 'Code Execution',
@@ -368,17 +378,15 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		const googleMapsOptions = builtInTools.googleMaps as
-			| { values?: { latitude?: number | string; longitude?: number | string } }
-			| undefined;
+		const googleMapsOptions = builtInTools.googleMaps as IDataObject | undefined;
 		if (googleMapsOptions) {
 			tools.push({
 				googleMaps: {},
 			});
 
 			// Build toolConfig with retrievalConfig if latitude/longitude are provided
-			const latitude = googleMapsOptions.values?.latitude;
-			const longitude = googleMapsOptions.values?.longitude;
+			const latitude = googleMapsOptions.latitude as number | string | undefined;
+			const longitude = googleMapsOptions.longitude as number | string | undefined;
 			if (
 				latitude !== undefined &&
 				latitude !== '' &&
@@ -402,9 +410,21 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			});
 		}
 
-		if (builtInTools.fileSearch) {
+		const fileSearchOptions = builtInTools.fileSearch as IDataObject | undefined;
+		if (fileSearchOptions) {
+			const fileSearchStoreNamesRaw = fileSearchOptions.fileSearchStoreNames as string | undefined;
+			let fileSearchStoreNames: string[] | undefined;
+			if (fileSearchStoreNamesRaw) {
+				const parsed = jsonParse(fileSearchStoreNamesRaw, {
+					errorMessage: 'Failed to parse file search store names',
+				});
+				if (Array.isArray(parsed)) {
+					fileSearchStoreNames = parsed;
+				}
+			}
+
 			tools.push({
-				fileSearch: {},
+				fileSearch: fileSearchStoreNames ? { fileSearchStoreNames } : {},
 			});
 		}
 

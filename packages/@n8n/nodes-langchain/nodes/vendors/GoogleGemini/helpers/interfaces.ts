@@ -113,6 +113,8 @@ export interface Tool {
 	googleSearch?: object;
 	googleMaps?: object;
 	urlContext?: object;
-	fileSearch?: object;
+	fileSearch?: {
+		fileSearchStoreNames?: string[];
+	};
 	codeExecution?: object;
 }
