@@ -1,18 +1,13 @@
-import { Config, Env } from '@n8n/config';
+import { Config, Env, ExecutionsConfig } from '@n8n/config';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { z } from 'zod';
 
 import { InstanceSettings } from '@/instance-settings';
 
-export const BINARY_DATA_MODES = ['default', 'filesystem', 's3', 'database'] as const;
+export const BINARY_DATA_MODES = ['filesystem', 's3', 'database'] as const;
 
 const binaryDataModesSchema = z.enum(BINARY_DATA_MODES);
-
-const availableModesSchema = z
-	.string()
-	.transform((value) => value.split(','))
-	.pipe(binaryDataModesSchema.array());
 
 const dbMaxFileSizeSchema = z
 	.number()
@@ -20,13 +15,12 @@ const dbMaxFileSizeSchema = z
 
 @Config
 export class BinaryDataConfig {
-	/** Available modes of binary data storage, as comma separated strings. */
-	@Env('N8N_AVAILABLE_BINARY_DATA_MODES', availableModesSchema)
-	availableModes: z.infer<typeof availableModesSchema> = ['filesystem'];
+	/** Available modes of binary data storage. */
+	readonly availableModes: typeof BINARY_DATA_MODES = BINARY_DATA_MODES;
 
-	/** Storage mode for binary data. */
+	/** Storage mode for binary data. Defaults to 'filesystem' in regular mode, 'database' in scaling mode. */
 	@Env('N8N_DEFAULT_BINARY_DATA_MODE', binaryDataModesSchema)
-	mode: z.infer<typeof binaryDataModesSchema> = 'default';
+	mode!: z.infer<typeof binaryDataModesSchema>;
 
 	/** Path for binary data storage in "filesystem" mode. */
 	@Env('N8N_BINARY_DATA_STORAGE_PATH')
@@ -43,10 +37,14 @@ export class BinaryDataConfig {
 	@Env('N8N_BINARY_DATA_DATABASE_MAX_FILE_SIZE', dbMaxFileSizeSchema)
 	dbMaxFileSize: number = 512;
 
-	constructor({ encryptionKey, n8nFolder }: InstanceSettings) {
+	constructor({ encryptionKey, n8nFolder }: InstanceSettings, executionsConfig: ExecutionsConfig) {
 		this.localStoragePath = path.join(n8nFolder, 'binaryData');
 		this.signingSecret = createHash('sha256')
 			.update(`url-signing:${encryptionKey}`)
 			.digest('base64');
+
+		if (!this.mode) {
+			this.mode = executionsConfig.mode === 'queue' ? 'database' : 'filesystem';
+		}
 	}
 }
