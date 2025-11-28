@@ -86,7 +86,11 @@ function openWorkflowSettings() {
 						<div v-if="data.directory">
 							<div>
 								<N8nText size="small" :bold="true"
-									>{{ i18n.baseText('runData.directory') }}:
+									>{{
+										data.directory.startsWith('http://') || data.directory.startsWith('https://')
+											? i18n.baseText('runData.url')
+											: i18n.baseText('runData.directory')
+									}}:
 								</N8nText>
 							</div>
 							<div :class="$style.binaryValue">{{ data.directory }}</div>

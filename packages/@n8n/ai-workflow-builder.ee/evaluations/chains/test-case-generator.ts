@@ -1,10 +1,19 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import { SystemMessage } from '@langchain/core/messages';
 import { ChatPromptTemplate, HumanMessagePromptTemplate } from '@langchain/core/prompts';
-import { OperationalError } from 'n8n-workflow';
+import { readFileSync } from 'fs';
+import { jsonParse, OperationalError } from 'n8n-workflow';
+import { join } from 'path';
 import { z } from 'zod';
 
+import type { SimpleWorkflow } from '../../src/types/workflow';
 import type { TestCase } from '../types/evaluation';
+
+// Helper to load reference workflows
+function loadReferenceWorkflow(filename: string): SimpleWorkflow {
+	const path = join(__dirname, '..', 'reference-workflows', filename);
+	return jsonParse<SimpleWorkflow>(readFileSync(path, 'utf-8'));
+}
 
 const testCasesSchema = z.object({
 	testCases: z.array(
@@ -105,6 +114,7 @@ export const basicTestCases: TestCase[] = [
 		name: 'Summarize emails with AI',
 		prompt:
 			'Create an automation that runs on Monday mornings. It reads my Gmail inbox from the weekend, analyzes them with `gpt-4.1-mini` to find action items and priorities, and emails me a structured email using Gmail.',
+		referenceWorkflow: loadReferenceWorkflow('email-summary.json'),
 	},
 	{
 		id: 'ai-news-digest',
@@ -117,6 +127,7 @@ export const basicTestCases: TestCase[] = [
 		name: 'Daily weather report',
 		prompt:
 			'Create an automation that checks the weather for my location every morning at 5 a.m using OpenWeather. Send me a short weather report by email using Gmail. Use OpenAI `gpt-4.1-mini` to write a short, fun formatted email body by adding personality when describing the weather and how the day might feel. Include all details relevant to decide on my plans and clothes for the day.',
+		referenceWorkflow: loadReferenceWorkflow('daily-weather-report.json'),
 	},
 	{
 		id: 'invoice-pipeline',
@@ -147,11 +158,13 @@ export const basicTestCases: TestCase[] = [
 		name: 'Process large Google Sheets data',
 		prompt:
 			'Create a workflow that reads all rows from a Google Sheets document with thousands of customer records. For each row, call an external API to get additional customer data, process the response, and update the row with the enriched information. Handle rate limiting and errors gracefully.',
+		referenceWorkflow: loadReferenceWorkflow('google-sheets-processing.json'),
 	},
 	{
 		id: 'extract-from-file',
 		name: 'Extract data from uploaded files',
 		prompt:
 			'Build a workflow that accepts file uploads through an n8n form. When users upload PDF documents, CSV files, or Excel spreadsheets, automatically extract the text content and data from these files. Transform the extracted data into a structured format and save it to a database or send it via email as a summary.',
+		referenceWorkflow: loadReferenceWorkflow('extract-from-file.json'),
 	},
 ];

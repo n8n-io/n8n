@@ -556,7 +556,7 @@ describe('useRunWorkflow({ router })', () => {
 			vi.mocked(workflowsStore).incomingConnectionsByNodeName.mockReturnValue({});
 
 			// ACT
-			await runWorkflow({ destinationNode: destinationNodeName });
+			await runWorkflow({ destinationNode: { nodeName: destinationNodeName, mode: 'inclusive' } });
 
 			// ASSERT
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledTimes(1);
@@ -630,7 +630,10 @@ describe('useRunWorkflow({ router })', () => {
 
 			const { runWorkflow } = composable;
 
-			await runWorkflow({ destinationNode: 'Code 1', source: 'Node.executeNode' });
+			await runWorkflow({
+				destinationNode: { nodeName: 'Code 1', mode: 'inclusive' },
+				source: 'Node.executeNode',
+			});
 
 			expect(workflowsStore.runWorkflow).toHaveBeenCalledWith(
 				expect.objectContaining({ dirtyNodeNames: [executeName] }),
@@ -811,7 +814,9 @@ describe('useRunWorkflow({ router })', () => {
 			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
 
 			// ACT
-			const result = await runWorkflow({ destinationNode: 'Test node' });
+			const result = await runWorkflow({
+				destinationNode: { nodeName: 'Test node', mode: 'inclusive' },
+			});
 
 			// ASSERT
 			expect(agentRequestStore.getAgentRequest).toHaveBeenCalledWith('WorkflowId', 'Test id');
@@ -822,7 +827,7 @@ describe('useRunWorkflow({ router })', () => {
 						name: 'tool',
 					},
 				},
-				destinationNode: 'Test node',
+				destinationNode: { nodeName: 'Test node', mode: 'inclusive' },
 				dirtyNodeNames: undefined,
 				runData: mockRunData,
 				startNodes: [
@@ -861,7 +866,9 @@ describe('useRunWorkflow({ router })', () => {
 			const setWorkflowExecutionData = vi.spyOn(workflowState, 'setWorkflowExecutionData');
 
 			// ACT
-			const result = await runWorkflow({ destinationNode: 'some node name' });
+			const result = await runWorkflow({
+				destinationNode: { nodeName: 'some node name', mode: 'inclusive' },
+			});
 
 			// ASSERT
 			expect(result).toEqual(mockExecutionResponse);

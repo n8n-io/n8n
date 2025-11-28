@@ -9,6 +9,7 @@ import {
 	type EnrichedStructuredChunk,
 	type ChatHubProvider,
 } from '@n8n/api-types';
+import type { INode } from 'n8n-workflow';
 import { z } from 'zod';
 
 export interface UserMessage {
@@ -78,6 +79,7 @@ export interface ChatStreamingState extends Partial<EnrichedStructuredChunk['met
 	sessionId: ChatSessionId;
 	model: ChatHubConversationModel;
 	retryOfMessageId: ChatMessageId | null;
+	tools: INode[];
 }
 
 export interface FlattenedModel {

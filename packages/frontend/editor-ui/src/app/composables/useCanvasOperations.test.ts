@@ -37,6 +37,7 @@ import { createTestingPinia } from '@pinia/testing';
 import { mockedStore } from '@/__tests__/utils';
 import {
 	AGENT_NODE_TYPE,
+	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 	FORM_TRIGGER_NODE_TYPE,
 	SET_NODE_TYPE,
 	STICKY_NODE_TYPE,
@@ -3984,6 +3985,63 @@ describe('useCanvasOperations', () => {
 				newName: 'Test Workflow Name',
 				setStateDirty: true,
 			});
+		});
+
+		it('should not crash when importing nodes that exceed maxNodes limit', async () => {
+			const toast = useToast();
+			const workflowsStore = mockedStore(useWorkflowsStore);
+			const nodeTypesStore = useNodeTypesStore();
+
+			// Create a node type with maxNodes: 1
+			const executeWorkflowTriggerNodeType = mockNodeTypeDescription({
+				name: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+				maxNodes: 1,
+			});
+
+			nodeTypesStore.nodeTypes = {
+				[EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE]: { 1: executeWorkflowTriggerNodeType },
+			};
+
+			// Create workflow data with two nodes of the same type (that has maxNodes: 1)
+			const nodesToImport = [
+				{
+					id: 'import-1',
+					name: 'Execute Workflow Trigger 1',
+					type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+					typeVersion: 1,
+					position: [200, 200] as [number, number],
+					parameters: {},
+				},
+				{
+					id: 'import-2',
+					name: 'Execute Workflow Trigger 2',
+					type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+					typeVersion: 1,
+					position: [300, 300] as [number, number],
+					parameters: {},
+				},
+			];
+
+			const workflowDataToImport = {
+				nodes: nodesToImport,
+				connections: {},
+				pinData: {
+					'Execute Workflow Trigger 1': [{ json: { test: 'data1' } }],
+					'Execute Workflow Trigger 2': [{ json: { test: 'data2' } }],
+				},
+			};
+
+			// Mock createWorkflowObject to return a workflow with no nodes (since none can be created due to maxNodes limit)
+			const workflowObject = createTestWorkflowObject({ nodes: [], connections: {} });
+			workflowsStore.createWorkflowObject.mockReturnValue(workflowObject);
+
+			const canvasOperations = useCanvasOperations();
+
+			// This should not throw even when nodes can't be added due to maxNodes limit
+			await expect(
+				canvasOperations.importWorkflowData(workflowDataToImport, 'paste'),
+			).resolves.not.toThrow();
+			expect(toast.showError).not.toHaveBeenCalled();
 		});
 	});
 
