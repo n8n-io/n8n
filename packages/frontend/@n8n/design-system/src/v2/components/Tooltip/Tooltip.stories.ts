@@ -313,34 +313,6 @@ export const NoArrow = {
 	},
 } satisfies Story;
 
-export const CustomPopperClass = {
-	render: (args) => ({
-		components: { Tooltip, N8nButton },
-		setup() {
-			return { args };
-		},
-		template: `
-		<div style="display: flex; justify-content: center; align-items: center; padding: 100px;">
-			<Tooltip v-bind="args">
-				<N8nButton label="Hover for custom styled tooltip" />
-			</Tooltip>
-			<style>
-				.custom-warning-tooltip {
-					background: #fff3cd !important;
-					color: #856404 !important;
-					border: 1px solid #ffc107 !important;
-				}
-			</style>
-		</div>
-		`,
-	}),
-	args: {
-		content: 'Warning: This action cannot be undone',
-		placement: 'top',
-		popperClass: 'custom-warning-tooltip',
-	},
-} satisfies Story;
-
 export const WithOffset = {
 	render: (args) => ({
 		components: { Tooltip, N8nButton },
@@ -402,28 +374,5 @@ export const NotEnterable = {
 		content: 'This tooltip closes immediately when mouse leaves trigger',
 		placement: 'top',
 		enterable: false,
-	},
-} satisfies Story;
-
-export const WithPopperOptions = {
-	render: (args) => ({
-		components: { Tooltip, N8nButton },
-		setup() {
-			return { args };
-		},
-		template: `
-		<div style="display: flex; justify-content: center; align-items: flex-start; padding: 20px; height: 200px;">
-			<Tooltip v-bind="args">
-				<N8nButton label="Hover (tooltip won't flip)" />
-			</Tooltip>
-		</div>
-		`,
-	}),
-	args: {
-		content: "This tooltip has avoidCollisions disabled - it won't flip to avoid edges",
-		placement: 'top',
-		popperOptions: {
-			avoidCollisions: false,
-		},
 	},
 } satisfies Story;
