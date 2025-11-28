@@ -24,14 +24,14 @@ test.describe('Focus panel', () => {
 			await expect(n8n.canvas.focusPanel.getMapper()).toBeVisible();
 
 			// Assert that mapper is closed but the Set node is still selected and shown in
-			await n8n.canvas.canvasBody().click({ position: { x: 0, y: 0 } });
+			await n8n.canvas.canvasBody().click({ position: { x: 1, y: 1 } });
 
 			await expect(n8n.canvas.focusPanel.getMapper()).toBeHidden();
 			await expect(n8n.canvas.focusPanel.getHeaderNodeName()).toHaveText('Set');
 			await expect(n8n.canvas.selectedNodes()).toHaveCount(1);
 
 			// Assert that another click on canvas does de-select the Set node
-			await n8n.canvas.canvasBody().click({ position: { x: 0, y: 0 } });
+			await n8n.canvas.canvasBody().click({ position: { x: 1, y: 1 } });
 
 			await expect(n8n.canvas.focusPanel.getHeaderNodeName()).toBeHidden();
 			await expect(n8n.canvas.selectedNodes()).toHaveCount(0);
