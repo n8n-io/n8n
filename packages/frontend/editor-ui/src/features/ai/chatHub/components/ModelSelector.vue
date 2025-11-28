@@ -39,6 +39,7 @@ import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
+import { truncateBeforeLast } from '@n8n/utils';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
 
@@ -47,11 +48,13 @@ const {
 	includeCustomAgents = true,
 	credentials,
 	text,
+	warnMissingCredentials = false,
 } = defineProps<{
 	selectedAgent: ChatModelDto | null;
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
 	text?: boolean;
+	warnMissingCredentials?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -80,6 +83,7 @@ function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
 
 const i18n = useI18n();
 const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
+const isLoading = ref(false);
 const dropdownRef = useTemplateRef('dropdownRef');
 const uiStore = useUIStore();
 const settingStore = useSettingsStore();
@@ -95,6 +99,7 @@ const credentialsName = computed(() =>
 const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
 const isCredentialsMissing = computed(
 	() =>
+		warnMissingCredentials &&
 		isCredentialsRequired.value &&
 		selectedAgent?.model.provider &&
 		!credentials?.[selectedAgent?.model.provider],
@@ -104,14 +109,13 @@ const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
 
 	if (includeCustomAgents) {
-		const customAgents = [
-			...agents.value['custom-agent'].models,
-			...agents.value['n8n'].models,
-		].map((agent) => ({
-			id: stringifyModel(agent.model),
-			title: agent.name,
-			disabled: false,
-		}));
+		const customAgents = isLoading.value
+			? []
+			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => ({
+					id: stringifyModel(agent.model),
+					title: agent.name,
+					disabled: false,
+				}));
 
 		menuItems.push({
 			id: 'custom-agents',
@@ -120,8 +124,14 @@ const menu = computed(() => {
 			iconSize: 'large',
 			iconMargin: false,
 			submenu: [
-				...customAgents,
-				...(customAgents.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
+				...(isLoading.value
+					? [
+							{ id: 'loading', title: i18n.baseText('generic.loadingEllipsis'), disabled: true },
+							{ isDivider: true as const, id: 'divider' },
+						]
+					: customAgents.length > 0
+						? [...customAgents, { isDivider: true as const, id: 'divider' }]
+						: []),
 				{
 					id: NEW_AGENT_MENU_ID,
 					icon: 'plus',
@@ -137,6 +147,29 @@ const menu = computed(() => {
 
 		// Filter out disabled providers from the menu
 		if (settings && !settings.enabled) continue;
+		const configureMenu = {
+			id: `${provider}::configure`,
+			icon: 'settings' as const,
+			title: i18n.baseText('chatHub.agent.configureCredentials'),
+			disabled: false,
+		};
+
+		if (isLoading.value) {
+			menuItems.push({
+				id: provider,
+				title: providerDisplayNames[provider],
+				submenu: [
+					{
+						id: `${provider}::loading`,
+						title: i18n.baseText('generic.loadingEllipsis'),
+						disabled: true,
+					},
+					{ isDivider: true as const, id: 'divider' },
+					configureMenu,
+				],
+			});
+			continue;
+		}
 
 		const theAgents = [...agents.value[provider].models];
 
@@ -192,12 +225,7 @@ const menu = computed(() => {
 						} as const,
 					]
 				: []),
-			{
-				id: `${provider}::configure`,
-				icon: 'settings',
-				title: i18n.baseText('chatHub.agent.configureCredentials'),
-				disabled: false,
-			},
+			configureMenu,
 		]);
 
 		menuItems.push({
@@ -311,7 +339,12 @@ watch(
 	() => credentials,
 	async (credentials) => {
 		if (credentials) {
-			agents.value = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
+			isLoading.value = true;
+			try {
+				agents.value = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
+			} finally {
+				isLoading.value = false;
+			}
 		}
 	},
 	{ immediate: true },
@@ -350,10 +383,10 @@ defineExpose({
 			/>
 			<div :class="$style.selected">
 				<div>
-					{{ selectedLabel }}
+					{{ truncateBeforeLast(selectedLabel, 30) }}
 				</div>
 				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
-					{{ credentialsName }}
+					{{ truncateBeforeLast(credentialsName, 30) }}
 				</N8nText>
 				<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
 					<N8nIcon
@@ -389,13 +422,6 @@ defineExpose({
 	flex-direction: column;
 	align-items: start;
 	gap: var(--spacing--4xs);
-	max-width: 200px;
-
-	& > div {
-		max-width: 100%;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
 }
 
 .icon {
