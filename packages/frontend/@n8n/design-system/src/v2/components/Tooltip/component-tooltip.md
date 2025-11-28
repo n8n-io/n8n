@@ -21,7 +21,6 @@ Displays contextual information when users hover over, focus on, or tap an eleme
 - `enterable?: boolean` - Whether the mouse can enter the tooltip content area. Default: `true`
 - `teleported?: boolean` - Whether to append the tooltip to the body. Default: `true`
 - `offset?: number` - Offset of the tooltip from the trigger element (in pixels). Default: `6`
-- `showArrow?: boolean` - Whether to show the tooltip arrow. Default: `true`
 
 **Slots**
 

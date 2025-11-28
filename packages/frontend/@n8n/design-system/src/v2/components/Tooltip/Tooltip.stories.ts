@@ -252,27 +252,6 @@ export const Disabled = {
 	},
 } satisfies Story;
 
-export const NoArrow = {
-	render: (args) => ({
-		components: { Tooltip, N8nButton },
-		setup() {
-			return { args };
-		},
-		template: `
-		<div style="display: flex; justify-content: center; align-items: center; padding: 100px;">
-			<Tooltip v-bind="args">
-				<N8nButton label="Hover me" />
-			</Tooltip>
-		</div>
-		`,
-	}),
-	args: {
-		content: 'This tooltip has no arrow',
-		placement: 'top',
-		showArrow: false,
-	},
-} satisfies Story;
-
 export const WithOffset = {
 	render: (args) => ({
 		components: { Tooltip, N8nButton },

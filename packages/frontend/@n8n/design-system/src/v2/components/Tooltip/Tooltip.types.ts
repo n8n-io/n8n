@@ -29,8 +29,6 @@ export interface N8nTooltipProps {
 	teleported?: boolean;
 	/** Offset of the tooltip from the trigger element (in pixels) */
 	offset?: number;
-	/** Whether to show the tooltip arrow */
-	showArrow?: boolean;
 }
 
 export interface N8nTooltipSlots {

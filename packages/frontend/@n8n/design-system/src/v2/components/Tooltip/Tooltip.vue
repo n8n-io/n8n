@@ -21,7 +21,6 @@ const props = withDefaults(defineProps<N8nTooltipProps>(), {
 	showAfter: 0,
 	enterable: true,
 	teleported: true,
-	showArrow: true,
 	offset: 6,
 });
 
@@ -39,10 +38,10 @@ const isSide = (value: string): value is Side => VALID_SIDES.includes(value as S
 const isAlign = (value: string): value is Align => VALID_ALIGNS.includes(value as Align);
 
 const placementParts = computed(() => {
-	const [s, a] = props.placement.split('-');
+	const [sideValue, alignValue] = props.placement.split('-');
 	return {
-		side: isSide(s) ? s : 'top',
-		align: isAlign(a) ? a : 'center',
+		side: isSide(sideValue) ? sideValue : 'top',
+		align: isAlign(alignValue) ? alignValue : 'center',
 	};
 });
 
@@ -97,7 +96,7 @@ const handleOpenChange = (open: boolean) => {
 						<div v-n8n-html="content"></div>
 					</slot>
 
-					<TooltipArrow v-if="showArrow" :class="$style.arrow" />
+					<TooltipArrow :class="$style.arrow" />
 				</TooltipContent>
 			</component>
 		</TooltipRoot>
@@ -120,10 +119,6 @@ const handleOpenChange = (open: boolean) => {
 	background: var(--color--background--shade-2);
 	color: var(--color--foreground--tint-2);
 	word-wrap: break-word;
-
-	img {
-		max-width: 100%;
-	}
 
 	svg {
 		fill: var(--color--background--shade-2);

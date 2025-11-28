@@ -100,28 +100,6 @@ describe('v2/components/Tooltip', () => {
 				expect(arrow).toBeInTheDocument();
 			});
 		});
-
-		it('should hide arrow when showArrow is false', async () => {
-			render(Tooltip, {
-				props: {
-					content: 'Test tooltip',
-					showArrow: false,
-					visible: true,
-				},
-				slots: {
-					default: '<button>Hover me</button>',
-				},
-			});
-
-			await waitFor(() => {
-				const tooltipContent = document.querySelector('[data-dismissable-layer]');
-				expect(tooltipContent).toBeInTheDocument();
-			});
-
-			const tooltipContent = document.querySelector('[data-dismissable-layer]');
-			const arrow = tooltipContent?.querySelector('svg');
-			expect(arrow).not.toBeInTheDocument();
-		});
 	});
 
 	describe('placements', () => {
