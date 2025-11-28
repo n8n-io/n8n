@@ -330,8 +330,10 @@ export class EnterpriseWorkflowService {
 			}
 		}
 
+		const wasActive = this.isActiveWorkflow(workflow);
+
 		// 6. deactivate workflow if necessary
-		if (workflow.activeVersionId !== null) {
+		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);
 		}
 
@@ -348,7 +350,7 @@ export class EnterpriseWorkflowService {
 		await this.ownershipService.setWorkflowProjectCacheEntry(workflow.id, destinationProject);
 
 		// 11. try to activate it again if it was active
-		if (workflow.activeVersionId !== null) {
+		if (wasActive) {
 			return await this.attemptWorkflowReactivation(workflowId, workflow.activeVersionId, user.id);
 		}
 
@@ -376,12 +378,6 @@ export class EnterpriseWorkflowService {
 		}
 
 		return [...usedCredentials.values()];
-	}
-
-	private isActiveWorkflow(
-		workflow: WorkflowEntity,
-	): workflow is WorkflowEntity & { activeVersionId: string } {
-		return workflow.activeVersionId !== null;
 	}
 
 	async transferFolder(
@@ -581,5 +577,11 @@ export class EnterpriseWorkflowService {
 				},
 			);
 		});
+	}
+
+	private isActiveWorkflow(
+		workflow: WorkflowEntity,
+	): workflow is WorkflowEntity & { activeVersionId: string } {
+		return workflow.activeVersionId !== null;
 	}
 }

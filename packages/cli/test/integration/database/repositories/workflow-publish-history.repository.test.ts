@@ -67,7 +67,6 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-
 				userId: null,
 			});
 
@@ -148,7 +147,6 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-
 				userId: null,
 			});
 
@@ -169,7 +167,6 @@ describe('WorkflowPublishHistoryRepository', () => {
 				workflowId: workflow.id,
 				versionId: workflow.versionId,
 				status: 'activated',
-
 				userId: null,
 			});
 
