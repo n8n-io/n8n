@@ -79,6 +79,48 @@ describe('Users in Public API', () => {
 			const owners = users.filter((user: any) => user.role === 'global:owner');
 			expect(owners).toHaveLength(1);
 		});
+
+		it('should return users with roles when includeRole is passed as string', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwnerWithApiKey();
+
+			await createMember();
+			await createMember();
+			await createMember();
+
+			/**
+			 * Act
+			 * Pass includeRole as string 'true' to mimic how query params come from HTTP requests
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get('/users?includeRole=true');
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			const { data: users } = response.body;
+
+			expect(users).toHaveLength(4);
+			users.forEach((user: any) => {
+				expect(user).toHaveProperty('id');
+				expect(user).toHaveProperty('email');
+				expect(user).toHaveProperty('firstName');
+				expect(user).toHaveProperty('lastName');
+				expect(user).toHaveProperty('createdAt');
+				expect(user).toHaveProperty('updatedAt');
+				expect(user).toHaveProperty('isPending');
+				expect(user).toHaveProperty('role');
+			});
+
+			const members = users.filter((user: any) => user.role === 'global:member');
+			expect(members).toHaveLength(3);
+			const owners = users.filter((user: any) => user.role === 'global:owner');
+			expect(owners).toHaveLength(1);
+		});
 	});
 
 	describe('GET /users/:id', () => {
@@ -114,6 +156,37 @@ describe('Users in Public API', () => {
 				.publicApiAgentFor(owner)
 				.get(`/users/${member.id}`)
 				.query({ includeRole });
+
+			/**
+			 * Assert
+			 */
+			expect(response.status).toBe(200);
+			const returnedUser = response.body;
+
+			expect(returnedUser).toHaveProperty('id', member.id);
+			expect(returnedUser).toHaveProperty('email', member.email);
+			expect(returnedUser).toHaveProperty('firstName', member.firstName);
+			expect(returnedUser).toHaveProperty('lastName', member.lastName);
+			expect(returnedUser).toHaveProperty('createdAt');
+			expect(returnedUser).toHaveProperty('updatedAt');
+			expect(returnedUser).toHaveProperty('isPending', member.isPending);
+			expect(returnedUser).toHaveProperty('role', 'global:member');
+		});
+
+		it('should return a user with role when includeRole is passed as string', async () => {
+			/**
+			 * Arrange
+			 */
+			const owner = await createOwnerWithApiKey();
+			const member = await createMember();
+
+			/**
+			 * Act
+			 * Pass includeRole as string 'true' to mimic how query params come from HTTP requests
+			 */
+			const response = await testServer
+				.publicApiAgentFor(owner)
+				.get(`/users/${member.id}?includeRole=true`);
 
 			/**
 			 * Assert
