@@ -13,6 +13,7 @@ describe('TestWebhookRegistrationsService', () => {
 	);
 
 	const registration = mock<TestWebhookRegistration>({
+		version: 1,
 		webhook: { httpMethod: 'GET', path: 'hello', webhookId: undefined },
 	});
 

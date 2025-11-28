@@ -105,14 +105,7 @@ export class TestWebhooks implements IWebhookManager {
 			});
 		}
 
-		const { pushRef, workflowEntity, webhook: testWebhook } = registration;
-		// TODO(CAT-1265): support destination node mode in test webhook registration.
-		const destinationNode: IDestinationNode | undefined = registration.destinationNode
-			? {
-					nodeName: registration.destinationNode,
-					mode: 'inclusive',
-				}
-			: undefined;
+		const { pushRef, workflowEntity, webhook: testWebhook, destinationNode } = registration;
 
 		const workflow = this.toWorkflow(workflowEntity);
 
@@ -352,11 +345,10 @@ export class TestWebhooks implements IWebhookManager {
 
 			cacheableWebhook.userId = userId;
 
-			// TODO(CAT-1265): support destination node mode in test webhook registration.
 			const registration: TestWebhookRegistration = {
 				pushRef,
 				workflowEntity,
-				destinationNode: destinationNode?.nodeName,
+				destinationNode,
 				webhook: cacheableWebhook as IWebhookData,
 			};
 
