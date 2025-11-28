@@ -21,10 +21,8 @@ import { Time } from '@n8n/constants';
  * Returns the data of the last executed node
  */
 export function getDataLastExecutedNodeData(inputData: IRun): ITaskData | undefined {
-	console.trace('--- getDataLastExecutedNodeData');
 	const { runData, pinData = {} } = inputData.data.resultData;
 	const { lastNodeExecuted } = inputData.data.resultData;
-	console.log('lastNodeExecuted', lastNodeExecuted);
 
 	if (lastNodeExecuted === undefined) {
 		return undefined;
@@ -242,9 +240,6 @@ export async function updateParentExecutionWithChildResults(
 	const lastExecutedNodeData = getDataLastExecutedNodeData(subworkflowResults);
 	if (!lastExecutedNodeData?.data) return;
 
-	console.log('=== updateParentExecutionWithChildResults ===');
-	console.log('Child final output:', JSON.stringify(lastExecutedNodeData.data, null, 2));
-
 	try {
 		const executionRepository = Container.get(ExecutionRepository);
 		const parent = await executionRepository.findSingleExecution(parentExecutionId, {
@@ -253,7 +248,6 @@ export async function updateParentExecutionWithChildResults(
 		});
 
 		if (!parent || parent.status !== 'waiting') {
-			console.log('Parent not found or not waiting. status:', parent?.status);
 			return;
 		}
 
@@ -263,18 +257,8 @@ export async function updateParentExecutionWithChildResults(
 			!parentWithSubWorkflowResults.data.executionData?.nodeExecutionStack ||
 			parentWithSubWorkflowResults.data.executionData.nodeExecutionStack.length === 0
 		) {
-			console.log('Parent nodeExecutionStack is empty');
 			return;
 		}
-
-		console.log(
-			'Parent nodeExecutionStack[0].data BEFORE update:',
-			JSON.stringify(
-				parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data,
-				null,
-				2,
-			),
-		);
 
 		// Copy the sub workflow result to the parent execution's Execute Workflow node inputs
 		// so that the Execute Workflow node returns the correct data when parent execution is resumed
@@ -282,23 +266,12 @@ export async function updateParentExecutionWithChildResults(
 		parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data =
 			lastExecutedNodeData.data;
 
-		console.log(
-			'Parent nodeExecutionStack[0].data AFTER update:',
-			JSON.stringify(
-				parentWithSubWorkflowResults.data.executionData.nodeExecutionStack[0].data,
-				null,
-				2,
-			),
-		);
-
 		await setTimeout(Math.random() * 5 * Time.seconds.toMilliseconds);
 
 		await executionRepository.updateExistingExecution(
 			parentExecutionId,
 			parentWithSubWorkflowResults,
 		);
-
-		console.log('=== Parent execution updated in DB ===');
 	} catch (error: unknown) {
 		Container.get(Logger).error('Could not copy sub workflow result to waiting parent execution', {
 			childExecutionId,

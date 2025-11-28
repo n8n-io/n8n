@@ -423,7 +423,12 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return startedAt;
 	}
 
-	async updateExistingExecution(executionId: string, execution: Partial<IExecutionResponse>) {
+	async updateExistingExecution(
+		executionId: string,
+		execution: Partial<IExecutionResponse>,
+		requireStatus?: ExecutionStatus,
+	): Promise<boolean> {
+		console.log('updateExistingExecution requireStatus', requireStatus);
 		const {
 			id,
 			data,
@@ -446,28 +451,62 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			// TODO: Delete this block of code once the sqlite legacy (non-pooling) driver is dropped.
 			// In the non-pooling sqlite driver we can't use transactions, because that creates nested transactions under highly concurrent loads, leading to errors in the database
 
+			let executionTableAffectedRows = 0;
+
 			if (Object.keys(executionInformation).length > 0) {
-				await this.update({ id: executionId }, executionInformation);
+				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
+				if (requireStatus) whereCondition.status = requireStatus;
+				console.log('whereCondition', whereCondition);
+
+				const result = await this.update(whereCondition, executionInformation);
+				console.log('result', result);
+				executionTableAffectedRows = result.affected ?? 0;
+
+				// If requireStatus was set and the update failed, don't update executionData
+				if (requireStatus && executionTableAffectedRows === 0) {
+					return false;
+				}
 			}
 
 			if (Object.keys(executionData).length > 0) {
 				await this.executionDataRepository.update({ executionId }, executionData);
 			}
 
-			return;
+			return true;
 		}
 
 		// All other database drivers should update executions and execution-data atomically
 
+		let executionTableAffectedRows = 0;
 		await this.manager.transaction(async (tx) => {
 			if (Object.keys(executionInformation).length > 0) {
-				await tx.update(ExecutionEntity, { id: executionId }, executionInformation);
+				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
+				if (requireStatus) whereCondition.status = requireStatus;
+				console.log('whereCondition', whereCondition);
+
+				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
+				console.log('result', result);
+				executionTableAffectedRows = result.affected ?? 0;
+
+				// If requireStatus was set and the update failed, don't update executionData
+				// This prevents modifying data for an execution another process is handling
+				if (requireStatus && executionTableAffectedRows === 0) {
+					return;
+				}
 			}
 
 			if (Object.keys(executionData).length > 0) {
 				await tx.update(ExecutionData, { executionId }, executionData);
 			}
 		});
+
+		// When requireStatus is set, only return true if the execution table update succeeded
+		if (requireStatus) {
+			return executionTableAffectedRows > 0;
+		}
+
+		// When no status requirement, any update counts as success (backward compatibility)
+		return true;
 	}
 
 	async deleteExecutionsByFilter(

@@ -6,6 +6,7 @@ import { InstanceSettings } from 'n8n-core';
 import { UnexpectedError, type IWorkflowExecutionDataProcess } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import { OwnershipService } from '@/services/ownership.service';
 import { WorkflowRunner } from '@/workflow-runner';
 import {
@@ -137,8 +138,26 @@ export class WaitTracker {
 		console.log(
 			`>>> BEFORE workflowRunner.run for execution ${executionId}, status was: ${fullExecutionData.status}`,
 		);
-		await this.workflowRunner.run(data, false, false, executionId);
-		console.log(`>>> AFTER workflowRunner.run for execution ${executionId}`);
+		try {
+			await this.workflowRunner.run(data, false, false, executionId);
+			console.log(`>>> AFTER workflowRunner.run for execution ${executionId}`);
+		} catch (error) {
+			if (error instanceof ExecutionAlreadyResumingError) {
+				// This execution is already being resumed by another child execution
+				// This is expected in "run once for each item" mode when multiple children complete
+				console.log(
+					`>>> CAUGHT ExecutionAlreadyResumingError for execution ${executionId}, skipping duplicate resume`,
+				);
+				this.logger.debug(
+					`Execution ${executionId} is already being resumed, skipping duplicate resume`,
+					{ executionId },
+				);
+				return;
+			}
+			// Rethrow any other errors
+			console.log(`>>> RETHROWING unexpected error for execution ${executionId}:`, error);
+			throw error;
+		}
 
 		const { parentExecution } = fullExecutionData.data;
 		if (shouldRestartParentExecution(parentExecution)) {

@@ -123,8 +123,6 @@ export class WaitingWebhooks implements IWebhookManager {
 	): Promise<IWebhookResponseCallbackData> {
 		const { path: executionId, suffix } = req.params;
 
-		console.log('=== WaitingWebhooks.executeWebhook called ===');
-		console.log('executionId:', executionId);
 		this.logReceivedWebhook(req.method, executionId);
 
 		sanitizeWebhookRequest(req);

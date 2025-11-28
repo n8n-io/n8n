@@ -21,6 +21,7 @@ import { strict as assert } from 'node:assert';
 import type PCancelable from 'p-cancelable';
 
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
+import { ExecutionAlreadyResumingError } from '@/errors/execution-already-resuming.error';
 import type { IExecutingWorkflowData, IExecutionsCurrentSummary } from '@/interfaces';
 import { isWorkflowIdValid } from '@/utils';
 
@@ -101,10 +102,20 @@ export class ActiveExecutions {
 				`>>> ActiveExecutions.add - RESUMING execution ${executionId} - BEFORE updateExistingExecution, setting status to: ${executionStatus}`,
 			);
 			const timestamp = Date.now();
-			await this.executionRepository.updateExistingExecution(executionId, execution);
-			console.log(
-				`>>> ActiveExecutions.add - RESUMING execution ${executionId} - AFTER updateExistingExecution (took ${Date.now() - timestamp}ms)`,
+			const updateSucceeded = await this.executionRepository.updateExistingExecution(
+				executionId,
+				execution,
+				'waiting', // Only update if status is 'waiting'
 			);
+			console.log(
+				`>>> ActiveExecutions.add - RESUMING execution ${executionId} - AFTER updateExistingExecution (took ${Date.now() - timestamp}ms), success: ${updateSucceeded}`,
+			);
+
+			if (!updateSucceeded) {
+				// Another process is already resuming this execution
+				console.log(`>>> THROWING ExecutionAlreadyResumingError for execution ${executionId}`);
+				throw new ExecutionAlreadyResumingError(executionId);
+			}
 		}
 
 		const resumingExecution = this.activeExecutions[executionId];

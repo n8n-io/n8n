@@ -881,14 +881,11 @@ export class WorkflowExecute {
 	 * Handles execution of disabled nodes by passing through input data
 	 */
 	private handleDisabledNode(inputData: ITaskDataConnections): IRunNodeResponse {
-		console.log('--- handleDisabledNode');
-		console.log('inputData:', JSON.stringify(inputData, null, 2));
 		if (Object.hasOwn(inputData, 'main') && inputData.main.length > 0) {
 			// If the node is disabled simply return the data from the first main input
 			if (inputData.main[0] === null) {
 				return { data: undefined };
 			}
-			console.log('returning inputData.main[0]:', JSON.stringify(inputData.main[0], null, 2));
 			return { data: [inputData.main[0]] };
 		}
 		return { data: undefined };
@@ -1292,7 +1289,6 @@ export class WorkflowExecute {
 	 */
 	private handleWaitingState(workflow: Workflow) {
 		if (this.runExecutionData.waitTill) {
-			console.log('--- handleWaitingState');
 			this.runExecutionData.waitTill = undefined;
 
 			assertExecutionDataExists(
@@ -1301,16 +1297,9 @@ export class WorkflowExecute {
 				this.additionalData,
 				this.mode,
 			);
-			const nodeName = this.runExecutionData.executionData.nodeExecutionStack[0].node.name;
-			console.log('disabling node:', nodeName);
-			console.log(
-				'nodeExecutionStack[0].data before:',
-				JSON.stringify(this.runExecutionData.executionData.nodeExecutionStack[0].data, null, 2),
-			);
 			this.runExecutionData.executionData.nodeExecutionStack[0].node.disabled = true;
 
 			const lastNodeExecuted = this.runExecutionData.resultData.lastNodeExecuted as string;
-			console.log('popping runData for:', lastNodeExecuted);
 			this.runExecutionData.resultData.runData[lastNodeExecuted].pop();
 		}
 	}

@@ -422,9 +422,6 @@ export class ExecuteWorkflow implements INodeType {
 						},
 					},
 				);
-				console.log('executionResult.data', JSON.stringify(executionResult.data, null, 2));
-				console.log('executionResult.waitTill', executionResult.waitTill);
-
 				this.setMetadata({
 					subExecution: {
 						executionId: executionResult.executionId,
