@@ -10,12 +10,15 @@ import type { INodeTypeDescription } from 'n8n-workflow';
 import { MAX_CONFIGURATOR_ITERATIONS } from '@/constants';
 import { LLMServiceError } from '@/errors';
 
+import { BaseSubgraph } from './subgraph-interface';
+import type { ParentGraphState } from '../parent-graph-state';
 import { createGetNodeParameterTool } from '../tools/get-node-parameter.tool';
 import { createUpdateNodeParametersTool } from '../tools/update-node-parameters.tool';
 import { createValidateConfigurationTool } from '../tools/validate-configuration.tool';
 import type { CoordinationLogEntry } from '../types/coordination';
 import { createConfiguratorMetadata } from '../types/coordination';
 import type { DiscoveryContext } from '../types/discovery-types';
+import { isBaseMessage } from '../types/langchain';
 import type { SimpleWorkflow, WorkflowOperation } from '../types/workflow';
 import { applySubgraphCacheMarkers } from '../utils/cache-control';
 import {
@@ -30,8 +33,6 @@ import {
 	createStandardShouldContinue,
 } from '../utils/subgraph-helpers';
 import type { ChatPayload } from '../workflow-builder-agent';
-import { BaseSubgraph } from './subgraph-interface';
-import type { ParentGraphState } from '../parent-graph-state';
 
 /**
  * Configurator Agent Prompt
@@ -248,10 +249,14 @@ export class ConfiguratorSubgraph extends BaseSubgraph<
 			applySubgraphCacheMarkers(state.messages);
 
 			// Messages already contain context from transformInput
-			const response = (await this.agent.invoke({
+			const response: unknown = await this.agent.invoke({
 				messages: state.messages,
 				instanceUrl: state.instanceUrl ?? '',
-			})) as BaseMessage;
+			});
+
+			if (!isBaseMessage(response)) {
+				throw new LLMServiceError('Configurator agent did not return a valid message');
+			}
 
 			return { messages: [response] };
 		};

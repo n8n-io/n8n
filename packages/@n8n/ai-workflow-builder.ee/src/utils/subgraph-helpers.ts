@@ -3,11 +3,35 @@ import { isAIMessage, ToolMessage, HumanMessage } from '@langchain/core/messages
 import type { StructuredTool } from '@langchain/core/tools';
 import { isCommand, END } from '@langchain/langgraph';
 
+import { isBaseMessage } from '../types/langchain';
 import type { WorkflowOperation } from '../types/workflow';
 
 interface CommandUpdate {
 	messages?: BaseMessage[];
 	workflowOperations?: WorkflowOperation[];
+}
+
+/**
+ * Type guard to check if an object has the shape of CommandUpdate
+ */
+function isCommandUpdate(value: unknown): value is CommandUpdate {
+	if (typeof value !== 'object' || value === null) {
+		return false;
+	}
+	const obj = value as Record<string, unknown>;
+	// messages is optional, but if present must be an array
+	if ('messages' in obj && obj.messages !== undefined && !Array.isArray(obj.messages)) {
+		return false;
+	}
+	// workflowOperations is optional, but if present must be an array
+	if (
+		'workflowOperations' in obj &&
+		obj.workflowOperations !== undefined &&
+		!Array.isArray(obj.workflowOperations)
+	) {
+		return false;
+	}
+	return true;
 }
 
 /**
@@ -49,7 +73,9 @@ export async function executeSubgraphTools(
 						args: toolCall.args ?? {},
 					},
 				});
-				return result as BaseMessage;
+				// Result can be a Command (with update) or a BaseMessage
+				// We return it as-is and handle the type in the loop below
+				return result;
 			} catch (error) {
 				return new ToolMessage({
 					content: `Tool failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
@@ -65,17 +91,18 @@ export async function executeSubgraphTools(
 
 	for (const result of toolResults) {
 		if (isCommand(result)) {
-			// Tool returned Command - extract update
-			const update = result.update as CommandUpdate;
-			if (update.messages) {
-				messages.push(...update.messages);
+			// Tool returned Command - extract update using type guard
+			if (isCommandUpdate(result.update)) {
+				if (result.update.messages) {
+					messages.push(...result.update.messages);
+				}
+				if (result.update.workflowOperations) {
+					operations.push(...result.update.workflowOperations);
+				}
 			}
-			if (update.workflowOperations) {
-				operations.push(...update.workflowOperations);
-			}
-		} else if (result) {
+		} else if (isBaseMessage(result)) {
 			// Direct message (ToolMessage, AIMessage, etc.)
-			messages.push(result as BaseMessage);
+			messages.push(result);
 		}
 	}
 

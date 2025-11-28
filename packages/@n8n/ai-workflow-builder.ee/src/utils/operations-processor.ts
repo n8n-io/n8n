@@ -330,5 +330,6 @@ export function processOperations(state: {
 	return {
 		workflowJSON: newWorkflow,
 		workflowOperations: null, // Clear processed operations
+		workflowValidation: null, // Invalidate stale validation results
 	};
 }
