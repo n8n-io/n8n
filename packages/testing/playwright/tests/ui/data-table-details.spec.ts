@@ -147,8 +147,9 @@ test.describe('Data Table details view', () => {
 		await api.setMaxTeamProjectsQuota(-1);
 		await n8n.goHome();
 
+		await n8n.sideBar.clickPersonalMenuItem();
 		testDataTableName = `Data Table ${nanoid(8)}`;
-		await n8n.page.goto('projects/home/datatables');
+		await n8n.projectTabs.clickDataTablesTab();
 		await n8n.dataTable.clickAddDataTableAction();
 		await n8n.dataTableComposer.createNewDataTable(testDataTableName);
 	});
@@ -215,6 +216,9 @@ test.describe('Data Table details view', () => {
 
 		for (let i = 0; i < 20; i++) {
 			await n8n.dataTableDetails.addRow();
+			// This loop was enough to break it, as we'd get transaction lock errors
+			// eslint-disable-next-line playwright/no-wait-for-timeout
+			await n8n.page.waitForTimeout(150);
 		}
 
 		const rowsOnPage1 = n8n.dataTableDetails.getDataRows();
@@ -235,6 +239,8 @@ test.describe('Data Table details view', () => {
 		const rowData = ['Row 1', 'Row 2', 'Row 3', 'Row 4', 'Row 5'];
 		for (let i = 0; i < rowData.length; i++) {
 			await n8n.dataTableDetails.addRow();
+			// eslint-disable-next-line playwright/no-wait-for-timeout
+			await n8n.page.waitForTimeout(150);
 			await n8n.dataTableDetails.setCellValue(i, nameColumn, rowData[i], 'string', {
 				skipDoubleClick: true,
 			});
@@ -479,5 +485,77 @@ test.describe('Data Table details view', () => {
 		const nameFinalIndex = finalOrder.indexOf(COLUMN_NAMES.name);
 
 		expect(birthdayFinalIndex).toBeLessThan(nameFinalIndex);
+	});
+
+	test('Should search and filter rows globally', async ({ n8n }) => {
+		await expect(n8n.dataTableDetails.getPageWrapper()).toBeVisible();
+
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.name, 'string', 'header');
+		await n8n.dataTableDetails.addColumn(COLUMN_NAMES.age, 'number', 'header');
+		const nameColumn = await n8n.dataTableDetails.getColumnIdByName(COLUMN_NAMES.name);
+		const ageColumn = await n8n.dataTableDetails.getColumnIdByName(COLUMN_NAMES.age);
+
+		const testData = [
+			{ name: 'Alice Johnson', age: '25' },
+			{ name: 'Bob Smith', age: '30' },
+			{ name: 'Charlie Brown', age: '35' },
+			{ name: 'Diana Prince', age: '28' },
+			{ name: 'Eve Adams', age: '32' },
+			{ name: 'Frank Miller', age: '29' },
+		];
+
+		for (let i = 0; i < testData.length; i++) {
+			await n8n.dataTableDetails.addRow();
+			await n8n.dataTableDetails.setCellValue(i, nameColumn, testData[i].name, 'string', {
+				skipDoubleClick: true,
+			});
+			await n8n.dataTableDetails.setCellValue(i, ageColumn, testData[i].age, 'number');
+		}
+
+		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(6);
+
+		// Test search for partial name match
+		await n8n.dataTableDetails.search('Alice');
+		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
+		const aliceValue = await n8n.dataTableDetails.getCellValue(0, nameColumn, 'string');
+		expect(aliceValue).toContain('Alice Johnson');
+
+		// Test search for last name
+		await n8n.dataTableDetails.search('Smith');
+		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
+		const bobValue = await n8n.dataTableDetails.getCellValue(0, nameColumn, 'string');
+		expect(bobValue).toContain('Bob Smith');
+
+		// Test search across all columns (search by age)
+		await n8n.dataTableDetails.search('30');
+		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
+		const bobAgeValue = await n8n.dataTableDetails.getCellValue(0, ageColumn, 'number');
+		expect(bobAgeValue).toContain('30');
+
+		// Test search with multiple results
+		await n8n.dataTableDetails.search('a');
+		const multipleResultsCount = await n8n.dataTableDetails.getDataRows().count();
+		expect(multipleResultsCount).toBeGreaterThan(1);
+
+		// Clear search and verify all rows are shown
+		await n8n.dataTableDetails.clearSearch();
+		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(6);
+
+		// Test case-insensitive search
+		await n8n.dataTableDetails.search('ALICE');
+		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
+		const aliceCaseValue = await n8n.dataTableDetails.getCellValue(0, nameColumn, 'string');
+		expect(aliceCaseValue).toContain('Alice Johnson');
+
+		// Clear search for next test
+		await n8n.dataTableDetails.clearSearch();
+		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(6);
+
+		// test search combined with column filter
+		await n8n.dataTableDetails.setNumberFilter(COLUMN_NAMES.age, '29', 'greaterThan');
+		await n8n.dataTableDetails.search('Adams');
+		await expect(n8n.dataTableDetails.getDataRows()).toHaveCount(1);
+		const adamValue = await n8n.dataTableDetails.getCellValue(0, nameColumn, 'string');
+		expect(adamValue).toContain('Eve Adams');
 	});
 });

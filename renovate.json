@@ -57,13 +57,7 @@
 		},
 		{
 			"description": "Group testing packages",
-			"matchPackageNames": [
-				"*vitest*",
-				"*playwright*",
-				"*cypress*",
-				"@testing-library/**",
-				"*jest*"
-			],
+			"matchPackageNames": ["*vitest*", "*playwright*", "@testing-library/**", "*jest*"],
 			"groupName": "testing packages"
 		},
 		{
@@ -73,8 +67,7 @@
 		}
 	],
 	"lockFileMaintenance": {
-		"enabled": true,
-		"schedule": ["before 6am on monday"]
+		"enabled": false
 	},
 	"vulnerabilityAlerts": {
 		"enabled": true,
@@ -91,5 +84,6 @@
 	"ignorePaths": ["**/node_modules/**", "**/dist/**", "**/build/**"],
 	"enabledManagers": ["npm", "dockerfile", "github-actions"],
 	"npmrc": "auto-detect",
-	"updateNotScheduled": false
+	"updateNotScheduled": false,
+	"rangeStrategy": "bump"
 }

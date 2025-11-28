@@ -290,9 +290,6 @@ export class CanvasPage extends BasePage {
 		await this.page.locator('body').click({ position: { x: 0, y: 0 } });
 	}
 
-	getWorkflowTags() {
-		return this.page.getByTestId('workflow-tags').locator('.el-tag');
-	}
 	async activateWorkflow() {
 		const switchElement = this.page.getByTestId('workflow-activate-switch');
 		const statusElement = this.page.getByTestId('workflow-activator-status');
@@ -305,6 +302,11 @@ export class CanvasPage extends BasePage {
 		await switchElement.click();
 		await statusElement.locator('span').filter({ hasText: 'Active' }).waitFor({ state: 'visible' });
 		await responsePromise;
+	}
+
+	async openShareModal(): Promise<void> {
+		await this.clickByTestId('workflow-share-button');
+		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
 	}
 
 	async clickZoomToFitButton(): Promise<void> {
@@ -370,8 +372,24 @@ export class CanvasPage extends BasePage {
 			.locator('.el-tag:not(.count-container)');
 	}
 
+	getSavedWorkflowTagPills(): Locator {
+		return this.page.getByTestId('workflow-tags').locator('.n8n-tag:not(.count-container)');
+	}
+
 	getTagsDropdown(): Locator {
 		return this.page.getByTestId('tags-dropdown');
+	}
+
+	getWorkflowTagsDropdown(): Locator {
+		return this.page.getByTestId('workflow-tags-dropdown');
+	}
+
+	getWorkflowTags(): Locator {
+		return this.page.getByTestId('workflow-tags');
+	}
+
+	getTagCloseButton(): Locator {
+		return this.getWorkflowTagsDropdown().locator('.el-tag__close');
 	}
 
 	async typeInTagInput(text: string): Promise<void> {
@@ -517,8 +535,16 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('node-creator-action-item');
 	}
 
+	nodeCreatorCategoryItem(categoryName: string): Locator {
+		return this.page.getByTestId('node-creator-category-item').getByText(categoryName);
+	}
+
 	nodeCreatorCategoryItems(): Locator {
 		return this.page.getByTestId('node-creator-category-item');
+	}
+
+	getFirstAction(): Locator {
+		return this.page.locator('[data-keyboard-nav-type="action"]').first();
 	}
 
 	selectedNodes(): Locator {

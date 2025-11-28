@@ -10,7 +10,7 @@ import { OnShutdown } from '@n8n/decorators';
 import { Container, Service } from '@n8n/di';
 import type RudderStack from '@rudderstack/rudder-sdk-node';
 import axios from 'axios';
-import { InstanceSettings } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import type { ITelemetryTrackProperties } from 'n8n-workflow';
 
 import { LOWEST_SHUTDOWN_PRIORITY, N8N_VERSION } from '@/constants';
@@ -60,6 +60,7 @@ export class Telemetry {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly globalConfig: GlobalConfig,
+		private readonly errorReporter: ErrorReporter,
 	) {}
 
 	async init() {
@@ -85,6 +86,9 @@ export class Telemetry {
 				logLevel,
 				dataPlaneUrl,
 				gzip: false,
+				errorHandler: (error) => {
+					this.errorReporter.error(error);
+				},
 			});
 
 			this.startPulse();
@@ -231,13 +235,37 @@ export class Telemetry {
 			context: {},
 		};
 
-		this.postHog?.track(payload);
-
-		return this.rudderStack.track({
+		// Build the actual payload that will be sent to RudderStack (with fake IP)
+		const rudderStackPayload = {
 			...payload,
 			// provide a fake IP address to instruct RudderStack to not use the user's IP address
 			context: { ...payload.context, ip: '0.0.0.0' },
-		});
+		};
+
+		// Limiting payload size to 32 KB - measure the actual payload sent to RudderStack
+		const payloadSize = Buffer.byteLength(JSON.stringify(rudderStackPayload), 'utf8');
+		const maxPayloadSize = 32 << 10; // 32 KB
+
+		if (payloadSize > maxPayloadSize) {
+			this.errorReporter.warn(
+				new Error(
+					`Telemetry event "${eventName}" payload size (${payloadSize} bytes) exceeds limit (${maxPayloadSize} bytes). Skipping event.`,
+				),
+				{
+					extra: {
+						eventName,
+						payloadSize,
+						maxPayloadSize,
+						userId: payload.userId,
+					},
+				},
+			);
+			return;
+		}
+
+		this.postHog?.track(payload);
+
+		return this.rudderStack.track(rudderStackPayload);
 	}
 
 	// test helpers

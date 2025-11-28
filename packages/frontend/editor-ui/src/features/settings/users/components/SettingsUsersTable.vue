@@ -8,7 +8,7 @@ import SettingsUsersRoleCell from './SettingsUsersRoleCell.vue';
 import SettingsUsersProjectsCell from './SettingsUsersProjectsCell.vue';
 import SettingsUsersActionsCell from './SettingsUsersActionsCell.vue';
 import SettingsUsersLastActiveCell from './SettingsUsersLastActiveCell.vue';
-import { hasPermission } from '@/utils/rbac/permissions';
+import { hasPermission } from '@/app/utils/rbac/permissions';
 import type { UsersInfoProps } from '@n8n/design-system/components/N8nUserInfo/UserInfo.vue';
 
 import {
@@ -26,6 +26,7 @@ const props = defineProps<{
 	data: UsersList;
 	actions: Array<UserAction<IUser>>;
 	loading?: boolean;
+	canEditRole: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -122,7 +123,11 @@ const roleActions = computed<Array<ActionDropdownItem<Role>>>(() => [
 ]);
 
 const canUpdateRole = computed((): boolean => {
-	return hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } });
+	if (!hasPermission(['rbac'], { rbac: { scope: ['user:update', 'user:changeRole'] } }))
+		return false;
+	if (!props.canEditRole) return false;
+
+	return true;
 });
 
 const filterActions = (user: UsersList['items'][number]) => {
@@ -147,6 +152,7 @@ const onRoleChange = ({ role, userId }: { role: string; userId: string }) => {
 			:headers="headers"
 			:items="rows"
 			:items-length="data.count"
+			:page-sizes="[10, 25, 50]"
 			@update:options="emit('update:options', $event)"
 		>
 			<template #[`item.name`]="{ value }">

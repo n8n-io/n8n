@@ -181,11 +181,11 @@ describe('SourceControlService', () => {
 			);
 			sourceControlExportService.exportTagsToWorkFolder.mockResolvedValueOnce(mockExportResult);
 			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
-			sourceControlExportService.exportVariablesToWorkFolder.mockResolvedValueOnce(
+			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
 				mockExportResult,
 			);
 			sourceControlExportService.exportFoldersToWorkFolder.mockResolvedValueOnce(mockExportResult);
-			sourceControlExportService.exportVariablesToWorkFolder.mockResolvedValueOnce(
+			sourceControlExportService.exportGlobalVariablesToWorkFolder.mockResolvedValueOnce(
 				mockExportResult,
 			);
 
@@ -223,7 +223,7 @@ describe('SourceControlService', () => {
 			);
 			expect(sourceControlExportService.exportTagsToWorkFolder).toHaveBeenCalled();
 			expect(sourceControlExportService.exportFoldersToWorkFolder).toHaveBeenCalled();
-			expect(sourceControlExportService.exportVariablesToWorkFolder).toHaveBeenCalled();
+			expect(sourceControlExportService.exportGlobalVariablesToWorkFolder).toHaveBeenCalled();
 
 			// Deleted resources should be passed to rmFilesFromExportFolder
 			expect(sourceControlExportService.rmFilesFromExportFolder).toHaveBeenCalledWith(

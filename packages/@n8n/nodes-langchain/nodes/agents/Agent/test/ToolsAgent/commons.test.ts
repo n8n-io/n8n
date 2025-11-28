@@ -3,7 +3,6 @@ import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { HumanMessage } from '@langchain/core/messages';
 import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
-import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 import { Buffer } from 'buffer';
 import { mock } from 'jest-mock-extended';
 import type { AgentAction, AgentFinish } from 'langchain/agents';
@@ -13,6 +12,8 @@ import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import type { ZodType } from 'zod';
 import { z } from 'zod';
+
+import type { N8nOutputParser } from '@utils/output_parsers/N8nOutputParser';
 
 import {
 	getOutputParserSchema,
@@ -113,6 +114,97 @@ describe('extractBinaryMessages', () => {
 		expect(humanMsg.content[0]).toEqual({
 			type: 'image_url',
 			image_url: { url: expectedUrl },
+		});
+	});
+
+	it('should extract markdown and CSV text files', async () => {
+		const mdContent = '# Test Markdown\n\nThis is a test.';
+		const csvContent = 'name,age\nJohn,30';
+		const fakeItem = {
+			json: {},
+			binary: {
+				markdown: {
+					mimeType: 'text/markdown',
+					fileName: 'test.md',
+					data: `data:text/markdown;base64,${Buffer.from(mdContent).toString('base64')}`,
+				},
+				csv: {
+					mimeType: 'text/csv',
+					fileName: 'data.csv',
+					data: `data:text/csv;base64,${Buffer.from(csvContent).toString('base64')}`,
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(2);
+		expect(humanMsg.content).toEqual(
+			expect.arrayContaining([
+				{ type: 'text', text: `File: test.md\nContent:\n${mdContent}` },
+				{ type: 'text', text: `File: data.csv\nContent:\n${csvContent}` },
+			]),
+		);
+	});
+
+	it('should extract both images and text files together', async () => {
+		const textContent = 'Some text content';
+		const fakeItem = {
+			json: {},
+			binary: {
+				image: {
+					mimeType: 'image/png',
+					fileName: 'test.png',
+					data: 'imageData123',
+				},
+				text: {
+					mimeType: 'text/plain',
+					fileName: 'test.txt',
+					data: `data:text/plain;base64,${Buffer.from(textContent).toString('base64')}`,
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(2);
+		expect(humanMsg.content).toEqual(
+			expect.arrayContaining([
+				{
+					type: 'image_url',
+					image_url: { url: 'data:image/png;base64,imageData123' },
+				},
+				{ type: 'text', text: `File: test.txt\nContent:\n${textContent}` },
+			]),
+		);
+	});
+
+	it('should decode base64-encoded text files without prefix', async () => {
+		const textContent = 'Hello world!';
+		const fakeItem = {
+			json: {},
+			binary: {
+				text: {
+					mimeType: 'text/plain',
+					fileName: 'test.txt',
+					// Default n8n binary format: base64 without data URL prefix
+					data: Buffer.from(textContent).toString('base64'),
+				},
+			},
+		};
+		mockContext.getInputData.mockReturnValue([fakeItem]);
+
+		const humanMsg: HumanMessage = await extractBinaryMessages(mockContext, 0);
+
+		expect(Array.isArray(humanMsg.content)).toBe(true);
+		expect(humanMsg.content).toHaveLength(1);
+		expect(humanMsg.content[0]).toEqual({
+			type: 'text',
+			text: `File: test.txt\nContent:\n${textContent}`,
 		});
 	});
 });
@@ -738,5 +830,50 @@ describe('handleAgentFinishOutput', () => {
 		const result = handleAgentFinishOutput(steps);
 
 		expect(result).toEqual(steps);
+	});
+
+	it('should filter out thinking blocks and return only text blocks', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [
+					{ index: 0, type: 'thinking', thinking: 'Internal reasoning...' },
+					{ index: 1, type: 'text', text: 'User-facing output' },
+				],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps) as AgentFinish;
+
+		expect(result.returnValues.output).toBe('User-facing output');
+	});
+
+	it('should return thinking content when no text blocks exist', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [
+					{ index: 0, type: 'thinking', thinking: 'Only thinking content' },
+					{ index: 1, type: 'thinking', thinking: 'More thinking' },
+				],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps) as AgentFinish;
+
+		expect(result.returnValues.output).toBe('Only thinking content\nMore thinking');
+	});
+
+	it('should return empty string when no text or thinking blocks exist', () => {
+		const steps: AgentFinish = {
+			returnValues: {
+				output: [{ index: 0, type: 'unknown' }],
+			},
+			log: '',
+		};
+
+		const result = handleAgentFinishOutput(steps) as AgentFinish;
+
+		expect(result.returnValues.output).toBe('');
 	});
 });

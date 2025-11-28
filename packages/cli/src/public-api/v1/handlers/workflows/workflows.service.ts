@@ -10,7 +10,6 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG, type Scope, type WorkflowSharingRole } from '@n8n/permissions';
-import type { WorkflowId } from 'n8n-workflow';
 
 import { License } from '@/license';
 import { WorkflowSharingService } from '@/workflows/workflow-sharing.service';
@@ -85,26 +84,8 @@ export async function createWorkflow(
 	});
 }
 
-export async function setWorkflowAsActive(workflowId: WorkflowId) {
-	await Container.get(WorkflowRepository).update(workflowId, {
-		active: true,
-		updatedAt: new Date(),
-	});
-}
-
-export async function setWorkflowAsInactive(workflowId: WorkflowId) {
-	return await Container.get(WorkflowRepository).update(workflowId, {
-		active: false,
-		updatedAt: new Date(),
-	});
-}
-
 export async function deleteWorkflow(workflow: WorkflowEntity): Promise<WorkflowEntity> {
 	return await Container.get(WorkflowRepository).remove(workflow);
-}
-
-export async function updateWorkflow(workflowId: string, updateData: WorkflowEntity) {
-	return await Container.get(WorkflowRepository).update(workflowId, updateData);
 }
 
 export function parseTagNames(tags: string): string[] {

@@ -1,6 +1,6 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`WorkflowHistoryButton > should be enabled if the feature is enabled and the workflow is not new 1`] = `
+exports[`WorkflowHistoryButton > should be enabled if the workflow is not new 1`] = `
 <div>
   
   <div

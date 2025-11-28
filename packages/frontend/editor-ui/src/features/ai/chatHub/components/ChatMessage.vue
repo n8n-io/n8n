@@ -1,18 +1,24 @@
 <script setup lang="ts">
-import { N8nIcon, N8nInput, N8nButton, N8nTooltip } from '@n8n/design-system';
-import VueMarkdown from 'vue-markdown-render';
-import markdownLink from 'markdown-it-link-attributes';
-import type MarkdownIt from 'markdown-it';
-import ChatMessageActions from './ChatMessageActions.vue';
-import CredentialIcon from '@/features/credentials/components/CredentialIcon.vue';
-import { useClipboard } from '@/composables/useClipboard';
-import { ref, nextTick, watch, useTemplateRef, computed, onBeforeMount } from 'vue';
+import { useClipboard } from '@/app/composables/useClipboard';
+import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
-import { PROVIDER_CREDENTIAL_TYPE_MAP } from '@n8n/api-types';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
+import type { ChatMessageId, ChatModelDto } from '@n8n/api-types';
+import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
+import type MarkdownIt from 'markdown-it';
+import markdownLink from 'markdown-it-link-attributes';
+import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
+import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
-import type { ChatMessageId } from '@n8n/api-types';
+import ChatMessageActions from './ChatMessageActions.vue';
+import { unflattenModel } from '@/features/ai/chatHub/chat.utils';
+import { useChatStore } from '@/features/ai/chatHub/chat.store';
+import ChatFile from '@n8n/chat/components/ChatFile.vue';
+import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
+import { useRootStore } from '@n8n/stores/useRootStore';
+import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useI18n } from '@n8n/i18n';
 
 const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
 	message: ChatMessage;
@@ -34,6 +40,10 @@ const emit = defineEmits<{
 }>();
 
 const clipboard = useClipboard();
+const chatStore = useChatStore();
+const rootStore = useRootStore();
+const { isCtrlKeyPressed } = useDeviceSupport();
+const i18n = useI18n();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -47,12 +57,23 @@ const speech = useSpeechSynthesis(messageContent, {
 	volume: 1,
 });
 
-const credentialTypeName = computed(() => {
-	if (message.type !== 'ai' || !message.provider) {
-		return null;
-	}
-	return PROVIDER_CREDENTIAL_TYPE_MAP[message.provider] ?? null;
+const agent = computed<ChatModelDto | null>(() => {
+	const model = unflattenModel(message);
+
+	return model ? chatStore.getAgent(model) : null;
 });
+
+const attachments = computed(() =>
+	message.attachments.map(({ fileName, mimeType }, index) => ({
+		file: new File([], fileName ?? 'file', { type: mimeType }), // Placeholder file for display
+		downloadUrl: buildChatAttachmentUrl(
+			rootStore.restApiContext,
+			message.sessionId,
+			message.id,
+			index,
+		),
+	})),
+);
 
 async function handleCopy() {
 	const text = message.content;
@@ -77,6 +98,15 @@ function handleConfirmEdit() {
 	}
 
 	emit('update', { ...message, content: editedText.value });
+}
+
+function handleKeydownTextarea(e: KeyboardEvent) {
+	const trimmed = editedText.value.trim();
+
+	if (e.key === 'Enter' && isCtrlKeyPressed(e) && !e.isComposing && trimmed) {
+		e.preventDefault();
+		handleConfirmEdit();
+	}
 }
 
 function handleRegenerate() {
@@ -109,16 +139,22 @@ const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
 // Watch for isEditing prop changes to initialize edit mode
 watch(
 	() => isEditing,
-	async (editing) => {
-		if (editing) {
-			editedText.value = message.content;
-			await nextTick();
-			textareaRef.value?.focus();
-		} else {
-			editedText.value = '';
-		}
+	(editing) => {
+		editedText.value = editing ? message.content : '';
 	},
 	{ immediate: true },
+);
+
+watch(
+	textareaRef,
+	async (textarea) => {
+		if (textarea) {
+			await new Promise((r) => setTimeout(r, 0));
+			textarea.focus();
+			textarea.$el.scrollIntoView({ block: 'nearest' });
+		}
+	},
+	{ immediate: true, flush: 'post' },
 );
 
 onBeforeMount(() => {
@@ -140,43 +176,63 @@ onBeforeMount(() => {
 	>
 		<div :class="$style.avatar">
 			<N8nIcon v-if="message.type === 'human'" icon="user" width="20" height="20" />
-			<N8nTooltip
-				v-else-if="message.type === 'ai' && credentialTypeName"
-				:show-after="100"
-				placement="left"
-			>
-				<template #content>{{ message.model }}</template>
-				<CredentialIcon :size="20" :credential-type-name="credentialTypeName" />
-			</N8nTooltip>
+			<ChatAgentAvatar v-else-if="agent" :agent="agent" size="md" tooltip />
 			<N8nIcon v-else icon="sparkles" width="20" height="20" />
 		</div>
 		<div :class="$style.content">
 			<div v-if="isEditing" :class="$style.editContainer">
+				<div v-if="attachments.length > 0" :class="$style.attachments">
+					<ChatFile
+						v-for="(attachment, index) in attachments"
+						:key="index"
+						:file="attachment.file"
+						:is-removable="false"
+						:href="attachment.downloadUrl"
+					/>
+				</div>
 				<N8nInput
 					ref="textarea"
 					v-model="editedText"
 					type="textarea"
 					:autosize="{ minRows: 3, maxRows: 20 }"
 					:class="$style.textarea"
+					@keydown="handleKeydownTextarea"
 				/>
 				<div :class="$style.editActions">
-					<N8nButton type="secondary" size="small" @click="handleCancelEdit"> Cancel </N8nButton>
+					<N8nButton type="secondary" size="small" @click="handleCancelEdit">
+						{{ i18n.baseText('chatHub.message.edit.cancel') }}
+					</N8nButton>
 					<N8nButton
 						type="primary"
 						size="small"
 						:disabled="!editedText.trim()"
 						@click="handleConfirmEdit"
 					>
-						Send
+						{{ i18n.baseText('chatHub.message.edit.send') }}
 					</N8nButton>
 				</div>
 			</div>
-			<template v-else>
-				<div :class="$style.chatMessage">
+			<div v-else>
+				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
+					<div v-if="attachments.length > 0" :class="$style.attachments">
+						<ChatFile
+							v-for="(attachment, index) in attachments"
+							:key="index"
+							:file="attachment.file"
+							:is-removable="false"
+							:href="attachment.downloadUrl"
+						/>
+					</div>
+					<div v-if="message.type === 'human'">{{ message.content }}</div>
 					<VueMarkdown
+						v-else
 						:key="forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
-						:source="message.content"
+						:source="
+							message.status === 'error' && !message.content
+								? i18n.baseText('chatHub.message.error.unknown')
+								: message.content
+						"
 						:options="markdownOptions"
 						:plugins="[linksNewTabPlugin]"
 					/>
@@ -184,12 +240,11 @@ onBeforeMount(() => {
 				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
 				<ChatMessageActions
 					v-else
-					:type="message.type"
 					:just-copied="justCopied"
 					:is-speech-synthesis-available="speech.isSupported.value"
 					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
-					:message-id="message.id"
+					:message="message"
 					:alternatives="message.alternatives"
 					@copy="handleCopy"
 					@edit="handleEdit"
@@ -197,7 +252,7 @@ onBeforeMount(() => {
 					@read-aloud="handleReadAloud"
 					@switchAlternative="handleSwitchAlternative"
 				/>
-			</template>
+			</div>
 		</div>
 	</div>
 </template>
@@ -218,7 +273,7 @@ onBeforeMount(() => {
 	width: 28px;
 	height: 28px;
 	border-radius: 50%;
-	background: var(--color--background--light-3);
+	background: var(--color--background);
 	color: var(--color--text--tint-1);
 
 	.compact & {
@@ -232,66 +287,133 @@ onBeforeMount(() => {
 	flex-direction: column;
 }
 
+.attachments {
+	display: flex;
+	flex-wrap: wrap;
+	gap: var(--spacing--2xs);
+
+	.chatMessage & {
+		margin-top: var(--spacing--xs);
+	}
+}
+
 .chatMessage {
-	display: block;
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--2xs);
 	position: relative;
 	max-width: fit-content;
+	overflow-wrap: break-word;
 
 	.user & {
-		padding: var(--spacing--4xs) var(--spacing--md);
+		padding: var(--spacing--2xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
+		white-space-collapse: preserve-breaks;
+		line-height: 1.8;
+	}
+}
+
+.errorMessage {
+	padding: var(--spacing--xs) var(--spacing--sm);
+	border-radius: var(--radius--lg);
+	background-color: var(--color--danger--tint-4);
+	border: var(--border-width) var(--border-style) var(--color--danger--tint-3);
+	color: var(--color--danger);
+}
+
+.chatMessageMarkdown {
+	display: block;
+	box-sizing: border-box;
+
+	> *:first-child {
+		margin-top: 0;
 	}
 
-	> .chatMessageMarkdown {
-		display: block;
+	> *:last-child {
+		margin-bottom: 0;
+	}
+
+	& * {
+		font-size: var(--font-size--md);
+		line-height: 1.8;
+	}
+
+	p {
+		margin: var(--spacing--xs) 0;
+	}
+
+	// Override heading sizes to be smaller
+	h1 {
+		font-size: var(--font-size--2xl);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--md);
+	}
+
+	h2 {
+		font-size: var(--font-size--xl);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--lg);
+	}
+
+	h3 {
+		font-size: var(--font-size--lg);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--lg);
+	}
+
+	h4 {
+		font-size: var(--font-size--md);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--xl);
+	}
+
+	h5 {
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--xl);
+	}
+
+	h6 {
+		font-size: var(--font-size--sm);
+		font-weight: var(--font-weight--bold);
+		line-height: var(--line-height--xl);
+	}
+
+	pre {
+		font-family: inherit;
+		font-size: inherit;
+		margin: 0;
+		white-space: pre-wrap;
 		box-sizing: border-box;
+		padding: var(--chat--spacing);
+		background: var(--chat--message--pre--background);
+		border-radius: var(--chat--border-radius);
+	}
 
-		> *:first-child {
-			margin-top: 0;
-		}
+	table {
+		width: 100%;
+		border-bottom: var(--border);
+		border-top: var(--border);
+		border-width: 2px;
+		margin-bottom: 1em;
+		border-color: var(--color--text--shade-1);
+	}
 
-		> *:last-child {
-			margin-bottom: 0;
-		}
+	th,
+	td {
+		padding: 0.25em 1em 0.25em 0;
+	}
 
-		& * {
-			font-size: var(--font-size--md);
-			line-height: 1.8;
-		}
+	th {
+		border-bottom: var(--border);
+		border-color: var(--color--text--shade-1);
+	}
 
-		p {
-			margin: var(--spacing--xs) 0;
-		}
-
-		pre {
-			font-family: inherit;
-			font-size: inherit;
-			margin: 0;
-			white-space: pre-wrap;
-			box-sizing: border-box;
-			padding: var(--chat--spacing);
-			background: var(--chat--message--pre--background);
-			border-radius: var(--chat--border-radius);
-		}
-
-		table {
-			width: 100%;
-			border-bottom: var(--border);
-			border-top: var(--border);
-			border-width: 2px;
-			margin-bottom: 1em;
-			border-color: var(--color--text--shade-1);
-		}
-
-		th,
-		td {
-			padding: 0.25em 1em 0.25em 0;
-		}
-
-		th {
-			border-bottom: var(--border);
-			border-color: var(--color--text--shade-1);
+	ul,
+	ol {
+		li {
+			margin-bottom: 0.125rem;
 		}
 	}
 }
@@ -301,15 +423,33 @@ onBeforeMount(() => {
 }
 
 .editContainer {
+	width: 100%;
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--xs);
+	background-color: var(--color--background--light-3);
+	border: var(--border);
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--2xs);
+	gap: var(--spacing--sm);
+	transition: border-color 0.2s cubic-bezier(0.645, 0.045, 0.355, 1);
+
+	&:focus-within,
+	&:hover {
+		border-color: var(--color--secondary);
+	}
+}
+
+.textarea {
+	scroll-margin-block: var(--spacing--sm);
 }
 
 .textarea textarea {
 	font-family: inherit;
-	background-color: var(--color--background--light-3);
-	border-radius: var(--radius--lg);
+	line-height: 1.5em;
+	resize: none;
+	background-color: transparent !important;
+	border: none !important;
+	padding: 0 !important;
 }
 
 .editActions {

@@ -10,25 +10,26 @@ import {
 } from '@n8n/api-types';
 import type { UserAction } from '@n8n/design-system';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
-import { EnterpriseEditionFeature } from '@/constants';
+import { EnterpriseEditionFeature } from '@/app/constants';
 import { DELETE_USER_MODAL_KEY, INVITE_USER_MODAL_KEY } from '../users.constants';
-import EnterpriseEdition from '@/components/EnterpriseEdition.ee.vue';
+import EnterpriseEdition from '@/app/components/EnterpriseEdition.ee.vue';
 import type { InvitableRoleName } from '../users.types';
 import type { IUser } from '@n8n/rest-api-client/api/users';
-import { useToast } from '@/composables/useToast';
-import { useUIStore } from '@/stores/ui.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useToast } from '@/app/composables/useToast';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUsersStore } from '../users.store';
 import { useSSOStore } from '@/features/settings/sso/sso.store';
-import { hasPermission } from '@/utils/rbac/permissions';
-import { useClipboard } from '@/composables/useClipboard';
+import { hasPermission } from '@/app/utils/rbac/permissions';
+import { useClipboard } from '@/app/composables/useClipboard';
 import { useI18n } from '@n8n/i18n';
-import { useDocumentTitle } from '@/composables/useDocumentTitle';
-import { usePageRedirectionHelper } from '@/composables/usePageRedirectionHelper';
+import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import SettingsUsersTable from '../components/SettingsUsersTable.vue';
 import { I18nT } from 'vue-i18n';
-
+import { useUserRoleProvisioningStore } from '@/features/settings/sso/provisioning/composables/userRoleProvisioning.store';
 import { ElSwitch } from 'element-plus';
+import N8nAlert from '@n8n/design-system/components/N8nAlert/Alert.vue';
 import {
 	N8nActionBox,
 	N8nBadge,
@@ -50,6 +51,7 @@ const usersStore = useUsersStore();
 const ssoStore = useSSOStore();
 const documentTitle = useDocumentTitle();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const userRoleProvisioningStore = useUserRoleProvisioningStore();
 
 const tooltipKey = 'settings.personal.mfa.enforce.unlicensed_tooltip';
 
@@ -70,12 +72,18 @@ const isEnforceMFAEnabled = computed(
 	() => settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.EnforceMFA],
 );
 
+const isInstanceRoleProvisioningEnabled = computed(
+	() => userRoleProvisioningStore.provisioningConfig?.scopesProvisionInstanceRole || false,
+);
+
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('settings.users'));
 
 	if (!showUMSetupWarning.value) {
 		await updateUsersTableData(usersTableState.value);
 	}
+
+	await userRoleProvisioningStore.getProvisioningConfig();
 });
 
 const usersListActions = computed((): Array<UserAction<IUser>> => {
@@ -448,6 +456,12 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				</EnterpriseEdition>
 			</div>
 		</div>
+		<div v-if="isInstanceRoleProvisioningEnabled" :class="$style.container">
+			<N8nAlert
+				type="info"
+				:title="i18n.baseText('settings.provisioningInstanceRolesHandledBySsoProvider.description')"
+			/>
+		</div>
 		<div v-if="!showUMSetupWarning" :class="$style.buttonContainer">
 			<N8nInput
 				:class="$style.search"
@@ -467,7 +481,11 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				</template>
 				<div>
 					<N8nButton
-						:disabled="ssoStore.isSamlLoginEnabled || !usersStore.usersLimitNotReached"
+						:disabled="
+							ssoStore.isSamlLoginEnabled ||
+							!usersStore.usersLimitNotReached ||
+							isInstanceRoleProvisioningEnabled
+						"
 						:label="i18n.baseText('settings.users.invite')"
 						size="large"
 						data-test-id="settings-users-invite-button"
@@ -485,6 +503,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 			<SettingsUsersTable
 				v-model:table-options="usersTableState"
 				data-test-id="settings-users-table"
+				:can-edit-role="!isInstanceRoleProvisioningEnabled"
 				:data="usersStore.usersList.state"
 				:loading="usersStore.usersList.isLoading"
 				:actions="usersListActions"

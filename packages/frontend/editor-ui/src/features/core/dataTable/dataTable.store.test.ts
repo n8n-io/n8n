@@ -4,11 +4,11 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { createPinia, setActivePinia } from 'pinia';
 import * as dataTableApi from '@/features/core/dataTable/dataTable.api';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import type { DataTable } from '@/features/core/dataTable/dataTable.types';
 
 vi.mock('@/features/collaboration/projects/projects.store');
-vi.mock('@/stores/settings.store');
+vi.mock('@/app/stores/settings.store');
 
 function createTable(data: Partial<DataTable>) {
 	return {
@@ -85,9 +85,41 @@ describe('dataTable.store', () => {
 				rootStore.restApiContext,
 				'New Table',
 				'p1',
+				undefined,
+				undefined,
+				true,
 			);
 			expect(dataTableStore.dataTables[0]).toEqual(mockTable);
 			expect(dataTableStore.totalCount).toBe(1);
+			expect(result).toBe(mockTable);
+		});
+
+		it('should create data table with CSV import parameters', async () => {
+			const mockTable = createTable({ id: 'dt-1', name: 'Imported Table' });
+			const columns = [
+				{ name: 'col1', type: 'string' as const },
+				{ name: 'col2', type: 'number' as const },
+			];
+			const fileId = 'file123';
+			vi.spyOn(dataTableApi, 'createDataTableApi').mockResolvedValue(mockTable);
+
+			const result = await dataTableStore.createDataTable(
+				'Imported Table',
+				'p1',
+				columns,
+				fileId,
+				false,
+			);
+
+			expect(dataTableApi.createDataTableApi).toHaveBeenCalledWith(
+				rootStore.restApiContext,
+				'Imported Table',
+				'p1',
+				columns,
+				fileId,
+				false,
+			);
+			expect(dataTableStore.dataTables[0]).toEqual(mockTable);
 			expect(result).toBe(mockTable);
 		});
 

@@ -542,7 +542,10 @@ describe('FormTrigger, formWebhook', () => {
 
 		executeFunctions.getNodeParameter.calledWith('formFields.values').mockReturnValue(formFields);
 		executeFunctions.getResponseObject.mockReturnValue({ status: mockStatus, end: mockEnd } as any);
-		executeFunctions.getRequestObject.mockReturnValue({ method: 'POST' } as any);
+		executeFunctions.getRequestObject.mockReturnValue({
+			method: 'POST',
+			contentType: 'multipart/form-data',
+		} as any);
 		executeFunctions.getBodyData.mockReturnValue({ data: bodyData, files: {} });
 
 		const result = await formWebhook(executeFunctions);
@@ -1310,7 +1313,9 @@ jest.mock('luxon', () => ({
 
 describe('prepareFormReturnItem', () => {
 	const mockContext = mock<IWebhookFunctions>({
-		getRequestObject: jest.fn().mockReturnValue({ method: 'GET', query: {} }),
+		getRequestObject: jest
+			.fn()
+			.mockReturnValue({ method: 'GET', query: {}, contentType: 'multipart/form-data' }),
 		nodeHelpers: mock({
 			copyBinaryFile: jest.fn().mockResolvedValue({}),
 		}),
@@ -1422,6 +1427,19 @@ describe('prepareFormReturnItem', () => {
 		expect(DateTime.fromFormat).toHaveBeenCalledWith('2023-04-01', 'yyyy-mm-dd');
 	});
 
+	it('should not format date fields when formatDate is undefined', async () => {
+		mockContext.getBodyData.mockReturnValue({
+			data: { 'field-0': '2023-04-01' },
+			files: {},
+		});
+
+		const formFields = [{ fieldLabel: 'Date Field', fieldType: 'date', formatDate: undefined }];
+		const result = await prepareFormReturnItem(mockContext, formFields, 'test');
+
+		expect(DateTime.fromFormat).not.toHaveBeenCalled();
+		expect(result.json['Date Field']).toBe('2023-04-01');
+	});
+
 	it('should handle multiselect fields', async () => {
 		mockContext.getBodyData.mockReturnValue({
 			data: { 'field-0': '["option1", "option2"]' },
@@ -1456,6 +1474,7 @@ describe('prepareFormReturnItem', () => {
 		mockContext.getRequestObject.mockReturnValue({
 			method: 'POST',
 			query: { param: 'value' },
+			contentType: 'multipart/form-data',
 		} as unknown as Request);
 
 		const result = await prepareFormReturnItem(mockContext, [], 'test');
@@ -1467,6 +1486,7 @@ describe('prepareFormReturnItem', () => {
 		mockContext.getRequestObject.mockReturnValue({
 			method: 'POST',
 			query: {},
+			contentType: 'multipart/form-data',
 		} as unknown as Request);
 
 		const result = await prepareFormReturnItem(mockContext, [], 'test');
@@ -1846,5 +1866,86 @@ describe('addFormResponseDataToReturnItem', () => {
 
 		addFormResponseDataToReturnItem(returnItem, formFields, bodyData);
 		expect(returnItem.json['File Field']).toEqual(['file1.pdf']);
+	});
+});
+
+describe('FormTrigger, prepareFormData - Default Value', () => {
+	it('should use defaultValue when no query parameter is provided', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+				placeholder: 'Enter your name',
+				defaultValue: 'John Doe',
+			},
+			{
+				fieldLabel: 'Email',
+				fieldType: 'email',
+				requiredField: true,
+				placeholder: 'Enter your email',
+				defaultValue: 'john@example.com',
+			},
+		];
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query: {},
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('John Doe');
+		expect(result.formFields[1].defaultValue).toBe('john@example.com');
+	});
+
+	it('should prioritize query parameter over defaultValue', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+				defaultValue: 'Default Name',
+			},
+		];
+
+		const query = { Name: 'Query Name' };
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query,
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('Query Name');
+	});
+
+	it('should use empty string when neither defaultValue nor query parameter is provided', () => {
+		const formFields: FormFieldsParameter = [
+			{
+				fieldLabel: 'Name',
+				fieldType: 'text',
+				requiredField: true,
+			},
+		];
+
+		const result = prepareFormData({
+			formTitle: 'Test Form',
+			formDescription: 'This is a test form',
+			formSubmittedText: 'Thank you',
+			redirectUrl: 'example.com',
+			formFields,
+			testRun: false,
+			query: {},
+		});
+
+		expect(result.formFields[0].defaultValue).toBe('');
 	});
 });

@@ -1,4 +1,10 @@
-import { getPersonalProject, createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
+import {
+	getPersonalProject,
+	createTeamProject,
+	createWorkflow,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { IWorkflowDb, Project, WorkflowEntity, User } from '@n8n/db';
 import { WorkflowStatisticsRepository } from '@n8n/db';
@@ -13,6 +19,7 @@ import { createUser } from '@test-integration/db/users';
 import { mocked } from 'jest-mock';
 import { mock } from 'jest-mock-extended';
 import {
+	createEmptyRunExecutionData,
 	type ExecutionStatus,
 	type INode,
 	type IRun,
@@ -59,7 +66,7 @@ describe('WorkflowStatisticsService', () => {
 				const runData: IRun = {
 					finished: true,
 					status: 'success',
-					data: { resultData: { runData: {} } },
+					data: createEmptyRunExecutionData(),
 					mode,
 					startedAt: new Date(),
 				};
@@ -90,7 +97,7 @@ describe('WorkflowStatisticsService', () => {
 					// use `success` to make sure it would upsert if it were not for the
 					// mode used
 					status: 'success',
-					data: { resultData: { runData: {} } },
+					data: createEmptyRunExecutionData(),
 					mode,
 					startedAt: new Date(),
 				};
@@ -119,7 +126,7 @@ describe('WorkflowStatisticsService', () => {
 				const runData: IRun = {
 					finished: true,
 					status,
-					data: { resultData: { runData: {} } },
+					data: createEmptyRunExecutionData(),
 					mode: 'trigger',
 					startedAt: new Date(),
 				};
@@ -148,7 +155,7 @@ describe('WorkflowStatisticsService', () => {
 				const runData: IRun = {
 					finished: true,
 					status,
-					data: { resultData: { runData: {} } },
+					data: createEmptyRunExecutionData(),
 					// use `trigger` to make sure it would upsert if it were not for the
 					// status used
 					mode: 'trigger',
@@ -177,7 +184,7 @@ describe('WorkflowStatisticsService', () => {
 			const runData: IRun = {
 				finished: true,
 				status: 'success',
-				data: { resultData: { runData: {} } },
+				data: createEmptyRunExecutionData(),
 				mode: 'internal',
 				startedAt: new Date(),
 			};
@@ -207,7 +214,7 @@ describe('WorkflowStatisticsService', () => {
 			const runData: IRun = {
 				finished: false,
 				status: 'error',
-				data: { resultData: { runData: {} } },
+				data: createEmptyRunExecutionData(),
 				mode: 'internal',
 				startedAt: new Date(),
 			};
@@ -227,7 +234,7 @@ describe('WorkflowStatisticsService', () => {
 			const runData: IRun = {
 				finished: true,
 				status: 'success',
-				data: { resultData: { runData: {} } },
+				data: createEmptyRunExecutionData(),
 				mode: 'internal',
 				startedAt: new Date(),
 			};
@@ -241,6 +248,33 @@ describe('WorkflowStatisticsService', () => {
 			// ASSERT
 			expect(updateSettingsSpy).not.toHaveBeenCalled();
 			expect(emitSpy).not.toHaveBeenCalled();
+		});
+
+		test('emits first-production-workflow-succeeded with null userId for team project', async () => {
+			// ARRANGE
+			const teamProject = await createTeamProject('Team Project');
+			const teamWorkflow = await createWorkflow({}, teamProject);
+			const runData: IRun = {
+				finished: true,
+				status: 'success',
+				data: createEmptyRunExecutionData(),
+				mode: 'internal',
+				startedAt: new Date(),
+			};
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+			const updateSettingsSpy = jest.spyOn(userService, 'updateSettings');
+
+			// ACT
+			await workflowStatisticsService.workflowExecutionCompleted(teamWorkflow, runData);
+
+			// ASSERT
+			expect(updateSettingsSpy).not.toHaveBeenCalled();
+			expect(emitSpy).toHaveBeenCalledTimes(1);
+			expect(emitSpy).toHaveBeenCalledWith('first-production-workflow-succeeded', {
+				projectId: teamProject.id,
+				workflowId: teamWorkflow.id,
+				userId: null,
+			});
 		});
 	});
 

@@ -188,6 +188,7 @@ describe('AiWorkflowBuilderService', () => {
 			mockNodeTypeDescriptions,
 			mockClient,
 			mockLogger,
+			'test-instance-id',
 			'https://n8n.example.com',
 			mockOnCreditsUpdated,
 		);
@@ -199,6 +200,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockNodeTypeDescriptions,
 				mockClient,
 				mockLogger,
+				'test-instance-id',
 				'https://test.com',
 				mockOnCreditsUpdated,
 			);
@@ -224,6 +226,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockNodeTypeDescriptions,
 				mockClient,
 				mockLogger,
+				'test-instance-id',
 				'https://test.com',
 				mockOnCreditsUpdated,
 			);
@@ -247,6 +250,7 @@ describe('AiWorkflowBuilderService', () => {
 				mockNodeTypeDescriptions,
 				mockClient,
 				mockLogger,
+				'test-instance-id',
 				'https://test.com',
 				mockOnCreditsUpdated,
 			);
@@ -278,7 +282,6 @@ describe('AiWorkflowBuilderService', () => {
 				workflowContext: {
 					currentWorkflow: { id: 'test-workflow' },
 				},
-				useDeprecatedCredentials: false,
 			};
 		});
 
@@ -306,19 +309,6 @@ describe('AiWorkflowBuilderService', () => {
 				'test-user-id',
 				abortController.signal,
 			);
-		});
-
-		it('should handle deprecated credentials', async () => {
-			const payloadWithDeprecatedCredentials = {
-				...mockPayload,
-				useDeprecatedCredentials: true,
-			};
-
-			const generator = service.chat(payloadWithDeprecatedCredentials, mockUser);
-			await generator.next();
-
-			// Verify that the deprecated credentials flow was used
-			expect(mockClient.generateApiProxyCredentials).toHaveBeenCalledWith(mockUser);
 		});
 
 		it('should create WorkflowBuilderAgent with correct configuration when using client', async () => {
@@ -438,24 +428,6 @@ describe('AiWorkflowBuilderService', () => {
 
 			// Verify callback was called with correct parameters
 			expect(mockOnCreditsUpdated).toHaveBeenCalledWith('test-user-id', 10, 1);
-		});
-
-		it('should not call markBuilderSuccess when using deprecated credentials', async () => {
-			const payloadWithDeprecatedCredentials = {
-				...mockPayload,
-				useDeprecatedCredentials: true,
-			};
-
-			const generator = service.chat(payloadWithDeprecatedCredentials, mockUser);
-			await generator.next();
-
-			const config = MockedWorkflowBuilderAgent.mock.calls[0][0];
-
-			// Call the onGenerationSuccess callback
-			await config.onGenerationSuccess!();
-
-			// Should not call markBuilderSuccess for deprecated credentials
-			expect(mockClient.markBuilderSuccess).not.toHaveBeenCalled();
 		});
 	});
 
@@ -580,7 +552,6 @@ describe('AiWorkflowBuilderService', () => {
 				workflowContext: {
 					currentWorkflow: { id: workflowId },
 				},
-				useDeprecatedCredentials: false,
 			};
 
 			// First, simulate a chat session

@@ -1,6 +1,8 @@
 import type { SourceControlledFile } from '@n8n/api-types';
 import type { Logger } from '@n8n/backend-common';
 import {
+	type Variables,
+	type VariablesRepository,
 	type FolderRepository,
 	GLOBAL_ADMIN_ROLE,
 	GLOBAL_MEMBER_ROLE,
@@ -17,11 +19,15 @@ import { mock } from 'jest-mock-extended';
 import { type InstanceSettings } from 'n8n-core';
 import fsp from 'node:fs/promises';
 
+import type { VariablesService } from '@/environments.ee/variables/variables.service.ee';
+
 import { SourceControlImportService } from '../source-control-import.service.ee';
 import type { SourceControlScopedService } from '../source-control-scoped.service';
 import type { ExportableFolder } from '../types/exportable-folders';
 import type { ExportableProject } from '../types/exportable-project';
 import { SourceControlContext } from '../types/source-control-context';
+
+import type { ActiveWorkflowManager } from '@/active-workflow-manager';
 
 jest.mock('fast-glob');
 
@@ -44,18 +50,21 @@ describe('SourceControlImportService', () => {
 	const sharedWorkflowRepository = mock<SharedWorkflowRepository>();
 	const mockLogger = mock<Logger>();
 	const sourceControlScopedService = mock<SourceControlScopedService>();
+	const variableService = mock<VariablesService>();
+	const variablesRepository = mock<VariablesRepository>();
+	const activeWorkflowManager = mock<ActiveWorkflowManager>();
 	const service = new SourceControlImportService(
 		mockLogger,
 		mock(),
-		mock(),
-		mock(),
+		variableService,
+		activeWorkflowManager,
 		mock(),
 		projectRepository,
 		mock(),
 		sharedWorkflowRepository,
 		mock(),
 		mock(),
-		mock(),
+		variablesRepository,
 		workflowRepository,
 		mock(),
 		mock(),
@@ -253,6 +262,232 @@ describe('SourceControlImportService', () => {
 				expect.any(Object),
 			);
 		});
+
+		it('should set new workflows as inactive with null activeVersionId', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'New Workflow',
+				nodes: [],
+				parentFolderId: null,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'workflow1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'workflow1',
+					active: false,
+					activeVersionId: null,
+				}),
+				['id'],
+			);
+			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+		});
+
+		it('should keep existing inactive workflows inactive', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Existing Workflow',
+				nodes: [],
+				parentFolderId: null,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Existing Workflow',
+					active: false,
+					activeVersionId: null,
+				}),
+			]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'workflow1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'workflow1',
+					active: false,
+					activeVersionId: null,
+				}),
+				['id'],
+			);
+			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+		});
+
+		it('should reactivate existing active workflows', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Active Workflow',
+				nodes: [],
+				parentFolderId: null,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Active Workflow',
+					active: true,
+					activeVersionId: 'version-123',
+				}),
+			]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'workflow1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'workflow1',
+					active: true,
+					activeVersionId: 'version-123',
+				}),
+				['id'],
+			);
+			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1');
+			expect(activeWorkflowManager.add).toHaveBeenCalledWith('workflow1', 'activate');
+		});
+
+		it('should deactivate archived workflows even if they were previously active', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Archived Workflow',
+				nodes: [],
+				parentFolderId: null,
+				isArchived: true,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Archived Workflow',
+					active: true,
+					activeVersionId: 'version-123',
+				}),
+			]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'workflow1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			expect(workflowRepository.upsert).toHaveBeenCalledWith(
+				expect.objectContaining({
+					id: 'workflow1',
+					active: false,
+					activeVersionId: null,
+				}),
+				['id'],
+			);
+			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1');
+			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+		});
+
+		it('should handle activation errors gracefully', async () => {
+			const mockUserId = 'user-id-123';
+			const mockWorkflowFile = '/mock/workflow1.json';
+			const mockWorkflowData = {
+				id: 'workflow1',
+				name: 'Workflow with activation error',
+				nodes: [],
+				parentFolderId: null,
+			};
+			const candidates = [mock<SourceControlledFile>({ file: mockWorkflowFile, id: 'workflow1' })];
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValue(
+				Object.assign(new Project(), { id: 'project1', type: 'personal' }),
+			);
+			workflowRepository.findByIds.mockResolvedValue([
+				Object.assign(new WorkflowEntity(), {
+					id: 'workflow1',
+					name: 'Workflow with activation error',
+					active: true,
+					activeVersionId: 'version-123',
+				}),
+			]);
+			folderRepository.find.mockResolvedValue([]);
+			sharedWorkflowRepository.findWithFields.mockResolvedValue([]);
+			workflowRepository.upsert.mockResolvedValue({
+				identifiers: [{ id: 'workflow1' }],
+				generatedMaps: [],
+				raw: [],
+			});
+			workflowRepository.update.mockResolvedValue({
+				generatedMaps: [],
+				raw: [],
+				affected: 1,
+			});
+			activeWorkflowManager.add.mockRejectedValue(new Error('Activation failed'));
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
+
+			const result = await service.importWorkflowFromWorkFolder(candidates, mockUserId);
+
+			expect(mockLogger.error).toHaveBeenCalledWith(
+				'Failed to activate workflow workflow1',
+				expect.any(Object),
+			);
+			expect(workflowRepository.update).toHaveBeenCalled();
+			expect(result).toEqual([{ id: 'workflow1', name: mockWorkflowFile }]);
+		});
 	});
 
 	describe('getRemoteCredentialsFromFiles', () => {
@@ -286,6 +521,82 @@ describe('SourceControlImportService', () => {
 			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
 
 			expect(result).toHaveLength(0);
+		});
+
+		it('should parse global credentials with isGlobal flag set to true', async () => {
+			globMock.mockResolvedValue(['/mock/global-credential.json']);
+
+			const mockGlobalCredentialData = {
+				id: 'global-cred1',
+				name: 'Global Test Credential',
+				type: 'oauth2',
+				isGlobal: true,
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockGlobalCredentialData));
+
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual(
+				expect.objectContaining({
+					id: 'global-cred1',
+					name: 'Global Test Credential',
+					type: 'oauth2',
+					isGlobal: true,
+				}),
+			);
+		});
+
+		it('should parse non-global credentials with isGlobal flag set to false', async () => {
+			globMock.mockResolvedValue(['/mock/non-global-credential.json']);
+
+			const mockNonGlobalCredentialData = {
+				id: 'non-global-cred1',
+				name: 'Non-Global Test Credential',
+				type: 'oauth2',
+				isGlobal: false,
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockNonGlobalCredentialData));
+
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual(
+				expect.objectContaining({
+					id: 'non-global-cred1',
+					name: 'Non-Global Test Credential',
+					type: 'oauth2',
+					isGlobal: false,
+				}),
+			);
+		});
+
+		it('should default isGlobal to false when not specified in credential file', async () => {
+			globMock.mockResolvedValue(['/mock/credential-no-flag.json']);
+
+			const mockCredentialDataWithoutFlag = {
+				id: 'cred-no-flag',
+				name: 'Credential Without Flag',
+				type: 'oauth2',
+				// isGlobal not specified
+			};
+
+			fsReadFile.mockResolvedValue(JSON.stringify(mockCredentialDataWithoutFlag));
+
+			const result = await service.getRemoteCredentialsFromFiles(globalAdminContext);
+
+			expect(result).toHaveLength(1);
+			expect(result[0]).toEqual(
+				expect.objectContaining({
+					id: 'cred-no-flag',
+					name: 'Credential Without Flag',
+					type: 'oauth2',
+				}),
+			);
+			// isGlobal should default to false (undefined will be treated as false by the service)
+			expect(result[0].isGlobal).toBeFalsy();
 		});
 	});
 
@@ -570,6 +881,7 @@ describe('SourceControlImportService', () => {
 						type: 'team',
 						teamId: 'project2',
 					},
+					variableStubs: [{ id: 'var1', key: 'VAR1', value: 'value1' }],
 				};
 				const candidates = [
 					mock<SourceControlledFile>({ file: mockProjectFile1, id: mockProjectData1.id }),
@@ -579,6 +891,8 @@ describe('SourceControlImportService', () => {
 				fsReadFile
 					.mockResolvedValueOnce(JSON.stringify(mockProjectData1))
 					.mockResolvedValueOnce(JSON.stringify(mockProjectData2));
+
+				variableService.getAllCached.mockResolvedValue([]);
 
 				// Act
 				const result = await service.importTeamProjectsFromWorkFolder(candidates);
@@ -603,6 +917,14 @@ describe('SourceControlImportService', () => {
 						icon: mockProjectData2.icon,
 						description: mockProjectData2.description,
 						type: mockProjectData2.type,
+					}),
+					['id'],
+				);
+				expect(variablesRepository.upsert).toHaveBeenCalledWith(
+					expect.objectContaining({
+						id: 'var1',
+						key: 'VAR1',
+						value: 'value1',
 					}),
 					['id'],
 				);
@@ -699,6 +1021,44 @@ describe('SourceControlImportService', () => {
 					},
 				]);
 			});
+
+			it('should delete project variables not in the imported stubs', async () => {
+				// Arrange
+				const mockProjectFile = '/mock/team-project.json';
+				const mockProjectData = {
+					id: 'project1',
+					name: 'Team Project 1',
+					icon: 'icon1.png',
+					description: 'First team project',
+					type: 'team',
+					owner: {
+						type: 'team',
+						teamId: 'project1',
+					},
+					variableStubs: [{ id: 'var1', key: 'VAR1', value: 'value1' }],
+				};
+				const candidates = [
+					mock<SourceControlledFile>({ file: mockProjectFile, id: mockProjectData.id }),
+				];
+
+				fsReadFile.mockResolvedValueOnce(JSON.stringify(mockProjectData));
+
+				variableService.getAllCached.mockResolvedValue([
+					{
+						id: 'var2',
+						key: 'VAR2',
+						value: 'value2',
+						type: 'string',
+						project: { id: 'project1' } as Project,
+					} as Variables,
+				]);
+
+				// Act
+				await service.importTeamProjectsFromWorkFolder(candidates);
+
+				// Assert
+				expect(variableService.deleteByIds).toHaveBeenCalledWith(['var2']);
+			});
 		});
 
 		describe('getRemoteProjectsFromFiles', () => {
@@ -725,6 +1085,7 @@ describe('SourceControlImportService', () => {
 					teamId: 'project2',
 					teamName: 'Team Project 2',
 				},
+				variableStubs: [{ id: 'var1', key: 'VAR1', value: 'value1', type: 'string' }],
 			};
 
 			it('should return all projects if the user has access to all projects', async () => {
@@ -795,6 +1156,7 @@ describe('SourceControlImportService', () => {
 					type: 'team',
 					createdAt: new Date(),
 					updatedAt: new Date(),
+					variables: [],
 				});
 				const mockProjectData2: Project = mock<Project>({
 					id: 'project2',
@@ -804,6 +1166,7 @@ describe('SourceControlImportService', () => {
 					type: 'team',
 					createdAt: new Date(),
 					updatedAt: new Date(),
+					variables: [],
 				});
 
 				const mockFilter = { id: 'test' };
@@ -820,6 +1183,7 @@ describe('SourceControlImportService', () => {
 				// making sure the correct filter is used
 				expect(projectRepository.find).toHaveBeenCalledWith({
 					select: ['id', 'name', 'description', 'icon', 'type'],
+					relations: ['variables'],
 					where: {
 						type: 'team',
 						...mockFilter,
@@ -865,6 +1229,7 @@ describe('SourceControlImportService', () => {
 					type: 'team',
 					createdAt: new Date(),
 					updatedAt: new Date(),
+					variables: [{ id: 'var1', key: 'VAR1', value: 'value1', type: 'string' }],
 				});
 
 				projectRepository.find.mockResolvedValue([mockProjectData1]);
@@ -877,6 +1242,7 @@ describe('SourceControlImportService', () => {
 				// making sure the correct filter is used
 				expect(projectRepository.find).toHaveBeenCalledWith({
 					select: ['id', 'name', 'description', 'icon', 'type'],
+					relations: ['variables'],
 					where: { type: 'team' },
 				});
 

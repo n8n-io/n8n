@@ -10,6 +10,8 @@ import { BinaryDataConfig, InstanceSettings } from 'n8n-core';
 import type { ICredentialType, INodeTypeBaseDescription } from 'n8n-workflow';
 import path from 'path';
 
+import { UrlService } from './url.service';
+
 import config from '@/config';
 import { inE2ETests, N8N_VERSION } from '@/constants';
 import { CredentialTypes } from '@/credential-types';
@@ -28,9 +30,66 @@ import { UserManagementMailer } from '@/user-management/email';
 import {
 	getWorkflowHistoryLicensePruneTime,
 	getWorkflowHistoryPruneTime,
-} from '@/workflows/workflow-history.ee/workflow-history-helper.ee';
+} from '@/workflows/workflow-history/workflow-history-helper';
 
-import { UrlService } from './url.service';
+/**
+ * IMPORTANT: Only add settings that are absolutely necessary for non-authenticated pages
+ */
+export type PublicFrontendSettings = {
+	/** Controls initialization flow in settings store */
+	settingsMode: FrontendSettings['settingsMode'];
+
+	/** Used to bypass authentication on the workflows/demo page */
+	previewMode: FrontendSettings['previewMode'];
+
+	authCookie: {
+		/** Blocks insecure access incompatible with the authentication cookie. */
+		secure: FrontendSettings['authCookie']['secure'];
+	};
+
+	userManagement: {
+		/** Used to control login page UI behaviour and conditional SSO Login display */
+		authenticationMethod: FrontendSettings['userManagement']['authenticationMethod'];
+
+		/** Enables initial owner setup */
+		showSetupOnFirstLoad: FrontendSettings['userManagement']['showSetupOnFirstLoad'];
+
+		/** Determines forgot password page UX */
+		smtpSetup: FrontendSettings['userManagement']['smtpSetup'];
+	};
+
+	enterprise: {
+		/** License check for SAML for SSO button visibility */
+		saml: FrontendSettings['enterprise']['saml'];
+
+		/** License check for OIDC for SSO button visibility */
+		oidc: FrontendSettings['enterprise']['oidc'];
+
+		/** License check for LDAP authentication */
+		ldap: FrontendSettings['enterprise']['ldap'];
+	};
+
+	sso: {
+		saml: {
+			/** Config flag for SSO button*/
+			loginEnabled: FrontendSettings['sso']['saml']['loginEnabled'];
+		};
+		ldap: {
+			/** Config flag for LDAP authentication */
+			loginEnabled: FrontendSettings['sso']['ldap']['loginEnabled'];
+
+			/** Customizes login form label (defaults to "Email") */
+			loginLabel: FrontendSettings['sso']['ldap']['loginLabel'];
+		};
+		oidc: {
+			/** Config flag for SSO button*/
+			loginEnabled: FrontendSettings['sso']['oidc']['loginEnabled'];
+
+			/** Required for OIDC authentication redirect URL */
+			loginUrl: FrontendSettings['sso']['oidc']['loginUrl'];
+		};
+	};
+};
 
 @Service()
 export class FrontendService {
@@ -105,6 +164,7 @@ export class FrontendService {
 		}
 
 		this.settings = {
+			settingsMode: 'authenticated',
 			inE2ETests,
 			isDocker: this.instanceSettings.isDocker,
 			databaseType: this.globalConfig.database.type,
@@ -149,6 +209,10 @@ export class FrontendService {
 				whatsNewEnabled: this.globalConfig.versionNotifications.whatsNewEnabled,
 				whatsNewEndpoint: this.globalConfig.versionNotifications.whatsNewEndpoint,
 				infoUrl: this.globalConfig.versionNotifications.infoUrl,
+			},
+			dynamicBanners: {
+				endpoint: this.globalConfig.dynamicBanners.endpoint,
+				enabled: this.globalConfig.dynamicBanners.enabled,
 			},
 			instanceId: this.instanceSettings.instanceId,
 			telemetry: telemetrySettings,
@@ -237,7 +301,6 @@ export class FrontendService {
 				showNonProdBanner: false,
 				debugInEditor: false,
 				binaryDataS3: false,
-				workflowHistory: false,
 				workerView: false,
 				advancedPermissions: false,
 				apiKeyScopes: false,
@@ -277,8 +340,8 @@ export class FrontendService {
 				credits: 0,
 			},
 			workflowHistory: {
-				pruneTime: -1,
-				licensePruneTime: -1,
+				pruneTime: getWorkflowHistoryPruneTime(),
+				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
 			},
 			pruning: {
 				isEnabled: this.globalConfig.executions.pruneData,
@@ -372,8 +435,6 @@ export class FrontendService {
 			showNonProdBanner: this.license.isLicensed(LICENSE_FEATURES.SHOW_NON_PROD_BANNER),
 			debugInEditor: this.license.isDebugInEditorLicensed(),
 			binaryDataS3: isS3Available && isS3Selected && isS3Licensed,
-			workflowHistory:
-				this.license.isWorkflowHistoryLicensed() && this.globalConfig.workflowHistory.enabled,
 			workerView: this.license.isWorkerViewLicensed(),
 			advancedPermissions: this.license.isAdvancedPermissionsLicensed(),
 			apiKeyScopes: this.license.isApiKeyScopesEnabled(),
@@ -405,20 +466,14 @@ export class FrontendService {
 			this.settings.variables.limit = this.license.getVariablesLimit();
 		}
 
-		if (this.globalConfig.workflowHistory.enabled && this.license.isWorkflowHistoryLicensed()) {
-			Object.assign(this.settings.workflowHistory, {
-				pruneTime: getWorkflowHistoryPruneTime(),
-				licensePruneTime: getWorkflowHistoryLicensePruneTime(),
-			});
-		}
-
 		if (this.communityPackagesService) {
 			this.settings.missingPackages = this.communityPackagesService.hasMissingPackages;
 		}
 
 		if (isAiAssistantEnabled) {
 			this.settings.aiAssistant.enabled = isAiAssistantEnabled;
-			this.settings.aiAssistant.setup = !!this.globalConfig.aiAssistant.baseUrl;
+			this.settings.aiAssistant.setup =
+				!!this.globalConfig.aiAssistant.baseUrl || !!process.env.N8N_AI_ANTHROPIC_KEY;
 		}
 
 		if (isAskAiEnabled) {
@@ -456,6 +511,40 @@ export class FrontendService {
 		this.settings.envFeatureFlags = this.collectEnvFeatureFlags();
 
 		return this.settings;
+	}
+
+	/**
+	 * Only add settings that are absolutely necessary for non-authenticated pages
+	 * @returns Public settings for unauthenticated users
+	 */
+	getPublicSettings(): PublicFrontendSettings {
+		// Get full settings to ensure all required properties are initialized
+		const {
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			sso: { saml: ssoSaml, ldap: ssoLdap, oidc: ssoOidc },
+			authCookie,
+			previewMode,
+			enterprise: { saml, ldap, oidc },
+		} = this.getSettings();
+
+		const publicSettings: PublicFrontendSettings = {
+			settingsMode: 'public',
+			userManagement: { authenticationMethod, showSetupOnFirstLoad, smtpSetup },
+			sso: {
+				saml: {
+					loginEnabled: ssoSaml.loginEnabled,
+				},
+				ldap: ssoLdap,
+				oidc: {
+					loginEnabled: ssoOidc.loginEnabled,
+					loginUrl: ssoOidc.loginUrl,
+				},
+			},
+			authCookie,
+			previewMode,
+			enterprise: { saml, ldap, oidc },
+		};
+		return publicSettings;
 	}
 
 	getModuleSettings() {

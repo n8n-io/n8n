@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import NodeSettings from '@/components/NodeSettings.vue';
-import { useCanvasOperations } from '@/composables/useCanvasOperations';
-import { useNodeHelpers } from '@/composables/useNodeHelpers';
+import NodeSettings from '@/features/ndv/settings/components/NodeSettings.vue';
+import { useCanvasOperations } from '@/app/composables/useCanvasOperations';
+import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { type IUpdateInformation } from '@/Interface';
-import { useNDVStore } from '@/features/ndv/ndv.store';
-import { useUIStore } from '@/stores/ui.store';
-import { useWorkflowsStore } from '@/stores/workflows.store';
+import { useNDVStore } from '@/features/ndv/shared/ndv.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { computed } from 'vue';
 
 const { nodeId, isReadOnly, subTitle, isEmbeddedInCanvas } = defineProps<{

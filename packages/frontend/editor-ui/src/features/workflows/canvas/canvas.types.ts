@@ -12,7 +12,7 @@ import type { IExecutionResponse } from '@/features/execution/executions/executi
 import type { ComputedRef, Ref } from 'vue';
 import type { EventBus } from '@n8n/utils/event-bus';
 import type { CanvasLayoutSource } from '@/features/workflows/canvas/composables/useCanvasLayout';
-import type { NodeIconSource } from '@/utils/nodeIcon';
+import type { NodeIconSource } from '@/app/utils/nodeIcon';
 
 export const enum CanvasConnectionMode {
 	Input = 'inputs',
@@ -221,6 +221,12 @@ export type CanvasNodeMoveEvent = { id: string; position: CanvasNode['position']
 export type ExecutionOutputMapData = {
 	total: number;
 	iterations: number;
+	byTarget?: {
+		[targetNodeId: string]: {
+			total: number;
+			iterations: number;
+		};
+	};
 };
 
 export type ExecutionOutputMap = {
