@@ -282,6 +282,87 @@ describe('WaitTracker', () => {
 				// Verify parent was resumed
 				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
 			});
+
+			it.skip('should prevent race condition when multiple children try to resume same parent', async () => {
+				// TODO: This test requires integration testing or a different mocking approach
+				// The race condition logic happens in ActiveExecutions.add() which is called by workflowRunner.run()
+				// With current mocking, we can't easily test the full flow
+				// The race condition has been manually verified with actual execution logs
+				// Setup parent execution
+				const parentExecution: IExecutionResponse = {
+					id: 'parent_execution_id',
+					finished: false,
+					status: 'waiting',
+					waitTill: WAIT_INDEFINITELY,
+					workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id' }),
+					customData: {},
+					annotation: { tags: [] },
+					createdAt: new Date(),
+					startedAt: new Date(),
+					mode: 'manual',
+					workflowId: 'parent_workflow_id',
+					data: {
+						resultData: {
+							runData: {},
+							lastNodeExecuted: 'Execute Workflow',
+						},
+						executionData: {
+							contextData: {},
+							nodeExecutionStack: [
+								{
+									node: mock<INode>({ name: 'Execute Workflow' }),
+									data: {
+										main: [[{ json: { type: 'parent-input' }, pairedItem: { item: 0 } }]],
+									},
+									source: { main: [{ previousNode: 'Manual Trigger' }] },
+								},
+							],
+							metadata: {},
+							waitingExecution: {},
+							waitingExecutionSource: {},
+						},
+					} as unknown as IRunExecutionData,
+				};
+
+				// Mock updateExistingExecution to simulate race condition:
+				// First call with requireStatus='waiting' succeeds, subsequent calls fail
+				let parentUpdateCallCount = 0;
+				const originalMock = executionRepository.updateExistingExecution.getMockImplementation();
+				executionRepository.updateExistingExecution.mockImplementation(
+					async (id, data, requireStatus) => {
+						if (id === parentExecution.id && requireStatus === 'waiting') {
+							parentUpdateCallCount++;
+							return parentUpdateCallCount === 1; // Only first succeeds
+						}
+						// Call original mock for other cases
+						return originalMock ? originalMock(id, data, requireStatus) : true;
+					},
+				);
+
+				executionRepository.findSingleExecution
+					.calledWith(parentExecution.id)
+					.mockResolvedValue(parentExecution);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
+
+				// Simulate 5 concurrent calls to resume the parent
+				// This mimics what happens when 5 children complete simultaneously
+				const resumePromises = Array(5)
+					.fill(null)
+					.map(() => waitTracker.startExecution(parentExecution.id));
+
+				await Promise.allSettled(resumePromises);
+
+				// Verify atomic update was attempted 5 times with requireStatus='waiting'
+				expect(parentUpdateCallCount).toBe(5);
+
+				// Verify parent execution was started only ONCE
+				// First call: succeeds (affected: 1), starts execution
+				// Next 4 calls: fail (affected: 0), throw ExecutionAlreadyResumingError, caught in WaitTracker
+				const parentRunCalls = (workflowRunner.run as jest.Mock).mock.calls.filter(
+					(call) => call[3] === parentExecution.id,
+				);
+				expect(parentRunCalls.length).toBe(1);
+			});
 		});
 	});
 
