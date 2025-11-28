@@ -296,21 +296,6 @@ export class CanvasPage extends BasePage {
 		await this.page.locator('body').click({ position: { x: 0, y: 0 } });
 	}
 
-	// TODO: remove this
-	async activateWorkflow() {
-		const switchElement = this.page.getByTestId('workflow-activate-switch');
-		const statusElement = this.page.getByTestId('workflow-activator-status');
-
-		const responsePromise = this.page.waitForResponse(
-			(response) =>
-				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
-		);
-
-		await switchElement.click();
-		await statusElement.locator('span').filter({ hasText: 'Active' }).waitFor({ state: 'visible' });
-		await responsePromise;
-	}
-
 	async publishWorkflow(): Promise<void> {
 		const responsePromise = this.page.waitForResponse(
 			(response) => response.url().includes('activate') && response.request().method() === 'POST',
@@ -450,11 +435,6 @@ export class CanvasPage extends BasePage {
 
 	getWorkflowSaveButton(): Locator {
 		return this.page.getByTestId('workflow-save-button');
-	}
-
-	// TODO: remove this
-	getWorkflowActivatorSwitch(): Locator {
-		return this.page.getByTestId('workflow-activate-switch');
 	}
 
 	getOpenPublishModalButton(): Locator {
