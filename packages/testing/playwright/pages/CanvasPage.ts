@@ -764,15 +764,13 @@ export class CanvasPage extends BasePage {
 	}
 
 	getNodesWithSpinner(): Locator {
-		return this.page.getByTestId('canvas-node').filter({
-			has: this.page.locator('[data-icon=refresh-cw]'),
-		});
+		return this.page.locator(
+			'[data-test-id="canvas-node"].running, [data-test-id="canvas-node"].waiting',
+		);
 	}
 
 	getWaitingNodes(): Locator {
-		return this.page.getByTestId('canvas-node').filter({
-			has: this.page.locator('[data-icon=clock]'),
-		});
+		return this.page.locator('[data-test-id="canvas-node"].waiting');
 	}
 
 	/**
@@ -910,7 +908,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	getNodeRunningStatusIndicator(nodeName: string): Locator {
-		return this.nodeByName(nodeName).locator('[data-icon="refresh-cw"]');
+		return this.nodeByName(nodeName).locator('.running, .waiting');
 	}
 
 	getSuccessEdges(): Locator {
