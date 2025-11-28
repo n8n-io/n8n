@@ -51,7 +51,7 @@
       "dist/credentials/XAiApi.credentials.js",
       "dist/credentials/XataApi.credentials.js",
       "dist/credentials/ZepApi.credentials.js",
-      "dist/credentials/BurnCloudApi.credentials.ts"
+      "dist/credentials/BurnCloudApi.credentials.js"
     ],
     "nodes": [
       "dist/nodes/vendors/Anthropic/Anthropic.node.js",

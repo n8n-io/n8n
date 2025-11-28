@@ -182,6 +182,8 @@ export class ChatHubService {
 				return await this.fetchCohereModels(credentials, additionalData);
 			case 'mistralCloud':
 				return await this.fetchMistralCloudModels(credentials, additionalData);
+			case 'burnCloud':
+				return await this.fetchBurnCloudModels(credentials, additionalData);
 			case 'n8n':
 				return await this.fetchAgentWorkflowsAsModels(user);
 			case 'custom-agent':
@@ -599,6 +601,62 @@ export class ChatHubService {
 				description: result.description ?? null,
 				model: {
 					provider: 'cohere',
+					model: String(result.value),
+				},
+				createdAt: null,
+				updatedAt: null,
+			})),
+		};
+	}
+
+	private async fetchBurnCloudModels(
+		credentials: INodeCredentials,
+		additionalData: IWorkflowExecuteAdditionalData,
+	): Promise<ChatModelsResponse['burnCloud']> {
+		const results = await this.nodeParametersService.getOptionsViaLoadOptions(
+			{
+				routing: {
+					request: {
+						method: 'GET',
+						url: '/v1/models',
+					},
+					output: {
+						postReceive: [
+							{
+								type: 'rootProperty',
+								properties: {
+									property: 'data',
+								},
+							},
+							{
+								type: 'setKeyValue',
+								properties: {
+									name: '={{$responseItem.id}}',
+									value: '={{$responseItem.id}}',
+								},
+							},
+							{
+								type: 'sort',
+								properties: {
+									key: 'name',
+								},
+							},
+						],
+					},
+				},
+			},
+			additionalData,
+			PROVIDER_NODE_TYPE_MAP.burnCloud,
+			{},
+			credentials,
+		);
+
+		return {
+			models: results.map((result) => ({
+				name: result.name,
+				description: result.description ?? null,
+				model: {
+					provider: 'burnCloud',
 					model: String(result.value),
 				},
 				createdAt: null,

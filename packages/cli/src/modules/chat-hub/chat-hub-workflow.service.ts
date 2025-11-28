@@ -562,6 +562,15 @@ export class ChatHubWorkflowService {
 					},
 				};
 			}
+			case 'burnCloud': {
+				return {
+					...common,
+					parameters: {
+						model,
+						options: {},
+					},
+				};
+			}
 			case 'cohere': {
 				return {
 					...common,

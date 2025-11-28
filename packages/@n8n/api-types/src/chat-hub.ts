@@ -25,6 +25,7 @@ export const chatHubLLMProviderSchema = z.enum([
 	'deepSeek',
 	'cohere',
 	'mistralCloud',
+	'burnCloud',
 ]);
 export type ChatHubLLMProvider = z.infer<typeof chatHubLLMProviderSchema>;
 
@@ -57,6 +58,7 @@ export const PROVIDER_CREDENTIAL_TYPE_MAP: Record<
 	deepSeek: 'deepSeekApi',
 	cohere: 'cohereApi',
 	mistralCloud: 'mistralCloudApi',
+	burnCloud: 'burnCloudApi',
 };
 
 export type ChatHubAgentTool = typeof JINA_AI_TOOL_NODE_TYPE;
@@ -134,6 +136,11 @@ const mistralCloudModelSchema = z.object({
 	model: z.string(),
 });
 
+const burnCloudModelSchema = z.object({
+	provider: z.literal('burnCloud'),
+	model: z.string(),
+});
+
 const n8nModelSchema = z.object({
 	provider: z.literal('n8n'),
 	workflowId: z.string(),
@@ -161,6 +168,7 @@ export const chatHubConversationModelSchema = z.discriminatedUnion('provider', [
 	mistralCloudModelSchema,
 	n8nModelSchema,
 	chatAgentSchema,
+	burnCloudModelSchema,
 ]);
 
 export type ChatHubOpenAIModel = z.infer<typeof openAIModelSchema>;
@@ -177,6 +185,7 @@ export type ChatHubOpenRouterModel = z.infer<typeof openRouterModelSchema>;
 export type ChatHubDeepSeekModel = z.infer<typeof deepSeekModelSchema>;
 export type ChatHubCohereModel = z.infer<typeof cohereModelSchema>;
 export type ChatHubMistralCloudModel = z.infer<typeof mistralCloudModelSchema>;
+export type ChatHubBurnCloudModel = z.infer<typeof burnCloudModelSchema>;
 export type ChatHubBaseLLMModel =
 	| ChatHubOpenAIModel
 	| ChatHubAnthropicModel
@@ -191,7 +200,8 @@ export type ChatHubBaseLLMModel =
 	| ChatHubOpenRouterModel
 	| ChatHubDeepSeekModel
 	| ChatHubCohereModel
-	| ChatHubMistralCloudModel;
+	| ChatHubMistralCloudModel
+	| ChatHubBurnCloudModel;
 
 export type ChatHubN8nModel = z.infer<typeof n8nModelSchema>;
 export type ChatHubCustomAgentModel = z.infer<typeof chatAgentSchema>;
@@ -243,6 +253,7 @@ export const emptyChatModelsResponse: ChatModelsResponse = {
 	cohere: { models: [] },
 	mistralCloud: { models: [] },
 	n8n: { models: [] },
+	burnCloud: { models: [] },
 	// eslint-disable-next-line @typescript-eslint/naming-convention
 	'custom-agent': { models: [] },
 };
