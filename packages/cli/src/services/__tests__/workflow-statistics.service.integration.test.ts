@@ -1,4 +1,10 @@
-import { getPersonalProject, createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
+import {
+	getPersonalProject,
+	createTeamProject,
+	createWorkflow,
+	testDb,
+	mockInstance,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { IWorkflowDb, Project, WorkflowEntity, User } from '@n8n/db';
 import { WorkflowStatisticsRepository } from '@n8n/db';
@@ -242,6 +248,33 @@ describe('WorkflowStatisticsService', () => {
 			// ASSERT
 			expect(updateSettingsSpy).not.toHaveBeenCalled();
 			expect(emitSpy).not.toHaveBeenCalled();
+		});
+
+		test('emits first-production-workflow-succeeded with null userId for team project', async () => {
+			// ARRANGE
+			const teamProject = await createTeamProject('Team Project');
+			const teamWorkflow = await createWorkflow({}, teamProject);
+			const runData: IRun = {
+				finished: true,
+				status: 'success',
+				data: createEmptyRunExecutionData(),
+				mode: 'internal',
+				startedAt: new Date(),
+			};
+			const emitSpy = jest.spyOn(Container.get(EventService), 'emit');
+			const updateSettingsSpy = jest.spyOn(userService, 'updateSettings');
+
+			// ACT
+			await workflowStatisticsService.workflowExecutionCompleted(teamWorkflow, runData);
+
+			// ASSERT
+			expect(updateSettingsSpy).not.toHaveBeenCalled();
+			expect(emitSpy).toHaveBeenCalledTimes(1);
+			expect(emitSpy).toHaveBeenCalledWith('first-production-workflow-succeeded', {
+				projectId: teamProject.id,
+				workflowId: teamWorkflow.id,
+				userId: null,
+			});
 		});
 	});
 
