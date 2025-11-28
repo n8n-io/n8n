@@ -32,16 +32,16 @@ export class N8nTrigger implements INodeType {
 				default: [],
 				description: `Specifies under which conditions an execution should happen:
 				<ul>
-					<li><b>Published Workflow Updated</b>: Triggers when workflow version is published from published state (workflow was already active)</li>
+					<li><b>Published Workflow Updated</b>: Triggers when workflow version is published from a published state (workflow was already published)</li>
 					<li><b>Instance Started</b>:  Triggers when this n8n instance is started or re-started</li>
-					<li><b>Workflow Published</b>: Triggers when workflow version is published from unpublished state (workflow was inactive)</li>
+					<li><b>Workflow Published</b>: Triggers when workflow version is published from an unpublished state (workflow was unpublished)</li>
 				</ul>`,
 				options: [
 					{
 						name: 'Published Workflow Updated',
 						value: 'update',
 						description:
-							'Triggers when workflow version is published from published state (workflow was already published)',
+							'Triggers when workflow version is published from a published state (workflow was already published)',
 					},
 					{
 						name: 'Instance Started',
@@ -52,7 +52,7 @@ export class N8nTrigger implements INodeType {
 						name: 'Workflow Published',
 						value: 'activate',
 						description:
-							'Triggers when workflow version is published from unpublished state (workflow was not published)',
+							'Triggers when workflow version is published from an unpublished state (workflow was not published)',
 					},
 				],
 			},
