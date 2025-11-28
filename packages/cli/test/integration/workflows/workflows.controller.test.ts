@@ -1510,7 +1510,10 @@ describe('GET /workflows', () => {
 		});
 
 		test('should handle skip with take parameter', async () => {
-			const response = await authOwnerAgent.get('/workflows').query('skip=2&take=2').expect(200);
+			const response = await authOwnerAgent
+				.get('/workflows')
+				.query('skip=2&take=2&sortBy=name:asc')
+				.expect(200);
 
 			const body = response.body as { data: WorkflowEntity[]; count: number };
 			expect(body.count).toBe(5);
@@ -2368,7 +2371,7 @@ describe('GET /workflows?includeFolders=true', () => {
 		test('should handle skip with take parameter', async () => {
 			const response = await authOwnerAgent
 				.get('/workflows')
-				.query('skip=2&take=4&includeFolders=true');
+				.query('skip=2&take=4&includeFolders=true&sortBy=name:asc');
 
 			const body = response.body as { data: WorkflowEntity[]; count: number };
 			expect(body.count).toBe(6);
