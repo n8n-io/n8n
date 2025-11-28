@@ -327,6 +327,11 @@ export class CommunityPackagesService {
 				this.logger.info('Packages reinstalled successfully. Resuming regular initialization.');
 				await this.loadNodesAndCredentials.postProcessLoaders();
 			} catch (error) {
+				this.logger.debug(error.message);
+				if (error.cause instanceof Error) {
+					this.logger.debug(`Caused by: ${error.cause.message}`);
+				}
+
 				this.logger.error('n8n was unable to install the missing packages.');
 			}
 		} else {
@@ -394,6 +399,8 @@ export class CommunityPackagesService {
 		const packageVersion = !options.version ? 'latest' : options.version;
 
 		const shouldValidateChecksum = 'checksum' in options && Boolean(options.checksum);
+
+		this.logger.debug(`Attempting to ${isUpdate ? 'update' : 'install'} ${packageName} ${packageVersion}`);
 		this.checkInstallPermissions(shouldValidateChecksum);
 
 		if (options.checksum) {
