@@ -4,7 +4,6 @@ import type { AIMessageChunk, MessageContentText } from '@langchain/core/message
 import type { BaseChatMemory } from '@langchain/classic/memory';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
-import { saveToMemory, saveToolResultsToMemory } from './memoryManagement';
 import type { AgentResult, ToolCallRequest } from './types';
 
 /**
@@ -17,26 +16,16 @@ import type { AgentResult, ToolCallRequest } from './types';
  * @param ctx - The execution context
  * @param eventStream - The stream of events from the agent
  * @param itemIndex - The current item index
- * @param returnIntermediateSteps - Whether to capture intermediate steps
- * @param memory - Optional memory for saving context
- * @param input - The original input prompt
  * @returns AgentResult containing output and optional tool calls/steps
  */
 export async function processEventStream(
 	ctx: IExecuteFunctions,
 	eventStream: IterableReadableStream<StreamEvent>,
 	itemIndex: number,
-	returnIntermediateSteps: boolean = false,
-	memory?: BaseChatMemory,
-	input?: string,
 ): Promise<AgentResult> {
 	const agentResult: AgentResult = {
 		output: '',
 	};
-
-	if (returnIntermediateSteps) {
-		agentResult.intermediateSteps = [];
-	}
 
 	const toolCalls: ToolCallRequest[] = [];
 
@@ -84,52 +73,6 @@ export async function processEventStream(
 								messageLog: [output],
 							});
 						}
-
-						// Also add to intermediate steps if needed
-						if (returnIntermediateSteps) {
-							for (const toolCall of output.tool_calls) {
-								agentResult.intermediateSteps?.push({
-									action: {
-										tool: toolCall.name,
-										toolInput: toolCall.args,
-										log:
-											output.content ||
-											`Calling ${toolCall.name} with input: ${JSON.stringify(toolCall.args)}`,
-										messageLog: [output], // Include the full LLM response
-										toolCallId: toolCall.id || 'unknown',
-										type: toolCall.type || 'tool_call',
-									},
-									observation: '',
-								});
-							}
-						}
-					}
-				}
-				break;
-			case 'on_tool_end':
-				// Capture tool execution results and match with action
-				if (returnIntermediateSteps && event.data && agentResult.intermediateSteps!.length > 0) {
-					const toolData = event.data as { output?: string };
-					// Find the matching intermediate step for this tool call
-					const matchingStep = agentResult.intermediateSteps?.find(
-						(step) => !step.observation && step.action.tool === event.name,
-					);
-					if (matchingStep) {
-						matchingStep.observation = toolData.output || '';
-
-						// Save tool result to memory
-						if (matchingStep.observation && input) {
-							await saveToolResultsToMemory(
-								input,
-								[
-									{
-										action: matchingStep.action,
-										observation: matchingStep.observation,
-									},
-								],
-								memory,
-							);
-						}
 					}
 				}
 				break;
@@ -138,11 +81,6 @@ export async function processEventStream(
 		}
 	}
 	ctx.sendChunk('end', itemIndex);
-
-	// Save conversation to memory if memory is connected
-	if (input && agentResult.output) {
-		await saveToMemory(input, agentResult.output, memory);
-	}
 
 	// Include collected tool calls in the result
 	if (toolCalls.length > 0) {

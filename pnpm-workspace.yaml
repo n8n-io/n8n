@@ -92,3 +92,5 @@ minimumReleaseAgeExclude:
   - '@anthropic-ai/sdk'
   - '@google/generative-ai'
   - '@google/genai'
+  - body-parser
+  - node-forge

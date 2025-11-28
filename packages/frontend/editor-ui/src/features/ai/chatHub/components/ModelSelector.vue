@@ -37,6 +37,7 @@ import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { truncateBeforeLast } from '@n8n/utils';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
 
@@ -45,20 +46,22 @@ const {
 	includeCustomAgents = true,
 	credentials,
 	text,
+	warnMissingCredentials = false,
 } = defineProps<{
 	selectedAgent: ChatModelDto | null;
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
 	text?: boolean;
+	warnMissingCredentials?: boolean;
 }>();
 
 const emit = defineEmits<{
 	change: [ChatModelDto];
 	createCustomAgent: [];
-	selectCredential: [provider: ChatHubProvider, credentialId: string];
+	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
 }>();
 
-function handleSelectCredentials(provider: ChatHubProvider, id: string) {
+function handleSelectCredentials(provider: ChatHubProvider, id: string | null) {
 	emit('selectCredential', provider, id);
 }
 
@@ -90,6 +93,13 @@ const credentialsName = computed(() =>
 		: undefined,
 );
 const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
+const isCredentialsMissing = computed(
+	() =>
+		warnMissingCredentials &&
+		isCredentialsRequired.value &&
+		selectedAgent?.model.provider &&
+		!credentials?.[selectedAgent?.model.provider],
+);
 
 const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
@@ -201,7 +211,9 @@ const menu = computed(() => {
 	return menuItems;
 });
 
-const selectedLabel = computed(() => selectedAgent?.name ?? 'Select model');
+const selectedLabel = computed(
+	() => selectedAgent?.name ?? i18n.baseText('chatHub.models.selector.defaultLabel'),
+);
 
 function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
@@ -304,11 +316,13 @@ watch(
 
 defineExpose({
 	open: () => dropdownRef.value?.open(),
+	openCredentialSelector: (provider: ChatHubLLMProvider) =>
+		openCredentialsSelectorOrCreate(provider),
 });
 </script>
 
 <template>
-	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" @select="onSelect">
+	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" teleport @select="onSelect">
 		<template #item-icon="{ item }">
 			<CredentialIcon
 				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
@@ -333,10 +347,18 @@ defineExpose({
 			/>
 			<div :class="$style.selected">
 				<div>
-					{{ selectedLabel }}
+					{{ truncateBeforeLast(selectedLabel, 30) }}
 				</div>
 				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
-					{{ credentialsName }}
+					{{ truncateBeforeLast(credentialsName, 30) }}
+				</N8nText>
+				<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
+					<N8nIcon
+						icon="node-validation-error"
+						size="xsmall"
+						:class="$style.credentialsMissingIcon"
+					/>
+					{{ i18n.baseText('chatHub.agent.credentialsMissing') }}
 				</N8nText>
 			</div>
 			<N8nIcon icon="chevron-down" size="medium" />
@@ -354,18 +376,16 @@ defineExpose({
 	text-decoration: none !important;
 }
 
+.credentialsMissingIcon {
+	display: inline-block;
+	margin-bottom: -1px;
+}
+
 .selected {
 	display: flex;
 	flex-direction: column;
 	align-items: start;
 	gap: var(--spacing--4xs);
-	max-width: 200px;
-
-	& > div {
-		max-width: 100%;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
 }
 
 .icon {

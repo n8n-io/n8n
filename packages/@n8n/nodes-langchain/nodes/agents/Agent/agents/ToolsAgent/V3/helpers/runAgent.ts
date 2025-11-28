@@ -73,14 +73,7 @@ export async function runAgent(
 			},
 		);
 
-		const result = await processEventStream(
-			ctx,
-			eventStream,
-			itemIndex,
-			options.returnIntermediateSteps,
-			memory,
-			input,
-		);
+		const result = await processEventStream(ctx, eventStream, itemIndex);
 
 		// If result contains tool calls, build the request object like the normal flow
 		if (result.toolCalls && result.toolCalls.length > 0) {
@@ -90,6 +83,14 @@ export async function runAgent(
 				actions,
 				metadata: buildResponseMetadata(response, itemIndex),
 			};
+		}
+		// Save conversation to memory including any tool call context
+		if (memory && input && result?.output) {
+			await saveToMemory(input, result.output, memory, steps);
+		}
+
+		if (options.returnIntermediateSteps && steps.length > 0) {
+			result.intermediateSteps = steps;
 		}
 
 		return result;
@@ -105,21 +106,7 @@ export async function runAgent(
 		if ('returnValues' in modelResponse) {
 			// Save conversation to memory including any tool call context
 			if (memory && input && modelResponse.returnValues.output) {
-				// If there were tool calls in this conversation, include them in the context
-				let fullOutput = modelResponse.returnValues.output as string;
-
-				if (steps.length > 0) {
-					// Include tool call information in the conversation context
-					const toolContext = steps
-						.map(
-							(step) =>
-								`Tool: ${step.action.tool}, Input: ${JSON.stringify(step.action.toolInput)}, Result: ${step.observation}`,
-						)
-						.join('; ');
-					fullOutput = `[Used tools: ${toolContext}] ${fullOutput}`;
-				}
-
-				await saveToMemory(input, fullOutput, memory);
+				await saveToMemory(input, modelResponse.returnValues.output, memory, steps);
 			}
 			// Include intermediate steps if requested
 			const result = { ...modelResponse.returnValues };
