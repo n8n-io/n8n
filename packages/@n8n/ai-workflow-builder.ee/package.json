@@ -49,7 +49,7 @@
   "dependencies": {
     "@langchain/anthropic": "catalog:",
     "@langchain/core": "catalog:",
-    "@langchain/langgraph": "0.2.74",
+    "@langchain/langgraph": "1.0.2",
     "@langchain/openai": "catalog:",
     "@n8n/backend-common": "workspace:^",
     "@n8n/config": "workspace:*",

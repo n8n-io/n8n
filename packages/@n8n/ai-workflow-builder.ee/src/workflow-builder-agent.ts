@@ -246,7 +246,7 @@ export class WorkflowBuilderAgent {
 		};
 
 		const shouldContinue = ({ messages }: typeof WorkflowState.State) => {
-			const lastMessage: AIMessage = messages[messages.length - 1];
+			const lastMessage = messages[messages.length - 1] as AIMessage;
 
 			if (lastMessage.tool_calls?.length) {
 				return 'tools';
@@ -293,7 +293,7 @@ export class WorkflowBuilderAgent {
 			}
 
 			const { messages, previousSummary } = state;
-			const lastHumanMessage = messages[messages.length - 1] satisfies HumanMessage;
+			const lastHumanMessage = messages[messages.length - 1] as HumanMessage;
 			const isAutoCompact = lastHumanMessage.content !== '/compact';
 
 			const compactedMessages = await conversationCompactChain(
@@ -488,12 +488,14 @@ export class WorkflowBuilderAgent {
 	}
 
 	private async *processAgentStream(
-		stream: AsyncGenerator<[string, unknown], void, unknown>,
+		stream: Awaited<ReturnType<typeof this.createAgentStream>>,
 		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
 		threadConfig: RunnableConfig,
 	) {
 		try {
-			const streamProcessor = createStreamProcessor(stream);
+			const streamProcessor = createStreamProcessor(
+				stream as unknown as AsyncIterable<[string, unknown]>,
+			);
 			for await (const output of streamProcessor) {
 				yield output;
 			}

@@ -222,7 +222,7 @@ export function processStreamChunk(streamMode: string, chunk: unknown): StreamOu
  * Create a stream processor that yields formatted chunks
  */
 export async function* createStreamProcessor(
-	stream: AsyncGenerator<[string, unknown], void, unknown>,
+	stream: AsyncIterable<[string, unknown]>,
 ): AsyncGenerator<StreamOutput> {
 	for await (const [streamMode, chunk] of stream) {
 		const output = processStreamChunk(streamMode, chunk);
