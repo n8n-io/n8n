@@ -16,6 +16,8 @@ import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useWorkflowSaving } from './useWorkflowSaving';
+import * as workflowsApi from '@/app/api/workflows';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -29,6 +31,7 @@ export function useWorkflowActivate() {
 	const toast = useToast();
 	const i18n = useI18n();
 	const npsSurveyStore = useNpsSurveyStore();
+	const rootStore = useRootStore();
 
 	//methods
 
@@ -90,10 +93,27 @@ export function useWorkflowActivate() {
 				return false; // Return false if there are node issues
 			}
 
-			await workflowHelpers.updateWorkflow(
-				{ workflowId: currWorkflowId, active: newActiveState },
-				!uiStore.stateIsDirty,
-			);
+			// Save workflow if there are unsaved changes
+			if (uiStore.stateIsDirty) {
+				await workflowHelpers.updateWorkflow({ workflowId: currWorkflowId }, false);
+			}
+
+			// Call activate or deactivate endpoint
+			let workflow;
+			if (newActiveState) {
+				workflow = await workflowsApi.activateWorkflow(rootStore.restApiContext, currWorkflowId, {
+					versionId: workflowsStore.workflow.versionId,
+				});
+			} else {
+				workflow = await workflowsApi.deactivateWorkflow(rootStore.restApiContext, currWorkflowId);
+			}
+
+			// Update local state
+			if (workflow.activeVersionId !== null) {
+				workflowsStore.setWorkflowActive(currWorkflowId);
+			} else {
+				workflowsStore.setWorkflowInactive(currWorkflowId);
+			}
 		} catch (error) {
 			const newStateName = newActiveState ? 'activated' : 'deactivated';
 			toast.showError(

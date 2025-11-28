@@ -1382,7 +1382,7 @@ describe('PUT /workflows/:id', () => {
 		expect(historyVersion!.nodes).toEqual(payload.nodes);
 	});
 
-	test('should update activeVersionId when updating an active workflow', async () => {
+	test('should not update active version even if workflow is published', async () => {
 		const workflow = await createActiveWorkflow({}, member);
 
 		const updatedPayload = {
@@ -1407,64 +1407,22 @@ describe('PUT /workflows/:id', () => {
 			.send(updatedPayload);
 
 		expect(updateResponse.statusCode).toBe(200);
+		expect(updateResponse.body.active).toBe(true);
+		expect(updateResponse.body.activeVersionId).toBe(workflow.activeVersionId);
+		expect(updateResponse.body.nodes).toEqual(updatedPayload.nodes);
 
-		await authMemberAgent.post(`/workflows/${workflow.id}/activate`);
-
-		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
+		const versionInTheDb = await Container.get(WorkflowHistoryRepository).findOne({
 			where: {
-				projectId: memberPersonalProject.id,
 				workflowId: workflow.id,
+				versionId: workflow.activeVersionId!,
 			},
-			relations: ['workflow', 'workflow.activeVersion'],
 		});
 
-		expect(sharedWorkflow?.workflow.activeVersionId).toBe(sharedWorkflow?.workflow.versionId);
-		expect(sharedWorkflow?.workflow.activeVersionId).not.toBe(workflow.activeVersionId);
-		expect(sharedWorkflow?.workflow.activeVersion?.nodes).toEqual(updatedPayload.nodes);
+		expect(versionInTheDb).not.toBeNull();
+		expect(versionInTheDb!.nodes).toEqual(workflow.nodes);
 	});
 
-	test('should not update activeVersionId when updating an inactive workflow', async () => {
-		const workflow = await createWorkflow({}, member);
-
-		// Update workflow without activating it
-		const updatedPayload = {
-			name: 'Updated inactive workflow',
-			nodes: [
-				{
-					id: 'uuid-inactive',
-					parameters: {},
-					name: 'Start Node',
-					type: 'n8n-nodes-base.start',
-					typeVersion: 1,
-					position: [200, 300],
-				},
-			],
-			connections: {},
-			staticData: workflow.staticData,
-			settings: workflow.settings,
-		};
-
-		const updateResponse = await authMemberAgent
-			.put(`/workflows/${workflow.id}`)
-			.send(updatedPayload);
-
-		expect(updateResponse.statusCode).toBe(200);
-		expect(updateResponse.body.active).toBe(false);
-		expect(updateResponse.body.activeVersionId).toBeNull();
-
-		// Verify activeVersion is still null
-		const sharedWorkflow = await Container.get(SharedWorkflowRepository).findOne({
-			where: {
-				projectId: memberPersonalProject.id,
-				workflowId: workflow.id,
-			},
-			relations: ['workflow'],
-		});
-
-		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
-	});
-
-	test('should not allow setting active field via PUT request', async () => {
+	test('should not allow updating active field', async () => {
 		const workflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		const updatePayload = {

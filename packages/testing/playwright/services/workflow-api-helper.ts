@@ -77,15 +77,21 @@ export class WorkflowApiHelper {
 		};
 	}
 
-	async setActive(workflowId: string, active: boolean) {
-		const response = await this.api.request.patch(`/rest/workflows/${workflowId}?forceSave=true`, {
-			data: { active },
+	async activate(workflowId: string, versionId: string) {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/activate`, {
+			data: { versionId },
 		});
 
 		if (!response.ok()) {
-			throw new TestError(
-				`Failed to ${active ? 'activate' : 'deactivate'} workflow: ${await response.text()}`,
-			);
+			throw new TestError(`Failed to activate workflow: ${await response.text()}`);
+		}
+	}
+
+	async deactivate(workflowId: string) {
+		const response = await this.api.request.post(`/rest/workflows/${workflowId}/deactivate`);
+
+		if (!response.ok()) {
+			throw new TestError(`Failed to deactivate workflow: ${await response.text()}`);
 		}
 	}
 
@@ -172,11 +178,20 @@ export class WorkflowApiHelper {
 		workflowDefinition: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
-		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
+		// Store original active state
+		const shouldActivate = workflowDefinition.active === true;
 
-		// Ensure the workflow is in the correct active state as specified in the JSON
-		if (workflowDefinition.active) {
-			await this.setActive(result.workflowId, workflowDefinition.active);
+		// Create workflow as inactive to avoid setting activeVersionId during creation
+		const workflowToCreate = { ...workflowDefinition, active: false };
+		const result = await this.createWorkflowFromDefinition(workflowToCreate, options);
+
+		// Activate if needed using the separate activate endpoint
+		if (shouldActivate) {
+			if (!result.createdWorkflow.versionId) {
+				throw new TestError('Cannot activate workflow: versionId is missing from created workflow');
+			}
+
+			await this.activate(result.workflowId, result.createdWorkflow.versionId);
 		}
 
 		return result;
