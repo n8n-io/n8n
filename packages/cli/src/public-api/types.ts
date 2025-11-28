@@ -82,7 +82,12 @@ export declare namespace WorkflowRequest {
 	type Get = AuthenticatedRequest<{ id: string }, {}, {}, { excludePinnedData?: boolean }>;
 	type Delete = Get;
 	type Update = AuthenticatedRequest<{ id: string }, {}, WorkflowEntity, {}>;
-	type Activate = AuthenticatedRequest<{ id: string }, {}, {}, {}>;
+	type Activate = AuthenticatedRequest<
+		{ id: string },
+		{},
+		{ versionId?: string; name?: string; description?: string },
+		{}
+	>;
 	type GetTags = Get;
 	type UpdateTags = AuthenticatedRequest<{ id: string }, {}, TagEntity[]>;
 	type Transfer = AuthenticatedRequest<{ id: string }, {}, { destinationProjectId: string }>;

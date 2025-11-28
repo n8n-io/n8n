@@ -87,3 +87,5 @@ minimumReleaseAgeExclude:
   - '@n8n_io/*'
   - 'tsdown@0.16.5'
   - eslint-plugin-storybook
+  - body-parser
+  - node-forge

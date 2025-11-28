@@ -540,7 +540,7 @@ export class TelemetryEventRelay extends EventRelay {
 		projectsAdded,
 		userId,
 	}: RelayEventMap['sso-user-project-access-updated']) {
-		this.telemetry.track('Sso user project acess update', {
+		this.telemetry.track('Sso user project access update', {
 			user_id: userId,
 			projects_removed: projectsRemoved,
 			projects_added: projectsAdded,
