@@ -1,8 +1,11 @@
 import { mockLogger } from '@n8n/backend-test-utils';
-import type { Project, IExecutionResponse, ExecutionRepository } from '@n8n/db';
+import type { Project, IExecutionResponse } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
+import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import type { IWorkflowBase } from 'n8n-workflow';
+import type { IWorkflowBase, IRun, INode, IRunExecutionData } from 'n8n-workflow';
+import { createDeferredPromise, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
@@ -36,6 +39,9 @@ describe('WaitTracker', () => {
 
 	let waitTracker: WaitTracker;
 	beforeEach(() => {
+		// Register mocked ExecutionRepository in Container so helper functions can access it
+		Container.set(ExecutionRepository, executionRepository);
+
 		waitTracker = new WaitTracker(
 			mockLogger(),
 			executionRepository,
@@ -142,6 +148,140 @@ describe('WaitTracker', () => {
 				false,
 				execution.id,
 			);
+		});
+
+		describe('parent execution with waiting sub-workflow', () => {
+			// TODO: AI generated test, check it before merging
+			it('should update parent nodeExecutionStack with child final output and resume parent', async () => {
+				// Setup parent execution with Execute Workflow node waiting for child
+				const parentExecution: IExecutionResponse = {
+					id: 'parent_execution_id',
+					finished: false,
+					status: 'waiting',
+					waitTill: WAIT_INDEFINITELY,
+					workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id' }),
+					customData: {},
+					annotation: { tags: [] },
+					createdAt: new Date(),
+					startedAt: new Date(),
+					mode: 'manual',
+					workflowId: 'parent_workflow_id',
+					data: {
+						resultData: {
+							runData: {},
+							lastNodeExecuted: 'Execute Sub Workflow',
+						},
+						executionData: {
+							contextData: {},
+							nodeExecutionStack: [
+								{
+									node: mock<INode>({ name: 'Execute Sub Workflow' }),
+									data: {
+										main: [
+											[
+												{
+													json: { data: 'Parent input data' },
+													pairedItem: { item: 0 },
+												},
+											],
+										],
+									},
+									source: { main: [{ previousNode: 'Manual Trigger' }] },
+								},
+							],
+							metadata: {},
+							waitingExecution: {},
+							waitingExecutionSource: {},
+						},
+					} as unknown as IRunExecutionData,
+				};
+
+				execution.data.parentExecution = {
+					executionId: parentExecution.id,
+					workflowId: parentExecution.workflowData.id,
+					shouldResume: true,
+				};
+
+				executionRepository.findSingleExecution
+					.calledWith(parentExecution.id)
+					.mockResolvedValue(parentExecution);
+				// Mock updateExistingExecution to always succeed
+				executionRepository.updateExistingExecution.mockImplementation(async () => true);
+
+				const postExecutePromise = createDeferredPromise<IRun | undefined>();
+				activeExecutions.getPostExecutePromise
+					.calledWith(execution.id)
+					.mockReturnValue(postExecutePromise.promise);
+
+				await waitTracker.startExecution(execution.id);
+
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+
+				// Child completes with final output
+				const subworkflowResults: IRun = {
+					mode: 'manual',
+					startedAt: new Date(),
+					status: 'success',
+					data: {
+						resultData: {
+							runData: {
+								'Final Node': [
+									{
+										hints: [],
+										startTime: new Date().getTime(),
+										executionTime: 5,
+										executionIndex: 0,
+										source: [{ previousNode: 'Wait Node' }],
+										executionStatus: 'success',
+										data: {
+											main: [
+												[
+													{
+														json: { data: 'Child final output after wait' },
+														pairedItem: { item: 0 },
+													},
+												],
+											],
+										},
+									},
+								],
+							},
+							lastNodeExecuted: 'Final Node',
+						},
+					} as unknown as IRunExecutionData,
+				};
+
+				postExecutePromise.resolve(subworkflowResults);
+				await jest.advanceTimersByTimeAsync(10000); // Need longer timeout due to random delay in updateParentExecutionWithChildResults
+
+				// Verify parent's nodeExecutionStack was updated
+				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
+					parentExecution.id,
+					expect.objectContaining({
+						data: expect.objectContaining({
+							executionData: expect.objectContaining({
+								nodeExecutionStack: expect.arrayContaining([
+									expect.objectContaining({
+										data: {
+											main: [
+												[
+													{
+														json: { data: 'Child final output after wait' },
+														pairedItem: { item: 0 },
+													},
+												],
+											],
+										},
+									}),
+								]),
+							}),
+						}),
+					}),
+				);
+
+				// Verify parent was resumed
+				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+			});
 		});
 	});
 
