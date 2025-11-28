@@ -1,11 +1,12 @@
 import { Config, Env, ExecutionsConfig } from '@n8n/config';
+import { UserError } from 'n8n-workflow';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
 import { z } from 'zod';
 
 import { InstanceSettings } from '@/instance-settings';
 
-export const BINARY_DATA_MODES = ['filesystem', 's3', 'database'] as const;
+export const BINARY_DATA_MODES = ['default', 'filesystem', 's3', 'database'] as const;
 
 const binaryDataModesSchema = z.enum(BINARY_DATA_MODES);
 
@@ -42,6 +43,12 @@ export class BinaryDataConfig {
 		this.signingSecret = createHash('sha256')
 			.update(`url-signing:${encryptionKey}`)
 			.digest('base64');
+
+		if (this.mode === 'default') {
+			throw new UserError(
+				'Binary data mode `default` is no longer supported. Please set `N8N_DEFAULT_BINARY_DATA_MODE` to `filesystem`, `s3`, or `database`. If unset, it defaults to `filesystem` in regular mode and `database` in scaling mode.',
+			);
+		}
 
 		if (!this.mode) {
 			this.mode = executionsConfig.mode === 'queue' ? 'database' : 'filesystem';
