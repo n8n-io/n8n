@@ -92,6 +92,11 @@ const properties: INodeProperties[] = [
 		placeholder: 'Add Built-in Tool',
 		type: 'collection',
 		default: {},
+		displayOptions: {
+			show: {
+				'@version': [{ _cnd: { gte: 1.1 } }],
+			},
+		},
 		options: [
 			{
 				displayName: 'Google Search',
@@ -295,6 +300,19 @@ const properties: INodeProperties[] = [
 					numberPrecision: 0,
 				},
 			},
+			{
+				displayName: 'Code Execution',
+				name: 'codeExecution',
+				type: 'boolean',
+				default: true,
+				description:
+					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
+				displayOptions: {
+					show: {
+						'@version': [{ _cnd: { lt: 1.1 } }],
+					},
+				},
+			},
 		],
 	},
 ];
@@ -335,6 +353,7 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 			topK: { type: 'number', required: false },
 			thinkingBudget: { type: 'number', required: false },
 			maxToolsIterations: { type: 'number', required: false },
+			codeExecution: { type: 'boolean', required: false },
 		},
 		this.getNode(),
 	);
@@ -446,6 +465,13 @@ export async function execute(this: IExecuteFunctions, i: number): Promise<INode
 				codeExecution: {},
 			});
 		}
+	}
+
+	// Handle codeExecution from options for version < 1.1
+	if (options.codeExecution) {
+		tools.push({
+			codeExecution: {},
+		});
 	}
 
 	const contents: Content[] = messages.map((m) => ({
