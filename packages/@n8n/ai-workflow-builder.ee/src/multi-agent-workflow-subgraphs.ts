@@ -13,8 +13,7 @@ import { DiscoverySubgraph } from './subgraphs/discovery.subgraph';
 import type { BaseSubgraph } from './subgraphs/subgraph-interface';
 import type { SubgraphPhase } from './types/coordination';
 import { createErrorMetadata } from './types/coordination';
-import { buildWorkflowSummary } from './utils/context-builders';
-import { getNextPhaseFromLog, summarizeCoordinationLog } from './utils/coordination-log';
+import { getNextPhaseFromLog } from './utils/coordination-log';
 import { processOperations } from './utils/operations-processor';
 
 /**
@@ -129,33 +128,10 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 		new StateGraph(ParentGraphState)
 			// Add Supervisor Node (only used for initial routing)
 			.addNode('supervisor', async (state) => {
-				// Supervisor only needs summary context for routing decisions
-				const contextParts: string[] = [];
-
-				// 1. Workflow summary (node count and names only)
-				if (state.workflowJSON.nodes.length > 0) {
-					contextParts.push('<workflow_summary>');
-					contextParts.push(buildWorkflowSummary(state.workflowJSON));
-					contextParts.push('</workflow_summary>');
-				}
-
-				// 2. Coordination log summary (what phases completed)
-				if (state.coordinationLog.length > 0) {
-					contextParts.push('<completed_phases>');
-					contextParts.push(summarizeCoordinationLog(state.coordinationLog));
-					contextParts.push('</completed_phases>');
-				}
-
-				const supervisor = supervisorAgent.getAgent();
-				const contextMessage =
-					contextParts.length > 0 ? new HumanMessage({ content: contextParts.join('\n\n') }) : null;
-
-				const messagesToSend = contextMessage
-					? [...state.messages, contextMessage]
-					: state.messages;
-
-				const routing = await supervisor.invoke({
-					messages: messagesToSend,
+				const routing = await supervisorAgent.invoke({
+					messages: state.messages,
+					workflowJSON: state.workflowJSON,
+					coordinationLog: state.coordinationLog,
 				});
 
 				return {
