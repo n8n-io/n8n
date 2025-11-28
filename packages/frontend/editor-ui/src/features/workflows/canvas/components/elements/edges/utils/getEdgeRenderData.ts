@@ -7,7 +7,6 @@ const EDGE_PADDING_BOTTOM = 130;
 const EDGE_PADDING_X = 40;
 const EDGE_BORDER_RADIUS = 16;
 const HANDLE_SIZE = 20; // Required to avoid connection line glitching when initially interacting with the handle
-const HANDLE_EDGE_OFFSET = 1; // Small offset to prevent edges overlapping handles
 
 const isRightOfSourceHandle = (sourceX: number, targetX: number) => sourceX - HANDLE_SIZE > targetX;
 
@@ -25,41 +24,8 @@ export function getEdgeRenderData(
 	const { targetX, targetY, sourceX, sourceY, sourcePosition, targetPosition } = props;
 	const isConnectorStraight = sourceY === targetY;
 
-	// Adjust edge endpoints to prevent overlap with handle dots/diamonds
-	const adjustedSourceX =
-		sourcePosition === Position.Right
-			? sourceX + HANDLE_EDGE_OFFSET
-			: sourcePosition === Position.Left
-				? sourceX - HANDLE_EDGE_OFFSET
-				: sourceX;
-	const adjustedSourceY =
-		sourcePosition === Position.Bottom
-			? sourceY + HANDLE_EDGE_OFFSET
-			: sourcePosition === Position.Top
-				? sourceY - HANDLE_EDGE_OFFSET
-				: sourceY;
-
-	const adjustedTargetX =
-		targetPosition === Position.Left
-			? targetX - HANDLE_EDGE_OFFSET
-			: targetPosition === Position.Right
-				? targetX + HANDLE_EDGE_OFFSET
-				: targetX;
-	const adjustedTargetY =
-		targetPosition === Position.Top
-			? targetY - HANDLE_EDGE_OFFSET
-			: targetPosition === Position.Bottom
-				? targetY + HANDLE_EDGE_OFFSET
-				: targetY;
-
 	if (!isRightOfSourceHandle(sourceX, targetX) || connectionType !== NodeConnectionTypes.Main) {
-		const segment = getBezierPath({
-			...props,
-			sourceX: adjustedSourceX,
-			sourceY: adjustedSourceY,
-			targetX: adjustedTargetX,
-			targetY: adjustedTargetY,
-		});
+		const segment = getBezierPath(props);
 		return {
 			segments: [segment],
 			labelPosition: [segment[1], segment[2]],
@@ -72,8 +38,8 @@ export function getEdgeRenderData(
 	const firstSegmentTargetX = (sourceX + targetX) / 2;
 	const firstSegmentTargetY = sourceY + EDGE_PADDING_BOTTOM;
 	const firstSegment = getSmoothStepPath({
-		sourceX: adjustedSourceX,
-		sourceY: adjustedSourceY,
+		sourceX,
+		sourceY,
 		targetX: firstSegmentTargetX,
 		targetY: firstSegmentTargetY,
 		sourcePosition,
@@ -85,8 +51,8 @@ export function getEdgeRenderData(
 	const secondSegment = getSmoothStepPath({
 		sourceX: firstSegmentTargetX,
 		sourceY: firstSegmentTargetY,
-		targetX: adjustedTargetX,
-		targetY: adjustedTargetY,
+		targetX,
+		targetY,
 		sourcePosition: Position.Left,
 		targetPosition,
 		borderRadius: EDGE_BORDER_RADIUS,
