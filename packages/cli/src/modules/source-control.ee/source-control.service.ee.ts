@@ -16,29 +16,29 @@ import {
 	SOURCE_CONTROL_DEFAULT_NAME,
 	SOURCE_CONTROL_README,
 	SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER,
-} from '../../modules/source-control.ee/constants';
-import { SourceControlExportService } from '../../modules/source-control.ee/source-control-export.service.ee';
-import { SourceControlGitService } from '../../modules/source-control.ee/source-control-git.service.ee';
+} from './constants';
+import { SourceControlExportService } from './source-control-export.service.ee';
+import { SourceControlGitService } from './source-control-git.service.ee';
 import {
 	getTagsPath,
 	getTrackingInformationFromPostPushResult,
 	getTrackingInformationFromPullResult,
 	normalizeAndValidateSourceControlledFilePath,
 	sourceControlFoldersExistCheck,
-} from '../../modules/source-control.ee/source-control-helper.ee';
-import { SourceControlImportService } from '../../modules/source-control.ee/source-control-import.service.ee';
-import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
+} from './source-control-helper.ee';
+import { SourceControlImportService } from './source-control-import.service.ee';
+import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
 import {
 	filterByType,
 	getDeletedResources,
 	getNonDeletedResources,
 } from './source-control-resource-helper';
-import { SourceControlScopedService } from '../../modules/source-control.ee/source-control-scoped.service';
-import { SourceControlStatusService } from '../../modules/source-control.ee/source-control-status.service.ee';
-import type { ImportResult } from '../../modules/source-control.ee/types/import-result';
-import { SourceControlContext } from '../../modules/source-control.ee/types/source-control-context';
-import type { SourceControlGetStatus } from '../../modules/source-control.ee/types/source-control-get-status';
-import type { SourceControlPreferences } from '../../modules/source-control.ee/types/source-control-preferences';
+import { SourceControlScopedService } from './source-control-scoped.service';
+import { SourceControlStatusService } from './source-control-status.service.ee';
+import type { ImportResult } from './types/import-result';
+import { SourceControlContext } from './types/source-control-context';
+import type { SourceControlGetStatus } from './types/source-control-get-status';
+import type { SourceControlPreferences } from './types/source-control-preferences';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -70,7 +70,7 @@ export class SourceControlService {
 		this.sshKeyName = sshKeyName;
 	}
 
-	async init(): Promise<void> {
+	async start(): Promise<void> {
 		this.gitService.resetService();
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		await this.sourceControlPreferencesService.loadFromDbAndApplySourceControlPreferences();

@@ -34,7 +34,7 @@ import { SourceControlImportService } from '@/modules/source-control.ee/source-c
 import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
 import { SourceControlScopedService } from '@/modules/source-control.ee/source-control-scoped.service';
 import { SourceControlStatusService } from '@/modules/source-control.ee/source-control-status.service.ee';
-import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import type { ExportableCredential } from '@/modules/source-control.ee/types/exportable-credential';
 import type { ExportableFolder } from '@/modules/source-control.ee/types/exportable-folders';
 import type { ExportableWorkflow } from '@/modules/source-control.ee/types/exportable-workflow';

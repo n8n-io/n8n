@@ -1,5 +1,5 @@
 import type { ExportableVariable } from './exportable-variable';
-import type { TeamResourceOwner } from '../../../environments.ee/source-control/types/resource-owner';
+import type { TeamResourceOwner } from './resource-owner';
 
 export interface ExportableProject {
 	id: string;

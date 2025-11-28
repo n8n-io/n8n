@@ -6,19 +6,19 @@ import { Get, Post, Patch, RestController, GlobalScope, Body } from '@n8n/decora
 import express from 'express';
 import type { PullResult } from 'simple-git';
 
-import { SOURCE_CONTROL_DEFAULT_BRANCH } from '../../modules/source-control.ee/constants';
+import { SOURCE_CONTROL_DEFAULT_BRANCH } from './constants';
 import {
 	sourceControlLicensedMiddleware,
 	sourceControlLicensedAndEnabledMiddleware,
-} from '../../modules/source-control.ee/middleware/source-control-enabled-middleware.ee';
-import { getRepoType } from '../../modules/source-control.ee/source-control-helper.ee';
-import { SourceControlPreferencesService } from '../../modules/source-control.ee/source-control-preferences.service.ee';
-import { SourceControlScopedService } from '../../modules/source-control.ee/source-control-scoped.service';
+} from './middleware/source-control-enabled-middleware.ee';
+import { getRepoType } from './source-control-helper.ee';
+import { SourceControlPreferencesService } from './source-control-preferences.service.ee';
+import { SourceControlScopedService } from './source-control-scoped.service';
 import { SourceControlService } from './source-control.service.ee';
-import type { ImportResult } from '../../modules/source-control.ee/types/import-result';
+import type { ImportResult } from './types/import-result';
 import { SourceControlRequest } from './types/requests';
-import { SourceControlGetStatus } from '../../modules/source-control.ee/types/source-control-get-status';
-import type { SourceControlPreferences } from '../../modules/source-control.ee/types/source-control-preferences';
+import { SourceControlGetStatus } from './types/source-control-get-status';
+import type { SourceControlPreferences } from './types/source-control-preferences';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
@@ -87,7 +87,7 @@ export class SourceControlController {
 					throw error;
 				}
 			}
-			await this.sourceControlService.init();
+			await this.sourceControlService.start();
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
 			// #region Tracking Information
 			// located in controller so as to not call this multiple times when updating preferences
@@ -135,7 +135,7 @@ export class SourceControlController {
 					true,
 				);
 			}
-			await this.sourceControlService.init();
+			await this.sourceControlService.start();
 			const resultingPreferences = this.sourceControlPreferencesService.getPreferences();
 			this.eventService.emit('source-control-settings-updated', {
 				branchName: resultingPreferences.branchName,

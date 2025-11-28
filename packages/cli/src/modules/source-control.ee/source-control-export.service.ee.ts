@@ -46,8 +46,8 @@ import type { ExportResult } from './types/export-result';
 import type { ExportableCredential } from './types/exportable-credential';
 import { ExportableProject } from './types/exportable-project';
 import type { ExportableWorkflow } from './types/exportable-workflow';
-import type { RemoteResourceOwner } from '../../environments.ee/source-control/types/resource-owner';
-import type { SourceControlContext } from '../../environments.ee/source-control/types/source-control-context';
+import type { RemoteResourceOwner } from './types/resource-owner';
+import type { SourceControlContext } from './types/source-control-context';
 import { ExportableVariable } from './types/exportable-variable';
 
 @Service()
