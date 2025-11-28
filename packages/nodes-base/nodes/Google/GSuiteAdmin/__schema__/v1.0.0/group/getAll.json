@@ -24,13 +24,7 @@
         },
         "name": {
             "type": "string"
-        },
-        "nonEditableAliases": {
-            "type": "array",
-            "items": {
-                "type": "string"
-            }
         }
     },
-    "version": 2
+    "version": 3
 }
