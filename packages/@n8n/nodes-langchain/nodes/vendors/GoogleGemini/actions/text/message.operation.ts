@@ -200,7 +200,7 @@ const properties: INodeProperties[] = [
 					'Whether to allow the model to execute code it generates to produce a response. Supported only by certain models.',
 				displayOptions: {
 					show: {
-						'@version': [{ _cnd: { lt: 1.1 } }],
+						'@version': [{ _cnd: { eq: 1 } }],
 					},
 				},
 			},
