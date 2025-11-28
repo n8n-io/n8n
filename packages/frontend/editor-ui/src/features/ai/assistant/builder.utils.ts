@@ -1,6 +1,7 @@
 import type { ChatRequest } from '@/features/ai/assistant/assistant.types';
 import { useAIAssistantHelpers } from '@/features/ai/assistant/composables/useAIAssistantHelpers';
 import { usePostHog } from '@/app/stores/posthog.store';
+import { AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT } from '@/app/constants/experiments';
 import type { IRunExecutionData } from 'n8n-workflow';
 import type { IWorkflowDb } from '@/Interface';
 
@@ -52,7 +53,9 @@ export function createBuilderPayload(
 
 	// Get feature flags from Posthog
 	const featureFlags: ChatRequest.BuilderFeatureFlags = {
-		templateExamples: posthogStore.isFeatureEnabled('ai_builder_template_examples'),
+		templateExamples:
+			posthogStore.getVariant(AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.name) ===
+			AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT.variant,
 	};
 
 	return {

@@ -83,6 +83,12 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 	variant: 'variant',
 };
 
+export const AI_BUILDER_TEMPLATE_EXAMPLES_EXPERIMENT = {
+	name: '047_ai_builder_template_examples',
+	control: 'control',
+	variant: 'variant',
+};
+
 export const EXPERIMENTS_TO_TRACK = [
 	EXTRA_TEMPLATE_LINKS_EXPERIMENT.name,
 	TEMPLATE_ONBOARDING_EXPERIMENT.name,
