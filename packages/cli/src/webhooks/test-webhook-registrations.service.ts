@@ -4,6 +4,7 @@ import type { IWebhookData, IWorkflowBase, IDestinationNode } from 'n8n-workflow
 
 import { TEST_WEBHOOK_TIMEOUT, TEST_WEBHOOK_TIMEOUT_BUFFER } from '@/constants';
 import { CacheService } from '@/services/cache/cache.service';
+import { isObjectLiteral } from '@n8n/backend-common';
 
 const TEST_WEBHOOK_REGISTRATION_VERSION = 1;
 
@@ -20,7 +21,9 @@ export type TestWebhookRegistration = {
 // Type guard for TestWebhookRegistration.
 // NOTE: we could have a more robust validation, but this is probably good enough for now.
 function isTestWebhookRegistration(obj: unknown): obj is TestWebhookRegistration {
-	if (typeof obj !== 'object' || obj === null) return false;
+	if (!isObjectLiteral(obj)) {
+		return false;
+	}
 
 	if (!('version' in obj)) return false;
 
@@ -67,7 +70,7 @@ export class TestWebhookRegistrationsService {
 	}
 
 	async get(key: string): Promise<TestWebhookRegistration | undefined> {
-		const val: unknown = await this.cacheService.getHashValue(this.cacheKey, key);
+		const val = await this.cacheService.getHashValue(this.cacheKey, key);
 		return isTestWebhookRegistration(val) ? val : undefined;
 	}
 
@@ -88,7 +91,8 @@ export class TestWebhookRegistrationsService {
 	}
 
 	async getRegistrationsHash() {
-		return await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
+		const val = await this.cacheService.getHash<TestWebhookRegistration>(this.cacheKey);
+		return isTestWebhookRegistration(val) ? val : undefined;
 	}
 
 	async deregisterAll() {
