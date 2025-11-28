@@ -26,7 +26,7 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule
 	id: string = 'wait-node-subworkflow-v2';
 
 	// Internal state for batch processing
-	private subWorkflowsWithWaitingNodes: Set<string> = new Set();
+	private subWorkflowsWithWaitingNodes: Map<string, string> = new Map(); // workflowId -> workflowName
 	private parentWorkflowsCalling: ParentWorkflowInfo[] = [];
 
 	// Configuration for node types and their waiting conditions
@@ -107,7 +107,7 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule
 		const hasWaitingNodes = this.findWaitingNodes(nodesGroupedByType).length > 0;
 
 		if (hasExecuteWorkflowTrigger && hasWaitingNodes) {
-			this.subWorkflowsWithWaitingNodes.add(workflow.id);
+			this.subWorkflowsWithWaitingNodes.set(workflow.id, workflow.name);
 		}
 
 		// Check if this workflow CALLS sub-workflows with waitForSubWorkflow enabled
@@ -140,9 +140,11 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule
 		// For each parent workflow calling a sub-workflow, check if it calls an affected sub-workflow
 		for (const parent of this.parentWorkflowsCalling) {
 			const isUnknownWorkflow = parent.calledWorkflowId === undefined;
-			const isKnownAffectedWorkflow =
-				typeof parent.calledWorkflowId === 'string' &&
-				this.subWorkflowsWithWaitingNodes.has(parent.calledWorkflowId);
+			const subWorkflowName =
+				parent.calledWorkflowId !== undefined
+					? this.subWorkflowsWithWaitingNodes.get(parent.calledWorkflowId)
+					: undefined;
+			const isKnownAffectedWorkflow = subWorkflowName !== undefined;
 
 			if (!isUnknownWorkflow && !isKnownAffectedWorkflow) {
 				continue;
@@ -154,7 +156,7 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule
 					: 'Execute Workflow node calls sub-workflow with changed output behavior',
 				description: isUnknownWorkflow
 					? `The "${parent.executeWorkflowNode.name}" node calls a sub-workflow dynamically (via expression or parameter). If the called sub-workflow contains waiting nodes (Wait, Form, Human-in-the-loop), the data returned has changed in v2 - it now returns the correct data instead of the previously incorrect results.`
-					: `The "${parent.executeWorkflowNode.name}" node calls sub-workflow (ID: ${parent.calledWorkflowId}) which contains waiting nodes. The data returned from this sub-workflow has changed in v2 - it now returns the correct data instead of the previously incorrect results.`,
+					: `The "${parent.executeWorkflowNode.name}" node calls sub-workflow "${subWorkflowName}" (ID: ${parent.calledWorkflowId}) which contains waiting nodes. The data returned from this sub-workflow has changed in v2 - it now returns the correct data instead of the previously incorrect results.`,
 				level: 'warning',
 				nodeId: parent.executeWorkflowNode.id,
 				nodeName: parent.executeWorkflowNode.name,
