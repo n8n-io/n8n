@@ -3,7 +3,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import { InstanceSettings } from 'n8n-core';
-import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
+import { UserError, WebhookPathTakenError, Workflow } from 'n8n-workflow';
 import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
@@ -35,6 +35,12 @@ import { TestWebhookRegistrationsService } from '@/webhooks/test-webhook-registr
 import * as WebhookHelpers from '@/webhooks/webhook-helpers';
 import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-data';
 import type { WorkflowRequest } from '@/workflows/workflow.request';
+
+const SINGLE_WEBHOOK_TRIGGERS = [
+	'n8n-nodes-base.telegramTrigger',
+	'n8n-nodes-base.slackTrigger',
+	'n8n-nodes-base.facebookLeadAdsTrigger',
+];
 
 /**
  * Service for handling the execution of webhooks of manual executions
@@ -279,6 +285,7 @@ export class TestWebhooks implements IWebhookManager {
 		pushRef?: string;
 		destinationNode?: IDestinationNode;
 		triggerToStartFrom?: WorkflowRequest.FullManualExecutionFromKnownTriggerPayload['triggerToStartFrom'];
+		workflowIsActive?: boolean;
 	}) {
 		const {
 			userId,
@@ -288,6 +295,7 @@ export class TestWebhooks implements IWebhookManager {
 			pushRef,
 			destinationNode,
 			triggerToStartFrom,
+			workflowIsActive,
 		} = options;
 
 		if (!workflowEntity.id) throw new WorkflowMissingIdError(workflowEntity);
@@ -315,6 +323,18 @@ export class TestWebhooks implements IWebhookManager {
 
 		if (!webhooks.some((w) => w.webhookDescription.restartWebhook !== true)) {
 			return false; // no webhooks found to start a workflow
+		}
+
+		// Check if any webhook is a single webhook trigger and workflow is active
+		if (workflowIsActive) {
+			const singleWebhookTrigger = webhooks.find((w) =>
+				SINGLE_WEBHOOK_TRIGGERS.includes(workflow.getNode(w.node)?.type ?? ''),
+			);
+			if (singleWebhookTrigger) {
+				throw new UserError(
+					`Cannot test webhook for node "${singleWebhookTrigger.node}" while workflow is active. Please deactivate the workflow first.`,
+				);
+			}
 		}
 
 		const timeout = setTimeout(

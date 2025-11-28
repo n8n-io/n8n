@@ -149,6 +149,63 @@ describe('TestWebhooks', () => {
 			expect(webhookService.createWebhookIfNotExists.mock.calls[0][1].node).toBe(webhook2.node);
 			expect(needsWebhook).toBe(true);
 		});
+
+		test.each([true, false])(
+			'handles single webhook trigger when workflowIsActive=%s',
+			async (workflowIsActive) => {
+				const workflow = mock<Workflow>();
+				const regularWebhook = mock<IWebhookData>({
+					node: 'Webhook',
+					httpMethod,
+					path: 'regular-path',
+					workflowId: workflowEntity.id,
+					userId,
+				});
+				const telegramWebhook = mock<IWebhookData>({
+					node: 'Telegram Trigger',
+					httpMethod,
+					path: 'telegram-path',
+					workflowId: workflowEntity.id,
+					userId,
+				});
+				const webhookNode = mock<IWorkflowBase['nodes'][number]>({
+					name: 'Webhook',
+					type: 'n8n-nodes-base.webhook',
+				});
+				const telegramNode = mock<IWorkflowBase['nodes'][number]>({
+					name: 'Telegram Trigger',
+					type: 'n8n-nodes-base.telegramTrigger',
+				});
+
+				jest.spyOn(testWebhooks, 'toWorkflow').mockReturnValueOnce(workflow);
+				jest
+					.spyOn(WebhookHelpers, 'getWorkflowWebhooks')
+					.mockReturnValue([regularWebhook, telegramWebhook]);
+				jest.spyOn(workflow, 'getNode').mockImplementation((name: string) => {
+					if (name === 'Webhook') return webhookNode;
+					if (name === 'Telegram Trigger') return telegramNode;
+					return null;
+				});
+
+				if (workflowIsActive) {
+					const promise = testWebhooks.needsWebhook({
+						...args,
+						workflowIsActive,
+					});
+
+					await expect(promise).rejects.toThrow(
+						'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
+					);
+				} else {
+					const needsWebhook = await testWebhooks.needsWebhook({
+						...args,
+						workflowIsActive,
+					});
+
+					expect(needsWebhook).toBe(true);
+				}
+			},
+		);
 	});
 
 	describe('executeWebhook()', () => {
