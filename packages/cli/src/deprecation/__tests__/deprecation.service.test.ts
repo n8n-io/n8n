@@ -84,39 +84,11 @@ describe('DeprecationService', () => {
 		toTest('DB_TYPE', dbType, mustWarn);
 	});
 
-	describe('N8N_RUNNERS_ENABLED', () => {
-		const envVar = 'N8N_RUNNERS_ENABLED';
-
-		test.each([
-			['false', true],
-			['', true],
-			['true', false],
-			[undefined /* warnIfMissing */, true],
-		])('should handle value: %s', (value, mustWarn) => {
-			toTest(envVar, value, mustWarn);
-		});
-
-		test('should not warn when Code node is excluded', () => {
-			process.env[envVar] = 'false';
-
-			const globalConfig = mockInstance(GlobalConfig, {
-				nodes: {
-					exclude: ['n8n-nodes-base.code'],
-				},
-			});
-
-			new DeprecationService(logger, globalConfig, instanceSettings).warn();
-
-			expect(logger.warn).not.toHaveBeenCalled();
-		});
-	});
-
 	describe('OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS', () => {
 		const envVar = 'OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS';
 
 		beforeEach(() => {
 			process.env = {
-				N8N_RUNNERS_ENABLED: 'true',
 				N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
 				N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
 			};
@@ -213,7 +185,6 @@ describe('DeprecationService', () => {
 	describe('N8N_BLOCK_ENV_ACCESS_IN_NODE', () => {
 		beforeEach(() => {
 			process.env = {
-				N8N_RUNNERS_ENABLED: 'true',
 				N8N_GIT_NODE_DISABLE_BARE_REPOS: 'false',
 			};
 
@@ -239,7 +210,6 @@ describe('DeprecationService', () => {
 	describe('N8N_GIT_NODE_DISABLE_BARE_REPOS', () => {
 		beforeEach(() => {
 			process.env = {
-				N8N_RUNNERS_ENABLED: 'true',
 				N8N_BLOCK_ENV_ACCESS_IN_NODE: 'false',
 			};
 			jest.resetAllMocks();

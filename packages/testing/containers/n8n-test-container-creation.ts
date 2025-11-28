@@ -242,7 +242,6 @@ export async function createN8NStack(config: N8NConfig = {}): Promise<N8NStack> 
 	if (taskRunnerEnabled) {
 		environment = {
 			...environment,
-			N8N_RUNNERS_ENABLED: 'true',
 			N8N_RUNNERS_MODE: 'external',
 			N8N_RUNNERS_AUTH_TOKEN: 'test',
 			N8N_RUNNERS_BROKER_LISTEN_ADDRESS: '0.0.0.0',
@@ -491,7 +490,6 @@ async function createN8NContainer({
 	directPort,
 	resourceQuota,
 }: CreateContainerOptions): Promise<StartedTestContainer> {
-	const taskRunnerEnabled = environment.N8N_RUNNERS_ENABLED === 'true';
 	const { consumer, throwWithLogs } = createSilentLogConsumer();
 
 	let container = new GenericContainer(N8N_IMAGE);
@@ -524,20 +522,18 @@ async function createN8NContainer({
 
 	if (isWorker) {
 		// Workers expose task broker port if task runners are enabled
-		const workerPorts = taskRunnerEnabled ? [5678, 5679] : [5678];
+		const workerPorts = [5678, 5679];
 		container = container
 			.withCommand(['worker'])
 			.withExposedPorts(...workerPorts)
 			.withWaitStrategy(N8N_WORKER_WAIT_STRATEGY);
 	} else {
 		// Mains always expose both ports (5678 for web, 5679 for task broker when enabled)
-		const mainPorts = taskRunnerEnabled ? [5678, 5679] : [5678];
+		const mainPorts = [5678, 5679];
 		container = container.withExposedPorts(...mainPorts).withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
 
 		if (directPort) {
-			const portMappings = taskRunnerEnabled
-				? [{ container: 5678, host: directPort }, 5679]
-				: [{ container: 5678, host: directPort }];
+			const portMappings = [{ container: 5678, host: directPort }, 5679];
 			container = container
 				.withExposedPorts(...portMappings)
 				.withWaitStrategy(N8N_MAIN_WAIT_STRATEGY);
