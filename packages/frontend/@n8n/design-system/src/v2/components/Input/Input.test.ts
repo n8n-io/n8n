@@ -48,13 +48,14 @@ describe('v2/components/Input', () => {
 					size,
 				},
 			});
-			const container = wrapper.container.querySelector('div');
+			// Find the input container (the component's root div with the size class)
+			const container = wrapper.container.querySelector('div > div');
 			expect(container?.className).toContain(expected);
 		});
 
 		it('should default to large size', () => {
 			const wrapper = render(Input);
-			const container = wrapper.container.querySelector('div');
+			const container = wrapper.container.querySelector('div > div');
 			expect(container?.className).toContain('Large');
 		});
 	});
@@ -86,7 +87,7 @@ describe('v2/components/Input', () => {
 			});
 			const input = wrapper.container.querySelector('input');
 			expect(input).toHaveAttribute('type', 'password');
-			const container = wrapper.container.querySelector('div');
+			const container = wrapper.container.querySelector('div > div');
 			expect(container?.className).toContain('ph-no-capture');
 		});
 
@@ -96,7 +97,7 @@ describe('v2/components/Input', () => {
 					type: 'text',
 				},
 			});
-			const container = wrapper.container.querySelector('div');
+			const container = wrapper.container.querySelector('div > div');
 			expect(container?.className).not.toContain('ph-no-capture');
 		});
 	});
