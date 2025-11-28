@@ -33,7 +33,7 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 	const vectorStoreTool = createToolFromNode(node, {
 		name: toolName,
 		description: toolDescription,
-		extraArgs: [{ key: 'query', description: 'Query to search for. Required' }],
+		extraArgs: [{ key: 'input', description: 'Query to search for. Required' }],
 		func: async (query) => {
 			const topK = context.getNodeParameter('topK', itemIndex, 4) as number;
 			const useReranker = context.getNodeParameter('useReranker', itemIndex, false) as boolean;
@@ -47,7 +47,7 @@ export async function handleRetrieveAsToolOperation<T extends VectorStore = Vect
 			const filter = getMetadataFiltersValues(context, itemIndex);
 
 			// Extract the query string - it can be either a string (DynamicTool) or an object with 'input' key (DynamicStructuredTool)
-			const queryString = typeof query === 'string' ? query : query.query;
+			const queryString = typeof query === 'string' ? query : query.input;
 			assert(typeof queryString === 'string', 'Query must be of type string');
 
 			// For each tool use, get a fresh vector store client.

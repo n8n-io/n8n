@@ -148,6 +148,17 @@ const getMCPTools = async (newNode: INode, newSelectedTool: string): Promise<IFo
 	return result;
 };
 
+function checkImplicitInput(node: INode) {
+	// Check if this is a Vector Store node with 'retrieve-as-tool' operation
+	// These nodes always have an implicit 'query' parameter for the query
+	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
+	const aiSubcategories = nodeType?.codex?.subcategories?.AI;
+	const isVectorStoreToolNode =
+		aiSubcategories?.includes('Vector Stores') && aiSubcategories?.includes('Tools');
+	const mode = node.parameters.mode;
+	return isVectorStoreToolNode && mode === 'retrieve-as-tool';
+}
+
 watch(
 	[node, selectedTool],
 	async ([newNode, newSelectedTool]) => {
@@ -198,19 +209,17 @@ watch(
 			});
 		});
 
-		const hasImplicityQuery = hasImplicityQueryParameter(newNode);
-		if (result.length === 0) {
-			let inputQuery = inputOverrides?.query;
-			if (typeof inputQuery === 'object') {
-				inputQuery = JSON.stringify(inputQuery);
-			}
+		const hasImplicitInput = checkImplicitInput(newNode);
+		if (result.length === 0 || hasImplicitInput) {
+			const key = hasImplicitInput ? 'input' : 'query';
+			const inputQuery = inputOverrides?.[key];
 			const queryValue =
 				inputQuery ??
-				agentRequestStore.getQueryValue(workflowsStore.workflowId, newNode.id, 'query') ??
+				agentRequestStore.getQueryValue(workflowsStore.workflowId, newNode.id, key) ??
 				'';
 
 			result.unshift({
-				name: hasImplicityQuery ? 'query.query' : 'query',
+				name: hasImplicitInput ? 'query.input' : 'query',
 				initialValue: (queryValue as string) ?? '',
 				properties: {
 					label: 'Query',
@@ -223,17 +232,6 @@ watch(
 	},
 	{ immediate: true },
 );
-
-function hasImplicityQueryParameter(node: INode) {
-	// Check if this is a Vector Store node with 'retrieve-as-tool' operation
-	// These nodes always have an implicit 'query' parameter for the query
-	const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-	const aiSubcategories = nodeType?.codex?.subcategories?.AI;
-	const isVectorStoreToolNode =
-		aiSubcategories?.includes('Vector Stores') && aiSubcategories?.includes('Tools');
-	const mode = node.parameters.mode;
-	return isVectorStoreToolNode && mode === 'retrieve-as-tool';
-}
 
 const onClose = () => {
 	modalBus.emit('close');
