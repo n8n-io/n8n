@@ -310,6 +310,7 @@ const handleJumperSubmit = () => {
 	gap: var(--spacing--4xs);
 }
 
+/* Prev/Next buttons - minimal style like Element+ */
 .PaginationButton {
 	display: inline-flex;
 	align-items: center;
@@ -318,36 +319,24 @@ const handleJumperSubmit = () => {
 	height: var(--spacing--lg);
 	padding: 0 var(--spacing--3xs);
 	border-radius: var(--radius);
-	border: var(--border);
-	background-color: var(--color--background--light-3);
-	color: var(--color--text--shade-1);
+	border: none;
+	background-color: transparent;
+	color: var(--color--text--tint-1);
 	cursor: pointer;
 	user-select: none;
-	transition: all 0.2s;
+	transition: color 0.2s;
 
 	&:hover:not([data-disabled]) {
-		background-color: var(--color--primary);
-		color: white;
-		border-color: var(--color--primary);
+		color: var(--color--primary);
 	}
 
 	&[data-disabled] {
 		cursor: not-allowed;
-		opacity: 0.5;
-		background-color: var(--color--background--light-2);
 		color: var(--color--text--tint-2);
 	}
 }
 
-.Background .PaginationButton {
-	background-color: var(--color--background--light-2);
-
-	&:hover:not([data-disabled]) {
-		background-color: var(--color--primary);
-		color: white;
-	}
-}
-
+/* Page number buttons - minimal style like Element+ */
 .PaginationItem {
 	display: inline-flex;
 	align-items: center;
@@ -356,8 +345,8 @@ const handleJumperSubmit = () => {
 	height: var(--spacing--lg);
 	padding: 0 var(--spacing--3xs);
 	border-radius: var(--radius);
-	border: var(--border);
-	background-color: var(--color--background--light-3);
+	border: 1px solid transparent;
+	background-color: transparent;
 	color: var(--color--text--shade-1);
 	cursor: pointer;
 	user-select: none;
@@ -365,14 +354,12 @@ const handleJumperSubmit = () => {
 	font-weight: var(--font-weight--regular);
 
 	&:hover:not([data-selected]):not([data-disabled]) {
-		background-color: var(--color--background--light-1);
-		border-color: var(--color--primary);
+		color: var(--color--primary);
 	}
 
 	&[data-selected] {
-		background-color: var(--color--primary);
-		color: white;
 		border-color: var(--color--primary);
+		color: var(--color--primary);
 		font-weight: var(--font-weight--bold);
 		cursor: default;
 	}
@@ -383,15 +370,19 @@ const handleJumperSubmit = () => {
 	}
 }
 
+/* Background variant - filled style */
 .Background .PaginationItem {
 	background-color: var(--color--background--light-2);
+	border-color: var(--color--foreground);
 
 	&[data-selected] {
 		background-color: var(--color--primary);
+		border-color: var(--color--primary);
 		color: white;
 	}
 }
 
+/* Ellipsis - minimal style */
 .PaginationEllipsis {
 	display: inline-flex;
 	align-items: center;
@@ -400,14 +391,14 @@ const handleJumperSubmit = () => {
 	height: var(--spacing--lg);
 	color: var(--color--text--tint-1);
 	user-select: none;
+	border: none;
+	background: transparent;
 
-	/* Make ellipsis clickable like other buttons */
 	&:not([disabled]) {
 		cursor: pointer;
 
 		&:hover {
-			background-color: var(--color--background--light-1);
-			border-color: var(--color--primary);
+			color: var(--color--primary);
 		}
 	}
 }
