@@ -211,6 +211,13 @@ export class WorkflowService {
 		);
 	}
 
+	/**
+	 * Updates the workflow content (such as name, nodes, connections, settings, etc.).
+	 *
+	 * This method never updates the workflow's active fields (active, activeVersionId) and does not include any activation or deactivation logic.
+	 * Activation and deactivation must be handled by separate methods.
+	 */
+
 	// eslint-disable-next-line complexity
 	async update(
 		user: User,
