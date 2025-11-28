@@ -1655,7 +1655,7 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		expect(response.body).toEqual({});
 
-		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id, member.id, 'update');
 		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
 	});
 
@@ -1785,7 +1785,7 @@ describe('PUT /:workflowId/transfer', () => {
 			},
 		});
 
-		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id, member.id, 'update');
 		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
 
 		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });

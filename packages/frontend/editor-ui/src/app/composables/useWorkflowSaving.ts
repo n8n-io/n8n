@@ -10,6 +10,7 @@ import {
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
 	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
+	IS_DRAFT_PUBLISH_ENABLED,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
@@ -29,6 +30,7 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { getResourcePermissions } from '@n8n/permissions';
+import { computed } from 'vue';
 
 export function useWorkflowSaving({
 	router,
@@ -46,7 +48,6 @@ export function useWorkflowSaving({
 	const telemetry = useTelemetry();
 	const nodeHelpers = useNodeHelpers();
 	const templatesStore = useTemplatesStore();
-
 	const { getWorkflowDataToSave, checkConflictingWebhooks, getWorkflowProjectRole } =
 		useWorkflowHelpers();
 
@@ -140,6 +141,10 @@ export function useWorkflowSaving({
 		workflowId: string,
 		request: WorkflowDataUpdate,
 	): Promise<Partial<NotificationOptions> | undefined> {
+		if (IS_DRAFT_PUBLISH_ENABLED) {
+			return undefined;
+		}
+
 		const missingActivatableTriggerNode =
 			request.nodes !== undefined && !request.nodes.some(isNodeActivatable);
 

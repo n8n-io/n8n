@@ -391,8 +391,8 @@ describe('SourceControlImportService', () => {
 				}),
 				['id'],
 			);
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1');
-			expect(activeWorkflowManager.add).toHaveBeenCalledWith('workflow1', 'activate');
+			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1', mockUserId, 'update');
+			expect(activeWorkflowManager.add).toHaveBeenCalledWith('workflow1', 'update');
 		});
 
 		it('should deactivate archived workflows even if they were previously active', async () => {
@@ -438,7 +438,11 @@ describe('SourceControlImportService', () => {
 				}),
 				['id'],
 			);
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1');
+			expect(activeWorkflowManager.remove).toHaveBeenCalledWith(
+				'workflow1',
+				mockUserId,
+				'deactivate',
+			);
 			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
 		});
 

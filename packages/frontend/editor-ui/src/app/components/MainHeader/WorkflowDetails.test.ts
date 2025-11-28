@@ -109,6 +109,13 @@ const renderComponent = createComponentRenderer(WorkflowDetails, {
 				template: '<div><slot name="append" /></div>',
 			},
 		},
+		directives: {
+			loading: {
+				mounted() {},
+				updated() {},
+				unmounted() {},
+			},
+		},
 	},
 });
 
@@ -125,6 +132,8 @@ const workflow = {
 	tags: ['1', '2'],
 	active: false,
 	isArchived: false,
+	scopes: [],
+	meta: {},
 };
 
 describe('WorkflowDetails', () => {
@@ -207,6 +216,7 @@ describe('WorkflowDetails', () => {
 					nodeView: true,
 				},
 				query: { parentFolderId: '1' },
+				params: { name: 'test' },
 			});
 		});
 
@@ -596,7 +606,7 @@ describe('WorkflowDetails', () => {
 		it("should call onWorkflowMenuSelect on 'Change owner' option click", async () => {
 			const openModalSpy = vi.spyOn(uiStore, 'openModalWithData');
 
-			workflowsStore.workflowsById = { [workflow.id]: workflow as IWorkflowDb };
+			workflowsStore.workflowsById = { [workflow.id]: workflow as unknown as IWorkflowDb };
 
 			const { getByTestId } = renderComponent({
 				props: {

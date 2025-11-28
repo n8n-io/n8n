@@ -219,7 +219,9 @@ export interface ExternalHooks {
 	};
 	workflow: {
 		activeChange: Array<ExternalHooksMethod<{ active: boolean; workflowId: string }>>;
-		activeChangeCurrent: Array<ExternalHooksMethod<{ workflowId: string; active: boolean }>>;
+		activeChangeCurrent: Array<
+			ExternalHooksMethod<{ workflowId: string; versionId: string | null; active: boolean }>
+		>;
 		afterUpdate: Array<ExternalHooksMethod<{ workflowData: IWorkflowDb }>>;
 		open: Array<ExternalHooksMethod<{ workflowId: string; workflowName: string }>>;
 	};
