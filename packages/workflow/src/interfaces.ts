@@ -1052,6 +1052,8 @@ export type IExecuteFunctions = ExecuteFunctions.GetNodeParameterFn &
 			settings: unknown,
 			itemIndex: number,
 		): Promise<Result<T, E>>;
+
+		getRunnerStatus(taskType: string): { available: true } | { available: false; reason?: string };
 	};
 
 export interface IExecuteSingleFunctions extends BaseExecutionFunctions {
@@ -2712,6 +2714,7 @@ export interface IWorkflowExecuteAdditionalData {
 		envProviderState: EnvProviderState,
 		executeData?: IExecuteData,
 	): Promise<Result<T, E>>;
+	getRunnerStatus?(taskType: string): { available: true } | { available: false; reason?: string };
 }
 
 export type WorkflowActivateMode =
