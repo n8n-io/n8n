@@ -1,9 +1,15 @@
 import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
+import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
-import { User, UserRepository } from '@n8n/db';
+import { ProjectRelation, User, UserRepository, ProjectRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
-import { getGlobalScopes, type AssignableGlobalRole } from '@n8n/permissions';
+import {
+	getGlobalScopes,
+	PROJECT_OWNER_ROLE_SLUG,
+	PROJECT_VIEWER_ROLE_SLUG,
+	type AssignableGlobalRole,
+} from '@n8n/permissions';
 import type { IUserSettings } from 'n8n-workflow';
 import { UnexpectedError } from 'n8n-workflow';
 
@@ -17,13 +23,13 @@ import { UserManagementMailer } from '@/user-management/email';
 
 import { PublicApiKeyService } from './public-api-key.service';
 import { RoleService } from './role.service';
-import { GlobalConfig } from '@n8n/config';
 
 @Service()
 export class UserService {
 	constructor(
 		private readonly logger: Logger,
 		private readonly userRepository: UserRepository,
+		private readonly projectRepository: ProjectRepository,
 		private readonly mailer: UserManagementMailer,
 		private readonly urlService: UrlService,
 		private readonly eventService: EventService,
@@ -276,11 +282,58 @@ export class UserService {
 		return await this.userRepository.manager.transaction(async (trx) => {
 			await trx.update(User, { id: user.id }, { role: { slug: newRole.newRoleName } });
 
-			const adminDowngradedToMember =
-				user.role.slug === 'global:admin' && newRole.newRoleName === 'global:member';
+			const isAdminRole = (roleName: string) => {
+				return roleName === 'global:admin' || roleName === 'global:owner';
+			};
 
-			if (adminDowngradedToMember) {
+			const isDowngradedAdmin = isAdminRole(user.role.slug) && !isAdminRole(newRole.newRoleName);
+
+			if (isDowngradedAdmin) {
 				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(user, trx);
+			}
+
+			const isUpgradedChatUser =
+				user.role.slug === 'global:chatUser' && newRole.newRoleName !== 'global:chatUser';
+
+			if (isUpgradedChatUser) {
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					user.id,
+					trx,
+				);
+
+				// Revoke previous 'project:viewer' role on their personal project
+				// and grant 'project:personalOwner' role instead.
+				await trx.update(
+					ProjectRelation,
+					{
+						userId: user.id,
+						role: { slug: PROJECT_VIEWER_ROLE_SLUG },
+						projectId: personalProject.id,
+					},
+					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
+				);
+			}
+
+			const isDowngradedToChatUser =
+				user.role.slug !== 'global:chatUser' && newRole.newRoleName === 'global:chatUser';
+
+			if (isDowngradedToChatUser) {
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					user.id,
+					trx,
+				);
+
+				// Revoke 'project:personalOwner' role on their personal project
+				// and grant 'project:viewer' role instead.
+				await trx.update(
+					ProjectRelation,
+					{
+						userId: user.id,
+						role: { slug: PROJECT_OWNER_ROLE_SLUG },
+						projectId: personalProject.id,
+					},
+					{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
+				);
 			}
 		});
 	}

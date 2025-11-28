@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 
-import { N8nIcon, N8nOption, N8nSelect, N8nText } from '@n8n/design-system';
+import { N8nIcon, N8nOption, N8nSelect, N8nText, N8nTooltip } from '@n8n/design-system';
 import { nextTick, ref } from 'vue';
+import type { PermissionsRecord } from '@n8n/permissions';
 export type CredentialOption = {
 	id: string;
 	name: string;
@@ -12,6 +13,7 @@ export type CredentialOption = {
 const props = defineProps<{
 	credentialOptions: CredentialOption[];
 	selectedCredentialId: string | null;
+	permissions: PermissionsRecord['credential'];
 }>();
 
 const emit = defineEmits<{
@@ -58,15 +60,22 @@ const onCreateNewCredential = async () => {
 		</N8nOption>
 		<template #empty> </template>
 		<template #footer>
-			<button
-				type="button"
-				data-test-id="node-credentials-select-item-new"
-				:class="[$style.newCredential]"
-				@click="onCreateNewCredential()"
+			<N8nTooltip
+				:disabled="props.permissions.create"
+				:content="i18n.baseText('nodeCredentials.createNew.permissionDenied')"
+				:placement="'top'"
 			>
-				<N8nIcon size="xsmall" icon="plus" />
-				{{ NEW_CREDENTIALS_TEXT }}
-			</button>
+				<button
+					type="button"
+					data-test-id="node-credentials-select-item-new"
+					:class="[$style.newCredential]"
+					:disabled="!props.permissions.create"
+					@click="onCreateNewCredential()"
+				>
+					<N8nIcon size="xsmall" icon="plus" />
+					{{ NEW_CREDENTIALS_TEXT }}
+				</button>
+			</N8nTooltip>
 		</template>
 	</N8nSelect>
 </template>

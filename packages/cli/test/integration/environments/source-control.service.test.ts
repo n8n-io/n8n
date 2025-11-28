@@ -4,6 +4,7 @@ import {
 	CredentialsEntity,
 	type Folder,
 	GLOBAL_ADMIN_ROLE,
+	GLOBAL_CHAT_USER_ROLE,
 	GLOBAL_MEMBER_ROLE,
 	GLOBAL_OWNER_ROLE,
 	Project,
@@ -147,6 +148,7 @@ describe('SourceControlService', () => {
 	let globalAdmin: User;
 	let globalOwner: User;
 	let globalMember: User;
+	let globalChatUser: User;
 	let projectAdmin: User;
 
 	let projectA: Project;
@@ -201,10 +203,11 @@ describe('SourceControlService', () => {
 
 		/*
 				Set up test conditions:
-				4 users:
+				5 users:
 					globalAdmin
 					globalOwner
 					globalMember
+					globalChatUser
 					projectAdmin
 
 				2 Team projects:
@@ -220,11 +223,12 @@ describe('SourceControlService', () => {
 				1. Workflow moved in git to other project
 			*/
 
-		[globalAdmin, globalOwner, globalMember, projectAdmin] = await Promise.all([
+		[globalAdmin, globalOwner, globalMember, projectAdmin, globalChatUser] = await Promise.all([
 			createUser({ role: GLOBAL_ADMIN_ROLE }),
 			createUser({ role: GLOBAL_OWNER_ROLE }),
 			createUser({ role: GLOBAL_MEMBER_ROLE }),
 			createUser({ role: GLOBAL_MEMBER_ROLE }),
+			createUser({ role: GLOBAL_CHAT_USER_ROLE }),
 		]);
 
 		[projectA, projectB] = await Promise.all([
@@ -669,6 +673,18 @@ describe('SourceControlService', () => {
 			describe('global:member user', () => {
 				it('should see nothing', async () => {
 					const result = await service.getStatus(globalMember, {
+						direction: 'push',
+						preferLocalVersion: true,
+						verbose: false,
+					});
+
+					expect(result).toBeEmptyArray();
+				});
+			});
+
+			describe('global:chatUser user', () => {
+				it('should see nothing', async () => {
+					const result = await service.getStatus(globalChatUser, {
 						direction: 'push',
 						preferLocalVersion: true,
 						verbose: false,

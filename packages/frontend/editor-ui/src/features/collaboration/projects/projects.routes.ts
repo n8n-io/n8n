@@ -3,6 +3,9 @@ import { VIEWS } from '@/app/constants';
 import { useProjectsStore } from './projects.store';
 import { getResourcePermissions } from '@n8n/permissions';
 import { useInsightsStore } from '@/features/execution/insights/insights.store';
+import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
+import { hasRole } from '@/app/utils/rbac/checks';
+import { useSettingsStore } from '@/app/stores/settings.store';
 
 const MainSidebar = async () => await import('@/app/components/MainSidebar.vue');
 const WorkflowsView = async () => await import('@/app/views/WorkflowsView.vue');
@@ -180,16 +183,24 @@ export const projectsRoutes: RouteRecordRaw[] = [
 		},
 		redirect: '/home/workflows',
 		beforeEnter: (_to, _from, next) => {
+			const settingsStore = useSettingsStore();
+			if (settingsStore.isChatFeatureEnabled && hasRole(['global:chatUser'])) {
+				// Prevent Chat users from accessing the home view
+				return next({ name: CHAT_VIEW });
+			}
+
 			const insightsStore = useInsightsStore();
 			if (insightsStore.isSummaryEnabled) {
 				// refresh the weekly summary when entering the home route
 				void insightsStore.weeklySummary.execute();
 			}
+
 			next();
 		},
 		children: commonChildRoutes.map((route, idx) => ({
 			...route,
 			name: commonChildRouteExtensions.home[idx].name,
+			middleware: ['authenticated'],
 		})),
 	},
 	{
