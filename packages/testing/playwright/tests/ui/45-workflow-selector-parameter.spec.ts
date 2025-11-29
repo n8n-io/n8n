@@ -14,7 +14,26 @@ test.describe('Workflow Selector Parameter', () => {
 		];
 
 		for (const { file } of subWorkflows) {
-			await n8n.api.workflows.createInProject(projectId, { name: file });
+			// Create workflow with Execute Workflow Trigger node so it can be activated
+			const workflow = await n8n.api.workflows.createWorkflow({
+				name: file,
+				nodes: [
+					{
+						id: 'execute-workflow-trigger',
+						name: 'When Executed by Another Workflow',
+						type: 'n8n-nodes-base.executeWorkflowTrigger',
+						position: [0, 0],
+						parameters: {},
+						typeVersion: 1,
+					},
+				],
+				connections: {},
+				settings: {},
+				active: false,
+				projectId,
+			} as any);
+			// Activate the workflow so it appears in the workflow selector
+			await n8n.api.workflows.activate(workflow.id, workflow.versionId);
 		}
 
 		await n8n.canvas.addNode(MANUAL_TRIGGER_NODE_NAME);
