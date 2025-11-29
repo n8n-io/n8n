@@ -1,6 +1,8 @@
 import { ChatOpenAI, type ClientOptions } from '@langchain/openai';
 import {
+	jsonParse,
 	NodeConnectionTypes,
+	NodeOperationError,
 	type INodeType,
 	type INodeTypeDescription,
 	type ISupplyDataFunctions,
@@ -117,12 +119,51 @@ export class LmChatOpenRouter implements INodeType {
 				default: 'openai/gpt-4.1-mini',
 			},
 			{
+				displayName: 'Define Options',
+				name: 'defineOptions',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{
+						name: 'Using Fields Below',
+						value: 'fields',
+					},
+					{
+						name: 'Using JSON',
+						value: 'json',
+					},
+				],
+				default: 'fields',
+			},
+			{
+				displayName: 'Options',
+				name: 'jsonOutput',
+				type: 'json',
+				noDataExpression: true,
+				hint: 'See the <a href="https://openrouter.ai/docs/api-reference/chat/send-chat-completion-request" target="_blank">OpenRouter API documentation</a> for available options',
+				typeOptions: {
+					rows: 5,
+				},
+				default:
+					'{\n    "max_retries": 2,\n    "timeout": 60000,\n    "temparature": 1.0,\n    "response_format": {\n        "type": "text"\n    }\n}',
+				displayOptions: {
+					show: {
+						defineOptions: ['json'],
+					},
+				},
+			},
+			{
 				displayName: 'Options',
 				name: 'options',
 				placeholder: 'Add Option',
 				description: 'Additional options to add',
 				type: 'collection',
 				default: {},
+				displayOptions: {
+					show: {
+						defineOptions: ['fields'],
+					},
+				},
 				options: [
 					{
 						displayName: 'Frequency Penalty',
@@ -214,17 +255,6 @@ export class LmChatOpenRouter implements INodeType {
 
 		const modelName = this.getNodeParameter('model', itemIndex) as string;
 
-		const options = this.getNodeParameter('options', itemIndex, {}) as {
-			frequencyPenalty?: number;
-			maxTokens?: number;
-			maxRetries: number;
-			timeout: number;
-			presencePenalty?: number;
-			temperature?: number;
-			topP?: number;
-			responseFormat?: 'text' | 'json_object';
-		};
-
 		const configuration: ClientOptions = {
 			baseURL: credentials.url,
 			fetchOptions: {
@@ -232,19 +262,67 @@ export class LmChatOpenRouter implements INodeType {
 			},
 		};
 
+		const getChatModelOptions = (): any => {
+			const defineOptions = this.getNodeParameter('defineOptions', itemIndex) as 'json' | 'fields';
+
+			if (defineOptions === 'json') {
+				try {
+					// Spec: https://openrouter.ai/docs/api-reference/chat/send-chat-completion-request
+					const optionsDefinedAsJson = this.getNodeParameter('jsonOutput', itemIndex, {
+						rawExpressions: true,
+					}) as string;
+
+					// TODO: support expressions in json, maybe with resolveRawData(jsonOutput)
+					const parsedOptions: any = jsonParse(optionsDefinedAsJson);
+					const maxRetries = parsedOptions.max_retries || parsedOptions.maxRetries;
+					// without these mappings, langchain will overwrite max_tokens and reasoning from modelKwargs with undefined
+					const maxTokens = parsedOptions.max_tokens ?? undefined;
+					const reasoning = parsedOptions.reasoning ?? undefined;
+					// needs to be set because of broken logic for parsing reasoning options in langchain in https://github.com/konstantintieber/langchainjs/commit/02bfa2c6b869fba1cd193842557486f07a8624c2 (was removed in newer version)
+					const reasoningEffort = parsedOptions.reasoning?.effort ?? undefined;
+					return {
+						timeout: parsedOptions.timeout ?? 60000,
+						maxRetries: maxRetries && typeof maxRetries === 'number' ? maxRetries : 2,
+						maxTokens,
+						reasoning,
+						reasoningEffort,
+						modelKwargs: parsedOptions,
+					};
+				} catch (error) {
+					throw new NodeOperationError(this.getNode(), error.message, {
+						description: error.message,
+					});
+				}
+			} else {
+				const options: {
+					frequencyPenalty?: number;
+					maxTokens?: number;
+					maxRetries: number;
+					timeout: number;
+					presencePenalty?: number;
+					temperature?: number;
+					topP?: number;
+					responseFormat?: 'text' | 'json_object';
+				} = this.getNodeParameter('options', itemIndex, {}) as any;
+				return {
+					...options,
+					timeout: options.timeout ?? 60000,
+					maxRetries: options.maxRetries ?? 2,
+					modelKwargs: options.responseFormat
+						? {
+								response_format: { type: options.responseFormat },
+							}
+						: undefined,
+				};
+			}
+		};
+
 		const model = new ChatOpenAI({
+			...getChatModelOptions(),
 			apiKey: credentials.apiKey,
 			model: modelName,
-			...options,
-			timeout: options.timeout ?? 60000,
-			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
