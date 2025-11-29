@@ -52,26 +52,30 @@ post:
             required:
               - email
   responses:
-    '200':
+    '201':
       description: Operation successful.
       content:
         application/json:
           schema:
-            type: object
-            properties:
-              user:
-                type: object
-                properties:
-                  id:
-                    type: string
-                  email:
-                    type: string
-                  inviteAcceptUrl:
-                    type: string
-                  emailSent:
-                    type: boolean
-              error:
-                type: string
+            type: array
+            items:
+              type: object
+              properties:
+                user:
+                  type: object
+                  properties:
+                    id:
+                      type: string
+                    email:
+                      type: string
+                    inviteAcceptUrl:
+                      type: string
+                    emailSent:
+                      type: boolean
+                    role:
+                      type: string
+                error:
+                  type: string
     '401':
       $ref: '../../../../shared/spec/responses/unauthorized.yml'
     '403':
