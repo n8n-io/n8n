@@ -924,8 +924,8 @@ describe('POST /credentials', () => {
 			//
 			// ASSERT
 			//
-			.expect(400, {
-				code: 400,
+			.expect(403, {
+				code: 403,
 				message: "You don't have the permissions to save the credential in this project.",
 			});
 	});

@@ -8,6 +8,7 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { Credentials } from 'n8n-core';
+import { ProjectService } from '@/services/project.service.ee';
 import type {
 	DisplayCondition,
 	IDataObject,
@@ -52,8 +53,10 @@ export async function saveCredential(
 	credential: CredentialsEntity,
 	user: User,
 	encryptedData: ICredentialsDb,
+	projectId?: string,
 ): Promise<CredentialsEntity> {
 	const projectRepository = Container.get(ProjectRepository);
+	const projectService = Container.get(ProjectService);
 	const { manager: dbManager } = projectRepository;
 	const result = await dbManager.transaction(async (transactionManager) => {
 		const savedCredential = await transactionManager.save<CredentialsEntity>(credential);
@@ -62,15 +65,16 @@ export async function saveCredential(
 
 		const newSharedCredential = new SharedCredentials();
 
-		const personalProject = await projectRepository.getPersonalProjectForUserOrFail(
-			user.id,
+		const project = await projectService.getProjectForCredentialCreation(
+			user,
+			projectId,
 			transactionManager,
 		);
 
 		Object.assign(newSharedCredential, {
 			role: 'credential:owner',
 			credentials: savedCredential,
-			projectId: personalProject.id,
+			projectId: project.id,
 		});
 
 		await transactionManager.save<SharedCredentials>(newSharedCredential);
