@@ -215,8 +215,11 @@ describe('WorkflowExecuteAdditionalData', () => {
 				id: workflowId,
 				name: 'Test Workflow',
 				active: false,
-				activeVersionId: null,
-				activeVersion: null,
+				activeVersionId: 'active-version-id',
+				activeVersion: {
+					nodes: [],
+					connections: {},
+				},
 				nodes: [],
 				connections: {},
 			});
