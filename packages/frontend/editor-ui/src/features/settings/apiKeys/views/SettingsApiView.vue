@@ -126,20 +126,22 @@ function onEdit(id: string) {
 			<N8nText>
 				<I18nT keypath="settings.api.view.info" tag="span" scope="global">
 					<template #apiAction>
-						<a
+						<!-- <a
 							data-test-id="api-docs-link"
 							href="https://docs.n8n.io/api"
 							target="_blank"
 							v-text="i18n.baseText('settings.api.view.info.api')"
-						/>
+						/> -->
+						<span> {{ i18n.baseText('settings.api.view.info.api') }} </span>
 					</template>
 					<template #webhookAction>
-						<a
+						<!-- <a
 							data-test-id="webhook-docs-link"
 							href="https://docs.n8n.io/integrations/core-nodes/n8n-nodes-base.webhook/"
 							target="_blank"
 							v-text="i18n.baseText('settings.api.view.info.webhook')"
-						/>
+						/> -->
+						<span>{{ i18n.baseText('settings.api.view.info.webhook') }}</span>
 					</template>
 				</I18nT>
 			</N8nText>
@@ -160,7 +162,7 @@ function onEdit(id: string) {
 			</template>
 		</div>
 
-		<div v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.BottomHint">
+		<!-- <div v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length" :class="$style.BottomHint">
 			<N8nText size="small" color="text-light">
 				{{
 					i18n.baseText(
@@ -187,7 +189,7 @@ function onEdit(id: string) {
 			>
 				{{ i18n.baseText(`settings.api.view.external-docs`) }}
 			</N8nLink>
-		</div>
+		</div> -->
 		<div class="mt-m text-right">
 			<N8nButton
 				v-if="isPublicApiEnabled && apiKeysSortByCreationDate.length"

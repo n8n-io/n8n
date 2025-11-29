@@ -305,11 +305,11 @@ const sidebarItems = computed(() => {
 			label: i18n.baseText('credentialEdit.credentialEdit.connection'),
 			position: 'top',
 		},
-		{
-			id: 'sharing',
-			label: i18n.baseText('credentialEdit.credentialEdit.sharing'),
-			position: 'top',
-		},
+		// {
+		// 	id: 'sharing',
+		// 	label: i18n.baseText('credentialEdit.credentialEdit.sharing'),
+		// 	position: 'top',
+		// },
 		{
 			id: 'details',
 			label: i18n.baseText('credentialEdit.credentialEdit.details'),

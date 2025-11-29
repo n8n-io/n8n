@@ -398,7 +398,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 				@click:button="goToUpgrade"
 			/>
 		</div>
-		<N8nNotice v-if="!isAdvancedPermissionsEnabled">
+		<!-- <N8nNotice v-if="!isAdvancedPermissionsEnabled">
 			<I18nT keypath="settings.users.advancedPermissions.warning" scope="global">
 				<template #link>
 					<N8nLink
@@ -410,7 +410,7 @@ async function onUpdateMfaEnforced(value: string | number | boolean) {
 					</N8nLink>
 				</template>
 			</I18nT>
-		</N8nNotice>
+		</N8nNotice> -->
 		<div :class="$style.settingsContainer">
 			<div :class="$style.settingsContainerInfo">
 				<N8nText :bold="true"

@@ -310,7 +310,7 @@ function getEmail(email: string): string {
 		@enter="onSubmit"
 	>
 		<template #content>
-			<N8nNotice v-if="!isAdvancedPermissionsEnabled">
+			<!-- <N8nNotice v-if="!isAdvancedPermissionsEnabled">
 				<I18nT keypath="settings.users.advancedPermissions.warning" scope="global">
 					<template #link>
 						<N8nLink size="small" @click="goToUpgradeAdvancedPermissions">
@@ -318,7 +318,7 @@ function getEmail(email: string): string {
 						</N8nLink>
 					</template>
 				</I18nT>
-			</N8nNotice>
+			</N8nNotice> -->
 			<div v-if="showInviteUrls">
 				<N8nUsersList :users="invitedUsers">
 					<template #actions="{ user }">

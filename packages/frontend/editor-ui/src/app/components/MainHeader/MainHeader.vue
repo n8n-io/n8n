@@ -62,7 +62,7 @@ const tabBarItems = computed(() => {
 	return [
 		{ value: MAIN_HEADER_TABS.WORKFLOW, label: locale.baseText('generic.editor') },
 		{ value: MAIN_HEADER_TABS.EXECUTIONS, label: locale.baseText('generic.executions') },
-		{ value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
+		// { value: MAIN_HEADER_TABS.EVALUATION, label: locale.baseText('generic.tests') },
 	];
 });
 
