@@ -106,6 +106,25 @@ export function deleteColumnQuery(
 	return `ALTER TABLE ${quotedTableName} DROP COLUMN ${quoteIdentifier(column, dbType)}`;
 }
 
+export function renameColumnQuery(
+	tableName: DataTableUserTableName,
+	oldColumnName: string,
+	newColumnName: string,
+	dbType: DataSourceOptions['type'],
+): string {
+	// Note: Requires MySQL 8.0+, MariaDB 10.5.2+, PostgreSQL (any), SQLite 3.25+
+	// Validate both old and new column names for defense in depth
+	if (!isValidColumnName(oldColumnName) || !isValidColumnName(newColumnName)) {
+		throw new UnexpectedError(DATA_TABLE_COLUMN_ERROR_MESSAGE);
+	}
+
+	const quotedTableName = quoteIdentifier(tableName, dbType);
+	const quotedOldName = quoteIdentifier(oldColumnName, dbType);
+	const quotedNewName = quoteIdentifier(newColumnName, dbType);
+
+	return `ALTER TABLE ${quotedTableName} RENAME COLUMN ${quotedOldName} TO ${quotedNewName}`;
+}
+
 export function quoteIdentifier(name: string, dbType: DataSourceOptions['type']): string {
 	switch (dbType) {
 		case 'mysql':
