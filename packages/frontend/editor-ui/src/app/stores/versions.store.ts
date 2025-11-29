@@ -242,30 +242,30 @@ export const useVersionsStore = defineStore(STORES.VERSIONS, () => {
 
 		await Promise.all([fetchVersions(), fetchWhatsNew()]);
 
-		if (
-			currentVersion.value &&
-			currentVersion.value.hasSecurityIssue &&
-			nextVersions.value.length
-		) {
-			const fixVersion = currentVersion.value.securityIssueFixVersion;
-			let message = 'Please update to latest version.';
-			if (fixVersion) {
-				message = `Please update to version ${fixVersion} or higher.`;
-			}
+		// if (
+		// 	currentVersion.value &&
+		// 	currentVersion.value.hasSecurityIssue &&
+		// 	nextVersions.value.length
+		// ) {
+		// 	const fixVersion = currentVersion.value.securityIssueFixVersion;
+		// 	let message = 'Please update to latest version.';
+		// 	if (fixVersion) {
+		// 		message = `Please update to version ${fixVersion} or higher.`;
+		// 	}
 
-			message = `${message} <a class="primary-color">More info</a>`;
-			showToast({
-				title: 'Critical update available',
-				message,
-				onClick: () => {
-					uiStore.openModal(VERSIONS_MODAL_KEY);
-				},
-				closeOnClick: true,
-				customClass: 'clickable',
-				type: 'warning',
-				duration: 0,
-			});
-		}
+		// 	message = `${message} <a class="primary-color">More info</a>`;
+		// 	showToast({
+		// 		title: 'Critical update available',
+		// 		message,
+		// 		onClick: () => {
+		// 			uiStore.openModal(VERSIONS_MODAL_KEY);
+		// 		},
+		// 		closeOnClick: true,
+		// 		customClass: 'clickable',
+		// 		type: 'warning',
+		// 		duration: 0,
+		// 	});
+		// }
 	};
 
 	// #endregion

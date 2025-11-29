@@ -6,6 +6,6 @@
 		"outDir": "dist",
 		"tsBuildInfoFile": "dist/build.tsbuildinfo"
 	},
-	"include": ["src/**/*.ts"],
+	"include": ["src/**/*.ts", "src/**/*.d.ts"],
 	"exclude": ["src/**/__tests__/**", "src/**/test-utils/**", "**/*.test.ts"]
 }

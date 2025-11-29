@@ -67,15 +67,22 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 		referrer: route.name === VIEWS.INSIGHTS ? 'Dashboard' : 'Overview',
 	});
 };
+const onTabClick = (id: string) => {};
 </script>
 
 <template>
 	<div :class="$style.insights">
 		<ul data-test-id="insights-summary-tabs">
+			<!-- <li
+				v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
+				:key="id"
+				:data-test-id="`insights-summary-tab-${id}`"
+			> -->
 			<li
 				v-for="{ id, value, deviation, deviationUnit, unit, to } in summaryWithRouteLocations"
 				:key="id"
 				:data-test-id="`insights-summary-tab-${id}`"
+				@click.capture.prevent.stop="onTabClick(id)"
 			>
 				<N8nTooltip
 					:placement="route.name === VIEWS.INSIGHTS ? 'bottom' : 'top'"
@@ -84,11 +91,11 @@ const trackTabClick = (insightType: keyof InsightsSummary) => {
 				>
 					<template #content>
 						<I18nT keypath="insights.banner.noData.tooltip" scope="global">
-							<template #link>
+							<!-- <template #link>
 								<a :href="i18n.baseText('insights.banner.noData.tooltip.link.url')" target="_blank">
 									{{ i18n.baseText('insights.banner.noData.tooltip.link') }}
 								</a>
-							</template>
+							</template> -->
 						</I18nT>
 					</template>
 					<RouterLink :to="to" :exact-active-class="$style.activeTab" @click="trackTabClick(id)">

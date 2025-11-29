@@ -25,14 +25,14 @@ const uiStore = useUIStore();
 
 const sidebarMenuItems = computed<IMenuItem[]>(() => {
 	const menuItems: IMenuItem[] = [
-		{
-			id: 'settings-usage-and-plan',
-			icon: 'chart-column-decreasing',
-			label: i18n.baseText('settings.usageAndPlan.title'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.USAGE),
-			route: { to: { name: VIEWS.USAGE } },
-		},
+		// {
+		// 	id: 'settings-usage-and-plan',
+		// 	icon: 'chart-column-decreasing',
+		// 	label: i18n.baseText('settings.usageAndPlan.title'),
+		// 	position: 'top',
+		// 	available: canUserAccessRouteByName(VIEWS.USAGE),
+		// 	route: { to: { name: VIEWS.USAGE } },
+		// },
 		{
 			id: 'settings-personal',
 			icon: 'circle-user-round',
@@ -65,38 +65,38 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 			available: settingsStore.isPublicApiEnabled && canUserAccessRouteByName(VIEWS.API_SETTINGS),
 			route: { to: { name: VIEWS.API_SETTINGS } },
 		},
-		{
-			id: 'settings-external-secrets',
-			icon: 'vault',
-			label: i18n.baseText('settings.externalSecrets.title'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.EXTERNAL_SECRETS_SETTINGS),
-			route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
-		},
-		{
-			id: 'settings-source-control',
-			icon: 'git-branch',
-			label: i18n.baseText('settings.sourceControl.title'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
-			route: { to: { name: VIEWS.SOURCE_CONTROL } },
-		},
-		{
-			id: 'settings-sso',
-			icon: 'user-lock',
-			label: i18n.baseText('settings.sso'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
-			route: { to: { name: VIEWS.SSO_SETTINGS } },
-		},
-		{
-			id: 'settings-ldap',
-			icon: 'network',
-			label: i18n.baseText('settings.ldap'),
-			position: 'top',
-			available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
-			route: { to: { name: VIEWS.LDAP_SETTINGS } },
-		},
+		// {
+		// 	id: 'settings-external-secrets',
+		// 	icon: 'vault',
+		// 	label: i18n.baseText('settings.externalSecrets.title'),
+		// 	position: 'top',
+		// 	available: canUserAccessRouteByName(VIEWS.EXTERNAL_SECRETS_SETTINGS),
+		// 	route: { to: { name: VIEWS.EXTERNAL_SECRETS_SETTINGS } },
+		// },
+		// {
+		// 	id: 'settings-source-control',
+		// 	icon: 'git-branch',
+		// 	label: i18n.baseText('settings.sourceControl.title'),
+		// 	position: 'top',
+		// 	available: canUserAccessRouteByName(VIEWS.SOURCE_CONTROL),
+		// 	route: { to: { name: VIEWS.SOURCE_CONTROL } },
+		// },
+		// {
+		// 	id: 'settings-sso',
+		// 	icon: 'user-lock',
+		// 	label: i18n.baseText('settings.sso'),
+		// 	position: 'top',
+		// 	available: canUserAccessRouteByName(VIEWS.SSO_SETTINGS),
+		// 	route: { to: { name: VIEWS.SSO_SETTINGS } },
+		// },
+		// {
+		// 	id: 'settings-ldap',
+		// 	icon: 'network',
+		// 	label: i18n.baseText('settings.ldap'),
+		// 	position: 'top',
+		// 	available: canUserAccessRouteByName(VIEWS.LDAP_SETTINGS),
+		// 	route: { to: { name: VIEWS.LDAP_SETTINGS } },
+		// },
 		{
 			id: 'settings-provisioning',
 			icon: 'toolbox',
@@ -119,23 +119,23 @@ const sidebarMenuItems = computed<IMenuItem[]>(() => {
 		},
 	];
 
-	menuItems.push({
-		id: 'settings-log-streaming',
-		icon: 'log-in',
-		label: i18n.baseText('settings.log-streaming'),
-		position: 'top',
-		available: canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS),
-		route: { to: { name: VIEWS.LOG_STREAMING_SETTINGS } },
-	});
+	// menuItems.push({
+	// 	id: 'settings-log-streaming',
+	// 	icon: 'log-in',
+	// 	label: i18n.baseText('settings.log-streaming'),
+	// 	position: 'top',
+	// 	available: canUserAccessRouteByName(VIEWS.LOG_STREAMING_SETTINGS),
+	// 	route: { to: { name: VIEWS.LOG_STREAMING_SETTINGS } },
+	// });
 
-	menuItems.push({
-		id: 'settings-community-nodes',
-		icon: 'box',
-		label: i18n.baseText('settings.communityNodes'),
-		position: 'top',
-		available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
-		route: { to: { name: VIEWS.COMMUNITY_NODES } },
-	});
+	// menuItems.push({
+	// 	id: 'settings-community-nodes',
+	// 	icon: 'box',
+	// 	label: i18n.baseText('settings.communityNodes'),
+	// 	position: 'top',
+	// 	available: canUserAccessRouteByName(VIEWS.COMMUNITY_NODES),
+	// 	route: { to: { name: VIEWS.COMMUNITY_NODES } },
+	// });
 
 	// Append module-registered settings sidebar items.
 	const moduleItems = uiStore.settingsSidebarItems;
