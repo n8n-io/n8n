@@ -141,8 +141,11 @@ describe('WorkflowExecuteAdditionalData', () => {
 					id: EXECUTION_ID,
 					name: 'Test Workflow',
 					active: false,
-					activeVersionId: null,
-					activeVersion: null,
+					activeVersionId: 'active-version-id',
+					activeVersion: {
+						nodes: [],
+						connections: {},
+					},
 					nodes: [],
 					connections: {},
 				}),
@@ -378,7 +381,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			);
 		});
 
-		it('should use current version when workflow has no active version', async () => {
+		it('should throw error when workflow has no active version', async () => {
 			const currentNodes: INode[] = [
 				mock<INode>({
 					id: 'current-node',
@@ -403,10 +406,9 @@ describe('WorkflowExecuteAdditionalData', () => {
 				}),
 			);
 
-			const result = await getWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id');
-
-			expect(result.nodes).toEqual(currentNodes);
-			expect(result.connections).toEqual(currentConnections);
+			await expect(getWorkflowData({ id: 'workflow-123' }, 'parent-workflow-id')).rejects.toThrow(
+				'Workflow is not active and cannot be executed.',
+			);
 		});
 
 		it('should load activeVersion relation when tags are disabled', async () => {
@@ -417,10 +419,13 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<WorkflowEntity>({
 					id: 'workflow-123',
 					active: false,
-					activeVersionId: null,
+					activeVersionId: 'active-version-id',
 					nodes: [],
 					connections: {},
-					activeVersion: null,
+					activeVersion: {
+						nodes: [],
+						connections: {},
+					},
 				}),
 			);
 
