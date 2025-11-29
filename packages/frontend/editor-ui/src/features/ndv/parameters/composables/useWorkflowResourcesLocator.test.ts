@@ -143,7 +143,7 @@ describe('useWorkflowResourcesLocator', () => {
 				1, // page
 				40, // pageSize
 				'updatedAt:desc', // sort
-				undefined, // filter
+				{ active: true }, // filter
 			);
 
 			expect(workflowsResources.value).toEqual([
@@ -173,7 +173,7 @@ describe('useWorkflowResourcesLocator', () => {
 				1,
 				40,
 				'updatedAt:desc',
-				{ query: 'test search' },
+				{ active: true, query: 'test search' },
 			);
 
 			// Should reset workflows array and populate with filtered results
@@ -227,7 +227,7 @@ describe('useWorkflowResourcesLocator', () => {
 				1,
 				40,
 				'updatedAt:desc',
-				undefined,
+				{ active: true },
 			);
 
 			// Load second page
@@ -238,7 +238,7 @@ describe('useWorkflowResourcesLocator', () => {
 				2,
 				40,
 				'updatedAt:desc',
-				undefined,
+				{ active: true },
 			);
 
 			// Verify workflows from both pages are present

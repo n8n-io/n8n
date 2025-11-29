@@ -3,6 +3,8 @@ import type {
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
+	ITriggerFunctions,
+	ITriggerResponse,
 } from 'n8n-workflow';
 import { NodeConnectionTypes } from 'n8n-workflow';
 
@@ -34,6 +36,12 @@ export class ErrorTrigger implements INodeType {
 			},
 		],
 	};
+
+	async trigger(this: ITriggerFunctions): Promise<ITriggerResponse> {
+		// ErrorTrigger is triggered by n8n's error handling system
+		// No setup or teardown is required, as the triggering is handled externally
+		return {};
+	}
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();

@@ -4,7 +4,12 @@
  * error workflows, and preserved during workflow resume scenarios.
  */
 
-import { testDb, createWorkflow } from '@n8n/backend-test-utils';
+import {
+	testDb,
+	createWorkflow,
+	createWorkflowWithHistory,
+	setActiveVersion,
+} from '@n8n/backend-test-utils';
 import { ExecutionRepository, type IWorkflowDb } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { readFileSync } from 'fs';
@@ -138,13 +143,15 @@ describe('Execution Context Propagation Integration Tests', () => {
 			// ============================================================
 			// SETUP: Create Child Workflow
 			// ============================================================
-			const childWorkflow = await createWorkflow(
+			const childWorkflow = await createWorkflowWithHistory(
 				{
 					name: 'Child Workflow',
 					...createSubWorkflowFixture(),
 				} as any as IWorkflowDb,
 				owner,
 			);
+			// Set active version so the child workflow can be executed
+			await setActiveVersion(childWorkflow.id, childWorkflow.versionId);
 
 			// ============================================================
 			// SETUP: Create Parent Workflow
@@ -216,24 +223,28 @@ describe('Execution Context Propagation Integration Tests', () => {
 			// ============================================================
 			// SETUP: Create Grandchild Workflow (Workflow C)
 			// ============================================================
-			const grandchildWorkflow = await createWorkflow(
+			const grandchildWorkflow = await createWorkflowWithHistory(
 				{
 					name: 'Grandchild Workflow',
 					...createSubWorkflowFixture(),
 				} as any as IWorkflowDb,
 				owner,
 			);
+			// Set active version so the grandchild workflow can be executed
+			await setActiveVersion(grandchildWorkflow.id, grandchildWorkflow.versionId);
 
 			// ============================================================
 			// SETUP: Create Parent Workflow (Workflow B) - calls Grandchild
 			// ============================================================
-			const parentWorkflow = await createWorkflow(
+			const parentWorkflow = await createWorkflowWithHistory(
 				{
 					name: 'Parent Workflow (B)',
 					...createMiddleWorkflowFixture(grandchildWorkflow.id),
 				} as any as IWorkflowDb,
 				owner,
 			);
+			// Set active version so the parent workflow can be executed
+			await setActiveVersion(parentWorkflow.id, parentWorkflow.versionId);
 
 			// ============================================================
 			// SETUP: Create Grandparent Workflow (Workflow A) - calls Parent
