@@ -75,7 +75,7 @@ describe('WorkflowActivator', () => {
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
 	});
 
-	it('display an inactive tooltip when only execute workflow trigger is available', async () => {
+	it('should allow activation when only execute workflow trigger is available', async () => {
 		mockWorkflowsStore.workflowId = '1';
 		mockWorkflowsStore.workflowTriggerNodes = [
 			{ type: EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE, disabled: false } as never,
@@ -90,12 +90,9 @@ describe('WorkflowActivator', () => {
 			},
 		});
 
-		await userEvent.hover(getByRole('switch'));
-		expect(getByRole('tooltip')).toBeInTheDocument();
+		const switchElement = getByRole('switch');
 
-		expect(getByRole('tooltip')).toHaveTextContent(
-			"Execute Workflow Trigger' doesn't require activation as it is triggered by another workflow",
-		);
+		expect(switchElement).not.toBeDisabled();
 		expect(getByTestId('workflow-activator-status')).toHaveTextContent('Inactive');
 	});
 
