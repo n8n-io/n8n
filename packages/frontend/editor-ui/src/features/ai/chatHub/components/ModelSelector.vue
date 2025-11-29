@@ -29,6 +29,7 @@ import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vu
 import {
 	flattenModel,
 	fromStringToModel,
+	isLlmProviderModel,
 	isMatchedAgent,
 	stringifyModel,
 } from '@/features/ai/chatHub/chat.utils';
@@ -36,6 +37,7 @@ import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useSettingsStore } from '@/app/stores/settings.store';
+import { truncateBeforeLast } from '@n8n/utils';
 
 const NEW_AGENT_MENU_ID = 'agent::new';
 
@@ -43,19 +45,23 @@ const {
 	selectedAgent,
 	includeCustomAgents = true,
 	credentials,
+	text,
+	warnMissingCredentials = false,
 } = defineProps<{
 	selectedAgent: ChatModelDto | null;
 	includeCustomAgents?: boolean;
 	credentials: CredentialsMap | null;
+	text?: boolean;
+	warnMissingCredentials?: boolean;
 }>();
 
 const emit = defineEmits<{
 	change: [ChatModelDto];
 	createCustomAgent: [];
-	selectCredential: [provider: ChatHubProvider, credentialId: string];
+	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
 }>();
 
-function handleSelectCredentials(provider: ChatHubProvider, id: string) {
+function handleSelectCredentials(provider: ChatHubProvider, id: string | null) {
 	emit('selectCredential', provider, id);
 }
 
@@ -75,6 +81,7 @@ function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
 
 const i18n = useI18n();
 const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
+const isLoading = ref(false);
 const dropdownRef = useTemplateRef('dropdownRef');
 const uiStore = useUIStore();
 const settingStore = useSettingsStore();
@@ -86,25 +93,26 @@ const credentialsName = computed(() =>
 		? credentialsStore.getCredentialById(credentials?.[selectedAgent.model.provider] ?? '')?.name
 		: undefined,
 );
-const isCredentialsRequired = computed(
+const isCredentialsRequired = computed(() => isLlmProviderModel(selectedAgent?.model));
+const isCredentialsMissing = computed(
 	() =>
-		selectedAgent &&
-		selectedAgent.model.provider !== 'n8n' &&
-		selectedAgent.model.provider !== 'custom-agent',
+		warnMissingCredentials &&
+		isCredentialsRequired.value &&
+		selectedAgent?.model.provider &&
+		!credentials?.[selectedAgent?.model.provider],
 );
 
 const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
 
 	if (includeCustomAgents) {
-		const customAgents = [
-			...agents.value['custom-agent'].models,
-			...agents.value['n8n'].models,
-		].map((agent) => ({
-			id: stringifyModel(agent.model),
-			title: agent.name,
-			disabled: false,
-		}));
+		const customAgents = isLoading.value
+			? []
+			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => ({
+					id: stringifyModel(agent.model),
+					title: agent.name,
+					disabled: false,
+				}));
 
 		menuItems.push({
 			id: 'custom-agents',
@@ -113,8 +121,14 @@ const menu = computed(() => {
 			iconSize: 'large',
 			iconMargin: false,
 			submenu: [
-				...customAgents,
-				...(customAgents.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
+				...(isLoading.value
+					? [
+							{ id: 'loading', title: i18n.baseText('generic.loadingEllipsis'), disabled: true },
+							{ isDivider: true as const, id: 'divider' },
+						]
+					: customAgents.length > 0
+						? [...customAgents, { isDivider: true as const, id: 'divider' }]
+						: []),
 				{
 					id: NEW_AGENT_MENU_ID,
 					icon: 'plus',
@@ -130,6 +144,29 @@ const menu = computed(() => {
 
 		// Filter out disabled providers from the menu
 		if (settings && !settings.enabled) continue;
+		const configureMenu = {
+			id: `${provider}::configure`,
+			icon: 'settings' as const,
+			title: i18n.baseText('chatHub.agent.configureCredentials'),
+			disabled: false,
+		};
+
+		if (isLoading.value) {
+			menuItems.push({
+				id: provider,
+				title: providerDisplayNames[provider],
+				submenu: [
+					{
+						id: `${provider}::loading`,
+						title: i18n.baseText('generic.loadingEllipsis'),
+						disabled: true,
+					},
+					{ isDivider: true as const, id: 'divider' },
+					configureMenu,
+				],
+			});
+			continue;
+		}
 
 		const theAgents = [...agents.value[provider].models];
 
@@ -153,7 +190,6 @@ const menu = computed(() => {
 		const agentOptions =
 			theAgents.length > 0
 				? theAgents
-						.filter((agent) => agent.model.provider !== 'custom-agent')
 						.filter(
 							(agent) =>
 								agent.model.provider === 'n8n' ||
@@ -186,12 +222,7 @@ const menu = computed(() => {
 						} as const,
 					]
 				: []),
-			{
-				id: `${provider}::configure`,
-				icon: 'settings',
-				title: i18n.baseText('chatHub.agent.configureCredentials'),
-				disabled: false,
-			},
+			configureMenu,
 		]);
 
 		menuItems.push({
@@ -204,7 +235,9 @@ const menu = computed(() => {
 	return menuItems;
 });
 
-const selectedLabel = computed(() => selectedAgent?.name ?? 'Select model');
+const selectedLabel = computed(
+	() => selectedAgent?.name ?? i18n.baseText('chatHub.models.selector.defaultLabel'),
+);
 
 function openCredentialsSelectorOrCreate(provider: ChatHubLLMProvider) {
 	const credentialType = PROVIDER_CREDENTIAL_TYPE_MAP[provider];
@@ -250,20 +283,12 @@ function onSelect(id: string) {
 		return;
 	}
 
-	if (
-		identifier === 'configure' &&
-		parsedModel.provider !== 'n8n' &&
-		parsedModel.provider !== 'custom-agent'
-	) {
+	if (identifier === 'configure' && isLlmProviderModel(parsedModel)) {
 		openCredentialsSelectorOrCreate(parsedModel.provider);
 		return;
 	}
 
-	if (
-		identifier === 'add-model' &&
-		parsedModel.provider !== 'n8n' &&
-		parsedModel.provider !== 'custom-agent'
-	) {
+	if (identifier === 'add-model' && isLlmProviderModel(parsedModel)) {
 		openModelByIdSelector(parsedModel.provider);
 		return;
 	}
@@ -307,7 +332,12 @@ watch(
 	() => credentials,
 	async (credentials) => {
 		if (credentials) {
-			agents.value = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
+			isLoading.value = true;
+			try {
+				agents.value = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
+			} finally {
+				isLoading.value = false;
+			}
 		}
 	},
 	{ immediate: true },
@@ -315,11 +345,13 @@ watch(
 
 defineExpose({
 	open: () => dropdownRef.value?.open(),
+	openCredentialSelector: (provider: ChatHubLLMProvider) =>
+		openCredentialsSelectorOrCreate(provider),
 });
 </script>
 
 <template>
-	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" @select="onSelect">
+	<N8nNavigationDropdown ref="dropdownRef" :menu="menu" teleport @select="onSelect">
 		<template #item-icon="{ item }">
 			<CredentialIcon
 				v-if="item.id in PROVIDER_CREDENTIAL_TYPE_MAP"
@@ -335,7 +367,7 @@ defineExpose({
 			/>
 		</template>
 
-		<N8nButton :class="$style.dropdownButton" type="secondary" text>
+		<N8nButton :class="$style.dropdownButton" type="secondary" :text="text">
 			<ChatAgentAvatar
 				v-if="selectedAgent"
 				:agent="selectedAgent"
@@ -344,10 +376,18 @@ defineExpose({
 			/>
 			<div :class="$style.selected">
 				<div>
-					{{ selectedLabel }}
+					{{ truncateBeforeLast(selectedLabel, 30) }}
 				</div>
 				<N8nText v-if="credentialsName" size="xsmall" color="text-light">
-					{{ credentialsName }}
+					{{ truncateBeforeLast(credentialsName, 30) }}
+				</N8nText>
+				<N8nText v-else-if="isCredentialsMissing" size="xsmall" color="danger">
+					<N8nIcon
+						icon="node-validation-error"
+						size="xsmall"
+						:class="$style.credentialsMissingIcon"
+					/>
+					{{ i18n.baseText('chatHub.agent.credentialsMissing') }}
 				</N8nText>
 			</div>
 			<N8nIcon icon="chevron-down" size="medium" />
@@ -365,18 +405,16 @@ defineExpose({
 	text-decoration: none !important;
 }
 
+.credentialsMissingIcon {
+	display: inline-block;
+	margin-bottom: -1px;
+}
+
 .selected {
 	display: flex;
 	flex-direction: column;
 	align-items: start;
 	gap: var(--spacing--4xs);
-	max-width: 200px;
-
-	& > div {
-		max-width: 100%;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
 }
 
 .icon {

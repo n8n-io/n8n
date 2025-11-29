@@ -10,6 +10,7 @@ export * from './cron';
 export * from './data-table.types';
 export * from './deferred-promise';
 export * from './execution-context';
+export * from './execution-context-establishment-hooks';
 export * from './global-state';
 export * from './interfaces';
 export * from './run-execution-data-factory';
@@ -29,7 +30,7 @@ export * from './versioned-node-type';
 export * from './type-validation';
 export * from './result';
 export * from './schemas';
-export type * from './run-execution-data/run-execution-data';
+export * from './run-execution-data/run-execution-data';
 export { LoggerProxy, NodeHelpers, ObservableObject, TelemetryHelpers };
 export {
 	isObjectEmpty,

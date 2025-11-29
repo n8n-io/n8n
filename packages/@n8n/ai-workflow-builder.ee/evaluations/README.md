@@ -4,9 +4,10 @@ This module provides a evaluation framework for testing the AI Workflow Builder'
 
 ## Architecture Overview
 
-The evaluation system is split into two distinct modes with a **parallel evaluation architecture** for optimal performance:
+The evaluation system is split into three distinct modes with a **parallel evaluation architecture** for optimal performance:
 1. **CLI Evaluation** - Runs predefined test cases locally with progress tracking and parallel metric evaluation
 2. **Langsmith Evaluation** - Integrates with Langsmith for dataset-based evaluation and experiment tracking
+3. **Pairwise Evaluation** - Evaluates workflows against custom do/don't criteria from a dataset
 
 ### Directory Structure
 
@@ -17,7 +18,8 @@ evaluations/
 │   └── display.ts      # Console output and progress tracking
 ├── langsmith/          # Langsmith integration
 │   ├── evaluator.ts    # Langsmith-compatible evaluator function
-│   └── runner.ts       # Langsmith evaluation orchestrator
+│   ├── runner.ts       # Langsmith evaluation orchestrator
+│   └── pairwise-runner.ts # Pairwise evaluation orchestrator
 ├── core/               # Shared evaluation logic
 │   ├── environment.ts  # Test environment setup and configuration
 │   └── test-runner.ts  # Core test execution logic
@@ -28,6 +30,7 @@ evaluations/
 ├── chains/             # LLM evaluation chains
 │   ├── test-case-generator.ts    # Dynamic test case generation
 │   ├── workflow-evaluator.ts     # Main orchestrator for parallel evaluation
+│   ├── pairwise-evaluator.ts     # Pairwise do/don't criteria evaluator
 │   └── evaluators/               # Individual metric evaluators
 │       ├── index.ts              # Evaluator exports
 │       ├── functionality-evaluator.ts      # Functional correctness evaluation
@@ -99,7 +102,40 @@ The Langsmith integration provides two key components:
 - Extracts usage metrics safely from message metadata
 - Handles dataset verification and error reporting
 
-#### 6. CLI Evaluation
+#### 6. Pairwise Evaluation
+
+Pairwise evaluation provides a simpler, criteria-based approach to workflow evaluation. Instead of using the complex multi-metric evaluation system, it evaluates workflows against a custom set of "do" and "don't" rules defined in the dataset.
+
+**Evaluator (`chains/pairwise-evaluator.ts`):**
+- Evaluates workflows against a checklist of criteria (dos and don'ts)
+- Uses an LLM to determine if each criterion passes or fails
+- Requires evidence-based justification for each decision
+- Calculates a simple pass/fail score (passes / total rules)
+
+**Runner (`langsmith/pairwise-runner.ts`):**
+- Generates workflows from prompts in the dataset
+- Applies pairwise evaluation to each generated workflow
+- Reports three metrics to Langsmith:
+  - `pairwise_score`: Overall score (0-1)
+  - `pairwise_passed_count`: Number of criteria passed
+  - `pairwise_failed_count`: Number of criteria violated
+
+**Dataset Format:**
+The pairwise evaluation expects a Langsmith dataset with examples containing:
+```json
+{
+  "inputs": {
+    "prompt": "Create a workflow that...",
+    "evals": {
+      "dos": "Use HTTP Request node for API calls\nInclude error handling",
+      "donts": "Don't use deprecated nodes\nDon't hardcode credentials"
+    }
+  }
+}
+```
+Note: `dos` and `donts` are newline-separated strings, not arrays.
+
+#### 7. CLI Evaluation
 
 The CLI evaluation provides local testing capabilities:
 
@@ -195,6 +231,27 @@ export LANGSMITH_DATASET_NAME=your_dataset_name
 pnpm eval:langsmith
 ```
 
+### Pairwise Evaluation
+
+Pairwise evaluation uses a dataset with custom do/don't criteria for each prompt.
+
+```bash
+# Set required environment variables
+export LANGSMITH_API_KEY=your_api_key
+
+# Run pairwise evaluation (uses default dataset: notion-pairwise-workflows)
+pnpm eval:pairwise
+
+# Use a custom dataset
+LANGSMITH_DATASET_NAME=my-pairwise-dataset pnpm eval:pairwise
+
+# Limit to specific number of examples (useful for testing)
+EVAL_MAX_EXAMPLES=2 pnpm eval:pairwise
+
+# Run with multiple repetitions
+pnpm eval:pairwise --repetitions 3
+```
+
 ## Configuration
 
 ### Required Files
@@ -223,7 +280,9 @@ The evaluation will fail with a clear error message if `nodes.json` is missing.
 - `N8N_AI_ANTHROPIC_KEY` - Required for LLM access
 - `LANGSMITH_API_KEY` - Required for Langsmith evaluation
 - `USE_LANGSMITH_EVAL` - Set to "true" to use Langsmith mode
+- `USE_PAIRWISE_EVAL` - Set to "true" to use pairwise evaluation mode
 - `LANGSMITH_DATASET_NAME` - Override default dataset name
+- `EVAL_MAX_EXAMPLES` - Limit number of examples to evaluate (useful for testing)
 - `EVALUATION_CONCURRENCY` - Number of parallel test executions (default: 5)
 - `GENERATE_TEST_CASES` - Set to "true" to generate additional test cases
 - `LLM_MODEL` - Model identifier for metadata tracking
@@ -241,6 +300,18 @@ The evaluation will fail with a clear error message if `nodes.json` is missing.
 - Results are stored in Langsmith dashboard
 - Experiment name format: `workflow-builder-evaluation-[date]`
 - Includes detailed metrics for each evaluation category
+
+### Pairwise Evaluation Output
+
+- Results are stored in Langsmith dashboard
+- Experiment name format: `pairwise-evals-[uuid]`
+- Metrics reported:
+  - `pairwise_score`: Overall pass rate (0-1)
+  - `pairwise_passed_count`: Number of criteria that passed
+  - `pairwise_failed_count`: Number of criteria that were violated
+- Each result includes detailed comments with:
+  - List of violations with justifications
+  - List of passes with justifications
 
 ## Adding New Test Cases
 

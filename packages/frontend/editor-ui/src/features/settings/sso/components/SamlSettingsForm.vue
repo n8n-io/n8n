@@ -6,14 +6,11 @@ import { useI18n } from '@n8n/i18n';
 import { captureMessage } from '@sentry/vue';
 
 import { ElCheckbox } from 'element-plus';
-import { N8nActionBox, N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
+import { N8nButton, N8nInput, N8nRadioButtons } from '@n8n/design-system';
 import { useToast } from '@/app/composables/useToast';
-import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import { useMessage } from '@/app/composables/useMessage';
 import { computed, onMounted, ref } from 'vue';
-import UserRoleProvisioningDropdown, {
-	type UserRoleProvisioningSetting,
-} from '../provisioning/components/UserRoleProvisioningDropdown.vue';
+import UserRoleProvisioningDropdown from '../provisioning/components/UserRoleProvisioningDropdown.vue';
 import { useUserRoleProvisioningForm } from '../provisioning/composables/useUserRoleProvisioningForm';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -25,7 +22,6 @@ const ssoStore = useSSOStore();
 const telemetry = useTelemetry();
 const toast = useToast();
 const message = useMessage();
-const pageRedirectionHelper = usePageRedirectionHelper();
 
 const savingForm = ref<boolean>(false);
 
@@ -56,10 +52,12 @@ const entityId = ref();
 
 const showUserRoleProvisioningDialog = ref(false);
 
-const userRoleProvisioning = ref<UserRoleProvisioningSetting>('disabled');
-
-const { isUserRoleProvisioningChanged, saveProvisioningConfig } =
-	useUserRoleProvisioningForm(userRoleProvisioning);
+const {
+	formValue: userRoleProvisioning,
+	isUserRoleProvisioningChanged,
+	saveProvisioningConfig,
+	shouldPromptUserToConfirmUserRoleProvisioningChange,
+} = useUserRoleProvisioningForm(SupportedProtocols.SAML);
 
 async function loadSamlConfig() {
 	if (!ssoStore.isEnterpriseSamlEnabled) {
@@ -103,7 +101,7 @@ const isSaveEnabled = computed(() => {
 	};
 	const isSamlLoginEnabledChanged = ssoStore.isSamlLoginEnabled !== samlLoginEnabled.value;
 	return (
-		isUserRoleProvisioningChanged() || isIdentityProviderChanged() || isSamlLoginEnabledChanged
+		isUserRoleProvisioningChanged.value || isIdentityProviderChanged() || isSamlLoginEnabledChanged
 	);
 });
 
@@ -183,7 +181,8 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 		savingForm.value = true;
 		validateSamlInput();
 
-		const isDisablingSamlLogin = ssoStore.isSamlLoginEnabled && !samlLoginEnabled.value;
+		const loginEnabledChanged = samlLoginEnabled.value !== ssoStore.isSamlLoginEnabled;
+		const isDisablingSamlLogin = loginEnabledChanged && ssoStore.isSamlLoginEnabled === true;
 
 		if (isDisablingSamlLogin) {
 			const confirmDisablingSaml = await promptConfirmDisablingSamlLogin();
@@ -192,10 +191,17 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			}
 		}
 
-		if (!isDisablingSamlLogin && isUserRoleProvisioningChanged() && !provisioningChangesConfirmed) {
+		if (
+			!provisioningChangesConfirmed &&
+			shouldPromptUserToConfirmUserRoleProvisioningChange({
+				currentLoginEnabled: !!ssoStore.isSamlLoginEnabled,
+				loginEnabledFormValue: samlLoginEnabled.value,
+			})
+		) {
 			showUserRoleProvisioningDialog.value = true;
 			return;
 		}
+		showUserRoleProvisioningDialog.value = false;
 
 		const metaDataConfig: Partial<SamlPreferences> =
 			ipsType.value === IdentityProviderSettingsType.URL
@@ -219,10 +225,7 @@ const onSave = async (provisioningChangesConfirmed: boolean = false) => {
 			loginEnabled: samlLoginEnabled.value,
 		});
 
-		if (isUserRoleProvisioningChanged()) {
-			await saveProvisioningConfig();
-			showUserRoleProvisioningDialog.value = false;
-		}
+		await saveProvisioningConfig(isDisablingSamlLogin);
 
 		// Update store with saved protocol selection
 		ssoStore.selectedAuthProtocol = SupportedProtocols.SAML;
@@ -268,16 +271,12 @@ const validateSamlInput = () => {
 	}
 };
 
-const goToUpgrade = () => {
-	void pageRedirectionHelper.goToUpgrade('sso', 'upgrade-sso');
-};
-
 onMounted(async () => {
 	await loadSamlConfig();
 });
 </script>
 <template>
-	<div v-if="ssoStore.isEnterpriseSamlEnabled" data-test-id="sso-content-licensed">
+	<div>
 		<div :class="$style.group">
 			<label>{{ i18n.baseText('settings.sso.settings.redirectUrl.label') }}</label>
 			<CopyInput
@@ -357,18 +356,6 @@ onMounted(async () => {
 			</N8nButton>
 		</div>
 	</div>
-	<N8nActionBox
-		v-else
-		data-test-id="sso-content-unlicensed"
-		:class="$style.actionBox"
-		:description="i18n.baseText('settings.sso.actionBox.description')"
-		:button-text="i18n.baseText('settings.sso.actionBox.buttonText')"
-		@click:button="goToUpgrade"
-	>
-		<template #heading>
-			<span>{{ i18n.baseText('settings.sso.actionBox.title') }}</span>
-		</template>
-	</N8nActionBox>
 </template>
 
 <style lang="scss" module src="../styles/sso-form.module.scss" />
