@@ -123,13 +123,18 @@ export const prepareFormFields = (context: IWebhookFunctions, fields: FormFields
 export function sanitizeCustomCss(css: string | undefined): string | undefined {
 	if (!css) return undefined;
 
-	// Use sanitize-html with custom settings for CSS
-	return sanitize(css, {
-		allowedTags: [], // No HTML tags allowed
-		allowedAttributes: {}, // No attributes allowed
-		// This ensures we're only keeping the text content
-		// which should be the CSS, while removing any HTML/script tags
-	});
+	// Remove potentially dangerous HTML/script tags and prevent style tag breakout
+	// This preserves CSS syntax (>, <, &, etc.) while preventing XSS attacks
+	return (
+		css
+			// Remove closing style tags to prevent breaking out of <style> tag
+			.replace(/<\/style>/gi, '')
+			// Remove script tags (case-insensitive, handles various formats)
+			.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+			// Remove any other HTML tags
+			.replace(/<[^>]*>/g, '')
+			.trim()
+	);
 }
 
 export function createDescriptionMetadata(description: string) {
