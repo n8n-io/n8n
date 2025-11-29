@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import { useSettingsStore } from '@/app/stores/settings.store';
 import { useUIStore } from '@/app/stores/ui.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
-import { PLACEHOLDER_EMPTY_WORKFLOW_ID, WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
+import { WORKFLOW_SETTINGS_MODAL_KEY } from '@/app/constants';
 import type { IWorkflowSettings } from 'n8n-workflow';
 import { deepCopy } from 'n8n-workflow';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
@@ -114,11 +114,7 @@ const accordionIcon = computed((): { color: IconColor; icon: IconName } | undefi
 });
 const currentWorkflowId = computed(() => workflowsStore.workflowId);
 const isNewWorkflow = computed(() => {
-	return (
-		!currentWorkflowId.value ||
-		currentWorkflowId.value === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-		currentWorkflowId.value === 'new'
-	);
+	return !currentWorkflowId.value || currentWorkflowId.value === 'new';
 });
 const workflowName = computed(() => workflowsStore.workflowName);
 const currentWorkflowTagIds = computed(() => workflowsStore.workflowTags);
@@ -169,7 +165,7 @@ function openWorkflowSettings(): void {
 
 async function onSaveWorkflowClick(): Promise<void> {
 	let currentId: string | undefined = undefined;
-	if (currentWorkflowId.value !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+	if (currentWorkflowId.value) {
 		currentId = currentWorkflowId.value;
 	} else if (
 		router.currentRoute.value.params.name &&

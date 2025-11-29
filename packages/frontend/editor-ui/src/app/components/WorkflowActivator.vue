@@ -6,11 +6,11 @@ import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import type { VNode } from 'vue';
 import { computed, h, watch } from 'vue';
 import { useI18n } from '@n8n/i18n';
+import { useRoute } from 'vue-router';
 import type { PermissionsRecord } from '@n8n/permissions';
 import {
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 } from '@/app/constants';
 import WorkflowActivationErrorMessage from './WorkflowActivationErrorMessage.vue';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
@@ -42,6 +42,7 @@ const uiStore = useUIStore();
 const workflowHelpers = useWorkflowHelpers();
 
 const i18n = useI18n();
+const route = useRoute();
 const workflowsStore = useWorkflowsStore();
 const credentialsStore = useCredentialsStore();
 
@@ -81,12 +82,9 @@ const containsOnlyExecuteWorkflowTrigger = computed((): boolean => {
 	return foundTriggers.length > 0 && foundTriggers.length === foundActiveTriggers.length;
 });
 
-const isNewWorkflow = computed(
-	() =>
-		!props.workflowId ||
-		props.workflowId === PLACEHOLDER_EMPTY_WORKFLOW_ID ||
-		props.workflowId === 'new',
-);
+const isNewWorkflow = computed(() => {
+	return route.query.new === 'true';
+});
 
 const disabled = computed((): boolean => {
 	if (props.isArchived) {

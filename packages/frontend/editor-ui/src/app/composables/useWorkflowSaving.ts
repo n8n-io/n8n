@@ -8,7 +8,6 @@ import {
 	MODAL_CLOSE,
 	MODAL_CONFIRM,
 	NON_ACTIVATABLE_TRIGGER_NODE_TYPES,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 } from '@/app/constants';
 import { useWorkflowHelpers } from '@/app/composables/useWorkflowHelpers';
@@ -104,7 +103,10 @@ export function useWorkflowSaving({
 				return;
 			case MODAL_CLOSE:
 				// for new workflows that are not saved yet, don't do anything, only close modal
-				if (workflowsStore.workflow.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
+				const existingWorkflow = workflowsStore.workflow.id
+					? workflowsStore.workflowsById[workflowsStore.workflow.id]
+					: null;
+				if (existingWorkflow && existingWorkflow.id) {
 					stayOnCurrentWorkflow(next);
 				}
 
@@ -188,7 +190,14 @@ export function useWorkflowSaving({
 		const parentFolderId = getQueryParam(router.currentRoute.value.query, 'parentFolderId');
 		const uiContext = getQueryParam(router.currentRoute.value.query, 'uiContext');
 
-		if (!currentWorkflow || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(currentWorkflow)) {
+		// Check if workflow needs to be saved as new (doesn't exist in store yet)
+		const existingWorkflow = currentWorkflow ? workflowsStore.workflowsById[currentWorkflow] : null;
+		if (
+			!currentWorkflow ||
+			currentWorkflow === 'new' ||
+			!existingWorkflow ||
+			!existingWorkflow.id
+		) {
 			return !!(await saveAsNewWorkflow({ name, tags, parentFolderId, uiContext }, redirect));
 		}
 
@@ -415,7 +424,8 @@ export function useWorkflowSaving({
 			const tagIds = createdTags.map((tag: ITag) => tag.id);
 			workflowState.setWorkflowTagIds(tagIds);
 
-			const templateId = router.currentRoute.value.query.templateId;
+			const route = router.currentRoute.value;
+			const templateId = route.query.templateId;
 			if (templateId) {
 				telemetry.track('User saved new workflow from template', {
 					template_id: tryToParseNumber(String(templateId)),
@@ -428,7 +438,7 @@ export function useWorkflowSaving({
 				await router.replace({
 					name: VIEWS.WORKFLOW,
 					params: { name: workflowData.id },
-					query: { action: 'workflowSave' },
+					query: { ...route.query, new: undefined },
 				});
 			}
 

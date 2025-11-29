@@ -16,7 +16,6 @@ import {
 	IMPORT_WORKFLOW_URL_MODAL_KEY,
 	MAX_WORKFLOW_NAME_LENGTH,
 	MODAL_CONFIRM,
-	PLACEHOLDER_EMPTY_WORKFLOW_ID,
 	VIEWS,
 	WORKFLOW_MENU_ACTIONS,
 	WORKFLOW_SETTINGS_MODAL_KEY,
@@ -145,7 +144,7 @@ const hasChanged = (prev: string[], curr: string[]) => {
 };
 
 const isNewWorkflow = computed(() => {
-	return !props.id || props.id === PLACEHOLDER_EMPTY_WORKFLOW_ID || props.id === 'new';
+	return route.query.new === 'true';
 });
 
 const isWorkflowSaving = computed(() => {
@@ -293,14 +292,12 @@ watch(
 );
 
 function getWorkflowId(): string | undefined {
-	let id: string | undefined = undefined;
-	if (props.id !== PLACEHOLDER_EMPTY_WORKFLOW_ID) {
-		id = props.id;
+	if (props.id) {
+		return props.id;
 	} else if (route.params.name && route.params.name !== 'new') {
-		id = route.params.name as string;
+		return route.params.name as string;
 	}
-
-	return id;
+	return undefined;
 }
 
 async function onSaveButtonClick() {
@@ -314,6 +311,9 @@ async function onSaveButtonClick() {
 	const name = props.name;
 	const tags = props.tags as string[];
 
+	// Capture the "new" state before saving, as the route will be replaced during save
+	const wasNewWorkflow = route.query.new === 'true';
+
 	const saved = await workflowSaving.saveCurrentWorkflow({
 		id,
 		name,
@@ -321,7 +321,7 @@ async function onSaveButtonClick() {
 	});
 
 	if (saved) {
-		showCreateWorkflowSuccessToast(id);
+		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 
 		await npsSurveyStore.fetchPromptsData();
 
@@ -414,9 +414,13 @@ async function onNameSubmit(name: string) {
 
 	uiStore.addActiveAction('workflowSaving');
 	const id = getWorkflowId();
+
+	// Capture the "new" state before saving, as the route will be replaced during save
+	const wasNewWorkflow = route.query.new === 'true';
+
 	const saved = await workflowSaving.saveCurrentWorkflow({ name });
 	if (saved) {
-		showCreateWorkflowSuccessToast(id);
+		showCreateWorkflowSuccessToast(id, wasNewWorkflow);
 		documentTitle.setDocumentTitle(newName, 'IDLE');
 	}
 	uiStore.removeActiveAction('workflowSaving');
@@ -731,8 +735,11 @@ function getToastContent() {
 	return { title, toastMessage };
 }
 
-function showCreateWorkflowSuccessToast(id?: string) {
-	const shouldShowToast = !id || ['new', PLACEHOLDER_EMPTY_WORKFLOW_ID].includes(id);
+function showCreateWorkflowSuccessToast(id?: string, wasNewWorkflow?: boolean) {
+	if (!id) return;
+
+	// Only show toast if this is a newly created workflow
+	const shouldShowToast = wasNewWorkflow ?? false;
 
 	if (!shouldShowToast) return;
 
