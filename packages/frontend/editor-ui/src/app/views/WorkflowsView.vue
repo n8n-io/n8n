@@ -591,6 +591,8 @@ const showTemplateRecommendationV3 = computed(() => {
 
 onMounted(async () => {
 	documentTitle.set(i18n.baseText('workflows.heading'));
+	telemetry.track('Very special event');
+
 	void usersStore.showPersonalizationSurvey();
 
 	workflowListEventBus.on('resource-moved', fetchWorkflows);
