@@ -1,17 +1,20 @@
 import { Logger } from '@n8n/backend-common';
-import type { IExecutionResponse } from '@n8n/db';
-import { ExecutionRepository } from '@n8n/db';
+import { ExecutionsConfig } from '@n8n/config';
+import { In, type IExecutionResponse } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { createEmptyRunExecutionData, sleep } from 'n8n-workflow';
-import type { IRun, ITaskData } from 'n8n-workflow';
+import { ExecutionStatus, type IRun, type ITaskData } from 'n8n-workflow';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
 import { WorkflowCrashedError } from '@/errors/workflow-crashed.error';
 import { getLifecycleHooksForRegularMain } from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { Push } from '@/push';
+import { OwnershipService } from '@/services/ownership.service';
+import { UserManagementMailer } from '@/user-management/email/user-management-mailer';
 
 import type { EventMessageTypes } from '../eventbus/event-message-classes';
 
@@ -25,7 +28,66 @@ export class ExecutionRecoveryService {
 		private readonly instanceSettings: InstanceSettings,
 		private readonly push: Push,
 		private readonly executionRepository: ExecutionRepository,
+		private readonly executionsConfig: ExecutionsConfig,
+		private readonly workflowRepository: WorkflowRepository,
+		private readonly userManagementMailer: UserManagementMailer,
+		private readonly ownershipService: OwnershipService,
 	) {}
+
+	async autoDeactivateWorkflowsIfNeeded(workflowIds: Set<string>) {
+		for (const workflowId of workflowIds) {
+			const maxLastExecutions = this.executionsConfig.recovery.maxLastExecutions;
+			const lastExecutions = await this.executionRepository.findMultipleExecutions({
+				select: ['id', 'status'],
+				where: { workflowId },
+				order: { startedAt: 'DESC' },
+				take: maxLastExecutions,
+			});
+			const numberOfCrashedExecutions = lastExecutions.filter((e) => e.status === 'crashed').length;
+
+			// If all of the last N executions are crashed, deactivate the workflow
+			if (
+				lastExecutions.length >= maxLastExecutions &&
+				lastExecutions.length === numberOfCrashedExecutions
+			) {
+				// Get workflow to preserve existing meta
+				const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
+
+				if (!workflow) {
+					this.logger.warn(`Workflow ${workflowId} not found, skipping workflow autodeactivation`);
+					continue;
+				}
+
+				if (workflow.active) {
+					await this.workflowRepository.updateActiveState(workflowId, false);
+					this.logger.warn(
+						`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
+					);
+
+					const instanceOwner = await this.ownershipService.getInstanceOwner();
+					await this.userManagementMailer.notifyWorkflowAutodeactivated({
+						recipient: instanceOwner,
+						workflow,
+					});
+
+					this.push.once('editorUiConnected', async () => {
+						await sleep(1000);
+						this.push.broadcast({ type: 'workflowAutoDeactivated', data: { workflowId } });
+					});
+				}
+
+				const pendingExecutions = await this.executionRepository.findMultipleExecutions({
+					where: { workflowId, status: In<ExecutionStatus>(['running', 'new']) },
+				});
+				if (pendingExecutions.length > 0) {
+					await this.executionRepository.markAsCrashed(pendingExecutions.map((e) => e.id));
+					this.logger.debug(
+						`Marked ${pendingExecutions.length} pending executions as crashed due to workflow deactivation.`,
+					);
+				}
+			}
+		}
+	}
 
 	/**
 	 * Recover key properties of a truncated execution using event logs.

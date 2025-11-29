@@ -1,5 +1,6 @@
-import { createWorkflow, testDb, mockInstance } from '@n8n/backend-test-utils';
-import { ExecutionRepository } from '@n8n/db';
+import { createWorkflow, testDb, mockInstance, getWorkflowById } from '@n8n/backend-test-utils';
+import { GlobalConfig } from '@n8n/config';
+import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
@@ -25,16 +26,24 @@ describe('ExecutionRecoveryService', () => {
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;
+	let workflowRepository: WorkflowRepository;
+	let globalConfig: GlobalConfig;
 
 	beforeAll(async () => {
 		await testDb.init();
 		executionRepository = Container.get(ExecutionRepository);
+		workflowRepository = Container.get(WorkflowRepository);
+		globalConfig = Container.get(GlobalConfig);
 
 		executionRecoveryService = new ExecutionRecoveryService(
 			mock(),
 			instanceSettings,
 			push,
 			executionRepository,
+			globalConfig.executions,
+			workflowRepository,
+			mock(),
+			mock(),
 		);
 	});
 
@@ -44,6 +53,7 @@ describe('ExecutionRecoveryService', () => {
 
 	afterEach(async () => {
 		jest.restoreAllMocks();
+		globalConfig.executions.recovery.workflowDeactivationEnabled = false;
 		await testDb.truncate(['ExecutionEntity', 'ExecutionData', 'WorkflowEntity']);
 	});
 
@@ -393,6 +403,34 @@ describe('ExecutionRecoveryService', () => {
 				expect(debugHelperTaskData?.executionStatus).toBe('success');
 				expect(debugHelperTaskData?.error).toBeUndefined();
 				expect(debugHelperTaskData?.data).toEqual(ARTIFICIAL_TASK_DATA);
+			});
+
+			test('should deactivate workflow if all last executions are crashed', async () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.recovery.workflowDeactivationEnabled = true;
+
+				const workflow = await createWorkflow({
+					...OOM_WORKFLOW,
+					active: true,
+				});
+				expect(workflow.active).toBe(true);
+				await createExecution({ status: 'crashed' }, workflow);
+				await createExecution({ status: 'crashed' }, workflow);
+				await createExecution({ status: 'crashed' }, workflow);
+
+				/**
+				 * Act
+				 */
+				await executionRecoveryService.autoDeactivateWorkflowsIfNeeded(new Set([workflow.id]));
+
+				/**
+				 * Assert
+				 */
+				const updatedWorkflow = await getWorkflowById(workflow.id);
+				if (!updatedWorkflow) fail('Expected `updatedWorkflow` to be defined');
+				expect(updatedWorkflow.active).toBe(false);
 			});
 		});
 	});

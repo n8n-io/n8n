@@ -13,5 +13,6 @@ export * from './sendWorkerStatusMessage';
 export * from './testWebhookDeleted';
 export * from './testWebhookReceived';
 export * from './workflowActivated';
+export * from './workflowAutoDeactivated';
 export * from './workflowDeactivated';
 export * from './workflowFailedToActivate';

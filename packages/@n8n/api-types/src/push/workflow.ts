@@ -20,7 +20,15 @@ export type WorkflowDeactivated = {
 	};
 };
 
+export type WorkflowAutoDeactivated = {
+	type: 'workflowAutoDeactivated';
+	data: {
+		workflowId: string;
+	};
+};
+
 export type WorkflowPushMessage =
 	| WorkflowActivated
 	| WorkflowFailedToActivate
-	| WorkflowDeactivated;
+	| WorkflowDeactivated
+	| WorkflowAutoDeactivated;

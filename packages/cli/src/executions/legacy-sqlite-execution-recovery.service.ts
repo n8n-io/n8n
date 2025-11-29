@@ -11,6 +11,7 @@ import assert from 'assert';
 @Service()
 export class LegacySqliteExecutionRecoveryService {
 	private readonly logger: Logger;
+
 	constructor(
 		logger: Logger,
 		private readonly executionRepository: ExecutionRepository,
