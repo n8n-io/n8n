@@ -1,7 +1,17 @@
-import { Column, Entity, Index, JoinColumn, OneToOne, PrimaryGeneratedColumn } from '@n8n/typeorm';
+import {
+	Column,
+	Entity,
+	Index,
+	JoinColumn,
+	ManyToOne,
+	OneToOne,
+	PrimaryGeneratedColumn,
+	Relation,
+} from '@n8n/typeorm';
 
 import { WithCreatedAt } from './abstract-entity';
 import { User } from './user';
+import type { WorkflowHistory } from './workflow-history';
 
 @Entity()
 @Index(['workflowId', 'versionId'])
@@ -30,4 +40,10 @@ export class WorkflowPublishHistory extends WithCreatedAt {
 	})
 	@JoinColumn({ name: 'userId' })
 	user: User | null;
+
+	@ManyToOne('WorkflowHistory', 'workflowPublishHistory', { nullable: true })
+	@JoinColumn({
+		name: 'versionId',
+	})
+	workflowHistory: Relation<WorkflowHistory> | null;
 }
