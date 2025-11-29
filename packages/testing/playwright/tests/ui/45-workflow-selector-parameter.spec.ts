@@ -15,14 +15,14 @@ test.describe('Workflow Selector Parameter', () => {
 
 		for (const { file } of subWorkflows) {
 			// Create workflow with Execute Workflow Trigger node so it can be activated
-			const workflow = await n8n.api.workflows.createWorkflow({
+			const workflowData = {
 				name: file,
 				nodes: [
 					{
 						id: 'execute-workflow-trigger',
 						name: 'When Executed by Another Workflow',
 						type: 'n8n-nodes-base.executeWorkflowTrigger',
-						position: [0, 0],
+						position: [0, 0] as [number, number],
 						parameters: {},
 						typeVersion: 1,
 					},
@@ -30,8 +30,11 @@ test.describe('Workflow Selector Parameter', () => {
 				connections: {},
 				settings: {},
 				active: false,
-				projectId,
-			} as any);
+			};
+			// @ts-expect-error - projectId is not part of IWorkflowBase but is accepted by the API
+			workflowData.projectId = projectId;
+
+			const workflow = await n8n.api.workflows.createWorkflow(workflowData);
 			// Activate the workflow so it appears in the workflow selector
 			await n8n.api.workflows.activate(workflow.id, workflow.versionId);
 		}
