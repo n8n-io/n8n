@@ -18,11 +18,11 @@ import {
 	ObjectStoreService,
 	DataDeduplicationService,
 	ErrorReporter,
+	ExecutionContextHookRegistry,
 } from 'n8n-core';
 import { ensureError, sleep, UnexpectedError, UserError } from 'n8n-workflow';
 
 import type { AbstractServer } from '@/abstract-server';
-import config from '@/config';
 import { N8N_VERSION, N8N_RELEASE_DATE } from '@/constants';
 import * as CrashJournal from '@/crash-journal';
 import { getDataDeduplicationService } from '@/deduplication';
@@ -36,7 +36,7 @@ import { CommunityPackagesConfig } from '@/modules/community-packages/community-
 import { NodeTypes } from '@/node-types';
 import { PostHogClient } from '@/posthog';
 import { ShutdownService } from '@/shutdown/shutdown.service';
-import { WorkflowHistoryManager } from '@/workflows/workflow-history.ee/workflow-history-manager.ee';
+import { WorkflowHistoryManager } from '@/workflows/workflow-history/workflow-history-manager';
 
 export abstract class BaseCommand<F = never> {
 	readonly flags: F;
@@ -64,6 +64,8 @@ export abstract class BaseCommand<F = never> {
 	protected readonly modulesConfig = Container.get(ModulesConfig);
 
 	protected readonly moduleRegistry = Container.get(ModuleRegistry);
+
+	protected readonly executionContextHookRegistry = Container.get(ExecutionContextHookRegistry);
 
 	/**
 	 * How long to wait for graceful shutdown before force killing the process.
@@ -96,6 +98,8 @@ export abstract class BaseCommand<F = never> {
 		process.once('SIGINT', this.onTerminationSignal('SIGINT'));
 
 		this.nodeTypes = Container.get(NodeTypes);
+
+		await this.executionContextHookRegistry.init();
 		await Container.get(LoadNodesAndCredentials).init();
 
 		await this.dbConnection
@@ -126,7 +130,7 @@ export abstract class BaseCommand<F = never> {
 		if (process.env.EXECUTIONS_PROCESS === 'own') process.exit(-1);
 
 		if (
-			config.getEnv('executions.mode') === 'queue' &&
+			this.globalConfig.executions.mode === 'queue' &&
 			this.globalConfig.database.type === 'sqlite'
 		) {
 			this.logger.warn(
@@ -231,6 +235,13 @@ export abstract class BaseCommand<F = never> {
 			const error = e instanceof Error ? e : new Error(`${e}`);
 			this.logger.error(`Failed to init object store: ${error.message}`, { error });
 			process.exit(1);
+		}
+
+		if (Container.get(BinaryDataConfig).availableModes.includes('database')) {
+			const binaryDataService = Container.get(BinaryDataService);
+			const { DatabaseManager } = await import('@/binary-data/database.manager');
+			const databaseManager = Container.get(DatabaseManager);
+			binaryDataService.setManager('database', databaseManager);
 		}
 
 		await Container.get(BinaryDataService).init();

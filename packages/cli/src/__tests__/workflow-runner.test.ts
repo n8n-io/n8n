@@ -27,7 +27,6 @@ import {
 import PCancelable from 'p-cancelable';
 
 import { ActiveExecutions } from '@/active-executions';
-import config from '@/config';
 import { ExecutionNotFoundError } from '@/errors/execution-not-found-error';
 import * as ExecutionLifecycleHooks from '@/execution-lifecycle/execution-lifecycle-hooks';
 import { CredentialsPermissionChecker } from '@/executions/pre-execution-checks';
@@ -39,6 +38,7 @@ import { WorkflowRunner } from '@/workflow-runner';
 
 let owner: User;
 let runner: WorkflowRunner;
+const globalConfig = Container.get(GlobalConfig);
 setupTestServer({ endpointGroups: [] });
 
 mockInstance(Telemetry);
@@ -71,6 +71,7 @@ describe('processError', () => {
 
 	beforeEach(async () => {
 		jest.clearAllMocks();
+		globalConfig.executions.mode = 'regular';
 		workflow = await createWorkflow({}, owner);
 		execution = await createExecution({ status: 'success', finished: true }, workflow);
 		hooks = new core.ExecutionLifecycleHooks('webhook', execution.id, workflow);
@@ -86,7 +87,7 @@ describe('processError', () => {
 			},
 			workflow,
 		);
-		config.set('executions.mode', 'queue');
+		globalConfig.executions.mode = 'queue';
 		await runner.processError(
 			new Error('test') as ExecutionError,
 			new Date(),
@@ -123,7 +124,7 @@ describe('processError', () => {
 			{ executionMode: 'webhook', workflowData: workflow },
 			execution.id,
 		);
-		config.set('executions.mode', 'regular');
+		globalConfig.executions.mode = 'regular';
 		await runner.processError(
 			new Error('test') as ExecutionError,
 			new Date(),
@@ -615,5 +616,121 @@ describe('streaming functionality', () => {
 
 		// ASSERT
 		expect(mockHooks.addHandler).toHaveBeenCalledWith('sendChunk', expect.any(Function));
+	});
+});
+
+describe('offloading manual executions to workers', () => {
+	let originalOffloadManualExecutionsToWorkers: string | undefined;
+	let activeExecutions: ActiveExecutions;
+	let permissionChecker: CredentialsPermissionChecker;
+	let mockHooks: core.ExecutionLifecycleHooks;
+	let mockScalingService: {
+		setupQueue: jest.Mock;
+		addJob: jest.Mock;
+	};
+
+	beforeEach(() => {
+		originalOffloadManualExecutionsToWorkers = process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = 'true';
+		globalConfig.executions.mode = 'queue';
+
+		activeExecutions = Container.get(ActiveExecutions);
+		jest.spyOn(activeExecutions, 'add').mockResolvedValue('1');
+		jest.spyOn(activeExecutions, 'attachWorkflowExecution').mockReturnValueOnce();
+
+		permissionChecker = Container.get(CredentialsPermissionChecker);
+		jest.spyOn(permissionChecker, 'check').mockResolvedValueOnce();
+
+		mockHooks = mock<core.ExecutionLifecycleHooks>();
+		jest
+			.spyOn(ExecutionLifecycleHooks, 'getLifecycleHooksForScalingMain')
+			.mockReturnValue(mockHooks);
+
+		mockScalingService = {
+			setupQueue: jest.fn(),
+			addJob: jest.fn().mockResolvedValue({
+				id: 'job-1',
+				data: { executionId: '1', workflowId: 'workflow-1' },
+				finished: jest.fn().mockResolvedValue(undefined),
+			}),
+		};
+		// @ts-expect-error Private property
+		runner.scalingService = mockScalingService;
+	});
+
+	afterEach(() => {
+		process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = originalOffloadManualExecutionsToWorkers;
+		jest.resetAllMocks();
+	});
+
+	it('when receiving no `runData`, should set `runData` to undefined in `executionData`', async () => {
+		// ARRANGE
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], id: 'workflow-1' },
+			executionMode: 'manual',
+			runData: undefined,
+			startNodes: [],
+			destinationNode: undefined,
+			pinData: undefined,
+		});
+
+		// ACT
+		await runner.run(data);
+
+		// ASSERT
+		expect(data.executionData).toBeDefined();
+		expect(data.executionData?.resultData?.runData).toBeUndefined();
+	});
+
+	it('when receiving `runData`, should preserve it in `executionData` for partial execution', async () => {
+		// ARRANGE
+		const runData = {
+			Node1: [
+				{
+					startTime: 123,
+					executionTime: 456,
+					source: [],
+					executionIndex: 0,
+				},
+			],
+		};
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], id: 'workflow-1' },
+			executionMode: 'manual',
+			runData,
+			startNodes: [],
+			destinationNode: undefined,
+			pinData: undefined,
+		});
+
+		// ACT
+		await runner.run(data);
+
+		// ASSERT
+		expect(data.executionData).toBeDefined();
+		expect(data.executionData?.resultData?.runData).toEqual(runData);
+	});
+
+	it('should not initialize nested `executionData.executionData` to avoid treating it as resumed execution', async () => {
+		// ARRANGE
+		const data = mock<IWorkflowExecutionDataProcess>({
+			workflowData: { nodes: [], id: 'workflow-1' },
+			executionMode: 'manual',
+			runData: undefined,
+			startNodes: [],
+			destinationNode: undefined,
+			pinData: undefined,
+		});
+
+		// ACT
+		await runner.run(data);
+
+		// ASSERT
+		// Should have executionData at top level with startData and manualData
+		expect(data.executionData).toBeDefined();
+		expect(data.executionData?.startData).toBeDefined();
+		expect(data.executionData?.manualData).toBeDefined();
+		// But nested executionData.executionData should be undefined
+		expect(data.executionData?.executionData).toBeUndefined();
 	});
 });

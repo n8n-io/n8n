@@ -7,7 +7,7 @@ import { useSourceControlStore } from '../sourceControl.store';
 import { mockedStore } from '@/__tests__/utils';
 import { waitFor } from '@testing-library/dom';
 import { reactive } from 'vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { defaultSettings } from '@/__tests__/defaults';
 import type { SourceControlledFile } from '@n8n/api-types';
 
@@ -35,7 +35,7 @@ vi.mock('vue-router', () => ({
 	},
 }));
 
-vi.mock('@/composables/useLoadingService', () => ({
+vi.mock('@/app/composables/useLoadingService', () => ({
 	useLoadingService: () => ({
 		startLoading: vi.fn(),
 		stopLoading: vi.fn(),
@@ -44,7 +44,7 @@ vi.mock('@/composables/useLoadingService', () => ({
 }));
 
 // Mock the toast composable to prevent Element Plus DOM errors
-vi.mock('@/composables/useToast', () => ({
+vi.mock('@/app/composables/useToast', () => ({
 	useToast: () => ({
 		showMessage: vi.fn(),
 		showError: vi.fn(),
@@ -297,5 +297,84 @@ describe('SourceControlPullModal', () => {
 		// Check if list items exist and have proper structure
 		const listItems = getAllByTestId('pull-modal-item');
 		expect(listItems.length).toBeGreaterThan(0);
+	});
+
+	it('should display projects in the otherFiles section', () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'project-1',
+				name: 'Team Project 1',
+				type: 'project',
+				status: 'created',
+				location: 'remote',
+				conflict: false,
+				file: '/projects/project-1.json',
+				updatedAt: '2025-01-09T13:12:24.586Z',
+				owner: {
+					type: 'team',
+					projectId: 'project-1',
+					projectName: 'Team Project 1',
+				},
+			},
+		];
+
+		const { getByText } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		expect(getByText(/Projects \(1\)/)).toBeInTheDocument();
+	});
+
+	it('should show correct project count in summary', () => {
+		const status: SourceControlledFile[] = [
+			{
+				id: 'project-1',
+				name: 'Team Project 1',
+				type: 'project',
+				status: 'created',
+				location: 'remote',
+				conflict: false,
+				file: '/projects/project-1.json',
+				updatedAt: '2025-01-09T13:12:24.586Z',
+				owner: {
+					type: 'team',
+					projectId: 'project-1',
+					projectName: 'Team Project 1',
+				},
+			},
+			{
+				id: 'project-2',
+				name: 'Team Project 2',
+				type: 'project',
+				status: 'modified',
+				location: 'remote',
+				conflict: true,
+				file: '/projects/project-2.json',
+				updatedAt: '2025-01-09T13:12:24.586Z',
+				owner: {
+					type: 'team',
+					projectId: 'project-2',
+					projectName: 'Team Project 2',
+				},
+			},
+		];
+
+		const { getByText } = renderModal({
+			pinia,
+			props: {
+				data: {
+					eventBus,
+					status,
+				},
+			},
+		});
+
+		expect(getByText(/Projects \(2\)/)).toBeInTheDocument();
 	});
 });

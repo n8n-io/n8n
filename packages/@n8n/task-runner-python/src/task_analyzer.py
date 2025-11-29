@@ -8,9 +8,12 @@ from src.config.security_config import SecurityConfig
 from src.constants import (
     MAX_VALIDATION_CACHE_SIZE,
     ERROR_RELATIVE_IMPORT,
+    ERROR_DANGEROUS_NAME,
     ERROR_DANGEROUS_ATTRIBUTE,
+    ERROR_NAME_MANGLED_ATTRIBUTE,
     ERROR_DYNAMIC_IMPORT,
     BLOCKED_ATTRIBUTES,
+    BLOCKED_NAMES,
 )
 
 CacheKey = tuple[str, tuple]  # (code_hash, allowlists_tuple)
@@ -46,6 +49,12 @@ class SecurityValidator(ast.NodeVisitor):
 
         self.generic_visit(node)
 
+    def visit_Name(self, node: ast.Name) -> None:
+        if node.id in BLOCKED_NAMES:
+            self._add_violation(node.lineno, ERROR_DANGEROUS_NAME.format(name=node.id))
+
+        self.generic_visit(node)
+
     def visit_Attribute(self, node: ast.Attribute) -> None:
         """Detect access to unsafe attributes that could bypass security restrictions."""
 
@@ -53,6 +62,11 @@ class SecurityValidator(ast.NodeVisitor):
             self._add_violation(
                 node.lineno, ERROR_DANGEROUS_ATTRIBUTE.format(attr=node.attr)
             )
+
+        if node.attr.startswith("_") and "__" in node.attr:
+            parts = node.attr.split("__", 1)
+            if len(parts) == 2 and parts[0].startswith("_"):
+                self._add_violation(node.lineno, ERROR_NAME_MANGLED_ATTRIBUTE)
 
         self.generic_visit(node)
 

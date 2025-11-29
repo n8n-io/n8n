@@ -1,6 +1,8 @@
 import { Container } from '@n8n/di';
 import fs from 'fs';
 import { mock } from 'jest-mock-extended';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 import type { UserManagementConfig } from '../src/configs/user-management.config';
 import { GlobalConfig } from '../src/index';
@@ -55,6 +57,9 @@ describe('GlobalConfig', () => {
 		dataTable: {
 			maxSize: 50 * 1024 * 1024,
 			sizeCheckCacheDuration: 60000,
+			cleanupIntervalMs: 60 * 1000,
+			fileMaxAgeMs: 2 * 60 * 1000,
+			uploadDir: path.join(tmpdir(), 'n8nDataTableUploads'),
 		},
 		database: {
 			logging: {
@@ -171,10 +176,16 @@ describe('GlobalConfig', () => {
 			whatsNewEndpoint: 'https://api.n8n.io/api/whats-new',
 			infoUrl: 'https://docs.n8n.io/hosting/installation/updating/',
 		},
+		dynamicBanners: {
+			endpoint: 'https://api.n8n.io/api/banners',
+			enabled: true,
+		},
 		workflows: {
 			defaultName: 'My workflow',
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
+			indexingEnabled: false,
+			draftPublishEnabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -194,6 +205,8 @@ describe('GlobalConfig', () => {
 				includeQueueMetrics: false,
 				queueMetricsInterval: 20,
 				activeWorkflowCountInterval: 60,
+				includeWorkflowStatistics: false,
+				workflowStatisticsInterval: 300,
 			},
 			additionalNonUIRoutes: '',
 			disableProductionWebhooksOnMainProcess: false,
@@ -260,6 +273,7 @@ describe('GlobalConfig', () => {
 			maxOldSpaceSize: '',
 			maxConcurrency: 10,
 			taskTimeout: 300,
+			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
 			insecureMode: false,
 			isNativePythonRunnerEnabled: false,
@@ -310,8 +324,11 @@ describe('GlobalConfig', () => {
 			contentSecurityPolicyReportOnly: false,
 			disableWebhookHtmlSandboxing: false,
 			disableBareRepos: false,
+			awsSystemCredentialsAccess: false,
+			enableGitNodeHooks: false,
 		},
 		executions: {
+			mode: 'regular',
 			timeout: -1,
 			maxTimeout: 3600,
 			pruneData: true,
@@ -354,7 +371,6 @@ describe('GlobalConfig', () => {
 			disabled: false,
 		},
 		workflowHistory: {
-			enabled: true,
 			pruneTime: -1,
 		},
 		sso: {
@@ -374,7 +390,6 @@ describe('GlobalConfig', () => {
 			provisioning: {
 				scopesProvisionInstanceRole: false,
 				scopesProvisionProjectRoles: false,
-				scopesProvisioningFrequency: 'never',
 				scopesName: 'n8n',
 				scopesInstanceRoleClaimName: 'n8n_instance_role',
 				scopesProjectsRolesClaimName: 'n8n_projects',
@@ -410,6 +425,8 @@ describe('GlobalConfig', () => {
 			DB_LOGGING_MAX_EXECUTION_TIME: '0',
 			N8N_METRICS: 'TRUE',
 			N8N_TEMPLATES_ENABLED: '0',
+			N8N_DYNAMIC_BANNERS_ENDPOINT: 'https://localhost:5678/api/banners',
+			N8N_DYNAMIC_BANNERS_ENABLED: 'false',
 		};
 		const config = Container.get(GlobalConfig);
 		expect(structuredClone(config)).toEqual({
@@ -441,6 +458,10 @@ describe('GlobalConfig', () => {
 			},
 			templates: {
 				...defaultConfig.templates,
+				enabled: false,
+			},
+			dynamicBanners: {
+				endpoint: 'https://localhost:5678/api/banners',
 				enabled: false,
 			},
 		});

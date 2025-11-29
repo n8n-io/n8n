@@ -6,12 +6,11 @@ import { Service } from '@n8n/di';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import type { DeleteResult } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
-import { In } from '@n8n/typeorm';
+import { In, IsNull, Not } from '@n8n/typeorm';
 import EventEmitter from 'events';
 import uniqby from 'lodash/uniqBy';
 import type { MessageEventBusDestinationOptions } from 'n8n-workflow';
 
-import config from '@/config';
 import { License } from '@/license';
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 
@@ -150,7 +149,7 @@ export class MessageEventBus extends EventEmitter {
 
 			// if we are in queue mode, running jobs may still be running on a worker despite the main process
 			// crashing, so we can't just mark them as crashed
-			if (config.get('executions.mode') !== 'queue') {
+			if (this.globalConfig.executions.mode !== 'queue') {
 				const dbUnfinishedExecutionIds = (
 					await this.executionRepository.find({
 						where: {
@@ -166,7 +165,7 @@ export class MessageEventBus extends EventEmitter {
 
 			if (unfinishedExecutionIds.length > 0) {
 				const activeWorkflows = await this.workflowRepository.find({
-					where: { active: true },
+					where: { activeVersionId: Not(IsNull()) },
 					select: ['id', 'name'],
 				});
 				if (activeWorkflows.length > 0) {

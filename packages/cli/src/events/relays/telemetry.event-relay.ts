@@ -81,6 +81,8 @@ export class TelemetryEventRelay extends EventRelay {
 			'ldap-settings-updated': (event) => this.ldapSettingsUpdated(event),
 			'ldap-login-sync-failed': (event) => this.ldapLoginSyncFailed(event),
 			'login-failed-due-to-ldap-disabled': (event) => this.loginFailedDueToLdapDisabled(event),
+			'sso-user-project-access-updated': (event) => this.ssoUserProjectAccessUpdated(event),
+			'sso-user-instance-role-updated': (event) => this.ssoUserInstanceRoleUpdated(event),
 			'workflow-created': (event) => this.workflowCreated(event),
 			'workflow-archived': (event) => this.workflowArchived(event),
 			'workflow-unarchived': (event) => this.workflowUnarchived(event),
@@ -531,6 +533,29 @@ export class TelemetryEventRelay extends EventRelay {
 
 	// #endregion
 
+	// #region SSO
+
+	private ssoUserProjectAccessUpdated({
+		projectsRemoved,
+		projectsAdded,
+		userId,
+	}: RelayEventMap['sso-user-project-access-updated']) {
+		this.telemetry.track('Sso user project access update', {
+			user_id: userId,
+			projects_removed: projectsRemoved,
+			projects_added: projectsAdded,
+		});
+	}
+
+	private ssoUserInstanceRoleUpdated({
+		userId,
+		role,
+	}: RelayEventMap['sso-user-instance-role-updated']) {
+		this.telemetry.track('Sso user instance role update', { user_id: userId, role });
+	}
+
+	// #endregion
+
 	// #region Workflow
 
 	private workflowCreated({
@@ -550,6 +575,7 @@ export class TelemetryEventRelay extends EventRelay {
 			public_api: publicApi,
 			project_id: projectId,
 			project_type: projectType,
+			meta: JSON.stringify(workflow.meta),
 			uiContext,
 		});
 	}
@@ -637,6 +663,7 @@ export class TelemetryEventRelay extends EventRelay {
 			num_tags: workflow.tags?.length ?? 0,
 			public_api: publicApi,
 			sharing_role: userRole,
+			meta: JSON.stringify(workflow.meta),
 		});
 	}
 
@@ -748,6 +775,7 @@ export class TelemetryEventRelay extends EventRelay {
 					credential_type: null,
 					is_managed: false,
 					eval_rows_left: null,
+					meta: JSON.stringify(workflow.meta),
 					...TelemetryHelpers.resolveAIMetrics(workflow.nodes, this.nodeTypes),
 					...TelemetryHelpers.resolveVectorStoreMetrics(workflow.nodes, this.nodeTypes, runData),
 					...TelemetryHelpers.extractLastExecutedNodeStructuredOutputErrorInfo(
@@ -784,14 +812,13 @@ export class TelemetryEventRelay extends EventRelay {
 							manualExecEventProperties.is_managed = credential.isManaged;
 						}
 					}
-
 					const telemetryPayload: ITelemetryTrackProperties = {
 						...manualExecEventProperties,
 						node_type: TelemetryHelpers.getNodeTypeForName(
 							workflow,
-							runData.data.startData?.destinationNode,
+							runData.data.startData?.destinationNode.nodeName,
 						)?.type,
-						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode.nodeName],
 					};
 
 					this.telemetry.track('Manual node exec finished', telemetryPayload);
@@ -846,7 +873,7 @@ export class TelemetryEventRelay extends EventRelay {
 				is_docker: this.instanceSettings.isDocker,
 			},
 			execution_variables: {
-				executions_mode: config.getEnv('executions.mode'),
+				executions_mode: this.globalConfig.executions.mode,
 				executions_timeout: this.globalConfig.executions.timeout,
 				executions_timeout_max: this.globalConfig.executions.maxTimeout,
 				executions_data_save_on_error: this.globalConfig.executions.saveDataOnError,
@@ -909,7 +936,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Workflow first prod success', {
 			project_id: projectId,
 			workflow_id: workflowId,
-			user_id: userId,
+			user_id: userId ?? undefined,
 		});
 	}
 

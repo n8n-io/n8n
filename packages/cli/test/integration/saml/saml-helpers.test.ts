@@ -22,6 +22,7 @@ describe('sso/saml/samlHelpers', () => {
 				lastName: 'Nathaniel',
 				email: 'nathan@n8n.io',
 				userPrincipalName: 'Huh?',
+				n8nInstanceRole: 'n8n_instance_role',
 			};
 
 			//

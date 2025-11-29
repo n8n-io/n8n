@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 /* eslint-disable vue/no-multiple-template-root */
 import type { CanvasConnectionData } from '../../../canvas.types';
-import { isValidNodeConnectionType } from '@/utils/typeGuards';
+import { isValidNodeConnectionType } from '@/app/utils/typeGuards';
 import type { Connection, EdgeProps } from '@vue-flow/core';
 import { BaseEdge, EdgeLabelRenderer } from '@vue-flow/core';
 import { NodeConnectionTypes } from 'n8n-workflow';
@@ -181,8 +181,11 @@ function onEdgeLabelMouseLeave() {
 	transition:
 		stroke 0.3s ease,
 		fill 0.3s ease;
-	stroke: var(--canvas-edge-color, v-bind(edgeStroke));
-	stroke-width: calc(2 * var(--canvas-zoom-compensation-factor, 1));
+	// @bugfix cat-1639-connection-colors-not-rendering-correctly
+	// Using !important here to override BaseEdge styles after Rolldown Vite migration
+	stroke: var(--canvas-edge--color, v-bind(edgeStroke)) !important;
+	/* stylelint-disable-next-line @n8n/css-var-naming */
+	stroke-width: calc(2 * var(--canvas-zoom-compensation-factor, 1)) !important;
 	stroke-linecap: square;
 }
 
@@ -190,14 +193,17 @@ function onEdgeLabelMouseLeave() {
 	transform: translateY(calc(var(--spacing--xs) * -1));
 	position: absolute;
 
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	--label-translate-y: 0;
 
 	&.straight {
+		/* stylelint-disable-next-line @n8n/css-var-naming */
 		--label-translate-y: -100%;
 	}
 }
 
 .edgeLabel {
+	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: scale(var(--canvas-zoom-compensation-factor, 1)) translate(0, var(--label-translate-y));
 	color: var(--color--text);
 	font-size: var(--font-size--xs);

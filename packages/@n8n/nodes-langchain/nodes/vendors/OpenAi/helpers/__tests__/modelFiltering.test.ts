@@ -33,7 +33,12 @@ describe('shouldIncludeModel', () => {
 	});
 
 	describe('Official OpenAI API filtering', () => {
-		it.each(testCases)('$officialAPI: "$modelId"', ({ modelId, officialAPI }) => {
+		const testCasesWithAction = testCases.map((tc) => ({
+			...tc,
+			action: tc.officialAPI ? 'include' : 'exclude',
+		}));
+
+		it.each(testCasesWithAction)('should $action "$modelId"', ({ modelId, officialAPI }) => {
 			expect(shouldIncludeModel(modelId, false)).toBe(officialAPI);
 		});
 	});

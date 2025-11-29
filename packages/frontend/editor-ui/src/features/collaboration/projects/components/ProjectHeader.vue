@@ -9,20 +9,23 @@ import { useProjectsStore } from '../projects.store';
 import ProjectTabs from './ProjectTabs.vue';
 import ProjectIcon from './ProjectIcon.vue';
 import { getResourcePermissions } from '@n8n/permissions';
-import { VIEWS } from '@/constants';
+import { EnterpriseEditionFeature, VIEWS } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import ProjectCreateResource from './ProjectCreateResource.vue';
-import { useSettingsStore } from '@/stores/settings.store';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useProjectPages } from '@/features/collaboration/projects/composables/useProjectPages';
-import { truncateTextToFitWidth } from '@/utils/formatters/textFormatter';
+import { truncateTextToFitWidth } from '@/app/utils/formatters/textFormatter';
 import { type IconName } from '@n8n/design-system/components/N8nIcon/icons';
 import type { IUser } from 'n8n-workflow';
 import { type IconOrEmoji, isIconOrEmoji } from '@n8n/design-system/components/N8nIconPicker/types';
-import { useUIStore } from '@/stores/ui.store';
+import { useUIStore } from '@/app/stores/ui.store';
 import { PROJECT_DATA_TABLES } from '@/features/core/dataTable/constants';
-import ReadyToRunV2Button from '@/experiments/readyToRunWorkflowsV2/components/ReadyToRunV2Button.vue';
+import ReadyToRunButton from '@/features/workflows/readyToRun/components/ReadyToRunButton.vue';
 
 import { N8nButton, N8nHeading, N8nText, N8nTooltip } from '@n8n/design-system';
+import { VARIABLE_MODAL_KEY } from '@/features/settings/environments.ee/environments.constants';
+import { useTelemetry } from '@/app/composables/useTelemetry';
+import { useUsersStore } from '@/features/settings/users/users.store';
 const route = useRoute();
 const router = useRouter();
 const i18n = useI18n();
@@ -30,6 +33,8 @@ const projectsStore = useProjectsStore();
 const sourceControlStore = useSourceControlStore();
 const settingsStore = useSettingsStore();
 const uiStore = useUIStore();
+const telemetry = useTelemetry();
+const usersStore = useUsersStore();
 
 const projectPages = useProjectPages();
 
@@ -54,12 +59,20 @@ const headerIcon = computed((): IconOrEmoji => {
 	}
 });
 
+const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
+
+const isPersonalProject = computed(() => {
+	return homeProject.value?.type === ProjectTypes.Personal;
+});
+
 const projectName = computed(() => {
 	if (!projectsStore.currentProject) {
 		if (projectPages.isSharedSubPage) {
 			return i18n.baseText('projects.header.shared.title');
 		} else if (projectPages.isOverviewSubPage) {
 			return i18n.baseText('projects.menu.overview');
+		} else if (isPersonalProject.value) {
+			return i18n.baseText('projects.menu.personal');
 		}
 		return null;
 	} else if (projectsStore.currentProject.type === ProjectTypes.Personal) {
@@ -72,6 +85,12 @@ const projectName = computed(() => {
 const projectPermissions = computed(
 	() => getResourcePermissions(projectsStore.currentProject?.scopes).project,
 );
+const projectVariablePermissions = computed(
+	() => getResourcePermissions(projectsStore.currentProject?.scopes).projectVariable,
+);
+const globalVariablesPermissions = computed(
+	() => getResourcePermissions(usersStore.currentUser?.globalScopes).variable,
+);
 
 const showSettings = computed(
 	() =>
@@ -79,12 +98,6 @@ const showSettings = computed(
 		!!projectPermissions.value.update &&
 		projectsStore.currentProject?.type === ProjectTypes.Team,
 );
-
-const homeProject = computed(() => projectsStore.currentProject ?? projectsStore.personalProject);
-
-const isPersonalProject = computed(() => {
-	return homeProject.value?.type === ProjectTypes.Personal;
-});
 
 const showFolders = computed(() => {
 	return (
@@ -115,6 +128,7 @@ const ACTION_TYPES = {
 	CREDENTIAL: 'credential',
 	FOLDER: 'folder',
 	DATA_TABLE: 'dataTable',
+	VARIABLE: 'variable',
 } as const;
 type ActionTypes = (typeof ACTION_TYPES)[keyof typeof ACTION_TYPES];
 
@@ -148,6 +162,16 @@ const createDataTableButton = computed(() => ({
 		!getResourcePermissions(homeProject.value?.scopes)?.dataTable?.create,
 }));
 
+const createVariableButton = computed(() => ({
+	value: ACTION_TYPES.VARIABLE,
+	label: i18n.baseText('variables.add.button.label'),
+	icon: sourceControlStore.preferences.branchReadOnly ? ('lock' as IconName) : undefined,
+	size: 'mini' as const,
+	disabled:
+		sourceControlStore.preferences.branchReadOnly ||
+		(!projectVariablePermissions.value.create && !globalVariablesPermissions.value.create),
+}));
+
 const selectedMainButtonType = computed(() => props.mainButton ?? ACTION_TYPES.WORKFLOW);
 
 const mainButtonConfig = computed(() => {
@@ -156,6 +180,8 @@ const mainButtonConfig = computed(() => {
 			return createCredentialButton.value;
 		case ACTION_TYPES.DATA_TABLE:
 			return createDataTableButton.value;
+		case ACTION_TYPES.VARIABLE:
+			return createVariableButton.value;
 		case ACTION_TYPES.WORKFLOW:
 		default:
 			return createWorkflowButton.value;
@@ -184,6 +210,19 @@ const menu = computed(() => {
 			disabled:
 				sourceControlStore.preferences.branchReadOnly ||
 				!getResourcePermissions(homeProject.value?.scopes).credential.create,
+		});
+	}
+
+	if (
+		selectedMainButtonType.value !== ACTION_TYPES.VARIABLE &&
+		settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.Variables]
+	) {
+		items.push({
+			value: ACTION_TYPES.VARIABLE,
+			label: i18n.baseText('variables.add.button.label'),
+			disabled:
+				sourceControlStore.preferences.branchReadOnly ||
+				!getResourcePermissions(homeProject.value?.scopes).projectVariable.create,
 		});
 	}
 
@@ -282,6 +321,10 @@ const actions: Record<ActionTypes, (projectId: string) => void> = {
 			name: PROJECT_DATA_TABLES,
 			params: { projectId, new: 'new' },
 		});
+	},
+	[ACTION_TYPES.VARIABLE]: () => {
+		uiStore.openModalWithData({ name: VARIABLE_MODAL_KEY, data: { mode: 'new' } });
+		telemetry.track('User clicked header add variable button');
 	},
 } as const;
 
@@ -400,7 +443,7 @@ const onSelect = (action: string) => {
 					:content="i18n.baseText('readOnlyEnv.cantAdd.any')"
 				>
 					<div style="display: flex; gap: var(--spacing--xs); align-items: center">
-						<ReadyToRunV2Button :has-active-callouts="props.hasActiveCallouts" />
+						<ReadyToRunButton :has-active-callouts="props.hasActiveCallouts" />
 						<ProjectCreateResource
 							data-test-id="add-resource-buttons"
 							:actions="menu"
@@ -434,7 +477,6 @@ const onSelect = (action: string) => {
 	display: flex;
 	align-items: flex-start;
 	justify-content: space-between;
-	padding-bottom: var(--spacing--lg);
 	min-height: var(--spacing--3xl);
 }
 

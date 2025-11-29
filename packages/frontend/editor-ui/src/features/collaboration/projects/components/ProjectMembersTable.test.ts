@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/vue';
 import userEvent from '@testing-library/user-event';
 import { vi } from 'vitest';
-import type { ProjectRole } from '@n8n/permissions';
+import type { ProjectRole, AllRolesMap } from '@n8n/permissions';
 import type { TableOptions } from '@n8n/design-system/components/N8nDataTableServer';
 import ProjectMembersTable from './ProjectMembersTable.vue';
 import { createComponentRenderer } from '@/__tests__/render';
@@ -87,7 +87,7 @@ vi.mock('./ProjectMembersRoleCell.vue', () => ({
 					:data-test-id="'role-dropdown-' + data.id"
 					@click="$emit('update:role', { role: 'project:admin', userId: data.id })"
 				>
-					{{ roles[data.role]?.label || data.role }}
+					{{ roles.find(role => role.slug === data.role)?.displayName || data.role }}
 				</button>
 				<template v-for="action in actions" :key="action.id">
 					<span
@@ -146,7 +146,7 @@ const mockProjectRoles = [
 	{ slug: 'project:admin', displayName: 'Admin', licensed: true },
 	{ slug: 'project:editor', displayName: 'Editor', licensed: true },
 	{ slug: 'project:viewer', displayName: 'Viewer', licensed: false },
-];
+] as AllRolesMap['project'];
 
 const mockData = {
 	items: mockMembers,
@@ -173,6 +173,7 @@ describe('ProjectMembersTable', () => {
 				currentUserId: '2',
 				projectRoles: mockProjectRoles,
 				tableOptions: mockTableOptions,
+				canEditRole: true,
 			},
 		});
 	});
@@ -353,6 +354,18 @@ describe('ProjectMembersTable', () => {
 			expect(currentUserCell).toBeInTheDocument();
 			// The text should be rendered by N8nText component
 			expect(screen.getByText('Editor')).toBeInTheDocument();
+		});
+
+		it('should not show a role dropdown if canEditRole is false', () => {
+			renderComponent({
+				props: {
+					canEditRole: false,
+				},
+			});
+
+			expect(screen.queryByTestId('role-dropdown-1')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('role-dropdown-2')).not.toBeInTheDocument();
+			expect(screen.queryByTestId('role-dropdown-3')).not.toBeInTheDocument();
 		});
 	});
 

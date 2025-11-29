@@ -34,7 +34,6 @@ export const defaultSettings: FrontendSettings = {
 		sourceControl: false,
 		auditLogs: false,
 		showNonProdBanner: false,
-		workflowHistory: false,
 		binaryDataS3: false,
 		externalSecrets: false,
 		workerView: false,
@@ -47,6 +46,7 @@ export const defaultSettings: FrontendSettings = {
 				limit: 1,
 			},
 		},
+		customRoles: false,
 	},
 	executionMode: 'regular',
 	isMultiMain: false,
@@ -164,4 +164,8 @@ export const defaultSettings: FrontendSettings = {
 	},
 	activeModules: [],
 	envFeatureFlags: {},
+	dynamicBanners: {
+		endpoint: 'https://api.n8n.io/api/banners',
+		enabled: true,
+	},
 };

@@ -4,8 +4,15 @@ import {
 	type ChatMessageId,
 	type ChatHubSessionDto,
 	type ChatHubConversationDto,
+	type ChatSessionId,
+	type ChatHubConversationModel,
+	type EnrichedStructuredChunk,
+	type ChatHubProvider,
+	chatHubConversationModelSchema,
 } from '@n8n/api-types';
+import type { INode } from 'n8n-workflow';
 import { z } from 'zod';
+import { isLlmProviderModel } from './chat.utils';
 
 export interface UserMessage {
 	id: string;
@@ -47,26 +54,6 @@ export interface StreamOutput {
 	messages: StreamChunk[];
 }
 
-export type Suggestion = {
-	title: string;
-	subtitle: string;
-	icon?: string;
-};
-
-// From @n8n/chat
-export type ChunkType = 'begin' | 'item' | 'end' | 'error';
-export interface StructuredChunk {
-	type: ChunkType;
-	content?: string;
-	metadata: {
-		nodeId: string;
-		nodeName: string;
-		timestamp: number;
-		runIndex: number;
-		itemIndex: number;
-	};
-}
-
 export interface NodeStreamingState {
 	nodeId: string;
 	chunks: string[];
@@ -82,3 +69,36 @@ export interface GroupedConversations {
 	group: string;
 	sessions: ChatHubSessionDto[];
 }
+
+export interface ChatAgentFilter {
+	sortBy: 'updatedAt' | 'createdAt';
+	provider: 'custom-agent' | 'n8n' | '';
+	search: string;
+}
+
+export interface ChatStreamingState extends Partial<EnrichedStructuredChunk['metadata']> {
+	promptId: ChatMessageId;
+	sessionId: ChatSessionId;
+	model: ChatHubConversationModel;
+	retryOfMessageId: ChatMessageId | null;
+	tools: INode[];
+	agentName: string;
+}
+
+export interface FlattenedModel {
+	provider: ChatHubProvider | null;
+	model: string | null;
+	workflowId: string | null;
+	agentId: string | null;
+}
+
+export const chatHubConversationModelWithCachedDisplayNameSchema = chatHubConversationModelSchema
+	.and(z.object({ cachedDisplayName: z.string().optional() }))
+	.transform((value) => ({
+		...value,
+		cachedDisplayName: value.cachedDisplayName || (isLlmProviderModel(value) ? value.model : ''),
+	}));
+
+export type ChatHubConversationModelWithCachedDisplayName = z.infer<
+	typeof chatHubConversationModelWithCachedDisplayNameSchema
+>;

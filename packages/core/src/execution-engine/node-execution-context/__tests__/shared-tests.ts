@@ -14,6 +14,7 @@ import type {
 	ExecuteWorkflowData,
 	RelatedExecution,
 	IExecuteWorkflowInfo,
+	IExecutionContext,
 } from 'n8n-workflow';
 import { ApplicationError, NodeHelpers, WAIT_INDEFINITELY } from 'n8n-workflow';
 
@@ -45,6 +46,73 @@ export const describeCommonTests = (
 	describe('getExecutionCancelSignal', () => {
 		it('should return the abort signal', () => {
 			expect(context.getExecutionCancelSignal()).toBe(abortSignal);
+		});
+	});
+
+	describe('getExecutionContext', () => {
+		it('should return execution context when runtimeData exists', () => {
+			const mockContext: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual',
+				credentials: 'encrypted-credential-data',
+			};
+
+			runExecutionData.executionData = {
+				contextData: {},
+				runtimeData: mockContext,
+				nodeExecutionStack: [],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: null,
+			};
+
+			const result = context.getExecutionContext();
+
+			expect(result).toEqual(mockContext);
+			expect(result?.version).toBe(1);
+			expect(result?.establishedAt).toBeDefined();
+		});
+
+		it('should return undefined when executionData is not set', () => {
+			runExecutionData.executionData = undefined;
+
+			expect(context.getExecutionContext()).toBeUndefined();
+		});
+
+		it('should return undefined when runtimeData is not set', () => {
+			runExecutionData.executionData = {
+				contextData: {},
+				runtimeData: undefined,
+				nodeExecutionStack: [],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: null,
+			};
+
+			expect(context.getExecutionContext()).toBeUndefined();
+		});
+
+		it('should handle optional credentials field', () => {
+			const contextWithoutCredentials: IExecutionContext = {
+				version: 1,
+				establishedAt: Date.now(),
+				source: 'manual',
+			};
+
+			runExecutionData.executionData = {
+				contextData: {},
+				runtimeData: contextWithoutCredentials,
+				nodeExecutionStack: [],
+				metadata: {},
+				waitingExecution: {},
+				waitingExecutionSource: null,
+			};
+
+			const result = context.getExecutionContext();
+
+			expect(result).toEqual(contextWithoutCredentials);
+			expect(result?.credentials).toBeUndefined();
 		});
 	});
 
@@ -218,8 +286,7 @@ export const describeCommonTests = (
 
 			expect(result.data).toEqual(data);
 			expect(binaryDataService.duplicateBinaryData).toHaveBeenCalledWith(
-				workflow.id,
-				additionalData.executionId,
+				{ type: 'execution', workflowId: workflow.id, executionId: additionalData.executionId },
 				executeWorkflowData.data,
 			);
 		});

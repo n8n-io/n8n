@@ -3,10 +3,10 @@ import type { Router } from 'vue-router';
 import { useI18n } from '@n8n/i18n';
 import { type SourceControlledFile, SOURCE_CONTROL_FILE_STATUS } from '@n8n/api-types';
 import type { BaseTextKey } from '@n8n/i18n';
-import { VIEWS } from '@/constants';
+import { VIEWS } from '@/app/constants';
 import groupBy from 'lodash/groupBy';
-import type { useToast } from '@/composables/useToast';
-import { telemetry } from '@/plugins/telemetry';
+import type { useToast } from '@/app/composables/useToast';
+import { telemetry } from '@/app/plugins/telemetry';
 
 type SourceControlledFileStatus = SourceControlledFile['status'];
 
@@ -47,7 +47,7 @@ export const getPushPriorityByStatus = (status: SourceControlledFileStatus) =>
 	pushStatusPriority[status] ?? 0;
 
 const createVariablesToast = (router: Router) => {
-	const route = { name: VIEWS.VARIABLES, query: { incomplete: 'true' } };
+	const route = { name: VIEWS.PROJECTS_VARIABLES, query: { incomplete: 'true' } };
 	const { href } = router.resolve(route);
 
 	return {
@@ -98,6 +98,7 @@ const pullMessage = ({
 	variables,
 	workflow,
 	folders,
+	project,
 }: Partial<Record<SourceControlledFile['type'], SourceControlledFile[]>>) => {
 	const messages: string[] = [];
 
@@ -131,6 +132,10 @@ const pullMessage = ({
 		messages.push(i18n.baseText('generic.folders_plural'));
 	}
 
+	if (project?.length) {
+		messages.push(i18n.baseText('generic.projects'));
+	}
+
 	return [
 		new Intl.ListFormat(i18n.locale, { style: 'long', type: 'conjunction' }).format(messages),
 		'were pulled',
@@ -151,14 +156,14 @@ export const notifyUserAboutPullWorkFolderOutcome = async (
 		return;
 	}
 
-	const { credential, tags, variables, workflow, folders } = groupBy(files, 'type');
+	const { credential, tags, variables, workflow, folders, project } = groupBy(files, 'type');
 
 	const toastMessages = [
 		...(variables?.length ? [createVariablesToast(router)] : []),
 		...(credential?.length ? [createCredentialsToast(router)] : []),
 		{
 			title: i18n.baseText('settings.sourceControl.pull.success.title'),
-			message: pullMessage({ credential, tags, variables, workflow, folders }),
+			message: pullMessage({ credential, tags, variables, workflow, folders, project }),
 			type: 'success' as const,
 		},
 	];
