@@ -161,6 +161,19 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const workflowData = await workflowHelpers.getWorkflowDataToSave();
 
+			if (
+				rootStore.binaryDataMode === 'default' &&
+				workflowData.settings?.binaryMode === 'combined'
+			) {
+				toast.showMessage({
+					title: 'Unsuported Binary Mode',
+					message:
+						'Binary mode "combined" is not supported when filesystem mode is "default". Please change the binary mode to "separate" in workflow settings and update expressions that are referencing binary data accordingly.',
+					type: 'error',
+				});
+				return undefined;
+			}
+
 			const consolidatedData = consolidateRunDataAndStartNodes(
 				directParentNodes,
 				runData,

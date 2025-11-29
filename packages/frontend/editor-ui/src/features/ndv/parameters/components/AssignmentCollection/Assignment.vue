@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { useResolvedExpression } from '@/app/composables/useResolvedExpression';
-import { BINARY_DATA_ACCESS_TOOLTIP } from '@/app/constants';
 import { useNDVStore } from '@/features/ndv/shared/ndv.store';
 import useEnvironmentsStore from '@/features/settings/environments.ee/environments.store';
 import type { IUpdateInformation } from '@/Interface';
@@ -193,7 +192,7 @@ const onValueDrop = (droppedExpression: string) => {
 				<template v-if="!hideType" #middle>
 					<N8nTooltip placement="left" :disabled="assignment.type !== 'binary'">
 						<template #content>
-							{{ BINARY_DATA_ACCESS_TOOLTIP }}
+							{{ ndvStore.binaryDataAccessTooltip }}
 						</template>
 						<TypeSelect
 							:class="$style.select"
