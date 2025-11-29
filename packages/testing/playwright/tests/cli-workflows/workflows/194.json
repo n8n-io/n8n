@@ -20,7 +20,10 @@
 				"fromEmail": "node8qa@gmail.com",
 				"toEmail": "node8qa@gmail.com",
 				"templateId": "2850185",
-				"additionalFields": {}
+				"additionalFields": {
+					"customCampaign": "test-campaign",
+					"deduplicateCampaign": true,
+				}
 			},
 			"name": "Mailjet",
 			"type": "n8n-nodes-base.mailjet",
