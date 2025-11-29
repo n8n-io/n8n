@@ -359,7 +359,6 @@ export class WorkflowService {
 			'staticData',
 			'pinData',
 			'versionId',
-			'activeVersionId',
 			'description',
 			'updatedAt',
 		];
