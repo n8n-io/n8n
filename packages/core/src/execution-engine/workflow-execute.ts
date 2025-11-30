@@ -40,6 +40,7 @@ import type {
 	IWorkflowExecutionDataProcess,
 	EngineRequest,
 	EngineResponse,
+	IDestinationNode,
 } from 'n8n-workflow';
 import {
 	LoggerProxy as Logger,
@@ -108,14 +109,14 @@ export class WorkflowExecute {
 	run(
 		workflow: Workflow,
 		startNode?: INode,
-		destinationNode?: string,
+		destinationNode?: IDestinationNode,
 		pinData?: IPinData,
 		triggerToStartFrom?: IWorkflowExecutionDataProcess['triggerToStartFrom'],
 	): PCancelable<IRun> {
 		this.status = 'running';
 
 		// Get the nodes to start workflow execution from
-		startNode = startNode || workflow.getStartNode(destinationNode);
+		startNode = startNode || workflow.getStartNode(destinationNode?.nodeName);
 
 		if (startNode === undefined) {
 			throw new ApplicationError('No node to start the workflow from could be found');
@@ -124,8 +125,10 @@ export class WorkflowExecute {
 		// If a destination node is given we only run the direct parent nodes and no others
 		let runNodeFilter: string[] | undefined;
 		if (destinationNode) {
-			runNodeFilter = workflow.getParentNodes(destinationNode);
-			runNodeFilter.push(destinationNode);
+			runNodeFilter = workflow.getParentNodes(destinationNode.nodeName);
+			if (destinationNode.mode === 'inclusive') {
+				runNodeFilter.push(destinationNode.nodeName);
+			}
 		}
 
 		// Initialize the data of the start nodes
@@ -174,15 +177,15 @@ export class WorkflowExecute {
 		runData: IRunData,
 		pinData: IPinData = {},
 		dirtyNodeNames: string[] = [],
-		destinationNodeName: string,
+		destinationNode: IDestinationNode,
 		agentRequest?: AiAgentRequest,
 	): PCancelable<IRun> {
-		const originalDestination = destinationNodeName;
+		const originalDestination = { ...destinationNode };
 
-		let destination = workflow.getNode(destinationNodeName);
+		let destination = workflow.getNode(destinationNode.nodeName);
 		assert.ok(
 			destination,
-			`Could not find a node with the name ${destinationNodeName} in the workflow.`,
+			`Could not find a node with the name ${destinationNode.nodeName} in the workflow.`,
 		);
 
 		let graph = DirectedGraph.fromWorkflow(workflow);
@@ -201,53 +204,19 @@ export class WorkflowExecute {
 				throw new OperationalError('ToolExecutor can not be found');
 			}
 			destination = toolExecutorNode;
-			destinationNodeName = toolExecutorNode.name;
-		} else {
-			// Edge Case 1:
-			// Support executing a single node that is not connected to a trigger
-			const destinationHasNoParents = graph.getDirectParentConnections(destination).length === 0;
-			if (destinationHasNoParents) {
-				// short cut here, only create a subgraph and the stacks
-				graph = findSubgraph({
-					graph: filterDisabledNodes(graph),
-					destination,
-					trigger: destination,
-				});
-				const filteredNodes = graph.getNodes();
-				runData = cleanRunData(runData, graph, new Set([destination]));
-				const { nodeExecutionStack, waitingExecution, waitingExecutionSource } =
-					recreateNodeExecutionStack(graph, new Set([destination]), runData, pinData ?? {});
-
-				this.status = 'running';
-				this.runExecutionData = createRunExecutionData({
-					startData: {
-						destinationNode: destinationNodeName,
-						runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
-					},
-					resultData: {
-						runData,
-						pinData,
-					},
-					executionData: {
-						nodeExecutionStack,
-						waitingExecution,
-						waitingExecutionSource,
-					},
-				});
-
-				return this.processRunExecutionData(graph.toWorkflow({ ...workflow }));
-			}
+			// TODO(CAT-1265): Verify that this functionality works as expected.
+			destinationNode = { nodeName: toolExecutorNode.name, mode: 'inclusive' };
 		}
 
 		// 1. Find the Trigger
-		let trigger = findTriggerForPartialExecution(workflow, destinationNodeName, runData);
+		let trigger = findTriggerForPartialExecution(workflow, destinationNode.nodeName, runData);
 		if (trigger === undefined) {
 			// destination has parents but none of them are triggers, so find the closest
 			// parent node that has run data, and treat that parent as starting point
 
 			let startNode;
 
-			const parentNodes = workflow.getParentNodes(destinationNodeName);
+			const parentNodes = workflow.getParentNodes(destinationNode.nodeName);
 
 			for (const nodeName of parentNodes) {
 				if (runData[nodeName]) {
@@ -291,7 +260,7 @@ export class WorkflowExecute {
 		this.status = 'running';
 		this.runExecutionData = createRunExecutionData({
 			startData: {
-				destinationNode: destinationNodeName,
+				destinationNode,
 				originalDestinationNode: originalDestination,
 				runNodeFilter: Array.from(filteredNodes.values()).map((node) => node.name),
 			},
@@ -836,7 +805,7 @@ export class WorkflowExecute {
 		workflow: Workflow,
 		inputData: {
 			startNode?: string;
-			destinationNode?: string;
+			destinationNode?: IDestinationNode;
 			pinDataNodeNames?: string[];
 		} = {},
 	): IWorkflowIssues | null {
@@ -846,8 +815,10 @@ export class WorkflowExecute {
 		if (inputData.destinationNode) {
 			// If a destination node is given we have to check all the nodes
 			// leading up to it
-			checkNodes = workflow.getParentNodes(inputData.destinationNode);
-			checkNodes.push(inputData.destinationNode);
+			checkNodes = workflow.getParentNodes(inputData.destinationNode.nodeName);
+			if (inputData.destinationNode.mode === 'inclusive') {
+				checkNodes.push(inputData.destinationNode.nodeName);
+			}
 		} else if (inputData.startNode) {
 			// If a start node is given we have to check all nodes which
 			// come after it
@@ -1343,7 +1314,7 @@ export class WorkflowExecute {
 		// Trigger.
 		const startNode = this.runExecutionData.executionData.nodeExecutionStack.at(0)?.node.name;
 
-		let destinationNode: string | undefined;
+		let destinationNode: IDestinationNode | undefined;
 		if (this.runExecutionData.startData?.destinationNode) {
 			destinationNode = this.runExecutionData.startData.destinationNode;
 		}
@@ -1959,11 +1930,7 @@ export class WorkflowExecute {
 						break;
 					}
 
-					if (
-						this.runExecutionData.startData &&
-						this.runExecutionData.startData.destinationNode &&
-						this.runExecutionData.startData.destinationNode === executionNode.name
-					) {
+					if (this.runExecutionData?.startData?.destinationNode?.nodeName === executionNode.name) {
 						// Before stopping, make sure we are executing hooks so
 						// That frontend is notified for example for manual executions.
 						await hooks.runHook('nodeExecuteAfter', [

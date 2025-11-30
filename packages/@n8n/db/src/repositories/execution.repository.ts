@@ -29,10 +29,12 @@ import type {
 	ExecutionStatus,
 	ExecutionSummary,
 	IRunExecutionData,
+	IRunExecutionDataAll,
 } from 'n8n-workflow';
 import {
 	createEmptyRunExecutionData,
 	ManualExecutionCancelledError,
+	migrateRunExecutionData,
 	UnexpectedError,
 } from 'n8n-workflow';
 
@@ -196,9 +198,7 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		},
 	): Promise<IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[]> {
 		if (options?.includeData) {
-			if (!queryParams.relations) {
-				queryParams.relations = [];
-			}
+			queryParams.relations ??= [];
 
 			if (Array.isArray(queryParams.relations)) {
 				queryParams.relations.push('executionData', 'metadata');
@@ -210,35 +210,26 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 
 		const executions = await this.find(queryParams);
 
-		if (options?.includeData && options?.unflattenData) {
-			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
-			this.reportInvalidExecutions(invalid);
-			return valid.map((execution) => {
-				const { executionData, metadata, ...rest } = execution;
-				return {
-					...rest,
-					data: parse(executionData.data) as IRunExecutionData,
-					workflowData: executionData.workflowData,
-					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-				} as IExecutionResponse;
-			});
-		} else if (options?.includeData) {
-			const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
-			this.reportInvalidExecutions(invalid);
-			return valid.map((execution) => {
-				const { executionData, metadata, ...rest } = execution;
-				return {
-					...rest,
-					data: execution.executionData.data,
-					workflowData: execution.executionData.workflowData,
-					customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-				} as IExecutionFlattedDb;
-			});
+		const [valid, invalid] = separate(executions, (e) => e.executionData !== null);
+		this.reportInvalidExecutions(invalid);
+
+		if (!options?.includeData) {
+			// No data to include, so we exclude it and return early.
+			return executions.map((execution) => {
+				const { executionData, ...rest } = execution;
+				return rest;
+			}) as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[];
 		}
 
-		return executions.map((execution) => {
-			const { executionData, ...rest } = execution;
-			return rest;
+		return valid.map((execution) => {
+			const { executionData, metadata, ...rest } = execution;
+			const data = this.handleExecutionRunData(executionData.data, options);
+			return {
+				...rest,
+				data,
+				workflowData: executionData.workflowData,
+				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
+			};
 		}) as IExecutionFlattedDb[] | IExecutionResponse[] | IExecutionBase[];
 	}
 
@@ -339,15 +330,23 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			});
 		}
 
+		if (!options?.includeData) {
+			// Not including run data, so return early.
+			const { executionData, ...rest } = execution;
+			return {
+				...rest,
+				...(options?.includeAnnotation &&
+					serializedAnnotation && { annotation: serializedAnnotation }),
+			} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
+		}
+
+		// Include the run data.
+		const data = this.handleExecutionRunData(executionData.data, options);
 		return {
 			...rest,
-			...(options?.includeData && {
-				data: options?.unflattenData
-					? (parse(executionData.data) as IRunExecutionData)
-					: executionData.data,
-				workflowData: executionData?.workflowData,
-				customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
-			}),
+			data,
+			workflowData: executionData.workflowData,
+			customData: Object.fromEntries(metadata.map((m) => [m.key, m.value])),
 			...(options?.includeAnnotation &&
 				serializedAnnotation && { annotation: serializedAnnotation }),
 		} as IExecutionFlattedDb | IExecutionResponse | IExecutionBase;
@@ -804,7 +803,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 	async stopDuringRun(execution: IExecutionResponse) {
 		const error = new ManualExecutionCancelledError(execution.id);
 
-		execution.data ??= createEmptyRunExecutionData();
+		execution.data = execution.data || createEmptyRunExecutionData();
+
 		execution.data.resultData.error = {
 			...error,
 			message: error.message,
@@ -1163,5 +1163,22 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		});
 
 		return concurrentExecutionsCount;
+	}
+
+	private handleExecutionRunData(
+		data: string,
+		options: { unflattenData?: boolean } = {},
+	): IRunExecutionData | string | undefined {
+		if (options.unflattenData) {
+			// Parse the serialized data.
+			const deserializedData: unknown = parse(data);
+			// If it parses to an object, migrate and return it.
+			if (deserializedData) {
+				return migrateRunExecutionData(deserializedData as IRunExecutionDataAll);
+			}
+			return undefined;
+		}
+		// Just return the string data as-is.
+		return data;
 	}
 }

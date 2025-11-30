@@ -799,6 +799,7 @@
       "dist/nodes/TheHiveProject/TheHiveProjectTrigger.node.js",
       "dist/nodes/TheHive/TheHive.node.js",
       "dist/nodes/TheHive/TheHiveTrigger.node.js",
+      "dist/nodes/TimeSaved/TimeSaved.node.js",
       "dist/nodes/TimescaleDb/TimescaleDb.node.js",
       "dist/nodes/Todoist/Todoist.node.js",
       "dist/nodes/Toggl/TogglTrigger.node.js",

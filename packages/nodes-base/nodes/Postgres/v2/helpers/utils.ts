@@ -6,7 +6,7 @@ import type {
 	INodePropertyOptions,
 	NodeParameterValueType,
 } from 'n8n-workflow';
-import { NodeOperationError, jsonParse } from 'n8n-workflow';
+import { NodeOperationError, deepCopy, jsonParse } from 'n8n-workflow';
 
 import type {
 	ColumnInfo,
@@ -570,6 +570,7 @@ export const configureTableSchemaUpdater = (initialSchema: string, initialTable:
  * @param schema table schema
  * @param node INode
  * @param itemIndex the index of the current item
+ * @returns a new data object with the arrays converted to postgres format
  */
 export const convertArraysToPostgresFormat = (
 	data: IDataObject,
@@ -577,10 +578,11 @@ export const convertArraysToPostgresFormat = (
 	node: INode,
 	itemIndex = 0,
 ) => {
+	const newData = deepCopy(data);
 	for (const columnInfo of schema) {
-		//in case column type is array we need to convert it to fornmat that postgres understands
+		// in case column type is array we need to convert it to fornmat that postgres understands
 		if (columnInfo.data_type.toUpperCase() === 'ARRAY') {
-			let columnValue = data[columnInfo.column_name];
+			let columnValue = newData[columnInfo.column_name];
 
 			if (typeof columnValue === 'string') {
 				columnValue = jsonParse(columnValue);
@@ -607,8 +609,8 @@ export const convertArraysToPostgresFormat = (
 					return entry;
 				});
 
-				//wrap in {} instead of [] as postgres does and join with ,
-				data[columnInfo.column_name] = `{${arrayEntries.join(',')}}`;
+				// wrap in {} instead of [] as postgres does and join with ,
+				newData[columnInfo.column_name] = `{${arrayEntries.join(',')}}`;
 			} else {
 				if (columnInfo.is_nullable === 'NO') {
 					throw new NodeOperationError(
@@ -622,4 +624,6 @@ export const convertArraysToPostgresFormat = (
 			}
 		}
 	}
+
+	return newData;
 };

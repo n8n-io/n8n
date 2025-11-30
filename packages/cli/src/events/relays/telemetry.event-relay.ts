@@ -103,6 +103,7 @@ export class TelemetryEventRelay extends EventRelay {
 			'user-retrieved-execution': (event) => this.userRetrievedExecution(event),
 			'user-retrieved-all-executions': (event) => this.userRetrievedAllExecutions(event),
 			'user-retrieved-workflow': (event) => this.userRetrievedWorkflow(event),
+			'user-retrieved-workflow-version': (event) => this.userRetrievedWorkflowVersion(event),
 			'user-retrieved-all-workflows': (event) => this.userRetrievedAllWorkflows(event),
 			'user-updated': (event) => this.userUpdated(event),
 			'user-deleted': (event) => this.userDeleted(event),
@@ -812,14 +813,13 @@ export class TelemetryEventRelay extends EventRelay {
 							manualExecEventProperties.is_managed = credential.isManaged;
 						}
 					}
-
 					const telemetryPayload: ITelemetryTrackProperties = {
 						...manualExecEventProperties,
 						node_type: TelemetryHelpers.getNodeTypeForName(
 							workflow,
-							runData.data.startData?.destinationNode,
+							runData.data.startData?.destinationNode.nodeName,
 						)?.type,
-						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode],
+						node_id: nodeGraphResult.nameIndices[runData.data.startData?.destinationNode.nodeName],
 					};
 
 					this.telemetry.track('Manual node exec finished', telemetryPayload);
@@ -937,7 +937,7 @@ export class TelemetryEventRelay extends EventRelay {
 		this.telemetry.track('Workflow first prod success', {
 			project_id: projectId,
 			workflow_id: workflowId,
-			user_id: userId,
+			user_id: userId ?? undefined,
 		});
 	}
 
@@ -1010,6 +1010,16 @@ export class TelemetryEventRelay extends EventRelay {
 
 	private userRetrievedWorkflow({ userId, publicApi }: RelayEventMap['user-retrieved-workflow']) {
 		this.telemetry.track('User retrieved workflow', {
+			user_id: userId,
+			public_api: publicApi,
+		});
+	}
+
+	private userRetrievedWorkflowVersion({
+		userId,
+		publicApi,
+	}: RelayEventMap['user-retrieved-workflow-version']) {
+		this.telemetry.track('User retrieved workflow version', {
 			user_id: userId,
 			public_api: publicApi,
 		});

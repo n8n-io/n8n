@@ -106,6 +106,7 @@ describe('GlobalConfig', () => {
 		},
 		credentials: {
 			defaultName: 'My credentials',
+			disableSharing: false,
 			overwrite: {
 				data: '{}',
 				endpoint: '',
@@ -185,6 +186,8 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: false,
+			disableSharing: false,
+			minScheduleIntervalSeconds: 300,
 			draftPublishEnabled: false,
 		},
 		endpoints: {
