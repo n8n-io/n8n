@@ -197,14 +197,14 @@ export function prepareFormData({
 	}
 
 	for (const [index, field] of formFields.entries()) {
-		const { fieldType, requiredField, multiselect, placeholder } = field;
+		const { fieldType, requiredField, multiselect, placeholder, defaultValue } = field;
 
 		const input: FormField = {
 			id: `field-${index}`,
 			errorId: `error-field-${index}`,
 			label: field.fieldLabel,
 			inputRequired: requiredField ? 'form-required' : '',
-			defaultValue: query[field.fieldLabel] ?? '',
+			defaultValue: query[field.fieldLabel] ?? defaultValue ?? '',
 			placeholder,
 		};
 
@@ -336,8 +336,9 @@ export function addFormResponseDataToReturnItem(
 				value = value[0];
 			}
 		}
-		if (field.fieldType === 'date' && value && field.formatDate !== '') {
-			value = DateTime.fromFormat(String(value), 'yyyy-mm-dd').toFormat(field.formatDate as string);
+		if (field.fieldType === 'date' && value && field.formatDate) {
+			const datetime = DateTime.fromFormat(String(value), 'yyyy-mm-dd');
+			value = datetime.toFormat(field.formatDate as string);
 		}
 		if (field.fieldType === 'file' && field.multipleFiles && !Array.isArray(value)) {
 			value = [value];

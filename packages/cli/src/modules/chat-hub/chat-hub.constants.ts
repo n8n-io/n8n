@@ -4,7 +4,7 @@ import type { INodeTypeNameVersion } from 'n8n-workflow';
 export const CONVERSATION_TITLE_GENERATION_PROMPT = `Generate a concise, descriptive title for this conversation based on the user's message.
 
 Requirements:
-- 3 to 5 words
+- 2 to 5 words
 - Use normal sentence case (not title case)
 - No quotation marks
 - Only output the title, nothing else
@@ -14,7 +14,7 @@ Requirements:
 export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVersion> = {
 	openai: {
 		name: '@n8n/n8n-nodes-langchain.lmChatOpenAi',
-		version: 1.2,
+		version: 1.3,
 	},
 	anthropic: {
 		name: '@n8n/n8n-nodes-langchain.lmChatAnthropic',
@@ -23,6 +23,50 @@ export const PROVIDER_NODE_TYPE_MAP: Record<ChatHubLLMProvider, INodeTypeNameVer
 	google: {
 		name: '@n8n/n8n-nodes-langchain.lmChatGoogleGemini',
 		version: 1.2,
+	},
+	ollama: {
+		name: '@n8n/n8n-nodes-langchain.lmOllama',
+		version: 1,
+	},
+	azureOpenAi: {
+		name: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+		version: 1,
+	},
+	azureEntraId: {
+		name: '@n8n/n8n-nodes-langchain.lmChatAzureOpenAi',
+		version: 1,
+	},
+	awsBedrock: {
+		name: '@n8n/n8n-nodes-langchain.lmChatAwsBedrock',
+		version: 1.1,
+	},
+	vercelAiGateway: {
+		name: '@n8n/n8n-nodes-langchain.lmChatVercelAiGateway',
+		version: 1,
+	},
+	xAiGrok: {
+		name: '@n8n/n8n-nodes-langchain.lmChatXAiGrok',
+		version: 1,
+	},
+	groq: {
+		name: '@n8n/n8n-nodes-langchain.lmChatGroq',
+		version: 1,
+	},
+	openRouter: {
+		name: '@n8n/n8n-nodes-langchain.lmChatOpenRouter',
+		version: 1,
+	},
+	deepSeek: {
+		name: '@n8n/n8n-nodes-langchain.lmChatDeepSeek',
+		version: 1,
+	},
+	cohere: {
+		name: '@n8n/n8n-nodes-langchain.lmChatCohere',
+		version: 1,
+	},
+	mistralCloud: {
+		name: '@n8n/n8n-nodes-langchain.lmChatMistralCloud',
+		version: 1,
 	},
 };
 
@@ -34,6 +78,7 @@ export const NODE_NAMES = {
 	MEMORY: 'Memory',
 	RESTORE_CHAT_MEMORY: 'Restore Chat Memory',
 	CLEAR_CHAT_MEMORY: 'Clear Chat Memory',
+	MERGE: 'Merge',
 } as const;
 
 /* eslint-disable @typescript-eslint/naming-convention */

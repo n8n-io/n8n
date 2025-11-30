@@ -5,6 +5,7 @@ import { createOwner, createUser } from './shared/db/users';
 import { createWorkflowHistoryItem } from './shared/db/workflow-history';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
+import { createWorkflowPublishHistoryItem } from '@test-integration/db/workflow-publish-history';
 
 let owner: User;
 let authOwnerAgent: SuperAgentTest;
@@ -148,6 +149,32 @@ describe('GET /workflow-history/:workflowId', () => {
 		expect(resp.body.data).toHaveLength(5);
 		expect(resp.body.data[0]).toEqual(last);
 	});
+	test('should include workflowPublishHistory records related to each history item', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const v1 = await createWorkflowHistoryItem(workflow.id);
+		const v2 = await createWorkflowHistoryItem(workflow.id);
+		const wph1 = await createWorkflowPublishHistoryItem(v1);
+		const wph2 = await createWorkflowPublishHistoryItem(v1, { event: 'deactivated' });
+		const wph3 = await createWorkflowPublishHistoryItem(v2);
+
+		const resp = await authOwnerAgent.get(`/workflow-history/workflow/${workflow.id}`);
+
+		expect(resp.status).toBe(200);
+		expect(resp.body.data[0].workflowPublishHistory).toHaveLength(1);
+		expect(resp.body.data[0].workflowPublishHistory).toContainEqual({
+			...wph3,
+			createdAt: wph3.createdAt.toISOString(),
+		});
+		expect(resp.body.data[1].workflowPublishHistory).toHaveLength(2);
+		expect(resp.body.data[1].workflowPublishHistory).toContainEqual({
+			...wph1,
+			createdAt: wph1.createdAt.toISOString(),
+		});
+		expect(resp.body.data[1].workflowPublishHistory).toContainEqual({
+			...wph2,
+			createdAt: wph2.createdAt.toISOString(),
+		});
+	});
 });
 
 describe('GET /workflow-history/workflow/:workflowId/version/:versionId', () => {
@@ -200,5 +227,29 @@ describe('GET /workflow-history/workflow/:workflowId/version/:versionId', () => 
 			`/workflow-history/workflow/${workflowMember.id}/version/${version.versionId}`,
 		);
 		expect(resp.status).toBe(404);
+	});
+	test('should include workflowPublishHistory records related to history item', async () => {
+		const workflow = await createWorkflow(undefined, owner);
+		const v1 = await createWorkflowHistoryItem(workflow.id);
+		const v2 = await createWorkflowHistoryItem(workflow.id);
+		const wph1 = await createWorkflowPublishHistoryItem(v1);
+		const wph2 = await createWorkflowPublishHistoryItem(v1, { event: 'deactivated' });
+		await createWorkflowPublishHistoryItem(v2);
+
+		const resp = await authOwnerAgent.get(
+			`/workflow-history/workflow/${workflow.id}/version/${v1.versionId}`,
+		);
+		expect(resp.status).toBe(200);
+		expect(resp.body.data).toEqual({
+			...v1,
+			createdAt: v1.createdAt.toISOString(),
+			updatedAt: v1.updatedAt.toISOString(),
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+			workflowPublishHistory: expect.arrayContaining([
+				{ ...wph1, createdAt: wph1.createdAt.toISOString() },
+				{ ...wph2, createdAt: wph2.createdAt.toISOString() },
+			]),
+		});
+		expect(resp.body.data.workflowPublishHistory).toHaveLength(2);
 	});
 });

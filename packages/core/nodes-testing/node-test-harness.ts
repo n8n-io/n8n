@@ -7,12 +7,16 @@ import isEmpty from 'lodash/isEmpty';
 import type {
 	ICredentialDataDecryptedObject,
 	IRun,
-	IRunExecutionData,
 	IWorkflowBase,
 	IWorkflowExecuteAdditionalData,
 	WorkflowTestData,
 } from 'n8n-workflow';
-import { createDeferredPromise, UnexpectedError, Workflow } from 'n8n-workflow';
+import {
+	createDeferredPromise,
+	createRunExecutionData,
+	UnexpectedError,
+	Workflow,
+} from 'n8n-workflow';
 import nock from 'nock';
 import { readFileSync, mkdtempSync, existsSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -219,14 +223,8 @@ export class NodeTestHarness {
 		additionalData.credentialsHelper = credentialsHelper;
 
 		let executionData: IRun;
-		const runExecutionData: IRunExecutionData = {
-			resultData: {
-				runData: {},
-			},
+		const runExecutionData = createRunExecutionData({
 			executionData: {
-				metadata: {},
-				contextData: {},
-				waitingExecution: {},
 				waitingExecutionSource: null,
 				nodeExecutionStack: [
 					{
@@ -238,7 +236,7 @@ export class NodeTestHarness {
 					},
 				],
 			},
-		};
+		});
 
 		const workflowExecute = new WorkflowExecute(additionalData, executionMode, runExecutionData);
 		executionData = await workflowExecute.processRunExecutionData(workflowInstance);

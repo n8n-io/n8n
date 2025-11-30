@@ -249,9 +249,7 @@ describe('WorkflowRepository', () => {
 				}),
 			);
 
-			expect(queryBuilder.andWhere).toHaveBeenCalledWith('workflow.active = :active', {
-				active: true,
-			});
+			expect(queryBuilder.andWhere).toHaveBeenCalledWith('workflow.activeVersionId IS NOT NULL');
 
 			expect(queryBuilder.innerJoin).toHaveBeenCalledWith('workflow.shared', 'shared');
 			expect(queryBuilder.andWhere).toHaveBeenCalledWith('shared.projectId = :projectId', {
@@ -261,6 +259,49 @@ describe('WorkflowRepository', () => {
 			// Check pagination
 			expect(queryBuilder.skip).toHaveBeenCalledWith(0);
 			expect(queryBuilder.take).toHaveBeenCalledWith(10);
+		});
+	});
+
+	describe('applyActiveVersionRelation', () => {
+		it('should join activeVersion relation when select.activeVersion is true', async () => {
+			const workflowIds = ['workflow1'];
+			const options = {
+				select: { activeVersion: true } as const,
+			};
+
+			await workflowRepository.getMany(workflowIds, options);
+
+			expect(queryBuilder.leftJoin).toHaveBeenCalledWith('workflow.activeVersion', 'activeVersion');
+			expect(queryBuilder.addSelect).toHaveBeenCalledWith([
+				'activeVersion.versionId',
+				'activeVersion.nodes',
+				'activeVersion.connections',
+			]);
+		});
+
+		it('should not join activeVersion relation by default when select is undefined', async () => {
+			const workflowIds = ['workflow1'];
+
+			await workflowRepository.getMany(workflowIds, {});
+
+			const leftJoinCalls = (queryBuilder.leftJoin as jest.Mock).mock.calls.filter(
+				(call) => call[0] === 'workflow.activeVersion',
+			);
+			expect(leftJoinCalls).toHaveLength(0);
+		});
+
+		it('should not join activeVersion relation when activeVersion is not in select', async () => {
+			const workflowIds = ['workflow1'];
+			const options = {
+				select: { name: true, createdAt: true } as const,
+			};
+
+			await workflowRepository.getMany(workflowIds, options);
+
+			const leftJoinCalls = (queryBuilder.leftJoin as jest.Mock).mock.calls.filter(
+				(call) => call[0] === 'workflow.activeVersion',
+			);
+			expect(leftJoinCalls).toHaveLength(0);
 		});
 	});
 });
