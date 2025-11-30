@@ -1,6 +1,6 @@
-import { AgentExecutor } from 'langchain/agents';
-import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
-import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
+import { AgentExecutor } from '@langchain/classic/agents';
+import type { OpenAIToolType } from '@langchain/classic/dist/experimental/openai_assistant/schema';
+import { OpenAIAssistantRunnable } from '@langchain/classic/experimental/openai_assistant';
 import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,

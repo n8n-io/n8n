@@ -8,9 +8,9 @@ import {
 	AgentExecutor,
 	type AgentRunnableSequence,
 	createToolCallingAgent,
-} from 'langchain/agents';
-import type { BaseChatMemory } from 'langchain/memory';
-import type { DynamicStructuredTool, Tool } from 'langchain/tools';
+} from '@langchain/classic/agents';
+import type { BaseChatMemory } from '@langchain/classic/memory';
+import type { DynamicStructuredTool, Tool } from '@langchain/classic/tools';
 import omit from 'lodash/omit';
 import { jsonParse, NodeOperationError, sleep } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeExecutionData, ISupplyDataFunctions } from 'n8n-workflow';

@@ -1,7 +1,7 @@
 import type { Embeddings } from '@langchain/core/embeddings';
 import type { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { VectorStore } from '@langchain/core/vectorstores';
-import { DynamicTool } from 'langchain/tools';
+import { DynamicTool } from '@langchain/classic/tools';
 import { NodeConnectionTypes, type ISupplyDataFunctions, type SupplyData } from 'n8n-workflow';
 
 import { getMetadataFiltersValues } from '@utils/helpers';

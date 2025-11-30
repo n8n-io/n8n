@@ -1,4 +1,4 @@
-import { DynamicStructuredTool } from 'langchain/tools';
+import { DynamicStructuredTool } from '@langchain/classic/tools';
 import { NodeConnectionTypes } from 'n8n-workflow';
 import { z } from 'zod';
 

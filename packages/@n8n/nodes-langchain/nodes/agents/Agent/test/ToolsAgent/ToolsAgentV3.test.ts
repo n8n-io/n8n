@@ -20,7 +20,7 @@ jest.mock('../../agents/ToolsAgent/V3/helpers', () => ({
 }));
 
 // Mock langchain modules
-jest.mock('langchain/agents', () => ({
+jest.mock('@langchain/classic/agents', () => ({
 	createToolCallingAgent: jest.fn(),
 }));
 

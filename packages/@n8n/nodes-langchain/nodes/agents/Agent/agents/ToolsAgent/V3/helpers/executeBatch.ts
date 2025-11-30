@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import type { AgentRunnableSequence } from 'langchain/agents';
-import type { BaseChatMemory } from 'langchain/memory';
+import type { AgentRunnableSequence } from '@langchain/classic/agents';
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import { NodeOperationError } from 'n8n-workflow';
 import type {
 	IExecuteFunctions,

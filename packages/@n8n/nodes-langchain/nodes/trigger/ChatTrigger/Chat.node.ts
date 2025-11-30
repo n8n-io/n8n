@@ -1,5 +1,5 @@
 /* eslint-disable n8n-nodes-base/node-dirname-against-convention */
-import type { BaseChatMemory } from 'langchain/memory';
+import type { BaseChatMemory } from '@langchain/classic/memory';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	CHAT_WAIT_USER_REPLY,
@@ -291,7 +291,7 @@ export class Chat implements INodeType {
 				| undefined;
 
 			if (memory) {
-				await memory.chatHistory.addAIChatMessage(message);
+				await memory.chatHistory.addAIMessage(message);
 			}
 		}
 

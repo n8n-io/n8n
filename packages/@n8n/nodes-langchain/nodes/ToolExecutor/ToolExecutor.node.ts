@@ -1,5 +1,5 @@
 import { Tool, StructuredTool } from '@langchain/core/tools';
-import type { Toolkit } from 'langchain/agents';
+import type { Toolkit } from '@langchain/classic/agents';
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
