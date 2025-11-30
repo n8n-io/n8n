@@ -1,4 +1,5 @@
 import type {
+	IBinaryData,
 	IDataObject,
 	IExecuteFunctions,
 	INodeExecutionData,
@@ -127,7 +128,7 @@ const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 				description:
-					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated. Reference embedded images or other content within the body of an email message, e.g. &lt;img src="cid:image_1"&gt;',
+					'Name of the binary properties that contain data to add to email as attachment. Multiple ones can be comma-separated (e.g., "data, file1, file2"). You can also use expressions to reference binary data from other nodes, e.g., ={{ $("NodeName").item.binary.data }}. Reference embedded images in HTML emails using &lt;img src="cid:property_name"&gt;',
 			},
 			{
 				displayName: 'CC Email',
@@ -235,18 +236,44 @@ export async function execute(this: IExecuteFunctions): Promise<INodeExecutionDa
 
 			if (options.attachments && item.binary) {
 				const attachments = [];
-				const attachmentProperties: string[] = options.attachments
-					.split(',')
-					.map((propertyName) => {
-						return propertyName.trim();
-					});
 
-				for (const propertyName of attachmentProperties) {
-					const binaryData = this.helpers.assertBinaryData(itemIndex, propertyName);
+				// Handle both string property names and expression-resolved binary data
+				let attachmentItems: Array<string | IBinaryData> = [];
+
+				if (typeof options.attachments === 'string') {
+					// Traditional comma-separated property names: "data, file1, file2"
+					attachmentItems = options.attachments
+						.split(',')
+						.map((propertyName) => propertyName.trim())
+						.filter((name) => name !== '');
+				} else if (options.attachments && typeof options.attachments === 'object') {
+					// Expression resolved to binary data object or array
+					if (Array.isArray(options.attachments)) {
+						attachmentItems = options.attachments;
+					} else {
+						attachmentItems = [options.attachments];
+					}
+				}
+
+				for (const item of attachmentItems) {
+					let binaryData;
+					let cidValue: string;
+
+					if (typeof item === 'string') {
+						// String property name - look up in current input's binary data
+						binaryData = this.helpers.assertBinaryData(itemIndex, item);
+						cidValue = item;
+					} else {
+						// Binary data object from expression
+						// assertBinaryData handles IBinaryData objects already
+						binaryData = this.helpers.assertBinaryData(itemIndex, item);
+						cidValue = binaryData.fileName || 'attachment';
+					}
+
 					attachments.push({
 						filename: binaryData.fileName || 'unknown',
-						content: await this.helpers.getBinaryDataBuffer(itemIndex, propertyName),
-						cid: propertyName,
+						content: await this.helpers.getBinaryDataBuffer(itemIndex, binaryData),
+						cid: cidValue,
 					});
 				}
 
