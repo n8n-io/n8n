@@ -223,20 +223,23 @@ export class Gotify implements INodeType {
 							message,
 						};
 
+						// set body.extras if needed
 						if (options.contentType || additionalFields.url) {
-							body.extras = body.extras || {};
+							const extras: IDataObject = {};
 
 							if (options.contentType) {
-								(body.extras as IDataObject)['client::display'] = {
+								extras['client::display'] = {
 									contentType: options.contentType,
 								};
 							}
 
 							if (additionalFields.url) {
-								(body.extras as IDataObject)['client::notification'] = {
+								extras['client::notification'] = {
 									click: { url: additionalFields.url },
 								};
 							}
+
+							body.extras = extras;
 						}
 
 						// add other additionalFields (title & priority) directly to the root of the body
