@@ -821,7 +821,12 @@ function handleSelectAction(params: INodeParameters) {
 			@switch-selected-node="onSwitchSelectedNode"
 			@open-connection-node-creator="onOpenConnectionNodeCreator"
 		/>
-		<N8nBlockUi :show="blockUI" />
+		<N8nBlockUi
+			:show="blockUI"
+			:class="{
+				[$style.uiBlockerNdvV2]: isNdvV2,
+			}"
+		/>
 		<CommunityNodeFooter
 			v-if="openPanel === 'settings' && isCommunityNode"
 			:package-name="packageName"
@@ -849,6 +854,10 @@ function handleSelectAction(params: INodeParameters) {
 		font-weight: var(--font-weight--bold);
 		color: var(--color--text--tint-1);
 	}
+}
+
+.uiBlockerNdvV2 {
+	border-radius: 0;
 }
 </style>
 

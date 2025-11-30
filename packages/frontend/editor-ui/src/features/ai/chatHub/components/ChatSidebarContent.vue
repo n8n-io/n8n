@@ -17,6 +17,7 @@ import { useIntersectionObserver } from '@vueuse/core';
 import ChatSessionMenuItem from './ChatSessionMenuItem.vue';
 import SkeletonMenuItem from './SkeletonMenuItem.vue';
 import { useTelemetry } from '@/app/composables/useTelemetry';
+import { type ChatHubSessionDto } from '@n8n/api-types';
 import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import { useI18n } from '@n8n/i18n';
 
@@ -43,7 +44,19 @@ const currentSessionId = computed(() =>
 	typeof route.params.id === 'string' ? route.params.id : undefined,
 );
 
-const groupedConversations = computed(() => groupConversationsByDate(chatStore.sessions));
+const groupedConversations = computed(() =>
+	groupConversationsByDate(
+		(chatStore.sessions.ids ?? []).reduce<ChatHubSessionDto[]>((acc, id) => {
+			const session = chatStore.sessions.byId[id];
+
+			if (session) {
+				acc.push(session);
+			}
+
+			return acc;
+		}, []),
+	),
+);
 
 function handleStartRename(sessionId: string) {
 	renamingSessionId.value = sessionId;
