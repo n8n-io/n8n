@@ -143,6 +143,7 @@ export = {
 					req.user,
 					workflowId,
 					versionId,
+					{ includePublishHistory: false },
 				);
 
 				Container.get(EventService).emit('user-retrieved-workflow-version', {
