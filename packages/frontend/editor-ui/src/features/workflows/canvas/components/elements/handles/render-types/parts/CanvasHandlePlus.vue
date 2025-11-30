@@ -109,7 +109,7 @@ function onClick(event: MouseEvent) {
 			:y1="linePosition[0][1]"
 			:x2="linePosition[1][0]"
 			:y2="linePosition[1][1]"
-			stroke="var(--color--foreground--shade-2)"
+			stroke="light-dark(var(--color--neutral-250), var(--color--neutral-700))"
 			stroke-width="2"
 		/>
 		<g
@@ -124,13 +124,14 @@ function onClick(event: MouseEvent) {
 				y="2"
 				width="20"
 				height="20"
-				stroke="var(--color--foreground--shade-2)"
+				stroke="light-dark(var(--color--neutral-250), var(--color--neutral-850))"
 				stroke-width="2"
 				rx="4"
-				fill="var(--color--foreground--tint-2)"
+				fill="light-dark(var(--color--neutral-250), var(--color--neutral-850))"
 			/>
 			<path
 				stroke="currentColor"
+				stroke-width="1.5"
 				stroke-linecap="round"
 				stroke-linejoin="round"
 				d="M8 12h8m-4-4v8"
@@ -154,22 +155,6 @@ function onClick(event: MouseEvent) {
 		transform-origin: top center;
 	}
 
-	&.secondary {
-		.line {
-			stroke: var(--node-type--supplemental--color);
-		}
-
-		.plus {
-			path {
-				fill: var(--node-type--supplemental--color);
-			}
-
-			rect {
-				stroke: var(--node-type--supplemental--color);
-			}
-		}
-	}
-
 	&.success {
 		.line {
 			stroke: var(--color--success);
@@ -177,8 +162,11 @@ function onClick(event: MouseEvent) {
 	}
 
 	.plus {
+		color: light-dark(var(--color--neutral-white), var(--color--neutral-300));
+
 		&:hover {
 			cursor: pointer;
+			color: var(--color--neutral-white);
 
 			path {
 				fill: var(--color--primary);
@@ -186,6 +174,7 @@ function onClick(event: MouseEvent) {
 
 			rect {
 				stroke: var(--color--primary);
+				fill: var(--color--primary);
 			}
 		}
 	}

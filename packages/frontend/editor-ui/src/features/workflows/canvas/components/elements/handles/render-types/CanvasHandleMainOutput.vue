@@ -131,7 +131,7 @@ function onClickAdd() {
 	transform: translate(0, -50%) scale(var(--canvas-zoom-compensation-factor, 1));
 	transform-origin: center left;
 	font-size: var(--font-size--2xs);
-	color: var(--color--foreground--shade-2);
+	color: var(--canvas-label--color);
 }
 
 .runDataLabel {

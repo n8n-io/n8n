@@ -52,7 +52,7 @@ watch(
 	{ immediate: true },
 );
 
-const renderToolbar = computed(() => (props.selected || delayedHovered.value) && !props.readOnly);
+const renderToolbar = computed(() => delayedHovered.value && !props.readOnly);
 
 const isMainConnection = computed(() => data.value.source.type === NodeConnectionTypes.Main);
 
@@ -63,22 +63,22 @@ const edgeColor = computed(() => {
 		return 'var(--color--success)';
 	} else if (status.value === 'pinned') {
 		return 'var(--color--secondary)';
-	} else if (!isMainConnection.value) {
-		return 'var(--node-type--supplemental--color)';
 	} else if (props.selected) {
-		return 'var(--color--background--shade-2)';
+		return 'light-dark(var(--color--neutral-500), var(--color--neutral-400))';
 	} else {
-		return 'var(--color--foreground--shade-2)';
+		return 'light-dark(var(--color--neutral-250), var(--color--neutral-700))';
 	}
 });
 
 const edgeStyle = computed(() => ({
 	...props.style,
-	...(isMainConnection.value ? {} : { strokeDasharray: '8,8' }),
+	...(isMainConnection.value ? {} : { strokeDasharray: '5,6' }),
 }));
 
 const edgeStroke = computed(() =>
-	delayedHovered.value ? 'var(--color--primary)' : edgeColor.value,
+	delayedHovered.value
+		? 'light-dark(var(--color--neutral-500), var(--color--neutral-400))'
+		: edgeColor.value,
 );
 
 const edgeClasses = computed(() => ({
@@ -149,7 +149,7 @@ function onEdgeLabelMouseLeave() {
 			:class="edgeClasses"
 			:style="edgeStyle"
 			:path="segment[0]"
-			:marker-end="markerEnd"
+			:marker-end="isMainConnection ? markerEnd : undefined"
 			:interaction-width="40"
 		/>
 	</g>
@@ -205,13 +205,8 @@ function onEdgeLabelMouseLeave() {
 .edgeLabel {
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: scale(var(--canvas-zoom-compensation-factor, 1)) translate(0, var(--label-translate-y));
-	color: var(--color--text);
+	color: var(--canvas-label--color);
 	font-size: var(--font-size--xs);
-	background-color: hsla(
-		var(--canvas--color--background--h),
-		var(--canvas--color--background--s),
-		var(--canvas--color--background--l),
-		0.85
-	);
+	background-color: var(--canvas--label--color--background);
 }
 </style>
