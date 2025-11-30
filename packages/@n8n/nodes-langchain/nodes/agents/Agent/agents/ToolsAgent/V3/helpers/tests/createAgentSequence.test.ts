@@ -8,7 +8,7 @@ import type { Tool } from '@langchain/classic/tools';
 import * as commonHelpers from '../../../common';
 import { createAgentSequence } from '../createAgentSequence';
 
-jest.mock('langchain/agents', () => ({
+jest.mock('@langchain/classic/agents', () => ({
 	createToolCallingAgent: jest.fn(),
 }));
 

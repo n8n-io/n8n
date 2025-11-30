@@ -11,7 +11,7 @@ function createTestEmbedding(dimensions = 1536, initialValue = 0.1, multiplier =
 	return new Array(dimensions).fill(initialValue).map((value) => value * multiplier);
 }
 
-jest.mock('langchain/vectorstores/memory', () => {
+jest.mock('@langchain/classic/vectorstores/memory', () => {
 	return {
 		MemoryVectorStore: {
 			fromExistingIndex: jest.fn().mockImplementation(() => {

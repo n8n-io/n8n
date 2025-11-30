@@ -21,7 +21,7 @@ jest.mock('@langchain/core/prompts', () => ({
 	},
 }));
 
-jest.mock('langchain/agents', () => ({
+jest.mock('@langchain/classic/agents', () => ({
 	AgentExecutor: jest.fn().mockImplementation(() => ({
 		invoke: jest.fn(),
 	})),
@@ -101,7 +101,7 @@ describe('model helper', () => {
 			};
 
 			jest
-				.mocked((await import('langchain/agents')).AgentExecutor)
+				.mocked((await import('@langchain/classic/agents')).AgentExecutor)
 				.mockImplementation(() => mockAgentExecutor as unknown as AgentExecutor);
 
 			const result = await runLLMValidation('test-guardrail', 'Test input', {
@@ -128,7 +128,7 @@ describe('model helper', () => {
 			};
 
 			jest
-				.mocked((await import('langchain/agents')).AgentExecutor)
+				.mocked((await import('@langchain/classic/agents')).AgentExecutor)
 				.mockImplementation(() => mockAgentExecutor as unknown as AgentExecutor);
 
 			const result = await runLLMValidation('test-guardrail', 'Test input', {

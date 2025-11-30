@@ -291,7 +291,7 @@ export class Chat implements INodeType {
 				| undefined;
 
 			if (memory) {
-				await memory.chatHistory.addAIChatMessage(message);
+				await memory.chatHistory.addAIMessage(message);
 			}
 		}
 

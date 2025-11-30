@@ -225,8 +225,10 @@ describe('fixEmptyContentMessage', () => {
 		const messageContent = fixed?.[0]?.messageLog?.[0].content;
 
 		// Type assertion needed since we're extending MessageContentComplex
-		expect((messageContent?.[0] as { input: unknown })?.input).toEqual({});
-		expect((messageContent?.[1] as { input: unknown })?.input).toEqual({ already: 'object' });
+		expect((messageContent?.[0] as unknown as { input: unknown })?.input).toEqual({});
+		expect((messageContent?.[1] as unknown as { input: unknown })?.input).toEqual({
+			already: 'object',
+		});
 	});
 });
 

@@ -54,7 +54,7 @@ export function buildSteps(
 				id: (toolInput?.id as string) ?? 'reconstructed_call',
 				name: nodeNameToToolName(tool.action.nodeName),
 				args: toolInput,
-				type: 'tool_call',
+				type: 'tool_call' as const,
 				additional_kwargs: {
 					...(thoughtSignature && { thought_signature: thoughtSignature }),
 				},
