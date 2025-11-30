@@ -1,4 +1,5 @@
 import { ChatAnthropic } from '@langchain/anthropic';
+import type { BaseMessage } from '@langchain/core/messages';
 import { MemorySaver } from '@langchain/langgraph';
 import type { Logger } from '@n8n/backend-common';
 import type { AiAssistantClient } from '@n8n_io/ai-assistant-sdk';
@@ -13,9 +14,27 @@ import { SessionManagerService } from '@/session-manager.service';
 import { formatMessages } from '@/utils/stream-processor';
 import { WorkflowBuilderAgent, type ChatPayload } from '@/workflow-builder-agent';
 
+// Types for mock
+type Messages = BaseMessage[] | BaseMessage;
+type StateDefinition = Record<string, unknown>;
+
 // Mock dependencies
 jest.mock('@langchain/anthropic');
-jest.mock('@langchain/langgraph');
+jest.mock('@langchain/langgraph', () => {
+	const mockAnnotation = Object.assign(
+		jest.fn(<T>(config: T) => config),
+		{
+			Root: jest.fn(<S extends StateDefinition>(config: S) => config),
+		},
+	);
+	return {
+		MemorySaver: jest.fn(),
+		Annotation: mockAnnotation,
+		messagesStateReducer: jest.fn((messages: Messages, newMessages: Messages): BaseMessage[] =>
+			Array.isArray(messages) && Array.isArray(newMessages) ? [...messages, ...newMessages] : [],
+		),
+	};
+});
 jest.mock('langsmith');
 jest.mock('@/workflow-builder-agent');
 jest.mock('@/session-manager.service');

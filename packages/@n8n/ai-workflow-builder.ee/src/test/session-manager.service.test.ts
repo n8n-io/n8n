@@ -8,7 +8,9 @@ import { SessionManagerService } from '../session-manager.service';
 import { getBuilderToolsForDisplay } from '../tools/builder-tools';
 import * as streamProcessor from '../utils/stream-processor';
 
-jest.mock('@langchain/langgraph');
+jest.mock('@langchain/langgraph', () => ({
+	MemorySaver: jest.fn(),
+}));
 jest.mock('../utils/stream-processor');
 jest.mock('../tools/builder-tools', () => ({
 	getBuilderToolsForDisplay: jest.fn().mockReturnValue([]),
