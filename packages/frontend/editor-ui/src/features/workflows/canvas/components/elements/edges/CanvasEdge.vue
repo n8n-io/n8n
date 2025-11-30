@@ -205,7 +205,7 @@ function onEdgeLabelMouseLeave() {
 .edgeLabel {
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	transform: scale(var(--canvas-zoom-compensation-factor, 1)) translate(0, var(--label-translate-y));
-	color: var(--canvas-label--color);
+	color: var(--canvas--label--color);
 	font-size: var(--font-size--xs);
 	background-color: var(--canvas--label--color--background);
 }

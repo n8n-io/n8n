@@ -172,6 +172,7 @@
 	--canvas--read-only-line--color: var(--color--neutral-100);
 	--canvas--color--selected: var(--color--neutral-150);
 	--canvas--color--selected-transparent: hsla(220, 47%, 30%, 0.1);
+	--canvas--label--color: var(--color--neutral-500);
 	--canvas--label--color--background: oklch(from var(--canvas--color--background) l c h / 0.85);
 
 	// Nodes
@@ -702,9 +703,6 @@
 
 	--command-bar-item--color--background--hover: var(--color--background);
 	--command-bar--shadow: 0 15px 45px 0 hsla(0, 0%, 0%, 0.13), 0 5px 10px 0 hsla(0, 0%, 0%, 0.08);
-
-	// Visual refresh
-	--canvas-label--color: var(--color--neutral-500);
 }
 
 :root {

@@ -73,6 +73,7 @@
 	--canvas--read-only-line--color: var(--color--neutral-900);
 	--canvas--color--selected: var(--color--white-alpha-400);
 	--canvas--color--selected-transparent: var(--canvas--color--selected);
+	--canvas--label--color: var(--color--neutral-500);
 	--canvas--label--color--background: oklch(from var(--canvas--color--background) l c h / 0.85);
 
 	// Nodes
@@ -526,9 +527,6 @@
 
 	--command-bar-item--color--background--hover: var(--color--background--light-1);
 	--command-bar--shadow: 0 15px 45px 0 hsla(0, 0%, 0%, 0.25), 0 5px 10px 0 hsla(0, 0%, 0%, 0.15);
-
-	// Visual refresh
-	--canvas-label--color: var(--color--neutral-500);
 }
 
 body[data-theme='dark'] {
