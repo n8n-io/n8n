@@ -34,7 +34,6 @@ withDefaults(
 		border-width 0.1s ease;
 
 	.wrapper:hover & {
-		/* background: var(--color--primary); */
 		border: 1.5px solid light-dark(var(--color--neutral-300), var(--color--neutral-300));
 		background: light-dark(var(--color--neutral-100), var(--color--neutral-700));
 		transform: scale(1.5);
