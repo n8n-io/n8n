@@ -11,9 +11,8 @@ import { ErrorReporter } from '@/errors';
 
 import { BinaryDataConfig } from './binary-data.config';
 import type { BinaryData } from './types';
-import { areConfigModes, binaryToBuffer } from './utils';
+import { binaryToBuffer } from './utils';
 import { InvalidManagerError } from '../errors/invalid-manager.error';
-import { InvalidModeError } from '../errors/invalid-mode.error';
 
 @Service()
 export class BinaryDataService {
@@ -26,9 +25,12 @@ export class BinaryDataService {
 		private readonly errorReporter: ErrorReporter,
 	) {}
 
+	setManager(mode: BinaryData.ServiceMode, manager: BinaryData.Manager) {
+		this.managers[mode] = manager;
+	}
+
 	async init() {
 		const { config } = this;
-		if (!areConfigModes(config.availableModes)) throw new InvalidModeError();
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
@@ -49,6 +51,12 @@ export class BinaryDataService {
 
 			await this.managers.s3.init();
 		}
+
+		/**
+		 * DB manager is set directly at `BaseCommand` in `cli`.
+		 * to prevent a circular dependency (`core` -> `@n8n/db`
+		 * -> `core`) until we reorganize our dependency graph.
+		 */
 	}
 
 	createSignedToken(binaryData: IBinaryData, expiresIn: TimeUnitValue = '1 day') {

@@ -14,6 +14,7 @@ import type {
 	INode,
 	IDataObject,
 	IWorkflowBase,
+	IDestinationNode,
 } from 'n8n-workflow';
 import { createRunExecutionData, NodeConnectionTypes, TelemetryHelpers } from 'n8n-workflow';
 import { retry } from '@n8n/utils/retry';
@@ -129,7 +130,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 	}
 
 	async function runWorkflow(options: {
-		destinationNode?: string;
+		destinationNode?: IDestinationNode;
 		triggerNode?: string;
 		rerunTriggerNode?: boolean;
 		nodeData?: ITaskData;
@@ -146,7 +147,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			let directParentNodes: string[] = [];
 			if (options.destinationNode !== undefined) {
 				directParentNodes = workflowObject.value.getParentNodes(
-					options.destinationNode,
+					options.destinationNode.nodeName,
 					NodeConnectionTypes.Main,
 					-1,
 				);
@@ -169,7 +170,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			const { startNodeNames } = consolidatedData;
 			const destinationNodeType = options.destinationNode
-				? workflowsStore.getNodeByName(options.destinationNode)?.type
+				? workflowsStore.getNodeByName(options.destinationNode.nodeName)?.type
 				: '';
 
 			let executedNode: string | undefined;
@@ -180,15 +181,15 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				'destinationNode' in options &&
 				options.destinationNode !== undefined
 			) {
-				executedNode = options.destinationNode;
-				startNodeNames.push(options.destinationNode);
+				executedNode = options.destinationNode.nodeName;
+				startNodeNames.push(options.destinationNode.nodeName);
 			} else if (options.triggerNode && options.nodeData && !options.rerunTriggerNode) {
 				// starts execution from downstream nodes of trigger node
 				startNodeNames.push(
 					...workflowObject.value.getChildNodes(options.triggerNode, NodeConnectionTypes.Main, 1),
 				);
 			} else if (options.destinationNode) {
-				executedNode = options.destinationNode;
+				executedNode = options.destinationNode.nodeName;
 			}
 
 			if (options.triggerNode) {
@@ -201,11 +202,11 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			// If the destination node is specified, check if it is a chat node or has a chat parent
 			if (
 				options.destinationNode &&
-				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode) ||
+				(workflowsStore.checkIfNodeHasChatParent(options.destinationNode.nodeName) ||
 					destinationNodeType === CHAT_TRIGGER_NODE_TYPE) &&
 				options.source !== 'RunData.ManualChatMessage'
 			) {
-				const startNode = workflowObject.value.getStartNode(options.destinationNode);
+				const startNode = workflowObject.value.getStartNode(options.destinationNode.nodeName);
 				if (startNode && startNode.type === CHAT_TRIGGER_NODE_TYPE) {
 					// Check if the chat node has input data or pin data
 					const chatHasInputData =
@@ -215,7 +216,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 					// If the chat node has no input data or pin data, open the chat modal
 					// and halt the execution
 					if (!chatHasInputData && !chatHasPinData) {
-						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode;
+						workflowsStore.chatPartialExecutionDestinationNode = options.destinationNode.nodeName;
 						startChat();
 						return;
 					}
@@ -279,9 +280,9 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				.filter((node) => {
 					if (
 						options.destinationNode &&
-						workflowsStore.checkIfNodeHasChatParent(options.destinationNode)
+						workflowsStore.checkIfNodeHasChatParent(options.destinationNode.nodeName)
 					) {
-						return node.name !== options.destinationNode;
+						return node.name !== options.destinationNode.nodeName;
 					}
 					return true;
 				});
@@ -322,7 +323,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 
 			if ('destinationNode' in options) {
 				startRunData.destinationNode = options.destinationNode;
-				const nodeId = workflowsStore.getNodeByName(options.destinationNode as string)?.id;
+				const nodeId = workflowsStore.getNodeByName(options.destinationNode?.nodeName ?? '')?.id;
 				if (workflowObject.value.id && nodeId) {
 					const agentRequest = agentRequestStore.getAgentRequest(workflowObject.value.id, nodeId);
 
@@ -395,7 +396,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 				await displayForm({
 					nodes: workflowData.nodes,
 					runData: workflowsStore.getWorkflowExecution?.data?.resultData?.runData,
-					destinationNode: options.destinationNode,
+					destinationNode: options.destinationNode?.nodeName,
 					triggerNode: options.triggerNode,
 					pinData,
 					directParentNodes,
@@ -405,7 +406,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			} catch (error) {}
 
 			await externalHooks.run('workflowRun.runWorkflow', {
-				nodeName: options.destinationNode,
+				nodeName: options.destinationNode?.nodeName,
 				source: options.source,
 			});
 

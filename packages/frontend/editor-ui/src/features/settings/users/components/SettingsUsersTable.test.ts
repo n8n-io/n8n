@@ -134,6 +134,7 @@ describe('SettingsUsersTable', () => {
 				data: mockUsersList,
 				actions: mockActions,
 				loading: false,
+				canEditRole: true,
 			},
 		});
 		hasPermission.mockReturnValue(true); // Default to having permission
@@ -174,6 +175,16 @@ describe('SettingsUsersTable', () => {
 			screen.getAllByTestId('user-role').forEach((roleCell) => {
 				expect(roleCell).toBeVisible();
 			});
+		});
+
+		it('should not render role update component when canEditRole is false', () => {
+			renderComponent({
+				props: {
+					canEditRole: false,
+				},
+			});
+
+			expect(screen.queryByTestId('user-role')).not.toBeInTheDocument();
 		});
 
 		it('should emit "update:role" when a new role is selected', () => {

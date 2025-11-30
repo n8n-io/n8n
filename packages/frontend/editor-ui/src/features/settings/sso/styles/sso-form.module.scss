@@ -38,6 +38,11 @@
 	}
 }
 
+.checkboxGroup label > *:first-child {
+	// center checkbox next to label
+	vertical-align: text-top;
+}
+
 .actionBox {
 	margin: var(--spacing--2xl) 0 0;
 }

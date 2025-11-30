@@ -81,6 +81,7 @@ export const test = base.extend<
 					...baseConfig.env,
 					...addContainerCapability.env,
 					E2E_TESTS: 'true',
+					N8N_RESTRICT_FILE_ACCESS_TO: '',
 				},
 			};
 

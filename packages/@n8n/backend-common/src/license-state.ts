@@ -175,7 +175,7 @@ export class LicenseState {
 	}
 
 	isProvisioningLicensed() {
-		return this.isLicensed(['feat:saml', 'feat:oidc', 'feat:ldap']);
+		return this.isLicensed(['feat:saml', 'feat:oidc']);
 	}
 
 	// --------------------

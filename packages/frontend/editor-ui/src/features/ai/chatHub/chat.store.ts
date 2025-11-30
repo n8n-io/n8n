@@ -18,6 +18,9 @@ import {
 	updateAgentApi,
 	deleteAgentApi,
 	updateConversationApi,
+	fetchChatSettingsApi,
+	fetchChatProviderSettingsApi,
+	updateChatSettingsApi,
 } from './chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import {
@@ -35,7 +38,6 @@ import {
 	type EnrichedStructuredChunk,
 	type ChatHubMessageStatus,
 	type ChatModelDto,
-	type ChatHubConversationsResponse,
 } from '@n8n/api-types';
 import type {
 	CredentialsMap,
@@ -44,12 +46,18 @@ import type {
 	ChatStreamingState,
 } from './chat.types';
 import { retry } from '@n8n/utils/retry';
-import { convertFileToChatAttachment } from '@/app/utils/fileUtils';
-import { buildUiMessages, isMatchedAgent } from './chat.utils';
+import {
+	buildUiMessages,
+	createSessionFromStreamingState,
+	isLlmProviderModel,
+	isMatchedAgent,
+} from './chat.utils';
 import { createAiMessageFromStreamingState, flattenModel } from './chat.utils';
 import { useToast } from '@/app/composables/useToast';
 import { useTelemetry } from '@/app/composables/useTelemetry';
-import { type INode } from 'n8n-workflow';
+import { deepCopy, type INode } from 'n8n-workflow';
+import type { ChatHubLLMProvider, ChatProviderSettingsDto } from '@n8n/api-types';
+import { convertFileToBinaryData } from '@/app/utils/fileUtils';
 
 export const useChatStore = defineStore(CHAT_STORE, () => {
 	const rootStore = useRootStore();
@@ -57,12 +65,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const telemetry = useTelemetry();
 
 	const agents = ref<ChatModelsResponse>();
-	const sessions = ref<ChatHubConversationsResponse>();
+	const sessions = ref<{
+		byId: Partial<Record<string, ChatHubSessionDto>>;
+		ids: string[] | null;
+		hasMore: boolean;
+		nextCursor: string | null;
+	}>({ byId: {}, ids: null, hasMore: false, nextCursor: null });
 	const sessionsLoadingMore = ref(false);
 
-	const currentEditingAgent = ref<ChatHubAgentDto | null>(null);
 	const streaming = ref<ChatStreamingState>();
-
+	const settingsLoading = ref(false);
+	const settings = ref<Record<ChatHubLLMProvider, ChatProviderSettingsDto> | null>(null);
 	const conversationsBySession = ref<Map<ChatSessionId, ChatConversation>>(new Map());
 
 	const getConversation = (sessionId: ChatSessionId): ChatConversation | undefined =>
@@ -255,6 +268,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		sessionId: ChatSessionId,
 		messageId: ChatMessageId,
 		status: ChatHubMessageStatus,
+		content?: string,
 	) {
 		const conversation = ensureConversation(sessionId);
 		const message = conversation.messages[messageId];
@@ -263,6 +277,9 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		}
 
 		message.status = status;
+		if (content) {
+			message.content = content;
+		}
 		message.updatedAt = new Date().toISOString();
 	}
 
@@ -278,7 +295,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			return;
 		}
 
-		if (!reset && sessions.value && !sessions.value.hasMore && sessions.value.data.length > 0) {
+		if (
+			!reset &&
+			sessions.value &&
+			!sessions.value.hasMore &&
+			(sessions.value.ids ?? []).length > 0
+		) {
 			return;
 		}
 
@@ -293,10 +315,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				new Promise((resolve) => setTimeout(resolve, 500)),
 			]);
 
-			sessions.value = {
-				...response,
-				data: [...(reset ? [] : (sessions.value?.data ?? [])), ...response.data],
-			};
+			if (reset || sessions.value.ids === null) {
+				sessions.value.ids = [];
+			}
+
+			sessions.value.hasMore = response.hasMore;
+			sessions.value.nextCursor = response.nextCursor;
+
+			for (const session of response.data) {
+				sessions.value.ids.push(session.id);
+				sessions.value.byId[session.id] = session;
+			}
 		} finally {
 			sessionsLoadingMore.value = false;
 		}
@@ -309,7 +338,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function fetchMessages(sessionId: string) {
-		const { conversation } = await fetchMessagesApi(rootStore.restApiContext, sessionId);
+		const { conversation, session } = await fetchMessagesApi(rootStore.restApiContext, sessionId);
 
 		const messages = linkMessages(Object.values(conversation.messages));
 
@@ -321,6 +350,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			messages,
 			activeMessageChain: computeActiveChain(messages, latestMessage?.id ?? null),
 		});
+		sessions.value.byId[sessionId] = session;
 	}
 
 	function onBeginMessage() {
@@ -335,31 +365,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		);
 
 		addMessage(streaming.value.sessionId, message);
-
-		if (sessions.value?.data.some((session) => session.id === streaming.value?.sessionId)) {
-			return;
-		}
-
-		sessions.value = {
-			hasMore: false,
-			nextCursor: null,
-			...sessions.value,
-			data: [
-				...(sessions.value?.data ?? []),
-				{
-					id: streaming.value.sessionId,
-					title: 'New Chat',
-					ownerId: '',
-					lastMessageAt: new Date().toISOString(),
-					credentialId: null,
-					agentName: null,
-					createdAt: new Date().toISOString(),
-					updatedAt: new Date().toISOString(),
-					tools: [],
-					...flattenModel(streaming.value.model),
-				},
-			],
-		};
 	}
 
 	function ensureMessage(sessionId: ChatSessionId, messageId: ChatMessageId): ChatMessage {
@@ -414,8 +419,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 					return;
 				}
 
-				updateMessage(sessionId, chunk.metadata.messageId, 'error');
-				onChunk(message.content ?? '');
+				updateMessage(sessionId, chunk.metadata.messageId, 'error', chunk.content);
 				break;
 			}
 		}
@@ -477,6 +481,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		credentials: ChatHubSendMessageRequest['credentials'],
 		tools: INode[],
 		files: File[] = [],
+		agentName: string,
 	) {
 		const messageId = uuidv4();
 		const conversation = ensureConversation(sessionId);
@@ -484,7 +489,12 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			? conversation.activeMessageChain[conversation.activeMessageChain.length - 1]
 			: null;
 
-		const attachments = await Promise.all(files.map(convertFileToChatAttachment));
+		const binaryData = await Promise.all(files.map(convertFileToBinaryData));
+		const attachments = binaryData.map((attachment) => ({
+			fileName: attachment.fileName ?? 'unnamed file',
+			mimeType: attachment.mimeType,
+			data: attachment.data,
+		}));
 
 		addMessage(sessionId, {
 			id: messageId,
@@ -493,7 +503,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			name: 'User',
 			content: message,
 			provider: null,
-			model: model.provider === 'n8n' || model.provider === 'custom-agent' ? null : model.model,
+			model: isLlmProviderModel(model) ? model.model : null,
 			workflowId: null,
 			executionId: null,
 			agentId: null,
@@ -513,7 +523,17 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			sessionId,
 			model,
 			retryOfMessageId: null,
+			tools,
+			agentName,
 		};
+
+		if (!sessions.value.byId[sessionId]) {
+			sessions.value.byId[sessionId] = createSessionFromStreamingState(streaming.value);
+			if (!sessions.value.ids) {
+				sessions.value.ids = [];
+			}
+			sessions.value.ids.unshift(sessionId);
+		}
 
 		sendMessageApi(
 			rootStore.restApiContext,
@@ -526,6 +546,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				previousMessageId,
 				tools,
 				attachments,
+				agentName,
 			},
 			onStreamMessage,
 			onStreamDone,
@@ -583,6 +604,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			sessionId,
 			model,
 			retryOfMessageId: null,
+			tools: [],
+			agentName: sessions.value.byId[sessionId]?.agentName ?? '',
 		};
 
 		editMessageApi(
@@ -619,6 +642,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			sessionId,
 			model,
 			retryOfMessageId: retryId,
+			tools: [],
+			agentName: sessions.value.byId[sessionId]?.agentName ?? '',
 		};
 
 		regenerateMessageApi(
@@ -646,22 +671,18 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	function updateSession(sessionId: ChatSessionId, toUpdate: Partial<ChatHubSessionDto>) {
-		if (!sessions.value) {
-			return;
-		}
+		const session = sessions.value.byId[sessionId];
 
-		sessions.value.data = sessions.value.data?.map((session) =>
-			session.id === sessionId
-				? {
-						...session,
-						...toUpdate,
-					}
-				: session,
-		);
+		if (session) {
+			sessions.value.byId[sessionId] = {
+				...session,
+				...toUpdate,
+			};
+		}
 	}
 
 	async function updateToolsInSession(sessionId: ChatSessionId, tools: INode[]) {
-		const session = sessions.value?.data?.find((s) => s.id === sessionId);
+		const session = sessions.value?.byId[sessionId];
 		if (!session) {
 			throw new Error(`Session with ID ${sessionId} not found`);
 		}
@@ -679,20 +700,22 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		updateSession(sessionId, updated.session);
 	}
 
-	async function updateSessionModel(sessionId: ChatSessionId, model: ChatHubConversationModel) {
-		await updateConversationApi(rootStore.restApiContext, sessionId, model);
-		updateSession(sessionId, model);
+	async function updateSessionModel(
+		sessionId: ChatSessionId,
+		model: ChatHubConversationModel,
+		agentName: string,
+	) {
+		await updateConversationApi(rootStore.restApiContext, sessionId, {
+			agent: { model, name: agentName },
+		});
+		updateSession(sessionId, { ...model, agentName });
 	}
 
 	async function deleteSession(sessionId: ChatSessionId) {
 		await deleteConversationApi(rootStore.restApiContext, sessionId);
 
-		if (sessions.value) {
-			sessions.value = {
-				...sessions.value,
-				data: sessions.value.data?.filter((session) => session.id !== sessionId),
-			};
-		}
+		delete sessions.value.byId[sessionId];
+		sessions.value.ids = sessions.value.ids?.filter((id) => id !== sessionId) ?? null;
 	}
 
 	function switchAlternative(sessionId: ChatSessionId, messageId: ChatMessageId) {
@@ -708,9 +731,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	}
 
 	async function fetchCustomAgent(agentId: string): Promise<ChatHubAgentDto> {
-		const agent = await fetchAgentApi(rootStore.restApiContext, agentId);
-		currentEditingAgent.value = agent;
-		return agent;
+		return await fetchAgentApi(rootStore.restApiContext, agentId);
 	}
 
 	function getCustomAgent(agentId: string) {
@@ -777,31 +798,58 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		await fetchAgents(credentials);
 	}
 
-	function getAgent(model: ChatHubConversationModel) {
-		if (!agents.value) return null;
+	function getAgent(model: ChatHubConversationModel, fallbackName: string = ''): ChatModelDto {
+		const agent = agents.value?.[model.provider]?.models.find((agent) =>
+			isMatchedAgent(agent, model),
+		);
 
-		const agent = agents.value[model.provider].models.find((agent) => isMatchedAgent(agent, model));
-
-		if (!agent) {
-			if (model.provider === 'custom-agent' || model.provider === 'n8n') {
-				return null;
-			}
-
-			// Allow custom models chosen by ID even if they are not in the fetched list
-			return {
-				model: {
-					provider: model.provider,
-					model: model.model,
-				},
-				name: model.model,
-				description: null,
-				createdAt: null,
-				updatedAt: null,
-				allowFileUploads: true,
-			};
+		if (agent) {
+			return agent;
 		}
 
-		return agent;
+		return {
+			model,
+			name: fallbackName,
+			description: null,
+			createdAt: null,
+			updatedAt: null,
+			allowFileUploads: true,
+		};
+	}
+
+	async function fetchAllChatSettings() {
+		try {
+			settingsLoading.value = true;
+			settings.value = await fetchChatSettingsApi(rootStore.restApiContext);
+		} finally {
+			settingsLoading.value = false;
+		}
+
+		return settings.value;
+	}
+
+	async function fetchProviderSettings(provider: ChatHubLLMProvider) {
+		const providerSettings = await fetchChatProviderSettingsApi(rootStore.restApiContext, provider);
+
+		if (settings.value) {
+			settings.value[provider] = deepCopy(providerSettings);
+		}
+
+		return providerSettings;
+	}
+
+	async function updateProviderSettings(updated: ChatProviderSettingsDto) {
+		if (!updated.enabled) {
+			updated.allowedModels = [];
+		}
+
+		const saved = await updateChatSettingsApi(rootStore.restApiContext, updated);
+
+		if (settings.value) {
+			settings.value[updated.provider] = deepCopy(saved);
+		}
+
+		return saved;
 	}
 
 	return {
@@ -810,7 +858,6 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		 */
 		agents: computed(() => agents.value ?? emptyChatModelsResponse),
 		agentsReady: computed(() => agents.value !== undefined),
-		currentEditingAgent,
 		getAgent,
 		fetchAgents,
 		getCustomAgent,
@@ -822,8 +869,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		/**
 		 * conversations
 		 */
-		sessions: computed(() => sessions.value?.data ?? []),
-		sessionsReady: computed(() => sessions.value !== undefined),
+		sessions,
+		sessionsReady: computed(() => sessions.value.ids !== null),
 		sessionsLoading: computed(() => sessionsLoadingMore.value),
 		fetchSessions,
 		fetchMoreSessions,
@@ -850,5 +897,14 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		editMessage,
 		regenerateMessage,
 		stopStreamingMessage,
+
+		/**
+		 * settings
+		 */
+		settings,
+		settingsLoading,
+		fetchAllChatSettings,
+		fetchProviderSettings,
+		updateProviderSettings,
 	};
 });

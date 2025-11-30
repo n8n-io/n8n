@@ -12,6 +12,7 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'non-tool-node-uses-fromai',
 	'workflow-has-no-nodes',
 	'workflow-has-no-trigger',
+	'workflow-exceeds-max-nodes-limit',
 	'node-missing-required-input',
 	'node-unsupported-connection-input',
 	'node-merge-single-input',
@@ -20,6 +21,13 @@ export const PROGRAMMATIC_VIOLATION_NAMES = [
 	'sub-node-not-connected',
 	'node-type-not-found',
 	'failed-to-resolve-connections',
+	'workflow-similarity-node-insert',
+	'workflow-similarity-node-delete',
+	'workflow-similarity-node-substitute',
+	'workflow-similarity-edge-insert',
+	'workflow-similarity-edge-delete',
+	'workflow-similarity-edge-substitute',
+	'workflow-similarity-evaluation-failed',
 ] as const;
 
 export type ProgrammaticViolationName = (typeof PROGRAMMATIC_VIOLATION_NAMES)[number];
@@ -40,6 +48,7 @@ export interface SingleEvaluatorResult {
 
 export interface ProgrammaticChecksResult {
 	connections: ProgrammaticViolation[];
+	nodes: ProgrammaticViolation[];
 	trigger: ProgrammaticViolation[];
 	agentPrompt: ProgrammaticViolation[];
 	tools: ProgrammaticViolation[];
@@ -49,16 +58,19 @@ export interface ProgrammaticChecksResult {
 export interface ProgrammaticEvaluationResult {
 	overallScore: number;
 	connections: SingleEvaluatorResult;
+	nodes: SingleEvaluatorResult;
 	trigger: SingleEvaluatorResult;
 	agentPrompt: SingleEvaluatorResult;
 	tools: SingleEvaluatorResult;
 	fromAi: SingleEvaluatorResult;
+	similarity: SingleEvaluatorResult | null;
 }
 
 export interface ProgrammaticEvaluationInput {
 	generatedWorkflow: SimpleWorkflow;
 	userPrompt?: string;
 	referenceWorkflow?: SimpleWorkflow;
+	referenceWorkflows?: SimpleWorkflow[];
 }
 
 export interface NodeResolvedConnectionTypesInfo {
