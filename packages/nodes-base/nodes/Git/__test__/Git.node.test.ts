@@ -39,6 +39,7 @@ describe('Git Node', () => {
 			getInputData: jest.fn().mockReturnValue([{ json: {} }]),
 			getNodeParameter: jest.fn(),
 			helpers: {
+				isFilePathBlocked: jest.fn(),
 				returnJsonArray: jest
 					.fn()
 					.mockImplementation((data: unknown[]) => data.map((item: unknown) => ({ json: item }))),
@@ -138,6 +139,16 @@ describe('Git Node', () => {
 				expect.objectContaining({
 					config: [],
 				}),
+			);
+		});
+	});
+
+	describe('Restricted file paths', () => {
+		it('should throw an error if the repository path is blocked', async () => {
+			(executeFunctions.helpers.isFilePathBlocked as jest.Mock).mockResolvedValue(true);
+
+			await expect(gitNode.execute.call(executeFunctions)).rejects.toThrow(
+				'Access to the repository path is not allowed',
 			);
 		});
 	});
