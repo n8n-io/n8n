@@ -1,11 +1,19 @@
+/* eslint-disable @typescript-eslint/unbound-method */
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { Project, IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
-import { mock } from 'jest-mock-extended';
+import { mock, captor } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
-import type { IWorkflowBase, IRun, INode, IRunExecutionData } from 'n8n-workflow';
-import { createDeferredPromise, WAIT_INDEFINITELY } from 'n8n-workflow';
+import type {
+	IWorkflowBase,
+	IRun,
+	INode,
+	IRunExecutionData,
+	IExecuteData,
+	ITaskData,
+} from 'n8n-workflow';
+import { createDeferredPromise, createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
 
 import type { ActiveExecutions } from '@/active-executions';
 import type { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
@@ -151,9 +159,17 @@ describe('WaitTracker', () => {
 		});
 
 		describe('parent execution with waiting sub-workflow', () => {
-			// TODO: AI generated test, check it before merging
 			it('should update parent nodeExecutionStack with child final output and resume parent', async () => {
+				// ARRANGE
+
 				// Setup parent execution with Execute Workflow node waiting for child
+				const executeData: IExecuteData = {
+					node: mock<INode>({ name: 'Execute Sub Workflow' }),
+					data: {
+						main: [[{ json: { data: 'Parent input data' }, pairedItem: { item: 0 } }]],
+					},
+					source: { main: [{ previousNode: 'Manual Trigger' }] },
+				};
 				const parentExecution: IExecutionResponse = {
 					id: 'parent_execution_id',
 					finished: false,
@@ -166,121 +182,106 @@ describe('WaitTracker', () => {
 					startedAt: new Date(),
 					mode: 'manual',
 					workflowId: 'parent_workflow_id',
-					data: {
-						resultData: {
-							runData: {},
-							lastNodeExecuted: 'Execute Sub Workflow',
-						},
-						executionData: {
-							contextData: {},
-							nodeExecutionStack: [
-								{
-									node: mock<INode>({ name: 'Execute Sub Workflow' }),
-									data: {
-										main: [
-											[
-												{
-													json: { data: 'Parent input data' },
-													pairedItem: { item: 0 },
-												},
-											],
-										],
-									},
-									source: { main: [{ previousNode: 'Manual Trigger' }] },
-								},
-							],
-							metadata: {},
-							waitingExecution: {},
-							waitingExecutionSource: {},
-						},
-					} as unknown as IRunExecutionData,
+					data: createRunExecutionData({ executionData: { nodeExecutionStack: [executeData] } }),
 				};
 
+				// Amend child execution to reference parent execution
 				execution.data.parentExecution = {
 					executionId: parentExecution.id,
 					workflowId: parentExecution.workflowData.id,
 					shouldResume: true,
 				};
 
-				executionRepository.findSingleExecution
-					.calledWith(parentExecution.id)
-					.mockResolvedValue(parentExecution);
-				// Mock updateExistingExecution to always succeed
-				executionRepository.updateExistingExecution.mockImplementation(async () => true);
-
-				const postExecutePromise = createDeferredPromise<IRun | undefined>();
-				activeExecutions.getPostExecutePromise
-					.calledWith(execution.id)
-					.mockReturnValue(postExecutePromise.promise);
-
-				await waitTracker.startExecution(execution.id);
-
-				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
-
-				// Child completes with final output
+				// Setup child execution's result
+				const finalNodeName = 'Final Node';
+				const taskData: ITaskData = {
+					startTime: new Date().getTime(),
+					executionTime: 5,
+					executionIndex: 0,
+					source: [{ previousNode: 'Wait Node' }],
+					data: {
+						main: [[{ json: { data: 'Child final output after wait' }, pairedItem: { item: 0 } }]],
+					},
+				};
 				const subworkflowResults: IRun = {
 					mode: 'manual',
 					startedAt: new Date(),
 					status: 'success',
-					data: {
+					data: createRunExecutionData({
 						resultData: {
-							runData: {
-								'Final Node': [
-									{
-										hints: [],
-										startTime: new Date().getTime(),
-										executionTime: 5,
-										executionIndex: 0,
-										source: [{ previousNode: 'Wait Node' }],
-										executionStatus: 'success',
-										data: {
-											main: [
-												[
-													{
-														json: { data: 'Child final output after wait' },
-														pairedItem: { item: 0 },
-													},
-												],
-											],
-										},
-									},
-								],
-							},
-							lastNodeExecuted: 'Final Node',
+							runData: { [finalNodeName]: [taskData] },
+							lastNodeExecuted: finalNodeName,
 						},
-					} as unknown as IRunExecutionData,
+					}),
 				};
 
-				postExecutePromise.resolve(subworkflowResults);
+				// Setup ExecutionRepository and ActiveExecutions
+				executionRepository.findSingleExecution
+					.calledWith(parentExecution.id)
+					.mockResolvedValue(parentExecution);
+				// Mock updateExistingExecution to always succeed
+				executionRepository.updateExistingExecution.mockResolvedValue(true);
+				const subExecutionPromise = createDeferredPromise<IRun | undefined>();
+				activeExecutions.getPostExecutePromise
+					.calledWith(execution.id)
+					.mockReturnValue(subExecutionPromise.promise);
+
+				// ACT 1
+				await waitTracker.startExecution(execution.id);
+
+				// ASSERT 1
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					1,
+					expect.any(Object),
+					false,
+					false,
+					execution.id,
+				);
+
+				// ACT 2
+				subExecutionPromise.resolve(subworkflowResults);
+				// TODO: remove when delay is removed
 				await jest.advanceTimersByTimeAsync(10000); // Need longer timeout due to random delay in updateParentExecutionWithChildResults
 
+				// ASSERT 2
+
 				// Verify parent's nodeExecutionStack was updated
+				const executionDataCaptor = captor();
 				expect(executionRepository.updateExistingExecution).toHaveBeenCalledWith(
 					parentExecution.id,
-					expect.objectContaining({
-						data: expect.objectContaining({
-							executionData: expect.objectContaining({
-								nodeExecutionStack: expect.arrayContaining([
-									expect.objectContaining({
-										data: {
-											main: [
-												[
-													{
-														json: { data: 'Child final output after wait' },
-														pairedItem: { item: 0 },
-													},
-												],
-											],
-										},
-									}),
-								]),
-							}),
-						}),
-					}),
+					executionDataCaptor,
 				);
+				expect(executionDataCaptor.value).toMatchObject({
+					data: {
+						executionData: {
+							nodeExecutionStack: [
+								{
+									data: {
+										main: [
+											[
+												{
+													json: { data: 'Child final output after wait' },
+													pairedItem: { item: 0 },
+												},
+											],
+										],
+									},
+								},
+							],
+						},
+					},
+				});
 
 				// Verify parent was resumed
 				expect(workflowRunner.run).toHaveBeenCalledTimes(2);
+				expect(workflowRunner.run).toHaveBeenNthCalledWith(
+					2,
+					expect.any(Object),
+					false,
+					false,
+					parentExecution.id,
+				);
 			});
 
 			// TODO: AI generated test, check it before merging
