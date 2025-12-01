@@ -14,12 +14,13 @@ export class CliActivateAllWorkflowsRule implements IBreakingChangeInstanceRule 
 	getMetadata(): BreakingChangeRuleMetadata {
 		return {
 			version: 'v2',
-			title: 'Remove CLI command operation to activate all workflows',
-			description: 'The CLI command to activate all workflows has been removed for simplification',
+			title: 'CLI command update:workflow replaced',
+			description:
+				'The CLI command update:workflow has been replaced with publish:workflow and unpublish:workflow for better clarity.',
 			category: BreakingChangeCategory.instance,
 			severity: 'low',
 			documentationUrl:
-				'https://docs.n8n.io/2-0-breaking-changes/#remove-cli-command-operation-to-activate-all-workflows',
+				'https://docs.n8n.io/2-0-breaking-changes/#replace-cli-command-updateworkflow',
 		};
 	}
 
@@ -28,9 +29,9 @@ export class CliActivateAllWorkflowsRule implements IBreakingChangeInstanceRule 
 			isAffected: true,
 			instanceIssues: [
 				{
-					title: 'CLI command to activate all workflows removed',
+					title: 'CLI command update:workflow replaced',
 					description:
-						'The CLI command to activate all workflows in bulk has been removed. If you were using this command in scripts or automation, you will need to update your approach.',
+						'The CLI command update:workflow has been replaced with publish:workflow and unpublish:workflow. If you were using this command in scripts or automation, you will need to update your approach.',
 					level: 'info',
 				},
 			],
