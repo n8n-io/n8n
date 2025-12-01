@@ -96,30 +96,6 @@ export class WorkflowApiHelper {
 		}
 	}
 
-	async activate(workflowId: string, versionId: string) {
-		const response = await this.api.request.post(`/rest/workflows/${workflowId}/activate`, {
-			data: { versionId },
-		});
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to activate workflow: ${await response.text()}`);
-		}
-
-		const result = await response.json();
-		return result.data ?? result;
-	}
-
-	async deactivate(workflowId: string) {
-		const response = await this.api.request.post(`/rest/workflows/${workflowId}/deactivate`);
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to deactivate workflow: ${await response.text()}`);
-		}
-
-		const result = await response.json();
-		return result.data ?? result;
-	}
-
 	/**
 	 * Make workflow unique by updating name, IDs, and webhook paths if present.
 	 * This ensures no conflicts when importing workflows for testing.
