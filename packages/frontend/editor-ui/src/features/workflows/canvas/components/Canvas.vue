@@ -771,9 +771,9 @@ async function onContextMenuAction(action: ContextMenuAction, nodeIds: string[])
 }
 
 async function onTidyUp(payload: CanvasEventBusEvents['tidyUp']) {
-	if (payload.nodeIdsAdd && payload.nodeIdsAdd.length > 0) {
+	if (payload.nodeIdsFilter && payload.nodeIdsFilter.length > 0) {
 		clearSelectedNodes();
-		addSelectedNodes(payload.nodeIdsAdd.map(findNode).filter(isPresent));
+		addSelectedNodes(payload.nodeIdsFilter.map(findNode).filter(isPresent));
 	}
 	const applyOnSelection = selectedNodes.value.length > 1;
 	const target = applyOnSelection ? 'selection' : 'all';

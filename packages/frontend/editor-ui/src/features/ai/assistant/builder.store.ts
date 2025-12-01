@@ -463,7 +463,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		}
 
 		// Restore positions for nodes that still exist and identify new nodes
-		const nodesIdsToCreate: string[] = [];
+		const nodesIdsToTidyUp: string[] = [];
 		if (workflowData.nodes) {
 			workflowData.nodes = workflowData.nodes.map((node) => {
 				const savedPosition = nodePositions.get(node.id);
@@ -471,7 +471,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 					return { ...node, position: savedPosition };
 				} else {
 					// This is a new node, add it to the tidy up list
-					nodesIdsToCreate.push(node.id);
+					nodesIdsToTidyUp.push(node.id);
 				}
 				return node;
 			});
@@ -495,7 +495,7 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		return {
 			success: true,
 			workflowData,
-			newNodeIds: nodesIdsToCreate,
+			newNodeIds: nodesIdsToTidyUp,
 			oldNodeIds: Array.from(existingNodeIds),
 		};
 	}

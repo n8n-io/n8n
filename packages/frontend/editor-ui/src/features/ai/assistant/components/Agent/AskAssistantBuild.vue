@@ -270,7 +270,7 @@ watch(
 						nodeViewEventBus.emit('importWorkflowData', {
 							data: result.workflowData,
 							tidyUp: shouldTidyUp.value,
-							nodesIdsToCreate: result.newNodeIds,
+							nodesIdsToTidyUp: result.newNodeIds,
 							regenerateIds: false,
 							trackEvents: false,
 						});
