@@ -34,6 +34,21 @@ function getCredentialType(
 }
 
 /**
+ * Suppresses console.warn during async function execution.
+ * Used to silence ChromaDB's internal warnings about embedding functions
+ * since we provide embeddings externally via LangChain.
+ */
+async function suppressWarnings<T>(fn: () => Promise<T>): Promise<T> {
+	const originalWarn = console.warn;
+	console.warn = () => {};
+	try {
+		return await fn();
+	} finally {
+		console.warn = originalWarn;
+	}
+}
+
+/**
  * Gets ChromaDB client configuration from credentials
  * Returns either ChromaClient or CloudClient based on credential type
  */
@@ -189,11 +204,14 @@ class ExtendedChroma extends Chroma {
 			}
 
 			try {
-				this.collection = await this.index.getOrCreateCollection({
-					name: this.collectionName,
-					...(this.collectionMetadata && { metadata: this.collectionMetadata }),
-					embeddingFunction: null,
-				});
+				// Suppress ChromaDB warnings about embedding functions since we provide embeddings via LangChain
+				this.collection = await suppressWarnings(() =>
+					this.index!.getOrCreateCollection({
+						name: this.collectionName,
+						...(this.collectionMetadata && { metadata: this.collectionMetadata }),
+						embeddingFunction: null,
+					}),
+				);
 			} catch (err) {
 				throw new Error(`Chroma getOrCreateCollection error: ${err}`);
 			}
@@ -304,7 +322,8 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 			chromaCollectionsSearch: async function (this: ILoadOptionsFunctions) {
 				try {
 					const client = await getChromaClient(this);
-					const collections = await client.listCollections();
+					// Suppress ChromaDB warnings about embedding functions since we provide embeddings via LangChain
+					const collections = await suppressWarnings(() => client.listCollections());
 
 					if (Array.isArray(collections)) {
 						const results = collections.map((collection: Collection) => ({
