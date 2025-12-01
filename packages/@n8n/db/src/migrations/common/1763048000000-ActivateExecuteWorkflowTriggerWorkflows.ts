@@ -111,6 +111,7 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 		const versionId = escape.columnName('versionId');
 		const nodes = escape.columnName('nodes');
 		const active = escape.columnName('active');
+		const activeVersionId = escape.columnName('activeVersionId');
 		const workflowsQuery = `SELECT ${id}, ${versionId}, ${nodes} FROM ${tableName} WHERE ${active} = true`;
 
 		await runInBatches<Workflow>(workflowsQuery, async (workflows) => {
@@ -129,10 +130,14 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 				}
 
 				// Deactivate the workflow
-				await runQuery(`UPDATE ${tableName} SET ${active} = :active WHERE ${id} = :id`, {
-					active: false,
-					id: workflow.id,
-				});
+				await runQuery(
+					`UPDATE ${tableName} SET ${active} = :active, ${activeVersionId} = :activeVersionId WHERE ${id} = :id`,
+					{
+						active: false,
+						activeVersionId: null,
+						id: workflow.id,
+					},
+				);
 			}
 		});
 	}
