@@ -48,6 +48,7 @@ import {
 	chatHubConversationModelWithCachedDisplayNameSchema,
 } from '@/features/ai/chatHub/chat.types';
 import { useI18n } from '@n8n/i18n';
+import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
 
 const router = useRouter();
 const route = useRoute();
@@ -74,7 +75,9 @@ const currentConversation = computed(() =>
 const currentConversationTitle = computed(() => currentConversation.value?.title);
 
 const canSelectTools = computed(
-	() => selectedModel.value?.metadata.capabilities.functionCalling ?? false,
+	() =>
+		selectedModel.value?.model.provider === 'custom-agent' ||
+		!!selectedModel.value?.metadata.capabilities.functionCalling,
 );
 
 const { arrivedState, measure } = useScroll(scrollContainerRef, {
@@ -101,8 +104,8 @@ const defaultModel = useLocalStorage<ChatHubConversationModelWithCachedDisplayNa
 	},
 );
 
-const defaultModelName = computed(() =>
-	defaultModel.value ? chatStore.getAgent(defaultModel.value).name : undefined,
+const defaultAgent = computed(() =>
+	defaultModel.value ? chatStore.getAgent(defaultModel.value) : undefined,
 );
 
 const defaultTools = useLocalStorage<INode[] | null>(
@@ -124,21 +127,7 @@ const defaultTools = useLocalStorage<INode[] | null>(
 	},
 );
 
-const toolsSelection = ref<INode[] | null>(null);
 const shouldSkipNextScrollTrigger = ref(false);
-
-const selectedTools = computed<INode[]>(() => {
-	if (currentConversation.value?.tools) {
-		return currentConversation.value.tools;
-	}
-
-	// As soon as the user selects tools use the selection over the default
-	if (toolsSelection.value !== null) {
-		return toolsSelection.value;
-	}
-
-	return defaultTools.value ?? [];
-});
 
 const modelFromQuery = computed<ChatModelDto | null>(() => {
 	const agentId = route.query.agentId;
@@ -186,6 +175,25 @@ const selectedModel = computed<ChatModelDto | null>(() => {
 	}
 
 	return chatStore.getAgent(defaultModel.value, defaultModel.value.cachedDisplayName);
+});
+
+const customAgentId = computed(() =>
+	selectedModel.value?.model.provider === 'custom-agent'
+		? selectedModel.value.model.agentId
+		: undefined,
+);
+const customAgent = useCustomAgent(customAgentId);
+
+const selectedTools = computed<INode[]>(() => {
+	if (customAgent.value) {
+		return customAgent.value.tools;
+	}
+
+	if (currentConversation.value?.tools) {
+		return currentConversation.value.tools;
+	}
+
+	return defaultTools.value ?? [];
 });
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
@@ -352,10 +360,14 @@ watch(
 
 // Keep cached display name up-to-date
 watch(
-	defaultModelName,
-	(name) => {
-		if (defaultModel.value && name) {
-			defaultModel.value = { ...defaultModel.value, cachedDisplayName: name };
+	defaultAgent,
+	(agent) => {
+		if (defaultModel.value && agent) {
+			defaultModel.value = { ...defaultModel.value, cachedDisplayName: agent.name };
+		}
+
+		if (agent && !agent.metadata.capabilities.functionCalling) {
+			defaultTools.value = [];
 		}
 	},
 	{ immediate: true },
@@ -478,7 +490,6 @@ function handleConfigureModel() {
 }
 
 async function handleUpdateTools(newTools: INode[]) {
-	toolsSelection.value = newTools;
 	defaultTools.value = newTools;
 
 	if (currentConversation.value) {
@@ -619,6 +630,7 @@ function onFilesDropped(files: File[]) {
 						@select-model="handleConfigureModel"
 						@select-tools="handleUpdateTools"
 						@set-credentials="handleConfigureCredentials"
+						@edit-agent="handleEditAgent"
 					/>
 				</div>
 			</div>

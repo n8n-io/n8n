@@ -20,6 +20,8 @@ import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
+import { useUIStore } from '@/app/stores/ui.store';
+import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 
 const props = defineProps<{
 	modalName: string;
@@ -35,6 +37,8 @@ const chatStore = useChatStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
+const uiStore = useUIStore();
+
 const modalBus = ref(createEventBus());
 const customAgent = useCustomAgent(props.data.agentId);
 
@@ -202,8 +206,16 @@ async function onDelete() {
 	}
 }
 
-function onSelectTools(newTools: INode[]) {
-	tools.value = newTools;
+function onSelectTools() {
+	uiStore.openModalWithData({
+		name: TOOLS_SELECTOR_MODAL_KEY,
+		data: {
+			selected: tools.value,
+			onConfirm: (newTools: INode[]) => {
+				tools.value = newTools;
+			},
+		},
+	});
 }
 </script>
 
@@ -297,14 +309,22 @@ function onSelectTools(newTools: INode[]) {
 					</N8nInputLabel>
 
 					<N8nInputLabel
-						v-if="canSelectTools"
 						input-name="agent-model"
 						:class="$style.input"
 						:label="i18n.baseText('chatHub.agent.editor.tools.label')"
 						:required="false"
 					>
 						<div>
-							<ToolsSelector :disabled="isLoadingAgent" :selected="tools" @select="onSelectTools" />
+							<ToolsSelector
+								:disabled="isLoadingAgent || !canSelectTools"
+								:disabled-tooltip="
+									isLoadingAgent || canSelectTools
+										? undefined
+										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+								"
+								:selected="tools"
+								@click="onSelectTools"
+							/>
 						</div>
 					</N8nInputLabel>
 				</div>
