@@ -90,6 +90,7 @@ const emit = defineEmits<{
 			name: string;
 			parentFolderId?: string;
 			sharedWithProjects?: ProjectSharingData[];
+			homeProjectId?: string;
 		},
 	];
 }>();
@@ -342,6 +343,7 @@ async function onAction(action: string) {
 				name: props.data.name,
 				parentFolderId: props.data.parentFolder?.id,
 				sharedWithProjects: props.data.sharedWithProjects,
+				homeProjectId: props.data.homeProject?.id,
 			});
 			break;
 		case WORKFLOW_LIST_ITEM_ACTIONS.ENABLE_MCP_ACCESS:
