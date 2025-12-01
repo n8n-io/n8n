@@ -23,5 +23,6 @@ export const userSettingsSchema = z.object({
 	easyAIWorkflowOnboarded: z.boolean().optional(),
 	userClaimedAiCredits: z.boolean().optional(),
 	dismissedCallouts: z.record(z.boolean()).optional(),
+	autosaveEnabled: z.boolean().optional(),
 });
 export type UserSettings = z.infer<typeof userSettingsSchema>;

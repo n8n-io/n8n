@@ -34,6 +34,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { useRootStore } from '@n8n/stores/useRootStore';
 
+import { useAutosave } from '@/app/composables/useAutosave';
 import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -126,6 +127,7 @@ const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({ router });
 const workflowHelpers = useWorkflowHelpers();
 const pageRedirectionHelper = usePageRedirectionHelper();
+const { isAutosaving, lastAutosaveTime, resetAutosaveTimer, startAutosaveTimer } = useAutosave();
 
 const isTagsEditEnabled = ref(false);
 const appliedTagIds = ref<string[]>([]);
@@ -322,6 +324,8 @@ async function onSaveButtonClick() {
 
 	if (saved) {
 		showCreateWorkflowSuccessToast(id);
+		// Reset autosave timer after manual save
+		resetAutosaveTimer();
 
 		await npsSurveyStore.fetchPromptsData();
 
@@ -764,6 +768,8 @@ onMounted(() => {
 	nodeViewEventBus.on('deleteWorkflow', handleDeleteWorkflow);
 	nodeViewEventBus.on('renameWorkflow', onNameToggle);
 	nodeViewEventBus.on('addTag', onTagsEditEnable);
+	// Start autosave timer if workflow has unsaved changes
+	startAutosaveTimer();
 });
 
 onBeforeUnmount(() => {
@@ -815,6 +821,11 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 							:read-only="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							:disabled="readOnly || isArchived || (!isNewWorkflow && !workflowPermissions.update)"
 							@update:model-value="onNameSubmit"
+						/>
+						<span
+							v-if="uiStore.stateIsDirty && !isNewWorkflow"
+							:class="$style.dirtyIndicator"
+							data-test-id="workflow-dirty-indicator"
 						/>
 					</template>
 				</FolderBreadcrumbs>
@@ -939,6 +950,8 @@ const onWorkflowActiveToggle = async (value: { id: string; active: boolean }) =>
 						(!isNewWorkflow && !workflowPermissions.update)
 					"
 					:is-saving="isWorkflowSaving"
+					:is-autosaving="isAutosaving"
+					:last-autosave-time="lastAutosaveTime"
 					:with-shortcut="!readOnly && !isArchived && workflowPermissions.update"
 					:shortcut-tooltip="i18n.baseText('saveWorkflowButton.hint')"
 					data-test-id="workflow-save-button"
@@ -1103,5 +1116,15 @@ $--header-spacing: 20px;
 	width: 100%;
 	flex: 1;
 	margin: 0 var(--spacing--md);
+}
+
+.dirtyIndicator {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	background-color: var(--color--warning);
+	margin-left: var(--spacing--3xs);
+	flex-shrink: 0;
 }
 </style>

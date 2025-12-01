@@ -28,6 +28,7 @@ import { confirmPasswordEventBus } from '../auth.eventBus';
 import {
 	N8nAvatar,
 	N8nButton,
+	N8nCheckbox,
 	N8nFormInputs,
 	N8nHeading,
 	N8nInputLabel,
@@ -66,6 +67,7 @@ const formInputs = ref<null | IFormInputs>(null);
 const formBus = createFormEventBus();
 const readyToSubmit = ref(false);
 const currentSelectedTheme = ref(useUIStore().theme);
+const autosaveEnabled = ref(true);
 const themeOptions = ref<Array<{ name: ThemeOption; label: BaseTextKey }>>([
 	{
 		name: 'system',
@@ -114,8 +116,16 @@ const isMfaFeatureEnabled = computed((): boolean => {
 	return settingsStore.isMfaFeatureEnabled;
 });
 
+const initialAutosaveEnabled = computed((): boolean => {
+	// Default to true if undefined
+	return usersStore.currentUser?.settings?.autosaveEnabled !== false;
+});
+
 const hasAnyPersonalisationChanges = computed((): boolean => {
-	return currentSelectedTheme.value !== uiStore.theme;
+	return (
+		currentSelectedTheme.value !== uiStore.theme ||
+		autosaveEnabled.value !== initialAutosaveEnabled.value
+	);
 });
 
 const hasAnyChanges = computed(() => {
@@ -151,6 +161,8 @@ const currentUserRole = computed<RoleContent>(() => roles.value[usersStore.globa
 
 onMounted(() => {
 	documentTitle.set(i18n.baseText('settings.personal.personalSettings'));
+	// Initialize autosave setting from user settings
+	autosaveEnabled.value = initialAutosaveEnabled.value;
 	formInputs.value = [
 		{
 			name: 'firstName',
@@ -275,6 +287,11 @@ async function updatePersonalisationSettings() {
 	}
 
 	uiStore.setTheme(currentSelectedTheme.value);
+
+	// Save autosave setting if changed
+	if (autosaveEnabled.value !== initialAutosaveEnabled.value) {
+		await usersStore.updateUserSettings({ autosaveEnabled: autosaveEnabled.value });
+	}
 }
 
 function onSaveClick() {
@@ -446,6 +463,15 @@ onBeforeUnmount(() => {
 						>
 						</N8nOption>
 					</N8nSelect>
+				</N8nInputLabel>
+			</div>
+			<div class="mt-m">
+				<N8nInputLabel :label="i18n.baseText('settings.personal.autosave')">
+					<N8nCheckbox
+						v-model="autosaveEnabled"
+						:label="i18n.baseText('settings.personal.autosave.description')"
+						data-test-id="autosave-checkbox"
+					/>
 				</N8nInputLabel>
 			</div>
 		</div>
