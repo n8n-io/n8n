@@ -345,12 +345,12 @@ function createHttpRequestLogHandler(
 	ctx: IAllExecuteFunctions,
 	requestOptions: IRequestOptions | IHttpRequestOptions | null,
 	node: INode,
-	credentialsType: string,
+	credentialsType?: string,
 ) {
+	const ctxCompatible = 'sendMessageToUI' in ctx;
+	const canLog = node.nodeDebugLogs && ctx.getMode?.() === 'manual' && requestOptions !== null;
 	return async () => {
 		// TODO: change to nodeDebugLogger and log request to server logs?
-		const ctxCompatible = 'sendMessageToUI' in ctx;
-		const canLog = node.nodeDebugLogs && ctx.getMode?.() === 'manual' && requestOptions !== null;
 		if (ctxCompatible && canLog) {
 			try {
 				let secrets: string[] = [];
@@ -1675,7 +1675,13 @@ export const getRequestHelperFunctions = (
 					additionalCredentialOptions,
 				);
 			} else {
-				tempResponseData = await this.helpers.request(tempRequestOptions);
+				const requestOptionsWitoutAuthentication = copyRequestOptionsForLogs(
+					this,
+					tempRequestOptions,
+				);
+				tempResponseData = await this.helpers
+					.request(tempRequestOptions)
+					.finally(createHttpRequestLogHandler(this, requestOptionsWitoutAuthentication, node));
 			}
 
 			const newResponse: IN8nHttpFullResponse = Object.assign(
