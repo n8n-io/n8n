@@ -289,8 +289,8 @@ export function stickyNotesStringify(workflow: WorkflowMetadata): string {
 
 	const lines: string[] = [];
 	for (const note of stickyNotes) {
-		const content = note.parameters.content as string | undefined;
-		if (content) {
+		const content = note.parameters.content;
+		if (typeof content === 'string' && content) {
 			// Indent continuation lines so they appear as part of the bullet
 			const contentLines = content.trim().split('\n');
 			const indentedContent = contentLines

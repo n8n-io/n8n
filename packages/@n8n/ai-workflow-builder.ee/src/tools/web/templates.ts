@@ -11,6 +11,29 @@ import type {
 const N8N_API_BASE_URL = 'https://api.n8n.io/api';
 
 /**
+ * Type guard for TemplateSearchResponse
+ */
+function isTemplateSearchResponse(data: unknown): data is TemplateSearchResponse {
+	if (typeof data !== 'object' || data === null) return false;
+	const obj = data as Record<string, unknown>;
+	return typeof obj.totalWorkflows === 'number' && Array.isArray(obj.workflows);
+}
+
+/**
+ * Type guard for TemplateFetchResponse
+ */
+function isTemplateFetchResponse(data: unknown): data is TemplateFetchResponse {
+	if (typeof data !== 'object' || data === null) return false;
+	const obj = data as Record<string, unknown>;
+	return (
+		typeof obj.id === 'number' &&
+		typeof obj.name === 'string' &&
+		typeof obj.workflow === 'object' &&
+		obj.workflow !== null
+	);
+}
+
+/**
  * Build query string from search parameters
  */
 function buildSearchQueryString(query: TemplateSearchQuery): string {
@@ -46,6 +69,9 @@ function buildSearchQueryString(query: TemplateSearchQuery): string {
 	if (query.combineWith) {
 		params.append('combineWith', query.combineWith);
 	}
+	if (query.category) {
+		params.append('category', query.category);
+	}
 
 	return params.toString();
 }
@@ -73,7 +99,11 @@ export async function fetchTemplateList(query: {
 		throw new Error(`Failed to fetch templates: ${response.status} ${response.statusText}`);
 	}
 
-	return (await response.json()) as TemplateSearchResponse;
+	const data: unknown = await response.json();
+	if (!isTemplateSearchResponse(data)) {
+		throw new Error('Invalid response format from templates API');
+	}
+	return data;
 }
 
 /**
@@ -94,5 +124,9 @@ export async function fetchTemplateByID(id: number): Promise<TemplateFetchRespon
 		throw new Error(`Failed to fetch template ${id}: ${response.status} ${response.statusText}`);
 	}
 
-	return (await response.json()) as TemplateFetchResponse;
+	const data: unknown = await response.json();
+	if (!isTemplateFetchResponse(data)) {
+		throw new Error(`Invalid response format from template ${id} API`);
+	}
+	return data;
 }

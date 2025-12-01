@@ -12,14 +12,28 @@ import type { WorkflowState } from '../workflow-state';
 type StateUpdate = Partial<typeof WorkflowState.State>;
 
 /**
- * Collect and flatten arrays from state updates for a given key
+ * Type guard to check if a value is an array
+ */
+function isArray(value: unknown): value is unknown[] {
+	return Array.isArray(value);
+}
+
+/**
+ * Collect and flatten arrays from state updates for a given key.
+ * Uses type guard for array detection and explicit typing on the result.
+ * @param updates - State updates to collect from
+ * @param key - The key to collect array values from
+ * @returns Flattened array of values from the specified key
  */
 function collectArrayFromUpdates<T>(updates: StateUpdate[], key: keyof StateUpdate): T[] {
 	const result: T[] = [];
 	for (const update of updates) {
 		const value = update[key];
-		if (Array.isArray(value)) {
-			result.push(...(value as T[]));
+		if (isArray(value)) {
+			// Each element is validated as part of the source StateUpdate structure
+			for (const item of value) {
+				result.push(item as T);
+			}
 		}
 	}
 	return result;

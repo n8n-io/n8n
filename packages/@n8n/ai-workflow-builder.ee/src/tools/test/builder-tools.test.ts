@@ -170,12 +170,13 @@ describe('builder-tools', () => {
 	});
 
 	describe('getBuilderTools', () => {
-		it('should return all builder tools in the correct order', () => {
+		it('should return all builder tools including workflow examples when feature flag is enabled', () => {
 			const tools = getBuilderTools({
 				parsedNodeTypes,
 				logger: mockLogger,
 				llmComplexTask: mockLlmComplexTask,
 				instanceUrl: 'https://test.n8n.io',
+				featureFlags: { templateExamples: true },
 			});
 
 			expect(tools).toHaveLength(12);
@@ -198,23 +199,37 @@ describe('builder-tools', () => {
 			expect(createValidateWorkflowTool).toHaveBeenCalledWith(parsedNodeTypes, mockLogger);
 		});
 
-		it('should work without optional parameters', () => {
+		it('should exclude workflow examples tool when feature flag is disabled', () => {
+			const tools = getBuilderTools({
+				parsedNodeTypes,
+				logger: mockLogger,
+				llmComplexTask: mockLlmComplexTask,
+				featureFlags: { templateExamples: false },
+			});
+
+			expect(tools).toHaveLength(11);
+			expect(createGetWorkflowExamplesTool).not.toHaveBeenCalled();
+		});
+
+		it('should exclude workflow examples tool when feature flag is not provided', () => {
 			const tools = getBuilderTools({
 				parsedNodeTypes,
 				llmComplexTask: mockLlmComplexTask,
 			});
 
-			expect(tools).toHaveLength(12);
-			expect(createGetWorkflowExamplesTool).toHaveBeenCalledWith(undefined);
-			expect(createConnectNodesTool).toHaveBeenCalledWith(parsedNodeTypes, undefined);
-			expect(createRemoveNodeTool).toHaveBeenCalledWith(undefined);
-			expect(createUpdateNodeParametersTool).toHaveBeenCalledWith(
+			expect(tools).toHaveLength(11);
+			expect(createGetWorkflowExamplesTool).not.toHaveBeenCalled();
+		});
+
+		it('should exclude workflow examples tool when featureFlags is undefined', () => {
+			const tools = getBuilderTools({
 				parsedNodeTypes,
-				mockLlmComplexTask,
-				undefined,
-				undefined,
-			);
-			expect(createValidateWorkflowTool).toHaveBeenCalledWith(parsedNodeTypes, undefined);
+				llmComplexTask: mockLlmComplexTask,
+				featureFlags: undefined,
+			});
+
+			expect(tools).toHaveLength(11);
+			expect(createGetWorkflowExamplesTool).not.toHaveBeenCalled();
 		});
 
 		it('should pass through different node types', () => {
@@ -236,9 +251,10 @@ describe('builder-tools', () => {
 	});
 
 	describe('getBuilderToolsForDisplay', () => {
-		it('should return all display tools in the correct order', () => {
+		it('should return all display tools including workflow examples when feature flag is enabled', () => {
 			const tools = getBuilderToolsForDisplay({
 				nodeTypes: parsedNodeTypes,
+				featureFlags: { templateExamples: true },
 			});
 
 			expect(tools).toHaveLength(12);
@@ -256,12 +272,31 @@ describe('builder-tools', () => {
 			expect(getAddNodeToolBase).toHaveBeenCalledWith(parsedNodeTypes);
 		});
 
+		it('should exclude workflow examples tool when feature flag is disabled', () => {
+			const tools = getBuilderToolsForDisplay({
+				nodeTypes: parsedNodeTypes,
+				featureFlags: { templateExamples: false },
+			});
+
+			expect(tools).toHaveLength(11);
+			expect(tools).not.toContain(GET_WORKFLOW_EXAMPLES_TOOL);
+		});
+
+		it('should exclude workflow examples tool when feature flag is not provided', () => {
+			const tools = getBuilderToolsForDisplay({
+				nodeTypes: parsedNodeTypes,
+			});
+
+			expect(tools).toHaveLength(11);
+			expect(tools).not.toContain(GET_WORKFLOW_EXAMPLES_TOOL);
+		});
+
 		it('should work with empty node types array', () => {
 			const tools = getBuilderToolsForDisplay({
 				nodeTypes: [],
 			});
 
-			expect(tools).toHaveLength(12);
+			expect(tools).toHaveLength(11);
 			expect(getAddNodeToolBase).toHaveBeenCalledWith([]);
 		});
 
@@ -280,15 +315,33 @@ describe('builder-tools', () => {
 	});
 
 	describe('consistency between getBuilderTools and getBuilderToolsForDisplay', () => {
-		it('should return the same number of tools', () => {
+		it('should return the same number of tools when feature flag is enabled', () => {
 			const builderTools = getBuilderTools({
 				parsedNodeTypes,
 				llmComplexTask: mockLlmComplexTask,
 				logger: mockLogger,
+				featureFlags: { templateExamples: true },
 			});
 
 			const displayTools = getBuilderToolsForDisplay({
 				nodeTypes: parsedNodeTypes,
+				featureFlags: { templateExamples: true },
+			});
+
+			expect(builderTools).toHaveLength(displayTools.length);
+		});
+
+		it('should return the same number of tools when feature flag is disabled', () => {
+			const builderTools = getBuilderTools({
+				parsedNodeTypes,
+				llmComplexTask: mockLlmComplexTask,
+				logger: mockLogger,
+				featureFlags: { templateExamples: false },
+			});
+
+			const displayTools = getBuilderToolsForDisplay({
+				nodeTypes: parsedNodeTypes,
+				featureFlags: { templateExamples: false },
 			});
 
 			expect(builderTools).toHaveLength(displayTools.length);
