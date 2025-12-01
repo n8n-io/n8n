@@ -212,7 +212,7 @@ export function prepareFormData({
 	}
 
 	for (const [index, field] of formFields.entries()) {
-		const { fieldType, requiredField, multiselect, placeholder } = field;
+		const { fieldType, requiredField, multiselect, placeholder, defaultValue } = field;
 		const queryParam = getFieldIdentifier(field, nodeVersion);
 
 		const input: FormField = {
@@ -220,7 +220,7 @@ export function prepareFormData({
 			errorId: `error-field-${index}`,
 			label: field.fieldLabel,
 			inputRequired: requiredField ? 'form-required' : '',
-			defaultValue: query[queryParam] ?? '',
+			defaultValue: query[queryParam] ?? defaultValue ?? '',
 			placeholder,
 		};
 

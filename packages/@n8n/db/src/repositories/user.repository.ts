@@ -44,6 +44,9 @@ export class UserRepository extends Repository<User> {
 	 * With `update` it would only receive the updated fields, e.g. the `id`
 	 * would be missing. test('does not use `Repository.update`, but
 	 * `Repository.save` instead'.
+	 *
+	 * Also don't use this method to change a user's role.
+	 * Use `UserService.changeUserRole` instead.
 	 */
 	async update(...args: Parameters<Repository<User>['update']>) {
 		return await super.update(...args);
