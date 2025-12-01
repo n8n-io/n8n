@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
@@ -23,6 +24,7 @@ export class BinaryDataService {
 	constructor(
 		private readonly config: BinaryDataConfig,
 		private readonly errorReporter: ErrorReporter,
+		private readonly logger: Logger,
 	) {}
 
 	setManager(mode: BinaryData.ServiceMode, manager: BinaryData.Manager) {
@@ -173,15 +175,32 @@ export class BinaryDataService {
 	}
 
 	async deleteManyByBinaryDataId(ids: string[]) {
-		const manager = this.managers[this.mode];
+		const fileIdsByMode = new Map<string, string[]>();
 
-		const fileIds = ids.flatMap((attachmentId) => {
-			const [, fileId] = attachmentId.split(':'); // remove mode
+		for (const attachmentId of ids) {
+			const [mode, fileId] = attachmentId.split(':');
 
-			return fileId ? [fileId] : [];
-		});
+			if (!fileId) {
+				continue;
+			}
 
-		await manager.deleteManyByFileId?.(fileIds);
+			const entry = fileIdsByMode.get(mode) ?? [];
+
+			fileIdsByMode.set(mode, entry.concat([fileId]));
+		}
+
+		for (const [mode, fileIds] of fileIdsByMode) {
+			const manager = this.managers[mode];
+
+			if (!manager) {
+				this.logger.info(
+					`File manager of mode ${mode} is missing. Skip deleting these files: ${fileIds.join(', ')}`,
+				);
+				continue;
+			}
+
+			await manager.deleteManyByFileId?.(fileIds);
+		}
 	}
 
 	async duplicateBinaryData(
