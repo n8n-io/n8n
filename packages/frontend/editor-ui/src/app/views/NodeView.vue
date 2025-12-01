@@ -1017,11 +1017,11 @@ async function onImportWorkflowDataEvent(data: IDataObject) {
 
 	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
 	if (data.tidyUp) {
-		const nodesIdsToTidyUp = data.nodesIdsToTidyUp as string[];
+		const nodesIdsToCreate = data.nodesIdsToCreate as string[];
 		setTimeout(async () => {
 			canvasEventBus.emit('tidyUp', {
 				source: 'import-workflow-data',
-				nodeIdsFilter: nodesIdsToTidyUp,
+				nodeIdsAdd: nodesIdsToCreate,
 				trackEvents,
 			});
 

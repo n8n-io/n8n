@@ -139,7 +139,7 @@ export const usePostHog = defineStore('posthog', () => {
 			api_host: settingsStore.settings.posthog.proxy,
 			autocapture: config.autocapture,
 			disable_session_recording: config.disableSessionRecording,
-			debug: config.debug,
+			debug: false, // Enables console logs for debugging reasons
 			session_recording: {
 				maskAllInputs: false,
 			},
