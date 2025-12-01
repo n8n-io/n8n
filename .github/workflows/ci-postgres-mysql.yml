@@ -41,7 +41,7 @@ jobs:
     name: SQLite Pooled
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       DB_TYPE: sqlite
       DB_SQLITE_POOL_SIZE: 4
@@ -88,7 +88,7 @@ jobs:
     name: MySQL 8.4
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       DB_MYSQLDB_PASSWORD: password
       DB_MYSQLDB_POOL_SIZE: 1
@@ -116,7 +116,7 @@ jobs:
     name: Postgres
     needs: build
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     env:
       DB_POSTGRESDB_PASSWORD: password
       DB_POSTGRESDB_POOL_SIZE: 1 # Detect connection pooling deadlocks

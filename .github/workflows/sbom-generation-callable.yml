@@ -1,14 +1,14 @@
-name: 'Release: Attach SBOM'
+name: "Release: Attach SBOM"
 
 on:
   workflow_call:
     inputs:
       n8n_version:
-        description: 'N8N version to generate SBOM for'
+        description: "N8N version to generate SBOM for"
         required: true
         type: string
       release_tag_ref:
-        description: 'Git reference to checkout (e.g. n8n@1.2.3)'
+        description: "Git reference to checkout (e.g. n8n@1.2.3)"
         required: true
         type: string
     secrets:
@@ -18,11 +18,11 @@ on:
   workflow_dispatch:
     inputs:
       n8n_version:
-        description: 'N8N version to generate SBOM for'
+        description: "N8N version to generate SBOM for"
         required: true
         type: string
       release_tag_ref:
-        description: 'Git reference to checkout (e.g. n8n@1.2.3)'
+        description: "Git reference to checkout (e.g. n8n@1.2.3)"
         required: true
         type: string
 
@@ -35,7 +35,7 @@ jobs:
   generate-sbom:
     name: Generate and Attach SBOM to Release
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     continue-on-error: true
     steps:
       - name: Checkout release tag
@@ -65,13 +65,13 @@ jobs:
       - name: Attest build provenance for source release
         uses: actions/attest-build-provenance@977bb373ede98d70efdf65b84cb5f73e068dcc2a0 # v3.0.0
         with:
-          subject-path: './package.json'
+          subject-path: "./package.json"
 
       - name: Attest SBOM for source release
         uses: actions/attest-sbom@4651f806c01d8637787e274ac3bdf724ef169f34 # v3.0.0
         with:
-          subject-path: './package.json'
-          sbom-path: 'sbom-source.cdx.json'
+          subject-path: "./package.json"
+          sbom-path: "sbom-source.cdx.json"
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@d7543c93d881b35a8faa02e8e3605f69b7a1ce62 # v3.10.0
@@ -103,7 +103,7 @@ jobs:
         uses: act10ns/slack@44541246747a30eb3102d87f7a4cc5471b0ffb7d # v2.1.0
         with:
           status: ${{ job.status }}
-          channel: '#alerts-build'
+          channel: "#alerts-build"
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: |
             <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}| SBOM generation and attachment failed for release ${{ inputs.release_tag_ref }} >
