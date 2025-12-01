@@ -7,6 +7,7 @@
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { Project } from '@n8n/db';
+import { ExecutionRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type express from 'express';
 import { BinaryDataService, ErrorReporter } from 'n8n-core';
@@ -644,16 +645,14 @@ export async function executeWebhook(
 		const { parentExecution } = runExecutionData;
 		if (WorkflowHelpers.shouldRestartParentExecution(parentExecution)) {
 			// on child execution completion, resume parent execution
-			const childExecutionId = executionId; // executionId is guaranteed to be set by WorkflowRunner.run() at this point
-			const workflowId = workflow.id ?? 'unknown';
+			const executionRepository = Container.get(ExecutionRepository);
 			void executePromise
 				.then(async (subworkflowResults) => {
 					if (!subworkflowResults) return;
 					await WorkflowHelpers.updateParentExecutionWithChildResults(
-						childExecutionId,
+						executionRepository,
 						parentExecution.executionId,
 						subworkflowResults,
-						workflowId,
 					);
 				})
 				.then(() => {

@@ -164,10 +164,9 @@ export class WaitTracker {
 				.then(async (subworkflowResults) => {
 					if (!subworkflowResults) return;
 					await updateParentExecutionWithChildResults(
-						executionId,
+						this.executionRepository,
 						parentExecution.executionId,
 						subworkflowResults,
-						workflowId,
 					);
 				})
 				.then(() => {

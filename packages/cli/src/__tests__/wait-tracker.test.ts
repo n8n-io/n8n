@@ -2,7 +2,6 @@
 import { mockLogger } from '@n8n/backend-test-utils';
 import type { Project, IExecutionResponse } from '@n8n/db';
 import { ExecutionRepository } from '@n8n/db';
-import { Container } from '@n8n/di';
 import { mock, captor } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
 import type {
@@ -12,6 +11,7 @@ import type {
 	IRunExecutionData,
 	IExecuteData,
 	ITaskData,
+	ExecutionStatus,
 } from 'n8n-workflow';
 import { createDeferredPromise, createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
 
@@ -47,9 +47,6 @@ describe('WaitTracker', () => {
 
 	let waitTracker: WaitTracker;
 	beforeEach(() => {
-		// Register mocked ExecutionRepository in Container so helper functions can access it
-		Container.set(ExecutionRepository, executionRepository);
-
 		waitTracker = new WaitTracker(
 			mockLogger(),
 			executionRepository,
@@ -332,7 +329,11 @@ describe('WaitTracker', () => {
 				let parentUpdateCallCount = 0;
 				const originalMock = executionRepository.updateExistingExecution.getMockImplementation();
 				executionRepository.updateExistingExecution.mockImplementation(
-					async (id, data, requireStatus) => {
+					async (
+						id: string,
+						data: Partial<IExecutionResponse>,
+						requireStatus?: ExecutionStatus,
+					) => {
 						if (id === parentExecution.id && requireStatus === 'waiting') {
 							parentUpdateCallCount++;
 							return parentUpdateCallCount === 1; // Only first succeeds
