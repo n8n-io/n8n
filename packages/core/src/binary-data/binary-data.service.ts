@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { Container, Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
@@ -23,6 +24,7 @@ export class BinaryDataService {
 	constructor(
 		private readonly config: BinaryDataConfig,
 		private readonly errorReporter: ErrorReporter,
+		private readonly logger: Logger,
 	) {}
 
 	setManager(mode: BinaryData.ServiceMode, manager: BinaryData.Manager) {
@@ -186,8 +188,8 @@ export class BinaryDataService {
 			const manager = this.managers[mode];
 
 			if (!manager) {
-				this.errorReporter.warn(
-					`File manager of mode ${mode} is missing. Cannot delete these files: ${fileIds.join(', ')}`,
+				this.logger.info(
+					`File manager of mode ${mode} is missing. Skip deleting these files: ${fileIds.join(', ')}`,
 				);
 				continue;
 			}
