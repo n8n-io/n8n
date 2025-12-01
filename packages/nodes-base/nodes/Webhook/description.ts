@@ -11,8 +11,11 @@ export const defaultWebhookDescription: IWebhookDescription = {
 	responseData: `={{(${getResponseData})($parameter)}}`,
 	responseBinaryPropertyName: '={{$parameter["responseBinaryPropertyName"]}}',
 	responseContentType: '={{$parameter["options"]["responseContentType"]}}',
+
 	responsePropertyName: '={{$parameter["options"]["responsePropertyName"]}}',
+
 	responseHeaders: '={{$parameter["options"]["responseHeaders"]}}',
+
 	path: '={{$parameter["path"]}}',
 };
 
