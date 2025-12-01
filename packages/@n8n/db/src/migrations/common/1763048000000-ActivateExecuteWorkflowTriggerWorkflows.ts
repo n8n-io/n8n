@@ -67,10 +67,10 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 				// Disable other trigger nodes
 				let nodesModified = false;
 				nodes.forEach((node: Node) => {
-					// Check if node is a trigger (excluding executeWorkflowTrigger and errorTrigger)
+					// Check if node is a trigger (excluding executeWorkflowTrigger, and errorTrigger only when no valid executeWorkflowTrigger exists)
 					if (
 						node.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE &&
-						node.type !== ERROR_TRIGGER_NODE_TYPE &&
+						(node.type !== ERROR_TRIGGER_NODE_TYPE || executeWorkflowTriggerNode) &&
 						this.isTriggerNode(node.type)
 					) {
 						if (!node.disabled) {
