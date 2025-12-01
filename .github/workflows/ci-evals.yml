@@ -5,25 +5,25 @@ on:
     branches:
       - master
     paths:
-      - 'packages/@n8n/ai-workflow-builder.ee/**'
-      - '.github/workflows/ci-evals.yml'
+      - "packages/@n8n/ai-workflow-builder.ee/**"
+      - ".github/workflows/ci-evals.yml"
   schedule:
-    - cron: '0 22 * * 6'
+    - cron: "0 22 * * 6"
   workflow_dispatch:
     inputs:
       branch:
-        description: 'GitHub branch to test.'
+        description: "GitHub branch to test."
         required: false
-        default: 'master'
+        default: "master"
       dataset:
-        description: 'LangSmith dataset to use.'
+        description: "LangSmith dataset to use."
         required: false
-        default: 'workflow-builder-canvas-prompts'
+        default: "workflow-builder-canvas-prompts"
 
 jobs:
   evals:
     name: Run Evaluations
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     env:
       N8N_AI_ANTHROPIC_KEY: ${{ secrets.EVALS_ANTHROPIC_KEY }}
       LANGSMITH_TRACING: true

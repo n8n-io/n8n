@@ -2,7 +2,7 @@ name: Chromatic
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
   workflow_dispatch:
   pull_request_review:
     types: [submitted]
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   changeset:
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - name: Determine changed files
         uses: tomi/paths-filter-action@v3.0.2
@@ -39,7 +39,7 @@ jobs:
         !startsWith(github.event.pull_request.head.ref, 'release/') &&
         !startsWith(github.event.pull_request.head.ref, 'release-pr/')
       )
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
         with:
@@ -56,8 +56,8 @@ jobs:
         continue-on-error: true
         with:
           workingDir: packages/frontend/@n8n/design-system
-          autoAcceptChanges: 'master'
-          skip: 'release/**'
+          autoAcceptChanges: "master"
+          skip: "release/**"
           onlyChanged: true
           projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
           exitZeroOnChanges: false

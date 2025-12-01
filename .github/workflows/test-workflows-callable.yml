@@ -4,20 +4,20 @@ on:
   workflow_call:
     inputs:
       git_ref:
-        description: 'The Git ref (branch, tag, or SHA) to checkout and test.'
+        description: "The Git ref (branch, tag, or SHA) to checkout and test."
         required: true
         type: string
       compare_schemas:
         description: 'Set to "true" to enable schema comparison during tests.'
         required: false
-        default: 'false'
+        default: "false"
         type: string
     secrets:
       ENCRYPTION_KEY:
-        description: 'Encryption key for n8n operations.'
+        description: "Encryption key for n8n operations."
         required: true
       CURRENTS_RECORD_KEY:
-        description: 'Currents record key for uploading test results.'
+        description: "Currents record key for uploading test results."
         required: true
 
 env:
@@ -26,7 +26,7 @@ env:
 jobs:
   run_workflow_tests:
     name: Run Workflow Tests with Snapshots
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2

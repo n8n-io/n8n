@@ -1,18 +1,18 @@
-name: 'Release: Push to Channel'
+name: "Release: Push to Channel"
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'n8n Release version to push to a channel (e.g., 1.2.3 or 1.2.3-beta.4)'
+        description: "n8n Release version to push to a channel (e.g., 1.2.3 or 1.2.3-beta.4)"
         required: true
         type: string
 
       release-channel:
-        description: 'Release channel'
+        description: "Release channel"
         required: true
         type: choice
-        default: 'beta'
+        default: "beta"
         options:
           - beta
           - stable
@@ -45,7 +45,7 @@ jobs:
     name: Release to NPM
     runs-on: ubuntu-latest
     needs: validate-inputs
-    timeout-minutes: 5
+    timeout-minutes: 30
     steps:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -69,7 +69,7 @@ jobs:
     name: Release to DockerHub
     runs-on: ubuntu-latest
     needs: validate-inputs
-    timeout-minutes: 5
+    timeout-minutes: 30
     steps:
       - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:
@@ -96,7 +96,7 @@ jobs:
     name: Release to GitHub Container Registry
     runs-on: ubuntu-latest
     needs: validate-inputs
-    timeout-minutes: 5
+    timeout-minutes: 30
     steps:
       - uses: docker/login-action@9780b0c442fbb1117ed29e0efdff1e18412f7567 # v3.3.0
         with:

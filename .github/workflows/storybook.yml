@@ -2,14 +2,14 @@ name: Storybook
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
   workflow_dispatch:
   pull_request:
     branches:
       - master
     paths:
-      - 'packages/frontend/@n8n/design-system/**'
-      - '.github/workflows/storybook.yml'
+      - "packages/frontend/@n8n/design-system/**"
+      - ".github/workflows/storybook.yml"
 concurrency:
   group: storybook-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -19,7 +19,7 @@ jobs:
     name: Cloudflare Pages
     if: |
       !contains(github.event.pull_request.labels.*.name, 'community')
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       deployments: write
