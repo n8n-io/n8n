@@ -5,6 +5,7 @@ import type { Document } from '@langchain/core/documents';
 import { Embeddings } from '@langchain/core/embeddings';
 import type { InputValues, MemoryVariables, OutputValues } from '@langchain/core/memory';
 import type { BaseMessage } from '@langchain/core/messages';
+import { HumanMessage } from '@langchain/core/messages';
 import { BaseRetriever } from '@langchain/core/retrievers';
 import { BaseDocumentCompressor } from '@langchain/core/retrievers/document_compressors';
 import type { StructuredTool, Tool } from '@langchain/core/tools';
@@ -28,8 +29,55 @@ import {
 } from 'n8n-workflow';
 
 import { logAiEvent, isToolsInstance, isBaseChatMemory, isBaseChatMessageHistory } from './helpers';
+import { validateMessages, validateAndFixHumanMessage } from './messageValidator';
 import { N8nBinaryLoader } from './N8nBinaryLoader';
 import { N8nJsonLoader } from './N8nJsonLoader';
+
+/**
+ * Type guard to check if a method is a valid async function with expected signature
+ * @param method - The method to check
+ * @returns True if the method is a valid async function
+ */
+function isValidAsyncMethod(method: unknown): method is (...args: any[]) => Promise<unknown> {
+	return typeof method === 'function';
+}
+
+/**
+ * Type guard to check if a method is a valid function returning BaseMessage[]
+ * @param method - The method to check
+ * @returns True if the method is a valid function
+ */
+function isValidMessageArrayMethod(method: unknown): method is () => Promise<BaseMessage[]> {
+	return typeof method === 'function';
+}
+
+/**
+ * Type guard to safely check if target[prop] is a valid function before calling
+ * @param target - The target object
+ * @param prop - The property name
+ * @returns True if target[prop] is a function
+ */
+function isValidMethodProperty(target: any, prop: string | symbol): boolean {
+	return prop in target && typeof target[prop] === 'function';
+}
+
+/**
+ * Type guard to validate that a return value is an array of BaseMessage
+ * @param value - The value to check
+ * @returns True if the value is an array of BaseMessage
+ */
+function isBaseMessageArray(value: unknown): value is BaseMessage[] {
+	return (
+		Array.isArray(value) &&
+		value.every(
+			(item) =>
+				item &&
+				typeof item === 'object' &&
+				'_getType' in item &&
+				typeof item._getType === 'function',
+		)
+	);
+}
 
 export async function callMethodAsync<T>(
 	this: T,
@@ -99,6 +147,28 @@ export function callMethodSync<T>(
 			`Error on node "${connectedNode.name}" which is connected via input "${parameters.connectionType}"`,
 			{ functionality: 'configuration-node' },
 		);
+	}
+}
+
+/**
+ * Handles method execution with fallback strategy when primary method fails.
+ * This avoids nested try-catch patterns by providing a single unified error handling approach.
+ */
+export async function callMethodWithFallback<T>(
+	primaryCall: () => Promise<T>,
+	fallbackCall: () => Promise<T>,
+	defaultValue: T,
+): Promise<T> {
+	try {
+		return await primaryCall();
+	} catch (error) {
+		// If the primary method fails, try the fallback method
+		try {
+			return await fallbackCall();
+		} catch (innerError) {
+			// If both methods fail, return the default value
+			return defaultValue;
+		}
 	}
 }
 
@@ -181,17 +251,48 @@ export function logWrapper<
 				if (prop === 'getMessages' && 'getMessages' in target) {
 					return async (): Promise<BaseMessage[]> => {
 						connectionType = NodeConnectionTypes.AiMemory;
+						const currentConnectionType = connectionType; // Local variable for type safety
 						const { index } = executeFunctions.addInputData(connectionType, [
 							[{ json: { action: 'getMessages' } }],
 						]);
 
-						const response = (await callMethodAsync.call(target, {
-							executeFunctions,
-							connectionType,
-							currentNodeRunIndex: index,
-							method: target[prop],
-							arguments: [],
-						})) as BaseMessage[];
+						// Use the unified error handling approach instead of nested try-catch
+						let response = await callMethodWithFallback<BaseMessage[]>(
+							// Primary call: use the established error handling pattern
+							async () => {
+								const result = await callMethodAsync.call(target, {
+									executeFunctions,
+									connectionType: currentConnectionType,
+									currentNodeRunIndex: index,
+									method: target[prop],
+									arguments: [],
+								});
+
+								// Use type guard to validate return type
+								if (!isBaseMessageArray(result)) {
+									throw new Error(
+										`Expected getMessages to return BaseMessage[], got ${typeof result}`,
+									);
+								}
+
+								return result;
+							},
+							// Fallback call: direct method invocation with type guard
+							async () => {
+								const method = target[prop];
+								if (!isValidMessageArrayMethod(method)) {
+									throw new Error(`Expected getMessages to be a function, got ${typeof method}`);
+								}
+								return await method();
+							},
+							// Default value: empty array if both methods fail
+							[],
+						);
+
+						// Apply message validation to fix any remaining issues using the centralized validator
+						if (Array.isArray(response)) {
+							response = validateMessages(response);
+						}
 
 						const payload = { action: 'getMessages', response };
 						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
@@ -202,7 +303,11 @@ export function logWrapper<
 				} else if (prop === 'addMessage' && 'addMessage' in target) {
 					return async (message: BaseMessage): Promise<void> => {
 						connectionType = NodeConnectionTypes.AiMemory;
-						const payload = { action: 'addMessage', message };
+
+						// Fix HumanMessage content issues before saving to memory using the centralized validator
+						const fixedMessage = validateAndFixHumanMessage(message);
+
+						const payload = { action: 'addMessage', message: fixedMessage };
 						const { index } = executeFunctions.addInputData(connectionType, [[{ json: payload }]]);
 
 						await callMethodAsync.call(target, {
@@ -210,10 +315,68 @@ export function logWrapper<
 							connectionType,
 							currentNodeRunIndex: index,
 							method: target[prop],
-							arguments: [message],
+							arguments: [fixedMessage],
 						});
 
-						logAiEvent(executeFunctions, 'ai-message-added-to-memory', { message });
+						logAiEvent(executeFunctions, 'ai-message-added-to-memory', { message: fixedMessage });
+						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
+					};
+				} else if (prop === 'addUserMessage' && 'addUserMessage' in target) {
+					return async (content: string): Promise<void> => {
+						connectionType = NodeConnectionTypes.AiMemory;
+
+						// Create a properly formatted HumanMessage using the centralized validator
+						const fixedMessage = validateAndFixHumanMessage(
+							new HumanMessage({
+								content: content || '',
+								additional_kwargs: {},
+							}),
+						);
+
+						// Use the fixed message content instead of original content
+						const fixedContent =
+							typeof fixedMessage.content === 'string' ? fixedMessage.content : '';
+
+						const payload = { action: 'addUserMessage', message: fixedMessage };
+						const { index } = executeFunctions.addInputData(connectionType, [[{ json: payload }]]);
+
+						await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method: target[prop],
+							arguments: [fixedContent],
+						});
+
+						logAiEvent(executeFunctions, 'ai-message-added-to-memory', { content: fixedContent });
+						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
+					};
+				} else if (
+					prop === 'addAIMessage' &&
+					'addAIMessage' in target &&
+					isValidMethodProperty(target, prop)
+				) {
+					return async (content: string): Promise<void> => {
+						connectionType = NodeConnectionTypes.AiMemory;
+
+						const payload = { action: 'addAIMessage', content };
+						const { index } = executeFunctions.addInputData(connectionType, [[{ json: payload }]]);
+
+						// Use type guard to validate method before calling
+						const method = target[prop];
+						if (!isValidAsyncMethod(method)) {
+							throw new Error(`Expected addAIMessage to be a function, got ${typeof method}`);
+						}
+
+						await callMethodAsync.call(target, {
+							executeFunctions,
+							connectionType,
+							currentNodeRunIndex: index,
+							method,
+							arguments: [content],
+						});
+
+						logAiEvent(executeFunctions, 'ai-message-added-to-memory', { content });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: payload }]]);
 					};
 				}

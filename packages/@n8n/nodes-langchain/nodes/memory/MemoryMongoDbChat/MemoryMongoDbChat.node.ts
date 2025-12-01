@@ -11,6 +11,7 @@ import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 
 import { getSessionId } from '@utils/helpers';
 import { logWrapper } from '@utils/logWrapper';
+import { wrapMemoryWithStorageValidation } from '@utils/messageValidator';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import {
@@ -147,6 +148,12 @@ export class MemoryMongoDbChat implements INodeType {
 				inputKey: 'input',
 				outputKey: 'output',
 				k: this.getNodeParameter('contextWindowLength', itemIndex, 5) as number,
+			});
+
+			// Use the shared validation wrapper with MongoDB-specific features
+			wrapMemoryWithStorageValidation(memory, {
+				fallbackOnError: true,
+				enableDirectDbFix: true, // Enable direct database access for fixing data
 			});
 
 			async function closeFunction() {
