@@ -41,7 +41,7 @@ const isMcpEnabled = computed(
 	() => settingsStore.isModuleActive('mcp') && settingsStore.moduleSettings.mcp?.mcpAccessEnabled,
 );
 
-// Descriptive tip that will be used as textarea placeholder and input label tooltip
+// Descriptive message that educates the user that the description is relevant for MCP
 // Updated based on MCP presence
 const textareaTip = computed(() =>
 	isMcpEnabled.value
@@ -100,7 +100,7 @@ const handleKeyDown = async (event: KeyboardEvent) => {
 onMounted(() => {
 	setTimeout(() => {
 		descriptionInput.value?.focus();
-	});
+	}, 150);
 });
 </script>
 
@@ -153,25 +153,6 @@ onMounted(() => {
 </template>
 
 <style module lang="scss">
-.description-button {
-	border: none;
-	position: relative;
-
-	&.active {
-		color: var(--color--background--shade-2);
-	}
-
-	&:hover,
-	&:focus,
-	&:focus-visible,
-	&:active {
-		background: none;
-		background-color: transparent !important;
-		outline: none !important;
-		color: var(--color--background--shade-2) !important;
-	}
-}
-
 .description-edit-content {
 	display: flex;
 	flex-direction: column;
