@@ -53,12 +53,15 @@
   "dependencies": {
     "@n8n/errors": "workspace:*",
     "@n8n/tournament": "1.0.6",
+    "@types/crypto-js": "^4.2.2",
     "ast-types": "0.16.1",
     "callsites": "catalog:",
+    "crypto-js": "^4.2.0",
     "esprima-next": "5.8.4",
     "form-data": "catalog:",
     "jmespath": "0.16.0",
     "js-base64": "catalog:",
+    "jsonrepair": "catalog:",
     "jssha": "3.3.1",
     "lodash": "catalog:",
     "luxon": "catalog:",
@@ -67,7 +70,6 @@
     "title-case": "3.0.3",
     "transliteration": "2.3.5",
     "xml2js": "catalog:",
-    "zod": "catalog:",
-    "jsonrepair": "catalog:"
+    "zod": "catalog:"
   }
 }

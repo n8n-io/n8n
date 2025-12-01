@@ -172,10 +172,14 @@ export function useWorkflowActivate() {
 		}
 
 		try {
+			const expectedChecksum =
+				workflowId === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+
 			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId,
 				name: options?.name,
 				description: options?.description,
+				expectedChecksum,
 			});
 
 			if (!updatedWorkflow.activeVersion) {

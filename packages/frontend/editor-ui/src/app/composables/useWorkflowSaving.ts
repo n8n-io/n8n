@@ -19,6 +19,7 @@ import { useCanvasStore } from '@/app/stores/canvas.store';
 import type { IUpdateInformation, IWorkflowDb, NotificationOptions } from '@/Interface';
 import type { ITag } from '@n8n/rest-api-client/api/tags';
 import type { WorkflowDataCreate, WorkflowDataUpdate } from '@n8n/rest-api-client/api/workflows';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 import type { IDataObject, INode, IWorkflowSettings } from 'n8n-workflow';
 import { useNodeTypesStore } from '@/app/stores/nodeTypes.store';
 import { useToast } from './useToast';
@@ -220,6 +221,8 @@ export function useWorkflowSaving({
 
 			workflowDataRequest.versionId = workflowsStore.workflowVersionId;
 
+			workflowDataRequest.expectedChecksum = workflowsStore.workflowChecksum;
+
 			const deactivateReason = await getWorkflowDeactivationInfo(
 				currentWorkflow,
 				workflowDataRequest,
@@ -240,6 +243,7 @@ export function useWorkflowSaving({
 				forceSave,
 			);
 			workflowsStore.setWorkflowVersionId(workflowData.versionId);
+			workflowsStore.setWorkflowChecksum(calculateWorkflowChecksum(workflowData));
 
 			if (name) {
 				workflowState.setWorkflowName({ newName: workflowData.name, setStateDirty: false });

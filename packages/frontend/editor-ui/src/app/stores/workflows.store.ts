@@ -55,6 +55,7 @@ import type {
 	ITaskStartedData,
 } from 'n8n-workflow';
 import {
+	calculateWorkflowChecksum,
 	deepCopy,
 	NodeConnectionTypes,
 	SEND_AND_WAIT_OPERATION,
@@ -161,6 +162,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	const workflowId = computed(() => workflow.value.id);
 
 	const workflowVersionId = computed(() => workflow.value.versionId);
+
+	const workflowChecksum = ref<string>('');
 
 	const workflowSettings = computed(() => workflow.value.settings ?? { ...defaults.settings });
 
@@ -735,6 +738,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function setWorkflowVersionId(versionId: string) {
 		workflow.value.versionId = versionId;
+	}
+
+	function setWorkflowChecksum(checksum: string) {
+		workflowChecksum.value = checksum;
 	}
 
 	function setWorkflowActiveVersion(version: WorkflowHistory) {
@@ -1614,7 +1621,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	async function publishWorkflow(
 		id: string,
-		data: { versionId: string; name?: string; description?: string },
+		data: { versionId: string; name?: string; description?: string; expectedChecksum?: string },
 	): Promise<IWorkflowDb> {
 		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
 			rootStore.restApiContext,
@@ -1647,11 +1654,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		// Determine current settings and versionId for the target workflow
 		let currentSettings: IWorkflowSettings = {} as IWorkflowSettings;
 		let currentVersionId = '';
+		let currentChecksum = '';
 		const isCurrentWorkflow = id === workflow.value.id;
 
 		if (isCurrentWorkflow) {
 			currentSettings = workflow.value.settings ?? ({} as IWorkflowSettings);
 			currentVersionId = workflow.value.versionId;
+			currentChecksum = workflowChecksum.value;
 		} else {
 			const cached = workflowsById.value[id];
 			if (cached && cached.versionId) {
@@ -1672,11 +1681,13 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const updated = await updateWorkflow(id, {
 			versionId: currentVersionId,
 			settings: newSettings,
+			expectedChecksum: currentChecksum,
 		});
 
 		// Update local store state to reflect the change
 		if (isCurrentWorkflow) {
 			setWorkflowVersionId(updated.versionId);
+			setWorkflowChecksum(calculateWorkflowChecksum(updated));
 			setWorkflowSettings(updated.settings ?? {});
 		} else if (workflowsById.value[id]) {
 			workflowsById.value[id] = {
@@ -1694,10 +1705,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		description: string | null,
 	): Promise<IWorkflowDb> {
 		let currentVersionId = '';
+		let currentChecksum = '';
 		const isCurrentWorkflow = id === workflow.value.id;
 
 		if (isCurrentWorkflow) {
 			currentVersionId = workflow.value.versionId;
+			currentChecksum = workflowChecksum.value;
 		} else {
 			const cached = workflowsById.value[id];
 			if (cached?.versionId) {
@@ -1711,6 +1724,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const updated = await updateWorkflow(id, {
 			versionId: currentVersionId,
 			description,
+			expectedChecksum: currentChecksum,
 		});
 
 		// Update local store state
@@ -1718,6 +1732,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			setDescription(updated.description ?? '');
 			if (updated.versionId !== currentVersionId) {
 				setWorkflowVersionId(updated.versionId);
+				setWorkflowChecksum(calculateWorkflowChecksum(updated));
 			}
 		} else if (workflowsById.value[id]) {
 			workflowsById.value[id] = {
@@ -1926,6 +1941,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflowName,
 		workflowId,
 		workflowVersionId,
+		workflowChecksum,
 		workflowSettings,
 		workflowTags,
 		allWorkflows,
@@ -1985,6 +2001,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		addNodeExecutionStartedData,
 		setUsedCredentials,
 		setWorkflowVersionId,
+		setWorkflowChecksum,
 		setWorkflowActiveVersion,
 		replaceInvalidWorkflowCredentials,
 		assignCredentialToMatchingNodes,

@@ -23,6 +23,7 @@ import type {
 	Workflow,
 } from 'n8n-workflow';
 import {
+	calculateWorkflowChecksum,
 	CHAT_TRIGGER_NODE_TYPE,
 	createEmptyRunExecutionData,
 	FORM_TRIGGER_NODE_TYPE,
@@ -951,6 +952,7 @@ export function useWorkflowHelpers() {
 		workflowState.setWorkflowSettings(workflowData.settings ?? {});
 		workflowsStore.setWorkflowPinData(workflowData.pinData ?? {});
 		workflowsStore.setWorkflowVersionId(workflowData.versionId);
+		workflowsStore.setWorkflowChecksum(calculateWorkflowChecksum(workflowData));
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
 		workflowsStore.setWorkflowScopes(workflowData.scopes);
 

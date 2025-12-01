@@ -27,7 +27,7 @@ import isEqual from 'lodash/isEqual';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
-import { NodeApiError, PROJECT_ROOT, assert } from 'n8n-workflow';
+import { NodeApiError, PROJECT_ROOT, assert, calculateWorkflowChecksum } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -225,9 +225,16 @@ export class WorkflowService {
 			parentFolderId?: string;
 			forceSave?: boolean;
 			publicApi?: boolean;
+			expectedChecksum?: string;
 		} = {},
 	): Promise<WorkflowEntity> {
-		const { tagIds, parentFolderId, forceSave = false, publicApi = false } = options;
+		const {
+			expectedChecksum,
+			tagIds,
+			parentFolderId,
+			forceSave = false,
+			publicApi = false,
+		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
@@ -245,15 +252,8 @@ export class WorkflowService {
 			);
 		}
 
-		if (
-			!forceSave &&
-			workflowUpdateData.versionId !== '' &&
-			workflowUpdateData.versionId !== workflow.versionId
-		) {
-			throw new BadRequestError(
-				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
-				100,
-			);
+		if (!forceSave && expectedChecksum) {
+			this._detectConflicts(workflow, expectedChecksum);
 		}
 
 		if (
@@ -491,7 +491,12 @@ export class WorkflowService {
 	async activateWorkflow(
 		user: User,
 		workflowId: string,
-		options?: { versionId?: string; name?: string; description?: string },
+		options?: {
+			versionId?: string;
+			name?: string;
+			description?: string;
+			expectedChecksum?: string;
+		},
 		publicApi: boolean = false,
 	): Promise<WorkflowEntity> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
@@ -523,6 +528,10 @@ export class WorkflowService {
 				throw new NotFoundError('Version not found');
 			}
 			throw error;
+		}
+
+		if (options?.expectedChecksum) {
+			this._detectConflicts(workflow, options.expectedChecksum);
 		}
 
 		if (wasActive) {
@@ -852,5 +861,16 @@ export class WorkflowService {
 
 			return { resourceType: 'workflow', ...workflow, ...(includeNodes ? { nodes } : {}) };
 		});
+	}
+
+	_detectConflicts(dbWorkflow: WorkflowEntity, expectedChecksum: string) {
+		const currentChecksum = calculateWorkflowChecksum(dbWorkflow);
+
+		if (expectedChecksum !== currentChecksum) {
+			throw new BadRequestError(
+				'Your most recent changes may be lost, because someone else just updated this workflow. Open this workflow in a new tab to see those new updates.',
+				100,
+			);
+		}
 	}
 }
