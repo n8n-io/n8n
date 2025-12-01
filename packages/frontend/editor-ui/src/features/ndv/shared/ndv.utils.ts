@@ -481,6 +481,15 @@ export function createCommonNodeSettings(
 				isNodeSetting: true,
 			},
 			{
+				displayName: t('nodeSettings.nodeDebugLogs.displayName'),
+				name: 'nodeDebugLogs',
+				type: 'boolean',
+				default: false,
+				noDataExpression: true,
+				description: t('nodeSettings.nodeDebugLogs.description'),
+				isNodeSetting: true,
+			},
+			{
 				displayName: t('nodeSettings.maxTries.displayName'),
 				name: 'maxTries',
 				type: 'number',
@@ -565,15 +574,6 @@ export function createCommonNodeSettings(
 			default: false,
 			noDataExpression: true,
 			description: t('nodeSettings.notesInFlow.description'),
-			isNodeSetting: true,
-		},
-		{
-			displayName: t('nodeSettings.nodeDebugLogs.displayName'),
-			name: 'nodeDebugLogs',
-			type: 'boolean',
-			default: false,
-			noDataExpression: true,
-			description: t('nodeSettings.nodeDebugLogs.description'),
 			isNodeSetting: true,
 		},
 	);
