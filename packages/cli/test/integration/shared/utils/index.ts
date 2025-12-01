@@ -1,3 +1,4 @@
+import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
 import { SettingsRepository, WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
@@ -116,8 +117,9 @@ export async function initBinaryDataService(mode: 'default' | 'filesystem' = 'de
 		availableModes: [mode],
 		localStoragePath: '',
 	});
+	const logger = mock<Logger>();
 	const errorReporter = mock<ErrorReporter>();
-	const binaryDataService = new BinaryDataService(config, errorReporter);
+	const binaryDataService = new BinaryDataService(config, errorReporter, logger);
 	await binaryDataService.init();
 	Container.set(BinaryDataService, binaryDataService);
 }
