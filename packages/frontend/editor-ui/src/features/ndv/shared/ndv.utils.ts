@@ -44,6 +44,7 @@ export function getNodeSettingsInitialValues(): INodeParameters {
 		maxTries: 3,
 		waitBetweenTries: 1000,
 		notes: '',
+		nodeDebugLogs: false,
 		parameters: {},
 	};
 }
@@ -566,6 +567,15 @@ export function createCommonNodeSettings(
 			description: t('nodeSettings.notesInFlow.description'),
 			isNodeSetting: true,
 		},
+		{
+			displayName: t('nodeSettings.nodeDebugLogs.displayName'),
+			name: 'nodeDebugLogs',
+			type: 'boolean',
+			default: false,
+			noDataExpression: true,
+			description: t('nodeSettings.nodeDebugLogs.description'),
+			isNodeSetting: true,
+		},
 	);
 
 	return ret;
@@ -653,6 +663,14 @@ export function collectSettings(node: INodeUi, nodeSettings: INodeProperties[]):
 		ret = {
 			...ret,
 			waitBetweenTries: node.waitBetweenTries,
+		};
+	}
+
+	if (node.nodeDebugLogs) {
+		foundNodeSettings.push('nodeDebugLogs');
+		ret = {
+			...ret,
+			nodeDebugLogs: node.nodeDebugLogs,
 		};
 	}
 
