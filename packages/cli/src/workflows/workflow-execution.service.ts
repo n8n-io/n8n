@@ -110,17 +110,12 @@ export class WorkflowExecutionService {
 			Reflect.deleteProperty(payload, 'runData');
 		}
 
-		// TODO(CAT-1265): This will go away once we accept the structured destination node from the frontend.
-		const destinationNode = payload.destinationNode
-			? ({ nodeName: payload.destinationNode, mode: 'inclusive' } as const)
-			: undefined;
-
 		// Case 1: Partial execution to a destination node, and we have enough runData to start the execution.
 		if (isPartialExecution(payload)) {
 			if (this.partialExecutionFulfilsPreconditions(payload)) {
 				// All we need to to do is run the workflow.
 				const executionId = await this.workflowRunner.run({
-					destinationNode,
+					destinationNode: payload.destinationNode,
 					executionMode: 'manual',
 					runData: payload.runData,
 					pinData: payload.workflowData.pinData,
@@ -150,7 +145,7 @@ export class WorkflowExecutionService {
 					}),
 					pushRef,
 					triggerToStartFrom: payload.triggerToStartFrom,
-					destinationNode,
+					destinationNode: payload.destinationNode,
 				}))
 			) {
 				return { waitingForWebhook: true };
@@ -165,7 +160,7 @@ export class WorkflowExecutionService {
 				userId: user.id,
 				triggerToStartFrom: payload.triggerToStartFrom,
 				agentRequest: payload.agentRequest,
-				destinationNode,
+				destinationNode: payload.destinationNode,
 			});
 			return { executionId };
 		}
@@ -174,7 +169,7 @@ export class WorkflowExecutionService {
 		if (isFullExecutionFromUnknownTrigger(payload)) {
 			const pinnedTrigger = this.selectPinnedTrigger(
 				payload.workflowData,
-				payload.destinationNode,
+				payload.destinationNode.nodeName,
 				payload.workflowData.pinData ?? {},
 			);
 
@@ -188,7 +183,7 @@ export class WorkflowExecutionService {
 						workflowId: payload.workflowData.id,
 					}),
 					pushRef,
-					destinationNode,
+					destinationNode: payload.destinationNode,
 				}))
 			) {
 				return { waitingForWebhook: true };
@@ -201,7 +196,7 @@ export class WorkflowExecutionService {
 				workflowData: payload.workflowData,
 				userId: user.id,
 				agentRequest: payload.agentRequest,
-				destinationNode,
+				destinationNode: payload.destinationNode,
 				triggerToStartFrom: pinnedTrigger ? { name: pinnedTrigger.name } : undefined,
 			});
 			return { executionId };
@@ -438,7 +433,7 @@ export class WorkflowExecutionService {
 		payload: WorkflowRequest.PartialManualExecutionToDestinationPayload,
 	): boolean {
 		// If the destination is a trigger node, we treat it as a full execution.
-		if (this.isDestinationNodeATrigger(payload.destinationNode, payload.workflowData)) {
+		if (this.isDestinationNodeATrigger(payload.destinationNode.nodeName, payload.workflowData)) {
 			return false;
 		}
 
@@ -449,7 +444,7 @@ export class WorkflowExecutionService {
 				payload.workflowData.nodes,
 				payload.workflowData.connections,
 			),
-			payload.destinationNode,
+			payload.destinationNode.nodeName,
 			payload.runData,
 		);
 	}

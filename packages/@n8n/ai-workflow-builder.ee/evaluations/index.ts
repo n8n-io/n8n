@@ -1,10 +1,12 @@
 import { runCliEvaluation } from './cli/runner.js';
+import { runPairwiseLangsmithEvaluation } from './langsmith/pairwise-runner.js';
 import { runLangsmithEvaluation } from './langsmith/runner.js';
 import { loadTestCasesFromCsv } from './utils/csv-prompt-loader.js';
 
 // Re-export for external use if needed
 export { runCliEvaluation } from './cli/runner.js';
 export { runLangsmithEvaluation } from './langsmith/runner.js';
+export { runPairwiseLangsmithEvaluation } from './langsmith/pairwise-runner.js';
 export { runSingleTest } from './core/test-runner.js';
 export { setupTestEnvironment, createAgent } from './core/environment.js';
 
@@ -14,6 +16,7 @@ export { setupTestEnvironment, createAgent } from './core/environment.js';
  */
 async function main(): Promise<void> {
 	const useLangsmith = process.env.USE_LANGSMITH_EVAL === 'true';
+	const usePairwiseEval = process.env.USE_PAIRWISE_EVAL === 'true';
 
 	// Parse command line arguments for single test case
 	const testCaseId = process.argv.includes('--test-case')
@@ -23,7 +26,7 @@ async function main(): Promise<void> {
 	// Parse command line argument for CSV prompts file path
 	const promptsCsvPath = getFlagValue('--prompts-csv') ?? process.env.PROMPTS_CSV_FILE;
 
-	if (promptsCsvPath && useLangsmith) {
+	if (promptsCsvPath && (useLangsmith || usePairwiseEval)) {
 		console.warn('CSV-driven evaluations are only supported in CLI mode. Ignoring --prompts-csv.');
 	}
 
@@ -33,7 +36,9 @@ async function main(): Promise<void> {
 		: 1;
 	const repetitions = Number.isNaN(repetitionsArg) ? 1 : repetitionsArg;
 
-	if (useLangsmith) {
+	if (usePairwiseEval) {
+		await runPairwiseLangsmithEvaluation(repetitions);
+	} else if (useLangsmith) {
 		await runLangsmithEvaluation(repetitions);
 	} else {
 		const csvTestCases = promptsCsvPath ? loadTestCasesFromCsv(promptsCsvPath) : undefined;

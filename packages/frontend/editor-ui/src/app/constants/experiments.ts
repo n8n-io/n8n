@@ -83,6 +83,10 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 	variant: 'variant',
 };
 
+export const TIME_SAVED_NODE_EXPERIMENT = {
+	name: '053_time_saved_node',
+};
+
 export const TEMPLATE_SETUP_EXPERIENCE = {
 	name: '055_template_setup_experience',
 	control: 'control',
@@ -98,5 +102,6 @@ export const EXPERIMENTS_TO_TRACK = [
 	TEMPLATE_RECO_V2.name,
 	TEMPLATES_DATA_QUALITY_EXPERIMENT.name,
 	READY_TO_RUN_V2_PART2_EXPERIMENT.name,
+	TIME_SAVED_NODE_EXPERIMENT.name,
 	TEMPLATE_SETUP_EXPERIENCE.name,
 ];

@@ -130,7 +130,7 @@ describe('WorkflowExecutionService', () => {
 				}),
 				agentRequest: undefined,
 				runData: { [webhookNode.name]: [toITaskData([{ data: { value: 1 } }])] },
-				destinationNode: hackerNewsNode.name,
+				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 				dirtyNodeNames: [],
 			};
 
@@ -143,10 +143,7 @@ describe('WorkflowExecutionService', () => {
 			const result = await workflowExecutionService.executeManually(runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
-				destinationNode: {
-					nodeName: runPayload.destinationNode,
-					mode: 'inclusive',
-				},
+				destinationNode: runPayload.destinationNode,
 				executionMode: 'manual',
 				runData: runPayload.runData,
 				pinData: undefined,
@@ -165,7 +162,7 @@ describe('WorkflowExecutionService', () => {
 			const node = mock<INode>();
 			const runPayload: WorkflowRequest.PartialManualExecutionToDestinationPayload = {
 				workflowData: mock<IWorkflowBase>({ nodes: [node], connections: {} }),
-				destinationNode: node.name,
+				destinationNode: { nodeName: node.name, mode: 'inclusive' },
 				agentRequest: undefined,
 				runData: { [node.name]: [toITaskData([{ data: { value: 1 } }])] },
 				dirtyNodeNames: [],
@@ -181,7 +178,7 @@ describe('WorkflowExecutionService', () => {
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
 				runData: undefined,
-				destinationNode: { nodeName: runPayload.destinationNode, mode: 'inclusive' },
+				destinationNode: runPayload.destinationNode,
 				executionMode: 'manual',
 				pinData: runPayload.workflowData.pinData,
 				pushRef: undefined,
@@ -232,7 +229,7 @@ describe('WorkflowExecutionService', () => {
 					createdAt: new Date(),
 					updatedAt: new Date(),
 				},
-				destinationNode: hackerNewsNode.name,
+				destinationNode: { nodeName: hackerNewsNode.name, mode: 'inclusive' },
 			};
 
 			workflowRunner.run.mockResolvedValue(executionId);
@@ -240,10 +237,7 @@ describe('WorkflowExecutionService', () => {
 			const result = await workflowExecutionService.executeManually(runPayload, user);
 
 			expect(workflowRunner.run).toHaveBeenCalledWith({
-				destinationNode: {
-					nodeName: runPayload.destinationNode,
-					mode: 'inclusive',
-				},
+				destinationNode: runPayload.destinationNode,
 				executionMode: 'manual',
 				pinData: runPayload.workflowData.pinData,
 				pushRef: undefined,
@@ -327,7 +321,7 @@ describe('WorkflowExecutionService', () => {
 					createdAt: new Date(),
 					updatedAt: new Date(),
 				},
-				destinationNode: node.name,
+				destinationNode: { nodeName: node.name, mode: 'inclusive' },
 			};
 
 			workflowRunner.run.mockResolvedValue(executionId);
