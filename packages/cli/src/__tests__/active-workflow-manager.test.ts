@@ -2,6 +2,8 @@ import { mockLogger } from '@n8n/backend-test-utils';
 import type { WorkflowEntity, WorkflowHistory, WorkflowRepository } from '@n8n/db';
 import { mock } from 'jest-mock-extended';
 import type { InstanceSettings } from 'n8n-core';
+import { ScheduleValidationService } from 'n8n-core';
+import { ApplicationError } from 'n8n-workflow';
 import type {
 	WorkflowParameters,
 	INode,
@@ -237,6 +239,165 @@ describe('ActiveWorkflowManager', () => {
 
 			expect(workflowData.nodes).toEqual(activeNodes);
 			expect(workflowData.nodes[0].name).toBe('Active Webhook');
+		});
+	});
+
+	describe('validateScheduleTriggers', () => {
+		let scheduleValidationService: ReturnType<typeof mock<ScheduleValidationService>>;
+
+		beforeEach(() => {
+			scheduleValidationService = mock<ScheduleValidationService>();
+			// Inject the mock service
+			(activeWorkflowManager as any).scheduleValidationService = scheduleValidationService;
+		});
+
+		it('should skip validation when workflow has no schedule trigger nodes', () => {
+			const workflow = new Workflow(
+				mock<WorkflowParameters>({
+					nodeTypes,
+					nodes: [
+						mock<INode>({
+							type: 'n8n-nodes-base.webhook',
+							parameters: {},
+						}),
+					],
+				}),
+			);
+
+			// Access private method via type assertion for testing
+			(activeWorkflowManager as any).validateScheduleTriggers(workflow);
+
+			expect(scheduleValidationService.validateScheduleInterval).not.toHaveBeenCalled();
+			expect(scheduleValidationService.validateCronExpression).not.toHaveBeenCalled();
+		});
+
+		it('should validate schedule interval for schedule trigger nodes', () => {
+			const workflow = new Workflow(
+				mock<WorkflowParameters>({
+					nodeTypes,
+					nodes: [
+						mock<INode>({
+							type: 'n8n-nodes-base.scheduleTrigger',
+							parameters: {
+								rule: {
+									interval: [
+										{
+											field: 'minutes',
+											minutesInterval: 5,
+										},
+									],
+								},
+							},
+						}),
+					],
+				}),
+			);
+
+			(activeWorkflowManager as any).validateScheduleTriggers(workflow);
+
+			expect(scheduleValidationService.validateScheduleInterval).toHaveBeenCalledWith({
+				field: 'minutes',
+				minutesInterval: 5,
+			});
+		});
+
+		it('should validate cron expression for schedule trigger nodes with cron', () => {
+			const workflow = new Workflow(
+				mock<WorkflowParameters>({
+					nodeTypes,
+					nodes: [
+						mock<INode>({
+							type: 'n8n-nodes-base.scheduleTrigger',
+							parameters: {
+								rule: {
+									interval: [
+										{
+											field: 'cronExpression',
+											expression: '*/10 * * * *',
+										},
+									],
+								},
+							},
+						}),
+					],
+				}),
+			);
+
+			(activeWorkflowManager as any).validateScheduleTriggers(workflow);
+
+			expect(scheduleValidationService.validateCronExpression).toHaveBeenCalledWith('*/10 * * * *');
+			expect(scheduleValidationService.validateScheduleInterval).not.toHaveBeenCalled();
+		});
+
+		it('should skip nodes without rule parameter', () => {
+			const workflow = new Workflow(
+				mock<WorkflowParameters>({
+					nodeTypes,
+					nodes: [
+						mock<INode>({
+							type: 'n8n-nodes-base.scheduleTrigger',
+							parameters: {},
+						}),
+					],
+				}),
+			);
+
+			(activeWorkflowManager as any).validateScheduleTriggers(workflow);
+
+			expect(scheduleValidationService.validateScheduleInterval).not.toHaveBeenCalled();
+			expect(scheduleValidationService.validateCronExpression).not.toHaveBeenCalled();
+		});
+
+		it('should skip nodes with rule but no interval', () => {
+			const workflow = new Workflow(
+				mock<WorkflowParameters>({
+					nodeTypes,
+					nodes: [
+						mock<INode>({
+							type: 'n8n-nodes-base.scheduleTrigger',
+							parameters: {
+								rule: {},
+							},
+						}),
+					],
+				}),
+			);
+
+			(activeWorkflowManager as any).validateScheduleTriggers(workflow);
+
+			expect(scheduleValidationService.validateScheduleInterval).not.toHaveBeenCalled();
+			expect(scheduleValidationService.validateCronExpression).not.toHaveBeenCalled();
+		});
+
+		it('should throw error when schedule interval is too short', () => {
+			scheduleValidationService.validateScheduleInterval.mockImplementation(() => {
+				throw new ApplicationError('Schedule interval too short');
+			});
+
+			const workflow = new Workflow(
+				mock<WorkflowParameters>({
+					nodeTypes,
+					nodes: [
+						mock<INode>({
+							type: 'n8n-nodes-base.scheduleTrigger',
+							parameters: {
+								rule: {
+									interval: [
+										{
+											field: 'seconds',
+											secondsInterval: 60,
+										},
+									],
+								},
+							},
+						}),
+					],
+				}),
+			);
+
+			expect(() => (activeWorkflowManager as any).validateScheduleTriggers(workflow)).toThrow(
+				ApplicationError,
+			);
 		});
 	});
 });

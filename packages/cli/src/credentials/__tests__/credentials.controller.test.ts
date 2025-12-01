@@ -4,6 +4,7 @@ import { mock } from 'jest-mock-extended';
 
 import { createRawProjectData } from '@/__tests__/project.test-data';
 import type { EventService } from '@/events/event.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 
 import { createdCredentialsWithScopes, createNewCredentialsPayload } from './credentials.test-data';
 import { CredentialsController } from '../credentials.controller';
@@ -278,6 +279,37 @@ describe('CredentialsController', () => {
 				expect.not.objectContaining({
 					isGlobal: expect.anything(),
 				}),
+			);
+		});
+	});
+
+	describe('shareCredentials', () => {
+		it('should throw BadRequestError when credential sharing is disabled', async () => {
+			// ARRANGE
+			const mockGlobalConfig = {
+				credentials: {
+					disableSharing: true,
+				},
+			} as any;
+
+			// Mock the private globalConfig property
+			Object.defineProperty(credentialsController, 'globalConfig', {
+				value: mockGlobalConfig,
+				writable: true,
+				configurable: true,
+			});
+
+			const mockRequest = {
+				params: { credentialId: 'cred-123' },
+				body: { shareWithIds: ['user-456'] },
+			} as unknown as CredentialRequest.Share;
+
+			// ACT & ASSERT
+			await expect(credentialsController.shareCredentials(mockRequest)).rejects.toThrow(
+				BadRequestError,
+			);
+			await expect(credentialsController.shareCredentials(mockRequest)).rejects.toThrow(
+				'Credential sharing is disabled on this instance.',
 			);
 		});
 	});

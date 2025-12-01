@@ -1046,12 +1046,17 @@ export class ActiveWorkflowManager {
 		if (scheduleNodes.length === 0) return;
 
 		for (const node of scheduleNodes) {
-			const rule = node.parameters.rule as { interval: any[] } | undefined;
-			if (!rule?.interval) continue;
+			const rule = node.parameters.rule;
+			if (!rule || typeof rule !== 'object') continue;
+
+			// Type guard: check if rule has interval property that is an array
+			if (!('interval' in rule) || !Array.isArray(rule.interval)) continue;
 
 			for (const interval of rule.interval) {
-				if (interval.field === 'cronExpression') {
-					this.scheduleValidationService.validateCronExpression(interval.expression);
+				if (!interval || typeof interval !== 'object' || !('field' in interval)) continue;
+
+				if (interval.field === 'cronExpression' && 'expression' in interval) {
+					this.scheduleValidationService.validateCronExpression(interval.expression as string);
 				} else {
 					this.scheduleValidationService.validateScheduleInterval(interval);
 				}
