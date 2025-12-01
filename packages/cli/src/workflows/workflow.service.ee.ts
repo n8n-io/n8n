@@ -334,7 +334,7 @@ export class EnterpriseWorkflowService {
 
 		// 6. deactivate workflow if necessary
 		if (wasActive) {
-			await this.activeWorkflowManager.remove(workflowId, user.id, 'update');
+			await this.activeWorkflowManager.remove(workflowId);
 		}
 
 		// 7. transfer the workflow

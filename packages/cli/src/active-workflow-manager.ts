@@ -60,7 +60,6 @@ import * as WorkflowExecuteAdditionalData from '@/workflow-execute-additional-da
 import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
 import { WorkflowStaticDataService } from '@/workflows/workflow-static-data.service';
 import { formatWorkflow } from '@/workflows/workflow.formatter';
-import { User } from '@n8n/api-types';
 
 interface QueuedActivation {
 	activationMode: WorkflowActivateMode;
@@ -563,7 +562,6 @@ export class ActiveWorkflowManager {
 		activationMode: WorkflowActivateMode,
 		existingWorkflow?: WorkflowEntity,
 		{ shouldPublish } = { shouldPublish: true },
-		userId: string | null = null,
 	) {
 		const added = { webhooks: false, triggersAndPollers: false };
 
@@ -886,7 +884,7 @@ export class ActiveWorkflowManager {
 	 */
 	// TODO: this should happen in a transaction
 	// maybe, see: https://github.com/n8n-io/n8n/pull/8904#discussion_r1530150510
-	async remove(workflowId: WorkflowId, userId?: User['id'], reason?: 'update' | 'deactivate') {
+	async remove(workflowId: WorkflowId) {
 		if (this.instanceSettings.isMultiMain) {
 			try {
 				await this.clearWebhooks(workflowId);

@@ -81,7 +81,7 @@ export class ImportService {
 
 			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
 			if (workflow.id) {
-				await this.activeWorkflowManager.remove(workflow.id, undefined, 'deactivate');
+				await this.activeWorkflowManager.remove(workflow.id);
 			}
 		}
 
