@@ -1,8 +1,8 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { AgentExecutor } from 'langchain/agents';
-import type { OpenAIToolType } from 'langchain/dist/experimental/openai_assistant/schema';
-import { OpenAIAssistantRunnable } from 'langchain/experimental/openai_assistant';
-import type { BufferWindowMemory } from 'langchain/memory';
+import { AgentExecutor } from '@langchain/classic/agents';
+import type { OpenAIToolType } from '@langchain/classic/dist/experimental/openai_assistant/schema';
+import { OpenAIAssistantRunnable } from '@langchain/classic/experimental/openai_assistant';
+import type { BufferWindowMemory } from '@langchain/classic/memory';
 import omit from 'lodash/omit';
 import type {
 	IDataObject,
