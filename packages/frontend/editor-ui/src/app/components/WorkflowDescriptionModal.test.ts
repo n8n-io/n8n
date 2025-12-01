@@ -130,7 +130,7 @@ describe('WorkflowDescriptionModal', () => {
 				global,
 			});
 
-			await new Promise((resolve) => setTimeout(resolve, 2));
+			await new Promise((resolve) => setTimeout(resolve, 200));
 
 			const textarea = getByTestId('workflow-description-input');
 			expect(textarea).toHaveFocus();
@@ -299,7 +299,7 @@ describe('WorkflowDescriptionModal', () => {
 
 		it('should disable cancel button during save', async () => {
 			workflowsStore.saveWorkflowDescription = vi.fn(
-				async () => await new Promise((resolve) => setTimeout(resolve, 200)),
+				async () => await new Promise((resolve) => setTimeout(resolve, 100)),
 			);
 
 			const { getByTestId } = renderModal({
