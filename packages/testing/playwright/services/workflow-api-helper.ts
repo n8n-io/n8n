@@ -179,21 +179,11 @@ export class WorkflowApiHelper {
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
 		// Store original active state
-		const shouldActivate = workflowDefinition.active === true;
+		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 
-		// Create workflow as inactive to avoid setting activeVersionId during creation
-		const workflowToCreate = { ...workflowDefinition, active: false };
-		const result = await this.createWorkflowFromDefinition(workflowToCreate, options);
-
-		// Activate if needed using the separate activate endpoint
-		if (shouldActivate) {
-			if (!result.createdWorkflow.versionId) {
-				throw new TestError('Cannot activate workflow: versionId is missing from created workflow');
-			}
-
-			await this.activate(result.workflowId, result.createdWorkflow.versionId);
+		if (workflowDefinition.active) {
+			await this.activate(result.workflowId, result.createdWorkflow.versionId!);
 		}
-
 		return result;
 	}
 
