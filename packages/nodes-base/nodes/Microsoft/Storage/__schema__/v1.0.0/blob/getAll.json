@@ -34,11 +34,14 @@
                 "leaseStatus": {
                     "type": "string"
                 },
+                "resourceType": {
+                    "type": "string"
+                },
                 "serverEncrypted": {
                     "type": "boolean"
                 }
             }
         }
     },
-    "version": 1
+    "version": 2
 }
