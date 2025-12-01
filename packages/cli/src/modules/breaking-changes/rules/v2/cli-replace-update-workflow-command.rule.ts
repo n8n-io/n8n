@@ -19,7 +19,7 @@ export class CliActivateAllWorkflowsRule implements IBreakingChangeInstanceRule 
 			category: BreakingChangeCategory.instance,
 			severity: 'low',
 			documentationUrl:
-				'https://docs.n8n.io/2-0-breaking-changes/#remove-cli-command-operation-to-activate-all-workflows',
+				'https://docs.n8n.io/2-0-breaking-changes/#replace-cli-command-updateworkflow',
 		};
 	}
 

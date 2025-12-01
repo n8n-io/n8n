@@ -1,4 +1,4 @@
-import { CliActivateAllWorkflowsRule } from '../cli-activate-all-workflows.rule';
+import { CliActivateAllWorkflowsRule } from '../cli-replace-update-workflow-command.rule';
 
 describe('CliActivateAllWorkflowsRule', () => {
 	let rule: CliActivateAllWorkflowsRule;
