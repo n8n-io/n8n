@@ -2859,7 +2859,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(updatedVersion?.description).toBeNull();
 	});
 
-	test('should preserve current active version when activation fails', async () => {
+	test('should deactivate workflow when activation fails', async () => {
 		const workflow = await createActiveWorkflow({}, owner);
 
 		const newVersionId = uuid();
@@ -2881,11 +2881,16 @@ describe('POST /workflows/:workflowId/activate', () => {
 			relations: ['activeVersion'],
 		});
 
-		expect(updatedWorkflow?.active).toBe(true);
-		expect(updatedWorkflow?.activeVersionId).toBe(workflow.versionId);
-		expect(updatedWorkflow?.activeVersion?.versionId).toBe(workflow.versionId);
+		// Workflow should be deactivated after failed activation
+		expect(updatedWorkflow?.active).toBe(false);
+		expect(updatedWorkflow?.activeVersionId).toBeNull();
 
-		expect(emitSpy).not.toHaveBeenCalledWith('workflow-deactivated', expect.anything());
+		// Should emit deactivation event
+		expect(emitSpy).toHaveBeenCalledWith('workflow-deactivated', expect.anything());
+
+		// Verify workflow was removed once (no re-add)
+		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManagerLike.add).toHaveBeenCalledTimes(1);
 	});
 
 	test('should call active workflow manager with update mode if workflow is active', async () => {
@@ -2898,6 +2903,8 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: newVersionId });
 
+		// First remove active version
+		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update');
 	});
 
@@ -2909,6 +2916,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: workflow.versionId });
 
+		expect(activeWorkflowManagerLike.remove).not.toBeCalledWith(workflow.id);
 		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',
