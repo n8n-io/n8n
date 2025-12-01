@@ -1871,6 +1871,9 @@ export class ChatHubService {
 			workflowData,
 			executionData,
 			user,
+			undefined,
+			false,
+			'chat',
 		);
 
 		const executionId = started.executionId;
@@ -1894,6 +1897,7 @@ export class ChatHubService {
 		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
 			workflowData.id,
 		]);
+
 		if (!execution) {
 			throw new OperationalError(`Could not find execution with ID ${executionId}`);
 		}
