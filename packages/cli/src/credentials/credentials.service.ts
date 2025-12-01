@@ -1,6 +1,6 @@
-import type { CreateCredentialDto } from '@n8n/api-types';
+import type { CreateCredentialDto, CredentialUsage } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import type { Project, User, ICredentialsDb, ScopesField } from '@n8n/db';
+import type { Project, SharedWorkflow, User, ICredentialsDb, ScopesField } from '@n8n/db';
 import {
 	CredentialsEntity,
 	SharedCredentials,
@@ -8,6 +8,7 @@ import {
 	ProjectRepository,
 	SharedCredentialsRepository,
 	UserRepository,
+	WorkflowRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { hasGlobalScope, PROJECT_OWNER_ROLE_SLUG, type Scope } from '@n8n/permissions';
@@ -76,6 +77,7 @@ export class CredentialsService {
 		private readonly roleService: RoleService,
 		private readonly userRepository: UserRepository,
 		private readonly credentialsFinderService: CredentialsFinderService,
+		private readonly workflowRepository: WorkflowRepository,
 	) {}
 
 	private async addGlobalCredentials(
@@ -906,5 +908,78 @@ export class CredentialsService {
 		const scopes = await this.getCredentialScopes(user, credential.id);
 
 		return { ...credential, scopes };
+	}
+
+	async getCredentialUsage(user: User, credentialId: string): Promise<CredentialUsage> {
+		const credential = await this.credentialsFinderService.findCredentialForUser(
+			credentialId,
+			user,
+			['credential:read'],
+		);
+
+		if (!credential) {
+			throw new NotFoundError(
+				`Credential with ID "${credentialId}" could not be found or you do not have access to it.`,
+			);
+		}
+
+		const workflows = await this.workflowRepository.findWorkflowsUsingCredential(credentialId);
+
+		if (!workflows.length) {
+			return { credentialId, usageCount: 0, workflows: [] };
+		}
+
+		const [workflowRolesWithRead, projectRolesWithRead] = await Promise.all([
+			this.roleService.rolesWithScope('workflow', ['workflow:read']),
+			this.roleService.rolesWithScope('project', ['workflow:read']),
+		]);
+
+		const usageWorkflows = workflows.map((workflow) => {
+			const workflowWithOwnership = this.ownershipService.addOwnedByAndSharedWith(workflow);
+			const currentUserHasAccess = this.userCanAccessWorkflow(
+				user,
+				workflowWithOwnership.shared ?? [],
+				workflowRolesWithRead,
+				projectRolesWithRead,
+			);
+
+			return {
+				id: workflow.id,
+				name: workflow.name,
+				active: workflow.active,
+				isArchived: workflow.isArchived,
+				updatedAt: workflow.updatedAt,
+				currentUserHasAccess,
+				homeProject: workflowWithOwnership.homeProject ?? null,
+				sharedWithProjects: workflowWithOwnership.sharedWithProjects ?? [],
+			};
+		});
+
+		return {
+			credentialId,
+			usageCount: usageWorkflows.length,
+			workflows: usageWorkflows,
+		};
+	}
+
+	private userCanAccessWorkflow(
+		user: User,
+		sharings: SharedWorkflow[],
+		workflowRoles: string[],
+		projectRoles: string[],
+	) {
+		if (hasGlobalScope(user, 'workflow:read')) {
+			return true;
+		}
+
+		return sharings?.some((sharing) => {
+			if (!workflowRoles.includes(sharing.role)) {
+				return false;
+			}
+			const projectRelations = sharing.project?.projectRelations ?? [];
+			return projectRelations.some(
+				(relation) => relation.userId === user.id && projectRoles.includes(relation.role.slug),
+			);
+		});
 	}
 }

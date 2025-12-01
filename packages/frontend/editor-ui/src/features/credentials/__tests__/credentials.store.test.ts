@@ -328,4 +328,59 @@ describe('credentials.store', () => {
 			expect(store.state.credentials['cred-1']?.sharedWithProjects).toEqual(newSharing);
 		});
 	});
+
+	describe('fetchCredentialUsage', () => {
+		const mockUsage = {
+			credentialId: 'cred-1',
+			usageCount: 1,
+			workflows: [],
+		};
+
+		it('should fetch usage data when no cache exists', async () => {
+			const { useCredentialsStore } = await import('../credentials.store');
+			const store = useCredentialsStore();
+
+			vi.spyOn(credentialsApi, 'getCredentialUsage').mockResolvedValue(mockUsage as any);
+
+			const result = await store.fetchCredentialUsage('cred-1');
+
+			expect(credentialsApi.getCredentialUsage).toHaveBeenCalledWith(
+				mockRootStore.restApiContext,
+				'cred-1',
+			);
+			expect(result).toEqual(mockUsage);
+			expect(store.getCredentialUsageById('cred-1')).toEqual(mockUsage);
+		});
+
+		it('should return cached usage data without calling API', async () => {
+			const { useCredentialsStore } = await import('../credentials.store');
+			const store = useCredentialsStore();
+
+			store.state.usageById = {
+				'cred-1': mockUsage as any,
+			};
+
+			const result = await store.fetchCredentialUsage('cred-1');
+
+			expect(credentialsApi.getCredentialUsage).not.toHaveBeenCalled();
+			expect(result).toEqual(mockUsage);
+		});
+
+		it('should force reload when requested', async () => {
+			const { useCredentialsStore } = await import('../credentials.store');
+			const store = useCredentialsStore();
+			store.state.usageById = {
+				'cred-1': mockUsage as any,
+			};
+
+			const freshUsage = { ...mockUsage, usageCount: 2 };
+			vi.spyOn(credentialsApi, 'getCredentialUsage').mockResolvedValue(freshUsage as any);
+
+			const result = await store.fetchCredentialUsage('cred-1', { forceReload: true });
+
+			expect(credentialsApi.getCredentialUsage).toHaveBeenCalled();
+			expect(result).toEqual(freshUsage);
+			expect(store.getCredentialUsageById('cred-1')).toEqual(freshUsage);
+		});
+	});
 });

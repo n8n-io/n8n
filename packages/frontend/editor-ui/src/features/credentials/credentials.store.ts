@@ -1,5 +1,6 @@
 import type { INodeUi } from '@/Interface';
 import type {
+	CredentialUsage,
 	ICredentialMap,
 	ICredentialsDecryptedResponse,
 	ICredentialsResponse,
@@ -39,7 +40,7 @@ const TYPES_WITH_DEFAULT_NAME = ['httpBasicAuth', 'oAuth2Api', 'httpDigestAuth',
 export type CredentialsStore = ReturnType<typeof useCredentialsStore>;
 
 export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
-	const state = ref<ICredentialsState>({ credentialTypes: {}, credentials: {} });
+	const state = ref<ICredentialsState>({ credentialTypes: {}, credentials: {}, usageById: {} });
 
 	const rootStore = useRootStore();
 
@@ -197,6 +198,12 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 			const credential = getCredentialById.value(credentialId);
 
 			return getCredentialOwnerName.value(credential);
+		};
+	});
+
+	const getCredentialUsageById = computed(() => {
+		return (credentialId: string): CredentialUsage | undefined => {
+			return state.value.usageById[credentialId];
 		};
 	});
 
@@ -366,6 +373,8 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		if (deleted) {
 			const { [id]: deletedCredential, ...rest } = state.value.credentials;
 			state.value.credentials = rest;
+			const { [id]: removedUsage, ...usageRest } = state.value.usageById;
+			state.value.usageById = usageRest;
 		}
 	};
 
@@ -436,6 +445,34 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		return credential;
 	};
 
+	const setCredentialUsage = (credentialId: string, usage: CredentialUsage) => {
+		state.value.usageById = {
+			...state.value.usageById,
+			[credentialId]: usage,
+		};
+	};
+
+	const fetchCredentialUsage = async (
+		credentialId: string,
+		options: { forceReload?: boolean } = {},
+	): Promise<CredentialUsage | undefined> => {
+		if (!credentialId) {
+			return;
+		}
+
+		if (!options.forceReload) {
+			const cachedUsage = getCredentialUsageById.value(credentialId);
+			if (cachedUsage) {
+				return cachedUsage;
+			}
+		}
+
+		const usage = await credentialsApi.getCredentialUsage(rootStore.restApiContext, credentialId);
+		setCredentialUsage(credentialId, usage);
+
+		return usage;
+	};
+
 	// #endregion
 
 	return {
@@ -451,6 +488,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		httpOnlyCredentialTypes,
 		getScopesByCredentialType,
 		getCredentialOwnerNameById,
+		getCredentialUsageById,
 		allUsableCredentialsForNode,
 		allCredentials,
 		allCredentialTypes,
@@ -474,6 +512,7 @@ export const useCredentialsStore = defineStore(STORES.CREDENTIALS, () => {
 		getCredentialTranslation,
 		setCredentialSharedWith,
 		claimFreeAiCredits,
+		fetchCredentialUsage,
 	};
 });
 

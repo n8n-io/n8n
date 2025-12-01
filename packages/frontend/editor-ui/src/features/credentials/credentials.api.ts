@@ -1,3 +1,4 @@
+import type { CredentialUsage } from '@n8n/api-types';
 import type { ICredentialsDecryptedResponse, ICredentialsResponse } from './credentials.types';
 import type { IRestApiContext } from '@n8n/rest-api-client';
 import { makeRestApiRequest } from '@n8n/rest-api-client';
@@ -117,4 +118,11 @@ export async function testCredential(
 		'/credentials/test',
 		data as unknown as IDataObject,
 	);
+}
+
+export async function getCredentialUsage(
+	context: IRestApiContext,
+	credentialId: string,
+): Promise<CredentialUsage> {
+	return await makeRestApiRequest(context, 'GET', `/credentials/${credentialId}/usage`);
 }
