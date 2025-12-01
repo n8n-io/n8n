@@ -225,9 +225,16 @@ export class WorkflowService {
 			parentFolderId?: string;
 			forceSave?: boolean;
 			publicApi?: boolean;
+			publishIfActive?: boolean;
 		} = {},
 	): Promise<WorkflowEntity> {
-		const { tagIds, parentFolderId, forceSave = false, publicApi = false } = options;
+		const {
+			tagIds,
+			parentFolderId,
+			forceSave = false,
+			publicApi = false,
+			publishIfActive = false,
+		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
@@ -355,6 +362,12 @@ export class WorkflowService {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 
+		const publishCurrent = workflow.activeVersionId && publishIfActive;
+		if (publishCurrent) {
+			updatePayload.active = true;
+			updatePayload.activeVersionId = workflowUpdateData.versionId;
+		}
+
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
 			if (parentFolderId !== PROJECT_ROOT) {
@@ -403,8 +416,9 @@ export class WorkflowService {
 			publicApi,
 		});
 
+		// Activate workflow if requested, or
 		// Reactivate workflow if settings changed and workflow has an active version
-		if (settingsChanged && updatedWorkflow.activeVersionId) {
+		if (updatedWorkflow.activeVersionId && (publishCurrent || settingsChanged)) {
 			await this.activateWorkflow(
 				user,
 				workflowId,

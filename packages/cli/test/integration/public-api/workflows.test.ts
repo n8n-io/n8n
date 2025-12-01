@@ -11,6 +11,7 @@ import { GlobalConfig } from '@n8n/config';
 import type { Project, TagEntity, User, WorkflowHistory } from '@n8n/db';
 import { ProjectRepository, WorkflowHistoryRepository, SharedWorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
+import { Not } from '@n8n/typeorm';
 import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
@@ -1423,7 +1424,7 @@ describe('PUT /workflows/:id', () => {
 		);
 	});
 
-	test('should not update active version even if workflow is published', async () => {
+	test('should update active version if workflow is published', async () => {
 		const workflow = await createActiveWorkflow({}, member);
 
 		const updatedPayload = {
@@ -1449,18 +1450,20 @@ describe('PUT /workflows/:id', () => {
 
 		expect(updateResponse.statusCode).toBe(200);
 		expect(updateResponse.body.active).toBe(true);
-		expect(updateResponse.body.activeVersionId).toBe(workflow.activeVersionId);
+		expect(updateResponse.body.activeVersionId).not.toBeNull();
+		expect(updateResponse.body.activeVersionId).not.toBe(workflow.versionId);
 		expect(updateResponse.body.nodes).toEqual(updatedPayload.nodes);
 
 		const versionInTheDb = await Container.get(WorkflowHistoryRepository).findOne({
 			where: {
 				workflowId: workflow.id,
-				versionId: workflow.activeVersionId!,
+				versionId: Not(workflow.versionId),
 			},
 		});
 
 		expect(versionInTheDb).not.toBeNull();
-		expect(versionInTheDb!.nodes).toEqual(workflow.nodes);
+		expect(updateResponse.body.activeVersionId).toBe(versionInTheDb!.versionId);
+		expect(versionInTheDb!.nodes).toEqual(updatedPayload.nodes);
 	});
 
 	test('should not allow updating active field', async () => {
