@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import ActionsMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
+import ActionsDropdownMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
 import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
@@ -32,7 +32,7 @@ defineEmits<{
 	'workflow:saved': [];
 }>();
 
-const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsMenu>>('actionsMenu');
+const actionsMenuRef = useTemplateRef<InstanceType<typeof ActionsDropdownMenu>>('actionsMenu');
 const locale = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
@@ -138,7 +138,7 @@ defineExpose({
 			@click="$emit('workflow:saved')"
 		/>
 		<WorkflowHistoryButton :workflow-id="props.id" :is-new-workflow="isNewWorkflow" />
-		<ActionsMenu
+		<ActionsDropdownMenu
 			:id="id"
 			ref="actionsMenu"
 			:workflow-permissions="workflowPermissions"

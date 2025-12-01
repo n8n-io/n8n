@@ -27,13 +27,18 @@ vi.mock('vue-router', async (importOriginal) => ({
 	useRoute: vi.fn().mockReturnValue({
 		params: { name: 'test' },
 		query: { parentFolderId: '1' },
+		meta: {
+			nodeView: true,
+		},
 	}),
 	useRouter: vi.fn().mockReturnValue({
 		replace: vi.fn(),
 		push: vi.fn().mockResolvedValue(undefined),
 		currentRoute: {
 			value: {
-				params: { name: 'test' },
+				params: {
+					name: 'test',
+				},
 				query: { parentFolderId: '1' },
 			},
 		},
@@ -157,7 +162,7 @@ describe('WorkflowDetails', () => {
 	});
 
 	it('renders workflow name and tags', async () => {
-		(useRoute as Mock).mockReturnValue({
+		(useRoute as Mock).mockReturnValueOnce({
 			query: { parentFolderId: '1' },
 		});
 		const { getByTestId, getByText } = renderComponent({
@@ -202,7 +207,8 @@ describe('WorkflowDetails', () => {
 			},
 		});
 
-		await userEvent.click(getByTestId('workflow-share-button'));
+		await userEvent.click(getByTestId('workflow-menu'));
+		await userEvent.click(getByTestId('workflow-menu-item-share'));
 		expect(openModalSpy).toHaveBeenCalledWith({
 			name: WORKFLOW_SHARE_MODAL_KEY,
 			data: { id: '1' },
@@ -211,7 +217,7 @@ describe('WorkflowDetails', () => {
 
 	describe('Workflow menu', () => {
 		beforeEach(() => {
-			(useRoute as Mock).mockReturnValue({
+			(useRoute as Mock).mockReturnValueOnce({
 				meta: {
 					nodeView: true,
 				},
@@ -252,6 +258,7 @@ describe('WorkflowDetails', () => {
 			expect(getByTestId('workflow-menu-item-duplicate')).toBeInTheDocument();
 			expect(getByTestId('workflow-menu-item-import-from-url')).toBeInTheDocument();
 			expect(getByTestId('workflow-menu-item-import-from-file')).toBeInTheDocument();
+			expect(queryByTestId('workflow-menu-item-share')).toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-delete')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-archive')).not.toBeInTheDocument();
 			expect(queryByTestId('workflow-menu-item-unarchive')).not.toBeInTheDocument();

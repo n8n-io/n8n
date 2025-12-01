@@ -95,7 +95,7 @@ describe('WorkflowHistoryList', () => {
 
 		const listItems = getAllByTestId('workflow-history-list-item');
 		const listItem = listItems[items.length - 1];
-		await userEvent.click(within(listItem).getByText(/ID: /));
+		await userEvent.click(within(listItem).getByText(/Saved: /));
 		expect(emitted().preview).toEqual([
 			[
 				{
