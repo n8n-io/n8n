@@ -97,10 +97,9 @@ export class ChatHubSession extends WithTimestamps {
 	@Column({ type: 'varchar', length: 36, nullable: true })
 	agentId: string | null;
 
-	/*
-	 * Cached name of the custom agent to use (if applicable).
-	 * In case agent gets deleted
-	 * Only set when provider is 'custom-agent'.
+	/**
+	 * Cached display name of the agent/model.
+	 * Used for all providers (LLM providers, custom agents, and n8n workflows).
 	 */
 	@Column({ type: 'varchar', length: 128, nullable: true })
 	agentName: string | null;

@@ -161,6 +161,7 @@ const ALLOWED_FORM_FIELDS_KEYS = [
 	'fieldLabel',
 	'fieldType',
 	'placeholder',
+	'defaultValue',
 	'fieldOptions',
 	'multiselect',
 	'multipleFiles',

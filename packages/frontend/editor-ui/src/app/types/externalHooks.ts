@@ -3,13 +3,14 @@ import type {
 	ExecutionError,
 	GenericValue,
 	IConnections,
-	IDestinationNode,
 	INodeProperties,
 	INodeTypeDescription,
 	ITelemetryTrackProperties,
 	NodeConnectionType,
 	NodeParameterValue,
 	NodeParameterValueType,
+	IDestinationNode,
+	StartNodeData,
 } from 'n8n-workflow';
 import type { RouteLocation } from 'vue-router';
 import type {
@@ -65,7 +66,12 @@ interface OutputModeChangedEventData {
 }
 interface ExecutionFinishedEventData {
 	runDataExecutedStartData:
-		| { destinationNode?: IDestinationNode; runNodeFilter?: string[] | undefined }
+		| {
+				startNodes?: StartNodeData[];
+				destinationNode?: IDestinationNode | undefined;
+				originalDestinationNode?: IDestinationNode | undefined;
+				runNodeFilter?: string[] | undefined;
+		  }
 		| undefined;
 	nodeName?: string;
 	errorMessage: string;
