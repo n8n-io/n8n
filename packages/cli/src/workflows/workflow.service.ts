@@ -437,27 +437,12 @@ export class WorkflowService {
 		// Skip activation/deactivation logic if draft/publish feature flag is enabled
 		if (isDraftPublishDisabled) {
 			if (activationStatusChanged && isNowActive) {
-<<<<<<< HEAD
-				// Workflow is being activated
-=======
->>>>>>> d2a380cb6e (fix)
 				this.eventService.emit('workflow-activated', {
 					user,
 					workflowId,
 					workflow: updatedWorkflow,
-<<<<<<< HEAD
-					publicApi,
-				});
-
-				if (updatedWorkflow.meta?.autoDeactivated) {
-					const { autoDeactivated, ...remainingMeta } = updatedWorkflow.meta;
-					updatedWorkflow.meta = remainingMeta;
-					await this.workflowRepository.update({ id: workflowId }, { meta: remainingMeta });
-				}
-=======
 					publicApi: false,
 				});
->>>>>>> d2a380cb6e (fix)
 			} else if (activationStatusChanged && !isNowActive) {
 				// Workflow is being deactivated
 				this.eventService.emit('workflow-deactivated', {
