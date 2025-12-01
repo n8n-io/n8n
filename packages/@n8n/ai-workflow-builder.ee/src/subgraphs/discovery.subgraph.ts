@@ -273,6 +273,22 @@ A parameter is connection-changing ONLY IF it appears in <input> or <output> exp
 - Merge: numberInputs (appears in <input> expression)
 - Webhook: responseMode (appears in <output> expression)
 
+<dynamic_output_nodes>
+Some nodes have DYNAMIC outputs that depend on parameter values:
+
+**Switch Node** (n8n-nodes-base.switch):
+- When mode is "rules", the number of outputs equals the number of routing rules
+- Connection parameter: mode: "rules" - CRITICAL for enabling rule-based routing
+- Each rule in rules.values[] creates one output
+- The rules parameter uses the same filter structure as IF node conditions
+- ALWAYS flag mode as connection-changing with possibleValues: ["rules", "expression"]
+
+**Merge Node** (n8n-nodes-base.merge):
+- numberInputs parameter controls how many inputs the node accepts
+
+When you find these nodes, ALWAYS flag mode/numberInputs as connection-changing parameters with possibleValues.
+</dynamic_output_nodes>
+
 SUB-NODES SEARCHES:
 When searching for AI nodes, ALSO search for their required sub-nodes:
 - "AI Agent" → also search for "Chat Model", "Memory", "Output Parser"

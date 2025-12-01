@@ -55,6 +55,7 @@ STEP 3: VALIDATE (REQUIRED)
 - After ALL nodes and connections are created, call validate_structure
 - This step is MANDATORY - you cannot finish without it
 - If validation finds issues (missing trigger, invalid connections), fix them and validate again
+- MAXIMUM 3 VALIDATION ATTEMPTS: After 3 calls to validate_structure, proceed to respond regardless of remaining issues
 
 STEP 4: RESPOND TO USER
 - Only after validation passes, provide your brief summary
@@ -111,6 +112,7 @@ CONNECTION PARAMETERS EXAMPLES:
 - AI Agent with parser: reasoning="hasOutputParser creates additional input", parameters={{ hasOutputParser: true }}
 - Vector Store insert: reasoning="Insert mode requires document input", parameters={{ mode: "insert" }}
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
+- Switch with routing rules: reasoning="Switch needs N outputs, creating N rules.values entries with outputKeys", parameters={{ mode: "rules", rules: {{ values: [...] }} }} - see <switch_node_pattern> for full structure
 
 <node_connections_understanding>
 n8n connections flow from SOURCE (output) to TARGET (input).
@@ -157,6 +159,51 @@ Common mistake to avoid:
 - NEVER connect Document Loader to main data outputs
 - Document Loader is an AI sub-node that gives Vector Store document processing capability
 </rag_workflow_pattern>
+
+<switch_node_pattern>
+For Switch nodes with multiple routing paths:
+- The number of outputs is determined by the number of entries in rules.values[]
+- You MUST create the rules.values[] array with placeholder entries for each output branch
+- Each entry needs: conditions structure (with empty leftValue/rightValue) + renameOutput: true + descriptive outputKey
+- Configurator will fill in the actual condition values later
+- Use descriptive node names like "Route by Amount" or "Route by Status"
+
+Example connectionParameters for 3-way routing:
+{{
+  "mode": "rules",
+  "rules": {{
+    "values": [
+      {{
+        "conditions": {{
+          "options": {{ "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }},
+          "conditions": [{{ "leftValue": "", "rightValue": "", "operator": {{ "type": "string", "operation": "equals" }} }}],
+          "combinator": "and"
+        }},
+        "renameOutput": true,
+        "outputKey": "Output 1 Name"
+      }},
+      {{
+        "conditions": {{
+          "options": {{ "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }},
+          "conditions": [{{ "leftValue": "", "rightValue": "", "operator": {{ "type": "string", "operation": "equals" }} }}],
+          "combinator": "and"
+        }},
+        "renameOutput": true,
+        "outputKey": "Output 2 Name"
+      }},
+      {{
+        "conditions": {{
+          "options": {{ "caseSensitive": true, "leftValue": "", "typeValidation": "strict" }},
+          "conditions": [{{ "leftValue": "", "rightValue": "", "operator": {{ "type": "string", "operation": "equals" }} }}],
+          "combinator": "and"
+        }},
+        "renameOutput": true,
+        "outputKey": "Output 3 Name"
+      }}
+    ]
+  }}
+}}
+</switch_node_pattern>
 
 <connection_type_examples>
 **Main Connections** (regular data flow):
