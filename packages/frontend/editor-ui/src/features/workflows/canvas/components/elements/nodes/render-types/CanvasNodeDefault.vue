@@ -222,7 +222,7 @@ function onActivate(event: MouseEvent) {
 			--canvas-node--border-color,
 			light-dark(
 				oklch(from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity, 0.15)),
-				oklch(from var(--color--neutral-white) l c h / 0.2)
+				oklch(from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity, 0.15))
 			)
 		);
 	border-radius: var(--radius--lg);
