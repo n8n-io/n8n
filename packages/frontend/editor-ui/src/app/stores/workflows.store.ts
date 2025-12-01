@@ -68,7 +68,7 @@ import * as workflowsApi from '@/app/api/workflows';
 import { useUIStore } from '@/app/stores/ui.store';
 import { dataPinningEventBus } from '@/app/event-bus';
 import { isJsonKeyObject, stringSizeInBytes, isPresent } from '@/app/utils/typesUtils';
-import { makeRestApiRequest, ResponseError } from '@n8n/rest-api-client';
+import { makeRestApiRequest, ResponseError, type WorkflowHistory } from '@n8n/rest-api-client';
 import {
 	unflattenExecutionData,
 	findTriggerNodeToAutoSelect,
@@ -737,6 +737,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		workflow.value.versionId = versionId;
 	}
 
+	function setWorkflowActiveVersion(version: WorkflowHistory) {
+		workflow.value.activeVersion = deepCopy(version);
+	}
+
 	// replace invalid credentials in workflow
 	function replaceInvalidWorkflowCredentials(data: {
 		credentials: INodeCredentialsDetails;
@@ -874,7 +878,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		};
 	}
 
-	function setWorkflowActive(targetWorkflowId: string) {
+	function setWorkflowActive(targetWorkflowId: string, activeVersion?: WorkflowHistory) {
 		const index = activeWorkflows.value.indexOf(targetWorkflowId);
 		if (index === -1) {
 			activeWorkflows.value.push(targetWorkflowId);
@@ -882,12 +886,14 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const targetWorkflow = workflowsById.value[targetWorkflowId];
 		if (targetWorkflow) {
 			targetWorkflow.active = true;
-			targetWorkflow.activeVersionId = targetWorkflow.versionId;
+			targetWorkflow.activeVersionId = activeVersion?.versionId ?? targetWorkflow.versionId;
+			targetWorkflow.activeVersion = activeVersion;
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			uiStore.stateIsDirty = false;
 			workflow.value.active = true;
-			workflow.value.activeVersionId = workflow.value.versionId;
+			workflow.value.activeVersionId = activeVersion?.versionId ?? workflow.value.versionId;
+			workflow.value.activeVersion = activeVersion;
 		}
 	}
 
@@ -900,9 +906,12 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (targetWorkflow) {
 			targetWorkflow.active = false;
 			targetWorkflow.activeVersionId = null;
+			targetWorkflow.activeVersion = null;
 		}
 		if (targetWorkflowId === workflow.value.id) {
 			workflow.value.active = false;
+			workflow.value.activeVersionId = null;
+			workflow.value.activeVersion = null;
 		}
 	}
 
@@ -1603,6 +1612,32 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		return updatedWorkflow;
 	}
 
+	async function publishWorkflow(
+		id: string,
+		data: { versionId: string; name?: string; description?: string },
+	): Promise<IWorkflowDb> {
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/activate`,
+			data as unknown as IDataObject,
+		);
+
+		return updatedWorkflow;
+	}
+
+	async function deactivateWorkflow(id: string): Promise<IWorkflowDb> {
+		const updatedWorkflow = await makeRestApiRequest<IWorkflowDb>(
+			rootStore.restApiContext,
+			'POST',
+			`/workflows/${id}/deactivate`,
+		);
+
+		setWorkflowInactive(id);
+
+		return updatedWorkflow;
+	}
+
 	// Update a single workflow setting key while preserving existing settings
 	async function updateWorkflowSetting<K extends keyof IWorkflowSettings>(
 		id: string,
@@ -1950,6 +1985,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		addNodeExecutionStartedData,
 		setUsedCredentials,
 		setWorkflowVersionId,
+		setWorkflowActiveVersion,
 		replaceInvalidWorkflowCredentials,
 		assignCredentialToMatchingNodes,
 		setWorkflows,
@@ -1989,6 +2025,8 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		getExecution,
 		createNewWorkflow,
 		updateWorkflow,
+		publishWorkflow,
+		deactivateWorkflow,
 		updateWorkflowSetting,
 		saveWorkflowDescription,
 		runWorkflow,
