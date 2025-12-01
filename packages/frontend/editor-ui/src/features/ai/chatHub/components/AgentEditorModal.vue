@@ -347,7 +347,7 @@ function onSelectTools(newTools: INode[]) {
 
 .footer {
 	display: flex;
-	justify-content: space-between;
+	justify-content: flex-end;
 	align-items: center;
 	gap: var(--spacing--2xs);
 }
