@@ -129,7 +129,6 @@ export const setupTestServer = ({
 		await testDb.init();
 
 		Container.get(GlobalConfig).userManagement.jwtSecret = 'My JWT secret';
-		config.set('userManagement.isInstanceOwnerSetUp', true);
 
 		testServer.license.mock(Container.get(License));
 		testServer.license.mockLicenseState(Container.get(LicenseState));

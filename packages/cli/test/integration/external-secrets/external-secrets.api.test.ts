@@ -112,7 +112,6 @@ beforeAll(async () => {
 	authOwnerAgent = testServer.authAgentFor(owner);
 	const member = await createUser();
 	authMemberAgent = testServer.authAgentFor(member);
-	config.set('userManagement.isInstanceOwnerSetUp', true);
 	Container.set(
 		ExternalSecretsManager,
 		new ExternalSecretsManager(
