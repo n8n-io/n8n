@@ -335,7 +335,7 @@ describe('WaitTracker', () => {
 							return parentUpdateCallCount === 1; // Only first succeeds
 						}
 						// Call original mock for other cases
-						return originalMock ? originalMock(id, data, requireStatus) : true;
+						return originalMock ? await originalMock(id, data, requireStatus) : true;
 					},
 				);
 
@@ -348,7 +348,7 @@ describe('WaitTracker', () => {
 				// This mimics what happens when 5 children complete simultaneously
 				const resumePromises = Array(5)
 					.fill(null)
-					.map(() => waitTracker.startExecution(parentExecution.id));
+					.map(async () => await waitTracker.startExecution(parentExecution.id));
 
 				await Promise.allSettled(resumePromises);
 
