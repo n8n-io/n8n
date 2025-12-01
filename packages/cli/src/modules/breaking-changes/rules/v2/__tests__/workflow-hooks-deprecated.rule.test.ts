@@ -13,7 +13,7 @@ describe('WorkflowHooksDeprecatedRule', () => {
 
 			expect(metadata.version).toBe('v2');
 			expect(metadata.title).toBe('Deprecated frontend workflow hooks');
-			expect(metadata.severity).toBe('medium');
+			expect(metadata.severity).toBe('low');
 			expect(metadata.documentationUrl).toBe(
 				'https://docs.n8n.io/2-0-breaking-changes/#deprecated-frontend-workflow-hooks',
 			);
