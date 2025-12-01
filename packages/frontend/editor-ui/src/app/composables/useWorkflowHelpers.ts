@@ -844,7 +844,6 @@ export function useWorkflowHelpers() {
 
 		if (active !== undefined) {
 			data.active = active;
-			data.activeVersionId = active ? workflowsStore.workflowVersionId : null;
 		}
 
 		const workflow = await workflowsStore.updateWorkflow(workflowId, data);
