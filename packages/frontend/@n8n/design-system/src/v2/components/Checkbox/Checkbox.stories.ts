@@ -5,7 +5,7 @@ import { ref } from 'vue';
 import Checkbox from './Checkbox.vue';
 
 const meta = {
-	title: 'Design system v3/Checkbox',
+	title: 'Components v2/Checkbox',
 	component: Checkbox,
 	parameters: {
 		docs: {
