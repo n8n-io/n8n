@@ -3,7 +3,6 @@ import type { Logger } from '@n8n/backend-common';
 import { z } from 'zod';
 
 import type { GetWorkflowExamplesOutput, WorkflowMetadata } from '@/types';
-import { categories } from '@/types/web/templates';
 import type { BuilderToolBase } from '@/utils/stream-processor';
 
 import { ValidationError, ToolExecutionError } from '../errors';
@@ -21,7 +20,6 @@ import { fetchTemplateList, fetchTemplateByID } from './web/templates';
  */
 const workflowExampleQuerySchema = z.object({
 	search: z.string().optional().describe('Search term to find workflow examples'),
-	category: z.enum(categories).optional().describe('Filter by workflow category'),
 });
 
 /**
@@ -51,7 +49,6 @@ async function fetchWorkflowExamples(
 	// First, fetch the list of workflow templates (metadata)
 	const response = await fetchTemplateList({
 		search: query.search,
-		category: query.category,
 	});
 
 	// Then fetch complete workflow data for each template
@@ -86,14 +83,10 @@ async function fetchWorkflowExamples(
  */
 function buildQueryIdentifier(query: {
 	search?: string;
-	category?: string;
 }): string {
 	const parts: string[] = [];
 	if (query.search) {
 		parts.push(`search: ${query.search}`);
-	}
-	if (query.category) {
-		parts.push(`category: ${query.category}`);
 	}
 	return parts.join(',');
 }
@@ -137,8 +130,7 @@ Usage:
 - Results include workflow metadata, summaries, and full workflow data for reference
 
 Parameters:
-- search: Keywords to search for in workflow names/descriptions based on the user prompt
-- category: Filter by workflow category (e.g., "Marketing", "Sales", "Data")`;
+- search: Keywords to search for in workflow names/descriptions based on the user prompt`;
 
 /**
  * Factory function to create the get workflow examples tool
