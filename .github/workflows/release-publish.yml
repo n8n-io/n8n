@@ -9,7 +9,7 @@ on:
 
 jobs:
   build-arm64:
-    runs-on: ubuntu-22.04-arm
+    runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     env:
       NODE_OPTIONS: --max-old-space-size=6144
