@@ -95,7 +95,7 @@ export class SupplyDataContext extends BaseExecuteContext implements ISupplyData
 			...getDataTableHelperFunctions(additionalData, workflow, node),
 			...getDeduplicationHelperFunctions(workflow, node),
 			assertBinaryData: (itemIndex, propertyName) =>
-				assertBinaryData(inputData, node, itemIndex, propertyName, 0),
+				assertBinaryData(inputData, node, itemIndex, propertyName, 0, workflow.settings.binaryMode),
 			getBinaryDataBuffer: async (itemIndex, propertyName) =>
 				await getBinaryDataBuffer(inputData, itemIndex, propertyName, 0),
 			detectBinaryEncoding: (buffer: Buffer) => detectBinaryEncoding(buffer),

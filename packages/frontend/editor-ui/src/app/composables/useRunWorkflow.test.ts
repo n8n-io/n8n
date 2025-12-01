@@ -32,6 +32,7 @@ import { usePushConnectionStore } from '@/app/stores/pushConnection.store';
 import { createTestNode, createTestWorkflow } from '@/__tests__/mocks';
 import { waitFor } from '@testing-library/vue';
 import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import { SLACK_TRIGGER_NODE_TYPE, MANUAL_TRIGGER_NODE_TYPE } from '@/app/constants';
 
 vi.mock('@/app/stores/workflows.store', () => {
@@ -86,6 +87,12 @@ vi.mock('@/app/stores/parameterOverrides.store', () => {
 vi.mock('@/app/stores/pushConnection.store', () => ({
 	usePushConnectionStore: vi.fn().mockReturnValue({
 		isConnected: true,
+	}),
+}));
+
+vi.mock('@n8n/stores/useRootStore', () => ({
+	useRootStore: vi.fn().mockReturnValue({
+		binaryDataMode: 'filesystem',
 	}),
 }));
 
@@ -470,6 +477,36 @@ describe('useRunWorkflow({ router })', () => {
 
 			const result = await runWorkflow({});
 			expect(result).toEqual(mockExecutionResponse);
+		});
+
+		it('should prevent execution and show error when binary mode is "combined" with filesystem mode "default"', async () => {
+			const pinia = createTestingPinia({ stubActions: false });
+			setActivePinia(pinia);
+			const toast = useToast();
+			const rootStore = useRootStore();
+			const { runWorkflow } = useRunWorkflow({ router });
+
+			vi.mocked(rootStore).binaryDataMode = 'default';
+			vi.mocked(workflowsStore).workflowObject = {
+				name: 'Test Workflow',
+			} as Workflow;
+			vi.mocked(workflowHelpers).getWorkflowDataToSave.mockResolvedValue({
+				id: 'workflowId',
+				nodes: [],
+				settings: {
+					binaryMode: 'combined',
+				},
+			} as unknown as WorkflowData);
+
+			const result = await runWorkflow({});
+
+			expect(result).toBeUndefined();
+			expect(toast.showMessage).toHaveBeenCalledWith({
+				title: 'Unsuported Binary Mode',
+				message:
+					'Binary mode "combined" is not supported when filesystem mode is "default". Please change the binary mode to "separate" in workflow settings and update expressions that are referencing binary data accordingly.',
+				type: 'error',
+			});
 		});
 
 		it('should exclude destinationNode from startNodes when provided', async () => {
