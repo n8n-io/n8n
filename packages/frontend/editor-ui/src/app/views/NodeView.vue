@@ -1265,7 +1265,7 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	}
 }
-async function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
+function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
 	const webhookUrl = workflowsStore.getWebhookUrl(id, webhookType);
 	if (!webhookUrl) return;
 
@@ -1289,7 +1289,7 @@ async function onCopyTestUrl(id: string) {
 		return;
 	}
 
-	await copyWebhookUrl(id, 'test');
+	copyWebhookUrl(id, 'test');
 }
 
 async function onCopyProductionUrl(id: string) {
@@ -1301,7 +1301,7 @@ async function onCopyProductionUrl(id: string) {
 		});
 		return;
 	}
-	await copyWebhookUrl(id, 'production');
+	copyWebhookUrl(id, 'production');
 }
 
 function trackRunWorkflowToNode(node: INodeUi) {

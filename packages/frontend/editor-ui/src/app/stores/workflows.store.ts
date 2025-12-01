@@ -1830,10 +1830,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 	 */
 	function getWebhookUrl(nodeId: string, webhookType: 'test' | 'production'): string | undefined {
 		const node = getNodeById(nodeId);
-		if (!node) return undefined;
+		if (!node) return;
 
 		const nodeType = nodeTypesStore.getNodeType(node.type, node.typeVersion);
-		if (!nodeType?.webhooks?.length) return undefined;
+		if (!nodeType?.webhooks?.length) return;
 
 		const webhook = nodeType.webhooks[0];
 		return workflowHelpers.getWebhookUrl(webhook, node, webhookType);
