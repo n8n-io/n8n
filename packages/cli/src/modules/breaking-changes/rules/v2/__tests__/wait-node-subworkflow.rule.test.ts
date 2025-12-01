@@ -1,13 +1,21 @@
+import type { INode } from 'n8n-workflow';
+
 import { createNode, createWorkflow } from '../../../__tests__/test-helpers';
 import { BreakingChangeCategory } from '../../../types';
 import { WaitNodeSubworkflowRule } from '../wait-node-subworkflow.rule';
 
+class TestRule extends WaitNodeSubworkflowRule {
+	testExtractCalledWorkflowId(node: INode, callerWorkflowId: string): string | undefined {
+		return super.extractCalledWorkflowId(node, callerWorkflowId);
+	}
+}
+
 describe('WaitNodeSubworkflowRule', () => {
-	let rule: WaitNodeSubworkflowRule;
+	let rule: TestRule;
 
 	beforeEach(() => {
 		jest.clearAllMocks();
-		rule = new WaitNodeSubworkflowRule();
+		rule = new TestRule();
 		rule.reset();
 	});
 
@@ -416,6 +424,29 @@ describe('WaitNodeSubworkflowRule', () => {
 			// Second run should be empty without collecting data again
 			const report2 = await rule.produceReport();
 			expect(report2.affectedWorkflows).toHaveLength(0);
+		});
+	});
+
+	describe('extractCalledWorkflowId()', () => {
+		it('should extract the called workflow ID', () => {
+			const node = createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+				source: 'database',
+				workflowId: { value: 'sub-wf-1' },
+			});
+
+			const calledWorkflowId = rule.testExtractCalledWorkflowId(node, 'caller-wf-1');
+			expect(calledWorkflowId).toBe('sub-wf-1');
+		});
+
+		it('should return the caller workflow ID if it is an expression', () => {
+			const node = createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+				workflowId: '={{ $workflow.id }}',
+				mode: 'each',
+				options: {},
+			});
+
+			const calledWorkflowId = rule.testExtractCalledWorkflowId(node, 'caller-wf-1');
+			expect(calledWorkflowId).toBe('caller-wf-1');
 		});
 	});
 });
