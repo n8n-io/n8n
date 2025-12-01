@@ -17,7 +17,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useRoute } from 'vue-router';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
-import ActionsMenu from '@/app/components/MainHeader/ActionsMenu.vue';
+import ActionsMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
 
 const i18n = useI18n();
 const uiStore = useUIStore();

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import ActionsMenu from '@/app/components/MainHeader/ActionsMenu.vue';
+import ActionsMenu from '@/app/components/MainHeader/ActionsDropdownMenu.vue';
 import WorkflowHistoryButton from '@/features/workflows/workflowHistory/components/WorkflowHistoryButton.vue';
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
