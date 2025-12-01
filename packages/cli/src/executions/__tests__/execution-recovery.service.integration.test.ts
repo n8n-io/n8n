@@ -1,12 +1,20 @@
-import { createWorkflow, testDb, mockInstance, getWorkflowById } from '@n8n/backend-test-utils';
+import {
+	createActiveWorkflow,
+	createWorkflow,
+	testDb,
+	mockInstance,
+	getWorkflowById,
+} from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
-import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, WorkflowRepository, ProjectRelationRepository } from '@n8n/db';
+import type { Project, User } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { stringify } from 'flatted';
 import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import { randomInt } from 'n8n-workflow';
 import assert from 'node:assert';
+import { v4 as uuid } from 'uuid';
 
 import { ARTIFICIAL_TASK_DATA } from '@/constants';
 import { NodeCrashedError } from '@/errors/node-crashed.error';
@@ -15,6 +23,7 @@ import type { EventMessageTypes as EventMessage } from '@/eventbus/event-message
 import { EventMessageNode } from '@/eventbus/event-message-classes/event-message-node';
 import { ExecutionRecoveryService } from '@/executions/execution-recovery.service';
 import { Push } from '@/push';
+import { OwnershipService } from '@/services/ownership.service';
 import { createExecution } from '@test-integration/db/executions';
 
 import { IN_PROGRESS_EXECUTION_DATA, OOM_WORKFLOW } from './constants';
@@ -23,6 +32,8 @@ import { setupMessages } from './utils';
 describe('ExecutionRecoveryService', () => {
 	const push = mockInstance(Push);
 	const instanceSettings = Container.get(InstanceSettings);
+	const ownershipService = mockInstance(OwnershipService);
+	const projectRelationRepository = mockInstance(ProjectRelationRepository);
 
 	let executionRecoveryService: ExecutionRecoveryService;
 	let executionRepository: ExecutionRepository;
@@ -43,7 +54,8 @@ describe('ExecutionRecoveryService', () => {
 			globalConfig.executions,
 			workflowRepository,
 			mock(),
-			mock(),
+			ownershipService,
+			projectRelationRepository,
 		);
 	});
 
@@ -411,14 +423,19 @@ describe('ExecutionRecoveryService', () => {
 				 */
 				globalConfig.executions.recovery.workflowDeactivationEnabled = true;
 
-				const workflow = await createWorkflow({
+				const workflow = await createActiveWorkflow({
 					...OOM_WORKFLOW,
-					active: true,
 				});
-				expect(workflow.active).toBe(true);
+				expect(workflow.activeVersionId).not.toBeNull();
 				await createExecution({ status: 'crashed' }, workflow);
 				await createExecution({ status: 'crashed' }, workflow);
 				await createExecution({ status: 'crashed' }, workflow);
+
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(
+					mock<Project>({ id: uuid(), type: 'personal' }),
+				);
+				ownershipService.getInstanceOwner.mockResolvedValue(mock<User>({ id: uuid() }));
+				projectRelationRepository.find.mockResolvedValue([]);
 
 				/**
 				 * Act
@@ -430,7 +447,7 @@ describe('ExecutionRecoveryService', () => {
 				 */
 				const updatedWorkflow = await getWorkflowById(workflow.id);
 				if (!updatedWorkflow) fail('Expected `updatedWorkflow` to be defined');
-				expect(updatedWorkflow.active).toBe(false);
+				expect(updatedWorkflow.activeVersionId).toBeNull();
 			});
 		});
 	});
