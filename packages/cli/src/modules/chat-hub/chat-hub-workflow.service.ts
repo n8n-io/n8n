@@ -131,6 +131,11 @@ export class ChatHubWorkflowService {
 			);
 
 			const newWorkflow = new WorkflowEntity();
+
+			// Chat workflows are created as archived to hide them
+			// from the user by default while they are being run.
+			newWorkflow.isArchived = true;
+
 			newWorkflow.versionId = uuidv4();
 			newWorkflow.name = `Chat ${sessionId} (Title Generation)`;
 			newWorkflow.active = false;
@@ -139,6 +144,7 @@ export class ChatHubWorkflowService {
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
 				executionOrder: 'v1',
+				saveDataSuccessExecution: 'all',
 			};
 
 			const workflow = await em.save<WorkflowEntity>(newWorkflow);
