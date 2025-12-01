@@ -363,6 +363,110 @@ describe('WaitTracker', () => {
 				);
 				expect(parentRunCalls.length).toBe(1);
 			});
+
+			it('should not resume parent execution if it has already finished', async () => {
+				// Setup parent execution that already finished
+				const parentExecution: IExecutionResponse = {
+					id: 'parent_execution_id',
+					finished: true, // Already finished
+					status: 'success',
+					workflowData: mock<IWorkflowBase>({ id: 'parent_workflow_id' }),
+					customData: {},
+					annotation: { tags: [] },
+					createdAt: new Date(),
+					startedAt: new Date(),
+					stoppedAt: new Date(),
+					mode: 'manual',
+					workflowId: 'parent_workflow_id',
+					data: {
+						resultData: {
+							runData: {},
+							lastNodeExecuted: 'Execute Workflow',
+						},
+						executionData: {
+							contextData: {},
+							nodeExecutionStack: [],
+							metadata: {},
+							waitingExecution: {},
+							waitingExecutionSource: {},
+						},
+					} as unknown as IRunExecutionData,
+				};
+
+				executionRepository.findSingleExecution
+					.calledWith(parentExecution.id)
+					.mockResolvedValue(parentExecution);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
+
+				// Try to start the already-finished parent execution
+				await expect(waitTracker.startExecution(parentExecution.id)).rejects.toThrow(
+					'The execution did succeed and can so not be started again',
+				);
+
+				// Verify execution was NOT started
+				expect(workflowRunner.run).not.toHaveBeenCalled();
+			});
+
+			it('should not attempt to update parent if child has no parent execution', async () => {
+				// Setup child execution with NO parent
+				const childExecution: IExecutionResponse = {
+					id: 'child_execution_id',
+					finished: false,
+					status: 'waiting',
+					waitTill: new Date(Date.now() + 1000),
+					workflowData: mock<IWorkflowBase>({ id: 'child_workflow_id' }),
+					customData: {},
+					annotation: { tags: [] },
+					createdAt: new Date(),
+					startedAt: new Date(),
+					mode: 'manual',
+					workflowId: 'child_workflow_id',
+					data: {
+						resultData: {
+							runData: {},
+							lastNodeExecuted: 'Wait',
+						},
+						executionData: {
+							contextData: {},
+							nodeExecutionStack: [],
+							metadata: {},
+							waitingExecution: {},
+							waitingExecutionSource: {},
+						},
+						parentExecution: undefined, // NO parent
+					} as unknown as IRunExecutionData,
+				};
+
+				executionRepository.findSingleExecution
+					.calledWith(childExecution.id)
+					.mockResolvedValue(childExecution);
+				ownershipService.getWorkflowProjectCached.mockResolvedValue(project);
+
+				const postExecutePromise = createDeferredPromise<IRun | undefined>();
+				activeExecutions.getPostExecutePromise
+					.calledWith(childExecution.id)
+					.mockReturnValue(postExecutePromise.promise);
+
+				// Start child execution
+				await waitTracker.startExecution(childExecution.id);
+
+				// Child completes
+				postExecutePromise.resolve(undefined);
+				await jest.advanceTimersByTimeAsync(100);
+
+				// Verify parent resumption logic was NOT triggered
+				// workflowRunner.run should only be called once (for the child)
+				expect(workflowRunner.run).toHaveBeenCalledTimes(1);
+				expect(workflowRunner.run).toHaveBeenCalledWith(
+					expect.objectContaining({
+						executionMode: childExecution.mode,
+						workflowData: childExecution.workflowData,
+					}),
+					false,
+					false,
+					childExecution.id,
+				);
+			});
 		});
 	});
 
