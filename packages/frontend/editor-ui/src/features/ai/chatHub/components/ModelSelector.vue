@@ -81,6 +81,7 @@ function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
 
 const i18n = useI18n();
 const agents = ref<ChatModelsResponse>(emptyChatModelsResponse);
+const isLoading = ref(false);
 const dropdownRef = useTemplateRef('dropdownRef');
 const uiStore = useUIStore();
 const settingStore = useSettingsStore();
@@ -105,14 +106,13 @@ const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
 
 	if (includeCustomAgents) {
-		const customAgents = [
-			...agents.value['custom-agent'].models,
-			...agents.value['n8n'].models,
-		].map((agent) => ({
-			id: stringifyModel(agent.model),
-			title: agent.name,
-			disabled: false,
-		}));
+		const customAgents = isLoading.value
+			? []
+			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => ({
+					id: stringifyModel(agent.model),
+					title: agent.name,
+					disabled: false,
+				}));
 
 		menuItems.push({
 			id: 'custom-agents',
@@ -121,8 +121,14 @@ const menu = computed(() => {
 			iconSize: 'large',
 			iconMargin: false,
 			submenu: [
-				...customAgents,
-				...(customAgents.length > 0 ? [{ isDivider: true as const, id: 'divider' }] : []),
+				...(isLoading.value
+					? [
+							{ id: 'loading', title: i18n.baseText('generic.loadingEllipsis'), disabled: true },
+							{ isDivider: true as const, id: 'divider' },
+						]
+					: customAgents.length > 0
+						? [...customAgents, { isDivider: true as const, id: 'divider' }]
+						: []),
 				{
 					id: NEW_AGENT_MENU_ID,
 					icon: 'plus',
@@ -138,6 +144,29 @@ const menu = computed(() => {
 
 		// Filter out disabled providers from the menu
 		if (settings && !settings.enabled) continue;
+		const configureMenu = {
+			id: `${provider}::configure`,
+			icon: 'settings' as const,
+			title: i18n.baseText('chatHub.agent.configureCredentials'),
+			disabled: false,
+		};
+
+		if (isLoading.value) {
+			menuItems.push({
+				id: provider,
+				title: providerDisplayNames[provider],
+				submenu: [
+					{
+						id: `${provider}::loading`,
+						title: i18n.baseText('generic.loadingEllipsis'),
+						disabled: true,
+					},
+					{ isDivider: true as const, id: 'divider' },
+					configureMenu,
+				],
+			});
+			continue;
+		}
 
 		const theAgents = [...agents.value[provider].models];
 
@@ -193,12 +222,7 @@ const menu = computed(() => {
 						} as const,
 					]
 				: []),
-			{
-				id: `${provider}::configure`,
-				icon: 'settings',
-				title: i18n.baseText('chatHub.agent.configureCredentials'),
-				disabled: false,
-			},
+			configureMenu,
 		]);
 
 		menuItems.push({
@@ -308,7 +332,12 @@ watch(
 	() => credentials,
 	async (credentials) => {
 		if (credentials) {
-			agents.value = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
+			isLoading.value = true;
+			try {
+				agents.value = await fetchChatModelsApi(useRootStore().restApiContext, { credentials });
+			} finally {
+				isLoading.value = false;
+			}
 		}
 	},
 	{ immediate: true },

@@ -49,6 +49,7 @@ export class WorkflowHistoryService {
 				'name',
 				'description',
 			],
+			relations: ['workflowPublishHistory'],
 			order: { createdAt: 'DESC' },
 		});
 	}
@@ -67,6 +68,7 @@ export class WorkflowHistoryService {
 				workflowId: workflow.id,
 				versionId,
 			},
+			relations: ['workflowPublishHistory'],
 		});
 		if (!hist) {
 			throw new WorkflowHistoryVersionNotFoundError('');
