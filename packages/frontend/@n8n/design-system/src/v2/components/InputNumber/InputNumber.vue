@@ -27,14 +27,16 @@ defineSlots<InputNumberSlots>();
 
 const $style = useCssModule();
 
-// Map precision to formatOptions
-const formatOptions = computed(() =>
+// Map precision to formatOptions - uses Intl.NumberFormatOptions
+// When no precision is set, use maximumFractionDigits: 20 (the max allowed by Intl.NumberFormat)
+// to preserve full decimal precision and avoid default rounding behavior
+const formatOptions = computed<Intl.NumberFormatOptions>(() =>
 	props.precision !== undefined
 		? { maximumFractionDigits: props.precision, minimumFractionDigits: props.precision }
-		: undefined,
+		: { maximumFractionDigits: 20 },
 );
 
-// Forward props to Reka UI
+// Forward props to Reka UI via useForwardPropsEmits (including formatOptions)
 const forwarded = useForwardPropsEmits(
 	computed(() => ({
 		modelValue: props.modelValue,
