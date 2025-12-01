@@ -945,7 +945,7 @@ export class ChatHubService {
 							metadata: {
 								inputModalities,
 								capabilities: {
-									functionCalling: true, // n8n workflows support tools
+									functionCalling: false,
 								},
 							},
 						},
