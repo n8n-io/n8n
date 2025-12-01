@@ -179,6 +179,11 @@ export class BinaryDataService {
 
 		for (const attachmentId of ids) {
 			const [mode, fileId] = attachmentId.split(':');
+
+			if (!fileId) {
+				continue;
+			}
+
 			const entry = fileIdsByMode.get(mode) ?? [];
 
 			fileIdsByMode.set(mode, entry.concat([fileId]));
