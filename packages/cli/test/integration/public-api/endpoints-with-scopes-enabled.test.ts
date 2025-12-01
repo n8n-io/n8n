@@ -323,7 +323,7 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					}
 				});
 
-				it('should remove all admin only scopes when user downgrading to chatUser', async () => {
+				it('should remove all API keys when user downgrading to chatUser', async () => {
 					/**
 					 * Arrange
 					 */
@@ -332,8 +332,6 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					const owner = await createOwnerWithApiKey({ scopes: ['user:changeRole'] });
 					const admin = await createAdminWithApiKey();
 					const payload = { newRoleName: 'global:chatUser' };
-
-					const ownerOnlyScopes = getOwnerOnlyApiKeyScopes();
 
 					/**
 					 * Act
@@ -348,10 +346,8 @@ describe('Public API endpoints with feat:apiKeyScopes enabled', () => {
 					 */
 					expect(response.status).toBe(204);
 
-					const formerAdminApiKey = await apiKeyRepository.findOneByOrFail({ userId: admin.id });
-					for (const ownerScope of ownerOnlyScopes) {
-						expect(formerAdminApiKey.scopes).not.toContain(ownerScope);
-					}
+					const formerAdminApiKey = await apiKeyRepository.findOneBy({ userId: admin.id });
+					expect(formerAdminApiKey).toBeNull();
 				});
 			});
 
