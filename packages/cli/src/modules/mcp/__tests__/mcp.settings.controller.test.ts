@@ -316,7 +316,6 @@ describe('McpSettingsController', () => {
 			expect(updateArgs[1].settings).toEqual({ saveManualExecutions: true, availableInMCP: true });
 			expect(updateArgs[1].versionId).toEqual('some-version-id');
 			expect(updateArgs[2]).toEqual(workflowId);
-			expect(updateArgs[5]).toEqual(false);
 
 			expect(response).toEqual({
 				id: workflowId,

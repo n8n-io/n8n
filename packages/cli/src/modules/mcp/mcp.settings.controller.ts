@@ -113,14 +113,7 @@ export class McpSettingsController {
 		};
 		workflowUpdate.versionId = workflow.versionId;
 
-		const updatedWorkflow = await this.workflowService.update(
-			req.user,
-			workflowUpdate,
-			workflowId,
-			undefined, // tags
-			undefined, // parentFolderId
-			false, // forceSave
-		);
+		const updatedWorkflow = await this.workflowService.update(req.user, workflowUpdate, workflowId);
 
 		return {
 			id: updatedWorkflow.id,
