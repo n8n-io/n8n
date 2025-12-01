@@ -361,12 +361,16 @@ watch(
 // Keep cached display name up-to-date
 watch(
 	defaultAgent,
-	(agent) => {
-		if (defaultModel.value && agent) {
+	(agent, prevAgent) => {
+		if (defaultModel.value && agent && agent.name !== prevAgent?.name) {
 			defaultModel.value = { ...defaultModel.value, cachedDisplayName: agent.name };
 		}
 
-		if (agent && !agent.metadata.capabilities.functionCalling) {
+		if (
+			agent &&
+			!agent.metadata.capabilities.functionCalling &&
+			(defaultTools.value ?? []).length > 0
+		) {
 			defaultTools.value = [];
 		}
 	},
