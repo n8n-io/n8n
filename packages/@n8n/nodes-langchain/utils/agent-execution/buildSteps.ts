@@ -46,12 +46,14 @@ export function buildSteps(
 			// Create a synthetic AI message for the messageLog
 			// This represents the AI's decision to call the tool
 			// Extract thought_signature from metadata if present (for Gemini 3)
-			const thoughtSignature = tool.action.metadata?.thoughtSignature as string | undefined;
+			const rawThoughtSignature = tool.action.metadata?.thoughtSignature;
+			const thoughtSignature =
+				typeof rawThoughtSignature === 'string' ? rawThoughtSignature : undefined;
 
 			// Build the tool call object with thought_signature if present
 			// The thought_signature must be part of the tool call itself for Gemini 3
 			const toolCall = {
-				id: (toolInput?.id as string) ?? 'reconstructed_call',
+				id: typeof toolInput?.id === 'string' ? toolInput.id : 'reconstructed_call',
 				name: nodeNameToToolName(tool.action.nodeName),
 				args: toolInput,
 				type: 'tool_call' as const,

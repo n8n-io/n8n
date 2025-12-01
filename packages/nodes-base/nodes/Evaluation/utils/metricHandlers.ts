@@ -242,7 +242,9 @@ export const metricHandlers = {
 				},
 			);
 		}
-		const chain = chatPrompt.pipe(llm.withStructuredOutput(responseSchema as any)) as any;
+		const chain = chatPrompt.pipe(
+			llm.withStructuredOutput<z.infer<typeof responseSchema>>(responseSchema),
+		);
 
 		try {
 			const response = await chain.invoke({
