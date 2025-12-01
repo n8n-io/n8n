@@ -30,7 +30,6 @@ import { useTemplatesStore } from '@/features/workflows/templates/templates.stor
 import { useFocusPanelStore } from '@/app/stores/focusPanel.store';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
 import { getResourcePermissions } from '@n8n/permissions';
-import { computed } from 'vue';
 
 export function useWorkflowSaving({
 	router,
