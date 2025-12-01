@@ -23,6 +23,9 @@ import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository } fro
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Response } from 'express';
+
+import { ErrorReporter } from 'n8n-core';
+
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
@@ -75,6 +78,7 @@ import type { ChatHubSession } from './chat-hub-session.entity';
 export class ChatHubService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly executionService: ExecutionService,
 		private readonly nodeParametersService: DynamicNodeParametersService,
 		private readonly executionRepository: ExecutionRepository,
@@ -1044,8 +1048,15 @@ export class ChatHubService {
 			executionData = result.executionData;
 			workflowData = result.workflowData;
 		} catch (error) {
-			// Rollback stored attachments if transaction fails
-			await this.chatHubAttachmentService.deleteAttachments(processedAttachments);
+			if (processedAttachments.length > 0) {
+				try {
+					// Rollback stored attachments if transaction fails
+					await this.chatHubAttachmentService.deleteAttachments(processedAttachments);
+				} catch (error) {
+					this.errorReporter.warn(`Could not clean up ${processedAttachments.length} files`);
+				}
+			}
+
 			throw error;
 		}
 
@@ -1871,6 +1882,9 @@ export class ChatHubService {
 			workflowData,
 			executionData,
 			user,
+			undefined,
+			false,
+			'chat',
 		);
 
 		const executionId = started.executionId;
@@ -1894,6 +1908,7 @@ export class ChatHubService {
 		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
 			workflowData.id,
 		]);
+
 		if (!execution) {
 			throw new OperationalError(`Could not find execution with ID ${executionId}`);
 		}

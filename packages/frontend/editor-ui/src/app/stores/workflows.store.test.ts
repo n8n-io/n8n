@@ -2083,6 +2083,107 @@ describe('useWorkflowsStore', () => {
 		});
 	});
 
+	describe('getWebhookUrl', () => {
+		it('should return undefined when node does not exist', () => {
+			workflowsStore.setNodes([]);
+
+			const result = workflowsStore.getWebhookUrl('non-existent-node', 'test');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return undefined when node type does not exist', () => {
+			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue(null);
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return undefined when node type has no webhooks', () => {
+			const testNode = createTestNode({ id: 'node-1', name: 'Webhook Node' });
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeUndefined();
+		});
+
+		it('should return webhook URL for test type', () => {
+			const testNode = createTestNode({
+				id: 'node-1',
+				name: 'Webhook Node',
+				type: 'n8n-nodes-base.webhook',
+			});
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [{ name: 'default', httpMethod: 'GET', path: 'webhook' }],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeDefined();
+			expect(typeof result).toBe('string');
+			expect(result).toContain('webhook');
+		});
+
+		it('should return webhook URL for production type', () => {
+			const testNode = createTestNode({
+				id: 'node-1',
+				name: 'Webhook Node',
+				type: 'n8n-nodes-base.webhook',
+			});
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [{ name: 'default', httpMethod: 'POST', path: 'webhook' }],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'production');
+
+			expect(result).toBeDefined();
+			expect(typeof result).toBe('string');
+			expect(result).toContain('webhook');
+		});
+
+		it('should use the first webhook when node has multiple webhooks', () => {
+			const testNode = createTestNode({
+				id: 'node-1',
+				name: 'Webhook Node',
+				type: 'n8n-nodes-base.webhook',
+			});
+			workflowsStore.setNodes([testNode]);
+			getNodeType.mockReturnValue({
+				inputs: [],
+				group: [],
+				webhooks: [
+					{ name: 'default', httpMethod: 'GET', path: 'webhook1' },
+					{ name: 'default', httpMethod: 'POST', path: 'webhook2' },
+				],
+				properties: [],
+			});
+
+			const result = workflowsStore.getWebhookUrl('node-1', 'test');
+
+			expect(result).toBeDefined();
+			expect(typeof result).toBe('string');
+			expect(result).toContain('webhook1');
+		});
+	});
+
 	describe('fetchLastSuccessfulExecution', () => {
 		beforeEach(() => {
 			// Ensure currentView is set to a non-readonly view (VIEWS.WORKFLOW = 'NodeViewExisting')
