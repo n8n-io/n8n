@@ -4,6 +4,9 @@
         "created_at": {
             "type": "string"
         },
+        "financial_status": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
         },
@@ -206,13 +209,10 @@
                                 }
                             }
                         }
-                    },
-                    "vendor": {
-                        "type": "string"
                     }
                 }
             }
         }
     },
-    "version": 6
+    "version": 7
 }
