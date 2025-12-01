@@ -34,6 +34,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -502,6 +503,15 @@ export class WorkflowService {
 
 		const versionToActivate = options?.versionId ?? workflow.versionId;
 		const wasActive = workflow.activeVersionId !== null;
+
+		try {
+			await this.workflowHistoryService.getVersion(user, workflow.id, versionToActivate);
+		} catch (error) {
+			if (error instanceof WorkflowHistoryVersionNotFoundError) {
+				throw new NotFoundError('Version not found');
+			}
+			throw error;
+		}
 
 		if (wasActive) {
 			await this.activeWorkflowManager.remove(workflowId);

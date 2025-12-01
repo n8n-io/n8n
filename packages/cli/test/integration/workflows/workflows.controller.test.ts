@@ -2744,6 +2744,19 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(response.statusCode).toBe(404);
 	});
 
+	test('should return 404 if version does not exist', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const newVersionId = uuid();
+
+		const response = await authOwnerAgent
+			.post(`/workflows/${workflow.id}/activate`)
+			.send({ versionId: newVersionId });
+
+		expect(response.statusCode).toBe(404);
+		expect(response.body.message).toBe('Version not found');
+		expect(activeWorkflowManagerLike.add).not.toBeCalled();
+	});
+
 	test('should return 403 when user does not have update permission', async () => {
 		const workflow = await createWorkflow({}, owner);
 
