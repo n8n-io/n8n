@@ -146,7 +146,7 @@ export function useWorkflowSaving({
 		if (missingActivatableTriggerNode) {
 			// Automatically deactivate if all activatable triggers are removed
 			return {
-				title: i18n.baseText('workflows.deactivated'),
+				title: i18n.baseText('workflows.autodeactivated'),
 				message: i18n.baseText('workflowActivator.thisWorkflowHasNoTriggerNodes'),
 				type: 'info',
 			};
