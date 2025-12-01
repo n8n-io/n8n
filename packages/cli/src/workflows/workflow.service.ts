@@ -30,6 +30,10 @@ import { FileLocation, BinaryDataService } from 'n8n-core';
 import { NodeApiError, PROJECT_ROOT, assert } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
+import { WorkflowFinderService } from './workflow-finder.service';
+import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
+import { WorkflowSharingService } from './workflow-sharing.service';
+
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
@@ -41,15 +45,10 @@ import { validateEntity } from '@/generic-helpers';
 import type { ListQuery } from '@/requests';
 import { hasSharing } from '@/requests';
 import { OwnershipService } from '@/services/ownership.service';
-// eslint-disable-next-line import-x/no-cycle
 import { ProjectService } from '@/services/project.service.ee';
 import { RoleService } from '@/services/role.service';
 import { TagService } from '@/services/tag.service';
 import * as WorkflowHelpers from '@/workflow-helpers';
-
-import { WorkflowFinderService } from './workflow-finder.service';
-import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
-import { WorkflowSharingService } from './workflow-sharing.service';
 
 @Service()
 export class WorkflowService {
