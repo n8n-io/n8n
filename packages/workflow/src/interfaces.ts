@@ -937,6 +937,8 @@ export interface FunctionsBase {
 
 	getExecutionContext: () => IExecutionContext | undefined;
 
+	nodeDebugLogger(message: any, tag?: string): void;
+
 	/** @deprecated */
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
 }
@@ -2686,7 +2688,7 @@ export interface IWorkflowExecuteAdditionalData {
 	restApiUrl: string;
 	instanceBaseUrl: string;
 	setExecutionStatus?: (status: ExecutionStatus) => void;
-	sendDataToUI?: (type: string, data: IDataObject | IDataObject[]) => void;
+	sendDataToUI?: (type: string, data: IDataObject | IDataObject[], uselogger?: boolean) => void;
 	formWaitingBaseUrl: string;
 	webhookBaseUrl: string;
 	webhookWaitingBaseUrl: string;

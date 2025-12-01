@@ -235,6 +235,8 @@ export async function execute(
 			i,
 		) as AssignmentCollectionValue;
 
+		this.nodeDebugLogger(assignmentCollection, 'Set Fields');
+
 		return prepareReturnItem(this, assignmentCollection, i, item, node, options);
 	} catch (error) {
 		if (this.continueOnFail()) {

@@ -67,6 +67,22 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 		return Container.get(Logger);
 	}
 
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
+	nodeDebugLogger(message: any, tag?: string) {
+		if (this.additionalData.sendDataToUI && this.mode === 'manual' && this.node.nodeDebugLogs) {
+			this.additionalData.sendDataToUI(
+				'sendConsoleMessage',
+				{
+					source: `[Node: "${this.node.name}", Date: "${new Date().toISOString()}"${
+						tag ? `, Tag: "${tag}"` : ''
+					}]`,
+					messages: [message],
+				},
+				true,
+			);
+		}
+	}
+
 	getExecutionContext() {
 		return this.runExecutionData?.executionData?.runtimeData;
 	}

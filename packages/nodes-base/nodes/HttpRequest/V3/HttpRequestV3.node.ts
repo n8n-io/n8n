@@ -94,6 +94,8 @@ export class HttpRequestV3 implements INodeType {
 		const items = this.getInputData();
 		const nodeVersion = this.getNode().typeVersion;
 
+		this.nodeDebugLogger(nodeVersion, 'node version');
+
 		const fullResponseProperties = ['body', 'headers', 'statusCode', 'statusMessage'];
 
 		let authentication;
