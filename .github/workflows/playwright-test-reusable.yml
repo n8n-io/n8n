@@ -4,33 +4,33 @@ on:
   workflow_call:
     inputs:
       branch:
-        description: 'GitHub branch to test.'
+        description: "GitHub branch to test."
         required: false
         type: string
       test-mode:
-        description: 'Test mode: local (pnpm start from local), docker-build, or docker-pull'
+        description: "Test mode: local (pnpm start from local), docker-build, or docker-pull"
         required: false
-        default: 'local'
+        default: "local"
         type: string
       test-command:
-        description: 'Test command to run'
+        description: "Test command to run"
         required: false
-        default: 'pnpm --filter=n8n-playwright test:local'
+        default: "pnpm --filter=n8n-playwright test:local"
         type: string
       shards:
-        description: 'Shards for parallel execution'
+        description: "Shards for parallel execution"
         required: false
-        default: '[1, 2, 3, 4, 5, 6, 7, 8]'
+        default: "[1, 2, 3, 4, 5, 6, 7, 8]"
         type: string
       docker-image:
-        description: 'Docker image to use (for docker-pull mode)'
+        description: "Docker image to use (for docker-pull mode)"
         required: false
-        default: 'n8nio/n8n:nightly'
+        default: "n8nio/n8n:nightly"
         type: string
       workers:
-        description: 'Number of parallel workers'
+        description: "Number of parallel workers"
         required: false
-        default: ''
+        default: ""
         type: string
       runner:
         description: 'GitHub runner to use'
@@ -63,8 +63,7 @@ env:
 
 jobs:
   test:
-    runs-on: ${{ inputs.runner }}
-    timeout-minutes: 30
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:

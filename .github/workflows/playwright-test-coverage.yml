@@ -2,7 +2,7 @@ name: Weekly Coverage Tests
 
 on:
   schedule:
-    - cron: '0 2 * * 1' # Every Monday at 2 AM
+    - cron: "0 2 * * 1" # Every Monday at 2 AM
   workflow_dispatch: # Allow manual triggering
 
 env:
@@ -13,7 +13,7 @@ env:
 
 jobs:
   coverage:
-    runs-on: blacksmith-8vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     name: Coverage Tests
 
     steps:
@@ -39,7 +39,7 @@ jobs:
           pnpm --filter n8n-playwright test:container:standard \
             --workers=${{ env.PLAYWRIGHT_WORKERS }}
         env:
-          BUILD_WITH_COVERAGE: 'true'
+          BUILD_WITH_COVERAGE: "true"
           CURRENTS_RECORD_KEY: ${{ secrets.CURRENTS_RECORD_KEY }}
           QA_PERFORMANCE_METRICS_WEBHOOK_URL: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_URL }}
           QA_PERFORMANCE_METRICS_WEBHOOK_USER: ${{ secrets.QA_PERFORMANCE_METRICS_WEBHOOK_USER }}

@@ -28,7 +28,7 @@ env:
 jobs:
   unit-test-backend:
     name: Backend Unit Tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
@@ -61,7 +61,7 @@ jobs:
 
   integration-test-backend:
     name: Backend Integration Tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
@@ -94,7 +94,7 @@ jobs:
 
   unit-test-nodes:
     name: Nodes Unit Tests
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     env:
       COVERAGE_ENABLED: ${{ inputs.collectCoverage }} # Coverage collected when true
     steps:
@@ -127,7 +127,7 @@ jobs:
 
   unit-test-frontend:
     name: Frontend (${{ matrix.shard }}/2)
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:

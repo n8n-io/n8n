@@ -2,7 +2,7 @@ name: Test Postgres and MySQL schemas
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
   workflow_dispatch:
   pull_request:
     paths:
@@ -24,12 +24,12 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  NODE_OPTIONS: '--max-old-space-size=3072'
+  NODE_OPTIONS: "--max-old-space-size=3072"
 
 jobs:
   build:
     name: Install & Build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     if: github.event_name != 'pull_request_review' || startsWith(github.event.pull_request.base.ref, 'release/')
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
@@ -40,7 +40,7 @@ jobs:
   sqlite-pooled:
     name: SQLite Pooled
     needs: build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       DB_TYPE: sqlite
@@ -58,7 +58,7 @@ jobs:
   mariadb:
     name: MariaDB
     needs: build
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     timeout-minutes: 30
     if: false
     env:
@@ -67,7 +67,7 @@ jobs:
       DB_MYSQLDB_CONNECTION_TIMEOUT: 120000
       DB_MYSQLDB_ACQUIRE_TIMEOUT: 120000
       DB_MYSQLDB_TIMEOUT: 120000
-      NODE_OPTIONS: '--max-old-space-size=7168'
+      NODE_OPTIONS: "--max-old-space-size=7168"
     steps:
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4.1.1
 
@@ -88,7 +88,7 @@ jobs:
   mysql:
     name: MySQL 8.4
     needs: build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     if: false
     env:
@@ -117,7 +117,7 @@ jobs:
   postgres:
     name: Postgres
     needs: build
-    runs-on: blacksmith-2vcpu-ubuntu-2204
+    runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
       DB_POSTGRESDB_PASSWORD: password
@@ -149,6 +149,6 @@ jobs:
         if: failure() && github.ref == 'refs/heads/master'
         with:
           status: ${{ job.status }}
-          channel: '#alerts-build'
+          channel: "#alerts-build"
           webhook-url: ${{ secrets.SLACK_WEBHOOK_URL }}
           message: Postgres, MariaDB or MySQL tests failed (${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
