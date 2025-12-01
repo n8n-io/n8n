@@ -1,0 +1,138 @@
+{
+  "name": "File Upload Example",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "file-upload",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [250, 300],
+      "webhookId": "file-upload"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ Object.keys($json.binary).length }}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "if-node",
+      "name": "Files Received?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract all uploaded files\nconst files = [];\nconst binary = $input.item.binary;\n\nfor (const key in binary) {\n  if (key.startsWith('file')) {\n    files.push({\n      json: {\n        fileName: binary[key].fileName,\n        mimeType: binary[key].mimeType,\n        fileSize: binary[key].fileSize,\n        fileExtension: binary[key].fileExtension,\n        uploadedAt: new Date().toISOString(),\n        fileKey: key\n      },\n      binary: {\n        data: binary[key]\n      }\n    });\n  }\n}\n\nreturn files;"
+      },
+      "id": "code-node",
+      "name": "Process Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"success\": true,\n  \"message\": \"Files uploaded successfully\",\n  \"filesReceived\": $json.fileName,\n  \"timestamp\": $now\n} }}"
+      },
+      "id": "respond-success",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 400,
+        "responseBody": "={{ {\n  \"success\": false,\n  \"error\": \"No files were uploaded\",\n  \"timestamp\": $now\n} }}"
+      },
+      "id": "respond-error",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [690, 400]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "options": {}
+      },
+      "id": "extract-text",
+      "name": "Extract Text (Optional)",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [910, 100],
+      "disabled": true,
+      "notes": "Enable this to extract text from PDFs, DOCX, etc."
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Files Received?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Files Received?": {
+      "main": [
+        [
+          {
+            "node": "Process Files",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Files": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2024-01-01T00:00:00.000Z",
+      "updatedAt": "2024-01-01T00:00:00.000Z",
+      "id": "1",
+      "name": "file-upload"
+    }
+  ],
+  "triggerCount": 1,
+  "updatedAt": "2024-01-01T00:00:00.000Z",
+  "versionId": "1"
+}

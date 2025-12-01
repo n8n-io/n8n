@@ -1,0 +1,131 @@
+{
+  "name": "File Upload Example",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "file-upload",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-node",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [250, 300],
+      "webhookId": "file-upload"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "binary-check",
+              "leftValue": "={{ Object.keys($json.binary || {}).length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "if-node",
+      "name": "Files Received?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract all uploaded files\nconst files = [];\nconst binary = $input.item.binary || {};\n\nfor (const key in binary) {\n  if (key.startsWith('file')) {\n    files.push({\n      json: {\n        fileName: binary[key].fileName,\n        mimeType: binary[key].mimeType,\n        fileSize: binary[key].fileSize,\n        fileExtension: binary[key].fileExtension || '',\n        uploadedAt: new Date().toISOString(),\n        fileKey: key\n      },\n      binary: {\n        data: binary[key]\n      }\n    });\n  }\n}\n\nif (files.length === 0) {\n  return [{ json: { error: 'No files found in upload' } }];\n}\n\nreturn files;"
+      },
+      "id": "code-node",
+      "name": "Process Files",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  \"success\": true,\n  \"message\": \"Files uploaded successfully\",\n  \"filesReceived\": $json.fileName,\n  \"fileSize\": $json.fileSize,\n  \"mimeType\": $json.mimeType,\n  \"uploadedAt\": $json.uploadedAt\n} }}"
+      },
+      "id": "respond-success",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseCode": 400,
+        "responseBody": "={{ {\n  \"success\": false,\n  \"error\": \"No files were uploaded. Please select a file and try again.\",\n  \"timestamp\": $now\n} }}"
+      },
+      "id": "respond-error",
+      "name": "Error Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [690, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Files Received?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Files Received?": {
+      "main": [
+        [
+          {
+            "node": "Process Files",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Files": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-12-01T00:00:00.000Z",
+  "versionId": "1"
+}

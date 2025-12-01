@@ -1,0 +1,52 @@
+{
+  "name": "File Upload Simple",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "file-upload",
+        "responseMode": "onReceived",
+        "responseData": "firstEntryJson",
+        "options": {}
+      },
+      "id": "webhook-simple",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [250, 300],
+      "webhookId": "file-upload"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log received files\nconst binary = $input.item.binary || {};\nconst fileCount = Object.keys(binary).filter(key => key.startsWith('file')).length;\n\nreturn {\n  json: {\n    success: true,\n    message: 'Files received successfully',\n    fileCount: fileCount,\n    files: Object.keys(binary),\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "process-simple",
+      "name": "Process & Return",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process & Return",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 1,
+  "updatedAt": "2024-12-01T00:00:00.000Z",
+  "versionId": "1"
+}
