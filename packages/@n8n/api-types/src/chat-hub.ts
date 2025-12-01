@@ -285,6 +285,7 @@ export class ChatHubSendMessageRequest extends Z.class({
 	),
 	tools: z.array(INodeSchema),
 	attachments: z.array(chatAttachmentSchema),
+	agentName: z.string(),
 }) {}
 
 export class ChatHubRegenerateMessageRequest extends Z.class({
@@ -312,10 +313,12 @@ export class ChatHubEditMessageRequest extends Z.class({
 export class ChatHubUpdateConversationRequest extends Z.class({
 	title: z.string().optional(),
 	credentialId: z.string().max(36).optional(),
-	provider: chatHubProviderSchema.optional(),
-	model: z.string().max(64).optional(),
-	workflowId: z.string().max(36).optional(),
-	agentId: z.string().uuid().optional(),
+	agent: z
+		.object({
+			model: chatHubConversationModelSchema,
+			name: z.string(),
+		})
+		.optional(),
 	tools: z.array(INodeSchema).optional(),
 }) {}
 
@@ -335,7 +338,7 @@ export interface ChatHubSessionDto {
 	model: string | null;
 	workflowId: string | null;
 	agentId: string | null;
-	agentName: string | null;
+	agentName: string;
 	createdAt: string;
 	updatedAt: string;
 	tools: INode[];

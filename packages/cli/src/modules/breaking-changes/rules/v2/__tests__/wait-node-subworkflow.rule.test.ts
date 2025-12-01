@@ -8,6 +8,7 @@ describe('WaitNodeSubworkflowRule', () => {
 	beforeEach(() => {
 		jest.clearAllMocks();
 		rule = new WaitNodeSubworkflowRule();
+		rule.reset();
 	});
 
 	describe('getMetadata()', () => {
@@ -16,9 +17,8 @@ describe('WaitNodeSubworkflowRule', () => {
 
 			expect(metadata).toMatchObject({
 				version: 'v2',
-				title: 'Waiting node behavior change in sub-workflows',
-				description:
-					'Waiting nodes (Wait, Form, and HITL nodes) in sub-workflows now return data from the last node instead of the node before the waiting node',
+				title: 'Sub-workflow waiting node output behavior change',
+				description: expect.stringContaining('Parent workflows calling sub-workflows'),
 				category: BreakingChangeCategory.workflow,
 				severity: 'medium',
 			});
@@ -29,252 +29,393 @@ describe('WaitNodeSubworkflowRule', () => {
 		it('should return recommendations', async () => {
 			const recommendations = await rule.getRecommendations([]);
 
-			expect(recommendations).toHaveLength(3);
-			expect(recommendations).toEqual([
-				{
-					action: 'Review sub-workflow output handling',
-					description:
-						'Check workflows that use Execute Workflow node to call sub-workflows containing waiting nodes (Wait, Form, or HITL nodes). The output data structure may have changed.',
-				},
-				{
-					action: 'Update downstream logic',
-					description:
-						'Adjust any logic in parent workflows that depends on the data returned from sub-workflows with waiting nodes, as it now returns the last node data instead of the node before the waiting node.',
-				},
-				{
-					action: 'Test affected workflows',
-					description:
-						'Test all workflows with Execute Workflow nodes calling sub-workflows that contain waiting nodes to ensure the new behavior works as expected.',
-				},
-			]);
+			expect(recommendations).toHaveLength(2);
+			expect(recommendations[0].action).toBe('Review Execute Workflow node outputs');
+			expect(recommendations[1].action).toBe('Test affected parent workflows');
 		});
 	});
 
-	describe('detectWorkflow()', () => {
-		it.each([
-			{
-				description: 'workflow has no waiting nodes',
-				nodes: [
-					createNode('HTTP', 'n8n-nodes-base.httpRequest'),
-					createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
-				],
-			},
-			{
-				description: 'workflow has waiting nodes but no Execute Workflow Trigger',
-				nodes: [
-					createNode('HTTP', 'n8n-nodes-base.httpRequest'),
-					createNode('Wait', 'n8n-nodes-base.wait'),
-				],
-			},
-			{
-				description: 'workflow has Execute Workflow Trigger but no waiting nodes',
-				nodes: [
-					createNode('HTTP', 'n8n-nodes-base.httpRequest'),
-					createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
-				],
-			},
-		])('should return no issues when $description', async ({ nodes }) => {
-			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', nodes);
-			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
-
-			expect(result).toEqual({
-				isAffected: false,
-				issues: [],
-			});
-		});
-
-		it('should detect sub-workflow with Wait nodes', async () => {
-			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+	describe('batch workflow detection', () => {
+		it('should flag parent workflow when it calls a sub-workflow with waiting nodes', async () => {
+			// Create a sub-workflow with waiting nodes
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
 				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
 				createNode('Wait', 'n8n-nodes-base.wait'),
 				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
 			]);
 
-			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+			// Create a parent workflow that calls the sub-workflow
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('Start', 'n8n-nodes-base.manualTrigger'),
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+				}),
+			]);
 
-			expect(result.isAffected).toBe(true);
-			expect(result.issues).toHaveLength(1);
-			expect(result.issues[0].nodeId).toBeDefined();
-			expect(result.issues[0].nodeName).toBe('Wait');
+			// Collect data from both workflows
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+
+			// Produce report
+			const report = await rule.produceReport();
+
+			expect(report.affectedWorkflows).toHaveLength(1);
+			expect(report.affectedWorkflows[0].workflowId).toBe('parent-wf-1');
+			expect(report.affectedWorkflows[0].issues).toHaveLength(1);
+			expect(report.affectedWorkflows[0].issues[0].nodeName).toBe('ExecuteWorkflow');
+			expect(report.affectedWorkflows[0].issues[0].description).toContain('sub-wf-1');
 		});
 
-		it('should detect sub-workflow with multiple Wait nodes', async () => {
-			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+		it('should NOT flag sub-workflow itself', async () => {
+			// Create a sub-workflow with waiting nodes (no parent calling it)
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
 				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
-				createNode('Wait1', 'n8n-nodes-base.wait'),
-				createNode('Wait2', 'n8n-nodes-base.wait'),
-				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
 			]);
 
-			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
 
-			expect(result.isAffected).toBe(true);
-			expect(result.issues).toHaveLength(2);
-			expect(result.issues[0].nodeId).toBeDefined();
-			expect(result.issues[0].nodeName).toBe('Wait1');
-			expect(result.issues[1].nodeId).toBeDefined();
-			expect(result.issues[1].nodeName).toBe('Wait2');
+			// Sub-workflow should NOT be in the affected list - only parents should be flagged
+			expect(report.affectedWorkflows).toHaveLength(0);
 		});
 
-		it('should detect complex sub-workflow with Wait among other nodes', async () => {
-			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+		it('should NOT flag parent when waitForSubWorkflow is false', async () => {
+			// Create a sub-workflow with waiting nodes
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+			]);
+
+			// Create a parent workflow that does NOT wait for sub-workflow completion
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('Start', 'n8n-nodes-base.manualTrigger'),
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+					options: { waitForSubWorkflow: false },
+				}),
+			]);
+
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			expect(report.affectedWorkflows).toHaveLength(0);
+		});
+
+		it('should flag parent when waitForSubWorkflow is true (explicit)', async () => {
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+			]);
+
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+					options: { waitForSubWorkflow: true },
+				}),
+			]);
+
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			expect(report.affectedWorkflows).toHaveLength(1);
+			expect(report.affectedWorkflows[0].workflowId).toBe('parent-wf-1');
+		});
+
+		it('should flag parent when waitForSubWorkflow is not set (defaults to true)', async () => {
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+			]);
+
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+					// No options set - waitForSubWorkflow defaults to true
+				}),
+			]);
+
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			expect(report.affectedWorkflows).toHaveLength(1);
+		});
+
+		it('should flag parent when waitForSubWorkflow is an expression (treated as true)', async () => {
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+			]);
+
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+					options: { waitForSubWorkflow: '={{ $json.shouldWait }}' },
+				}),
+			]);
+
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			// Expression is treated as true to avoid false negatives
+			expect(report.affectedWorkflows).toHaveLength(1);
+			expect(report.affectedWorkflows[0].workflowId).toBe('parent-wf-1');
+		});
+
+		it('should NOT flag parent when sub-workflow has no waiting nodes', async () => {
+			// Create a sub-workflow WITHOUT waiting nodes
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
 				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
 				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
-				createNode('Wait', 'n8n-nodes-base.wait'),
-				createNode('Code', 'n8n-nodes-base.code'),
-				createNode('Set', 'n8n-nodes-base.set'),
 			]);
 
-			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
-
-			expect(result.isAffected).toBe(true);
-			expect(result.issues).toHaveLength(1);
-			expect(result.issues[0].level).toBe('warning');
-			expect(result.issues[0].nodeId).toBeDefined();
-			expect(result.issues[0].nodeName).toBe('Wait');
-		});
-
-		it('should not detect regular workflow with Wait and Execute Workflow nodes', async () => {
-			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
-				createNode('Wait', 'n8n-nodes-base.wait'),
-				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow'),
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+				}),
 			]);
 
-			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
 
-			expect(result.isAffected).toBe(false);
-			expect(result.issues).toHaveLength(0);
+			expect(report.affectedWorkflows).toHaveLength(0);
 		});
 
-		it('should detect sub-workflow with Form node', async () => {
-			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+		it('should NOT flag parent when sub-workflow has waiting nodes but no ExecuteWorkflowTrigger', async () => {
+			// A workflow with waiting nodes but NOT a sub-workflow (no trigger)
+			const regularWorkflow = createWorkflow('regular-wf', 'Regular Workflow', [
+				createNode('ManualTrigger', 'n8n-nodes-base.manualTrigger'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+			]);
+
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'regular-wf' },
+				}),
+			]);
+
+			await rule.collectWorkflowData(regularWorkflow.workflow, regularWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			expect(report.affectedWorkflows).toHaveLength(0);
+		});
+
+		it('should handle workflowId as string', async () => {
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+			]);
+
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: 'sub-wf-1', // String instead of object
+				}),
+			]);
+
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			expect(report.affectedWorkflows).toHaveLength(1);
+		});
+
+		it('should flag when workflowId is an expression (dynamic call)', async () => {
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: '={{ $json.workflowId }}', // Expression - can't evaluate statically
+				}),
+			]);
+
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			// Should flag with "may call" warning since we can't determine the workflow ID
+			expect(report.affectedWorkflows).toHaveLength(1);
+			expect(report.affectedWorkflows[0].workflowId).toBe('parent-wf-1');
+			expect(report.affectedWorkflows[0].issues[0].title).toContain('may call');
+			expect(report.affectedWorkflows[0].issues[0].description).toContain('dynamically');
+		});
+
+		it('should flag when source is not database (dynamic call)', async () => {
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'parameter', // JSON parameter source
+					workflowJson: '{}',
+				}),
+			]);
+
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			// Should flag with "may call" warning since we can't determine the workflow ID
+			expect(report.affectedWorkflows).toHaveLength(1);
+			expect(report.affectedWorkflows[0].workflowId).toBe('parent-wf-1');
+			expect(report.affectedWorkflows[0].issues[0].title).toContain('may call');
+		});
+
+		it('should flag parent when sub-workflow has Form node', async () => {
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
 				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
 				createNode('Form', 'n8n-nodes-base.form'),
-				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
 			]);
 
-			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+				}),
+			]);
 
-			expect(result.isAffected).toBe(true);
-			expect(result.issues).toHaveLength(1);
-			expect(result.issues[0].description).toContain('form');
-			expect(result.issues[0].nodeId).toBeDefined();
-			expect(result.issues[0].nodeName).toBe('Form');
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			expect(report.affectedWorkflows).toHaveLength(1);
 		});
 
-		it.each([
-			{
-				nodeName: 'Slack',
-				nodeType: 'n8n-nodes-base.slack',
-				operation: 'sendAndWait',
-				expectedInDescription: 'slack',
-			},
-		])(
-			'should detect sub-workflow with $nodeName HITL node using $operation operation',
-			async ({ nodeName, nodeType, operation, expectedInDescription }) => {
-				const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-					createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
-					createNode(nodeName, nodeType, { operation }),
-					createNode('HTTP', 'n8n-nodes-base.httpRequest'),
-				]);
-
-				const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
-
-				expect(result.isAffected).toBe(true);
-				expect(result.issues).toHaveLength(1);
-				expect(result.issues[0].description).toContain(expectedInDescription);
-				expect(result.issues[0].nodeId).toBeDefined();
-				expect(result.issues[0].nodeName).toBe(nodeName);
-			},
-		);
-
-		it.each([
-			{
-				nodeName: 'Slack',
-				nodeType: 'n8n-nodes-base.slack',
-				nonWaitingOperation: 'sendMessage',
-			},
-			{
-				nodeName: 'Telegram',
-				nodeType: 'n8n-nodes-base.telegram',
-				nonWaitingOperation: 'sendMessage',
-			},
-			{
-				nodeName: 'GitHub',
-				nodeType: 'n8n-nodes-base.github',
-				nonWaitingOperation: 'getIssue',
-			},
-		])(
-			'should NOT detect sub-workflow with $nodeName node without $waitingOperation operation',
-			async ({ nodeName, nodeType, nonWaitingOperation }) => {
-				const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-					createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
-					createNode(nodeName, nodeType, { operation: nonWaitingOperation }),
-					createNode('HTTP', 'n8n-nodes-base.httpRequest'),
-				]);
-
-				const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
-
-				expect(result.isAffected).toBe(false);
-				expect(result.issues).toHaveLength(0);
-			},
-		);
-
-		it('should detect sub-workflow with multiple HITL node types', async () => {
-			const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
+		it('should flag parent when sub-workflow has HITL node with sendAndWait operation', async () => {
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
 				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
-				createNode('Wait', 'n8n-nodes-base.wait'),
-				createNode('Form', 'n8n-nodes-base.form'),
 				createNode('Slack', 'n8n-nodes-base.slack', { operation: 'sendAndWait' }),
-				createNode('HTTP', 'n8n-nodes-base.httpRequest'),
 			]);
 
-			const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+				}),
+			]);
 
-			expect(result.isAffected).toBe(true);
-			expect(result.issues).toHaveLength(3);
-			expect(result.issues[0].description).toContain('wait');
-			expect(result.issues[0].nodeId).toBeDefined();
-			expect(result.issues[0].nodeName).toBe('Wait');
-			expect(result.issues[1].description).toContain('form');
-			expect(result.issues[1].nodeId).toBeDefined();
-			expect(result.issues[1].nodeName).toBe('Form');
-			expect(result.issues[2].description).toContain('slack');
-			expect(result.issues[2].nodeId).toBeDefined();
-			expect(result.issues[2].nodeName).toBe('Slack');
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			expect(report.affectedWorkflows).toHaveLength(1);
 		});
 
-		it.each([
-			{ nodeName: 'Telegram', nodeType: 'n8n-nodes-base.telegram', operation: 'sendAndWait' },
-			{ nodeName: 'EmailSend', nodeType: 'n8n-nodes-base.emailSend', operation: 'sendAndWait' },
-			{
-				nodeName: 'MicrosoftTeams',
-				nodeType: 'n8n-nodes-base.microsoftTeams',
-				operation: 'sendAndWait',
-			},
-			{
-				nodeName: 'MicrosoftOutlook',
-				nodeType: 'n8n-nodes-base.microsoftOutlook',
-				operation: 'sendAndWait',
-			},
-			{ nodeName: 'Discord', nodeType: 'n8n-nodes-base.discord', operation: 'sendAndWait' },
-			{ nodeName: 'GitHub', nodeType: 'n8n-nodes-base.github', operation: 'dispatchAndWait' },
-		])(
-			'should detect sub-workflow with $nodeName HITL node using $operation',
-			async ({ nodeName, nodeType, operation }) => {
-				const { workflow, nodesGroupedByType } = createWorkflow('wf-1', 'Test Workflow', [
-					createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
-					createNode(nodeName, nodeType, { operation }),
-				]);
+		it('should NOT flag when HITL node does not use waiting operation', async () => {
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Slack', 'n8n-nodes-base.slack', { operation: 'sendMessage' }), // Not sendAndWait
+			]);
 
-				const result = await rule.detectWorkflow(workflow, nodesGroupedByType);
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+				}),
+			]);
 
-				expect(result.isAffected).toBe(true);
-				expect(result.issues).toHaveLength(1);
-				expect(result.issues[0].nodeId).toBeDefined();
-				expect(result.issues[0].nodeName).toBe(nodeName);
-			},
-		);
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			expect(report.affectedWorkflows).toHaveLength(0);
+		});
+
+		it('should flag parent calling multiple affected sub-workflows', async () => {
+			const subWorkflow1 = createWorkflow('sub-wf-1', 'Sub Workflow 1', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+			]);
+
+			const subWorkflow2 = createWorkflow('sub-wf-2', 'Sub Workflow 2', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Form', 'n8n-nodes-base.form'),
+			]);
+
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow1', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+				}),
+				createNode('ExecuteWorkflow2', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-2' },
+				}),
+			]);
+
+			await rule.collectWorkflowData(subWorkflow1.workflow, subWorkflow1.nodesGroupedByType);
+			await rule.collectWorkflowData(subWorkflow2.workflow, subWorkflow2.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			expect(report.affectedWorkflows).toHaveLength(1);
+			expect(report.affectedWorkflows[0].workflowId).toBe('parent-wf-1');
+			expect(report.affectedWorkflows[0].issues).toHaveLength(2);
+		});
+
+		it('should flag multiple parents calling the same affected sub-workflow', async () => {
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+			]);
+
+			const parentWorkflow1 = createWorkflow('parent-wf-1', 'Parent Workflow 1', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+				}),
+			]);
+
+			const parentWorkflow2 = createWorkflow('parent-wf-2', 'Parent Workflow 2', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+				}),
+			]);
+
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow1.workflow, parentWorkflow1.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow2.workflow, parentWorkflow2.nodesGroupedByType);
+			const report = await rule.produceReport();
+
+			expect(report.affectedWorkflows).toHaveLength(2);
+			const workflowIds = report.affectedWorkflows.map((w) => w.workflowId);
+			expect(workflowIds).toContain('parent-wf-1');
+			expect(workflowIds).toContain('parent-wf-2');
+		});
+
+		it('should reset state correctly', async () => {
+			const subWorkflow = createWorkflow('sub-wf-1', 'Sub Workflow', [
+				createNode('ExecuteWorkflowTrigger', 'n8n-nodes-base.executeWorkflowTrigger'),
+				createNode('Wait', 'n8n-nodes-base.wait'),
+			]);
+
+			const parentWorkflow = createWorkflow('parent-wf-1', 'Parent Workflow', [
+				createNode('ExecuteWorkflow', 'n8n-nodes-base.executeWorkflow', {
+					source: 'database',
+					workflowId: { value: 'sub-wf-1' },
+				}),
+			]);
+
+			// First run
+			await rule.collectWorkflowData(subWorkflow.workflow, subWorkflow.nodesGroupedByType);
+			await rule.collectWorkflowData(parentWorkflow.workflow, parentWorkflow.nodesGroupedByType);
+			const report1 = await rule.produceReport();
+			expect(report1.affectedWorkflows).toHaveLength(1);
+
+			// Reset
+			rule.reset();
+
+			// Second run should be empty without collecting data again
+			const report2 = await rule.produceReport();
+			expect(report2.affectedWorkflows).toHaveLength(0);
+		});
 	});
 });

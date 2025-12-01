@@ -20,6 +20,7 @@ import {
 	VariablesRepository,
 	WorkflowRepository,
 	WorkflowTagMappingRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
@@ -151,6 +152,7 @@ export class SourceControlImportService {
 		private readonly folderRepository: FolderRepository,
 		instanceSettings: InstanceSettings,
 		private readonly sourceControlScopedService: SourceControlScopedService,
+		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
 	) {
 		this.gitFolder = path.join(instanceSettings.n8nFolder, SOURCE_CONTROL_GIT_FOLDER);
 		this.workflowExportFolder = path.join(this.gitFolder, SOURCE_CONTROL_WORKFLOW_EXPORT_FOLDER);
@@ -706,9 +708,10 @@ export class SourceControlImportService {
 				repository: this.sharedWorkflowRepository,
 			});
 
-			if (existingWorkflow?.activeVersionId) {
-				await this.activateImportedWorkflow({ existingWorkflow, importedWorkflow });
-			}
+			await this.activateImportedWorkflowIfAlreadyActive(
+				{ existingWorkflow, importedWorkflow },
+				userId,
+			);
 
 			importWorkflowsResult.push({
 				id: importedWorkflow.id ?? 'unknown',
@@ -735,10 +738,18 @@ export class SourceControlImportService {
 		}
 	}
 
-	private async activateImportedWorkflow({
-		existingWorkflow,
-		importedWorkflow,
-	}: { existingWorkflow: WorkflowEntity; importedWorkflow: IWorkflowToImport }) {
+	private async activateImportedWorkflowIfAlreadyActive(
+		{
+			existingWorkflow,
+			importedWorkflow,
+		}: {
+			existingWorkflow?: WorkflowEntity;
+			importedWorkflow: IWorkflowToImport;
+		},
+		userId: string,
+	) {
+		if (!existingWorkflow?.activeVersionId) return;
+		let didAdd = false;
 		try {
 			// remove active pre-import workflow
 			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
@@ -748,6 +759,7 @@ export class SourceControlImportService {
 				// try activating the imported workflow
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
 				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
+				didAdd = true;
 			}
 		} catch (e) {
 			const error = ensureError(e);
@@ -758,6 +770,21 @@ export class SourceControlImportService {
 				{ id: existingWorkflow.id },
 				{ versionId: importedWorkflow.versionId },
 			);
+			if (didAdd) {
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId: existingWorkflow.id,
+					versionId: existingWorkflow.activeVersionId,
+					event: 'activated',
+					userId,
+				});
+			} else {
+				await this.workflowPublishHistoryRepository.addRecord({
+					workflowId: existingWorkflow.id,
+					versionId: existingWorkflow.activeVersionId,
+					event: 'deactivated',
+					userId,
+				});
+			}
 		}
 	}
 

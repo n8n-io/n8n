@@ -1258,7 +1258,10 @@ async function onRunWorkflowToNode(id: string) {
 		trackRunWorkflowToNode(node);
 		agentRequestStore.clearAgentRequests(workflowsStore.workflowId, node.id);
 
-		void runWorkflow({ destinationNode: node.name, source: 'Node.executeNode' });
+		void runWorkflow({
+			destinationNode: { nodeName: node.name, mode: 'inclusive' },
+			source: 'Node.executeNode',
+		});
 	}
 }
 

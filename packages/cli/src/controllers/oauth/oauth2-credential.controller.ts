@@ -73,12 +73,17 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				);
 			}
 
-			const { authorization_endpoint, token_endpoint, registration_endpoint } =
+			const { authorization_endpoint, token_endpoint, registration_endpoint, scopes_supported } =
 				metadataValidation.data;
 			oauthCredentials.authUrl = authorization_endpoint;
 			oauthCredentials.accessTokenUrl = token_endpoint;
 			toUpdate.authUrl = authorization_endpoint;
 			toUpdate.accessTokenUrl = token_endpoint;
+			const scope = scopes_supported ? scopes_supported.join(' ') : undefined;
+			if (scope) {
+				oauthCredentials.scope = scope;
+				toUpdate.scope = scope;
+			}
 
 			const { grantType, authentication } = this.selectGrantTypeAndAuthenticationMethod(
 				metadataValidation.data.grant_types_supported ?? ['authorization_code', 'implicit'],
@@ -103,6 +108,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 				response_types: ['code'],
 				client_name: 'n8n',
 				client_uri: 'https://n8n.io/',
+				scope,
 			};
 
 			await this.externalHooks.run('oauth2.dynamicClientRegistration', [registerPayload]);
@@ -277,7 +283,7 @@ export class OAuth2CredentialController extends AbstractOAuthController {
 		codeChallengeMethods: string[],
 	): { grantType: OAuth2GrantType; authentication?: OAuth2AuthenticationMethod } {
 		if (grantTypes.includes('authorization_code') && grantTypes.includes('refresh_token')) {
-			if (codeChallengeMethods.includes('S256') && tokenEndpointAuthMethods.includes('none')) {
+			if (codeChallengeMethods.includes('S256')) {
 				return { grantType: 'pkce' };
 			}
 
