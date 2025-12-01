@@ -318,7 +318,10 @@ describe('NodeExecuteButton', () => {
 
 		expect(externalHooks.run).toHaveBeenCalledWith('nodeExecuteButton.onClick', expect.any(Object));
 		expect(runWorkflow.runWorkflow).toHaveBeenCalledWith({
-			destinationNode: node.name,
+			destinationNode: {
+				nodeName: node.name,
+				mode: 'inclusive',
+			},
 			source: 'RunData.ExecuteNodeButton',
 		});
 		expect(emitted().execute).toBeTruthy();

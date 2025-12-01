@@ -59,7 +59,7 @@ const versionDescription: INodeTypeDescription = {
 	name: 'gmail',
 	icon: 'file:gmail.svg',
 	group: ['transform'],
-	version: [2, 2.1],
+	version: [2, 2.1, 2.2],
 	subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 	description: 'Consume the Gmail API',
 	defaults: {
@@ -353,7 +353,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						responseData = await replyToEmail.call(this, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, messageIdGmail, options, i, nodeVersion);
 					}
 					if (operation === 'get') {
 						//https://developers.google.com/gmail/api/v1/reference/users/messages/get
@@ -777,7 +777,7 @@ export class GmailV2 implements INodeType {
 						const messageIdGmail = this.getNodeParameter('messageId', i) as string;
 						const options = this.getNodeParameter('options', i);
 
-						responseData = await replyToEmail.call(this, messageIdGmail, options, i);
+						responseData = await replyToEmail.call(this, messageIdGmail, options, i, nodeVersion);
 					}
 					if (operation === 'trash') {
 						//https://developers.google.com/gmail/api/reference/rest/v1/users.threads/trash
