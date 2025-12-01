@@ -195,11 +195,20 @@ export class OwnershipService {
 
 	async hasInstanceOwner() {
 		return await this.userRepository.exists({
-			where: {
-				role: { slug: GLOBAL_OWNER_ROLE.slug },
-				// We use this to avoid selecting the "shell" user
-				lastActiveAt: Not(IsNull()),
-			},
+			where: [
+				{
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+					// We use this to avoid selecting the "shell" user
+					lastActiveAt: Not(IsNull()),
+				},
+				// OR
+				// This condition only exists because of PAY-4247
+				{
+					role: { slug: GLOBAL_OWNER_ROLE.slug },
+					// We use this to avoid selecting the "shell" user
+					password: Not(IsNull()),
+				},
+			],
 			relations: ['role'],
 		});
 	}
@@ -235,8 +244,8 @@ export class OwnershipService {
 		// The next block needs to be deleted and is temporary for now
 		// See packages/cli/src/config/schema.ts for more info
 		// We update the SettingsRepository so when we "startup" next time
-		// the config is marked correctly.
-		// #region Delete after
+		// the config state is restored.
+		// #region Delete me
 		await this.settingsRepository.update(
 			{ key: 'userManagement.isInstanceOwnerSetUp' },
 			{ value: JSON.stringify(true) },
