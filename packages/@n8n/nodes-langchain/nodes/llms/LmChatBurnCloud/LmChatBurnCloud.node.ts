@@ -32,7 +32,7 @@ export class LmChatBurnCloud implements INodeType {
 			subcategories: {
 				AI: ['Language Models', 'Root Nodes'],
 				'Language Models': ['Chat Models (Recommended)'],
-			}
+			},
 		},
 
 		inputs: [],
@@ -132,7 +132,7 @@ export class LmChatBurnCloud implements INodeType {
 						name: 'maxTokens',
 						default: -1,
 						description:
-							'The maximum number of tokens to generate in the completion.',
+							'The maximum number of tokens to generate in the completion. Most models have a context length of 2048 tokens (except for the newest models, which support 32,768).',
 						type: 'number',
 						typeOptions: {
 							maxValue: 32768,
@@ -178,7 +178,7 @@ export class LmChatBurnCloud implements INodeType {
 					{
 						displayName: 'Timeout',
 						name: 'timeout',
-						default: 360000,
+						default: 60000,
 						description: 'Maximum amount of time a request is allowed to take in milliseconds',
 						type: 'number',
 					},
@@ -220,9 +220,9 @@ export class LmChatBurnCloud implements INodeType {
 		};
 
 		const configuration: ClientOptions = {
-			baseURL: `${credentials.url}/v1`,
+			baseURL: credentials.url,
 			fetchOptions: {
-				dispatcher: getProxyAgent(`${credentials.url}/v1`),
+				dispatcher: getProxyAgent(credentials.url),
 			},
 		};
 
@@ -234,11 +234,14 @@ export class LmChatBurnCloud implements INodeType {
 			maxRetries: options.maxRetries ?? 2,
 			configuration,
 			callbacks: [new N8nLlmTracing(this)],
-			modelKwargs: options.responseFormat
-				? {
-						response_format: { type: options.responseFormat },
-					}
-				: undefined,
+			modelKwargs: {
+				stream_options: undefined,
+				...(options.responseFormat
+					? {
+							response_format: { type: options.responseFormat },
+						}
+					: undefined),
+			},
 			onFailedAttempt: makeN8nLlmFailedAttemptHandler(this, openAiFailedAttemptHandler),
 		});
 
