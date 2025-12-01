@@ -1,10 +1,9 @@
-import { Column, Entity, JoinColumn, ManyToOne, OneToMany, Relation } from '@n8n/typeorm';
+import { Column, Entity, OneToMany } from '@n8n/typeorm';
 
 import { WithTimestampsAndStringId } from './abstract-entity';
 import type { ProjectRelation } from './project-relation';
 import type { SharedCredentials } from './shared-credentials';
 import type { SharedWorkflow } from './shared-workflow';
-import { User } from './user';
 import type { Variables } from './variables';
 
 @Entity()
@@ -35,8 +34,4 @@ export class Project extends WithTimestampsAndStringId {
 
 	@Column({ type: String, nullable: true })
 	creatorId: string | null;
-
-	@ManyToOne('User', { onDelete: 'SET NULL' })
-	@JoinColumn({ name: 'creatorId' })
-	creator?: Relation<User>;
 }
