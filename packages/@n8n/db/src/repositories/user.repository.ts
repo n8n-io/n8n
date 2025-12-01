@@ -159,7 +159,7 @@ export class UserRepository extends Repository<User> {
 		return await this.findOne({
 			where: {
 				projectRelations: {
-					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					role: { slug: In([PROJECT_OWNER_ROLE_SLUG, PROJECT_VIEWER_ROLE_SLUG]) },
 					project: {
 						type: 'personal',
 						creatorId: Not(IsNull()),
