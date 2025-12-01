@@ -312,7 +312,6 @@ export class WorkflowService {
 		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
 		const workflowSettings = workflowUpdateData.settings ?? {};
-
 		const keysAllowingDefault = [
 			'timezone',
 			'saveDataErrorExecution',
@@ -383,9 +382,7 @@ export class WorkflowService {
 			}
 			updatePayload.parentFolder = parentFolderId === PROJECT_ROOT ? null : { id: parentFolderId };
 		}
-
 		await this.workflowRepository.update(workflowId, updatePayload);
-
 		const tagsDisabled = this.globalConfig.tags.disabled;
 
 		if (tagIds && !tagsDisabled) {
@@ -412,7 +409,6 @@ export class WorkflowService {
 				requestOrder: tagIds,
 			});
 		}
-
 		await this.externalHooks.run('workflow.afterUpdate', [updatedWorkflow]);
 		this.eventService.emit('workflow-saved', {
 			user,
@@ -430,7 +426,6 @@ export class WorkflowService {
 				publicApi,
 			);
 		}
-
 		return updatedWorkflow;
 	}
 
