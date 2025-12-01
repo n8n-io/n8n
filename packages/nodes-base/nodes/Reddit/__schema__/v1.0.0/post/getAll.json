@@ -69,6 +69,9 @@
         "clicked": {
             "type": "boolean"
         },
+        "content_categories": {
+            "type": "null"
+        },
         "contest_mode": {
             "type": "boolean"
         },
@@ -77,9 +80,6 @@
         },
         "created_utc": {
             "type": "integer"
-        },
-        "discussion_type": {
-            "type": "null"
         },
         "domain": {
             "type": "string"
@@ -170,9 +170,6 @@
         "num_crossposts": {
             "type": "integer"
         },
-        "num_reports": {
-            "type": "null"
-        },
         "over_18": {
             "type": "boolean"
         },
@@ -192,9 +189,6 @@
             "type": "null"
         },
         "removed_by_category": {
-            "type": "null"
-        },
-        "report_reasons": {
             "type": "null"
         },
         "saved": {
@@ -255,5 +249,5 @@
             "type": "boolean"
         }
     },
-    "version": 4
+    "version": 5
 }
