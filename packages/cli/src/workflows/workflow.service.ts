@@ -215,8 +215,10 @@ export class WorkflowService {
 	/**
 	 * Updates the workflow content (such as name, nodes, connections, settings, etc.).
 	 *
-	 * This method never updates the workflow's active fields (active, activeVersionId) and does not include any activation or deactivation logic.
-	 * Activation and deactivation must be handled by separate methods.
+	 * This method never updates the workflow's active fields (active, activeVersionId) directly.
+	 * However, if settings change and the workflow has an active version, the workflow will be
+	 * automatically reactivated to ensure the ActiveWorkflowManager uses the updated settings.
+	 * For explicit activation or deactivation, use the activate/deactivate methods.
 	 */
 
 	// eslint-disable-next-line complexity
@@ -300,6 +302,11 @@ export class WorkflowService {
 				...workflowUpdateData.settings,
 			};
 		}
+
+		// Check if settings actually changed
+		const settingsChanged =
+			workflowUpdateData.settings !== undefined &&
+			JSON.stringify(workflow.settings) !== JSON.stringify(workflowUpdateData.settings);
 
 		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
@@ -405,6 +412,16 @@ export class WorkflowService {
 			workflow: updatedWorkflow,
 			publicApi,
 		});
+
+		// Reactivate workflow if settings changed and workflow has an active version
+		if (settingsChanged && updatedWorkflow.activeVersionId) {
+			await this.activateWorkflow(
+				user,
+				workflowId,
+				{ versionId: updatedWorkflow.activeVersionId },
+				publicApi,
+			);
+		}
 
 		return updatedWorkflow;
 	}
