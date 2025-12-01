@@ -10,6 +10,7 @@ import type {
 import type { ConcurrencyQueueType } from '@/concurrency/concurrency-control.service';
 
 import type { AiEventMap } from './ai.event-map';
+import { DataTableEventMap } from './data-table.event-map';
 
 export type UserLike = {
 	id: string;
@@ -593,4 +594,5 @@ export type RelayEventMap = {
 	};
 
 	// #endregion
-} & AiEventMap;
+} & AiEventMap &
+	DataTableEventMap;
