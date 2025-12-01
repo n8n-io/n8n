@@ -13,6 +13,9 @@ import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { EntityManager } from '@n8n/typeorm';
 import { mock } from 'jest-mock-extended';
 
+import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+
 import type { CacheService } from '../cache/cache.service';
 import { ProjectService } from '../project.service.ee';
 import type { RoleService } from '../role.service';
@@ -237,6 +240,116 @@ describe('ProjectService', () => {
 				where: { id: projectId, type: 'team' },
 				relations: { projectRelations: { role: true } },
 			});
+		});
+	});
+
+	describe('getProjectForCredentialCreation', () => {
+		const mockUser = mock<any>({
+			id: 'user1',
+			role: {
+				scopes: [],
+			},
+		});
+		const mockTransactionManager = mock<EntityManager>();
+
+		beforeEach(() => {
+			jest.clearAllMocks();
+		});
+
+		it('should return personal project when projectId is undefined', async () => {
+			// ARRANGE
+			const mockProject = mock<Project>({ id: 'personal-project-1', type: 'personal' });
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValueOnce(mockProject);
+
+			// ACT
+			const result = await projectService.getProjectForCredentialCreation(
+				mockUser,
+				undefined,
+				mockTransactionManager,
+			);
+
+			// ASSERT
+			expect(result).toBe(mockProject);
+			expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(
+				mockUser.id,
+				mockTransactionManager,
+			);
+		});
+
+		it('should return project with scope when projectId is specified and user has permission', async () => {
+			// ARRANGE
+			const projectId = 'team-project-1';
+			const mockProject = mock<Project>({ id: projectId, type: 'team' });
+			jest.spyOn(projectService, 'getProjectWithScope').mockResolvedValueOnce(mockProject);
+
+			// ACT
+			const result = await projectService.getProjectForCredentialCreation(
+				mockUser,
+				projectId,
+				mockTransactionManager,
+			);
+
+			// ASSERT
+			expect(result).toBe(mockProject);
+			expect(projectService.getProjectWithScope).toHaveBeenCalledWith(
+				mockUser,
+				projectId,
+				['credential:create'],
+				mockTransactionManager,
+			);
+		});
+
+		it('should throw ForbiddenError when projectId is specified but user lacks permission', async () => {
+			// ARRANGE
+			const projectId = 'team-project-1';
+			const spy = jest.spyOn(projectService, 'getProjectWithScope').mockResolvedValue(null);
+
+			// ACT & ASSERT
+			const error = await projectService
+				.getProjectForCredentialCreation(mockUser, projectId, mockTransactionManager)
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(ForbiddenError);
+			expect(error.message).toBe(
+				"You don't have the permissions to save the credential in this project.",
+			);
+
+			spy.mockRestore();
+		});
+
+		it('should throw NotFoundError when getProjectWithScope returns null for undefined projectId', async () => {
+			// ARRANGE
+			// Mock to simulate the case where somehow the personal project fetch returns null
+			// This tests the safeguard in the code
+			const spy = jest
+				.spyOn(projectRepository, 'getPersonalProjectForUserOrFail')
+				.mockResolvedValue(null as any);
+
+			// ACT & ASSERT
+			const error = await projectService
+				.getProjectForCredentialCreation(mockUser, undefined, mockTransactionManager)
+				.catch((e) => e);
+
+			expect(error).toBeInstanceOf(NotFoundError);
+			expect(error.message).toBe('No personal project found');
+
+			spy.mockRestore();
+		});
+
+		it('should pass undefined transaction manager if not provided', async () => {
+			// ARRANGE
+			const mockProject = mock<Project>({ id: 'personal-project-1', type: 'personal' });
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValueOnce(mockProject);
+
+			// ACT
+			const result = await projectService.getProjectForCredentialCreation(mockUser, undefined);
+
+			// ASSERT
+			expect(result).toBe(mockProject);
+			expect(projectRepository.getPersonalProjectForUserOrFail).toHaveBeenCalledWith(
+				mockUser.id,
+				undefined,
+			);
 		});
 	});
 });

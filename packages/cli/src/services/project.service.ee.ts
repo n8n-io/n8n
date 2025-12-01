@@ -627,4 +627,41 @@ export class ProjectService {
 	async getProjectCounts(): Promise<Record<ProjectType, number>> {
 		return await this.projectRepository.getProjectCounts();
 	}
+
+	/**
+	 * Get the project for credential creation.
+	 * If projectId is undefined, returns the user's personal project.
+	 * If projectId is specified, checks if the user has permission to create credentials in that project.
+	 *
+	 * @throws {ForbiddenError} If the user doesn't have permission to create credentials in the specified project
+	 * @throws {NotFoundError} If the personal project is not found
+	 */
+	async getProjectForCredentialCreation(
+		user: User,
+		projectId: string | undefined,
+		transactionManager?: EntityManager,
+	): Promise<Project> {
+		const project =
+			projectId === undefined
+				? await this.projectRepository.getPersonalProjectForUserOrFail(user.id, transactionManager)
+				: await this.getProjectWithScope(
+						user,
+						projectId,
+						['credential:create'],
+						transactionManager,
+					);
+
+		if (typeof projectId === 'string' && project === null) {
+			throw new ForbiddenError(
+				"You don't have the permissions to save the credential in this project.",
+			);
+		}
+
+		// Safe guard in case the personal project does not exist for whatever reason.
+		if (project === null) {
+			throw new NotFoundError('No personal project found');
+		}
+
+		return project;
+	}
 }

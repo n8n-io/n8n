@@ -141,7 +141,7 @@ export declare namespace CredentialRequest {
 	type Create = AuthenticatedRequest<
 		{},
 		{},
-		{ type: string; name: string; data: ICredentialDataDecryptedObject },
+		{ type: string; name: string; data: ICredentialDataDecryptedObject; projectId?: string },
 		{}
 	>;
 
