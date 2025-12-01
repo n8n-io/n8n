@@ -123,7 +123,7 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule
 				continue; // Skip if not waiting for sub-workflow completion
 			}
 
-			const calledWorkflowId = this.extractCalledWorkflowId(node);
+			const calledWorkflowId = this.extractCalledWorkflowId(node, workflow.id);
 
 			this.parentWorkflowsCalling.push({
 				parentWorkflowId: workflow.id,
@@ -199,7 +199,7 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule
 		return waitingNodes;
 	}
 
-	private extractCalledWorkflowId(node: INode): string | undefined {
+	protected extractCalledWorkflowId(node: INode, callerWorkflowId: string): string | undefined {
 		const source = node.parameters.source as string | undefined;
 
 		// Only handle database source - for other sources we can't determine the workflow ID statically
@@ -213,7 +213,8 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule
 		if (typeof workflowId === 'string') {
 			// Check if it's an expression (starts with =)
 			if (workflowId.startsWith('=')) {
-				return undefined; // Can't evaluate expressions statically
+				// Can't evaluate expressions statically
+				return this.isWorkflowItselfExpression(workflowId) ? callerWorkflowId : undefined;
 			}
 			return workflowId;
 		}
@@ -223,12 +224,17 @@ export class WaitNodeSubworkflowRule implements IBreakingChangeBatchWorkflowRule
 			if (typeof value === 'string') {
 				// Check if it's an expression (starts with =)
 				if (value.startsWith('=')) {
-					return undefined; // Can't evaluate expressions statically
+					// Can't evaluate expressions statically
+					return this.isWorkflowItselfExpression(value) ? callerWorkflowId : undefined;
 				}
 				return value;
 			}
 		}
 
 		return undefined;
+	}
+
+	private isWorkflowItselfExpression(workflowIdExpression: string): boolean {
+		return workflowIdExpression.replace('{{ ', '{{').replace(' }}', '}}') === '={{$workflow.id}}';
 	}
 }
