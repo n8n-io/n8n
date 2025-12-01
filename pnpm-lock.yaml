@@ -226,6 +226,7 @@ overrides:
   js-yaml: 4.1.1
   node-forge: 1.3.2
   body-parser: 2.2.1
+  glob@7: 10.5.0
   glob@10: 10.5.0
 
 patchedDependencies:
@@ -12161,10 +12162,6 @@ packages:
     engines: {node: 20 || >=22}
     hasBin: true
 
-  glob@7.2.3:
-    resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
-
   glob@8.1.0:
     resolution: {integrity: sha512-r8hpEjiQEYlF2QU0df3dS+nxxSIreXQS1qRhMJM0Q5NDdR386C7jb7Hwwod8Fgiuex+k0GFjgft18yvxm5XoCQ==}
     engines: {node: '>=12'}
@@ -22039,7 +22036,7 @@ snapshots:
       chalk: 4.1.2
       collect-v8-coverage: 1.0.1
       exit: 0.1.2
-      glob: 7.2.3
+      glob: 10.5.0
       graceful-fs: 4.2.11
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-instrument: 5.2.1
@@ -22068,7 +22065,7 @@ snapshots:
       chalk: 4.1.2
       collect-v8-coverage: 1.0.2
       exit: 0.1.2
-      glob: 7.2.3
+      glob: 10.5.0
       graceful-fs: 4.2.11
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-instrument: 6.0.3
@@ -23310,7 +23307,7 @@ snapshots:
       core-js: 3.40.0
       form-data: 4.0.4
       get-port-please: 3.1.2
-      glob: 7.2.3
+      glob: 10.5.0
       handlebars: 4.7.8
       mobx: 6.12.0
       pluralize: 8.0.0
@@ -27136,7 +27133,7 @@ snapshots:
       '@npmcli/move-file': 1.1.2
       chownr: 2.0.0
       fs-minipass: 2.1.0
-      glob: 7.2.3
+      glob: 10.5.0
       infer-owner: 1.0.4
       lru-cache: 6.0.0
       minipass: 3.3.6
@@ -29756,15 +29753,6 @@ snapshots:
       package-json-from-dist: 1.0.0
       path-scurry: 2.0.0
 
-  glob@7.2.3:
-    dependencies:
-      fs.realpath: 1.0.0
-      inflight: 1.0.6
-      inherits: 2.0.4
-      minimatch: 3.1.2
-      once: 1.4.0
-      path-is-absolute: 1.0.1
-
   glob@8.1.0:
     dependencies:
       fs.realpath: 1.0.0
@@ -30792,7 +30780,7 @@ snapshots:
       chalk: 4.1.2
       ci-info: 3.8.0
       deepmerge: 4.3.1
-      glob: 7.2.3
+      glob: 10.5.0
       graceful-fs: 4.2.11
       jest-circus: 29.6.2
       jest-environment-node: 29.6.2
@@ -30823,7 +30811,7 @@ snapshots:
       chalk: 4.1.2
       ci-info: 3.8.0
       deepmerge: 4.3.1
-      glob: 7.2.3
+      glob: 10.5.0
       graceful-fs: 4.2.11
       jest-circus: 29.6.2
       jest-environment-node: 29.6.2
@@ -30854,7 +30842,7 @@ snapshots:
       chalk: 4.1.2
       ci-info: 3.9.0
       deepmerge: 4.3.1
-      glob: 7.2.3
+      glob: 10.5.0
       graceful-fs: 4.2.11
       jest-circus: 29.7.0
       jest-environment-node: 29.7.0
@@ -31198,7 +31186,7 @@ snapshots:
       chalk: 4.1.2
       cjs-module-lexer: 1.2.2
       collect-v8-coverage: 1.0.1
-      glob: 7.2.3
+      glob: 10.5.0
       graceful-fs: 4.2.11
       jest-haste-map: 29.6.2
       jest-message-util: 29.6.2
@@ -31225,7 +31213,7 @@ snapshots:
       chalk: 4.1.2
       cjs-module-lexer: 1.4.3
       collect-v8-coverage: 1.0.2
-      glob: 7.2.3
+      glob: 10.5.0
       graceful-fs: 4.2.11
       jest-haste-map: 29.7.0
       jest-message-util: 29.7.0
@@ -32687,7 +32675,7 @@ snapshots:
   module-lookup-amd@9.0.5:
     dependencies:
       commander: 12.1.0
-      glob: 7.2.3
+      glob: 10.5.0
       requirejs: 2.3.7
       requirejs-config-file: 4.0.0
 
@@ -32936,7 +32924,7 @@ snapshots:
   node-gyp@8.4.1:
     dependencies:
       env-paths: 2.2.1
-      glob: 7.2.3
+      glob: 10.5.0
       graceful-fs: 4.2.11
       make-fetch-happen: 9.1.0
       nopt: 5.0.0
@@ -33130,7 +33118,7 @@ snapshots:
       find-up: 4.1.0
       foreground-child: 3.3.1
       get-package-type: 0.1.0
-      glob: 7.2.3
+      glob: 10.5.0
       istanbul-lib-coverage: 3.2.2
       istanbul-lib-hook: 3.0.0
       istanbul-lib-instrument: 6.0.3
@@ -34256,7 +34244,7 @@ snapshots:
 
   read-package-json@2.1.2:
     dependencies:
-      glob: 7.2.3
+      glob: 10.5.0
       json-parse-even-better-errors: 2.3.1
       normalize-package-data: 2.5.0
       npm-normalize-package-bin: 1.0.1
@@ -34508,7 +34496,7 @@ snapshots:
   replace-in-file@6.3.5:
     dependencies:
       chalk: 4.1.2
-      glob: 7.2.3
+      glob: 10.5.0
       yargs: 17.6.0
 
   replacestream@4.0.3:
@@ -34600,11 +34588,11 @@ snapshots:
 
   rimraf@2.6.3:
     dependencies:
-      glob: 7.2.3
+      glob: 10.5.0
 
   rimraf@3.0.2:
     dependencies:
-      glob: 7.2.3
+      glob: 10.5.0
 
   rimraf@5.0.1:
     dependencies:
@@ -35023,7 +35011,7 @@ snapshots:
 
   shelljs@0.8.5:
     dependencies:
-      glob: 7.2.3
+      glob: 10.5.0
       interpret: 1.4.0
       rechoir: 0.6.2
 
@@ -35910,7 +35898,7 @@ snapshots:
   test-exclude@6.0.0:
     dependencies:
       '@istanbuljs/schema': 0.1.3
-      glob: 7.2.3
+      glob: 10.5.0
       minimatch: 3.1.2
 
   test-exclude@7.0.1:
@@ -37374,7 +37362,7 @@ snapshots:
   yamljs@0.3.0:
     dependencies:
       argparse: 1.0.10
-      glob: 7.2.3
+      glob: 10.5.0
 
   yargs-parser@18.1.3:
     dependencies:
