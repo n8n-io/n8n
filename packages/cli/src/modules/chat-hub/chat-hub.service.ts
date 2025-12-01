@@ -24,8 +24,7 @@ import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Response } from 'express';
 
-import { ErrorReporter } from 'n8n-core';
-
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
@@ -43,6 +42,7 @@ import {
 	type IBinaryData,
 	createRunExecutionData,
 	WorkflowExecuteMode,
+	ExecutionStatus,
 } from 'n8n-workflow';
 
 import { ChatHubAgentService } from './chat-hub-agent.service';
@@ -74,6 +74,9 @@ import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 import type { ChatHubSession } from './chat-hub-session.entity';
 
+const EXECUTION_POLL_INTERVAL = 1000;
+const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = ['canceled', 'crashed', 'error', 'success'];
+
 @Service()
 export class ChatHubService {
 	constructor(
@@ -95,6 +98,7 @@ export class ChatHubService {
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async getModels(
@@ -1592,6 +1596,53 @@ export class ChatHubService {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
+		if (this.instanceSettings.isMultiMain) {
+			await this.waitForExecutionPoller(executionId);
+		} else {
+			await this.waitForExecutionPromise(executionId);
+		}
+	}
+
+	private async waitForExecutionPoller(executionId: string): Promise<void> {
+		return await new Promise<void>((resolve, reject) => {
+			const poller = setInterval(async () => {
+				try {
+					const result = await this.executionRepository.findSingleExecution(executionId, {
+						includeData: false,
+						unflattenData: false,
+					});
+
+					// Stop polling when execution is done (or missing if instance doesn't save executions)
+					if (!result || EXECUTION_FINISHED_STATUSES.includes(result.status)) {
+						this.logger.debug(
+							`Execution ${executionId} finished with status ${result?.status ?? 'missing'}`,
+						);
+						clearInterval(poller);
+						resolve();
+					}
+				} catch (error) {
+					this.logger.error(`Stopping polling for execution ${executionId} due to error.`);
+					clearInterval(poller);
+
+					if (error instanceof Error) {
+						this.logger.error(`Error while polling execution ${executionId}: ${error.message}`, {
+							error,
+						});
+					} else {
+						this.logger.error(`Unknown error while polling execution ${executionId}`, { error });
+					}
+
+					if (error instanceof Error) {
+						reject(error);
+					} else {
+						reject(new Error('Unknown error while polling execution status'));
+					}
+				}
+			}, EXECUTION_POLL_INTERVAL);
+		});
+	}
+
+	private async waitForExecutionPromise(executionId: string): Promise<void> {
 		try {
 			// Wait until the execution finishes (or errors) so that we don't delete the workflow too early
 			const result = await this.activeExecutions.getPostExecutePromise(executionId);
