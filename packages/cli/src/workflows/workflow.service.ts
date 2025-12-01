@@ -552,26 +552,26 @@ export class WorkflowService {
 			updatedAt: workflow.updatedAt,
 		});
 
-		const updatedWorkflow = await this.workflowRepository.findOne({
+		const workflowForActivation = await this.workflowRepository.findOne({
 			where: { id: workflowId },
 			relations: ['activeVersion'],
 		});
 
-		if (!updatedWorkflow) {
+		if (!workflowForActivation) {
 			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
 
 		this.eventService.emit('workflow-activated', {
 			user,
 			workflowId,
-			workflow: updatedWorkflow,
+			workflow: workflowForActivation,
 			publicApi,
 		});
 
 		await this._addToActiveWorkflowManager(
 			user,
 			workflowId,
-			updatedWorkflow,
+			workflowForActivation,
 			activationMode,
 			publicApi,
 		);
@@ -581,6 +581,20 @@ export class WorkflowService {
 			if (options.name !== undefined) updateFields.name = options.name;
 			if (options.description !== undefined) updateFields.description = options.description;
 			await this.workflowHistoryService.updateVersion(versionToActivate, workflowId, updateFields);
+		}
+
+		// Fetch workflow again with workflowPublishHistory after activation to include the new entry
+		const updatedWorkflow = await this.workflowRepository.findOne({
+			where: { id: workflowId },
+			relations: {
+				activeVersion: {
+					workflowPublishHistory: true,
+				},
+			},
+		});
+
+		if (!updatedWorkflow) {
+			throw new NotFoundError(`Workflow with ID "${workflowId}" could not be found.`);
 		}
 
 		return updatedWorkflow;

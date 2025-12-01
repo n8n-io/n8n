@@ -129,6 +129,11 @@ describe('activateWorkflow()', () => {
 
 		expect(updatedWorkflow.active).toBe(true);
 		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
+		expect(updatedWorkflow.activeVersion?.workflowPublishHistory).toHaveLength(1);
+		expect(updatedWorkflow.activeVersion?.workflowPublishHistory[0]).toMatchObject({
+			event: 'activated',
+			versionId: workflow.versionId,
+		});
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',
 			workflowId: workflow.id,
@@ -153,6 +158,11 @@ describe('activateWorkflow()', () => {
 		expect(updatedWorkflow.active).toBe(true);
 		expect(updatedWorkflow.activeVersionId).toBe(newVersionId);
 		expect(updatedWorkflow.versionId).toBe(workflow.versionId);
+		expect(updatedWorkflow.activeVersion?.workflowPublishHistory).toHaveLength(1);
+		expect(updatedWorkflow.activeVersion?.workflowPublishHistory[0]).toMatchObject({
+			event: 'activated',
+			versionId: newVersionId,
+		});
 
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',

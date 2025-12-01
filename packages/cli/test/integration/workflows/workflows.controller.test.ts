@@ -2755,6 +2755,11 @@ describe('POST /workflows/:workflowId/activate', () => {
 		expect(data.id).toBe(workflow.id);
 		expect(data.activeVersionId).toBe(newVersionId);
 		expect(data.activeVersion.versionId).toBe(newVersionId);
+		expect(data.activeVersion.workflowPublishHistory).toHaveLength(1);
+		expect(data.activeVersion.workflowPublishHistory[0]).toMatchObject({
+			event: 'activated',
+			versionId: newVersionId,
+		});
 
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',
