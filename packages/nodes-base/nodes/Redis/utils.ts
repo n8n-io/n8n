@@ -16,8 +16,17 @@ export function setupRedisClient(credentials: RedisCredential, isTest = false): 
 		port: credentials.port,
 		tls: credentials.ssl === true,
 		connectTimeout: 10000,
-		// Disable reconnection for tests to prevent hanging
-		reconnectStrategy: isTest ? false : undefined,
+		reconnectStrategy: (retries: number, cause: NodeJS.ErrnoException) => {
+			// stop retrying immediately if socket timeout or after 10 retries
+			if (cause.code === 'ECONNREFUSED' || retries >= 10) {
+				return false;
+			}
+
+			const jitter = Math.floor(Math.random() * 200);
+			const delay = Math.min(Math.pow(2, retries) * 50, 2000);
+
+			return delay + jitter;
+		},
 	};
 
 	// If SSL is enabled and TLS verification should be disabled
