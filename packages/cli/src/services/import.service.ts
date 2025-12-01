@@ -21,7 +21,7 @@ import { validateDbTypeForImportEntities } from '@/utils/validate-database-type'
 import { Cipher } from 'n8n-core';
 import { decompressFolder } from '@/utils/compression.util';
 import { z } from 'zod';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { DatabaseConfig } from '@n8n/config';
 
@@ -54,7 +54,7 @@ export class ImportService {
 		private readonly tagRepository: TagRepository,
 		private readonly dataSource: DataSource,
 		private readonly cipher: Cipher,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly triggerService: TriggerServiceClient,
 		private readonly workflowIndexService: WorkflowIndexService,
 		private readonly databaseConfig: DatabaseConfig,
 		private readonly workflowPublishHistoryRepository: WorkflowPublishHistoryRepository,
@@ -79,9 +79,9 @@ export class ImportService {
 
 			if (hasInvalidCreds) await this.replaceInvalidCreds(workflow);
 
-			// Remove workflows from ActiveWorkflowManager BEFORE transaction to prevent orphaned trigger listeners
+			// Remove workflows from TriggerServiceClient BEFORE transaction to prevent orphaned trigger listeners
 			if (workflow.id) {
-				await this.activeWorkflowManager.remove(workflow.id);
+				await this.triggerService.deactivateWorkflow(workflow.id);
 			}
 		}
 

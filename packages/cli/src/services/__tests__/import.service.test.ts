@@ -10,7 +10,7 @@ import { readdir, readFile } from 'fs/promises';
 import { mock } from 'jest-mock-extended';
 import type { Cipher } from 'n8n-core';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 
 import { ImportService } from '../import.service';
@@ -32,7 +32,7 @@ jest.mock('@n8n/db', () => ({
 }));
 
 jest.mock('@/active-workflow-manager', () => ({
-	ActiveWorkflowManager: mock<ActiveWorkflowManager>(),
+	TriggerServiceClient: mock<TriggerServiceClient>(),
 }));
 
 describe('ImportService', () => {
@@ -43,7 +43,7 @@ describe('ImportService', () => {
 	let mockTagRepository: TagRepository;
 	let mockEntityManager: EntityManager;
 	let mockCipher: Cipher;
-	let mockActiveWorkflowManager: ActiveWorkflowManager;
+	let mockTriggerServiceClient: TriggerServiceClient;
 	let mockWorkflowIndexService: WorkflowIndexService;
 	let mockDatabaseConfig: DatabaseConfig;
 	let mockWorkflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
@@ -57,7 +57,7 @@ describe('ImportService', () => {
 		mockTagRepository = mock<TagRepository>();
 		mockEntityManager = mock<EntityManager>();
 		mockCipher = mock<Cipher>();
-		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
+		mockTriggerServiceClient = mock<TriggerServiceClient>();
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 		mockDatabaseConfig = mock<DatabaseConfig>();
 		mockWorkflowPublishHistoryRepository = mock<WorkflowPublishHistoryRepository>();
@@ -105,7 +105,7 @@ describe('ImportService', () => {
 			mockTagRepository,
 			mockDataSource,
 			mockCipher,
-			mockActiveWorkflowManager,
+			mockTriggerServiceClient,
 			mockWorkflowIndexService,
 			mockDatabaseConfig,
 			mockWorkflowPublishHistoryRepository,

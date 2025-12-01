@@ -26,7 +26,7 @@ import { NodeOperationError, PROJECT_ROOT, UserError, WorkflowActivationError } 
 
 import { WorkflowFinderService } from './workflow-finder.service';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
 import { CredentialsService } from '@/credentials/credentials.service';
 import { EnterpriseCredentialsService } from '@/credentials/credentials.service.ee';
@@ -47,7 +47,7 @@ export class EnterpriseWorkflowService {
 		private readonly credentialsService: CredentialsService,
 		private readonly ownershipService: OwnershipService,
 		private readonly projectService: ProjectService,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly triggerService: TriggerServiceClient,
 		private readonly credentialsFinderService: CredentialsFinderService,
 		private readonly enterpriseCredentialsService: EnterpriseCredentialsService,
 		private readonly workflowFinderService: WorkflowFinderService,
@@ -334,7 +334,7 @@ export class EnterpriseWorkflowService {
 
 		// 6. deactivate workflow if necessary
 		if (wasActive) {
-			await this.activeWorkflowManager.remove(workflowId);
+			await this.triggerService.deactivateWorkflow(workflowId);
 		}
 
 		// 7. transfer the workflow
@@ -445,7 +445,7 @@ export class EnterpriseWorkflowService {
 
 		// 5. deactivate all workflows if necessary
 		const deactivateWorkflowsPromises = activeWorkflows.map(
-			async (workflow) => await this.activeWorkflowManager.remove(workflow.id),
+			async (workflow) => await this.triggerService.deactivateWorkflow(workflow.id),
 		);
 
 		await Promise.all(deactivateWorkflowsPromises);
@@ -484,7 +484,7 @@ export class EnterpriseWorkflowService {
 
 	private async attemptWorkflowReactivation(workflowId: string, versionId: string, userId: string) {
 		try {
-			await this.activeWorkflowManager.add(workflowId, 'update');
+			await this.triggerService.activateWorkflow(workflowId, 'update');
 
 			return;
 		} catch (error) {

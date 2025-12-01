@@ -1,13 +1,13 @@
 import { mockInstance } from '@n8n/backend-test-utils';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 
 import { createUser } from './shared/db/users';
 import type { SuperAgentTest } from './shared/types';
 import * as utils from './shared/utils/';
 
 describe('Auth Middleware', () => {
-	mockInstance(ActiveWorkflowManager);
+	mockInstance(TriggerServiceClient);
 
 	const testServer = utils.setupTestServer({
 		endpointGroups: ['me', 'auth', 'owner', 'users', 'invitations'],

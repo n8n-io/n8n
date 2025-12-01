@@ -4,7 +4,7 @@ import { generateNanoId, WorkflowRepository } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 
 import { createOwner } from './shared/db/users';
@@ -13,7 +13,7 @@ import { setupTestServer } from './shared/utils';
 
 describe('DebugController', () => {
 	const workflowRepository = mockInstance(WorkflowRepository);
-	const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+	const activeWorkflowManager = mockInstance(TriggerServiceClient);
 	const instanceSettings = Container.get(InstanceSettings);
 	instanceSettings.markAsLeader();
 
@@ -37,8 +37,8 @@ describe('DebugController', () => {
 
 			workflowRepository.findIn.mockResolvedValue(triggersAndPollers);
 			workflowRepository.findWebhookBasedActiveWorkflows.mockResolvedValue(webhooks);
-			activeWorkflowManager.allActiveInMemory.mockReturnValue([workflowId]);
-			activeWorkflowManager.getAllWorkflowActivationErrors.mockResolvedValue(activationErrors);
+			activeWorkflowManager.getActiveWorkflowsInMemory.mockResolvedValue([workflowId]);
+			activeWorkflowManager.getAllActivationErrors.mockResolvedValue(activationErrors);
 
 			jest.spyOn(MultiMainSetup.prototype, 'fetchLeaderKey').mockResolvedValue(leaderKey);
 

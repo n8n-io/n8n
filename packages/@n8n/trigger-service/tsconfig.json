@@ -1,0 +1,26 @@
+{
+	"extends": "@n8n/typescript-config/tsconfig.common.json",
+	"compilerOptions": {
+		"rootDir": ".",
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		"strictPropertyInitialization": false,
+		"types": ["node", "jest"],
+		"baseUrl": ".",
+		"paths": {
+			"@/*": ["src/*"]
+		},
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo"
+	},
+	"include": ["src/**/*.ts", "test/**/*.ts"],
+	"references": [
+		{ "path": "../backend-common/tsconfig.build.json" },
+		{ "path": "../config/tsconfig.build.json" },
+		{ "path": "../constants/tsconfig.build.json" },
+		{ "path": "../db/tsconfig.build.json" },
+		{ "path": "../di/tsconfig.build.json" },
+		{ "path": "../permissions/tsconfig.build.json" },
+		{ "path": "../../core/tsconfig.build.json" },
+		{ "path": "../../workflow/tsconfig.build.json" }
+	]
+}

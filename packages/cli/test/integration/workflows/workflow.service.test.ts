@@ -15,7 +15,7 @@ import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import { Telemetry } from '@/telemetry';
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
@@ -27,7 +27,7 @@ import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 
 let globalConfig: GlobalConfig;
 let workflowService: WorkflowService;
-const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+const activeWorkflowManager = mockInstance(TriggerServiceClient);
 const workflowHistoryService = mockInstance(WorkflowHistoryService);
 const workflowPublishHistoryRepository = mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(MessageEventBus);
@@ -73,8 +73,8 @@ describe('update()', () => {
 		const workflow = await createActiveWorkflow({}, owner);
 
 		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
-		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
+		const removeSpy = jest.spyOn(activeWorkflowManager, 'deactivateWorkflow');
+		const addSpy = jest.spyOn(activeWorkflowManager, 'activateWorkflow');
 
 		const updateData = {
 			active: true,
@@ -105,8 +105,8 @@ describe('update()', () => {
 		const workflow = await createActiveWorkflow({}, owner);
 
 		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
-		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
+		const removeSpy = jest.spyOn(activeWorkflowManager, 'deactivateWorkflow');
+		const addSpy = jest.spyOn(activeWorkflowManager, 'activateWorkflow');
 
 		const updateData = {
 			active: false,

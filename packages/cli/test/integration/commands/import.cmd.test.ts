@@ -9,7 +9,7 @@ import { WorkflowPublishHistoryRepository } from '@n8n/db';
 import { nanoid } from 'nanoid';
 
 import '@/zod-alias-support';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { ImportWorkflowsCommand } from '@/commands/import/workflow';
 import { LoadNodesAndCredentials } from '@/load-nodes-and-credentials';
 import { setupTestCommand } from '@test-integration/utils/test-command';
@@ -17,7 +17,7 @@ import { setupTestCommand } from '@test-integration/utils/test-command';
 import { createMember, createOwner } from '../shared/db/users';
 
 mockInstance(LoadNodesAndCredentials);
-mockInstance(ActiveWorkflowManager);
+mockInstance(TriggerServiceClient);
 mockInstance(WorkflowPublishHistoryRepository);
 
 const command = setupTestCommand(ImportWorkflowsCommand);

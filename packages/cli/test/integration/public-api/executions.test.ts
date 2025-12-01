@@ -21,7 +21,7 @@ import { createMemberWithApiKey, createOwnerWithApiKey } from '../shared/db/user
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { ExecutionService } from '@/executions/execution.service';
 import { Telemetry } from '@/telemetry';
 import { QueuedExecutionRetryError } from '@/errors/queued-execution-retry.error';
@@ -33,7 +33,7 @@ let user2: User;
 let authOwnerAgent: SuperAgentTest;
 let authUser1Agent: SuperAgentTest;
 let authUser2Agent: SuperAgentTest;
-let workflowRunner: ActiveWorkflowManager;
+let workflowRunner: TriggerServiceClient;
 
 mockInstance(Telemetry);
 
@@ -48,7 +48,7 @@ beforeAll(async () => {
 	await utils.initBinaryDataService();
 	await utils.initNodeTypes();
 
-	workflowRunner = await utils.initActiveWorkflowManager();
+	workflowRunner = await utils.initTriggerServiceClient();
 });
 
 beforeEach(async () => {

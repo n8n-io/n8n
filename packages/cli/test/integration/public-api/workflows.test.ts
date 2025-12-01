@@ -13,7 +13,7 @@ import { Container } from '@n8n/di';
 import { InstanceSettings } from 'n8n-core';
 import type { INode } from 'n8n-workflow';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { STARTING_NODES } from '@/constants';
 import { ExecutionService } from '@/executions/execution.service';
 import { ProjectService } from '@/services/project.service.ee';
@@ -32,7 +32,7 @@ let member: User;
 let memberPersonalProject: Project;
 let authOwnerAgent: SuperAgentTest;
 let authMemberAgent: SuperAgentTest;
-let activeWorkflowManager: ActiveWorkflowManager;
+let activeWorkflowManager: TriggerServiceClient;
 
 const testServer = utils.setupTestServer({ endpointGroups: ['publicApi'] });
 const license = testServer.license;
@@ -56,7 +56,7 @@ beforeAll(async () => {
 
 	await utils.initNodeTypes();
 
-	activeWorkflowManager = Container.get(ActiveWorkflowManager);
+	activeWorkflowManager = Container.get(TriggerServiceClient);
 
 	await activeWorkflowManager.init();
 });
@@ -802,7 +802,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
 
 		// check whether the workflow is on the active workflow runner
-		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
+		expect(await activeWorkflowManager.isWorkflowActive(workflow.id)).toBe(true);
 	});
 
 	test('should set activeVersionId when activating workflow', async () => {
@@ -878,7 +878,7 @@ describe('POST /workflows/:id/activate', () => {
 		expect(sharedWorkflow?.workflow.activeVersionId).toBe(workflow.versionId);
 
 		// check whether the workflow is on the active workflow runner
-		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(true);
+		expect(await activeWorkflowManager.isWorkflowActive(workflow.id)).toBe(true);
 	});
 });
 
@@ -943,7 +943,7 @@ describe('POST /workflows/:id/deactivate', () => {
 		// check whether the workflow is deactivated in the database
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 
-		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
+		expect(await activeWorkflowManager.isWorkflowActive(workflow.id)).toBe(false);
 	});
 
 	test('should clear activeVersionId when deactivating workflow', async () => {
@@ -1030,7 +1030,7 @@ describe('POST /workflows/:id/deactivate', () => {
 
 		expect(sharedWorkflow?.workflow.activeVersionId).toBeNull();
 
-		expect(await activeWorkflowManager.isActive(workflow.id)).toBe(false);
+		expect(await activeWorkflowManager.isWorkflowActive(workflow.id)).toBe(false);
 	});
 });
 

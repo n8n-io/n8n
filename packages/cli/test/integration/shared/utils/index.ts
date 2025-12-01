@@ -36,7 +36,7 @@ export { setupTestServer } from './test-server';
 /**
  * Initialize node types.
  */
-export async function initActiveWorkflowManager() {
+export async function initTriggerServiceClient() {
 	mockInstance(BinaryDataConfig);
 	mockInstance(InstanceSettings, {
 		isMultiMain: false,
@@ -44,10 +44,10 @@ export async function initActiveWorkflowManager() {
 
 	mockInstance(Push);
 	mockInstance(ExecutionService);
-	const { ActiveWorkflowManager } = await import('@/active-workflow-manager');
-	const activeWorkflowManager = Container.get(ActiveWorkflowManager);
-	await activeWorkflowManager.init();
-	return activeWorkflowManager;
+	const { TriggerServiceClient } = await import('@/stubs/trigger-service-client.stub');
+	const triggerService = Container.get(TriggerServiceClient);
+	await triggerService.init();
+	return triggerService;
 }
 
 /**
