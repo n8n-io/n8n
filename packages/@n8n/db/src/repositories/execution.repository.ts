@@ -428,7 +428,6 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		execution: Partial<IExecutionResponse>,
 		requireStatus?: ExecutionStatus,
 	): Promise<boolean> {
-		console.log('updateExistingExecution requireStatus', requireStatus);
 		const {
 			id,
 			data,
@@ -456,10 +455,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
 				if (requireStatus) whereCondition.status = requireStatus;
-				console.log('whereCondition', whereCondition);
 
 				const result = await this.update(whereCondition, executionInformation);
-				console.log('result', result);
 				executionTableAffectedRows = result.affected ?? 0;
 
 				// If requireStatus was set and the update failed, don't update executionData
@@ -482,10 +479,8 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 			if (Object.keys(executionInformation).length > 0) {
 				const whereCondition: { id: string; status?: ExecutionStatus } = { id: executionId };
 				if (requireStatus) whereCondition.status = requireStatus;
-				console.log('whereCondition', whereCondition);
 
 				const result = await tx.update(ExecutionEntity, whereCondition, executionInformation);
-				console.log('result', result);
 				executionTableAffectedRows = result.affected ?? 0;
 
 				// If requireStatus was set and the update failed, don't update executionData
