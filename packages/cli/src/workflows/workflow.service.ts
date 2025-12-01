@@ -6,7 +6,6 @@ import type {
 	ListQueryDb,
 	WorkflowFolderUnionFull,
 	WorkflowHistoryUpdate,
-	WorkflowHistory,
 } from '@n8n/db';
 import {
 	SharedWorkflow,
@@ -50,12 +49,6 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
-
-type RollbackPayload = {
-	active: boolean;
-	activeVersionId: string | null;
-	activeVersion: WorkflowHistory | null;
-} & Partial<Omit<WorkflowEntity, 'active' | 'activeVersionId' | 'activeVersion'>>;
 
 @Service()
 export class WorkflowService {
@@ -435,7 +428,6 @@ export class WorkflowService {
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		rollbackPayload: RollbackPayload,
 		publicApi: boolean = false,
 	): Promise<void> {
 		let didPublish = false;
@@ -444,6 +436,11 @@ export class WorkflowService {
 			await this.activeWorkflowManager.add(workflowId, mode);
 			didPublish = true;
 		} catch (error) {
+			const rollbackPayload = {
+				active: false,
+				activeVersionId: null,
+				activeVersion: null,
+			};
 			const previouslyActiveId = workflow.activeVersionId;
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
@@ -566,11 +563,6 @@ export class WorkflowService {
 			workflowId,
 			updatedWorkflow,
 			activationMode,
-			{
-				active: false,
-				activeVersionId: null,
-				activeVersion: null,
-			},
 			publicApi,
 		);
 
