@@ -39,39 +39,16 @@ function isTemplateFetchResponse(data: unknown): data is TemplateFetchResponse {
 function buildSearchQueryString(query: TemplateSearchQuery): string {
 	const params = new URLSearchParams();
 
-	// there are some preset search criteria we need to set
-	// always free templates
-	query.price = 0;
-	// don't ignore any search criteria
-	query.combineWith = 'and';
-	// pick most recent templates that match the search
-	query.sort = 'createdAt:desc,rank:desc';
+	// Fixed preset values (not overridable)
+	params.append('price', '0'); // Always free templates
+	params.append('combineWith', 'and'); // Don't ignore any search criteria
+	params.append('sort', 'createdAt:desc,rank:desc'); // Most recent templates first
+	params.append('rows', String(query.rows ?? 5)); // Default 5 results per page
+	params.append('page', '1'); // Always first page
 
-	// select how many rows per page and get first page
-	query.rows = query.rows ?? 5;
-	query.page = 1;
-
-	if (query.search) {
-		params.append('search', query.search);
-	}
-	if (query.rows !== undefined) {
-		params.append('rows', query.rows.toString());
-	}
-	if (query.page !== undefined) {
-		params.append('page', query.page.toString());
-	}
-	if (query.sort) {
-		params.append('sort', query.sort);
-	}
-	if (query.price !== undefined) {
-		params.append('price', query.price.toString());
-	}
-	if (query.combineWith) {
-		params.append('combineWith', query.combineWith);
-	}
-	if (query.category) {
-		params.append('category', query.category);
-	}
+	// Optional user-provided values
+	if (query.search) params.append('search', query.search);
+	if (query.category) params.append('category', query.category);
 
 	return params.toString();
 }
