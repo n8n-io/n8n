@@ -114,6 +114,7 @@
 	"generic.editor": "Editor",
 	"generic.seePlans": "See plans",
 	"generic.loading": "Loading",
+	"generic.loadingEllipsis": "Loading...",
 	"generic.and": "and",
 	"generic.ownedByMe": "(You)",
 	"generic.moreInfo": "More info",
