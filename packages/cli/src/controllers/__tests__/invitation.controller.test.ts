@@ -55,9 +55,7 @@ describe('InvitationController', () => {
 	describe('inviteUser', () => {
 		it('throws a BadRequestError if SSO is enabled', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
-			jest
-				.spyOn(ownershipService, 'hasPreExistingInstanceOwner')
-				.mockReturnValue(Promise.resolve(true));
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -88,9 +86,7 @@ describe('InvitationController', () => {
 		it('throws a ForbiddenError if the user limit quota has been reached', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(false);
-			jest
-				.spyOn(ownershipService, 'hasPreExistingInstanceOwner')
-				.mockReturnValue(Promise.resolve(true));
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -116,9 +112,7 @@ describe('InvitationController', () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(config, 'getEnv').mockReturnValue(false);
-			jest
-				.spyOn(ownershipService, 'hasPreExistingInstanceOwner')
-				.mockReturnValue(Promise.resolve(false));
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(false));
 
 			const invitationController = defaultInvitationController();
 
@@ -145,9 +139,7 @@ describe('InvitationController', () => {
 			jest.spyOn(license, 'isWithinUsersLimit').mockReturnValue(true);
 			jest.spyOn(config, 'getEnv').mockReturnValue(true);
 			jest.spyOn(license, 'isAdvancedPermissionsLicensed').mockReturnValue(false);
-			jest
-				.spyOn(ownershipService, 'hasPreExistingInstanceOwner')
-				.mockReturnValue(Promise.resolve(true));
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -199,9 +191,7 @@ describe('InvitationController', () => {
 			jest.spyOn(config, 'getEnv').mockReturnValue(true);
 			jest.spyOn(license, 'isAdvancedPermissionsLicensed').mockReturnValue(true);
 			jest.spyOn(userService, 'inviteUsers').mockResolvedValue(inviteUsersResult);
-			jest
-				.spyOn(ownershipService, 'hasPreExistingInstanceOwner')
-				.mockReturnValue(Promise.resolve(true));
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
 			const invitationController = defaultInvitationController();
 
@@ -239,9 +229,7 @@ describe('InvitationController', () => {
 	describe('acceptInvitation', () => {
 		it('throws a BadRequestError if SSO is enabled', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(true);
-			jest
-				.spyOn(ownershipService, 'hasPreExistingInstanceOwner')
-				.mockReturnValue(Promise.resolve(true));
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
 			const id = uuidv4();
 
@@ -269,9 +257,7 @@ describe('InvitationController', () => {
 
 		it('throws a BadRequestError if the inviter ID and invitee ID are not found in the database', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			jest
-				.spyOn(ownershipService, 'hasPreExistingInstanceOwner')
-				.mockReturnValue(Promise.resolve(true));
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
 			const id = uuidv4();
 
@@ -304,9 +290,7 @@ describe('InvitationController', () => {
 
 		it('throws a BadRequestError if the invitee already has a password', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			jest
-				.spyOn(ownershipService, 'hasPreExistingInstanceOwner')
-				.mockReturnValue(Promise.resolve(true));
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
 			const invitee = mock<User>({
 				id: '123',
@@ -345,9 +329,7 @@ describe('InvitationController', () => {
 
 		it('accepts the invitation successfully', async () => {
 			jest.spyOn(ssoHelpers, 'isSsoCurrentAuthenticationMethod').mockReturnValue(false);
-			jest
-				.spyOn(ownershipService, 'hasPreExistingInstanceOwner')
-				.mockReturnValue(Promise.resolve(true));
+			jest.spyOn(ownershipService, 'hasInstanceOwner').mockReturnValue(Promise.resolve(true));
 
 			const id = uuidv4();
 			const inviter = mock<User>({
