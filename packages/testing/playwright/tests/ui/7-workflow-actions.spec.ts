@@ -457,12 +457,10 @@ test.describe('Workflow Actions', () => {
 	test('should unpublish published workflow on archive', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		const workflowId = await saveWorkflowAndGetId(n8n);
-		await n8n.canvas.activateWorkflow();
+		await n8n.canvas.publishWorkflow();
 		await n8n.page.keyboard.press('Escape');
 
 		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
-
-		const workflowId = n8n.canvas.getWorkflowIdFromUrl();
 
 		await n8n.workflowSettingsModal.getWorkflowMenu().click();
 		await n8n.workflowSettingsModal.clickArchiveMenuItem();
