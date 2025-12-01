@@ -8,7 +8,7 @@ import {
 	type ChatMessageId,
 	type ChatHubProvider,
 	type ChatHubLLMProvider,
-	type InputModality,
+	type ChatHubInputModality,
 } from '@n8n/api-types';
 import type {
 	ChatMessage,
@@ -349,7 +349,7 @@ export function createSessionFromStreamingState(streaming: ChatStreamingState): 
 	};
 }
 
-export function createMimeTypes(modalities: InputModality[]): string | undefined {
+export function createMimeTypes(modalities: ChatHubInputModality[]): string | undefined {
 	if (modalities.length === 0) {
 		return undefined;
 	}

@@ -207,10 +207,10 @@ export const chatModelsRequestSchema = z.object({
 
 export type ChatModelsRequest = z.infer<typeof chatModelsRequestSchema>;
 
-export type InputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
+export type ChatHubInputModality = 'text' | 'image' | 'audio' | 'video' | 'file';
 
 export interface ChatModelMetadataDto {
-	inputModalities: InputModality[];
+	inputModalities: ChatHubInputModality[];
 	capabilities: {
 		functionCalling: boolean;
 	};

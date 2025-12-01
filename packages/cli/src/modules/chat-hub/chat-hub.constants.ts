@@ -92,7 +92,7 @@ export const JSONL_STREAM_HEADERS = {
 
 // Default metadata for all models
 const DEFAULT_MODEL_METADATA: ChatModelMetadataDto = {
-	inputModalities: ['text', 'image', 'audio', 'video'],
+	inputModalities: ['text', 'image', 'audio', 'video', 'file'],
 	capabilities: {
 		functionCalling: true,
 	},
