@@ -31,7 +31,7 @@ import { createOwner, createMember, createUser, createAdmin } from '../shared/db
 import type { SuperAgentTest } from '../shared/types';
 import * as utils from '../shared/utils/';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 
 let owner: User;
 let member: User;
@@ -49,7 +49,7 @@ let projectRepository: ProjectRepository;
 let folderRepository: FolderRepository;
 let workflowRepository: WorkflowRepository;
 
-const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+const activeWorkflowManager = mockInstance(TriggerServiceClient);
 
 beforeEach(async () => {
 	testServer.license.enable('feat:folders');
@@ -2603,7 +2603,7 @@ describe('PUT /projects/:projectId/folders/:folderId/transfer', () => {
 		await createActiveWorkflow({ parentFolder: sourceFolder1 }, sourceProject);
 		await createWorkflow({ parentFolder: sourceFolder2 }, sourceProject);
 
-		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
+		activeWorkflowManager.activateWorkflow.mockRejectedValue(new ApplicationError('Oh no!'));
 
 		//
 		// ACT & ASSERT

@@ -21,7 +21,7 @@ import { mock } from 'jest-mock-extended';
 import type { INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import type { WorkflowIndexService } from '@/modules/workflow-index/workflow-index.service';
 import { ImportService } from '@/services/import.service';
 
@@ -32,7 +32,7 @@ describe('ImportService', () => {
 	let tagRepository: TagRepository;
 	let owner: User;
 	let ownerPersonalProject: Project;
-	let mockActiveWorkflowManager: ActiveWorkflowManager;
+	let mockTriggerServiceClient: TriggerServiceClient;
 	let mockWorkflowIndexService: WorkflowIndexService;
 
 	beforeAll(async () => {
@@ -45,7 +45,7 @@ describe('ImportService', () => {
 
 		const credentialsRepository = Container.get(CredentialsRepository);
 
-		mockActiveWorkflowManager = mock<ActiveWorkflowManager>();
+		mockTriggerServiceClient = mock<TriggerServiceClient>();
 
 		mockWorkflowIndexService = mock<WorkflowIndexService>();
 
@@ -55,7 +55,7 @@ describe('ImportService', () => {
 			tagRepository,
 			mock(),
 			mock(),
-			mockActiveWorkflowManager,
+			mockTriggerServiceClient,
 			mockWorkflowIndexService,
 			Container.get(DatabaseConfig),
 			mock(),
@@ -229,10 +229,10 @@ describe('ImportService', () => {
 		expect(dbTag.name).toBe(tag.name); // tag created
 	});
 
-	test('should remove workflow from ActiveWorkflowManager when workflow has ID', async () => {
+	test('should remove workflow from TriggerServiceClient when workflow has ID', async () => {
 		const workflowWithId = await createActiveWorkflow();
 		await importService.importWorkflows([workflowWithId], ownerPersonalProject.id);
 
-		expect(mockActiveWorkflowManager.remove).toHaveBeenCalledWith(workflowWithId.id);
+		expect(mockTriggerServiceClient.deactivateWorkflow).toHaveBeenCalledWith(workflowWithId.id);
 	});
 });

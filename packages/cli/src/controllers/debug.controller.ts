@@ -2,14 +2,14 @@ import { WorkflowRepository } from '@n8n/db';
 import { Get, RestController } from '@n8n/decorators';
 import { InstanceSettings } from 'n8n-core';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { MultiMainSetup } from '@/scaling/multi-main-setup.ee';
 
 @RestController('/debug')
 export class DebugController {
 	constructor(
 		private readonly multiMainSetup: MultiMainSetup,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly triggerService: TriggerServiceClient,
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly instanceSettings: InstanceSettings,
 	) {}
@@ -19,12 +19,12 @@ export class DebugController {
 		const leaderKey = await this.multiMainSetup.fetchLeaderKey();
 
 		const triggersAndPollers = await this.workflowRepository.findIn(
-			this.activeWorkflowManager.allActiveInMemory(),
+			await this.triggerService.getActiveWorkflowsInMemory(),
 		);
 
 		const webhooks = await this.workflowRepository.findWebhookBasedActiveWorkflows();
 
-		const activationErrors = await this.activeWorkflowManager.getAllWorkflowActivationErrors();
+		const activationErrors = await this.triggerService.getAllActivationErrors();
 
 		return {
 			instanceId: this.instanceSettings.instanceId,

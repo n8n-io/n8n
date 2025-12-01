@@ -31,7 +31,7 @@ beforeEach(async () => {
 });
 
 describe('PUT /:workflowId/transfer', () => {
-	// This tests does not mock the ActiveWorkflowManager, which helps catching
+	// This tests does not mock the TriggerServiceClient, which helps catching
 	// possible deadlocks when using transactions wrong.
 	test('can transfer an active workflow', async () => {
 		//

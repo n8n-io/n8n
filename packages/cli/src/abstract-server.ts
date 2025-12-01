@@ -14,13 +14,9 @@ import { N8N_VERSION, TEMPLATES_DIR } from '@/constants';
 import { ServiceUnavailableError } from '@/errors/response-errors/service-unavailable.error';
 import { ExternalHooks } from '@/external-hooks';
 import { rawBodyReader, bodyParser, corsMiddleware } from '@/middlewares';
-import { send, sendErrorResponse } from '@/response-helper';
+import { sendErrorResponse } from '@/response-helper';
 import { createHandlebarsEngine } from '@/utils/handlebars.util';
-import { LiveWebhooks } from '@/webhooks/live-webhooks';
-import { TestWebhooks } from '@/webhooks/test-webhooks';
-import { WaitingForms } from '@/webhooks/waiting-forms';
-import { WaitingWebhooks } from '@/webhooks/waiting-webhooks';
-import { createWebhookHandlerFor } from '@/webhooks/webhook-request-handler';
+// Webhook handling has been moved to @n8n/trigger-service
 
 @Service()
 export abstract class AbstractServer {
@@ -213,41 +209,9 @@ export abstract class AbstractServer {
 
 		this.setupCommonMiddlewares();
 
-		// Setup webhook handlers before bodyParser, to let the Webhook node handle binary data in requests
-		if (this.webhooksEnabled) {
-			const liveWebhooksRequestHandler = createWebhookHandlerFor(Container.get(LiveWebhooks));
-			// Register a handler for live forms
-			this.app.all(`/${this.endpointForm}/*path`, liveWebhooksRequestHandler);
-
-			// Register a handler for live webhooks
-			this.app.all(`/${this.endpointWebhook}/*path`, liveWebhooksRequestHandler);
-
-			// Register a handler for waiting forms
-			this.app.all(
-				`/${this.endpointFormWaiting}/:path{/:suffix}`,
-				createWebhookHandlerFor(Container.get(WaitingForms)),
-			);
-
-			// Register a handler for waiting webhooks
-			this.app.all(
-				`/${this.endpointWebhookWaiting}/:path{/:suffix}`,
-				createWebhookHandlerFor(Container.get(WaitingWebhooks)),
-			);
-
-			// Register a handler for live MCP servers
-			this.app.all(`/${this.endpointMcp}/*path`, liveWebhooksRequestHandler);
-		}
-
-		if (this.testWebhooksEnabled) {
-			const testWebhooksRequestHandler = createWebhookHandlerFor(Container.get(TestWebhooks));
-
-			// Register a handler
-			this.app.all(`/${this.endpointFormTest}/*path`, testWebhooksRequestHandler);
-			this.app.all(`/${this.endpointWebhookTest}/*path`, testWebhooksRequestHandler);
-
-			// Register a handler for test MCP servers
-			this.app.all(`/${this.endpointMcpTest}/*path`, testWebhooksRequestHandler);
-		}
+		// TODO: Webhook routes have been moved to @n8n/trigger-service
+		// See: packages/@n8n/trigger-service/src/webhook-server.ts
+		// These routes will be handled by the trigger-service once it's running as a separate service
 
 		// Block bots from scanning the application
 		const checkIfBot = isbot.spawn(['bot']);
@@ -263,15 +227,7 @@ export abstract class AbstractServer {
 			this.setupDevMiddlewares();
 		}
 
-		if (this.testWebhooksEnabled) {
-			const testWebhooks = Container.get(TestWebhooks);
-			// Removes a test webhook
-			// TODO UM: check if this needs validation with user management.
-			this.app.delete(
-				`/${this.restEndpoint}/test-webhook/:id`,
-				send(async (req) => await testWebhooks.cancelWebhook(req.params.id)),
-			);
-		}
+		// TODO: Test webhook cancellation has been moved to @n8n/trigger-service/src/webhook-server.ts
 
 		// Setup body parsing middleware after the webhook handlers are setup
 		this.app.use(bodyParser);

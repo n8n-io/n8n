@@ -14,7 +14,7 @@ import { Container } from '@n8n/di';
 import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import config from '@/config';
 import { inE2ETests } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -157,7 +157,7 @@ export class E2EController {
 	constructor(
 		license: License,
 		private readonly settingsRepo: SettingsRepository,
-		private readonly workflowRunner: ActiveWorkflowManager,
+		private readonly triggerService: TriggerServiceClient,
 		private readonly mfaService: MfaService,
 		private readonly cacheService: CacheService,
 		private readonly push: Push,
@@ -271,8 +271,8 @@ export class E2EController {
 	}
 
 	private async removeActiveWorkflows() {
-		this.workflowRunner.removeAllQueuedWorkflowActivations();
-		await this.workflowRunner.removeAll();
+		// TODO: removeAllQueuedWorkflowActivations moved to trigger-service
+		await this.triggerService.removeAll();
 	}
 
 	private async resetLogStreaming() {

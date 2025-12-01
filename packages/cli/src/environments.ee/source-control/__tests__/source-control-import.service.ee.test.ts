@@ -27,7 +27,7 @@ import type { ExportableFolder } from '../types/exportable-folders';
 import type { ExportableProject } from '../types/exportable-project';
 import { SourceControlContext } from '../types/source-control-context';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 
 jest.mock('fast-glob');
 
@@ -52,7 +52,7 @@ describe('SourceControlImportService', () => {
 	const sourceControlScopedService = mock<SourceControlScopedService>();
 	const variableService = mock<VariablesService>();
 	const variablesRepository = mock<VariablesRepository>();
-	const activeWorkflowManager = mock<ActiveWorkflowManager>();
+	const activeWorkflowManager = mock<TriggerServiceClient>();
 	const service = new SourceControlImportService(
 		mockLogger,
 		mock(),
@@ -299,8 +299,8 @@ describe('SourceControlImportService', () => {
 				}),
 				['id'],
 			);
-			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.deactivateWorkflow).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.activateWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('should keep existing inactive workflows inactive', async () => {
@@ -345,8 +345,8 @@ describe('SourceControlImportService', () => {
 				}),
 				['id'],
 			);
-			expect(activeWorkflowManager.remove).not.toHaveBeenCalled();
-			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.deactivateWorkflow).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.activateWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('should reactivate existing active workflows', async () => {
@@ -391,8 +391,8 @@ describe('SourceControlImportService', () => {
 				}),
 				['id'],
 			);
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1');
-			expect(activeWorkflowManager.add).toHaveBeenCalledWith('workflow1', 'activate');
+			expect(activeWorkflowManager.deactivateWorkflow).toHaveBeenCalledWith('workflow1');
+			expect(activeWorkflowManager.activateWorkflow).toHaveBeenCalledWith('workflow1', 'activate');
 		});
 
 		it('should deactivate archived workflows even if they were previously active', async () => {
@@ -438,8 +438,8 @@ describe('SourceControlImportService', () => {
 				}),
 				['id'],
 			);
-			expect(activeWorkflowManager.remove).toHaveBeenCalledWith('workflow1');
-			expect(activeWorkflowManager.add).not.toHaveBeenCalled();
+			expect(activeWorkflowManager.deactivateWorkflow).toHaveBeenCalledWith('workflow1');
+			expect(activeWorkflowManager.activateWorkflow).not.toHaveBeenCalled();
 		});
 
 		it('should handle activation errors gracefully', async () => {
@@ -476,7 +476,7 @@ describe('SourceControlImportService', () => {
 				raw: [],
 				affected: 1,
 			});
-			activeWorkflowManager.add.mockRejectedValue(new Error('Activation failed'));
+			activeWorkflowManager.activateWorkflow.mockRejectedValue(new Error('Activation failed'));
 
 			fsReadFile.mockResolvedValue(JSON.stringify(mockWorkflowData));
 

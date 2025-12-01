@@ -32,7 +32,7 @@ import { ensureError, jsonParse, UnexpectedError, UserError } from 'n8n-workflow
 import { readFile as fsReadFile } from 'node:fs/promises';
 import path from 'path';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { CredentialsService } from '@/credentials/credentials.service';
 import type { IWorkflowToImport } from '@/interfaces';
 import { isUniqueConstraintError } from '@/response-helper';
@@ -136,7 +136,7 @@ export class SourceControlImportService {
 		private readonly logger: Logger,
 		private readonly errorReporter: ErrorReporter,
 		private readonly variablesService: VariablesService,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly triggerService: TriggerServiceClient,
 		private readonly credentialsRepository: CredentialsRepository,
 		private readonly projectRepository: ProjectRepository,
 		private readonly tagRepository: TagRepository,
@@ -753,12 +753,12 @@ export class SourceControlImportService {
 		try {
 			// remove active pre-import workflow
 			this.logger.debug(`Deactivating workflow id ${existingWorkflow.id}`);
-			await this.activeWorkflowManager.remove(existingWorkflow.id);
+			await this.triggerService.deactivateWorkflow(existingWorkflow.id);
 
 			if (importedWorkflow.activeVersionId) {
 				// try activating the imported workflow
 				this.logger.debug(`Reactivating workflow id ${existingWorkflow.id}`);
-				await this.activeWorkflowManager.add(existingWorkflow.id, 'activate');
+				await this.triggerService.activateWorkflow(existingWorkflow.id, 'activate');
 				didAdd = true;
 			}
 		} catch (e) {

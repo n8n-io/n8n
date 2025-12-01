@@ -38,7 +38,7 @@ import {
 import { createMember, createOwner, createUser } from './shared/db/users';
 import * as utils from './shared/utils/';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { getWorkflowById } from '@/public-api/v1/handlers/workflows/workflows.service';
 import { CacheService } from '@/services/cache/cache.service';
 
@@ -57,7 +57,7 @@ const testServer = utils.setupTestServer({
 
 // The `ActiveWorkflowRunner` keeps the event loop alive, which in turn leads to jest not shutting down cleanly.
 // We don't need it for the tests here, so we can mock it and make the tests exit cleanly.
-mockInstance(ActiveWorkflowManager);
+mockInstance(TriggerServiceClient);
 
 beforeEach(async () => {
 	await testDb.truncate(['User', 'Project']);

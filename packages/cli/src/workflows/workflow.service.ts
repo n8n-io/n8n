@@ -30,7 +30,7 @@ import { FileLocation, BinaryDataService } from 'n8n-core';
 import { NodeApiError, PROJECT_ROOT, assert } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
@@ -68,7 +68,7 @@ export class WorkflowService {
 		private readonly tagService: TagService,
 		private readonly workflowHistoryService: WorkflowHistoryService,
 		private readonly externalHooks: ExternalHooks,
-		private readonly activeWorkflowManager: ActiveWorkflowManager,
+		private readonly triggerService: TriggerServiceClient,
 		private readonly roleService: RoleService,
 		private readonly workflowSharingService: WorkflowSharingService,
 		private readonly projectService: ProjectService,
@@ -318,7 +318,7 @@ export class WorkflowService {
 		 * will take effect only on removing and re-adding.
 		 */
 		if (isDraftPublishDisabled && wasActive) {
-			await this.activeWorkflowManager.remove(workflowId);
+			await this.triggerService.deactivateWorkflow(workflowId);
 		}
 
 		const workflowSettings = workflowUpdateData.settings ?? {};
@@ -462,7 +462,7 @@ export class WorkflowService {
 
 			if (isNowActive) {
 				// When the workflow is supposed to be active add it again
-				await this._addToActiveWorkflowManager(
+				await this._addToTriggerServiceClient(
 					user,
 					workflowId,
 					updatedWorkflow,
@@ -486,7 +486,7 @@ export class WorkflowService {
 	 * Private helper to add a workflow to the active workflow manager
 	 * @param rollBackOptions - Optional rollback options
 	 */
-	private async _addToActiveWorkflowManager(
+	private async _addToTriggerServiceClient(
 		user: User,
 		workflowId: string,
 		workflow: WorkflowEntity,
@@ -497,7 +497,7 @@ export class WorkflowService {
 		let didPublish = false;
 		try {
 			await this.externalHooks.run('workflow.activate', [workflow]);
-			await this.activeWorkflowManager.add(workflowId, mode);
+			await this.triggerService.activateWorkflow(workflowId, mode);
 			didPublish = true;
 		} catch (error) {
 			const previouslyActiveId = workflow.activeVersionId;
@@ -609,7 +609,7 @@ export class WorkflowService {
 			publicApi,
 		});
 
-		await this._addToActiveWorkflowManager(
+		await this._addToTriggerServiceClient(
 			user,
 			workflowId,
 			updatedWorkflow,
@@ -675,7 +675,7 @@ export class WorkflowService {
 		}
 
 		// Remove from active workflow manager
-		await this.activeWorkflowManager.remove(workflowId);
+		await this.triggerService.deactivateWorkflow(workflowId);
 
 		await this.workflowRepository.update(workflowId, {
 			active: false,
@@ -730,7 +730,7 @@ export class WorkflowService {
 
 		if (workflow.active) {
 			// deactivate before deleting
-			await this.activeWorkflowManager.remove(workflowId);
+			await this.triggerService.deactivateWorkflow(workflowId);
 		}
 
 		const idsForDeletion = await this.executionRepository
@@ -773,7 +773,7 @@ export class WorkflowService {
 		}
 
 		if (workflow.activeVersionId !== null) {
-			await this.activeWorkflowManager.remove(workflowId);
+			await this.triggerService.deactivateWorkflow(workflowId);
 			await this.workflowPublishHistoryRepository.addRecord({
 				workflowId,
 				versionId: workflow.activeVersionId,

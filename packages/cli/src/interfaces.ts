@@ -19,7 +19,7 @@ import type {
 } from 'n8n-workflow';
 import type PCancelable from 'p-cancelable';
 
-import type { ActiveWorkflowManager } from '@/active-workflow-manager';
+import type { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import type { ExternalHooks } from '@/external-hooks';
 
 export interface ICredentialsTypeData {
@@ -202,5 +202,5 @@ export interface N8nApp {
 	app: Application;
 	restEndpoint: string;
 	externalHooks: ExternalHooks;
-	activeWorkflowManager: ActiveWorkflowManager;
+	triggerService: TriggerServiceClient;
 }

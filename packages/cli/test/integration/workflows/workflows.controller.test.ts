@@ -35,7 +35,7 @@ import { DateTime } from 'luxon';
 import { PROJECT_ROOT, type INode, type IPinData, type IWorkflowBase } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import { EventService } from '@/events/event.service';
 import { License } from '@/license';
 import { ProjectService } from '@/services/project.service.ee';
@@ -68,7 +68,7 @@ const testServer = utils.setupTestServer({
 
 const { objectContaining, arrayContaining, any } = expect;
 
-const activeWorkflowManagerLike = mockInstance(ActiveWorkflowManager);
+const activeWorkflowManagerLike = mockInstance(TriggerServiceClient);
 
 let projectRepository: ProjectRepository;
 let workflowRepository: WorkflowRepository;
@@ -2531,7 +2531,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalled();
+		expect(activeWorkflowManagerLike.activateWorkflow).toBeCalled();
 
 		const {
 			data: { id, versionId, active, activeVersionId },
@@ -2560,8 +2560,8 @@ describe('PATCH /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).not.toBeCalled();
-		expect(activeWorkflowManagerLike.remove).toBeCalled();
+		expect(activeWorkflowManagerLike.activateWorkflow).not.toBeCalled();
+		expect(activeWorkflowManagerLike.deactivateWorkflow).toBeCalled();
 
 		const {
 			data: { id, versionId, active, activeVersionId },
@@ -2590,7 +2590,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalled();
+		expect(activeWorkflowManagerLike.activateWorkflow).toBeCalled();
 
 		const {
 			data: { id, activeVersionId },
@@ -2625,7 +2625,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.remove).toBeCalled();
+		expect(activeWorkflowManagerLike.deactivateWorkflow).toBeCalled();
 
 		const {
 			data: { id, activeVersionId },
@@ -2810,7 +2810,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).not.toBeCalled();
+			expect(activeWorkflowManagerLike.activateWorkflow).not.toBeCalled();
 
 			const { data } = response.body;
 			expect(data.activeVersionId).toBeNull();
@@ -2829,7 +2829,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.remove).not.toBeCalled();
+			expect(activeWorkflowManagerLike.deactivateWorkflow).not.toBeCalled();
 
 			const { data } = response.body;
 			expect(data.activeVersionId).toBe(workflow.versionId);
@@ -2884,7 +2884,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).not.toBeCalled();
+			expect(activeWorkflowManagerLike.activateWorkflow).not.toBeCalled();
 
 			const { data } = response.body;
 			expect(data.activeVersionId).toBeNull(); // Should not be activated
@@ -2903,8 +2903,8 @@ describe('PATCH /workflows/:workflowId', () => {
 			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.remove).not.toBeCalled();
-			expect(activeWorkflowManagerLike.add).not.toBeCalled();
+			expect(activeWorkflowManagerLike.deactivateWorkflow).not.toBeCalled();
+			expect(activeWorkflowManagerLike.activateWorkflow).not.toBeCalled();
 
 			const { data } = response.body;
 			expect(data.name).toBe('Updated Active Workflow');
@@ -2925,7 +2925,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.send({ versionId: workflow.versionId });
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.activateWorkflow).toBeCalledWith(workflow.id, 'activate');
 
 		const { data } = response.body;
 		expect(data.id).toBe(workflow.id);
@@ -3013,7 +3013,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 				.send({ versionId: newVersionId });
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+			expect(activeWorkflowManagerLike.activateWorkflow).toBeCalledWith(workflow.id, 'activate');
 
 			const { data } = response.body;
 			expect(data.id).toBe(workflow.id);
@@ -3030,7 +3030,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 				.send({ versionId: workflow.versionId, name: newVersionName });
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+			expect(activeWorkflowManagerLike.activateWorkflow).toBeCalledWith(workflow.id, 'activate');
 
 			const { data } = response.body;
 			expect(data.activeVersionId).toBe(workflow.versionId);
@@ -3051,7 +3051,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 				.send({ versionId: workflow.versionId, description: newDescription });
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+			expect(activeWorkflowManagerLike.activateWorkflow).toBeCalledWith(workflow.id, 'activate');
 
 			const { data } = response.body;
 			expect(data.activeVersionId).toBe(workflow.versionId);
@@ -3075,7 +3075,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 			});
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+			expect(activeWorkflowManagerLike.activateWorkflow).toBeCalledWith(workflow.id, 'activate');
 
 			const { data } = response.body;
 			expect(data.activeVersionId).toBe(workflow.versionId);
@@ -3093,7 +3093,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 			const newVersionName = 'Production Version';
 			const newDescription = 'Major update with new features';
 
-			activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Validation failed'));
+			activeWorkflowManagerLike.activateWorkflow.mockRejectedValueOnce(
+				new Error('Validation failed'),
+			);
 
 			await authOwnerAgent.post(`/workflows/${workflow.id}/activate`).send({
 				versionId: workflow.versionId,
@@ -3117,7 +3119,9 @@ describe('POST /workflows/:workflowId/activate', () => {
 
 			const emitSpy = jest.spyOn(eventService, 'emit');
 
-			activeWorkflowManagerLike.add.mockRejectedValueOnce(new Error('Validation failed'));
+			activeWorkflowManagerLike.activateWorkflow.mockRejectedValueOnce(
+				new Error('Validation failed'),
+			);
 
 			const response = await authOwnerAgent
 				.post(`/workflows/${workflow.id}/activate`)
@@ -3148,7 +3152,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 				.post(`/workflows/${workflow.id}/activate`)
 				.send({ versionId: newVersionId });
 
-			expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'update');
+			expect(activeWorkflowManagerLike.activateWorkflow).toBeCalledWith(workflow.id, 'update');
 		});
 	});
 
@@ -3183,7 +3187,7 @@ describe('POST /workflows/:workflowId/activate', () => {
 			.post(`/workflows/${workflow.id}/activate`)
 			.send({ versionId: workflow.versionId });
 
-		expect(activeWorkflowManagerLike.add).toBeCalledWith(workflow.id, 'activate');
+		expect(activeWorkflowManagerLike.activateWorkflow).toBeCalledWith(workflow.id, 'activate');
 		expect(addRecordSpy).toBeCalledWith({
 			event: 'activated',
 			userId: owner.id,
@@ -3201,7 +3205,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
+		expect(activeWorkflowManagerLike.deactivateWorkflow).toBeCalledWith(workflow.id);
 
 		const { data } = response.body;
 		expect(data.id).toBe(workflow.id);
@@ -3231,7 +3235,7 @@ describe('POST /workflows/:workflowId/deactivate', () => {
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/deactivate`);
 
 		expect(response.statusCode).toBe(200);
-		expect(activeWorkflowManagerLike.remove).not.toBeCalled();
+		expect(activeWorkflowManagerLike.deactivateWorkflow).not.toBeCalled();
 		expect(addRecordSpy).not.toBeCalled();
 
 		const { data } = response.body;
@@ -3334,7 +3338,7 @@ describe('POST /workflows/:workflowId/archive', () => {
 		expect(activeVersionId).toBeNull();
 		expect(active).toBe(false);
 		expect(versionId).not.toBe(workflow.versionId);
-		expect(activeWorkflowManagerLike.remove).toBeCalledWith(workflow.id);
+		expect(activeWorkflowManagerLike.deactivateWorkflow).toBeCalledWith(workflow.id);
 
 		const updatedWorkflow = await workflowRepository.findById(workflow.id);
 		expect(updatedWorkflow).not.toBeNull();

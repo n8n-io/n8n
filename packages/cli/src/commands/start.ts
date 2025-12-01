@@ -14,7 +14,7 @@ import { pipeline } from 'stream/promises';
 import { z } from 'zod';
 
 import { ActiveExecutions } from '@/active-executions';
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import config from '@/config';
 import { EDITOR_UI_DIST_DIR, N8N_VERSION } from '@/constants';
 import { FeatureNotLicensedError } from '@/errors/feature-not-licensed.error';
@@ -56,7 +56,7 @@ const flagsSchema = z.object({
 	flagsSchema,
 })
 export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
-	protected activeWorkflowManager: ActiveWorkflowManager;
+	protected triggerService: TriggerServiceClient;
 
 	protected server = Container.get(Server);
 
@@ -89,13 +89,13 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		try {
 			// Stop with trying to activate workflows that could not be activated
-			this.activeWorkflowManager.removeAllQueuedWorkflowActivations();
+			// TODO: removeAllQueuedWorkflowActivations moved to trigger-service
 
 			Container.get(WaitTracker).stopTracking();
 
 			await this.externalHooks?.run('n8n.stop');
 
-			await this.activeWorkflowManager.removeAllTriggerAndPollerBasedWorkflows();
+			await this.triggerService.removeAll();
 
 			if (this.instanceSettings.isMultiMain) {
 				await Container.get(MultiMainSetup).shutdown();
@@ -203,7 +203,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 
 		Container.get(DeprecationService).warn();
 
-		this.activeWorkflowManager = Container.get(ActiveWorkflowManager);
+		this.triggerService = Container.get(TriggerServiceClient);
 
 		const isMultiMainEnabled =
 			this.globalConfig.executions.mode === 'queue' && this.globalConfig.multiMainSetup.enabled;
@@ -345,7 +345,7 @@ export class Start extends BaseCommand<z.infer<typeof flagsSchema>> {
 		}
 
 		// Start to get active workflows and run their triggers
-		await this.activeWorkflowManager.init();
+		// await this.triggerService.init();
 
 		const editorUrl = this.getEditorUrl();
 

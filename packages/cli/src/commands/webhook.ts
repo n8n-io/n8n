@@ -8,7 +8,7 @@ import { LogStreamingEventRelay } from '@/events/relays/log-streaming.event-rela
 import { Publisher } from '@/scaling/pubsub/publisher.service';
 import { PubSubRegistry } from '@/scaling/pubsub/pubsub.registry';
 import { Subscriber } from '@/scaling/pubsub/subscriber.service';
-import { WebhookServer } from '@/webhooks/webhook-server';
+import { WebhookServer } from '@/stubs/webhook-server.stub';
 
 import { BaseCommand } from './base-command';
 
@@ -17,7 +17,7 @@ import { BaseCommand } from './base-command';
 	description: 'Starts n8n webhook process. Intercepts only production URLs.',
 })
 export class Webhook extends BaseCommand {
-	protected server = Container.get(WebhookServer);
+	protected webhookServer: WebhookServer = Container.get(WebhookServer);
 
 	override needsCommunityPackages = true;
 
@@ -88,7 +88,7 @@ export class Webhook extends BaseCommand {
 	async run() {
 		const { ScalingService } = await import('@/scaling/scaling.service');
 		await Container.get(ScalingService).setupQueue();
-		await this.server.start();
+		await this.webhookServer.start();
 		this.logger.info('Webhook listener waiting for requests.');
 
 		// Make sure that the process does not close

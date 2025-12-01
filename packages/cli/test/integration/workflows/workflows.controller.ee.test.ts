@@ -25,7 +25,7 @@ import type { ProjectRole } from '@n8n/permissions';
 import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
-import { ActiveWorkflowManager } from '@/active-workflow-manager';
+import { TriggerServiceClient } from '@/stubs/trigger-service-client.stub';
 import config from '@/config';
 import { UserManagementMailer } from '@/user-management/email';
 import { createFolder } from '@test-integration/db/folders';
@@ -57,7 +57,7 @@ let saveCredential: SaveCredentialFunction;
 let projectRepository: ProjectRepository;
 let workflowRepository: WorkflowRepository;
 
-const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
+const activeWorkflowManager = mockInstance(TriggerServiceClient);
 
 const testServer = utils.setupTestServer({
 	endpointGroups: ['workflows'],
@@ -90,8 +90,8 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
-	activeWorkflowManager.add.mockReset();
-	activeWorkflowManager.remove.mockReset();
+	activeWorkflowManager.activateWorkflow.mockReset();
+	activeWorkflowManager.deactivateWorkflow.mockReset();
 
 	await testDb.truncate(['WorkflowEntity', 'SharedWorkflow', 'WorkflowHistory', 'TagEntity']);
 });
@@ -1431,7 +1431,7 @@ describe('PATCH /workflows/:workflowId', () => {
 			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManager.add).toBeCalled();
+			expect(activeWorkflowManager.activateWorkflow).toBeCalled();
 
 			const {
 				data: { id, versionId, active, activeVersionId },
@@ -1453,8 +1453,8 @@ describe('PATCH /workflows/:workflowId', () => {
 			const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 			expect(response.statusCode).toBe(200);
-			expect(activeWorkflowManager.add).not.toBeCalled();
-			expect(activeWorkflowManager.remove).toBeCalled();
+			expect(activeWorkflowManager.activateWorkflow).not.toBeCalled();
+			expect(activeWorkflowManager.deactivateWorkflow).toBeCalled();
 
 			const {
 				data: { id, versionId, active, activeVersionId },
@@ -1655,8 +1655,8 @@ describe('PUT /:workflowId/transfer', () => {
 		//
 		expect(response.body).toEqual({});
 
-		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
-		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManager.deactivateWorkflow).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManager.activateWorkflow).toHaveBeenCalledWith(workflow.id, 'update');
 	});
 
 	test('should move workflow to project root if `destinationParentFolderId` is not provided', async () => {
@@ -1762,7 +1762,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const workflow = await createActiveWorkflow({}, member);
 
-		activeWorkflowManager.add.mockRejectedValue(new WorkflowActivationError('Failed'));
+		activeWorkflowManager.activateWorkflow.mockRejectedValue(new WorkflowActivationError('Failed'));
 
 		//
 		// ACT
@@ -1785,8 +1785,8 @@ describe('PUT /:workflowId/transfer', () => {
 			},
 		});
 
-		expect(activeWorkflowManager.remove).toHaveBeenCalledWith(workflow.id);
-		expect(activeWorkflowManager.add).toHaveBeenCalledWith(workflow.id, 'update');
+		expect(activeWorkflowManager.deactivateWorkflow).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManager.activateWorkflow).toHaveBeenCalledWith(workflow.id, 'update');
 
 		const workflowFromDB = await workflowRepository.findOneByOrFail({ id: workflow.id });
 		expect(workflowFromDB.active).toBe(false);
@@ -2133,7 +2133,7 @@ describe('PUT /:workflowId/transfer', () => {
 
 		const workflow = await createActiveWorkflow({}, member);
 
-		activeWorkflowManager.add.mockRejectedValue(new ApplicationError('Oh no!'));
+		activeWorkflowManager.activateWorkflow.mockRejectedValue(new ApplicationError('Oh no!'));
 
 		//
 		// ACT & ASSERT
