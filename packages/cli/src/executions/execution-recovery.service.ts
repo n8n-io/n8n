@@ -1,8 +1,15 @@
 import { Logger } from '@n8n/backend-common';
 import { ExecutionsConfig } from '@n8n/config';
-import { In, type IExecutionResponse } from '@n8n/db';
+import {
+	In,
+	type IExecutionResponse,
+	ProjectRelationRepository,
+	WorkflowEntity,
+	User,
+} from '@n8n/db';
 import { ExecutionRepository, WorkflowRepository } from '@n8n/db';
 import { Service } from '@n8n/di';
+import { PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
 import type { DateTime } from 'luxon';
 import { InstanceSettings } from 'n8n-core';
 import { createEmptyRunExecutionData, sleep } from 'n8n-workflow';
@@ -32,6 +39,7 @@ export class ExecutionRecoveryService {
 		private readonly workflowRepository: WorkflowRepository,
 		private readonly userManagementMailer: UserManagementMailer,
 		private readonly ownershipService: OwnershipService,
+		private readonly projectRelationRepository: ProjectRelationRepository,
 	) {}
 
 	async autoDeactivateWorkflowsIfNeeded(workflowIds: Set<string>) {
@@ -54,19 +62,19 @@ export class ExecutionRecoveryService {
 				const workflow = await this.workflowRepository.findOne({ where: { id: workflowId } });
 
 				if (!workflow) {
-					this.logger.warn(`Workflow ${workflowId} not found, skipping workflow autodeactivation`);
+					this.logger.warn(`Workflow ${workflowId} not found, skipping workflow auto-deactivation`);
 					continue;
 				}
 
-				if (workflow.active) {
+				if (workflow.activeVersionId !== null) {
 					await this.workflowRepository.updateActiveState(workflowId, false);
 					this.logger.warn(
 						`Autodeactivated workflow ${workflowId} due to too many crashed executions.`,
 					);
 
-					const instanceOwner = await this.ownershipService.getInstanceOwner();
+					const recipient = await this.getAutodeactivationRecipient(workflow);
 					await this.userManagementMailer.notifyWorkflowAutodeactivated({
-						recipient: instanceOwner,
+						recipient,
 						workflow,
 					});
 
@@ -271,5 +279,24 @@ export class ExecutionRecoveryService {
 		};
 
 		await lifecycleHooks.runHook('workflowExecuteAfter', [run]);
+	}
+
+	private async getAutodeactivationRecipient(workflow: WorkflowEntity): Promise<User> {
+		const project = await this.ownershipService.getWorkflowProjectCached(workflow.id);
+
+		const roleSlug = project.type === 'team' ? PROJECT_ADMIN_ROLE_SLUG : PROJECT_OWNER_ROLE_SLUG;
+		const projectRelations = await this.projectRelationRepository.find({
+			where: {
+				projectId: project.id,
+				role: { slug: roleSlug },
+			},
+			relations: { user: true },
+		});
+
+		if (projectRelations.length > 0) {
+			return projectRelations[0].user;
+		} else {
+			return await this.ownershipService.getInstanceOwner();
+		}
 	}
 }

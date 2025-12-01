@@ -158,7 +158,7 @@ export class UserManagementMailer {
 				workflowUrl: `${baseUrl}/workflow/${workflow.id}`,
 			}),
 			subjectBuilder: () => 'n8n has automatically autodeactivated a workflow',
-			messageType: 'Workflow autodeactivated',
+			messageType: 'Workflow auto-deactivated',
 		});
 	}
 

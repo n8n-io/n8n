@@ -6,7 +6,8 @@
 				<mj-include path="./_logo.mjml" />
 				<mj-text font-size="22px" font-weight="400">Workflow automatically deactivated</mj-text>
 				<mj-text
-					>n8n has automatically deactivated <b>"{{ workflowName }}"</b>.</mj-text
+					>n8n has automatically deactivated <b>"{{ workflowName }}"</b> due to repeated
+					crashes.</mj-text
 				>
 				<mj-text
 					>Please review its recent executions and resolve any issues before reactivating
