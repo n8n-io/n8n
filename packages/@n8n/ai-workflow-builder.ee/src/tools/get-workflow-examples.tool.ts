@@ -38,12 +38,21 @@ const getWorkflowExamplesSchema = z.object({
 type WorkflowExampleQuery = z.infer<typeof workflowExampleQuerySchema>;
 
 /**
+ * Result of fetching workflow examples including template IDs for telemetry
+ */
+interface FetchWorkflowExamplesResult {
+	workflows: WorkflowMetadata[];
+	totalFound: number;
+	templateIds: number[];
+}
+
+/**
  * Fetch workflow examples from the API
  */
 async function fetchWorkflowExamples(
 	query: WorkflowExampleQuery,
 	logger?: Logger,
-): Promise<{ workflows: WorkflowMetadata[]; totalFound: number }> {
+): Promise<FetchWorkflowExamplesResult> {
 	logger?.debug('Fetching workflow examples with query', { query });
 
 	// First, fetch the list of workflow templates (metadata)
@@ -52,29 +61,35 @@ async function fetchWorkflowExamples(
 	});
 
 	// Then fetch complete workflow data for each template
-	const workflowMetadata: Array<WorkflowMetadata | undefined> = await Promise.all(
-		response.workflows.map(async (workflow) => {
-			try {
-				const fullWorkflow = await fetchTemplateByID(workflow.id);
-				return {
-					name: workflow.name,
-					description: workflow.description,
-					workflow: fullWorkflow.workflow,
-				};
-			} catch (error) {
-				// failed to fetch a workflow, ignore it for now
-				logger?.warn(`Failed to fetch full workflow for template ${workflow.id}`, { error });
-				return undefined;
-			}
-		}),
+	const workflowResults: Array<{ metadata: WorkflowMetadata; templateId: number } | undefined> =
+		await Promise.all(
+			response.workflows.map(async (workflow) => {
+				try {
+					const fullWorkflow = await fetchTemplateByID(workflow.id);
+					return {
+						metadata: {
+							name: workflow.name,
+							description: workflow.description,
+							workflow: fullWorkflow.workflow,
+						},
+						templateId: workflow.id,
+					};
+				} catch (error) {
+					// failed to fetch a workflow, ignore it for now
+					logger?.warn(`Failed to fetch full workflow for template ${workflow.id}`, { error });
+					return undefined;
+				}
+			}),
+		);
+
+	const validResults = workflowResults.filter(
+		(result): result is { metadata: WorkflowMetadata; templateId: number } => result !== undefined,
 	);
 
-	const finalMetadata: WorkflowMetadata[] = workflowMetadata.filter(
-		(metadata) => metadata !== undefined,
-	);
 	return {
-		workflows: finalMetadata,
+		workflows: validResults.map((r) => r.metadata),
 		totalFound: response.totalWorkflows,
+		templateIds: validResults.map((r) => r.templateId),
 	};
 }
 
@@ -153,6 +168,7 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				reporter.start(validatedInput);
 
 				let allResults: WorkflowMetadata[] = [];
+				let allTemplateIds: number[] = [];
 
 				// Create batch reporter for progress tracking
 				const batchReporter = createBatchProgressReporter(reporter, 'Retrieving workflow examples');
@@ -171,6 +187,7 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 
 						// Add to results
 						allResults = allResults.concat(result.workflows);
+						allTemplateIds = allTemplateIds.concat(result.templateIds);
 					} catch (error) {
 						logger?.error('Error fetching workflow examples', { error });
 					}
@@ -224,9 +241,13 @@ export function createGetWorkflowExamplesTool(logger?: Logger) {
 				const responseMessage = buildResponseMessage(output);
 				reporter.complete(output);
 
-				// Return success response with node configurations stored in state
+				// Deduplicate template IDs
+				const uniqueTemplateIds = [...new Set(allTemplateIds)];
+
+				// Return success response with node configurations and template IDs stored in state
 				return createSuccessResponse(config, responseMessage, {
 					nodeConfigurations,
+					templateIds: uniqueTemplateIds,
 				});
 			} catch (error) {
 				// Handle validation or unexpected errors

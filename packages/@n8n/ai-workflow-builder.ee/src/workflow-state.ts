@@ -121,4 +121,10 @@ export const WorkflowState = Annotation.Root({
 		},
 		default: () => ({}),
 	}),
+
+	// Template IDs fetched from workflow examples for telemetry
+	templateIds: Annotation<number[]>({
+		reducer: (current, update) => (update && update.length > 0 ? [...current, ...update] : current),
+		default: () => [],
+	}),
 });

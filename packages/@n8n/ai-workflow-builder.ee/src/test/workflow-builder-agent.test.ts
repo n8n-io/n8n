@@ -294,6 +294,7 @@ describe('WorkflowBuilderAgent', () => {
 				techniqueCategories: [],
 				previousSummary: 'EMPTY',
 				nodeConfigurations: {},
+				templateIds: [],
 			};
 		};
 

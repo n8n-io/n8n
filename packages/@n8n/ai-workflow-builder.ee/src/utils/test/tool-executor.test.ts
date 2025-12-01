@@ -53,6 +53,7 @@ describe('tool-executor', () => {
 			techniqueCategories: [],
 			previousSummary: 'EMPTY',
 			nodeConfigurations: {},
+			templateIds: [],
 		});
 
 		// Helper to create mock tool

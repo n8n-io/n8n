@@ -185,6 +185,9 @@ export async function executeToolsInParallel(
 	// Merge node configurations from all updates
 	const allNodeConfigurations = mergeNodeConfigurations(stateUpdates);
 
+	// Collect template IDs from all updates
+	const allTemplateIds = collectArrayFromUpdates<number>(stateUpdates, 'templateIds');
+
 	// Return the combined update
 	const finalUpdate: Partial<typeof WorkflowState.State> = {
 		messages: allMessages,
@@ -204,6 +207,10 @@ export async function executeToolsInParallel(
 
 	if (Object.keys(allNodeConfigurations).length > 0) {
 		finalUpdate.nodeConfigurations = allNodeConfigurations;
+	}
+
+	if (allTemplateIds.length > 0) {
+		finalUpdate.templateIds = allTemplateIds;
 	}
 
 	return finalUpdate;
