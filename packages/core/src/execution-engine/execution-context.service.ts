@@ -68,7 +68,10 @@ export class ExecutionContextService {
 
 		let currentTriggerItems = startItem.data['main'][0];
 
-		const contextEstablishmentHookParameters = startItem.node.parameters;
+		const contextEstablishmentHookParameters = {
+			...(workflow.getNode(startItem.node.name)?.parameters ?? {}),
+			...startItem.node.parameters,
+		};
 
 		const startNodeParametersResult = toExecutionContextEstablishmentHookParameter(
 			contextEstablishmentHookParameters,
