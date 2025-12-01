@@ -132,6 +132,30 @@ export = {
 			return res.json(workflow);
 		},
 	],
+	getWorkflowVersion: [
+		apiKeyHasScope('workflow:read'),
+		projectScope('workflow:read', 'workflow'),
+		async (req: WorkflowRequest.GetVersion, res: express.Response): Promise<express.Response> => {
+			const { id: workflowId, versionId } = req.params;
+
+			try {
+				const version = await Container.get(WorkflowHistoryService).getVersion(
+					req.user,
+					workflowId,
+					versionId,
+				);
+
+				Container.get(EventService).emit('user-retrieved-workflow-version', {
+					userId: req.user.id,
+					publicApi: true,
+				});
+
+				return res.json(version);
+			} catch (error) {
+				return res.status(404).json({ message: 'Version not found' });
+			}
+		},
+	],
 	getWorkflows: [
 		apiKeyHasScope('workflow:list'),
 		validCursor,
