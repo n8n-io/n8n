@@ -144,6 +144,7 @@ export class ChatHubWorkflowService {
 			newWorkflow.connections = connections;
 			newWorkflow.settings = {
 				executionOrder: 'v1',
+				saveDataSuccessExecution: 'all',
 			};
 
 			const workflow = await em.save<WorkflowEntity>(newWorkflow);
