@@ -84,15 +84,10 @@ export class ExecutionRecoveryService {
 					});
 				}
 
-				const pendingExecutions = await this.executionRepository.findMultipleExecutions({
-					where: { workflowId, status: In<ExecutionStatus>(['running', 'new']) },
-				});
-				if (pendingExecutions.length > 0) {
-					await this.executionRepository.markAsCrashed(pendingExecutions.map((e) => e.id));
-					this.logger.debug(
-						`Marked ${pendingExecutions.length} pending executions as crashed due to workflow deactivation.`,
-					);
-				}
+				await this.executionRepository.update(
+					{ workflowId, status: In<ExecutionStatus>(['running', 'new']) },
+					{ status: 'crashed', stoppedAt: new Date() },
+				);
 			}
 		}
 	}
