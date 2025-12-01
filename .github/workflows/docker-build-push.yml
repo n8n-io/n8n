@@ -238,31 +238,19 @@ jobs:
 
             echo "Creating ECR manifest for ${IMAGE_NAME}: ${MANIFEST_TAG}"
 
-            # For branch builds, only AMD64 is built
-            if [[ "$RELEASE_TYPE" == "branch" ]]; then
-              docker buildx imagetools create \
-                --tag "${MANIFEST_TAG}" \
-                "${MANIFEST_TAG}-amd64"
-            else
-              docker buildx imagetools create \
-                --tag "${MANIFEST_TAG}" \
-                "${MANIFEST_TAG}-amd64" \
-                "${MANIFEST_TAG}-arm64"
-            fi
+            # Always create multi-arch manifest with both amd64 and arm64
+            docker buildx imagetools create \
+              --tag "${MANIFEST_TAG}" \
+              "${MANIFEST_TAG}-amd64" \
+              "${MANIFEST_TAG}-arm64"
 
             # Also create 'latest' tag for stable releases
             if [[ "$RELEASE_TYPE" == "stable" ]]; then
               echo "Creating 'latest' tag for ${IMAGE_NAME}"
-              if [[ "$RELEASE_TYPE" == "branch" ]]; then
-                docker buildx imagetools create \
-                  --tag "${ECR_BASE}/${IMAGE_NAME}:latest" \
-                  "${MANIFEST_TAG}-amd64"
-              else
-                docker buildx imagetools create \
-                  --tag "${ECR_BASE}/${IMAGE_NAME}:latest" \
-                  "${MANIFEST_TAG}-amd64" \
-                  "${MANIFEST_TAG}-arm64"
-              fi
+              docker buildx imagetools create \
+                --tag "${ECR_BASE}/${IMAGE_NAME}:latest" \
+                "${MANIFEST_TAG}-amd64" \
+                "${MANIFEST_TAG}-arm64"
             fi
           }
 
