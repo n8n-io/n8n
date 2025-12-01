@@ -377,6 +377,7 @@ describe('UserService', () => {
 				{ role: { slug: 'global:admin' } },
 			);
 			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).not.toHaveBeenCalled();
+			expect(publicApiKeyService.deleteAllApiKeysForUser).not.toHaveBeenCalled();
 		});
 
 		it('removes higher privilege scopes from API tokens of user who is demoted from admin', async () => {
@@ -394,6 +395,7 @@ describe('UserService', () => {
 				{ role: { slug: 'global:member' } },
 			);
 			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).toHaveBeenCalled();
+			expect(publicApiKeyService.deleteAllApiKeysForUser).not.toHaveBeenCalled();
 		});
 
 		it('assigns chat user project:viewer when demoted from member', async () => {
@@ -421,6 +423,41 @@ describe('UserService', () => {
 				},
 				{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
 			);
+
+			// Ensure all their API keys are revoked
+			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).not.toHaveBeenCalled();
+			expect(publicApiKeyService.deleteAllApiKeysForUser).toHaveBeenCalledWith(user, manager);
+		});
+
+		it('assigns chat user project:viewer when demoted from admin', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:admin';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			const personalProject = new Project();
+			personalProject.id = uuid();
+			personalProject.type = 'personal';
+			personalProject.creatorId = user.id;
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValueOnce(personalProject);
+
+			await userService.changeUserRole(user, { newRoleName: 'global:chatUser' });
+
+			expect(manager.update).toHaveBeenCalledWith(
+				ProjectRelation,
+				{
+					userId: user.id,
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					projectId: personalProject.id,
+				},
+				{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
+			);
+
+			// Ensure all their API keys are revoked.
+			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).not.toHaveBeenCalled();
+			expect(publicApiKeyService.deleteAllApiKeysForUser).toHaveBeenCalledWith(user, manager);
 		});
 
 		it('assigns chat user project:personalOwner when upgraded to member', async () => {

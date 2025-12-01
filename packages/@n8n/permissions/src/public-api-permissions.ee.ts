@@ -103,6 +103,10 @@ const MAP_ROLE_SCOPES: Record<GlobalRole, ApiKeyScope[]> = {
 };
 
 export const getApiKeyScopesForRole = (user: AuthPrincipal) => {
+	if (user.role.slug === 'global:chatUser') {
+		return [];
+	}
+
 	return [
 		...new Set(
 			user.role.scopes

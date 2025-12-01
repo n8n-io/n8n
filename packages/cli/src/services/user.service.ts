@@ -286,36 +286,11 @@ export class UserService {
 				return roleName === 'global:admin' || roleName === 'global:owner';
 			};
 
-			const isDowngradedAdmin = isAdminRole(user.role.slug) && !isAdminRole(newRole.newRoleName);
-
-			if (isDowngradedAdmin) {
-				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(user, trx);
-			}
-
-			const isUpgradedChatUser =
-				user.role.slug === 'global:chatUser' && newRole.newRoleName !== 'global:chatUser';
-
-			if (isUpgradedChatUser) {
-				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
-					user.id,
-					trx,
-				);
-
-				// Revoke previous 'project:viewer' role on their personal project
-				// and grant 'project:personalOwner' role instead.
-				await trx.update(
-					ProjectRelation,
-					{
-						userId: user.id,
-						role: { slug: PROJECT_VIEWER_ROLE_SLUG },
-						projectId: personalProject.id,
-					},
-					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
-				);
-			}
-
 			const isDowngradedToChatUser =
 				user.role.slug !== 'global:chatUser' && newRole.newRoleName === 'global:chatUser';
+			const isUpgradedChatUser =
+				user.role.slug === 'global:chatUser' && newRole.newRoleName !== 'global:chatUser';
+			const isDowngradedAdmin = isAdminRole(user.role.slug) && !isAdminRole(newRole.newRoleName);
 
 			if (isDowngradedToChatUser) {
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
@@ -333,6 +308,28 @@ export class UserService {
 						projectId: personalProject.id,
 					},
 					{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
+				);
+
+				// Revoke all API keys from chat users
+				await this.publicApiKeyService.deleteAllApiKeysForUser(user, trx);
+			} else if (isDowngradedAdmin) {
+				await this.publicApiKeyService.removeOwnerOnlyScopesFromApiKeys(user, trx);
+			} else if (isUpgradedChatUser) {
+				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
+					user.id,
+					trx,
+				);
+
+				// Revoke previous 'project:viewer' role on their personal project
+				// and grant 'project:personalOwner' role instead.
+				await trx.update(
+					ProjectRelation,
+					{
+						userId: user.id,
+						role: { slug: PROJECT_VIEWER_ROLE_SLUG },
+						projectId: personalProject.id,
+					},
+					{ role: { slug: PROJECT_OWNER_ROLE_SLUG } },
 				);
 			}
 		});
