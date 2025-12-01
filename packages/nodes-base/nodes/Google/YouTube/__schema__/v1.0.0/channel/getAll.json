@@ -1,36 +1,6 @@
 {
     "type": "object",
     "properties": {
-        "brandingSettings": {
-            "type": "object",
-            "properties": {
-                "channel": {
-                    "type": "object",
-                    "properties": {
-                        "country": {
-                            "type": "string"
-                        },
-                        "description": {
-                            "type": "string"
-                        },
-                        "keywords": {
-                            "type": "string"
-                        },
-                        "title": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "image": {
-                    "type": "object",
-                    "properties": {
-                        "bannerExternalUrl": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
         "contentDetails": {
             "type": "object",
             "properties": {
@@ -150,41 +120,7 @@
                     "type": "string"
                 }
             }
-        },
-        "status": {
-            "type": "object",
-            "properties": {
-                "isChannelMonetizationEnabled": {
-                    "type": "boolean"
-                },
-                "isLinked": {
-                    "type": "boolean"
-                },
-                "longUploadsStatus": {
-                    "type": "string"
-                },
-                "privacyStatus": {
-                    "type": "string"
-                }
-            }
-        },
-        "topicDetails": {
-            "type": "object",
-            "properties": {
-                "topicCategories": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "topicIds": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                }
-            }
         }
     },
-    "version": 3
+    "version": 4
 }
