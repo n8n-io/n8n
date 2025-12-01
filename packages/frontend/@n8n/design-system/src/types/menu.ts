@@ -19,7 +19,6 @@ export type IMenuItem = {
 	};
 	customIconSize?: 'medium' | 'small';
 	available?: boolean;
-	availableFn?: () => boolean;
 	position?: 'top' | 'bottom';
 
 	/** Use this for external links */
