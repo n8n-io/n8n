@@ -36,7 +36,11 @@ import {
 } from './utils/cache-control/helpers';
 import { cleanupDanglingToolCallMessages } from './utils/cleanup-dangling-tool-call-messages';
 import { processOperations } from './utils/operations-processor';
-import { createStreamProcessor, type BuilderTool } from './utils/stream-processor';
+import {
+	createStreamProcessor,
+	type BuilderTool,
+	type StreamEvent,
+} from './utils/stream-processor';
 import { estimateTokenCountFromMessages } from './utils/token-usage';
 import { executeToolsInParallel } from './utils/tool-executor';
 import { WorkflowState } from './workflow-state';
@@ -530,12 +534,12 @@ export class WorkflowBuilderAgent {
 
 	private async *processAgentStream(
 		stream: Awaited<ReturnType<typeof this.createAgentStream>>,
-		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+		agent: ReturnType<typeof this.createWorkflow>,
 		threadConfig: RunnableConfig,
 	) {
 		try {
 			const streamProcessor = createStreamProcessor(
-				stream as unknown as AsyncIterable<[string, unknown]>,
+				stream as unknown as AsyncIterable<StreamEvent>,
 			);
 			for await (const output of streamProcessor) {
 				yield output;
