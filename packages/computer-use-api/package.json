@@ -1,0 +1,39 @@
+{
+  "name": "@n8n/computer-use-api",
+  "version": "1.0.0",
+  "description": "Computer Use API - MCP server for LLM-driven computer control",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\""
+  },
+  "keywords": [
+    "computer-use",
+    "automation",
+    "llm",
+    "mcp",
+    "tool-execution",
+    "anthropic"
+  ],
+  "author": "n8n",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "dependencies": {
+    "@hono/mcp": "0.2.0",
+    "@hono/node-server": "1.19.6",
+    "@modelcontextprotocol/sdk": "1.20.0",
+    "hono": "4.10.7",
+    "zod": "3.25.67"
+  },
+  "devDependencies": {
+    "@types/node": "20.19.21",
+    "tsx": "4.19.3",
+    "typescript": "5.9.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

@@ -1870,6 +1870,34 @@ importers:
         specifier: ^7.0.3
         version: 7.0.3(typescript@5.9.2)
 
+  packages/computer-use-api:
+    dependencies:
+      '@hono/mcp':
+        specifier: ^0.2.0
+        version: 0.2.0(@modelcontextprotocol/sdk@1.20.0)(hono-rate-limiter@0.4.2(hono@4.10.7))(hono@4.10.7)
+      '@hono/node-server':
+        specifier: ^1.14.1
+        version: 1.19.6(hono@4.10.7)
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.12.1
+        version: 1.20.0
+      hono:
+        specifier: ^4.7.10
+        version: 4.10.7
+      zod:
+        specifier: ^3.23.8
+        version: 3.25.67
+    devDependencies:
+      '@types/node':
+        specifier: ^20.17.50
+        version: 20.19.21
+      tsx:
+        specifier: ^4.16.2
+        version: 4.19.3
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+
   packages/core:
     dependencies:
       '@aws-sdk/client-s3':
@@ -5178,6 +5206,19 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
+  '@hono/mcp@0.2.0':
+    resolution: {integrity: sha512-kKZklY+yApZce6zzHzQPrEOhon4O7ANstUCDWstvGF3+B/Qn0j9mWUyps2XZhA/PzKoFGUBuAu1SwTFc7JRX9A==}
+    peerDependencies:
+      '@modelcontextprotocol/sdk': ^1.17.3
+      hono: '*'
+      hono-rate-limiter: ^0.4.2
+
+  '@hono/node-server@1.19.6':
+    resolution: {integrity: sha512-Shz/KjlIeAhfiuE93NDKVdZ7HdBVLQAfdbaXEaoAVO3ic9ibRSLGIQGkcBbFyuLr+7/1D5ZCINM8B+6IvXeMtw==}
+    engines: {node: '>=18.14.1'}
+    peerDependencies:
+      hono: ^4
+
   '@huggingface/inference@4.0.5':
     resolution: {integrity: sha512-/Qc45BGrN+FBA3JfdeoHfafxfNShH/dxvOsXbBdcxyxIRIYOyefeiXSlShZGVCaiqYpm+10na28D0YtvjKPTlw==}
     engines: {node: '>=18'}
@@ -8388,9 +8429,6 @@ packages:
 
   '@types/node@20.19.1':
     resolution: {integrity: sha512-jJD50LtlD2dodAEO653i3YF04NWak6jN3ky+Ri3Em3mGR39/glWiboM/IePaRbgwSfqM1TpGXfAg8ohn/4dTgA==}
-
-  '@types/node@20.19.10':
-    resolution: {integrity: sha512-iAFpG6DokED3roLSP0K+ybeDdIX6Bc0Vd3mLW5uDqThPWtNos3E+EqOM11mPQHKzfWHqEBuLjIlsBQQ8CsISmQ==}
 
   '@types/node@20.19.11':
     resolution: {integrity: sha512-uug3FEEGv0r+jrecvUUpbY8lLisvIjg6AAic6a2bSP5OEOLeJsDSnvhCDov7ipFFMXS3orMpzlmi0ZcuGkBbow==}
@@ -12115,6 +12153,15 @@ packages:
   homedir-polyfill@1.0.3:
     resolution: {integrity: sha512-eSmmWE5bZTK2Nou4g0AI3zZ9rswp7GRKoKXS1BLUkvPviOqs4YTN1djQIqrXy9k5gEtdLPy86JjRwsNM9tnDcA==}
     engines: {node: '>=0.10.0'}
+
+  hono-rate-limiter@0.4.2:
+    resolution: {integrity: sha512-AAtFqgADyrmbDijcRTT/HJfwqfvhalya2Zo+MgfdrMPas3zSMD8SU03cv+ZsYwRU1swv7zgVt0shwN059yzhjw==}
+    peerDependencies:
+      hono: ^4.1.1
+
+  hono@4.10.7:
+    resolution: {integrity: sha512-icXIITfw/07Q88nLSkB9aiUrd8rYzSweK681Kjo/TSggaGbOX4RRyxxm71v+3PC8C/j+4rlxGeoTRxQDkaJkUw==}
+    engines: {node: '>=16.9.0'}
 
   hookable@5.5.3:
     resolution: {integrity: sha512-Yc+BQe8SvoXH1643Qez1zqLRmbA5rCL+sSmk6TVos0LWVfNIB7PGncdlId77WzLGSIB5KaWgTaNTs2lNVEI6VQ==}
@@ -21131,6 +21178,17 @@ snapshots:
       protobufjs: 7.4.0
       yargs: 17.7.2
 
+  '@hono/mcp@0.2.0(@modelcontextprotocol/sdk@1.20.0)(hono-rate-limiter@0.4.2(hono@4.10.7))(hono@4.10.7)':
+    dependencies:
+      '@modelcontextprotocol/sdk': 1.20.0
+      hono: 4.10.7
+      hono-rate-limiter: 0.4.2(hono@4.10.7)
+      pkce-challenge: 5.0.0(patch_hash=651e785d0b7bbf5be9210e1e895c39a16dc3ce8a5a3843b4819565fb6e175b90)
+
+  '@hono/node-server@1.19.6(hono@4.10.7)':
+    dependencies:
+      hono: 4.10.7
+
   '@huggingface/inference@4.0.5':
     dependencies:
       '@huggingface/jinja': 0.5.1
@@ -24272,7 +24330,7 @@ snapshots:
 
   '@types/amqplib@0.10.1':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/argparse@1.0.38': {}
 
@@ -24341,7 +24399,7 @@ snapshots:
   '@types/body-parser@1.19.2':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 20.19.11
+      '@types/node': 20.19.21
 
   '@types/caseless@0.12.5': {}
 
@@ -24405,7 +24463,7 @@ snapshots:
 
   '@types/express-serve-static-core@5.0.6(patch_hash=d602248fcd302cf5a794d1e85a411633ba9635ea5d566d6f2e0429c7ae0fa3eb)':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.21
       '@types/qs': 6.9.15
       '@types/range-parser': 1.2.4
       '@types/send': 0.17.4
@@ -24427,7 +24485,7 @@ snapshots:
   '@types/fs-extra@11.0.4':
     dependencies:
       '@types/jsonfile': 6.1.4
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
     optional: true
 
   '@types/ftp@0.3.33':
@@ -24441,7 +24499,7 @@ snapshots:
 
   '@types/gm@1.25.0':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/graceful-fs@4.1.6':
     dependencies:
@@ -24545,7 +24603,7 @@ snapshots:
 
   '@types/mailparser@3.4.4':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
       iconv-lite: 0.6.3
 
   '@types/markdown-it-emoji@2.0.5':
@@ -24581,7 +24639,7 @@ snapshots:
 
   '@types/mssql@9.1.5':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
       '@types/tedious': 4.0.9
       tarn: 3.0.2
 
@@ -24606,10 +24664,6 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/node@20.19.10':
-    dependencies:
-      undici-types: 6.21.0
-
   '@types/node@20.19.11':
     dependencies:
       undici-types: 6.21.0
@@ -24627,7 +24681,7 @@ snapshots:
 
   '@types/oracledb@6.9.1':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.21
 
   '@types/pg-pool@2.0.6':
     dependencies:
@@ -24653,14 +24707,14 @@ snapshots:
     dependencies:
       '@types/bluebird': 3.5.37
       '@types/ftp': 0.3.33
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
       '@types/promise-ftp-common': 1.1.0
 
   '@types/prop-types@15.7.15': {}
 
   '@types/proxy-from-env@1.0.4':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/psl@1.1.0': {}
 
@@ -24710,7 +24764,7 @@ snapshots:
   '@types/serve-static@1.15.0':
     dependencies:
       '@types/mime': 3.0.1
-      '@types/node': 20.19.11
+      '@types/node': 20.19.21
 
   '@types/shelljs@0.8.11':
     dependencies:
@@ -29198,6 +29252,12 @@ snapshots:
     dependencies:
       parse-passwd: 1.0.0
 
+  hono-rate-limiter@0.4.2(hono@4.10.7):
+    dependencies:
+      hono: 4.10.7
+
+  hono@4.10.7: {}
+
   hookable@5.5.3: {}
 
   hookified@1.11.0: {}
@@ -30103,7 +30163,7 @@ snapshots:
       '@jest/fake-timers': 29.6.2
       '@jest/types': 29.6.1
       '@types/jsdom': 20.0.1
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
       jest-mock: 29.6.2
       jest-util: 29.6.2
       jsdom: 20.0.2(bufferutil@4.0.9)(utf-8-validate@5.0.10)
@@ -30257,7 +30317,7 @@ snapshots:
   jest-mock@29.6.2:
     dependencies:
       '@jest/types': 29.6.1
-      '@types/node': 20.19.10
+      '@types/node': 20.19.21
       jest-util: 29.6.2
 
   jest-mock@29.7.0:

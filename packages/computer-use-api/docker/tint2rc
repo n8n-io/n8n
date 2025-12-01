@@ -1,0 +1,97 @@
+# Tint2 config for Computer Use API
+# Simple panel at bottom with launchers and taskbar
+
+# Panel
+panel_items = L T S C
+panel_size = 100% 40
+panel_margin = 0 0
+panel_padding = 4 0 4
+panel_background_id = 1
+panel_position = bottom center horizontal
+panel_layer = top
+panel_monitor = all
+panel_shrink = 0
+autohide = 0
+
+# Backgrounds
+# ID 1 - Panel background
+rounded = 0
+border_width = 0
+background_color = #2d2d2d 90
+border_color = #000000 0
+
+# ID 2 - Active task
+rounded = 4
+border_width = 1
+background_color = #4a90d9 80
+border_color = #6ab0f3 60
+
+# ID 3 - Inactive task
+rounded = 4
+border_width = 0
+background_color = #444444 60
+border_color = #000000 0
+
+# ID 4 - Launcher icon background
+rounded = 4
+border_width = 0
+background_color = #555555 40
+border_color = #000000 0
+
+# Taskbar
+taskbar_mode = single_desktop
+taskbar_hide_if_empty = 0
+taskbar_padding = 2 2 2
+taskbar_background_id = 0
+taskbar_active_background_id = 0
+taskbar_name = 0
+
+# Tasks
+task_text = 1
+task_icon = 1
+task_centered = 0
+task_tooltip = 1
+task_maximum_size = 200 35
+task_padding = 4 2 4
+task_font = Sans 10
+task_font_color = #ffffff 100
+task_icon_asb = 100 0 0
+task_background_id = 3
+task_active_background_id = 2
+
+# Launcher
+launcher_padding = 4 4 4
+launcher_background_id = 0
+launcher_icon_background_id = 4
+launcher_icon_size = 28
+launcher_icon_asb = 100 0 0
+launcher_tooltip = 1
+
+# Launcher items
+launcher_item_app = /usr/share/applications/chromium.desktop
+launcher_item_app = /usr/share/applications/pcmanfm.desktop
+launcher_item_app = /usr/share/applications/xterm.desktop
+launcher_item_app = /usr/share/applications/mousepad.desktop
+
+# System tray
+systray_padding = 4 2 4
+systray_background_id = 0
+systray_sort = ascending
+systray_icon_size = 22
+systray_icon_asb = 100 0 0
+
+# Clock
+time1_format = %H:%M
+time1_font = Sans Bold 10
+clock_font_color = #ffffff 100
+clock_padding = 8 0
+clock_background_id = 0
+clock_tooltip = %A %d %B %Y
+
+# Tooltip
+tooltip_show_timeout = 0.5
+tooltip_hide_timeout = 0.1
+tooltip_padding = 4 4
+tooltip_background_id = 1
+tooltip_font_color = #ffffff 100
+tooltip_font = Sans 10
