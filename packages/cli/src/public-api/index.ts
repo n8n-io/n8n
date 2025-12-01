@@ -9,6 +9,7 @@ import type { JsonObject } from 'swagger-ui-express';
 import validator from 'validator';
 import YAML from 'yamljs';
 
+import { N8N_VERSION } from '@/constants';
 import { License } from '@/license';
 import { PublicApiKeyService } from '@/services/public-api-key.service';
 import { UrlService } from '@/services/url.service';
@@ -28,6 +29,10 @@ async function createApiRouter(
 			url: `${Container.get(UrlService).getInstanceBaseUrl()}/${publicApiEndpoint}/${version}}`,
 		},
 	];
+
+	// set version from N8N_VERSION
+	swaggerDocument.info.version = N8N_VERSION;
+
 	const apiController = express.Router();
 
 	if (!Container.get(GlobalConfig).publicApi.swaggerUiDisabled) {
