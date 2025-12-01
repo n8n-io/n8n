@@ -64,7 +64,7 @@ describe('AuthService', () => {
 		globalConfig.userManagement.jwtSessionDurationHours = 168;
 		globalConfig.userManagement.jwtRefreshTimeoutHours = 0;
 		globalConfig.auth.cookie = { secure: true, samesite: 'lax' };
-		license.isWithinUsersLimit.mockResolvedValue(true);
+		license.isWithinUsersLimit.mockReturnValue(true);
 	});
 
 	describe('createJWTHash', () => {

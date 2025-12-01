@@ -22,7 +22,6 @@ import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import config from '@/config';
 import type { AuthlessRequest } from '@/requests';
 import { v4 as uuidv4 } from 'uuid';
-import { OWNER_API_KEY_SCOPES } from '@n8n/permissions';
 import { OwnershipService } from '@/services/ownership.service';
 
 describe('InvitationController', () => {

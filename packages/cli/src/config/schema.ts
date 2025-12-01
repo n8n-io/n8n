@@ -9,12 +9,6 @@ export const schema = {
 		/**
 		 * @important Do not remove until after cloud hooks are updated to stop using convict config.
 		 */
-		isInstanceOwnerSetUp: {
-			// n8n loads this setting from DB on startup
-			doc: "Whether the instance owner's account has been set up",
-			format: Boolean,
-			default: false,
-		},
 
 		/**
 		 * @techdebt Refactor this to stop using the legacy config schema for internal state.

@@ -3,7 +3,6 @@ import {
 	User,
 	CredentialsRepository,
 	ProjectRepository,
-	SettingsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,
 	UserRepository,

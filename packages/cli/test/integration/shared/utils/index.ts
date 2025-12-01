@@ -1,6 +1,6 @@
 import type { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import { SettingsRepository, WorkflowEntity } from '@n8n/db';
+import { WorkflowEntity } from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
 import {

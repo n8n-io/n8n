@@ -7,7 +7,6 @@ import {
 } from '@n8n/backend-test-utils';
 import {
 	CredentialsEntity,
-	SettingsRepository,
 	CredentialsRepository,
 	SharedCredentialsRepository,
 	SharedWorkflowRepository,

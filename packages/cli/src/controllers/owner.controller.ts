@@ -20,8 +20,7 @@ export class OwnerController {
 	) {}
 
 	/**
-	 * Promote a shell into the owner of the n8n instance,
-	 * and enable `isInstanceOwnerSetUp` setting.
+	 * Promote a shell into the owner of the n8n instance
 	 */
 	@Post('/setup', { skipAuth: true })
 	async setupOwner(req: AuthenticatedRequest, res: Response, @Body payload: OwnerSetupRequestDto) {

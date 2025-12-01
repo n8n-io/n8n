@@ -10,7 +10,6 @@ import request from 'supertest';
 import { URL } from 'url';
 
 import { AuthService } from '@/auth/auth.service';
-import config from '@/config';
 import { AUTH_COOKIE_NAME } from '@/constants';
 import { ControllerRegistry } from '@/controller.registry';
 import { License } from '@/license';

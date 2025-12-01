@@ -69,8 +69,7 @@ describe('POST /owner/setup', () => {
 		expect(storedOwner.firstName).toBe(newOwnerData.firstName);
 		expect(storedOwner.lastName).toBe(newOwnerData.lastName);
 
-		const isInstanceOwnerSetUpSetting =
-			await Container.get(OwnershipService).hasPreExistingInstanceOwner();
+		const isInstanceOwnerSetUpSetting = await Container.get(OwnershipService).hasInstanceOwner();
 		expect(isInstanceOwnerSetUpSetting).toBe(true);
 	});
 

@@ -16,7 +16,6 @@ import { Request } from 'express';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
-import config from '@/config';
 import { inE2ETests } from '@/constants';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
 import type { FeatureReturnType } from '@/license';
