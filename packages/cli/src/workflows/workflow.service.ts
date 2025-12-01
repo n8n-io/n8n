@@ -23,6 +23,7 @@ import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import isEqual from 'lodash/isEqual';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
@@ -299,7 +300,7 @@ export class WorkflowService {
 		// Check if settings actually changed
 		const settingsChanged =
 			workflowUpdateData.settings !== undefined &&
-			JSON.stringify(workflow.settings) !== JSON.stringify(workflowUpdateData.settings);
+			!isEqual(workflow.settings, workflowUpdateData.settings);
 
 		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
