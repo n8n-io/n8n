@@ -13,24 +13,45 @@ import { createVectorStoreNode } from '../shared/createVectorStoreNode/createVec
 import { chromaCollectionRLC } from '../shared/descriptions';
 
 /**
+ * Gets the credential type based on what credentials are actually configured on the node
+ * Falls back to the authentication parameter if no credentials are found
+ */
+function getCredentialType(
+	context: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
+): string {
+	const node = context.getNode();
+
+	// Check which credential type is actually configured on the node
+	if (node.credentials?.chromaCloudApi) {
+		return 'chromaCloudApi';
+	}
+	if (node.credentials?.chromaSelfHostedApi) {
+		return 'chromaSelfHostedApi';
+	}
+
+	// Fallback to authentication parameter
+	return context.getNodeParameter('authentication', 0) as string;
+}
+
+/**
  * Gets ChromaDB client configuration from credentials
- * Returns either ChromaClient or CloudClient based on deployment type
+ * Returns either ChromaClient or CloudClient based on credential type
  */
 async function getChromaClient(
 	context: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
 	itemIndex?: number,
 ): Promise<ChromaClient | CloudClient> {
-	const credentials = await context.getCredentials('chromaApi', itemIndex);
-	const deploymentType = credentials.deploymentType as string;
+	const credentialType = getCredentialType(context);
+	const credentials = await context.getCredentials(credentialType, itemIndex);
 
-	if (deploymentType === 'cloud') {
+	if (credentialType === 'chromaCloudApi') {
 		// Use CloudClient for Chroma Cloud
 		const config: {
 			apiKey: string;
 			tenant?: string;
 			database?: string;
 		} = {
-			apiKey: credentials.cloudApiKey as string,
+			apiKey: credentials.apiKey as string,
 		};
 
 		// Add optional tenant and database if provided
@@ -73,21 +94,23 @@ async function getChromaClient(
 		return new ChromaClient(config);
 	}
 }
-
+/*
+ * Returns the config for the Langchain ChromaDB
+ */
 async function getChromaLibConfig(
 	context: IExecuteFunctions | ILoadOptionsFunctions | ISupplyDataFunctions,
 	collectionName: string,
 	itemIndex?: number,
 ): Promise<ChromaLibArgs> {
-	const credentials = await context.getCredentials('chromaApi', itemIndex);
-	const deploymentType = credentials.deploymentType as string;
+	const credentialType = getCredentialType(context);
+	const credentials = await context.getCredentials(credentialType, itemIndex);
 
-	if (deploymentType === 'cloud') {
+	if (credentialType === 'chromaCloudApi') {
 		// Configuration for Chroma Cloud
 		const config: ChromaLibArgs = {
 			collectionName,
 			clientParams: {
-				apiKey: credentials.cloudApiKey as string,
+				apiKey: credentials.apiKey as string,
 			},
 		};
 
@@ -146,12 +169,23 @@ class ExtendedChroma extends Chroma {
 	async ensureCollection(): Promise<Collection> {
 		if (!this.collection) {
 			if (!this.index) {
-				const { ChromaClient } = await ExtendedChroma.imports();
-				const clientConfig = this.url
-					? { path: this.url, ...(this.clientParams ?? {}) }
-					: (this.clientParams ?? {});
+				const clientParams = this.clientParams ?? {};
 
-				this.index = new ChromaClient(clientConfig);
+				// Check if this is a Cloud configuration (has apiKey in clientParams)
+				if ('apiKey' in clientParams && clientParams.apiKey) {
+					// Use CloudClient for Chroma Cloud
+					this.index = new CloudClient({
+						apiKey: clientParams.apiKey as string,
+						tenant: clientParams.tenant as string | undefined,
+						database: clientParams.database as string | undefined,
+					});
+				} else {
+					// Use ChromaClient for self-hosted instances
+					const { ChromaClient } = await ExtendedChroma.imports();
+					const clientConfig = this.url ? { path: this.url, ...clientParams } : clientParams;
+
+					this.index = new ChromaClient(clientConfig);
+				}
 			}
 
 			try {
@@ -184,7 +218,26 @@ class ExtendedChroma extends Chroma {
 	}
 }
 
-const sharedFields: INodeProperties[] = [chromaCollectionRLC];
+const authenticationProperty: INodeProperties = {
+	displayName: 'Authentication',
+	name: 'authentication',
+	type: 'options',
+	options: [
+		{
+			name: 'Self-Hosted',
+			value: 'chromaSelfHostedApi',
+			description: 'Connect to a self-hosted ChromaDB instance',
+		},
+		{
+			name: 'Cloud',
+			value: 'chromaCloudApi',
+			description: 'Connect to Chroma Cloud',
+		},
+	],
+	default: 'chromaSelfHostedApi',
+};
+
+const sharedFields: INodeProperties[] = [authenticationProperty, chromaCollectionRLC];
 
 const retrieveFields: INodeProperties[] = [
 	{
@@ -226,8 +279,22 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 			'https://docs.n8n.io/integrations/builtin/cluster-nodes/root-nodes/n8n-nodes-langchain.vectorstorechromadb/',
 		credentials: [
 			{
-				name: 'chromaApi',
+				name: 'chromaSelfHostedApi',
 				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['chromaSelfHostedApi'],
+					},
+				},
+			},
+			{
+				name: 'chromaCloudApi',
+				required: true,
+				displayOptions: {
+					show: {
+						authentication: ['chromaCloudApi'],
+					},
+				},
 			},
 		],
 		operationModes: ['load', 'insert', 'retrieve', 'update', 'retrieve-as-tool'],
@@ -259,13 +326,16 @@ export class VectorStoreChromaDB extends createVectorStoreNode<ExtendedChroma>({
 					}
 
 					// Check for authentication errors
-					if (errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
+					if (
+						errorMessage.includes('Unauthorized') ||
+						errorMessage.includes('401') ||
+						errorMessage.includes('403')
+					) {
 						throw new Error(
 							'Authentication failed. Please check your API key or token in the credentials.',
 						);
 					}
 
-					console.error('ChromaDB collection listing error:', error);
 					throw new Error(`Failed to list ChromaDB collections: ${errorMessage}`);
 				}
 			},
