@@ -87,6 +87,17 @@ const canSelectTools = computed(
 	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
 );
 
+// If the agent doesn't support tools anymore, reset tools
+watch(
+	selectedAgent,
+	(agent) => {
+		if (agent && !agent.metadata.capabilities.functionCalling) {
+			tools.value = [];
+		}
+	},
+	{ immediate: true },
+);
+
 watch(
 	customAgent,
 	(agent) => {
