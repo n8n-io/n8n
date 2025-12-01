@@ -48,29 +48,7 @@
         },
         "id": {
             "type": "string"
-        },
-        "receivedDateTime": {
-            "type": "string"
-        },
-        "sender": {
-            "type": "object",
-            "properties": {
-                "emailAddress": {
-                    "type": "object",
-                    "properties": {
-                        "address": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        }
-                    }
-                }
-            }
-        },
-        "subject": {
-            "type": "string"
         }
     },
-    "version": 8
+    "version": 9
 }
