@@ -36,7 +36,7 @@ export class Project extends WithTimestampsAndStringId {
 	@Column({ type: String })
 	creatorId: string;
 
-	@ManyToOne('User', { onDelete: 'CASCADE' })
+	@ManyToOne('User', { onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'creatorId' })
 	creator?: Relation<User>;
 }
