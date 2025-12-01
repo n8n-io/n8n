@@ -258,7 +258,10 @@ export class AiWorkflowBuilderService {
 			tools_called: toolsCalled,
 			techniques_categories: state.values.techniqueCategories,
 			validations: state.values.validationHistory,
-			templates_selected: state.values.templateIds,
+			// Only include templates_selected when templates were actually used
+			...(state.values.templateIds.length > 0 && {
+				templates_selected: state.values.templateIds,
+			}),
 		};
 
 		this.onTelemetryEvent('Builder replied to user message', properties);
