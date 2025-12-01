@@ -68,6 +68,7 @@ import {
 	WORKFLOW_SETTINGS_MODAL_KEY,
 	ABOUT_MODAL_KEY,
 	WorkflowStateKey,
+	PRODUCTION_ONLY_TRIGGER_NODE_TYPES,
 } from '@/app/constants';
 import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
 import { useNodeCreatorStore } from '@/features/shared/nodeCreator/nodeCreator.store';
@@ -177,6 +178,7 @@ const message = useMessage();
 const documentTitle = useDocumentTitle();
 const workflowSaving = useWorkflowSaving({ router });
 const nodeHelpers = useNodeHelpers();
+const clipboard = useClipboard({ onPaste: onClipboardPaste });
 
 const nodeTypesStore = useNodeTypesStore();
 const uiStore = useUIStore();
@@ -263,7 +265,6 @@ const { extractWorkflow } = useWorkflowExtraction();
 const { applyExecutionData } = useExecutionDebugging();
 const { fetchAndSetParentFolder } = useParentFolder();
 
-useClipboard({ onPaste: onClipboardPaste });
 useKeybindings({
 	ctrl_alt_o: () => uiStore.openModal(ABOUT_MODAL_KEY),
 });
@@ -1264,6 +1265,44 @@ async function onRunWorkflowToNode(id: string) {
 		});
 	}
 }
+function copyWebhookUrl(id: string, webhookType: 'test' | 'production') {
+	const webhookUrl = workflowsStore.getWebhookUrl(id, webhookType);
+	if (!webhookUrl) return;
+
+	void clipboard.copy(webhookUrl);
+
+	toast.showMessage({
+		title: i18n.baseText('nodeWebhooks.showMessage.title'),
+		type: 'success',
+	});
+}
+
+async function onCopyTestUrl(id: string) {
+	const node = workflowsStore.getNodeById(id);
+	const isProductionOnly = PRODUCTION_ONLY_TRIGGER_NODE_TYPES.includes(node?.type ?? '');
+
+	if (isProductionOnly) {
+		toast.showMessage({
+			title: i18n.baseText('nodeWebhooks.showMessage.testWebhookUrl'),
+			type: 'warning',
+		});
+		return;
+	}
+
+	copyWebhookUrl(id, 'test');
+}
+
+async function onCopyProductionUrl(id: string) {
+	const isWorkflowActive = workflowsStore.workflow.active;
+	if (!isWorkflowActive) {
+		toast.showMessage({
+			title: i18n.baseText('nodeWebhooks.showMessage.not.active'),
+			type: 'warning',
+		});
+		return;
+	}
+	copyWebhookUrl(id, 'production');
+}
 
 function trackRunWorkflowToNode(node: INodeUi) {
 	const telemetryPayload = {
@@ -2014,6 +2053,8 @@ onBeforeUnmount(() => {
 			@click:node="onClickNode"
 			@click:node:add="onClickNodeAdd"
 			@run:node="onRunWorkflowToNode"
+			@copy:production:url="onCopyProductionUrl"
+			@copy:test:url="onCopyTestUrl"
 			@delete:node="onDeleteNode"
 			@create:connection="onCreateConnection"
 			@create:connection:cancelled="onCreateConnectionCancelled"
