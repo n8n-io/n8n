@@ -371,7 +371,7 @@ export const FilterOptionsValueSchema: z.ZodType<FilterOptionsValue> = z.object(
 	caseSensitive: z.boolean(),
 	leftValue: z.string(),
 	typeValidation: z.enum(['strict', 'loose']),
-	version: z.union([z.literal(1), z.literal(2)]),
+	version: z.union([z.literal(1), z.literal(2), z.literal(3)]),
 });
 
 export const FilterOperatorTypeSchema: z.ZodType<FilterOperatorType> = z.enum([
