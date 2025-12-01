@@ -62,6 +62,8 @@ let projectRepository: ProjectRepository;
 
 beforeAll(async () => {
 	await Container.get(RoleCacheService).refreshCache();
+
+	await utils.initCredentialsTypes();
 });
 
 beforeEach(async () => {
