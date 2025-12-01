@@ -1,6 +1,5 @@
 import { Logger } from '@n8n/backend-common';
 import { mockInstance } from '@n8n/backend-test-utils';
-import type { SharedCredentials } from '@n8n/db';
 import {
 	Project,
 	SharedWorkflow,
@@ -13,10 +12,10 @@ import {
 	GLOBAL_OWNER_ROLE,
 	PROJECT_OWNER_ROLE,
 } from '@n8n/db';
+import type { SharedCredentials, SettingsRepository } from '@n8n/db';
 import { PROJECT_OWNER_ROLE_SLUG } from '@n8n/permissions';
-import { v4 as uuid } from 'uuid';
-
 import { mock } from 'jest-mock-extended';
+import { v4 as uuid } from 'uuid';
 
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { EventService } from '@/events/event.service';
@@ -34,6 +33,7 @@ describe('OwnershipService', () => {
 	const passwordUtility = mockInstance(PasswordUtility);
 	const logger = mockInstance(Logger);
 	const eventService = mock<EventService>();
+	const settingsRepository = mock<SettingsRepository>();
 
 	const ownershipService = new OwnershipService(
 		cacheService,
@@ -43,6 +43,7 @@ describe('OwnershipService', () => {
 		projectRelationRepository,
 		sharedWorkflowRepository,
 		userRepository,
+		settingsRepository,
 	);
 
 	beforeEach(() => {
