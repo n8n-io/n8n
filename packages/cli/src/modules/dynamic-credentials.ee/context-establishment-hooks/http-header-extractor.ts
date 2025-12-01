@@ -138,28 +138,27 @@ export class HttpHeaderExtractor implements IContextEstablishmentHook {
 				// Limit input length to mitigate ReDoS on long inputs
 				const truncatedValue = headerValue.slice(0, MAX_HEADER_LENGTH);
 
-				let match: RegExpExecArray | null;
 				try {
-					match = safeRegexExec(pattern, truncatedValue);
+					const match = safeRegexExec(pattern, truncatedValue);
+
+					if (match?.[1]) {
+						return {
+							triggerItems: options.triggerItems,
+							contextUpdate: {
+								credentials: {
+									version: 1,
+									identity: match[1],
+									metadata: { source: 'http-header', headerName: normalizedHeaderName },
+								},
+							},
+						};
+					} else {
+						return {
+							triggerItems: options.triggerItems,
+						};
+					}
 				} catch (error) {
 					this.logger.error('Invalid regex pattern', { pattern, error });
-					return {
-						triggerItems: options.triggerItems,
-					};
-				}
-
-				if (match?.[1]) {
-					return {
-						triggerItems: options.triggerItems,
-						contextUpdate: {
-							credentials: {
-								version: 1,
-								identity: match[1],
-								metadata: { source: 'http-header', headerName: normalizedHeaderName },
-							},
-						},
-					};
-				} else {
 					return {
 						triggerItems: options.triggerItems,
 					};
