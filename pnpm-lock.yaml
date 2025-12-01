@@ -383,7 +383,7 @@ importers:
         specifier: 'catalog:'
         version: 0.6.16(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
       '@n8n/backend-common':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../backend-common
       '@n8n/config':
         specifier: workspace:*
@@ -466,22 +466,22 @@ importers:
   packages/@n8n/backend-common:
     dependencies:
       '@n8n/config':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../config
       '@n8n/constants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../constants
       '@n8n/decorators':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../decorators
       '@n8n/di':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../di
       callsites:
         specifier: 'catalog:'
         version: 3.1.0
       n8n-workflow:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../workflow
       picocolors:
         specifier: 'catalog:'
@@ -509,22 +509,22 @@ importers:
   packages/@n8n/backend-test-utils:
     dependencies:
       '@n8n/backend-common':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../backend-common
       '@n8n/config':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../config
       '@n8n/constants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../constants
       '@n8n/db':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../db
       '@n8n/di':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../di
       '@n8n/permissions':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../permissions
       '@n8n/typeorm':
         specifier: 'catalog:'
@@ -533,7 +533,7 @@ importers:
         specifier: ^3.0.4
         version: 3.0.4(jest@29.7.0(@types/node@20.19.21)(ts-node@10.9.2(@types/node@20.19.21)(typescript@5.9.2)))(typescript@5.9.2)
       n8n-workflow:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../workflow
       reflect-metadata:
         specifier: 'catalog:'
@@ -669,25 +669,25 @@ importers:
   packages/@n8n/db:
     dependencies:
       '@n8n/api-types':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../api-types
       '@n8n/backend-common':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../backend-common
       '@n8n/config':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../config
       '@n8n/constants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../constants
       '@n8n/decorators':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../decorators
       '@n8n/di':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../di
       '@n8n/permissions':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../permissions
       '@n8n/typeorm':
         specifier: 'catalog:'
@@ -702,10 +702,10 @@ importers:
         specifier: 'catalog:'
         version: 4.17.21
       n8n-core:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../core
       n8n-workflow:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../workflow
       nanoid:
         specifier: 'catalog:'
@@ -739,19 +739,19 @@ importers:
   packages/@n8n/decorators:
     dependencies:
       '@n8n/constants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../constants
       '@n8n/di':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../di
       '@n8n/permissions':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../permissions
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
       n8n-workflow:
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../workflow
     devDependencies:
       '@n8n/typescript-config':
@@ -1152,7 +1152,7 @@ importers:
         specifier: workspace:*
         version: link:../di
       '@n8n/errors':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../errors
       '@n8n/json-schema-to-zod':
         specifier: workspace:*
@@ -1386,7 +1386,7 @@ importers:
         specifier: workspace:*
         version: link:../di
       '@n8n/errors':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../errors
       '@sentry/node':
         specifier: 'catalog:'
@@ -1488,11 +1488,8 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/api-types
       '@n8n/backend-common':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../@n8n/backend-common
-      '@n8n/backend-test-utils':
-        specifier: workspace:^
-        version: link:../@n8n/backend-test-utils
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -1500,10 +1497,10 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/config
       '@n8n/constants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../@n8n/constants
       '@n8n/db':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../@n8n/db
       '@n8n/decorators':
         specifier: workspace:*
@@ -1773,6 +1770,9 @@ importers:
         specifier: 'catalog:'
         version: 3.25.67
     devDependencies:
+      '@n8n/backend-test-utils':
+        specifier: workspace:*
+        version: link:../@n8n/backend-test-utils
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
@@ -1879,7 +1879,7 @@ importers:
         specifier: 'catalog:'
         version: 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       '@n8n/backend-common':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../@n8n/backend-common
       '@n8n/client-oauth2':
         specifier: workspace:*
@@ -1988,7 +1988,7 @@ importers:
         version: 3.25.67
     devDependencies:
       '@n8n/errors':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../@n8n/errors
       '@n8n/typescript-config':
         specifier: workspace:*
@@ -2917,7 +2917,7 @@ importers:
         specifier: workspace:*
         version: link:../@n8n/di
       '@n8n/errors':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../@n8n/errors
       '@n8n/imap':
         specifier: workspace:*
@@ -3230,10 +3230,10 @@ importers:
         specifier: ^1.15.3
         version: 1.15.3(bufferutil@4.0.9)(magicast@0.3.5)(utf-8-validate@5.0.10)
       '@n8n/api-types':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../@n8n/api-types
       '@n8n/constants':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../../@n8n/constants
       '@n8n/db':
         specifier: workspace:*
@@ -3287,7 +3287,7 @@ importers:
   packages/workflow:
     dependencies:
       '@n8n/errors':
-        specifier: workspace:^
+        specifier: workspace:*
         version: link:../@n8n/errors
       '@n8n/tournament':
         specifier: 1.0.6

@@ -35,6 +35,9 @@ jest.mock('@/tools/prompts/main-agent.prompt', () => ({
 	mainAgentPrompt: {
 		invoke: jest.fn().mockResolvedValue('mocked prompt'),
 	},
+	createMainAgentPrompt: jest.fn().mockReturnValue({
+		invoke: jest.fn().mockResolvedValue('mocked prompt'),
+	}),
 }));
 jest.mock('@/utils/operations-processor', () => ({
 	processOperations: jest.fn(),
@@ -64,6 +67,7 @@ Object.defineProperty(global, 'crypto', {
 
 import { MAX_AI_BUILDER_PROMPT_LENGTH } from '@/constants';
 import { ValidationError } from '@/errors';
+import { createMainAgentPrompt } from '@/tools/prompts/main-agent.prompt';
 import type { StreamOutput } from '@/types/streaming';
 import { createStreamProcessor } from '@/utils/stream-processor';
 import {
@@ -289,6 +293,8 @@ describe('WorkflowBuilderAgent', () => {
 				validationHistory: [],
 				techniqueCategories: [],
 				previousSummary: 'EMPTY',
+				nodeConfigurations: {},
+				templateIds: [],
 			};
 		};
 
@@ -461,6 +467,73 @@ describe('WorkflowBuilderAgent', () => {
 
 				expect(shouldModifyState(state, smallThreshold)).toBe('auto_compact_messages');
 			});
+		});
+	});
+
+	describe('feature flags', () => {
+		const mockCreateMainAgentPrompt = createMainAgentPrompt as jest.MockedFunction<
+			typeof createMainAgentPrompt
+		>;
+
+		beforeEach(() => {
+			mockCreateMainAgentPrompt.mockClear();
+		});
+
+		it('should pass includeExamplesPhase: true when templateExamples flag is enabled', async () => {
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Processing...' }],
+			};
+			const mockAsyncGenerator = (async function* () {
+				yield mockStreamOutput;
+			})();
+			(createStreamProcessor as jest.MockedFunction<typeof createStreamProcessor>).mockReturnValue(
+				mockAsyncGenerator,
+			);
+
+			const generator = agent.chat({
+				message: 'Create a workflow',
+				featureFlags: { templateExamples: true },
+			});
+			await generator.next();
+
+			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: true });
+		});
+
+		it('should pass includeExamplesPhase: false when templateExamples flag is disabled', async () => {
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Processing...' }],
+			};
+			const mockAsyncGenerator = (async function* () {
+				yield mockStreamOutput;
+			})();
+			(createStreamProcessor as jest.MockedFunction<typeof createStreamProcessor>).mockReturnValue(
+				mockAsyncGenerator,
+			);
+
+			const generator = agent.chat({
+				message: 'Create a workflow',
+				featureFlags: { templateExamples: false },
+			});
+			await generator.next();
+
+			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: false });
+		});
+
+		it('should pass includeExamplesPhase: false when featureFlags is not provided', async () => {
+			const mockStreamOutput: StreamOutput = {
+				messages: [{ role: 'assistant', type: 'message', text: 'Processing...' }],
+			};
+			const mockAsyncGenerator = (async function* () {
+				yield mockStreamOutput;
+			})();
+			(createStreamProcessor as jest.MockedFunction<typeof createStreamProcessor>).mockReturnValue(
+				mockAsyncGenerator,
+			);
+
+			const generator = agent.chat({ message: 'Create a workflow' });
+			await generator.next();
+
+			expect(mockCreateMainAgentPrompt).toHaveBeenCalledWith({ includeExamplesPhase: false });
 		});
 	});
 });

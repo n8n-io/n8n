@@ -1,4 +1,4 @@
-import { CliActivateAllWorkflowsRule } from '../cli-activate-all-workflows.rule';
+import { CliActivateAllWorkflowsRule } from '../cli-replace-update-workflow-command.rule';
 
 describe('CliActivateAllWorkflowsRule', () => {
 	let rule: CliActivateAllWorkflowsRule;
@@ -12,7 +12,7 @@ describe('CliActivateAllWorkflowsRule', () => {
 			const metadata = rule.getMetadata();
 
 			expect(metadata.version).toBe('v2');
-			expect(metadata.title).toBe('Remove CLI command operation to activate all workflows');
+			expect(metadata.title).toBe('CLI command update:workflow replaced');
 			expect(metadata.severity).toBe('low');
 		});
 	});
@@ -23,15 +23,15 @@ describe('CliActivateAllWorkflowsRule', () => {
 
 			expect(result.isAffected).toBe(true);
 			expect(result.instanceIssues).toHaveLength(1);
-			expect(result.instanceIssues[0].title).toBe('CLI command to activate all workflows removed');
+			expect(result.instanceIssues[0].title).toBe('CLI command update:workflow replaced');
 			expect(result.instanceIssues[0].level).toBe('info');
 		});
 
-		it('should include description about CLI command removal', async () => {
+		it('should include description about CLI command replacement', async () => {
 			const result = await rule.detect();
 
 			expect(result.instanceIssues[0].description).toContain('CLI command');
-			expect(result.instanceIssues[0].description).toContain('removed');
+			expect(result.instanceIssues[0].description).toContain('replaced');
 		});
 
 		it('should have 2 recommendations', async () => {

@@ -54,7 +54,12 @@ export class WorkflowHistoryService {
 		});
 	}
 
-	async getVersion(user: User, workflowId: string, versionId: string): Promise<WorkflowHistory> {
+	async getVersion(
+		user: User,
+		workflowId: string,
+		versionId: string,
+		settings?: { includePublishHistory?: boolean },
+	): Promise<WorkflowHistory> {
 		const workflow = await this.workflowFinderService.findWorkflowForUser(workflowId, user, [
 			'workflow:read',
 		]);
@@ -63,12 +68,15 @@ export class WorkflowHistoryService {
 			throw new SharedWorkflowNotFoundError('');
 		}
 
+		const includePublishHistory = settings?.includePublishHistory ?? true;
+		const relations = includePublishHistory ? ['workflowPublishHistory'] : [];
+
 		const hist = await this.workflowHistoryRepository.findOne({
 			where: {
 				workflowId: workflow.id,
 				versionId,
 			},
-			relations: ['workflowPublishHistory'],
+			relations,
 		});
 		if (!hist) {
 			throw new WorkflowHistoryVersionNotFoundError('');
