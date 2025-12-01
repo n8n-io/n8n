@@ -23,7 +23,6 @@ import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository } fro
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Response } from 'express';
-
 import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
@@ -32,7 +31,6 @@ import {
 	type INodeCredentials,
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
-	type IRun,
 	jsonParse,
 	StructuredChunk,
 	RESPOND_TO_CHAT_NODE_TYPE,
@@ -45,9 +43,21 @@ import {
 	ExecutionStatus,
 } from 'n8n-workflow';
 
+import { ActiveExecutions } from '@/active-executions';
+import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
+import { BadRequestError } from '@/errors/response-errors/bad-request.error';
+import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { ExecutionService } from '@/executions/execution.service';
+import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
+import { getBase } from '@/workflow-execute-additional-data';
+import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
+import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
+import { WorkflowService } from '@/workflows/workflow.service';
+
 import { ChatHubAgentService } from './chat-hub-agent.service';
 import { ChatHubCredentialsService } from './chat-hub-credentials.service';
 import type { ChatHubMessage } from './chat-hub-message.entity';
+import type { ChatHubSession } from './chat-hub-session.entity';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
 import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
@@ -61,18 +71,6 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
-
-import { ActiveExecutions } from '@/active-executions';
-import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
-import { BadRequestError } from '@/errors/response-errors/bad-request.error';
-import { NotFoundError } from '@/errors/response-errors/not-found.error';
-import { ExecutionService } from '@/executions/execution.service';
-import { DynamicNodeParametersService } from '@/services/dynamic-node-parameters.service';
-import { getBase } from '@/workflow-execute-additional-data';
-import { WorkflowExecutionService } from '@/workflows/workflow-execution.service';
-import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
-import { WorkflowService } from '@/workflows/workflow.service';
-import type { ChatHubSession } from './chat-hub-session.entity';
 
 const EXECUTION_POLL_INTERVAL = 1000;
 const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = ['canceled', 'crashed', 'error', 'success'];
@@ -1596,10 +1594,14 @@ export class ChatHubService {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
+		await this.waitForExecutionCompletion(executionId);
+	}
+
+	private async waitForExecutionCompletion(executionId: string): Promise<void> {
 		if (this.instanceSettings.isMultiMain) {
-			await this.waitForExecutionPoller(executionId);
+			return await this.waitForExecutionPoller(executionId);
 		} else {
-			await this.waitForExecutionPromise(executionId);
+			return await this.waitForExecutionPromise(executionId);
 		}
 	}
 
@@ -1929,7 +1931,7 @@ export class ChatHubService {
 		workflowData: IWorkflowBase,
 		executionData: IRunExecutionData,
 	): Promise<string | null> {
-		const started = await this.workflowExecutionService.executeChatWorkflow(
+		const { executionId } = await this.workflowExecutionService.executeChatWorkflow(
 			workflowData,
 			executionData,
 			user,
@@ -1938,23 +1940,7 @@ export class ChatHubService {
 			'chat',
 		);
 
-		const executionId = started.executionId;
-		if (!executionId) {
-			throw new OperationalError('There was a problem starting the chat execution.');
-		}
-
-		let run: IRun | undefined;
-		try {
-			run = await this.activeExecutions.getPostExecutePromise(executionId);
-			if (!run) {
-				throw new OperationalError('There was a problem executing the chat workflow.');
-			}
-		} catch (error: unknown) {
-			if (error instanceof ManualExecutionCancelledError) {
-				return null;
-			}
-			throw error;
-		}
+		await this.waitForExecutionCompletion(executionId);
 
 		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
 			workflowData.id,
