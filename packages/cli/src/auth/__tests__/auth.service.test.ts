@@ -16,7 +16,7 @@ import { AUTH_COOKIE_NAME } from '@/constants';
 import type { MfaService } from '@/mfa/mfa.service';
 import { JwtService } from '@/services/jwt.service';
 import type { UrlService } from '@/services/url.service';
-import { License } from '@/license';
+import type { License } from '@/license';
 
 describe('AuthService', () => {
 	const browserId = 'test-browser-id';

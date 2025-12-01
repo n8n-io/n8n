@@ -7,6 +7,7 @@ import {
 	SharedWorkflowRepository,
 	UserRepository,
 	Role,
+	SettingsRepository,
 	Scope,
 } from '@n8n/db';
 import { Service } from '@n8n/di';
@@ -19,6 +20,7 @@ import { EventService } from '@/events/event.service';
 import { PasswordUtility } from './password.utility';
 import { IsNull } from '@n8n/typeorm/find-options/operator/IsNull';
 import { Not } from '@n8n/typeorm/find-options/operator/Not';
+import config from '@/config';
 
 @Service()
 export class OwnershipService {
@@ -30,6 +32,7 @@ export class OwnershipService {
 		private projectRelationRepository: ProjectRelationRepository,
 		private sharedWorkflowRepository: SharedWorkflowRepository,
 		private userRepository: UserRepository,
+		private settingsRepository: SettingsRepository,
 	) {}
 
 	// To make use of the cache service we should store POJOs, these
@@ -228,6 +231,18 @@ export class OwnershipService {
 
 		this.logger.info('Owner was set up successfully');
 		this.eventService.emit('instance-owner-setup', { userId: shellUser.id });
+
+		// The next block needs to be deleted and is temporary for now
+		// See packages/cli/src/config/schema.ts for more info
+		// We update the SettingsRepository so when we "startup" next time
+		// the config is marked correctly.
+		// #region Delete after
+		await this.settingsRepository.update(
+			{ key: 'userManagement.isInstanceOwnerSetUp' },
+			{ value: JSON.stringify(true) },
+		);
+		config.set('userManagement.isInstanceOwnerSetUp', true);
+		// #endregion
 
 		return shellUser;
 	}

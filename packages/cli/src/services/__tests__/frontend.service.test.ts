@@ -14,7 +14,7 @@ import type { PushConfig } from '@/push/push.config';
 import { FrontendService, type PublicFrontendSettings } from '@/services/frontend.service';
 import type { UrlService } from '@/services/url.service';
 import type { UserManagementMailer } from '@/user-management/email';
-import { OwnershipService } from '../ownership.service';
+import type { OwnershipService } from '../ownership.service';
 
 // Mock the workflow history helper functions to avoid DI container issues in tests
 jest.mock('@/workflows/workflow-history/workflow-history-helper', () => ({

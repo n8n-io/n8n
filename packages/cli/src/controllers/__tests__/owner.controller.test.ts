@@ -6,8 +6,8 @@ import { OwnerController } from '@/controllers/owner.controller';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import type { BannerService } from '@/services/banner.service';
 import type { UserService } from '@/services/user.service';
-import { OwnershipService } from '@/services/ownership.service';
-import { PostHogClient } from '@/posthog';
+import type { OwnershipService } from '@/services/ownership.service';
+import type { PostHogClient } from '@/posthog';
 
 describe('OwnerController', () => {
 	const authService = mock<AuthService>();
