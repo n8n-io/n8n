@@ -52,6 +52,8 @@ describe('tool-executor', () => {
 			validationHistory: [],
 			techniqueCategories: [],
 			previousSummary: 'EMPTY',
+			nodeConfigurations: {},
+			templateIds: [],
 		});
 
 		// Helper to create mock tool
@@ -815,6 +817,63 @@ describe('tool-executor', () => {
 			expect(result.techniqueCategories).toBeDefined();
 			expect(result.techniqueCategories).toHaveLength(4);
 			expect(result.techniqueCategories).toEqual([...categories1, ...categories2]);
+		});
+
+		it('should collect nodeConfigurations from tool state updates', async () => {
+			const configs1 = {
+				'n8n-nodes-base.telegram': [{ version: 1, parameters: { chatId: '123', text: 'Hello' } }],
+			};
+			const configs2 = {
+				'n8n-nodes-base.telegram': [{ version: 1, parameters: { chatId: '456', text: 'World' } }],
+				'n8n-nodes-base.gmail': [{ version: 2, parameters: { operation: 'send' } }],
+			};
+
+			const command1 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'Examples', tool_call_id: 'call-1' })],
+					nodeConfigurations: configs1,
+				},
+			});
+
+			const command2 = new MockCommand({
+				update: {
+					messages: [new ToolMessage({ content: 'More Examples', tool_call_id: 'call-2' })],
+					nodeConfigurations: configs2,
+				},
+			});
+
+			const mockTool1 = createMockTool(command1);
+			const mockTool2 = createMockTool(command2);
+
+			const aiMessage = new AIMessage('');
+			aiMessage.tool_calls = [
+				{
+					id: 'call-1',
+					name: 'examples_tool_1',
+					args: {},
+					type: 'tool_call',
+				},
+				{
+					id: 'call-2',
+					name: 'examples_tool_2',
+					args: {},
+					type: 'tool_call',
+				},
+			];
+
+			const state = createState([aiMessage]);
+			const toolMap = new Map<string, DynamicStructuredTool>([
+				['examples_tool_1', mockTool1],
+				['examples_tool_2', mockTool2],
+			]);
+
+			const options: ToolExecutorOptions = { state, toolMap };
+			const result = await executeToolsInParallel(options);
+
+			expect(result.nodeConfigurations).toBeDefined();
+			// Should have 2 telegram configs merged and 1 gmail config
+			expect(result.nodeConfigurations?.['n8n-nodes-base.telegram']).toHaveLength(2);
+			expect(result.nodeConfigurations?.['n8n-nodes-base.gmail']).toHaveLength(1);
 		});
 	});
 });

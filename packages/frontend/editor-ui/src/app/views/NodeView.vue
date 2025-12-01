@@ -1899,6 +1899,7 @@ watch(
 		}
 	},
 );
+
 onBeforeRouteLeave(async (to, from, next) => {
 	const toNodeViewTab = getNodeViewTab(to);
 

@@ -138,6 +138,7 @@ describe('GlobalConfig', () => {
 					'credentials-shared': '',
 					'user-invited': '',
 					'password-reset-requested': '',
+					'workflow-deactivated': '',
 					'workflow-shared': '',
 					'project-shared': '',
 				},
@@ -345,6 +346,10 @@ describe('GlobalConfig', () => {
 			queueRecovery: {
 				interval: 180,
 				batchSize: 100,
+			},
+			recovery: {
+				maxLastExecutions: 3,
+				workflowDeactivationEnabled: false,
 			},
 			saveDataOnError: 'all',
 			saveDataOnSuccess: 'all',
