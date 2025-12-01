@@ -33,8 +33,8 @@ export class Project extends WithTimestampsAndStringId {
 	@OneToMany('Variables', 'project')
 	variables: Variables[];
 
-	@Column({ type: String })
-	creatorId: string;
+	@Column({ type: String, nullable: true })
+	creatorId: string | null;
 
 	@ManyToOne('User', { onDelete: 'SET NULL' })
 	@JoinColumn({ name: 'creatorId' })
