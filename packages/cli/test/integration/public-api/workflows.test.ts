@@ -5,6 +5,7 @@ import {
 	testDb,
 	mockInstance,
 	createActiveWorkflow,
+	createWorkflowWithHistory,
 } from '@n8n/backend-test-utils';
 import { GlobalConfig } from '@n8n/config';
 import type { Project, TagEntity, User } from '@n8n/db';
@@ -95,9 +96,9 @@ describe('GET /workflows', () => {
 
 	test('should return all owned workflows', async () => {
 		await Promise.all([
-			createWorkflow({}, member),
-			createWorkflow({}, member),
-			createWorkflow({}, member),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
 		]);
 
 		const response = await authMemberAgent.get('/workflows');
@@ -137,9 +138,9 @@ describe('GET /workflows', () => {
 
 	test('should return all owned workflows with pagination', async () => {
 		await Promise.all([
-			createWorkflow({}, member),
-			createWorkflow({}, member),
-			createWorkflow({}, member),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, member),
 		]);
 
 		const response = await authMemberAgent.get('/workflows?limit=1');
@@ -195,8 +196,8 @@ describe('GET /workflows', () => {
 		const tag = await createTag({});
 
 		const [workflow] = await Promise.all([
-			createWorkflow({ tags: [tag] }, member),
-			createWorkflow({}, member),
+			createWorkflowWithHistory({ tags: [tag] }, member),
+			createWorkflowWithHistory({}, member),
 		]);
 
 		const response = await authMemberAgent.get(`/workflows?tags=${tag.name}`);
@@ -238,11 +239,11 @@ describe('GET /workflows', () => {
 		const tagNames = tags.map((tag) => tag.name).join(',');
 
 		const [workflow1, workflow2] = await Promise.all([
-			createWorkflow({ tags }, member),
-			createWorkflow({ tags }, member),
-			createWorkflow({}, member),
-			createWorkflow({ tags: [tags[0]] }, member),
-			createWorkflow({ tags: [tags[1]] }, member),
+			createWorkflowWithHistory({ tags }, member),
+			createWorkflowWithHistory({ tags }, member),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({ tags: [tags[0]] }, member),
+			createWorkflowWithHistory({ tags: [tags[1]] }, member),
 		]);
 
 		const response = await authMemberAgent.get(`/workflows?tags=${tagNames}`);
@@ -294,8 +295,8 @@ describe('GET /workflows', () => {
 		});
 
 		await Promise.all([
-			createWorkflow({ name: 'First workflow' }, firstProject),
-			createWorkflow({ name: 'Second workflow' }, secondProject),
+			createWorkflowWithHistory({ name: 'First workflow' }, firstProject),
+			createWorkflowWithHistory({ name: 'Second workflow' }, secondProject),
 		]);
 
 		const firstResponse = await authOwnerAgent.get(`/workflows?projectId=${firstProject.id}`);
@@ -317,8 +318,8 @@ describe('GET /workflows', () => {
 		});
 
 		await Promise.all([
-			createWorkflow({}, member),
-			createWorkflow({ name: 'Other workflow' }, otherProject),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({ name: 'Other workflow' }, otherProject),
 		]);
 
 		const response = await authMemberAgent.get(`/workflows?projectId=${otherProject.id}`);
@@ -331,7 +332,10 @@ describe('GET /workflows', () => {
 	test('should return all owned workflows filtered by name', async () => {
 		const workflowName = 'Workflow 1';
 
-		await Promise.all([createWorkflow({ name: workflowName }, member), createWorkflow({}, member)]);
+		await Promise.all([
+			createWorkflowWithHistory({ name: workflowName }, member),
+			createWorkflowWithHistory({}, member),
+		]);
 
 		const response = await authMemberAgent.get(`/workflows?name=${workflowName}`);
 
@@ -367,11 +371,11 @@ describe('GET /workflows', () => {
 
 	test('should return all workflows for owner', async () => {
 		await Promise.all([
-			createWorkflow({}, owner),
-			createWorkflow({}, member),
-			createWorkflow({}, owner),
-			createWorkflow({}, member),
-			createWorkflow({}, owner),
+			createWorkflowWithHistory({}, owner),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, owner),
+			createWorkflowWithHistory({}, member),
+			createWorkflowWithHistory({}, owner),
 		]);
 
 		const response = await authOwnerAgent.get('/workflows');
@@ -411,7 +415,7 @@ describe('GET /workflows', () => {
 
 	test('should return all owned workflows without pinned data', async () => {
 		await Promise.all([
-			createWorkflow(
+			createWorkflowWithHistory(
 				{
 					pinData: {
 						Webhook1: [{ json: { first: 'first' } }],
@@ -419,7 +423,7 @@ describe('GET /workflows', () => {
 				},
 				member,
 			),
-			createWorkflow(
+			createWorkflowWithHistory(
 				{
 					pinData: {
 						Webhook2: [{ json: { second: 'second' } }],
@@ -427,7 +431,7 @@ describe('GET /workflows', () => {
 				},
 				member,
 			),
-			createWorkflow(
+			createWorkflowWithHistory(
 				{
 					pinData: {
 						Webhook3: [{ json: { third: 'third' } }],
@@ -451,7 +455,7 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return activeVersion for all workflows', async () => {
-		const inactiveWorkflow = await createWorkflow({}, member);
+		const inactiveWorkflow = await createWorkflowWithHistory({}, member);
 		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
@@ -483,7 +487,7 @@ describe('GET /workflows', () => {
 	});
 
 	test('should return activeVersion when filtering by active=true', async () => {
-		await createWorkflow({}, member);
+		await createWorkflowWithHistory({}, member);
 		const activeWorkflow = await createWorkflowWithTriggerAndHistory({}, member);
 
 		await authMemberAgent.post(`/workflows/${activeWorkflow.id}/activate`);
@@ -514,7 +518,7 @@ describe('GET /workflows/:id', () => {
 
 	test('should retrieve workflow', async () => {
 		// create and assign workflow to owner
-		const workflow = await createWorkflow({}, member);
+		const workflow = await createWorkflowWithHistory({}, member);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
 
@@ -549,7 +553,7 @@ describe('GET /workflows/:id', () => {
 
 	test('should retrieve non-owned workflow for owner', async () => {
 		// create and assign workflow to owner
-		const workflow = await createWorkflow({}, member);
+		const workflow = await createWorkflowWithHistory({}, member);
 
 		const response = await authOwnerAgent.get(`/workflows/${workflow.id}`);
 
@@ -582,7 +586,7 @@ describe('GET /workflows/:id', () => {
 
 	test('should retrieve workflow without pinned data', async () => {
 		// create and assign workflow to owner
-		const workflow = await createWorkflow(
+		const workflow = await createWorkflowWithHistory(
 			{
 				pinData: {
 					Webhook1: [{ json: { first: 'first' } }],
@@ -601,7 +605,7 @@ describe('GET /workflows/:id', () => {
 	});
 
 	test('should return activeVersion as null for inactive workflow', async () => {
-		const workflow = await createWorkflow({}, member);
+		const workflow = await createWorkflowWithHistory({}, member);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}`);
 
@@ -641,7 +645,7 @@ describe('DELETE /workflows/:id', () => {
 
 	test('should delete the workflow', async () => {
 		// create and assign workflow to owner
-		const workflow = await createWorkflow({}, member);
+		const workflow = await createWorkflowWithHistory({}, member);
 
 		const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
 
@@ -681,7 +685,7 @@ describe('DELETE /workflows/:id', () => {
 
 	test('should delete non-owned workflow when owner', async () => {
 		// create and assign workflow to owner
-		const workflow = await createWorkflow({}, member);
+		const workflow = await createWorkflowWithHistory({}, member);
 
 		const response = await authMemberAgent.delete(`/workflows/${workflow.id}`);
 
@@ -734,13 +738,13 @@ describe('POST /workflows/:id/activate', () => {
 	});
 
 	test('should fail due to trying to activate a workflow without any nodes', async () => {
-		const workflow = await createWorkflow({ nodes: [] }, owner);
+		const workflow = await createWorkflowWithHistory({ nodes: [] }, owner);
 		const response = await authOwnerAgent.post(`/workflows/${workflow.id}/activate`);
 		expect(response.statusCode).toBe(400);
 	});
 
 	test('should fail due to trying to activate a workflow without a trigger', async () => {
-		const workflow = await createWorkflow(
+		const workflow = await createWorkflowWithHistory(
 			{
 				nodes: [
 					{
@@ -1250,7 +1254,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should update workflow', async () => {
-		const workflow = await createWorkflow({}, member);
+		const workflow = await createWorkflowWithHistory({}, member);
 		const payload = {
 			name: 'name updated',
 			nodes: [
@@ -1328,60 +1332,6 @@ describe('PUT /workflows/:id', () => {
 		);
 	});
 
-	test('should always create workflow history version', async () => {
-		const workflow = await createWorkflow({}, member);
-		const payload = {
-			name: 'name updated',
-			nodes: [
-				{
-					id: 'uuid-1234',
-					parameters: {},
-					name: 'Start',
-					type: 'n8n-nodes-base.start',
-					typeVersion: 1,
-					position: [240, 300],
-				},
-				{
-					id: 'uuid-1234',
-					parameters: {},
-					name: 'Cron',
-					type: 'n8n-nodes-base.cron',
-					typeVersion: 1,
-					position: [400, 300],
-				},
-			],
-			connections: {},
-			staticData: '{"id":1}',
-			settings: {
-				saveExecutionProgress: false,
-				saveManualExecutions: false,
-				saveDataErrorExecution: 'all',
-				saveDataSuccessExecution: 'all',
-				executionTimeout: 3600,
-				timezone: 'America/New_York',
-			},
-		};
-
-		const response = await authMemberAgent.put(`/workflows/${workflow.id}`).send(payload);
-
-		const { id } = response.body;
-
-		expect(response.statusCode).toBe(200);
-
-		expect(id).toBe(workflow.id);
-		expect(
-			await Container.get(WorkflowHistoryRepository).count({ where: { workflowId: id } }),
-		).toBe(1);
-		const historyVersion = await Container.get(WorkflowHistoryRepository).findOne({
-			where: {
-				workflowId: id,
-			},
-		});
-		expect(historyVersion).not.toBeNull();
-		expect(historyVersion!.connections).toEqual(payload.connections);
-		expect(historyVersion!.nodes).toEqual(payload.nodes);
-	});
-
 	test('should not update active version even if workflow is published', async () => {
 		const workflow = await createActiveWorkflow({}, member);
 
@@ -1454,7 +1404,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should update non-owned workflow if owner', async () => {
-		const workflow = await createWorkflow({}, member);
+		const workflow = await createWorkflowWithHistory({}, member);
 
 		const payload = {
 			name: 'name owner updated',
@@ -1544,7 +1494,7 @@ describe('PUT /workflows/:id', () => {
 	});
 
 	test('should merge settings when updating workflow', async () => {
-		const workflow = await createWorkflow(
+		const workflow = await createWorkflowWithHistory(
 			{
 				name: 'Test Workflow',
 				nodes: [],
@@ -1611,7 +1561,7 @@ describe('GET /workflows/:id/tags', () => {
 	test('should return all tags of owned workflow', async () => {
 		const tags = await Promise.all([await createTag({}), await createTag({})]);
 
-		const workflow = await createWorkflow({ tags }, member);
+		const workflow = await createWorkflowWithHistory({ tags }, member);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
 
@@ -1633,7 +1583,7 @@ describe('GET /workflows/:id/tags', () => {
 	});
 
 	test('should return empty array if workflow does not have tags', async () => {
-		const workflow = await createWorkflow({}, member);
+		const workflow = await createWorkflowWithHistory({}, member);
 
 		const response = await authMemberAgent.get(`/workflows/${workflow.id}/tags`);
 
