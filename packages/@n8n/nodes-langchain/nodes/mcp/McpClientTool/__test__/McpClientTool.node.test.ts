@@ -97,7 +97,7 @@ describe('McpClientTool', () => {
 			expect(tools).toHaveLength(2);
 
 			const toolCallResult = await tools[0].invoke({ input: 'foo' });
-			expect(toolCallResult).toEqual(JSON.stringify([{ type: 'text', text: 'result from tool' }]));
+			expect(toolCallResult).toBe('result from tool');
 		});
 
 		it('should support selecting tools to expose', async () => {
@@ -292,7 +292,9 @@ describe('McpClientTool', () => {
 
 		it('should successfully execute a tool', async () => {
 			jest.spyOn(Client.prototype, 'connect').mockResolvedValue();
-			jest.spyOn(Client.prototype, 'callTool').mockResolvedValue({ content: 'Sunny' });
+			jest
+				.spyOn(Client.prototype, 'callTool')
+				.mockResolvedValue({ content: [{ type: 'text', text: 'Sunny' }] });
 			jest.spyOn(Client.prototype, 'listTools').mockResolvedValue({
 				tools: [
 					{

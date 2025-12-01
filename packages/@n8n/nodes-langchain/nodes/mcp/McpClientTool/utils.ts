@@ -1,3 +1,4 @@
+import type { Base64ContentBlock, PlainTextContentBlock } from '@langchain/core/messages';
 import { DynamicStructuredTool, type DynamicStructuredToolInput } from '@langchain/core/tools';
 import type { Client } from '@modelcontextprotocol/sdk/client/index.js';
 import { CompatibilityCallToolResultSchema } from '@modelcontextprotocol/sdk/types.js';
@@ -9,6 +10,82 @@ import { convertJsonSchemaToZod } from '@utils/schemaParsing';
 
 import type { McpToolIncludeMode } from './types';
 import type { McpTool } from '../shared/types';
+
+// MCP content types (simplified from @modelcontextprotocol/sdk/types)
+type McpContentItem =
+	| { type: 'text'; text: string }
+	| { type: 'image'; data: string; mimeType: string }
+	| { type: 'audio'; data: string; mimeType: string }
+	| {
+			type: 'resource';
+			resource: { uri: string; mimeType?: string; text?: string; blob?: string };
+	  };
+
+// LangChain standard content block format
+type LangChainTextContent = PlainTextContentBlock & { type: 'text' };
+type LangChainMediaContent = Base64ContentBlock & { type: 'image' | 'audio' };
+type LangChainContent = LangChainTextContent | LangChainMediaContent;
+
+const textContent = (text: string): LangChainTextContent => ({
+	type: 'text',
+	source_type: 'text',
+	text,
+});
+
+const mediaContent = (
+	type: 'image' | 'audio',
+	mime_type: string,
+	data: string,
+): LangChainMediaContent => ({
+	type,
+	source_type: 'base64',
+	mime_type,
+	data,
+});
+
+const getMediaType = (mimeType: string): 'image' | 'audio' | null => {
+	if (mimeType.startsWith('image/')) return 'image';
+	if (mimeType.startsWith('audio/')) return 'audio';
+	return null;
+};
+
+const convertItem = (item: McpContentItem): LangChainContent[] => {
+	switch (item.type) {
+		case 'text':
+			return [textContent(item.text)];
+		case 'image':
+			return [mediaContent('image', item.mimeType, item.data)];
+		case 'audio':
+			return [mediaContent('audio', item.mimeType, item.data)];
+		case 'resource': {
+			const { text, blob, mimeType } = item.resource;
+			if (text) return [textContent(text)];
+			if (blob && mimeType) {
+				const type = getMediaType(mimeType);
+				if (type) return [mediaContent(type, mimeType, blob)];
+			}
+			return [];
+		}
+		default:
+			return item satisfies never;
+	}
+};
+
+/**
+ * Converts MCP content to LangChain standard content block format.
+ * Returns a plain string for single text responses, or structured content array for mixed/media content.
+ */
+export function convertMcpContentToLangChain(
+	content: McpContentItem[],
+): string | LangChainContent[] {
+	const result = content.flatMap(convertItem);
+
+	if (result.length === 1 && result[0].type === 'text') {
+		return result[0].text;
+	}
+
+	return result;
+}
 
 export function getSelectedTools({
 	mode,
@@ -84,7 +161,7 @@ export const createCallTool =
 		}
 
 		if (result.content !== undefined) {
-			return result.content;
+			return convertMcpContentToLangChain(result.content as McpContentItem[]);
 		}
 
 		return result;
