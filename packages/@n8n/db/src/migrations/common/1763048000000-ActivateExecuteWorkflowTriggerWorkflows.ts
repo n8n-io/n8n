@@ -1,14 +1,19 @@
-import {
-	ERROR_TRIGGER_NODE_TYPE,
-	EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
-	type INode,
-} from 'n8n-workflow';
+import { ERROR_TRIGGER_NODE_TYPE, EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE } from 'n8n-workflow';
 
-import type { WorkflowEntity } from '../../entities';
 import type { MigrationContext, ReversibleMigration } from '../migration-types';
 
-type Workflow = Pick<WorkflowEntity, 'id' | 'active' | 'versionId' | 'activeVersionId'> & {
-	nodes: string | INode[];
+type Node = {
+	type: string;
+	disabled?: boolean;
+	parameters?: Record<string, unknown>;
+};
+
+type Workflow = {
+	id: string;
+	active: boolean;
+	versionId: string;
+	activeVersionId: string | null;
+	nodes: string | Node[];
 };
 
 /**
@@ -32,11 +37,11 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 
 				// Check if workflow contains executeWorkflowTrigger node with at least one parameter
 				const executeWorkflowTriggerNode = nodes.find(
-					(node: INode) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+					(node: Node) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 				);
 
 				// Check if workflow contains errorTrigger node
-				const errorTriggerNode = nodes.find((node: INode) => node.type === ERROR_TRIGGER_NODE_TYPE);
+				const errorTriggerNode = nodes.find((node: Node) => node.type === ERROR_TRIGGER_NODE_TYPE);
 
 				// Skip if workflow doesn't have either trigger type
 				if (!executeWorkflowTriggerNode && !errorTriggerNode) {
@@ -61,7 +66,7 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 
 				// Disable other trigger nodes
 				let nodesModified = false;
-				nodes.forEach((node: INode) => {
+				nodes.forEach((node: Node) => {
 					// Check if node is a trigger (excluding executeWorkflowTrigger and errorTrigger)
 					if (
 						node.type !== EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE &&
@@ -114,10 +119,10 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 
 				// Check if workflow contains executeWorkflowTrigger or errorTrigger node
 				const hasExecuteWorkflowTrigger = nodes.some(
-					(node: INode) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
+					(node: Node) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 				);
 
-				const hasErrorTrigger = nodes.some((node: INode) => node.type === ERROR_TRIGGER_NODE_TYPE);
+				const hasErrorTrigger = nodes.some((node: Node) => node.type === ERROR_TRIGGER_NODE_TYPE);
 
 				if (!hasExecuteWorkflowTrigger && !hasErrorTrigger) {
 					continue;
