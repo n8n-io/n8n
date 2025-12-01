@@ -5,7 +5,7 @@ import { Container } from '@n8n/di';
 import { Router } from 'express';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 
-@RestController('/pg')
+@RestController('/ph')
 export class PostHogController {
 	static routers = [
 		{
