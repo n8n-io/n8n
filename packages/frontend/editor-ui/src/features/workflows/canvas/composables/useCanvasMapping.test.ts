@@ -549,6 +549,7 @@ describe('useCanvasMapping', () => {
 							0: {
 								iterations: 1,
 								total: 2,
+								byTarget: {},
 							},
 						},
 					},
@@ -728,6 +729,175 @@ describe('useCanvasMapping', () => {
 						},
 					},
 				});
+			});
+
+			it('should populate byTarget field for non-main connections with per-target counts', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const modelNode = createTestNode({ name: 'OpenAI Chat Model' });
+				const agent1Node = createTestNode({ name: 'AI Agent 1' });
+				const agent2Node = createTestNode({ name: 'AI Agent 2' });
+				const nodes = [modelNode, agent1Node, agent2Node];
+				const connections = {
+					[modelNode.name]: {
+						[NodeConnectionTypes.AiLanguageModel]: [
+							[
+								{ node: agent1Node.name, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+								{ node: agent2Node.name, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+							],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Model node has multiple executions from different sources
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === modelNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [{ previousNode: agent1Node.name }],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }, { json: {} }]],
+								},
+							},
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 1,
+								source: [{ previousNode: agent2Node.name }],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }]],
+								},
+							},
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 2,
+								source: [{ previousNode: agent1Node.name }],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.AiLanguageModel]: [
+										[{ json: {} }, { json: {} }, { json: {} }],
+									],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				// Should have byTarget field for non-main connections
+				const modelOutputData = nodeExecutionRunDataOutputMapById.value[modelNode.id];
+				expect(modelOutputData).toBeDefined();
+				expect(modelOutputData[NodeConnectionTypes.AiLanguageModel]).toBeDefined();
+				expect(modelOutputData[NodeConnectionTypes.AiLanguageModel][0]).toBeDefined();
+
+				const outputData = modelOutputData[NodeConnectionTypes.AiLanguageModel][0];
+
+				// Check aggregated totals
+				expect(outputData.iterations).toBe(3);
+				expect(outputData.total).toBe(6);
+
+				// Check per-target tracking
+				expect(outputData.byTarget).toBeDefined();
+				assert(outputData.byTarget);
+
+				expect(outputData.byTarget[agent1Node.id]).toBeDefined();
+				expect(outputData.byTarget[agent2Node.id]).toBeDefined();
+
+				// Agent 1 was called twice with 2 + 3 = 5 items total
+				expect(outputData.byTarget[agent1Node.id].iterations).toBe(2);
+				expect(outputData.byTarget[agent1Node.id].total).toBe(5);
+
+				// Agent 2 was called once with 1 item
+				expect(outputData.byTarget[agent2Node.id].iterations).toBe(1);
+				expect(outputData.byTarget[agent2Node.id].total).toBe(1);
+			});
+
+			it('should count items inside response field when aggregating for non-main connections', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const embeddingNode = createTestNode({ name: 'Embeddings OpenAI' });
+				const vectorStoreNode = createTestNode({ name: 'Vector Store' });
+				const nodes = [embeddingNode, vectorStoreNode];
+				const connections = {
+					[embeddingNode.name]: {
+						[NodeConnectionTypes.AiEmbedding]: [
+							[{ node: vectorStoreNode.name, type: NodeConnectionTypes.AiEmbedding, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Embedding node returns data wrapped in response field
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === embeddingNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [{ previousNode: vectorStoreNode.name }],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.AiEmbedding]: [
+										[
+											{
+												json: {
+													response: [
+														{ embedding: [0.1, 0.2] },
+														{ embedding: [0.3, 0.4] },
+														{ embedding: [0.5, 0.6] },
+													],
+												},
+											},
+										],
+									],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { nodeExecutionRunDataOutputMapById } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				const embeddingOutputData = nodeExecutionRunDataOutputMapById.value[embeddingNode.id];
+				expect(embeddingOutputData).toBeDefined();
+				expect(embeddingOutputData[NodeConnectionTypes.AiEmbedding]).toBeDefined();
+				expect(embeddingOutputData[NodeConnectionTypes.AiEmbedding][0]).toBeDefined();
+
+				const outputData = embeddingOutputData[NodeConnectionTypes.AiEmbedding][0];
+
+				// Should count the 3 items inside response, not just 1 wrapper
+				expect(outputData.iterations).toBe(1);
+				expect(outputData.total).toBe(3);
+
+				// Should also apply to per-target counts
+				expect(outputData.byTarget).toBeDefined();
+				assert(outputData.byTarget);
+
+				expect(outputData.byTarget[vectorStoreNode.id]).toBeDefined();
+				expect(outputData.byTarget[vectorStoreNode.id].total).toBe(3);
 			});
 		});
 
@@ -2603,9 +2773,24 @@ describe('useCanvasMapping', () => {
 								startTime: 0,
 								executionTime: 0,
 								executionIndex: 0,
-								source: [],
+								source: [{ previousNode: setNode.name }],
 								data: {
 									[NodeConnectionTypes.AiTool]: [[{ json: {} }, { json: {} }]],
+								},
+							},
+						];
+					}
+					// Add execution data for target node so connection shows as executed
+					if (nodeName === setNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }]],
 								},
 							},
 						];
@@ -3173,6 +3358,21 @@ describe('useCanvasMapping', () => {
 							},
 						];
 					}
+					// Add execution data for target node so connection shows as executed
+					if (nodeName === setNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [{ previousNode: manualTriggerNode.name }],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+								},
+							},
+						];
+					}
 					return null;
 				});
 
@@ -3183,6 +3383,288 @@ describe('useCanvasMapping', () => {
 				});
 
 				expect(mappedConnections.value[0]?.data?.status).toEqual('success');
+			});
+
+			it('should not mark non-main connections as executed when only source has run data', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const embeddingNode = createTestNode({ name: 'Embeddings OpenAI' });
+				const vectorStoreNode = createTestNode({ name: 'Vector Store' });
+				const nodes = [embeddingNode, vectorStoreNode];
+				const connections = {
+					[embeddingNode.name]: {
+						[NodeConnectionTypes.AiEmbedding]: [
+							[{ node: vectorStoreNode.name, type: NodeConnectionTypes.AiEmbedding, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Only source node has execution data, target does not
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === embeddingNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.AiEmbedding]: [[{ json: {} }]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				// Non-main connection should not be marked as success when target hasn't executed
+				expect(mappedConnections.value[0]?.data?.status).toBeUndefined();
+				expect(mappedConnections.value[0]?.label).toBe('');
+			});
+
+			it('should mark non-main connections as executed when both source and target have run data', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const embeddingNode = createTestNode({ name: 'Embeddings OpenAI' });
+				const vectorStoreNode = createTestNode({ name: 'Vector Store' });
+				const nodes = [embeddingNode, vectorStoreNode];
+				const connections = {
+					[embeddingNode.name]: {
+						[NodeConnectionTypes.AiEmbedding]: [
+							[{ node: vectorStoreNode.name, type: NodeConnectionTypes.AiEmbedding, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Both source and target have execution data
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === embeddingNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [{ previousNode: vectorStoreNode.name }],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.AiEmbedding]: [[{ json: {} }, { json: {} }]],
+								},
+							},
+						];
+					}
+					if (nodeName === vectorStoreNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				// Non-main connection should be marked as success when both source and target have executed
+				expect(mappedConnections.value[0]?.data?.status).toEqual('success');
+				expect(mappedConnections.value[0]?.label).toBe('2 items');
+			});
+
+			it('should show per-target counts when multiple agents share a model', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const modelNode = createTestNode({ name: 'OpenAI Chat Model' });
+				const agent1Node = createTestNode({ name: 'AI Agent 1' });
+				const agent2Node = createTestNode({ name: 'AI Agent 2' });
+				const nodes = [modelNode, agent1Node, agent2Node];
+				const connections = {
+					[modelNode.name]: {
+						[NodeConnectionTypes.AiLanguageModel]: [
+							[
+								{ node: agent1Node.name, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+								{ node: agent2Node.name, type: NodeConnectionTypes.AiLanguageModel, index: 0 },
+							],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Model node has execution data with source tracking
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === modelNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [{ previousNode: agent1Node.name }],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }, { json: {} }]],
+								},
+							},
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 1,
+								source: [{ previousNode: agent2Node.name }],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.AiLanguageModel]: [[{ json: {} }]],
+								},
+							},
+						];
+					}
+					if (nodeName === agent1Node.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+								},
+							},
+						];
+					}
+					if (nodeName === agent2Node.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				// Should have two connections from the model node
+				expect(mappedConnections.value).toHaveLength(2);
+
+				// Find connections for each agent
+				const agent1Connection = mappedConnections.value.find((c) => c.target === agent1Node.id);
+				const agent2Connection = mappedConnections.value.find((c) => c.target === agent2Node.id);
+
+				// Each connection should show its specific count
+				expect(agent1Connection?.label).toBe('2 items');
+				expect(agent2Connection?.label).toBe('1 item');
+				expect(agent1Connection?.data?.status).toEqual('success');
+				expect(agent2Connection?.data?.status).toEqual('success');
+			});
+
+			it('should count items inside response field for non-main connections', () => {
+				const workflowsStore = mockedStore(useWorkflowsStore);
+				const embeddingNode = createTestNode({ name: 'Embeddings OpenAI' });
+				const vectorStoreNode = createTestNode({ name: 'Vector Store' });
+				const nodes = [embeddingNode, vectorStoreNode];
+				const connections = {
+					[embeddingNode.name]: {
+						[NodeConnectionTypes.AiEmbedding]: [
+							[{ node: vectorStoreNode.name, type: NodeConnectionTypes.AiEmbedding, index: 0 }],
+						],
+					},
+				};
+				const workflowObject = createTestWorkflowObject({
+					nodes,
+					connections,
+				});
+
+				// Embedding node returns data with response array containing 6 items
+				workflowsStore.getWorkflowResultDataByNodeName.mockImplementation((nodeName: string) => {
+					if (nodeName === embeddingNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [{ previousNode: vectorStoreNode.name }],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.AiEmbedding]: [
+										[
+											{
+												json: {
+													response: [
+														{ embedding: [0.1, 0.2] },
+														{ embedding: [0.3, 0.4] },
+														{ embedding: [0.5, 0.6] },
+														{ embedding: [0.7, 0.8] },
+														{ embedding: [0.9, 1.0] },
+														{ embedding: [1.1, 1.2] },
+													],
+												},
+											},
+										],
+									],
+								},
+							},
+						];
+					}
+					if (nodeName === vectorStoreNode.name) {
+						return [
+							{
+								startTime: 0,
+								executionTime: 0,
+								executionIndex: 0,
+								source: [],
+								executionStatus: 'success',
+								data: {
+									[NodeConnectionTypes.Main]: [[{ json: {} }]],
+								},
+							},
+						];
+					}
+					return null;
+				});
+
+				const { connections: mappedConnections } = useCanvasMapping({
+					nodes: ref(nodes),
+					connections: ref(connections),
+					workflowObject: ref(workflowObject) as Ref<Workflow>,
+				});
+
+				// Should count the 6 items inside response, not just 1 wrapper object
+				expect(mappedConnections.value[0]?.data?.status).toEqual('success');
+				expect(mappedConnections.value[0]?.label).toBe('6 items');
 			});
 		});
 	});

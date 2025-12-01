@@ -6,6 +6,31 @@ import type { BaseChatMemory } from 'langchain/memory';
 import type { ToolCallData } from './types';
 
 /**
+ * Builds a formatted string representation of tool calls for memory storage.
+ * This creates a consistent format that can be used across both streaming and non-streaming modes.
+ *
+ * @param steps - Array of tool call data with actions and observations
+ * @returns Formatted string of tool calls separated by semicolons
+ *
+ * @example
+ * ```typescript
+ * const context = buildToolContext([{
+ *   action: { tool: 'calculator', toolInput: { expression: '2+2' }, ... },
+ *   observation: '4'
+ * }]);
+ * // Returns: "Tool: calculator, Input: {"expression":"2+2"}, Result: 4"
+ * ```
+ */
+export function buildToolContext(steps: ToolCallData[]): string {
+	return steps
+		.map(
+			(step) =>
+				`Tool: ${step.action.tool}, Input: ${JSON.stringify(step.action.toolInput)}, Result: ${step.observation}`,
+		)
+		.join('; ');
+}
+
+/**
  * Loads chat history from memory and optionally trims it to fit within token limits.
  *
  * @param memory - The memory instance to load from
@@ -64,50 +89,16 @@ export async function saveToMemory(
 	input: string,
 	output: string,
 	memory?: BaseChatMemory,
+	steps?: ToolCallData[],
 ): Promise<void> {
 	if (!output || !memory) {
 		return;
 	}
-
-	await memory.saveContext({ input }, { output });
-}
-
-/**
- * Saves tool call results to memory as formatted messages.
- *
- * This preserves the full conversation including tool interactions,
- * which is important for agents that need to see their tool usage history.
- *
- * @param memory - The memory instance to save to
- * @param input - The user input that triggered the tool calls
- * @param toolResults - Array of tool call results to save
- *
- * @example
- * ```typescript
- * await saveToolResultsToMemory(memory, 'Calculate 2+2', [{
- *   action: {
- *     tool: 'calculator',
- *     toolInput: { expression: '2+2' },
- *     log: 'Using calculator',
- *     toolCallId: 'call_123',
- *     type: 'tool_call'
- *   },
- *   observation: '4'
- * }]);
- * ```
- */
-export async function saveToolResultsToMemory(
-	input: string,
-	toolResults: ToolCallData[],
-	memory?: BaseChatMemory,
-): Promise<void> {
-	if (!memory || !toolResults.length) {
-		return;
+	let fullOutput = output;
+	if (steps && steps.length > 0) {
+		const toolContext = buildToolContext(steps);
+		fullOutput = `[Used tools: ${toolContext}] ${fullOutput}`;
 	}
 
-	// Save each tool call as a formatted message
-	for (const result of toolResults) {
-		const toolMessage = `Tool: ${result.action.tool}, Input: ${JSON.stringify(result.action.toolInput)}, Result: ${result.observation}`;
-		await memory.saveContext({ input }, { output: toolMessage });
-	}
+	await memory.saveContext({ input }, { output: fullOutput });
 }

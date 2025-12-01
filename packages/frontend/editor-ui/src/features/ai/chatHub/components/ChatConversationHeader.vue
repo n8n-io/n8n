@@ -4,8 +4,14 @@ import ChatSidebarOpener from '@/features/ai/chatHub/components/ChatSidebarOpene
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
 import { useChatHubSidebarState } from '@/features/ai/chatHub/composables/useChatHubSidebarState';
 import { CHAT_VIEW } from '@/features/ai/chatHub/constants';
-import type { ChatHubProvider, ChatModelDto, ChatSessionId } from '@n8n/api-types';
+import type {
+	ChatHubLLMProvider,
+	ChatHubProvider,
+	ChatModelDto,
+	ChatSessionId,
+} from '@n8n/api-types';
 import { N8nButton, N8nIconButton } from '@n8n/design-system';
+import { useI18n } from '@n8n/i18n';
 import { useTemplateRef } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -20,13 +26,14 @@ const emit = defineEmits<{
 	renameConversation: [id: ChatSessionId, title: string];
 	editCustomAgent: [agentId: string];
 	createCustomAgent: [];
-	selectCredential: [provider: ChatHubProvider, credentialId: string];
+	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
 	openWorkflow: [workflowId: string];
 }>();
 
 const sidebar = useChatHubSidebarState();
 const router = useRouter();
 const modelSelectorRef = useTemplateRef('modelSelectorRef');
+const i18n = useI18n();
 
 function onModelChange(selection: ChatModelDto) {
 	emit('selectModel', selection);
@@ -40,6 +47,8 @@ function onNewChat() {
 
 defineExpose({
 	openModelSelector: () => modelSelectorRef.value?.open(),
+	openCredentialSelector: (provider: ChatHubLLMProvider) =>
+		modelSelectorRef.value?.openCredentialSelector(provider),
 });
 </script>
 
@@ -54,6 +63,7 @@ defineExpose({
 				icon="square-pen"
 				text
 				icon-size="large"
+				:aria-label="i18n.baseText('chatHub.chat.header.button.newChat')"
 				@click="onNewChat"
 			/>
 			<ModelSelector
@@ -75,7 +85,7 @@ defineExpose({
 			type="secondary"
 			size="small"
 			icon="settings"
-			label="Edit Agent"
+			:label="i18n.baseText('chatHub.chat.header.button.editAgent')"
 			@click="emit('editCustomAgent', selectedModel.model.agentId)"
 		/>
 		<N8nButton
@@ -84,7 +94,7 @@ defineExpose({
 			type="secondary"
 			size="small"
 			icon="settings"
-			label="Open Workflow"
+			:label="i18n.baseText('chatHub.chat.header.button.openWorkflow')"
 			@click="emit('openWorkflow', selectedModel.model.workflowId)"
 		/>
 	</div>

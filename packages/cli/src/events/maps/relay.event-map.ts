@@ -39,7 +39,7 @@ export type RelayEventMap = {
 	'first-production-workflow-succeeded': {
 		projectId: string;
 		workflowId: string;
-		userId: string;
+		userId: string | null;
 	};
 
 	'first-workflow-data-loaded': {
@@ -226,6 +226,11 @@ export type RelayEventMap = {
 	};
 
 	'user-retrieved-workflow': {
+		userId: string;
+		publicApi: boolean;
+	};
+
+	'user-retrieved-workflow-version': {
 		userId: string;
 		publicApi: boolean;
 	};

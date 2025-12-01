@@ -1,7 +1,7 @@
 import { Container, Service } from '@n8n/di';
 import jwt from 'jsonwebtoken';
 import type { StringValue as TimeUnitValue } from 'ms';
-import { BINARY_ENCODING, UnexpectedError, UserError } from 'n8n-workflow';
+import { BINARY_ENCODING, UnexpectedError } from 'n8n-workflow';
 import type { INodeExecutionData, IBinaryData } from 'n8n-workflow';
 import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
@@ -25,12 +25,12 @@ export class BinaryDataService {
 		private readonly errorReporter: ErrorReporter,
 	) {}
 
+	setManager(mode: BinaryData.ServiceMode, manager: BinaryData.Manager) {
+		this.managers[mode] = manager;
+	}
+
 	async init() {
 		const { config } = this;
-
-		if (config.mode === 'database' || config.availableModes.includes('database')) {
-			throw new UserError('Database mode is not implemented yet');
-		}
 
 		this.mode = config.mode === 'filesystem' ? 'filesystem-v2' : config.mode;
 
@@ -51,6 +51,12 @@ export class BinaryDataService {
 
 			await this.managers.s3.init();
 		}
+
+		/**
+		 * DB manager is set directly at `BaseCommand` in `cli`.
+		 * to prevent a circular dependency (`core` -> `@n8n/db`
+		 * -> `core`) until we reorganize our dependency graph.
+		 */
 	}
 
 	createSignedToken(binaryData: IBinaryData, expiresIn: TimeUnitValue = '1 day') {

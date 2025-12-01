@@ -53,7 +53,7 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 		await n8n.canvas.clickNodeCreatorItemName(SWITCH_NODE_NAME);
 		await n8n.page.keyboard.press('Escape');
 
-		await n8n.canvas.saveWorkflow();
+		await n8n.canvasComposer.saveWorkflowAndWaitForUrl();
 		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
 		await n8n.canvasComposer.reloadAndWaitForCanvas();
@@ -114,7 +114,7 @@ test.describe('Canvas Node Manipulation and Navigation', () => {
 			n8n.canvas.connectionBetweenNodes('Edit Fields1', MERGE_NODE_NAME).first(),
 		).toBeAttached();
 
-		await n8n.canvas.saveWorkflow();
+		await n8n.canvasComposer.saveWorkflowAndWaitForUrl();
 		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
 		await n8n.canvasComposer.reloadAndWaitForCanvas();
@@ -414,7 +414,7 @@ test.describe('Canvas Zoom Functionality', () => {
 		await n8n.canvasComposer.renameNodeViaShortcut(CODE_NODE_DISPLAY_NAME, 'Something else');
 		await expect(n8n.canvas.nodeByName('Something else')).toBeAttached();
 
-		await n8n.canvas.saveWorkflow();
+		await n8n.canvasComposer.saveWorkflowAndWaitForUrl();
 		await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
 
 		await n8n.canvasComposer.reloadAndWaitForCanvas();

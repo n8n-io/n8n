@@ -26,6 +26,9 @@ const ecommerceCollection = JSON.parse(
 
 function createTemplateRequirements(): TestRequirements {
 	return {
+		storage: {
+			N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '055_template_setup_experience': 'control' }),
+		},
 		config: {
 			settings: {
 				templates: {
@@ -139,6 +142,9 @@ test.describe('Template credentials setup @db:reset', () => {
 		setupRequirements,
 	}) => {
 		await setupRequirements({
+			storage: {
+				N8N_EXPERIMENT_OVERRIDES: JSON.stringify({ '055_template_setup_experience': 'control' }),
+			},
 			config: {
 				settings: {
 					templates: {

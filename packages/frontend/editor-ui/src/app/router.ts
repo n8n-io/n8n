@@ -21,6 +21,8 @@ import { projectsRoutes } from '@/features/collaboration/projects/projects.route
 import { MfaRequiredError } from '@n8n/rest-api-client';
 import { useCalloutHelpers } from '@/app/composables/useCalloutHelpers';
 import { useRecentResources } from '@/features/shared/commandBar/composables/useRecentResources';
+import { usePostHog } from '@/app/stores/posthog.store';
+import { TEMPLATE_SETUP_EXPERIENCE } from '@/app/constants/experiments';
 
 const ChangePasswordView = async () =>
 	await import('@/features/core/auth/views/ChangePasswordView.vue');
@@ -209,6 +211,17 @@ export const routes: RouteRecordRaw[] = [
 				},
 			},
 			middleware: ['authenticated'],
+		},
+		beforeEnter: (to, _from, next) => {
+			const posthogStore = usePostHog();
+			if (
+				posthogStore.getVariant(TEMPLATE_SETUP_EXPERIENCE.name) ===
+				TEMPLATE_SETUP_EXPERIENCE.variant
+			) {
+				next({ name: VIEWS.TEMPLATE_IMPORT, params: { id: to.params.id } });
+			} else {
+				next();
+			}
 		},
 	},
 	{

@@ -18,17 +18,20 @@ import ChatFile from '@n8n/chat/components/ChatFile.vue';
 import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
+import { useI18n } from '@n8n/i18n';
 
-const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
-	message: ChatMessage;
-	compact: boolean;
-	isEditing: boolean;
-	isStreaming: boolean;
-	/**
-	 * minHeight allows scrolling agent's response to the top while it is being generated
-	 */
-	minHeight?: number;
-}>();
+const { message, compact, isEditing, isStreaming, minHeight, cachedAgentDisplayName } =
+	defineProps<{
+		message: ChatMessage;
+		compact: boolean;
+		isEditing: boolean;
+		isStreaming: boolean;
+		cachedAgentDisplayName: string | null;
+		/**
+		 * minHeight allows scrolling agent's response to the top while it is being generated
+		 */
+		minHeight?: number;
+	}>();
 
 const emit = defineEmits<{
 	startEdit: [];
@@ -42,6 +45,7 @@ const clipboard = useClipboard();
 const chatStore = useChatStore();
 const rootStore = useRootStore();
 const { isCtrlKeyPressed } = useDeviceSupport();
+const i18n = useI18n();
 
 const editedText = ref('');
 const textareaRef = useTemplateRef('textarea');
@@ -58,7 +62,11 @@ const speech = useSpeechSynthesis(messageContent, {
 const agent = computed<ChatModelDto | null>(() => {
 	const model = unflattenModel(message);
 
-	return model ? chatStore.getAgent(model) : null;
+	if (!model) {
+		return null;
+	}
+
+	return chatStore.getAgent(model, cachedAgentDisplayName ?? undefined);
 });
 
 const attachments = computed(() =>
@@ -197,14 +205,16 @@ onBeforeMount(() => {
 					@keydown="handleKeydownTextarea"
 				/>
 				<div :class="$style.editActions">
-					<N8nButton type="secondary" size="small" @click="handleCancelEdit"> Cancel </N8nButton>
+					<N8nButton type="secondary" size="small" @click="handleCancelEdit">
+						{{ i18n.baseText('chatHub.message.edit.cancel') }}
+					</N8nButton>
 					<N8nButton
 						type="primary"
 						size="small"
 						:disabled="!editedText.trim()"
 						@click="handleConfirmEdit"
 					>
-						Send
+						{{ i18n.baseText('chatHub.message.edit.send') }}
 					</N8nButton>
 				</div>
 			</div>
@@ -226,7 +236,7 @@ onBeforeMount(() => {
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="
 							message.status === 'error' && !message.content
-								? 'Error: Unknown error occurred'
+								? i18n.baseText('chatHub.message.error.unknown')
 								: message.content
 						"
 						:options="markdownOptions"

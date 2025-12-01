@@ -64,8 +64,7 @@ const streamingResponseMode = {
 const respondNodesResponseMode = {
 	name: 'Using Response Nodes',
 	value: 'responseNodes',
-	description:
-		"Send responses to the chat by using 'Respond to Chat' or 'Respond to Webhook' nodes",
+	description: "Send responses to the chat by using 'Respond to Chat' node",
 };
 
 const commonOptionsFields: INodeProperties[] = [
