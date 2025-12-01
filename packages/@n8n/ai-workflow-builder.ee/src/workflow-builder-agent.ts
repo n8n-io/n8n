@@ -460,7 +460,7 @@ export class WorkflowBuilderAgent {
 		);
 	}
 
-	async* chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
+	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
 		this.validateMessageLength(payload.message);
 
 		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
@@ -539,7 +539,7 @@ export class WorkflowBuilderAgent {
 		throw error;
 	}
 
-	private async* processAgentStream(
+	private async *processAgentStream(
 		stream: AsyncGenerator<[string, unknown], void, unknown>,
 		agent: ReturnType<typeof this.createWorkflow>,
 		threadConfig: RunnableConfig,
