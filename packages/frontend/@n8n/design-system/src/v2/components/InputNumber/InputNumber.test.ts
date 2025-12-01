@@ -43,19 +43,19 @@ describe('v2/components/InputNumber', () => {
 
 	describe('sizes', () => {
 		test.each([
-			[undefined, 'Medium'],
-			['mini' as const, 'Mini'],
-			['small' as const, 'Small'],
-			['medium' as const, 'Medium'],
-			['large' as const, 'Large'],
-			['xlarge' as const, 'XLarge'],
+			[undefined, 'medium'],
+			['mini' as const, 'mini'],
+			['small' as const, 'small'],
+			['medium' as const, 'medium'],
+			['large' as const, 'large'],
+			['xlarge' as const, 'xlarge'],
 		])('size %s should apply %s class', (size, expected) => {
 			const wrapper = render(InputNumber, {
 				props: {
 					size,
 				},
 			});
-			const container = wrapper.container.querySelector('[class*="InputNumber"]');
+			const container = wrapper.container.querySelector('[class*="inputNumber"]');
 			expect(container?.className).toContain(expected);
 		});
 	});

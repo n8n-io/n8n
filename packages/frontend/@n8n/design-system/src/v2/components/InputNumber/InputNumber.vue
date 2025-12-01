@@ -52,11 +52,11 @@ const forwarded = useForwardPropsEmits(
 
 // Size class mapping
 const sizes: Record<NonNullable<InputNumberProps['size']>, string> = {
-	mini: $style.Mini,
-	small: $style.Small,
-	medium: $style.Medium,
-	large: $style.Large,
-	xlarge: $style.XLarge,
+	mini: $style.mini,
+	small: $style.small,
+	medium: $style.medium,
+	large: $style.large,
+	xlarge: $style.xlarge,
 };
 
 const sizeClass = computed(() => sizes[props.size ?? 'medium']);
@@ -66,38 +66,38 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 	<NumberFieldRoot
 		v-bind="forwarded"
 		:class="[
-			$style.InputNumber,
+			$style.inputNumber,
 			sizeClass,
-			{ [$style.Disabled]: props.disabled, [$style.ControlsRight]: isControlsRight },
+			{ [$style.disabled]: props.disabled, [$style.controlsRight]: isControlsRight },
 		]"
 	>
 		<!-- Left decrement button (both mode) -->
-		<NumberFieldDecrement v-if="isControlsBoth" :class="[$style.Button, $style.ButtonDecrement]">
+		<NumberFieldDecrement v-if="isControlsBoth" :class="[$style.button, $style.buttonDecrement]">
 			<slot name="decrement">−</slot>
 		</NumberFieldDecrement>
 
 		<NumberFieldInput
-			:class="$style.Input"
+			:class="$style.input"
 			:placeholder="placeholder"
 			@focus="emit('focus', $event)"
 			@blur="emit('blur', $event)"
 		/>
 
 		<!-- Right increment button (both mode) -->
-		<NumberFieldIncrement v-if="isControlsBoth" :class="[$style.Button, $style.ButtonIncrement]">
+		<NumberFieldIncrement v-if="isControlsBoth" :class="[$style.button, $style.buttonIncrement]">
 			<slot name="increment">+</slot>
 		</NumberFieldIncrement>
 
 		<!-- Stacked controls on right (right mode) -->
-		<div v-if="isControlsRight" :class="$style.ControlsWrapper">
-			<NumberFieldIncrement :class="[$style.Button, $style.ButtonUp]">
+		<div v-if="isControlsRight" :class="$style.controlsWrapper">
+			<NumberFieldIncrement :class="[$style.button, $style.buttonUp]">
 				<slot name="increment">
 					<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
 						<path d="M6 4L9 7H3L6 4Z" />
 					</svg>
 				</slot>
 			</NumberFieldIncrement>
-			<NumberFieldDecrement :class="[$style.Button, $style.ButtonDown]">
+			<NumberFieldDecrement :class="[$style.button, $style.buttonDown]">
 				<slot name="decrement">
 					<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor">
 						<path d="M6 8L3 5H9L6 8Z" />
@@ -109,7 +109,7 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 </template>
 
 <style module>
-.InputNumber {
+.inputNumber {
 	position: relative;
 	display: inline-flex;
 	align-items: stretch;
@@ -122,22 +122,22 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 		box-shadow 0.2s;
 }
 
-.InputNumber:hover:not(.Disabled) {
+.inputNumber:hover:not(.disabled) {
 	border-color: var(--color--foreground--shade-1);
 }
 
-.InputNumber:focus-within {
+.inputNumber:focus-within {
 	border-color: var(--color--secondary);
 	box-shadow: 0 0 0 2px var(--color--secondary--tint-2);
 }
 
-.Disabled {
+.disabled {
 	background-color: var(--color--background--light-3);
 	cursor: not-allowed;
 	opacity: 0.6;
 }
 
-.Input {
+.input {
 	flex: 1;
 	min-width: 0;
 	border: none;
@@ -150,17 +150,17 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 	text-align: center;
 }
 
-.Input::placeholder {
+.input::placeholder {
 	color: var(--color--text--tint-1);
 }
 
-.Input:disabled {
+.input:disabled {
 	cursor: not-allowed;
 	color: var(--color--text--tint-1);
 }
 
-/* Control buttons - matches Element+ styling */
-.Button {
+/* Control buttons */
+.button {
 	display: flex;
 	align-items: center;
 	justify-content: center;
@@ -175,157 +175,154 @@ const sizeClass = computed(() => sizes[props.size ?? 'medium']);
 		background-color 0.2s;
 }
 
-.Button:hover:not(:disabled) {
+.button:hover:not(:disabled) {
 	color: var(--color--primary);
 }
 
-.Button:disabled {
+.button:disabled {
 	cursor: not-allowed;
 	color: var(--color--text--tint-2);
 }
 
-/* Decrement button (left side) */
-.ButtonDecrement {
+.buttonDecrement {
 	border-right: var(--border);
 	border-radius: calc(var(--radius) - 1px) 0 0 calc(var(--radius) - 1px);
 }
 
-/* Increment button (right side) */
-.ButtonIncrement {
+.buttonIncrement {
 	border-left: var(--border);
 	border-radius: 0 calc(var(--radius) - 1px) calc(var(--radius) - 1px) 0;
 }
 
-/* Size variants - matches v2 Input component */
-.Mini {
-	min-height: 22px;
-	font-size: var(--font-size--3xs);
-}
-
-.Mini .Input {
-	padding: 0 var(--spacing--3xs);
-}
-
-.Mini .Button {
-	width: 22px;
-	font-size: 11px;
-}
-
-.Small {
-	min-height: 28px;
-	font-size: var(--font-size--2xs);
-}
-
-.Small .Input {
-	padding: 0 var(--spacing--2xs);
-}
-
-.Small .Button {
-	width: 28px;
-	font-size: 12px;
-}
-
-.Medium {
-	min-height: 36px;
-	font-size: var(--font-size--sm);
-}
-
-.Medium .Input {
-	padding: 0 var(--spacing--2xs);
-}
-
-.Medium .Button {
-	width: 36px;
-}
-
-.Large {
-	min-height: 40px;
-	font-size: var(--font-size--sm);
-}
-
-.Large .Input {
-	padding: 0 var(--spacing--xs);
-}
-
-.Large .Button {
-	width: 40px;
-}
-
-.XLarge {
-	min-height: 48px;
-	font-size: var(--font-size--md);
-}
-
-.XLarge .Input {
-	padding: 0 var(--spacing--xs);
-}
-
-.XLarge .Button {
-	width: 48px;
-	font-size: 15px;
-}
-
 /* No controls - left align text */
-.InputNumber:not(:has(.Button)) .Input {
+.inputNumber:not(:has(.button)) .input {
 	text-align: left;
 }
 
 /* Controls on right (stacked vertically) */
-.ControlsRight .Input {
+.controlsRight .input {
 	text-align: left;
 }
 
-.ControlsWrapper {
+.controlsWrapper {
 	display: flex;
 	flex-direction: column;
 	border-left: var(--border);
 }
 
-.ButtonUp,
-.ButtonDown {
+.buttonUp,
+.buttonDown {
 	flex: 1;
 	border-radius: 0;
 }
 
-.ButtonUp {
+.buttonUp {
 	border-bottom: var(--border);
 	border-radius: 0 calc(var(--radius) - 1px) 0 0;
 }
 
-.ButtonDown {
+.buttonDown {
 	border-radius: 0 0 calc(var(--radius) - 1px);
 }
 
-/* Size variants for stacked controls */
-.Mini .ControlsWrapper {
-	width: 22px;
+/* Size variants */
+.mini {
+	min-height: 22px;
+	font-size: var(--font-size--3xs);
+
+	& .input {
+		padding: 0 var(--spacing--3xs);
+	}
+
+	& .button {
+		width: 22px;
+		font-size: 11px;
+	}
+
+	& .controlsWrapper {
+		width: 22px;
+	}
+
+	& .buttonUp svg,
+	& .buttonDown svg {
+		width: 10px;
+		height: 10px;
+	}
 }
 
-.Mini .ButtonUp svg,
-.Mini .ButtonDown svg {
-	width: 10px;
-	height: 10px;
+.small {
+	min-height: 28px;
+	font-size: var(--font-size--2xs);
+
+	& .input {
+		padding: 0 var(--spacing--2xs);
+	}
+
+	& .button {
+		width: 28px;
+		font-size: 12px;
+	}
+
+	& .controlsWrapper {
+		width: 28px;
+	}
+
+	& .buttonUp svg,
+	& .buttonDown svg {
+		width: 10px;
+		height: 10px;
+	}
 }
 
-.Small .ControlsWrapper {
-	width: 28px;
+.medium {
+	min-height: 36px;
+	font-size: var(--font-size--sm);
+
+	& .input {
+		padding: 0 var(--spacing--2xs);
+	}
+
+	& .button {
+		width: 36px;
+	}
+
+	& .controlsWrapper {
+		width: 36px;
+	}
 }
 
-.Small .ButtonUp svg,
-.Small .ButtonDown svg {
-	width: 10px;
-	height: 10px;
+.large {
+	min-height: 40px;
+	font-size: var(--font-size--sm);
+
+	& .input {
+		padding: 0 var(--spacing--xs);
+	}
+
+	& .button {
+		width: 40px;
+	}
+
+	& .controlsWrapper {
+		width: 40px;
+	}
 }
 
-.Medium .ControlsWrapper {
-	width: 36px;
-}
+.xlarge {
+	min-height: 48px;
+	font-size: var(--font-size--md);
 
-.Large .ControlsWrapper {
-	width: 40px;
-}
+	& .input {
+		padding: 0 var(--spacing--xs);
+	}
 
-.XLarge .ControlsWrapper {
-	width: 48px;
+	& .button {
+		width: 48px;
+		font-size: 15px;
+	}
+
+	& .controlsWrapper {
+		width: 48px;
+	}
 }
 </style>
