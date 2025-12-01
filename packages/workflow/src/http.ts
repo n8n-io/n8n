@@ -13,6 +13,39 @@ import { deepCopy, setSafeObjectProperty } from './utils';
 
 const REDACTED = '**hidden**';
 
+const HEADER_BLOCKLIST = new Set([
+	'authorization',
+	'proxy-authorization',
+	'www-authenticate',
+	'x-api-key',
+	'x-auth-token',
+	'x-access-token',
+	'x-authorization',
+	'x-csrf-token',
+	'x-xsrf-token',
+	'x-jwt-token',
+	'x-session-token',
+	'x-sessionid',
+	'x-forwarded-authorization',
+	'set-cookie',
+	'cookie',
+	'sslclientcert',
+	'ssl-client-cert',
+	'ssl-client-key',
+	'ssl-client-sigalg',
+	'ssl-client-dn',
+	'ssl-client-serial',
+	'ssl-client-issuer',
+	'ssl-client-verify',
+	'x-private-token',
+	'x-gitlab-token',
+	'x-heroku-authorization',
+	'apikey',
+	'api-key',
+	'bearer',
+	'auth-token',
+]);
+
 function isObject(obj: unknown): obj is IDataObject {
 	return isPlainObject(obj);
 }
@@ -58,6 +91,7 @@ export function sanitizeUiMessage(
 	authDataKeys: IAuthDataSanitizeKeys,
 	secrets?: string[],
 ): IDataObject {
+	const filteredSecrets = secrets?.filter((secret) => secret.trim().length > 0);
 	const { body, ...rest } = request as IDataObject;
 
 	let sendRequest: IDataObject = { body };
@@ -90,14 +124,6 @@ export function sanitizeUiMessage(
 			),
 		};
 	}
-	const HEADER_BLOCKLIST = new Set([
-		'authorization',
-		'x-api-key',
-		'x-auth-token',
-		'cookie',
-		'proxy-authorization',
-		'sslclientcert',
-	]);
 
 	const headers = sendRequest.headers as IDataObject;
 
@@ -108,8 +134,8 @@ export function sanitizeUiMessage(
 			}
 		}
 	}
-	if (secrets && secrets.length > 0) {
-		return redact(sendRequest, secrets);
+	if (filteredSecrets && filteredSecrets.length > 0) {
+		return redact(sendRequest, filteredSecrets);
 	}
 
 	return sendRequest;
