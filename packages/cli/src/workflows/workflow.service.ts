@@ -505,7 +505,9 @@ export class WorkflowService {
 		const wasActive = workflow.activeVersionId !== null;
 
 		try {
-			await this.workflowHistoryService.getVersion(user, workflow.id, versionToActivate);
+			await this.workflowHistoryService.getVersion(user, workflow.id, versionToActivate, {
+				includePublishHistory: false,
+			});
 		} catch (error) {
 			if (error instanceof WorkflowHistoryVersionNotFoundError) {
 				throw new NotFoundError('Version not found');
