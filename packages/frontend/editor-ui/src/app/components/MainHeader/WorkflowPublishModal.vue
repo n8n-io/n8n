@@ -6,6 +6,7 @@ import {
 	WORKFLOW_PUBLISH_MODAL_KEY,
 	WORKFLOW_ACTIVATION_CONFLICTING_WEBHOOK_MODAL_KEY,
 } from '@/app/constants';
+import { telemetry } from '@/app/plugins/telemetry';
 import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { useI18n } from '@n8n/i18n';
@@ -200,6 +201,10 @@ async function handlePublish() {
 				duration: 0,
 			});
 		}
+
+		telemetry.track('User published version from canvas', {
+			workflow_id: workflowsStore.workflow.id,
+		});
 
 		// For now, just close the modal after successful activation
 		modalBus.emit('close');
