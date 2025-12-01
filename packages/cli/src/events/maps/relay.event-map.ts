@@ -230,6 +230,11 @@ export type RelayEventMap = {
 		publicApi: boolean;
 	};
 
+	'user-retrieved-workflow-version': {
+		userId: string;
+		publicApi: boolean;
+	};
+
 	'user-retrieved-all-workflows': {
 		userId: string;
 		publicApi: boolean;
