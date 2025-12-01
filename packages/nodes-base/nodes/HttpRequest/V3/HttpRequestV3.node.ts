@@ -23,6 +23,7 @@ import {
 	removeCircularRefs,
 	sleep,
 	isDomainAllowed,
+	sanitizeUiMessage,
 } from 'n8n-workflow';
 import type { Readable } from 'stream';
 
@@ -37,7 +38,6 @@ import {
 	prepareRequestBody,
 	reduceAsync,
 	replaceNullValues,
-	sanitizeUiMessage,
 	setAgentOptions,
 	updadeQueryParameterConfig,
 } from '../GenericFunctions';

@@ -1,10 +1,7 @@
 import FormData from 'form-data';
 import get from 'lodash/get';
-import isPlainObject from 'lodash/isPlainObject';
 import set from 'lodash/set';
 import {
-	deepCopy,
-	setSafeObjectProperty,
 	type ICredentialDataDecryptedObject,
 	type IDataObject,
 	type INodeExecutionData,
@@ -14,8 +11,8 @@ import {
 } from 'n8n-workflow';
 import type { SecureContextOptions } from 'tls';
 
-import type { HttpSslAuthCredentials } from './interfaces';
 import { formatPrivateKey } from '../../utils/utilities';
+import type { HttpSslAuthCredentials } from './interfaces';
 
 export type BodyParameter = {
 	name: string;
@@ -35,88 +32,6 @@ export const replaceNullValues = (item: INodeExecutionData) => {
 };
 
 export const REDACTED = '**hidden**';
-
-function isObject(obj: unknown): obj is IDataObject {
-	return isPlainObject(obj);
-}
-
-function redact<T = unknown>(obj: T, secrets: string[]): T {
-	if (typeof obj === 'string') {
-		return secrets.reduce((safe, secret) => safe.replace(secret, REDACTED), obj) as T;
-	}
-
-	if (Array.isArray(obj)) {
-		return obj.map((item) => redact(item, secrets)) as T;
-	} else if (isObject(obj)) {
-		for (const [key, value] of Object.entries(obj)) {
-			setSafeObjectProperty(obj, key, redact(value, secrets));
-		}
-	}
-
-	return obj;
-}
-
-export function sanitizeUiMessage(
-	request: IRequestOptions,
-	authDataKeys: IAuthDataSanitizeKeys,
-	secrets?: string[],
-) {
-	const { body, ...rest } = request as IDataObject;
-
-	let sendRequest: IDataObject = { body };
-	for (const [key, value] of Object.entries(rest)) {
-		sendRequest[key] = deepCopy(value);
-	}
-
-	// Protect browser from sending large binary data
-	if (Buffer.isBuffer(sendRequest.body) && sendRequest.body.length > 250000) {
-		sendRequest = {
-			...request,
-			body: `Binary data got replaced with this text. Original was a Buffer with a size of ${
-				(request.body as string).length
-			} bytes.`,
-		};
-	}
-
-	// Remove credential information
-	for (const requestProperty of Object.keys(authDataKeys)) {
-		sendRequest = {
-			...sendRequest,
-			[requestProperty]: Object.keys(sendRequest[requestProperty] as object).reduce(
-				(acc: IDataObject, curr) => {
-					acc[curr] = authDataKeys[requestProperty].includes(curr)
-						? REDACTED
-						: (sendRequest[requestProperty] as IDataObject)[curr];
-					return acc;
-				},
-				{},
-			),
-		};
-	}
-	const HEADER_BLOCKLIST = new Set([
-		'authorization',
-		'x-api-key',
-		'x-auth-token',
-		'cookie',
-		'proxy-authorization',
-		'sslclientcert',
-	]);
-
-	const headers = sendRequest.headers as IDataObject;
-
-	if (headers) {
-		for (const headerName of Object.keys(headers)) {
-			if (HEADER_BLOCKLIST.has(headerName.toLowerCase())) {
-				headers[headerName] = REDACTED;
-			}
-		}
-	}
-	if (secrets && secrets.length > 0) {
-		return redact(sendRequest, secrets);
-	}
-
-	return sendRequest;
-}
 
 export function getSecrets(
 	properties: INodeProperties[],

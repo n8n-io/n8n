@@ -484,6 +484,7 @@ export interface IHttpRequestOptions {
 	timeout?: number;
 	json?: boolean;
 	abortSignal?: GenericAbortSignal;
+	skipLogging?: boolean;
 }
 
 /**
@@ -531,6 +532,8 @@ export interface IRequestOptions {
 	maxRedirects?: number;
 
 	agentOptions?: SecureContextOptions;
+
+	skipLogging?: boolean;
 }
 
 export interface PaginationOptions {
@@ -3239,3 +3242,7 @@ export interface StructuredChunk {
 }
 
 export type ApiKeyAudience = 'public-api' | 'mcp-server-api';
+
+export type IAuthDataSanitizeKeys = {
+	[key: string]: string[];
+};

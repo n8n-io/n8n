@@ -25,20 +25,11 @@ import get from 'lodash/get';
 import isEmpty from 'lodash/isEmpty';
 import merge from 'lodash/merge';
 import pick from 'lodash/pick';
-import {
-	NodeApiError,
-	NodeOperationError,
-	NodeSslError,
-	isObjectEmpty,
-	ExecutionBaseError,
-	jsonParse,
-	ApplicationError,
-	sleep,
-} from 'n8n-workflow';
 import type {
 	GenericValue,
 	IAdditionalCredentialOptions,
 	IAllExecuteFunctions,
+	IAuthDataSanitizeKeys,
 	ICredentialDataDecryptedObject,
 	IDataObject,
 	IExecuteData,
@@ -58,6 +49,19 @@ import type {
 	RequestHelperFunctions,
 	Workflow,
 	WorkflowExecuteMode,
+} from 'n8n-workflow';
+import {
+	ApplicationError,
+	ExecutionBaseError,
+	NodeApiError,
+	NodeOperationError,
+	NodeSslError,
+	deepCopy,
+	getSecrets,
+	isObjectEmpty,
+	jsonParse,
+	sanitizeUiMessage,
+	sleep,
 } from 'n8n-workflow';
 import type { Token } from 'oauth-1.0a';
 import clientOAuth1 from 'oauth-1.0a';
@@ -308,6 +312,61 @@ export const createFormDataObject = (data: Record<string, unknown>) => {
 	});
 	return formData;
 };
+
+function copyRequestOptionsForLogs(
+	ctx: IAllExecuteFunctions,
+	requestOptions: IHttpRequestOptions,
+): IHttpRequestOptions | null;
+function copyRequestOptionsForLogs(
+	ctx: IAllExecuteFunctions,
+	requestOptions: IRequestOptions,
+): IRequestOptions | null;
+function copyRequestOptionsForLogs(
+	ctx: IAllExecuteFunctions,
+	requestOptions: IRequestOptions | IHttpRequestOptions,
+): IRequestOptions | IHttpRequestOptions | null {
+	const canBeLogged = !requestOptions.skipLogging && ctx.getNode().nodeDebugLogs;
+	if (!canBeLogged) {
+		return null;
+	}
+	// strip buffer bodies to prevent storing large data in memory
+	if (Buffer.isBuffer(requestOptions.body)) {
+		requestOptions = {
+			...requestOptions,
+			body: `Binary data got replaced with this text. Original was a Buffer with a size of ${
+				requestOptions.body.length
+			} bytes.`,
+		};
+	}
+	return deepCopy(requestOptions);
+}
+
+function createHttpRequestLogHandler(
+	ctx: IAllExecuteFunctions,
+	requestOptions: IRequestOptions | IHttpRequestOptions | null,
+	node: INode,
+	credentialsType: string,
+) {
+	return async () => {
+		// TODO: change to nodeDebugLogger and log request to server logs?
+		const ctxCompatible = 'sendMessageToUI' in ctx;
+		const canLog = node.nodeDebugLogs && ctx.getMode?.() === 'manual' && requestOptions !== null;
+		if (ctxCompatible && canLog) {
+			try {
+				let secrets: string[] = [];
+				const authKeys: IAuthDataSanitizeKeys = {};
+				if (credentialsType) {
+					const properties = ctx.getCredentialsProperties(credentialsType);
+					const credentials =
+						await ctx.getCredentials<ICredentialDataDecryptedObject>(credentialsType);
+					secrets = getSecrets(properties, credentials);
+				}
+				const sanitizedRequestOptions = sanitizeUiMessage(requestOptions, authKeys, secrets);
+				ctx.sendMessageToUI(sanitizedRequestOptions);
+			} catch (e) {}
+		}
+	};
+}
 
 async function generateContentLengthHeader(config: AxiosRequestConfig) {
 	if (!(config.data instanceof FormData)) {
@@ -1288,6 +1347,8 @@ export async function httpRequestWithAuthentication(
 ) {
 	removeEmptyBody(requestOptions);
 
+	const requestOptionsWithoutAuthentication = copyRequestOptionsForLogs(this, requestOptions);
+
 	// Cancel this request on execution cancellation
 	if ('getExecutionCancelSignal' in this) {
 		requestOptions.abortSignal = this.getExecutionCancelSignal();
@@ -1348,7 +1409,10 @@ export async function httpRequestWithAuthentication(
 			workflow,
 			node,
 		);
-		return await httpRequest(requestOptions);
+		const responsePromise = httpRequest(requestOptions).finally(
+			createHttpRequestLogHandler(this, requestOptionsWithoutAuthentication, node, credentialsType),
+		);
+		return await responsePromise;
 	} catch (error) {
 		// if there is a pre authorization method defined and
 		// the method failed due to unauthorized request
@@ -1404,6 +1468,8 @@ export async function requestWithAuthentication(
 	itemIndex?: number,
 ) {
 	removeEmptyBody(requestOptions);
+
+	const requestOptionsWithoutAuthentication = copyRequestOptionsForLogs(this, requestOptions);
 
 	let credentialsDecrypted: ICredentialDataDecryptedObject | undefined;
 
@@ -1463,7 +1529,9 @@ export async function requestWithAuthentication(
 			workflow,
 			node,
 		)) as IRequestOptions;
-		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions);
+		return await proxyRequestToAxios(workflow, additionalData, node, requestOptions).finally(
+			createHttpRequestLogHandler(this, requestOptionsWithoutAuthentication, node, credentialsType),
+		);
 	} catch (error) {
 		try {
 			if (credentialsDecrypted !== undefined) {
@@ -1538,6 +1606,7 @@ export const getRequestHelperFunctions = (
 		return parameterValue;
 	};
 
+	// TODO: Support UI logging
 	// eslint-disable-next-line complexity
 	async function requestWithAuthenticationPaginated(
 		this: IExecuteFunctions,
