@@ -1490,9 +1490,6 @@ importers:
       '@n8n/backend-common':
         specifier: workspace:*
         version: link:../@n8n/backend-common
-      '@n8n/backend-test-utils':
-        specifier: workspace:*
-        version: link:../@n8n/backend-test-utils
       '@n8n/client-oauth2':
         specifier: workspace:*
         version: link:../@n8n/client-oauth2
@@ -1773,6 +1770,9 @@ importers:
         specifier: 'catalog:'
         version: 3.25.67
     devDependencies:
+      '@n8n/backend-test-utils':
+        specifier: workspace:*
+        version: link:../@n8n/backend-test-utils
       '@n8n/typescript-config':
         specifier: workspace:*
         version: link:../@n8n/typescript-config
