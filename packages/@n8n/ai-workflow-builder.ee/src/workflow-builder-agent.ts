@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
-import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { ToolMessage } from '@langchain/core/messages';
+import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { RunnableConfig } from '@langchain/core/runnables';
 import type { LangChainTracer } from '@langchain/core/tracers/tracer_langchain';
 import type { MemorySaver, StateSnapshot } from '@langchain/langgraph';
@@ -24,6 +24,7 @@ import { trimWorkflowJSON } from '@/utils/trim-workflow-context';
 import { conversationCompactChain } from './chains/conversation-compact';
 import { workflowNameChain } from './chains/workflow-name';
 import { LLMServiceError, ValidationError, WorkflowStateError } from './errors';
+import { createMultiAgentWorkflowWithSubgraphs } from './multi-agent-workflow-subgraphs';
 import { SessionManagerService } from './session-manager.service';
 import { getBuilderTools } from './tools/builder-tools';
 import { createMainAgentPrompt } from './tools/prompts/main-agent.prompt';
@@ -136,6 +137,12 @@ export interface WorkflowBuilderAgentConfig {
 	autoCompactThresholdTokens?: number;
 	instanceUrl?: string;
 	onGenerationSuccess?: () => Promise<void>;
+	/**
+	 * Enable multi-agent supervisor architecture (experimental)
+	 * When true, uses specialized agents (Discovery, Builder, Configurator) with a Supervisor
+	 * When false, uses the legacy single-agent architecture
+	 */
+	enableMultiAgent?: boolean;
 }
 
 export interface ExpressionValue {
@@ -169,6 +176,7 @@ export class WorkflowBuilderAgent {
 	private autoCompactThresholdTokens: number;
 	private instanceUrl?: string;
 	private onGenerationSuccess?: () => Promise<void>;
+	private enableMultiAgent: boolean;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -181,6 +189,7 @@ export class WorkflowBuilderAgent {
 			config.autoCompactThresholdTokens ?? DEFAULT_AUTO_COMPACT_THRESHOLD_TOKENS;
 		this.instanceUrl = config.instanceUrl;
 		this.onGenerationSuccess = config.onGenerationSuccess;
+		this.enableMultiAgent = config.enableMultiAgent ?? false;
 	}
 
 	private getBuilderTools(featureFlags?: BuilderFeatureFlags): BuilderTool[] {
@@ -193,7 +202,25 @@ export class WorkflowBuilderAgent {
 		});
 	}
 
-	private createWorkflow(featureFlags?: BuilderFeatureFlags) {
+	/**
+	 * Create the multi-agent workflow graph
+	 * Uses supervisor pattern with specialized agents
+	 */
+	private createMultiAgentGraph() {
+		return createMultiAgentWorkflowWithSubgraphs({
+			parsedNodeTypes: this.parsedNodeTypes,
+			llmSimpleTask: this.llmSimpleTask,
+			llmComplexTask: this.llmComplexTask,
+			logger: this.logger,
+			instanceUrl: this.instanceUrl,
+			checkpointer: this.checkpointer,
+		});
+	}
+
+	/**
+	 * Create the legacy single-agent workflow graph
+	 */
+	private createLegacyWorkflow(featureFlags?: BuilderFeatureFlags) {
 		const builderTools = this.getBuilderTools(featureFlags);
 
 		// Extract just the tools for LLM binding
@@ -400,14 +427,26 @@ export class WorkflowBuilderAgent {
 			.addEdge('compact_messages', END)
 			.addConditionalEdges('agent', shouldContinue);
 
-		return workflow;
+		return workflow.compile({ checkpointer: this.checkpointer });
+	}
+
+	/**
+	 * Create the workflow graph based on configuration
+	 */
+	private createWorkflow(featureFlags?: BuilderFeatureFlags) {
+		if (this.enableMultiAgent) {
+			this.logger?.debug('Using multi-agent supervisor architecture');
+			return this.createMultiAgentGraph();
+		}
+
+		this.logger?.debug('Using legacy single-agent architecture');
+		return this.createLegacyWorkflow(featureFlags);
 	}
 
 	async getState(workflowId?: string, userId?: string): Promise<TypedStateSnapshot> {
 		const workflow = this.createWorkflow();
-		const agent = workflow.compile({ checkpointer: this.checkpointer });
 		const threadId = SessionManagerService.generateThreadId(workflowId, userId);
-		return (await agent.getState({
+		return (await workflow.getState({
 			configurable: { thread_id: threadId },
 		})) as TypedStateSnapshot;
 	}
@@ -421,7 +460,7 @@ export class WorkflowBuilderAgent {
 		);
 	}
 
-	async *chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
+	async* chat(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
 		this.validateMessageLength(payload.message);
 
 		const { agent, threadConfig, streamConfig } = this.setupAgentAndConfigs(
@@ -452,9 +491,7 @@ export class WorkflowBuilderAgent {
 	}
 
 	private setupAgentAndConfigs(payload: ChatPayload, userId?: string, abortSignal?: AbortSignal) {
-		const agent = this.createWorkflow(payload.featureFlags).compile({
-			checkpointer: this.checkpointer,
-		});
+		const agent = this.createWorkflow(payload.featureFlags);
 		const workflowId = payload.workflowContext?.currentWorkflow?.id;
 		// Generate thread ID from workflowId and userId
 		// This ensures one session per workflow per user
@@ -466,10 +503,12 @@ export class WorkflowBuilderAgent {
 		};
 		const streamConfig = {
 			...threadConfig,
-			streamMode: ['updates', 'custom'],
+			streamMode: ['updates', 'custom'] as const,
 			recursionLimit: 50,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
+			// Enable subgraph streaming when using multi-agent architecture
+			subgraphs: this.enableMultiAgent,
 		};
 
 		return { agent, threadConfig, streamConfig };
@@ -478,7 +517,7 @@ export class WorkflowBuilderAgent {
 	private async createAgentStream(
 		payload: ChatPayload,
 		streamConfig: RunnableConfig,
-		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+		agent: ReturnType<typeof this.createWorkflow>,
 	) {
 		return await agent.stream(
 			{
@@ -500,9 +539,9 @@ export class WorkflowBuilderAgent {
 		throw error;
 	}
 
-	private async *processAgentStream(
+	private async* processAgentStream(
 		stream: AsyncGenerator<[string, unknown], void, unknown>,
-		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+		agent: ReturnType<typeof this.createWorkflow>,
 		threadConfig: RunnableConfig,
 	) {
 		try {
@@ -517,7 +556,7 @@ export class WorkflowBuilderAgent {
 
 	private async handleAgentStreamError(
 		error: unknown,
-		agent: ReturnType<ReturnType<typeof this.createWorkflow>['compile']>,
+		agent: ReturnType<typeof this.createWorkflow>,
 		threadConfig: RunnableConfig,
 	): Promise<void> {
 		if (

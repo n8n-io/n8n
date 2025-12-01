@@ -4,9 +4,16 @@ import {
 	testDb,
 	mockInstance,
 } from '@n8n/backend-test-utils';
-import { SharedWorkflowRepository, type WorkflowEntity, WorkflowRepository } from '@n8n/db';
+import { GlobalConfig } from '@n8n/config';
+import {
+	SharedWorkflowRepository,
+	type WorkflowEntity,
+	WorkflowPublishHistoryRepository,
+	WorkflowRepository,
+} from '@n8n/db';
 import { Container } from '@n8n/di';
 import { mock } from 'jest-mock-extended';
+import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { MessageEventBus } from '@/eventbus/message-event-bus/message-event-bus';
@@ -16,16 +23,20 @@ import { WorkflowHistoryService } from '@/workflows/workflow-history/workflow-hi
 import { WorkflowService } from '@/workflows/workflow.service';
 
 import { createOwner } from '../shared/db/users';
+import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 
+let globalConfig: GlobalConfig;
 let workflowService: WorkflowService;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowHistoryService = mockInstance(WorkflowHistoryService);
+const workflowPublishHistoryRepository = mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
 beforeAll(async () => {
 	await testDb.init();
 
+	globalConfig = Container.get(GlobalConfig);
 	workflowService = new WorkflowService(
 		mock(),
 		Container.get(SharedWorkflowRepository),
@@ -42,15 +53,18 @@ beforeAll(async () => {
 		mock(),
 		mock(),
 		mock(),
-		mock(),
+		globalConfig,
 		mock(),
 		Container.get(WorkflowFinderService),
+		workflowPublishHistoryRepository,
 	);
 });
 
 afterEach(async () => {
 	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory']);
 	jest.restoreAllMocks();
+
+	globalConfig.workflows.draftPublishEnabled = false;
 });
 
 describe('update()', () => {
@@ -58,6 +72,7 @@ describe('update()', () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);
 
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
 		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
 
@@ -76,12 +91,20 @@ describe('update()', () => {
 		const [addedWorkflowId, activationMode] = addSpy.mock.calls[0];
 		expect(addedWorkflowId).toBe(workflow.id);
 		expect(activationMode).toBe('update');
+
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'activated',
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			userId: owner.id,
+		});
 	});
 
 	test('should remove from active workflows on `active: false` payload', async () => {
 		const owner = await createOwner();
 		const workflow = await createActiveWorkflow({}, owner);
 
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const removeSpy = jest.spyOn(activeWorkflowManager, 'remove');
 		const addSpy = jest.spyOn(activeWorkflowManager, 'add');
 
@@ -97,6 +120,12 @@ describe('update()', () => {
 		expect(removedWorkflowId).toBe(workflow.id);
 
 		expect(addSpy).not.toHaveBeenCalled();
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'deactivated',
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			userId: owner.id,
+		});
 	});
 
 	test('should fetch missing connections from DB when updating nodes', async () => {
@@ -132,6 +161,7 @@ describe('update()', () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
 
 		const updateData = {
@@ -142,12 +172,19 @@ describe('update()', () => {
 		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id);
 
 		expect(saveVersionSpy).not.toHaveBeenCalled();
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'activated',
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			userId: owner.id,
+		});
 	});
 
 	test('should save workflow history version with backfilled data when versionId changes', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
 
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
 		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
 
 		const newVersionId = 'new-version-id-123';
@@ -155,14 +192,9 @@ describe('update()', () => {
 			versionId: newVersionId,
 		};
 
-		await workflowService.update(
-			owner,
-			updateData as WorkflowEntity,
-			workflow.id,
-			undefined,
-			undefined,
-			true, // forceSave
-		);
+		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id, {
+			forceSave: true,
+		});
 
 		expect(saveVersionSpy).toHaveBeenCalledTimes(1);
 		const [user, workflowData, workflowId] = saveVersionSpy.mock.calls[0];
@@ -172,5 +204,78 @@ describe('update()', () => {
 		expect(workflowData.nodes).toEqual(workflow.nodes);
 		expect(workflowData.connections).toEqual(workflow.connections);
 		expect(workflowData.versionId).toBe(newVersionId);
+		expect(addRecordSpy).not.toBeCalled();
+	});
+});
+
+describe('activateWorkflow()', () => {
+	test('should activate current workflow version', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+
+		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id);
+
+		expect(updatedWorkflow.active).toBe(true);
+		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'activated',
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			userId: owner.id,
+		});
+	});
+
+	test('should ignore provided workflow versionId', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id, {
+			versionId: newVersionId,
+		});
+
+		expect(updatedWorkflow.active).toBe(true);
+		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
+		expect(updatedWorkflow.versionId).toBe(workflow.versionId);
+
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'activated',
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			userId: owner.id,
+		});
+	});
+
+	test('with draft/publish enabled: should activate the provided workflow version', async () => {
+		globalConfig.workflows.draftPublishEnabled = true;
+
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+
+		const newVersionId = uuid();
+		await createWorkflowHistoryItem(workflow.id, { versionId: newVersionId });
+
+		const updatedWorkflow = await workflowService.activateWorkflow(owner, workflow.id, {
+			versionId: newVersionId,
+		});
+
+		expect(updatedWorkflow.active).toBe(true);
+		expect(updatedWorkflow.activeVersionId).toBe(newVersionId);
+		expect(updatedWorkflow.versionId).toBe(workflow.versionId);
+
+		expect(addRecordSpy).toBeCalledWith({
+			event: 'activated',
+			workflowId: workflow.id,
+			versionId: newVersionId,
+			userId: owner.id,
+		});
 	});
 });
