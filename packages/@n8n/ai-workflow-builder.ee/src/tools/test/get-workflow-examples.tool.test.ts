@@ -143,44 +143,10 @@ describe('GetWorkflowExamplesTool', () => {
 			expect(completeMessage).toBeDefined();
 		});
 
-		it('should successfully fetch workflow examples with category filter', async () => {
-			const mockConfig = createToolConfig('get_workflow_examples', 'test-call-2');
-
-			mockFetchTemplateList.mockResolvedValue({
-				workflows: [
-					createMockTemplateDescription(3, 'Marketing Campaign', 'Automate marketing campaigns'),
-				],
-				totalWorkflows: 1,
-			});
-
-			mockFetchTemplateByID.mockResolvedValue(
-				createMockTemplateFetchResponse(3, 'Marketing Campaign', 5),
-			);
-
-			const result = await getWorkflowExamplesTool.invoke(
-				{
-					queries: [{ category: 'Marketing' }],
-				},
-				mockConfig,
-			);
-
-			const content = parseToolResult<ParsedToolContent>(result);
-			const message = content.update.messages[0]?.kwargs.content;
-
-			expectToolSuccess(content, 'Found 1 workflow example(s)');
-			expect(message).toContain('Marketing Campaign');
-			expect(message).toContain('Automate marketing campaigns');
-			// Verify mermaid diagram is included
-			expect(message).toContain('```mermaid');
-			expect(message).toContain('flowchart TD');
-
-			expect(mockFetchTemplateList).toHaveBeenCalledWith({ category: 'Marketing' });
-		});
-
 		it('should handle multiple queries and combine results', async () => {
 			const mockConfig = createToolConfig('get_workflow_examples', 'test-call-3');
 
-			// First query: search
+			// Set up mocks for two queries
 			mockFetchTemplateList
 				.mockResolvedValueOnce({
 					workflows: [createMockTemplateDescription(1, 'Workflow 1', 'Description 1')],
@@ -197,7 +163,7 @@ describe('GetWorkflowExamplesTool', () => {
 
 			const result = await getWorkflowExamplesTool.invoke(
 				{
-					queries: [{ search: 'database' }, { category: 'Sales' }],
+					queries: [{ search: 'database' }, { search: 'api' }],
 				},
 				mockConfig,
 			);
@@ -205,13 +171,13 @@ describe('GetWorkflowExamplesTool', () => {
 			const content = parseToolResult<ParsedToolContent>(result);
 			const message = content.update.messages[0]?.kwargs.content;
 
-			expectToolSuccess(content, 'Found 2 workflow example(s)');
+			expectToolSuccess(content, 'Found 2 workflow example');
 			expect(message).toContain('Workflow 1');
 			expect(message).toContain('Workflow 2');
 
 			expect(mockFetchTemplateList).toHaveBeenCalledTimes(2);
 			expect(mockFetchTemplateList).toHaveBeenNthCalledWith(1, { search: 'database' });
-			expect(mockFetchTemplateList).toHaveBeenNthCalledWith(2, { category: 'Sales' });
+			expect(mockFetchTemplateList).toHaveBeenNthCalledWith(2, { search: 'api' });
 		});
 
 		it('should return no results message when no workflows found', async () => {
@@ -287,29 +253,6 @@ describe('GetWorkflowExamplesTool', () => {
 			}
 		});
 
-		it('should handle validation errors for invalid category', async () => {
-			const mockConfig = createToolConfig('get_workflow_examples', 'test-call-7');
-
-			try {
-				await getWorkflowExamplesTool.invoke(
-					{
-						queries: [
-							{
-								// @ts-expect-error testing invalid category
-								category: 'InvalidCategory',
-							},
-						],
-					},
-					mockConfig,
-				);
-
-				expect(true).toBe(false);
-			} catch (error) {
-				expect(error).toBeDefined();
-				expect(String(error)).toContain('Received tool input did not match expected schema');
-			}
-		});
-
 		it('should handle network errors when fetching template list', async () => {
 			const mockConfig = createToolConfig('get_workflow_examples', 'test-call-8');
 
@@ -339,10 +282,6 @@ describe('GetWorkflowExamplesTool', () => {
 				.mockResolvedValueOnce({
 					workflows: [createMockTemplateDescription(2, 'Workflow 2', 'Description 2')],
 					totalWorkflows: 1,
-				})
-				.mockResolvedValueOnce({
-					workflows: [createMockTemplateDescription(3, 'Workflow 3', 'Description 3')],
-					totalWorkflows: 1,
 				});
 
 			mockFetchTemplateByID.mockResolvedValue(
@@ -351,7 +290,7 @@ describe('GetWorkflowExamplesTool', () => {
 
 			await getWorkflowExamplesTool.invoke(
 				{
-					queries: [{ search: 'query1' }, { search: 'query2' }, { category: 'Sales' }],
+					queries: [{ search: 'query1' }, { search: 'query2' }],
 				},
 				mockConfig,
 			);
