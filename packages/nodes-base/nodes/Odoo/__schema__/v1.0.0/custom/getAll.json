@@ -1,9 +1,15 @@
 {
     "type": "object",
     "properties": {
+        "create_date": {
+            "type": "string"
+        },
         "id": {
             "type": "integer"
+        },
+        "write_date": {
+            "type": "string"
         }
     },
-    "version": 5
+    "version": 6
 }
