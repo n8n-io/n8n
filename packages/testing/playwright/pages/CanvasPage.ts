@@ -312,7 +312,8 @@ export class CanvasPage extends BasePage {
 	}
 
 	async openShareModal(): Promise<void> {
-		await this.clickByTestId('workflow-share-button');
+		await this.clickByTestId('workflow-menu');
+		await this.clickByTestId('workflow-menu-item-share');
 		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
 	}
 
@@ -370,7 +371,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	async clickWorkflowTagsContainer(): Promise<void> {
-		await this.page.getByTestId('workflow-tags-container').click();
+		await this.page.getByTestId('workflow-tags-dropdown').click();
 	}
 
 	getTagPills(): Locator {
