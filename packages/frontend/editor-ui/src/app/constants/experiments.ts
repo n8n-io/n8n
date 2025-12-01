@@ -85,8 +85,6 @@ export const PERSONALIZED_TEMPLATES_V3 = {
 
 export const TIME_SAVED_NODE_EXPERIMENT = {
 	name: '053_time_saved_node',
-	control: 'control',
-	variant: 'variant',
 };
 
 export const TEMPLATE_SETUP_EXPERIENCE = {
