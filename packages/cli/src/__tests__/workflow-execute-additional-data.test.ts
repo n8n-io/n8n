@@ -140,7 +140,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<WorkflowEntity>({
 					id: EXECUTION_ID,
 					name: 'Test Workflow',
-					active: false,
+					active: true,
 					activeVersionId: 'active-version-id',
 					activeVersion: {
 						nodes: [],
@@ -214,7 +214,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			const workflowWithId = mock<WorkflowEntity>({
 				id: workflowId,
 				name: 'Test Workflow',
-				active: false,
+				active: true,
 				activeVersionId: 'active-version-id',
 				activeVersion: {
 					nodes: [],
@@ -401,7 +401,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 				mock<WorkflowEntity>({
 					id: 'workflow-123',
 					name: 'Test Workflow',
-					active: false,
+					active: true,
 					activeVersionId: null,
 					nodes: currentNodes,
 					connections: currentConnections,
@@ -421,7 +421,7 @@ describe('WorkflowExecuteAdditionalData', () => {
 			workflowRepository.get.mockResolvedValue(
 				mock<WorkflowEntity>({
 					id: 'workflow-123',
-					active: false,
+					active: true,
 					activeVersionId: 'active-version-id',
 					nodes: [],
 					connections: {},
