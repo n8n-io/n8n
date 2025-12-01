@@ -350,8 +350,6 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
 		await n8n.workflowSettingsModal.getWorkflowMenu().click();
 
-		const workflowId = n8n.canvas.getWorkflowIdFromUrl();
-
 		await n8n.workflowSettingsModal.clickArchiveMenuItem();
 
 		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
@@ -374,13 +372,11 @@ test.describe('Workflow Actions', () => {
 	test('should archive published workflow and then delete it', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
 		const workflowId = await saveWorkflowAndGetId(n8n);
-		await n8n.canvas.activateWorkflow();
+		await n8n.canvas.publishWorkflow();
 		await n8n.page.keyboard.press('Escape');
 
 		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
 		await expect(n8n.canvas.getArchivedTag()).not.toBeAttached();
-
-		const workflowId = n8n.canvas.getWorkflowIdFromUrl();
 
 		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
 		await n8n.workflowSettingsModal.getWorkflowMenu().click();
@@ -412,8 +408,6 @@ test.describe('Workflow Actions', () => {
 		await expect(n8n.workflowSettingsModal.getWorkflowMenu()).toBeVisible();
 		await n8n.workflowSettingsModal.getWorkflowMenu().click();
 
-		const workflowId = n8n.canvas.getWorkflowIdFromUrl();
-
 		await n8n.workflowSettingsModal.clickArchiveMenuItem();
 
 		await expect(n8n.notifications.getSuccessNotifications().first()).toBeVisible();
@@ -435,8 +429,7 @@ test.describe('Workflow Actions', () => {
 
 	test('should not show unpublish menu item for non-published workflow', async ({ n8n }) => {
 		await n8n.canvas.addNode(SCHEDULE_TRIGGER_NODE_NAME, { closeNDV: true });
-		const workflowId = await saveWorkflowAndGetId(n8n);
-		await n8n.canvas.activateWorkflow();
+		await n8n.canvas.publishWorkflow();
 		await n8n.page.keyboard.press('Escape');
 
 		await expect(n8n.canvas.getPublishedIndicator()).toBeVisible();
