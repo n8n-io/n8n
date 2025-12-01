@@ -6,7 +6,6 @@ import type {
 	ListQueryDb,
 	WorkflowFolderUnionFull,
 	WorkflowHistoryUpdate,
-	WorkflowHistory,
 } from '@n8n/db';
 import {
 	SharedWorkflow,
@@ -24,6 +23,7 @@ import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import isEqual from 'lodash/isEqual';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
@@ -50,12 +50,6 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
-
-type RollbackPayload = {
-	active: boolean;
-	activeVersionId: string | null;
-	activeVersion: WorkflowHistory | null;
-} & Partial<Omit<WorkflowEntity, 'active' | 'activeVersionId' | 'activeVersion'>>;
 
 @Service()
 export class WorkflowService {
@@ -215,8 +209,10 @@ export class WorkflowService {
 	/**
 	 * Updates the workflow content (such as name, nodes, connections, settings, etc.).
 	 *
-	 * This method never updates the workflow's active fields (active, activeVersionId) and does not include any activation or deactivation logic.
-	 * Activation and deactivation must be handled by separate methods.
+	 * This method never updates the workflow's active fields (active, activeVersionId) directly.
+	 * However, if settings change and the workflow has an active version, the workflow will be
+	 * automatically reactivated to ensure the ActiveWorkflowManager uses the updated settings.
+	 * For explicit activation or deactivation, use the activate/deactivate methods.
 	 */
 
 	// eslint-disable-next-line complexity
@@ -300,6 +296,11 @@ export class WorkflowService {
 				...workflowUpdateData.settings,
 			};
 		}
+
+		// Check if settings actually changed
+		const settingsChanged =
+			workflowUpdateData.settings !== undefined &&
+			!isEqual(workflow.settings, workflowUpdateData.settings);
 
 		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
@@ -406,6 +407,16 @@ export class WorkflowService {
 			publicApi,
 		});
 
+		// Reactivate workflow if settings changed and workflow has an active version
+		if (settingsChanged && updatedWorkflow.activeVersionId) {
+			await this.activateWorkflow(
+				user,
+				workflowId,
+				{ versionId: updatedWorkflow.activeVersionId },
+				publicApi,
+			);
+		}
+
 		return updatedWorkflow;
 	}
 
@@ -418,7 +429,6 @@ export class WorkflowService {
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		rollbackPayload: RollbackPayload,
 		publicApi: boolean = false,
 	): Promise<void> {
 		let didPublish = false;
@@ -427,6 +437,11 @@ export class WorkflowService {
 			await this.activeWorkflowManager.add(workflowId, mode);
 			didPublish = true;
 		} catch (error) {
+			const rollbackPayload = {
+				active: false,
+				activeVersionId: null,
+				activeVersion: null,
+			};
 			const previouslyActiveId = workflow.activeVersionId;
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
@@ -549,11 +564,6 @@ export class WorkflowService {
 			workflowId,
 			updatedWorkflow,
 			activationMode,
-			{
-				active: false,
-				activeVersionId: null,
-				activeVersion: null,
-			},
 			publicApi,
 		);
 

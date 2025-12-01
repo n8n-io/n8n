@@ -2687,6 +2687,54 @@ describe('PATCH /workflows/:workflowId', () => {
 		const { data } = response.body;
 		expect(data.activeVersionId).toBeNull(); // Should not be activated
 	});
+
+	test('should reactivate workflow when settings change', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			settings: {
+				timezone: 'America/New_York',
+			},
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		expect(activeWorkflowManagerLike.remove).toHaveBeenCalledWith(workflow.id);
+		expect(activeWorkflowManagerLike.add).toHaveBeenCalledWith(workflow.id, 'update');
+	});
+
+	test('should not reactivate when settings unchanged', async () => {
+		const workflow = await createActiveWorkflow({}, owner);
+		await setActiveVersion(workflow.id, workflow.versionId);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			name: 'New Name',
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		expect(activeWorkflowManagerLike.remove).not.toHaveBeenCalled();
+		expect(activeWorkflowManagerLike.add).not.toHaveBeenCalled();
+	});
+
+	test('should not reactivate inactive workflow even when settings change', async () => {
+		const workflow = await createWorkflow({}, owner);
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send({
+			versionId: workflow.versionId,
+			settings: {
+				timezone: 'America/New_York',
+			},
+		});
+
+		expect(response.statusCode).toBe(200);
+
+		expect(activeWorkflowManagerLike.remove).not.toHaveBeenCalled();
+		expect(activeWorkflowManagerLike.add).not.toHaveBeenCalled();
+	});
 });
 
 describe('POST /workflows/:workflowId/activate', () => {
