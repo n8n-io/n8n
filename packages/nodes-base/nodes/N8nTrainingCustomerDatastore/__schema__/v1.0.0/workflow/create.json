@@ -33,15 +33,9 @@
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "content": {
+                            "operation": {
                                 "type": "string"
                             }
-                        }
-                    },
-                    "position": {
-                        "type": "array",
-                        "items": {
-                            "type": "integer"
                         }
                     },
                     "type": {
@@ -71,5 +65,5 @@
             "type": "string"
         }
     },
-    "version": 3
+    "version": 4
 }
