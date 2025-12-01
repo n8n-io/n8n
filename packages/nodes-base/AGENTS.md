@@ -56,16 +56,15 @@ Nodes can test credentials via `methods.credentialTest`.
 ## Testing
 
 ### Unit Tests
-- See `TESTING.MD` and `TESTING_PROMPT.md` for guidelines
 - Use `jest-mock-extended` for mocking interfaces
 - Use `nock` for HTTP mocking
 - Mock all external dependencies
 - Test happy paths, error handling, edge cases, and binary data
 
 ### Workflow Tests
-- See `TESTING_PROMPT_WORKFLOW.md` for guidelines
 - Use `NodeTestHarness` with JSON workflow definitions
 - Mock external APIs with nock
+- Use `pnpm test` for running tests. Example: `cd packages/nodes-base/ && pnpm test TestFileName`
 
 ## Common Development Tasks
 
