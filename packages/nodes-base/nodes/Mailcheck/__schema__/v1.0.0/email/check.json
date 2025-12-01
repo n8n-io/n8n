@@ -1,0 +1,30 @@
+{
+    "type": "object",
+    "properties": {
+        "email": {
+            "type": "string"
+        },
+        "githubUsername": {
+            "type": "string"
+        },
+        "isNotDisposable": {
+            "type": "boolean"
+        },
+        "isNotSmtpCatchAll": {
+            "type": "boolean"
+        },
+        "microsoftAccountExists": {
+            "type": "boolean"
+        },
+        "mxExists": {
+            "type": "boolean"
+        },
+        "smtpExists": {
+            "type": "boolean"
+        },
+        "trustRate": {
+            "type": "integer"
+        }
+    },
+    "version": 1
+}
