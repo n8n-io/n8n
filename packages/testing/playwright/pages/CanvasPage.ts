@@ -298,7 +298,10 @@ export class CanvasPage extends BasePage {
 
 	async publishWorkflow(): Promise<void> {
 		const responsePromise = this.page.waitForResponse(
-			(response) => response.url().includes('activate') && response.request().method() === 'POST',
+			(response) =>
+				response.url().includes('/rest/workflows/') &&
+				response.url().includes('/activate') &&
+				response.request().method() === 'POST',
 		);
 
 		await this.getOpenPublishModalButton().click();
