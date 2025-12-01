@@ -296,7 +296,9 @@ export class CanvasPage extends BasePage {
 
 		const responsePromise = this.page.waitForResponse(
 			(response) =>
-				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
+				response.url().includes('/rest/workflows/') &&
+				response.url().includes('/activate') &&
+				response.request().method() === 'POST',
 		);
 
 		await switchElement.click();
