@@ -6,7 +6,6 @@ import type {
 	ListQueryDb,
 	WorkflowFolderUnionFull,
 	WorkflowHistoryUpdate,
-	WorkflowHistory,
 } from '@n8n/db';
 import {
 	SharedWorkflow,
@@ -24,6 +23,7 @@ import type { EntityManager } from '@n8n/typeorm';
 // eslint-disable-next-line n8n-local-rules/misplaced-n8n-typeorm-import
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
+import isEqual from 'lodash/isEqual';
 import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
@@ -34,6 +34,7 @@ import { ActiveWorkflowManager } from '@/active-workflow-manager';
 import { FolderNotFoundError } from '@/errors/folder-not-found.error';
 import { BadRequestError } from '@/errors/response-errors/bad-request.error';
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
+import { WorkflowHistoryVersionNotFoundError } from '@/errors/workflow-history-version-not-found.error';
 import { EventService } from '@/events/event.service';
 import { ExternalHooks } from '@/external-hooks';
 import { validateEntity } from '@/generic-helpers';
@@ -49,12 +50,6 @@ import * as WorkflowHelpers from '@/workflow-helpers';
 import { WorkflowFinderService } from './workflow-finder.service';
 import { WorkflowHistoryService } from './workflow-history/workflow-history.service';
 import { WorkflowSharingService } from './workflow-sharing.service';
-
-type RollbackPayload = {
-	active: boolean;
-	activeVersionId: string | null;
-	activeVersion: WorkflowHistory | null;
-} & Partial<Omit<WorkflowEntity, 'active' | 'activeVersionId' | 'activeVersion'>>;
 
 @Service()
 export class WorkflowService {
@@ -211,6 +206,15 @@ export class WorkflowService {
 		);
 	}
 
+	/**
+	 * Updates the workflow content (such as name, nodes, connections, settings, etc.).
+	 *
+	 * This method never updates the workflow's active fields (active, activeVersionId) directly.
+	 * However, if settings change and the workflow has an active version, the workflow will be
+	 * automatically reactivated to ensure the ActiveWorkflowManager uses the updated settings.
+	 * For explicit activation or deactivation, use the activate/deactivate methods.
+	 */
+
 	// eslint-disable-next-line complexity
 	async update(
 		user: User,
@@ -221,9 +225,16 @@ export class WorkflowService {
 			parentFolderId?: string;
 			forceSave?: boolean;
 			publicApi?: boolean;
+			publishIfActive?: boolean;
 		} = {},
 	): Promise<WorkflowEntity> {
-		const { tagIds, parentFolderId, forceSave = false, publicApi = false } = options;
+		const {
+			tagIds,
+			parentFolderId,
+			forceSave = false,
+			publicApi = false,
+			publishIfActive = false,
+		} = options;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
@@ -252,8 +263,6 @@ export class WorkflowService {
 			);
 		}
 
-		const isDraftPublishDisabled = !this.globalConfig.workflows.draftPublishEnabled;
-
 		if (
 			Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active', 'activeVersionId']))
 				.length > 0
@@ -272,22 +281,9 @@ export class WorkflowService {
 				},
 			);
 		}
-		// Convert 'active' boolean from frontend to 'activeVersionId' for backend
-		// Forbid updating active fields with FF on
-		if (isDraftPublishDisabled && 'active' in workflowUpdateData) {
-			if (workflowUpdateData.active) {
-				workflowUpdateData.activeVersionId = workflowUpdateData.versionId ?? workflow.versionId;
-			} else {
-				workflowUpdateData.activeVersionId = null;
-			}
-		}
 
 		const versionChanged =
 			workflowUpdateData.versionId && workflowUpdateData.versionId !== workflow.versionId;
-		const wasActive = workflow.activeVersionId !== null;
-		const isNowActive = workflowUpdateData.active ?? wasActive;
-		const activationStatusChanged = isNowActive !== wasActive;
-		const needsActiveVersionUpdate = activationStatusChanged || (versionChanged && isNowActive);
 
 		if (versionChanged) {
 			// To save a version, we need both nodes and connections
@@ -308,18 +304,12 @@ export class WorkflowService {
 			};
 		}
 
-		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
+		// Check if settings actually changed
+		const settingsChanged =
+			workflowUpdateData.settings !== undefined &&
+			!isEqual(workflow.settings, workflowUpdateData.settings);
 
-		/**
-		 * If the workflow being updated is stored as `active`, remove it from
-		 * active workflows in memory, and re-add it after the update.
-		 *
-		 * If a trigger or poller in the workflow was updated, the new value
-		 * will take effect only on removing and re-adding.
-		 */
-		if (isDraftPublishDisabled && wasActive) {
-			await this.activeWorkflowManager.remove(workflowId);
-		}
+		await this.externalHooks.run('workflow.update', [workflowUpdateData]);
 
 		const workflowSettings = workflowUpdateData.settings ?? {};
 		const keysAllowingDefault = [
@@ -359,11 +349,8 @@ export class WorkflowService {
 			'versionId',
 			'description',
 			'updatedAt',
+			// do not update active fields
 		];
-		// Forbid updating active fields with FF on
-		if (isDraftPublishDisabled) {
-			fieldsToUpdate.push('activeVersionId', 'active');
-		}
 
 		const updatePayload: QueryDeepPartialEntity<WorkflowEntity> = pick(
 			workflowUpdateData,
@@ -374,19 +361,13 @@ export class WorkflowService {
 		if (versionChanged) {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
-		if (isDraftPublishDisabled && needsActiveVersionUpdate) {
-			const versionIdToFetch = versionChanged ? workflowUpdateData.versionId : workflow.versionId;
-			const version = await this.workflowHistoryService.getVersion(
-				user,
-				workflowId,
-				versionIdToFetch,
-			);
-			updatePayload.activeVersion = WorkflowHelpers.getActiveVersionUpdateValue(
-				workflow,
-				version,
-				isNowActive,
-			);
+
+		const publishCurrent = workflow.activeVersionId && publishIfActive;
+		if (publishCurrent) {
+			updatePayload.active = true;
+			updatePayload.activeVersionId = workflowUpdateData.versionId;
 		}
+
 		if (parentFolderId) {
 			const project = await this.sharedWorkflowRepository.getWorkflowOwningProject(workflow.id);
 			if (parentFolderId !== PROJECT_ROOT) {
@@ -434,50 +415,16 @@ export class WorkflowService {
 			workflow: updatedWorkflow,
 			publicApi,
 		});
-		// Skip activation/deactivation logic if draft/publish feature flag is enabled
-		if (isDraftPublishDisabled) {
-			if (activationStatusChanged && isNowActive) {
-				this.eventService.emit('workflow-activated', {
-					user,
-					workflowId,
-					workflow: updatedWorkflow,
-					publicApi: false,
-				});
-			} else if (activationStatusChanged && !isNowActive) {
-				// Workflow is being deactivated
-				this.eventService.emit('workflow-deactivated', {
-					user,
-					workflowId,
-					workflow: updatedWorkflow,
-					publicApi,
-				});
-				assert(workflow.activeVersionId !== null);
-				await this.workflowPublishHistoryRepository.addRecord({
-					workflowId,
-					versionId: workflow.activeVersionId,
-					event: 'deactivated',
-					userId: user.id,
-				});
-			}
 
-			if (isNowActive) {
-				// When the workflow is supposed to be active add it again
-				await this._addToActiveWorkflowManager(
-					user,
-					workflowId,
-					updatedWorkflow,
-					wasActive ? 'update' : 'activate',
-					// If workflow could not be activated, set it again to inactive
-					// and revert the versionId and activeVersionId change so UI remains consistent
-					{
-						versionId: workflow.versionId,
-						active: false,
-						activeVersionId: null,
-						activeVersion: null,
-					},
-					publicApi,
-				);
-			}
+		// Activate workflow if requested, or
+		// Reactivate workflow if settings changed and workflow has an active version
+		if (updatedWorkflow.activeVersionId && (publishCurrent || settingsChanged)) {
+			await this.activateWorkflow(
+				user,
+				workflowId,
+				{ versionId: updatedWorkflow.activeVersionId },
+				publicApi,
+			);
 		}
 		return updatedWorkflow;
 	}
@@ -491,7 +438,6 @@ export class WorkflowService {
 		workflowId: string,
 		workflow: WorkflowEntity,
 		mode: 'activate' | 'update',
-		rollbackPayload: RollbackPayload,
 		publicApi: boolean = false,
 	): Promise<void> {
 		let didPublish = false;
@@ -500,6 +446,11 @@ export class WorkflowService {
 			await this.activeWorkflowManager.add(workflowId, mode);
 			didPublish = true;
 		} catch (error) {
+			const rollbackPayload = {
+				active: false,
+				activeVersionId: null,
+				activeVersion: null,
+			};
 			const previouslyActiveId = workflow.activeVersionId;
 			await this.workflowRepository.update(workflowId, rollbackPayload);
 
@@ -557,7 +508,6 @@ export class WorkflowService {
 		options?: { versionId?: string; name?: string; description?: string },
 		publicApi: boolean = false,
 	): Promise<WorkflowEntity> {
-		const isDraftPublishEnabled = this.globalConfig.workflows.draftPublishEnabled;
 		const workflow = await this.workflowFinderService.findWorkflowForUser(
 			workflowId,
 			user,
@@ -575,15 +525,24 @@ export class WorkflowService {
 			);
 		}
 
-		const versionToActivate = isDraftPublishEnabled
-			? (options?.versionId ?? workflow.versionId)
-			: workflow.versionId;
+		const versionToActivate = options?.versionId ?? workflow.versionId;
+		const wasActive = workflow.activeVersionId !== null;
 
-		if (workflow.activeVersionId === versionToActivate) {
-			return workflow;
+		try {
+			await this.workflowHistoryService.getVersion(user, workflow.id, versionToActivate, {
+				includePublishHistory: false,
+			});
+		} catch (error) {
+			if (error instanceof WorkflowHistoryVersionNotFoundError) {
+				throw new NotFoundError('Version not found');
+			}
+			throw error;
 		}
 
-		const wasActive = workflow.activeVersionId !== null;
+		if (wasActive) {
+			await this.activeWorkflowManager.remove(workflowId);
+		}
+
 		const activationMode = wasActive ? 'update' : 'activate';
 
 		await this.workflowRepository.update(workflowId, {
@@ -614,24 +573,10 @@ export class WorkflowService {
 			workflowId,
 			updatedWorkflow,
 			activationMode,
-			isDraftPublishEnabled
-				? {
-						active: workflow.active,
-						activeVersionId: workflow.activeVersionId,
-						activeVersion: workflow.activeVersion,
-					}
-				: {
-						active: false,
-						activeVersionId: null,
-						activeVersion: null,
-					},
 			publicApi,
 		);
 
-		if (
-			isDraftPublishEnabled &&
-			(options?.name !== undefined || options?.description !== undefined)
-		) {
+		if (options?.name !== undefined || options?.description !== undefined) {
 			const updateFields: WorkflowHistoryUpdate = {};
 			if (options.name !== undefined) updateFields.name = options.name;
 			if (options.description !== undefined) updateFields.description = options.description;
