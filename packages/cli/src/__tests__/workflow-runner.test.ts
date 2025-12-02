@@ -115,8 +115,8 @@ describe('processError', () => {
 		const workflow = await createWorkflow({}, owner);
 		const execution = await createExecution(
 			{
-				status: 'success',
-				finished: true,
+				status: 'waiting',
+				finished: false,
 			},
 			workflow,
 		);
