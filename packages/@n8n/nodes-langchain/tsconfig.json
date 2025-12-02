@@ -21,7 +21,8 @@
 		"nodes/**/*.json",
 		"test/**/*.ts",
 		"types/**/*.ts",
-		"utils/**/*.ts"
+		"utils/**/*.ts",
+		"nodes/community/**/*.ts"
 	],
 	"references": [
 		{ "path": "../../core/tsconfig.build.json" },

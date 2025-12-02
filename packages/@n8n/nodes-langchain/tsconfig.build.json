@@ -12,7 +12,8 @@
 		"nodes/**/*.json",
 		"test/**/*.ts",
 		"types/**/*.ts",
-		"utils/**/*.ts"
+		"utils/**/*.ts",
+		"community/**/*.ts"
 	],
 	"exclude": ["nodes/**/*.test.ts", "test/**"]
 }
