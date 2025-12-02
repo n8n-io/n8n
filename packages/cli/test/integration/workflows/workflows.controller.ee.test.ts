@@ -22,7 +22,12 @@ import {
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { ProjectRole } from '@n8n/permissions';
-import { ApplicationError, WorkflowActivationError, type INode } from 'n8n-workflow';
+import {
+	ApplicationError,
+	WorkflowActivationError,
+	calculateWorkflowChecksum,
+	type INode,
+} from 'n8n-workflow';
 import { v4 as uuid } from 'uuid';
 
 import { ActiveWorkflowManager } from '@/active-workflow-manager';
@@ -1177,6 +1182,8 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 			const { id, versionId: ownerVersionId } = createResponse.body.data;
+			const ownerChecksum = await calculateWorkflowChecksum(createResponse.body.data);
+
 			await authOwnerAgent
 				.put(`/workflows/${id}/share`)
 				.send({ shareWithIds: [memberPersonalProject.id] });
@@ -1194,7 +1201,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const updateAttemptResponse = await authOwnerAgent
 				.patch(`/workflows/${id}`)
-				.send({ nodes: [], versionId: ownerVersionId });
+				.send({ nodes: [], versionId: ownerVersionId, expectedChecksum: ownerChecksum });
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1220,6 +1227,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner re-updates workflow
 
@@ -1231,7 +1239,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const updateAttemptResponse = await authMemberAgent
 				.patch(`/workflows/${id}`)
-				.send({ nodes: [], versionId: memberVersionId });
+				.send({ nodes: [], versionId: memberVersionId, expectedChecksum: memberChecksum });
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1242,6 +1250,8 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const createResponse = await authOwnerAgent.post('/workflows').send(makeWorkflow());
 			const { id, versionId: ownerVersionId } = createResponse.body.data;
+			const ownerChecksum = await calculateWorkflowChecksum(createResponse.body.data);
+
 			await authOwnerAgent
 				.put(`/workflows/${id}/share`)
 				.send({ shareWithIds: [memberPersonalProject.id] });
@@ -1255,9 +1265,12 @@ describe('PATCH /workflows/:workflowId', () => {
 				.send({ active: true, versionId: memberVersionId, name: 'Update by member' });
 			// owner blocked from activating workflow
 
-			const activationAttemptResponse = await authOwnerAgent
-				.patch(`/workflows/${id}`)
-				.send({ active: true, versionId: ownerVersionId, name: 'Update by owner' });
+			const activationAttemptResponse = await authOwnerAgent.patch(`/workflows/${id}`).send({
+				active: true,
+				versionId: ownerVersionId,
+				name: 'Update by owner',
+				expectedChecksum: ownerChecksum,
+			});
 
 			expect(activationAttemptResponse.status).toBe(400);
 			expect(activationAttemptResponse.body.code).toBe(100);
@@ -1282,6 +1295,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner activates workflow
 
@@ -1291,9 +1305,12 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			// member blocked from activating workflow
 
-			const updateAttemptResponse = await authMemberAgent
-				.patch(`/workflows/${id}`)
-				.send({ active: true, versionId: memberVersionId, name: 'Update by member' });
+			const updateAttemptResponse = await authMemberAgent.patch(`/workflows/${id}`).send({
+				active: true,
+				versionId: memberVersionId,
+				name: 'Update by member',
+				expectedChecksum: memberChecksum,
+			});
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1312,6 +1329,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner updates workflow name
 
@@ -1321,9 +1339,11 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			// member blocked from updating workflow settings
 
-			const updateAttemptResponse = await authMemberAgent
-				.patch(`/workflows/${id}`)
-				.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
+			const updateAttemptResponse = await authMemberAgent.patch(`/workflows/${id}`).send({
+				settings: { saveManualExecutions: true },
+				versionId: memberVersionId,
+				expectedChecksum: memberChecksum,
+			});
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
@@ -1342,6 +1362,7 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			const memberGetResponse = await authMemberAgent.get(`/workflows/${id}`).expect(200);
 			const { versionId: memberVersionId } = memberGetResponse.body.data;
+			const memberChecksum = await calculateWorkflowChecksum(memberGetResponse.body.data);
 
 			// owner updates workflow settings
 
@@ -1351,9 +1372,11 @@ describe('PATCH /workflows/:workflowId', () => {
 
 			// member blocked from updating workflow name
 
-			const updateAttemptResponse = await authMemberAgent
-				.patch(`/workflows/${id}`)
-				.send({ settings: { saveManualExecutions: true }, versionId: memberVersionId });
+			const updateAttemptResponse = await authMemberAgent.patch(`/workflows/${id}`).send({
+				settings: { saveManualExecutions: true },
+				versionId: memberVersionId,
+				expectedChecksum: memberChecksum,
+			});
 
 			expect(updateAttemptResponse.status).toBe(400);
 			expect(updateAttemptResponse.body.code).toBe(100);
