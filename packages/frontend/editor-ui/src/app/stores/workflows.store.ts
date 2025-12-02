@@ -850,6 +850,10 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 			workflowsById.value[id].versionId = updatedWorkflow.versionId;
 		}
 
+		if (id === workflow.value.id) {
+			setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
+		}
+
 		setWorkflowInactive(id);
 
 		if (id === workflow.value.id) {
@@ -867,6 +871,11 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		if (workflowsById.value[id]) {
 			workflowsById.value[id].isArchived = false;
 			workflowsById.value[id].versionId = updatedWorkflow.versionId;
+		}
+
+		// Update checksum if unarchiving the currently open workflow
+		if (id === workflow.value.id) {
+			setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
 		}
 
 		if (id === workflow.value.id) {

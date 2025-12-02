@@ -115,6 +115,10 @@ export function useWorkflowActivate() {
 			} else {
 				workflowsStore.setWorkflowInactive(currWorkflowId);
 			}
+
+			if (isCurrentWorkflow) {
+				workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(workflow));
+			}
 		} catch (error) {
 			const newStateName = newActiveState ? 'activated' : 'deactivated';
 			toast.showError(
@@ -234,7 +238,11 @@ export function useWorkflowActivate() {
 		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
 
 		try {
-			await workflowsStore.deactivateWorkflow(workflowId);
+			const updatedWorkflow = await workflowsStore.deactivateWorkflow(workflowId);
+
+			if (workflowId === workflowsStore.workflowId) {
+				workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
+			}
 
 			void useExternalHooks().run('workflow.activeChangeCurrent', {
 				workflowId,
