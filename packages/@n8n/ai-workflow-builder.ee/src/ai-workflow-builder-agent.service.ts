@@ -29,6 +29,7 @@ export class AiWorkflowBuilderService {
 		private readonly logger?: Logger,
 		private readonly instanceId?: string,
 		private readonly instanceUrl?: string,
+		private readonly n8nVersion?: string,
 		private readonly onCreditsUpdated?: OnCreditsUpdated,
 		private readonly onTelemetryEvent?: OnTelemetryEvent,
 	) {
@@ -170,6 +171,9 @@ export class AiWorkflowBuilderService {
 			instanceUrl: this.instanceUrl,
 			onGenerationSuccess: async () => {
 				await this.onGenerationSuccess(user, authHeaders);
+			},
+			runMetadata: {
+				n8nVersion: this.n8nVersion,
 			},
 		});
 

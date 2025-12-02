@@ -147,6 +147,8 @@ export interface WorkflowBuilderAgentConfig {
 	 * When false, uses the legacy single-agent architecture
 	 */
 	enableMultiAgent?: boolean;
+	/** Metadata to include in LangSmith traces */
+	runMetadata?: Record<string, unknown>;
 }
 
 export interface ExpressionValue {
@@ -181,6 +183,7 @@ export class WorkflowBuilderAgent {
 	private instanceUrl?: string;
 	private onGenerationSuccess?: () => Promise<void>;
 	private enableMultiAgent: boolean;
+	private runMetadata?: Record<string, unknown>;
 
 	constructor(config: WorkflowBuilderAgentConfig) {
 		this.parsedNodeTypes = config.parsedNodeTypes;
@@ -194,6 +197,7 @@ export class WorkflowBuilderAgent {
 		this.instanceUrl = config.instanceUrl;
 		this.onGenerationSuccess = config.onGenerationSuccess;
 		this.enableMultiAgent = config.enableMultiAgent ?? false;
+		this.runMetadata = config.runMetadata;
 	}
 
 	private getBuilderTools(featureFlags?: BuilderFeatureFlags): BuilderTool[] {
@@ -514,6 +518,7 @@ export class WorkflowBuilderAgent {
 			recursionLimit: 50,
 			signal: abortSignal,
 			callbacks: this.tracer ? [this.tracer] : undefined,
+			metadata: this.runMetadata,
 			// Enable subgraph streaming when using multi-agent architecture
 			subgraphs: this.enableMultiAgent,
 		};
