@@ -2333,7 +2333,7 @@
 	"settings.communityNodes.confirmModal.update.buttonLabel": "Confirm update",
 	"settings.communityNodes.confirmModal.update.buttonLoadingLabel": "Updating...",
 	"settings.communityNodes.confirmModal.cancel": "Cancel",
-	"settings.mcp": "MCP Access",
+	"settings.mcp": "MCP Server",
 	"settings.mcp.toggle.label": "Enable MCP",
 	"settings.mcp.toggle.description": "Enable MCP access to this n8n instance",
 	"settings.mcp.toggle.disabled.notice": "Let MCP clients like Claude, Lovable, and other AI tools discover and execute your n8n workflows.",
