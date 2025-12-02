@@ -287,7 +287,9 @@ export class Git implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
-				const isFilePathBlocked = await this.helpers.isFilePathBlocked(repositoryPath);
+				const isFilePathBlocked = this.helpers.isFilePathBlocked(
+					await this.helpers.resolvePath(repositoryPath),
+				);
 				if (isFilePathBlocked) {
 					throw new NodeOperationError(
 						this.getNode(),
