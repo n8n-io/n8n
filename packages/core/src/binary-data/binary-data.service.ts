@@ -8,12 +8,12 @@ import { readFile, stat } from 'node:fs/promises';
 import prettyBytes from 'pretty-bytes';
 import type { Readable } from 'stream';
 
+import { ErrorReporter } from '@/errors';
+
 import { BinaryDataConfig } from './binary-data.config';
 import type { BinaryData } from './types';
 import { binaryToBuffer } from './utils';
 import { InvalidManagerError } from '../errors/invalid-manager.error';
-
-import { ErrorReporter } from '@/errors';
 
 @Service()
 export class BinaryDataService {
