@@ -727,7 +727,9 @@ async function onClipboardPaste(plainTextData: string): Promise<void> {
 		importTags: false,
 		viewport: viewportBoundaries.value,
 	});
-	selectNodes(result.nodes?.map((node) => node.id) ?? []);
+	const ids = result.nodes?.map((node) => node.id) ?? [];
+
+	canvasRef.value?.ensureNodesAreVisible(ids);
 }
 
 async function onCutNodes(ids: string[]) {
@@ -747,7 +749,7 @@ async function onDuplicateNodes(ids: string[]) {
 		viewport: viewportBoundaries.value,
 	});
 
-	selectNodes(newIds);
+	canvasRef.value?.ensureNodesAreVisible(newIds);
 }
 
 function onPinNodes(ids: string[], source: PinDataSource) {
@@ -1042,8 +1044,7 @@ async function onImportWorkflowUrlEvent(data: IDataObject) {
 		viewport: viewportBoundaries.value,
 	});
 
-	fitView();
-	selectNodes(workflowData.nodes?.map((node) => node.id) ?? []);
+	canvasRef.value?.ensureNodesAreVisible(workflowData.nodes?.map((node) => node.id) ?? []);
 }
 
 function addImportEventBindings() {
@@ -1898,6 +1899,7 @@ watch(
 		}
 	},
 );
+
 onBeforeRouteLeave(async (to, from, next) => {
 	const toNodeViewTab = getNodeViewTab(to);
 

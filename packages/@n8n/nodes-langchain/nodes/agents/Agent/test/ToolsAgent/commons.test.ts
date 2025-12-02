@@ -5,9 +5,9 @@ import type { BaseMessagePromptTemplateLike } from '@langchain/core/prompts';
 import { FakeLLM, FakeStreamingChatModel } from '@langchain/core/utils/testing';
 import { Buffer } from 'buffer';
 import { mock } from 'jest-mock-extended';
-import type { AgentAction, AgentFinish } from 'langchain/agents';
-import type { ToolsAgentAction } from 'langchain/dist/agents/tool_calling/output_parser';
-import type { Tool } from 'langchain/tools';
+import type { AgentAction, AgentFinish } from '@langchain/classic/agents';
+import type { ToolsAgentAction } from '@langchain/classic/dist/agents/tool_calling/output_parser';
+import type { Tool } from '@langchain/classic/tools';
 import type { IExecuteFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError, BINARY_ENCODING, NodeConnectionTypes } from 'n8n-workflow';
 import type { ZodType } from 'zod';
@@ -225,8 +225,10 @@ describe('fixEmptyContentMessage', () => {
 		const messageContent = fixed?.[0]?.messageLog?.[0].content;
 
 		// Type assertion needed since we're extending MessageContentComplex
-		expect((messageContent?.[0] as { input: unknown })?.input).toEqual({});
-		expect((messageContent?.[1] as { input: unknown })?.input).toEqual({ already: 'object' });
+		expect((messageContent?.[0] as unknown as { input: unknown })?.input).toEqual({});
+		expect((messageContent?.[1] as unknown as { input: unknown })?.input).toEqual({
+			already: 'object',
+		});
 	});
 });
 
