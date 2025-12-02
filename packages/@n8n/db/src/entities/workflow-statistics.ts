@@ -9,10 +9,10 @@ export class WorkflowStatistics {
 	@PrimaryGeneratedColumn()
 	id: number;
 
-	@Column()
+	@Column({ type: 'bigint' })
 	count: number;
 
-	@Column()
+	@Column({ type: 'bigint' })
 	rootCount: number;
 
 	@DateTimeColumn()
