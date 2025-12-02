@@ -95,11 +95,14 @@ test.describe('CAT-1801: Parent receives correct data from child with wait node'
 		)!;
 		executeWorkflowNode.parameters.workflowId = { value: childWorkflowId, mode: 'list' };
 
-		const { webhookPath, workflowId: parentWorkflowId } =
-			await api.workflows.importWorkflowFromDefinition(parentDefinition);
+		const {
+			webhookPath,
+			workflowId: parentWorkflowId,
+			createdWorkflow: { versionId },
+		} = await api.workflows.importWorkflowFromDefinition(parentDefinition);
 
 		// Activate parent workflow so webhook works
-		await api.workflows.setActive(parentWorkflowId, true);
+		await api.workflows.activate(parentWorkflowId, versionId!);
 
 		// Trigger parent workflow via webhook
 		const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
