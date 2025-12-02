@@ -20,6 +20,7 @@ withDefaults(
 	position: relative;
 	padding: 4px;
 	margin: -4px;
+	z-index: 2;
 }
 
 .dot {
