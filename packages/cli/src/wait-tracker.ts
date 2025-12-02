@@ -95,8 +95,6 @@ export class WaitTracker {
 	}
 
 	async startExecution(executionId: string) {
-		console.log('=== WaitTracker.startExecution called ===');
-		console.log('executionId:', executionId);
 		this.logger.debug(`Resuming execution ${executionId}`, { executionId });
 		delete this.waitingExecutions[executionId];
 
@@ -105,8 +103,6 @@ export class WaitTracker {
 			includeData: true,
 			unflattenData: true,
 		});
-		console.log('Execution status:', fullExecutionData?.status);
-		console.log('Has parentExecution:', !!fullExecutionData?.data?.parentExecution);
 
 		if (!fullExecutionData) {
 			throw new UnexpectedError('Execution does not exist.', { extra: { executionId } });
@@ -132,19 +128,12 @@ export class WaitTracker {
 		};
 
 		// Start the execution again
-		console.log(
-			`>>> BEFORE workflowRunner.run for execution ${executionId}, status was: ${fullExecutionData.status}`,
-		);
 		try {
 			await this.workflowRunner.run(data, false, false, executionId);
-			console.log(`>>> AFTER workflowRunner.run for execution ${executionId}`);
 		} catch (error) {
 			if (error instanceof ExecutionAlreadyResumingError) {
 				// This execution is already being resumed by another child execution
 				// This is expected in "run once for each item" mode when multiple children complete
-				console.log(
-					`>>> CAUGHT ExecutionAlreadyResumingError for execution ${executionId}, skipping duplicate resume`,
-				);
 				this.logger.debug(
 					`Execution ${executionId} is already being resumed, skipping duplicate resume`,
 					{ executionId },
@@ -152,7 +141,6 @@ export class WaitTracker {
 				return;
 			}
 			// Rethrow any other errors
-			console.log(`>>> RETHROWING unexpected error for execution ${executionId}:`, error);
 			throw error;
 		}
 
