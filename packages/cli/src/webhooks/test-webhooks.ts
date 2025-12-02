@@ -3,7 +3,7 @@ import { OnPubSubEvent } from '@n8n/decorators';
 import { Service } from '@n8n/di';
 import type express from 'express';
 import { InstanceSettings } from 'n8n-core';
-import { UserError, WebhookPathTakenError, Workflow } from 'n8n-workflow';
+import { WebhookPathTakenError, Workflow } from 'n8n-workflow';
 import type {
 	IWebhookData,
 	IWorkflowExecuteAdditionalData,
@@ -25,6 +25,7 @@ import type {
 
 import { NotFoundError } from '@/errors/response-errors/not-found.error';
 import { WebhookNotFoundError } from '@/errors/response-errors/webhook-not-found.error';
+import { SingleWebhookTriggerError } from '@/errors/single-webhook-trigger.error';
 import { WorkflowMissingIdError } from '@/errors/workflow-missing-id.error';
 import { NodeTypes } from '@/node-types';
 import { Push } from '@/push';
@@ -331,8 +332,8 @@ export class TestWebhooks implements IWebhookManager {
 				SINGLE_WEBHOOK_TRIGGERS.includes(workflow.getNode(w.node)?.type ?? ''),
 			);
 			if (singleWebhookTrigger) {
-				throw new UserError(
-					`Cannot test webhook for node "${singleWebhookTrigger.node}" while workflow is active. Please deactivate the workflow first.`,
+				throw new SingleWebhookTriggerError(
+					workflow.getNode(singleWebhookTrigger.node)?.name ?? '',
 				);
 			}
 		}
