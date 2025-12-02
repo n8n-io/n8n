@@ -27,7 +27,7 @@ describe('calculateWorkflowChecksum', () => {
 		expect(checksum1).toBe(checksum2);
 	});
 
-	it('should generate different checksums when settings.timezone changes', async () => {
+	it('should generate different checksums when a setting changes', async () => {
 		const workflow1: WorkflowSnapshot = {
 			...baseWorkflow,
 			settings: {
@@ -47,15 +47,10 @@ describe('calculateWorkflowChecksum', () => {
 		const checksum1 = await calculateWorkflowChecksum(workflow1);
 		const checksum2 = await calculateWorkflowChecksum(workflow2);
 
-		console.log('Workflow 1 settings:', workflow1.settings);
-		console.log('Workflow 2 settings:', workflow2.settings);
-		console.log('Checksum 1:', checksum1);
-		console.log('Checksum 2:', checksum2);
-
 		expect(checksum1).not.toBe(checksum2);
 	});
 
-	it('should generate different checksums when timezone is added', async () => {
+	it('should generate different checksums when a setting is added', async () => {
 		const workflow1: WorkflowSnapshot = {
 			...baseWorkflow,
 			settings: {
@@ -74,15 +69,10 @@ describe('calculateWorkflowChecksum', () => {
 		const checksum1 = await calculateWorkflowChecksum(workflow1);
 		const checksum2 = await calculateWorkflowChecksum(workflow2);
 
-		console.log('Workflow 1 settings:', workflow1.settings);
-		console.log('Workflow 2 settings:', workflow2.settings);
-		console.log('Checksum 1:', checksum1);
-		console.log('Checksum 2:', checksum2);
-
 		expect(checksum1).not.toBe(checksum2);
 	});
 
-	it('should generate different checksums when timezone is removed', async () => {
+	it('should generate different checksums when a setting is removed', async () => {
 		const workflow1: WorkflowSnapshot = {
 			...baseWorkflow,
 			settings: {
@@ -101,15 +91,10 @@ describe('calculateWorkflowChecksum', () => {
 		const checksum1 = await calculateWorkflowChecksum(workflow1);
 		const checksum2 = await calculateWorkflowChecksum(workflow2);
 
-		console.log('Workflow 1 settings:', workflow1.settings);
-		console.log('Workflow 2 settings:', workflow2.settings);
-		console.log('Checksum 1:', checksum1);
-		console.log('Checksum 2:', checksum2);
-
 		expect(checksum1).not.toBe(checksum2);
 	});
 
-	it('should generate same checksum when timezone is undefined vs missing', async () => {
+	it('should generate same checksum when a setting is undefined i.e. missing', async () => {
 		const workflow1: WorkflowSnapshot = {
 			...baseWorkflow,
 			settings: {
@@ -127,11 +112,6 @@ describe('calculateWorkflowChecksum', () => {
 
 		const checksum1 = await calculateWorkflowChecksum(workflow1);
 		const checksum2 = await calculateWorkflowChecksum(workflow2);
-
-		console.log('Workflow 1 settings:', workflow1.settings);
-		console.log('Workflow 2 settings:', workflow2.settings);
-		console.log('Checksum 1:', checksum1);
-		console.log('Checksum 2:', checksum2);
 
 		// undefined fields should be ignored, so checksums should be the same
 		expect(checksum1).toBe(checksum2);
