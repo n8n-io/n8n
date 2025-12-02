@@ -14,6 +14,9 @@ export abstract class BaseTool {
 		args: string[] = [],
 		options: SpawnOptions = {},
 	): Promise<{ stdout: string; stderr: string; exitCode: number }> {
+		const fullCommand = `${command} ${args.join(' ')}`;
+		console.log(`[${this.name}] Executing: ${fullCommand}`);
+
 		return new Promise((resolve, reject) => {
 			const proc = spawn(command, args, {
 				shell: true,
@@ -32,14 +35,23 @@ export abstract class BaseTool {
 			});
 
 			proc.on('error', (error: Error) => {
+				console.error(`[${this.name}] Command error: ${error.message}`);
 				reject(error);
 			});
 
 			proc.on('close', (exitCode: number | null) => {
+				const stdoutStr = Buffer.concat(stdout).toString('utf-8');
+				const stderrStr = Buffer.concat(stderr).toString('utf-8');
+				const code = exitCode ?? 1;
+
+				console.log(
+					`[${this.name}] Result: exitCode=${code}${stdoutStr ? `, stdout=${stdoutStr.slice(0, 200)}` : ''}${stderrStr ? `, stderr=${stderrStr}` : ''}`,
+				);
+
 				resolve({
-					stdout: Buffer.concat(stdout).toString('utf-8'),
-					stderr: Buffer.concat(stderr).toString('utf-8'),
-					exitCode: exitCode ?? 1,
+					stdout: stdoutStr,
+					stderr: stderrStr,
+					exitCode: code,
 				});
 			});
 		});

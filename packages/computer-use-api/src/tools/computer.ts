@@ -196,16 +196,14 @@ export class ComputerTool extends BaseTool {
 	}
 
 	private async getCursorPosition(): Promise<ToolResult> {
-		const { stdout, exitCode } = await this.execCommand(
+		const { stdout, stderr, exitCode } = await this.execCommand(
 			'xdotool',
 			['getmouselocation', '--shell'],
-			{
-				env: { ...process.env, DISPLAY: this.displayNum },
-			},
+			{ env: { ...process.env, DISPLAY: this.displayNum } },
 		);
 
 		if (exitCode !== 0) {
-			throw new ToolError('Failed to get cursor position');
+			throw new ToolError(`Failed to get cursor position: exitCode=${exitCode}, stderr=${stderr}`);
 		}
 
 		const lines = stdout.split('\n');
@@ -218,16 +216,14 @@ export class ComputerTool extends BaseTool {
 	private async mouseMove(coordinate: [number, number]): Promise<ToolResult> {
 		const [x, y] = this.scaleCoordinates(coordinate);
 
-		const { exitCode } = await this.execCommand(
+		const { exitCode, stderr } = await this.execCommand(
 			'xdotool',
 			['mousemove', '--sync', String(x), String(y)],
-			{
-				env: { ...process.env, DISPLAY: this.displayNum },
-			},
+			{ env: { ...process.env, DISPLAY: this.displayNum } },
 		);
 
 		if (exitCode !== 0) {
-			throw new ToolError('Failed to move mouse');
+			throw new ToolError(`Failed to move mouse: exitCode=${exitCode}, stderr=${stderr}`);
 		}
 
 		return { output: `Moved mouse to (${x}, ${y})` };
@@ -245,19 +241,23 @@ export class ComputerTool extends BaseTool {
 			triple_click: ['--repeat', '3', '--delay', '10', '1'],
 		};
 
-		const args = ['click', ...buttonMap[button]];
-
+		// xdotool click doesn't support coordinates directly.
+		// We need to chain mousemove with click: xdotool mousemove x y click 1
+		let args: string[];
 		if (coordinate) {
 			const [x, y] = this.scaleCoordinates(coordinate);
-			args.push('--', String(x), String(y));
+			// Chain mousemove and click in a single xdotool command
+			args = ['mousemove', '--sync', String(x), String(y), 'click', ...buttonMap[button]];
+		} else {
+			args = ['click', ...buttonMap[button]];
 		}
 
-		const { exitCode } = await this.execCommand('xdotool', args, {
+		const { exitCode, stderr } = await this.execCommand('xdotool', args, {
 			env: { ...process.env, DISPLAY: this.displayNum },
 		});
 
 		if (exitCode !== 0) {
-			throw new ToolError(`Failed to perform ${button}`);
+			throw new ToolError(`Failed to perform ${button}: exitCode=${exitCode}, stderr=${stderr}`);
 		}
 
 		await this.delay(this.screenshotDelay);
@@ -267,7 +267,7 @@ export class ComputerTool extends BaseTool {
 	private async drag(coordinate: [number, number]): Promise<ToolResult> {
 		const [x, y] = this.scaleCoordinates(coordinate);
 
-		const { exitCode } = await this.execCommand(
+		const { exitCode, stderr } = await this.execCommand(
 			'xdotool',
 			[
 				'mousemove',
@@ -280,13 +280,11 @@ export class ComputerTool extends BaseTool {
 				'0',
 				'0',
 			],
-			{
-				env: { ...process.env, DISPLAY: this.displayNum },
-			},
+			{ env: { ...process.env, DISPLAY: this.displayNum } },
 		);
 
 		if (exitCode !== 0) {
-			throw new ToolError('Failed to drag mouse');
+			throw new ToolError(`Failed to drag mouse: exitCode=${exitCode}, stderr=${stderr}`);
 		}
 
 		await this.delay(this.screenshotDelay);
@@ -294,24 +292,24 @@ export class ComputerTool extends BaseTool {
 	}
 
 	private async mouseDown(): Promise<ToolResult> {
-		const { exitCode } = await this.execCommand('xdotool', ['mousedown', '1'], {
+		const { exitCode, stderr } = await this.execCommand('xdotool', ['mousedown', '1'], {
 			env: { ...process.env, DISPLAY: this.displayNum },
 		});
 
 		if (exitCode !== 0) {
-			throw new ToolError('Failed to press mouse button');
+			throw new ToolError(`Failed to press mouse button: exitCode=${exitCode}, stderr=${stderr}`);
 		}
 
 		return { output: 'Mouse button pressed' };
 	}
 
 	private async mouseUp(): Promise<ToolResult> {
-		const { exitCode } = await this.execCommand('xdotool', ['mouseup', '1'], {
+		const { exitCode, stderr } = await this.execCommand('xdotool', ['mouseup', '1'], {
 			env: { ...process.env, DISPLAY: this.displayNum },
 		});
 
 		if (exitCode !== 0) {
-			throw new ToolError('Failed to release mouse button');
+			throw new ToolError(`Failed to release mouse button: exitCode=${exitCode}, stderr=${stderr}`);
 		}
 
 		return { output: 'Mouse button released' };
@@ -339,16 +337,14 @@ export class ComputerTool extends BaseTool {
 		const button = scrollMap[direction || 'down'];
 		const scrollAmount = amount || 5;
 
-		const { exitCode } = await this.execCommand(
+		const { exitCode, stderr } = await this.execCommand(
 			'xdotool',
 			['click', '--repeat', String(scrollAmount), button],
-			{
-				env: { ...process.env, DISPLAY: this.displayNum },
-			},
+			{ env: { ...process.env, DISPLAY: this.displayNum } },
 		);
 
 		if (exitCode !== 0) {
-			throw new ToolError('Failed to scroll');
+			throw new ToolError(`Failed to scroll: exitCode=${exitCode}, stderr=${stderr}`);
 		}
 
 		await this.delay(this.screenshotDelay);
@@ -360,16 +356,14 @@ export class ComputerTool extends BaseTool {
 		const chunks = this.chunkString(text, this.typingGroupSize);
 
 		for (const chunk of chunks) {
-			const { exitCode } = await this.execCommand(
+			const { exitCode, stderr } = await this.execCommand(
 				'xdotool',
 				['type', '--delay', String(this.typingDelayMs), '--', chunk],
-				{
-					env: { ...process.env, DISPLAY: this.displayNum },
-				},
+				{ env: { ...process.env, DISPLAY: this.displayNum } },
 			);
 
 			if (exitCode !== 0) {
-				throw new ToolError('Failed to type text');
+				throw new ToolError(`Failed to type text: exitCode=${exitCode}, stderr=${stderr}`);
 			}
 		}
 
@@ -378,12 +372,12 @@ export class ComputerTool extends BaseTool {
 	}
 
 	private async key(text: string): Promise<ToolResult> {
-		const { exitCode } = await this.execCommand('xdotool', ['key', '--', text], {
+		const { exitCode, stderr } = await this.execCommand('xdotool', ['key', '--', text], {
 			env: { ...process.env, DISPLAY: this.displayNum },
 		});
 
 		if (exitCode !== 0) {
-			throw new ToolError(`Failed to press key: ${text}`);
+			throw new ToolError(`Failed to press key: ${text}, exitCode=${exitCode}, stderr=${stderr}`);
 		}
 
 		await this.delay(this.screenshotDelay);

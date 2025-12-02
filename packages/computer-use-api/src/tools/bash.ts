@@ -109,6 +109,8 @@ class BashSession {
 		this.buffer = [];
 		this.errorBuffer = [];
 
+		console.log(`[bash] Executing: ${command}`);
+
 		try {
 			// Use a unique sentinel to detect command completion
 			const sentinel = `__COMMAND_DONE_${Date.now()}__`;
@@ -120,10 +122,17 @@ class BashSession {
 			// Wait for completion with timeout
 			const result = await this.waitForCompletion(sentinel, COMMAND_TIMEOUT);
 
+			console.log(
+				`[bash] Result: stdout=${result.stdout.slice(0, 200)}${result.stdout.length > 200 ? '...' : ''}${result.stderr ? `, stderr=${result.stderr}` : ''}`,
+			);
+
 			return {
 				output: this.truncateOutput(result.stdout),
 				error: result.stderr ? this.truncateOutput(result.stderr) : undefined,
 			};
+		} catch (error) {
+			console.error(`[bash] Error: ${error}`);
+			throw error;
 		} finally {
 			this.executing = false;
 		}
