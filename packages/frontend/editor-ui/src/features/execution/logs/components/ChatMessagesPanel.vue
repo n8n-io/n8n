@@ -342,8 +342,7 @@ onUnmounted(() => {
 
 		/* Input Textarea */
 		--chat--input--font-size: var(--font-size--sm);
-		--chat--input--padding: 10px 0;
-		--chat--input--border-radius: 20px;
+		--chat--input--padding: var(--padding--xs) var(--padding--md);
 		--chat--input--border: none;
 		--chat--input--border-active: none;
 		--chat--input--background: transparent;
