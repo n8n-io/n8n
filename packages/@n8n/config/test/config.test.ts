@@ -342,6 +342,7 @@ describe('GlobalConfig', () => {
 			concurrency: {
 				productionLimit: -1,
 				evaluationLimit: -1,
+				chatLimit: -1,
 			},
 			queueRecovery: {
 				interval: 180,
