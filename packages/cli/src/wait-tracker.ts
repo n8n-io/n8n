@@ -78,7 +78,7 @@ export class WaitTracker {
 				const triggerTime = execution.waitTill!.getTime() - new Date().getTime();
 				this.waitingExecutions[executionId] = {
 					executionId,
-					timer: global.setTimeout(() => {
+					timer: setTimeout(() => {
 						void this.startExecution(executionId);
 					}, triggerTime),
 				};
