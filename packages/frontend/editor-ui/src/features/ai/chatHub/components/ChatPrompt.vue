@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { useToast } from '@/app/composables/useToast';
-import { providerDisplayNames } from '@/features/ai/chatHub/constants';
+import { providerDisplayNames, TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 import type { ChatHubLLMProvider, ChatModelDto } from '@n8n/api-types';
 import ChatFile from '@n8n/chat/components/ChatFile.vue';
-import { N8nIconButton, N8nInput, N8nText } from '@n8n/design-system';
+import { N8nIconButton, N8nInput, N8nText, N8nTooltip } from '@n8n/design-system';
 import { useSpeechRecognition } from '@vueuse/core';
 import type { INode } from 'n8n-workflow';
 import { computed, ref, useTemplateRef, watch } from 'vue';
 import ToolsSelector from './ToolsSelector.vue';
-import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
+import { isLlmProviderModel, createMimeTypes } from '@/features/ai/chatHub/chat.utils';
 import { useI18n } from '@n8n/i18n';
 import { I18nT } from 'vue-i18n';
+import { useUIStore } from '@/app/stores/ui.store';
 
 const { selectedModel, selectedTools, issue } = defineProps<{
 	isResponding: boolean;
@@ -27,6 +28,7 @@ const emit = defineEmits<{
 	selectModel: [];
 	selectTools: [INode[]];
 	setCredentials: [ChatHubLLMProvider];
+	editAgent: [agentId: string];
 }>();
 
 const inputRef = useTemplateRef<HTMLElement>('inputRef');
@@ -37,6 +39,7 @@ const attachments = ref<File[]>([]);
 
 const toast = useToast();
 const i18n = useI18n();
+const uiStore = useUIStore();
 
 const speechInput = useSpeechRecognition({
 	continuous: true,
@@ -56,6 +59,13 @@ const placeholder = computed(() => {
 const llmProvider = computed<ChatHubLLMProvider | undefined>(() =>
 	isLlmProviderModel(selectedModel?.model) ? selectedModel?.model.provider : undefined,
 );
+
+const acceptedMimeTypes = computed(() => {
+	const modalities = selectedModel?.metadata.inputModalities;
+	return modalities ? createMimeTypes(modalities) : undefined;
+});
+
+const canUploadFiles = computed(() => !!acceptedMimeTypes.value);
 
 function onMic() {
 	committedSpokenMessage.value = message.value;
@@ -160,8 +170,19 @@ watch(speechInput.error, (event) => {
 	}
 });
 
-function onSelectTools(tools: INode[]) {
-	emit('selectTools', tools);
+function onSelectTools() {
+	if (selectedModel?.model.provider === 'custom-agent') {
+		emit('editAgent', selectedModel.model.agentId);
+		return;
+	}
+
+	uiStore.openModalWithData({
+		name: TOOLS_SELECTOR_MODAL_KEY,
+		data: {
+			selected: selectedTools,
+			onConfirm: (newTools: INode[]) => emit('selectTools', newTools),
+		},
+	});
 }
 
 defineExpose({
@@ -228,6 +249,7 @@ defineExpose({
 				ref="fileInputRef"
 				type="file"
 				:class="$style.fileInput"
+				:accept="acceptedMimeTypes"
 				multiple
 				@change="handleFileSelect"
 			/>
@@ -257,27 +279,40 @@ defineExpose({
 				/>
 
 				<div :class="$style.footer">
-					<div v-if="isToolsSelectable" :class="$style.tools">
+					<div :class="$style.tools">
 						<ToolsSelector
 							:class="$style.toolsButton"
 							:selected="selectedTools ?? []"
-							:disabled="!!issue || isResponding"
+							:disabled="!!issue || isResponding || !isToolsSelectable"
+							:disabled-tooltip="
+								isToolsSelectable
+									? undefined
+									: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+							"
 							transparent-bg
-							@select="onSelectTools"
+							@click="onSelectTools"
 						/>
 					</div>
 					<div :class="$style.actions">
-						<N8nIconButton
-							v-if="selectedModel?.allowFileUploads"
-							native-type="button"
-							type="secondary"
-							:title="i18n.baseText('chatHub.chat.prompt.button.attach')"
-							:disabled="!!issue || isResponding"
-							icon="paperclip"
-							icon-size="large"
-							text
-							@click.stop="onAttach"
-						/>
+						<N8nTooltip
+							:content="
+								!canUploadFiles
+									? i18n.baseText('chatHub.chat.prompt.button.attach.disabled')
+									: i18n.baseText('chatHub.chat.prompt.button.attach')
+							"
+							:disabled="canUploadFiles && !issue && !isResponding"
+							placement="top"
+						>
+							<N8nIconButton
+								native-type="button"
+								type="secondary"
+								:disabled="!!issue || isResponding || !canUploadFiles"
+								icon="paperclip"
+								icon-size="large"
+								text
+								@click.stop="onAttach"
+							/>
+						</N8nTooltip>
 						<N8nIconButton
 							v-if="speechInput.isSupported"
 							native-type="button"
