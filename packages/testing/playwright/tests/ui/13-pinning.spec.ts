@@ -205,7 +205,7 @@ test.describe('Data pinning', () => {
 		}) => {
 			await setupRequirements(webhookTestRequirements);
 			await expect(n8n.canvas.getWorkflowSaveButton()).toContainText('Saved');
-			await n8n.canvas.activateWorkflow();
+			await n8n.canvas.publishWorkflow();
 			const webhookUrl = '/webhook/b0d79ddb-df2d-49b1-8555-9fa2b482608f';
 			const response = await n8n.ndv.makeWebhookRequest(webhookUrl);
 			expect(response.status(), 'Webhook response is: ' + (await response.text())).toBe(200);

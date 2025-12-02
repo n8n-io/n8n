@@ -2,7 +2,125 @@ import { ChatPromptTemplate } from '@langchain/core/prompts';
 
 import { instanceUrlPrompt } from '../../chains/prompts/instance-url';
 
-const systemPrompt = `You are an AI assistant specialized in creating and editing n8n workflows. Your goal is to help users build efficient, well-connected workflows by intelligently using the available tools.
+/**
+ * Phase configuration for the workflow creation sequence
+ */
+interface PhaseConfig {
+	name: string;
+	metadata?: string; // e.g., "- MANDATORY", "(parallel execution)"
+	content: string[];
+}
+
+/**
+ * Options for creating the main agent prompt
+ */
+export interface MainAgentPromptOptions {
+	includeExamplesPhase?: boolean;
+}
+
+/**
+ * Generate the workflow creation phases with dynamic numbering
+ */
+function generateWorkflowCreationPhases(options: MainAgentPromptOptions = {}): string {
+	const { includeExamplesPhase = false } = options;
+
+	const phases: PhaseConfig[] = [
+		{
+			name: 'Categorization Phase',
+			metadata: '- MANDATORY',
+			content: [
+				'Categorize the prompt and search for best practices documentation based on the techniques found',
+				'Why: Best practices help to inform which nodes to search for and use to build the workflow plus mistakes to avoid',
+			],
+		},
+	];
+
+	if (includeExamplesPhase) {
+		phases.push({
+			name: 'Examples Phase',
+			metadata: '(parallel execution)',
+			content: [
+				'Search for workflow examples using simple, relevant search terms',
+				'Why: Examples provide complete, working implementations showing nodes, connections and parameter configurations',
+			],
+		});
+	}
+
+	phases.push(
+		{
+			name: 'Discovery Phase',
+			metadata: '(parallel execution)',
+			content: [
+				'Search for all required node types simultaneously, review the <node_selection> section for tips and best practices',
+				'Why: Ensures you work with actual available nodes, not assumptions',
+			],
+		},
+		{
+			name: 'Analysis Phase',
+			metadata: '(parallel execution)',
+			content: [
+				'Get details for ALL nodes before proceeding',
+				'Why: Understanding inputs/outputs prevents connection errors and ensures proper parameter configuration',
+			],
+		},
+		{
+			name: 'Creation Phase',
+			metadata: '(parallel execution)',
+			content: [
+				'Add nodes individually by calling add_nodes for each node',
+				'Execute multiple add_nodes calls in parallel for efficiency',
+				'Why: Each node addition is independent, parallel execution is faster, and the operations processor ensures consistency',
+			],
+		},
+		{
+			name: 'Connection Phase',
+			metadata: '(parallel execution)',
+			content: [
+				'Connect all nodes based on discovered input/output structure',
+				'Why: Parallel connections are safe and faster',
+			],
+		},
+		{
+			name: 'Configuration Phase',
+			metadata: '(parallel execution) - MANDATORY',
+			content: [
+				'ALWAYS configure nodes using update_node_parameters',
+				'Even for "simple" nodes like HTTP Request, Set, etc.',
+				'Configure all nodes in parallel for efficiency',
+				'Why: Unconfigured nodes will fail at runtime',
+				'Pay special attention to parameters that control node behavior (dataType, mode, operation)',
+				'Why: Unconfigured nodes will fail at runtime, defaults are unreliable',
+			],
+		},
+		{
+			name: 'Validation Phase',
+			metadata: '(tool call) - MANDATORY',
+			content: [
+				'Run validate_workflow after applying changes to refresh the workflow validation report',
+				'Review <workflow_validation_report> and resolve any violations before finalizing',
+				'Why: Ensures structural issues are surfaced early; rerun validation after major updates',
+			],
+		},
+	);
+
+	// Generate numbered output
+	return phases
+		.map((phase, index) => {
+			const phaseNumber = index + 1;
+			const metadataStr = phase.metadata ? ` ${phase.metadata}` : '';
+			const contentStr = phase.content.map((line) => `   - ${line}`).join('\n');
+			return `${phaseNumber}. **${phase.name}**${metadataStr}\n${contentStr}`;
+		})
+		.join('\n\n');
+}
+
+/**
+ * Generate the full system prompt with dynamic phases
+ */
+function generateSystemPrompt(options: MainAgentPromptOptions = {}): string {
+	const workflowPhases = generateWorkflowCreationPhases(options);
+
+	return `You are an AI assistant specialized in creating and editing n8n workflows. Your goal is to help users build efficient, well-connected workflows by intelligently using the available tools.
 <core_principle>
 After receiving tool results, reflect on their quality and determine optimal next steps. Use this reflection to plan your approach and ensure all nodes are properly configured and connected.
 </core_principle>
@@ -32,39 +150,7 @@ The system's operations processor ensures state consistency across all parallel 
 <workflow_creation_sequence>
 Follow this proven sequence for creating robust workflows:
 
-1. **Categorization Phase** - MANDATORY
-   - Categorize the prompt and search for best practices documentation based on the techniques found
-   - Why: Best practices help to inform which nodes to search for and use to build the workflow plus mistakes to avoid
-
-2. **Discovery Phase** (parallel execution)
-   - Search for all required node types simultaneously, review the <node_selection> section for tips and best practices
-   - Why: Ensures you work with actual available nodes, not assumptions
-
-3. **Analysis Phase** (parallel execution)
-   - Get details for ALL nodes before proceeding
-   - Why: Understanding inputs/outputs prevents connection errors and ensures proper parameter configuration
-
-4. **Creation Phase** (parallel execution)
-   - Add nodes individually by calling add_nodes for each node
-   - Execute multiple add_nodes calls in parallel for efficiency
-   - Why: Each node addition is independent, parallel execution is faster, and the operations processor ensures consistency
-
-5. **Connection Phase** (parallel execution)
-   - Connect all nodes based on discovered input/output structure
-   - Why: Parallel connections are safe and faster
-
-6. **Configuration Phase** (parallel execution) - MANDATORY
-   - ALWAYS configure nodes using update_node_parameters
-   - Even for "simple" nodes like HTTP Request, Set, etc.
-   - Configure all nodes in parallel for efficiency
-   - Why: Unconfigured nodes will fail at runtime
-   - Pay special attention to parameters that control node behavior (dataType, mode, operation)
-   - Why: Unconfigured nodes will fail at runtime, defaults are unreliable
-
-6. **Validation Phase** (tool call) - MANDATORY
-   - Run validate_workflow after applying changes to refresh the workflow validation report
-   - Review <workflow_validation_report> and resolve any violations before finalizing
-   - Why: Ensures structural issues are surfaced early; rerun validation after major updates
+${workflowPhases}
 
 <node_selection>
 When building AI workflows prefer the AI agent node to other text LLM nodes, unless the user specifies them by name. Summarization, analysis, information
@@ -482,6 +568,7 @@ update_node_parameters({{
 </handling_uncertainty>
 
 `;
+}
 
 const responsePatterns = `
 <response_patterns>
@@ -529,28 +616,41 @@ const previousConversationSummary = `
 {previousSummary}
 </previous_summary>`;
 
-export const mainAgentPrompt = ChatPromptTemplate.fromMessages([
-	[
-		'system',
+/**
+ * Factory function to create the main agent prompt with configurable options
+ */
+export function createMainAgentPrompt(options: MainAgentPromptOptions = {}) {
+	const systemPrompt = generateSystemPrompt(options);
+
+	return ChatPromptTemplate.fromMessages([
 		[
-			{
-				type: 'text',
-				text: systemPrompt,
-			},
-			{
-				type: 'text',
-				text: instanceUrlPrompt,
-			},
-			{
-				type: 'text',
-				text: responsePatterns,
-			},
-			{
-				type: 'text',
-				text: previousConversationSummary,
-				cache_control: { type: 'ephemeral' },
-			},
+			'system',
+			[
+				{
+					type: 'text',
+					text: systemPrompt,
+				},
+				{
+					type: 'text',
+					text: instanceUrlPrompt,
+				},
+				{
+					type: 'text',
+					text: responsePatterns,
+				},
+				{
+					type: 'text',
+					text: previousConversationSummary,
+					cache_control: { type: 'ephemeral' },
+				},
+			],
 		],
-	],
-	['placeholder', '{messages}'],
-]);
+		['placeholder', '{messages}'],
+	]);
+}
+
+/**
+ * Default main agent prompt (backwards compatible export)
+ * Includes all phases by default
+ */
+export const mainAgentPrompt = createMainAgentPrompt();

@@ -95,12 +95,12 @@ async function runLLM(
 		// FIXME: https://github.com/langchain-ai/langchainjs/issues/9012
 		// This is a manual fix to extract the text from the response.
 		// Replace with const chain = chatPrompt.pipe(model).pipe(outputParser); when the issue is fixed.
-		const extractText = (content: MessageContent) => {
+		const extractText = (content: MessageContent): string => {
 			if (typeof content === 'string') {
 				return content;
 			}
 			if (content[0].type === 'text') {
-				return content[0].text;
+				return content[0].text as string;
 			}
 			throw new Error('Invalid content type');
 		};
