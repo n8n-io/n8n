@@ -68,7 +68,10 @@ export class ExecutionContextService {
 
 		let currentTriggerItems = startItem.data['main'][0];
 
-		const contextEstablishmentHookParameters = startItem.node.parameters?.contextEstablishmentHooks;
+		const contextEstablishmentHookParameters = {
+			...(workflow.getNode(startItem.node.name)?.parameters ?? {}),
+			...startItem.node.parameters,
+		};
 
 		const startNodeParametersResult = toExecutionContextEstablishmentHookParameter(
 			contextEstablishmentHookParameters,
@@ -97,7 +100,7 @@ export class ExecutionContextService {
 
 		// based on startNodeParameters, startNodeType and currentTriggerItems we can now
 		// iterate over the different hooks to extract specific data for the runtime context
-		for (const hookParameters of startNodeParameters.hooks) {
+		for (const hookParameters of startNodeParameters.contextEstablishmentHooks.hooks) {
 			const hook = this.executionContextHookRegistry.getHookByName(hookParameters.hookName);
 
 			if (!hook) {

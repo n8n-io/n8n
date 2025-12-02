@@ -16,12 +16,15 @@ import {
 	ChatHubN8nModel,
 	ChatHubCustomAgentModel,
 	emptyChatModelsResponse,
+	type ChatHubUpdateConversationRequest,
+	ChatModelDto,
 } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
-import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository } from '@n8n/db';
+import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository, In } from '@n8n/db';
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Response } from 'express';
+import { ErrorReporter } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
@@ -31,6 +34,7 @@ import {
 	type IWorkflowExecuteAdditionalData,
 	type IRun,
 	jsonParse,
+	jsonStringify,
 	StructuredChunk,
 	RESPOND_TO_CHAT_NODE_TYPE,
 	IRunExecutionData,
@@ -40,23 +44,6 @@ import {
 	createRunExecutionData,
 	WorkflowExecuteMode,
 } from 'n8n-workflow';
-
-import { ChatHubAgentService } from './chat-hub-agent.service';
-import { ChatHubCredentialsService } from './chat-hub-credentials.service';
-import type { ChatHubMessage } from './chat-hub-message.entity';
-import { ChatHubWorkflowService } from './chat-hub-workflow.service';
-import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
-import { ChatHubSettingsService } from './chat-hub.settings.service';
-import {
-	HumanMessagePayload,
-	RegenerateMessagePayload,
-	EditMessagePayload,
-	validChatTriggerParamsShape,
-} from './chat-hub.types';
-import { ChatHubMessageRepository } from './chat-message.repository';
-import { ChatHubSessionRepository } from './chat-session.repository';
-import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
 
 import { ActiveExecutions } from '@/active-executions';
 import { CredentialsFinderService } from '@/credentials/credentials-finder.service';
@@ -69,10 +56,34 @@ import { WorkflowExecutionService } from '@/workflows/workflow-execution.service
 import { WorkflowFinderService } from '@/workflows/workflow-finder.service';
 import { WorkflowService } from '@/workflows/workflow.service';
 
+import { ChatHubAgentService } from './chat-hub-agent.service';
+import { ChatHubCredentialsService } from './chat-hub-credentials.service';
+import type { ChatHubMessage } from './chat-hub-message.entity';
+import type { ChatHubSession } from './chat-hub-session.entity';
+import { ChatHubWorkflowService } from './chat-hub-workflow.service';
+import { ChatHubAttachmentService } from './chat-hub.attachment.service';
+import {
+	JSONL_STREAM_HEADERS,
+	NODE_NAMES,
+	PROVIDER_NODE_TYPE_MAP,
+	getModelMetadata,
+} from './chat-hub.constants';
+import { ChatHubSettingsService } from './chat-hub.settings.service';
+import {
+	HumanMessagePayload,
+	RegenerateMessagePayload,
+	EditMessagePayload,
+	validChatTriggerParamsShape,
+} from './chat-hub.types';
+import { ChatHubMessageRepository } from './chat-message.repository';
+import { ChatHubSessionRepository } from './chat-session.repository';
+import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
+
 @Service()
 export class ChatHubService {
 	constructor(
 		private readonly logger: Logger,
+		private readonly errorReporter: ErrorReporter,
 		private readonly executionService: ExecutionService,
 		private readonly nodeParametersService: DynamicNodeParametersService,
 		private readonly executionRepository: ExecutionRepository,
@@ -212,7 +223,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('openai', String(result.value)),
 			})),
 		};
 	}
@@ -240,7 +251,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('anthropic', String(result.value)),
 			})),
 		};
 	}
@@ -306,7 +317,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('google', String(result.value)),
 			})),
 		};
 	}
@@ -365,7 +376,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('ollama', String(result.value)),
 			})),
 		};
 	}
@@ -483,7 +494,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('awsBedrock', String(result.value)),
 			})),
 		};
 	}
@@ -546,6 +557,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('mistralCloud', String(result.value)),
 			})),
 		};
 	}
@@ -603,6 +615,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('cohere', String(result.value)),
 			})),
 		};
 	}
@@ -659,6 +672,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('deepSeek', String(result.value)),
 			})),
 		};
 	}
@@ -715,6 +729,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('openRouter', String(result.value)),
 			})),
 		};
 	}
@@ -771,6 +786,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('groq', String(result.value)),
 			})),
 		};
 	}
@@ -827,6 +843,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('xAiGrok', String(result.value)),
 			})),
 		};
 	}
@@ -883,51 +900,74 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('vercelAiGateway', String(result.value)),
 			})),
 		};
 	}
 
 	private async fetchAgentWorkflowsAsModels(user: User): Promise<ChatModelsResponse['n8n']> {
-		const nodeTypes = [CHAT_TRIGGER_NODE_TYPE];
-		const workflows = await this.workflowService.getWorkflowsWithNodesIncluded(
+		// Workflows are scanned by their latest version for chat trigger nodes.
+		// This means that we might miss some active workflow versions that had chat triggers but
+		// the latest version does not, but this trade-off is done for performance.
+		const workflowsWithChatTrigger = await this.workflowService.getWorkflowsWithNodesIncluded(
 			user,
-			nodeTypes,
+			[CHAT_TRIGGER_NODE_TYPE],
 			true,
 		);
 
+		const activeWorkflows = workflowsWithChatTrigger
+			// Ensure the user has at least read access to the workflows
+			.filter((workflow) => workflow.scopes.includes('workflow:read'))
+			.filter((workflow) => !!workflow.activeVersionId);
+
+		const workflows = await this.workflowRepository.find({
+			select: { id: true },
+			where: { id: In(activeWorkflows.map((workflow) => workflow.id)) },
+			relations: { activeVersion: true },
+		});
+
+		const models: ChatModelDto[] = [];
+
+		for (const { id, activeVersion } of workflows) {
+			if (!activeVersion) {
+				continue;
+			}
+
+			const chatTrigger = activeVersion.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
+
+			if (!chatTrigger) {
+				continue;
+			}
+
+			const chatTriggerParams = validChatTriggerParamsShape.safeParse(chatTrigger.parameters).data;
+			if (!chatTriggerParams) {
+				continue;
+			}
+
+			const inputModalities = this.chatHubWorkflowService.parseInputModalities(
+				chatTriggerParams.options,
+			);
+
+			models.push({
+				name: chatTriggerParams.agentName ?? activeVersion.name ?? 'Unknown Agent',
+				description: chatTriggerParams.agentDescription ?? null,
+				model: {
+					provider: 'n8n',
+					workflowId: id,
+				},
+				createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
+				updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
+				metadata: {
+					inputModalities,
+					capabilities: {
+						functionCalling: false,
+					},
+				},
+			});
+		}
+
 		return {
-			models: workflows
-				// Ensure the user has at least read access to the workflow
-				.filter((workflow) => workflow.scopes.includes('workflow:read'))
-				.filter((workflow) => !!workflow.activeVersionId)
-				.flatMap((workflow) => {
-					const chatTrigger = workflow.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-					if (!chatTrigger) {
-						return [];
-					}
-
-					const chatTriggerParams = validChatTriggerParamsShape.safeParse(
-						chatTrigger.parameters,
-					).data;
-
-					if (!chatTriggerParams) {
-						return [];
-					}
-
-					return [
-						{
-							name: chatTriggerParams.agentName ?? workflow.name ?? 'Unknown Agent',
-							description: chatTriggerParams.agentDescription ?? null,
-							model: {
-								provider: 'n8n',
-								workflowId: workflow.id,
-							},
-							createdAt: workflow.createdAt ? workflow.createdAt.toISOString() : null,
-							updatedAt: workflow.updatedAt ? workflow.updatedAt.toISOString() : null,
-							allowFileUploads: chatTriggerParams.options?.allowFileUploads ?? false,
-						},
-					];
-				}),
+			models,
 		};
 	}
 
@@ -1002,7 +1042,15 @@ export class ChatHubService {
 		try {
 			const result = await this.messageRepository.manager.transaction(async (trx) => {
 				let session = await this.getChatSession(user, sessionId, trx);
-				session ??= await this.createChatSession(user, sessionId, model, credentialId, tools, trx);
+				session ??= await this.createChatSession(
+					user,
+					sessionId,
+					model,
+					credentialId,
+					tools,
+					payload.agentName,
+					trx,
+				);
 
 				await this.ensurePreviousMessage(previousMessageId, sessionId, trx);
 				const messages = Object.fromEntries((session.messages ?? []).map((m) => [m.id, m]));
@@ -1034,8 +1082,15 @@ export class ChatHubService {
 			executionData = result.executionData;
 			workflowData = result.workflowData;
 		} catch (error) {
-			// Rollback stored attachments if transaction fails
-			await this.chatHubAttachmentService.deleteAttachments(processedAttachments);
+			if (processedAttachments.length > 0) {
+				try {
+					// Rollback stored attachments if transaction fails
+					await this.chatHubAttachmentService.deleteAttachments(processedAttachments);
+				} catch (error) {
+					this.errorReporter.warn(`Could not clean up ${processedAttachments.length} files`);
+				}
+			}
+
 			throw error;
 		}
 
@@ -1301,10 +1356,6 @@ export class ChatHubService {
 			throw new BadRequestError('Provider or model not set for agent');
 		}
 
-		if (agent.provider === 'n8n' || agent.provider === 'custom-agent') {
-			throw new BadRequestError('Invalid provider');
-		}
-
 		const credentialId = agent.credentialId;
 		if (!credentialId) {
 			throw new BadRequestError('Credentials not set for agent');
@@ -1351,14 +1402,14 @@ export class ChatHubService {
 			workflowId,
 			user,
 			['workflow:read'],
-			{ includeTags: false, includeParentFolder: false },
+			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true },
 		);
 
-		if (!workflowEntity) {
+		if (!workflowEntity?.activeVersion) {
 			throw new BadRequestError('Workflow not found');
 		}
 
-		const chatTriggers = workflowEntity.nodes.filter(
+		const chatTriggers = workflowEntity.activeVersion.nodes.filter(
 			(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
 		);
 
@@ -1368,7 +1419,7 @@ export class ChatHubService {
 
 		const chatTriggerNode = chatTriggers[0];
 
-		const chatResponseNodes = workflowEntity.nodes.filter(
+		const chatResponseNodes = workflowEntity.activeVersion.nodes.filter(
 			(node) => node.type === RESPOND_TO_CHAT_NODE_TYPE,
 		);
 
@@ -1394,10 +1445,16 @@ export class ChatHubService {
 			},
 		});
 
+		const workflowData: IWorkflowBase = {
+			...workflowEntity.activeVersion,
+			id: workflowEntity.id,
+			active: true,
+			isArchived: workflowEntity.isArchived,
+			activeVersionId: workflowEntity.activeVersionId,
+		};
+
 		return {
-			workflowData: {
-				...workflowEntity,
-			},
+			workflowData,
 			executionData,
 		};
 	}
@@ -1545,7 +1602,7 @@ export class ChatHubService {
 				},
 			};
 
-			return JSON.stringify(enriched) + '\n';
+			return jsonStringify(enriched) + '\n';
 		};
 
 		const stream = interceptResponseWrites(res, transform);
@@ -1673,7 +1730,7 @@ export class ChatHubService {
 			}
 
 			this.logger.debug(
-				`Using credential ID ${credential.id} for title generation in project ${credential.projectId}, model ${JSON.stringify(resolvedModel)}`,
+				`Using credential ID ${credential.id} for title generation in project ${credential.projectId}, model ${jsonStringify(resolvedModel)}`,
 			);
 
 			return await this.chatHubWorkflowService.createTitleGenerationWorkflow(
@@ -1733,14 +1790,14 @@ export class ChatHubService {
 			workflowId,
 			user,
 			['workflow:read'],
-			{ includeTags: false, includeParentFolder: false, em: trx },
+			{ includeTags: false, includeParentFolder: false, includeActiveVersion: true, em: trx },
 		);
 
-		if (!workflowEntity) {
+		if (!workflowEntity?.activeVersion) {
 			throw new BadRequestError('Workflow not found for title generation');
 		}
 
-		const modelNodes = this.findSupportedLLMNodes(workflowEntity);
+		const modelNodes = this.findSupportedLLMNodes(workflowEntity.activeVersion.nodes);
 		this.logger.debug(
 			`Found ${modelNodes.length} LLM nodes in workflow ${workflowEntity.id} for title generation`,
 		);
@@ -1791,20 +1848,17 @@ export class ChatHubService {
 		return { resolvedCredentials, resolvedModel, credential };
 	}
 
-	private findSupportedLLMNodes(workflowEntity: { nodes: INode[]; id: string }) {
-		return workflowEntity.nodes.reduce<Array<{ node: INode; provider: ChatHubLLMProvider }>>(
-			(acc, node) => {
-				const supportedProvider = Object.entries(PROVIDER_NODE_TYPE_MAP).find(
-					([_provider, { name }]) => node.type === name,
-				);
-				if (supportedProvider) {
-					const [provider] = supportedProvider;
-					acc.push({ node, provider: provider as ChatHubLLMProvider });
-				}
-				return acc;
-			},
-			[],
-		);
+	private findSupportedLLMNodes(nodes: INode[]) {
+		return nodes.reduce<Array<{ node: INode; provider: ChatHubLLMProvider }>>((acc, node) => {
+			const supportedProvider = Object.entries(PROVIDER_NODE_TYPE_MAP).find(
+				([_provider, { name }]) => node.type === name,
+			);
+			if (supportedProvider) {
+				const [provider] = supportedProvider;
+				acc.push({ node, provider: provider as ChatHubLLMProvider });
+			}
+			return acc;
+		}, []);
 	}
 
 	private async resolveFromCustomAgent(
@@ -1819,10 +1873,6 @@ export class ChatHubService {
 		const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
 		if (!agent) {
 			throw new BadRequestError('Agent not found for title generation');
-		}
-
-		if (agent.provider === 'n8n' || agent.provider === 'custom-agent') {
-			throw new BadRequestError('Invalid provider for title generation');
 		}
 
 		const credentialId = agent.credentialId;
@@ -1861,6 +1911,9 @@ export class ChatHubService {
 			workflowData,
 			executionData,
 			user,
+			undefined,
+			false,
+			'chat',
 		);
 
 		const executionId = started.executionId;
@@ -1884,6 +1937,7 @@ export class ChatHubService {
 		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
 			workflowData.id,
 		]);
+
 		if (!execution) {
 			throw new OperationalError(`Could not find execution with ID ${executionId}`);
 		}
@@ -1974,44 +2028,10 @@ export class ChatHubService {
 		model: ChatHubConversationModel,
 		credentialId: string | null,
 		tools: INode[],
+		agentName: string,
 		trx?: EntityManager,
 	) {
-		let agentName: string | undefined = undefined;
-
-		if (model.provider === 'custom-agent') {
-			// Find the agent to get its name
-			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
-			if (!agent) {
-				throw new BadRequestError('Agent not found for chat session initialization');
-			}
-			agentName = agent.name;
-		}
-
-		if (model.provider === 'n8n') {
-			// Find the workflow to get its name
-			const workflow = await this.workflowFinderService.findWorkflowForUser(
-				model.workflowId,
-				user,
-				['workflow:read'],
-				{ includeTags: false, includeParentFolder: false },
-			);
-
-			if (!workflow) {
-				throw new BadRequestError('Workflow not found for chat session initialization');
-			}
-
-			const chatTrigger = workflow.nodes?.find((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-			if (!chatTrigger) {
-				throw new BadRequestError(
-					'Chat trigger not found in workflow for chat session initialization',
-				);
-			}
-			agentName =
-				typeof chatTrigger.parameters.agentName === 'string' &&
-				chatTrigger.parameters.agentName.length > 0
-					? chatTrigger.parameters.agentName
-					: workflow.name;
-		}
+		await this.ensureValidModel(user, model);
 
 		return await this.sessionRepository.createChatSession(
 			{
@@ -2065,7 +2085,7 @@ export class ChatHubService {
 				model: session.model,
 				workflowId: session.workflowId,
 				agentId: session.agentId,
-				agentName: session.agentName,
+				agentName: session.agentName ?? '',
 				createdAt: session.createdAt.toISOString(),
 				updatedAt: session.updatedAt.toISOString(),
 				tools: session.tools,
@@ -2097,7 +2117,7 @@ export class ChatHubService {
 				model: session.model,
 				workflowId: session.workflowId,
 				agentId: session.agentId,
-				agentName: session.agentName,
+				agentName: session.agentName ?? '',
 				createdAt: session.createdAt.toISOString(),
 				updatedAt: session.updatedAt.toISOString(),
 				tools: session.tools,
@@ -2184,15 +2204,7 @@ export class ChatHubService {
 	async updateSession(
 		user: User,
 		sessionId: ChatSessionId,
-		updates: {
-			title?: string;
-			credentialId?: string | null;
-			provider?: ChatHubProvider;
-			model?: string | null;
-			workflowId?: string | null;
-			agentId?: string | null;
-			agentName?: string | null;
-		},
+		updates: ChatHubUpdateConversationRequest,
 	) {
 		const session = await this.sessionRepository.getOneById(sessionId, user.id);
 
@@ -2200,62 +2212,34 @@ export class ChatHubService {
 			throw new NotFoundError('Session not found');
 		}
 
-		if (updates.workflowId) {
-			// Validate the workflow exists and is accessible
-			const workflow = await this.workflowFinderService.findWorkflowForUser(
-				updates.workflowId,
-				user,
-				['workflow:read'],
-				{ includeTags: false, includeParentFolder: false },
-			);
+		// Prepare the actual updates to be sent to the repository
+		const sessionUpdates: Partial<ChatHubSession> = {};
 
-			if (!workflow) {
-				throw new BadRequestError('Workflow not found');
+		if (updates.agent) {
+			const model = updates.agent.model;
+
+			await this.ensureValidModel(user, model);
+
+			sessionUpdates.agentName = updates.agent.name;
+			sessionUpdates.provider = model.provider;
+			sessionUpdates.model = null;
+			sessionUpdates.credentialId = null;
+			sessionUpdates.agentId = null;
+			sessionUpdates.workflowId = null;
+
+			if (updates.agent.model.provider === 'n8n') {
+				sessionUpdates.workflowId = updates.agent.model.workflowId;
+			} else if (updates.agent.model.provider === 'custom-agent') {
+				sessionUpdates.agentId = updates.agent.model.agentId;
+			} else {
+				sessionUpdates.model = updates.agent.model.model;
 			}
-
-			const chatTriggers = workflow.nodes.filter((node) => node.type === CHAT_TRIGGER_NODE_TYPE);
-
-			if (chatTriggers.length !== 1) {
-				throw new BadRequestError('Workflow must have exactly one chat trigger');
-			}
-
-			const chatTrigger = chatTriggers[0];
-
-			updates.agentName =
-				typeof chatTrigger.parameters.agentName === 'string' &&
-				chatTrigger.parameters.agentName.length > 0
-					? chatTrigger.parameters.agentName
-					: workflow.name;
 		}
 
-		if (updates.agentId) {
-			// Validate the agent exists and is accessible
-			const agent = await this.chatHubAgentService.getAgentById(updates.agentId, user.id);
+		if (updates.title !== undefined) sessionUpdates.title = updates.title;
+		if (updates.credentialId !== undefined) sessionUpdates.credentialId = updates.credentialId;
 
-			if (!agent) {
-				throw new BadRequestError('Agent not found');
-			}
-
-			updates.agentName = agent.name;
-		}
-
-		if (updates.provider === 'n8n') {
-			// n8n provider only stores workflowId
-			updates.model = null;
-			updates.credentialId = null;
-			updates.agentId = null;
-		} else if (updates.provider === 'custom-agent') {
-			// custom-agent provider only stores agentId & Agent name
-			updates.model = null;
-			updates.credentialId = null;
-			updates.workflowId = null;
-		} else if (updates.provider) {
-			updates.workflowId = null;
-			updates.agentId = null;
-			updates.agentName = null;
-		}
-
-		return await this.sessionRepository.updateChatSession(sessionId, updates);
+		return await this.sessionRepository.updateChatSession(sessionId, sessionUpdates);
 	}
 
 	/**
@@ -2270,5 +2254,39 @@ export class ChatHubService {
 
 		await this.chatHubAttachmentService.deleteAllBySessionId(sessionId);
 		await this.sessionRepository.deleteChatHubSession(sessionId);
+	}
+
+	private async ensureValidModel(user: User, model: ChatHubConversationModel) {
+		if (model.provider === 'custom-agent') {
+			// Find the agent to get its name
+			const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
+			if (!agent) {
+				throw new BadRequestError('Agent not found for chat session initialization');
+			}
+		}
+
+		if (model.provider === 'n8n') {
+			// Find the workflow to get its name
+			const workflowEntity = await this.workflowFinderService.findWorkflowForUser(
+				model.workflowId,
+				user,
+				['workflow:read'],
+				{ includeTags: false, includeParentFolder: false, includeActiveVersion: true },
+			);
+
+			if (!workflowEntity?.activeVersion) {
+				throw new BadRequestError('Workflow not found for chat session initialization');
+			}
+
+			const chatTrigger = workflowEntity.activeVersion.nodes?.find(
+				(node) => node.type === CHAT_TRIGGER_NODE_TYPE,
+			);
+
+			if (!chatTrigger) {
+				throw new BadRequestError(
+					'Chat trigger not found in workflow for chat session initialization',
+				);
+			}
+		}
 	}
 }
