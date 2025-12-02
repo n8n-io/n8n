@@ -4,7 +4,12 @@ import { useMessage } from '@/app/composables/useMessage';
 import { useToast } from '@/app/composables/useToast';
 import { useChatStore } from '@/features/ai/chatHub/chat.store';
 import ModelSelector from '@/features/ai/chatHub/components/ModelSelector.vue';
-import type { ChatHubBaseLLMModel, ChatHubProvider, ChatModelDto } from '@n8n/api-types';
+import type {
+	ChatHubBaseLLMModel,
+	ChatHubConversationModel,
+	ChatHubProvider,
+	ChatModelDto,
+} from '@n8n/api-types';
 import { N8nButton, N8nHeading, N8nInput, N8nInputLabel, N8nSpinner } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { assert } from '@n8n/utils/assert';
@@ -15,6 +20,8 @@ import type { INode } from 'n8n-workflow';
 import ToolsSelector from './ToolsSelector.vue';
 import { isLlmProviderModel } from '@/features/ai/chatHub/chat.utils';
 import { useCustomAgent } from '@/features/ai/chatHub/composables/useCustomAgent';
+import { useUIStore } from '@/app/stores/ui.store';
+import { TOOLS_SELECTOR_MODAL_KEY } from '@/features/ai/chatHub/constants';
 
 const props = defineProps<{
 	modalName: string;
@@ -30,6 +37,8 @@ const chatStore = useChatStore();
 const i18n = useI18n();
 const toast = useToast();
 const message = useMessage();
+const uiStore = useUIStore();
+
 const modalBus = ref(createEventBus());
 const customAgent = useCustomAgent(props.data.agentId);
 
@@ -78,6 +87,21 @@ const agentMergedCredentials = computed((): CredentialsMap => {
 	};
 });
 
+const canSelectTools = computed(
+	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
+);
+
+// If the agent doesn't support tools anymore, reset tools
+watch(
+	selectedAgent,
+	(agent) => {
+		if (agent && !agent.metadata.capabilities.functionCalling) {
+			tools.value = [];
+		}
+	},
+	{ immediate: true },
+);
+
 watch(
 	customAgent,
 	(agent) => {
@@ -103,9 +127,9 @@ function onCredentialSelected(provider: ChatHubProvider, credentialId: string | 
 	};
 }
 
-function onModelChange(agent: ChatModelDto) {
-	assert(isLlmProviderModel(agent.model));
-	selectedModel.value = agent.model;
+function onModelChange(model: ChatHubConversationModel) {
+	assert(isLlmProviderModel(model));
+	selectedModel.value = model;
 }
 
 async function onSave() {
@@ -182,8 +206,16 @@ async function onDelete() {
 	}
 }
 
-function onSelectTools(newTools: INode[]) {
-	tools.value = newTools;
+function onSelectTools() {
+	uiStore.openModalWithData({
+		name: TOOLS_SELECTOR_MODAL_KEY,
+		data: {
+			selected: tools.value,
+			onConfirm: (newTools: INode[]) => {
+				tools.value = newTools;
+			},
+		},
+	});
 }
 </script>
 
@@ -283,7 +315,16 @@ function onSelectTools(newTools: INode[]) {
 						:required="false"
 					>
 						<div>
-							<ToolsSelector :disabled="isLoadingAgent" :selected="tools" @select="onSelectTools" />
+							<ToolsSelector
+								:disabled="isLoadingAgent || !canSelectTools"
+								:disabled-tooltip="
+									isLoadingAgent || canSelectTools
+										? undefined
+										: i18n.baseText('chatHub.tools.selector.disabled.tooltip')
+								"
+								:selected="tools"
+								@click="onSelectTools"
+							/>
 						</div>
 					</N8nInputLabel>
 				</div>

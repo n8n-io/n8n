@@ -62,7 +62,12 @@ import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubSession } from './chat-hub-session.entity';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import {
+	JSONL_STREAM_HEADERS,
+	NODE_NAMES,
+	PROVIDER_NODE_TYPE_MAP,
+	getModelMetadata,
+} from './chat-hub.constants';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	HumanMessagePayload,
@@ -218,7 +223,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('openai', String(result.value)),
 			})),
 		};
 	}
@@ -246,7 +251,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('anthropic', String(result.value)),
 			})),
 		};
 	}
@@ -312,7 +317,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('google', String(result.value)),
 			})),
 		};
 	}
@@ -371,7 +376,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('ollama', String(result.value)),
 			})),
 		};
 	}
@@ -489,7 +494,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('awsBedrock', String(result.value)),
 			})),
 		};
 	}
@@ -552,6 +557,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('mistralCloud', String(result.value)),
 			})),
 		};
 	}
@@ -609,6 +615,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('cohere', String(result.value)),
 			})),
 		};
 	}
@@ -665,6 +672,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('deepSeek', String(result.value)),
 			})),
 		};
 	}
@@ -721,6 +729,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('openRouter', String(result.value)),
 			})),
 		};
 	}
@@ -777,6 +786,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('groq', String(result.value)),
 			})),
 		};
 	}
@@ -833,6 +843,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('xAiGrok', String(result.value)),
 			})),
 		};
 	}
@@ -889,6 +900,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('vercelAiGateway', String(result.value)),
 			})),
 		};
 	}
@@ -932,6 +944,10 @@ export class ChatHubService {
 				continue;
 			}
 
+			const inputModalities = this.chatHubWorkflowService.parseInputModalities(
+				chatTriggerParams.options,
+			);
+
 			models.push({
 				name: chatTriggerParams.agentName ?? activeVersion.name ?? 'Unknown Agent',
 				description: chatTriggerParams.agentDescription ?? null,
@@ -941,7 +957,12 @@ export class ChatHubService {
 				},
 				createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
 				updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
-				allowFileUploads: chatTriggerParams.options?.allowFileUploads ?? false,
+				metadata: {
+					inputModalities,
+					capabilities: {
+						functionCalling: false,
+					},
+				},
 			});
 		}
 
@@ -1333,10 +1354,6 @@ export class ChatHubService {
 
 		if (!agent.provider || !agent.model) {
 			throw new BadRequestError('Provider or model not set for agent');
-		}
-
-		if (agent.provider === 'n8n' || agent.provider === 'custom-agent') {
-			throw new BadRequestError('Invalid provider');
 		}
 
 		const credentialId = agent.credentialId;
@@ -1856,10 +1873,6 @@ export class ChatHubService {
 		const agent = await this.chatHubAgentService.getAgentById(model.agentId, user.id);
 		if (!agent) {
 			throw new BadRequestError('Agent not found for title generation');
-		}
-
-		if (agent.provider === 'n8n' || agent.provider === 'custom-agent') {
-			throw new BadRequestError('Invalid provider for title generation');
 		}
 
 		const credentialId = agent.credentialId;
