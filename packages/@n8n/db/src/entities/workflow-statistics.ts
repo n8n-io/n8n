@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryColumn } from '@n8n/typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from '@n8n/typeorm';
 
 import { DateTimeColumn } from './abstract-entity';
 import { StatisticsNames } from './types-db';
@@ -6,6 +6,9 @@ import { WorkflowEntity } from './workflow-entity';
 
 @Entity()
 export class WorkflowStatistics {
+	@PrimaryGeneratedColumn()
+	id: number;
+
 	@Column()
 	count: number;
 
@@ -15,12 +18,15 @@ export class WorkflowStatistics {
 	@DateTimeColumn()
 	latestEvent: Date;
 
-	@PrimaryColumn({ length: 128 })
+	@Column({ length: 128 })
 	name: StatisticsNames;
 
-	@ManyToOne('WorkflowEntity', 'shared')
+	@ManyToOne('WorkflowEntity', 'shared', { onDelete: 'SET NULL' })
 	workflow: WorkflowEntity;
 
-	@PrimaryColumn()
-	workflowId: string;
+	@Column({ nullable: true })
+	workflowId: string | null;
+
+	@Column({ type: 'varchar', length: 128, nullable: true })
+	workflowName: string | null;
 }
