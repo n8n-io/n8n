@@ -2,10 +2,11 @@ import type { RoleChangeRequestDto } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import { GlobalConfig } from '@n8n/config';
 import type { PublicUser } from '@n8n/db';
-import { ProjectRelation, User, UserRepository, ProjectRepository } from '@n8n/db';
+import { ProjectRelation, User, UserRepository, ProjectRepository, Not, In } from '@n8n/db';
 import { Service } from '@n8n/di';
 import {
 	getGlobalScopes,
+	PROJECT_ADMIN_ROLE_SLUG,
 	PROJECT_OWNER_ROLE_SLUG,
 	PROJECT_VIEWER_ROLE_SLUG,
 	type AssignableGlobalRole,
@@ -293,6 +294,34 @@ export class UserService {
 			const isDowngradedAdmin = isAdminRole(user.role.slug) && !isAdminRole(newRole.newRoleName);
 
 			if (isDowngradedToChatUser) {
+				// Revoke user's project roles in any shared projects they have access to.
+				const projectRelations = await trx.find(ProjectRelation, {
+					where: { userId: user.id, role: { slug: Not(PROJECT_OWNER_ROLE_SLUG) } },
+					relations: ['role'],
+				});
+				for (const relation of projectRelations) {
+					if (relation.role.slug === PROJECT_ADMIN_ROLE_SLUG) {
+						// Ensure there is at least one other admin in the project
+						const adminCount = await trx.count(ProjectRelation, {
+							where: {
+								projectId: relation.projectId,
+								role: { slug: In([PROJECT_ADMIN_ROLE_SLUG, PROJECT_OWNER_ROLE_SLUG]) },
+								userId: Not(user.id),
+							},
+						});
+						if (adminCount === 0) {
+							throw new UnexpectedError(
+								`Cannot downgrade user as they are the only project admin in project "${relation.projectId}".`,
+							);
+						}
+					}
+
+					await trx.delete(ProjectRelation, {
+						userId: user.id,
+						projectId: relation.projectId,
+					});
+				}
+
 				const personalProject = await this.projectRepository.getPersonalProjectForUserOrFail(
 					user.id,
 					trx,

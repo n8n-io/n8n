@@ -398,7 +398,7 @@ describe('UserService', () => {
 			expect(publicApiKeyService.deleteAllApiKeysForUser).not.toHaveBeenCalled();
 		});
 
-		it('assigns chat user project:viewer when demoted from member', async () => {
+		it('removes project roles of user who is demoted to chat user from member', async () => {
 			const user = new User();
 			user.id = uuid();
 			user.role = new Role();
@@ -410,6 +410,53 @@ describe('UserService', () => {
 			personalProject.type = 'personal';
 			personalProject.creatorId = user.id;
 
+			const projectId = uuid();
+			manager.find.mockResolvedValueOnce([
+				Object.assign(new ProjectRelation(), {
+					userId: user.id,
+					role: Object.assign(new Role(), { slug: PROJECT_VIEWER_ROLE_SLUG }),
+					projectId,
+				}),
+			]);
+
+			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValueOnce(personalProject);
+
+			await userService.changeUserRole(user, { newRoleName: 'global:chatUser' });
+
+			expect(manager.delete).toHaveBeenCalledTimes(1);
+			expect(manager.delete).toHaveBeenCalledWith(ProjectRelation, {
+				userId: user.id,
+				projectId,
+			});
+
+			expect(manager.update).toHaveBeenCalledWith(
+				ProjectRelation,
+				{
+					userId: user.id,
+					role: { slug: PROJECT_OWNER_ROLE_SLUG },
+					projectId: personalProject.id,
+				},
+				{ role: { slug: PROJECT_VIEWER_ROLE_SLUG } },
+			);
+
+			// Ensure all their API keys are revoked
+			expect(publicApiKeyService.removeOwnerOnlyScopesFromApiKeys).not.toHaveBeenCalled();
+			expect(publicApiKeyService.deleteAllApiKeysForUser).toHaveBeenCalledWith(user, manager);
+		});
+
+		it('assigns chat user project:viewer on their personal project when demoted from member', async () => {
+			const user = new User();
+			user.id = uuid();
+			user.role = new Role();
+			user.role.slug = 'global:member';
+			roleService.checkRolesExist.mockResolvedValueOnce();
+
+			const personalProject = new Project();
+			personalProject.id = uuid();
+			personalProject.type = 'personal';
+			personalProject.creatorId = user.id;
+
+			manager.find.mockResolvedValueOnce([]);
 			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValueOnce(personalProject);
 
 			await userService.changeUserRole(user, { newRoleName: 'global:chatUser' });
@@ -429,7 +476,7 @@ describe('UserService', () => {
 			expect(publicApiKeyService.deleteAllApiKeysForUser).toHaveBeenCalledWith(user, manager);
 		});
 
-		it('assigns chat user project:viewer when demoted from admin', async () => {
+		it('assigns chat user project:viewer on their personal project when demoted from admin', async () => {
 			const user = new User();
 			user.id = uuid();
 			user.role = new Role();
@@ -441,6 +488,7 @@ describe('UserService', () => {
 			personalProject.type = 'personal';
 			personalProject.creatorId = user.id;
 
+			manager.find.mockResolvedValueOnce([]);
 			projectRepository.getPersonalProjectForUserOrFail.mockResolvedValueOnce(personalProject);
 
 			await userService.changeUserRole(user, { newRoleName: 'global:chatUser' });
