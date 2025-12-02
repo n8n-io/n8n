@@ -8,6 +8,8 @@ Node:
   $ref: './../../../handlers/workflows/spec/schemas/node.yml'
 Tag:
   $ref: './../../../handlers/tags/spec/schemas/tag.yml'
+Settings:
+  $ref: './../../../handlers/settings/spec/schemas/settings.yml'
 Workflow:
   $ref: './../../../handlers/workflows/spec/schemas/workflow.yml'
 WorkflowSettings:

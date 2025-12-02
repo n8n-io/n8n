@@ -1,0 +1,16 @@
+get:
+  x-eov-operation-id: getSettings
+  x-eov-operation-handler: v1/handlers/settings/settings.handler
+  tags:
+    - Settings
+  summary: Retrieve instance settings
+  description: Retrieve settings configured for your instance.
+  responses:
+    '200':
+      description: Operation successful.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/settings.yml'
+    '401':
+      $ref: '../../../../shared/spec/responses/unauthorized.yml'

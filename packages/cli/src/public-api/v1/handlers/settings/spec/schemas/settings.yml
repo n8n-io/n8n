@@ -1,0 +1,10 @@
+type: object
+additionalProperties: false
+required:
+  - version
+properties:
+  version:
+    type: string
+    description: The version of n8n installed on this instance
+    readOnly: true
+    example: 1.122.2
