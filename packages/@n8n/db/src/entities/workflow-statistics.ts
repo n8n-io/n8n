@@ -3,16 +3,19 @@ import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from '@n8n/typeorm'
 import { DateTimeColumn } from './abstract-entity';
 import { StatisticsNames } from './types-db';
 import { WorkflowEntity } from './workflow-entity';
+import { bigintStringToNumber } from '../utils/transformers';
 
 @Entity()
 export class WorkflowStatistics {
 	@PrimaryGeneratedColumn()
 	id: number;
 
-	@Column({ type: 'bigint' })
+	// we expect values beyond JS number precision limits.
+	@Column({ type: 'bigint', transformer: bigintStringToNumber })
 	count: number;
 
-	@Column({ type: 'bigint' })
+	// we expect values beyond JS number precision limits.
+	@Column({ type: 'bigint', transformer: bigintStringToNumber })
 	rootCount: number;
 
 	@DateTimeColumn()
