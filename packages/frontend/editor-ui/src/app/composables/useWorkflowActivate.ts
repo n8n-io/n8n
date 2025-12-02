@@ -188,8 +188,11 @@ export function useWorkflowActivate() {
 			}
 
 			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion);
-			workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId);
-			workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
+
+			if (workflowId === workflowsStore.workflowId) {
+				workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId);
+				workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
+			}
 
 			void useExternalHooks().run('workflow.activeChangeCurrent', {
 				workflowId,
