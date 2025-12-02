@@ -261,12 +261,10 @@ export function createMultiAgentWorkflowWithSubgraphs(config: MultiAgentSubgraph
 			.addEdge('create_workflow_name', 'supervisor') // Continue after naming
 			// Compact has conditional routing: auto → continue, manual → responder
 			.addConditionalEdges('compact_messages', (state) => {
-				// Check if last message is user input (auto-compact preserves it)
-				const lastMsg = state.messages[state.messages.length - 1];
-				const isAutoCompact =
-					lastMsg?.content !== 'Please compress the conversation history' &&
-					lastMsg?.content !== '/compact';
-				return isAutoCompact ? 'check_state' : 'responder';
+				// Auto-compact preserves the last user message, manual /compact clears all
+				// If messages remain after compaction, it's auto-compact → continue processing
+				const hasMessages = state.messages.length > 0;
+				return hasMessages ? 'check_state' : 'responder';
 			})
 			// Conditional Edge for Supervisor (initial routing via LLM)
 			.addConditionalEdges('supervisor', (state) => routeToNode(state.nextPhase))

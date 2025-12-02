@@ -1,6 +1,6 @@
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models';
 import type { BaseMessage } from '@langchain/core/messages';
-import { AIMessage, HumanMessage, RemoveMessage } from '@langchain/core/messages';
+import { HumanMessage, RemoveMessage } from '@langchain/core/messages';
 import type { Logger } from '@n8n/backend-common';
 
 import { conversationCompactChain } from '../chains/conversation-compact';
@@ -92,6 +92,9 @@ export function handleCleanupDangling(
 /**
  * Compacts conversation history by summarizing it.
  * Used for both manual /compact and auto-compaction.
+ *
+ * For manual /compact: Removes all messages, routes to responder for acknowledgment.
+ * For auto-compact: Removes old messages, preserves last user message to continue processing.
  */
 export async function handleCompactMessages(
 	messages: BaseMessage[],
@@ -107,14 +110,16 @@ export async function handleCompactMessages(
 
 	const compactedMessages = await conversationCompactChain(llm, messages, previousSummary);
 
+	// For manual /compact: just remove messages, responder will generate acknowledgment
+	// For auto-compact: remove messages but preserve the last user message to continue processing
+	const newMessages: BaseMessage[] = [
+		...messages.map((m) => new RemoveMessage({ id: m.id! })),
+		...(isAutoCompact ? [new HumanMessage({ content: lastHumanMessage.content })] : []),
+	];
+
 	return {
 		previousSummary: compactedMessages.summaryPlain,
-		messages: [
-			...messages.map((m) => new RemoveMessage({ id: m.id! })),
-			new HumanMessage('Please compress the conversation history'),
-			new AIMessage('Successfully compacted conversation history'),
-			...(isAutoCompact ? [new HumanMessage({ content: lastHumanMessage.content })] : []),
-		],
+		messages: newMessages,
 		coordinationLog: [
 			{
 				phase: 'state_management',

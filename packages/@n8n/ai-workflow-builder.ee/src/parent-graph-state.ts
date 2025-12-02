@@ -1,5 +1,5 @@
 import type { BaseMessage } from '@langchain/core/messages';
-import { Annotation } from '@langchain/langgraph';
+import { Annotation, messagesStateReducer } from '@langchain/langgraph';
 
 import type { CoordinationLogEntry } from './types/coordination';
 import type { DiscoveryContext } from './types/discovery-types';
@@ -14,8 +14,9 @@ import type { ChatPayload } from './workflow-builder-agent';
  */
 export const ParentGraphState = Annotation.Root({
 	// Shared: User's conversation history (for responder)
+	// Uses messagesStateReducer to properly handle RemoveMessage instances
 	messages: Annotation<BaseMessage[]>({
-		reducer: (x, y) => x.concat(y),
+		reducer: messagesStateReducer,
 		default: () => [],
 	}),
 
