@@ -163,7 +163,7 @@ describe('useWorkflowResourcesLocator', () => {
 
 			// Pre-populate some workflows
 			workflowsResources.value = [
-				{ name: 'Old Workflow', value: 'old', url: '/old', isArchived: false },
+				{ name: 'Old Workflow', value: 'old', url: '/old', isArchived: false, active: true },
 			];
 
 			await onSearchFilter('test search');
