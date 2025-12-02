@@ -194,7 +194,7 @@ describe('TestWebhooks', () => {
 					});
 
 					await expect(promise).rejects.toThrow(
-						'Cannot test webhook for node "Telegram Trigger" while workflow is active. Please deactivate the workflow first.',
+						"Because of limitations in Telegram Trigger, n8n can't listen for test executions at the same time as listening for production ones. Deactivate workflow to execute.",
 					);
 				} else {
 					const needsWebhook = await testWebhooks.needsWebhook({
