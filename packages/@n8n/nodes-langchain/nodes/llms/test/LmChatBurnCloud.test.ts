@@ -14,7 +14,7 @@ describe('LmChatBurnCloud', () => {
 		it('should create ChatOpenAI model with default parameters', async () => {
 			const credentials: OpenAICompatibleCredential = {
 				apiKey: 'test-api-key',
-				url: 'https://api.burncloud.com',
+				url: 'https://ai.burncloud.com',
 			};
 
 			const getCredentialsMock = jest.fn().mockResolvedValue(credentials);
@@ -40,7 +40,7 @@ describe('LmChatBurnCloud', () => {
 		it('should create ChatOpenAI model with custom parameters', async () => {
 			const credentials: OpenAICompatibleCredential = {
 				apiKey: 'test-api-key',
-				url: 'https://api.burncloud.com',
+				url: 'https://ai.burncloud.com',
 			};
 
 			const options = {
@@ -75,7 +75,7 @@ describe('LmChatBurnCloud', () => {
 		it('should handle JSON response format correctly', async () => {
 			const credentials: OpenAICompatibleCredential = {
 				apiKey: 'test-api-key',
-				url: 'https://api.burncloud.com',
+				url: 'https://ai.burncloud.com',
 			};
 
 			const options = {
