@@ -70,7 +70,7 @@ export class SourceControlService {
 		this.sshKeyName = sshKeyName;
 	}
 
-	async init(): Promise<void> {
+	async start(): Promise<void> {
 		this.gitService.resetService();
 		sourceControlFoldersExistCheck([this.gitFolder, this.sshFolder]);
 		await this.sourceControlPreferencesService.loadFromDbAndApplySourceControlPreferences();

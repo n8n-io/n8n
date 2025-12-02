@@ -6,8 +6,8 @@ import { mock } from 'jest-mock-extended';
 import { InstanceSettings } from 'n8n-core';
 import type { PushResult } from 'simple-git';
 
-import { SourceControlPreferencesService } from '@/environments.ee/source-control/source-control-preferences.service.ee';
-import { SourceControlService } from '@/environments.ee/source-control/source-control.service.ee';
+import { SourceControlPreferencesService } from '@/modules/source-control.ee/source-control-preferences.service.ee';
+import { SourceControlService } from '@/modules/source-control.ee/source-control.service.ee';
 import { ForbiddenError } from '@/errors/response-errors/forbidden.error';
 import type { EventService } from '@/events/event.service';
 import type { SourceControlExportService } from '../source-control-export.service.ee';
