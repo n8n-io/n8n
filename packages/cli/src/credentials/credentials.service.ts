@@ -387,6 +387,12 @@ export class CredentialsService {
 			}));
 	}
 
+	async findAllGlobalCredentialIds(includeData: boolean = false): Promise<CredentialsEntity[]> {
+		const globalCredentials =
+			await this.credentialsRepository.findAllGlobalCredentials(includeData);
+		return globalCredentials;
+	}
+
 	async findAllCredentialIdsForWorkflow(workflowId: string): Promise<CredentialsEntity[]> {
 		// If the workflow is owned by a personal project and the owner of the
 		// project has global read permissions it can use all personal credentials.
