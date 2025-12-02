@@ -18,6 +18,7 @@ import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import * as workflowsApi from '@/app/api/workflows';
 import { useRootStore } from '@n8n/stores/useRootStore';
+import { calculateWorkflowChecksum } from 'n8n-workflow';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -172,10 +173,14 @@ export function useWorkflowActivate() {
 		}
 
 		try {
+			const expectedChecksum =
+				workflowId === workflowsStore.workflowId ? workflowsStore.workflowChecksum : undefined;
+
 			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
 				versionId,
 				name: options?.name,
 				description: options?.description,
+				expectedChecksum,
 			});
 
 			if (!updatedWorkflow.activeVersion) {
@@ -183,6 +188,8 @@ export function useWorkflowActivate() {
 			}
 
 			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion);
+			workflowsStore.setWorkflowVersionId(updatedWorkflow.versionId);
+			workflowsStore.setWorkflowChecksum(await calculateWorkflowChecksum(updatedWorkflow));
 
 			void useExternalHooks().run('workflow.activeChangeCurrent', {
 				workflowId,
