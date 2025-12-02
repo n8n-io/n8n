@@ -5,6 +5,7 @@ import { useI18n } from '@n8n/i18n';
 import { useCanvasNode } from '../../../../composables/useCanvasNode';
 import type { CanvasNodeDefaultRender } from '../../../../canvas.types';
 import { useCanvas } from '../../../../composables/useCanvas';
+import { useZoomAdjustedValues } from '../../../../composables/useZoomAdjustedValues';
 import CanvasNodeSettingsIcons from './parts/CanvasNodeSettingsIcons.vue';
 import { useNodeHelpers } from '@/app/composables/useNodeHelpers';
 import { calculateNodeSize } from '@/app/utils/nodeViewUtils';
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 }>();
 
 const { initialized, viewport, isExperimentalNdvActive } = useCanvas();
+const { calculateNodeBorderOpacity } = useZoomAdjustedValues(viewport);
 const route = useRoute();
 const {
 	id,
@@ -90,34 +92,15 @@ const nodeSize = computed(() =>
 	),
 );
 
-const styles = computed(() => {
-	// Calculate border opacity based on zoom level
-	// At zoom = 1.0 (100%): baseline opacity
-	// At zoom < 1.0: opacity increases gradually
-	const zoom = viewport.value.zoom;
-	const baseOpacity = 0.1;
-	const maxOpacity = 0.7;
-	const minZoom = 0.2;
-	const gamma = 2.2; // perceptual correction
+const nodeBorderOpacity = calculateNodeBorderOpacity();
 
-	let zoomAdjustedOpacity;
-	if (zoom >= 1.0) {
-		zoomAdjustedOpacity = baseOpacity;
-	} else if (zoom <= minZoom) {
-		zoomAdjustedOpacity = maxOpacity;
-	} else {
-		const t = (1.0 - zoom) / (1.0 - minZoom);
-		const tGamma = Math.pow(t, gamma);
-		zoomAdjustedOpacity = baseOpacity + tGamma * (maxOpacity - baseOpacity);
-	}
-
-	return {
-		'--canvas-node--width': `${nodeSize.value.width}px`,
-		'--canvas-node--height': `${nodeSize.value.height}px`,
-		'--node--icon--size': `${iconSize.value}px`,
-		'--canvas-node--border--opacity': zoomAdjustedOpacity.toFixed(3),
-	};
-});
+const styles = computed(() => ({
+	'--canvas-node--width': `${nodeSize.value.width}px`,
+	'--canvas-node--height': `${nodeSize.value.height}px`,
+	'--node--icon--size': `${iconSize.value}px`,
+	'--canvas-node--border--opacity-light': nodeBorderOpacity.value.light,
+	'--canvas-node--border--opacity-dark': nodeBorderOpacity.value.dark,
+}));
 
 const dataTestId = computed(() => {
 	let type = 'default';
@@ -239,8 +222,12 @@ function onActivate(event: MouseEvent) {
 		var(
 			--canvas-node--border-color,
 			light-dark(
-				oklch(from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity, 0.15)),
-				oklch(from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity, 0.15))
+				oklch(
+					from var(--color--neutral-black) l c h / var(--canvas-node--border--opacity-light, 0.1)
+				),
+				oklch(
+					from var(--color--neutral-white) l c h / var(--canvas-node--border--opacity-dark, 0.15)
+				)
 			)
 		);
 	border-radius: var(--radius--lg);

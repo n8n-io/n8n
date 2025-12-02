@@ -8,6 +8,8 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import { computed, ref, toRef, useCssModule, watch } from 'vue';
 import CanvasEdgeToolbar from './CanvasEdgeToolbar.vue';
 import { getEdgeRenderData } from './utils';
+import { useCanvas } from '../../../composables/useCanvas';
+import { useZoomAdjustedValues } from '../../../composables/useZoomAdjustedValues';
 
 const emit = defineEmits<{
 	add: [connection: Connection];
@@ -26,6 +28,9 @@ const props = defineProps<CanvasEdgeProps>();
 const data = toRef(props, 'data');
 
 const $style = useCssModule();
+
+const { viewport } = useCanvas();
+const { calculateEdgeLightness } = useZoomAdjustedValues(viewport);
 
 const connectionType = computed(() =>
 	isValidNodeConnectionType(props.data.source.type)
@@ -58,28 +63,10 @@ const isMainConnection = computed(() => data.value.source.type === NodeConnectio
 
 const status = computed(() => props.data.status);
 
-const edgeColor = computed(() => {
-	if (status.value === 'success') {
-		return 'var(--color--success)';
-	} else if (status.value === 'pinned') {
-		return 'var(--color--secondary)';
-	} else if (props.selected) {
-		return 'light-dark(var(--color--neutral-500), var(--color--neutral-400))';
-	} else {
-		return 'light-dark(var(--color--neutral-250), var(--color--neutral-700))';
-	}
-});
-
 const edgeStyle = computed(() => ({
 	...props.style,
 	...(isMainConnection.value ? {} : { strokeDasharray: '5,6' }),
 }));
-
-const edgeStroke = computed(() =>
-	delayedHovered.value
-		? 'light-dark(var(--color--neutral-500), var(--color--neutral-400))'
-		: edgeColor.value,
-);
 
 const edgeClasses = computed(() => ({
 	[$style.edge]: true,
@@ -116,6 +103,26 @@ const connection = computed<Connection>(() => ({
 	targetHandle: props.targetHandleId,
 }));
 
+const edgeLightness = calculateEdgeLightness(delayedHovered);
+
+const edgeStyles = computed(() => {
+	console.log(
+		'Edge lightness - Light:',
+		edgeLightness.value.light,
+		'Dark:',
+		edgeLightness.value.dark,
+		'Hovered:',
+		delayedHovered.value,
+		'Zoom:',
+		viewport.value.zoom.toFixed(3),
+	);
+
+	return {
+		'--canvas-edge--color--lightness--light': edgeLightness.value.light,
+		'--canvas-edge--color--lightness--dark': edgeLightness.value.dark,
+	};
+});
+
 function onAdd() {
 	emit('add', connection.value);
 }
@@ -138,6 +145,7 @@ function onEdgeLabelMouseLeave() {
 		data-test-id="edge"
 		:data-source-node-name="data.source?.node"
 		:data-target-node-name="data.target?.node"
+		:style="edgeStyles"
 		v-bind="$attrs"
 	>
 		<slot name="highlight" v-bind="{ segments }" />
@@ -178,12 +186,16 @@ function onEdgeLabelMouseLeave() {
 
 <style lang="scss" module>
 .edge {
-	transition:
-		stroke 0.3s ease,
-		fill 0.3s ease;
+	transition: fill 0.3s ease;
 	// @bugfix cat-1639-connection-colors-not-rendering-correctly
 	// Using !important here to override BaseEdge styles after Rolldown Vite migration
-	stroke: var(--canvas-edge--color, v-bind(edgeStroke)) !important;
+	stroke: var(
+		--canvas-edge--color,
+		light-dark(
+			oklch(var(--canvas-edge--color--lightness--light) 0 0),
+			oklch(var(--canvas-edge--color--lightness--dark) 0 0)
+		)
+	) !important;
 	/* stylelint-disable-next-line @n8n/css-var-naming */
 	stroke-width: calc(2 * var(--canvas-zoom-compensation-factor, 1)) !important;
 	stroke-linecap: square;

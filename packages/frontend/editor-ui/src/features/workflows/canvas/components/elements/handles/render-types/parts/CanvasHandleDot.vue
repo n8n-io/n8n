@@ -27,7 +27,11 @@ withDefaults(
 	height: var(--handle--indicator--height);
 	border-radius: 50%;
 	background: light-dark(var(--color--neutral-white), var(--color--neutral-850));
-	border: 1px solid light-dark(var(--color--neutral-300), var(--color--neutral-500));
+	border: 1px solid
+		light-dark(
+			oklch(var(--handle--border--lightness--light, 0.68) 0 0),
+			oklch(var(--handle--border--lightness--dark, 0.5) 0 0)
+		);
 	transition:
 		transform 0.2s ease,
 		background 0.2s ease,

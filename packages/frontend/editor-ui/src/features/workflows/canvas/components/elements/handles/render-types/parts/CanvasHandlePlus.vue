@@ -1,5 +1,7 @@
 <script lang="ts" setup>
 import { computed, useCssModule } from 'vue';
+import { useCanvas } from '../../../../../composables/useCanvas';
+import { useZoomAdjustedValues } from '../../../../../composables/useZoomAdjustedValues';
 
 const props = withDefaults(
 	defineProps<{
@@ -17,6 +19,11 @@ const props = withDefaults(
 		type: 'default',
 	},
 );
+
+const { viewport } = useCanvas();
+const { calculateEdgeLightness } = useZoomAdjustedValues(viewport);
+
+const lineLightness = calculateEdgeLightness();
 
 const emit = defineEmits<{
 	'click:plus': [event: MouseEvent];
@@ -51,6 +58,8 @@ const viewBox = computed(() => {
 const styles = computed(() => ({
 	width: `${viewBox.value.width}px`,
 	height: `${viewBox.value.height}px`,
+	'--canvas-handle-plus-line--color--lightness--light': lineLightness.value.light,
+	'--canvas-handle-plus-line--color--lightness--dark': lineLightness.value.dark,
 }));
 
 const linePosition = computed(() => {
@@ -109,7 +118,6 @@ function onClick(event: MouseEvent) {
 			:y1="linePosition[0][1]"
 			:x2="linePosition[1][0]"
 			:y2="linePosition[1][1]"
-			stroke="light-dark(var(--color--neutral-250), var(--color--neutral-700))"
 			stroke-width="2"
 		/>
 		<g
@@ -153,6 +161,13 @@ function onClick(event: MouseEvent) {
 
 	&.bottom {
 		transform-origin: top center;
+	}
+
+	.line {
+		stroke: light-dark(
+			oklch(var(--canvas-handle-plus-line--color--lightness--light) 0 0),
+			oklch(var(--canvas-handle-plus-line--color--lightness--dark) 0 0)
+		);
 	}
 
 	&.success {
