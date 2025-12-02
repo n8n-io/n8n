@@ -124,10 +124,10 @@ function onClick(event: MouseEvent) {
 				y="2"
 				width="20"
 				height="20"
-				stroke="light-dark(var(--color--neutral-250), var(--color--neutral-850))"
+				stroke="light-dark(var(--color--neutral-200), var(--color--neutral-850))"
 				stroke-width="2"
 				rx="4"
-				fill="light-dark(var(--color--neutral-250), var(--color--neutral-850))"
+				fill="light-dark(var(--color--neutral-200), var(--color--neutral-850))"
 			/>
 			<path
 				stroke="currentColor"
@@ -162,7 +162,7 @@ function onClick(event: MouseEvent) {
 	}
 
 	.plus {
-		color: light-dark(var(--color--neutral-white), var(--color--neutral-300));
+		color: light-dark(var(--color--neutral-700), var(--color--neutral-250));
 
 		&:hover {
 			cursor: pointer;
