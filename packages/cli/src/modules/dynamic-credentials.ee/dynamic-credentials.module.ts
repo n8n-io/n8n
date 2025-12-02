@@ -6,6 +6,7 @@ import { Container } from '@n8n/di';
 export class DynamicCredentialsModule implements ModuleInterface {
 	async init() {
 		await import('./context-establishment-hooks');
+		await import('./credential-resolvers');
 		const { CredentialResolverRegistry } = await import('./services');
 
 		await Container.get(CredentialResolverRegistry).init();
