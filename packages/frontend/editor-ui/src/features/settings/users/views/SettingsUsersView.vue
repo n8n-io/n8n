@@ -302,11 +302,14 @@ async function onRoleChange(user: User, newRoleName: Role) {
 		const confirmed = await message.confirm(
 			i18n.baseText('settings.users.userRoleUpdated.confirm.message', {
 				interpolate: {
-					user: name,
 					role,
 				},
 			}),
-			i18n.baseText('settings.users.userRoleUpdated.confirm.title'),
+			i18n.baseText('settings.users.userRoleUpdated.confirm.title', {
+				interpolate: {
+					user: name,
+				},
+			}),
 			{
 				confirmButtonText: i18n.baseText('settings.users.userRoleUpdated.confirm.button'),
 				cancelButtonText: i18n.baseText('settings.users.userRoleUpdated.cancel.button'),
