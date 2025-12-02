@@ -227,7 +227,7 @@ class TaskExecutor:
         items: Items,
         write_conn,
         security_config: SecurityConfig,
-        _query: Query = None, # unused, only to keep signatures consistent across modes
+        _query: Query = None,  # unused, only to keep signatures consistent across modes
     ):
         """Execute a Python code task in per-item mode."""
 
