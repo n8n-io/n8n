@@ -2,6 +2,7 @@ import { nanoid } from 'nanoid';
 
 import { INSTANCE_MEMBER_CREDENTIALS } from '../../config/test-users';
 import { test, expect } from '../../fixtures/base';
+import type { n8nPage } from '../../pages/n8nPage';
 import type { ApiHelpers } from '../../services/api-helper';
 
 const MEMBER_EMAIL = INSTANCE_MEMBER_CREDENTIALS[0].email;
@@ -23,6 +24,39 @@ async function createCustomRole(
 	});
 	const result = await response.json();
 	return result.data;
+}
+
+// Helper to set up a project with a workflow and sign in as member with specified role
+async function setupProjectWithWorkflowAndSignInAsMember({
+	n8n,
+	projectName,
+	roleSlug,
+	nodeName,
+}: {
+	n8n: n8nPage;
+	projectName: string;
+	roleSlug: string;
+	nodeName: string;
+}): Promise<void> {
+	await n8n.navigate.toHome();
+
+	// Create project and add member with role
+	const { projectId, projectName: createdProjectName } =
+		await n8n.projectComposer.createProject(projectName);
+	await n8n.api.projects.addUserToProjectByEmail(projectId, MEMBER_EMAIL, roleSlug);
+
+	// Create workflow with node
+	await n8n.sideBar.clickProjectMenuItem(createdProjectName);
+	await n8n.workflows.clickNewWorkflowCard();
+	await n8n.canvas.addNode(nodeName, { closeNDV: true });
+	await n8n.canvas.saveWorkflow();
+
+	// Sign in as member and navigate to the workflow
+	await n8n.api.signin('member', 0);
+	await n8n.navigate.toHome();
+	await n8n.sideBar.clickProjectMenuItem(createdProjectName);
+	await n8n.workflows.cards.getWorkflows().first().click();
+	await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
 }
 
 test.describe('Workflow Viewer Permissions @isolated', () => {
@@ -57,35 +91,20 @@ test.describe('Workflow Viewer Permissions @isolated', () => {
 	});
 
 	test('user without workflow:update scope cannot drag nodes @auth:owner', async ({ n8n }) => {
-		// Navigate to home first (page starts at about:blank)
-		await n8n.navigate.toHome();
-
-		// Create project and add member with read-only role
-		const { projectId, projectName } = await n8n.projectComposer.createProject('Test Project');
-		await n8n.api.projects.addUserToProjectByEmail(projectId, MEMBER_EMAIL, readOnlyRole.slug);
-
-		// Create workflow in project
-		await n8n.sideBar.clickProjectMenuItem(projectName);
-		await n8n.workflows.clickNewWorkflowCard();
-		await n8n.canvas.addNode('Manual Trigger');
-		await n8n.canvas.saveWorkflow();
-
-		// Sign in as read-only user
-		await n8n.api.signin('member', 0);
-		await n8n.navigate.toHome();
-		await n8n.sideBar.clickProjectMenuItem(projectName);
-		await n8n.workflows.cards.getWorkflows().first().click();
-
-		// Verify nodes are visible
-		await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
+		await setupProjectWithWorkflowAndSignInAsMember({
+			n8n,
+			projectName: 'Drag Test Project',
+			roleSlug: readOnlyRole.slug,
+			nodeName: 'Edit Fields (Set)',
+		});
 
 		// Attempt to drag - node should not move (no workflow:update scope)
-		const manualTrigger = n8n.canvas.nodeByName('When clicking ‘Execute workflow’');
-		const initialPosition = await manualTrigger.boundingBox();
+		const node = n8n.canvas.nodeByName('Edit Fields');
+		const initialPosition = await node.boundingBox();
 
-		await n8n.canvas.dragNodeToRelativePosition('When clicking ‘Execute workflow’', 100, 50);
+		await n8n.canvas.dragNodeToRelativePosition('Edit Fields', 100, 50);
 
-		const finalPosition = await manualTrigger.boundingBox();
+		const finalPosition = await node.boundingBox();
 
 		// Position should remain unchanged
 		expect(finalPosition?.x).toBe(initialPosition?.x);
@@ -93,24 +112,12 @@ test.describe('Workflow Viewer Permissions @isolated', () => {
 	});
 
 	test('user without workflow:update can copy but cannot paste @auth:owner', async ({ n8n }) => {
-		// Navigate to home first (page starts at about:blank)
-		await n8n.navigate.toHome();
-
-		// Create project and add member with read-only role
-		const { projectId, projectName } = await n8n.projectComposer.createProject('Copy Test Project');
-		await n8n.api.projects.addUserToProjectByEmail(projectId, MEMBER_EMAIL, readOnlyRole.slug);
-
-		// Create workflow with nodes
-		await n8n.sideBar.clickProjectMenuItem(projectName);
-		await n8n.workflows.clickNewWorkflowCard();
-		await n8n.canvas.addNode('Edit Fields (Set)', { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
-
-		// Sign in as read-only user
-		await n8n.api.signin('member', 0);
-		await n8n.navigate.toHome();
-		await n8n.sideBar.clickProjectMenuItem(projectName);
-		await n8n.workflows.cards.getWorkflows().first().click();
+		await setupProjectWithWorkflowAndSignInAsMember({
+			n8n,
+			projectName: 'Copy Test Project',
+			roleSlug: readOnlyRole.slug,
+			nodeName: 'Edit Fields (Set)',
+		});
 
 		// Copy SHOULD work (useful for copying to another workflow)
 		await n8n.canvasComposer.selectAllAndCopy();
@@ -122,28 +129,14 @@ test.describe('Workflow Viewer Permissions @isolated', () => {
 	});
 
 	test('user with workflow:update scope can drag and paste @auth:owner', async ({ n8n }) => {
-		// Navigate to home first (page starts at about:blank)
-		await n8n.navigate.toHome();
-
-		// Create project and add member with editor role
-		const { projectId, projectName } =
-			await n8n.projectComposer.createProject('Editor Test Project');
-		await n8n.api.projects.addUserToProjectByEmail(projectId, MEMBER_EMAIL, editorRole.slug);
-
-		// Create workflow
-		await n8n.sideBar.clickProjectMenuItem(projectName);
-		await n8n.workflows.clickNewWorkflowCard();
-		await n8n.canvas.addNode('Edit Fields (Set)', { closeNDV: true });
-		await n8n.canvas.saveWorkflow();
-
-		// Sign in as editor
-		await n8n.api.signin('member', 0);
-		await n8n.navigate.toHome();
-		await n8n.sideBar.clickProjectMenuItem(projectName);
-		await n8n.workflows.cards.getWorkflows().first().click();
+		await setupProjectWithWorkflowAndSignInAsMember({
+			n8n,
+			projectName: 'Editor Test Project',
+			roleSlug: editorRole.slug,
+			nodeName: 'Edit Fields (Set)',
+		});
 
 		// Drag should work
-		await expect(n8n.canvas.getLoadingMask()).toBeHidden({ timeout: 30000 });
 		const node = n8n.canvas.nodeByName('Edit Fields');
 		const initialPosition = await node.boundingBox();
 
@@ -154,6 +147,7 @@ test.describe('Workflow Viewer Permissions @isolated', () => {
 		// Position SHOULD change
 		expect(finalPosition?.x).not.toBe(initialPosition?.x);
 
+		// Copy and paste should work
 		await n8n.canvasComposer.selectAllAndCopy();
 
 		const nodeCountBefore = await n8n.canvas.getCanvasNodes().count();
