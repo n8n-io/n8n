@@ -436,8 +436,10 @@ export function logWrapper<
 						logAiEvent(executeFunctions, 'ai-tool-called', { ...inputData, response });
 						executeFunctions.addOutputData(connectionType, index, [[{ json: { response } }]]);
 
-						if (typeof response === 'string') return response;
-						return JSON.stringify(response);
+						// Return the response as-is to preserve LangChain content block format
+						// LangChain tools can return strings, arrays of content blocks, or other types
+						// that should be passed through directly without stringification
+						return response;
 					};
 				}
 			}

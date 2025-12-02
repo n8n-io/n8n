@@ -1,4 +1,4 @@
-import type { AIMessage } from '@langchain/core/messages';
+import type { AIMessage, MessageContent } from '@langchain/core/messages';
 import type { IDataObject, GenericValue } from 'n8n-workflow';
 
 /**
@@ -33,7 +33,8 @@ export type ToolCallData = {
 		toolCallId: IDataObject | GenericValue | GenericValue[] | IDataObject[];
 		type: string | number | true | object;
 	};
-	observation: string;
+	/** Tool observation result - can be a string or content blocks array for multimodal responses */
+	observation: MessageContent;
 };
 
 /**

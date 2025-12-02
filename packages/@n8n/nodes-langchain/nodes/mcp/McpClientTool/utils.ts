@@ -12,7 +12,7 @@ import type { McpToolIncludeMode } from './types';
 import type { McpTool } from '../shared/types';
 
 // MCP content types (simplified from @modelcontextprotocol/sdk/types)
-type McpContentItem =
+export type McpContentItem =
 	| { type: 'text'; text: string }
 	| { type: 'image'; data: string; mimeType: string }
 	| { type: 'audio'; data: string; mimeType: string }

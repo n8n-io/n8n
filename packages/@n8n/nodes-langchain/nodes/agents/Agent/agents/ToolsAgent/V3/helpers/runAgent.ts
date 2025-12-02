@@ -41,15 +41,20 @@ export async function runAgent(
 	memory: BaseChatMemory | undefined,
 	response?: EngineResponse<RequestResponseMetadata>,
 ): Promise<RunAgentResult> {
-	const { itemIndex, input, steps, tools, options } = itemContext;
+	const { itemIndex, input, steps, tools, options, outputParser } = itemContext;
 
-	const invokeParams = {
+	// Only include formatting_instructions if there's an output parser
+	// The format_final_json_response tool is only added when outputParser exists
+	const invokeParams: Record<string, unknown> = {
 		steps,
 		input,
 		system_message: options.systemMessage ?? SYSTEM_MESSAGE,
-		formatting_instructions:
-			'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.',
 	};
+
+	if (outputParser) {
+		invokeParams.formatting_instructions =
+			'IMPORTANT: For your response to user, you MUST use the `format_final_json_response` tool with your complete answer formatted according to the required schema. Do not attempt to format the JSON manually - always use this tool. Your response will be rejected if it is not properly formatted through this tool. Only use this tool once you are ready to provide your final answer.';
+	}
 	const executeOptions = { signal: ctx.getExecutionCancelSignal() };
 
 	// Check if streaming is actually available

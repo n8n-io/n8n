@@ -16,7 +16,14 @@ import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
 import { getTools } from './loadOptions';
 import type { McpToolIncludeMode } from './types';
-import { createCallTool, getSelectedTools, McpToolkit, mcpToolToDynamicTool } from './utils';
+import {
+	convertMcpContentToLangChain,
+	createCallTool,
+	getSelectedTools,
+	McpToolkit,
+	mcpToolToDynamicTool,
+	type McpContentItem,
+} from './utils';
 import { credentials, transportSelect } from '../shared/descriptions';
 import type { McpAuthenticationOption, McpServerTransport } from '../shared/types';
 import {
@@ -436,7 +443,7 @@ export class McpClientTool implements INodeType {
 					});
 					returnData.push({
 						json: {
-							response: result.content as IDataObject,
+							response: convertMcpContentToLangChain(result.content as McpContentItem[]),
 						},
 						pairedItem: {
 							item: itemIndex,
