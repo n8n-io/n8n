@@ -317,8 +317,6 @@ async function startExecution(
 
 		activeExecutions.finalizeExecution(executionId, data);
 		const returnData = WorkflowHelpers.getDataLastExecutedNodeData(data);
-
-		// we're returning the data of the wait node here
 		return {
 			executionId,
 			data: returnData!.data!.main,

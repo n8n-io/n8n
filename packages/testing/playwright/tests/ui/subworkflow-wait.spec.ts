@@ -132,10 +132,6 @@ test.describe('CAT-1801: Parent receives correct data from child with wait node'
 		// Should be 'child - after', NOT 'child - before' or parent input
 		const executeWorkflowOutput = executionData.resultData.runData['Execute Workflow'];
 		expect(executeWorkflowOutput).toBeDefined();
-		console.log(
-			'executeWorkflowOutput[0].data.main[0][0]',
-			executeWorkflowOutput[0].data.main[0][0],
-		);
 		expect(executeWorkflowOutput[0].data.main[0][0].json.type).toBe('child - after');
 	});
 });

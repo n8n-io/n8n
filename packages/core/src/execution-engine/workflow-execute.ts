@@ -1043,7 +1043,6 @@ export class WorkflowExecute {
 				nodeType instanceof Node
 					? await nodeType.execute(context, subNodeExecutionResults)
 					: await nodeType.execute.call(context, subNodeExecutionResults);
-			console.log('data', JSON.stringify(data, null, 2));
 		} else {
 			throw new UnexpectedError(
 				"Can't execute node. There is no custom operation and the node has not execute function.",
@@ -1810,13 +1809,6 @@ export class WorkflowExecute {
 					if (!Object.hasOwn(this.runExecutionData.resultData.runData, executionNode.name)) {
 						this.runExecutionData.resultData.runData[executionNode.name] = [];
 					}
-
-					console.log(
-						'workflow name:',
-						workflow.name,
-						'status:',
-						this.runExecutionData.waitTill ? 'waiting' : 'success',
-					);
 
 					const taskData: ITaskData = {
 						...taskStartedData,

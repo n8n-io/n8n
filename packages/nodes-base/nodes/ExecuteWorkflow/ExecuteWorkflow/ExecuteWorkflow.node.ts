@@ -422,6 +422,7 @@ export class ExecuteWorkflow implements INodeType {
 						},
 					},
 				);
+
 				this.setMetadata({
 					subExecution: {
 						executionId: executionResult.executionId,
