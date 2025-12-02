@@ -311,11 +311,11 @@ export class InsightsCollectionService {
 	 * Calculate the final time saved value by extracting SavedTime node metadata
 	 * and combining it with workflow settings based on the node's behavior.
 	 */
-	private calculateTimeSaved(ctx: WorkflowExecuteAfterContext): number | undefined {
+	private calculateTimeSaved(ctx: WorkflowExecuteAfterContext): number {
 		const workflowTimeSaved = ctx.workflow.settings?.timeSavedPerExecution;
 
 		if (ctx.workflow.settings?.timeSavedMode === 'fixed') {
-			return workflowTimeSaved;
+			return workflowTimeSaved ?? 0;
 		}
 
 		const nodeTimeSaved = this.extractTimeSavedFromNodes(ctx.runData);
