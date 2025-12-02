@@ -628,7 +628,7 @@ export interface NewCredentialsModal extends ModalState {
 	showAuthSelector?: boolean;
 }
 
-export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai';
+export type IRunDataDisplayMode = 'table' | 'json' | 'binary' | 'schema' | 'html' | 'ai' | 'logs';
 
 export interface TargetItem {
 	nodeName: string;
