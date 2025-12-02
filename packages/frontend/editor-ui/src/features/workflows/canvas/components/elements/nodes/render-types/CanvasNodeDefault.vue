@@ -91,14 +91,25 @@ const nodeSize = computed(() =>
 );
 
 const styles = computed(() => {
-	// Calculate border opacity for light mode based on zoom level
-	// At zoom = 1.0 (100%): opacity = 0.15 (baseline)
+	// Calculate border opacity based on zoom level
+	// At zoom = 1.0 (100%): baseline opacity
 	// At zoom < 1.0: opacity increases gradually
-	// Capped at 0.25 to prevent excessive darkening
-	const baseOpacity = 0.15;
-	const maxOpacity = 0.4;
 	const zoom = viewport.value.zoom;
-	const zoomAdjustedOpacity = zoom >= 1.0 ? baseOpacity : Math.min(baseOpacity / zoom, maxOpacity);
+	const baseOpacity = 0.1;
+	const maxOpacity = 0.7;
+	const minZoom = 0.2;
+	const gamma = 2.2; // perceptual correction
+
+	let zoomAdjustedOpacity;
+	if (zoom >= 1.0) {
+		zoomAdjustedOpacity = baseOpacity;
+	} else if (zoom <= minZoom) {
+		zoomAdjustedOpacity = maxOpacity;
+	} else {
+		const t = (1.0 - zoom) / (1.0 - minZoom);
+		const tGamma = Math.pow(t, gamma);
+		zoomAdjustedOpacity = baseOpacity + tGamma * (maxOpacity - baseOpacity);
+	}
 
 	return {
 		'--canvas-node--width': `${nodeSize.value.width}px`,
@@ -146,6 +157,13 @@ watch(viewport, () => {
 		showTooltip.value = true;
 	}, 0);
 });
+
+watch(
+	() => viewport.value.zoom,
+	(newZoom) => {
+		console.log(`Canvas zoom level: ${newZoom.toFixed(3)} (${(newZoom * 100).toFixed(1)}%)`);
+	},
+);
 
 function openContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
@@ -204,7 +222,7 @@ function onActivate(event: MouseEvent) {
 
 <style lang="scss" module>
 .node {
-	--canvas-node--border-width: 1px;
+	--canvas-node--border-width: 1.5px;
 	--trigger-node--radius: 36px;
 	--canvas-node--status-icons--margin: var(--spacing--3xs);
 	--node--icon--color: var(--color--foreground--shade-1);
