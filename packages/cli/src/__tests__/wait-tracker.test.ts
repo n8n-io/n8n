@@ -11,7 +11,6 @@ import type {
 	IRunExecutionData,
 	IExecuteData,
 	ITaskData,
-	ExecutionStatus,
 } from 'n8n-workflow';
 import { createDeferredPromise, createRunExecutionData, WAIT_INDEFINITELY } from 'n8n-workflow';
 

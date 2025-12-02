@@ -82,6 +82,7 @@ describe('ActiveExecutions', () => {
 		);
 
 		executionRepository.createNewExecution.mockResolvedValue(FAKE_EXECUTION_ID);
+		executionRepository.updateExistingExecution.mockResolvedValue(true);
 
 		workflowExecution = new PCancelable<IRun>((resolve) => resolve());
 		workflowExecution.cancel = jest.fn();
