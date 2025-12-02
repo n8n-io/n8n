@@ -1,48 +1,23 @@
-import { nanoid } from 'nanoid';
-
 import { INSTANCE_MEMBER_CREDENTIALS } from '../../config/test-users';
 import { test, expect } from '../../fixtures/base';
 import type { n8nPage } from '../../pages/n8nPage';
-import type { ApiHelpers } from '../../services/api-helper';
 
 const MEMBER_EMAIL = INSTANCE_MEMBER_CREDENTIALS[0].email;
-
-// Helper to create custom roles via REST API with unique names
-async function createCustomRole(
-	api: ApiHelpers,
-	scopes: string[],
-	displayName: string,
-): Promise<{ slug: string }> {
-	const uniqueName = `${displayName} (${nanoid(8)})`;
-	const response = await api.request.post('/rest/roles', {
-		data: {
-			displayName: uniqueName,
-			description: `Custom role with scopes: ${scopes.join(', ')}`,
-			roleType: 'project',
-			scopes,
-		},
-	});
-	const result = await response.json();
-	return result.data;
-}
 
 // Helper to set up a project with a workflow and sign in as member with specified role
 async function setupProjectWithWorkflowAndSignInAsMember({
 	n8n,
-	projectName,
 	roleSlug,
 	nodeName,
 }: {
 	n8n: n8nPage;
-	projectName: string;
 	roleSlug: string;
 	nodeName: string;
 }): Promise<void> {
 	await n8n.navigate.toHome();
 
 	// Create project and add member with role
-	const { projectId, projectName: createdProjectName } =
-		await n8n.projectComposer.createProject(projectName);
+	const { projectId, projectName: createdProjectName } = await n8n.projectComposer.createProject();
 	await n8n.api.projects.addUserToProjectByEmail(projectId, MEMBER_EMAIL, roleSlug);
 
 	// Create workflow with node
@@ -66,7 +41,6 @@ test.describe('Workflow Viewer Permissions @isolated', () => {
 	let editorRole: { slug: string };
 
 	test.beforeAll(async ({ api }) => {
-		await api.resetDatabase();
 		await api.enableFeature('sharing');
 		await api.enableFeature('advancedPermissions');
 		await api.enableFeature('customRoles');
@@ -76,15 +50,13 @@ test.describe('Workflow Viewer Permissions @isolated', () => {
 		await api.signin('owner');
 
 		// Create custom read-only role (no workflow:update scope)
-		readOnlyRole = await createCustomRole(
-			api,
+		readOnlyRole = await api.roles.createCustomRole(
 			['project:read', 'workflow:read', 'workflow:list'],
 			'Workflow Read Only',
 		);
 
 		// Create custom editor role (with workflow:update scope)
-		editorRole = await createCustomRole(
-			api,
+		editorRole = await api.roles.createCustomRole(
 			['project:read', 'workflow:read', 'workflow:list', 'workflow:update', 'workflow:execute'],
 			'Workflow Custom Editor',
 		);
@@ -93,7 +65,6 @@ test.describe('Workflow Viewer Permissions @isolated', () => {
 	test('user without workflow:update scope cannot drag nodes @auth:owner', async ({ n8n }) => {
 		await setupProjectWithWorkflowAndSignInAsMember({
 			n8n,
-			projectName: 'Drag Test Project',
 			roleSlug: readOnlyRole.slug,
 			nodeName: 'Edit Fields (Set)',
 		});
@@ -114,7 +85,6 @@ test.describe('Workflow Viewer Permissions @isolated', () => {
 	test('user without workflow:update can copy but cannot paste @auth:owner', async ({ n8n }) => {
 		await setupProjectWithWorkflowAndSignInAsMember({
 			n8n,
-			projectName: 'Copy Test Project',
 			roleSlug: readOnlyRole.slug,
 			nodeName: 'Edit Fields (Set)',
 		});
@@ -131,7 +101,6 @@ test.describe('Workflow Viewer Permissions @isolated', () => {
 	test('user with workflow:update scope can drag and paste @auth:owner', async ({ n8n }) => {
 		await setupProjectWithWorkflowAndSignInAsMember({
 			n8n,
-			projectName: 'Editor Test Project',
 			roleSlug: editorRole.slug,
 			nodeName: 'Edit Fields (Set)',
 		});
