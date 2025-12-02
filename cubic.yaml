@@ -112,4 +112,4 @@ pr_descriptions:
   instructions: Each PR is supposed to have a limited scope. In your review, focus on changes made in the PR and avoid pointing out problems you found in the code that already existed.
 issues:
   fix_with_cubic_buttons: true
-	
+
