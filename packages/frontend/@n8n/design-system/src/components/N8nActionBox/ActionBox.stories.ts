@@ -2,8 +2,8 @@ import type { StoryFn } from '@storybook/vue3-vite';
 import { action } from 'storybook/actions';
 
 import N8nActionBox from './ActionBox.vue';
-import N8nText from '../N8nText';
 import N8nLink from '../N8nLink';
+import N8nText from '../N8nText';
 
 export default {
 	title: 'Atoms/ActionBox',
