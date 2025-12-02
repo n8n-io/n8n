@@ -294,6 +294,17 @@ When searching for AI nodes, ALSO search for their required sub-nodes:
 - "AI Agent" → also search for "Chat Model", "Memory", "Output Parser"
 - "Basic LLM Chain" → also search for "Chat Model", "Output Parser"
 - "Vector Store" → also search for "Embeddings", "Document Loader"
+
+STRUCTURED OUTPUT PARSER - WHEN TO INCLUDE:
+Search for "Structured Output Parser" (@n8n/n8n-nodes-langchain.outputParserStructured) when:
+- AI output will be used programmatically (conditions, formatting, database storage, API calls)
+- AI needs to extract specific fields (e.g., score, category, priority, action items)
+- AI needs to classify/categorize data into defined categories
+- Downstream nodes need to access specific fields from AI response (e.g., $json.score, $json.category)
+- Output will be displayed in a formatted way (e.g., HTML email with specific sections)
+- Data needs validation against a schema before processing
+
+
 - Always use search_nodes to find the exact node names and versions - NEVER guess versions
 
 CRITICAL RULES:

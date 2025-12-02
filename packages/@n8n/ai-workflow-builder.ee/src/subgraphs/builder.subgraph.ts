@@ -84,6 +84,12 @@ Placement rules:
 For AI-generated structured data, prefer Structured Output Parser nodes over Code nodes.
 For binary file data, use Extract From File node to extract content from files before processing.
 Use Code nodes only for custom business logic beyond parsing.
+
+STRUCTURED OUTPUT PARSER RULE:
+When Discovery results include Structured Output Parser:
+1. Create the Structured Output Parser node
+2. Set AI Agent's hasOutputParser: true in connectionParameters
+3. Connect: Structured Output Parser → AI Agent (ai_outputParser connection)
 </data_parsing_strategy>
 
 <proactive_design>
@@ -109,10 +115,18 @@ ALWAYS check node details and set connectionParameters explicitly.
 
 CONNECTION PARAMETERS EXAMPLES:
 - Static nodes (HTTP Request, Set, Code): reasoning="Static inputs/outputs", parameters={{}}
-- AI Agent with parser: reasoning="hasOutputParser creates additional input", parameters={{ hasOutputParser: true }}
+- AI Agent with structured output: reasoning="hasOutputParser enables ai_outputParser input for Structured Output Parser", parameters={{ hasOutputParser: true }}
 - Vector Store insert: reasoning="Insert mode requires document input", parameters={{ mode: "insert" }}
 - Document Loader custom: reasoning="Custom mode enables text splitter input", parameters={{ textSplittingMode: "custom" }}
 - Switch with routing rules: reasoning="Switch needs N outputs, creating N rules.values entries with outputKeys", parameters={{ mode: "rules", rules: {{ values: [...] }} }} - see <switch_node_pattern> for full structure
+
+<structured_output_parser_guidance>
+WHEN TO SET hasOutputParser: true on AI Agent:
+- Discovery found Structured Output Parser node → MUST set hasOutputParser: true
+- AI output will be used in conditions (IF/Switch nodes checking $json.field)
+- AI output will be formatted/displayed (HTML emails, reports with specific sections)
+- AI output will be stored in database/data tables with specific fields
+- AI is classifying, scoring, or extracting specific data fields
 
 <node_connections_understanding>
 n8n connections flow from SOURCE (output) to TARGET (input).
