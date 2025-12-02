@@ -37,11 +37,19 @@ const DefaultTemplate: StoryFn = (args, { argTypes }) => ({
 
 export const ActionBox = DefaultTemplate.bind({});
 ActionBox.args = {
-	emoji: '😿',
+	icon: { type: 'emoji', value: '😿' },
 	heading: 'Headline you need to know',
 	description:
 		'Long description that you should know something is the way it is because of how it is. ',
 	buttonText: 'Do something',
+};
+
+export const ActionBoxWithIcon = DefaultTemplate.bind({});
+ActionBoxWithIcon.args = {
+	icon: { type: 'icon', value: 'package-open' },
+	heading: 'Create your first workflow',
+	description: 'Get started by creating a new workflow to automate your tasks.',
+	buttonText: 'Create Workflow',
 };
 
 const WithAdditionalContentTemplate: StoryFn = (args, { argTypes }) => ({
@@ -67,7 +75,7 @@ const WithAdditionalContentTemplate: StoryFn = (args, { argTypes }) => ({
 
 export const ActionBoxWithAdditionalContent = WithAdditionalContentTemplate.bind({});
 ActionBoxWithAdditionalContent.args = {
-	emoji: '🚀',
+	icon: { type: 'emoji', value: '🚀' },
 	heading: 'Launch your project',
 	description:
 		'Get started with your project by clicking the button below. Additional content is included.',
