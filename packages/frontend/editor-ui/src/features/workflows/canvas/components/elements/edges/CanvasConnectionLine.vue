@@ -26,7 +26,7 @@ const classes = computed(() => {
 });
 
 const edgeStyle = computed(() => ({
-	...(connectionType.value === NodeConnectionTypes.Main ? {} : { strokeDasharray: '8,8' }),
+	...(connectionType.value === NodeConnectionTypes.Main ? {} : { strokeDasharray: '5,6' }),
 	strokeWidth: 2,
 	stroke: 'var(--color--foreground--shade-2)',
 }));
