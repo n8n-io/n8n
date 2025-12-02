@@ -234,7 +234,7 @@ export class ActiveWorkflowManager {
 		}
 		await this.webhookService.populateCache();
 
-		await this.workflowStaticDataService.saveStaticData(workflow);
+		await this.workflowStaticDataService.saveStaticData(cl);
 
 		this.logger.debug(`Added webhooks for workflow "${workflow.name}" (ID ${workflow.id})`, {
 			workflowId: workflow.id,
