@@ -23,9 +23,13 @@ class ConcurrencyConfig {
 	@Env('N8N_CONCURRENCY_PRODUCTION_LIMIT')
 	productionLimit: number = -1;
 
-	/** Max evaluation executions allowed to run concurrently. `-1` means unlimited. */
+	/** Max 'evaluation' mode executions allowed to run concurrently. `-1` means unlimited. */
 	@Env('N8N_CONCURRENCY_EVALUATION_LIMIT')
 	evaluationLimit: number = -1;
+
+	/** Max 'chat' mode executions allowed to run concurrently. `-1` means unlimited. */
+	@Env('N8N_CONCURRENCY_CHAT_LIMIT')
+	chatLimit: number = -1;
 }
 
 @Config

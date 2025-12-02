@@ -15,7 +15,7 @@ import { ConcurrencyQueue } from './concurrency-queue';
 export const CLOUD_TEMP_PRODUCTION_LIMIT = 999;
 export const CLOUD_TEMP_REPORTABLE_THRESHOLDS = [5, 10, 20, 50, 100, 200];
 
-export type ConcurrencyQueueType = 'production' | 'evaluation';
+export type ConcurrencyQueueType = 'production' | 'evaluation' | 'chat';
 
 @Service()
 export class ConcurrencyControlService {
@@ -38,11 +38,13 @@ export class ConcurrencyControlService {
 	) {
 		this.logger = this.logger.scoped('concurrency');
 
-		const { productionLimit, evaluationLimit } = this.globalConfig.executions.concurrency;
+		const { productionLimit, evaluationLimit, chatLimit } =
+			this.globalConfig.executions.concurrency;
 
 		this.limits = new Map([
 			['production', productionLimit],
 			['evaluation', evaluationLimit],
+			['chat', chatLimit],
 		]);
 
 		this.limits.forEach((limit, type) => {
@@ -209,6 +211,8 @@ export class ConcurrencyControlService {
 		if (mode === 'webhook' || mode === 'trigger') return this.queues.get('production');
 
 		if (mode === 'evaluation') return this.queues.get('evaluation');
+
+		if (mode === 'chat') return this.queues.get('chat');
 
 		throw new UnknownExecutionModeError(mode);
 	}

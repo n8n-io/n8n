@@ -27,6 +27,7 @@ describe('ConcurrencyControlService', () => {
 			concurrency: {
 				productionLimit: -1,
 				evaluationLimit: -1,
+				chatLimit: -1,
 			},
 		},
 	});
@@ -34,6 +35,7 @@ describe('ConcurrencyControlService', () => {
 	afterEach(() => {
 		globalConfig.executions.concurrency.productionLimit = -1;
 		globalConfig.executions.concurrency.evaluationLimit = -1;
+		globalConfig.executions.concurrency.chatLimit = -1;
 		globalConfig.executions.mode = 'regular';
 
 		jest.clearAllMocks();
@@ -72,7 +74,7 @@ describe('ConcurrencyControlService', () => {
 			},
 		);
 
-		it.each(['production', 'evaluation'])(
+		it.each(['production', 'evaluation', 'chat'])(
 			'should throw if %s cap is 0',
 			(type: ConcurrencyQueueType) => {
 				/**
@@ -126,7 +128,7 @@ describe('ConcurrencyControlService', () => {
 			expect(service.isEnabled).toBe(false);
 		});
 
-		it.each(['production', 'evaluation'])(
+		it.each(['production', 'evaluation', 'chat'])(
 			'should be disabled if %s cap is lower than -1',
 			(type: ConcurrencyQueueType) => {
 				/**
@@ -266,6 +268,31 @@ describe('ConcurrencyControlService', () => {
 				 */
 				expect(enqueueSpy).toHaveBeenCalled();
 			});
+
+			it('should enqueue on chat mode', async () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.concurrency.chatLimit = 1;
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventService,
+					globalConfig,
+				);
+				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
+
+				/**
+				 * Act
+				 */
+				await service.throttle({ mode: 'chat', executionId: '1' });
+
+				/**
+				 * Assert
+				 */
+				expect(enqueueSpy).toHaveBeenCalled();
+			});
 		});
 
 		describe('release', () => {
@@ -343,6 +370,31 @@ describe('ConcurrencyControlService', () => {
 				 * Act
 				 */
 				service.release({ mode: 'evaluation' });
+
+				/**
+				 * Assert
+				 */
+				expect(dequeueSpy).toHaveBeenCalled();
+			});
+
+			it('should dequeue on chat mode', () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.concurrency.chatLimit = 1;
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventService,
+					globalConfig,
+				);
+				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
+
+				/**
+				 * Act
+				 */
+				service.release({ mode: 'chat' });
 
 				/**
 				 * Assert
@@ -435,6 +487,31 @@ describe('ConcurrencyControlService', () => {
 				 */
 				expect(removeSpy).toHaveBeenCalled();
 			});
+
+			it('should remove an execution on chat mode', () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.concurrency.chatLimit = 1;
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventService,
+					globalConfig,
+				);
+				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
+
+				/**
+				 * Act
+				 */
+				service.remove({ mode: 'chat', executionId: '1' });
+
+				/**
+				 * Assert
+				 */
+				expect(removeSpy).toHaveBeenCalled();
+			});
 		});
 
 		describe('removeAll', () => {
@@ -477,7 +554,7 @@ describe('ConcurrencyControlService', () => {
 		});
 
 		describe('get queue', () => {
-			it('should choose the production queue', async () => {
+			it('should choose the production queue', () => {
 				/**
 				 * Arrange
 				 */
@@ -504,7 +581,7 @@ describe('ConcurrencyControlService', () => {
 				expect(queue).toEqual(service.queues.get('production'));
 			});
 
-			it('should choose the evaluation queue', async () => {
+			it('should choose the evaluation queue', () => {
 				/**
 				 * Arrange
 				 */
@@ -529,6 +606,33 @@ describe('ConcurrencyControlService', () => {
 				 */
 				// @ts-expect-error Private property
 				expect(queue).toEqual(service.queues.get('evaluation'));
+			});
+
+			it('should choose the chat queue', () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.concurrency.productionLimit = 2;
+				globalConfig.executions.concurrency.chatLimit = 2;
+
+				/**
+				 * Act
+				 */
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventService,
+					globalConfig,
+				);
+				// @ts-expect-error Private property
+				const queue = service.getQueue('chat');
+
+				/**
+				 * Assert
+				 */
+				// @ts-expect-error Private property
+				expect(queue).toEqual(service.queues.get('chat'));
 			});
 		});
 	});
@@ -592,6 +696,32 @@ describe('ConcurrencyControlService', () => {
 				 */
 				expect(enqueueSpy).not.toHaveBeenCalled();
 			});
+
+			it('should do nothing for chat executions', async () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.concurrency.chatLimit = -1;
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventService,
+					globalConfig,
+				);
+				const enqueueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'enqueue');
+
+				/**
+				 * Act
+				 */
+				await service.throttle({ mode: 'chat', executionId: '1' });
+				await service.throttle({ mode: 'chat', executionId: '2' });
+
+				/**
+				 * Assert
+				 */
+				expect(enqueueSpy).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('release', () => {
@@ -646,6 +776,31 @@ describe('ConcurrencyControlService', () => {
 				 */
 				expect(dequeueSpy).not.toHaveBeenCalled();
 			});
+
+			it('should do nothing for chat executions', () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.concurrency.chatLimit = -1;
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventService,
+					globalConfig,
+				);
+				const dequeueSpy = jest.spyOn(ConcurrencyQueue.prototype, 'dequeue');
+
+				/**
+				 * Act
+				 */
+				service.release({ mode: 'chat' });
+
+				/**
+				 * Assert
+				 */
+				expect(dequeueSpy).not.toHaveBeenCalled();
+			});
 		});
 
 		describe('remove', () => {
@@ -694,6 +849,31 @@ describe('ConcurrencyControlService', () => {
 				 * Act
 				 */
 				service.remove({ mode: 'evaluation', executionId: '1' });
+
+				/**
+				 * Assert
+				 */
+				expect(removeSpy).not.toHaveBeenCalled();
+			});
+
+			it('should do nothing for chat executions', () => {
+				/**
+				 * Arrange
+				 */
+				globalConfig.executions.concurrency.chatLimit = -1;
+				const service = new ConcurrencyControlService(
+					logger,
+					executionRepository,
+					telemetry,
+					eventService,
+					globalConfig,
+				);
+				const removeSpy = jest.spyOn(ConcurrencyQueue.prototype, 'remove');
+
+				/**
+				 * Act
+				 */
+				service.remove({ mode: 'chat', executionId: '1' });
 
 				/**
 				 * Assert
