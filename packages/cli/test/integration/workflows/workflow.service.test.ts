@@ -22,9 +22,9 @@ import { createWorkflowHistoryItem } from '../shared/db/workflow-history';
 
 let globalConfig: GlobalConfig;
 let workflowService: WorkflowService;
+let workflowPublishHistoryRepository: WorkflowPublishHistoryRepository;
 const activeWorkflowManager = mockInstance(ActiveWorkflowManager);
 const workflowHistoryService = mockInstance(WorkflowHistoryService);
-const workflowPublishHistoryRepository = mockInstance(WorkflowPublishHistoryRepository);
 mockInstance(MessageEventBus);
 mockInstance(Telemetry);
 
@@ -32,6 +32,7 @@ beforeAll(async () => {
 	await testDb.init();
 
 	globalConfig = Container.get(GlobalConfig);
+	workflowPublishHistoryRepository = Container.get(WorkflowPublishHistoryRepository);
 	workflowService = new WorkflowService(
 		mock(),
 		Container.get(SharedWorkflowRepository),
@@ -56,7 +57,7 @@ beforeAll(async () => {
 });
 
 afterEach(async () => {
-	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory']);
+	await testDb.truncate(['WorkflowEntity', 'WorkflowHistory', 'WorkflowPublishHistory']);
 	jest.restoreAllMocks();
 });
 
@@ -129,6 +130,7 @@ describe('activateWorkflow()', () => {
 
 		expect(updatedWorkflow.active).toBe(true);
 		expect(updatedWorkflow.activeVersionId).toBe(workflow.versionId);
+		expect(updatedWorkflow.activeVersion).toBeDefined();
 		expect(updatedWorkflow.activeVersion?.workflowPublishHistory).toHaveLength(1);
 		expect(updatedWorkflow.activeVersion?.workflowPublishHistory[0]).toMatchObject({
 			event: 'activated',
