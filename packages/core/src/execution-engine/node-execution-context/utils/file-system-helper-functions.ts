@@ -96,12 +96,15 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		return safeJoinPath(Container.get(InstanceSettings).n8nFolder, `storage/${node.type}`);
 	},
 
-	async writeContentToFile(filePath, content, flag) {
-		const resolvedFilePath = await resolvePath(filePath as string);
+	async writeContentToFile(resolvedFilePath, content, flag) {
 		if (isFilePathBlocked(resolvedFilePath)) {
-			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
-				level: 'warning',
-			});
+			throw new NodeOperationError(
+				node,
+				`The file "${String(resolvedFilePath)}" is not writable.`,
+				{
+					level: 'warning',
+				},
+			);
 		}
 		return await fsWriteFile(resolvedFilePath, content, { encoding: 'binary', flag });
 	},
