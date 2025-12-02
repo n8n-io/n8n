@@ -1,4 +1,5 @@
 import type { IConnections, INode, IPinData, IWorkflowSettings } from './interfaces';
+import { isObject } from './utils';
 
 /**
  * Data structure containing workflow fields used for checksum calculation.
@@ -39,15 +40,18 @@ function sortObjectKeys(value: unknown): unknown {
 		return value.map((element) => sortObjectKeys(element));
 	}
 
-	const objectValue = value as Record<string, unknown>;
-	const sortedKeys = Object.keys(objectValue).sort();
+	if (isObject(value)) {
+		const sortedKeys = Object.keys(value).sort();
 
-	const sortedObject: Record<string, unknown> = {};
-	for (const key of sortedKeys) {
-		sortedObject[key] = sortObjectKeys(objectValue[key]);
+		const sortedObject: Record<string, unknown> = {};
+		for (const key of sortedKeys) {
+			sortedObject[key] = sortObjectKeys(value[key]);
+		}
+
+		return sortedObject;
 	}
 
-	return sortedObject;
+	return value;
 }
 
 /**
