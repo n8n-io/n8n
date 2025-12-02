@@ -334,7 +334,7 @@ onMounted(() => {
 			<N8nActionBox
 				v-else
 				data-test-id="empty-resources-list"
-				emoji="👋"
+				:icon="{ type: 'emoji', value: '👋' }"
 				:heading="
 					i18n.baseText(
 						usersStore.currentUser?.firstName

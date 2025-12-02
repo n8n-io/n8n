@@ -46,7 +46,7 @@ ActionBox.args = {
 
 export const ActionBoxWithIcon = DefaultTemplate.bind({});
 ActionBoxWithIcon.args = {
-	icon: { type: 'icon', value: 'package-open' },
+	icon: { type: 'icon', value: 'tree-pine' },
 	heading: 'Create your first workflow',
 	description: 'Get started by creating a new workflow to automate your tasks.',
 	buttonText: 'Create Workflow',
