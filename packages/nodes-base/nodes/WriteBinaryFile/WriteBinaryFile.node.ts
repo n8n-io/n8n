@@ -98,7 +98,11 @@ export class WriteBinaryFile implements INodeType {
 
 				// Write the file to disk
 
-				await this.helpers.writeContentToFile(fileName, fileContent, flag);
+				await this.helpers.writeContentToFile(
+					await this.helpers.resolvePath(fileName),
+					fileContent,
+					flag,
+				);
 
 				if (item.binary !== undefined) {
 					// Create a shallow copy of the binary data so that the old

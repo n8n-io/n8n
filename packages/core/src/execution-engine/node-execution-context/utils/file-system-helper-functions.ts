@@ -3,7 +3,9 @@ import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { FileSystemHelperFunctions, INode } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
-import { createReadStream } from 'node:fs';
+import type { PathLike } from 'node:fs';
+import { constants, createReadStream } from 'node:fs';
+import type { ResolvedFilePath } from 'n8n-workflow';
 import {
 	access as fsAccess,
 	writeFile as fsWriteFile,
@@ -35,18 +37,19 @@ const getAllowedPaths = () => {
 	return allowedPaths;
 };
 
-export async function isFilePathBlocked(filePath: string): Promise<boolean> {
-	const allowedPaths = getAllowedPaths();
-	let resolvedFilePath = '';
+const resolvePath = async (path: PathLike): Promise<ResolvedFilePath> => {
 	try {
-		resolvedFilePath = await fsRealpath(filePath);
+		return (await fsRealpath(path)) as ResolvedFilePath; // apply brand, since we know it's resolved now
 	} catch (error: unknown) {
 		if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
-			resolvedFilePath = resolve(filePath);
-		} else {
-			throw error;
+			return resolve(path.toString()) as ResolvedFilePath; // apply brand, since we know it's resolved now
 		}
+		throw error;
 	}
+};
+
+function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
+	const allowedPaths = getAllowedPaths();
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
 	const restrictedPaths = blockFileAccessToN8nFiles ? getN8nRestrictedPaths() : [];
@@ -64,8 +67,8 @@ export async function isFilePathBlocked(filePath: string): Promise<boolean> {
 }
 
 export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
-	async createReadStream(filePath) {
-		if (await isFilePathBlocked(filePath.toString())) {
+	async createReadStream(resolvedFilePath) {
+		if (isFilePathBlocked(resolvedFilePath)) {
 			const allowedPaths = getAllowedPaths();
 			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
 			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
@@ -74,34 +77,58 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		}
 
 		try {
-			await fsAccess(filePath);
+			await fsAccess(resolvedFilePath);
 		} catch (error) {
 			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
 			throw error.code === 'ENOENT'
 				? // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
 					new NodeOperationError(node, error, {
-						message: `The file "${String(filePath)}" could not be accessed.`,
+						message: `The file "${String(resolvedFilePath)}" could not be accessed.`,
 						level: 'warning',
 					})
 				: error;
 		}
 
-		return createReadStream(filePath);
+		// Use O_NOFOLLOW to prevent TOCTOU race conditions where the file could be
+		// swapped to a symlink after validation but before opening
+		try {
+			return createReadStream(resolvedFilePath, {
+				// TypeScript types expect flags to be a string, but Node.js accepts numbers
+				// We use numeric flags here to combine O_RDONLY and O_NOFOLLOW bitwise
+				flags: (constants.O_RDONLY | constants.O_NOFOLLOW) as unknown as string,
+			});
+		} catch (error) {
+			// eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+			if (error.code === 'ELOOP') {
+				throw new NodeOperationError(
+					node,
+					`The file "${String(resolvedFilePath)}" could not be opened.`,
+					{
+						level: 'warning',
+					},
+				);
+			}
+			throw error;
+		}
 	},
 
 	getStoragePath() {
 		return safeJoinPath(Container.get(InstanceSettings).n8nFolder, `storage/${node.type}`);
 	},
 
-	async writeContentToFile(filePath, content, flag) {
-		if (await isFilePathBlocked(filePath as string)) {
-			throw new NodeOperationError(node, `The file "${String(filePath)}" is not writable.`, {
-				level: 'warning',
-			});
+	async writeContentToFile(resolvedFilePath, content, flag) {
+		if (isFilePathBlocked(resolvedFilePath)) {
+			throw new NodeOperationError(
+				node,
+				`The file "${String(resolvedFilePath)}" is not writable.`,
+				{
+					level: 'warning',
+				},
+			);
 		}
-		return await fsWriteFile(filePath, content, { encoding: 'binary', flag });
+		return await fsWriteFile(resolvedFilePath, content, { encoding: 'binary', flag });
 	},
-
+	resolvePath,
 	isFilePathBlocked,
 });
 
