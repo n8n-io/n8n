@@ -1,8 +1,8 @@
 import { readFileSync } from 'fs';
 
-import { test, expect } from '../../fixtures/base';
-import type { TestRequirements } from '../../Types';
-import { resolveFromRoot } from '../../utils/path-helper';
+import { test, expect } from '../../../fixtures/base';
+import type { TestRequirements } from '../../../Types';
+import { resolveFromRoot } from '../../../utils/path-helper';
 
 const TEMPLATE_HOSTNAME = 'custom.template.host';
 const TEMPLATE_HOST = `https://${TEMPLATE_HOSTNAME}/api`;
