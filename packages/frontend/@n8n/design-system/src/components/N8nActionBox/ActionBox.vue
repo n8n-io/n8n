@@ -32,7 +32,13 @@ withDefaults(defineProps<ActionBoxProps>(), {
 <template>
 	<div :class="['n8n-action-box', $style.container]" data-test-id="action-box">
 		<div v-if="icon" :class="$style.icon">
-			<N8nIcon v-if="icon.type === 'icon'" :icon="icon.value" :size="40" />
+			<N8nIcon
+				v-if="icon.type === 'icon'"
+				:icon="icon.value"
+				:size="40"
+				:stroke-width="1.5"
+				color="foreground-xdark"
+			/>
 			<span v-else>{{ icon.value }}</span>
 		</div>
 		<div v-if="heading || $slots.heading" :class="$style.heading">
