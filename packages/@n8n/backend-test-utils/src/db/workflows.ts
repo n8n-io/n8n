@@ -6,6 +6,7 @@ import {
 	SharedWorkflowRepository,
 	WorkflowRepository,
 	WorkflowHistoryRepository,
+	WorkflowPublishHistoryRepository,
 } from '@n8n/db';
 import { Container } from '@n8n/di';
 import type { WorkflowSharingRole } from '@n8n/permissions';
@@ -284,5 +285,15 @@ export async function createActiveWorkflow(
 	await setActiveVersion(workflow.id, workflow.versionId);
 
 	workflow.activeVersionId = workflow.versionId;
+
+	if (userOrProject instanceof User) {
+		await Container.get(WorkflowPublishHistoryRepository).save({
+			workflowId: workflow.id,
+			versionId: workflow.versionId,
+			event: 'activated',
+			userId: userOrProject.id,
+		});
+	}
+
 	return workflow;
 }

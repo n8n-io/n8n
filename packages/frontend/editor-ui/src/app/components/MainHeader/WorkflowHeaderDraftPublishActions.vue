@@ -15,6 +15,7 @@ import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
 import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
 import { useRouter } from 'vue-router';
+import { getLastPublishedByUser } from '@/features/workflows/workflowHistory/utils';
 
 const props = defineProps<{
 	readOnly?: boolean;
@@ -88,6 +89,11 @@ const showPublishIndicator = computed(() => {
 
 const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 
+const latestPublishDate = computed(() => {
+	const latestPublish = getLastPublishedByUser(activeVersion.value?.workflowPublishHistory ?? []);
+	return latestPublish?.createdAt;
+});
+
 defineExpose({
 	importFileRef,
 });
@@ -103,7 +109,7 @@ defineExpose({
 			<N8nTooltip>
 				<template #content>
 					{{ activeVersion.name }}<br />{{ i18n.baseText('workflowHistory.item.active') }}
-					<TimeAgo :date="activeVersion.createdAt" />
+					<TimeAgo v-if="latestPublishDate" :date="latestPublishDate" />
 				</template>
 				<N8nIcon icon="circle-check" color="success" size="xlarge" :class="$style.icon" />
 			</N8nTooltip>
