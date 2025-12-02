@@ -19,8 +19,7 @@ describe('Settings in Public API', () => {
 			const response = await testServer.publicApiAgentFor(member).get('/settings');
 
 			expect(response.status).toBe(200);
-			expect(response.body).toHaveProperty('data');
-			expect(response.body.data).toEqual({ version: N8N_ROOT_VERSION });
+			expect(response.body).toEqual({ version: N8N_ROOT_VERSION });
 		});
 	});
 });
