@@ -2497,7 +2497,7 @@ describe('PATCH /workflows/:workflowId', () => {
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
 
 		const {
-			data: { id, versionId: updatedVersionId },
+			data: { id },
 		} = response.body as { data: WorkflowEntity };
 
 		expect(response.statusCode).toBe(200);
