@@ -8,9 +8,11 @@ import {
 	type ChatHubConversationModel,
 	type EnrichedStructuredChunk,
 	type ChatHubProvider,
+	chatHubConversationModelSchema,
 } from '@n8n/api-types';
 import type { INode } from 'n8n-workflow';
 import { z } from 'zod';
+import { isLlmProviderModel } from './chat.utils';
 
 export interface UserMessage {
 	id: string;
@@ -80,6 +82,7 @@ export interface ChatStreamingState extends Partial<EnrichedStructuredChunk['met
 	model: ChatHubConversationModel;
 	retryOfMessageId: ChatMessageId | null;
 	tools: INode[];
+	agentName: string;
 }
 
 export interface FlattenedModel {
@@ -88,3 +91,14 @@ export interface FlattenedModel {
 	workflowId: string | null;
 	agentId: string | null;
 }
+
+export const chatHubConversationModelWithCachedDisplayNameSchema = chatHubConversationModelSchema
+	.and(z.object({ cachedDisplayName: z.string().optional() }))
+	.transform((value) => ({
+		...value,
+		cachedDisplayName: value.cachedDisplayName || (isLlmProviderModel(value) ? value.model : ''),
+	}));
+
+export type ChatHubConversationModelWithCachedDisplayName = z.infer<
+	typeof chatHubConversationModelWithCachedDisplayNameSchema
+>;

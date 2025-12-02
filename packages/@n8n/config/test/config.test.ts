@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import type { UserManagementConfig } from '../src/configs/user-management.config';
+import type { DatabaseConfig } from '../src/index';
 import { GlobalConfig } from '../src/index';
 
 jest.mock('fs');
@@ -95,15 +96,15 @@ describe('GlobalConfig', () => {
 			},
 			sqlite: {
 				database: 'database.sqlite',
-				enableWAL: false,
+				enableWAL: true,
 				executeVacuumOnStartup: false,
-				poolSize: 0,
+				poolSize: 3,
 			},
 			tablePrefix: '',
 			type: 'sqlite',
-			isLegacySqlite: true,
+			isLegacySqlite: false,
 			pingIntervalSeconds: 2,
-		},
+		} as DatabaseConfig,
 		credentials: {
 			defaultName: 'My credentials',
 			overwrite: {
@@ -137,6 +138,7 @@ describe('GlobalConfig', () => {
 					'credentials-shared': '',
 					'user-invited': '',
 					'password-reset-requested': '',
+					'workflow-deactivated': '',
 					'workflow-shared': '',
 					'project-shared': '',
 				},
@@ -157,7 +159,7 @@ describe('GlobalConfig', () => {
 		nodes: {
 			errorTriggerType: 'n8n-nodes-base.errorTrigger',
 			include: [],
-			exclude: [],
+			exclude: ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'],
 			pythonEnabled: true,
 		},
 		publicApi: {
@@ -185,7 +187,6 @@ describe('GlobalConfig', () => {
 			callerPolicyDefaultOption: 'workflowsFromSameOwner',
 			activationBatchSize: 1,
 			indexingEnabled: false,
-			draftPublishEnabled: false,
 		},
 		endpoints: {
 			metrics: {
@@ -258,7 +259,6 @@ describe('GlobalConfig', () => {
 					lockDuration: 60_000,
 					lockRenewTime: 10_000,
 					stalledInterval: 30_000,
-					maxStalledCount: 1,
 				},
 			},
 		},
@@ -276,7 +276,7 @@ describe('GlobalConfig', () => {
 			taskRequestTimeout: 60,
 			heartbeatInterval: 30,
 			insecureMode: false,
-			isNativePythonRunnerEnabled: false,
+			isNativePythonRunnerEnabled: true,
 		},
 		sentry: {
 			backendDsn: '',
@@ -317,13 +317,13 @@ describe('GlobalConfig', () => {
 			cert: '',
 		},
 		security: {
-			restrictFileAccessTo: '',
+			restrictFileAccessTo: '~/.n8n-files',
 			blockFileAccessToN8nFiles: true,
 			daysAbandonedWorkflow: 90,
 			contentSecurityPolicy: '{}',
 			contentSecurityPolicyReportOnly: false,
 			disableWebhookHtmlSandboxing: false,
-			disableBareRepos: false,
+			disableBareRepos: true,
 			awsSystemCredentialsAccess: false,
 			enableGitNodeHooks: false,
 		},
@@ -346,6 +346,10 @@ describe('GlobalConfig', () => {
 			queueRecovery: {
 				interval: 180,
 				batchSize: 100,
+			},
+			recovery: {
+				maxLastExecutions: 3,
+				workflowDeactivationEnabled: false,
 			},
 			saveDataOnError: 'all',
 			saveDataOnSuccess: 'all',

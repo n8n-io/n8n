@@ -24,31 +24,6 @@ describe('WorkflowHistoryListItem', () => {
 		setActivePinia(pinia);
 	});
 
-	it('should render item with badge', async () => {
-		const item = workflowHistoryDataFactory();
-		item.authors = 'John Doe';
-		const { getByText, container, queryByRole, emitted } = renderComponent({
-			pinia,
-			props: {
-				item,
-				index: 0,
-				actions,
-				isActive: false,
-			},
-		});
-
-		await userEvent.hover(container.querySelector('.el-tooltip__trigger')!);
-		expect(queryByRole('tooltip')).not.toBeInTheDocument();
-
-		await userEvent.click(container.querySelector('p')!);
-		expect(emitted().preview).toEqual([
-			[expect.objectContaining({ id: item.versionId, event: expect.any(MouseEvent) })],
-		]);
-
-		expect(emitted().mounted).toEqual([[{ index: 0, isActive: false, offsetTop: 0 }]]);
-		expect(getByText(/Latest saved/)).toBeInTheDocument();
-	});
-
 	test.each(actionTypes)('should emit %s event', async (action) => {
 		const item = workflowHistoryDataFactory();
 		const authors = item.authors.split(', ');
@@ -58,7 +33,7 @@ describe('WorkflowHistoryListItem', () => {
 				item,
 				index: 2,
 				actions,
-				isActive: true,
+				isSelected: true,
 			},
 		});
 
@@ -72,10 +47,20 @@ describe('WorkflowHistoryListItem', () => {
 
 		await userEvent.click(getByTestId(`action-${action}`));
 		expect(emitted().action).toEqual([
-			[{ action, id: item.versionId, data: { formattedCreatedAt: expect.any(String) } }],
+			[
+				{
+					action,
+					id: item.versionId,
+					data: {
+						formattedCreatedAt: expect.any(String),
+						versionName: item.name,
+						description: item.description,
+					},
+				},
+			],
 		]);
 
 		expect(queryByText(/Latest saved/)).not.toBeInTheDocument();
-		expect(emitted().mounted).toEqual([[{ index: 2, isActive: true, offsetTop: 0 }]]);
+		expect(emitted().mounted).toEqual([[{ index: 2, isSelected: true, offsetTop: 0 }]]);
 	});
 });

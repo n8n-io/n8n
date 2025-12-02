@@ -20,16 +20,18 @@ import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
 
-const { message, compact, isEditing, isStreaming, minHeight } = defineProps<{
-	message: ChatMessage;
-	compact: boolean;
-	isEditing: boolean;
-	isStreaming: boolean;
-	/**
-	 * minHeight allows scrolling agent's response to the top while it is being generated
-	 */
-	minHeight?: number;
-}>();
+const { message, compact, isEditing, isStreaming, minHeight, cachedAgentDisplayName } =
+	defineProps<{
+		message: ChatMessage;
+		compact: boolean;
+		isEditing: boolean;
+		isStreaming: boolean;
+		cachedAgentDisplayName: string | null;
+		/**
+		 * minHeight allows scrolling agent's response to the top while it is being generated
+		 */
+		minHeight?: number;
+	}>();
 
 const emit = defineEmits<{
 	startEdit: [];
@@ -60,7 +62,11 @@ const speech = useSpeechSynthesis(messageContent, {
 const agent = computed<ChatModelDto | null>(() => {
 	const model = unflattenModel(message);
 
-	return model ? chatStore.getAgent(model) : null;
+	if (!model) {
+		return null;
+	}
+
+	return chatStore.getAgent(model, cachedAgentDisplayName ?? undefined);
 });
 
 const attachments = computed(() =>
@@ -304,13 +310,14 @@ onBeforeMount(() => {
 	position: relative;
 	max-width: fit-content;
 	overflow-wrap: break-word;
+	font-size: var(--font-size--sm);
+	line-height: 1.5;
 
 	.user & {
 		padding: var(--spacing--2xs) var(--spacing--sm);
 		border-radius: var(--radius--xl);
 		background-color: var(--color--background);
 		white-space-collapse: preserve-breaks;
-		line-height: 1.8;
 	}
 }
 
@@ -335,49 +342,53 @@ onBeforeMount(() => {
 	}
 
 	& * {
-		font-size: var(--font-size--md);
-		line-height: 1.8;
+		font-size: var(--font-size--sm);
+		line-height: 1.5;
 	}
 
 	p {
 		margin: var(--spacing--xs) 0;
 	}
 
-	// Override heading sizes to be smaller
-	h1 {
-		font-size: var(--font-size--2xl);
-		font-weight: var(--font-weight--bold);
+	h1,
+	h2,
+	h3,
+	h4,
+	h5,
+	h6 {
+		margin: 1em 0 0.8em;
 		line-height: var(--line-height--md);
 	}
 
-	h2 {
+	// Override heading sizes to be smaller
+	h1 {
 		font-size: var(--font-size--xl);
 		font-weight: var(--font-weight--bold);
-		line-height: var(--line-height--lg);
+	}
+
+	h2 {
+		font-size: var(--font-size--lg);
+		font-weight: var(--font-weight--bold);
 	}
 
 	h3 {
-		font-size: var(--font-size--lg);
+		font-size: var(--font-size--md);
 		font-weight: var(--font-weight--bold);
-		line-height: var(--line-height--lg);
 	}
 
 	h4 {
-		font-size: var(--font-size--md);
+		font-size: var(--font-size--sm);
 		font-weight: var(--font-weight--bold);
-		line-height: var(--line-height--xl);
 	}
 
 	h5 {
 		font-size: var(--font-size--sm);
 		font-weight: var(--font-weight--bold);
-		line-height: var(--line-height--xl);
 	}
 
 	h6 {
 		font-size: var(--font-size--sm);
 		font-weight: var(--font-weight--bold);
-		line-height: var(--line-height--xl);
 	}
 
 	pre {
