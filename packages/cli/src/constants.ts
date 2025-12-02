@@ -21,11 +21,6 @@ const n8nPackageJson = jsonParse<n8n.PackageJson>(readFileSync(packageJsonPath, 
 export const N8N_VERSION = n8nPackageJson.version;
 export const N8N_RELEASE_DATE = statSync(packageJsonPath).mtime;
 
-const ROOT_DIR = resolve(__dirname, '../../..');
-const rootPackageJsonPath = join(ROOT_DIR, 'package.json');
-const n8nRootPackageJson = jsonParse<n8n.PackageJson>(readFileSync(rootPackageJsonPath, 'utf8'));
-export const N8N_ROOT_VERSION = n8nRootPackageJson.version;
-
 export const STARTING_NODES = [
 	'@n8n/n8n-nodes-langchain.manualChatTrigger',
 	'n8n-nodes-base.start',
