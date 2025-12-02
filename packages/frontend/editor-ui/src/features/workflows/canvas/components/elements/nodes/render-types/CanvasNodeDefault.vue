@@ -141,13 +141,6 @@ watch(viewport, () => {
 	}, 0);
 });
 
-watch(
-	() => viewport.value.zoom,
-	(newZoom) => {
-		console.log(`Canvas zoom level: ${newZoom.toFixed(3)} (${(newZoom * 100).toFixed(1)}%)`);
-	},
-);
-
 function openContextMenu(event: MouseEvent) {
 	emit('open:contextmenu', event);
 }
