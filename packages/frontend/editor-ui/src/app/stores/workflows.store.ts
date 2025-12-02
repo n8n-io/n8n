@@ -726,6 +726,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 
 	function resetWorkflow() {
 		workflow.value = createEmptyWorkflow();
+		workflowChecksum.value = '';
 	}
 
 	function setUsedCredentials(data: IUsedCredential[]) {
@@ -1690,7 +1691,7 @@ export const useWorkflowsStore = defineStore(STORES.WORKFLOWS, () => {
 		const updated = await updateWorkflow(id, {
 			versionId: currentVersionId,
 			settings: newSettings,
-			expectedChecksum: currentChecksum,
+			...(currentChecksum ? { expectedChecksum: currentChecksum } : {}),
 		});
 
 		// Update local store state to reflect the change
