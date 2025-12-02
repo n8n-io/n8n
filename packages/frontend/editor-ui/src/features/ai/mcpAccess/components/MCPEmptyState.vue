@@ -1,0 +1,62 @@
+<script setup lang="ts">
+import { N8nActionBox } from '@n8n/design-system';
+import { N8nText } from '@n8n/design-system';
+import { MCP_DOCS_PAGE_URL } from '@/features/ai/mcpAccess/mcp.constants';
+import { useI18n } from '@n8n/i18n';
+
+type Props = {
+	disabled?: boolean;
+	loading?: boolean;
+};
+
+const props = withDefaults(defineProps<Props>(), {
+	disabled: false,
+	loading: false,
+});
+
+const emit = defineEmits<{
+	toggleMcpAccess: [];
+}>();
+
+const i18n = useI18n();
+</script>
+
+<template>
+	<div :class="$style.container" data-test-id="mcp-empty-state-container">
+		<N8nActionBox
+			:heading="i18n.baseText('settings.mcp.toggle.label')"
+			:description="i18n.baseText('settings.mcp.toggle.disabled.notice')"
+			:button-text="i18n.baseText('settings.mcp.actionBox.button.label')"
+			:button-disabled="props.disabled || props.loading"
+			emoji="🤖"
+			button-variant="primary"
+			data-test-id="enable-mcp-access-button"
+			@click="emit('toggleMcpAccess')"
+		>
+			<template #disabledButtonTooltip>
+				<span v-if="props.loading">{{ i18n.baseText('generic.loading') }}...</span>
+				<span v-else-if="props.disabled">
+					{{ i18n.baseText('settings.mcp.toggle.disabled.tooltip') }}
+				</span>
+			</template>
+		</N8nActionBox>
+		<N8nText color="text-light">
+			{{ i18n.baseText('settings.mcp.emptyState.docs.part1') }}
+			<a :href="MCP_DOCS_PAGE_URL" :class="$style['docs-link']" target="_blank">
+				{{ i18n.baseText('generic.learnMore').toLowerCase() }}
+			</a>
+		</N8nText>
+	</div>
+</template>
+
+<style lang="scss" module>
+.container {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing--lg);
+}
+
+.docs-link {
+	text-decoration: underline;
+}
+</style>

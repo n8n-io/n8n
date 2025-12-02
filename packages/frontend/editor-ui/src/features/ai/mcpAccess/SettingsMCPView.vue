@@ -11,7 +11,7 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import MCPConnectionInstructions from '@/features/ai/mcpAccess/components/MCPConnectionInstructions.vue';
 import { LOADING_INDICATOR_TIMEOUT } from '@/features/ai/mcpAccess/mcp.constants';
 import WorkflowsTable from '@/features/ai/mcpAccess/components/WorkflowsTable.vue';
-import McpAccessToggle from '@/features/ai/mcpAccess/components/McpAccessToggle.vue';
+import MCPEmptyState from '@/features/ai/mcpAccess/components/MCPEmptyState.vue';
 import { N8nHeading } from '@n8n/design-system';
 import { useMcp } from '@/features/ai/mcpAccess/composables/useMcp';
 import type { OAuthClientResponseDto } from '@n8n/api-types';
@@ -40,10 +40,11 @@ const isAdmin = computed(() => usersStore.isAdmin);
 
 const canToggleMCP = computed(() => isOwner.value || isAdmin.value);
 
-const onToggleMCPAccess = async (enabled: boolean) => {
+const onToggleMCPAccess = async () => {
 	try {
 		mcpStatusLoading.value = true;
-		const updated = await mcpStore.setMcpAccessEnabled(enabled);
+		const newState = !mcpStore.mcpAccessEnabled;
+		const updated = await mcpStore.setMcpAccessEnabled(newState);
 		if (updated) {
 			await fetchAvailableWorkflows();
 			await fetchApiKey();
@@ -51,7 +52,7 @@ const onToggleMCPAccess = async (enabled: boolean) => {
 		} else {
 			workflowsLoading.value = false;
 		}
-		mcp.trackUserToggledMcpAccess(enabled);
+		mcp.trackUserToggledMcpAccess(newState);
 	} catch (error) {
 		toast.showError(error, i18n.baseText('settings.mcp.toggle.error'));
 	} finally {
@@ -160,9 +161,8 @@ onMounted(async () => {
 <template>
 	<div :class="$style.container">
 		<N8nHeading size="2xlarge" class="mb-2xs">{{ i18n.baseText('settings.mcp') }}</N8nHeading>
-		<McpAccessToggle
-			data-test-id="mcp-toggle-section"
-			:model-value="mcpStore.mcpAccessEnabled"
+		<MCPEmptyState
+			v-if="!mcpStore.mcpAccessEnabled"
 			:disabled="!canToggleMCP"
 			:loading="mcpStatusLoading"
 			@toggle-mcp-access="onToggleMCPAccess"
