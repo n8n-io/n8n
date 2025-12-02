@@ -63,7 +63,7 @@ describe('WaitTracker', () => {
 	});
 
 	describe('init()', () => {
-		it('should query DB for waiting executions if leader', async () => {
+		it('should query DB for waiting executions if leader', () => {
 			executionRepository.getWaitingExecutions.mockResolvedValue([execution]);
 
 			waitTracker.init();
