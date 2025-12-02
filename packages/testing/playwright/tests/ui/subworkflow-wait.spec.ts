@@ -1,3 +1,4 @@
+import flatted from 'flatted';
 import { readFileSync } from 'fs';
 import type { IWorkflowBase } from 'n8n-workflow';
 
@@ -74,5 +75,67 @@ test.describe('Parent that does not wait for sub-workflow', () => {
 			},
 			{ timeoutMs: 2000, intervalMs: 100 },
 		);
+	});
+});
+
+test.describe('CAT-1801: Parent receives correct data from child with wait node', () => {
+	test('should return child final output to parent after wait completes', async ({ api }) => {
+		// Import child workflow (has Wait node with webhook)
+		const { workflowId: childWorkflowId } =
+			await api.workflows.importWorkflowFromFile('cat-1801-child.json');
+
+		// Import parent workflow and link to child
+		const parentFilePath = resolveFromRoot('workflows', 'cat-1801-parent.json');
+		const parentContent = readFileSync(parentFilePath, 'utf8');
+		const parentDefinition = JSON.parse(parentContent) as IWorkflowBase;
+
+		// Update Execute Workflow node to reference the child
+		const executeWorkflowNode = parentDefinition.nodes.find(
+			(n) => n.type === 'n8n-nodes-base.executeWorkflow',
+		)!;
+		executeWorkflowNode.parameters.workflowId = { value: childWorkflowId, mode: 'list' };
+
+		const { webhookPath, workflowId: parentWorkflowId } =
+			await api.workflows.importWorkflowFromDefinition(parentDefinition);
+
+		// Activate parent workflow so webhook works
+		await api.workflows.setActive(parentWorkflowId, true);
+
+		// Trigger parent workflow via webhook
+		const webhookResponse = await api.request.get(`/webhook/${webhookPath}`);
+		expect(webhookResponse.ok()).toBe(true);
+
+		// Wait for child execution to appear and enter waiting state
+		let childExecution;
+		await retryUntil(
+			async () => {
+				const childExecutions = await api.workflows.getExecutions(childWorkflowId);
+				childExecution = childExecutions.find((e) => e.status === 'waiting');
+				expect(childExecution).toBeDefined();
+			},
+			{ timeoutMs: 10000, intervalMs: 200 },
+		);
+
+		// Trigger the wait webhook to resume child using child execution ID
+		const waitWebhookResponse = await api.request.get(`/webhook-waiting/${childExecution!.id}`);
+		expect(waitWebhookResponse.ok()).toBe(true);
+
+		// Wait for parent to complete
+		const parentExecution = await api.workflows.waitForExecution(parentWorkflowId, 15000);
+		expect(parentExecution.status).toBe('success');
+
+		// Get full parent execution data
+		const fullParentExecution = await api.workflows.getExecution(parentExecution.id);
+		const executionData = flatted.parse(fullParentExecution.data);
+
+		// Verify Execute Workflow node received child's FINAL output (after wait)
+		// Should be 'child - after', NOT 'child - before' or parent input
+		const executeWorkflowOutput = executionData.resultData.runData['Execute Workflow'];
+		expect(executeWorkflowOutput).toBeDefined();
+		console.log(
+			'executeWorkflowOutput[0].data.main[0][0]',
+			executeWorkflowOutput[0].data.main[0][0],
+		);
+		expect(executeWorkflowOutput[0].data.main[0][0].json.type).toBe('child - after');
 	});
 });
