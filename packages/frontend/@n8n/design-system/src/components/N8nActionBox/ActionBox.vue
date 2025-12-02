@@ -59,6 +59,9 @@ withDefaults(defineProps<ActionBoxProps>(), {
 				@click="$emit('click:button', $event)"
 			/>
 		</N8nTooltip>
+		<div v-if="$slots.additionalContent" :class="$style['additional-content']">
+			<slot name="additionalContent"></slot>
+		</div>
 		<N8nCallout
 			v-if="calloutText"
 			:theme="calloutTheme"
@@ -108,5 +111,11 @@ withDefaults(defineProps<ActionBoxProps>(), {
 .callout {
 	width: 100%;
 	text-align: left;
+}
+
+.additional-content {
+	display: flex;
+	margin-top: 0;
+	justify-content: center;
 }
 </style>
