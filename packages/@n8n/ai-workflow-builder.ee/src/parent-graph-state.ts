@@ -53,4 +53,10 @@ export const ParentGraphState = Annotation.Root({
 		reducer: (x, y) => x.concat(y),
 		default: () => [],
 	}),
+
+	// For conversation compaction - stores summarized history
+	previousSummary: Annotation<string>({
+		reducer: (x, y) => y ?? x,
+		default: () => '',
+	}),
 });
