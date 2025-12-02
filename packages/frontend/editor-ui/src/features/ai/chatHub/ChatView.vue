@@ -193,7 +193,7 @@ const selectedTools = computed<INode[]>(() => {
 		return currentConversation.value.tools;
 	}
 
-	return defaultTools.value ?? [];
+	return modelFromQuery.value ? [] : (defaultTools.value ?? []);
 });
 
 const { credentialsByProvider, selectCredential } = useChatCredentials(
@@ -473,6 +473,9 @@ async function handleSelectModel(selection: ChatHubConversationModel, displayNam
 		}
 	} else {
 		defaultModel.value = { ...selection, cachedDisplayName: agentName };
+
+		// Remove query params (if exists) and focus input
+		await router.push({ name: CHAT_VIEW, force: true }); // remove query params
 	}
 }
 
