@@ -53,7 +53,6 @@ services:
       - N8N_RUNNERS_MODE=external
       - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
       - N8N_RUNNERS_AUTH_TOKEN=test
-      - N8N_NATIVE_PYTHON_RUNNER=true
     command: worker
     volumes:
       - ${RUN_DIR}/n8n-worker1:/n8n
@@ -99,7 +98,6 @@ services:
       - N8N_RUNNERS_MODE=external
       - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
       - N8N_RUNNERS_AUTH_TOKEN=test
-      - N8N_NATIVE_PYTHON_RUNNER=true
     command: worker
     volumes:
       - ${RUN_DIR}/n8n-worker2:/n8n

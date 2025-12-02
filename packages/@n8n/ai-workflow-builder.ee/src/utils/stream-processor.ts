@@ -33,7 +33,7 @@ type MessageContent = { content: string | Array<{ type: string; text: string }> 
 /** Stream event types from LangGraph */
 type SubgraphEvent = [string[], string, unknown];
 type ParentEvent = [string, unknown];
-type StreamEvent = SubgraphEvent | ParentEvent;
+export type StreamEvent = SubgraphEvent | ParentEvent;
 
 // ============================================================================
 // CONFIGURATION
@@ -316,7 +316,7 @@ function processEvent(event: StreamEvent): StreamOutput | null {
  * - Subgraph events: [namespace[], streamMode, data]
  */
 export async function* createStreamProcessor(
-	stream: AsyncGenerator<StreamEvent, void, unknown>,
+	stream: AsyncIterable<StreamEvent>,
 ): AsyncGenerator<StreamOutput> {
 	for await (const event of stream) {
 		const result = processEvent(event);

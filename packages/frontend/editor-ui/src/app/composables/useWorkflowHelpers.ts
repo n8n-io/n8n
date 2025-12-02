@@ -954,6 +954,10 @@ export function useWorkflowHelpers() {
 		workflowsStore.setWorkflowMetadata(workflowData.meta);
 		workflowsStore.setWorkflowScopes(workflowData.scopes);
 
+		if (workflowData.activeVersion) {
+			workflowsStore.setWorkflowActiveVersion(workflowData.activeVersion);
+		}
+
 		if (workflowData.usedCredentials) {
 			workflowsStore.setUsedCredentials(workflowData.usedCredentials);
 		}
