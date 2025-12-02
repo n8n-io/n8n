@@ -169,9 +169,22 @@ describe('WorkflowHeaderDraftPublishActions', () => {
 				],
 			};
 
-			const { getByTestId } = renderComponent();
+			const { getByTestId } = renderComponent({
+				global: {
+					stubs: {
+						N8nTooltip: {
+							template: '<div><slot name="content" /></div>',
+						},
+						TimeAgo: {
+							props: ['date'],
+							template: '<div data-test-id="time-ago-stub">{{ date }}</div>',
+						},
+					},
+				},
+			});
 
 			expect(getByTestId('workflow-active-version-indicator')).toBeInTheDocument();
+			expect(getByTestId('time-ago-stub')).toHaveTextContent(latestActivationDate);
 		});
 	});
 
