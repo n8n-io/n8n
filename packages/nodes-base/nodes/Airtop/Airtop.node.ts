@@ -1,6 +1,7 @@
 import { NodeConnectionTypes } from 'n8n-workflow';
 import type { IExecuteFunctions, INodeType, INodeTypeDescription } from 'n8n-workflow';
 
+import { agentsResourceMapping, listSearchAgents } from './methods';
 import * as agent from './actions/agent/Agent.resource';
 import * as extraction from './actions/extraction/Extraction.resource';
 import * as file from './actions/file/File.resource';
@@ -72,6 +73,15 @@ export class Airtop implements INodeType {
 			...extraction.description,
 			...interaction.description,
 		],
+	};
+
+	methods = {
+		listSearch: {
+			listSearchAgents,
+		},
+		resourceMapping: {
+			agentsResourceMapping,
+		},
 	};
 
 	async execute(this: IExecuteFunctions) {
