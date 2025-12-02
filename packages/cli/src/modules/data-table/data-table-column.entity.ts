@@ -13,7 +13,7 @@ export class DataTableColumn extends WithTimestampsAndStringId {
 	name: string;
 
 	@Column({ type: 'varchar' })
-	type: 'string' | 'number' | 'boolean' | 'date';
+	type: 'string' | 'number' | 'boolean' | 'date' | 'file';
 
 	@Column({ type: 'int' })
 	index: number;

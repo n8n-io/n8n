@@ -19,6 +19,7 @@ import {
 	NUMBER_WITH_SPACES_REGEX,
 } from '@/features/core/dataTable/constants';
 import NullEmptyCellRenderer from '@/features/core/dataTable/components/dataGrid/NullEmptyCellRenderer.vue';
+import FileCell from '@/features/core/dataTable/components/dataGrid/FileCell.vue';
 import { isDataTableValue } from '@/features/core/dataTable/typeGuards';
 
 export const getCellClass = (params: CellClassParams): string => {
@@ -46,10 +47,26 @@ export const createValueGetter =
 	};
 
 export const createCellRendererSelector =
-	(col: DataTableColumn) => (params: ICellRendererParams) => {
+	(col: DataTableColumn, projectId?: string, dataTableId?: string) =>
+	(params: ICellRendererParams) => {
 		if (params.data?.id === ADD_ROW_ROW_ID || col.id === 'add-column') {
 			return {};
 		}
+
+		// Handle file columns with custom renderer
+		if (col.type === 'file') {
+			return {
+				component: FileCell,
+				params: {
+					value: (params.data as DataTableRow | undefined)?.[col.name] ?? null,
+					projectId,
+					dataTableId,
+					columnId: col.id,
+					rowId: (params.data as DataTableRow | undefined)?.id,
+				},
+			};
+		}
+
 		let rowValue = (params.data as DataTableRow | undefined)?.[col.name];
 		if (rowValue === undefined) {
 			rowValue = null;

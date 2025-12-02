@@ -56,6 +56,13 @@ export class DataTableService {
 		this.logger = this.logger.scoped('data-table');
 	}
 
+	// Lazy-load SupabaseStorageService to avoid circular dependencies
+	private async getStorageService() {
+		const { SupabaseStorageService } = await import('./storage/supabase-storage.service');
+		const { Container } = await import('@n8n/di');
+		return Container.get(SupabaseStorageService);
+	}
+
 	async start() {}
 	async shutdown() {}
 
@@ -136,6 +143,21 @@ export class DataTableService {
 	async deleteColumn(dataTableId: string, projectId: string, columnId: string) {
 		await this.validateDataTableExists(dataTableId, projectId);
 		const existingColumn = await this.validateColumnExists(dataTableId, columnId);
+
+		// If this is a file column, delete all associated files from storage
+		if (existingColumn.type === 'file') {
+			try {
+				const storageService = await this.getStorageService();
+				await storageService.deleteColumnFiles(projectId, dataTableId, columnId);
+			} catch (error) {
+				this.logger.error('Failed to delete files for column', {
+					dataTableId,
+					columnId,
+					error: error instanceof Error ? error.message : String(error),
+				});
+				// Continue with column deletion even if file cleanup fails
+			}
+		}
 
 		await this.dataTableColumnRepository.deleteColumn(dataTableId, existingColumn);
 
@@ -631,5 +653,71 @@ export class DataTableService {
 			quotaStatus: this.dataTableSizeValidator.sizeToState(allSizeData.totalBytes),
 			dataTables: accessibleDataTables,
 		};
+	}
+
+	// File operations for file columns
+	async uploadFileToColumn(
+		projectId: string,
+		dataTableId: string,
+		columnId: string,
+		file: Buffer,
+		fileName: string,
+		mimeType: string,
+	) {
+		await this.validateDataTableExists(dataTableId, projectId);
+		const column = await this.validateColumnExists(dataTableId, columnId);
+
+		if (column.type !== 'file') {
+			throw new DataTableValidationError(`Column ${columnId} is not a file column`);
+		}
+
+		const storageService = await this.getStorageService();
+
+		// Initialize bucket if it doesn't exist
+		await storageService.initBucket(projectId);
+
+		// Upload file and get metadata
+		return await storageService.uploadFile(
+			projectId,
+			dataTableId,
+			columnId,
+			file,
+			fileName,
+			mimeType,
+		);
+	}
+
+	async downloadFileFromColumn(
+		projectId: string,
+		dataTableId: string,
+		columnId: string,
+		fileMetadata: any,
+	) {
+		await this.validateDataTableExists(dataTableId, projectId);
+		const column = await this.validateColumnExists(dataTableId, columnId);
+
+		if (column.type !== 'file') {
+			throw new DataTableValidationError(`Column ${columnId} is not a file column`);
+		}
+
+		const storageService = await this.getStorageService();
+		return await storageService.downloadFile(fileMetadata);
+	}
+
+	async deleteFileFromColumn(
+		projectId: string,
+		dataTableId: string,
+		columnId: string,
+		fileId: string,
+	) {
+		await this.validateDataTableExists(dataTableId, projectId);
+		const column = await this.validateColumnExists(dataTableId, columnId);
+
+		if (column.type !== 'file') {
+			throw new DataTableValidationError(`Column ${columnId} is not a file column`);
+		}
+
+		const storageService = await this.getStorageService();
+		await storageService.deleteFile(projectId, dataTableId, columnId, fileId);
 	}
 }

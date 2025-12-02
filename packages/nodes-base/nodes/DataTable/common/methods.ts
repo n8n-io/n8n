@@ -1,5 +1,6 @@
 import {
 	DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP,
+	type FieldTypeMap,
 	type ILoadOptionsFunctions,
 	type INodeListSearchResult,
 	type INodePropertyOptions,
@@ -156,7 +157,15 @@ export async function getDataTables(this: ILoadOptionsFunctions): Promise<Resour
 	const fields: ResourceMapperField[] = [];
 
 	for (const field of result) {
-		const type = field.type === 'date' ? 'dateTime' : field.type;
+		// Map data table types to resource mapper types
+		let type: keyof FieldTypeMap;
+		if (field.type === 'date') {
+			type = 'dateTime';
+		} else if (field.type === 'file') {
+			type = 'string'; // File metadata is stored as string (JSON)
+		} else {
+			type = field.type as keyof FieldTypeMap;
+		}
 
 		fields.push({
 			id: field.name,

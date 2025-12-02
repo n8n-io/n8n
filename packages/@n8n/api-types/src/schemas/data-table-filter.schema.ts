@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { dataTableColumnNameSchema } from './data-table.schema';
+import { dataTableColumnNameSchema, fileMetadataSchema } from './data-table.schema';
 
 export const FilterConditionSchema = z.union([
 	z.literal('eq'),
@@ -18,7 +18,7 @@ export type DataTableFilterConditionType = z.infer<typeof FilterConditionSchema>
 export const dataTableFilterRecordSchema = z.object({
 	columnName: dataTableColumnNameSchema,
 	condition: FilterConditionSchema.default('eq'),
-	value: z.union([z.string(), z.number(), z.boolean(), z.date(), z.null()]),
+	value: z.union([z.string(), z.number(), z.boolean(), z.date(), z.null(), fileMetadataSchema]),
 });
 
 export const dataTableFilterTypeSchema = z.union([z.literal('and'), z.literal('or')]);

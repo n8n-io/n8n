@@ -56,6 +56,8 @@ const dataTableColumns = useDataTableColumns({
 	onAddRowClick: onAddRowClickFunction,
 	onAddColumn: onAddColumnFunction,
 	isTextEditorOpen: agGrid.isTextEditorOpen,
+	projectId: props.dataTable.projectId,
+	dataTableId: props.dataTable.id,
 });
 
 const { onFilterChanged, currentFilterJSON } = useDataTableColumnFilters({

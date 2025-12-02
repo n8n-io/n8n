@@ -1,4 +1,14 @@
-export type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date';
+export type DataTableColumnType = 'string' | 'number' | 'boolean' | 'date' | 'file';
+
+export type FileMetadata = {
+	url: string;
+	fileName: string;
+	mimeType: string;
+	size: number;
+	bucketId: string;
+	fileId: string;
+	uploadedAt: Date;
+};
 
 export type DataTableColumn = {
 	id: string;
@@ -81,7 +91,7 @@ export type MoveDataTableColumnOptions = {
 export type AddDataTableColumnOptions = Pick<DataTableColumn, 'name' | 'type'> &
 	Partial<Pick<DataTableColumn, 'index'>>;
 
-export type DataTableColumnJsType = string | number | boolean | Date | null;
+export type DataTableColumnJsType = string | number | boolean | Date | FileMetadata | null;
 
 export const DATA_TABLE_SYSTEM_COLUMN_TYPE_MAP: Record<string, DataTableColumnType> = {
 	id: 'number',

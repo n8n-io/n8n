@@ -19,7 +19,7 @@ export const dataTableColumnNameSchema = z
 	.min(1)
 	.max(DATA_TABLE_COLUMN_MAX_LENGTH) // Postgres has a maximum of 63 characters
 	.regex(DATA_TABLE_COLUMN_REGEX, DATA_TABLE_COLUMN_ERROR_MESSAGE);
-export const dataTableColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date']);
+export const dataTableColumnTypeSchema = z.enum(['string', 'number', 'boolean', 'date', 'file']);
 
 export const dataTableCreateColumnSchema = z.object({
 	name: dataTableColumnNameSchema,
@@ -58,10 +58,21 @@ export const dateTimeSchema = z
 	.transform((s) => new Date(s))
 	.pipe(z.date());
 
+export const fileMetadataSchema = z.object({
+	url: z.string(),
+	fileName: z.string(),
+	mimeType: z.string(),
+	size: z.number(),
+	bucketId: z.string(),
+	fileId: z.string(),
+	uploadedAt: z.date(),
+});
+
 export const dataTableColumnValueSchema = z.union([
 	z.string(),
 	z.number(),
 	z.boolean(),
 	z.null(),
 	z.date(),
+	fileMetadataSchema,
 ]);

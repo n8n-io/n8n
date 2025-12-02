@@ -217,3 +217,65 @@ export const fetchDataTableGlobalLimitInBytes = async (context: IRestApiContext)
 		'/data-tables-global/limits',
 	);
 };
+
+// File operations for file columns
+export const uploadFileToColumnApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	dataTableId: string,
+	columnId: string,
+	file: File,
+) => {
+	const formData = new FormData();
+	formData.append('file', file);
+
+	return await makeRestApiRequest<{
+		url: string;
+		fileName: string;
+		mimeType: string;
+		size: number;
+		bucketId: string;
+		fileId: string;
+		uploadedAt: Date;
+	}>(
+		context,
+		'POST',
+		`/projects/${projectId}/data-tables/${dataTableId}/columns/${columnId}/upload`,
+		formData,
+	);
+};
+
+export const downloadFileFromColumnApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	dataTableId: string,
+	columnId: string,
+	fileId: string,
+	fileName: string,
+	mimeType: string,
+) => {
+	const params = new URLSearchParams({
+		fileName,
+		mimeType,
+	});
+
+	return await makeRestApiRequest<Blob>(
+		context,
+		'GET',
+		`/projects/${projectId}/data-tables/${dataTableId}/columns/${columnId}/download/${fileId}?${params}`,
+	);
+};
+
+export const deleteFileFromColumnApi = async (
+	context: IRestApiContext,
+	projectId: string,
+	dataTableId: string,
+	columnId: string,
+	fileId: string,
+) => {
+	return await makeRestApiRequest<{ success: boolean }>(
+		context,
+		'DELETE',
+		`/projects/${projectId}/data-tables/${dataTableId}/columns/${columnId}/files/${fileId}`,
+	);
+};

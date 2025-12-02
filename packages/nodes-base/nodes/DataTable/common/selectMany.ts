@@ -7,6 +7,8 @@ import type {
 	IExecuteFunctions,
 	INodeProperties,
 	DataTableColumnType,
+	FileMetadata,
+	IBinaryData,
 } from 'n8n-workflow';
 
 import { ALL_CONDITIONS, ANY_CONDITION, ROWS_LIMIT_DEFAULT, type FilterType } from './constants';
@@ -146,13 +148,46 @@ export async function getSelectFilter(
 	return buildGetManyFilter(fields, matchType, allColumnsWithTypes, node);
 }
 
+/**
+ * Convert file metadata columns to IBinaryData format
+ */
+async function convertFileMetadataToBinary(
+	row: DataTableRowReturn,
+	columns: Array<{ name: string; type: DataTableColumnType }>,
+): Promise<{ json: DataTableRowReturn; binary?: Record<string, IBinaryData> }> {
+	const binary: Record<string, IBinaryData> = {};
+	const json = { ...row };
+
+	for (const column of columns) {
+		if (column.type === 'file' && row[column.name]) {
+			const fileMetadata = row[column.name] as unknown as FileMetadata;
+
+			if (fileMetadata && typeof fileMetadata === 'object' && 'url' in fileMetadata) {
+				// Convert FileMetadata to IBinaryData
+				binary[column.name] = {
+					data: fileMetadata.url, // For now, store URL - actual download happens when needed
+					mimeType: fileMetadata.mimeType,
+					fileName: fileMetadata.fileName,
+					fileExtension: fileMetadata.fileName.split('.').pop() || '',
+					fileSize: String(fileMetadata.size),
+				};
+
+				// Keep the metadata in JSON for reference
+				json[column.name] = fileMetadata;
+			}
+		}
+	}
+
+	return Object.keys(binary).length > 0 ? { json, binary } : { json };
+}
+
 export async function executeSelectMany(
 	ctx: IExecuteFunctions,
 	index: number,
 	dataTableProxy: IDataTableProjectService,
 	rejectEmpty = false,
 	limit?: number,
-): Promise<Array<{ json: DataTableRowReturn }>> {
+): Promise<Array<{ json: DataTableRowReturn; binary?: Record<string, IBinaryData> }>> {
 	const filter = await getSelectFilter(ctx, index);
 
 	if (rejectEmpty && filter.filters.length === 0) {
@@ -160,10 +195,14 @@ export async function executeSelectMany(
 	}
 
 	const PAGE_SIZE = 1000;
-	const result: Array<{ json: DataTableRowReturn }> = [];
+	const result: Array<{ json: DataTableRowReturn; binary?: Record<string, IBinaryData> }> = [];
 
 	const returnAll = ctx.getNodeParameter('returnAll', index, false);
 	limit = limit ?? (!returnAll ? ctx.getNodeParameter('limit', index, ROWS_LIMIT_DEFAULT) : 0);
+
+	// Get columns to check for file types
+	const columns = await dataTableProxy.getColumns();
+	const hasFileColumns = columns.some((col) => col.type === 'file');
 
 	let expectedTotal: number | undefined;
 	let skip = 0;
@@ -175,7 +214,11 @@ export async function executeSelectMany(
 			take: limit ? Math.min(take, limit - result.length) : take,
 			filter,
 		});
-		const wrapped = data.map((json) => ({ json }));
+
+		// Convert file metadata to binary data if file columns exist
+		const wrapped = hasFileColumns
+			? await Promise.all(data.map((row) => convertFileMetadataToBinary(row, columns)))
+			: data.map((json) => ({ json }));
 
 		// Fast path: everything fits in a single page
 		if (skip === 0 && count === data.length) {

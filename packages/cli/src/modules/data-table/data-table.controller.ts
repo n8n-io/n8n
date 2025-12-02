@@ -9,6 +9,8 @@ import {
 	UpdateDataTableDto,
 	UpdateDataTableRowDto,
 	UpsertDataTableRowDto,
+	UploadFileDto,
+	UploadFileResponseDto,
 } from '@n8n/api-types';
 import { AuthenticatedRequest } from '@n8n/db';
 import {
@@ -397,6 +399,140 @@ export class DataTableController {
 			);
 		} catch (e: unknown) {
 			if (e instanceof DataTableNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof DataTableValidationError) {
+				throw new BadRequestError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
+	}
+
+	@Post('/:dataTableId/columns/:columnId/upload')
+	@ProjectScope('dataTable:writeRow')
+	async uploadFile(
+		req: AuthenticatedRequest<{ projectId: string; dataTableId: string; columnId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Param('columnId') columnId: string,
+	): Promise<UploadFileResponseDto> {
+		try {
+			const formidable = await import('formidable');
+			const { readFile } = await import('fs/promises');
+
+			// Parse multipart form data
+			const form = formidable.default({
+				maxFileSize: 50 * 1024 * 1024, // 50MB
+				multiples: false,
+			});
+
+			const [, files] = await new Promise<[any, any]>((resolve, reject) => {
+				form.parse(req as any, (err, fields, files) => {
+					if (err) reject(err);
+					else resolve([fields, files]);
+				});
+			});
+
+			// Get the uploaded file
+			const fileArray = files.file;
+			if (!fileArray || (Array.isArray(fileArray) && fileArray.length === 0)) {
+				throw new BadRequestError('No file uploaded');
+			}
+
+			const file = Array.isArray(fileArray) ? fileArray[0] : fileArray;
+
+			// Read file content
+			const fileBuffer = await readFile(file.filepath);
+
+			// Upload to Supabase
+			const fileMetadata = await this.dataTableService.uploadFileToColumn(
+				req.params.projectId,
+				dataTableId,
+				columnId,
+				fileBuffer,
+				file.originalFilename || 'unknown',
+				file.mimetype || 'application/octet-stream',
+			);
+
+			return fileMetadata as UploadFileResponseDto;
+		} catch (e: unknown) {
+			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof DataTableValidationError) {
+				throw new BadRequestError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
+	}
+
+	@Get('/:dataTableId/columns/:columnId/download/:fileId')
+	@ProjectScope('dataTable:readRow')
+	async downloadFile(
+		req: AuthenticatedRequest<{ projectId: string; dataTableId: string; columnId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Param('columnId') columnId: string,
+		@Param('fileId') fileId: string,
+	) {
+		try {
+			// Get file metadata from query params or reconstruct it
+			// In practice, we'd fetch the row and get the file metadata from the column
+			// For now, we'll require the metadata to be passed as query params
+			const query = req.query as Record<string, string>;
+			const fileMetadata: any = {
+				fileId,
+				bucketId: `n8n-datatable-${req.params.projectId}`,
+				fileName: query.fileName || 'file',
+				mimeType: query.mimeType || 'application/octet-stream',
+			};
+
+			const fileBuffer = await this.dataTableService.downloadFileFromColumn(
+				req.params.projectId,
+				dataTableId,
+				columnId,
+				fileMetadata,
+			);
+
+			// Return buffer - framework will handle response
+			return fileBuffer;
+		} catch (e: unknown) {
+			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
+				throw new NotFoundError(e.message);
+			} else if (e instanceof DataTableValidationError) {
+				throw new BadRequestError(e.message);
+			} else if (e instanceof Error) {
+				throw new InternalServerError(e.message, e);
+			} else {
+				throw e;
+			}
+		}
+	}
+
+	@Delete('/:dataTableId/columns/:columnId/files/:fileId')
+	@ProjectScope('dataTable:writeRow')
+	async deleteFile(
+		req: AuthenticatedRequest<{ projectId: string; dataTableId: string; columnId: string }>,
+		_res: Response,
+		@Param('dataTableId') dataTableId: string,
+		@Param('columnId') columnId: string,
+		@Param('fileId') fileId: string,
+	) {
+		try {
+			await this.dataTableService.deleteFileFromColumn(
+				req.params.projectId,
+				dataTableId,
+				columnId,
+				fileId,
+			);
+
+			return { success: true };
+		} catch (e: unknown) {
+			if (e instanceof DataTableNotFoundError || e instanceof DataTableColumnNotFoundError) {
 				throw new NotFoundError(e.message);
 			} else if (e instanceof DataTableValidationError) {
 				throw new BadRequestError(e.message);

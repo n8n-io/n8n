@@ -40,11 +40,15 @@ export const useDataTableColumns = ({
 	onAddRowClick,
 	onAddColumn,
 	isTextEditorOpen,
+	projectId,
+	dataTableId,
 }: {
 	onDeleteColumn: (columnId: string) => void;
 	onAddRowClick: () => void;
 	onAddColumn: (column: DataTableColumnCreatePayload) => Promise<AddColumnResponse>;
 	isTextEditorOpen: Ref<boolean>;
+	projectId?: string;
+	dataTableId?: string;
 }) => {
 	const colDefs = ref<ColDef[]>([]);
 	const { mapToAGCellType } = useDataTableTypes();
@@ -57,7 +61,7 @@ export const useDataTableColumns = ({
 			filter: !GRID_FILTER_CONFIG.excludedColumns.includes(col.id),
 			headerName: col.name,
 			sortable: true,
-			editable: (params) => params.data?.id !== ADD_ROW_ROW_ID,
+			editable: (params) => params.data?.id !== ADD_ROW_ROW_ID && col.type !== 'file', // File columns not editable
 			resizable: true,
 			lockPinned: true,
 			headerComponent: ColumnHeader,
@@ -69,7 +73,7 @@ export const useDataTableColumns = ({
 			cellDataType: mapToAGCellType(col.type),
 			cellClass: getCellClass,
 			valueGetter: createValueGetter(col),
-			cellRendererSelector: createCellRendererSelector(col),
+			cellRendererSelector: createCellRendererSelector(col, projectId, dataTableId),
 			width: DEFAULT_COLUMN_WIDTH,
 		};
 

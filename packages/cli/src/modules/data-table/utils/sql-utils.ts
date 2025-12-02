@@ -34,6 +34,8 @@ export function toDslColumns(columns: DataTableCreateColumnSchema[]): DslColumn[
 				return name.text;
 			case 'date':
 				return name.timestampTimezone();
+			case 'file':
+				return name.json;
 			default:
 				return name.text;
 		}
@@ -66,6 +68,13 @@ function dataTableColumnTypeToSql(
 				return 'TIMESTAMP';
 			}
 			return 'DATETIME';
+		case 'file':
+			if (dbType === 'postgres') {
+				return 'JSONB';
+			} else if (dbType === 'mysql' || dbType === 'mariadb') {
+				return 'JSON';
+			}
+			return 'TEXT'; // SQLite stores JSON as TEXT
 		default:
 			throw new NotFoundError(`Unsupported field type: ${type as string}`);
 	}
@@ -244,6 +253,20 @@ export function normalizeRows(
 			if (type === 'date' && value !== null && value !== undefined) {
 				normalized[key] = normalizeDate(value) ?? value; // fallback to original value
 			}
+
+			if (type === 'file' && value !== null && value !== undefined) {
+				// Parse JSON string to FileMetadata object (for SQLite and some MySQL configs)
+				if (typeof value === 'string') {
+					try {
+						normalized[key] = JSON.parse(value);
+					} catch {
+						normalized[key] = value; // fallback to original if parse fails
+					}
+				} else {
+					// Already parsed (JSONB in Postgres, JSON in MySQL)
+					normalized[key] = value;
+				}
+			}
 		}
 		return normalized;
 	});
@@ -284,6 +307,7 @@ function formatDateForDatabase(
 /**
  * Normalize a value for database operations based on column type.
  * For date columns, accepts both Date objects and ISO date strings.
+ * For file columns, converts FileMetadata objects to JSON strings.
  * Converts them to database-specific format.
  */
 export function normalizeValueForDatabase(
@@ -293,6 +317,14 @@ export function normalizeValueForDatabase(
 ): DataTableColumnJsType {
 	if (columnType === 'date' && value !== null) {
 		return formatDateForDatabase(value, dbType);
+	}
+
+	if (columnType === 'file' && value !== null) {
+		// For file columns, convert FileMetadata object to JSON string
+		if (typeof value === 'object') {
+			return JSON.stringify(value);
+		}
+		return value;
 	}
 
 	return value;
