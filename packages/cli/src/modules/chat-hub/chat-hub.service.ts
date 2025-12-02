@@ -2277,6 +2277,7 @@ export class ChatHubService {
 
 		if (updates.title !== undefined) sessionUpdates.title = updates.title;
 		if (updates.credentialId !== undefined) sessionUpdates.credentialId = updates.credentialId;
+		if (updates.tools !== undefined) sessionUpdates.tools = updates.tools;
 
 		return await this.sessionRepository.updateChatSession(sessionId, sessionUpdates);
 	}
