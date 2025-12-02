@@ -78,6 +78,7 @@ export const mockNodeTypeDescription = ({
 	description,
 	webhooks,
 	eventTriggerDescription,
+	maxNodes,
 }: Partial<INodeTypeDescription> = {}) =>
 	mock<INodeTypeDescription>({
 		name,
@@ -90,7 +91,7 @@ export const mockNodeTypeDescription = ({
 		},
 		defaultVersion: Array.isArray(version) ? version[version.length - 1] : version,
 		properties: properties as [],
-		maxNodes: Infinity,
+		maxNodes: maxNodes ?? Infinity,
 		group: (group ?? EXECUTABLE_TRIGGER_NODE_TYPES.includes(name)) ? ['trigger'] : [],
 		inputs,
 		outputs,

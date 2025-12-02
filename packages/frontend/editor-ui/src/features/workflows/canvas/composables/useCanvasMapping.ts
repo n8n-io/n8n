@@ -116,7 +116,12 @@ export function useCanvasMapping({
 			options: {
 				trigger: isTriggerNodeById.value[node.id],
 				configuration: nodeTypesStore.isConfigNode(workflowObject.value, node, node.type),
-				configurable: nodeTypesStore.isConfigurableNode(workflowObject.value, node, node.type),
+				configurable: nodeTypesStore.isConfigurableNode(
+					workflowObject.value,
+					node,
+					node.type,
+					node.typeVersion,
+				),
 				inputs: {
 					labelSize: nodeInputLabelSizeById.value[node.id],
 				},

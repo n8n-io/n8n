@@ -7,12 +7,7 @@ import { useCredentialsStore } from '@/features/credentials/credentials.store';
 import type { ICredentialsResponse } from '@/features/credentials/credentials.types';
 import { createEventBus } from '@n8n/utils/event-bus';
 import { type ChatHubAgentTool } from '@n8n/api-types';
-import {
-	type INode,
-	deepCopy,
-	JINA_AI_TOOL_NODE_TYPE,
-	SEAR_XNG_TOOL_NODE_TYPE,
-} from 'n8n-workflow';
+import { type INode, deepCopy, JINA_AI_TOOL_NODE_TYPE } from 'n8n-workflow';
 import { AVAILABLE_TOOLS, type ChatHubToolProvider } from '../composables/availableTools';
 import { ElSwitch } from 'element-plus';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -35,22 +30,18 @@ const uiStore = useUIStore();
 
 const selectedByProvider = ref<Record<ChatHubAgentTool, Set<string>>>({
 	[JINA_AI_TOOL_NODE_TYPE]: new Set(),
-	[SEAR_XNG_TOOL_NODE_TYPE]: new Set(),
 });
 
 const credentialIdByProvider = ref<Record<ChatHubAgentTool, string | null>>({
 	[JINA_AI_TOOL_NODE_TYPE]: null,
-	[SEAR_XNG_TOOL_NODE_TYPE]: null,
 });
 
 function resetSelections() {
 	selectedByProvider.value = {
 		[JINA_AI_TOOL_NODE_TYPE]: new Set(),
-		[SEAR_XNG_TOOL_NODE_TYPE]: new Set(),
 	};
 	credentialIdByProvider.value = {
 		[JINA_AI_TOOL_NODE_TYPE]: null,
-		[SEAR_XNG_TOOL_NODE_TYPE]: null,
 	};
 }
 

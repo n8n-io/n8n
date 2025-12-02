@@ -22,9 +22,24 @@ function generateExperimentalVersion(currentVersion) {
 	return `${parsed.major}.${parsed.minor}.${parsed.patch}-exp.0`;
 }
 
+function generateRcVersion(currentVersion) {
+	const parsed = semver.parse(currentVersion);
+	if (!parsed) throw new Error(`Invalid version: ${currentVersion}`);
+
+	// Check if it's already an RC version
+	if (parsed.prerelease.length > 0 && parsed.prerelease[0] === 'rc') {
+		// Increment the RC number
+		const rcNum = (parsed.prerelease[1] || 0) + 1;
+		return `${parsed.major}.${parsed.minor}.${parsed.patch}-rc.${rcNum}`;
+	}
+
+	// Create new RC version: <major>.<minor>.<patch>-rc.0
+	return `${parsed.major}.${parsed.minor}.${parsed.patch}-rc.0`;
+}
+
 const rootDir = process.cwd();
 const releaseType = process.env.RELEASE_TYPE;
-assert.match(releaseType, /^(patch|minor|major|experimental)$/, 'Invalid RELEASE_TYPE');
+assert.match(releaseType, /^(patch|minor|major|experimental|rc)$/, 'Invalid RELEASE_TYPE');
 
 // TODO: if releaseType is `auto` determine release type based on the changelog
 
@@ -63,7 +78,9 @@ for (const packageName in packageMap) {
 		)
 			? releaseType === 'experimental'
 				? generateExperimentalVersion(version)
-				: semver.inc(version, releaseType)
+				: releaseType === 'rc'
+					? generateRcVersion(version)
+					: semver.inc(version, releaseType)
 			: version;
 
 	await writeFile(packageFile, JSON.stringify(packageJson, null, 2) + '\n');

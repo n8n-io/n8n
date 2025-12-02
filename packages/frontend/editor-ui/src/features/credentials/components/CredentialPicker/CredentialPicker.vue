@@ -31,7 +31,9 @@ const availableCredentials = computed(() => {
 	const credByType = credentialsStore.getCredentialsByType(props.credentialType);
 	// Only show personal credentials since templates are created in personal by default
 	// Here, we don't care about sharing because credentials cannot be shared with personal project
-	return credByType.filter((credential) => credential.homeProject?.type === 'personal');
+	return credByType.filter(
+		(credential) => !credential.homeProject || credential.homeProject?.type === 'personal',
+	);
 });
 
 const credentialOptions = computed(() => {

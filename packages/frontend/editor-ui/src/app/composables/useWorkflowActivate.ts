@@ -16,6 +16,8 @@ import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { useNpsSurveyStore } from '@/app/stores/npsSurvey.store';
 import { useWorkflowSaving } from './useWorkflowSaving';
+import * as workflowsApi from '@/app/api/workflows';
+import { useRootStore } from '@n8n/stores/useRootStore';
 
 export function useWorkflowActivate() {
 	const updatingWorkflowActivation = ref(false);
@@ -29,6 +31,7 @@ export function useWorkflowActivate() {
 	const toast = useToast();
 	const i18n = useI18n();
 	const npsSurveyStore = useNpsSurveyStore();
+	const rootStore = useRootStore();
 
 	//methods
 
@@ -90,10 +93,27 @@ export function useWorkflowActivate() {
 				return false; // Return false if there are node issues
 			}
 
-			await workflowHelpers.updateWorkflow(
-				{ workflowId: currWorkflowId, active: newActiveState },
-				!uiStore.stateIsDirty,
-			);
+			// Save workflow if there are unsaved changes
+			if (uiStore.stateIsDirty) {
+				await workflowHelpers.updateWorkflow({ workflowId: currWorkflowId }, false);
+			}
+
+			// Call activate or deactivate endpoint
+			let workflow;
+			if (newActiveState) {
+				workflow = await workflowsApi.activateWorkflow(rootStore.restApiContext, currWorkflowId, {
+					versionId: workflowsStore.workflow.versionId,
+				});
+			} else {
+				workflow = await workflowsApi.deactivateWorkflow(rootStore.restApiContext, currWorkflowId);
+			}
+
+			// Update local state
+			if (workflow.activeVersionId !== null) {
+				workflowsStore.setWorkflowActive(currWorkflowId);
+			} else {
+				workflowsStore.setWorkflowInactive(currWorkflowId);
+			}
 		} catch (error) {
 			const newStateName = newActiveState ? 'activated' : 'deactivated';
 			toast.showError(
@@ -132,9 +152,105 @@ export function useWorkflowActivate() {
 		return await updateWorkflowActivation(workflowId, true, telemetrySource);
 	};
 
+	const publishWorkflow = async (
+		workflowId: string,
+		versionId: string,
+		options?: { name?: string; description?: string },
+	) => {
+		updatingWorkflowActivation.value = true;
+		const workflow = workflowsStore.getWorkflowById(workflowId);
+		const hadPublishedVersion = !!workflow.activeVersion;
+
+		if (!hadPublishedVersion) {
+			const telemetryPayload = {
+				workflow_id: workflowId,
+				is_active: true,
+				previous_status: false,
+				ndv_input: false,
+			};
+			void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
+		}
+
+		try {
+			const updatedWorkflow = await workflowsStore.publishWorkflow(workflowId, {
+				versionId,
+				name: options?.name,
+				description: options?.description,
+			});
+
+			if (!updatedWorkflow.activeVersion) {
+				throw new Error('Failed to publish workflow');
+			}
+
+			workflowsStore.setWorkflowActive(workflowId, updatedWorkflow.activeVersion);
+
+			void useExternalHooks().run('workflow.activeChangeCurrent', {
+				workflowId,
+				versionId: updatedWorkflow.activeVersion.versionId,
+				active: true,
+			});
+
+			if (!hadPublishedVersion && useStorage(LOCAL_STORAGE_ACTIVATION_FLAG).value !== 'true') {
+				uiStore.openModal(WORKFLOW_ACTIVE_MODAL_KEY);
+			}
+			return true;
+		} catch (error) {
+			toast.showError(
+				error,
+				i18n.baseText('workflowActivator.showError.title', {
+					interpolate: { newStateName: 'published' },
+				}) + ':',
+			);
+			return false;
+		} finally {
+			updatingWorkflowActivation.value = false;
+		}
+	};
+
+	const unpublishWorkflowFromHistory = async (workflowId: string) => {
+		updatingWorkflowActivation.value = true;
+
+		const workflow = workflowsStore.getWorkflowById(workflowId);
+		const wasPublished = !!workflow.activeVersion;
+
+		const telemetryPayload = {
+			workflow_id: workflowId,
+			is_active: false,
+			previous_status: wasPublished,
+			ndv_input: false,
+		};
+
+		telemetry.track('User set workflow active status', telemetryPayload);
+		void useExternalHooks().run('workflowActivate.updateWorkflowActivation', telemetryPayload);
+
+		try {
+			await workflowsStore.deactivateWorkflow(workflowId);
+
+			void useExternalHooks().run('workflow.activeChangeCurrent', {
+				workflowId,
+				active: false,
+				versionId: null,
+			});
+
+			return true;
+		} catch (error) {
+			toast.showError(
+				error,
+				i18n.baseText('workflowActivator.showError.title', {
+					interpolate: { newStateName: 'deactivated' },
+				}) + ':',
+			);
+			return false;
+		} finally {
+			updatingWorkflowActivation.value = false;
+		}
+	};
+
 	return {
 		activateCurrentWorkflow,
 		updateWorkflowActivation,
 		updatingWorkflowActivation,
+		publishWorkflow,
+		unpublishWorkflowFromHistory,
 	};
 }

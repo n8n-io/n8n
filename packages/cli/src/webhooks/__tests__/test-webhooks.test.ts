@@ -186,7 +186,9 @@ describe('TestWebhooks', () => {
 
 	describe('deactivateWebhooks()', () => {
 		test('should add additional data to workflow', async () => {
-			registrations.getAllRegistrations.mockResolvedValue([{ workflowEntity, webhook }]);
+			registrations.getAllRegistrations.mockResolvedValue([
+				{ version: 1, workflowEntity, webhook },
+			]);
 
 			const workflow = testWebhooks.toWorkflow(workflowEntity);
 
@@ -229,6 +231,7 @@ describe('TestWebhooks', () => {
 			registrations.getRegistrationsHash.mockImplementation(async () => {
 				return {
 					[registrations.toKey(webhookData)]: {
+						version: 1,
 						workflowEntity: mock<WorkflowEntity>(),
 						webhook: webhookData,
 					},
@@ -256,6 +259,7 @@ describe('TestWebhooks', () => {
 			registrations.getRegistrationsHash.mockImplementation(async () => {
 				return {
 					[registrations.toKey(webhookData)]: {
+						version: 1,
 						workflowEntity: mock<WorkflowEntity>(),
 						webhook: webhookData as IWebhookData,
 					},

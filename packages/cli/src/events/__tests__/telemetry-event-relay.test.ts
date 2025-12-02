@@ -713,7 +713,7 @@ describe('TelemetryEventRelay', () => {
 
 			eventService.emit('sso-user-project-access-updated', event);
 
-			expect(telemetry.track).toHaveBeenCalledWith('Sso user project acess update', {
+			expect(telemetry.track).toHaveBeenCalledWith('Sso user project access update', {
 				user_id: 'user123',
 				projects_removed: 2,
 				projects_added: 3,
