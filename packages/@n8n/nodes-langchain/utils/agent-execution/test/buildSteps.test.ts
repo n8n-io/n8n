@@ -583,7 +583,7 @@ describe('buildSteps', () => {
 			expect(result[0].action.messageLog).toHaveLength(1);
 
 			const message = result[0].action.messageLog![0];
-			const content = message.content as Array<any>;
+			const content = message.content;
 			expect(Array.isArray(content)).toBe(true);
 			expect(content).toHaveLength(2);
 			// First block should be thinking
@@ -642,7 +642,7 @@ describe('buildSteps', () => {
 			expect(result[0].action.messageLog).toHaveLength(1);
 
 			const message = result[0].action.messageLog![0];
-			const content = message.content as Array<any>;
+			const content = message.content;
 			expect(Array.isArray(content)).toBe(true);
 			expect(content).toHaveLength(2);
 			// First block should be redacted_thinking
@@ -789,7 +789,7 @@ describe('buildSteps', () => {
 			expect(result).toHaveLength(1);
 			const message = result[0].action.messageLog![0];
 			// Should use Anthropic thinking blocks in content
-			const content = message.content as Array<any>;
+			const content = message.content;
 			expect(Array.isArray(content)).toBe(true);
 			expect(content).toHaveLength(2);
 			// First block should be thinking
