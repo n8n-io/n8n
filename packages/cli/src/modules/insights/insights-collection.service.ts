@@ -314,7 +314,8 @@ export class InsightsCollectionService {
 	private calculateTimeSaved(ctx: WorkflowExecuteAfterContext): number {
 		const workflowTimeSaved = ctx.workflow.settings?.timeSavedPerExecution;
 
-		if (ctx.workflow.settings?.timeSavedMode === 'fixed') {
+		// backwards compatibility for legacy workflows with no time saved mode
+		if (ctx.workflow.settings?.timeSavedMode !== 'dynamic') {
 			return workflowTimeSaved ?? 0;
 		}
 
