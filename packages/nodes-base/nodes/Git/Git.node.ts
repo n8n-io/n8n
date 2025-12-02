@@ -287,10 +287,10 @@ export class Git implements INodeType {
 		for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
 			try {
 				const repositoryPath = this.getNodeParameter('repositoryPath', itemIndex, '') as string;
-				const isFilePathBlocked = this.helpers.isFilePathBlocked(
+				const isFilePathAllowed = this.helpers.isFilePathAllowed(
 					await this.helpers.resolvePath(repositoryPath),
 				);
-				if (isFilePathBlocked) {
+				if (!isFilePathAllowed) {
 					throw new NodeOperationError(
 						this.getNode(),
 						'Access to the repository path is not allowed',

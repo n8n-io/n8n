@@ -49,6 +49,8 @@ describe('Git Node', () => {
 			getNodeParameter: jest.fn(),
 			continueOnFail: jest.fn(() => false),
 			helpers: {
+				isFilePathAllowed: jest.fn().mockReturnValue(true),
+				resolvePath: jest.fn().mockImplementation(async (path: string) => path),
 				returnJsonArray: jest.fn((data: any[]) => data.map((item: any) => ({ json: item }))),
 			},
 		});

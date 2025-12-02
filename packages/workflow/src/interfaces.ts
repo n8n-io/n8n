@@ -694,15 +694,21 @@ export interface BaseHelperFunctions {
 	returnJsonArray(jsonData: IDataObject | IDataObject[]): INodeExecutionData[];
 }
 
-const __brand = Symbol('brand');
+const __resolvedBrand = Symbol('resolvedBrand');
+
+const __allowedBrand = Symbol('allowedBrand');
 
 export type ResolvedFilePath = string & {
-	[__brand]: 'ResolvedFilePath';
+	[__resolvedBrand]: 'ResolvedFilePath';
+};
+
+export type AllowedFilePath = ResolvedFilePath & {
+	[__allowedBrand]: 'AllowedFilePath';
 };
 
 export interface FileSystemHelperFunctions {
 	resolvePath(path: PathLike): Promise<ResolvedFilePath>;
-	isFilePathBlocked(filePath: ResolvedFilePath): boolean;
+	isFilePathAllowed(filePath: ResolvedFilePath): filePath is AllowedFilePath;
 	createReadStream(filePath: ResolvedFilePath): Promise<Readable>;
 	getStoragePath(): string;
 	writeContentToFile(

@@ -38,81 +38,81 @@ beforeEach(() => {
 	securityConfig.restrictFileAccessTo = '';
 });
 
-describe('isFilePathBlocked', () => {
+describe('isFilePathAllowed', () => {
 	const node = { type: 'TestNode' } as INode;
-	const { isFilePathBlocked, resolvePath } = getFileSystemHelperFunctions(node);
+	const { isFilePathAllowed, resolvePath } = getFileSystemHelperFunctions(node);
 	beforeEach(() => {
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
 	});
 
-	it('should return true for static cache dir', async () => {
+	it('should return false for static cache dir', async () => {
 		const filePath = instanceSettings.staticCacheDir;
-		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(true);
+		expect(isFilePathAllowed(await resolvePath(filePath))).toBe(false);
 	});
 
-	it('should return true for restricted paths', async () => {
+	it('should return false for restricted paths', async () => {
 		const restrictedPath = instanceSettings.n8nFolder;
-		expect(isFilePathBlocked(await resolvePath(restrictedPath))).toBe(true);
+		expect(isFilePathAllowed(await resolvePath(restrictedPath))).toBe(false);
 	});
 
 	it('should handle empty allowed paths', async () => {
 		securityConfig.restrictFileAccessTo = '';
-		const result = isFilePathBlocked(await resolvePath('/some/random/path'));
-		expect(result).toBe(false);
+		const result = isFilePathAllowed(await resolvePath('/some/random/path'));
+		expect(result).toBe(true);
 	});
 
 	it('should handle multiple allowed paths', async () => {
 		securityConfig.restrictFileAccessTo = '/path1;/path2;/path3';
 		const allowedPath = '/path2/somefile';
-		expect(isFilePathBlocked(await resolvePath(allowedPath))).toBe(false);
+		expect(isFilePathAllowed(await resolvePath(allowedPath))).toBe(true);
 	});
 
 	it('should handle empty strings in allowed paths', async () => {
 		securityConfig.restrictFileAccessTo = '/path1;;/path2';
 		const allowedPath = '/path2/somefile';
-		expect(isFilePathBlocked(await resolvePath(allowedPath))).toBe(false);
+		expect(isFilePathAllowed(await resolvePath(allowedPath))).toBe(true);
 	});
 
 	it('should trim whitespace in allowed paths', async () => {
 		securityConfig.restrictFileAccessTo = ' /path1 ; /path2 ; /path3 ';
 		const allowedPath = '/path2/somefile';
-		expect(isFilePathBlocked(await resolvePath(allowedPath))).toBe(false);
+		expect(isFilePathAllowed(await resolvePath(allowedPath))).toBe(true);
 	});
 
-	it('should return false when BLOCK_FILE_ACCESS_TO_N8N_FILES is false', async () => {
+	it('should return true when BLOCK_FILE_ACCESS_TO_N8N_FILES is false', async () => {
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'false';
 		const restrictedPath = instanceSettings.n8nFolder;
-		expect(isFilePathBlocked(await resolvePath(restrictedPath))).toBe(false);
+		expect(isFilePathAllowed(await resolvePath(restrictedPath))).toBe(true);
 	});
 
-	it('should return true when path is in allowed paths but still restricted', async () => {
+	it('should return false when path is in allowed paths but still restricted', async () => {
 		securityConfig.restrictFileAccessTo = '/some/allowed/path';
 		const restrictedPath = instanceSettings.n8nFolder;
-		expect(isFilePathBlocked(await resolvePath(restrictedPath))).toBe(true);
+		expect(isFilePathAllowed(await resolvePath(restrictedPath))).toBe(false);
 	});
 
-	it('should return false when path is in allowed paths', async () => {
+	it('should return true when path is in allowed paths', async () => {
 		const allowedPath = '/some/allowed/path';
 		securityConfig.restrictFileAccessTo = allowedPath;
-		expect(isFilePathBlocked(await resolvePath(allowedPath))).toBe(false);
+		expect(isFilePathAllowed(await resolvePath(allowedPath))).toBe(true);
 	});
 
-	it('should return true when file paths in CONFIG_FILES', async () => {
+	it('should return false when file paths in CONFIG_FILES', async () => {
 		process.env[CONFIG_FILES] = '/path/to/config1,/path/to/config2';
 		const configPath = '/path/to/config1/somefile';
-		expect(isFilePathBlocked(await resolvePath(configPath))).toBe(true);
+		expect(isFilePathAllowed(await resolvePath(configPath))).toBe(false);
 	});
 
-	it('should return true when file paths in CUSTOM_EXTENSION_ENV', async () => {
+	it('should return false when file paths in CUSTOM_EXTENSION_ENV', async () => {
 		process.env[CUSTOM_EXTENSION_ENV] = '/path/to/extensions1;/path/to/extensions2';
 		const extensionPath = '/path/to/extensions1/somefile';
-		expect(isFilePathBlocked(await resolvePath(extensionPath))).toBe(true);
+		expect(isFilePathAllowed(await resolvePath(extensionPath))).toBe(false);
 	});
 
-	it('should return true when file paths in BINARY_DATA_STORAGE_PATH', async () => {
+	it('should return false when file paths in BINARY_DATA_STORAGE_PATH', async () => {
 		process.env[BINARY_DATA_STORAGE_PATH] = '/path/to/binary/storage';
 		const binaryPath = '/path/to/binary/storage/somefile';
-		expect(isFilePathBlocked(await resolvePath(binaryPath))).toBe(true);
+		expect(isFilePathAllowed(await resolvePath(binaryPath))).toBe(false);
 	});
 
 	it('should block file paths in email template paths', async () => {
@@ -122,8 +122,8 @@ describe('isFilePathBlocked', () => {
 		const invitePath = '/path/to/invite/templates/invite.html';
 		const pwResetPath = '/path/to/pwreset/templates/reset.html';
 
-		expect(isFilePathBlocked(await resolvePath(invitePath))).toBe(true);
-		expect(isFilePathBlocked(await resolvePath(pwResetPath))).toBe(true);
+		expect(isFilePathAllowed(await resolvePath(invitePath))).toBe(false);
+		expect(isFilePathAllowed(await resolvePath(pwResetPath))).toBe(false);
 	});
 
 	it('should block access to n8n files if restrict and block are set', async () => {
@@ -133,7 +133,7 @@ describe('isFilePathBlocked', () => {
 		securityConfig.restrictFileAccessTo = userHome;
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
 		const restrictedPath = instanceSettings.n8nFolder;
-		expect(isFilePathBlocked(await resolvePath(restrictedPath))).toBe(true);
+		expect(isFilePathAllowed(await resolvePath(restrictedPath))).toBe(false);
 	});
 
 	it('should allow access to parent folder if restrict and block are set', async () => {
@@ -143,7 +143,7 @@ describe('isFilePathBlocked', () => {
 		securityConfig.restrictFileAccessTo = userHome;
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
 		const restrictedPath = await resolvePath(join(userHome, 'somefile.txt'));
-		expect(isFilePathBlocked(restrictedPath)).toBe(false);
+		expect(isFilePathAllowed(restrictedPath)).toBe(true);
 	});
 
 	it('should not block similar paths', async () => {
@@ -153,17 +153,17 @@ describe('isFilePathBlocked', () => {
 		securityConfig.restrictFileAccessTo = userHome;
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
 		const restrictedPath = await resolvePath(join(userHome, '.n8n_x'));
-		expect(isFilePathBlocked(restrictedPath)).toBe(false);
+		expect(isFilePathAllowed(restrictedPath)).toBe(true);
 	});
 
-	it('should return true for a symlink in a allowed path to a restricted path', async () => {
+	it('should return false for a symlink in a allowed path to a restricted path', async () => {
 		securityConfig.restrictFileAccessTo = '/path1';
 		const allowedPath = '/path1/symlink';
 		const actualPath = '/path2/realfile';
 		(fsRealpath as jest.Mock).mockImplementation((path: string) =>
 			path === allowedPath ? actualPath : path,
 		);
-		expect(isFilePathBlocked(await resolvePath(allowedPath))).toBe(true);
+		expect(isFilePathAllowed(await resolvePath(allowedPath))).toBe(false);
 	});
 
 	it('should handle non-existent file when it is allowed', async () => {
@@ -172,7 +172,7 @@ describe('isFilePathBlocked', () => {
 		// @ts-expect-error undefined property
 		error.code = 'ENOENT';
 		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
-		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(false);
+		expect(isFilePathAllowed(await resolvePath(filePath))).toBe(true);
 	});
 
 	it('should handle non-existent file when it is not allowed', async () => {
@@ -183,7 +183,7 @@ describe('isFilePathBlocked', () => {
 		// @ts-expect-error undefined property
 		error.code = 'ENOENT';
 		(fsRealpath as jest.Mock).mockRejectedValueOnce(error);
-		expect(isFilePathBlocked(await resolvePath(filePath))).toBe(true);
+		expect(isFilePathAllowed(await resolvePath(filePath))).toBe(false);
 	});
 });
 

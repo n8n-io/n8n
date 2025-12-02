@@ -1,7 +1,12 @@
 import { isContainedWithin, safeJoinPath } from '@n8n/backend-common';
 import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
-import type { FileSystemHelperFunctions, INode, ResolvedFilePath } from 'n8n-workflow';
+import type {
+	AllowedFilePath,
+	FileSystemHelperFunctions,
+	INode,
+	ResolvedFilePath,
+} from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 import type { PathLike } from 'node:fs';
 import { createReadStream } from 'node:fs';
@@ -47,7 +52,9 @@ const resolvePath = async (path: PathLike): Promise<ResolvedFilePath> => {
 	}
 };
 
-function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
+function isFilePathAllowed(
+	resolvedFilePath: ResolvedFilePath,
+): resolvedFilePath is AllowedFilePath {
 	const allowedPaths = getAllowedPaths();
 	const blockFileAccessToN8nFiles = process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] !== 'false';
 
@@ -55,19 +62,19 @@ function isFilePathBlocked(resolvedFilePath: ResolvedFilePath): boolean {
 	if (
 		restrictedPaths.some((restrictedPath) => isContainedWithin(restrictedPath, resolvedFilePath))
 	) {
-		return true;
+		return false;
 	}
 
 	if (allowedPaths.length) {
-		return !allowedPaths.some((allowedPath) => isContainedWithin(allowedPath, resolvedFilePath));
+		return allowedPaths.some((allowedPath) => isContainedWithin(allowedPath, resolvedFilePath));
 	}
 
-	return false;
+	return true;
 }
 
 export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunctions => ({
 	async createReadStream(resolvedFilePath) {
-		if (isFilePathBlocked(resolvedFilePath)) {
+		if (!isFilePathAllowed(resolvedFilePath)) {
 			const allowedPaths = getAllowedPaths();
 			const message = allowedPaths.length ? ` Allowed paths: ${allowedPaths.join(', ')}` : '';
 			throw new NodeOperationError(node, `Access to the file is not allowed.${message}`, {
@@ -97,7 +104,7 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 	},
 
 	async writeContentToFile(resolvedFilePath, content, flag) {
-		if (isFilePathBlocked(resolvedFilePath)) {
+		if (!isFilePathAllowed(resolvedFilePath)) {
 			throw new NodeOperationError(
 				node,
 				`The file "${String(resolvedFilePath)}" is not writable.`,
@@ -109,7 +116,7 @@ export const getFileSystemHelperFunctions = (node: INode): FileSystemHelperFunct
 		return await fsWriteFile(resolvedFilePath, content, { encoding: 'binary', flag });
 	},
 	resolvePath,
-	isFilePathBlocked,
+	isFilePathAllowed,
 });
 
 /**
