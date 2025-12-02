@@ -104,9 +104,9 @@ export class WorkflowStatisticsRepository extends Repository<WorkflowStatistics>
 						"latestEvent" = CURRENT_TIMESTAMP
 					RETURNING *;`,
 					[rootCountIncrement, eventName, workflowId, workflowName ?? null, rootCountIncrement],
-				)) as Array<{ count: number }>;
+				)) as Array<{ count: string | number }>;
 
-				return queryResult[0].count === 1 ? 'insert' : 'update';
+				return Number(queryResult[0].count) === 1 ? 'insert' : 'update';
 			} else {
 				const queryResult = (await this.query(
 					`INSERT INTO ${escapedTableName} (count, rootCount, name, workflowId, workflowName, latestEvent)
