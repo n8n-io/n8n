@@ -24,7 +24,6 @@ import type { EntityManager } from '@n8n/typeorm';
 import { In } from '@n8n/typeorm';
 import type { QueryDeepPartialEntity } from '@n8n/typeorm/query-builder/QueryPartialEntity';
 import isEqual from 'lodash/isEqual';
-import omit from 'lodash/omit';
 import pick from 'lodash/pick';
 import { FileLocation, BinaryDataService } from 'n8n-core';
 import { NodeApiError, PROJECT_ROOT, assert, calculateWorkflowChecksum } from 'n8n-workflow';
@@ -258,15 +257,12 @@ export class WorkflowService {
 			await this._detectConflicts(workflow, expectedChecksum);
 		}
 
-		if (
-			Object.keys(omit(workflowUpdateData, ['id', 'versionId', 'active', 'activeVersionId']))
-				.length > 0
-		) {
-			// Update the workflow's version when changing properties such as
-			// `name`, `pinData`, `nodes`, `connections`, `settings` or `tags`
-			// This is necessary for collaboration to work properly - even when only name or settings
-			// change, we need to update the version to detect conflicts when multiple users are editing.
-
+		// Update the workflow's version when changing nodes or connections
+		const saveNewVersion =
+			('nodes' in workflowUpdateData && workflowUpdateData.nodes !== workflow.nodes) ||
+			('connections' in workflowUpdateData &&
+				workflowUpdateData.connections !== workflow.connections);
+		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
 			this.logger.debug(
 				`Updating versionId for workflow ${workflowId} for user ${user.id} after saving`,
@@ -275,15 +271,13 @@ export class WorkflowService {
 					newVersionId: workflowUpdateData.versionId,
 				},
 			);
-		}
 
-		const versionChanged =
-			workflowUpdateData.versionId && workflowUpdateData.versionId !== workflow.versionId;
-
-		if (versionChanged) {
 			// To save a version, we need both nodes and connections
 			workflowUpdateData.nodes = workflowUpdateData.nodes ?? workflow.nodes;
 			workflowUpdateData.connections = workflowUpdateData.connections ?? workflow.connections;
+		} else {
+			// Do not let users change versionId directly
+			workflowUpdateData.versionId = workflow.versionId;
 		}
 
 		// check credentials for old format
@@ -353,7 +347,7 @@ export class WorkflowService {
 		);
 
 		// Save the workflow to history first, so we can retrieve the complete version object for the update
-		if (versionChanged) {
+		if (saveNewVersion) {
 			await this.workflowHistoryService.saveVersion(user, workflowUpdateData, workflowId);
 		}
 

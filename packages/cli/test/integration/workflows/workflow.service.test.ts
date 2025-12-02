@@ -61,9 +61,12 @@ afterEach(async () => {
 });
 
 describe('update()', () => {
-	test('should fetch missing connections from DB when updating nodes', async () => {
+	test('should save workflow history version with backfilled data when nodes change', async () => {
 		const owner = await createOwner();
 		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
 
 		const updateData = {
 			nodes: [
@@ -76,30 +79,6 @@ describe('update()', () => {
 					parameters: {},
 				},
 			],
-			versionId: workflow.versionId,
-		};
-
-		const updatedWorkflow = await workflowService.update(
-			owner,
-			updateData as WorkflowEntity,
-			workflow.id,
-		);
-
-		expect(updatedWorkflow.nodes).toHaveLength(1);
-		expect(updatedWorkflow.nodes[0].name).toBe('New Node');
-		expect(updatedWorkflow.versionId).not.toBe(workflow.versionId);
-	});
-
-	test('should save workflow history version with backfilled data when versionId changes', async () => {
-		const owner = await createOwner();
-		const workflow = await createWorkflowWithHistory({}, owner);
-
-		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
-		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
-
-		const newVersionId = 'new-version-id-123';
-		const updateData = {
-			versionId: newVersionId,
 		};
 
 		await workflowService.update(owner, updateData as WorkflowEntity, workflow.id, {
@@ -110,10 +89,48 @@ describe('update()', () => {
 		const [user, workflowData, workflowId] = saveVersionSpy.mock.calls[0];
 		expect(user).toBe(owner);
 		expect(workflowId).toBe(workflow.id);
-		// Verify that nodes and connections were backfilled from the DB
-		expect(workflowData.nodes).toEqual(workflow.nodes);
+		expect(workflowData.nodes).toEqual(updateData.nodes);
+		// Verify that connections were backfilled from the DB
 		expect(workflowData.connections).toEqual(workflow.connections);
-		expect(workflowData.versionId).toBe(newVersionId);
+		expect(workflowData.versionId).not.toBe(workflow.versionId);
+		expect(addRecordSpy).not.toBeCalled();
+	});
+
+	test('should save workflow history version with backfilled data when connection change', async () => {
+		const owner = await createOwner();
+		const workflow = await createWorkflowWithHistory({}, owner);
+
+		const addRecordSpy = jest.spyOn(workflowPublishHistoryRepository, 'addRecord');
+		const saveVersionSpy = jest.spyOn(workflowHistoryService, 'saveVersion');
+
+		const updateData = {
+			connections: {
+				'Manual Trigger': {
+					main: [
+						[
+							{
+								node: 'Code Node',
+								type: 'main',
+								index: 0,
+							},
+						],
+					],
+				},
+			},
+		};
+
+		await workflowService.update(owner, updateData as unknown as WorkflowEntity, workflow.id, {
+			forceSave: true,
+		});
+
+		expect(saveVersionSpy).toHaveBeenCalledTimes(1);
+		const [user, workflowData, workflowId] = saveVersionSpy.mock.calls[0];
+		expect(user).toBe(owner);
+		expect(workflowId).toBe(workflow.id);
+		expect(workflowData.connections).toEqual(updateData.connections);
+		// Verify that nodes were backfilled from the DB
+		expect(workflowData.nodes).toEqual(workflow.nodes);
+		expect(workflowData.versionId).not.toBe(workflow.versionId);
 		expect(addRecordSpy).not.toBeCalled();
 	});
 });
