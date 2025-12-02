@@ -74,6 +74,12 @@ export interface ICredentialResolver {
 	 * @throws {CredentialResolverValidationError} When configuration is invalid
 	 */
 	validateOptions(options: CredentialResolverConfiguration): Promise<void>;
+
+	/**
+	 * Runs initialization logic for the resolver. This might be called multiple times!
+	 * Optional - not all resolvers require initialization.
+	 */
+	init?(): Promise<void>;
 }
 
 /**
