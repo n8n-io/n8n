@@ -3,7 +3,6 @@ import {
 	IDataObject,
 	ILoadOptionsFunctions,
 	INodeListSearchResult,
-	INodePropertyOptions,
 	ResourceMapperField,
 	ResourceMapperFields,
 } from 'n8n-workflow';
