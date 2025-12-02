@@ -159,6 +159,7 @@ export interface ExpressionValue {
 
 export interface BuilderFeatureFlags {
 	templateExamples?: boolean;
+	multiAgent?: boolean;
 }
 
 export interface ChatPayload {
@@ -443,9 +444,12 @@ export class WorkflowBuilderAgent {
 
 	/**
 	 * Create the workflow graph based on configuration
+	 * Feature flag takes precedence over environment variable
 	 */
 	private createWorkflow(featureFlags?: BuilderFeatureFlags) {
-		if (this.enableMultiAgent) {
+		const useMultiAgent = featureFlags?.multiAgent ?? this.enableMultiAgent;
+
+		if (useMultiAgent) {
 			this.logger?.debug('Using multi-agent supervisor architecture');
 			return this.createMultiAgentGraph();
 		}
