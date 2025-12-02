@@ -330,7 +330,7 @@ export class InsightsCollectionService {
 	private extractTimeSavedFromNodes(runData: IRun): number {
 		let totalMinutes = 0;
 
-		const resultData = runData.data.resultData.runData;
+		const resultData = runData.data.resultData?.runData ?? {};
 
 		// Iterate through all node metadata
 		for (const nodeName in resultData) {
