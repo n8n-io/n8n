@@ -2508,12 +2508,34 @@ describe('PATCH /workflows/:workflowId', () => {
 		expect(versions[0].versionId).toBe(workflow.versionId);
 	});
 
+	test('should not create workflow history version if nodes and connections did not change', async () => {
+		const workflow = await createWorkflowWithHistory({}, owner);
+		const payload = {
+			name: 'name updated',
+			nodes: workflow.nodes,
+			connections: workflow.connections,
+		};
+
+		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);
+
+		const {
+			data: { id },
+		} = response.body as { data: WorkflowEntity };
+
+		expect(response.statusCode).toBe(200);
+
+		expect(id).toBe(workflow.id);
+		const versions = await workflowHistoryRepository.find({ where: { workflowId: id } });
+		expect(versions).toHaveLength(1);
+		expect(versions[0].versionId).toBe(workflow.versionId);
+	});
+
 	test('should ignore provided version id', async () => {
 		const workflow = await createWorkflowWithHistory({}, owner);
-		const newVersionId = uuid();
+		const versionId = uuid();
 		const payload = {
 			description: 'description updated',
-			newVersionId,
+			versionId,
 		};
 
 		const response = await authOwnerAgent.patch(`/workflows/${workflow.id}`).send(payload);

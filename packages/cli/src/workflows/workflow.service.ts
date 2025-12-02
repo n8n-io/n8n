@@ -259,9 +259,10 @@ export class WorkflowService {
 
 		// Update the workflow's version when changing nodes or connections
 		const saveNewVersion =
-			('nodes' in workflowUpdateData && workflowUpdateData.nodes !== workflow.nodes) ||
+			('nodes' in workflowUpdateData && !isEqual(workflowUpdateData.nodes, workflow.nodes)) ||
 			('connections' in workflowUpdateData &&
-				workflowUpdateData.connections !== workflow.connections);
+				!isEqual(workflowUpdateData.connections, workflow.connections));
+
 		if (saveNewVersion) {
 			workflowUpdateData.versionId = uuid();
 			this.logger.debug(
