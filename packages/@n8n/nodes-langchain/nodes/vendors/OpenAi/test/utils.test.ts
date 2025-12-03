@@ -1,6 +1,6 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import type { Tool } from '@langchain/core/tools';
-import { BufferWindowMemory } from 'langchain/memory';
+import { BufferWindowMemory } from '@langchain/classic/memory';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 

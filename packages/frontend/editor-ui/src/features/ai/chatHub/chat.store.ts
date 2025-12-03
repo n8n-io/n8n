@@ -65,6 +65,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 	const telemetry = useTelemetry();
 
 	const agents = ref<ChatModelsResponse>();
+	const customAgents = ref<Partial<Record<string, ChatHubAgentDto>>>({});
 	const sessions = ref<{
 		byId: Partial<Record<string, ChatHubSessionDto>>;
 		ids: string[] | null;
@@ -730,8 +731,10 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		conversation.activeMessageChain = computeActiveChain(conversation.messages, messageId);
 	}
 
-	async function fetchCustomAgent(agentId: string): Promise<ChatHubAgentDto> {
-		return await fetchAgentApi(rootStore.restApiContext, agentId);
+	async function fetchCustomAgent(agentId: string) {
+		const customAgent = await fetchAgentApi(rootStore.restApiContext, agentId);
+
+		customAgents.value[agentId] = customAgent;
 	}
 
 	function getCustomAgent(agentId: string) {
@@ -744,26 +747,32 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		payload: ChatHubCreateAgentRequest,
 		credentials: CredentialsMap,
 	): Promise<ChatModelDto> {
-		const agent = await createAgentApi(rootStore.restApiContext, payload);
-		const agentModel = {
+		const customAgent = await createAgentApi(rootStore.restApiContext, payload);
+		const baseModel = agents.value?.[customAgent.provider]?.models.find(
+			(model) => model.name === customAgent.model,
+		);
+		const agent: ChatModelDto = {
 			model: {
 				provider: 'custom-agent' as const,
-				agentId: agent.id,
+				agentId: customAgent.id,
 			},
-			name: agent.name,
-			description: agent.description ?? null,
-			createdAt: agent.createdAt,
-			updatedAt: agent.updatedAt,
-			tools: agent.tools,
-			allowFileUploads: true,
+			name: customAgent.name,
+			description: customAgent.description ?? null,
+			createdAt: customAgent.createdAt,
+			updatedAt: customAgent.updatedAt,
+			metadata: baseModel?.metadata ?? {
+				capabilities: { functionCalling: false },
+				inputModalities: [],
+			},
 		};
-		agents.value?.['custom-agent'].models.push(agentModel);
+		agents.value?.['custom-agent'].models.push(agent);
+		customAgents.value[customAgent.id] = customAgent;
 
 		await fetchAgents(credentials);
 
 		telemetry.track('User created agent', { ...flattenModel(payload) });
 
-		return agentModel;
+		return agent;
 	}
 
 	async function updateCustomAgent(
@@ -771,18 +780,22 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		payload: ChatHubUpdateAgentRequest,
 		credentials: CredentialsMap,
 	): Promise<ChatHubAgentDto> {
-		const agent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
+		const customAgent = await updateAgentApi(rootStore.restApiContext, agentId, payload);
 
 		// Update the agent in models as well
 		if (agents.value?.['custom-agent']) {
 			agents.value['custom-agent'].models = agents.value['custom-agent'].models.map((model) =>
-				'agentId' in model && model.agentId === agentId ? { ...model, name: agent.name } : model,
+				'agentId' in model && model.agentId === agentId
+					? { ...model, name: customAgent.name }
+					: model,
 			);
 		}
 
+		customAgents.value[agentId] = customAgent;
+
 		await fetchAgents(credentials);
 
-		return agent;
+		return customAgent;
 	}
 
 	async function deleteCustomAgent(agentId: string, credentials: CredentialsMap) {
@@ -794,6 +807,8 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 				(model) => !('agentId' in model) || model.agentId !== agentId,
 			);
 		}
+
+		delete customAgents.value[agentId];
 
 		await fetchAgents(credentials);
 	}
@@ -813,7 +828,13 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 			description: null,
 			createdAt: null,
 			updatedAt: null,
-			allowFileUploads: true,
+			// Assume file attachment and tools are supported
+			metadata: {
+				inputModalities: ['text', 'file'],
+				capabilities: {
+					functionCalling: true,
+				},
+			},
 		};
 	}
 
@@ -858,6 +879,7 @@ export const useChatStore = defineStore(CHAT_STORE, () => {
 		 */
 		agents: computed(() => agents.value ?? emptyChatModelsResponse),
 		agentsReady: computed(() => agents.value !== undefined),
+		customAgents,
 		getAgent,
 		fetchAgents,
 		getCustomAgent,

@@ -12,6 +12,7 @@ import type {
 	ChatHubLLMProvider,
 	ChatModelDto,
 	ChatModelsResponse,
+	ChatHubConversationModel,
 } from '@n8n/api-types';
 import {
 	CHAT_CREDENTIAL_SELECTOR_MODAL_KEY,
@@ -30,7 +31,6 @@ import {
 	flattenModel,
 	fromStringToModel,
 	isLlmProviderModel,
-	isMatchedAgent,
 	stringifyModel,
 } from '@/features/ai/chatHub/chat.utils';
 import { fetchChatModelsApi } from '@/features/ai/chatHub/chat.api';
@@ -56,7 +56,7 @@ const {
 }>();
 
 const emit = defineEmits<{
-	change: [ChatModelDto];
+	change: [ChatHubConversationModel];
 	createCustomAgent: [];
 	selectCredential: [provider: ChatHubProvider, credentialId: string | null];
 }>();
@@ -66,17 +66,7 @@ function handleSelectCredentials(provider: ChatHubProvider, id: string | null) {
 }
 
 function handleSelectModelById(provider: ChatHubLLMProvider, modelId: string) {
-	emit('change', {
-		model: {
-			provider,
-			model: modelId,
-		},
-		name: modelId,
-		description: null,
-		updatedAt: null,
-		createdAt: null,
-		allowFileUploads: true,
-	});
+	emit('change', { provider, model: modelId });
 }
 
 const i18n = useI18n();
@@ -182,6 +172,13 @@ const menu = computed(() => {
 					},
 					createdAt: '',
 					updatedAt: null,
+					// Assume file attachment and tools are supported
+					metadata: {
+						inputModalities: ['text', 'image', 'audio', 'video', 'file'],
+						capabilities: {
+							functionCalling: true,
+						},
+					},
 				});
 			}
 		}
@@ -293,20 +290,12 @@ function onSelect(id: string) {
 		return;
 	}
 
-	const selected = agents.value[parsedModel.provider].models.find((a) =>
-		isMatchedAgent(a, parsedModel),
-	);
-
-	if (!selected) {
-		return;
-	}
-
 	telemetry.track('User selected model or agent', {
-		...flattenModel(selected.model),
-		is_custom: selected.model.provider === 'custom-agent',
+		...flattenModel(parsedModel),
+		is_custom: parsedModel.provider === 'custom-agent',
 	});
 
-	emit('change', selected);
+	emit('change', parsedModel);
 }
 
 function handleCreateNewCredential(provider: ChatHubLLMProvider) {
