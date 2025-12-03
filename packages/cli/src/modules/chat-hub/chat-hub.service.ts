@@ -24,7 +24,7 @@ import { ExecutionRepository, IExecutionResponse, User, WorkflowRepository, In }
 import { Service } from '@n8n/di';
 import type { EntityManager } from '@n8n/typeorm';
 import type { Response } from 'express';
-import { ErrorReporter } from 'n8n-core';
+import { ErrorReporter, InstanceSettings } from 'n8n-core';
 import {
 	CHAT_TRIGGER_NODE_TYPE,
 	OperationalError,
@@ -32,7 +32,6 @@ import {
 	type INodeCredentials,
 	type IWorkflowBase,
 	type IWorkflowExecuteAdditionalData,
-	type IRun,
 	jsonParse,
 	jsonStringify,
 	StructuredChunk,
@@ -43,6 +42,7 @@ import {
 	type IBinaryData,
 	createRunExecutionData,
 	WorkflowExecuteMode,
+	ExecutionStatus,
 } from 'n8n-workflow';
 
 import { ActiveExecutions } from '@/active-executions';
@@ -62,7 +62,12 @@ import type { ChatHubMessage } from './chat-hub-message.entity';
 import type { ChatHubSession } from './chat-hub-session.entity';
 import { ChatHubWorkflowService } from './chat-hub-workflow.service';
 import { ChatHubAttachmentService } from './chat-hub.attachment.service';
-import { JSONL_STREAM_HEADERS, NODE_NAMES, PROVIDER_NODE_TYPE_MAP } from './chat-hub.constants';
+import {
+	JSONL_STREAM_HEADERS,
+	NODE_NAMES,
+	PROVIDER_NODE_TYPE_MAP,
+	getModelMetadata,
+} from './chat-hub.constants';
 import { ChatHubSettingsService } from './chat-hub.settings.service';
 import {
 	HumanMessagePayload,
@@ -73,6 +78,9 @@ import {
 import { ChatHubMessageRepository } from './chat-message.repository';
 import { ChatHubSessionRepository } from './chat-session.repository';
 import { interceptResponseWrites, createStructuredChunkAggregator } from './stream-capturer';
+
+const EXECUTION_POLL_INTERVAL = 1000;
+const EXECUTION_FINISHED_STATUSES: ExecutionStatus[] = ['canceled', 'crashed', 'error', 'success'];
 
 @Service()
 export class ChatHubService {
@@ -95,6 +103,7 @@ export class ChatHubService {
 		private readonly chatHubWorkflowService: ChatHubWorkflowService,
 		private readonly chatHubSettingsService: ChatHubSettingsService,
 		private readonly chatHubAttachmentService: ChatHubAttachmentService,
+		private readonly instanceSettings: InstanceSettings,
 	) {}
 
 	async getModels(
@@ -218,7 +227,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('openai', String(result.value)),
 			})),
 		};
 	}
@@ -246,7 +255,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('anthropic', String(result.value)),
 			})),
 		};
 	}
@@ -312,7 +321,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('google', String(result.value)),
 			})),
 		};
 	}
@@ -371,7 +380,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('ollama', String(result.value)),
 			})),
 		};
 	}
@@ -489,7 +498,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
-				allowFileUploads: true,
+				metadata: getModelMetadata('awsBedrock', String(result.value)),
 			})),
 		};
 	}
@@ -552,6 +561,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('mistralCloud', String(result.value)),
 			})),
 		};
 	}
@@ -609,6 +619,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('cohere', String(result.value)),
 			})),
 		};
 	}
@@ -665,6 +676,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('deepSeek', String(result.value)),
 			})),
 		};
 	}
@@ -721,6 +733,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('openRouter', String(result.value)),
 			})),
 		};
 	}
@@ -777,6 +790,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('groq', String(result.value)),
 			})),
 		};
 	}
@@ -833,6 +847,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('xAiGrok', String(result.value)),
 			})),
 		};
 	}
@@ -889,6 +904,7 @@ export class ChatHubService {
 				},
 				createdAt: null,
 				updatedAt: null,
+				metadata: getModelMetadata('vercelAiGateway', String(result.value)),
 			})),
 		};
 	}
@@ -932,6 +948,10 @@ export class ChatHubService {
 				continue;
 			}
 
+			const inputModalities = this.chatHubWorkflowService.parseInputModalities(
+				chatTriggerParams.options,
+			);
+
 			models.push({
 				name: chatTriggerParams.agentName ?? activeVersion.name ?? 'Unknown Agent',
 				description: chatTriggerParams.agentDescription ?? null,
@@ -941,7 +961,12 @@ export class ChatHubService {
 				},
 				createdAt: activeVersion.createdAt ? activeVersion.createdAt.toISOString() : null,
 				updatedAt: activeVersion.updatedAt ? activeVersion.updatedAt.toISOString() : null,
-				allowFileUploads: chatTriggerParams.options?.allowFileUploads ?? false,
+				metadata: {
+					inputModalities,
+					capabilities: {
+						functionCalling: false,
+					},
+				},
 			});
 		}
 
@@ -1335,10 +1360,6 @@ export class ChatHubService {
 			throw new BadRequestError('Provider or model not set for agent');
 		}
 
-		if (agent.provider === 'n8n' || agent.provider === 'custom-agent') {
-			throw new BadRequestError('Invalid provider');
-		}
-
 		const credentialId = agent.credentialId;
 		if (!credentialId) {
 			throw new BadRequestError('Credentials not set for agent');
@@ -1611,6 +1632,57 @@ export class ChatHubService {
 			throw new OperationalError('There was a problem starting the chat execution.');
 		}
 
+		await this.waitForExecutionCompletion(executionId);
+	}
+
+	private async waitForExecutionCompletion(executionId: string): Promise<void> {
+		if (this.instanceSettings.isMultiMain) {
+			return await this.waitForExecutionPoller(executionId);
+		} else {
+			return await this.waitForExecutionPromise(executionId);
+		}
+	}
+
+	private async waitForExecutionPoller(executionId: string): Promise<void> {
+		return await new Promise<void>((resolve, reject) => {
+			const poller = setInterval(async () => {
+				try {
+					const result = await this.executionRepository.findSingleExecution(executionId, {
+						includeData: false,
+						unflattenData: false,
+					});
+
+					// Stop polling when execution is done (or missing if instance doesn't save executions)
+					if (!result || EXECUTION_FINISHED_STATUSES.includes(result.status)) {
+						this.logger.debug(
+							`Execution ${executionId} finished with status ${result?.status ?? 'missing'}`,
+						);
+						clearInterval(poller);
+						resolve();
+					}
+				} catch (error) {
+					this.logger.error(`Stopping polling for execution ${executionId} due to error.`);
+					clearInterval(poller);
+
+					if (error instanceof Error) {
+						this.logger.error(`Error while polling execution ${executionId}: ${error.message}`, {
+							error,
+						});
+					} else {
+						this.logger.error(`Unknown error while polling execution ${executionId}`, { error });
+					}
+
+					if (error instanceof Error) {
+						reject(error);
+					} else {
+						reject(new Error('Unknown error while polling execution status'));
+					}
+				}
+			}, EXECUTION_POLL_INTERVAL);
+		});
+	}
+
+	private async waitForExecutionPromise(executionId: string): Promise<void> {
 		try {
 			// Wait until the execution finishes (or errors) so that we don't delete the workflow too early
 			const result = await this.activeExecutions.getPostExecutePromise(executionId);
@@ -1858,10 +1930,6 @@ export class ChatHubService {
 			throw new BadRequestError('Agent not found for title generation');
 		}
 
-		if (agent.provider === 'n8n' || agent.provider === 'custom-agent') {
-			throw new BadRequestError('Invalid provider for title generation');
-		}
-
 		const credentialId = agent.credentialId;
 		if (!credentialId) {
 			throw new BadRequestError('Credentials not set for agent');
@@ -1894,7 +1962,7 @@ export class ChatHubService {
 		workflowData: IWorkflowBase,
 		executionData: IRunExecutionData,
 	): Promise<string | null> {
-		const started = await this.workflowExecutionService.executeChatWorkflow(
+		const { executionId } = await this.workflowExecutionService.executeChatWorkflow(
 			workflowData,
 			executionData,
 			user,
@@ -1903,23 +1971,7 @@ export class ChatHubService {
 			'chat',
 		);
 
-		const executionId = started.executionId;
-		if (!executionId) {
-			throw new OperationalError('There was a problem starting the chat execution.');
-		}
-
-		let run: IRun | undefined;
-		try {
-			run = await this.activeExecutions.getPostExecutePromise(executionId);
-			if (!run) {
-				throw new OperationalError('There was a problem executing the chat workflow.');
-			}
-		} catch (error: unknown) {
-			if (error instanceof ManualExecutionCancelledError) {
-				return null;
-			}
-			throw error;
-		}
+		await this.waitForExecutionCompletion(executionId);
 
 		const execution = await this.executionRepository.findWithUnflattenedData(executionId, [
 			workflowData.id,
@@ -2225,6 +2277,7 @@ export class ChatHubService {
 
 		if (updates.title !== undefined) sessionUpdates.title = updates.title;
 		if (updates.credentialId !== undefined) sessionUpdates.credentialId = updates.credentialId;
+		if (updates.tools !== undefined) sessionUpdates.tools = updates.tools;
 
 		return await this.sessionRepository.updateChatSession(sessionId, sessionUpdates);
 	}

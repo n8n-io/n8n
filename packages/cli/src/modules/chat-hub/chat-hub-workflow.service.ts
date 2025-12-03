@@ -1,4 +1,4 @@
-import { ChatHubConversationModel, ChatSessionId } from '@n8n/api-types';
+import { ChatHubConversationModel, ChatSessionId, type ChatHubInputModality } from '@n8n/api-types';
 import { Logger } from '@n8n/backend-common';
 import {
 	SharedWorkflow,
@@ -194,6 +194,44 @@ export class ChatHubWorkflowService {
 				source: null,
 			},
 		];
+	}
+
+	/**
+	 * Parses input modalities from chat trigger options
+	 * Converts MIME types string to ChatHubInputModality array
+	 */
+	parseInputModalities(options?: {
+		allowFileUploads?: boolean;
+		allowedFilesMimeTypes?: string;
+	}): ChatHubInputModality[] {
+		const allowFileUploads = options?.allowFileUploads ?? false;
+		const allowedFilesMimeTypes = options?.allowedFilesMimeTypes;
+
+		if (!allowFileUploads) {
+			return ['text'];
+		}
+
+		if (!allowedFilesMimeTypes || allowedFilesMimeTypes === '*/*') {
+			return ['text', 'image', 'audio', 'video', 'file'];
+		}
+
+		const mimeTypes = allowedFilesMimeTypes.split(',').map((type) => type.trim());
+		const modalities = new Set<ChatHubInputModality>(['text']);
+
+		for (const mimeType of mimeTypes) {
+			if (mimeType.startsWith('image/')) {
+				modalities.add('image');
+			} else if (mimeType.startsWith('audio/')) {
+				modalities.add('audio');
+			} else if (mimeType.startsWith('video/')) {
+				modalities.add('video');
+			} else {
+				// Any other MIME type falls under generic 'file'
+				modalities.add('file');
+			}
+		}
+
+		return Array.from(modalities);
 	}
 
 	private getUniqueNodeName(originalName: string, existingNames: Set<string>): string {

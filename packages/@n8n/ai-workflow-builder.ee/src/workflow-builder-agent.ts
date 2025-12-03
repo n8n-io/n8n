@@ -210,7 +210,7 @@ export class WorkflowBuilderAgent {
 	 * Create the multi-agent workflow graph
 	 * Uses supervisor pattern with specialized agents
 	 */
-	private createMultiAgentGraph() {
+	private createMultiAgentGraph(featureFlags?: BuilderFeatureFlags) {
 		return createMultiAgentWorkflowWithSubgraphs({
 			parsedNodeTypes: this.parsedNodeTypes,
 			llmSimpleTask: this.llmSimpleTask,
@@ -218,6 +218,7 @@ export class WorkflowBuilderAgent {
 			logger: this.logger,
 			instanceUrl: this.instanceUrl,
 			checkpointer: this.checkpointer,
+			featureFlags,
 		});
 	}
 
@@ -443,7 +444,7 @@ export class WorkflowBuilderAgent {
 	private createWorkflow(featureFlags?: BuilderFeatureFlags) {
 		if (this.enableMultiAgent) {
 			this.logger?.debug('Using multi-agent supervisor architecture');
-			return this.createMultiAgentGraph();
+			return this.createMultiAgentGraph(featureFlags);
 		}
 
 		this.logger?.debug('Using legacy single-agent architecture');
