@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, onMounted } from 'vue';
+import dateformat from 'dateformat';
 import type { UserAction } from '@n8n/design-system';
 import type {
 	WorkflowHistory,
@@ -9,46 +10,39 @@ import type {
 import { useI18n } from '@n8n/i18n';
 import type { IUser } from 'n8n-workflow';
 
-import { N8nActionToggle, N8nTooltip, N8nBadge } from '@n8n/design-system';
-import {
-	getLastPublishedByUser,
-	formatTimestamp,
-} from '@/features/workflows/workflowHistory/utils';
-import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
-import { useUsersStore } from '@/features/settings/users/users.store';
-import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
-
-const props = withDefaults(
-	defineProps<{
-		item: WorkflowHistory;
-		index: number;
-		actions: Array<UserAction<IUser>>;
-		isSelected?: boolean;
-		isVersionActive?: boolean;
-	}>(),
-	{
-		isSelected: false,
-		isVersionActive: false,
-	},
-);
+import { N8nActionToggle, N8nBadge, N8nTooltip } from '@n8n/design-system';
+const props = defineProps<{
+	item: WorkflowHistory;
+	index: number;
+	actions: Array<UserAction<IUser>>;
+	isActive: boolean;
+}>();
 const emit = defineEmits<{
-	action: [value: WorkflowHistoryAction];
+	action: [
+		value: {
+			action: WorkflowHistoryActionTypes[number];
+			id: WorkflowVersionId;
+			data: { formattedCreatedAt: string };
+		},
+	];
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
-	mounted: [value: { index: number; offsetTop: number; isSelected: boolean }];
+	mounted: [value: { index: number; offsetTop: number; isActive: boolean }];
 }>();
 
 const i18n = useI18n();
-const usersStore = useUsersStore();
 
 const actionsVisible = ref(false);
 const itemElement = ref<HTMLElement | null>(null);
 const authorElement = ref<HTMLElement | null>(null);
 const isAuthorElementTruncated = ref(false);
 
-const isDraftPublishEnabled = IS_DRAFT_PUBLISH_ENABLED;
-
 const formattedCreatedAt = computed<string>(() => {
-	const { date, time } = formatTimestamp(props.item.createdAt);
+	const currentYear = new Date().getFullYear().toString();
+	const [date, time] = dateformat(
+		props.item.createdAt,
+		`${props.item.createdAt.startsWith(currentYear) ? '' : 'yyyy '}mmm d"#"HH:MM:ss`,
+	).split('#');
+
 	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
 });
 
@@ -66,39 +60,6 @@ const authors = computed<{ size: number; label: string }>(() => {
 	};
 });
 
-const versionName = computed(() => {
-	return props.item.name;
-});
-
-const lastPublishInfo = computed(() => {
-	if (!props.isVersionActive) {
-		return null;
-	}
-
-	const lastPublishedByUser = getLastPublishedByUser(props.item.workflowPublishHistory);
-	if (!lastPublishedByUser) {
-		return null;
-	}
-	return lastPublishedByUser;
-});
-
-const publishedAt = computed(() => {
-	if (!lastPublishInfo.value) {
-		return null;
-	}
-	const { date, time } = formatTimestamp(lastPublishInfo.value.createdAt);
-	return i18n.baseText('workflowHistory.item.createdAt', { interpolate: { date, time } });
-});
-
-const publishedByUserName = computed(() => {
-	const userId = lastPublishInfo.value?.userId;
-	if (!userId) {
-		return null;
-	}
-	const user = usersStore.usersById[userId];
-	return user?.fullName ?? user?.email ?? null;
-});
-
 const idLabel = computed<string>(() =>
 	i18n.baseText('workflowHistory.item.id', { interpolate: { id: props.item.versionId } }),
 );
@@ -108,11 +69,7 @@ const onAction = (value: string) => {
 	emit('action', {
 		action,
 		id: props.item.versionId,
-		data: {
-			formattedCreatedAt: formattedCreatedAt.value,
-			versionName: versionName.value,
-			description: props.item.description,
-		},
+		data: { formattedCreatedAt: formattedCreatedAt.value },
 	});
 };
 
@@ -128,7 +85,7 @@ onMounted(() => {
 	emit('mounted', {
 		index: props.index,
 		offsetTop: itemElement.value?.offsetTop ?? 0,
-		isSelected: props.isSelected,
+		isActive: props.isActive,
 	});
 	isAuthorElementTruncated.value =
 		(authorElement.value?.scrollWidth ?? 0) > (authorElement.value?.clientWidth ?? 0);
@@ -140,28 +97,12 @@ onMounted(() => {
 		data-test-id="workflow-history-list-item"
 		:class="{
 			[$style.item]: true,
-			[$style.selected]: props.isSelected,
+			[$style.active]: props.isActive,
 			[$style.actionsVisible]: actionsVisible,
 		}"
 	>
 		<slot :formatted-created-at="formattedCreatedAt">
-			<p v-if="isDraftPublishEnabled" @click="onItemClick">
-				<span v-if="versionName" :class="$style.mainLine">{{ versionName }}</span>
-				<time :datetime="item.createdAt" :class="$style.metaItem">
-					{{ i18n.baseText('workflowHistory.item.savedAtLabel') }} {{ formattedCreatedAt }}
-				</time>
-				<N8nTooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
-					<template #content>{{ props.item.authors }}</template>
-					<span ref="authorElement" :class="$style.metaItem">{{ authors.label }}</span>
-				</N8nTooltip>
-				<time v-if="publishedAt" :datetime="item.updatedAt" :class="$style.metaItem">
-					{{ i18n.baseText('workflowHistory.item.publishedAtLabel') }} {{ publishedAt }}
-				</time>
-				<span v-if="publishedByUserName" :class="$style.metaItem">
-					{{ publishedByUserName }}
-				</span>
-			</p>
-			<p v-else @click="onItemClick">
+			<p @click="onItemClick">
 				<time :datetime="item.createdAt">{{ formattedCreatedAt }}</time>
 				<N8nTooltip placement="right-end" :disabled="authors.size < 2 && !isAuthorElementTruncated">
 					<template #content>{{ props.item.authors }}</template>
@@ -171,15 +112,7 @@ onMounted(() => {
 			</p>
 		</slot>
 		<div :class="$style.tail">
-			<N8nBadge
-				v-if="isDraftPublishEnabled && props.isVersionActive"
-				size="medium"
-				:class="$style.publishedBadge"
-				:show-border="false"
-			>
-				{{ i18n.baseText('workflowHistory.item.active') }}
-			</N8nBadge>
-			<N8nBadge v-if="!isDraftPublishEnabled && props.index === 0">
+			<N8nBadge v-if="props.index === 0">
 				{{ i18n.baseText('workflowHistory.item.latest') }}
 			</N8nBadge>
 			<N8nActionToggle
@@ -230,27 +163,6 @@ onMounted(() => {
 			margin-top: calc(var(--spacing--4xs) * -1);
 			font-size: var(--font-size--2xs);
 		}
-
-		.mainLine {
-			padding: 0 0 var(--spacing--5xs);
-			color: var(--color--text--shade-1);
-			font-size: var(--font-size--sm);
-			font-weight: var(--font-weight--bold);
-		}
-
-		.metaItem {
-			justify-self: start;
-			max-width: 180px;
-			white-space: nowrap;
-			overflow: hidden;
-			text-overflow: ellipsis;
-			margin-top: calc(var(--spacing--4xs) * -1);
-			font-size: var(--font-size--2xs);
-			// Reset styles that might be inherited from time selector
-			padding: 0;
-			color: var(--color--text);
-			font-weight: var(--font-weight--regular);
-		}
 	}
 
 	.tail {
@@ -259,7 +171,7 @@ onMounted(() => {
 		justify-content: space-between;
 	}
 
-	&.selected {
+	&.active {
 		background-color: var(--color--background);
 		border-left-color: var(--color--primary);
 
@@ -277,15 +189,5 @@ onMounted(() => {
 .actions {
 	display: block;
 	padding: var(--spacing--3xs);
-}
-
-.publishedBadge {
-	background-color: var(--color--success);
-	color: var(--color--foreground--tint-2);
-
-	:global(.n8n-text) {
-		font-size: var(--font-size--2xs);
-		line-height: var(--line-height--sm);
-	}
 }
 </style>

@@ -18,7 +18,7 @@ describe('shouldSkipAuthOnOAuthCallback', () => {
 		});
 
 		it('should return true', () => {
-			expect(shouldSkipAuthOnOAuthCallback()).toBe(false);
+			expect(shouldSkipAuthOnOAuthCallback()).toBe(true);
 		});
 	});
 

@@ -62,7 +62,6 @@ import type {
 	FolderListItem,
 	ResourceParentFolder,
 } from '@/features/core/folders/folders.types';
-import type { WorkflowHistory } from '@n8n/rest-api-client/api/workflowHistory';
 
 export * from '@n8n/design-system/types';
 
@@ -261,7 +260,6 @@ export interface IWorkflowDb {
 		createdAt?: string;
 		updatedAt?: string;
 	};
-	activeVersion?: WorkflowHistory | null;
 }
 
 // For workflow list we don't need the full workflow data

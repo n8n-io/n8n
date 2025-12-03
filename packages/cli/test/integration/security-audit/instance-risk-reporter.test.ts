@@ -241,10 +241,7 @@ test('should report security settings', async () => {
 			templatesEnabled: true,
 			publicApiEnabled: false,
 		},
-		nodes: {
-			nodesExclude: 'n8n-nodes-base.executeCommand, n8n-nodes-base.localFileTrigger',
-			nodesInclude: 'none',
-		},
+		nodes: { nodesExclude: 'none', nodesInclude: 'none' },
 		telemetry: { diagnosticsEnabled: true },
 	});
 });

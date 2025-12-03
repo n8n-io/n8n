@@ -1,4 +1,3 @@
-import { SecurityConfig } from '@n8n/config';
 import { Container } from '@n8n/di';
 import type { INode } from 'n8n-workflow';
 import { createReadStream } from 'node:fs';
@@ -10,6 +9,7 @@ import {
 	BLOCK_FILE_ACCESS_TO_N8N_FILES,
 	CONFIG_FILES,
 	CUSTOM_EXTENSION_ENV,
+	RESTRICT_FILE_ACCESS_TO,
 	UM_EMAIL_TEMPLATES_INVITE,
 	UM_EMAIL_TEMPLATES_PWRESET,
 } from '@/constants';
@@ -23,7 +23,6 @@ jest.mock('node:fs/promises');
 const originalProcessEnv = { ...process.env };
 
 let instanceSettings: InstanceSettings;
-let securityConfig: SecurityConfig;
 beforeEach(() => {
 	process.env = { ...originalProcessEnv };
 
@@ -34,8 +33,6 @@ beforeEach(() => {
 	(fsRealpath as jest.Mock).mockImplementation((path: string) => path);
 
 	instanceSettings = Container.get(InstanceSettings);
-	securityConfig = Container.get(SecurityConfig);
-	securityConfig.restrictFileAccessTo = '';
 });
 
 describe('isFilePathBlocked', () => {
@@ -54,25 +51,25 @@ describe('isFilePathBlocked', () => {
 	});
 
 	it('should handle empty allowed paths', async () => {
-		securityConfig.restrictFileAccessTo = '';
+		delete process.env[RESTRICT_FILE_ACCESS_TO];
 		const result = await isFilePathBlocked('/some/random/path');
 		expect(result).toBe(false);
 	});
 
 	it('should handle multiple allowed paths', async () => {
-		securityConfig.restrictFileAccessTo = '/path1;/path2;/path3';
+		process.env[RESTRICT_FILE_ACCESS_TO] = '/path1;/path2;/path3';
 		const allowedPath = '/path2/somefile';
 		expect(await isFilePathBlocked(allowedPath)).toBe(false);
 	});
 
 	it('should handle empty strings in allowed paths', async () => {
-		securityConfig.restrictFileAccessTo = '/path1;;/path2';
+		process.env[RESTRICT_FILE_ACCESS_TO] = '/path1;;/path2';
 		const allowedPath = '/path2/somefile';
 		expect(await isFilePathBlocked(allowedPath)).toBe(false);
 	});
 
 	it('should trim whitespace in allowed paths', async () => {
-		securityConfig.restrictFileAccessTo = ' /path1 ; /path2 ; /path3 ';
+		process.env[RESTRICT_FILE_ACCESS_TO] = ' /path1 ; /path2 ; /path3 ';
 		const allowedPath = '/path2/somefile';
 		expect(await isFilePathBlocked(allowedPath)).toBe(false);
 	});
@@ -84,14 +81,14 @@ describe('isFilePathBlocked', () => {
 	});
 
 	it('should return true when path is in allowed paths but still restricted', async () => {
-		securityConfig.restrictFileAccessTo = '/some/allowed/path';
+		process.env[RESTRICT_FILE_ACCESS_TO] = '/some/allowed/path';
 		const restrictedPath = instanceSettings.n8nFolder;
 		expect(await isFilePathBlocked(restrictedPath)).toBe(true);
 	});
 
 	it('should return false when path is in allowed paths', async () => {
 		const allowedPath = '/some/allowed/path';
-		securityConfig.restrictFileAccessTo = allowedPath;
+		process.env[RESTRICT_FILE_ACCESS_TO] = allowedPath;
 		expect(await isFilePathBlocked(allowedPath)).toBe(false);
 	});
 
@@ -128,7 +125,7 @@ describe('isFilePathBlocked', () => {
 		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
 		const userHome = process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
 
-		securityConfig.restrictFileAccessTo = userHome;
+		process.env[RESTRICT_FILE_ACCESS_TO] = userHome;
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
 		const restrictedPath = instanceSettings.n8nFolder;
 		expect(await isFilePathBlocked(restrictedPath)).toBe(true);
@@ -138,7 +135,7 @@ describe('isFilePathBlocked', () => {
 		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
 		const userHome = process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
 
-		securityConfig.restrictFileAccessTo = userHome;
+		process.env[RESTRICT_FILE_ACCESS_TO] = userHome;
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
 		const restrictedPath = join(userHome, 'somefile.txt');
 		expect(await isFilePathBlocked(restrictedPath)).toBe(false);
@@ -148,14 +145,14 @@ describe('isFilePathBlocked', () => {
 		const homeVarName = process.platform === 'win32' ? 'USERPROFILE' : 'HOME';
 		const userHome = process.env.N8N_USER_FOLDER ?? process.env[homeVarName] ?? process.cwd();
 
-		securityConfig.restrictFileAccessTo = userHome;
+		process.env[RESTRICT_FILE_ACCESS_TO] = userHome;
 		process.env[BLOCK_FILE_ACCESS_TO_N8N_FILES] = 'true';
 		const restrictedPath = join(userHome, '.n8n_x');
 		expect(await isFilePathBlocked(restrictedPath)).toBe(false);
 	});
 
 	it('should return true for a symlink in a allowed path to a restricted path', async () => {
-		securityConfig.restrictFileAccessTo = '/path1';
+		process.env[RESTRICT_FILE_ACCESS_TO] = '/path1';
 		const allowedPath = '/path1/symlink';
 		const actualPath = '/path2/realfile';
 		(fsRealpath as jest.Mock).mockImplementation((path: string) =>
@@ -176,7 +173,7 @@ describe('isFilePathBlocked', () => {
 	it('should handle non-existent file when it is not allowed', async () => {
 		const filePath = '/non/existent/file';
 		const allowedPath = '/some/allowed/path';
-		securityConfig.restrictFileAccessTo = allowedPath;
+		process.env[RESTRICT_FILE_ACCESS_TO] = allowedPath;
 		const error = new Error('ENOENT');
 		// @ts-expect-error undefined property
 		error.code = 'ENOENT';
@@ -219,7 +216,7 @@ describe('getFileSystemHelperFunctions', () => {
 		});
 
 		it('should throw when file access is blocked', async () => {
-			securityConfig.restrictFileAccessTo = '/allowed/path';
+			process.env[RESTRICT_FILE_ACCESS_TO] = '/allowed/path';
 			(fsAccess as jest.Mock).mockResolvedValueOnce({});
 			await expect(helperFunctions.createReadStream('/blocked/path')).rejects.toThrow(
 				'Access to the file is not allowed',
@@ -227,7 +224,7 @@ describe('getFileSystemHelperFunctions', () => {
 		});
 
 		it('should not reveal if file exists if it is within restricted path', async () => {
-			securityConfig.restrictFileAccessTo = '/allowed/path';
+			process.env[RESTRICT_FILE_ACCESS_TO] = '/allowed/path';
 
 			const error = new Error('ENOENT');
 			// @ts-expect-error undefined property

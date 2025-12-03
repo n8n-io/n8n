@@ -11,7 +11,7 @@ export class InstanceSettingsConfig {
 	 * attempt change them to 0600 (only owner has rw access) if they are too wide.
 	 */
 	@Env('N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS')
-	enforceSettingsFilePermissions: boolean = true;
+	enforceSettingsFilePermissions: boolean = false;
 
 	/**
 	 * Encryption key to use for encrypting and decrypting credentials.

@@ -73,17 +73,7 @@ describe('WorkflowHistoryContent', () => {
 
 		await userEvent.click(getByTestId(`action-${action}`));
 		expect(emitted().action).toEqual([
-			[
-				{
-					action,
-					id: workflowVersion.versionId,
-					data: {
-						formattedCreatedAt: expect.any(String),
-						versionName: workflowVersion.name,
-						description: workflowVersion.description,
-					},
-				},
-			],
+			[{ action, id: workflowVersion.versionId, data: { formattedCreatedAt: expect.any(String) } }],
 		]);
 	});
 

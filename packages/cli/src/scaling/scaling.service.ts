@@ -67,7 +67,7 @@ export class ScalingService {
 
 		this.queue = new BullQueue(QUEUE_NAME, {
 			prefix,
-			settings: { ...this.globalConfig.queue.bull.settings, maxStalledCount: 0 },
+			settings: this.globalConfig.queue.bull.settings,
 			createClient: (type) => service.createClient({ type: `${type}(bull)` }),
 		});
 

@@ -164,13 +164,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	async saveWorkflow(): Promise<void> {
-		const responsePromise = this.page.waitForResponse(
-			(response) =>
-				response.url().includes('/rest/workflows') &&
-				(response.request().method() === 'POST' || response.request().method() === 'PATCH'),
-		);
 		await this.clickSaveWorkflowButton();
-		await responsePromise;
 	}
 
 	getExecuteWorkflowButton(triggerNodeName?: string): Locator {
@@ -296,27 +290,22 @@ export class CanvasPage extends BasePage {
 		await this.page.locator('body').click({ position: { x: 0, y: 0 } });
 	}
 
-	async publishWorkflow(): Promise<void> {
+	async activateWorkflow() {
+		const switchElement = this.page.getByTestId('workflow-activate-switch');
+		const statusElement = this.page.getByTestId('workflow-activator-status');
+
 		const responsePromise = this.page.waitForResponse(
 			(response) =>
-				response.url().includes('/rest/workflows/') &&
-				response.url().includes('/activate') &&
-				response.request().method() === 'POST',
+				response.url().includes('/rest/workflows/') && response.request().method() === 'PATCH',
 		);
 
-		await this.getOpenPublishModalButton().click();
-		await this.getPublishButton().click();
-
+		await switchElement.click();
+		await statusElement.locator('span').filter({ hasText: 'Active' }).waitFor({ state: 'visible' });
 		await responsePromise;
 	}
 
-	async cancelPublishWorkflowModal(): Promise<void> {
-		await this.page.getByTestId('workflow-publish-cancel-button').click();
-	}
-
 	async openShareModal(): Promise<void> {
-		await this.clickByTestId('workflow-menu');
-		await this.clickByTestId('workflow-menu-item-share');
+		await this.clickByTestId('workflow-share-button');
 		await this.page.getByTestId('workflowShare-modal').waitFor({ state: 'visible' });
 	}
 
@@ -374,7 +363,7 @@ export class CanvasPage extends BasePage {
 	}
 
 	async clickWorkflowTagsContainer(): Promise<void> {
-		await this.page.getByTestId('workflow-tags-dropdown').click();
+		await this.page.getByTestId('workflow-tags-container').click();
 	}
 
 	getTagPills(): Locator {
@@ -441,20 +430,8 @@ export class CanvasPage extends BasePage {
 		return this.page.getByTestId('workflow-save-button');
 	}
 
-	getOpenPublishModalButton(): Locator {
-		return this.page.getByTestId('workflow-open-publish-modal-button');
-	}
-
-	getPublishModalCallout(): Locator {
-		return this.page.getByTestId('workflowPublish-modal').locator('.n8n-callout');
-	}
-
-	getPublishButton(): Locator {
-		return this.page.getByTestId('workflow-publish-button');
-	}
-
-	getPublishedIndicator(): Locator {
-		return this.page.getByTestId('workflow-active-version-indicator');
+	getWorkflowActivatorSwitch(): Locator {
+		return this.page.getByTestId('workflow-activate-switch');
 	}
 
 	getLoadingMask(): Locator {

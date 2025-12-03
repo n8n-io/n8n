@@ -77,21 +77,15 @@ export class WorkflowApiHelper {
 		};
 	}
 
-	async activate(workflowId: string, versionId: string) {
-		const response = await this.api.request.post(`/rest/workflows/${workflowId}/activate`, {
-			data: { versionId },
+	async setActive(workflowId: string, active: boolean) {
+		const response = await this.api.request.patch(`/rest/workflows/${workflowId}?forceSave=true`, {
+			data: { active },
 		});
 
 		if (!response.ok()) {
-			throw new TestError(`Failed to activate workflow: ${await response.text()}`);
-		}
-	}
-
-	async deactivate(workflowId: string) {
-		const response = await this.api.request.post(`/rest/workflows/${workflowId}/deactivate`);
-
-		if (!response.ok()) {
-			throw new TestError(`Failed to deactivate workflow: ${await response.text()}`);
+			throw new TestError(
+				`Failed to ${active ? 'activate' : 'deactivate'} workflow: ${await response.text()}`,
+			);
 		}
 	}
 
@@ -178,12 +172,13 @@ export class WorkflowApiHelper {
 		workflowDefinition: Partial<IWorkflowBase>,
 		options?: { webhookPrefix?: string; idLength?: number; makeUnique?: boolean },
 	): Promise<WorkflowImportResult> {
-		// Store original active state
 		const result = await this.createWorkflowFromDefinition(workflowDefinition, options);
 
+		// Ensure the workflow is in the correct active state as specified in the JSON
 		if (workflowDefinition.active) {
-			await this.activate(result.workflowId, result.createdWorkflow.versionId!);
+			await this.setActive(result.workflowId, workflowDefinition.active);
 		}
+
 		return result;
 	}
 

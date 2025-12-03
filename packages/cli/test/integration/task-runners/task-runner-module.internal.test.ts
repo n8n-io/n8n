@@ -10,7 +10,6 @@ describe('TaskRunnerModule in internal mode', () => {
 	runnerConfig.port = 0; // Random port
 	runnerConfig.mode = 'internal';
 	runnerConfig.enabled = true;
-	runnerConfig.isNativePythonRunnerEnabled = false;
 	const module = Container.get(TaskRunnerModule);
 
 	afterEach(async () => {

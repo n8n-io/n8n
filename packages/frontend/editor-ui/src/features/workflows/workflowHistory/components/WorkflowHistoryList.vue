@@ -5,36 +5,41 @@ import { useI18n } from '@n8n/i18n';
 import type {
 	WorkflowHistory,
 	WorkflowVersionId,
+	WorkflowHistoryActionTypes,
 	WorkflowHistoryRequestParams,
 } from '@n8n/rest-api-client/api/workflowHistory';
 import WorkflowHistoryListItem from './WorkflowHistoryListItem.vue';
 import type { IUser } from 'n8n-workflow';
 import { I18nT } from 'vue-i18n';
 import { useIntersectionObserver } from '@/app/composables/useIntersectionObserver';
-import { N8nLoading } from '@n8n/design-system';
-import { IS_DRAFT_PUBLISH_ENABLED } from '@/app/constants';
-import type { WorkflowHistoryAction } from '@/features/workflows/workflowHistory/types';
 
+import { N8nLoading } from '@n8n/design-system';
 const props = defineProps<{
 	items: WorkflowHistory[];
-	selectedItem?: WorkflowHistory | null;
+	activeItem: WorkflowHistory | null;
 	actions: Array<UserAction<IUser>>;
 	requestNumberOfItems: number;
 	lastReceivedItemsLength: number;
 	evaluatedPruneDays: number;
 	shouldUpgrade?: boolean;
 	isListLoading?: boolean;
-	activeVersionId?: string;
 }>();
 
 const emit = defineEmits<{
-	action: [value: WorkflowHistoryAction];
+	action: [
+		value: {
+			action: WorkflowHistoryActionTypes[number];
+			id: WorkflowVersionId;
+			data: { formattedCreatedAt: string };
+		},
+	];
 	preview: [value: { event: MouseEvent; id: WorkflowVersionId }];
 	loadMore: [value: WorkflowHistoryRequestParams];
 	upgrade: [];
 }>();
 
 const i18n = useI18n();
+
 const listElement = ref<Element | null>(null);
 const shouldAutoScroll = ref(true);
 
@@ -45,29 +50,18 @@ const { observe: observeForLoadMore } = useIntersectionObserver({
 		emit('loadMore', { take: props.requestNumberOfItems, skip: props.items.length }),
 });
 
-const getActions = (item: WorkflowHistory, index: number) => {
-	let filteredActions = props.actions;
+const getActions = (index: number) =>
+	index === 0 ? props.actions.filter((action) => action.value !== 'restore') : props.actions;
 
-	if (index === 0) {
-		filteredActions = filteredActions.filter((action) => action.value !== 'restore');
-	}
-
-	if (IS_DRAFT_PUBLISH_ENABLED) {
-		if (item.versionId === props.activeVersionId) {
-			filteredActions = filteredActions.filter((action) => action.value !== 'publish');
-		} else {
-			filteredActions = filteredActions.filter((action) => action.value !== 'unpublish');
-		}
-	} else {
-		filteredActions = filteredActions.filter(
-			(action) => action.value !== 'publish' && action.value !== 'unpublish',
-		);
-	}
-
-	return filteredActions;
-};
-
-const onAction = ({ action, id, data }: WorkflowHistoryAction) => {
+const onAction = ({
+	action,
+	id,
+	data,
+}: {
+	action: WorkflowHistoryActionTypes[number];
+	id: WorkflowVersionId;
+	data: { formattedCreatedAt: string };
+}) => {
 	shouldAutoScroll.value = false;
 	emit('action', { action, id, data });
 };
@@ -80,13 +74,13 @@ const onPreview = ({ event, id }: { event: MouseEvent; id: WorkflowVersionId }) 
 const onItemMounted = ({
 	index,
 	offsetTop,
-	isSelected,
+	isActive,
 }: {
 	index: number;
 	offsetTop: number;
-	isSelected: boolean;
+	isActive: boolean;
 }) => {
-	if (isSelected && shouldAutoScroll.value) {
+	if (isActive && shouldAutoScroll.value) {
 		shouldAutoScroll.value = false;
 		listElement.value?.scrollTo({ top: offsetTop, behavior: 'smooth' });
 	}
@@ -107,9 +101,8 @@ const onItemMounted = ({
 			:key="item.versionId"
 			:index="index"
 			:item="item"
-			:is-selected="item.versionId === props.selectedItem?.versionId"
-			:is-version-active="item.versionId === props.activeVersionId"
-			:actions="getActions(item, index)"
+			:is-active="item.versionId === props.activeItem?.versionId"
+			:actions="getActions(index)"
 			@action="onAction"
 			@preview="onPreview"
 			@mounted="onItemMounted"

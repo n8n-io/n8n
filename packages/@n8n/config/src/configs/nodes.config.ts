@@ -26,14 +26,9 @@ export class NodesConfig {
 	@Env('NODES_INCLUDE')
 	include: JsonStringArray = [];
 
-	/**
-	 * Node types not to load. Defaults to excluding `ExecuteCommand` and `LocalFileTrigger` for security.
-	 * Set to an empty array to enable all node types.
-	 *
-	 * @example '["n8n-nodes-base.hackerNews"]'
-	 */
+	/** Node types not to load. Excludes none if unspecified. @example '["n8n-nodes-base.hackerNews"]' */
 	@Env('NODES_EXCLUDE')
-	exclude: JsonStringArray = ['n8n-nodes-base.executeCommand', 'n8n-nodes-base.localFileTrigger'];
+	exclude: JsonStringArray = [];
 
 	/** Node type to use as error trigger */
 	@Env('NODES_ERROR_TRIGGER_TYPE')

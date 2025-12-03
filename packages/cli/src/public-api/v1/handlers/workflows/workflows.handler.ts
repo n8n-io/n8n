@@ -309,7 +309,6 @@ export = {
 					{
 						forceSave: true, // Skip version conflict check for public API
 						publicApi: true,
-						publishIfActive: true,
 					},
 				);
 
