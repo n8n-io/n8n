@@ -6,10 +6,12 @@ export class CreateDynamicCredentialResolverTable1764682447000 implements Revers
 	async up({ schemaBuilder: { createTable, column } }: MigrationContext) {
 		await createTable(tableName)
 			.withColumns(
-				column('id').varchar(16).primary.notNull,
+				column('id').varchar(16).primary,
 				column('name').varchar(128).notNull,
 				column('type').varchar(128).notNull,
-				column('config').text.notNull,
+				column('config').text.notNull.comment(
+					'Encrypted resolver configuration (JSON encrypted as string)',
+				),
 			)
 			.withTimestamps.withIndexOn('type');
 	}
