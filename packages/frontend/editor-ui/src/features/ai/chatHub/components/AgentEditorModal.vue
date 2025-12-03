@@ -48,6 +48,7 @@ const systemPrompt = ref('');
 const selectedModel = ref<ChatHubBaseLLMModel | null>(null);
 const isSaving = ref(false);
 const isDeleting = ref(false);
+const isOpened = ref(false);
 const tools = ref<INode[]>([]);
 const nameInputRef = useTemplateRef('nameInput');
 
@@ -92,6 +93,10 @@ const canSelectTools = computed(
 	() => selectedAgent.value?.metadata.capabilities.functionCalling ?? false,
 );
 
+modalBus.value.once('opened', () => {
+	isOpened.value = true;
+});
+
 // If the agent doesn't support tools anymore, reset tools
 watch(
 	selectedAgent,
@@ -122,12 +127,11 @@ watch(
 );
 
 watch(
-	[isLoadingAgent, nameInputRef],
-	async ([isLoading, name]) => {
-		if (!isLoading) {
+	[isOpened, isLoadingAgent, nameInputRef],
+	async ([opened, isLoading, name]) => {
+		if (opened && !isLoading) {
 			// autofocus attribute doesn't work in modal
 			// https://github.com/element-plus/element-plus/issues/15250
-			await new Promise((r) => setTimeout(r, 0));
 			name?.focus();
 		}
 	},
