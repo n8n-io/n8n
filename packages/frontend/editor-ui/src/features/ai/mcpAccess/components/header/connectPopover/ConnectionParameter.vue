@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { useI18n } from '@n8n/i18n';
 import { useClipboard } from '@/app/composables/useClipboard';
-import { N8nButton, N8nTooltip } from '@n8n/design-system';
+import { N8nButton, N8nTooltip, N8nInfoTip } from '@n8n/design-system';
 import { MCP_TOOLTIP_DELAY } from '@/features/ai/mcpAccess/mcp.constants';
 
 type Props = {
 	id: string;
 	label: string;
 	value: string;
+	infoTip?: string;
 	allowCopy?: boolean;
 	maxWidth?: number;
 };
@@ -18,6 +19,7 @@ const i18n = useI18n();
 const props = withDefaults(defineProps<Props>(), {
 	allowCopy: true,
 	maxWidth: undefined,
+	infoTip: undefined,
 });
 
 const emit = defineEmits<{
@@ -35,7 +37,16 @@ const handleCopy = async (value: string) => {
 		:class="$style.container"
 		:style="{ maxWidth: props.maxWidth ? props.maxWidth + 'px' : 'none' }"
 	>
-		<label :class="$style.label" :for="`connection-parameter-${props.id}`">{{ props.label }}</label>
+		<div :class="$style['label-wrapper']">
+			<label :class="$style.label" :for="`connection-parameter-${props.id}`">
+				{{ props.label }}
+			</label>
+			<div v-if="props.infoTip" :class="$style['info-tip']">
+				<N8nInfoTip type="tooltip" size="small">
+					{{ props.infoTip }}
+				</N8nInfoTip>
+			</div>
+		</div>
 		<div
 			:id="`connection-parameter-${props.id}`"
 			:class="$style['parameter-value']"
@@ -69,6 +80,21 @@ const handleCopy = async (value: string) => {
 	display: flex;
 	flex-direction: column;
 	gap: var(--spacing--4xs);
+}
+
+.label-wrapper {
+	display: flex;
+	align-items: center;
+	gap: var(--spacing--4xs);
+
+	.info-tip {
+		display: none;
+		cursor: pointer;
+	}
+
+	&:hover .info-tip {
+		display: block;
+	}
 }
 
 .label {
