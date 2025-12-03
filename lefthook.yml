@@ -49,7 +49,7 @@ pre-commit:
     workspace_deps_check_windows:
       glob: '**/package.json'
       only:
-        - run: cmd /c ver #windows
+        - run: cmd /c ver # windows
       run: powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-workspace-deps.ps1 {staged_files}
       skip:
         - merge
