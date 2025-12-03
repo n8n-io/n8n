@@ -1,7 +1,7 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { MessageContent, BaseMessage } from '@langchain/core/messages';
 import { AIMessage, SystemMessage, HumanMessage } from '@langchain/core/messages';
-import { NodeConnectionTypes } from 'n8n-workflow';
+import { NodeConnectionTypes, NodeOperationError } from 'n8n-workflow';
 import type {
 	IDataObject,
 	IExecuteFunctions,
@@ -9,6 +9,7 @@ import type {
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { getOptionalMemory } from '../../agents/Agent/agents/ToolsAgent/common';
 
 type MessageRole = 'ai' | 'system' | 'user';
 interface MessageRecord {
@@ -303,11 +304,10 @@ export class MemoryManager implements INodeType {
 		const nodeVersion = this.getNode().typeVersion;
 		const items = this.getInputData();
 		const mode = this.getNodeParameter('mode', 0, 'load') as 'load' | 'insert' | 'delete';
-		const memory = (await this.getInputConnectionData(
-			NodeConnectionTypes.AiMemory,
-			0,
-		)) as BaseChatMemory;
-
+		const memory = await getOptionalMemory(this);
+		if (!memory) {
+			throw new NodeOperationError(this.getNode(), 'No memory connected');
+		}
 		const prepareOutput = prepareOutputSetup(this, nodeVersion, memory);
 
 		const returnData: INodeExecutionData[] = [];

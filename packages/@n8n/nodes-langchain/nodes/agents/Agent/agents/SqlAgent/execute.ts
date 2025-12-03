@@ -19,6 +19,7 @@ import { getMysqlDataSource } from './other/handlers/mysql';
 import { getPostgresDataSource } from './other/handlers/postgres';
 import { getSqliteDataSource } from './other/handlers/sqlite';
 import { SQL_PREFIX, SQL_SUFFIX } from './other/prompts';
+import { getOptionalMemory } from '../ToolsAgent/common';
 
 const parseTablesString = (tablesString: string) =>
 	tablesString
@@ -113,9 +114,7 @@ export async function sqlAgentAgentExecute(
 			const toolkit = new SqlToolkit(dbInstance, model);
 			const agentExecutor = createSqlAgent(model, toolkit, agentOptions);
 
-			const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
-				| BaseChatMemory
-				| undefined;
+			const memory = await getOptionalMemory(this);
 
 			agentExecutor.memory = memory;
 
