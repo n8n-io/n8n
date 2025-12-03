@@ -634,6 +634,34 @@ importers:
         specifier: workspace:*
         version: link:../typescript-config
 
+  packages/@n8n/computer-use:
+    dependencies:
+      '@hono/mcp':
+        specifier: 0.2.0
+        version: 0.2.0(@modelcontextprotocol/sdk@1.20.0)(hono-rate-limiter@0.4.2(hono@4.10.7))(hono@4.10.7)
+      '@hono/node-server':
+        specifier: 1.19.6
+        version: 1.19.6(hono@4.10.7)
+      '@modelcontextprotocol/sdk':
+        specifier: 1.20.0
+        version: 1.20.0
+      hono:
+        specifier: 4.10.7
+        version: 4.10.7
+      zod:
+        specifier: 3.25.67
+        version: 3.25.67
+    devDependencies:
+      '@types/node':
+        specifier: ^20.17.50
+        version: 20.19.21
+      tsx:
+        specifier: 4.19.3
+        version: 4.19.3
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+
   packages/@n8n/config:
     dependencies:
       '@n8n/di':
@@ -1069,7 +1097,7 @@ importers:
         version: 12.1.0
       '@getzep/zep-cloud':
         specifier: 1.0.12
-        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))
+        version: 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))
       '@getzep/zep-js':
         specifier: 0.9.0
         version: 0.9.0
@@ -1096,7 +1124,7 @@ importers:
         version: 0.3.4(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)
       '@langchain/community':
         specifier: 'catalog:'
-        version: 0.3.50(ba725e6da5f3cda58245f84e6fe2ecaf)
+        version: 0.3.50(071f2de44c6bccc3a8cd2fadf2db3e78)
       '@langchain/core':
         specifier: 'catalog:'
         version: 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
@@ -1219,7 +1247,7 @@ importers:
         version: 23.0.1(bufferutil@4.0.9)(utf-8-validate@5.0.10)
       langchain:
         specifier: 0.3.33
-        version: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
+        version: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
       lodash:
         specifier: 'catalog:'
         version: 4.17.21
@@ -1869,34 +1897,6 @@ importers:
       ts-essentials:
         specifier: ^7.0.3
         version: 7.0.3(typescript@5.9.2)
-
-  packages/computer-use-api:
-    dependencies:
-      '@hono/mcp':
-        specifier: 0.2.0
-        version: 0.2.0(@modelcontextprotocol/sdk@1.20.0)(hono-rate-limiter@0.4.2(hono@4.10.7))(hono@4.10.7)
-      '@hono/node-server':
-        specifier: 1.19.6
-        version: 1.19.6(hono@4.10.7)
-      '@modelcontextprotocol/sdk':
-        specifier: 1.20.0
-        version: 1.20.0
-      hono:
-        specifier: 4.10.7
-        version: 4.10.7
-      zod:
-        specifier: 3.25.67
-        version: 3.25.67
-    devDependencies:
-      '@types/node':
-        specifier: ^20.17.50
-        version: 20.19.21
-      tsx:
-        specifier: 4.19.3
-        version: 4.19.3
-      typescript:
-        specifier: 5.9.2
-        version: 5.9.2
 
   packages/core:
     dependencies:
@@ -8429,9 +8429,6 @@ packages:
 
   '@types/node@20.19.1':
     resolution: {integrity: sha512-jJD50LtlD2dodAEO653i3YF04NWak6jN3ky+Ri3Em3mGR39/glWiboM/IePaRbgwSfqM1TpGXfAg8ohn/4dTgA==}
-
-  '@types/node@20.19.11':
-    resolution: {integrity: sha512-uug3FEEGv0r+jrecvUUpbY8lLisvIjg6AAic6a2bSP5OEOLeJsDSnvhCDov7ipFFMXS3orMpzlmi0ZcuGkBbow==}
 
   '@types/node@20.19.21':
     resolution: {integrity: sha512-CsGG2P3I5y48RPMfprQGfy4JPRZ6csfC3ltBZSRItG3ngggmNY/qs2uZKp4p9VbrpqNNSMzUZNFZKzgOGnd/VA==}
@@ -21076,7 +21073,7 @@ snapshots:
   '@gar/promisify@1.1.3':
     optional: true
 
-  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))':
+  '@getzep/zep-cloud@1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))':
     dependencies:
       form-data: 4.0.4
       node-fetch: 2.7.0(encoding@0.1.13)
@@ -21085,7 +21082,7 @@ snapshots:
       zod: 3.25.67
     optionalDependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
-      langchain: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
+      langchain: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
     transitivePeerDependencies:
       - encoding
 
@@ -21782,7 +21779,7 @@ snapshots:
       - aws-crt
       - encoding
 
-  '@langchain/community@0.3.50(ba725e6da5f3cda58245f84e6fe2ecaf)':
+  '@langchain/community@0.3.50(071f2de44c6bccc3a8cd2fadf2db3e78)':
     dependencies:
       '@browserbasehq/stagehand': 1.9.0(@playwright/test@1.56.0)(bufferutil@4.0.9)(deepmerge@4.3.1)(dotenv@16.6.1)(encoding@0.1.13)(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))(utf-8-validate@5.0.10)(zod@3.25.67)
       '@ibm-cloud/watsonx-ai': 1.1.2
@@ -21794,7 +21791,7 @@ snapshots:
       flat: 5.0.2
       ibm-cloud-sdk-core: 5.3.2
       js-yaml: 4.1.1
-      langchain: 0.3.33(ca377405f102dc2905a39d54ecb4d621)
+      langchain: 0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d)
       langsmith: 0.3.55(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       openai: 5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)
       uuid: 10.0.0
@@ -21809,7 +21806,7 @@ snapshots:
       '@azure/search-documents': 12.1.0
       '@azure/storage-blob': 12.26.0
       '@browserbasehq/sdk': 2.6.0(encoding@0.1.13)
-      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621))
+      '@getzep/zep-cloud': 1.0.12(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(encoding@0.1.13)(langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d))
       '@getzep/zep-js': 0.9.0
       '@google-ai/generativelanguage': 3.4.0(encoding@0.1.13)
       '@google-cloud/storage': 7.12.1(encoding@0.1.13)
@@ -24344,7 +24341,7 @@ snapshots:
 
   '@types/aws4@1.11.2':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/babel__core@7.20.0':
     dependencies:
@@ -24390,7 +24387,7 @@ snapshots:
 
   '@types/basic-auth@1.1.3':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.21
 
   '@types/bcryptjs@2.4.2': {}
 
@@ -24409,7 +24406,7 @@ snapshots:
 
   '@types/cheerio@0.22.31':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/cli-progress@3.11.6':
     dependencies:
@@ -24480,7 +24477,7 @@ snapshots:
 
   '@types/formidable@3.4.5':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/fs-extra@11.0.4':
     dependencies:
@@ -24519,7 +24516,7 @@ snapshots:
 
   '@types/imap@0.8.40':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/inquirer@6.5.0':
     dependencies:
@@ -24581,7 +24578,7 @@ snapshots:
   '@types/jsonwebtoken@9.0.9':
     dependencies:
       '@types/ms': 2.1.0
-      '@types/node': 20.19.11
+      '@types/node': 20.19.21
 
   '@types/k6@0.52.0': {}
 
@@ -24664,10 +24661,6 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
-  '@types/node@20.19.11':
-    dependencies:
-      undici-types: 6.21.0
-
   '@types/node@20.19.21':
     dependencies:
       undici-types: 6.21.0
@@ -24689,7 +24682,7 @@ snapshots:
 
   '@types/pg@8.11.6':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
       pg-protocol: 1.6.1
       pg-types: 4.0.2
 
@@ -24769,7 +24762,7 @@ snapshots:
   '@types/shelljs@0.8.11':
     dependencies:
       '@types/glob': 8.0.0
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/shimmer@1.2.0': {}
 
@@ -24795,7 +24788,7 @@ snapshots:
   '@types/sshpk@1.17.4':
     dependencies:
       '@types/asn1': 0.2.0
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/stack-utils@2.0.1': {}
 
@@ -24807,7 +24800,7 @@ snapshots:
     dependencies:
       '@types/cookiejar': 2.1.5
       '@types/methods': 1.1.4
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
       form-data: 4.0.4
 
   '@types/supertest@6.0.3':
@@ -24822,7 +24815,7 @@ snapshots:
 
   '@types/syslog-client@1.1.2':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/tedious@4.0.14':
     dependencies:
@@ -24834,7 +24827,7 @@ snapshots:
 
   '@types/temp@0.9.4':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/through@0.0.30':
     dependencies:
@@ -24850,7 +24843,7 @@ snapshots:
 
   '@types/uuencode@0.0.3(patch_hash=083a73709a54db57b092d986b43d27ddda3cb8008f9510e98bc9e6da0e1cbb62)':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/uuid@10.0.0': {}
 
@@ -24876,11 +24869,11 @@ snapshots:
 
   '@types/ws@8.18.1(patch_hash=682b44b740be55e5d7018e6fe335880851dadf2524b6c723c9ed0c29cb2fa7fb)':
     dependencies:
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
 
   '@types/xml2js@0.4.14':
     dependencies:
-      '@types/node': 20.19.11
+      '@types/node': 20.19.21
 
   '@types/yamljs@0.2.31': {}
 
@@ -25932,6 +25925,14 @@ snapshots:
   axios@1.12.0(debug@4.4.1):
     dependencies:
       follow-redirects: 1.15.11(debug@4.4.1)
+      form-data: 4.0.4
+      proxy-from-env: 1.1.0
+    transitivePeerDependencies:
+      - debug
+
+  axios@1.12.0(debug@4.4.3):
+    dependencies:
+      follow-redirects: 1.15.11(debug@4.4.3)
       form-data: 4.0.4
       proxy-from-env: 1.1.0
     transitivePeerDependencies:
@@ -28061,7 +28062,7 @@ snapshots:
 
   eslint-import-context@0.1.8(unrs-resolver@1.9.2):
     dependencies:
-      get-tsconfig: 4.10.1
+      get-tsconfig: 4.13.0
       stable-hash-x: 0.1.1
     optionalDependencies:
       unrs-resolver: 1.9.2
@@ -28712,6 +28713,10 @@ snapshots:
   follow-redirects@1.15.11(debug@4.4.1):
     optionalDependencies:
       debug: 4.4.1(supports-color@8.1.1)
+
+  follow-redirects@1.15.11(debug@4.4.3):
+    optionalDependencies:
+      debug: 4.4.3
 
   for-each@0.3.5:
     dependencies:
@@ -29421,7 +29426,7 @@ snapshots:
       '@types/debug': 4.1.12
       '@types/node': 20.19.21
       '@types/tough-cookie': 4.0.5
-      axios: 1.12.0(debug@4.4.1)
+      axios: 1.12.0(debug@4.4.3)
       camelcase: 6.3.0
       debug: 4.4.3
       dotenv: 16.6.1
@@ -29431,7 +29436,7 @@ snapshots:
       isstream: 0.1.2
       jsonwebtoken: 9.0.2
       mime-types: 2.1.35
-      retry-axios: 2.6.0(axios@1.12.0(debug@4.4.3))
+      retry-axios: 2.6.0(axios@1.12.0)
       tough-cookie: 4.1.4
     transitivePeerDependencies:
       - supports-color
@@ -30879,7 +30884,7 @@ snapshots:
 
   kuler@2.0.0: {}
 
-  langchain@0.3.33(ca377405f102dc2905a39d54ecb4d621):
+  langchain@0.3.33(5cc28a029307bb3da1dcaf370c8a2b8d):
     dependencies:
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67))
       '@langchain/openai': 0.6.16(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/sdk-trace-base@1.30.1(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))(zod@3.25.67)))(ws@8.18.3(bufferutil@4.0.9)(utf-8-validate@5.0.10))
@@ -30935,7 +30940,7 @@ snapshots:
   ldapts@4.2.6:
     dependencies:
       '@types/asn1': 0.2.0
-      '@types/node': 20.17.57
+      '@types/node': 20.19.21
       '@types/uuid': 10.0.0
       asn1: 0.2.6
       debug: 4.3.4
@@ -33783,7 +33788,7 @@ snapshots:
       onetime: 5.1.2
       signal-exit: 3.0.7
 
-  retry-axios@2.6.0(axios@1.12.0(debug@4.4.3)):
+  retry-axios@2.6.0(axios@1.12.0):
     dependencies:
       axios: 1.12.0(debug@4.4.1)
 
@@ -36006,7 +36011,7 @@ snapshots:
 
   vite@6.3.5(@types/node@20.19.21)(jiti@2.6.1)(lightningcss@1.30.2)(sass@1.89.2)(terser@5.16.1)(tsx@4.19.3):
     dependencies:
-      esbuild: 0.25.9
+      esbuild: 0.25.10
       fdir: 6.5.0(picomatch@4.0.3)
       picomatch: 4.0.3
       postcss: 8.5.6

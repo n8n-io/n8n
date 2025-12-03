@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 60">
+  <!-- Monitor (lighter for dark mode) -->
+  <rect x="6" y="10" width="40" height="30" rx="3" fill="#E2E8F0" stroke="#CBD5E0" stroke-width="2"/>
+  <rect x="9" y="13" width="34" height="24" rx="1" fill="#2D3748"/>
+
+  <!-- Screen content - terminal/code lines -->
+  <rect x="12" y="16" width="18" height="2" rx="1" fill="#68D391"/>
+  <rect x="12" y="21" width="26" height="2" rx="1" fill="#63B3ED"/>
+  <rect x="12" y="26" width="14" height="2" rx="1" fill="#FC8181"/>
+  <rect x="12" y="31" width="22" height="2" rx="1" fill="#F6E05E"/>
+
+  <!-- Cursor arrow on screen -->
+  <path d="M36 20 L36 29 L38.5 26.5 L41 31 L43 30 L40.5 25.5 L44 25.5 Z" fill="#FFFFFF"/>
+
+  <!-- AI Sparkle - large 4-point star (top right) -->
+  <path d="M52 8 L52 16 L50 12 L52 8 M52 8 L52 16 L54 12 L52 8 M48 12 L56 12 L52 10 L48 12 M48 12 L56 12 L52 14 L48 12" fill="#F6AD55"/>
+  <path d="M52 8 L50 12 L52 16 L54 12 Z" fill="#F6AD55"/>
+
+  <!-- AI Sparkle - medium 4-point star -->
+  <path d="M50 28 L48.5 32 L50 36 L51.5 32 Z" fill="#FC8181"/>
+
+  <!-- AI Sparkle - small 4-point star -->
+  <path d="M54 20 L53 22 L54 24 L55 22 Z" fill="#68D391"/>
+
+  <!-- AI plus/cross sparkle -->
+  <rect x="46" y="43" width="8" height="2" rx="1" fill="#63B3ED"/>
+  <rect x="49" y="40" width="2" height="8" rx="1" fill="#63B3ED"/>
+</svg>
