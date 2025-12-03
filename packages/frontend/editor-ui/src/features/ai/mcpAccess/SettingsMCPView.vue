@@ -45,6 +45,9 @@ const tabs = ref<Array<TabOptions<MCPTabs>>>([
 const workflowsLoading = ref(false);
 const availableWorkflows = ref<WorkflowListItem[]>([]);
 
+const oAuthClientsLoading = ref(false);
+const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
+
 const isOwner = computed(() => usersStore.isInstanceOwner);
 const isAdmin = computed(() => usersStore.isAdmin);
 
@@ -120,40 +123,6 @@ const fetchAvailableWorkflows = async () => {
 const onRefreshWorkflows = async () => {
 	await fetchAvailableWorkflows();
 };
-
-// TODO: Move this to popover
-const mcpKeyLoading = ref(false);
-const apiKey = computed(() => mcpStore.currentUserMCPKey);
-
-const fetchApiKey = async () => {
-	try {
-		mcpKeyLoading.value = true;
-		await mcpStore.getOrCreateApiKey();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.error.fetching.apiKey'));
-	} finally {
-		setTimeout(() => {
-			mcpKeyLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
-	}
-};
-
-const rotateKey = async () => {
-	try {
-		mcpKeyLoading.value = true;
-		await mcpStore.generateNewApiKey();
-	} catch (error) {
-		toast.showError(error, i18n.baseText('settings.mcp.error.rotating.apiKey'));
-	} finally {
-		setTimeout(() => {
-			mcpKeyLoading.value = false;
-		}, LOADING_INDICATOR_TIMEOUT);
-	}
-};
-
-// TODO: Move this OAuth tab
-const oAuthClientsLoading = ref(false);
-const connectedOAuthClients = ref<OAuthClientResponseDto[]>([]);
 
 const fetchoAuthCLients = async () => {
 	try {

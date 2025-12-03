@@ -2376,6 +2376,7 @@
 	"settings.mcp.connectPopover.tab.oauth": "OAuth",
 	"settings.mcp.connectPopover.tab.accessToken": "Access Token",
 	"settings.mcp.connectPopover.serverUrl": "Server URL",
+	"settings.mcp.connectPopover.jsonConfig": "Configuration JSON",
 	"settings.chatHub": "Chat",
 	"settings.chatHub.providers.fetching.error": "Error fetching chat provider settings",
 	"settings.chatHub.providers.updated.success": "Chat provider settings updated",

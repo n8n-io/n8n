@@ -3,6 +3,7 @@ import { useI18n } from '@n8n/i18n';
 import { ref } from 'vue';
 import { N8nButton, N8nPopoverReka, N8nRadioButtons } from '@n8n/design-system';
 import MCPOAuthPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPOAuthPopoverTab.vue';
+import MCPAccessTokenPopoverTab from '@/features/ai/mcpAccess/components/header/connectPopover/MCPAccessTokenPopoverTab.vue';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 
@@ -34,6 +35,15 @@ const handlePopoverOpenChange = (isOpen: boolean) => {
 
 const handleTabChange = (newTab: string) => {
 	activeTab.value = newTab;
+};
+
+const handleAccessTokenTabCopy = (type: 'serverUrl' | 'accessToken' | 'mcpJson') => {
+	const itemMap = {
+		serverUrl: 'server-url',
+		accessToken: 'access-token',
+		mcpJson: 'mcp-json',
+	} as const;
+	trackCopyEvent({ item: itemMap[type], source: 'token-tab' });
 };
 
 const trackCopyEvent = (payload: {
@@ -77,6 +87,11 @@ const trackCopyEvent = (payload: {
 							v-if="activeTab === TABS.OAUTH"
 							:server-url="serverUrl"
 							@copy="trackCopyEvent({ item: 'server-url', source: 'oauth-tab' })"
+						/>
+						<MCPAccessTokenPopoverTab
+							v-else-if="activeTab === TABS.ACCESS_TOKEN"
+							:server-url="serverUrl"
+							@copy="handleAccessTokenTabCopy"
 						/>
 					</main>
 				</div>

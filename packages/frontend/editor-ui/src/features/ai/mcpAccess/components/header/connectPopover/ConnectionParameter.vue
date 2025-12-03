@@ -51,7 +51,7 @@ const handleCopy = async (value: string) => {
 					<N8nButton
 						v-if="props.allowCopy && isSupported"
 						type="tertiary"
-						:icon="copied ? 'clipboard-check' : 'clipboard'"
+						:icon="copied ? 'check' : 'copy'"
 						:square="true"
 						:class="$style['copy-button']"
 						@click="handleCopy(props.value)"
@@ -77,6 +77,7 @@ const handleCopy = async (value: string) => {
 .parameter-value {
 	display: flex;
 	align-items: stretch;
+	justify-content: space-between;
 	gap: var(--spacing--2xs);
 	background: var(--color--background--light-3);
 	border: var(--border);
