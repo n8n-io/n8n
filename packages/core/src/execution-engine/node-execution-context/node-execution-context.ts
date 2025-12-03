@@ -17,6 +17,7 @@ import type {
 	IRunExecutionData,
 	IWorkflowExecuteAdditionalData,
 	NodeConnectionType,
+	NodeFeatures,
 	NodeInputConnections,
 	NodeParameterValueType,
 	NodeTypeAndVersion,
@@ -174,7 +175,7 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	 * @private
 	 */
 	@Memoized
-	private get nodeFeatures(): Record<string, boolean> {
+	private get nodeFeatures(): NodeFeatures {
 		const nodeType = this.nodeType;
 		if (!nodeType?.defineFeatures) {
 			return {};

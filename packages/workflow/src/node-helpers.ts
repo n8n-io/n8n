@@ -33,8 +33,8 @@ import type {
 	INodeInputConfiguration,
 	GenericValue,
 	DisplayCondition,
-	FeatureCondition,
 	NodeConnectionType,
+	NodeFeatures,
 	ICredentialDataDecryptedObject,
 } from './interfaces';
 import { validateFilterParameter } from './node-parameters/filter-parameter';
@@ -257,10 +257,7 @@ export function isSubNodeType(
  * Gets feature flags for a node type and version.
  * Calls the node type's defineFeatures() function if available.
  */
-function getNodeFeatures(
-	nodeType: INodeType | null | undefined,
-	version: number,
-): Record<string, boolean> {
+function getNodeFeatures(nodeType: INodeType | null | undefined, version: number): NodeFeatures {
 	if (!nodeType?.defineFeatures) {
 		return {};
 	}

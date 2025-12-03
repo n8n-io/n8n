@@ -1538,14 +1538,6 @@ export type DisplayCondition =
 	| { _cnd: { regex: string } }
 	| { _cnd: { exists: true } };
 
-export type FeatureCondition =
-	| { eq: number }
-	| { gt: number }
-	| { lt: number }
-	| { gte: number }
-	| { lte: number }
-	| { between: { from: number; to: number } };
-
 /**
  * Type for node feature flags.
  * Maps feature names to boolean values indicating if features are enabled.
