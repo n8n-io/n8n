@@ -497,7 +497,11 @@ describe('WorkflowExecutionService', () => {
 		});
 
 		afterEach(() => {
-			process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = originalOffloadManualExecutionsToWorkers;
+			if (originalOffloadManualExecutionsToWorkers === undefined) {
+				delete process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS;
+			} else {
+				process.env.OFFLOAD_MANUAL_EXECUTIONS_TO_WORKERS = originalOffloadManualExecutionsToWorkers;
+			}
 			jest.clearAllMocks();
 		});
 
