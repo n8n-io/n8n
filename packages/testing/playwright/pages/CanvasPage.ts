@@ -944,7 +944,9 @@ export class CanvasPage extends BasePage {
 	}
 
 	getNodeRunningStatusIndicator(nodeName: string): Locator {
-		return this.nodeByName(nodeName).locator('.running, .waiting');
+		return this.page.locator(
+			`[data-test-id="canvas-node"][data-node-name="${nodeName}"].running, [data-test-id="canvas-node"][data-node-name="${nodeName}"].waiting`,
+		);
 	}
 
 	getSuccessEdges(): Locator {
