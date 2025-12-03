@@ -49,12 +49,12 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 		:user="user"
 		@feedback="(feedback) => emit('feedback', feedback)"
 	>
-		<div :class="$style.textMessage">
-			<span
-				v-if="message.role === 'user'"
-				v-n8n-html="renderMarkdown(message.content)"
-				:class="$style.renderedContent"
-			></span>
+		<div :class="[$style.textMessage, { [$style.userMessage]: message.role === 'user' }]">
+			<!-- User message with container -->
+			<div v-if="message.role === 'user'" :class="$style.userMessageContainer">
+				<span v-n8n-html="renderMarkdown(message.content)" :class="$style.renderedContent"></span>
+			</div>
+			<!-- Assistant message - simple text without container -->
 			<div
 				v-else
 				v-n8n-html="renderMarkdown(message.content)"
@@ -92,10 +92,24 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 .textMessage {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing--xs);
-	font-size: var(--font-size--2xs);
-	line-height: 1.6;
+	gap: var(--spacing--2xs);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 	word-break: break-word;
+}
+
+// User messages align right
+.userMessage {
+	align-items: flex-end;
+}
+
+// User message container styles per Figma
+.userMessageContainer {
+	background-color: var(--color--foreground--tint-1);
+	border-radius: var(--radius--lg);
+	padding: var(--spacing--2xs) var(--spacing--xs);
+	color: var(--color--text--shade-1);
+	max-width: calc(100% - 40px);
 }
 
 .codeSnippet {
@@ -135,15 +149,18 @@ async function onCopyButtonClick(content: string, e: MouseEvent) {
 	}
 }
 
+// Assistant message - simple text
 .assistantText {
 	display: inline-flex;
 	flex-direction: column;
+	color: var(--color--text);
+	font-size: var(--font-size--sm);
+	line-height: var(--line-height--xl);
 }
 
 .renderedContent {
 	p {
 		margin: 0;
-		margin: var(--spacing--4xs) 0;
 	}
 
 	h1,

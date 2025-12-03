@@ -2,9 +2,10 @@
 import { computed, nextTick, onUnmounted, ref, useCssModule, watch } from 'vue';
 
 import MessageWrapper from './messages/MessageWrapper.vue';
+import ThinkingMessage from './messages/ThinkingMessage.vue';
 import { useI18n } from '../../composables/useI18n';
 import type { ChatUI, RatingFeedback, WorkflowSuggestion } from '../../types/assistant';
-import { isTaskAbortedMessage, isToolMessage } from '../../types/assistant';
+import { isTaskAbortedMessage, isToolMessage, isThinkingGroupMessage } from '../../types/assistant';
 import AssistantIcon from '../AskAssistantIcon/AssistantIcon.vue';
 import AssistantLoadingMessage from '../AskAssistantLoadingMessage/AssistantLoadingMessage.vue';
 import AssistantText from '../AskAssistantText/AssistantText.vue';
@@ -78,79 +79,75 @@ function filterOutHiddenMessages(messages: ChatUI.AssistantMessage[]): ChatUI.As
 	);
 }
 
-function collapseToolMessages(messages: ChatUI.AssistantMessage[]): ChatUI.AssistantMessage[] {
+function groupToolMessagesIntoThinking(
+	messages: ChatUI.AssistantMessage[],
+): ChatUI.AssistantMessage[] {
 	const result: ChatUI.AssistantMessage[] = [];
 	let i = 0;
 
 	while (i < messages.length) {
 		const currentMsg = messages[i];
 
-		// If it's not a tool message, add it as-is and continue
+		// If it's not a tool message, add it as-is
 		if (!isToolMessage(currentMsg)) {
 			result.push(currentMsg);
 			i++;
 			continue;
 		}
 
-		// Collect consecutive tool messages with the same toolName
-		const toolMessagesGroup = [currentMsg];
+		// Collect ALL consecutive tool messages
+		const toolGroup: ChatUI.ToolMessage[] = [currentMsg];
 		let j = i + 1;
 
-		while (j < messages.length) {
-			const nextMsg = messages[j];
-			if (isToolMessage(nextMsg) && nextMsg.toolName === currentMsg.toolName) {
-				toolMessagesGroup.push(nextMsg);
-				j++;
-			} else {
-				break;
-			}
+		while (j < messages.length && isToolMessage(messages[j])) {
+			toolGroup.push(messages[j] as ChatUI.ToolMessage);
+			j++;
 		}
 
-		// If we have multiple tool messages with the same toolName, collapse them
-		if (toolMessagesGroup.length > 1) {
-			// Determine the status to show based on priority rules
-			const lastMessage = toolMessagesGroup[toolMessagesGroup.length - 1];
-			let titleSource = lastMessage;
+		// Determine the latest status text
+		const lastRunning = toolGroup.filter((m) => m.status === 'running').pop();
+		const lastMessage = toolGroup[toolGroup.length - 1];
+		const latestStatus =
+			lastRunning?.customDisplayTitle ||
+			lastRunning?.displayTitle ||
+			lastMessage?.customDisplayTitle ||
+			lastMessage?.displayTitle ||
+			lastMessage?.toolName
+				.split('_')
+				.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+				.join(' ') ||
+			'Processing...';
 
-			// Check if we have running messages - if so, show the last running one and use its titles
-			const runningMessages = toolMessagesGroup.filter((msg) => msg.status === 'running');
-			const errorMessage = toolMessagesGroup.find((msg) => msg.status === 'error');
-			if (runningMessages.length > 0) {
-				const lastRunning = runningMessages[runningMessages.length - 1];
-				titleSource = lastRunning;
-			} else if (errorMessage) {
-				titleSource = errorMessage;
-			}
+		// Create a ThinkingGroup message
+		const thinkingGroup: ChatUI.ThinkingGroupMessage = {
+			id: `thinking-${toolGroup[0].id || i}`,
+			role: 'assistant',
+			type: 'thinking-group',
+			items: toolGroup.map((m, idx) => ({
+				id: m.id || `tool-${i}-${idx}`,
+				displayTitle:
+					m.customDisplayTitle ||
+					m.displayTitle ||
+					m.toolName
+						.split('_')
+						.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+						.join(' '),
+				status: m.status,
+			})),
+			latestStatusText: latestStatus,
+		};
 
-			// Combine all updates from all messages in the group
-			const combinedUpdates = toolMessagesGroup.flatMap((msg) => msg.updates || []);
-
-			// Create collapsed message using last message as base, but with titles from titleSource
-			const collapsedMessage: ChatUI.ToolMessage = {
-				...lastMessage,
-				displayTitle: titleSource.displayTitle,
-				customDisplayTitle:
-					titleSource.status === 'running' ? titleSource.customDisplayTitle : undefined,
-				status: titleSource.status,
-				updates: combinedUpdates,
-			};
-
-			result.push(collapsedMessage);
-		} else {
-			// Single tool message, add as-is
-			result.push(currentMsg);
-		}
-
+		result.push(thinkingGroup);
 		i = j;
 	}
 
 	return result;
 }
 
-// Ensure all messages have required id and read properties, and collapse tool messages
+// Ensure all messages have required id and read properties, and group tool messages into thinking blocks
 const normalizedMessages = computed(() => {
 	const normalized = normalizeMessages(props.messages);
-	return collapseToolMessages(filterOutHiddenMessages(normalized));
+	return groupToolMessagesIntoThinking(filterOutHiddenMessages(normalized));
 });
 
 // Get quickReplies from the last message in the original messages (before filtering)
@@ -273,15 +270,18 @@ onUnmounted(() => {
 
 function getMessageStyles(message: ChatUI.AssistantMessage, messageCount: number) {
 	const $style = useCssModule();
+	const isToolOrThinking = message.type === 'tool' || message.type === 'thinking-group';
+	const prevMsg = normalizedMessages.value[messageCount - 1];
+	const nextMsg = normalizedMessages.value[messageCount + 1];
+	const prevIsToolOrThinking = prevMsg?.type === 'tool' || prevMsg?.type === 'thinking-group';
+	const nextIsToolOrThinking = nextMsg?.type === 'tool' || nextMsg?.type === 'thinking-group';
+
 	return {
-		[$style.firstToolMessage]:
-			message.type === 'tool' &&
-			(messageCount === 0 || normalizedMessages.value[messageCount - 1].type !== 'tool'),
+		[$style.firstToolMessage]: isToolOrThinking && (messageCount === 0 || !prevIsToolOrThinking),
 		[$style.lastToolMessage]:
-			message.type === 'tool' &&
+			isToolOrThinking &&
 			((messageCount === normalizedMessages.value.length - 1 && !props.loadingMessage) ||
-				(messageCount < normalizedMessages.value.length - 1 &&
-					normalizedMessages.value[messageCount + 1]?.type !== 'tool')),
+				(messageCount < normalizedMessages.value.length - 1 && !nextIsToolOrThinking)),
 	};
 }
 
@@ -333,7 +333,18 @@ defineExpose({
 									message.role === 'assistant' ? 'chat-message-assistant' : 'chat-message-user'
 								"
 							>
+								<!-- Handle ThinkingGroup messages -->
+								<ThinkingMessage
+									v-if="isThinkingGroupMessage(message)"
+									:items="message.items"
+									:latest-status-text="message.latestStatusText"
+									:is-streaming="streaming"
+									:class="getMessageStyles(message, i)"
+								/>
+
+								<!-- Handle regular messages -->
 								<MessageWrapper
+									v-else
 									:message="message"
 									:is-first-of-role="i === 0 || message.role !== normalizedMessages[i - 1].role"
 									:user="user"
@@ -382,7 +393,8 @@ defineExpose({
 								[$style.loading]: normalizedMessages?.length,
 								[$style.firstToolMessage]:
 									normalizedMessages?.length === 0 ||
-									normalizedMessages[normalizedMessages.length - 1].type !== 'tool',
+									(normalizedMessages[normalizedMessages.length - 1].type !== 'tool' &&
+										normalizedMessages[normalizedMessages.length - 1].type !== 'thinking-group'),
 								[$style.lastToolMessage]: true,
 							}"
 						>
