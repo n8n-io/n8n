@@ -660,7 +660,18 @@ onBeforeUnmount(() => {
 								:key="item.id"
 								:label="item.name"
 								:value="item.id"
+								:disabled="item.active === false"
 							>
+								<div :class="$style.optionContent">
+									<span>{{ item.name }}</span>
+									<N8nTooltip
+										v-if="item.active === false"
+										:content="i18n.baseText('resourceLocator.workflow.inactive.tooltip')"
+										placement="top"
+									>
+										<N8nIcon icon="triangle-alert" size="small" :class="$style.inactiveIcon" />
+									</N8nTooltip>
+								</div>
 							</N8nOption>
 						</N8nSelect>
 					</ElCol>
@@ -1279,6 +1290,23 @@ onBeforeUnmount(() => {
 
 	&:hover {
 		text-decoration: underline;
+	}
+}
+
+.optionContent {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	width: 100%;
+}
+
+.inactiveIcon {
+	color: var(--color--warning);
+	opacity: 0;
+	transition: opacity 0.2s ease;
+
+	:global(.el-select-dropdown__item):hover & {
+		opacity: 1;
 	}
 }
 </style>
