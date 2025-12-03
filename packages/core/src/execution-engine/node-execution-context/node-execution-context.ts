@@ -170,14 +170,6 @@ export abstract class NodeExecutionContext implements Omit<FunctionsBase, 'getCr
 	}
 
 	/**
-	 * Gets node-specific configuration if available.
-	 * Calls the node type's getConfig() method if implemented.
-	 */
-	getNodeConfig() {
-		return this.nodeType?.getConfig?.(this.node.typeVersion);
-	}
-
-	/**
 	 * Checks if a feature is enabled for the current node version.
 	 * Uses the node type's features property to evaluate declarative feature conditions.
 	 * Reads the node type and version from the current context.

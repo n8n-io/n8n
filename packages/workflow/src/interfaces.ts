@@ -941,13 +941,6 @@ export interface FunctionsBase {
 	prepareOutputData(outputData: INodeExecutionData[]): Promise<INodeExecutionData[][]>;
 
 	/**
-	 * Gets node-specific configuration if available.
-	 * Calls the node type's getConfig() method if implemented.
-	 * @returns Configuration object or undefined if not implemented
-	 */
-	getNodeConfig?(): IDataObject | undefined;
-
-	/**
 	 * Checks if a feature is enabled for the current node version.
 	 * Uses the node type's features property to evaluate declarative feature conditions.
 	 * Reads the node type and version from the current context.
