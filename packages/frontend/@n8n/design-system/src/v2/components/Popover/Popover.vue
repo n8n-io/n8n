@@ -180,6 +180,11 @@ const contentStyles = computed(() => {
 
 .arrow {
 	fill: var(--color--foreground--tint-2);
+
+	path {
+		stroke: var(--color--foreground);
+		stroke-width: 1;
+	}
 }
 
 @keyframes slideUpAndFade {
