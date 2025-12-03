@@ -263,6 +263,17 @@ export function useWorkflowExtraction() {
 		try {
 			const createdWorkflow = await workflowsStore.createNewWorkflow(workflowData);
 
+			// Activate the sub-workflow since it contains an Execute Workflow Trigger node
+			// This makes it immediately callable from the parent workflow
+			try {
+				await workflowsStore.publishWorkflow(createdWorkflow.id, {
+					versionId: createdWorkflow.versionId,
+				});
+			} catch (activationError) {
+				// Log activation error but don't fail the extraction - workflow was created successfully
+				console.error('Failed to activate extracted sub-workflow:', activationError);
+			}
+
 			const { href } = router.resolve({
 				name: VIEWS.WORKFLOW,
 				params: {
