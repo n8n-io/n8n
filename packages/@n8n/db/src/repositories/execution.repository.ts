@@ -423,6 +423,14 @@ export class ExecutionRepository extends Repository<ExecutionEntity> {
 		return startedAt;
 	}
 
+	/**
+	 * Update an existing execution in the database.
+	 *
+	 * @param executionId - The ID of the execution to update
+	 * @param execution - Partial execution data to update
+	 * @param requireStatus - Optional status requirement. If provided, update only succeeds if execution has this status
+	 * @returns true if update succeeded, false if requireStatus condition was not met
+	 */
 	async updateExistingExecution(
 		executionId: string,
 		execution: Partial<IExecutionResponse>,
