@@ -100,17 +100,17 @@ const descriptionV2: INodeTypeDescription = {
 			],
 			default: 'none',
 		},
-		{ ...webhookPath, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
+		{ ...webhookPath, displayOptions: { show: { '@feature': ['showWebhookPath'] } } },
 		formTitle,
 		formDescription,
 		formFields,
-		{ ...formRespondMode, displayOptions: { show: { '@version': [{ _cnd: { lte: 2.1 } }] } } },
+		{ ...formRespondMode, displayOptions: { show: { '@feature': ['showWebhookPath'] } } },
 		{
 			...formRespondMode,
 			options: (formRespondMode.options as INodePropertyOptions[])?.filter(
 				(option) => option.value !== 'responseNode',
 			),
-			displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
+			displayOptions: { show: { '@feature': ['hideResponseNodeOption'] } },
 		},
 		{
 			displayName:
@@ -147,7 +147,7 @@ const descriptionV2: INodeTypeDescription = {
 				{
 					...webhookPath,
 					required: false,
-					displayOptions: { show: { '@version': [{ _cnd: { gte: 2.2 } }] } },
+					displayOptions: { show: { '@feature': ['showWebhookPathInOptions'] } },
 				},
 				{
 					...respondWithOptions,
@@ -170,7 +170,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
-							'@version': [2],
+							'@feature': ['useWorkflowTimezoneV2Only'],
 						},
 					},
 				},
@@ -180,7 +180,7 @@ const descriptionV2: INodeTypeDescription = {
 					description: "Whether to use the workflow timezone in 'submittedAt' field or UTC",
 					displayOptions: {
 						show: {
-							'@version': [{ _cnd: { gt: 2 } }],
+							'@feature': ['defaultUseWorkflowTimezone'],
 						},
 					},
 				},
@@ -194,7 +194,7 @@ const descriptionV2: INodeTypeDescription = {
 					},
 					displayOptions: {
 						show: {
-							'@version': [{ _cnd: { gt: 2 } }],
+							'@feature': ['defaultUseWorkflowTimezone'],
 						},
 					},
 					default: cssVariables.trim(),
@@ -217,8 +217,12 @@ export class FormTriggerV2 implements INodeType {
 		defaultUseWorkflowTimezone: { gt: 2 }, // v2.1+ defaults to true
 		allowRespondToWebhook: { lte: 2.1 }, // v2.2+ doesn't allow
 		useFieldName: { gte: 2.4 }, // v2.4+ uses fieldName
+		useFieldLabel: { lt: 2.4 }, // v2.3 and below uses fieldLabel
 		showWebhookPath: { lte: 2.1 }, // Show in main properties for v2.1 and below
 		showWebhookPathInOptions: { gte: 2.2 }, // Show in options for v2.2+
+		hideResponseNodeOption: { gte: 2.2 }, // Hide 'responseNode' option for v2.2+
+		useWorkflowTimezoneV2Only: { eq: 2 }, // Show useWorkflowTimezone with default false only for v2
+		showMultiselect: { lt: 2.3 }, // Show multiselect option for v2.2 and below
 	};
 
 	constructor(baseDescription: INodeTypeBaseDescription) {

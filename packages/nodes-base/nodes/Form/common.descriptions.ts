@@ -69,7 +69,7 @@ export const formFields: INodeProperties = {
 							fieldType: ['html'],
 						},
 						show: {
-							'@version': [{ _cnd: { gte: 2.4 } }],
+							'@feature': ['useFieldName'],
 						},
 					},
 				},
@@ -86,7 +86,7 @@ export const formFields: INodeProperties = {
 							fieldType: ['hiddenField', 'html'],
 						},
 						show: {
-							'@version': [{ _cnd: { gte: 2.4 } }],
+							'@feature': ['useFieldName'],
 						},
 					},
 				},
@@ -103,7 +103,7 @@ export const formFields: INodeProperties = {
 							fieldType: ['hiddenField', 'html'],
 						},
 						show: {
-							'@version': [{ _cnd: { lt: 2.4 } }],
+							'@feature': ['useFieldLabel'],
 						},
 					},
 				},
@@ -117,7 +117,7 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['hiddenField'],
-							'@version': [{ _cnd: { lt: 2.4 } }],
+							'@feature': ['useFieldLabel'],
 						},
 					},
 				},
@@ -377,7 +377,7 @@ export const formFields: INodeProperties = {
 						show: {
 							multiselect: [true],
 							fieldType: ['dropdown'],
-							'@version': [{ _cnd: { lt: 2.3 } }],
+							'@feature': ['showMultiselect'],
 						},
 					},
 				},
@@ -391,7 +391,7 @@ export const formFields: INodeProperties = {
 					displayOptions: {
 						show: {
 							fieldType: ['dropdown'],
-							'@version': [{ _cnd: { lt: 2.3 } }],
+							'@feature': ['showMultiselect'],
 						},
 					},
 				},
