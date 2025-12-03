@@ -93,7 +93,7 @@ const onTableAction = (action: string, item: OAuthClientResponseDto) => {
 						<N8nText
 							data-test-id="mcp-workflow-table-empty-state-description"
 							size="small"
-							color="text-tint-1"
+							color="text-base"
 						>
 							{{ i18n.baseText('settings.mcp.oauth.table.empty.description') }}
 						</N8nText>

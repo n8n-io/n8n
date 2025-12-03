@@ -116,7 +116,7 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 						<N8nText
 							data-test-id="mcp-workflow-table-empty-state-description"
 							size="small"
-							color="text-tint-1"
+							color="text-base"
 						>
 							{{ i18n.baseText('settings.mcp.workflows.table.empty.description') }}
 						</N8nText>
