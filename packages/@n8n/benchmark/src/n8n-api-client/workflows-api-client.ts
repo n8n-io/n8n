@@ -1,6 +1,6 @@
-import type { Workflow } from '@/n8n-api-client/n8n-api-client.types';
-
 import type { AuthenticatedN8nApiClient } from './authenticated-n8n-api-client';
+
+import type { Workflow } from '@/n8n-api-client/n8n-api-client.types';
 
 export class WorkflowApiClient {
 	constructor(private readonly apiClient: AuthenticatedN8nApiClient) {}
@@ -18,10 +18,12 @@ export class WorkflowApiClient {
 	}
 
 	async activateWorkflow(workflow: Workflow): Promise<Workflow> {
-		const response = await this.apiClient.patch<{ data: Workflow }>(`/workflows/${workflow.id}`, {
-			...workflow,
-			active: true,
-		});
+		const response = await this.apiClient.post<{ data: Workflow }>(
+			`/workflows/${workflow.id}/activate`,
+			{
+				versionId: workflow.versionId,
+			},
+		);
 
 		return response.data.data;
 	}
