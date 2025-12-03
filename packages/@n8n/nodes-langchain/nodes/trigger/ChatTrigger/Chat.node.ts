@@ -17,6 +17,7 @@ import type {
 } from 'n8n-workflow';
 
 import { configureInputs, configureWaitTillDate } from './util';
+import { getOptionalMemory } from '../../agents/Agent/agents/ToolsAgent/common';
 
 const limitWaitTimeProperties: INodeProperties[] = [
 	{
@@ -224,9 +225,7 @@ export class Chat implements INodeType {
 		}
 
 		if (options.memoryConnection) {
-			const memory = (await context.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
-				| BaseChatMemory
-				| undefined;
+			const memory = await getOptionalMemory(context);
 
 			const message = data.json?.chatInput;
 
@@ -286,9 +285,7 @@ export class Chat implements INodeType {
 		};
 
 		if (options.memoryConnection) {
-			const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
-				| BaseChatMemory
-				| undefined;
+			const memory = await getOptionalMemory(this);
 
 			if (memory) {
 				await memory.chatHistory.addAIMessage(message);

@@ -1,4 +1,3 @@
-import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseMessage } from '@langchain/core/messages';
 import {
 	NodeConnectionTypes,
@@ -8,6 +7,7 @@ import {
 	type INodeType,
 	type INodeTypeDescription,
 } from 'n8n-workflow';
+import { getOptionalMemory } from '../../agents/Agent/agents/ToolsAgent/common';
 
 function simplifyMessages(messages: BaseMessage[]) {
 	const chunkedMessages = [];
@@ -90,9 +90,7 @@ export class MemoryChatRetriever implements INodeType {
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		this.logger.debug('Executing Chat Memory Retriever');
 
-		const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
-			| BaseChatMemory
-			| undefined;
+		const memory = await getOptionalMemory(this);
 		const simplifyOutput = this.getNodeParameter('simplifyOutput', 0) as boolean;
 
 		const messages = await memory?.chatHistory.getMessages();

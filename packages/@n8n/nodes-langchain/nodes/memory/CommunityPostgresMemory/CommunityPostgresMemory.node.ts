@@ -1,3 +1,4 @@
+import { logWrapper } from '@n8n/ai-tools';
 import { configurePostgres } from 'n8n-nodes-base/dist/nodes/Postgres/transport/index';
 import type { PostgresNodeCredentials } from 'n8n-nodes-base/dist/nodes/Postgres/v2/helpers/interfaces';
 import { postgresConnectionTest } from 'n8n-nodes-base/dist/nodes/Postgres/v2/methods/credentialTest';
@@ -11,9 +12,9 @@ import { NodeConnectionTypes } from 'n8n-workflow';
 import type pg from 'pg';
 
 import { getSessionId } from '@utils/helpers';
-import { logWrapper } from '@utils/logWrapper';
 import { getConnectionHintNoticeField } from '@utils/sharedFields';
 
+import { wrapN8nMemory } from '@utils/translators';
 import {
 	contextWindowLengthProperty,
 	expressionSessionKeyProperty,
@@ -21,7 +22,6 @@ import {
 	sessionKeyProperty,
 } from '../descriptions';
 import { PostgresChatMessageHistory } from './messageHistory';
-import { wrapN8nMemory } from '@utils/translators';
 
 export class CommunityPostgresMemory implements INodeType {
 	description: INodeTypeDescription = {

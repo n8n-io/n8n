@@ -1,0 +1,42 @@
+{
+	"name": "@n8n/ai-tools",
+	"version": "1.0.0",
+	"description": "AI tools package for n8n",
+	"main": "dist/index.js",
+	"types": "dist/index.d.ts",
+	"scripts": {
+		"clean": "rimraf dist .turbo",
+		"dev": "pnpm run watch",
+		"typecheck": "tsc --noEmit",
+		"build": "tsup --tsconfig tsconfig.build.json && tsc-alias -p tsconfig.build.json",
+		"format": "biome format --write .",
+		"format:check": "biome ci .",
+		"lint": "eslint src --quiet",
+		"lint:fix": "eslint src --fix",
+		"watch": "tsup --watch src --tsconfig tsconfig.build.json",
+		"test": "jest",
+		"test:unit": "jest",
+		"test:dev": "jest --watch"
+	},
+	"files": [
+		"dist"
+	],
+	"devDependencies": {
+		"@n8n/eslint-config": "workspace:*",
+		"@n8n/typescript-config": "workspace:*",
+		"@types/node": "catalog:",
+		"rimraf": "catalog:",
+		"tsup": "^8.5.0",
+		"typescript": "catalog:"
+	},
+	"dependencies": {
+		"@langchain/community": "catalog:",
+		"@langchain/core": "catalog:",
+		"@langchain/openai": "catalog:",
+		"n8n-workflow": "workspace:*",
+		"@langchain/textsplitters": "1.0.1",
+    "tmp-promise": "3.0.3",
+		"zod": "catalog:",
+		"zod-to-json-schema": "3.23.3"
+	}
+}

@@ -12,6 +12,7 @@ import { N8nChatModelToLangChain } from '@utils/translators/n8n-to-langchain';
 import { isN8nChatModel } from 'n8n-workflow';
 
 import { checkForStructuredTools, extractParsedOutput } from '../utils';
+import { getOptionalMemory } from '../ToolsAgent/common';
 
 export async function conversationalAgentExecute(
 	this: IExecuteFunctions,
@@ -29,9 +30,7 @@ export async function conversationalAgentExecute(
 		throw new NodeOperationError(this.getNode(), 'Conversational Agent requires Chat Model');
 	}
 
-	const memory = (await this.getInputConnectionData(NodeConnectionTypes.AiMemory, 0)) as
-		| BaseChatMemory
-		| undefined;
+	const memory = await getOptionalMemory(this);
 
 	const tools = await getConnectedTools(this, nodeVersion >= 1.5, true, true);
 	const outputParser = await getOptionalOutputParser(this);

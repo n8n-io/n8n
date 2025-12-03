@@ -1,0 +1,20 @@
+{
+	"extends": [
+		"@n8n/typescript-config/tsconfig.common.json",
+		"@n8n/typescript-config/tsconfig.backend.json"
+	],
+	"compilerOptions": {
+		"baseUrl": ".",
+		"tsBuildInfoFile": "dist/typecheck.tsbuildinfo",
+		"emitDecoratorMetadata": true,
+		"experimentalDecorators": true,
+		// TODO: remove all options below this line
+		"useUnknownInCatchVariables": false
+	},
+	"include": ["src/**/*.ts"],
+	"references": [
+		{ "path": "../../core/tsconfig.build.json" },
+		{ "path": "../../nodes-base/tsconfig.build.cjs.json" },
+		{ "path": "../../workflow/tsconfig.build.esm.json" }
+	]
+}
