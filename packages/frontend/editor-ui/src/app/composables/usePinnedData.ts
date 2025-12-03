@@ -218,8 +218,6 @@ export function usePinnedData(
 			view: displayMode,
 			run_index: runIndex,
 			workflow_id: workflowsStore.workflowId,
-			user_id: usersStore.currentUserId ?? undefined,
-			instance_id: rootStore.instanceId,
 			node_id: targetNode?.id,
 		};
 
