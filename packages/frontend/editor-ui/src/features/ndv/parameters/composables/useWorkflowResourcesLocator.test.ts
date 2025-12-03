@@ -143,7 +143,7 @@ describe('useWorkflowResourcesLocator', () => {
 				1, // page
 				40, // pageSize
 				'updatedAt:desc', // sort
-				{}, // filter
+				undefined, // filter
 			);
 
 			expect(workflowsResources.value).toEqual([
@@ -240,7 +240,7 @@ describe('useWorkflowResourcesLocator', () => {
 				1,
 				40,
 				'updatedAt:desc',
-				{},
+				undefined,
 			);
 
 			// Load second page
@@ -251,7 +251,7 @@ describe('useWorkflowResourcesLocator', () => {
 				2,
 				40,
 				'updatedAt:desc',
-				{},
+				undefined,
 			);
 
 			// Verify workflows from both pages are present
