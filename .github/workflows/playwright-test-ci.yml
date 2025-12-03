@@ -3,10 +3,6 @@ name: E2E Tests for CI
 on:
   workflow_call:
 
-concurrency:
-  group: e2e-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   # Multi-main: postgres + redis + caddy + 2 mains + 1 worker
   multi-main-ui:
@@ -55,8 +51,8 @@ jobs:
   #     workers: '1'
   #   secrets: inherit
 
-  checks:
-    name: E2E Checks
+  e2e-checks:
+    name: E2E - Checks
     needs: [multi-main-ui, multi-main-isolated]
     if: always()
     runs-on: ubuntu-latest
