@@ -4,8 +4,7 @@ import WorkflowHistoryButton from '@/features/workflows/workflowHistory/componen
 import type { FolderShortInfo } from '@/features/core/folders/folders.types';
 import type { IWorkflowDb } from '@/Interface';
 import type { PermissionsRecord } from '@n8n/permissions';
-import { computed, onBeforeUnmount, onMounted, useTemplateRef } from 'vue';
-import { WORKFLOW_PUBLISH_MODAL_KEY } from '@/app/constants';
+import { computed, useTemplateRef } from 'vue';
 import { N8nButton, N8nIcon, N8nTooltip } from '@n8n/design-system';
 import { useI18n } from '@n8n/i18n';
 import { useUIStore } from '@/app/stores/ui.store';
@@ -13,8 +12,6 @@ import { useWorkflowsStore } from '@/app/stores/workflows.store';
 import SaveButton from '@/app/components/SaveButton.vue';
 import TimeAgo from '@/app/components/TimeAgo.vue';
 import { getActivatableTriggerNodes } from '@/app/utils/nodeTypesUtils';
-import { useWorkflowSaving } from '@/app/composables/useWorkflowSaving';
-import { useRouter } from 'vue-router';
 import { getLastPublishedByUser } from '@/features/workflows/workflowHistory/utils';
 import KeyboardShortcutTooltip from '@/app/components/KeyboardShortcutTooltip.vue';
 import { nodeViewEventBus } from '@/app/event-bus';
@@ -40,8 +37,6 @@ const locale = useI18n();
 const uiStore = useUIStore();
 const workflowsStore = useWorkflowsStore();
 const i18n = useI18n();
-const router = useRouter();
-const { saveCurrentWorkflow } = useWorkflowSaving({ router });
 
 const isWorkflowSaving = computed(() => {
 	return uiStore.isActionActive.workflowSaving;
@@ -49,20 +44,8 @@ const isWorkflowSaving = computed(() => {
 
 const importFileRef = computed(() => actionsMenuRef.value?.importFileRef);
 
-const onPublishButtonClick = async () => {
-	// If there are unsaved changes, save the workflow first
-	if (uiStore.stateIsDirty || props.isNewWorkflow) {
-		const saved = await saveCurrentWorkflow({}, true);
-		if (!saved) {
-			// If save failed, don't open the modal
-			return;
-		}
-	}
-
-	uiStore.openModalWithData({
-		name: WORKFLOW_PUBLISH_MODAL_KEY,
-		data: {},
-	});
+const onPublishButtonClick = () => {
+	nodeViewEventBus.emit('publishWorkflow');
 };
 
 const foundTriggers = computed(() =>
@@ -94,14 +77,6 @@ const activeVersion = computed(() => workflowsStore.workflow.activeVersion);
 const latestPublishDate = computed(() => {
 	const latestPublish = getLastPublishedByUser(activeVersion.value?.workflowPublishHistory ?? []);
 	return latestPublish?.createdAt;
-});
-
-onMounted(() => {
-	nodeViewEventBus.on('publishWorkflow', onPublishButtonClick);
-});
-
-onBeforeUnmount(() => {
-	nodeViewEventBus.off('publishWorkflow', onPublishButtonClick);
 });
 
 defineExpose({
