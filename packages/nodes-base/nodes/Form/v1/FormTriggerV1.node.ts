@@ -1,7 +1,7 @@
 import {
 	FORM_TRIGGER_PATH_IDENTIFIER,
 	NodeConnectionTypes,
-	type IDataObject,
+	type FeatureCondition,
 	type INodeType,
 	type INodeTypeBaseDescription,
 	type INodeTypeDescription,
@@ -86,26 +86,25 @@ const descriptionV1: INodeTypeDescription = {
 export class FormTriggerV1 implements INodeType {
 	description: INodeTypeDescription;
 
+	/**
+	 * Feature definitions - declarative version conditions for each feature.
+	 * Version 1 has all features disabled or set to defaults.
+	 * Note: These conditions define when features are ENABLED (true).
+	 * For v1, most features are disabled, so we use conditions that evaluate to false for v1.
+	 */
+	features: Record<string, FeatureCondition | boolean> = {
+		requireAuth: false, // v1 doesn't require auth
+		defaultUseWorkflowTimezone: false, // v1 doesn't default to workflow timezone
+		allowRespondToWebhook: true, // v1 allows respond to webhook
+		useFieldName: false, // v1 uses fieldLabel
+		showWebhookPath: { lte: 2.1 }, // v1 and v2.1 show in main (true for v1)
+		showWebhookPathInOptions: { gte: 2.2 }, // v2.2+ shows in options (false for v1)
+	};
+
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
 			...descriptionV1,
-		};
-	}
-
-	/**
-	 * Gets the webhook configuration for version 1.
-	 * All version-specific logic for v1 is here.
-	 * This is the SINGLE source of truth for v1 config.
-	 */
-	getConfig(_version: number): IDataObject {
-		return {
-			requireAuth: false,
-			defaultUseWorkflowTimezone: false,
-			allowRespondToWebhook: true,
-			useFieldName: false,
-			showWebhookPath: true,
-			showWebhookPathInOptions: false,
 		};
 	}
 

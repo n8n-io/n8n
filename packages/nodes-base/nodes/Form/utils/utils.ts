@@ -25,7 +25,6 @@ import { WebhookAuthorizationError } from '../../Webhook/error';
 import { validateWebhookAuthentication } from '../../Webhook/utils';
 import { FORM_TRIGGER_AUTHENTICATION_PROPERTY } from '../interfaces';
 import type { FormTriggerData, FormField } from '../interfaces';
-import type { FormWebhookConfig } from './config';
 
 export function sanitizeHtml(text: string) {
 	return sanitize(text, {
@@ -139,12 +138,12 @@ export function createDescriptionMetadata(description: string) {
 		: description.replace(/^\s*\n+|<\/?[^>]+(>|$)/g, '').slice(0, 150);
 }
 
-/**
- * Gets the field identifier to use based on config.
- * Version-independent: uses config.useFieldName flag.
- */
-function getFieldIdentifier(field: FormFieldsParameter[number], config: FormWebhookConfig): string {
-	if (config.useFieldName && field.fieldName) {
+function getFieldIdentifier(
+	field: FormFieldsParameter[number],
+	context: IWebhookFunctions,
+): string {
+	const useFieldName = context.isNodeFeatureEnabled('useFieldName');
+	if (useFieldName && field.fieldName) {
 		return field.fieldName;
 	}
 
@@ -165,7 +164,7 @@ export function prepareFormData({
 	appendAttribution = true,
 	buttonLabel,
 	customCss,
-	config,
+	context,
 }: {
 	formTitle: string;
 	formDescription: string;
@@ -180,7 +179,7 @@ export function prepareFormData({
 	buttonLabel?: string;
 	formSubmittedHeader?: string;
 	customCss?: string;
-	config: FormWebhookConfig;
+	context: IWebhookFunctions;
 }) {
 	const utm_campaign = instanceId ? `&utm_campaign=${instanceId}` : '';
 	const n8nWebsiteLink = `https://n8n.io/?utm_source=n8n-internal&utm_medium=form-trigger${utm_campaign}`;
@@ -213,7 +212,7 @@ export function prepareFormData({
 
 	for (const [index, field] of formFields.entries()) {
 		const { fieldType, requiredField, multiselect, placeholder, defaultValue } = field;
-		const queryParam = getFieldIdentifier(field, config);
+		const queryParam = getFieldIdentifier(field, context);
 
 		const input: FormField = {
 			id: `field-${index}`,
@@ -269,16 +268,15 @@ export function prepareFormData({
 	return formData;
 }
 
-export const validateResponseModeConfiguration = (
-	context: IWebhookFunctions,
-	config: FormWebhookConfig,
-) => {
+export const validateResponseModeConfiguration = (context: IWebhookFunctions) => {
 	const responseMode = context.getNodeParameter('responseMode', 'onReceived') as string;
 	const connectedNodes = context.getChildNodes(context.getNode().name);
 
 	const isRespondToWebhookConnected = connectedNodes.some(
 		(node) => node.type === 'n8n-nodes-base.respondToWebhook',
 	);
+
+	const allowRespondToWebhook = context.isNodeFeatureEnabled('allowRespondToWebhook') ?? false;
 
 	if (!isRespondToWebhookConnected && responseMode === 'responseNode') {
 		throw new NodeOperationError(
@@ -294,7 +292,7 @@ export const validateResponseModeConfiguration = (
 	if (
 		isRespondToWebhookConnected &&
 		responseMode !== 'responseNode' &&
-		config.allowRespondToWebhook
+		context.isNodeFeatureEnabled('allowRespondToWebhook')
 	) {
 		throw new WorkflowConfigurationError(
 			context.getNode(),
@@ -306,7 +304,7 @@ export const validateResponseModeConfiguration = (
 		);
 	}
 
-	if (isRespondToWebhookConnected && !config.allowRespondToWebhook) {
+	if (isRespondToWebhookConnected && !allowRespondToWebhook) {
 		throw new NodeOperationError(
 			context.getNode(),
 			new Error(
@@ -324,11 +322,11 @@ export function addFormResponseDataToReturnItem(
 	returnItem: INodeExecutionData,
 	formFields: FormFieldsParameter,
 	bodyData: IDataObject,
-	config: FormWebhookConfig,
+	context: IWebhookFunctions,
 ) {
 	for (const [index, field] of formFields.entries()) {
 		const key = `field-${index}`;
-		const name = getFieldIdentifier(field, config);
+		const name = getFieldIdentifier(field, context);
 		let value = bodyData[key] ?? null;
 
 		if (value === null) {
@@ -376,8 +374,7 @@ export async function prepareFormReturnItem(
 	formFields: FormFieldsParameter,
 	mode: 'test' | 'production',
 	useWorkflowTimezone: boolean = false,
-	config: FormWebhookConfig,
-) {
+): Promise<INodeExecutionData> {
 	const req = context.getRequestObject() as MultiPartFormData.Request;
 	a.ok(req.contentType === 'multipart/form-data', 'Expected multipart/form-data');
 	const bodyData = (context.getBodyData().data as IDataObject) ?? {};
@@ -414,7 +411,7 @@ export async function prepareFormReturnItem(
 
 		const entryIndex = Number(key.replace(/field-/g, ''));
 		const field = isNaN(entryIndex) ? null : formFields[entryIndex];
-		const fieldLabel = field ? getFieldIdentifier(field, config) : key;
+		const fieldLabel = field ? getFieldIdentifier(field, context) : key;
 
 		let fileCount = 0;
 		for (const file of processFiles) {
@@ -432,7 +429,7 @@ export async function prepareFormReturnItem(
 		}
 	}
 
-	addFormResponseDataToReturnItem(returnItem, formFields, bodyData, config);
+	addFormResponseDataToReturnItem(returnItem, formFields, bodyData, context);
 
 	const timezone = useWorkflowTimezone ? context.getTimezone() : 'UTC';
 	returnItem.json.submittedAt = DateTime.now().setZone(timezone).toISO();
@@ -462,7 +459,6 @@ export function renderForm({
 	appendAttribution,
 	buttonLabel,
 	customCss,
-	config,
 }: {
 	context: IWebhookFunctions;
 	res: Response;
@@ -476,7 +472,6 @@ export function renderForm({
 	appendAttribution?: boolean;
 	buttonLabel?: string;
 	customCss?: string;
-	config: FormWebhookConfig;
 }) {
 	formDescription = (formDescription || '').replace(/\\n/g, '\n').replace(/<br>/g, '\n');
 	const instanceId = context.getInstanceId();
@@ -518,7 +513,7 @@ export function renderForm({
 		appendAttribution,
 		buttonLabel,
 		customCss,
-		config,
+		context,
 	});
 
 	res.render('form-trigger', data);
@@ -535,7 +530,6 @@ export async function formWebhook(
 	context: IWebhookFunctions,
 	authProperty = FORM_TRIGGER_AUTHENTICATION_PROPERTY,
 ) {
-	const config = context.getNodeConfig?.() as FormWebhookConfig;
 	const options = context.getNodeParameter('options', {}) as {
 		ignoreBots?: boolean;
 		respondWithOptions?: {
@@ -558,7 +552,7 @@ export async function formWebhook(
 		if (options.ignoreBots && isbot(req.headers['user-agent'])) {
 			throw new WebhookAuthorizationError(403);
 		}
-		if (config.requireAuth) {
+		if (context.isNodeFeatureEnabled('requireAuth')) {
 			await validateWebhookAuthentication(context, authProperty);
 		}
 	} catch (error) {
@@ -575,7 +569,7 @@ export async function formWebhook(
 
 	const method = context.getRequestObject().method;
 
-	validateResponseModeConfiguration(context, config);
+	validateResponseModeConfiguration(context);
 
 	//Show the form on GET request
 	if (method === 'GET') {
@@ -632,7 +626,6 @@ export async function formWebhook(
 			appendAttribution,
 			buttonLabel,
 			customCss: options.customCss,
-			config,
 		});
 
 		return {
@@ -642,13 +635,14 @@ export async function formWebhook(
 
 	let { useWorkflowTimezone } = options;
 
-	if (useWorkflowTimezone === undefined && config.defaultUseWorkflowTimezone) {
+	if (
+		useWorkflowTimezone === undefined &&
+		context.isNodeFeatureEnabled('defaultUseWorkflowTimezone')
+	) {
 		useWorkflowTimezone = true;
 	}
 
-	const returnItem = await prepareFormReturnItem(context, formFields, mode, useWorkflowTimezone, {
-		useFieldName: config.useFieldName,
-	});
+	const returnItem = await prepareFormReturnItem(context, formFields, mode, useWorkflowTimezone);
 
 	return {
 		webhookResponse: { status: 200 },

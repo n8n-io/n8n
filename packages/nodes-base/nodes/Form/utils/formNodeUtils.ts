@@ -41,7 +41,6 @@ export const renderFormNode = async (
 		`{{ $('${trigger?.name}').params.options?.appendAttribution === false ? false : true }}`,
 	) as boolean;
 
-	const config = context.getNodeConfig?.();
 	renderForm({
 		context,
 		res,
@@ -54,7 +53,6 @@ export const renderFormNode = async (
 		appendAttribution,
 		buttonLabel,
 		customCss: options.customCss,
-		config,
 	});
 
 	return {

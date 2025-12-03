@@ -946,6 +946,15 @@ export interface FunctionsBase {
 	 * @returns Configuration object or undefined if not implemented
 	 */
 	getNodeConfig?(): IDataObject | undefined;
+
+	/**
+	 * Checks if a feature is enabled for the current node version.
+	 * Uses the node type's features property to evaluate declarative feature conditions.
+	 * Reads the node type and version from the current context.
+	 * @param featureName - The name of the feature to check
+	 * @returns true if the feature is enabled, false otherwise
+	 */
+	isNodeFeatureEnabled(featureName: string): boolean;
 }
 
 type FunctionsBaseWithRequiredKeys<Keys extends keyof FunctionsBase> = FunctionsBase & {
@@ -1536,6 +1545,14 @@ export type DisplayCondition =
 	| { _cnd: { regex: string } }
 	| { _cnd: { exists: true } };
 
+export type FeatureCondition =
+	| { eq: number }
+	| { gt: number }
+	| { lt: number }
+	| { gte: number }
+	| { lte: number }
+	| { between: { from: number; to: number } };
+
 export interface IDisplayOptions {
 	hide?: {
 		[key: string]: Array<NodeParameterValue | DisplayCondition> | undefined;
@@ -1772,6 +1789,12 @@ export interface INodeType {
 	 * @returns Configuration object or undefined if not implemented
 	 */
 	getConfig?(version: number): IDataObject | undefined;
+	/**
+	 * Optional declarative feature definitions.
+	 * Maps feature names to FeatureCondition objects that define when features are enabled.
+	 * Used by isNodeFeatureEnabled() to evaluate feature availability based on node version.
+	 */
+	features?: Record<string, FeatureCondition | boolean>;
 	methods?: {
 		loadOptions?: {
 			[key: string]: (this: ILoadOptionsFunctions) => Promise<INodePropertyOptions[]>;

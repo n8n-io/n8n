@@ -1,6 +1,6 @@
 import {
 	ADD_FORM_NOTICE,
-	type IDataObject,
+	type FeatureCondition,
 	type INodePropertyOptions,
 	NodeConnectionTypes,
 	type INodeProperties,
@@ -208,26 +208,23 @@ const descriptionV2: INodeTypeDescription = {
 export class FormTriggerV2 implements INodeType {
 	description: INodeTypeDescription;
 
+	/**
+	 * Feature definitions - declarative version conditions for each feature.
+	 * This is the SINGLE source of truth for all version checks.
+	 */
+	features: Record<string, FeatureCondition | boolean> = {
+		requireAuth: { gte: 2 }, // v2+ always requires auth
+		defaultUseWorkflowTimezone: { gt: 2 }, // v2.1+ defaults to true
+		allowRespondToWebhook: { lte: 2.1 }, // v2.2+ doesn't allow
+		useFieldName: { gte: 2.4 }, // v2.4+ uses fieldName
+		showWebhookPath: { lte: 2.1 }, // Show in main properties for v2.1 and below
+		showWebhookPathInOptions: { gte: 2.2 }, // Show in options for v2.2+
+	};
+
 	constructor(baseDescription: INodeTypeBaseDescription) {
 		this.description = {
 			...baseDescription,
 			...descriptionV2,
-		};
-	}
-
-	/**
-	 * Gets the webhook configuration for version 2.
-	 * All version-specific logic for v2 is here.
-	 * This is the SINGLE source of truth for v2 config.
-	 */
-	getConfig(version: number): IDataObject {
-		return {
-			requireAuth: true, // v2+ always requires auth
-			defaultUseWorkflowTimezone: version > 2, // v2.1+ defaults to true
-			allowRespondToWebhook: version <= 2.1, // v2.2+ doesn't allow
-			useFieldName: version >= 2.4, // v2.4+ uses fieldName
-			showWebhookPath: version <= 2.1, // Show in main properties for v2.1 and below
-			showWebhookPathInOptions: version >= 2.2, // Show in options for v2.2+
 		};
 	}
 
