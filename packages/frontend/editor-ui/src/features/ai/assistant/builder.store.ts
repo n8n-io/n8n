@@ -284,7 +284,12 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		};
 	}
 
-	function trackEndBuilderResponse() {
+	type StopStreamingPayload =
+		| {
+				error: string;
+		  }
+		| { aborted: true };
+	function trackEndBuilderResponse(payload?: StopStreamingPayload) {
 		if (!currentStreamingMessage.value) {
 			return;
 		}
@@ -298,18 +303,23 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 			session_id: trackingSessionId.value,
 			...getWorkflowModifications(currentStreamingMessage.value),
 			...getCategorizationParametersToTrack(currentStreamingMessage.value),
+			...payload,
 		});
 	}
 
-	function stopStreaming() {
+	function stopStreaming(payload?: StopStreamingPayload) {
 		streaming.value = false;
 		if (streamingAbortController.value) {
 			streamingAbortController.value.abort();
 			streamingAbortController.value = null;
 		}
 
-		trackEndBuilderResponse();
+		trackEndBuilderResponse(payload);
 		currentStreamingMessage.value = undefined;
+	}
+
+	function abortStreaming() {
+		stopStreaming({ aborted: true });
 	}
 
 	// Error handling
@@ -322,7 +332,9 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 	function handleServiceError(e: unknown, userMessageId: string, retry?: () => Promise<void>) {
 		assert(e instanceof Error);
 
-		stopStreaming();
+		stopStreaming({
+			error: e.message,
+		});
 		builderThinkingMessage.value = undefined;
 
 		if (e.name === 'AbortError') {
@@ -343,13 +355,6 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		);
 
 		chatMessages.value = [...chatMessages.value, errorMessage];
-
-		telemetry.track('Workflow generation errored', {
-			error: e.message,
-			session_id: trackingSessionId.value,
-			workflow_id: workflowsStore.workflowId,
-			user_message_id: userMessageId,
-		});
 	}
 
 	// Helper functions
@@ -775,7 +780,8 @@ export const useBuilderStore = defineStore(STORES.BUILDER, () => {
 		workflowTodos,
 
 		// Methods
-		stopStreaming,
+		abortStreaming,
+		stopStreaming, // todo remove from exports
 		resetBuilderChat,
 		sendChatMessage,
 		loadSessions,

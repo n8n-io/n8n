@@ -278,7 +278,7 @@ defineExpose({
 			@message="onUserMessage"
 			@upgrade-click="() => goToUpgrade('ai-builder-sidebar', 'upgrade-builder')"
 			@feedback="onFeedback"
-			@stop="builderStore.stopStreaming"
+			@stop="builderStore.abortStreaming"
 		>
 			<template #header>
 				<slot name="header" />
