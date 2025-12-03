@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { useI18n } from '@/composables/useI18n';
+import { useI18n } from '@n8n/i18n';
 import { useToast } from '@/composables/useToast';
-import { useRootStore } from '@/stores/root.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
 import type { FileMetadata } from '@/features/core/dataTable/dataTable.types';
 import {
 	uploadFileToColumnApi,
