@@ -2342,6 +2342,8 @@
 	"settings.mcp.emptyState.docs.part1": "Read or docs to",
 	"settings.mcp.toggle.description": "Enable MCP access to this n8n instance",
 	"settings.mcp.toggle.disabled.notice": "Let MCP clients like Claude, Lovable, and other AI tools discover and execute your n8n workflows.",
+	"settings.mcp.tabs.workflows": "Workflows",
+	"settings.mcp.tabs.oauth": "OAuth connections",
 	"settings.mcp.available.workflows.heading": "Available Workflows",
 	"settings.mcp.connection.info.heading": "How to connect",
 	"settings.mcp.workflows.table.action.removeMCPAccess": "Remove MCP Access",

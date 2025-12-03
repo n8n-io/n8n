@@ -118,23 +118,6 @@ const onWorkflowAction = (action: string, workflow: WorkflowListItem) => {
 			<N8nLoading :loading="props.loading" variant="p" :rows="5" :shrink-last="false" />
 		</div>
 		<div v-else class="mt-s mb-xl">
-			<div :class="[$style.header, 'mb-s']">
-				<N8nHeading size="medium" :bold="true">
-					{{ i18n.baseText('settings.mcp.available.workflows.heading') }} ({{
-						props.workflows.length
-					}})
-				</N8nHeading>
-				<N8nTooltip :content="i18n.baseText('settings.mcp.refresh.tooltip')">
-					<N8nButton
-						data-test-id="mcp-workflows-refresh-button"
-						size="small"
-						type="tertiary"
-						icon="refresh-cw"
-						:square="true"
-						@click="$emit('refresh')"
-					/>
-				</N8nTooltip>
-			</div>
 			<N8nActionBox
 				v-if="props.workflows.length === 0"
 				data-test-id="empty-workflow-list-box"
