@@ -43,28 +43,40 @@ withDefaults(defineProps<BadgeProps>(), {
 	composes: badge;
 	border-radius: var(--radius);
 	color: var(--color--text--tint-1);
-	border-color: var(--color--text--tint-1);
+
+	&.border {
+		border-color: var(--color--text--tint-1);
+	}
 }
 
 .success {
 	composes: badge;
 	border-radius: var(--radius);
 	color: var(--color--success);
-	border-color: var(--color--success);
+
+	&.border {
+		border-color: var(--color--success);
+	}
 }
 
 .warning {
 	composes: badge;
 	border-radius: var(--radius);
 	color: var(--color--warning);
-	border-color: var(--color--warning);
+
+	&.border {
+		border-color: var(--color--warning);
+	}
 }
 
 .danger {
 	composes: badge;
 	border-radius: var(--radius);
 	color: var(--color--danger);
-	border-color: var(--color--danger);
+
+	&.border {
+		border-color: var(--color--danger);
+	}
 }
 
 .primary {
@@ -73,7 +85,10 @@ withDefaults(defineProps<BadgeProps>(), {
 	border-radius: var(--radius--xl);
 	color: var(--color--foreground--tint-2);
 	background-color: var(--color--primary);
-	border-color: var(--color--primary);
+
+	&.border {
+		border-color: var(--color--primary);
+	}
 }
 
 .secondary {
@@ -87,7 +102,10 @@ withDefaults(defineProps<BadgeProps>(), {
 	composes: badge;
 	border-radius: var(--radius);
 	color: var(--color--text--tint-1);
-	border-color: var(--color--text--tint-1);
 	padding: 1px var(--spacing--5xs);
+
+	&.border {
+		border-color: var(--color--text--tint-1);
+	}
 }
 </style>
