@@ -14,7 +14,15 @@ import {
 } from '@/app/constants';
 
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
+import { useSourceControlStore } from '@/features/integrations/sourceControl.ee/sourceControl.store';
+import { useTagsStore } from '@/features/shared/tags/tags.store';
+import { useUIStore } from '@/app/stores/ui.store';
+import { useUsersStore } from '@/features/settings/users/users.store';
+import { useWorkflowsStore } from '@/app/stores/workflows.store';
+import { useRootStore } from '@n8n/stores/useRootStore';
+
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
 import { useToast } from '@/app/composables/useToast';
@@ -91,7 +99,7 @@ const locale = useI18n();
 const telemetry = useTelemetry();
 const message = useMessage();
 const toast = useToast();
-const documentTitle = useDocumentTitle();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const workflowSaving = useWorkflowSaving({ router });
 
 const isTagsEditEnabled = ref(false);

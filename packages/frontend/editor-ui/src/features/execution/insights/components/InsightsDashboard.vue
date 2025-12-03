@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import ProjectSharing from '@/features/collaboration/projects/components/ProjectSharing.vue';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
@@ -196,7 +197,8 @@ watch(
 );
 
 onMounted(() => {
-	useDocumentTitle().set(i18n.baseText('insights.heading'));
+	const settingsStore = useSettingsStore();
+	useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel }).set(i18n.baseText('insights.heading'));
 });
 onBeforeMount(async () => {
 	await projectsStore.getAvailableProjects();

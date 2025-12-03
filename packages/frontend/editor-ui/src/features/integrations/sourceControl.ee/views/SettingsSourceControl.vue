@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import CopyInput from '@/app/components/CopyInput.vue';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useLoadingService } from '@/app/composables/useLoadingService';
 import { useMessage } from '@/app/composables/useMessage';
 import { usePageRedirectionHelper } from '@/app/composables/usePageRedirectionHelper';
@@ -31,7 +32,8 @@ const sourceControlStore = useSourceControlStore();
 const pageRedirectionHelper = usePageRedirectionHelper();
 const toast = useToast();
 const message = useMessage();
-const documentTitle = useDocumentTitle();
+const settingsStore = useSettingsStore();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const loadingService = useLoadingService();
 
 const isConnected = ref(false);

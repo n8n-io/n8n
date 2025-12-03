@@ -47,7 +47,7 @@ import { useAgentRequestStore } from '@n8n/stores/useAgentRequestStore';
 import { useWorkflowSaving } from './useWorkflowSaving';
 import { computed } from 'vue';
 import { injectWorkflowState, type WorkflowState } from '@/app/composables/useWorkflowState';
-import { useDocumentTitle } from './useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 
 export function useRunWorkflow(useRunWorkflowOpts: {
 	router: ReturnType<typeof useRouter>;
@@ -378,7 +378,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			workflowState.setWorkflowExecutionData(executionData);
 			nodeHelpers.updateNodesExecutionIssues();
 
-			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
+			useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel }).setDocumentTitle(workflowObject.value.name as string, 'EXECUTING');
 			const runWorkflowApiResponse = await runWorkflowApi(startRunData);
 			const pinData = workflowData.pinData ?? {};
 
@@ -413,7 +413,7 @@ export function useRunWorkflow(useRunWorkflowOpts: {
 			return runWorkflowApiResponse;
 		} catch (error) {
 			workflowState.setWorkflowExecutionData(null);
-			useDocumentTitle().setDocumentTitle(workflowObject.value.name as string, 'ERROR');
+			useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel }).setDocumentTitle(workflowObject.value.name as string, 'ERROR');
 			toast.showError(error, i18n.baseText('workflowRun.showError.title'));
 			return undefined;
 		}

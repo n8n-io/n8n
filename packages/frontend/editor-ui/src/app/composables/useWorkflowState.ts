@@ -31,7 +31,8 @@ import { isEmpty } from '@/app/utils/typesUtils';
 import { useProjectsStore } from '@/features/collaboration/projects/projects.store';
 import type { ProjectSharingData } from '@/features/collaboration/projects/projects.types';
 import { clearPopupWindowState } from '@/features/execution/executions/executions.utils';
-import { useDocumentTitle } from './useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useWorkflowStateStore } from '@/app/stores/workflowState.store';
 import { isObject } from '@/app/utils/objectUtils';
 import findLast from 'lodash/findLast';
@@ -186,7 +187,8 @@ export function useWorkflowState() {
 	// Execution
 	////
 
-	const documentTitle = useDocumentTitle();
+	const settingsStore = useSettingsStore();
+	const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 
 	function markExecutionAsStopped(stopData?: IExecutionsStopData) {
 		setActiveExecutionId(undefined);

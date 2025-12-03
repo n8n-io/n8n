@@ -13,7 +13,8 @@ import { useUsersStore } from '@/features/settings/users/users.store';
 import { useTemplatesStore } from '@/features/workflows/templates/templates.store';
 import { useToast } from '@/app/composables/useToast';
 import { useDebounce } from '@/app/composables/useDebounce';
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
+import { useSettingsStore } from '@/app/stores/settings.store';
 import { useI18n } from '@n8n/i18n';
 import { useRoute, onBeforeRouteLeave, useRouter } from 'vue-router';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -38,9 +39,8 @@ const errorLoadingWorkflows = ref(false);
 
 const { callDebounced } = useDebounce();
 const toast = useToast();
-const documentTitle = useDocumentTitle();
-
 const settingsStore = useSettingsStore();
+const documentTitle = useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel });
 const templatesStore = useTemplatesStore();
 const usersStore = useUsersStore();
 const i18n = useI18n();

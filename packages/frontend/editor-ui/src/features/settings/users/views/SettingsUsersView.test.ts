@@ -65,7 +65,7 @@ vi.mock('@/app/composables/useClipboard', () => ({
 	useClipboard: vi.fn(() => mockClipboard),
 }));
 
-vi.mock('@/app/composables/useDocumentTitle', () => ({
+vi.mock('@n8n/composables/useDocumentTitle', () => ({
 	useDocumentTitle: vi.fn(() => ({
 		set: vi.fn(),
 	})),

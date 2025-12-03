@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { useDocumentTitle } from '@/app/composables/useDocumentTitle';
+import { useDocumentTitle } from '@n8n/composables/useDocumentTitle';
 import { useI18n } from '@n8n/i18n';
 import { useMessage } from '@/app/composables/useMessage';
 import { useTelemetry } from '@/app/composables/useTelemetry';
@@ -289,7 +289,7 @@ const unavailableNoticeProps = computed(() => ({
 }));
 
 onMounted(() => {
-	useDocumentTitle().set(i18n.baseText('variables.heading'));
+	useDocumentTitle({ releaseChannel: settingsStore.settings.releaseChannel }).set(i18n.baseText('variables.heading'));
 });
 </script>
 
