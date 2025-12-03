@@ -1,14 +1,11 @@
 <script setup lang="ts">
-import { useClipboard } from '@/app/composables/useClipboard';
 import ChatAgentAvatar from '@/features/ai/chatHub/components/ChatAgentAvatar.vue';
 import ChatTypingIndicator from '@/features/ai/chatHub/components/ChatTypingIndicator.vue';
 import { useChatHubMarkdownOptions } from '@/features/ai/chatHub/composables/useChatHubMarkdownOptions';
 import type { ChatMessageId, ChatModelDto } from '@n8n/api-types';
 import { N8nButton, N8nIcon, N8nInput } from '@n8n/design-system';
 import { useSpeechSynthesis } from '@vueuse/core';
-import type MarkdownIt from 'markdown-it';
-import markdownLink from 'markdown-it-link-attributes';
-import { computed, onBeforeMount, ref, useTemplateRef, watch } from 'vue';
+import { computed, onBeforeMount, ref, useCssModule, useTemplateRef, watch } from 'vue';
 import VueMarkdown from 'vue-markdown-render';
 import type { ChatMessage } from '../chat.types';
 import ChatMessageActions from './ChatMessageActions.vue';
@@ -19,6 +16,7 @@ import { buildChatAttachmentUrl } from '@/features/ai/chatHub/chat.api';
 import { useRootStore } from '@n8n/stores/useRootStore';
 import { useDeviceSupport } from '@n8n/composables/useDeviceSupport';
 import { useI18n } from '@n8n/i18n';
+import CopyButton from '@/features/ai/chatHub/components/CopyButton.vue';
 
 const { message, compact, isEditing, isStreaming, minHeight, cachedAgentDisplayName } =
 	defineProps<{
@@ -41,16 +39,16 @@ const emit = defineEmits<{
 	switchAlternative: [messageId: ChatMessageId];
 }>();
 
-const clipboard = useClipboard();
 const chatStore = useChatStore();
 const rootStore = useRootStore();
 const { isCtrlKeyPressed } = useDeviceSupport();
 const i18n = useI18n();
+const styles = useCssModule();
 
 const editedText = ref('');
+const hoveredCodeBlockActions = ref<HTMLElement | null>(null);
 const textareaRef = useTemplateRef('textarea');
-const justCopied = ref(false);
-const { markdownOptions, forceReRenderKey } = useChatHubMarkdownOptions();
+const markdown = useChatHubMarkdownOptions(styles.codeBlockActions);
 const messageContent = computed(() => message.content);
 
 const speech = useSpeechSynthesis(messageContent, {
@@ -81,14 +79,11 @@ const attachments = computed(() =>
 	})),
 );
 
-async function handleCopy() {
-	const text = message.content;
-	await clipboard.copy(text);
-	justCopied.value = true;
-	setTimeout(() => {
-		justCopied.value = false;
-	}, 1000);
-}
+const hoveredCodeBlockContent = computed(() => {
+	const idx = hoveredCodeBlockActions.value?.getAttribute('data-markdown-token-idx');
+
+	return idx ? markdown.codeBlockContents.value?.get(idx) : undefined;
+});
 
 function handleEdit() {
 	emit('startEdit');
@@ -133,14 +128,18 @@ function handleSwitchAlternative(messageId: ChatMessageId) {
 	emit('switchAlternative', messageId);
 }
 
-const linksNewTabPlugin = (vueMarkdownItInstance: MarkdownIt) => {
-	vueMarkdownItInstance.use(markdownLink, {
-		attrs: {
-			target: '_blank',
-			rel: 'noopener',
-		},
-	});
-};
+function handleMouseMove(e: MouseEvent | FocusEvent) {
+	const container =
+		e.target instanceof HTMLElement || e.target instanceof SVGElement
+			? e.target.closest('pre')?.querySelector(`.${styles.codeBlockActions}`)
+			: null;
+
+	hoveredCodeBlockActions.value = container instanceof HTMLElement ? container : null;
+}
+
+function handleMouseLeave() {
+	hoveredCodeBlockActions.value = null;
+}
 
 // Watch for isEditing prop changes to initialize edit mode
 watch(
@@ -219,7 +218,11 @@ onBeforeMount(() => {
 				</div>
 			</div>
 			<div v-else>
-				<div :class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]">
+				<div
+					:class="[$style.chatMessage, { [$style.errorMessage]: message.status === 'error' }]"
+					@mousemove="handleMouseMove"
+					@mouseleave="handleMouseLeave"
+				>
 					<div v-if="attachments.length > 0" :class="$style.attachments">
 						<ChatFile
 							v-for="(attachment, index) in attachments"
@@ -232,27 +235,25 @@ onBeforeMount(() => {
 					<div v-if="message.type === 'human'">{{ message.content }}</div>
 					<VueMarkdown
 						v-else
-						:key="forceReRenderKey"
+						:key="markdown.forceReRenderKey"
 						:class="[$style.chatMessageMarkdown, 'chat-message-markdown']"
 						:source="
 							message.status === 'error' && !message.content
 								? i18n.baseText('chatHub.message.error.unknown')
 								: message.content
 						"
-						:options="markdownOptions"
-						:plugins="[linksNewTabPlugin]"
+						:options="markdown.options"
+						:plugins="markdown.plugins.value"
 					/>
 				</div>
 				<ChatTypingIndicator v-if="isStreaming" :class="$style.typingIndicator" />
 				<ChatMessageActions
 					v-else
-					:just-copied="justCopied"
 					:is-speech-synthesis-available="speech.isSupported.value"
 					:is-speaking="speech.isPlaying.value"
 					:class="$style.actions"
 					:message="message"
 					:alternatives="message.alternatives"
-					@copy="handleCopy"
 					@edit="handleEdit"
 					@regenerate="handleRegenerate"
 					@read-aloud="handleReadAloud"
@@ -260,6 +261,12 @@ onBeforeMount(() => {
 				/>
 			</div>
 		</div>
+		<Teleport
+			v-if="hoveredCodeBlockActions && hoveredCodeBlockContent"
+			:to="hoveredCodeBlockActions"
+		>
+			<CopyButton :content="hoveredCodeBlockContent" />
+		</Teleport>
 	</div>
 </template>
 
@@ -400,6 +407,22 @@ onBeforeMount(() => {
 		padding: var(--chat--spacing);
 		background: var(--chat--message--pre--background);
 		border-radius: var(--chat--border-radius);
+		position: relative;
+
+		code:last-of-type {
+			padding-bottom: 0;
+		}
+
+		& .codeBlockActions {
+			position: absolute;
+			top: 0;
+			right: 0;
+			margin: var(--spacing--2xs);
+		}
+
+		& ~ pre {
+			margin-bottom: 1em;
+		}
 	}
 
 	table {

@@ -51,48 +51,6 @@ const role = ref<InvitableRoleName>(ROLE.Member);
 const showInviteUrls = ref<IInviteResponse[] | null>(null);
 const loading = ref(false);
 
-onMounted(() => {
-	config.value = [
-		{
-			name: 'emails',
-			properties: {
-				label: i18n.baseText('settings.users.newEmailsToInvite'),
-				required: true,
-				validationRules: [{ name: 'VALID_EMAILS' }],
-				validators: {
-					VALID_EMAILS: {
-						validate: validateEmails,
-					},
-				},
-				placeholder: 'name1@email.com, name2@email.com, ...',
-				capitalize: true,
-				focusInitially: true,
-			},
-		},
-		{
-			name: 'role',
-			initialValue: ROLE.Member,
-			properties: {
-				label: i18n.baseText('auth.role'),
-				required: true,
-				type: 'select',
-				options: [
-					{
-						value: ROLE.Member,
-						label: i18n.baseText('auth.roles.member'),
-					},
-					{
-						value: ROLE.Admin,
-						label: i18n.baseText('auth.roles.admin'),
-						disabled: !isAdvancedPermissionsEnabled.value,
-					},
-				],
-				capitalize: true,
-			},
-		},
-	];
-});
-
 const emailsCount = computed((): number => {
 	return emails.value.split(',').filter((email: string) => !!email.trim()).length;
 });
@@ -126,6 +84,10 @@ const isAdvancedPermissionsEnabled = computed((): boolean => {
 	return settingsStore.isEnterpriseFeatureEnabled[EnterpriseEditionFeature.AdvancedPermissions];
 });
 
+const isChatHubEnabled = computed((): boolean => {
+	return settingsStore.isChatFeatureEnabled;
+});
+
 const validateEmails = (value: string | number | boolean | null | undefined) => {
 	if (typeof value !== 'string') {
 		return false;
@@ -148,7 +110,10 @@ const validateEmails = (value: string | number | boolean | null | undefined) => 
 };
 
 function isInvitableRoleName(val: unknown): val is InvitableRoleName {
-	return typeof val === 'string' && [ROLE.Member, ROLE.Admin].includes(val as InvitableRoleName);
+	return (
+		typeof val === 'string' &&
+		[ROLE.Member, ROLE.Admin, ROLE.ChatUser].includes(val as InvitableRoleName)
+	);
 }
 
 function onInput(e: FormFieldValueUpdate) {
@@ -294,6 +259,56 @@ function getEmail(email: string): string {
 	}
 	return parsed;
 }
+
+onMounted(() => {
+	config.value = [
+		{
+			name: 'emails',
+			properties: {
+				label: i18n.baseText('settings.users.newEmailsToInvite'),
+				required: true,
+				validationRules: [{ name: 'VALID_EMAILS' }],
+				validators: {
+					VALID_EMAILS: {
+						validate: validateEmails,
+					},
+				},
+				placeholder: 'name1@email.com, name2@email.com, ...',
+				capitalize: true,
+				focusInitially: true,
+			},
+		},
+		{
+			name: 'role',
+			initialValue: ROLE.Member,
+			properties: {
+				label: i18n.baseText('auth.role'),
+				required: true,
+				type: 'select',
+				options: [
+					{
+						value: ROLE.Member,
+						label: i18n.baseText('auth.roles.member'),
+					},
+					...(isChatHubEnabled.value
+						? [
+								{
+									value: ROLE.ChatUser,
+									label: i18n.baseText('auth.roles.chatUser'),
+								},
+							]
+						: []),
+					{
+						value: ROLE.Admin,
+						label: i18n.baseText('auth.roles.admin'),
+						disabled: !isAdvancedPermissionsEnabled.value,
+					},
+				],
+				capitalize: true,
+			},
+		},
+	];
+});
 </script>
 
 <template>
