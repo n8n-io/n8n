@@ -6,7 +6,7 @@ import pc from 'picocolors';
 
 import { createLangsmithEvaluator } from './evaluator';
 import type { WorkflowState } from '../../src/workflow-state';
-import { setupTestEnvironment, createAgent } from '../core/environment';
+import { setupTestEnvironment, createAgent, getConcurrencyLimit } from '../core/environment';
 import {
 	generateRunId,
 	safeExtractUsage,
@@ -128,11 +128,14 @@ export async function runLangsmithEvaluation(repetitions: number = 1): Promise<v
 		// Create evaluator with both LLM-based and programmatic evaluation
 		const evaluator = createLangsmithEvaluator(llm, parsedNodeTypes);
 
+		// Get concurrency from environment
+		const concurrency = getConcurrencyLimit();
+
 		// Run Langsmith evaluation
 		const results = await evaluate(generateWorkflow, {
 			data: datasetName,
 			evaluators: [evaluator],
-			maxConcurrency: 7,
+			maxConcurrency: concurrency,
 			experimentPrefix: 'workflow-builder-evaluation',
 			numRepetitions: repetitions,
 			metadata: {
