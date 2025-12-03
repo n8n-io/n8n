@@ -35,24 +35,19 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 			for (const workflow of workflows) {
 				const nodes = parseJson(workflow.nodes);
 
-				// Check if workflow contains executeWorkflowTrigger node
 				const executeWorkflowTriggerNode = nodes.find(
 					(node: Node) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 				);
 
-				// Check if workflow contains errorTrigger node
 				const errorTriggerNode = nodes.find((node: Node) => node.type === ERROR_TRIGGER_NODE_TYPE);
 
-				// Skip if workflow doesn't have either trigger type
 				if (!executeWorkflowTriggerNode && !errorTriggerNode) {
 					continue;
 				}
 
-				// For executeWorkflowTrigger, check if it should be activated based on inputSource mode
 				if (executeWorkflowTriggerNode) {
 					const inputSource = executeWorkflowTriggerNode.parameters?.inputSource;
 
-					// Activate if inputSource is 'passthrough' or 'jsonExample'
 					const shouldActivateByInputSource =
 						inputSource === 'passthrough' || inputSource === 'jsonExample';
 
@@ -70,7 +65,6 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 						);
 					}
 
-					// Skip if none of the conditions are met
 					if (!shouldActivateByInputSource && !hasLegacyParameters) {
 						continue;
 					}
@@ -92,7 +86,6 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 					}
 				});
 
-				// Update workflow: set active = true and update nodes if needed
 				if (nodesModified) {
 					await runQuery(
 						`UPDATE ${tableName} SET ${activeColumn} = :active, ${nodesColumn} = :nodes, ${activeVersionIdColumn} = :versionId WHERE ${idColumn} = :id`,
@@ -130,7 +123,6 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 			for (const workflow of workflows) {
 				const nodes = parseJson(workflow.nodes);
 
-				// Check if workflow contains executeWorkflowTrigger or errorTrigger node
 				const hasExecuteWorkflowTrigger = nodes.some(
 					(node: Node) => node.type === EXECUTE_WORKFLOW_TRIGGER_NODE_TYPE,
 				);
@@ -154,16 +146,10 @@ export class ActivateExecuteWorkflowTriggerWorkflows1763048000000 implements Rev
 		});
 	}
 
-	/**
-	 * Determines if a node type is a trigger based on its type name.
-	 */
 	private isTriggerNode(nodeType: string): boolean {
 		return nodeType.includes('Trigger');
 	}
 
-	/**
-	 * Validates that all workflow input values have both name and type properties.
-	 */
 	private hasValidWorkflowInputs(values: unknown[]): boolean {
 		return values.every(
 			(value: unknown) =>
