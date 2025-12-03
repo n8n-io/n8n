@@ -1,9 +1,9 @@
 import type { BaseChatMemory } from '@langchain/community/memory/chat_memory';
 import type { BaseLanguageModel } from '@langchain/core/language_models/base';
 import type { DataSource } from '@n8n/typeorm';
-import type { SqlCreatePromptArgs } from 'langchain/agents/toolkits/sql';
-import { SqlToolkit, createSqlAgent } from 'langchain/agents/toolkits/sql';
-import { SqlDatabase } from 'langchain/sql_db';
+import type { SqlCreatePromptArgs } from '@langchain/classic/agents/toolkits/sql';
+import { SqlToolkit, createSqlAgent } from '@langchain/classic/agents/toolkits/sql';
+import { SqlDatabase } from '@langchain/classic/sql_db';
 import {
 	type IExecuteFunctions,
 	type INodeExecutionData,

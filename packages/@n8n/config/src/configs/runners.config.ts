@@ -90,6 +90,5 @@ export class TaskRunnersConfig {
 	 * adjusted to account for breaking changes:
 	 * https://docs.n8n.io/integrations/builtin/core-nodes/n8n-nodes-base.code/#python-native-beta
 	 */
-	@Env('N8N_NATIVE_PYTHON_RUNNER')
-	isNativePythonRunnerEnabled: boolean = false;
+	isNativePythonRunnerEnabled: boolean = true;
 }

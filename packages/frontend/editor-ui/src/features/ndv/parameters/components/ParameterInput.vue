@@ -251,7 +251,7 @@ const parameterOptions = computed(() => {
 	const safeOptions = (options ?? []).filter(isValidParameterOption);
 
 	// temporary until native Python runner is GA
-	if (props.parameter.name === 'language') {
+	if (props.parameter.name === 'language' && node.value?.type === 'n8n-nodes-base.code') {
 		if (settingsStore.isNativePythonRunnerEnabled) {
 			return safeOptions.filter((o) => o.value !== 'python');
 		} else {
@@ -1644,8 +1644,8 @@ onUpdated(async () => {
 				v-else-if="parameter.type === 'dateTime'"
 				ref="inputField"
 				v-model="tempValue"
-				type="datetime"
-				value-format="YYYY-MM-DDTHH:mm:ss"
+				:type="getTypeOption('dateOnly') ? 'date' : 'datetime'"
+				:value-format="getTypeOption('dateOnly') ? 'YYYY-MM-DD' : 'YYYY-MM-DDTHH:mm:ss'"
 				:size="
 					inputSize === 'mini'
 						? 'small'
@@ -1658,7 +1658,9 @@ onUpdated(async () => {
 				:placeholder="
 					parameter.placeholder
 						? getPlaceholder()
-						: i18n.baseText('parameterInput.selectDateAndTime')
+						: getTypeOption('dateOnly')
+							? i18n.baseText('parameterInput.selectDate')
+							: i18n.baseText('parameterInput.selectDateAndTime')
 				"
 				:picker-options="dateTimePickerOptions"
 				:class="{ 'ph-no-capture': shouldRedactValue }"
