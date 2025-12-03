@@ -707,7 +707,7 @@ export class ChatHubWorkflowService {
 	}
 
 	private buildTitleGeneratorAgentNode(message: string, attachments: IBinaryData[]): INode {
-		const files = attachments.map((attachment) => `[file: "${attachment.fileName}"]`).join('\n');
+		const files = attachments.map((attachment) => `[file: "${attachment.fileName}"]`);
 
 		return {
 			parameters: {
