@@ -173,10 +173,15 @@ function onKeyDown(e: KeyboardEvent) {
 			return;
 		}
 
-		const selected = sortedResources.value[hoverIndex.value - 1]?.value;
+		const item = sortedResources.value[hoverIndex.value - 1];
+		const selected = item?.value;
 
 		// Selected resource can be empty when loading or empty results
 		if (selected && typeof selected !== 'boolean') {
+			if (item && 'active' in item && item.active === false) {
+				return;
+			}
+
 			emit('update:modelValue', selected);
 		}
 	}
