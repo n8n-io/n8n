@@ -492,6 +492,8 @@ const onAddResourceClicked = async () => {
 	display: inline-flex;
 	align-items: center;
 	color: var(--color--warning);
+	opacity: 0;
+	transition: opacity 0.2s ease;
 }
 
 .inactiveBadgeAlone {
@@ -500,5 +502,10 @@ const onAddResourceClicked = async () => {
 
 .inactiveBadgeWithArchived {
 	margin-left: var(--spacing--3xs);
+}
+
+// Show badge when hovering over the list item
+:global(.hovering) .inactiveBadge {
+	opacity: 1;
 }
 </style>
