@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ref, nextTick } from 'vue';
 import { setActivePinia } from 'pinia';
 import { createTestingPinia } from '@pinia/testing';
 import { useChatState } from './useChatState';
@@ -12,7 +11,7 @@ import * as useRunWorkflowModule from '@/app/composables/useRunWorkflow';
 
 vi.mock('@/app/composables/useRunWorkflow');
 vi.mock('@/app/composables/useWorkflowHelpers', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@/app/composables/useWorkflowHelpers')>();
+	const actual = (await importOriginal()) as Record<string, unknown>;
 	return {
 		...actual,
 		resolveParameter: vi.fn((value) => {
@@ -36,7 +35,7 @@ vi.mock('@/app/composables/useNodeHelpers', () => ({
 	})),
 }));
 vi.mock('@n8n/i18n', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('@n8n/i18n')>();
+	const actual = (await importOriginal()) as Record<string, unknown>;
 	return {
 		...actual,
 		useI18n: vi.fn(() => ({
@@ -45,7 +44,7 @@ vi.mock('@n8n/i18n', async (importOriginal) => {
 	};
 });
 vi.mock('vue-router', async (importOriginal) => {
-	const actual = await importOriginal<typeof import('vue-router')>();
+	const actual = (await importOriginal()) as Record<string, unknown>;
 	return {
 		...actual,
 		useRouter: vi.fn(() => ({
@@ -61,7 +60,6 @@ vi.mock('vue-router', async (importOriginal) => {
 describe('useChatState', () => {
 	let workflowsStore: ReturnType<typeof useWorkflowsStore>;
 	let logsStore: ReturnType<typeof useLogsStore>;
-	let rootStore: ReturnType<typeof useRootStore>;
 	let nodeTypesStore: ReturnType<typeof useNodeTypesStore>;
 	let mockRunWorkflow: ReturnType<typeof vi.fn>;
 
@@ -81,37 +79,68 @@ describe('useChatState', () => {
 	};
 
 	beforeEach(() => {
-		setActivePinia(createTestingPinia({ stubActions: false }));
+		const pinia = createTestingPinia({
+			stubActions: false,
+			initialState: {
+				workflows: {
+					workflow: {
+						id: 'workflow-123',
+						name: 'Test Workflow',
+						active: false,
+						createdAt: 1234567890,
+						updatedAt: 1234567890,
+						nodes: [mockChatTriggerNode],
+						connections: {},
+						settings: {},
+						tags: [],
+						pinData: {},
+						versionId: '',
+						isArchived: false,
+					},
+				},
+				root: {
+					webhookTestUrl: 'https://test.n8n.io/webhook-test',
+				},
+				logs: {
+					chatSessionId: 'session-456',
+					chatSessionMessages: [],
+				},
+			},
+		});
+		setActivePinia(pinia);
 		workflowsStore = useWorkflowsStore();
 		logsStore = useLogsStore();
-		rootStore = useRootStore();
+		useRootStore(); // Initialize root store with initial state
 		nodeTypesStore = useNodeTypesStore();
 
 		mockRunWorkflow = vi.fn().mockResolvedValue({ executionId: 'test-exec-id' });
 		vi.mocked(useRunWorkflowModule.useRunWorkflow).mockReturnValue({
 			runWorkflow: mockRunWorkflow,
+			consolidateRunDataAndStartNodes: vi.fn(),
+			runEntireWorkflow: vi.fn(),
+			runWorkflowApi: vi.fn(),
+			stopCurrentExecution: vi.fn(),
+			stopWaitingForWebhook: vi.fn(),
+			sortNodesByYPosition: vi.fn(),
 		});
 
-		// Setup default store values
-		workflowsStore.workflowId = 'workflow-123';
-		workflowsStore.allNodes = [mockChatTriggerNode];
-		rootStore.webhookTestUrl = 'https://test.n8n.io/webhook-test';
-		logsStore.chatSessionId = 'session-456';
-		logsStore.chatSessionMessages = [];
-
 		// Mock node type
-		nodeTypesStore.getNodeType = vi.fn().mockReturnValue({
-			properties: [
-				{
-					name: 'options',
-					type: 'collection',
-					options: [
-						{ name: 'responseMode', default: 'lastNode' },
-						{ name: 'allowFileUploads', default: false },
-						{ name: 'allowedFilesMimeTypes', default: '*' },
-					],
-				},
-			],
+		Object.defineProperty(nodeTypesStore, 'getNodeType', {
+			value: vi.fn().mockReturnValue({
+				properties: [
+					{
+						name: 'options',
+						type: 'collection',
+						options: [
+							{ name: 'responseMode', default: 'lastNode' },
+							{ name: 'allowFileUploads', default: false },
+							{ name: 'allowedFilesMimeTypes', default: '*' },
+						],
+					},
+				],
+			} as never),
+			writable: true,
+			configurable: true,
 		});
 	});
 
@@ -135,7 +164,9 @@ describe('useChatState', () => {
 		});
 
 		it('should return null for chatTriggerNode when not present', () => {
-			workflowsStore.allNodes = [];
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [];
+			});
 
 			const chatState = useChatState(false);
 
@@ -174,16 +205,18 @@ describe('useChatState', () => {
 	describe('file upload configuration', () => {
 		it('should detect file uploads allowed from options', () => {
 			// Ensure the node in the store has the correct parameters
-			workflowsStore.allNodes = [
-				{
-					...mockChatTriggerNode,
-					parameters: {
-						options: {
-							allowFileUploads: true,
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [
+					{
+						...mockChatTriggerNode,
+						parameters: {
+							options: {
+								allowFileUploads: true,
+							},
 						},
 					},
-				},
-			];
+				];
+			});
 
 			const chatState = useChatState(false);
 
@@ -191,16 +224,18 @@ describe('useChatState', () => {
 		});
 
 		it('should detect file uploads disabled', () => {
-			workflowsStore.allNodes = [
-				{
-					...mockChatTriggerNode,
-					parameters: {
-						options: {
-							allowFileUploads: false,
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [
+					{
+						...mockChatTriggerNode,
+						parameters: {
+							options: {
+								allowFileUploads: false,
+							},
 						},
 					},
-				},
-			];
+				];
+			});
 
 			const chatState = useChatState(false);
 
@@ -208,16 +243,18 @@ describe('useChatState', () => {
 		});
 
 		it('should get allowed MIME types from options', () => {
-			workflowsStore.allNodes = [
-				{
-					...mockChatTriggerNode,
-					parameters: {
-						options: {
-							allowedFilesMimeTypes: 'image/*,application/pdf',
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [
+					{
+						...mockChatTriggerNode,
+						parameters: {
+							options: {
+								allowedFilesMimeTypes: 'image/*,application/pdf',
+							},
 						},
 					},
-				},
-			];
+				];
+			});
 
 			const chatState = useChatState(false);
 
@@ -251,7 +288,9 @@ describe('useChatState', () => {
 		});
 
 		it('should return empty webhook URL when no chatTriggerNode', () => {
-			workflowsStore.allNodes = [];
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [];
+			});
 
 			const chatState = useChatState(false);
 
@@ -259,7 +298,9 @@ describe('useChatState', () => {
 		});
 
 		it('should return empty webhook URL when no workflow ID', () => {
-			workflowsStore.workflowId = '';
+			workflowsStore.$patch((state) => {
+				state.workflow.id = '';
+			});
 
 			const chatState = useChatState(false);
 
@@ -275,7 +316,9 @@ describe('useChatState', () => {
 		});
 
 		it('should not be ready when no chatTriggerNode', () => {
-			workflowsStore.allNodes = [];
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [];
+			});
 
 			const chatState = useChatState(false);
 
@@ -283,8 +326,14 @@ describe('useChatState', () => {
 		});
 
 		it('should not be ready when no workflow ID and not new workflow', () => {
-			workflowsStore.workflowId = '';
-			workflowsStore.isNewWorkflow = false;
+			workflowsStore.$patch((state) => {
+				state.workflow.id = '';
+			});
+			// Mock isNewWorkflow as a computed property
+			Object.defineProperty(workflowsStore, 'isNewWorkflow', {
+				get: () => false,
+				configurable: true,
+			});
 
 			const chatState = useChatState(false);
 
@@ -336,7 +385,9 @@ describe('useChatState', () => {
 		});
 
 		it('should not register if no chatTriggerNode', async () => {
-			workflowsStore.allNodes = [];
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [];
+			});
 
 			const chatState = useChatState(false);
 			await chatState.registerChatWebhook();
@@ -360,18 +411,20 @@ describe('useChatState', () => {
 
 	describe('chatOptions', () => {
 		it('should generate correct chatOptions with all configurations', () => {
-			workflowsStore.allNodes = [
-				{
-					...mockChatTriggerNode,
-					parameters: {
-						options: {
-							responseMode: 'streaming',
-							allowFileUploads: true,
-							allowedFilesMimeTypes: 'image/*,application/pdf',
+			workflowsStore.$patch((state) => {
+				state.workflow.nodes = [
+					{
+						...mockChatTriggerNode,
+						parameters: {
+							options: {
+								responseMode: 'streaming',
+								allowFileUploads: true,
+								allowedFilesMimeTypes: 'image/*,application/pdf',
+							},
 						},
 					},
-				},
-			];
+				];
+			});
 
 			const chatState = useChatState(false);
 
@@ -416,6 +469,7 @@ describe('useChatState', () => {
 				message: {
 					id: 'msg-123',
 					text: 'Bot response',
+					sender: 'bot' as const,
 				},
 			};
 
@@ -506,7 +560,11 @@ describe('useChatState', () => {
 		});
 
 		it('should handle missing node type gracefully', () => {
-			nodeTypesStore.getNodeType = vi.fn().mockReturnValue(null);
+			Object.defineProperty(nodeTypesStore, 'getNodeType', {
+				value: vi.fn().mockReturnValue(null),
+				writable: true,
+				configurable: true,
+			});
 
 			const chatState = useChatState(false);
 

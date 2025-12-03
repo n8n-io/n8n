@@ -203,7 +203,10 @@ export function useChatState(isReadOnly: boolean, sessionId?: string): ChatState
 			};
 
 			if (workflowsStore.chatPartialExecutionDestinationNode) {
-				runWorkflowOptions.destinationNode = workflowsStore.chatPartialExecutionDestinationNode;
+				runWorkflowOptions.destinationNode = {
+					nodeName: workflowsStore.chatPartialExecutionDestinationNode,
+					mode: 'inclusive',
+				};
 				// Clear after use so subsequent messages run full workflow
 				workflowsStore.chatPartialExecutionDestinationNode = null;
 			}
