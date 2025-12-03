@@ -1,0 +1,83 @@
+<script setup lang="ts">
+import type { WorkerStatus } from '@n8n/api-types';
+import WorkerAccordion from './WorkerAccordion.vue';
+import { useClipboard } from '@/app/composables/useClipboard';
+import { useI18n } from '@n8n/i18n';
+import { useToast } from '@/app/composables/useToast';
+import { memAsGb, memAsMb } from '@/features/settings/orchestration.ee/orchestration.utils';
+
+const props = defineProps<{
+	worker: WorkerStatus;
+}>();
+
+const i18n = useI18n();
+</script>
+
+<template>
+	<WorkerAccordion icon="list-checks" icon-color="text-dark" :initial-expanded="false">
+		<template #title>
+			{{ i18n.baseText('workerList.item.memoryMonitorTitle') }}
+		</template>
+		<template #content>
+			<div :class="$style['accordion-content']">
+				<strong>Host/OS Memory:</strong>
+				<table>
+					<tbody>
+						<tr>
+							<th>Total (os.totalmem)</th>
+							<td>{{ memAsGb(worker.host.memory.total) }}Gb</td>
+						</tr>
+						<tr>
+							<th>Free (os.freemem)</th>
+							<td>{{ memAsGb(worker.host.memory.free) }}Gb</td>
+						</tr>
+					</tbody>
+				</table>
+				<br />
+				<strong>Process Memory:</strong><br />
+				<table>
+					<tbody>
+						<tr v-if="worker.isInContainer">
+							<th>Constraint: (process.constrainedMemory)</th>
+							<td>{{ memAsMb(worker.process.memory.constraint) }}Mb</td>
+						</tr>
+						<tr>
+							<th>Available: (process.availableMemory)</th>
+							<td>{{ memAsMb(worker.process.memory.available) }}Mb</td>
+						</tr>
+						<tr>
+							<th>RSS: (process.memoryUsage().rss)</th>
+							<td>{{ memAsMb(worker.process.memory.rss) }}Mb</td>
+						</tr>
+						<tr>
+							<th>Heap total: (process.memoryUsage().heapTotal)</th>
+							<td>{{ memAsMb(worker.process.memory.heapTotal) }}Mb</td>
+						</tr>
+						<tr>
+							<th>Heap used: (process.memoryUsage().heapUsed)</th>
+							<td>{{ memAsMb(worker.process.memory.heapUsed) }}Mb</td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</template>
+	</WorkerAccordion>
+</template>
+
+<style lang="scss" module>
+table {
+	th,
+	td {
+		text-align: left;
+		font-weight: normal;
+	}
+	td {
+		font-variant-numeric: tabular-nums;
+		padding-left: 8px;
+	}
+}
+
+.accordion-content {
+	padding: var(--spacing--2xs);
+}
+</style>

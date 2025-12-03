@@ -7,6 +7,7 @@ import type { ChartComponentRef } from 'vue-chartjs';
 import { Chart } from 'vue-chartjs';
 import { averageWorkerLoadFromLoads, memAsGb } from '../orchestration.utils';
 import { useI18n } from '@n8n/i18n';
+import { worker } from '@/features/shared/editors/plugins/codemirror/typescript/worker/typescript.worker';
 
 const props = defineProps<{
 	workerId: string;
@@ -28,7 +29,7 @@ const blankDataSet = (label: string, color: string, prefill: number = 0) => ({
 const orchestrationStore = useOrchestrationStore();
 const chartRefJobs = ref<ChartComponentRef | undefined>(undefined);
 const chartRefCPU = ref<ChartComponentRef | undefined>(undefined);
-const chartRefMemory = ref<ChartComponentRef | undefined>(undefined);
+const chartRefMemoryUsage = ref<ChartComponentRef | undefined>(undefined);
 const optionsBase: () => Partial<ChartOptions<'line'>> = () => ({
 	responsive: true,
 	maintainAspectRatio: true,
@@ -49,9 +50,8 @@ const optionsBase: () => Partial<ChartOptions<'line'>> = () => ({
 const optionsJobs: Partial<ChartOptions<'line'>> = optionsBase();
 const optionsCPU: Partial<ChartOptions<'line'>> = optionsBase();
 if (optionsCPU.scales?.y) optionsCPU.scales.y.suggestedMax = 100;
-const maxMemory = memAsGb(orchestrationStore.workers[props.workerId]?.totalMem) ?? 1;
 const optionsMemory: Partial<ChartOptions<'line'>> = optionsBase();
-if (optionsMemory.scales?.y) optionsMemory.scales.y.suggestedMax = maxMemory;
+if (optionsMemory.scales?.y) optionsMemory.scales.y.suggestedMax = 100;
 
 // prefilled initial arrays
 const dataJobs = ref<ChartData>(
@@ -60,8 +60,8 @@ const dataJobs = ref<ChartData>(
 const dataCPU = ref<ChartData>(
 	blankDataSet('Processor Usage', 'rgb(19, 205, 103)', WORKER_HISTORY_LENGTH),
 );
-const dataMemory = ref<ChartData>(
-	blankDataSet('Memory Usage', 'rgb(244, 216, 174)', WORKER_HISTORY_LENGTH),
+const dataMemoryUsage = ref<ChartData>(
+	blankDataSet('Memory Usage (%)', 'rgb(244, 216, 174)', WORKER_HISTORY_LENGTH),
 );
 
 orchestrationStore.$onAction(({ name, store }) => {
@@ -74,22 +74,31 @@ orchestrationStore.$onAction(({ name, store }) => {
 			'rgb(19, 205, 103)',
 			prefillCount,
 		);
-		const newDataMemory: ChartData = blankDataSet(
-			'Memory Usage',
+		const newDataMemoryUsage: ChartData = blankDataSet(
+			'Memory Usage (%)',
 			'rgb(244, 216, 174)',
 			prefillCount,
 		);
+
 		store.workersHistory[props.workerId]?.forEach((item) => {
 			newDataJobs.datasets[0].data.push(item.data.runningJobsSummary.length);
 			newDataJobs.labels?.push(new Date(item.timestamp).toLocaleTimeString());
 			newDataCPU.datasets[0].data.push(averageWorkerLoadFromLoads(item.data.loadAvg));
-			newDataCPU.labels = newDataJobs.labels;
-			newDataMemory.datasets[0].data.push(maxMemory - memAsGb(item.data.freeMem));
-			newDataMemory.labels = newDataJobs.labels;
+
+			newDataCPU.labels = dataCPU.value.labels;
+			const totalMem = item.data.isInContainer
+				? item.data.process.memory.constraint
+				: item.data.host.memory.total;
+
+			const usedMem = totalMem - item.data.process.memory.available;
+
+			const usage = (usedMem / totalMem) * 100;
+			newDataMemoryUsage.labels = dataMemoryUsage.value.labels;
+			newDataMemoryUsage.datasets[0].data.push(usage.toFixed(2));
 		});
 		dataJobs.value = newDataJobs;
 		dataCPU.value = newDataCPU;
-		dataMemory.value = newDataMemory;
+		dataMemoryUsage.value = newDataMemoryUsage;
 	}
 });
 </script>
@@ -116,9 +125,9 @@ orchestrationStore.$onAction(({ name, store }) => {
 					:class="$style.chart"
 				/>
 				<Chart
-					ref="chartRefMemory"
+					ref="chartRefMemoryUsage"
 					type="line"
-					:data="dataMemory"
+					:data="dataMemoryUsage"
 					:options="optionsMemory"
 					:class="$style.chart"
 				/>
