@@ -96,15 +96,20 @@ const isCredentialsMissing = computed(
 
 const menu = computed(() => {
 	const menuItems: (typeof N8nNavigationDropdown)['menu'] = [];
+	const fullNamesMap: Record<string, string> = {};
 
 	if (includeCustomAgents) {
 		const customAgents = isLoading.value
 			? []
-			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => ({
-					id: stringifyModel(agent.model),
-					title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
-					disabled: false,
-				}));
+			: [...agents.value['custom-agent'].models, ...agents.value['n8n'].models].map((agent) => {
+					const id = stringifyModel(agent.model);
+					fullNamesMap[id] = agent.name;
+					return {
+						id,
+						title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
+						disabled: false,
+					};
+				});
 
 		menuItems.push({
 			id: 'custom-agents',
@@ -199,11 +204,15 @@ const menu = computed(() => {
 									(m) => 'model' in agent.model && m.model === agent.model.model,
 								),
 						)
-						.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => ({
-							id: stringifyModel(agent.model),
-							title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
-							disabled: false,
-						}))
+						.map<ComponentProps<typeof N8nNavigationDropdown>['menu'][number]>((agent) => {
+							const id = stringifyModel(agent.model);
+							fullNamesMap[id] = agent.name;
+							return {
+								id,
+								title: truncateBeforeLast(agent.name, MAX_AGENT_NAME_CHARS_MENU),
+								disabled: false,
+							};
+						})
 						.filter((item, index, self) => self.findIndex((i) => i.id === item.id) === index)
 				: error
 					? [{ id: `${provider}::error`, value: null, disabled: true, title: error }]
@@ -232,7 +241,7 @@ const menu = computed(() => {
 		});
 	}
 
-	return menuItems;
+	return { items: menuItems, fullNames: fullNamesMap };
 });
 
 const selectedLabel = computed(
@@ -346,7 +355,7 @@ defineExpose({
 	<N8nNavigationDropdown
 		ref="dropdownRef"
 		:submenu-class="$style.component"
-		:menu="menu"
+		:menu="menu.items"
 		teleport
 		@select="onSelect"
 	>
@@ -360,7 +369,7 @@ defineExpose({
 			<N8nAvatar
 				v-else-if="item.id.startsWith('n8n::') || item.id.startsWith('custom-agent::')"
 				:class="$style.avatarIcon"
-				:first-name="item.title"
+				:first-name="menu.fullNames[item.id] || item.title"
 				size="xsmall"
 			/>
 		</template>
